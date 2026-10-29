@@ -7,12 +7,11 @@ import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT } from './kit.ts';
-import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
-import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { buildZtz20Hull, markZtz20Hull, ztz20Receipt, ZTZ20_DATUMS } from './ztz20Family.ts';
 import { addClampFrame, addLaunchCanister, elevationSector, type LaunchCanister } from './missileCanisterStock.ts';
 
-const { box, cylX, cylY, cylZ, torus } = KIT;
-type XYZ = [number, number, number];
+const { box, cylX, cylY, cylZ } = KIT;
 
 /** Tag a geometry with its measured part name so the receipt can census the build. */
 function part(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometry {
@@ -21,246 +20,12 @@ function part(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometr
 }
 
 // ---------------------------------------------------------------------------------------------- measured frame
+// Release 262 (owner 2026-10-27: "the ztz 100 is its prototype"): the testbed now stands on the ZTZ-20 family hull and
+// running gear at its earliest stage (ztz20Family.ts ZTZ20_STAGES.ztz100_prototype: bare glacis, upper skirt band only,
+// a closed stern bin, the flat testbed engine deck its missile turret's platter clears); the turret below is unchanged.
 export const ZTZ100_PROTOTYPE_DATUMS = Object.freeze({
-  widthM: 3.734, hullLengthM: 6.94, overallLengthM: 7.825, roofHeightM: 1.41, turretRoofM: 1.90, overallHeightM: 2.74,
-  turretPivot: [0, 1.41, -0.55] as const, trunnion: [0, 2.05, .25] as const, muzzleZ: 3.75,
-  wheelStations: [-2.3375, -1.6015, -0.8655, -0.1295, 0.6065, 1.4345, 2.1705] as const,
-  wheelR: 0.3135, wheelY: 0.374, trackW: 0.515, trackX: 1.2485,
-  sprocket: { z: -2.961, y: 0.658, r: 0.311 } as const,
-  idler: { z: 2.9915, y: 0.7395, r: 0.2035 } as const,
-  rollers: [{ z: -0.933, y: 0.8775, r: 0.1195 }, { z: 0.648, y: 0.9045, r: 0.1195 }] as const,
-  sternPlateZ: -3.38, sternScreenZ: -4.08, noseZ: 3.56, noseY: 1.20,
+  ...ZTZ20_DATUMS, turretRoofM: 1.90, overallHeightM: 2.74, trunnion: [0, 2.05, .25] as const, muzzleZ: 3.75,
 });
-
-// ------------------------------------------------------------------------------------------------------- hull
-const H = {
-  belly: 0.35, tub: 0.96, sponson: 1.08, fender: 1.30, roof: 1.41, deck: 1.50, deckZ: -2.62,
-  glacisTopZ: 0.95, noseZ: ZTZ100_PROTOTYPE_DATUMS.noseZ, noseY: ZTZ100_PROTOTYPE_DATUMS.noseY, sternZ: ZTZ100_PROTOTYPE_DATUMS.sternPlateZ,
-  skirtAft: 1.765, skirtFwd: 1.849, skirtLow: 1.707, skirtLip: 1.60, skirtStep: 0.82, lipY: 0.62, hem: 0.50, curtain: 0.04,
-} as const;
-const GLACIS_SLOPE = (H.roof - H.noseY) / (H.noseZ - H.glacisTopZ);
-const GLACIS_TILT = Math.atan(GLACIS_SLOPE);
-const glacisY = (z: number): number => (z <= H.glacisTopZ ? H.roof : H.roof - (z - H.glacisTopZ) * GLACIS_SLOPE);
-/** Measured lower bow: the belly rises through the depth-map steps to the nose line. */
-const BOW: readonly (readonly [number, number])[] = [[2.45, H.belly], [2.74, 0.50], [2.91, 0.70], [3.20, 0.80], [3.42, 0.90], [H.noseZ, 1.13]];
-const STERN_RAKE_Z = -2.78; // the lower stern plate rakes 45° from the belly here up to y 0.95 at the stern plate
-function bellyY(z: number): number {
-  if (z <= STERN_RAKE_Z) return Math.min(0.95, H.belly + (STERN_RAKE_Z - z));
-  if (z <= BOW[0][0]) return H.belly;
-  for (let i = 1; i < BOW.length; i++) {
-    const [z0, y0] = BOW[i - 1], [z1, y1] = BOW[i];
-    if (z <= z1) return y0 + ((z - z0) * (y1 - y0)) / (z1 - z0);
-  }
-  return BOW[BOW.length - 1][1];
-}
-/** Hull flank behind the curtains; the plan draws in toward the nose ahead of z 2.90. */
-function flankX(z: number): number {
-  const base = (z < -0.40 ? H.skirtAft : H.skirtFwd) - H.curtain - 0.005;
-  return z <= 2.90 ? base : base - (z - 2.90) * ((base - 1.30) / (H.noseZ - 2.90));
-}
-
-/** Stern taper (measured rear rows): the tub narrows to ±0.76 under a 0.78 sponson floor behind z −2.9, so the tracks
- * stand clear of the hull with daylight between them; the full tub returns by z −2.0. */
-function sternTub(z: number): [number, number] {
-  // 2026-09-17 (release gate): only the lower TUB narrows behind the sprocket; the sponson floor keeps its
-  // datum height so the hull never reaches down into the sprocket wrap (a .78 floor put 56 voxels of hull
-  // inside the rear band).
-  if (z <= -2.90) return [0.76, H.sponson];
-  if (z >= -2.00) return [H.tub, H.sponson];
-  const t = (z + 2.90) / 0.90;
-  return [0.76 + t * (H.tub - 0.76), H.sponson];
-}
-/** Twelve-point section: flat belly with chamfered keel edges, tub wall, sponson floor, flank, chamfered roof edge. */
-function hullSection(z: number, roofOverride?: number): SolidSection {
-  const belly = bellyY(z), roof = roofOverride ?? glacisY(z), flank = flankX(z);
-  const [tubMax, sponsonMax] = sternTub(z);
-  const tub = Math.min(tubMax, flank - 0.03);
-  const sponson = Math.max(Math.min(sponsonMax, roof - 0.045), belly + 0.025);
-  const chamfer = Math.min(0.09, Math.max(0.004, (sponson - belly) * 0.28));
-  const roofIn = Math.min(0.05, (roof - sponson) * 0.4);
-  const ring: SectionPoint[] = [
-    [-tub + 0.08, belly], [tub - 0.08, belly], [tub, belly + chamfer], [tub, sponson], [flank, sponson],
-    [flank, roof - roofIn], [flank - roofIn, roof], [-(flank - roofIn), roof], [-flank, roof - roofIn], [-flank, sponson],
-    [-tub, sponson], [-tub, belly + chamfer],
-  ];
-  return { z, ring };
-}
-const HULL_Z: readonly (readonly [number, number | undefined])[] = [
-  [H.sternZ, H.deck], [-3.10, H.deck], [-2.90, H.deck], [STERN_RAKE_Z, H.deck], [H.deckZ - 0.02, H.deck], [H.deckZ + 0.02, H.roof], [-2.00, H.roof], [-0.45, H.roof], [-0.35, H.roof],
-  [H.glacisTopZ, H.roof], [1.80, undefined], [2.45, undefined], [2.74, undefined], [2.91, undefined], [3.20, undefined], [3.42, undefined], [H.noseZ - 0.01, undefined],
-];
-
-/** Louvre field: a recessed dark plate with a bar frame and `bars` cross bars — the reference's deck and stern grilles. */
-function louvreField(P: TankBuilderPort, owner: 'hull' | 'turret', name: string, centre: XYZ, width: number, span: number,
-  bars: number, face: 'up' | 'aft', depth = 0.035): void {
-  const dark = owner === 'hull' ? 'hullDark' : 'turretDark', detail = owner === 'hull' ? 'hullDetail' : 'turretDetail';
-  const [x, y, z] = centre;
-  if (face === 'up') {
-    P.add(dark, part(box(width, depth, span), name), x, y, z);
-    for (const dz of [-span / 2, span / 2]) P.add(detail, part(box(width + 0.04, 0.016, 0.04), `${name}-frame`), x, y + depth / 2 + 0.008, z + dz);
-    for (let i = 0; i < bars; i++) P.add(dark, part(box(width - 0.06, depth + 0.02, 0.016), `${name}-bar`), x, y + 0.004, z - span / 2 + 0.05 + (i * (span - 0.10)) / (bars - 1));
-  } else {
-    P.add(dark, part(box(width, span, depth), name), x, y, z);
-    for (const dy of [-span / 2, span / 2]) P.add(detail, part(box(width + 0.04, 0.04, 0.016), `${name}-frame`), x, y + dy, z - depth / 2 - 0.008);
-    for (let i = 0; i < bars; i++) P.add(dark, part(box(width - 0.06, 0.016, depth + 0.02), `${name}-bar`), x, y - span / 2 + 0.05 + (i * (span - 0.10)) / (bars - 1), z - 0.004);
-  }
-}
-
-function hullBody(P: TankBuilderPort): void {
-  P.add('hull', part(sectionSolid(HULL_Z.map(([z, roof]) => hullSection(z, roof))), 'hull-body'));
-  for (const x of [-0.78, 0.78]) P.add('hullDark', part(box(0.02, 0.006, 3.20), 'roof-seam'), x, H.roof + 0.003, -0.70);
-  P.add('hullDark', part(box(3.30, 0.006, 0.02), 'deck-seam'), 0, H.deck + 0.003, H.deckZ);
-}
-
-/** Two measured skirt bands: upper (aft 1.765 / forward 1.849) from the fender line to y 0.82, lower (1.707) to the hem. */
-function skirts(P: TankBuilderPort): void {
-  const bolt = (x: number, y: number, z: number): void => { P.add('hullDetail', part(cylX(0.013, 0.02, 8), 'skirt-bolt'), x, y, z); };
-  for (const s of [-1, 1]) {
-    const upperZ = [-3.90, -3.30, -2.44, -1.58, -0.72, 0.14, 1.00, 1.86, 2.72, 3.20];
-    for (let i = 0; i < upperZ.length - 1; i++) {
-      const z0 = upperZ[i] + 0.012, z1 = upperZ[i + 1] - 0.012, zc = (z0 + z1) / 2, outer = zc < -0.40 ? H.skirtAft : H.skirtFwd;
-      P.addExternalArmor('hull', part(box(H.curtain, H.fender - H.skirtStep, z1 - z0), 'skirt-upper'), s * (outer - H.curtain / 2), (H.fender + H.skirtStep) / 2, zc);
-      for (const dz of [-0.30, 0, 0.30]) { bolt(s * (outer + 0.006), H.fender - 0.07, zc + dz); bolt(s * (outer + 0.006), H.skirtStep + 0.07, zc + dz); }
-    }
-    P.add('hullDark', part(box(H.skirtFwd - H.skirtAft + 0.02, H.fender - H.skirtStep, 0.04), 'skirt-step'), s * ((H.skirtFwd + H.skirtAft) / 2 - 0.02), (H.fender + H.skirtStep) / 2, -0.40);
-    // the lower band spans the measured z −2.60..2.80 and its inboard lip (1.60) z −2.20..2.40; the ends stay open
-    const lowerZ = [-2.60, -1.70, -0.80, 0.10, 1.00, 1.90, 2.80];
-    for (let i = 0; i < lowerZ.length - 1; i++) {
-      const z0 = lowerZ[i] + 0.012, z1 = lowerZ[i + 1] - 0.012, zc = (z0 + z1) / 2;
-      P.addExternalArmor('hull', part(box(H.curtain, H.skirtStep - H.lipY, z1 - z0), 'skirt-lower'), s * (H.skirtLow - H.curtain / 2), (H.skirtStep + H.lipY) / 2, zc);
-      for (const dz of [-0.28, 0.28]) bolt(s * (H.skirtLow + 0.006), H.lipY + 0.06, zc + dz);
-    }
-    const lipZ = [-2.20, -1.28, -0.36, 0.56, 1.48, 2.40];
-    for (let i = 0; i < lipZ.length - 1; i++) {
-      const z0 = lipZ[i] + 0.012, z1 = lipZ[i + 1] - 0.012;
-      P.addExternalArmor('hull', part(box(H.curtain, H.lipY - H.hem, z1 - z0), 'skirt-lip'), s * (H.skirtLip - H.curtain / 2), (H.lipY + H.hem) / 2, (z0 + z1) / 2);
-    }
-    P.add('hullDark', part(box(H.skirtAft - H.skirtLow + 0.02, 0.05, 2.90), 'skirt-rail'), s * ((H.skirtAft + H.skirtLow) / 2 - 0.01), H.skirtStep, -1.85);
-    P.add('hullDark', part(box(H.skirtFwd - H.skirtLow + 0.02, 0.05, 3.60), 'skirt-rail'), s * ((H.skirtFwd + H.skirtLow) / 2 - 0.01), H.skirtStep, 1.40);
-    P.add('hullDark', part(box(H.skirtLow - H.skirtLip + 0.02, 0.04, 4.56), 'skirt-lip-rail'), s * ((H.skirtLow + H.skirtLip) / 2 - 0.01), H.lipY, 0.10);
-    P.add('hullRubber', part(box(0.03, 0.06, 4.56), 'skirt-hem'), s * (H.skirtLip - 0.03), H.hem - 0.02, 0.10);
-    for (const z of [-1.90, 0.60]) P.add('hullDark', part(box(0.008, 0.16, 0.42), 'skirt-panel'), s * ((z < -0.4 ? H.skirtAft : H.skirtFwd) + 0.004), 1.08, z);
-    // forward sponson boxes on the skirt line (measured x 1.592–1.849, y 1.03–1.385, z 1.448–2.358)
-    P.addEquipment('hull', part(box(0.26, 0.355, 0.91), 'sponson-box'), s * (H.skirtFwd + 0.006 - 0.13), 1.2075, 1.903);
-    for (const dz of [-0.30, 0, 0.30]) P.add('hullDark', part(box(0.012, 0.28, 0.02), 'sponson-box-rib'), s * (H.skirtFwd + 0.012), 1.2075, 1.903 + dz);
-    // aft sponson boxes above the aft skirt band (measured x 1.592–1.765, y 1.03–1.50, z −3.25..−1.32)
-    for (const [z0, z1] of [[-3.25, -2.34], [-2.32, -1.32]]) {
-      // (release 240: tops 1.43, not 1.50, under the turret's 1.44 floor that turns over them 1.8-2.0 m off the ring's axis)
-      P.addEquipment('hull', part(box(0.17, 0.40, z1 - z0), 'sponson-box-aft'), s * (H.skirtAft - 0.085 + 0.004), 1.23, (z0 + z1) / 2);
-      for (const dz of [-0.28, 0, 0.28]) P.add('hullDark', part(box(0.012, 0.31, 0.02), 'sponson-box-rib'), s * (H.skirtAft + 0.01), 1.23, (z0 + z1) / 2 + dz);
-    }
-  }
-}
-
-/** Glacis appliqué field, driver's hood, bow lamps, tow hooks and the nose strip. */
-function bow(P: TankBuilderPort): void {
-  const plate = (xa: number, xb: number, z0: number, z1: number): void => {
-    const x0 = Math.min(xa, xb), x1 = Math.max(xa, xb), depth = 0.05;
-    P.addExternalArmor('hull', part(sectionSolid([
-      { z: z0, ring: [[x0, glacisY(z0) - depth], [x1, glacisY(z0) - depth], [x1, glacisY(z0) + 0.03], [x0, glacisY(z0) + 0.03]] },
-      { z: z1, ring: [[x0, glacisY(z1) - depth], [x1, glacisY(z1) - depth], [x1, glacisY(z1) + 0.03], [x0, glacisY(z1) + 0.03]] },
-    ]), 'glacis-plate'));
-    for (const x of [x0 + 0.06, x1 - 0.06]) for (const z of [z0 + 0.06, z1 - 0.06]) {
-      P.add('hullDetail', part(cylY(0.012, 0.014, 0.02, 6), 'glacis-plate-bolt'), x, glacisY(z) + 0.04, z, GLACIS_TILT, 0, 0);
-    }
-  };
-  for (let i = 0; i < 4; i++) {
-    const x0 = -1.42 + i * 0.71 + 0.02, x1 = x0 + 0.71 - 0.04;
-    plate(x0, x1, 1.20, 1.98);
-    if (i === 0 || i === 3) plate(x0, x1, 2.10, 2.90);
-  }
-  for (const s of [-1, 1]) plate(s * 0.06, s * 0.66, 2.10, 2.75);
-  const hz = 3.02, hy = glacisY(hz);
-  P.addCupola('hull', part(box(0.62, 0.06, 0.34), 'driver-hood'), 0, hy + 0.03, hz, GLACIS_TILT, 0, 0);
-  for (const x of [-0.18, 0, 0.18]) P.addModuleVisual('optics', 'hullGlass', part(box(0.12, 0.028, 0.01), 'driver-periscope'), x, hy + 0.062, hz + 0.16, GLACIS_TILT, 0, 0);
-  P.add('hullDark', part(box(0.60, 0.016, 0.03), 'driver-hood-hinge'), 0, hy + 0.06, hz - 0.18, GLACIS_TILT, 0, 0);
-  for (const s of [-1, 1]) {
-    const lz = 3.30, ly = glacisY(lz), lx = 1.15;
-    P.add('hullDark', part(cylZ(0.07, 0.10, 14), 'lamp'), s * lx, ly + 0.07, lz, GLACIS_TILT, 0, 0);
-    P.addModuleVisual('optics', 'hullGlass', part(markVehicleNightLens(cylZ(0.052, 0.014, 16), 'headlight'), 'lamp-lens'), s * lx, ly + 0.085, lz + 0.055, GLACIS_TILT, 0, 0);
-    P.add('hullDetail', part(box(0.22, 0.024, 0.20), 'lamp-guard'), s * lx, ly + 0.17, lz + 0.02, GLACIS_TILT - 0.08, 0, 0);
-    for (const dx of [-0.09, 0.09]) P.add('hullDetail', part(cylY(0.011, 0.011, 0.13, 8), 'lamp-guard-post'), s * lx + dx, ly + 0.11, lz + 0.08, GLACIS_TILT, 0, 0);
-    P.add('hullDark', part(torus(0.06, 0.02, 12), 'tow-eye'), s * 0.86, 1.00, 3.50, Math.PI / 2 - 0.6, 0, 0);
-    P.add('hullDark', part(box(0.10, 0.10, 0.12), 'tow-eye-block'), s * 0.86, 0.98, 3.44, 0.6, 0, 0);
-  }
-  P.add('hullDark', part(box(0.20, 0.08, 0.08), 'bow-sensor'), 0, 1.10, 3.58, 0.3, 0, 0);
-  P.add('hullDark', part(box(2.10, 0.05, 0.05), 'nose-strip'), 0, 0.86, 3.40, 0.55, 0, 0);
-  for (let i = 0; i < 8; i++) P.add('hullDetail', part(cylZ(0.016, 0.012, 8), 'nose-strip-bolt'), -0.91 + i * 0.26, 0.86, 3.43, 0.55, 0, 0);
-  // (release 240: the vent 1 cm lower, top 1.430, and its rings half-sunk on it, under the turret's 1.44 floor 3 cm over
-  // the roof; KIT.torus is already flat, and an extra half-turn had stood the rings up 14.5 cm into it)
-  P.add('hullDark', part(cylY(0.15, 0.15, 0.03, 24), 'roof-vent'), 1.10, H.roof + 0.005, -1.90);
-  for (const r of [0.05, 0.10, 0.14]) P.add('hullDark', part(torus(r, 0.005, 20), 'roof-vent-ring'), 1.10, H.roof + 0.018, -1.90);
-}
-
-/** Engine deck: twin louvre fields either side of a spine, filler caps, exhaust housing and the slatted deck rack. */
-function deck(P: TankBuilderPort): void {
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck steps up at -2.62, past the
-  // turret's 1.44 floor (2.0 m off the ring's axis), and its furniture sits behind the step: louvre fields and spine
-  // 0.68 m long, the filler caps on the spine, the exhaust housing at the left edge; stepping up at -2.40 the deck and its
-  // kit stood 6-21 cm in the turret's sweep.
-  for (const s of [-1, 1]) louvreField(P, 'hull', 'deck-grille', [s * 0.80, H.deck + 0.018, -3.00], 1.10, 0.68, 7, 'up');
-  P.add('hullDetail', part(box(0.16, 0.03, 0.68), 'deck-spine'), 0, H.deck + 0.015, -3.00);
-  for (const z of [-2.72, -3.28]) P.add('hullDark', part(cylY(0.07, 0.07, 0.03, 16), 'filler-cap'), 0, H.deck + 0.030, z);
-  P.add('hull', part(box(0.30, 0.14, 0.50), 'exhaust-housing'), -1.50, H.deck + 0.07, -2.95);
-  for (let i = 0; i < 5; i++) P.add('hullDark', part(box(0.012, 0.09, 0.06), 'exhaust-louvre'), -1.656, H.deck + 0.07, -3.17 + i * 0.11);
-  // slatted stowage rack behind the bustle (measured x ±0.959, y 1.78–2.15, z −3.21..−2.96)
-  // the rack stands on the deck: a dense bin from 1.52 to 2.15 with slat ribs (measured x ±0.959, z −3.21..−2.96)
-  P.addEquipment('hull', part(box(1.90, 0.61, 0.24), 'deck-rack-floor'), 0, 1.835, -3.085);
-  for (const s of [-1, 1]) for (const [x, z] of [[0.945, -3.20], [0.945, -2.97], [0.32, -3.20]] as const) {
-    P.add('hullDark', part(box(0.03, 0.63, 0.03), 'deck-rack-post'), s * x, 1.835, z);
-  }
-  for (let i = 0; i < 7; i++) {
-    P.add('hullDark', part(box(1.92, 0.014, 0.014), 'deck-rack-slat'), 0, 1.60 + i * 0.085, -3.212);
-    for (const s of [-1, 1]) P.add('hullDark', part(box(0.014, 0.014, 0.25), 'deck-rack-slat'), s * 0.959, 1.60 + i * 0.085, -3.085);
-  }
-  for (const s of [-1, 1]) P.add('hullDark', part(box(0.03, 0.03, 0.18), 'deck-rack-bracket'), s * 0.80, 2.13, -2.90);
-}
-
-/** Stern: full-width louvre panel between the tail lamps, shackle plates, tow eyes, mud flap and the slat screen. */
-function stern(P: TankBuilderPort): void {
-  const z = H.sternZ - 0.03;
-  louvreField(P, 'hull', 'stern-grille', [0, 1.02, z], 2.30, 0.56, 7, 'aft');
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', part(box(0.03, 0.56, 0.05), 'stern-grille-divider'), s * 0.40, 1.02, z - 0.01);
-    P.add('hullDark', part(box(0.22, 0.12, 0.06), 'tail-lamp'), s * 1.38, 1.40, z);
-    for (const [k, dx] of [-0.07, 0, 0.07].entries()) P.addModuleVisual('optics', 'hullGlass', part(box(0.05, 0.07, 0.012), `tail-lamp-glass-${k}`), s * 1.38 + dx, 1.40, z - 0.035);
-    // the recessed lower stern carries no furniture; the tow eyes hang from the plate above the grille
-    P.add('hullDark', part(torus(0.07, 0.02, 14), 'tow-eye'), s * 1.20, 1.40, z - 0.06, Math.PI / 2, 0, 0);
-  }
-  // slat cage (the reference's rear render): eight horizontal bars from y 0.68 to 1.48 wrap the stern 0.70 m behind
-  // the stern plate (measured rear extreme z −4.08) and run along both rear flanks at x ±1.80 to z −0.40, on posts
-  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the cage tops 1.39 (rail 1.425), under the
-  // turret's 1.44 floor that its flank runs reach forward to z -0.40; at 1.48 the rail stood 8 cm in it)
-  const cageY0 = 0.68, cageY1 = 1.39, cageBars = 8, cageZ = ZTZ100_PROTOTYPE_DATUMS.sternScreenZ + 0.02, cageX = 1.80;
-  // the bin body the bars wrap (the reference reads a dense stowage bin, and the top silhouette must be closed)
-  P.add('hullDark', part(box(cageX * 2 - 0.04, cageY1 - cageY0 - 0.04, -(cageZ + 0.02) + (H.sternZ - 0.02)), 'cage-bin'),
-    0, (cageY0 + cageY1) / 2, (cageZ + 0.02 + H.sternZ - 0.02) / 2);
-  for (let i = 0; i < cageBars; i++) {
-    const y = cageY0 + (i * (cageY1 - cageY0)) / (cageBars - 1);
-    P.add('hullDark', part(cylX(0.012, cageX * 2, 8), 'cage-bar'), 0, y, cageZ);
-    for (const s of [-1, 1]) P.add('hullDark', part(cylZ(0.012, cageZ * -1 - 0.40, 8), 'cage-bar'), s * cageX, y, (cageZ - 0.40) / 2);
-  }
-  for (const s of [-1, 1]) {
-    for (const z of [cageZ, -3.50, -2.90, -2.30, -1.70, -1.10, -0.40]) P.add('hullDark', part(box(0.03, cageY1 - cageY0 + 0.04, 0.03), 'cage-post'), s * cageX, (cageY0 + cageY1) / 2, z);
-    for (const x of [1.10, 0.40]) P.add('hullDark', part(box(0.03, cageY1 - cageY0 + 0.04, 0.03), 'cage-post'), s * x, (cageY0 + cageY1) / 2, cageZ);
-    P.add('hullDark', part(box(0.03, 0.03, cageZ * -1 - 0.40), 'cage-rail'), s * cageX, cageY1 + 0.02, (cageZ - 0.40) / 2);
-  }
-  P.add('hullDark', part(box(cageX * 2 + 0.03, 0.03, 0.03), 'cage-rail'), 0, cageY1 + 0.02, cageZ);
-}
-
-function runningGear(P: TankBuilderPort): void {
-  const D = ZTZ100_PROTOTYPE_DATUMS;
-  P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', wheelR: D.wheelR, wheelW: 0.366, wheelY: D.wheelY, xc: D.trackX,
-    wheelZs: [...D.wheelStations],
-    sprocket: { ...D.sprocket }, idler: { ...D.idler },
-    rollerR: D.rollers[0].r, rollers: D.rollers.map((r) => ({ z: r.z, y: r.y })),
-    trackW: D.trackW, trackTh: 0.028, topY: 0.96, botY: 0.05,
-    trackPattern: 'nato-double-pin', linkPitchM: 0.177, shoeWidthScale: 0.99,
-    paintedEnds: true, arms: true, coveredTop: true,
-    contactZF: 2.45, contactZR: -2.62,
-  });
-}
 
 // ----------------------------------------------------------------------------------------------------- turret
 // Owner-directed missile-carrier concept. Dimensions are design decisions,
@@ -411,20 +176,13 @@ function turret(P: TankBuilderPort): void {
 }
 
 function buildZtz100Prototype(P: TankBuilderPort): void {
-  hullBody(P);
-  skirts(P);
-  bow(P);
-  deck(P);
-  stern(P);
-  runningGear(P);
+  buildZtz20Hull(P, 'ztz100_prototype');
   turret(P);
-  for (const s of [-1, 1]) {
-    P.decal('hull', 'star', null, 0.22, [s * (H.skirtFwd + 0.012), 1.06, 0.60], s * -Math.PI / 2);
-    P.decal('hull', 'number', P.spec.visual.number || '100', 0.26, [s * (H.skirtAft + 0.012), 1.06, -1.30], s * -Math.PI / 2);
-  }
+  markZtz20Hull(P);
   if (P.geometryReceipt) {
+    P.hullG.userData.ztz20Receipt = ztz20Receipt('ztz100_prototype');
     P.hullG.userData.ztz100Receipt = Object.freeze({
-      architecture: 'ztz100-prototype-missile-concept', datums: ZTZ100_PROTOTYPE_DATUMS, hullStations: HULL_Z.length,
+      architecture: 'ztz100-prototype-missile-concept', datums: ZTZ100_PROTOTYPE_DATUMS, hullStations: ztz20Receipt('ztz100_prototype').hullStations,
       launcherTubesByWeapon: { 'HJ-P9 Tandem': 8, 'HJ-P9 Blast': 8 }, physicalLauncherTubes: 8,
       roadWheelsPerSide: 7, gunLengthM: T.gunLen, launcherTopM: 2.64, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
     });

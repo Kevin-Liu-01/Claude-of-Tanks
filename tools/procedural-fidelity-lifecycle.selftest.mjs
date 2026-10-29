@@ -9,11 +9,11 @@ import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from '.
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 10, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 11, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
   'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
-  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions', 'launchGuardedBrowser',
+  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions', 'launchGuardedBrowser', 'OWNER_KIT_TARGETS',
   source.replace(/^import .+;\n/gm, ''));
 
 // The server binds BOUND_PORT, not the port it asked for (a busy port moved on, R4c 2026-10-16): every URL must use it.
@@ -112,7 +112,9 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
       validateSelectedIds, partitionConceptIds, readConceptDesign,
       boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions,
       // the guarded launch is tools/browser-launch.selftest.mjs's to prove; this fixture's browser is fake
-      (launcher, options) => launcher.launch(options));
+      (launcher, options) => launcher.launch(options),
+      // (262) no fixture id carries an owner kit (tools/owner-kit-targets.selftest.mjs proves the registry)
+      {});
   }
   catch (error) { failure = error; }
   return { events, logs, writes, primary, cleanup, failure, process, gotos };

@@ -858,25 +858,67 @@ export const RECIPES = {
   },
 
   'mechanics/armor': {
-    hour: 'day',
+    hour: 'morning',
+    // the window is wall time; a 4K battle runs at about 0.4x, so 30 s holds some 12 s of the battle
     windowS: 30,
-    // r2: r1 had no battle of its own (the entry is a shot-view) and drew a random map and tank (Suzhou Creek, M1A3)
-    battle: { specId: 'leo2a7v_x', mapId: 'verdant', gameMode: 'standard' },
+    // r2: r1 had no battle of its own (the entry is a shot-view) and drew a random map and tank (Suzhou Creek, M1A3).
+    // r4 (262, the flashlight as paint): r3 on Verdant framed a VT-4A1 a twelfth of the sight wide at 330-380 m, in
+    // its own gun smoke, against a wall of trees. r4 on Tarkhan Steppe looked through a grove of orange canopies (the
+    // sight test checks only the centre line mid-field, and the x16 frame is some 30 m wide at 250 m), the tank a
+    // quarter of the frame wide. r5: Kestrel Airfield's open concrete and grass, grey and green behind the paint.
+    battle: { specId: 'leo2a7v_x', mapId: 'airfield', gameMode: 'standard' },
     async run(ctx) {
-      const contact = await toContact(ctx, { rangeM: 420, minRangeM: 260, dists: [320, 300, 350, 380], enemies: 1 });
+      const contact = await toContact(ctx, { rangeM: 300, minRangeM: 140, dists: [185, 175, 195, 165, 205], enemies: 1 });
       ctx.log('contact', JSON.stringify(contact));
       // r3: r2's target stayed where staged (no spot passed the old sight test), below the gun (GUN TRAVEL LIMIT) and
       // framed by the bush round the player's own sight. H.cleanScope moves both: the player to open ground with no
-      // foliage within 12 m, the target 280-340 m out, level with the gun, on a line the sights see clear, turned 30
-      // degrees off it and held
-      const mark = contact?.lanes?.[0]?.id || null;
+      // foliage within 12 m, the target out on a line the sights see clear, level with the gun, turned off it and held.
+      // r4: the mark is a layered Soviet-school or Chinese MBT when the enemy side has one (ERA and a thick turret
+      // front against thin hull sides: all three colours on one tank). r5: 155-205 m out, so the x16 sight (fov 3.8
+      // degrees tall) frames it about half its width
+      const mark = await ctx.eval((fallbackId) => {
+        const H = window.__MB.H;
+        const pick = H.enemies().find((t) => /^(t90|t72b3|t80b|t14|ztz99|ztz96|type99)/.test(t.specId));
+        return pick?.id || fallbackId;
+      }, contact?.lanes?.[0]?.id || null);
       if (mark) {
         const scope = await ctx.eval((id) => {
           const H = window.__MB.H;
-          return H.cleanScope(H.player(), H.g().tankById.get(id), { dists: [300, 280, 320, 340], angle: 0.52 });
+          const p = H.player(), t = H.g().tankById.get(id), opts = { dists: [185, 175, 195, 165, 205, 155], angle: 0.6 };
+          // r5: for this framing a tree or foliage disc anywhere inside the x16 view (half width 3.4 degrees at 16:9,
+          // out to 15 m behind the mark) fails the line too; failing every spot, the shared test as before
+          const base = H.sightClear, halfTan = Math.tan((3.4 * Math.PI) / 180);
+          H.sightClear = (eye, to, discs = H.concealers(), endM = 30) => {
+            if (!base(eye, to, discs, endM)) return false;
+            const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
+            const inView = (cx, cz, r) => {
+              const wx = cx - eye.x, wz = cz - eye.z, along = wx * ux + wz * uz;
+              return along > 1.5 && along < len + 15 && Math.abs(wx * uz - wz * ux) < along * halfTan + r;
+            };
+            if (discs.some((c) => inView(c.x, c.z, c.r))) return false;
+            for (const o of H.D().world.getObstacles?.() || []) {
+              if (o.crushed || o.dead || !o.min || !o.max || !(o.treeIdx != null || /tree/i.test(o.kind || ''))) continue;
+              if (inView((o.min[0] + o.max[0]) / 2, (o.min[2] + o.max[2]) / 2, Math.hypot(o.max[0] - o.min[0], o.max[2] - o.min[2]) / 2)) return false;
+            }
+            return true;
+          };
+          let moved;
+          try { moved = H.cleanScope(p, t, opts); } finally { H.sightClear = base; }
+          const view = moved ? 'clear view' : 'line only';
+          moved = moved || H.cleanScope(p, t, opts);
+          return { spec: t?.specId, view, ...(moved || { none: true }) };
         }, mark);
         ctx.log('clean scope', JSON.stringify(scope));
-        if (!scope) ctx.note('no clean scope (open player spot, level target, clear sight line) was found; the target stays as staged');
+        if (scope.none) ctx.note('no clean scope (open player spot, level target, clear sight line) was found; the target stays as staged');
+        else if (scope.view !== 'clear view') ctx.note('no spot with a clear x16 view; the shared sight-line test placed the mark');
+        // r4: the rest of both sides hold (no gun smoke or a stray kill in the sight), and the mark rolls forward at a
+        // walk, its hull 34 degrees off the sight line, so its tracks throw dust and the paint follows a moving target
+        // (r4: about 3 m/s along the line, some 35 m over the window)
+        await ctx.eval((id) => {
+          const H = window.__MB.H, t = H.g().tankById.get(id);
+          for (const o of H.liveTanks()) if (o !== t && o !== H.player()) H.freezeBot(o);
+          if (H.live(t)) { t.input.brake = false; t.input.throttle = 0.22; t.input.steer = 0; t.input.fire = false; }
+        }, mark);
       }
       // the armour flashlight is the player's setting (H toggles it; off by default)
       await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
@@ -884,14 +926,14 @@ export const RECIPES = {
       await ctx.mb('setAim', { target, fallback: 'nearestEnemyClear' });
       await settle(ctx, 1.5);
       await ctx.capture({
-        // x16 (the increased-zoom step) fills the sight with the painted hull at 300-380 m; x8 as r1
+        // x16 (the increased-zoom step) fills half the sight with the painted hull at 240-280 m; x8 for the ground
         cameras: [
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 16, hud: 'full' },
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },
         ],
-        cameraEvery: 5,
-        everyS: 1.2,
-        triggers: [T.enemyFireOnScreen([35, 90], 900)],
+        cameraEvery: 6,
+        everyS: 0.7,
+        triggers: [],
       });
     },
   },

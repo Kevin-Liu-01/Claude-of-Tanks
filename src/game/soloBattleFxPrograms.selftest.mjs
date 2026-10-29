@@ -80,8 +80,7 @@ function createFixture(mode, host) {
     return mesh;
   });
   const initialMeshMasks = meshes.map(mesh => mesh.layers.mask);
-  // a unit cube cell as the combat anatomy hands the overlay one (243's armour skin reads its bounds and its outward
-  // face planes n·x + c <= 0)
+  // a unit cube cell as the combat anatomy hands one over (its bounds and its outward face planes n·x + c <= 0)
   const cell = { min: [0, 0, 0], max: [1, 1, 1], faces: [
     [1, 0, 0, -1], [-1, 0, 0, 0], [0, 1, 0, -1], [0, -1, 0, 0], [0, 0, 1, -1], [0, 0, -1, 0],
   ].map(([x, y, z, constant]) => ({ normal: [x, y, z], constant, plate: 'hull', internal: false })) };
@@ -91,9 +90,10 @@ function createFixture(mode, host) {
     spec: { armor: { collisionShells: { hull: [cell], turret: [] } },
       gun: { shells: [{ caliberMm: 120 }] } } };
   const game = { phase: 'battle', preBattleS: 4, player, tanks: [player] };
-  const armor = createArmorAimOverlay(), armorEntry = armor.prime(player);
-  assert.equal(armorEntry.frames.length, 1);
-  const armorMesh = armorEntry.frames[0].mesh;
+  // the scoped armour flashlight is paint on the vehicles' own burn-hooked programs (262): its warm shows no mesh of
+  // its own, and a visual without paint handles takes no entry
+  const armor = createArmorAimOverlay();
+  assert.equal(armor.prime(player), null);
   let generation = 0, draws = 0, programFrames = 0, programCompiles = 0;
   let fxRestores = 0, armorRestores = 0, programCloses = 0, openingRetries = 0;
   let destructionReady = false, invalidated = false, contextLost = false;
@@ -243,7 +243,7 @@ function createFixture(mode, host) {
     assert.deepEqual(graphLabels(meshes.map(mesh => mesh.material)), graphLabels(materials));
     assert.ok(meshes.every(mesh => mesh.parent === fxRoot));
     assert.equal(worldRoot.visible, true); assert.equal(playerRoot.visible, true);
-    assert.equal(retained.visible, false); assert.equal(armorMesh.visible, true);
+    assert.equal(retained.visible, false);
     assert.equal(draws, 0, 'neither pending native links nor the rAF-only checkpoint may draw FX');
     assert.equal(coordinator.isOpeningReady(), false); assert.equal(destructionReady, false);
   };
@@ -294,7 +294,7 @@ function createFixture(mode, host) {
     get invalidated() { return invalidated; },
     assertCleanup() {
       assert.equal(fxRestores, 1); assert.equal(armorRestores, 1);
-      assert.equal(armorMesh.visible, false); assert.equal(fxRoot.visible, false);
+      assert.equal(fxRoot.visible, false);
       assert.ok(meshes.every(mesh => !mesh.visible));
       assert.deepEqual(meshes.map(mesh => mesh.layers.mask), initialMeshMasks);
       assert.equal(camera.layers.mask, initialMask);

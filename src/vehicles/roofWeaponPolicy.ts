@@ -39,6 +39,12 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'roof machine gun.',
   centurion3: 'Centurion Mk 3: the 20-pounder and a coaxial 7.92 mm Besa; the Mk 3 carried no roof machine gun (the '
     + 'commander\'s .30 Browning arrived with later marks).',
+  t55a: 'T-55A (1963): the 100 mm D-10T2S and a coaxial 7.62 mm SGMT; the T-55 deleted the T-54\'s loader\'s DShK and '
+    + 'the 12.7 mm gun returned only as a retrofit from 1970, so the 1963 T-55A carries no roof machine gun.',
+  // release 262: the 2021 demonstrator in its trials fit (docs/references/tanks/challenger3_td.md); its field fit
+  // challenger3_td_rws carries the working remote station
+  challenger3_td: 'Challenger 3 TD (2021 Advanced Technology Demonstrator, trials fit): the 120 mm L55A1 and a coaxial '
+    + '7.62 mm chain gun; the measured demonstrator carries no roof weapon station or pintle gun.',
 });
 
 export function carriesNoRoofWeapon(id: string): boolean {

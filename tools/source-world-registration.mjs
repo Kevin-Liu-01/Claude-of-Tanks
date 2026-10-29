@@ -58,16 +58,18 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870',
     fused:true,turret:[0,2.10,-1.15],gun:[.05,2.38,-.13],
   },
+  // T-84BM Oplot-M (release 262): the owner-supplied 42manako print baked by source-x-oracle ([-x, y, -z], uniform 4.10,
+  // tracks centred, ground y 0, hull centred); the gun is fused into TUR, so the whole source is scored at rest.
+  bm_oplot_m: {
+    sha256:'d2adad43bba88a867f743aeeacf969587e7be0c2bbcaeee0259218f3145ab22a',
+    fused:true,turret:[-.012,1.4965,.185],gun:[-.012,1.808,1.518],
+  },
   ares_apc: {
     sha256:'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1',
     fused:true,turret:[-.3835,2.2502,.5027],gun:[-.4265,3.078,.397],
   },
-  // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
-  // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
-  ztz100: {
-    sha256:'7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1',
-    fused:true,turret:[0,1.41,-.55],gun:[0,1.76,.55],
-  },
+  // ztz100 retired 2026-10-27 (release 262): the '[OD]ZTZ-20 Test-3' bake (7eeb9852…758f1) now measures the ZTZ-20
+  // family concept (docs/references/tanks/ztz20.md) and certifies no comparison.
   strv122: {
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],
@@ -86,6 +88,14 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64',
     fused:true,turret:[-.000896347416,1.396470802105,.616221772969],
     gun:[-.014789345038,1.675227177967,1.697635206325],
+  },
+  // Challenger 3 TD (release 262): "Challenger 3 TD MBT" (Jeyhun1985, CC-BY-4.0; raw sha256 3a4b3fbb…) prepared by
+  // tools/source-x-oracle.mjs (.qa-dev recipe challenger3_td_x: axes x y z, the family's installed 1.10, +0.2145 z: the
+  // fender span centred). The ring and trunnion are the packet's measured datums in that frame; the turret and gun
+  // owners are routed by island in the registry (the material groups carry the basket inside the ring).
+  challenger3_td: {
+    sha256:'6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386',
+    turret:[0, 1.98, 0.7106], gun:[0, 2.2341, 1.9195],
   },
   amx56: {
     sha256:'e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0',
@@ -195,6 +205,14 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, {
     sha256: study.oracleSha256, fused: true, turret: [...study.turret], gun: [...study.gun],
   }])),
+  // M48A5 (release 262): the owner-supplied ater.studio model ("use this patton for the m48"), raw sha256 a7c37097...89c7fc,
+  // baked by source-x-oracle (axes -x, y, -z; scale 1; no translation). Turret: the Turret_01_4 node's origin. Gun: the
+  // gun_01_Shape_6 node's station (z 1.7616) on the tube's measured bore axis (y 1.9215; the node origin itself sits
+  // 11 cm over the bore at the shield's face). Separate hull, turret and gun meshes (Object_14 / 12 / 16).
+  m48a5_patton: {
+    sha256:'b54aff317407b292bd4d352a3d60ea0531a36bfbc3c21c698a9ba12ebb495285',
+    turret:[-.001963,1.638327,.577502], gun:[0,1.9215,1.761582],
+  },
   kurganets25: {
     sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],

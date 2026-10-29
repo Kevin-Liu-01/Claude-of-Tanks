@@ -51,6 +51,9 @@ for (const id of ['ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
   assert.equal(usesSourceDimensionFrame(id, { ...certified, mode: 'legacy' }), false,
     `${id}: legacy alignment cannot authorize source dimensions`);
 }
+assert.equal(usesSourceDimensionFrame('m48a5_patton', certified), true,
+  'the owner-supplied M48A5 is measured against its certified model, not the published roof height');
+assert.equal(usesSourceDimensionFrame('m48a5_patton', {...certified, passed: false}), false);
 // t72b3 retired 2026-09-23 (owner: "no hidden tanks"); the T-72B3M stands for the established fleet policy.
 for(const id of ['t72b3m_2022','leo2a5','leo2_revolution_proto'])assert.equal(usesSourceDimensionFrame(id,certified),false,'existing fleet keeps its established policy');
 assert.equal(usesSourceDimensionFrame('t72b3',{...certified,passed:false}),false);
