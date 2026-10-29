@@ -313,6 +313,9 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
   // cleanly beneath the roof stations instead of riding above the brow.
   const frontChevronY = (y: number): number => turretSeatY(y) + 0.04;
   const roofY = (y: number): number => y - roofDrop;
+  // 264: the rear roof parts over the dome's left-rear shoulder run down to this height, 2 cm into the casting under
+  // their outer edges (the roof-pocket census reads the dome there at 0.40)
+  const DOME_FOOT_Y = 0.38;
   // crown plate: the ref roof is FLAT 2.20-2.25 with a falloff beyond — the
   // compressed ref's front profile now falls continuously from ±0.60
   // (2.19@0.54 -> 2.05@1.02 -> 1.96@1.05), which the lathe already tracks;
@@ -454,6 +457,9 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
     // Ventilator, ready-use box and hatch stop add the missing low equipment
     // cadence without competing with the two crew stations.
     P.add('turret', cylY(0.14, 0.16, 0.075, 14), -0.05, roofTopY + 0.005, -0.73);
+    // 264 (Main, false roofs): the dome falls 8-12 cm under the ventilator's skirt; a plinth carries it into the casting
+    const ventFootTop = roofTopY + 0.005 - 0.0375 + 0.003, ventFootY = 0.49;
+    P.add('turret', cylY(0.16, 0.16, ventFootTop - ventFootY, 14), -0.05, (ventFootTop + ventFootY) / 2, -0.73);
     P.add('turretDark', cylY(0.12, 0.13, 0.018, 12), -0.05, roofTopY + 0.050, -0.73);
   };
   buildT80LineTurretStage3();
@@ -464,7 +470,10 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
     // 2026-10-19 (owner float sweep): the sight box stood 19-22 mm off the stepped roof; it is seated on it.
     P.snapGroup('t80-roof-box', () => P.add('turretDetail', box(0.18, 0.055, 0.11), -0.78, roofTopY + 0.010, -0.70, 0, 0.15, 0), { reachM: 0.04 });
     // Collar-supported radio whip, raised with the rest of the corrected roof.
-    P.add('turret', cylY(0.070, 0.076, 0.090, 12), -0.78, roofTopY - 0.015, -0.86);
+    // 264 (Main, false roofs): the collar stood over the dome's falling rear edge with a well under it; its foot now
+    // runs down into the casting (top kept).
+    const collarTop = roofTopY - 0.015 + 0.045;
+    P.add('turret', cylY(0.070, 0.076, collarTop - DOME_FOOT_Y, 12), -0.78, (collarTop + DOME_FOOT_Y) / 2, -0.86);
     P.add('turretDark', cylY(0.042, 0.046, 0.060, 10), -0.78, roofTopY + 0.055, -0.86);
     {
       const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 1.24, r: 0.011, rake: -0.025, seed: 30 + v });
@@ -484,7 +493,10 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // ring; r27: the compressed ref holds 2.145 (not 2.19) back to z -0.9,
       // and its left-front reads 2.21 out to x -0.86 — cap dropped and
       // widened left.
-      P.add('turret', box(0.83, 0.08, 0.40), -0.445, roofY(0.655), -0.68);
+      // 264 (Main, false roofs): the 8 cm cap stood over the dome's falling left-rear shoulder, a roof over a 14 cm well
+      // seen from the left; the ref's crown is solid there, so the cap runs down into the casting (top kept).
+      const capTop = roofY(0.655) + 0.04;
+      P.add('turret', box(0.83, capTop - DOME_FOOT_Y, 0.40), -0.445, (capTop + DOME_FOOT_Y) / 2, -0.68);
     }
     // gunner sight doghouse left (r27c: cap 0.73 -> 0.70 — its 2.20 top was
     // the second member of the heightM quantization stack with the crown)
@@ -556,7 +568,10 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       P.add('turret', box(0.30, 0.18, 0.09), -0.55, roofY(0.64), -1.575);
       // r27b: t80b keeps a 2.05..2.18 stowage row over z -0.80..-1.06 (its
       // -0.97 side column read the bare lathe 2.005 vs the ref's 2.185)
-      P.add('turret', box(0.72, 0.13, 0.28), -0.35, roofY(0.665), -0.92);
+      // 264 (Main, false roofs): the row bridged the well between the dome's rear slope and the bustle box's front face,
+      // a 20 cm roof over air seen from the left; it now stands solid down into the casting (top kept).
+      const rowTop = roofY(0.665) + 0.065;
+      P.add('turret', box(0.72, rowTop - DOME_FOOT_Y, 0.28), -0.35, (rowTop + DOME_FOOT_Y) / 2, -0.92);
     }
   };
   buildT80LineTurretStage5();
