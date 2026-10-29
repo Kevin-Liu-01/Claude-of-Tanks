@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-29T07:19:25.022Z",
+ "generatedAt": "2026-10-29T21:41:46.559Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -3910,6 +3910,66 @@
     2,
     1.45,
     6.1
+   ]
+  },
+  "ztz99a2_qinglong": {
+   "sealed": true,
+   "openPx": 7,
+   "openViews": 0,
+   "insideOutPx": 173,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 110814,
+   "frame": [
+    0,
+    1.9,
+    1.35,
+    6.9
+   ]
+  },
+  "vt4a1_baihu": {
+   "sealed": true,
+   "openPx": 6,
+   "openViews": 0,
+   "insideOutPx": 160,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 114452,
+   "frame": [
+    0,
+    1.9,
+    1.35,
+    6.9
+   ]
+  },
+  "t72b3_zhuque": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 158,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 112124,
+   "frame": [
+    0,
+    1.8,
+    1.85,
+    6.3
+   ]
+  },
+  "t72b3m_xuanwu": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 68,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 115426,
+   "frame": [
+    0,
+    1.8,
+    1.75,
+    6.4
    ]
   }
  }

@@ -59,7 +59,9 @@ for(const side of [-1,1]){
 // second fixture reconstruction. Each selector has an exact expected count
 // so deleting or bypassing the stock cannot silently pass this regression.
 const targets={
-  ztz99a2:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&p.part.size.x>1.1&&p.part.size.x<1.13&&p.part.size.z>2.29&&p.part.size.z<2.31&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
+  // release 265: each bow shoulder is cut at the track's inner face (x 1.12) into its inboard half (0.40 m) and the half
+  // over the track (0.72 m), each convex, each mirrored by its peer of the same width
+  ztz99a2:{expected:4,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&((p.part.size.x>.39&&p.part.size.x<.41&&p.part.size.z>2.14&&p.part.size.z<2.15)||(p.part.size.x>.71&&p.part.size.x<.73&&p.part.size.z>2.29&&p.part.size.z<2.31))&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
   k2_black_panther:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===92&&p.site.includes('k2X.ts'),sectionContour:p=>p.part.size.x>2?8:6},
   k21:{expected:2,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(p.bucket==='turret'&&p.site.includes('buildK21Turret (')&&p.part.vertices.length===30)),sectionContour:p=>p.bucket==='hull'?14:6},
   marder2:{expected:4,select:p=>p.part.geometryType==='BufferGeometry'&&p.site.includes('buildMarder2 (')&&((p.bucket==='hull'&&p.part.size.z>7)||(p.bucket==='turret'&&p.part.vertices.length>8)),sectionContour:p=>p.bucket==='hull'?8:p.part.size.x>2?6:5},
@@ -114,7 +116,7 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
       }
       if(config.convexAll)for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
         for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,`${id}/${quality} convex welded body`);}
-      if(config.mirrorPair){const peer=parts.find(p=>p!==entry&&p.part.bounds.min.x*part.bounds.min.x<0);assert.ok(peer,'opposite shoulder present');
+      if(config.mirrorPair){const peer=parts.find(p=>p!==entry&&p.part.bounds.min.x*part.bounds.min.x<0&&Math.abs(p.part.size.x-part.size.x)<.005);assert.ok(peer,'opposite shoulder present');
         close(mirroredSurfaceError(part,peer.part).maxM,0,`${id}/${quality} paired shoulder interiors`);}
 
       assert.equal(properSurfaceCrossings(part).length,0,`${id}/${quality} structural face crossings`);
