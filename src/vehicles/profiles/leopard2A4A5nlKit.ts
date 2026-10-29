@@ -23,7 +23,7 @@ import { mirrorRing } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
 import { HULL_SURFACES as HS, TURRET_SURFACES as TS, eraField, mudguardY, type CassetteSeat } from './leopard2A4KitParts.ts';
-import { LEO2A4V_SPARE_LINKS, LEO2A4V_STERN, spareLinkStrip, turretRoofAt } from './leopard2A4VKit.ts';
+import { LEO2A4V_SPARE_LINKS, LEO2A4V_STERN, turretRoofAt } from './leopard2A4VKit.ts';
 
 /** The skirt ERA course (hull metres, the +X side; the other mirrors it). */
 export const LEO2A4M_SKIRT_ERA = Object.freeze({
@@ -83,7 +83,10 @@ function skirtEra(P: TankBuilderPort): Array<Readonly<Record<string, number | st
     // the 2A4 V's spare-link strips, laid on the tie rail under the sponson's edge (lower than on the wall, out of the
     // long mantlet cover's sweep)
     for (const [z, links, seed] of LEO2A4V_SPARE_LINKS) {
-      spareLinkStrip(P, sx * (HS.sponsonX + E.carrierOutX) / 2, E.carrierY1 + 0.045 + 0.038, z, links, seed);
+      // a registered fitting (the spare-track census's route), lying on the rail
+      const strip = FITTINGS.spareTrackLinks({ mats: P.mats, links, width: 0.10, pitch: 0.165, seed });
+      strip.position.set(sx * (HS.sponsonX + E.carrierOutX) / 2, E.carrierY1 + 0.045 + 0.038, z);
+      P.hullG.add(strip);
     }
   }
   return receipt;

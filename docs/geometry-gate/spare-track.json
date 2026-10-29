@@ -1249,32 +1249,10 @@
    "hostSweep": []
   },
   "leo2a4": {
-   "inputHash": "13f2c11ec3268afc",
+   "inputHash": "0d7a2531b00e27b7",
    "runs": [
     {
      "index": 0,
-     "site": "decor:tracks#25",
-     "source": "decor",
-     "frame": "turret",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.924,
-      "gap": 0.076,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.006,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.911,
-      "host": "turret<turretShell@profiles/leopard2A4Turret.ts:73>"
-     }
-    },
-    {
-     "index": 1,
      "site": "adhoc:leo2a4-glacis-rack-R@<anon>@profiles/leopard2A4Kit.ts",
      "source": "adhoc",
      "frame": "hull",
@@ -1296,7 +1274,7 @@
      }
     },
     {
-     "index": 2,
+     "index": 1,
      "site": "adhoc:leo2a4-glacis-rack-L@<anon>@profiles/leopard2A4Kit.ts",
      "source": "adhoc",
      "frame": "hull",
@@ -1355,7 +1333,7 @@
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@sponsonLinks@profiles/leopard2A4VKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1377,7 +1355,7 @@
     },
     {
      "index": 1,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@sponsonLinks@profiles/leopard2A4VKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1399,7 +1377,7 @@
     },
     {
      "index": 2,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@sponsonLinks@profiles/leopard2A4VKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1421,7 +1399,7 @@
     },
     {
      "index": 3,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@sponsonLinks@profiles/leopard2A4VKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1450,7 +1428,7 @@
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@skirtEra@profiles/leopard2A4A5nlKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1472,7 +1450,7 @@
     },
     {
      "index": 1,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@skirtEra@profiles/leopard2A4A5nlKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1494,7 +1472,7 @@
     },
     {
      "index": 2,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@skirtEra@profiles/leopard2A4A5nlKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1516,7 +1494,7 @@
     },
     {
      "index": 3,
-     "site": "fitting:spareTrackLinks@spareLinkStrip@profiles/leopard2A4VKit.ts",
+     "site": "fitting:spareTrackLinks@skirtEra@profiles/leopard2A4A5nlKit.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -2596,28 +2574,98 @@
    "hostSweep": []
   },
   "strv121": {
-   "inputHash": "820f6096713d8dde",
+   "inputHash": "5fba2eeeb5969622",
    "runs": [
     {
      "index": 0,
-     "site": "decor:tracks#21",
-     "source": "decor",
-     "frame": "turret",
+     "site": "fitting:spareTrackLinks@buildLeo2A5AssemblyStage33@profiles/leopard.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 0.886,
+      "gap": 0.114,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2211>"
+     }
+    },
+    {
+     "index": 1,
+     "site": "fitting:spareTrackLinks@buildLeo2A5AssemblyStage33@profiles/leopard.ts",
+     "source": "fitting",
+     "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.875,
-      "gap": 0.125,
+      "support": 0.712,
+      "gap": 0.288,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.006,
+      "sunkMaxM": 0.032,
       "sweepM": 0,
-      "traverseM": 0,
+      "traverseM": null,
+      "exposure": 0.92,
+      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1482>"
+     }
+    },
+    {
+     "index": 2,
+     "site": "fitting:spareTrackLinks@buildLeo2A5AssemblyStage33@profiles/leopard.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 0.886,
+      "gap": 0.114,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
+      "sweepM": 0,
+      "traverseM": null,
       "exposure": 0.955,
-      "host": "turret<turretShell@profiles/leopard2A4Turret.ts:73>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2211>"
+     }
+    },
+    {
+     "index": 3,
+     "site": "fitting:spareTrackLinks@buildLeo2A5AssemblyStage33@profiles/leopard.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.712,
+      "gap": 0.288,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.026,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.966,
+      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1482>"
      }
     }
    ],

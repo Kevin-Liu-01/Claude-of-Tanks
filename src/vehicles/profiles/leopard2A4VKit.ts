@@ -186,15 +186,6 @@ function deckKit(P: TankBuilderPort): void {
 /** The four spare-link strips (#14; the old build's four links and three, 10 cm wide): [z, links, seed] a side. */
 export const LEO2A4V_SPARE_LINKS = Object.freeze([[-1.08, 4, 11], [-2.05, 3, 5]] as const);
 
-/** One spare-link strip: a registered fitting at (x, y, z), its back turned `rz` about the run (0: lying on a deck). */
-export function spareLinkStrip(P: TankBuilderPort, x: number, y: number, z: number, links: number, seed: number,
-  rz = 0): void {
-  const strip = FITTINGS.spareTrackLinks({ mats: P.mats, links, width: 0.10, pitch: 0.165, seed });
-  strip.position.set(x, y, z);
-  strip.rotation.set(0, 0, rz);
-  P.hullG.add(strip);
-}
-
 /**
  * The four strips on the sponsons' outer walls under the turret's flanks, their backs on the wall above the skirts'
  * hanging rail, clear of the gun's lowest pass over the deck's edge (the 2A4M hangs them on its ERA tie rail instead).
@@ -202,7 +193,11 @@ export function spareLinkStrip(P: TankBuilderPort, x: number, y: number, z: numb
 function sponsonLinks(P: TankBuilderPort): void {
   for (const sx of [-1, 1]) {
     for (const [z, links, seed] of LEO2A4V_SPARE_LINKS) {
-      spareLinkStrip(P, sx * (HS.sponsonX + 0.038), 1.51, z, links, seed, -sx * Math.PI / 2);
+      // a registered fitting (the spare-track census's route), its back on the wall
+      const strip = FITTINGS.spareTrackLinks({ mats: P.mats, links, width: 0.10, pitch: 0.165, seed });
+      strip.position.set(sx * (HS.sponsonX + 0.038), 1.51, z);
+      strip.rotation.set(0, 0, -sx * Math.PI / 2);
+      P.hullG.add(strip);
     }
   }
 }

@@ -5,7 +5,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 
 ## Current status
 
-- Updated: 2026-10-28.
+- Updated: 2026-10-29.
 - Owner request (verbatim, 2026-10-28): "also see these new hulls for the 2a2 annd 2a3s! im realizing we really have to
   update and cleanup our old designs for leopard 2a4 otco, 2a4v, 2a4m, 2a4, 2a4m can, and leopard 2 improved off of thhast
   good hull and redesingn the turrets off of our leopard 2a6 and have them be the before variants basically. annd also
@@ -16,9 +16,19 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   well".
 - IDs (rebuilt in place, names and combat data unchanged): `leo2a4` Leopard 2A4, `leo2a4_v` Leopard 2A4 V, `leo2a4m`
   Leopard 2A4M, `leo2a4m_can` Leopard 2A4M CAN, `leo2a4_otco` Leopard 2A4 OTCO, `leo2_improved` Leopard 2 Improved.
-- Implementation status: in progress. Hull, both turret fronts and all seven kits built; regen chain and gates owed.
-- Qualification status: NOT RUN (anatomy chain, release gate, critics owed).
-- Publication: lane branch; Main integrates.
+- The Strv 121 (the owner, mid-lane) is built on `item/strv121-2a4-265` and ships next release with the ghillie lane's
+  re-seated suit (Main, 2026-10-29: its nationalGunClearance read 18.84 mm from the suit's hull net at yaw 180); this
+  release keeps its base build, every table row equal to the base's.
+- Implementation status: built; regen chain, gun stops, gun lines, rigs, seats, spare track and ledger green on the six.
+- Qualification status: blind critics (SwiftShader Gallery stills, front34/side/rear34/front): PASS on all six
+  (leo2a4m, leo2a4m_can, leo2_improved, leo2a4_v round 1; leo2a4_otco round 3; leo2a4 round 4). The release gate's
+  lock-free steps pass by hand (module-visual-align red as on the base's 262 family); its capture-locked scoring stage,
+  the asset hold and the hero cards timed out in the 2026-10-29 capture queue and are owed.
+  Fairness (VIII round robin, 120 m) before -> after: leo2a4 0.497 -> 0.468, leo2a4_v 0.724 -> 0.747, leo2a4m 0.842 ->
+  0.909, leo2a4m_can 0.493 -> 0.474, leo2a4_otco 0.83 -> 0.911, leo2_improved 0.833 -> 0.915 (balanceMatchups 20/20).
+- Publication: lane branch; Main integrates. Main (2026-10-29): the frozen 263+264 release ships without it; the six go
+  in the next release with the early Leopards and the balance lane's lever for the wedge three (~0.91), and the Strv 121
+  rebuild with its ghillie fix.
 
 ## Scope and preservation
 
@@ -90,3 +100,10 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 - R2 (2026-10-28, the owner): the even split, the 2A6 X's wedge front ported for the three upgrades; the five other kits
   carried (inventories: nothing dropped without a reason); the CAN's and the Improved's own skirts on a skirtless hull,
   inboard on the sponsons; the Strv 121 added; Main's fidelity ruling applied.
+- R3 (2026-10-28/29): the gun stops measured (seven sweeps, 26 mm; the CAN's width rods folded); the fairness drop of the
+  square fronts found (the wide 2A4 mantlet on the range's aim point; the CAN's near-vertical MEXAS cheeks) and the
+  same-tier levers set (mantlet x2.45 leo2a4, x2.2 leo2a4_v; the CAN x1.28 mantlet then x1.33 turret front); the
+  chevron courses side by side again (one quad doubled the spaced layer); the OTCO's Barracuda skin wound outward and its
+  missed cells dropped (its gun junction closes); the Garage worker registers the family; blind critic rounds (leo2a4's
+  decor rebuilt: standing whips, deck load, the fleet cargo off the turret its kit loads; the OTCO's label and tighter
+  cheek ERA); the Strv 121 returned to its base build for this release.

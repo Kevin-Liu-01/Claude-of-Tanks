@@ -137,7 +137,7 @@ const GERMANY_SPECS = {
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,
   }), -3.605, 3.717),
   leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
-    name: 'Leopard 2A4 OTCO', number: 'A6M', scheme: 'stripes',
+    name: 'Leopard 2A4 OTCO', number: 'OTCO', scheme: 'stripes',
     base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'],
     camoScale: 0.40,
     dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03 },
