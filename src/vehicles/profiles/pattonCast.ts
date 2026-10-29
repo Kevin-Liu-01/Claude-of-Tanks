@@ -1639,12 +1639,12 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
     P.addGunExtra(cylZ(0.20, 0.10, P.q ? 24 : 12), 0, 0, 0.67);
     P.addGunExtraDark(cylZ(0.15, 0.10, P.q ? 20 : 12, 0.17), 0, 0, 0.76);
     for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.38, 0.12, 0.64);
-    P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.47, 0.40);
-    P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.77, 0.40);
-    P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.77, 0.665);
-    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.77, 0.675);
+    P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.51, 0.40);
+    P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.81, 0.40);
+    P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.81, 0.665);
+    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.81, 0.675);
     for (const side of [-1, 1]) {
-      for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.77 + dy, 0.40);
+      for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.81 + dy, 0.40);
     }
   } else if (V.mark === 'm48super') {
     // the Super's flat armour plate over the mantlet, as tall as the turret armour and level with the cheeks' fronts (War
@@ -2232,13 +2232,13 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
 /** The GA2's cast gun shield (gun frame; the Munster and Dresden tanks): a squared block standing well ahead of the
  * turret's nose, 1.2 m across and 0.72 m tall with its bore in its upper half, its sides and lower edge rounded, its flat
  * face 0.63 m ahead of the trunnion, its back sunk into the casting; its underside 0.24 m under the bore at the turret
- * (over the hull's ring face, 1.633 m, out to the turret's front edge), rising 10 degrees to its face so it clears the
- * engine deck's rise (1.64 to 1.75 m) with the gun over the rear. */
+ * (over the hull's ring face, 1.633 m, out to the turret's front edge), rising 13 degrees to its face so it clears the
+ * engine deck's grilles (1.68 to 1.79 m) with the gun depressed over the rear. */
 function ga2Mantlet(q: boolean | undefined): Geo {
   // z (along the bore), half-width, top and bottom over the bore, corner radius
   const rows: readonly (readonly [number, number, number, number, number])[] = [
-    [-0.02, 0.58, 0.40, -0.24, 0.14], [0.30, 0.60, 0.42, -0.22, 0.15], [0.48, 0.60, 0.42, -0.19, 0.15],
-    [0.58, 0.58, 0.41, -0.16, 0.13], [0.63, 0.55, 0.39, -0.13, 0.11],
+    [-0.02, 0.58, 0.44, -0.24, 0.14], [0.30, 0.60, 0.46, -0.20, 0.15], [0.48, 0.60, 0.46, -0.15, 0.15],
+    [0.58, 0.58, 0.45, -0.12, 0.13], [0.63, 0.55, 0.43, -0.09, 0.11],
   ];
   const n = q ? 5 : 3;
   const sections = rows.map(([z, w, t, b, r]) => {
