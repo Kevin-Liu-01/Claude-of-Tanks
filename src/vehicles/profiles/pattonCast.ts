@@ -604,6 +604,9 @@ function pattonGun(P: CastPort, G: GunSpec): void {
     P.add('gun', xform(cylZ(0.175, devL, seg), 0, 0, 0, 0, 0, 0, [1.5, 1, 1]), 0, 0, z0 + devL / 2);
     for (const side of [-1, 1]) P.add('gunDark', box(0.012, 0.15, devL * 0.42), side * 0.262, 0, z0 + devL * 0.52);
     P.add('gun', cylZ(G.r1 * 1.25, 0.05, seg), 0, 0, z0 - 0.02);
+    // 263 (muzzle-bore probe: a mouth's lip fits its terminal support, ratio 0.35-1): the bore leaves the drum through
+    // a short collar 1 cm proud of its 0.26 m face, so the mouth seats on a ring of the tube's size
+    P.add('gun', cylZ(G.r1 * 1.15, 0.03, seg), 0, 0, len - 0.005);
   } else if (G.device === 'm36') {
     // 90 mm M36: the T-shaped blast deflector, a short cylinder across the muzzle with the bore running through it to
     // its own collar at the mouth
@@ -614,8 +617,9 @@ function pattonGun(P: CastPort, G: GunSpec): void {
     P.add('gun', box(0.49, 0.20, 0.14), 0, 0, len - 0.08);
     P.add('gun', cylZ(G.r1 * 1.3, 0.06, seg), 0, 0, z0 + 0.03);
   }
-  muzzleBore(P, { z: len + 0.004, r: G.r1 * 0.78 });
-  P.muzzleZ = len;
+  const mouth = G.device === 'm3a1' ? len + 0.01 : len;
+  muzzleBore(P, { z: mouth + 0.004, r: G.r1 * 0.78 });
+  P.muzzleZ = mouth;
 }
 
 /** A rotor shield: a D-section casting on the trunnion (gun frame): its face an arc of radius r about the trunnion axis

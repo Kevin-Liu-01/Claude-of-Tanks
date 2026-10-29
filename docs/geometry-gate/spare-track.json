@@ -699,26 +699,20 @@
    "uncovered": [],
    "hostSweep": []
   },
-  "challenger1_granby": {
-   "inputHash": "35043d387c8cd1f2",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
   "challenger1_mk1": {
-   "inputHash": "741d92afad11c80f",
+   "inputHash": "de6fdd44991a222e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "6919579fe6b90c3f",
+   "inputHash": "e7fb0691ec45fcf6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "cf789a77a1a75998",
+   "inputHash": "01175a9a11e7e6c3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1097,7 +1091,7 @@
    "hostSweep": []
   },
   "kv2": {
-   "inputHash": "3da5f34c8535fcd7",
+   "inputHash": "cbdd6e58cbcd5692",
    "runs": [
     {
      "index": 0,
@@ -1264,7 +1258,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1615>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1619>"
      }
     },
     {
@@ -2850,7 +2844,7 @@
    "hostSweep": []
   },
   "t55a": {
-   "inputHash": "1db8eea602d783ea",
+   "inputHash": "47164d383b274d33",
    "runs": [
     {
      "index": 0,
@@ -3827,7 +3821,7 @@
    "hostSweep": []
   },
   "type59": {
-   "inputHash": "bc93b82fae16ee4b",
+   "inputHash": "36bd1ddb2511197f",
    "runs": [
     {
      "index": 0,
@@ -3937,7 +3931,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.978,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3244>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3272>"
      }
     }
    ],
@@ -4049,7 +4043,7 @@
    "hostSweep": []
   },
   "vickers_mk1": {
-   "inputHash": "054dcb0b3e2f8c6b",
+   "inputHash": "d0e463b23cccc1d2",
    "runs": [
     {
      "index": 0,
@@ -4072,7 +4066,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.852,
-      "host": "hull<loftBandCorridor@profiles/uk.ts:401>"
+      "host": "hull<loftBandCorridor@profiles/uk.ts:399>"
      }
     }
    ],
@@ -4123,7 +4117,7 @@
    "hostSweep": []
   },
   "ztz100": {
-   "inputHash": "840bf938c4e47812",
+   "inputHash": "b9fbe14a9c76b6a6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4135,7 +4129,7 @@
    "hostSweep": []
   },
   "ztz20": {
-   "inputHash": "622266b79c7bc3f4",
+   "inputHash": "cb70c15b53c0c6c2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4166,6 +4160,18 @@
   },
   "ztz99a2": {
    "inputHash": "c36cf63e1d3f9015",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger_x": {
+   "inputHash": "515299640cebed84",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger_x_sleek": {
+   "inputHash": "672addaaeb44879a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

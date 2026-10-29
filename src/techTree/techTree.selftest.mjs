@@ -99,7 +99,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ...after('t80u', ['t80u_kursk', 't80uk', 't84', 't80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'])],
   t90: [['t72bu', 't90_1992'], ['t90_1992', 't90'], ['t90a_2004', 't90a'], ['t90a_2006', 't90a_vladimir'],
     ['t90ms_2011', 't90ms_tagil'], ['t90sm_2013', 't90sm'], ['t90am', 't90m']],
-  challenger: [['challenger1_mk1', 'challenger1_mk2'], ['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk2', 'challenger1_granby'], ['challenger1_mk3', 'challenger2'],
+  challenger: [['challenger1_mk1', 'challenger1_mk2'], ['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk3', 'challenger2'],
     ...after('challenger2', ['challenger2e', 'ua_challenger2', 'challenger3'])],
   leclerc: [['leclerc_s1', 'leclerc_s2'], ['leclerc_s2', 'leclerc_sxxi'], ['leclerc_sxxi', 'leclerc_xlr']],
   merkava: [['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'], ['merkava3c', 'merkava3_baz'],
@@ -145,9 +145,9 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above). 262: the Challenger 1 Mk 1 (the sleek-turret mark) at VIII on the Challenger line, lane 0,
-// off the Chieftain Mk 5 beside the Mk 2; the Challenger 1 Granby (the Mk 3 rebuild as its own variant) at VIII, lane 4,
-// off the Chieftain Mk 10.
+// (FAMILY_UPGRADES above). 262: the Challenger 1 Mk 1 at VIII on the Challenger line, lane 0, off the Chieftain Mk 5
+// beside the Mk 2; the fictional FV4030/5 and FV4030/6 (the rebuilt hull's turrets as their own tanks) at VIII, lanes 4
+// and 5, off the Chieftain Mk 10.
 // 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
 // added; 'Denmark' joins the tree's nations).
 // 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975.
@@ -159,7 +159,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
 // the Oplot-M's connector clears it.
 // 262: the Challenger 3 TD in the UK special lane at VIII (with its prototype's tier), its RWS field fit as its twin.
-// 2026-10-28 re-cut (263, the merged release tree): every node above at once (the T-55A, the Challenger 1 Mk 1 and
-// Granby, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
+// 2026-10-28 re-cut (263, the merged release tree): every node above at once (the T-55A, the Challenger 1 Mk 1, the
+// FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
 assert.equal(digest, 'e7d16bfed18294d9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
