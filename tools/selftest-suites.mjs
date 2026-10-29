@@ -1637,6 +1637,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureDamage.selftest.mjs',
     'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
+    // 2026-10-29 (ram-yield-prediction-264): a building the own ram brings down yields to the drawn hull as to the authority's
+    'src/mp/presentation/predictionStructureYield.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
