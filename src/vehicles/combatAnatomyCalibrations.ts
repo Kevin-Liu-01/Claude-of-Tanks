@@ -40,6 +40,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LECLERCCLASSICX } from './c
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LECLERCX } from './combatAnatomyGroups/leclercX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARD } from './combatAnatomyGroups/leopard.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARD2A3B4 } from './combatAnatomyGroups/leopard2a3B4.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARD2A4FAMILY } from './combatAnatomyGroups/leopard2a4Family.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDA6X } from './combatAnatomyGroups/leopardA6X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDX } from './combatAnatomyGroups/leopardX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LRMVLYNX } from './combatAnatomyGroups/lrmvLynx.generated.ts';
@@ -125,6 +126,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_LECLERCX,
   CALIBRATIONS_LEOPARD,
   CALIBRATIONS_LEOPARD2A3B4,
+  CALIBRATIONS_LEOPARD2A4FAMILY,
   CALIBRATIONS_LEOPARDA6X,
   CALIBRATIONS_LEOPARDX,
   CALIBRATIONS_LRMVLYNX,

@@ -88,7 +88,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "raiju_ifv": {"turretPivot":[0,1.737,-0.45],"gunPivot":[0,0.333,1.071],"lengthM":2.79},
   "spz_wotan": {"turretPivot":[0.288,1.737,-0.99],"gunPivot":[-0.126,0.378,1.197],"lengthM":2.565},
   "stb1": {"turretPivot":[0,1.42,0.22],"gunPivot":[0,0.18,1.1],"lengthM":4.7325},
-  "strv121": {"turretPivot":[0,1.78,0.3],"gunPivot":[0,0.1974,1.15],"lengthM":4.58},
+  "strv121": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.33,1.42],"lengthM":4.1},
   "strv81": {"turretPivot":[0,1.78,0.35],"gunPivot":[0,0.1025,0.6],"lengthM":5.15,"radiusM":0.138},
   "t14_armata": {"turretPivot":[0,1.69,-0.22],"gunPivot":[0,0.361,1.22],"lengthM":4.643,"radiusM":0.1037},
   "t62_1975": {"turretPivot":[0,1.4804,0.676],"gunPivot":[0,0.2866,1.019],"lengthM":4.68,"radiusM":0.085},
