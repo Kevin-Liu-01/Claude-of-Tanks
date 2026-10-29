@@ -2,15 +2,25 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Newly authored asymmetric folded turret and fittings. Every station/plane
 // is a scalar design input; there are no source vertex/index arrays or models.
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
 import { addChallenger1SourceHood } from './challenger1XSourceHood.ts';
 import { c1Length as m, c1Point as p, CHALLENGER1_SUPPLIED_DATUMS as D } from './challenger1XSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const {box,cylX,cylY}=KIT;
+const {box,cylX,cylY,cylZ}=KIT;
+/** The three marks' fits (challenger1XSupplied.ts). */
+export type Challenger1SuppliedMark = 1 | 2 | 3;
+const [PX,PY,PZ]=D.turretPivot;
 function local(g:THREE.BufferGeometry):THREE.BufferGeometry{
   return g.translate(-D.turretPivot[0],-D.turretPivot[1],-D.turretPivot[2]);
+}
+/** Vehicle-frame metres into the turret frame. */
+function at(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,bucket='turretDetail',rx=0,ry=0):void{
+  P.addEquipment(bucket,g,x-PX,y-PY,z-PZ,rx,ry,0);
+}
+function lens(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,ry=0):void{
+  P.addModuleVisual('optics','turretGlass',g,x-PX,y-PY,z-PZ,0,ry,0);
 }
 function equipment(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,bucket='turretDetail'):void{
   const c=p(x,y,z);P.addEquipment(bucket,g,c[0]-D.turretPivot[0],c[1]-D.turretPivot[1],c[2]-D.turretPivot[2]);
@@ -112,16 +122,50 @@ function cupola(P:TankBuilderPort):void{
     equipment(P,box(m(6.4),m(1.3),m(9.2)).rotateY(yaw),x,103.5,z);
     equipment(P,box(m(4.7),m(1.0),m(.5)).rotateY(yaw),x,104.25,z+3.5,'turretDark');
   }
-  // Complete source census shows an empty cupola mount: rails, hinge and
-  // brackets only. Deliberately no sourceMachineGun/markExact registration.
-  for(const x of[-29.4,-14.0]){
-    caseBox(P,x,105.7,-41.3,1.4,4.8,2.1);
-    caseBox(P,x,109.4,-40.0,1.4,1.0,2.0);
-  }
-  caseBox(P,-23.9,107.0,-42.5,8.74,7.64,1.05);
-  equipment(P,cylX(m(1.6),m(13.4),20),-21.1,108.3,-40.2);
+  // The source's cupola mount was empty (rails, hinge and brackets); the commander's gun now rides its own cradle there
+  // (below), and the one bracket left carries the MG sight head.
+  caseBox(P,-14.0,105.7,-41.3,1.4,4.8,2.1);
+  caseBox(P,-14.0,109.4,-40.0,1.4,1.0,2.0);
   caseBox(P,-15.12,110.43,-38.56,4.02,5.35,3.27);
   caseBox(P,-15.0,105.4,-50,1.8,4.6,12.1);
+  // Release 262 (owner 2026-10-28: "optics and machine guns"): the No. 32 cupola's nine episcopes round its wall and the
+  // glass of the MG sight head (FR wiki: "tourelleau No 32", nine episcopes and a No 37 Mk 6 periscope to aim the MG).
+  const r=m(20.57),[cx,cy,cz]=p(-20.807,101.6,-53.898);
+  for(let i=0;i<9;i++){
+    const a=i*Math.PI*2/9;
+    at(P,box(.10,.06,.04),cx+Math.sin(a)*(r+.008),cy,cz+Math.cos(a)*(r+.008),'turretDark',0,a);
+    lens(P,box(.075,.04,.006),cx+Math.sin(a)*(r+.030),cy,cz+Math.cos(a)*(r+.030),a);
+  }
+  lens(P,box(m(3.0),m(2.2),.006),...p(-15.12,110.9,-36.85));
+  // The commander's L37A2 7.62 mm GPMG rides the cupola's cradle (the source's mount: rails, hinge and brackets), aimed
+  // through that sight; it is every mark's one roof gun.
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',tone:'dark',scale:1,seed:8,riser:.02,working:true,ridingCradle:true});
+  mg.name='challenger1SuppliedCommanderL37';
+  const g=p(-21.1,104.4,-41.5);mg.position.set(g[0]-PX,g[1]-PY,g[2]-PZ);
+  P.turretG.add(mg);
+}
+/** TOGS: the armoured thermal-sight barbette standing on the right cheek (FR wiki: "dans une boîte blindée sur le flanc
+ *  droit de la tourelle"), its foot buried in the cheek's fall and its front's top edge chamfered. The Mk 1s were
+ *  delivered with it mostly empty, its port blanked (en Wikipedia, Haynes 2015 p. 110); the Mk 2 and Mk 3 carry the
+ *  sight behind an armoured door hinged on the port's top edge, propped open. */
+const TOGS={inner:.56,outer:1.10,rear:1.18,front:1.92,top:2.00} as const;
+function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
+  const {inner,outer,rear,front,top}=TOGS,c=.04,lo=1.42;
+  const ring=(hi:number):[number,number][]=>([[inner,lo],[outer-c,lo],[outer,lo+c],[outer,hi-c],[outer-c,hi],[inner,hi]] as
+    const).map(([x,y]):[number,number]=>[-x,y]).reverse();
+  P.add('turret',local(sectionSolid(([[rear,top],[1.55,top],[front-.07,top],[front,top-.07]] as const)
+    .map(([z,hi]):SolidSection=>({z,ring:ring(hi)})))));
+  const dx=-.70,dy=1.78;
+  if(mark===1){
+    at(P,box(.27,.19,.02),dx,dy,front+.01);
+    for(const ox of[-.11,0,.11])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
+  }else{
+    at(P,box(.27,.19,.03),dx,dy,front+.005,'turretDark');
+    lens(P,box(.19,.11,.006),dx,dy,front+.024);
+    const a=55*Math.PI/180,h=.24,hy=dy+.10;
+    at(P,box(.28,.025,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
+    at(P,cylX(.016,.30,10),dx,hy,front+.02,'turretDark');
+  }
 }
 function roof(P:TankBuilderPort):void{
   // 2026-10-19 (owner float sweep): the disc stood 30 mm over its seat; lowered onto it
@@ -139,6 +183,9 @@ function roof(P:TankBuilderPort):void{
   },{reachM:.07});
   for(const[x,y,z]of[[-44,97,-35],[-39,97,-74],[38,90,-91],[41,90,-67],[41,90,-41]])
     caseBox(P,x,y,z,1.3,2.5,5.2);
+  // the loader's periscope ahead of his hatch (release 262: the roof's optics glazed)
+  at(P,box(.15,.08,.12),.41,2.175,.417);
+  lens(P,box(.12,.045,.006),.41,2.18,.48);
 }
 function optics(P:TankBuilderPort):void{
   const x=-26.1;
@@ -150,7 +197,13 @@ function optics(P:TankBuilderPort):void{
   caseBox(P,-.6,90.7,15.5,2.55,4.72,5.3);
 }
 function smoke(P:TankBuilderPort):void{
-  for(const side of[-1,1]){
+  // The right bank stands on the TOGS barbette's outboard face, the left on its cheek under the hood.
+  for(const [dx,dy]of [[-.098,.036],[0,.036],[.098,.036],[-.049,-.052],[.049,-.052]]){
+    at(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(-.10),
+      -.95+dx,1.80+dy,TOGS.front+.03);
+  }
+  at(P,box(.34,.14,.03),-.95,1.79,TOGS.front+.015);
+  for(const side of[1]){
     for(const [dx,dy]of[[-4.3,1.6],[0,1.6],[4.3,1.6],[-2.15,-2.3],[2.15,-2.3]]){
       const x=side*33.1+dx,z=39.0-side*.36*dx;
       equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
@@ -158,7 +211,7 @@ function smoke(P:TankBuilderPort):void{
     equipment(P,box(m(15.8),m(6.2),m(2.0)).rotateY(side*.35),side*31.4,69.4,33.4);
   }
 }
-export function addChallenger1SuppliedTurret(P:TankBuilderPort):void{
-  bearing(P);body(P);rearBin(P);sideBoxes(P);cupola(P);roof(P);optics(P);smoke(P);
+export function addChallenger1SuppliedTurret(P:TankBuilderPort,mark:Challenger1SuppliedMark=3):void{
+  bearing(P);body(P);togsBarbette(P,mark);rearBin(P);sideBoxes(P);cupola(P);roof(P);optics(P);smoke(P);
   addChallenger1SourceHood(P);
 }

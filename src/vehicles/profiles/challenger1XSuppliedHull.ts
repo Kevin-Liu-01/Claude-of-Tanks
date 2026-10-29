@@ -180,11 +180,11 @@ function sideApplique(P:TankBuilderPort,side:number):void{
     caseBox(P,side*73.1,26.18,z,5.2,4.4,1.95);
   }
 }
-function drumsAndRear(P:TankBuilderPort,granbyKit:boolean):void{
+function drumsAndRear(P:TankBuilderPort,drums:boolean):void{
   for(const side of [-1,1]){
     const x=side*32.6;
-    // the Op Granby fit's two jettisonable fuel drums, their bands, struts and cradle stops
-    if(granbyKit){
+    // the two jettisonable fuel drums (the Mk 2's quick-release fit, kept by the Op Granby Mk 3), bands, struts, stops
+    if(drums){
       equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
       for(const dx of [-9.5,9.5]){
         equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
@@ -218,11 +218,11 @@ function bowArmor(P:TankBuilderPort):void{
   }
 }
 /** Release 262 (owner 2026-10-28: the Mk 3's build "is what it is actually like"): the supplied file is the Op Granby
- *  fit; the plain Challenger 1 (the Mk 1 and Mk 2) leaves its side applique, nose array and rear drums off. */
-export interface Challenger1SuppliedHullOptions{readonly granbyKit?:boolean}
-export function addChallenger1SuppliedHull(P:TankBuilderPort,{granbyKit=true}:Challenger1SuppliedHullOptions={}):void{
+ *  fit. The Mk 1 and Mk 2 leave its side applique and nose array off; the Mk 2 keeps the rear drums, the Mk 1 has none. */
+export interface Challenger1SuppliedHullOptions{readonly granbyKit?:boolean;readonly drums?:boolean}
+export function addChallenger1SuppliedHull(P:TankBuilderPort,{granbyKit=true,drums=granbyKit}:Challenger1SuppliedHullOptions={}):void{
   tub(P);for(const side of [-1,1])sponson(P,side);
   engineRoof(P);foreDeck(P);
   for(const side of [-1,1]){frontGuards(P,side);sideSkirts(P,side,granbyKit);}
-  drumsAndRear(P,granbyKit);if(granbyKit)bowArmor(P);
+  drumsAndRear(P,drums);if(granbyKit)bowArmor(P);
 }
