@@ -379,7 +379,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   sabra_mk2: Object.freeze({ centerYM: 2.5355, topHalfM: 5.9581, sideHalfM: 2.979 }),
   spz_puma: Object.freeze({ centerYM: 1.9716, topHalfM: 4.412, sideHalfM: 2.206 }),
   spz_wotan: Object.freeze({ centerYM: 1.678, topHalfM: 4.0141, sideHalfM: 2.0071 }),
-  stb1: Object.freeze({ centerYM: 1.6431, topHalfM: 6.2418, sideHalfM: 3.1209 }),
+  stb1: Object.freeze({ centerYM: 1.5751, topHalfM: 6.2418, sideHalfM: 3.1209 }),
   strv103a: Object.freeze({ centerYM: 1.4967, topHalfM: 5.8937, sideHalfM: 2.9469 }),
   strv103b: Object.freeze({ centerYM: 1.4098, topHalfM: 5.975, sideHalfM: 2.9875 }),
   strv121: Object.freeze({ centerYM: 1.9393, topHalfM: 6.3814, sideHalfM: 3.1907 }),

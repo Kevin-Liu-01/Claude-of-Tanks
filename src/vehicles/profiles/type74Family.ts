@@ -392,10 +392,12 @@ function addProductionTurretKit(P: TankBuilderPort, at: ShellProbe): void {
   // hatch on the left; the gunner's and loader's periscopes; the rangefinder head's armoured end on the right shoulder
   const cy = at.top(0.45, -0.50) - 0.02;
   cupola(P, 'turret', 0.45, cy, -0.50, 0.21, 0.17, 6);
-  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7, working: true, ridingCradle: true });
-  m2.name = 'type74RoofM2';
-  m2.position.set(0.49, cy + 0.15, -0.52);
-  P.turretG.add(m2);
+  // the M2 on its socket at the cupola's front-left rim, 40 degrees inboard of dead ahead and clear of the hatch lid, its
+  // flange 3 cm over the lid
+  {
+    const a = (-40 * Math.PI) / 180, px = 0.45 + 0.258 * Math.sin(a), pz = -0.50 + 0.258 * Math.cos(a);
+    roofM2(P, 'type74RoofM2', px, pintleSocket(P, px, at.top(px, pz), pz, cy + 0.24, 0.03, [0.45, -0.50], 0.17), pz, 7);
+  }
   const ly = at.top(-0.45, -0.30) - 0.015;
   P.add('turret', cylY(0.20, 0.21, 0.05, 16), -0.45, ly + 0.025, -0.30);
   P.add('turret', cylY(0.17, 0.17, 0.045, 16), -0.45, ly + 0.07, -0.30);
@@ -450,6 +452,40 @@ function addProductionTurretKit(P: TankBuilderPort, at: ShellProbe): void {
   }
 }
 
+/**
+ * 263 (owner 2026-10-29: "add mounted machine guns on both of these guys"): a classic emplacement's socket post at a
+ * hatch ring's rim, as the fleet's (nationalRoofWeapon.ts nationalPintleSocket): a turned post from 8 mm into the roof
+ * under it (`roof`) up to `topY`, its clamp collar 6 mm wider and the lock bolt facing outboard, and a web plate on the
+ * radial from inside the ring's stock (`innerR` round `ring`) to the post. Returns the flange's seat, the collar's top.
+ */
+function pintleSocket(P: TankBuilderPort, x: number, roof: number, z: number, topY: number, postR: number,
+  ring: readonly [number, number], innerR: number): number {
+  const { box, cylX, cylY } = KIT;
+  const collarH = 0.024, collarR = postR + 0.006, bottom = roof - 0.008, postH = topY - collarH - bottom;
+  if (postH < 0.02) throw new Error(`${P.spec?.id}: no room for the pintle socket's post (roof ${roof.toFixed(3)}, top ${topY.toFixed(3)})`);
+  const seg = P.q ? 20 : 12, out = Math.atan2(x - ring[0], z - ring[1]), ox = Math.sin(out), oz = Math.cos(out);
+  P.add('turretDetail', cylY(postR, postR + 0.004, postH, seg), x, bottom + postH / 2, z);
+  P.add('turretDetail', cylY(collarR, collarR, collarH, seg), x, topY - collarH / 2, z);
+  const boltY = topY - collarH / 2, ry = out - Math.PI / 2;
+  P.add('turretDark', cylX(0.006, 0.022, 8), x + ox * (collarR - 0.007), boltY, z + oz * (collarR - 0.007), 0, ry, 0);
+  P.add('turretDark', cylX(0.011, 0.007, 6), x + ox * (collarR + 0.0035), boltY, z + oz * (collarR + 0.0035), 0, ry, 0);
+  const outerR = Math.hypot(x - ring[0], z - ring[1]), webTop = topY - collarH, h = webTop - bottom, mid = (innerR + outerR) / 2;
+  P.add('turretDetail', box(0.022, h, outerR - innerR), ring[0] + ox * mid, bottom + h / 2, ring[1] + oz * mid, 0, out, 0);
+  return topY;
+}
+
+/** The 12.7 mm M2 on its socket (the fleet's classic emplacement: pintle column, riding cradle, the class's receiver,
+ * feed and ammunition can, the true crew barrel), its flange 2 mm into the collar; a working station the auxiliary
+ * roof-gun control turns and fires. */
+function roofM2(P: TankBuilderPort, name: string, x: number, seat: number, z: number, seed: number): void {
+  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1, tone: 'two-tone', elev: 0.08, shield: false, ammo: true,
+    ring: false, working: true, datumBarrel: false, ridingCradle: true, seed });
+  m2.name = name;
+  m2.userData.auxiliaryMuzzle = [0, m2.userData.barrelAxisLocalY, m2.userData.muzzleLocalZ];
+  m2.position.set(x, seat - 0.002, z);
+  P.turretG.add(m2);
+}
+
 /** A geometry turned into the basis whose x, y and z axes are the given unit vectors (the frame its parts are drawn in) */
 function inBasis(geometry: THREE.BufferGeometry, x: THREE.Vector3, y: THREE.Vector3, z: THREE.Vector3): THREE.BufferGeometry {
   return geometry.applyMatrix4(new THREE.Matrix4().makeBasis(x, y, z));
@@ -480,11 +516,10 @@ function addPrototypeTurretKit(P: TankBuilderPort, at: ShellProbe): void {
     P.addCupola('turret', box(0.29, 0.10, 0.16), -0.435, hy, hz);
     P.add('turretDark', box(0.23, 0.055, 0.022), -0.435, hy + 0.005, hz + 0.08);
     P.add('turretGlass', box(0.17, 0.035, 0.016), -0.435, hy + 0.005, hz + 0.093);
-    P.add('turretDetail', box(0.10, 0.05, 0.16), x + 0.36, y + 0.15, z - 0.10);
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.82, elev: 0.06,
-      shield: false, ammo: true, seed: 1110, working: true, ridingCradle: true });
-    mg.position.set(x + 0.40, y + 0.17, z - 0.10);
-    P.turretG.add(mg);
+    // the commander's 12.7 mm M2 (the sourced anti-aircraft gun) on a socket at the upper tier's right rim, standing on
+    // the lower tier, its flange 3 cm over the station's top
+    const sx = x + 0.335, sz = z - 0.08;
+    roofM2(P, 'stb1RoofM2', sx, pintleSocket(P, sx, y + 0.12, sz, y + 0.27, 0.025, [x, sz], 0.24), sz, 1110);
   }
   // the loader's round hatch at +x, its ring, lid and hinge, a periscope at its inboard front corner
   {

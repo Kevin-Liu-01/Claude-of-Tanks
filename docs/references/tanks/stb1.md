@@ -63,7 +63,7 @@ The "after" columns are the final state on the owner's model.
 | Nose | A dark band and a bar across the lower nose, tow eyes on its underside | A flat glacis with a cable loop and tow fittings on the lower plate **[photo]** | Two tow hooks on the lower plate (the owner's model) | The shared nose, two shackles, the tow cable across the glacis |
 | Pioneer tools | None aft | On the left rear deck **[photo]** | A shovel on the left rear deck strip | On the left rear deck strip |
 | Smoke dischargers | Turret rear sides | Turret rear sides **[photo]** | Unchanged | Turret front corners |
-| Commander's station | Raised two-tier drum with the remote AA machine gun | Raised station, remote AA M2 aimed by periscope ([ja.wikipedia](https://ja.wikipedia.org/wiki/74式戦車)) | Unchanged | Low cupola, M2 on a pintle |
+| Commander's station | Raised two-tier drum with the remote AA machine gun | Raised station, remote AA M2 aimed by periscope ([ja.wikipedia](https://ja.wikipedia.org/wiki/74式戦車)) | 263: the 12.7 mm M2 on a pintle socket at the upper tier's right rim (was a 0.82-scale 7.62 mm gun on a bracket) | Low cupola, M2 on a socket at its rim |
 | Gun travel | −10/+15 at the gun | Not published | −6/+9 at the gun (the shared figure) with the hull pitch, per-yaw curves | The same |
 
 Not modelled: the STB-1's forward-opening "gunner's hatch" (ja.wikipedia) — which roof hatch the article means is not
@@ -136,6 +136,17 @@ overlays of the model's dense surface samples on the build's), turret frame (rin
 
 Seen head-on and from the side beside the model, the turret now differs only by the sourced remote gun (its body 0.14–0.35 m
 over the model's station).
+
+### Roof machine guns (263)
+
+Owner, 2026-10-29: "add mounted machine guns on both of these guys". Both tanks carried a roof gun, but neither read
+as mounted. The STB-1's was a 0.82-scale 7.62 mm gun on a bracket beside the station; a blind critic saw it float over
+the hatch. Both now carry the fleet's classic emplacement (`type74Family.ts` `pintleSocket` and `roofM2`, after
+`nationalRoofWeapon.ts` `nationalPintleSocket`). A socket post stands at the hatch ring's rim, welded to it by a web
+plate, with a clamp collar and lock bolt. The full-size 12.7 mm M2 rides its pintle column and cradle, with its
+ammunition can, as a working station the auxiliary roof-gun control turns and fires. The STB-1's gun is the sourced
+anti-aircraft M2, on the station's upper tier at its right rim; the Type 74's sits at the cupola's front-left rim, clear
+of the hatch lid.
 
 ### The mask shaped by the turret (263)
 

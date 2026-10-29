@@ -471,6 +471,13 @@ STB-1 against Type 74 (`docs/references/tanks/stb1.md`): the prototype's mask is
 deeper-chinned, its canvas narrower, its port on the upper left, its collar plain, and it carries no searchlight.
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
 
+### Roof machine gun (263)
+
+Owner, 2026-10-29: "add mounted machine guns on both of these guys". The M2 stood on the cupola's lid, with no mount
+that read as one. It now stands on the fleet's classic emplacement at the cupola's front-left rim, 40° inboard of dead
+ahead and clear of the hatch lid (`stb1.md`, "Roof machine guns"). A socket post is welded to the ring by a web plate,
+and the full-size M2 rides its pintle column and cradle with its ammunition can.
+
 ### The mask shaped by the turret (263)
 
 Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shaped" by the turret shape instead of
