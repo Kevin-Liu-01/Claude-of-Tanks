@@ -14,6 +14,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import type { SourcePart } from './merkavaFamilySource.ts';
 import { loftMeasuredSolid, type ShellSolid } from './merkavaFamilyTurret.ts';
+import { revolveZ } from './merkavaFamilyGun.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** Detail roles as the source fit names them (merkavaFamilySource.ts SourcePart role). */
@@ -42,18 +43,44 @@ function plateGeometry(p: SourcePart): THREE.BufferGeometry {
   return sectionSolid([{ z: t0, ring }, { z: t1, ring }]).applyMatrix4(LOFT_BASES[ax]!);
 }
 
+/** A discharger tube open at its mouth, in its own frame along +Z: the wall, a rim round the bore, the bore's floor set
+ *  back (the sources' open mouths, not a capped stub), the closed breech. */
+function openTubeGeometry(r: number, len: number, seg: number): THREE.BufferGeometry {
+  const bore = r * 0.78, depth = Math.min(0.06, len * 0.5), front = len / 2;
+  const wall = new THREE.CylinderGeometry(r, r, len, seg, 1, true).rotateX(Math.PI / 2);
+  const inner = new THREE.CylinderGeometry(bore, bore, depth, seg, 1, true).rotateX(Math.PI / 2).translate(0, 0, front - depth / 2);
+  // the bore's wall faces inward
+  const index = inner.getIndex()!, normal = inner.getAttribute('normal');
+  for (let i = 0; i < index.count; i += 3) { const a = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, a); }
+  for (let i = 0; i < normal.count; i++) normal.setXYZ(i, -normal.getX(i), -normal.getY(i), -normal.getZ(i));
+  const rim = new THREE.RingGeometry(bore, r, seg).translate(0, 0, front);
+  const floor = new THREE.CircleGeometry(bore, seg).translate(0, 0, front - depth);
+  const breech = new THREE.CircleGeometry(r, seg).rotateY(Math.PI).translate(0, 0, -front);
+  return KIT.mergeAll([wall, inner, rim, floor, breech]);
+}
+
+/** A rolled tarp about its axis (0 x, 1 y, 2 z) across its measured box: the roll, and at each end its coil's layers
+ *  as steps standing proud of one another. */
+function rollGeometry(axis: number, sx: number, sy: number, sz: number, seg: number): THREE.BufferGeometry {
+  const len = [sx, sy, sz][axis]!, r = ([sx, sy, sz].filter((_, k) => k !== axis).reduce((a, b) => a + b, 0)) / 4, h = len / 2 - 0.02, d = 0.01;
+  const g = revolveZ([[-h - 2 * d, 0], [-h - 2 * d, r * 0.36], [-h - d, r * 0.36], [-h - d, r * 0.7], [-h, r * 0.7], [-h, r],
+    [h, r], [h, r * 0.7], [h + d, r * 0.7], [h + d, r * 0.36], [h + 2 * d, r * 0.36], [h + 2 * d, 0]], seg);
+  return axis === 0 ? g.rotateY(Math.PI / 2) : axis === 1 ? g.rotateX(-Math.PI / 2) : g;
+}
+
 /** The part's geometry in its own frame (centred, axis-aligned), oriented and placed in the owner's frame. */
 function partGeometry(p: SourcePart, offset: readonly [number, number, number], seg: number): THREE.BufferGeometry {
   const [kind, , cx, cy, cz, sx, sy, sz, qx, qy, qz, qw] = p as readonly number[] as [number, number, number, number,
     number, number, number, number, number, number, number, number];
   let g: THREE.BufferGeometry;
   if (kind === 1) g = KIT.cylY(Math.max(sx, sz) / 2, Math.max(sx, sz) / 2, sy, seg);
-  else if (kind === 3) g = markSmokeTube(KIT.cylZ(Math.max(sx, sy) / 2, sz, seg));
+  else if (kind === 3) g = markSmokeTube(openTubeGeometry(Math.max(sx, sy) / 2, sz, seg));
   else if (kind === 4) {
     try { g = loftGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
   } else if (kind === 5) {
     try { g = plateGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
-  } else g = KIT.box(sx, sy, sz);
+  } else if (kind === 7) g = rollGeometry(p[13]!, sx, sy, sz, seg);
+  else g = KIT.box(sx, sy, sz);
   q.set(qx, qy, qz, qw).normalize();
   e.setFromQuaternion(q);
   return KIT.xform(g, cx - offset[0], cy - offset[1], cz - offset[2], e.x, e.y, e.z);
@@ -301,7 +328,11 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         // a discharger tube as measured (its muzzle marked for the launch effect) with its dark bore, or the housing
         // round a cluster of them
         P.add('turretDetail', partGeometry(p, off, seg));
-        if (p[0] === 3) P.add('turretDark', frontFace(p, off, 0.001, (w, h) => KIT.cylZ(Math.max(w, h) * 0.36, 0.004, 12)));
+        if (p[0] === 3) {
+          // the bore's floor in shadow, set back inside the open mouth
+          const depth = Math.min(0.06, p[7]! * 0.5);
+          P.add('turretDark', frontFace(p, off, 0.001 - depth, (w, h) => KIT.cylZ(Math.max(w, h) * 0.37, 0.002, 12)));
+        }
         break;
       case ROLE.optic:
         P.add(onTurret ? 'turretDetail' : 'hullDetail', partGeometry(p, off, seg));
@@ -311,7 +342,7 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
       case ROLE.stowage:
         // the Merkava's pale kit (FSP-06): the large irregular pieces (bags, tarps, rolls: lofts) in pale canvas, the
         // boxes and cans in fitting paint
-        P.add(p[0] === 4 ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'),
+        P.add(p[0] === 4 || p[0] === 7 ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'),
           partGeometry(p, off, seg));
         break;
       default:
