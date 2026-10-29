@@ -133,8 +133,7 @@ const anatomy = (id) => {
   // the ring's anatomy (its race, deck, well and floor); its footR is a coverage receipt of every turret mesh over the
   // deck with no reader beyond capping the race, which the rim covers further out by design
   const { seat, deckY, rimR, skirt, floorY, wellR, skinR } = c.turretRing;
-  const cells = c.turretCollision.map(({ min, max, vertices, faces }) => ({ min, max, vertices, faces }));
-  return { box: [c.turret.min, c.turret.max, c.turret.bodyRoofY], collision: cells,
+  return { box: [c.turret.min, c.turret.max, c.turret.bodyRoofY], collision: c.turretCollision,
     ring: { seat, deckY, rimR, skirt, floorY, wellR, skinR }, seats: c.crewSeats, plates: getSpec(id).armor.turretPlates };
 };
 const otcoAnatomy = anatomy('leo2a3'), a3Anatomy = anatomy('leo2a3_b4');
@@ -143,7 +142,30 @@ const near = (a, b) => (Array.isArray(a) ? Array.isArray(b) && a.length === b.le
   : typeof a === 'number' ? typeof b === 'number' && Math.abs(a - b) <= 0.002
     : a && typeof a === 'object' ? !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => near(a[k], b[k]))
       : a === b);
-for (const key of Object.keys(a3Anatomy)) assert.ok(near(otcoAnatomy[key], a3Anatomy[key]), `the OTCO's turret ${key} is the 2A3's`);
+for (const key of Object.keys(a3Anatomy)) {
+  if (key !== 'collision') assert.ok(near(otcoAnatomy[key], a3Anatomy[key]), `the OTCO's turret ${key} is the 2A3's`);
+}
+// the collision cells as solids: each cell's corners stand no further outside its twin's faces than the plate-fitted
+// cell's own 15 mm tolerance (the cells are cut from point clouds the seat moves by millimetres)
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const planes = (cell) => {
+  const mid = cell.vertices.reduce((m, v) => m.map((x, i) => x + v[i] / cell.vertices.length), [0, 0, 0]);
+  return cell.faces.map(([i, j, k]) => {
+    const a = cell.vertices[i], u = sub(cell.vertices[j], a), w = sub(cell.vertices[k], a);
+    let n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+    const l = Math.hypot(...n);
+    if (l < 1e-12) return null;
+    n = n.map((x) => x / l);
+    if (dot(n, sub(mid, a)) > 0) n = n.map((x) => -x);
+    return [n, -dot(n, a)];
+  }).filter(Boolean);
+};
+const outside = (A, B) => Math.max(0, ...A.vertices.map((v) => Math.max(...planes(B).map(([n, k]) => dot(n, v) + k))));
+assert.equal(otcoAnatomy.collision.length, a3Anatomy.collision.length, 'the OTCO\'s turret cells are the 2A3\'s');
+otcoAnatomy.collision.forEach((cell, i) => {
+  const twin = a3Anatomy.collision[i], d = Math.max(outside(cell, twin), outside(twin, cell));
+  assert.ok(d <= 0.015, `the OTCO's turret cell ${i} is the 2A3's (${(d * 1000).toFixed(1)} mm apart)`);
+});
 {
   const tank = createTank('leo2a3', null, { ...options, quality: 'high' });
   try {
