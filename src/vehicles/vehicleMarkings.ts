@@ -354,7 +354,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   olifant_mk2: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
   centurion5_avre: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
-  centurion5_1_aus: anchor('turret', 'left', 0.42, 0.49, 0.25, 1),
+  centurion5_1_aus: anchor('turret', 'left', 0.47, 0.49, 0.25, 1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m47_patton: anchor('turret', 'right', 0.41, 0.49, 0.25, -1),
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),

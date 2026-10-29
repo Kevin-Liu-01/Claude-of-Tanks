@@ -542,7 +542,7 @@
    "hostSweep": []
   },
   "centurion13": {
-   "inputHash": "eb93fa7fd9418e5b",
+   "inputHash": "321ef63e0e19d65b",
    "runs": [
     {
      "index": 0,
@@ -565,7 +565,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hullExternalArmor<buildGlacisAndNose@profiles/centurionFamily.ts:302>"
+      "host": "hullExternalArmor<buildGlacisAndNose@profiles/centurionFamily.ts:306>"
      }
     }
    ],
@@ -573,7 +573,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "0df975490a0ecbf1",
+   "inputHash": "00abe22439a0da94",
    "runs": [
     {
      "index": 0,
@@ -596,7 +596,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.652,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -620,7 +620,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.652,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     }
    ],
@@ -628,13 +628,13 @@
    "hostSweep": []
   },
   "centurion5_1_aus": {
-   "inputHash": "3e8e2c3ca29d8359",
+   "inputHash": "a437d88575a97349",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "centurion5_2": {
-   "inputHash": "a33a68ee88d127b6",
+   "inputHash": "6ce9ccd52030a1b5",
    "runs": [
     {
      "index": 0,
@@ -657,7 +657,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.618,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:129>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     }
    ],
@@ -665,7 +665,7 @@
    "hostSweep": []
   },
   "centurion5_avre": {
-   "inputHash": "ddef7f99fadce084",
+   "inputHash": "c85890c7ba660c8a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2462,7 +2462,7 @@
    "hostSweep": []
   },
   "olifant_mk2": {
-   "inputHash": "bd12c550bcd89083",
+   "inputHash": "6c286e86ba9425e3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2533,7 +2533,7 @@
    "hostSweep": []
   },
   "shot_kal": {
-   "inputHash": "ac10cb45b7a28881",
+   "inputHash": "3de25a85053cdc8b",
    "runs": [
     {
      "index": 0,
@@ -2556,7 +2556,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.618,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:129>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -2578,7 +2578,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.889,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:129>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     }
    ],
@@ -2709,7 +2709,7 @@
    "hostSweep": []
   },
   "strv105": {
-   "inputHash": "f9e04c9e9167646e",
+   "inputHash": "ba5323766a3171c1",
    "runs": [
     {
      "index": 0,
@@ -2730,7 +2730,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.908,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:129>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -2752,7 +2752,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.908,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:129>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     }
    ],
@@ -2867,7 +2867,7 @@
    "hostSweep": []
   },
   "strv81": {
-   "inputHash": "38ce32e63b0cde80",
+   "inputHash": "0aaf03fa16eb6c8f",
    "runs": [
     {
      "index": 0,
@@ -2890,7 +2890,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.652,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -2914,7 +2914,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.652,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -2936,7 +2936,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.908,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     },
     {
@@ -2958,7 +2958,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.908,
-      "host": "hull<buildHullBody@profiles/centurionFamily.ts:122>"
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:130>"
      }
     }
    ],
