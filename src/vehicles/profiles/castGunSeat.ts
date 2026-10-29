@@ -111,29 +111,59 @@ export function clipStock(source: THREE.BufferGeometry, plane: CutPlane): THREE.
   return result;
 }
 
-/** A pitching mask's seat: a channel `halfWidth` either side of the gun's plane, its back a concave cylinder of
- * `radius` round the trunnion axis (turret frame y `axisY`, z `axisZ`), approximated by `bands` chords. Below `floorY`
- * the back is the vertical wall where the cylinder meets that height: the turret's seat over the deck
- * (turretSeatRace.ts seatTurretOverDeck) lifts the shell's low corners onto its plane, and lifted onto it the wall stays
- * a wall instead of sliding a shelf of the receiver forward under the drum. */
-export interface MaskSeat {
+/** A plane through the trunnion axis (turret frame y `yc`, z `zc`, along X) keeping the points round the axis at an angle
+ * (from +Z toward +Y) of at least `psi` (`atLeast`) or at most `psi`, within half a turn of it. */
+function axisPlane(yc: number, zc: number, psi: number, atLeast: boolean): CutPlane {
+  const s = atLeast ? 1 : -1, n: [number, number, number] = [0, s * Math.cos(psi), -s * Math.sin(psi)];
+  return { n, c: n[1] * yc + n[2] * zc };
+}
+
+/** 263 (owner: the mantlets "shaped by the turret shape instead of protruding out"): a pitching mask cut from the cast
+ * shell's own nose. The mask is the wedge of the shell round the trunnion axis (turret frame y `axisY`, z `axisZ`) from
+ * `bottomPsi` to `topPsi` radians (from +Z toward +Y), within `halfWidth` of the gun's plane and over `floorY`; the
+ * fixed casting keeps the shell from `crownPsi` over the top and round behind the axis to straight below it, outside a
+ * receiver of `radius` round the axis. Between the two wedges the slot the mask pitches in: `crownPsi - topPsi` is the
+ * gun's elevation and a keep, `bottomPsi + PI/2` its depression and a keep. */
+export interface ConformalSeat {
   readonly halfWidth: number;
   readonly axisY: number;
   readonly axisZ: number;
   readonly radius: number;
+  readonly topPsi: number;
+  readonly crownPsi: number;
+  readonly bottomPsi: number;
+  readonly floorY: number;
   readonly bands?: number;
-  readonly floorY?: number;
+}
+
+/** The mask (turret frame): the shell's nose inside the channel, between the seat's bottom and top angles and over its
+ * floor; every cut capped, so it is a closed casting whose face is the turret's own surface. */
+export function conformalMask(stock: THREE.BufferGeometry, seat: ConformalSeat & { readonly maskHalf: number }): THREE.BufferGeometry | null {
+  const { maskHalf: h, axisY: yc, axisZ: zc } = seat;
+  let piece: THREE.BufferGeometry | null = stock;
+  const cut = (plane: CutPlane) => {
+    if (!piece) return;
+    const next = clipStock(piece, plane);
+    if (piece !== stock) piece.dispose();
+    piece = next;
+  };
+  cut({ n: [1, 0, 0], c: -h });
+  cut({ n: [-1, 0, 0], c: -h });
+  cut(axisPlane(yc, zc, seat.bottomPsi, true));
+  cut(axisPlane(yc, zc, seat.topPsi, false));
+  cut({ n: [0, 1, 0], c: seat.floorY });
+  return piece === stock ? null : piece;
 }
 
 /**
- * Cut `stock` (a closed cast turret shell, turret frame) for a mask seat and return the pieces that stay: the two
- * cheeks outside the channel (their cut faces are the channel's walls) and, inside it, the shell behind the trunnion
- * plane and outside the receiver cylinder (its chord faces are the receiver the mask's drum turns in). The stock is
+ * Cut `stock` (a closed cast turret shell, turret frame) for a conformal mask's seat and return the pieces that stay:
+ * the two cheeks outside the channel (their cut faces are the channel's walls) and, inside it, the shell from the seat's
+ * crown angle over the top and round behind the axis to straight below it, outside the receiver (`bands` wedges, each's
+ * chord face a facet of the receiver). Ahead of the axis below the crown nothing stays: that is the mask's. The stock is
  * left untouched; the caller owns and disposes it.
  */
-export function cutMaskSeat(stock: THREE.BufferGeometry, seat: MaskSeat): THREE.BufferGeometry[] {
+export function cutConformalSeat(stock: THREE.BufferGeometry, seat: ConformalSeat): THREE.BufferGeometry[] {
   const { halfWidth: h, axisY: yc, axisZ: zc, radius: r } = seat, bands = seat.bands ?? 24;
-  const floorY = Math.max(yc - r, Math.min(yc + r, seat.floorY ?? yc - r));
   const pieces: THREE.BufferGeometry[] = [];
   const push = (g: THREE.BufferGeometry | null) => { if (g) pieces.push(g); };
   push(clipStock(stock, { n: [-1, 0, 0], c: h }));
@@ -141,28 +171,19 @@ export function cutMaskSeat(stock: THREE.BufferGeometry, seat: MaskSeat): THREE.
   const left = clipStock(stock, { n: [1, 0, 0], c: -h });
   const column = left && clipStock(left, { n: [-1, 0, 0], c: -h });
   left?.dispose();
-  const back = column && clipStock(column, { n: [0, 0, -1], c: -zc });
-  column?.dispose();
-  if (!back) return pieces;
-  // above the receiver's arc the column is whole behind the trunnion plane; below its floor, behind the floor's wall
-  push(clipStock(back, { n: [0, 1, 0], c: yc + r }));
-  const below = clipStock(back, { n: [0, -1, 0], c: -floorY });
-  if (below) { push(clipStock(below, { n: [0, 0, -1], c: -(zc - Math.sqrt(Math.max(0, r * r - (floorY - yc) ** 2))) })); below.dispose(); }
-  const aFloor = Math.asin((floorY - yc) / r), span = Math.PI / 2 - aFloor;
+  if (!column) return pieces;
+  const from = seat.crownPsi, to = 1.5 * Math.PI;
   for (let k = 0; k < bands; k++) {
-    const a0 = aFloor + (k / bands) * span, a1 = aFloor + ((k + 1) / bands) * span;
-    const y0 = yc + r * Math.sin(a0), y1 = yc + r * Math.sin(a1), z0 = zc - r * Math.cos(a0), z1 = zc - r * Math.cos(a1);
-    const low = clipStock(back, { n: [0, 1, 0], c: y0 });
-    const band = low && clipStock(low, { n: [0, -1, 0], c: -y1 });
-    low?.dispose();
-    if (!band) continue;
-    // keep the side of the chord away from the axis: the chord's normal toward the axis, reversed
-    const ny = -(z1 - z0), nz = y1 - y0, len = Math.hypot(ny, nz);
-    let my = ny / len, mz = nz / len;
-    if (my * (yc - y0) + mz * (zc - z0) > 0) { my = -my; mz = -mz; }
-    push(clipStock(band, { n: [0, my, mz], c: my * y0 + mz * z0 }));
-    band.dispose();
+    const a0 = from + ((to - from) * k) / bands, a1 = from + ((to - from) * (k + 1)) / bands, am = (a0 + a1) / 2;
+    const over = clipStock(column, axisPlane(yc, zc, a0, true));
+    const wedge = over && clipStock(over, axisPlane(yc, zc, a1, false));
+    over?.dispose();
+    if (!wedge) continue;
+    // outside the receiver: beyond the chord between the wedge's edges at the receiver's radius
+    const ny = Math.sin(am), nz = Math.cos(am);
+    push(clipStock(wedge, { n: [0, ny, nz], c: ny * yc + nz * zc + r * Math.cos((a1 - a0) / 2) }));
+    wedge.dispose();
   }
-  back.dispose();
+  column.dispose();
   return pieces;
 }

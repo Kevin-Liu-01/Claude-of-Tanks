@@ -3,24 +3,27 @@
 // its turret front (castGunSeat.ts). 262 (owner, 2026-10-27, with his STB-1 model: "both the type 74 and stb should be
 // based from this"): both masks are sized to that model's broad front at its own proportions (Main's 262 ruling): the
 // bore 0.29 m over the ring datum, the drum 0.373 m round the trunnion, its face reaching the turret's foot and nearly
-// its crown. Sources
+// its crown. 263 (owner: the mantlets "should be like 'shaped' by the turret shape instead of protruding out"): each
+// mask is now the turret's own nose: the wedge of the cast shell round the trunnion axis inside the channel
+// (castGunSeat.ts conformalMask), so its face is the turret's surface, flush with the cheeks and rolling back over the
+// top with the crown, pitching in a slot under the crown as wide as the elevation. Sources
 // (docs/references/tanks/type74.md and stb1.md, "Mantlet" and "Owner model"):
-//   - Type 74: a large external mask of Japan's own design under a laced canvas cover; the J1 telescope's capped port on
+//   - Type 74: a large mask of Japan's own design under a laced canvas cover; the J1 telescope's capped port on
 //     the vehicle's right of the gun and the coaxial 7.62 mm's on its left, a cylindrical collar with a flared half-round
 //     hood over its top, a lifting eye on the turret's upper front edge either side, and the IR/white searchlight on a
 //     cradle beside the gun base on the left, tied to the collar by two parallel bars, so it rides the gun.
-//   - STB-1: the owner's model: a rounded oval mask face with a dark rim, a port either side of the bore, a short thick
-//     collar, and a six-lens searchlight box on the mask's +x side (the 1969 photograph and ja.wiki record a passive
+//   - STB-1: the owner's model: a rounded mask face continuing the turret's nose, a port either side of the bore, a short
+//     thick collar, and a six-lens searchlight box on the mask's +x side (the 1969 photograph and ja.wiki record a passive
 //     night sight; the owner's model governs, and the conflict is in the reference).
 // Program frame (BUILD-STANDARD §A): +x is the vehicle's right; the STB-1's handed parts stand on the side the owner's
 // model shows them (Main's 262 ruling, profiles/type74Family.ts). Every mask part is a gun-mount part (it pitches with the
-// gun and does not recoil); the mask's drum turns in its receiver with a constant radial gap, its sides run a constant
-// seam inside the channel's walls, and its trunnion pins run into the walls. japaneseMantlet.selftest.mjs holds the gun
-// inside its shield over the whole travel.
+// gun and does not recoil); the mask turns round the trunnion axis clear of the receiver and the crown, its sides run a
+// constant seam inside the channel's walls, and its trunnion pins run into the walls. japaneseMantlet.selftest.mjs holds
+// the gun inside its shield over the whole travel.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
-import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
-import { cutMaskSeat } from './castGunSeat.ts';
+import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
+import { conformalMask, cutConformalSeat, type ConformalSeat } from './castGunSeat.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 export interface MantletBuilderPort {
@@ -29,30 +32,6 @@ export interface MantletBuilderPort {
   readonly q?: boolean;
   add(slot: string, geometry: THREE.BufferGeometry, x?: number, y?: number, z?: number, rx?: number, ry?: number, rz?: number): void;
 }
-
-/** A mask's cross-section at one station (gun frame): half-width, underside, top and the corner radii below and above. */
-interface MaskStation { readonly z: number; readonly half: number; readonly lo: number; readonly hi: number; readonly rb: number; readonly rt: number }
-
-/** A rounded-rectangle contour, counter-clockwise from +Z, `steps` facets per corner. */
-function roundedRing(s: MaskStation, steps: number): SectionPoint[] {
-  const ring: SectionPoint[] = [];
-  const corner = (cx: number, cy: number, r: number, a0: number) => {
-    for (let i = 0; i <= steps; i++) {
-      const a = a0 + (i / steps) * Math.PI / 2;
-      ring.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
-    }
-  };
-  corner(s.half - s.rb, s.lo + s.rb, s.rb, -Math.PI / 2);
-  corner(s.half - s.rt, s.hi - s.rt, s.rt, 0);
-  corner(-s.half + s.rt, s.hi - s.rt, s.rt, Math.PI / 2);
-  corner(-s.half + s.rb, s.lo + s.rb, s.rb, Math.PI);
-  return ring;
-}
-
-const maskSolid = (stations: readonly MaskStation[], steps: number): THREE.BufferGeometry => sectionSolid(
-  stations.map((s): SolidSection => ({ z: s.z, ring: roundedRing(s, steps) })),
-  { centeredSideQuads: true, smoothSideEdges: Array.from({ length: 4 * (steps + 1) }, (_, i) => i) },
-);
 
 /** A solid lofted along X (sections at x, contours in (-z, y)): sectionSolid turned a quarter about Y. */
 function loftAlongX(sections: readonly { x: number; ring: readonly [number, number][] }[], smooth = false): THREE.BufferGeometry {
@@ -65,39 +44,6 @@ function loftAlongX(sections: readonly { x: number; ring: readonly [number, numb
   const g = sectionSolid(sections.map((s) => ({ z: s.x, ring: ccw(s.ring) })),
     { centeredSideQuads: true, ...(smooth ? { smoothSideEdges: Array.from({ length: n }, (_, i) => i) } : {}) });
   return g.rotateY(Math.PI / 2);
-}
-
-/** The radius of a mask's drum at `psi` (radians round the trunnion axis from +Z toward +Y): `r` everywhere but its
- * underside, which keeps `low` under the axis through `travel` radians either way, so the drum never hangs below the
- * turret's underside over the deck at any pitch. */
-function drumRadius(psi: number, r: number, low: number, travel: number): number {
-  const fromDown = Math.abs(Math.atan2(Math.sin(psi + Math.PI / 2), Math.cos(psi + Math.PI / 2)));
-  const a = Math.max(0, fromDown - travel);
-  return a >= Math.PI / 2 ? r : Math.min(r, low / Math.cos(a));
-}
-
-/** The drum a mask turns on in its receiver: round (`r`) over its top and back, its underside drawn up (drumRadius). */
-function maskDrum(half: number, r: number, low: number, travel: number, q: boolean): THREE.BufferGeometry {
-  const steps = q ? 56 : 28, ring: [number, number][] = [];
-  for (let k = 0; k < steps; k++) {
-    const psi = (k / steps) * Math.PI * 2, rr = drumRadius(psi, r, low, travel);
-    ring.push([-rr * Math.cos(psi), rr * Math.sin(psi)]);
-  }
-  return loftAlongX([{ x: -half, ring }, { x: half, ring }], true);
-}
-
-/** A canvas cover hugging a drum of radius `r` round the trunnion axis from `from` to `to` (radians from +Z toward +Y),
- * gathered in `folds` folds across its width; its outer face stands `lift` (+ the folds' `depth`) off the drum. */
-function drumCanvas(half: number, r: number, from: number, to: number, folds: number, lift: number, depth: number, q: boolean): THREE.BufferGeometry {
-  const arcSteps = q ? 18 : 9, xs = q ? 4 * folds + 1 : 2 * folds + 1;
-  return loftAlongX(Array.from({ length: xs }, (_, i) => {
-    const x = -half + (2 * half * i) / (xs - 1);
-    const outer = r + lift + depth * 0.5 * (1 + Math.cos((2 * Math.PI * folds * (x + half)) / (2 * half)));
-    const ring: [number, number][] = [];
-    for (let k = 0; k <= arcSteps; k++) { const a = from + ((to - from) * k) / arcSteps; ring.push([-outer * Math.cos(a), outer * Math.sin(a)]); }
-    for (let k = arcSteps; k >= 0; k--) { const a = from + ((to - from) * k) / arcSteps; ring.push([-(r - 0.01) * Math.cos(a), (r - 0.01) * Math.sin(a)]); }
-    return { x, ring };
-  }));
 }
 
 /** A half-round hood (the upper half of a flared sleeve along Z): its inner and outer radii at each station. */
@@ -127,6 +73,12 @@ function portBoss(P: MantletBuilderPort, x: number, y: number, z: number, r: num
   else P.add('gunMountDark', cylZ(0.013, 0.07, 10), x, y + Math.sin(-tilt) * 0.08, z + 0.08 * Math.cos(tilt), tilt, 0, 0);
 }
 
+/** A port boss standing out of the mask's face at (x, y), its axis along the face's normal there. */
+function facePort(P: MantletBuilderPort, face: MaskFace, x: number, y: number, r: number, kind: 'sight' | 'coax', seg: number): void {
+  const tilt = Math.atan((face.z(x, y + 0.02) - face.z(x, y - 0.02)) / 0.04);
+  portBoss(P, x, y, face.z(x, y) - 0.03, r, kind, seg, tilt);
+}
+
 /** The fit the receipt measures (japaneseMantlet.selftest.mjs; gunHullClearance.test-support.mjs gunShieldProbe). */
 export interface GunShieldFit {
   readonly shield: string;
@@ -149,82 +101,127 @@ function publishFit(P: MantletBuilderPort, fit: Omit<GunShieldFit, 'faceZ' | 'mo
   });
 }
 
-/** One mask's seat: the channel cut into the shell, the receiver round the trunnion, the drum turning in it. */
+/** One mask's seat (263): the channel cut into the shell, the mask the shell's own nose inside it. */
 interface MaskSeatFit {
   readonly channelHalf: number;
+  readonly maskHalf: number;
+  /** the receiver round the trunnion axis, inside the shell's nose over the gun: the crown stays whole over it */
   readonly receiverR: number;
-  readonly drumR: number;
-  /** the drum's underside under the bore through its travel: over the deck by more than the gun's 26 mm keep, at every
-   * bearing the turret swings it (the mask block's lowest corner, at full depression, stays above it too) */
-  readonly drumLow: number;
-  readonly drumHalf: number;
-  /** the receiver's floor, turret frame: just over the shell's foot ring */
-  readonly floorY: number;
+  /** the mask's underside under the bore: over the deck by more than the gun's 26 mm keep at every bearing the turret
+   * swings it, at full depression too */
+  readonly maskLow: number;
   readonly pinR: number;
 }
 
-/** Cut the shell for its seat and add the pieces; the trunnion pins run from the drum's sides into the channel's walls. */
-function seatShell(P: MantletBuilderPort, shell: THREE.BufferGeometry, fit: MaskSeatFit): void {
-  const { y, z } = P.gunG.position;
-  for (const piece of cutMaskSeat(shell, {
-    halfWidth: fit.channelHalf, axisY: y, axisZ: z, radius: fit.receiverR, bands: P.q ? 24 : 12, floorY: fit.floorY,
-  })) P.add('turret', piece);
-  shell.dispose();
-  const seg = P.q ? 24 : 12, pinLen = fit.channelHalf + 0.035 - fit.drumHalf;
-  // painted like the mask: through the seam the pin reads as the mask's own trunnion, inside the wall's front edge
-  for (const s of [-1, 1]) P.add('gunMount', KIT.cylX(fit.pinR, pinLen, seg), s * (fit.drumHalf + pinLen / 2 - 0.004), 0, 0);
-  P.add('gunMount', maskDrum(fit.drumHalf, fit.drumR, fit.drumLow, DRUM_TRAVEL, !!P.q));
+const DEG = Math.PI / 180;
+// The slot the mask pitches in: its top stands TOP_PSI round from straight ahead and the crown over it starts the
+// spec's 9 degrees of elevation and a 2 degree keep further round; its back stops the 6 degrees of depression and a 2
+// degree keep short of straight down, where the casting behind the axis begins.
+const TOP_PSI = 70 * DEG, ELEVATION = 9 * DEG, DEPRESSION = 6 * DEG, SLOT_KEEP = 2 * DEG;
+
+/** The mask's face (gun frame): its foremost z at (x, y), and its radius from the trunnion axis at x along `psi`. */
+interface MaskFace {
+  z(x: number, y: number): number;
+  radius(x: number, psi: number): number;
+  dispose(): void;
 }
 
-// The drum keeps its underside `drumLow` under the bore through 15 degrees either way of level: over the deck the turret
-// swings over, the gun's depression at each bearing is the hull's to limit (gunPitchByYawDeg).
-const DRUM_TRAVEL = 15 * Math.PI / 180;
+/** Cut the shell for its seat, add the fixed pieces, the mask and its trunnion pins, and return the mask's face. */
+function seatShell(P: MantletBuilderPort, shell: THREE.BufferGeometry, fit: MaskSeatFit): MaskFace {
+  const { y, z } = P.gunG.position;
+  const seat: ConformalSeat = {
+    halfWidth: fit.channelHalf, axisY: y, axisZ: z, radius: fit.receiverR, bands: P.q ? 24 : 12,
+    topPsi: TOP_PSI, crownPsi: TOP_PSI + ELEVATION + SLOT_KEEP, bottomPsi: -Math.PI / 2 + DEPRESSION + SLOT_KEEP, floorY: y - fit.maskLow,
+  };
+  for (const piece of cutConformalSeat(shell, seat)) P.add('turret', piece);
+  const mask = conformalMask(shell, { ...seat, maskHalf: fit.maskHalf });
+  shell.dispose();
+  if (!mask) throw new Error('japaneseMantlets: the mask cuts nothing from the turret shell');
+  mask.translate(0, -y, -z);
+  // the face, read by rays on the mask before it joins its bucket
+  const probe = new THREE.Mesh(mask.clone(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), dir = new THREE.Vector3();
+  const zs = new Map<string, number>(), rs = new Map<string, number>();
+  const face: MaskFace = {
+    z(x, yy) {
+      const key = `${x},${yy}`;
+      if (!zs.has(key)) { ray.set(origin.set(x, yy, 3), dir.set(0, 0, -1)); zs.set(key, ray.intersectObject(probe, false)[0]?.point.z ?? 0); }
+      return zs.get(key)!;
+    },
+    radius(x, psi) {
+      const key = `${x},${psi}`;
+      if (!rs.has(key)) {
+        ray.set(origin.set(x, 0, 0), dir.set(0, Math.sin(psi), Math.cos(psi)));
+        const hits = ray.intersectObject(probe, false);
+        rs.set(key, hits.length ? hits[hits.length - 1].distance : 0);
+      }
+      return rs.get(key)!;
+    },
+    dispose() { probe.geometry.dispose(); (probe.material as THREE.Material).dispose(); },
+  };
+  P.add('gunMount', mask);
+  const seg = P.q ? 24 : 12, pinLen = fit.channelHalf + 0.035 - fit.maskHalf;
+  // painted like the mask: through the seam the pin reads as the mask's own trunnion, inside the wall's front edge
+  for (const s of [-1, 1]) P.add('gunMount', KIT.cylX(fit.pinR, pinLen, seg), s * (fit.maskHalf + pinLen / 2 - 0.004), 0, 0);
+  return face;
+}
+
+/** A sheet lying on the mask's face (a canvas cover), from `from` to `to` radians round the trunnion axis across
+ * |x| <= `half`: its outer face `lift` off the mask plus the depth of `folds` folds across its width, its inner face 6 mm
+ * into it. */
+function faceSheet(face: MaskFace, half: number, from: number, to: number, folds: number, lift: number, depth: number, q: boolean): THREE.BufferGeometry {
+  const arcSteps = q ? 14 : 7, xs = q ? 4 * folds + 1 : 2 * folds + 1;
+  return loftAlongX(Array.from({ length: xs }, (_, i) => {
+    const x = -half + (2 * half * i) / (xs - 1);
+    const fold = depth * 0.5 * (1 + Math.cos((2 * Math.PI * folds * (x + half)) / (2 * half)));
+    const ring: [number, number][] = [];
+    const arc = Array.from({ length: arcSteps + 1 }, (_, k) => from + ((to - from) * k) / arcSteps);
+    for (const a of arc) { const r = face.radius(x, a) + lift + fold; ring.push([-r * Math.cos(a), r * Math.sin(a)]); }
+    for (const a of [...arc].reverse()) { const r = face.radius(x, a) - 0.006; ring.push([-r * Math.cos(a), r * Math.sin(a)]); }
+    return { x, ring };
+  }));
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Type 74 (production): the broad external mask
 // ---------------------------------------------------------------------------------------------------------------------
 const T74 = {
-  seat: { channelHalf: 0.515, receiverR: 0.405, drumR: 0.373, drumLow: 0.254, drumHalf: 0.50, floorY: 0.05, pinR: 0.06 },
-  // the mask block ahead of the drum, its face 0.11 m proud of the turret's nose
-  stations: [
-    { z: 0.00, half: 0.500, lo: -0.254, hi: 0.373, rb: 0.068, rt: 0.085 },
-    { z: 0.16, half: 0.496, lo: -0.251, hi: 0.368, rb: 0.068, rt: 0.090 },
-    { z: 0.28, half: 0.484, lo: -0.243, hi: 0.350, rb: 0.068, rt: 0.099 },
-    { z: 0.37, half: 0.460, lo: -0.235, hi: 0.325, rb: 0.066, rt: 0.096 },
-    { z: 0.42, half: 0.425, lo: -0.226, hi: 0.296, rb: 0.057, rt: 0.085 },
-  ] as const,
+  seat: { channelHalf: 0.515, maskHalf: 0.50, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
 };
 
 /**
- * The Type 74's mask, cover, ports, collar and hood, the left searchlight on its cradle, the seat cut into `shell` (the
- * cast turret shell, turret frame, unadded) and the lifting eyes on the turret's upper front edge.
+ * The Type 74's mask (its turret's own nose), its cover, ports, collar and hood, the left searchlight on its cradle, the
+ * seat cut into `shell` (the cast turret shell, turret frame, unadded) and the lifting eyes on the turret's upper front
+ * edge.
  */
 export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometry): void {
   const { box, cylX, cylZ } = KIT;
-  const seg = P.q ? 40 : 18, steps = P.q ? 4 : 2, { seat } = T74;
-  seatShell(P, shell, seat);
-  P.add('gunMount', maskSolid(T74.stations, steps));
-  // the laced canvas cover gathered over the drum and the mask's crown, tied down by three straps
-  P.add('gunMountCanvasSkin', drumCanvas(seat.drumHalf - 0.014, seat.drumR, 0.30, Math.PI * 0.95, 7, 0.005, 0.008, !!P.q));
-  P.add('gunMountCanvasSkin', maskSolid([
-    { z: 0.0, half: 0.490, lo: 0.147, hi: 0.382, rb: 0.01, rt: 0.090 },
-    { z: 0.15, half: 0.487, lo: 0.147, hi: 0.377, rb: 0.01, rt: 0.095 },
-    { z: 0.27, half: 0.476, lo: 0.147, hi: 0.359, rb: 0.01, rt: 0.102 },
-  ], steps));
-  for (const x of [-0.33, 0, 0.33]) P.add('gunMountDark', box(0.045, 0.014, 0.27), x, 0.380, 0.13, -0.07, 0, 0);
+  const seg = P.q ? 40 : 18, { seat } = T74;
+  const face = seatShell(P, shell, seat);
+  // the laced canvas cover over the mask's crown, from 35 degrees over the bore to the slot, gathered in seven folds,
+  // tied down by three straps across it, the lacing zig-zagging along its edges by the cheeks
+  const c0 = 35 * DEG, c1 = TOP_PSI - 1.5 * DEG, cm = (c0 + c1) / 2;
+  P.add('gunMountCanvasSkin', faceSheet(face, seat.maskHalf - 0.014, c0, c1, 7, 0.005, 0.008, !!P.q));
+  for (const x of [-0.33, 0, 0.33]) {
+    // each strap as long as most of the cover's arc where it lies, so its straight ends stay on the cover
+    const r = face.radius(x, cm) + 0.020, len = 0.8 * face.radius(x, cm) * (c1 - c0);
+    P.add('gunMountDark', box(0.045, 0.014, len), x, r * Math.sin(cm), r * Math.cos(cm), Math.PI / 2 - cm, 0, 0);
+  }
   for (const s of [-1, 1]) for (let k = 0; k < 6; k++) {
-    // the lacing zig-zagging along the cover's crown near each cheek
-    P.add('gunMountDark', box(0.01, 0.01, 0.06), s * (0.425 + (k % 2) * 0.022), 0.382 - k * 0.0034, 0.03 + k * 0.042, 0, (k % 2 ? 0.5 : -0.5), 0);
+    const a = c0 + ((c1 - c0) * (k + 0.5)) / 6, x = s * (seat.maskHalf - 0.075 + (k % 2) * 0.022), r = face.radius(x, a) + 0.017;
+    P.add('gunMountDark', box(0.01, 0.01, 0.05), x, r * Math.sin(a), r * Math.cos(a), Math.PI / 2 - a, (k % 2 ? 0.5 : -0.5), 0);
   }
   // the J1 telescope's port on the right and the coaxial 7.62 mm's on the left, both a little over the bore
-  portBoss(P, 0.30, 0.113, 0.40, 0.066, 'sight', P.q ? 20 : 12);
-  portBoss(P, -0.33, 0.09, 0.40, 0.054, 'coax', P.q ? 20 : 12);
-  // the collar the barrel leaves through, the flared half-round hood over its top and the seal round the barrel
-  P.add('gunMount', cylZ(0.13, 0.20, seg), 0, 0, 0.51);
-  P.add('gunMountDark', cylZ(0.134, 0.018, seg), 0, 0, 0.43);
-  P.add('gunMount', halfHood([{ z: 0.51, inner: 0.129, outer: 0.143 }, { z: 0.58, inner: 0.141, outer: 0.155 },
-    { z: 0.64, inner: 0.160, outer: 0.174 }], !!P.q));
-  barrelSeal(P, 0.0775, 0.605, seg);
+  facePort(P, face, 0.30, 0.113, 0.066, 'sight', P.q ? 20 : 12);
+  facePort(P, face, -0.33, 0.09, 0.054, 'coax', P.q ? 20 : 12);
+  // the collar the barrel leaves through, standing out of the face at the bore, the flared half-round hood over its top
+  // and the seal round the barrel
+  const fz = face.z(0, 0);
+  P.add('gunMount', cylZ(0.13, 0.16, seg), 0, 0, fz + 0.05);
+  P.add('gunMountDark', cylZ(0.134, 0.018, seg), 0, 0, fz + 0.005);
+  P.add('gunMount', halfHood([{ z: fz + 0.05, inner: 0.129, outer: 0.143 }, { z: fz + 0.10, inner: 0.141, outer: 0.155 },
+    { z: fz + 0.15, inner: 0.160, outer: 0.174 }], !!P.q));
+  barrelSeal(P, 0.0775, fz + 0.125, seg);
   // the searchlight on its cradle beside the gun base (left), clear of the mask's side: a deck plate run in from the
   // mask's left side, a web under it, the lamp house with chamfered rear corners, its framed six-pane glass, and the two
   // bars to the collar
@@ -246,58 +243,50 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
   for (const dy of [-0.055, 0.055]) P.add('gunMountDark', box(0.34, 0.010, 0.016), lx, 0.168 + dy, 0.595);
   P.add('gunMountDark', box(0.30, 0.016, 0.20), lx, 0.373, 0.41);                       // the lid's seam band
   for (const dx of [-0.10, 0.10]) P.add('gunMountDark', box(0.022, 0.026, 0.12), lx + dx, 0.388, 0.41); // lid handles
-  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.47, 10), -0.365, y, 0.577);
+  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.47, 10), -0.365, y, Math.min(0.56, fz + 0.10));
   // the turret's lifting eyes on its upper front edge either side of the mask
   for (const s of [-1, 1]) KIT.liftEye(P, 'turretDetail', s * 0.70, 0.52, 0.93, s * 0.25);
   publishFit(P, {
-    shield: 'type74-production-external-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.drumHalf,
-    receiverR: seat.receiverR, drumR: seat.drumR, drumLow: seat.drumLow, stub: { r: seat.pinR },
+    shield: 'type74-production-conformal-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.maskHalf,
+    receiverR: seat.receiverR, drumR: seat.receiverR, drumLow: seat.maskLow, stub: { r: seat.pinR },
   });
+  face.dispose();
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // STB-1 (prototype): the owner's model's rounded oval mask
 // ---------------------------------------------------------------------------------------------------------------------
 const STB1 = {
-  seat: { channelHalf: 0.475, receiverR: 0.405, drumR: 0.373, drumLow: 0.254, drumHalf: 0.46, floorY: 0.05, pinR: 0.06 },
-  // an oval face (corner radii near its half-height) domed forward of the drum, 0.08 m proud of the turret's nose
-  stations: [
-    { z: 0.00, half: 0.460, lo: -0.254, hi: 0.373, rb: 0.158, rt: 0.181 },
-    { z: 0.14, half: 0.452, lo: -0.251, hi: 0.364, rb: 0.192, rt: 0.215 },
-    { z: 0.26, half: 0.430, lo: -0.243, hi: 0.339, rb: 0.226, rt: 0.249 },
-    { z: 0.34, half: 0.395, lo: -0.232, hi: 0.305, rb: 0.215, rt: 0.249 },
-    { z: 0.385, half: 0.340, lo: -0.209, hi: 0.260, rb: 0.186, rt: 0.215 },
-  ] as const,
+  seat: { channelHalf: 0.475, maskHalf: 0.46, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
 };
 
 /**
- * The STB-1's oval mask, its dark rim, its two ports, the thick collar, the six-lens searchlight box on its +x side
- * (the model's) and the seat cut into `shell` (the cast turret shell, turret frame, unadded).
+ * The STB-1's mask (its turret's own rounded nose), its two ports, the thick collar, the six-lens searchlight box on its
+ * +x side (the model's) and the seat cut into `shell` (the cast turret shell, turret frame, unadded).
  */
 export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometry): void {
   const { box, cylZ } = KIT;
-  const seg = P.q ? 40 : 18, steps = P.q ? 5 : 3, { seat } = STB1;
-  seatShell(P, shell, seat);
-  P.add('gunMount', maskSolid(STB1.stations, steps));
-  // the rim: a dark bead 6 mm proud round the oval where its face leaves the drum
-  P.add('gunMountDark', maskSolid([
-    { z: 0.255, half: 0.438, lo: -0.249, hi: 0.347, rb: 0.226, rt: 0.254 },
-    { z: 0.275, half: 0.434, lo: -0.246, hi: 0.342, rb: 0.226, rt: 0.254 },
-  ], steps));
+  const seg = P.q ? 40 : 18, { seat } = STB1;
+  const face = seatShell(P, shell, seat);
   // a port either side of the bore, a little over it: the telescope's at -x with the gunner's sight head, the coaxial
   // gun's at +x
-  portBoss(P, -0.245, 0.124, 0.36, 0.06, 'sight', P.q ? 20 : 12);
-  portBoss(P, 0.245, 0.124, 0.36, 0.052, 'coax', P.q ? 20 : 12);
-  // the short thick collar, its ring and the seal round the barrel
-  P.add('gunMount', cylZ(0.15, 0.22, seg), 0, 0, 0.47);
-  P.add('gunMountDark', cylZ(0.158, 0.02, seg), 0, 0, 0.56);
-  P.add('gunMount', cylZ(0.11, 0.06, seg), 0, 0, 0.60);
-  barrelSeal(P, 0.0775, 0.63, seg);
+  facePort(P, face, -0.245, 0.124, 0.06, 'sight', P.q ? 20 : 12);
+  facePort(P, face, 0.245, 0.124, 0.052, 'coax', P.q ? 20 : 12);
+  // the short thick collar standing out of the face at the bore, its ring and the seal round the barrel
+  const fz = face.z(0, 0);
+  P.add('gunMount', cylZ(0.15, 0.18, seg), 0, 0, fz + 0.06);
+  P.add('gunMountDark', cylZ(0.158, 0.02, seg), 0, 0, fz + 0.14);
+  P.add('gunMount', cylZ(0.11, 0.05, seg), 0, 0, fz + 0.175);
+  barrelSeal(P, 0.0775, fz + 0.20, seg);
   // the searchlight box beside the mask's +x edge, where the owner's model has it (263: 0.56 by 0.53 m, its centre 0.66
   // m out and 0.18 m over the bore, its face 0.61 m ahead of the trunnion), carried on a cradle arm from the mask's face:
   // its six lenses in a frame and the lid's seam
   const lx = 0.66, ly = 0.175, lz = 0.467;
-  P.add('gunMount', box(0.20, 0.04, 0.18), 0.37, ly - 0.21, 0.40);                   // the cradle arm off the face
+  {
+    // the cradle arm from the mask's face to the box's back, where the face stands behind it
+    const z0 = face.z(0.37, ly - 0.21) - 0.02, z1 = lz - 0.12;
+    if (z1 > z0 + 0.02) P.add('gunMount', box(0.20, 0.04, z1 - z0), 0.37, ly - 0.21, (z0 + z1) / 2);
+  }
   P.add('gunMount', box(0.56, 0.53, 0.28), lx, ly, lz);
   P.add('gunMountDark', box(0.52, 0.49, 0.012), lx, ly, lz + 0.146);
   for (const c of [-1, 1]) for (const r of [-1, 0, 1]) {
@@ -306,7 +295,8 @@ export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometr
   P.add('gunMountDark', box(0.56, 0.012, 0.28), lx, ly + 0.205, lz);
   for (const dx of [-0.16, 0.16]) P.add('gunMountDark', box(0.03, 0.02, 0.10), lx + dx, ly + 0.275, lz - 0.02);
   publishFit(P, {
-    shield: 'stb1-prototype-oval-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.drumHalf,
-    receiverR: seat.receiverR, drumR: seat.drumR, drumLow: seat.drumLow, stub: { r: seat.pinR },
+    shield: 'stb1-prototype-conformal-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.maskHalf,
+    receiverR: seat.receiverR, drumR: seat.receiverR, drumLow: seat.maskLow, stub: { r: seat.pinR },
   });
+  face.dispose();
 }

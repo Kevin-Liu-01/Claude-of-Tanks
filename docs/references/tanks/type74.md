@@ -471,6 +471,19 @@ STB-1 against Type 74 (`docs/references/tanks/stb1.md`): the prototype's mask is
 deeper-chinned, its canvas narrower, its port on the upper left, its collar plain, and it carries no searchlight.
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
 
+### The mask shaped by the turret (263)
+
+Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shaped" by the turret shape instead of
+protruding out". The 261/262 mask was a block in a slot across the turret front, standing 0.11 m proud of the nose and
+up to 1 m proud of it near the crown, where the cast nose rolls back. Both tanks' masks are now the turret's own nose
+(`castGunSeat.ts` `conformalMask` and `cutConformalSeat`): the wedge of the cast shell round the trunnion axis inside
+the channel, from 2° short of straight down (the 6° depression and a keep) to 70° over the bore, over a floor 0.254 m
+under it. Its face is the turret's surface, flush with the cheeks either side of 15 mm seams, and rolls back over the
+top with the crown. The crown stands over it from 81° round (the 9° elevation and a 2° keep), so the mask pitches in
+an 11° slot under the crown, round a 0.15 m receiver. The canvas cover lies on the mask's crown from 35° to the slot
+under three straps and its lacing. The ports stand out of the face along its normal, and the collar and hood out of
+the face at the bore. The lamp's cradle and bars meet the mask's left side and the collar.
+
 ## Hull (262 rebuild)
 
 Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too". Builder: `buildType74`
