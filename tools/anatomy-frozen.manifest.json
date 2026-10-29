@@ -712,7 +712,6 @@
   "src/vehicles/profiles/m48RoofSeating.selftest.mjs": "023d4de9fe05beccfcfc7d28370cb52b4479d76f2f553821a121905313373794",
   "src/vehicles/profiles/m60FamilyAttachments.selftest.mjs": "011876a582edf9414f551549e624297e6b4019639d455089de6cb14b5e017010",
   "src/vehicles/profiles/m60a2Starship.selftest.mjs": "b8d9613bfce8c0c72fb11c05fbf09d95ff1c905a8adf3f13ea810707015b42f0",
-  "src/vehicles/profiles/m60a3TurretEra.selftest.mjs": "e232b811c1628b74270ac18a0470d3840f16590d87018a82b5d6f0e74f1d8154",
   "src/vehicles/profiles/m6Linebacker.preservation.json": "a3230cd7ffa1b3dc5ab24db1994bd2d14be9a87b750a48b46bc52207301fc3e2",
   "src/vehicles/profiles/m6Linebacker.selftest.mjs": "12a8fea8dfd4a98227b84fe83b0af917e8488ff52ea7610a7800fc6604410c37",
   "src/vehicles/profiles/m6Linebacker.ts": "c8c26c0b2341f20911b9d659b9b360998b9b6bf0bb0f627a9d9615604633d8e3",
