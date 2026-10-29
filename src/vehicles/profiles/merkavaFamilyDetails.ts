@@ -166,13 +166,9 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         break;
       case ROLE.lantern:
         if (p[0] === 6) {
-          // a twin headlamp: the square housing across its measured box, a rim round each of its two lenses forward, and
-          // its wire guard (a top bar and two posts from the housing, three bars across the lenses, 3.5 cm proud)
-          const h = Math.min(sy, sx / 2), cy = p[3]!, cz = p[4]!, front = cz + sz / 2, g = 0.012, gz = front + 0.035;
+          // a twin headlamp: the square housing across its measured box, a rim round each of its two lenses forward
+          const h = Math.min(sy, sx / 2), cy = p[3]!, cz = p[4]!, front = cz + sz / 2;
           P.add('hullDetail', KIT.box(sx, sy, sz), cx, cy, cz);
-          P.add('hullDetail', KIT.box(sx + g, g, 0.035 + g), cx, cy + sy / 2 + g / 2, front + 0.0175);
-          for (const side of [-1, 1]) P.add('hullDetail', KIT.box(g, sy + g, g), cx + side * sx / 2, cy, gz);
-          for (const k of [-1, 0, 1]) P.add('hullDetail', KIT.box(g * 0.8, sy, g * 0.8), cx + k * sx / 4, cy, gz);
           for (const side of [-1, 1]) {
             P.add('hullDetail', KIT.cylZ(h * 0.44, 0.024, seg), cx + side * sx / 4, cy, front + 0.008);
             P.addEquipment('hullGlass', markVehicleNightLens(KIT.xform(KIT.cylZ(h * 0.36, 0.012, seg), cx + side * sx / 4, cy, front + 0.018),
