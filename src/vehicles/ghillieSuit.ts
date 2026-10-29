@@ -4530,6 +4530,8 @@ const GUN_STEP_M = 0.03;
 const FLAT_PROBES = [0.04, 0, -0.05, -0.1, -0.2, -0.3];
 /** A cloth's view cone off a lens: its reach (m) and the tangent of its half-angle (25 degrees). */
 const CLOTH_LENS_REACH_M = 1.0;
+/** How far before (and behind) a pane a fitted cover keeps off it. */
+const COVER_PANE_REACH_M = 0.12;
 const CLOTH_LENS_TAN = Math.tan(25 * Math.PI / 180);
 /** The fix round's field garnish view (FieldClearance.fieldLinesOk): clear ahead of a glass to 0.85 m (the coordinator:
  * nothing inside a sight's view cone, which the audit takes 0.8 m out); to 1.6 m, below 10 degrees under the line of
@@ -4540,6 +4542,9 @@ const FIELD_LENS_BELOW_TAN = Math.tan(10 * Math.PI / 180);
 /** How far ahead of a sideways- or forward-looking lens a roof net is slotted open (m); a fleet field net's (fix round). */
 const LENS_SLOT_M = 0.8;
 const FIELD_LENS_SLOT_M = 0.4;
+/** (264; the Strv 121's Barracuda cover on its 2A4 turret) a fitted cover is cut round each pane, not slotted ahead of it:
+ * the field net's slots took the whole front of the roof round the periscope ring, and the drapes under it with it. */
+const COVER_LENS_SLOT_M = 0.12;
 /** Half the side of an open cradle's receiving column the suit keeps clear (m; the receipt rays 2.5 cm round each station). */
 const CRADLE_KEEP_M = 0.08;
 /** How far a smoke discharger's grenade line is kept clear (m), and its half-width at the mouth (m). */
@@ -4795,6 +4800,11 @@ interface FieldClearance {
   fieldLinesOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /** The plan squares [x0, x1, z0, z1] (owner frame) no part of a garnish card may cross: an open cradle's columns. */
   keepColumns(owner: GhillieOwner): ReadonlyArray<readonly [number, number, number, number]>;
+  /**
+   * (264; the Strv 121's Barracuda cover on its 2A4 turret) A fitted cover's point clear of every pane itself (it lies
+   * on the plate a centimetre off it, in no lens's view but the pane's own): the cloth cones took its left wall's drape.
+   */
+  paneClear(owner: GhillieOwner, p: readonly number[]): boolean;
   /** A cloth point standing off its armour outside every lens's view (a shorter, wider cone than the garnish's). */
   lensClear(owner: GhillieOwner, p: readonly number[]): boolean;
   /** The lowest a turret drape's hem may hang at turret-local (x, z). */
@@ -5417,6 +5427,10 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
     fieldLinesOk,
     keepColumns: (owner) => (owner === 'turret'
       ? cradleStations.map(([sx, , sz]) => [sx - CRADLE_KEEP_M, sx + CRADLE_KEEP_M, sz - CRADLE_KEEP_M, sz + CRADLE_KEEP_M] as const) : []),
+    paneClear(owner, p) {
+      const [parent, others] = ownerOf(owner);
+      return !inLine(lenses[owner] ??= offered[owner] ?? ownerLenses(parent, others), p, COVER_PANE_REACH_M, 0.08, 0, true);
+    },
     lensClear(owner, p) {
       const [parent, others] = ownerOf(owner);
       return !inLine(lenses[owner] ??= offered[owner] ?? ownerLenses(parent, others), p, CLOTH_LENS_REACH_M, 0.06, CLOTH_LENS_TAN, true);
@@ -5678,8 +5692,10 @@ function* addGhillieOwner(
   // netting-proper: the vehicle's national markings stay readable through a field suit: its net is cut round each and its
   // garnish keeps out of their sight
   const markRays = isFieldNet(cfg) ? markingRaysOf(P, parent) : null;
+  const fittedCover = cfg.style !== 'leafy';
   const coverOk = clearance
-    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p))
+    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p)
+      && (fittedCover ? clearance.paneClear(owner, p) : clearance.lensClear(owner, p) || lying(p))
       && (!markRays || !markRays.clothHides(p)) : undefined;
   const coverEdgesOk = clearance
     ? (a: readonly number[], b: readonly number[], c: readonly number[]): boolean => {
@@ -5721,7 +5737,7 @@ function* addGhillieOwner(
       for (const dir of [1, -1]) {
         // the fix round ("roof coverage ... with clear holes for sights"): a field net is slotted just past the pane, the
         // cloth beyond lies on the plate under the view (its lens rule) and the garnish keeps the view itself clear
-        const L = isFieldNet(cfg) ? FIELD_LENS_SLOT_M : LENS_SLOT_M;
+        const L = cfg.style !== 'leafy' ? COVER_LENS_SLOT_M : isFieldNet(cfg) ? FIELD_LENS_SLOT_M : LENS_SLOT_M;
         const fx = dir * nx / h, fz = dir * nz / h, w0 = 0.1, w1 = 0.1 + L * 0.4;
         slots.push([[cx - fz * w0, cz + fx * w0], [cx + fz * w0, cz - fx * w0],
           [cx + fx * L + fz * w1, cz + fz * L - fx * w1], [cx + fx * L - fz * w1, cz + fz * L + fx * w1]]);
