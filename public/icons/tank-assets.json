@@ -30445,9 +30445,9 @@
           {
             "name": "BTA-4 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 840,
-            "pen1000Mm": 780,
-            "pen2000Mm": 710
+            "pen100Mm": 880,
+            "pen1000Mm": 815,
+            "pen2000Mm": 740
           },
           {
             "name": "3BK29M HEAT",
@@ -53386,8 +53386,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 400,
-            "ceMm": 450,
+            "keMm": 800,
+            "ceMm": 900,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -56786,7 +56786,7 @@
         ]
       },
       "geometryHash": "dd927dbe",
-      "metadataHash": "e8996e8a",
+      "metadataHash": "2aa6115a",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": 0.0291
@@ -56894,24 +56894,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25828,
-          "sha256": "7d77533e24e620ab1c177b42e54bbb9b00b496cceb7db672ae648315c575ec32"
+          "bytes": 25680,
+          "sha256": "032537c26c57ac1ca30afc7ff0eb954b006b619f1e716c721828153fd4b85cd5"
         },
         "modulesSide": {
           "file": "bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20722,
-          "sha256": "8667b1fe32b20dc69ad87b48a57562ebf18dd99e3c72451afa5d48bfd8daf59b"
+          "bytes": 20580,
+          "sha256": "481b923dec59aef84fdaf9b78e5680afb793d0a392eda9fbe0c8fc688d424b56"
         },
         "crewSide": {
           "file": "bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17194,
-          "sha256": "0e036788d23e55e1acbc36f37717cded9760aee2965e532d54af642dcb31750d"
+          "bytes": 17116,
+          "sha256": "2e70bf24739b0e5db748c7fa96100827f959b1fce7d449dde4c45f029a7b0472"
         },
         "markings": {
           "file": "bm_oplot_m_markings.png",
@@ -56924,8 +56924,8 @@
         "technicalLabels": {
           "file": "bm_oplot_m_technical.json",
           "mime": "application/json",
-          "bytes": 5475,
-          "sha256": "d3e2a9751811b37d3365afc1a61ac61753d8fe0602cff3aa9f50962d7ffbf09f"
+          "bytes": 5466,
+          "sha256": "f4fc24feb67b208631e2e1b7cff1ec8bd7ead4a96b6f2c078d28740dbb011c51"
         }
       }
     },
@@ -56976,9 +56976,9 @@
           {
             "name": "BTA-4 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 840,
-            "pen1000Mm": 780,
-            "pen2000Mm": 710
+            "pen100Mm": 880,
+            "pen1000Mm": 815,
+            "pen2000Mm": 740
           },
           {
             "name": "3BK29M HEAT",
@@ -71361,8 +71361,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 400,
-            "ceMm": 450,
+            "keMm": 800,
+            "ceMm": 900,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -74773,7 +74773,7 @@
         ]
       },
       "geometryHash": "452ade3a",
-      "metadataHash": "360bcb28",
+      "metadataHash": "a88348cc",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0125
@@ -74881,24 +74881,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28958,
-          "sha256": "80b66c94da00dac883f76e4c78e744e67ee5f0819df3bfce9be09d84fcc785a6"
+          "bytes": 28780,
+          "sha256": "090784cf6e6b994bbdf3b9ca8dcb40cf947c403b14df488a0dca2b6f683d19a4"
         },
         "modulesSide": {
           "file": "bm_oplot_t_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26756,
-          "sha256": "2fb8616d970a9706f12d1a70f9d730e462a728b3b00a579877a3c77c78332d59"
+          "bytes": 26564,
+          "sha256": "0bfc8afe0260ecaf7373abae119c8d787e658bf7f070d57731652f94f559d7dc"
         },
         "crewSide": {
           "file": "bm_oplot_t_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24258,
-          "sha256": "ed52a582a41f7c10b2c9d9bf07e6f36bde19fad629b6c4b424374d63dc817eeb"
+          "bytes": 24022,
+          "sha256": "a182151fa1a628a214ec48b95c0e43ce862fa36f4d967c5a30eae0bdedcb0e8b"
         },
         "markings": {
           "file": "bm_oplot_t_markings.png",
@@ -74911,8 +74911,8 @@
         "technicalLabels": {
           "file": "bm_oplot_t_technical.json",
           "mime": "application/json",
-          "bytes": 5464,
-          "sha256": "07b02f3079e570873ac08b4cb7a291255233ab20146a6790dee23564fcfe252f"
+          "bytes": 5450,
+          "sha256": "e9b4a31da1a219ae6342f959bff091dc8647b5ef2f243317b9f70afff0809815"
         }
       }
     },
@@ -190756,8 +190756,8 @@
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 500,
-            "keMm": 560,
-            "ceMm": 750,
+            "keMm": 896,
+            "ceMm": 1200,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -190787,8 +190787,8 @@
             "hitboxId": "T02",
             "name": "turret_cheek_L",
             "physicalMm": 500,
-            "keMm": 560,
-            "ceMm": 750,
+            "keMm": 896,
+            "ceMm": 1200,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -190818,8 +190818,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 380,
-            "ceMm": 460,
+            "keMm": 608,
+            "ceMm": 736,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -191563,7 +191563,7 @@
         ]
       },
       "geometryHash": "aed325f2",
-      "metadataHash": "61081e98",
+      "metadataHash": "dc4fa591",
       "presentationAnchor": {
         "xM": 0.0019,
         "zM": 0.0227
@@ -191621,24 +191621,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26576,
-          "sha256": "ec6ab4911bb65c97b94f29c6e9d0f4b0945bc95f7b57409dc18ad66dcebad7a1"
+          "bytes": 26500,
+          "sha256": "286e37b2075818e6e6f2868b0207982a9ab37e17104fa68524c91a25ba65d80a"
         },
         "modulesSide": {
           "file": "k1a1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26442,
-          "sha256": "f0ed81574b5a42e5ce5c1950d40105676e17bed257a0144f0f6554ad4f3e24c5"
+          "bytes": 26444,
+          "sha256": "c41b6252342bf222944470c702a594bb2a4f8b70557b244ea4367f092c0327d3"
         },
         "crewSide": {
           "file": "k1a1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24444,
-          "sha256": "bda6d45f8751151d08b33b18077958536fc6075d80e1b9b7a5230f0103267a38"
+          "bytes": 24482,
+          "sha256": "a737c4179fba3ae20bdeaf48e8d616fff48267bdbb21b69503fdf94fd5d2ee2e"
         },
         "angle": {
           "file": "k1a1_angle.webp",
@@ -191699,8 +191699,8 @@
         "technicalLabels": {
           "file": "k1a1_technical.json",
           "mime": "application/json",
-          "bytes": 4603,
-          "sha256": "330e57a7bae7ca8fa3f75abc3dd72637c10249b356b05c9bac09c2db29cf6b68"
+          "bytes": 4604,
+          "sha256": "88a31f83a4f62caea36e25da71ef9966d06ef8f0a9e433aeba2571034e5a86a4"
         }
       }
     },
@@ -236224,8 +236224,8 @@
             "hitboxId": "T06",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 420,
-            "ceMm": 500,
+            "keMm": 294,
+            "ceMm": 350,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -236829,7 +236829,7 @@
         ]
       },
       "geometryHash": "b9916571",
-      "metadataHash": "2a696fca",
+      "metadataHash": "4162025a",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.0146
@@ -236855,7 +236855,7 @@
           "armorPaint": 12,
           "gunmetal": 10,
           "opticGlass": 3,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "wood": 1,
           "unclassified": 21,
           "gearShadow": 2,
@@ -236938,24 +236938,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24624,
-          "sha256": "cda97efa1a9fd5b6cc3eb0a08905c3cfda89f0fec9729a4eca4e15a4c551bac7"
+          "bytes": 24596,
+          "sha256": "54218cbd03927db574f1bffbeb2c23b3beefd7ff9c531de119935513c69dd7ff"
         },
         "modulesSide": {
           "file": "leo2_improved_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23984,
-          "sha256": "d0328e84c358c37c5e6a9a02dee4541bb6f26218c19bb0ebdc9b407d55c64e1f"
+          "bytes": 24016,
+          "sha256": "62936fabac503779d4053917a6cce71cd4684a81e7dcb1e57aa7d44468afb842"
         },
         "crewSide": {
           "file": "leo2_improved_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20768,
-          "sha256": "803aba805f48f8ab7445a2c6c6d97933108327af868fbf485b99e54037732dcf"
+          "bytes": 21748,
+          "sha256": "9db4a953ad2a4f303b05e3272b926661207fff0b0df7fabde4c8585c26bd5e68"
         },
         "markings": {
           "file": "leo2_improved_markings.png",
@@ -237635,8 +237635,8 @@
             "hitboxId": "T06",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 420,
-            "ceMm": 500,
+            "keMm": 714,
+            "ceMm": 850,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -238404,7 +238404,7 @@
         ]
       },
       "geometryHash": "95bcf8bf",
-      "metadataHash": "ace2b939",
+      "metadataHash": "2019fab1",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0699
@@ -238423,7 +238423,7 @@
           "wheelTire": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
-          "tireRubber": 2,
+          "tireRubber": 1,
           "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -238431,6 +238431,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 15,
           "gunmetal": 11,
+          "hullRubber": 1,
           "opticGlass": 3,
           "canvas": 4,
           "unclassified": 5,
@@ -238513,24 +238514,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29932,
-          "sha256": "c38f7c5f4280681ed6da9334a4947946e51de9e8cb6c10772b41cf110d293183"
+          "bytes": 28398,
+          "sha256": "c20dd1de6ca849380fb28b0c30a6a190798a8fde4c8cb085d27f5b6b98f0adb0"
         },
         "modulesSide": {
           "file": "leo2_revolution_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30186,
-          "sha256": "2c58c3708e70c21b907c3212d76d4f496469895dc48bc147eb2570ccba270e12"
+          "bytes": 29558,
+          "sha256": "90c8060293c9045d7e1138509d4bcd4ed02b554e5f5d6b57a9c4e598d7c60f03"
         },
         "crewSide": {
           "file": "leo2_revolution_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28566,
-          "sha256": "c0a52c00e13100aad29ee5b366b01e0c811c39b03ce16a774094ebf63cd89641"
+          "bytes": 28022,
+          "sha256": "9ff56856117264d5407c4b2ad381f390ae5f4fa9e120f88f40857cb4b65b45b1"
         },
         "markings": {
           "file": "leo2_revolution_markings.png",
@@ -239213,8 +239214,8 @@
             "hitboxId": "T06",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 420,
-            "ceMm": 500,
+            "keMm": 714,
+            "ceMm": 850,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -240042,7 +240043,7 @@
         ]
       },
       "geometryHash": "6cfb5d36",
-      "metadataHash": "ae30bd06",
+      "metadataHash": "f27b2a9e",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.1004
@@ -240071,7 +240072,7 @@
           "gunmetal": 12,
           "fittingPaint": 3,
           "opticGlass": 2,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "unclassified": 10,
           "machineGun": 4
         }
@@ -240102,8 +240103,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24490,
-          "sha256": "27cf581ba8be2b0d34882d2e43e6936c17d3355c99e64e5c3bfa2460df5573f1"
+          "bytes": 24428,
+          "sha256": "c4dc4e58ae3985625d99a0064bc64fb0078529a23f6e7733587d4b34e7426943"
         },
         "modulesSide": {
           "file": "leo2_revolution_proto_modules_side.webp",
@@ -240118,8 +240119,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21328,
-          "sha256": "e272327f0f38811d068f5bdf1f4f9910246e3354c5fe40603533744eae8ddaaf"
+          "bytes": 21304,
+          "sha256": "bbe14a97141035169a1472d21189d9d5b29e29bbad2759925ed93dbb3ff45954"
         },
         "angle": {
           "file": "leo2_revolution_proto_angle.webp",
@@ -241753,8 +241754,8 @@
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 600,
-            "keMm": 378,
-            "ceMm": 630,
+            "keMm": 420,
+            "ceMm": 700,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -241784,8 +241785,8 @@
             "hitboxId": "T02",
             "name": "turret_cheek_L",
             "physicalMm": 600,
-            "keMm": 378,
-            "ceMm": 630,
+            "keMm": 420,
+            "ceMm": 700,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -241815,8 +241816,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 315,
-            "ceMm": 378,
+            "keMm": 350,
+            "ceMm": 420,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -242286,7 +242287,7 @@
         ]
       },
       "geometryHash": "92ce9520",
-      "metadataHash": "6febeb4b",
+      "metadataHash": "6e74d3ca",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.0146
@@ -242396,24 +242397,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22690,
-          "sha256": "4eddef9f117a9487461da89290e3c471f6eba243d0e74003de37e5fbdad34353"
+          "bytes": 22564,
+          "sha256": "6cf60536093d0e13bea7ba0d91e2932335b64050a5332e64d93862b9a0966bd7"
         },
         "modulesSide": {
           "file": "leo2a3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26284,
-          "sha256": "ecda0b90148a3b4cedf4d4ade06153f7878bae8c0bb79a541c99602e09292347"
+          "bytes": 26298,
+          "sha256": "0e83558afbecbb281dcddb8fa08a838f8f4271ee4862b362223f32c57d298bf1"
         },
         "crewSide": {
           "file": "leo2a3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23764,
-          "sha256": "63f447e06298aeb62af022794b9de260d83e4d67f9c9643ebe3750c5d3fb6301"
+          "bytes": 23670,
+          "sha256": "ccb522ad03e3932e3e7867edc823d337b8fe508ca1e2ab338a50ffb725a5e815"
         },
         "markings": {
           "file": "leo2a3_markings.png",
@@ -242427,7 +242428,7 @@
           "file": "leo2a3_technical.json",
           "mime": "application/json",
           "bytes": 4379,
-          "sha256": "ac49e02bfec8b0a062c0d2aa6a21b4830b326e62a1bfd5da8c0e87f9fd55bcb1"
+          "sha256": "b4e26833deb7938d408f3bbff3d316f1d8db424d9b6ab83676282661f34e3e6c"
         }
       }
     },
@@ -247615,8 +247616,8 @@
             "hitboxId": "T06",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 533,
-            "ceMm": 635,
+            "keMm": 293,
+            "ceMm": 349,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -251570,7 +251571,7 @@
         ]
       },
       "geometryHash": "2fd4d273",
-      "metadataHash": "e0cf372e",
+      "metadataHash": "2f301f4f",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": 0.0413
@@ -251598,7 +251599,7 @@
           "armorPaint": 11,
           "gunmetal": 13,
           "opticGlass": 2,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "wood": 1,
           "unclassified": 20,
           "gearShadow": 2,
@@ -251680,24 +251681,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25396,
-          "sha256": "7821c42b214115449b64f5b56cc454b2f90ec89b2a46cf71259bdc3b34b8a79c"
+          "bytes": 25352,
+          "sha256": "93dfde7eac4bbaf64c2be37f1df2624939805966eb77cd89989e2070a943b9ed"
         },
         "modulesSide": {
           "file": "leo2a4_otco_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24292,
-          "sha256": "4387b2da8cc0bbe71616a7da7564910c16d067a83bc5c2c5b849b491dfcb4bfd"
+          "bytes": 24198,
+          "sha256": "4bb92a945dd8344eac2779b7e6270938545566c20074f0297adf8cc39b3112bb"
         },
         "crewSide": {
           "file": "leo2a4_otco_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21666,
-          "sha256": "d8e159b237491d3776466fdb5a1f425fc5d63c80339870c27d8f3420083a71eb"
+          "bytes": 21652,
+          "sha256": "8848c89d636d6abd6312cf6c8c6ed740cfadd718d9cfc4ad8b2fecf5eafdf952"
         },
         "markings": {
           "file": "leo2a4_otco_markings.png",
@@ -255630,8 +255631,8 @@
             "hitboxId": "T04",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 524,
-            "ceMm": 624,
+            "keMm": 288,
+            "ceMm": 343,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -256409,7 +256410,7 @@
         ]
       },
       "geometryHash": "e0b376c4",
-      "metadataHash": "0e0f234f",
+      "metadataHash": "6aa339f0",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0101
@@ -256439,7 +256440,7 @@
           "canvas": 6,
           "fittingPaint": 25,
           "armorPaint": 14,
-          "tireRubber": 2,
+          "hullRubber": 2,
           "opticGlass": 2,
           "wood": 1,
           "unclassified": 21,
@@ -256520,24 +256521,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30982,
-          "sha256": "fb60a9c4b78a7f8e11646156b923eddfcca4b7c3d4681b679fde28f6aadd91a7"
+          "bytes": 31038,
+          "sha256": "a50fdd7c4b2414237fd00f746c2ffef23a40e72b21d4ce1df14cffbb3d4b0c1a"
         },
         "modulesSide": {
           "file": "leo2a4m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30018,
-          "sha256": "2492d0e77cd87248e28fb55f2631778bd4c81beab73dad0ef5c44eabe1cde919"
+          "bytes": 30004,
+          "sha256": "02b0b4768658c15dcc84ce37c2cc11e80b9bf53e25c9117a088d22a55092d602"
         },
         "crewSide": {
           "file": "leo2a4m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27242,
-          "sha256": "599c35c13eb67150b9c06358784a2b446b1e26ee80cdd607e3051aae8c22d510"
+          "bytes": 27252,
+          "sha256": "aba6b890e208bdab0923fc0eba791c8676623d7f6b6a83efa0cba4a411da4362"
         },
         "markings": {
           "file": "leo2a4m_markings.png",
@@ -278385,8 +278386,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 301,
-            "ceMm": 387,
+            "keMm": 452,
+            "ceMm": 581,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -279185,7 +279186,7 @@
         ]
       },
       "geometryHash": "5dcd3ca8",
-      "metadataHash": "200770a2",
+      "metadataHash": "01465505",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": 0.0253
@@ -279212,7 +279213,7 @@
           "fittingPaint": 3,
           "armorPaint": 10,
           "gearShadow": 3,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "opticGlass": 2,
           "wood": 1,
           "unclassified": 20,
@@ -279295,24 +279296,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28386,
-          "sha256": "5cf7516ecc04698e8087e045ade213a8912e3060f28a7e3964854c893d495143"
+          "bytes": 28388,
+          "sha256": "f498d981ff8a4e9fdb38242326731d0341af74a917f5477c81f0dc90e0552f80"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32146,
-          "sha256": "81122956b5cae7606022393e1a7bd71c04e07e20a580e0be24cd5ad2a1e8f552"
+          "bytes": 31034,
+          "sha256": "5eeac534131fb336d0fc30fa0d1097d198e0affb5eea8a211f40f9bf7cf96914"
         },
         "crewSide": {
           "file": "m1a1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30222,
-          "sha256": "cfae2ee38054b19549bf2210c22a2f0df293a8e6edf819b0b09c35b28043d064"
+          "bytes": 30174,
+          "sha256": "5232e36f77014fc110ce816134f28799a7a79303df3f535af709844df7e8bbe2"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -298482,8 +298483,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 301,
-            "ceMm": 387,
+            "keMm": 602,
+            "ceMm": 774,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -299342,7 +299343,7 @@
         ]
       },
       "geometryHash": "073c5c7d",
-      "metadataHash": "7250e1c3",
+      "metadataHash": "56f091fb",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.2511
@@ -299454,24 +299455,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35234,
-          "sha256": "c12f80737add013017755af3d572ebd4a62d309d4e280d3c079121ee553d4ec7"
+          "bytes": 35180,
+          "sha256": "ab22d9e2ff23963235cf7058fc7411254b62292619d313cd2085783fa280a5a4"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36236,
-          "sha256": "4d299e2ae4efd81b3a87acd8f003d983f3c0d3d400d34a1c283b22e650d10d4f"
+          "bytes": 36212,
+          "sha256": "88c3822b0b75843d02f7671cf5d5507e2cb5c10d2964543d8740efdfa0e64760"
         },
         "crewSide": {
           "file": "m1a1ha_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33856,
-          "sha256": "03f1857dec8b1490639c2964130d3445d6f4e6b23b45b75347047822f9952601"
+          "bytes": 33828,
+          "sha256": "e262b804823541c7f86a1ef3e3dba462b0181d8a0e7d8ebd9719cd916d502fce"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
@@ -299485,7 +299486,7 @@
           "file": "m1a1ha_technical.json",
           "mime": "application/json",
           "bytes": 4624,
-          "sha256": "39c90c68e16618515395aa17ab3a34b2daaa63ddabe1f36b7bbcfc64b18da2a9"
+          "sha256": "c513caf8f43514e634928228f9065390b1fe00116cf6257682fb2a1baebd2909"
         }
       }
     },
@@ -774915,8 +774916,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 464,
-            "ceMm": 551,
+            "keMm": 384,
+            "ceMm": 456,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -777077,7 +777078,7 @@
         ]
       },
       "geometryHash": "5a220d79",
-      "metadataHash": "25c0eb65",
+      "metadataHash": "d8179ca0",
       "presentationAnchor": {
         "xM": -0.0007,
         "zM": -0.2656
@@ -777104,7 +777105,7 @@
           "wood": 1,
           "gunmetal": 9,
           "armorPaint": 11,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "opticGlass": 2,
           "unclassified": 17,
           "gearShadow": 1,
@@ -777187,24 +777188,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24812,
-          "sha256": "85dd166da911809801a663f79b06794b1081e1eb4482fa5c57b0088e33a99184"
+          "bytes": 24908,
+          "sha256": "c8ee0ff4be998897ad6d22d5276e62535af2333db26d01e432838a8fe2c8a26f"
         },
         "modulesSide": {
           "file": "pt64_tur_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23204,
-          "sha256": "137ae751d04ad2fddcda4a9b8b2959aabd3b702bf69fc48eaac4065b74a88f06"
+          "bytes": 23170,
+          "sha256": "1933e5e82d17302b5b651dcb9b1bc36d7a401d8353ffce3547d8619339b42d32"
         },
         "crewSide": {
           "file": "pt64_tur_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19972,
-          "sha256": "360994e8c92c2d0e982cbaa8aaf1c20ffe0761f16ecb02a9230c8fa5f2134f22"
+          "bytes": 20014,
+          "sha256": "9af8dc3e6078c5eac89b5dabcc11a757a6f2ee51123dbdd0db73b2f18b83469c"
         },
         "markings": {
           "file": "pt64_tur_markings.png",
@@ -867029,8 +867030,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 464,
-            "ceMm": 551,
+            "keMm": 384,
+            "ceMm": 456,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -870705,7 +870706,7 @@
         ]
       },
       "geometryHash": "77265408",
-      "metadataHash": "ecc350de",
+      "metadataHash": "d1755bc9",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.2118
@@ -870732,7 +870733,7 @@
           "wood": 1,
           "gunmetal": 9,
           "armorPaint": 11,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "opticGlass": 2,
           "unclassified": 19,
           "gearShadow": 1,
@@ -870814,24 +870815,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27454,
-          "sha256": "cdb19e416e284e6564eee040e29729194f8129cd8d7896461b6e8eb73db558f3"
+          "bytes": 27448,
+          "sha256": "29062ce188b0e60fe4de051d6df31348f30a3fbd540618539c29fa44fd46382b"
         },
         "modulesSide": {
           "file": "t64b1v_2022_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24592,
-          "sha256": "68891d78982eb75e3df6e66bc6f91ad019afae39a8bc1903315f0471d439e8d0"
+          "bytes": 24604,
+          "sha256": "eca84ed14cbee010e125a8493411ea6927cb9d669d5256dca55caa226e2e12c4"
         },
         "crewSide": {
           "file": "t64b1v_2022_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22580,
-          "sha256": "9145a0551088c7e3826a01d2ca51f46521aeabeb2494fbf2c3a505966e5f1828"
+          "bytes": 22596,
+          "sha256": "0c9574e8d010e3a9d79faac836fdb742a3b02b1fd197a66ba4a610e3b5052b6c"
         },
         "markings": {
           "file": "t64b1v_2022_markings.png",
@@ -873403,8 +873404,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 464,
-            "ceMm": 551,
+            "keMm": 384,
+            "ceMm": 456,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -875281,7 +875282,7 @@
         ]
       },
       "geometryHash": "4eaa1da7",
-      "metadataHash": "53ab98f2",
+      "metadataHash": "527b0fd3",
       "presentationAnchor": {
         "xM": 0.0013,
         "zM": -0.2498
@@ -875308,7 +875309,7 @@
           "wood": 1,
           "gunmetal": 9,
           "armorPaint": 11,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "opticGlass": 2,
           "unclassified": 15,
           "gearShadow": 1,
@@ -875391,24 +875392,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25614,
-          "sha256": "f308c1a80135f3b06ee22cafa15e12d84d876f03c12f8c95d508abef9991ead8"
+          "bytes": 25656,
+          "sha256": "2f12abb0ca59afae156804c6e122f849abf4b2a30c8943efbb8d3bafb0a4eb24"
         },
         "modulesSide": {
           "file": "t64bm1m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23774,
-          "sha256": "004f0c6c654a75f95f58c8731fa966deab52993b14a674cab5002a7b2852e582"
+          "bytes": 23790,
+          "sha256": "b5adcc7a2e917582ac5121d626e6645c7e8f4bbff906a7921de7abc85dba6b96"
         },
         "crewSide": {
           "file": "t64bm1m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20858,
-          "sha256": "2650d154ad6fa9b0105be8892202015724cc4ce40cf53022e3650a581d77ab2e"
+          "bytes": 20890,
+          "sha256": "0da7a4524d86a4816309dd72776c9e2251b69dd0eee3a448e91690ac2ca8f319"
         },
         "markings": {
           "file": "t64bm1m_markings.png",
@@ -903646,8 +903647,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 464,
-            "ceMm": 551,
+            "keMm": 384,
+            "ceMm": 456,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -915017,7 +915018,7 @@
         ]
       },
       "geometryHash": "c75d434f",
-      "metadataHash": "3a9677af",
+      "metadataHash": "5609bea6",
       "presentationAnchor": {
         "xM": 0.0093,
         "zM": -0.1332
@@ -915076,24 +915077,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25624,
-          "sha256": "da3365104c34302f352191f3c1da0ce6e9564a41d2ad0df94cf30e855097262e"
+          "bytes": 25794,
+          "sha256": "e60441e9fa062436785ca05fc50e58196b6996e93900ad6d39bb4dbdba26407c"
         },
         "modulesSide": {
           "file": "t64bv_donbas_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28042,
-          "sha256": "0166c433b69e516d545573bcb3485a8a04d098b71300258fa1466e985ab46578"
+          "bytes": 28436,
+          "sha256": "790eeb825b0840fae2a0b473b35a858b770ef665976acec1fe17953ff27feeb5"
         },
         "armorSide": {
           "file": "t64bv_donbas_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31116,
-          "sha256": "4d36940c02381d3e64693c0a246373bcd133e47ad9c0069197d13e83929ab37b"
+          "bytes": 30688,
+          "sha256": "6df5374d14fbe746b10348cafbe0cde8605db6a684d4944d7ad8b7229078c5db"
         },
         "angle": {
           "file": "t64bv_donbas_angle.webp",
@@ -1006897,8 +1006898,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 320,
-            "ceMm": 380,
+            "keMm": 464,
+            "ceMm": 551,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1009316,7 +1009317,7 @@
         ]
       },
       "geometryHash": "90b7561d",
-      "metadataHash": "e0b22006",
+      "metadataHash": "5772ff95",
       "presentationAnchor": {
         "xM": 0.0109,
         "zM": -0.1283
@@ -1009373,24 +1009374,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27450,
-          "sha256": "225436942814b9f6ff829cc948028a7b997d2ebb463ebb7e4b73cceb094c1549"
+          "bytes": 27550,
+          "sha256": "cd22f260036f175dbc5c2392fd7dd58c741ca919a603a2e084eeea23c968ebe2"
         },
         "modulesSide": {
           "file": "t72b3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24958,
-          "sha256": "3533b84c50b8ec403893d9b7c025534e7be253f33b4d2db922cc0f9ffc9c0cbd"
+          "bytes": 24912,
+          "sha256": "9e5278b3f34d75e43c53fb9e88ac4332cd591840ee0bc476eb0fb2ef29051308"
         },
         "crewSide": {
           "file": "t72b3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22224,
-          "sha256": "d057d2959f9eac510caa49f2f0408bbceef3f25c7ae71dfe18802886eb80b438"
+          "bytes": 21420,
+          "sha256": "1a72b771cdc75a7b46014a9ea218d8673a5c6cc5b5ebf7d10793057c285d87de"
         },
         "angle": {
           "file": "t72b3_angle.webp",
@@ -1653706,8 +1653707,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 300,
-            "keMm": 464,
-            "ceMm": 551,
+            "keMm": 384,
+            "ceMm": 456,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1659485,7 +1659486,7 @@
         ]
       },
       "geometryHash": "fe2b6809",
-      "metadataHash": "047cf1c2",
+      "metadataHash": "087a6463",
       "presentationAnchor": {
         "xM": 0.0108,
         "zM": -0.1259
@@ -1659600,16 +1659601,16 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24360,
-          "sha256": "1b3174e9a9ea0ee7b979df7766f4473a1e1e899328748c705cbe12af8bb256ee"
+          "bytes": 24344,
+          "sha256": "3b973b591eb71b9301681303cc7a5916bec82832b9ec667c63fcf8fa69619b69"
         },
         "crewSide": {
           "file": "t72m1_jaguar_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20974,
-          "sha256": "49663d687d43072964fe74cc02a68acd17beee384646850639e615e5dec27fee"
+          "bytes": 20946,
+          "sha256": "f1eb341d36168f4dc5fdc52f73905f67462db9be01212dc3205c2e05548b6a6b"
         },
         "markings": {
           "file": "t72m1_jaguar_markings.png",
@@ -1667112,9 +1667113,9 @@
           {
             "name": "3BM46 Svinets",
             "type": "APFSDS",
-            "pen100Mm": 672,
-            "pen1000Mm": 611,
-            "pen2000Mm": 550
+            "pen100Mm": 760,
+            "pen1000Mm": 691,
+            "pen2000Mm": 622
           },
           {
             "name": "3BK29M HEAT",
@@ -1668428,8 +1668429,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 350,
-            "ceMm": 400,
+            "keMm": 508,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1669731,7 +1669732,7 @@
         ]
       },
       "geometryHash": "039aede8",
-      "metadataHash": "c76762fd",
+      "metadataHash": "8e2fc087",
       "presentationAnchor": {
         "xM": -0.0018,
         "zM": -0.0813
@@ -1669796,16 +1669797,16 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23148,
-          "sha256": "9acce9f84b81fdb19c660312dc4f955e6707a79fbeadce8078f76d35e9f1b59a"
+          "bytes": 23164,
+          "sha256": "576a15b8eca3425262740c57c18e3991b85f6908b90f636e3e1332535829f0b9"
         },
         "crewSide": {
           "file": "t80u_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20410,
-          "sha256": "01cd6c46c1b299767c7aaa92a220bd5899da8dcdbebd1c0ded20666c0f3755c5"
+          "bytes": 20414,
+          "sha256": "e545d75ae38ec3a7ebfdfe2b8d1eee4b99256bb94eace8dea36111f660509536"
         },
         "angle": {
           "file": "t80u_angle.webp",
@@ -1873963,9 +1873964,9 @@
           {
             "name": "3BM46 Svinets",
             "type": "APFSDS",
-            "pen100Mm": 672,
-            "pen1000Mm": 611,
-            "pen2000Mm": 550
+            "pen100Mm": 760,
+            "pen1000Mm": 691,
+            "pen2000Mm": 622
           },
           {
             "name": "3BK29M HEAT",
@@ -1875279,8 +1875280,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 350,
-            "ceMm": 400,
+            "keMm": 508,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1876594,7 +1876595,7 @@
         ]
       },
       "geometryHash": "1fa43ec0",
-      "metadataHash": "f58d8c3d",
+      "metadataHash": "b27bdd97",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": -0.081
@@ -1876709,16 +1876710,16 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23506,
-          "sha256": "d032dde0ec847bcc87c523d73fbcf75b457c2cce298a8d752d25e095a6037a84"
+          "bytes": 23502,
+          "sha256": "e0aae455f68b0eaccf6c3d3f78b02e09087888d832de2f37d74f271905ac17a0"
         },
         "crewSide": {
           "file": "t80uk_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20260,
-          "sha256": "cd28c8d602e309a6083baf72caf18f8023987530c4166446e5362b7237cbc186"
+          "bytes": 20292,
+          "sha256": "abb296c2895b93064ffb35ca9cc7a07a7f3b1921993aecf2b40296a2af1e41d9"
         },
         "markings": {
           "file": "t80uk_markings.png",
@@ -1876781,9 +1876782,9 @@
           {
             "name": "3BM46 Svinets",
             "type": "APFSDS",
-            "pen100Mm": 672,
-            "pen1000Mm": 611,
-            "pen2000Mm": 550
+            "pen100Mm": 760,
+            "pen1000Mm": 691,
+            "pen2000Mm": 622
           },
           {
             "name": "3BK29M HEAT",
@@ -1880719,8 +1880720,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 350,
-            "ceMm": 400,
+            "keMm": 508,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1888041,7 +1888042,7 @@
         ]
       },
       "geometryHash": "2222d54a",
-      "metadataHash": "d31b36c7",
+      "metadataHash": "b375e2e5",
       "presentationAnchor": {
         "xM": -0.0215,
         "zM": 0.0288
@@ -1888066,7 +1888067,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 10,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 7,
           "wood": 1,
           "canvas": 5,
@@ -1888150,24 +1888151,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36960,
-          "sha256": "fa227e17770cc0ae2d28218e0bdb517cfdb29ce5a9c17cd8faed08f368cbc2a2"
+          "bytes": 37444,
+          "sha256": "95c553eb9fd460f87f676ce4125e79fed8b53a5598436dd4dcd47d894fc7dcf0"
         },
         "modulesSide": {
           "file": "t84_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34432,
-          "sha256": "080e57a22f5afd208c20b6c8858c474925d1bfd9f2bf69f5d825ea68a925bee6"
+          "bytes": 35122,
+          "sha256": "95972dc3e20a7fb40b777468197739e9072810f7b81f546679e12b470a977031"
         },
         "crewSide": {
           "file": "t84_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31394,
-          "sha256": "d77a66d2bf938c426d10e39b8a637c572f3e1228103648d0f1e1e3d08b487fd9"
+          "bytes": 31930,
+          "sha256": "cff3712f2e73dc59d569cf2b2254d20fc865203e6d53b26b5d9da4bc6e390221"
         },
         "markings": {
           "file": "t84_markings.png",
@@ -1888230,9 +1888231,9 @@
           {
             "name": "3BM42 Mango APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 611,
-            "pen1000Mm": 556,
-            "pen2000Mm": 500
+            "pen100Mm": 760,
+            "pen1000Mm": 691,
+            "pen2000Mm": 622
           },
           {
             "name": "3BK29 HEAT",
@@ -1896043,8 +1896044,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 392,
-            "ceMm": 448,
+            "keMm": 568,
+            "ceMm": 650,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1897819,7 +1897820,7 @@
         ]
       },
       "geometryHash": "05691090",
-      "metadataHash": "6ed14fec",
+      "metadataHash": "dd9f761c",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0853
@@ -1897925,24 +1897926,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25032,
-          "sha256": "3759405d11d2a25b9b06abd4101dd68d9ec93cf38d73e607de25f38b906bc12d"
+          "bytes": 24972,
+          "sha256": "a57c1e99d7fc60ed6e47ec692692a68d5d3e8921aeafbcc953f9cac946d580b8"
         },
         "modulesSide": {
           "file": "t84bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23670,
-          "sha256": "bb8f85ce0e9a19f2189fb92da5644a92fbb7b68d7d1131e06da2ceade3ae9829"
+          "bytes": 23686,
+          "sha256": "070d0312c660cb445ffc2c4954f4cb54633019a994d1e445bc42b55a190f4b8e"
         },
         "crewSide": {
           "file": "t84bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20420,
-          "sha256": "fcdf84400d5c141c06a2f29677fc7d7a9e563ab548dff8f11cd31853d7897325"
+          "bytes": 20604,
+          "sha256": "03447e1c703ea9e885070ba63fa79dcf02337ec6073948a4972766d35fe6ec8f"
         },
         "markings": {
           "file": "t84bm_oplot_m_markings.png",
@@ -1897956,7 +1897957,7 @@
           "file": "t84bm_oplot_m_technical.json",
           "mime": "application/json",
           "bytes": 5324,
-          "sha256": "d2843509f0aec7048f99e7876522869a6ec69bfe6d723715afbe07a1db5199d3"
+          "sha256": "0fd64bd5ae0087f64c0803c33904fa1bb87a9e8443d2334e8f1d136eb17a9bf0"
         }
       }
     },
@@ -2256395,8 +2256396,8 @@
             "hitboxId": "T13",
             "name": "mantlet",
             "physicalMm": 380,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 266,
+            "ceMm": 315,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -2257107,7 +2257108,7 @@
         ]
       },
       "geometryHash": "15e8e76c",
-      "metadataHash": "ed1d9c01",
+      "metadataHash": "43276120",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.4323
@@ -2257136,7 +2257137,7 @@
           "armorPaint": 16,
           "canvas": 4,
           "wood": 4,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "unclassified": 22,
           "gearShadow": 2,
           "machineGun": 5
@@ -2257216,24 +2257217,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22496,
-          "sha256": "72d390390d6ee906f8ed9ac1f58674aefeacadf3e893eda04e9a9f8c4b212355"
+          "bytes": 22518,
+          "sha256": "ab1e6dfad2d2ada1e4224c8d597667c68389e3a426a927029c9fb23d3262f8fa"
         },
         "modulesSide": {
           "file": "vt4a1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21660,
-          "sha256": "371d17b9cd2a1323e88395d9bf25200fd95391d7354facf09a4c37506564cea0"
+          "bytes": 21586,
+          "sha256": "824d058fa0279239d08e0ad39b09695dc1b87d666100284620ba47e14b57ddd8"
         },
         "crewSide": {
           "file": "vt4a1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18836,
-          "sha256": "ceda8829bed2b02d6bb9157d46ad18fa6a451edbc61eb30ca452eacb8ae4c959"
+          "bytes": 18122,
+          "sha256": "82e72550cbe4ca89eb14f3db83e139dc14ba9d4f428692eec2e52d12872f4a4e"
         },
         "markings": {
           "file": "vt4a1_markings.png",
