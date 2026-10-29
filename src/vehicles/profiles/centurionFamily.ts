@@ -15,6 +15,7 @@ import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSol
 import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -1303,6 +1304,8 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
     P.add('turretDark', box(0.05, 0.05, 0.40), s * 0.80, 0.45, -1.90);
     P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, 0.75, 0, 0), s * 0.80, 0.62, -1.92);
   }
+  // the drone dock's two bars over the basket's left half (missionAttachmentReceiver.ts): the roof guns sweep the roof
+  addMissionAttachmentReceiver(P, 'shot_kal');
   // jerrycan cage: a welded bar frame on two brackets off the casting
   const cx = -1.08, cz = -1.50, w = 0.30, d = 0.52, h = 0.52, y0 = 0.33;
   for (const [dx, dz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
