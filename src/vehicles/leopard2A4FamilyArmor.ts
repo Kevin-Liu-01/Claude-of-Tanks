@@ -42,10 +42,12 @@ export const LEO2A4_TURRET = Object.freeze({
   bevelZ: 1.45,
   faceZ: 1.65,
   faceTopY: 0.61,
-  /** The faces lean back this much from their foot to their top. */
-  faceRakeM: 0.03,
+  /** The cheeks' "slight arrowhead" (the owner's, with the 262 early-Leopard turret, 2026-10-28: "if you look top down, the
+   *  chheeks are at a slight slope, like \\ / but not extreme"): their vertical faces swept back 6 degrees in plan from the
+   *  slot's edge toward their outer ends; the mantlet stays square to the bore. */
+  faceSweepDeg: 6,
   /** The gun slot between the cheeks, filled by the wide flat mantlet (about 40 % of the front, as photographed). */
-  slotHalfWidthM: 0.50,
+  slotHalfWidthM: 0.475,
   /** The 2A6 X's core walls (the turret is wider right of the gun) and the faces' outer edges. */
   wallRightM: 1.2742,
   wallLeftM: 1.1769,
@@ -66,9 +68,14 @@ export const LEO2A4_TURRET = Object.freeze({
   rearFloorY: 0.25,
   /** The mantlet's face in the gun's frame, 3 cm behind the cheeks' faces. */
   mantletFaceZ: 0.20,
-  /** The EMES 15 sight's window: a pocket cut through the right cheek's upper face and bevel (x centre, half-width, its
-   *  foot, the block's top), open forward and upward back to the glass at `pocketZ`. */
-  emes: Object.freeze({ x: -0.72, halfW: 0.14, y0: 0.38, y1: 0.74, pocketZ: 1.42 }),
+  /** The EMES 15 sight's notch: cut through the right cheek's upper face and bevel (x centre, half-width, its sill, the
+   *  block's top), open forward and upward back to the sight head's face at `pocketZ`; 0.44 m wall to wall (the 262 lane's
+   *  measure from three photographs: 441, 428 and 446 mm). */
+  emes: Object.freeze({ x: -0.72, halfW: 0.22, y0: 0.42, y1: 0.74, pocketZ: 1.40 }),
+  /** The 2A6-look front (profiles/leopard2A4Wedge.ts: the 2A6 X's wedges compressed ahead of the trunnion): its tip and
+   *  shoulder stations, the wedges' inner and shoulder half-widths, the side modules' outer half-widths. */
+  wedge: Object.freeze({ tipZ: 2.75, shoulderZ: 2.187, innerLeft: 0.261, innerRight: 0.199, shoulderLeft: 1.177,
+    shoulderRight: 1.274, broadLeft: 1.394, broadRight: 1.491, rootZ: 1.095 }),
   /** The commander's ring (right) and the loader's (left): the 2A6 X's measured rings [x, z, radius, height]. */
   commander: Object.freeze([-0.6221, -0.0401, 0.31935, 0.164] as const),
   loader: Object.freeze([0.53145, -0.01375, 0.37077, 0.102] as const),
@@ -93,6 +100,17 @@ export const LEOPARD2A4_FAMILY_GUN = Object.freeze({
   leo2a4: 'L44', leo2a4_v: 'L44', leo2a4m: 'L44', leo2a4m_can: 'L44', leo2a4_otco: 'L55', leo2_improved: 'L55',
 } as const satisfies Record<string, Leopard2A4Gun>);
 export type Leopard2A4FamilyId = keyof typeof LEOPARD2A4_FAMILY_GUN;
+
+/**
+ * The owner, 2026-10-28: "we can still have 2a4s that use this squarish turret that doesnt look like 2a6, but it should be
+ * evenly split between the 2a4 squares vs 2a4 modern upgraded variants that look like 2a6s". The plain 2A4, the 2A4 V and
+ * the 2A4M CAN (whose real appliqué is bolted over the square front) keep the 2A4's block; the 2A4M (the 2A4 V with the
+ * field-modernisation kit), the OTCO (the ERA and ISAF fit) and the Leopard 2 Improved (the improved Leopard 2 the wedge
+ * came from) carry the 2A6-look wedge front.
+ */
+export const LEOPARD2A4_FAMILY_FRONT = Object.freeze({
+  leo2a4: 'block', leo2a4_v: 'block', leo2a4m_can: 'block', leo2a4m: 'wedge', leo2a4_otco: 'wedge', leo2_improved: 'wedge',
+} as const satisfies Record<Leopard2A4FamilyId, 'block' | 'wedge'>);
 export const LEOPARD2A4_FAMILY_IDS = Object.freeze(Object.keys(LEOPARD2A4_FAMILY_GUN) as Leopard2A4FamilyId[]);
 
 export const leopard2A4BarrelM = (gun: Leopard2A4Gun): number =>
@@ -114,6 +132,8 @@ function carry(geometry: ArmorPlate, name: string, v: PlateValues): ArmorPlate {
 /** How a vehicle's own plates move onto the construction. */
 export interface Leopard2A4EnvelopeOptions {
   readonly gun: Leopard2A4Gun;
+  /** The square 2A4 block or the 2A6-look wedge front (LEOPARD2A4_FAMILY_FRONT). */
+  readonly front: 'block' | 'wedge';
   /** How much deeper the fore skirt blocks hang than the aft run (the hull's own option). */
   readonly foreSkirtDropM: number;
   /** Plates the vehicle's kit seats on drawn surfaces of its own (ERA fields, appliqué layers), keyed by name. */
@@ -179,7 +199,8 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
   }
   // the turret: the cheek faces either side of the gun slot, the 2A6/2A5 frontal layers inside the block behind them,
   // the EMES 15 window's recess (right), the mantlet, the walls, the rear plate and the roof
-  const gy = T.gunLocal[1], mz = T.gunLocal[2] + T.mantletFaceZ, top = T.blockTopY - 0.01;
+  // the mantlet plate on the slot's face (the 262 lane: on the mantlet's own face it squeezed every plate onto the envelope)
+  const gy = T.gunLocal[1], mz = T.faceZ, top = T.blockTopY - 0.01;
   const turretPlates: ArmorPlate[] = [
     // the cheek plates lean from the faces' foot to the bevel's top edge (the face and its bevel, one plane each side)
     carry(seated('turret_cheek_R', chR('turret_cheek_R', 1, T.slotHalfWidthM, T.faceZ, T.faceLeftM, T.faceZ, T.floorY, top,
@@ -188,7 +209,7 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     carry(seated('turret_cheek_L', chL('turret_cheek_L', 1, T.slotHalfWidthM, T.faceZ, T.faceRightM, T.faceZ, T.floorY, top,
       T.faceZ - T.bevelZ)),
       'turret_cheek_L', need('turret_cheek_L')),
-    carry(plate('mantlet', 1, [-0.48, gy - 0.23, mz], [0.48, gy - 0.23, mz], [-0.48, gy + 0.30, mz], { gunFollow: true }),
+    carry(plate('mantlet', 1, [-0.465, gy - 0.23, mz], [0.465, gy - 0.23, mz], [-0.465, gy + 0.30, mz], { gunFollow: true }),
       'mantlet', need('mantlet')),
     carry(seated('turret_side_R', sR('turret_side_R', 1, T.wallLeftM, T.floorY, T.wallLeftM, T.roofY - 0.03, T.bustleEndZ,
       T.cornerZ)), 'turret_side_R', need('turret_side_R')),
@@ -197,31 +218,40 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     carry(rr('turret_rear', 1, T.rearLeftM, T.rearFloorY, T.rearZ, T.rearRoofY, T.rearZ), 'turret_rear', need('turret_rear')),
     carry(rf('turret_roof', 1, T.wallLeftM * 0.92, T.roofY, T.rearZ, T.blockZ), 'turret_roof', need('turret_roof')),
   ];
-  const emes = T.emes, ez = emes.pocketZ;
+  const emes = T.emes, ez = emes.pocketZ, wedge = o.front === 'wedge', W = T.wedge;
   const recess = take('turret_sight_recess');
   if (recess) {
-    turretPlates.push(carry(plate('turret_sight_recess', 1, [emes.x + emes.halfW, emes.y0, ez], [emes.x - emes.halfW, emes.y0, ez],
-      [emes.x + emes.halfW, emes.y1, ez]), 'turret_sight_recess', recess));
+    // the EMES 15's window: in the block's notch, or (the 2A6 look) the raised housing's canted window on the roof
+    turretPlates.push(carry(wedge
+      ? plate('turret_sight_recess', 1, [-0.50, 0.70, 1.72], [-0.94, 0.70, 1.72], [-0.50, 0.85, 1.70])
+      : plate('turret_sight_recess', 1, [emes.x + emes.halfW, emes.y0, ez], [emes.x - emes.halfW, emes.y0, ez],
+        [emes.x + emes.halfW, emes.y1, ez]), 'turret_sight_recess', recess));
   }
-  // the frontal layers the wedge-turret builds drew as separate solids, now the spaced layer inside the front block
+  // the frontal layers the old wedge-turret builds drew as separate solids: on the 2A6 look, the wedges' own faces; on the
+  // square block, the spaced layer inside it behind its faces
   const innerZ = (T.blockZ + T.faceZ) / 2;
-  const inner = (name: string, sx: number, yLo: number, yHi: number): ArmorPlate => {
+  const layer = (name: string, sx: number, yLo: number, yHi: number): ArmorPlate => {
+    if (wedge) {
+      const xi = sx > 0 ? W.innerLeft : W.innerRight, xo = sx > 0 ? W.shoulderLeft : W.shoulderRight;
+      return sx > 0
+        ? chR(name, 1, xi, W.tipZ, xo, W.shoulderZ, yLo, yHi, 0.10)
+        : chL(name, 1, xi, W.tipZ, xo, W.shoulderZ, yLo, yHi, 0.10);
+    }
     const xi = sx * T.slotHalfWidthM, xo = sx * (sx > 0 ? T.wallLeftM : T.wallRightM) * 0.96;
     return sx > 0
       ? plate(name, 1, [xi, yLo, innerZ], [xo, yLo, innerZ], [xi, yHi, innerZ])
       : plate(name, 1, [xo, yLo, innerZ], [xi, yLo, innerZ], [xo, yHi, innerZ]);
   };
-  for (const [name, sx, lo, hi] of [
-    ['turret_wedge_R', 1, T.floorY, top], ['turret_wedge_L', -1, T.floorY, top],
-  ] as const) {
+  const lo = wedge ? 0.12 : T.floorY, hi = wedge ? 0.60 : top;
+  for (const [name, sx] of [['turret_wedge_R', 1], ['turret_wedge_L', -1]] as const) {
     const v = take(name);
-    if (v) turretPlates.push(carry(inner(name, sx, lo, hi), name, v));
+    if (v) turretPlates.push(carry(layer(name, sx, lo, hi), name, v));
   }
   for (const name of plates.keys()) {
     const m = /^turret_chevron_([LR])_(upper|lower)(?:_\d+)?$/.exec(name);
     if (!m) continue;
-    const sx = m[1] === 'R' ? 1 : -1, mid = (T.floorY + top) / 2;
-    turretPlates.push(carry(m[2] === 'upper' ? inner(name, sx, mid, top) : inner(name, sx, T.floorY, mid), name, need(name)));
+    const sx = m[1] === 'R' ? 1 : -1, mid = (lo + hi) / 2;
+    turretPlates.push(carry(m[2] === 'upper' ? layer(name, sx, mid, hi) : layer(name, sx, lo, mid), name, need(name)));
   }
   // the kit's own plates (ERA fields, appliqué layers) seated on its drawn surfaces
   for (const [name, kit] of Object.entries(o.kitPlates ?? {})) {

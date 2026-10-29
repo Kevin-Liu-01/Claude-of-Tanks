@@ -16,7 +16,7 @@ import { addLeo2ImprovedKit } from './leopard2ImprovedKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { EARLY_LEOPARD2_FORE_SKIRT_DROP_M } from '../leopard2a3B4Armor.ts';
-import { LEOPARD2A4_FAMILY_GUN, type Leopard2A4FamilyId } from '../leopard2A4FamilyArmor.ts';
+import { LEOPARD2A4_FAMILY_FRONT, LEOPARD2A4_FAMILY_GUN, type Leopard2A4FamilyId } from '../leopard2A4FamilyArmor.ts';
 
 /** What sets one vehicle apart on the shared construction. */
 interface Leopard2A4Variant {
@@ -24,7 +24,7 @@ interface Leopard2A4Variant {
   readonly flapName: string;
   readonly seed: number;
   /** What its turret leaves off or swaps (its kit brings the replacement). */
-  readonly turret: Omit<Leopard2A4TurretOptions, 'gun' | 'seed'>;
+  readonly turret: Omit<Leopard2A4TurretOptions, 'gun' | 'front' | 'seed'>;
   readonly kit: (P: TankBuilderPort, ctx: Leopard2A4KitContext) => void;
 }
 
@@ -50,7 +50,7 @@ function leopard2A4(id: Leopard2A4FamilyId): (P: TankBuilderPort) => void {
   return (P) => {
     buildLeopard2Hull(P, { flapName: v.flapName, exhaust: 'rods', foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M,
       fuelFillers: true });
-    buildLeopard2A4Turret(P, { ...v.turret, gun: LEOPARD2A4_FAMILY_GUN[id], seed: v.seed });
+    buildLeopard2A4Turret(P, { ...v.turret, gun: LEOPARD2A4_FAMILY_GUN[id], front: LEOPARD2A4_FAMILY_FRONT[id], seed: v.seed });
     v.kit(P, { id, seed: v.seed });
     P.topY = 1.22;
   };

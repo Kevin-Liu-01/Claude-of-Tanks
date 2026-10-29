@@ -21,6 +21,7 @@ import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { mirrorRing } from './leopard2Hull.ts';
+import { buildLeopard2A6Front } from './leopard2A4Wedge.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { LEO2A4_TURRET, leopard2A4BarrelM, type Leopard2A4Gun } from '../leopard2A4FamilyArmor.ts';
 
@@ -30,6 +31,8 @@ type Point = readonly [number, number, number];
 /** What a variant asks of the common turret. */
 export interface Leopard2A4TurretOptions {
   readonly gun: Leopard2A4Gun;
+  /** The 2A4's square front block (default), or the 2A6 look of the 2A4s upgraded with the wedge add-on armour. */
+  readonly front?: 'block' | 'wedge';
   /** Seeds for the turret's fittings. */
   readonly seed: number;
   /** The loader's machine gun on its ring's mount (a variant whose remote station replaces it leaves it off): the MG3, or
@@ -77,18 +80,23 @@ function turretShell(P: TankBuilderPort): void {
   ], { sideQuadDiagonal: 'convex' }));
 }
 
-/** Lean the faces back (rake) from their foot, easing to nothing at the bevel's top edge. */
-function rakeFace(g: THREE.BufferGeometry): THREE.BufferGeometry {
-  const pos = g.getAttribute('position');
+/** Sweep the cheek faces back in plan (the slight arrowhead): from the slot's edge toward their outer ends, easing to
+ *  nothing at the corner cut's station so the block's sides stay on the walls. */
+function sweepFace(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const pos = g.getAttribute('position'), k = Math.tan(T.faceSweepDeg * Math.PI / 180);
   for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i), z = pos.getZ(i);
-    const f = THREE.MathUtils.clamp((z - T.bevelZ) / (T.faceZ - T.bevelZ), 0, 1);
-    if (f > 0) pos.setZ(i, z - f * T.faceRakeM * THREE.MathUtils.clamp((y - T.floorY) / (T.faceTopY - T.floorY), 0, 1));
+    const x = pos.getX(i), z = pos.getZ(i);
+    const f = THREE.MathUtils.clamp((z - T.cornerZ) / (T.faceZ - T.cornerZ), 0, 1);
+    if (f > 0) pos.setZ(i, z - f * k * Math.max(0, Math.abs(x) - T.slotHalfWidthM));
   }
   pos.needsUpdate = true;
   g.computeVertexNormals();
   return g;
 }
+
+/** The faces' z at |x| (swept back from the slot's edge). */
+export const leopard2A4FaceZ = (absX: number): number =>
+  T.faceZ - Math.tan(T.faceSweepDeg * Math.PI / 180) * Math.max(0, absX - T.slotHalfWidthM);
 
 /**
  * The front armour block: two cheek blocks from the 2A6 X's seam to the faces. Each cheek's top runs level to the bevel,
@@ -108,7 +116,7 @@ function frontBlock(P: TankBuilderPort): void {
     o: { outer?: (z: number) => number; head?: number } = {}): THREE.BufferGeometry => {
     const zs = [z0, T.cornerZ, T.bevelZ, z1].filter((z, i, all) => z >= z0 && z <= z1 && all.indexOf(z) === i)
       .sort((p, q) => p - q);
-    return rakeFace(sectionSolid(zs.map((z): SolidSection => {
+    return sweepFace(sectionSolid(zs.map((z): SolidSection => {
       const out = o.outer ? o.outer(z) : b, h = Math.min(topAt(z), o.head ?? Infinity), cut = o.outer ? Math.min(bev, h - y0 - 0.02) : 0;
       const r: SectionPoint[] = o.outer ? [[-out, y0], [-a, y0], [-a, h], [-out + cut, h], [-out, h - cut]]
         : [[-out, y0], [-a, y0], [-a, h], [-out, h]];
@@ -132,12 +140,12 @@ function frontBlock(P: TankBuilderPort): void {
   P.add('turret', sectionSolid([brow(T.blockZ, 0.69), brow(T.bevelZ, 0.69), brow(T.faceZ - 0.04, 0.60)]));
   // the welded joints: the faces with the slot's walls, the block's seam with the shell, each side
   for (const sx of [-1, 1]) {
-    P.addEquipment('turretDark', box(0.012, T.faceTopY - floor - 0.04, 0.012), sx * (slot + 0.006), (T.faceTopY + floor) / 2, T.faceZ - 0.004);
+    P.addEquipment('turretDark', box(0.012, T.faceTopY - floor - 0.04, 0.012), sx * (slot + 0.006), (T.faceTopY + floor) / 2, T.faceZ - 0.006);
     P.addEquipment('turretDark', box(0.014, top - floor - 0.06, 0.014), sx * ((sx < 0 ? T.wallRightM : T.wallLeftM) + 0.003),
       (top + floor) / 2 - 0.02, T.blockZ + 0.02);
   }
   // the lifting lug block low on the right cheek's face (photographed on the Austrian and Singaporean 2A4s)
-  P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, T.faceZ + 0.024);
+  P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, leopard2A4FaceZ(0.86) + 0.024, 0, Math.atan(Math.tan(T.faceSweepDeg * Math.PI / 180)), 0);
 }
 
 /**
@@ -145,10 +153,17 @@ function frontBlock(P: TankBuilderPort): void {
  * brow like the cheeks', the gun's round collar on it, the FERO Z18 auxiliary sight's round port right of the gun and the
  * coaxial MG3's port high on its left (as photographed); the 120 mm L/44 (or L/55) with its thermal sleeves and evacuator.
  */
-function gunAssembly(P: TankBuilderPort, gun: Leopard2A4Gun): void {
+function gunAssembly(P: TankBuilderPort, gun: Leopard2A4Gun, wedge: boolean): void {
   const { cylZ, torus } = KIT;
-  const face = T.mantletFaceZ, seg = P.q ? 24 : 14, len = leopard2A4BarrelM(gun), hw = T.slotHalfWidthM - 0.02;
+  const face = T.mantletFaceZ, seg = P.q ? 24 : 14, len = leopard2A4BarrelM(gun), hw = T.slotHalfWidthM - 0.01;
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
+  if (wedge) {
+    // the 2A6 look: the tube runs out of the long mantlet cover (leopard2A4Wedge.ts)
+    KIT.buildGun(P, { len, r: T.barrelRadiusM, sleeve: true, evac: gun === 'L55' ? 0.60 : 0.56, evacR: 1.78, collar: true,
+      baseR: 0.15 });
+    muzzleBore(P, { len, r: T.barrelRadiusM });
+    return;
+  }
   // the plate's section (gun frame): a vertical face to 0.20 over the bore, the bevel back to 0.30
   const ring = (front: number): SectionPoint[] => [[-hw, -0.23], [hw, -0.23], [hw, front], [-hw, front]];
   P.addGunExtra(sectionSolid([
@@ -158,30 +173,31 @@ function gunAssembly(P: TankBuilderPort, gun: Leopard2A4Gun): void {
   ]), 0, 0, 0);
   P.addGunExtra(cylZ(0.21, 0.035, seg), 0, 0, face + 0.015);                      // the collar's flange
   P.addGunExtra(cylZ(0.17, 0.09, seg, 0.15), 0, 0, face + 0.075);               // the collar narrowing to the sleeve
-  // FERO Z18 (right of the gun): a round port in a ring; coaxial MG3 (high left): its port in a ring
-  for (const [x, y, r] of [[-0.26, 0.02, 0.05], [0.30, 0.13, 0.035]] as const) {
-    P.addGunExtraDark(cylZ(r, 0.012, P.q ? 16 : 10), x, y, face + 0.004);
-    P.addGunExtra(KIT.xform(torus(r + 0.008, 0.011, P.q ? 16 : 10), 0, 0, 0, Math.PI / 2, 0, 0), x, y, face + 0.010);
-  }
+  // FERO Z18 (right of the gun, bore height): an 85 mm aperture in a 140 mm collar standing 45 mm proud; the coaxial MG3
+  // (high left): a 68 mm hole in a raised ring (the 262 lane's measures, as photographed)
+  P.addGunExtra(cylZ(0.07, 0.045, P.q ? 16 : 10), -0.285, 0, face + 0.0225);
+  P.addGunExtraDark(cylZ(0.0425, 0.012, P.q ? 16 : 10), -0.285, 0, face + 0.040);
+  P.addGunExtra(KIT.xform(torus(0.046, 0.012, P.q ? 16 : 10), 0, 0, 0, Math.PI / 2, 0, 0), 0.31, 0.16, face + 0.010);
+  P.addGunExtraDark(cylZ(0.034, 0.012, P.q ? 16 : 10), 0.31, 0.16, face + 0.004);
   KIT.buildGun(P, { len, r: T.barrelRadiusM, sleeve: true, evac: gun === 'L55' ? 0.60 : 0.56, evacR: 1.78, collar: true,
     baseR: 0.15 });
   muzzleBore(P, { len, r: T.barrelRadiusM });
 }
 
 /**
- * The EMES 15: its glass at the back of the pocket in the right cheek, its frame, and the two armoured door leaves standing
- * open either side of the pocket, over the bevel.
+ * The EMES 15: the sight head's face at the back of the notch in the right cheek, its frame, and the two armoured door
+ * leaves folded back against the notch's walls.
  */
 function emes15(P: TankBuilderPort): void {
   const { box } = KIT;
   const e = T.emes, wy = (e.y0 + e.y1) / 2;
-  P.addEquipment('turretGlass', box(e.halfW * 2 - 0.05, e.y1 - e.y0 - 0.10, 0.008), e.x, wy - 0.02, e.pocketZ + 0.006);
-  P.addEquipment('turretDark', box(e.halfW * 2 - 0.02, 0.025, 0.02), e.x, e.y1 - 0.06, e.pocketZ + 0.012);
-  P.addEquipment('turretDark', box(e.halfW * 2 - 0.02, 0.02, 0.03), e.x, e.y0 + 0.012, e.pocketZ + 0.016);
+  P.addEquipment('turretGlass', box(e.halfW * 2 - 0.16, e.y1 - e.y0 - 0.12, 0.008), e.x, wy - 0.02, e.pocketZ + 0.006);
+  P.addEquipment('turretDark', box(e.halfW * 2 - 0.10, 0.025, 0.02), e.x, e.y1 - 0.07, e.pocketZ + 0.012);
+  P.addEquipment('turretDark', box(e.halfW * 2 - 0.10, 0.02, 0.03), e.x, e.y0 + 0.012, e.pocketZ + 0.016);
   for (const sx of [-1, 1]) {
-    // a leaf hinged on the pocket's side wall, swung up to stand beside the opening
-    P.addEquipment('turretDetail', box(0.02, 0.40, T.faceZ - e.pocketZ), e.x + sx * (e.halfW + 0.012), e.y0 + 0.22,
-      (T.faceZ + e.pocketZ) / 2);
+    // a leaf hinged at the notch's mouth, folded back flat against the side wall
+    const x = e.x + sx * (e.halfW - 0.012), z1 = leopard2A4FaceZ(Math.abs(x)) - 0.01;
+    P.addEquipment('turretDetail', box(0.02, e.y1 - e.y0 - 0.06, z1 - e.pocketZ - 0.03), x, wy, (z1 + e.pocketZ + 0.03) / 2);
   }
 }
 
@@ -204,14 +220,16 @@ function roofFittings(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
   }
   P.addHatch('turretHatch', cylY(cr * 0.73, cr * 0.73, 0.035, seg), cx, roof + ch * 0.6 + 0.018, cz);
   P.addEquipment('turretDark', box(0.26, 0.022, 0.035), cx, roof + ch * 0.6 + 0.045, cz - 0.16);
-  // PERI R17: a drum 0.30 m across ahead of the commander's ring, its head 0.40 m over the roof, the window box angled
+  // PERI R17 (the 2A4; the 2A6 look carries the R17A2 behind the ring): a drum 0.30 m across ahead of the commander's ring, its head 0.40 m over the roof, the window box angled
   // forward under a cap
   const px = cx - 0.02, pz = cz + cr + 0.22;
+  if (o.front !== 'wedge') {
   P.addEquipment('turretDetail', cylY(0.15, 0.16, 0.14, P.q ? 20 : 12), px, roof + 0.07, pz);
   P.addEquipment('turretDetail', box(0.26, 0.20, 0.24), px, roof + 0.24, pz);
   P.addEquipment('turretDetail', box(0.22, 0.09, 0.10), px, roof + 0.27, pz + 0.14, -0.25, 0, 0);
   P.addEquipment('turretGlass', box(0.17, 0.05, 0.012), px, roof + 0.27, pz + 0.194, -0.25, 0, 0);
   P.addEquipment('turretDetail', box(0.28, 0.02, 0.26), px, roof + 0.35, pz);
+  }
   // the loader's ring and flat hatch, the periscope ahead of it, the MG3 on the ring's outboard mount
   const [lx, lz, lr, lh] = T.loader;
   P.add('turret', cylY(lr, lr + 0.01, lh, seg), lx, roof + lh / 2, lz);
@@ -294,24 +312,23 @@ function smokeTubes(P: TankBuilderPort): void {
 /** The walls' and faces' grab rails on their stand-offs, the ammunition hatch welded shut on the left wall. */
 function railsAndHatch(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
   const { box } = KIT;
-  const rail = (x0: number, x1: number, y: number, z0: number, z1: number, out: number): void => {
-    // along the run from (x0, z0) to (x1, z1), held `out` off the surface by a stand-off at each end
+  /** A rail along the run (x0, z0) to (x1, z1), held off the surface by (ox, oz) on a stand-off at each end. */
+  const rail = (x0: number, x1: number, y: number, z0: number, z1: number, ox: number, oz: number): void => {
     const len = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(x1 - x0, z1 - z0);
-    const nx = Math.cos(ry) * out, nz = -Math.sin(ry) * out;
-    P.addEquipment('turretDetail', box(0.022, 0.022, len), (x0 + x1) / 2 + nx, y, (z0 + z1) / 2 + nz, 0, ry, 0);
+    P.addEquipment('turretDetail', box(0.022, 0.022, len), (x0 + x1) / 2 + ox, y, (z0 + z1) / 2 + oz, 0, ry, 0);
     for (const t of [0.06, 0.94]) {
-      P.addEquipment('turretDetail', box(0.02, 0.02, Math.abs(out) + 0.01), x0 + (x1 - x0) * t + nx / 2, y,
-        z0 + (z1 - z0) * t + nz / 2, 0, ry + Math.PI / 2, 0);
+      const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+      P.addEquipment('turretDetail', box(0.02, 0.02, Math.hypot(ox, oz) + 0.012), x + ox / 2, y, z + oz / 2, 0, Math.atan2(ox, oz), 0);
     }
   };
-  if (o.faceRails !== false) {
-    // across each cheek's face under the EMES pocket's foot (the photographed 2A4s)
-    rail(-0.58, -1.06, 0.29, T.faceZ, T.faceZ, -0.05);
-    rail(0.98, 0.58, 0.29, T.faceZ, T.faceZ, -0.05);
+  if (o.faceRails !== false && o.front !== 'wedge') {
+    // across each cheek's face under the EMES notch's sill (the photographed 2A4s), standing 5 cm off it
+    rail(-0.58, -1.06, 0.30, leopard2A4FaceZ(0.58), leopard2A4FaceZ(1.06), 0, 0.05);
+    rail(0.98, 0.58, 0.30, leopard2A4FaceZ(0.98), leopard2A4FaceZ(0.58), 0, 0.05);
   }
   if (o.wallRails !== false) {
-    rail(-T.wallRightM, -T.wallRightM, 0.44, 0.95, -0.30, -0.055);
-    rail(T.wallLeftM, T.wallLeftM, 0.44, -0.30, 0.95, -0.055);
+    rail(-T.wallRightM, -T.wallRightM, 0.44, 0.95, -0.30, -0.055, 0);
+    rail(T.wallLeftM, T.wallLeftM, 0.44, -0.30, 0.95, 0.055, 0);
   }
   // the ammunition hatch on the left (loader's) wall, welded shut: a raised plate and the bead round its edge
   const hx = T.wallLeftM + 0.0175, hz = -0.42;
@@ -344,9 +361,13 @@ export function buildLeopard2A4Turret(P: TankBuilderPort, o: Leopard2A4TurretOpt
   P.turretG.position.set(T.pivot[0], T.pivot[1], T.pivot[2]);
   P.add('turret', KIT.cylY(1.00, 1.00, 0.03, P.q ? 48 : 24), 0, 0.013, 0);                       // ring guard
   turretShell(P);
-  frontBlock(P);
-  gunAssembly(P, o.gun);
-  emes15(P);
+  const wedge = o.front === 'wedge';
+  if (wedge) buildLeopard2A6Front(P);
+  else {
+    frontBlock(P);
+    emes15(P);
+  }
+  gunAssembly(P, o.gun, wedge);
   roofFittings(P, o);
   if (o.smoke !== false) smokeTubes(P);
   railsAndHatch(P, o);

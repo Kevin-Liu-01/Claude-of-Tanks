@@ -12,7 +12,7 @@
 import { LEOPARD2_HULL } from './leopard2HullDatums.ts';
 import { EARLY_LEOPARD2_FORE_SKIRT_DROP_M } from './leopard2a3B4Armor.ts';
 import {
-  LEO2A4_TURRET, LEOPARD2A4_FAMILY_GUN, LEOPARD2A4_FAMILY_IDS, kitPlate, leopard2A4FamilyArmor, lineAtStations,
+  LEO2A4_TURRET, LEOPARD2A4_FAMILY_FRONT, LEOPARD2A4_FAMILY_GUN, LEOPARD2A4_FAMILY_IDS, kitPlate, leopard2A4FamilyArmor, lineAtStations,
   type KitPlate, type Leopard2A4FamilyId,
 } from './leopard2A4FamilyArmor.ts';
 import { stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
@@ -27,12 +27,13 @@ const glacisField = (name: string, halfW: number, z0: number, z1: number): KitPl
   kitPlate('hull', name, [-halfW, glacisY(z1) + 0.06, z1], [halfW, glacisY(z1) + 0.06, z1], [-halfW, glacisY(z0) + 0.06, z0],
     { kind: 'era' });
 
-/** A layer over a cheek's face, `standM` ahead of it (sx +1 is the spec helpers' "R", +X). */
-const cheekFace = (name: string, sx: 1 | -1, standM: number, kind: string): KitPlate => {
-  const z = T.faceZ + standM, x0 = sx * T.slotHalfWidthM, x1 = sx * (sx > 0 ? T.faceLeftM : T.faceRightM);
-  return sx > 0
-    ? kitPlate('turret', name, [x0, T.floorY + 0.02, z], [x1, T.floorY + 0.02, z], [x0, T.blockTopY - 0.02, z], { kind })
-    : kitPlate('turret', name, [x1, T.floorY + 0.02, z], [x0, T.floorY + 0.02, z], [x1, T.blockTopY - 0.02, z], { kind });
+/** A layer over a 2A6-look wedge's face, `standM` out along its normal (sx +1 is the spec helpers' "R", +X). */
+const wedgeFace = (name: string, sx: 1 | -1, standM: number, kind: string): KitPlate => {
+  const W = T.wedge, xi = sx > 0 ? W.innerLeft : W.innerRight, xo = sx > 0 ? W.shoulderLeft : W.shoulderRight;
+  const dx = xo - xi, dz = W.shoulderZ - W.tipZ, n = Math.hypot(dx, dz), ox = sx * -dz / n * standM, oz = dx / n * standM;
+  const p0: [number, number, number] = [sx * xi + ox, 0.14, W.tipZ + oz], p1: [number, number, number] = [sx * xo + ox, 0.14, W.shoulderZ + oz];
+  const p3: [number, number, number] = [sx * xi + ox, 0.56, W.tipZ + oz - 0.10];
+  return sx > 0 ? kitPlate('turret', name, p0, p1, p3, { kind }) : kitPlate('turret', name, p1, p0, [p1[0], 0.56, p1[2] - 0.10], { kind });
 };
 
 /** A cassette course on a skirt's outer face, the length of the run. */
@@ -57,13 +58,13 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
   leo2a4m_can: {},
   leo2a4_otco: { kitPlates: {
     a6m_upper_glacis_era: glacisField('a6m_upper_glacis_era', 0.98, 2.55, 3.30),
-    a6m_turret_cheek_era_R: cheekFace('a6m_turret_cheek_era_R', 1, 0.05, 'era'),
-    a6m_turret_cheek_era_L: cheekFace('a6m_turret_cheek_era_L', -1, 0.05, 'era'),
+    a6m_turret_cheek_era_R: wedgeFace('a6m_turret_cheek_era_R', 1, 0.05, 'era'),
+    a6m_turret_cheek_era_L: wedgeFace('a6m_turret_cheek_era_L', -1, 0.05, 'era'),
   } },
   leo2_improved: { kitPlates: {
     a7v_upper_glacis_era: glacisField('a7v_upper_glacis_era', 0.98, 2.55, 3.30),
-    a7v_turret_cheek_layer_R: cheekFace('a7v_turret_cheek_layer_R', 1, 0.10, 'spaced'),
-    a7v_turret_cheek_layer_L: cheekFace('a7v_turret_cheek_layer_L', -1, 0.10, 'spaced'),
+    a7v_turret_cheek_layer_R: wedgeFace('a7v_turret_cheek_layer_R', 1, 0.10, 'spaced'),
+    a7v_turret_cheek_layer_L: wedgeFace('a7v_turret_cheek_layer_L', -1, 0.10, 'spaced'),
   } },
 });
 
@@ -79,7 +80,7 @@ export function applyLeopard2A4FamilyEnvelopes(specs: Readonly<Record<string, Fl
     stripSilhouetteDimensions(spec.dims);
     if (e.dims) Object.assign(spec.dims, e.dims);
     spec.armor = leopard2A4FamilyArmor(id, spec.armor, {
-      gun: LEOPARD2A4_FAMILY_GUN[id], foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, kitPlates: e.kitPlates,
+      gun: LEOPARD2A4_FAMILY_GUN[id], front: LEOPARD2A4_FAMILY_FRONT[id], foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, kitPlates: e.kitPlates,
     });
   }
 }
