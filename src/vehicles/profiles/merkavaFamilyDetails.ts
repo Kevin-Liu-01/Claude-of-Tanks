@@ -78,6 +78,18 @@ export interface TurretModule {
   readonly solids: readonly ShellSolid[];
   /** Where the module was fitted as plane-bounded runs (each face one flat plate): those, in place of its solids. */
   readonly runs?: readonly ModuleRun[] | undefined;
+  /** Where it was fitted as its faces' own plates (platefit.py): those, in place of its solids and runs. */
+  readonly plates?: readonly ModulePlate[] | undefined;
+}
+
+/** One face of a module as a plate: its plane's origin and frame (u, v and the outward normal, as a quaternion), its
+ *  outline and holes in that plane, and the depth it runs inward. */
+export interface ModulePlate {
+  readonly o: readonly [number, number, number];
+  readonly q: readonly [number, number, number, number];
+  readonly depth: number;
+  readonly outer: readonly SectionPoint[];
+  readonly holes: readonly (readonly SectionPoint[])[];
 }
 
 /** One run of a module: its solids cut along its own local z, and the quaternion turning that frame into the hull's. */
@@ -98,6 +110,14 @@ function solidsGeometry(solids: readonly ShellSolid[], axis: 0 | 2, offset: read
 }
 
 const runQ = new THREE.Quaternion(), runP = new THREE.Vector3();
+/** The plate's foremost point in the hull frame (its outline's corners on its face). */
+export function modulePlateFront(plate: ModulePlate): number {
+  runQ.set(plate.q[0], plate.q[1], plate.q[2], plate.q[3]).normalize();
+  let front = -Infinity;
+  for (const [u, v] of plate.outer) front = Math.max(front, runP.set(u, v, 0).applyQuaternion(runQ).z + plate.o[2]);
+  return front;
+}
+
 /** The run's foremost point in the hull frame (its corners turned by its frame). */
 export function moduleRunFront(run: ModuleRun): number {
   runQ.set(run.q[0], run.q[1], run.q[2], run.q[3]).normalize();
@@ -107,8 +127,20 @@ export function moduleRunFront(run: ModuleRun): number {
   }
   return front;
 }
-/** A module's solids in the turret frame: its runs each turned from its own frame, else its solids. */
+/** A plate in the turret frame: its outline (less its holes) extruded inward from its face. */
+function facePlateGeometry(plate: ModulePlate, pivot: readonly [number, number, number]): THREE.BufferGeometry | null {
+  if (plate.outer.length < 3) return null;
+  const shape = new THREE.Shape(plate.outer.map(([u, v]) => new THREE.Vector2(u, v)));
+  for (const hole of plate.holes) if (hole.length >= 3) shape.holes.push(new THREE.Path(hole.map(([u, v]) => new THREE.Vector2(u, v))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: plate.depth, bevelEnabled: false, steps: 1 });
+  g.translate(0, 0, -plate.depth);
+  runQ.set(plate.q[0], plate.q[1], plate.q[2], plate.q[3]).normalize();
+  return g.applyQuaternion(runQ).translate(plate.o[0] - pivot[0], plate.o[1] - pivot[1], plate.o[2] - pivot[2]);
+}
+
+/** A module's solids in the turret frame: its plates, else its runs each turned from its own frame, else its solids. */
 function moduleGeometry(m: TurretModule, pivot: readonly [number, number, number]): THREE.BufferGeometry[] {
+  if (m.plates) return m.plates.flatMap((plate) => { const g = facePlateGeometry(plate, pivot); return g ? [g] : []; });
   if (!m.runs) return solidsGeometry(m.solids, m.axis, pivot);
   return m.runs.flatMap((run) => {
     runQ.set(run.q[0], run.q[1], run.q[2], run.q[3]).normalize();

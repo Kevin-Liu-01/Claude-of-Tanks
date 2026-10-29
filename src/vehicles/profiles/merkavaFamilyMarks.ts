@@ -7,7 +7,7 @@
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
 import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
-import type { MerkavaBasket, MerkavaTarp, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
+import type { MerkavaBasket, MerkavaTarp, ModulePlate, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -233,6 +233,17 @@ function tarpsOf(r: object): MerkavaTarp[] {
   }));
 }
 
+/** A module's face plates (platefit.py), where it carries them: millimetres, the frame in ten-thousandths. */
+function platesOf(m: object): ModulePlate[] | undefined {
+  const p = (m as { readonly p?: readonly { readonly o: readonly number[]; readonly q: readonly number[]; readonly t: number;
+    readonly v: readonly number[]; readonly h: readonly (readonly number[])[] }[] }).p;
+  const pts = (flat: readonly number[]): SectionPoint[] => Array.from({ length: flat.length / 2 }, (_, i): SectionPoint => [flat[2 * i]! / 1000, flat[2 * i + 1]! / 1000]);
+  return p?.map((pl) => ({
+    o: [pl.o[0]! / 1000, pl.o[1]! / 1000, pl.o[2]! / 1000] as const, q: [pl.q[0]! / 1e4, pl.q[1]! / 1e4, pl.q[2]! / 1e4, pl.q[3]! / 1e4] as const,
+    depth: pl.t / 1000, outer: pts(pl.v), holes: pl.h.map(pts),
+  }));
+}
+
 type PackedSolids = readonly { readonly z: readonly number[]; readonly r: readonly (readonly number[])[] }[];
 /** A module's plane-bounded runs (plateslab.py), where it carries them: each run's frame quaternion (ten-thousandths in
  *  the source) and its solids. */
@@ -281,7 +292,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
     id, hull, gear: gearOf(r), fender: fenderOf(r), belly: r.belly?.map((st) => st.map((v) => v / 1000) as unknown as BellyStation) ?? null,
     pivot, shell: solidsOf(r.turretShell),
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s),
-      runs: runsOf(m) })),
+      runs: runsOf(m), plates: platesOf(m) })),
     tarps: tarpsOf(r),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
       axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
