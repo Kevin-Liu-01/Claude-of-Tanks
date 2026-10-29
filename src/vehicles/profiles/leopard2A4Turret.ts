@@ -289,6 +289,16 @@ function smokeTube(P: TankBuilderPort, mouth: Point, direction: Point): void {
   rim.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis));
   rim.translate(...mouth);
   P.addEquipment('turretDetail', rim);
+  // the bore's lining (its faces turned inward) down to the loaded grenade's face 4 cm in: the bare tube's inside read as
+  // an open seam from a low front view (the sealed check, release 264's gate)
+  const liner = new THREE.CylinderGeometry(0.0305, 0.0305, 0.04, seg, 1, true).scale(-1, 1, 1);
+  liner.computeVertexNormals();
+  liner.applyQuaternion(rotation).translate(...new THREE.Vector3(...mouth).addScaledVector(axis, -0.02).toArray());
+  P.addEquipment('turretDark', liner);
+  const grenade = new THREE.CircleGeometry(0.0305, seg);
+  grenade.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis));
+  grenade.translate(...new THREE.Vector3(...mouth).addScaledVector(axis, -0.04).toArray());
+  P.addEquipment('turretDark', grenade);
   const back = new THREE.Vector3(...mouth).addScaledVector(axis, -0.207);
   const cap = new THREE.CylinderGeometry(0.042, 0.042, 0.014, seg);
   cap.applyQuaternion(rotation).translate(...back.toArray());

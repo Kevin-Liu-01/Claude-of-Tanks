@@ -24,7 +24,9 @@ import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSol
 import { lineAt, mirrorRing } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
-import { HULL_SURFACES as HS, TURRET_SURFACES as TS, deckY, eraField, glacisCassettes, mudguardY } from './leopard2A4KitParts.ts';
+import {
+  HULL_SURFACES as HS, TURRET_SURFACES as TS, deckY, eraField, glacisCassettes, mudguardY, sternRackFloor,
+} from './leopard2A4KitParts.ts';
 import { addLeopardFlw200, turretRoofY } from './leopard2A4Flw200.ts';
 import { leopard2A4WedgeFace } from './leopard2A4Wedge.ts';
 import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
@@ -227,6 +229,7 @@ function hullKit(P: TankBuilderPort): void {
   }
   lowerFrontModule(P);
   apuHousings(P);
+  sternRackFloor(P);
   P.mats.rubber.color.setHex(0x33352b);
   // the old build's rear number on the lower rear plate's right, over the crossed tow cables
   P.decal('hull', 'number', 'Y-877', 0.26, [-0.62, 1.27, HS.rearZ - 0.006], Math.PI);

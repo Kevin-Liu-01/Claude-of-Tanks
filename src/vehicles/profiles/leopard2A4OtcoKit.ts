@@ -18,7 +18,7 @@
 // Armour only in the armour buckets: the ERA through eraField, the belly plate and the wall cassettes through
 // addExternalArmor; every cage, rail, rack, bin, tool and fitting is equipment or detail.
 import * as THREE from 'three';
-import { KIT, FITTINGS } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { lineAt } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
@@ -27,7 +27,7 @@ import { LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
 import { leopard2A4WedgeFace, leopard2A4WedgeTop } from './leopard2A4Wedge.ts';
 import {
   HULL_SURFACES as HS, TURRET_SURFACES as TS, bustleRack, crosswindMast, deckFrame, deckY, eraField, mudguardY,
-  type CassetteSeat,
+  sternRackFloor, type CassetteSeat,
 } from './leopard2A4KitParts.ts';
 
 const H = LEOPARD2_HULL, T = LEO2A4_TURRET;
@@ -191,6 +191,15 @@ function hullCage(P: TankBuilderPort): void {
       bar(P, 'hullDetail', p0.clone().setY(y), p1.clone().setY(y), 0.020);
     }
     P.addEquipment('hullDetail', box(0.026, y1 - y0 + 0.03, 0.026), p1.x, (y0 + y1) / 2, p1.z);
+    // the flare's top plate from the mudguard's outer edge to the bars, under the mudguard's fall (open, the corner
+    // read through to the ground from above: the standard check's contiguity, release 264's gate)
+    {
+      const xi = sx * (HS.mudguard.x1 - 0.02), zb = HS.foreSkirtZ[1] - 0.055, yb = mudguardY(HS.mudguard.z0), yf = mudguardY(p1.z);
+      const t = 0.018;
+      P.addEquipment('hullDark', orientedSlab(
+        [xi, yf - t, p1.z], [p1.x, yf - t, p1.z], [sx * (fx + 0.006), yb - t, zb], [xi, yb - t, zb],
+        [xi, yf, p1.z], [p1.x, yf, p1.z], [sx * (fx + 0.006), yb, zb], [xi, yb, zb]));
+    }
     P.addEquipment('hullDark', box(fx - HS.foreSkirtX + 0.012, 0.040, 0.042), sx * (fx + HS.foreSkirtX - 0.012) / 2, 1.05, 3.08);
     P.addEquipment('hullDark', box(1.76 - 1.715, 0.040, 0.042), sx * (1.76 + 1.715) / 2, 1.28, 3.43);
   }
@@ -205,6 +214,10 @@ function hullCage(P: TankBuilderPort): void {
     if (i % 2 === 0) P.addEquipment('hullDark', box(0.038, 0.038, bl), x, 1.385, z + bl / 2);
   }
   for (const x of [-0.55, 0.55]) P.addEquipment('hullDark', box(0.038, 0.038, HS.rearZ - z + 0.012), x, 1.01, (z + HS.rearZ) / 2);
+  // the panel's top flange back to the exhaust band's foot rail, as the side runs' flanges close them to the skirts (open,
+  // the slot behind the panel read through to the ground from above: the standard check's contiguity, release 264's gate)
+  const fz = HS.rearZ - 0.03, bz = z - 0.012;
+  P.addEquipment('hullDark', box(w, 0.018, fz - bz), 0, 1.445, (fz + bz) / 2);
   // the convoy marker plate bolted to the panel's bars under the convoy light
   P.addEquipment('hullDetail', box(0.30, 0.16, 0.015), 0, 1.13, z - 0.0195);
   for (const dx of [-0.12, 0.12]) P.addEquipment('hullDark', KIT.cylZ(0.012, 0.01, 8), dx, 1.13, z - 0.031);
@@ -337,6 +350,7 @@ function hullKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
   deckStowage(P);
   mudguardFittings(P, ctx);
   sternFittings(P);
+  sternRackFloor(P);
 }
 
 // --------------------------------------------------------------------------------------------------------- the turret

@@ -274,6 +274,11 @@ function sternKit(P: TankBuilderPort): void {
   // the basket, a bundle on the lower rail
   const floorY = 1.855, fz0 = -3.84, fz1 = zr + 0.0175;
   P.add('hullDark', box(1.24, 0.02, fz0 - fz1), 0.20, floorY - 0.01, (fz0 + fz1) / 2);
+  // the outer bays' floors on the lower full-width rail, out to the end posts (open, the bays read through to the ground
+  // from above: the standard check's contiguity, release 264's gate)
+  for (const [x0, x1] of [[-1.13, -0.42], [0.82, 1.13]] as const) {
+    P.add('hullDark', box(x1 - x0, 0.02, fz0 - fz1), (x0 + x1) / 2, 1.72 + rail / 2 + 0.01, (fz0 + fz1) / 2);
+  }
   KIT.stowage(P, 'hullCloth', P.rng, [
     [0.45, floorY + 0.20, -4.01, 0.70, 0.40, 0.28],
     [0.05, 1.0225 + 0.20, -4.04, 0.72, 0.40, 0.25],
