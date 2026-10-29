@@ -2319,11 +2319,11 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
     P.add('turretDetail', torus(0.105, 0.012, P.q ? 18 : 12),
       -1.06, 0.378, -2.48);
     P.add('turretDark', box(0.40, 0.010, 0.62), 0.66, 0.320, -2.10);
-    P.add('turretEquipment', box(0.32, 0.010, 0.52), 0.66, 0.328, -2.10);
+    P.add('turret', box(0.32, 0.010, 0.52), 0.66, 0.328, -2.10);
     for (const z of [-2.32, -1.88]) P.add('turretDetail', box(0.28, 0.018, 0.035),
       0.66, 0.338, z);
     P.add('turretDark', box(0.14, 0.014, 0.20), 0.52, 0.340, -2.36, 0, 0.12, 0);
-    P.add('turretEquipment', box(0.11, 0.018, 0.15), 0.52, 0.350, -2.36, 0, 0.12, 0);
+    P.add('turret', box(0.11, 0.018, 0.15), 0.52, 0.350, -2.36, 0, 0.12, 0);
     for (const [x, z] of [[0.55, -1.82], [0.78, -2.18], [0.60, -2.40]])
       P.add('turretDetail', cylY(0.018, 0.018, 0.016, 10), x, 0.354, z);
     P.add('turretDark', box(0.50, 0.20, 0.05), 0, 0.17, 1.98);
@@ -2572,10 +2572,9 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
         };
         buildChallenger2TurretStage22();
         // Side-only bustle ear as a closed swept solid (source world box maps to
-        // local x .86..1.30, z -3.02..-3.36), not a rectangular rail. It is a stowage tray (equipment), except on the
-        // UA, whose field cage (modernFieldCage.ts) takes its rear bound from the turret bucket's extent these ears set.
+        // local x .86..1.30, z -3.02..-3.36), not a rectangular rail.
         const buildChallenger2TurretStage23 = (): void => {
-          cr2Course(P, P.spec.id === 'ua_challenger2' ? 'turret' : 'turretEquipment', [
+          cr2Course(P, 'turret', [
             [side * 0.86, -3.00], [side * 1.24, -3.02],
             [side * 1.24, -3.26], [side * 0.86, -3.25],
           ], 0.08, [0.15, 0.15, 0.13, 0.14]);
@@ -2597,7 +2596,7 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
     // blank stern slab without lengthening the turret.
     P.add('turretDark', box(2.12, 0.30, 0.012), 0, 0.25, -2.984);
     for (const side of [-1, 1]) {
-      P.add('turretEquipment', box(0.82, 0.20, 0.010), side * 0.53, 0.26, -2.992);
+      P.add('turret', box(0.82, 0.20, 0.010), side * 0.53, 0.26, -2.992);
       for (let k = -2; k <= 2; k++) P.add('turretDark', box(0.72, 0.014, 0.010),
         side * 0.53, 0.26 + k * 0.035, -2.999);
       P.add('turretDark', cylZ(0.105, 0.018, P.q ? 18 : 12), side * 0.98, 0.31, -3.000);
@@ -3066,7 +3065,7 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
       };
       buildChallenger2AssemblyStage16();
       const buildChallenger2TurretStage67 = (): void => {
-        P.snapGroup('cr2-side-lug', () => P.add('turretEquipment', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42), { reachM: 0.03 });   // 2026-10-19 (owner float sweep): seated (19 mm off)
+        P.snapGroup('cr2-side-lug', () => P.add('turret', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42), { reachM: 0.03 });   // 2026-10-19 (owner float sweep): seated (19 mm off)
       };
       buildChallenger2TurretStage67();
       const buildChallenger2TurretStage68 = (): void => {

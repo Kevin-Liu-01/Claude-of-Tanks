@@ -885,7 +885,7 @@ function chieftain5Build(P: UKBuilderPort): void {
     P.add('hull', slab(                                    // W2b ledge
       [xw2b[0], 0.75, 3.616], [xw2b[1], 0.75, 3.616], [xw2b[1], 0.72, 3.55], [xw2b[0], 0.72, 3.55],
       [xw2b[0], 1.22, 3.616], [xw2b[1], 1.22, 3.616], [xw2b[1], 1.235, 3.55], [xw2b[0], 1.235, 3.55]));
-    P.add('hullFixedPaintedBodywork', slab(            // W3 thin tip
+    P.add('hull', slab(                                    // W3 thin tip
       [xw2b[0], 0.84, 3.755], [xw2b[1], 0.84, 3.755], [xw2b[1], 0.75, 3.616], [xw2b[0], 0.75, 3.616],
       [xw2b[0], 1.045, 3.755], [xw2b[1], 1.045, 3.755], [xw2b[1], 1.045, 3.616], [xw2b[0], 1.045, 3.616]));
   }
@@ -898,7 +898,7 @@ function chieftain5Build(P: UKBuilderPort): void {
       [xa, 1.10, 3.05], [xb, 1.10, 3.05], [xb, 1.08, 3.43], [xa, 1.08, 3.43],
       [xa, 1.34, 3.05], [xb, 1.34, 3.05], [xb, 1.25, 3.43], [xa, 1.25, 3.43]));
   }
-  P.add('hullFixedPaintedBodywork', slab(
+  P.add('hull', slab(
     [1.523, 0.82, 3.755], [1.556, 0.82, 3.755], [1.556, 0.80, 3.55], [1.523, 0.80, 3.55],
     [1.523, 1.045, 3.755], [1.556, 1.045, 3.755], [1.556, 1.13, 3.55], [1.523, 1.13, 3.55]));
   addChieftainClosedShoulderMudguards(P, 'chieftain3');
@@ -3233,12 +3233,12 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       P.add('hull', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
       P.add('hull', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
       // rear guard stub over the raised idler wrap
-      P.add('hullFixedPaintedBodywork', box(0.048, 0.40, 0.34), s * 1.28, 1.14, -2.80);
+      P.add('hull', box(0.048, 0.40, 0.34), s * 1.28, 1.14, -2.80);
       // The shortened native course leaves the real rear fender shoulder
       // visible. Bridge that shoulder back into the sponson at the hull roof
       // line: this is fixed hull structure, not a track-covering skirt, and it
       // stays a centimetre above the exact instanced-shoe envelope.
-      P.add('hullFixedPaintedBodywork', sslab(s,
+      P.add('hull', sslab(s,
         [0.90, 1.335, -2.52], [1.30, 1.335, -2.52], [1.30, 1.335, -2.93], [0.90, 1.335, -2.93],
         [0.90, 1.400, -2.52], [1.30, 1.400, -2.52], [1.30, 1.400, -2.93], [0.90, 1.400, -2.93]));
     }
@@ -4696,7 +4696,7 @@ function* buildChieftainUpper2026Steps(
       const basketDepth = 0.92;
       P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.52, basketZ);
       P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.15, basketZ);
-      P.add('turretEquipment', box(0.54, 0.028, basketDepth - 0.08), s * 1.22, 0.135, basketZ);
+      P.add('turret', box(0.54, 0.028, basketDepth - 0.08), s * 1.22, 0.135, basketZ);
       for (const dz of [-0.42, -0.14, 0.14, 0.42]) {
         P.add('turretDetail', box(0.035, 0.37, 0.035), s * 1.48, 0.335, basketZ + dz);
       }
@@ -4812,7 +4812,7 @@ function* buildChieftainUpper2026Steps(
       const x = stillbrew ? 1.27 : 1.33;
       const y = stillbrew ? 0.56 : 0.57;
       const z = stillbrew ? 0.61 : 0.78;
-      P.add('turretEquipment', box(0.36, 0.09, 0.30), s * (x - 0.13), y - 0.12, z, 0, s * 0.42, 0);
+      P.add('turret', box(0.36, 0.09, 0.30), s * (x - 0.13), y - 0.12, z, 0, s * 0.42, 0);
       P.add('turretDetail', box(0.30, 0.055, 0.08), s * x, y - 0.02, z, 0, s * 0.55, 0);
       smokeCluster(P, s * (x + 0.09), y + 0.08, z + 0.04, 6, s * 1.05, 0.72);
       // 2026-10-19 (owner float sweep): the six-tube fan overhung its 0.30 m pad, the outer tubes 26-61 mm over the
@@ -4837,7 +4837,7 @@ function* buildChieftainUpper2026Steps(
     // each antenna stack stands on the falling rear roof under its shoe (owner 2026-10-19 sweep: at the common 0.54
     // shoe height the outer two hovered up to 0.27 m over it)
     for (const [x, z, h] of radios) P.snapGroup('chieftain-radio-mast', () => {
-      P.add('turretEquipment', box(0.13, 0.10, 0.15), x, radioShoeY, z);
+      P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
       P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
       // 2026-10-19 (owner float sweep): the whip started 60 mm over its collar's 0.16 top; its foot is now 5 mm in it
       P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.155 + h * 0.5, z);
