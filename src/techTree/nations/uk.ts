@@ -32,10 +32,17 @@ export const UK_TREE: NationTree = Object.freeze({
       builds: ['chieftain3'],
     }),
     node({ id: 'challenger1_mk2', tier: 8, line: 'challenger', lane: 1, parents: ['chieftain5'], slot: 'line' }),
+    // release 262: the Mk 1, on the Mk 2's build
+    node({ id: 'challenger1_mk1', tier: 8, line: 'challenger', lane: 0, parents: ['chieftain5'], slot: 'line' }),
     node({
       id: 'challenger1_mk3', tier: 8, line: 'challenger', lane: 2, parents: ['challenger1_mk2', 'fv4034'],
       slot: 'line',
     }),
+    // release 262: the fictional FV4030/5 (the wide wedge turret and an applique kit on a hull rebuilt from the
+    // Challenger 1's references) drawn off the Chieftain Mk 10 (the up-armoured line) so its connector runs clear of the
+    // Mk 3 and the Challenger 3 prototype, and the FV4030/6 beside it
+    node({ id: 'challenger_x', tier: 8, line: 'challenger', lane: 4, parents: ['chieftain_mk10'], slot: 'line' }),
+    node({ id: 'challenger_x_sleek', tier: 8, line: 'challenger', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
     node({ id: 'challenger2', tier: 9, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
     node({ id: 'challenger2e', tier: 9, line: 'challenger', lane: 2, parents: ['challenger2'], slot: 'line' }),
     node({ id: 'challenger3_proto', tier: 8, line: 'challenger', lane: 3, parents: ['challenger1_mk3'], slot: 'line' }),
@@ -52,5 +59,11 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 262: the 2021 Challenger 3 demonstrator beside its prototype's tier (a prototype never above production)
+    // and its field fit with the remote station and kit (the owner, 2026-10-27) drawn on its node as a twin build
+    node({
+      id: 'challenger3_td', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special',
+      builds: ['challenger3_td_rws'],
+    }),
   ]),
 });

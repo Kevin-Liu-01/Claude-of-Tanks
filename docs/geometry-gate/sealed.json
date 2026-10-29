@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-29T19:08:37.382Z",
+ "generatedAt": "2026-10-29T07:19:25.022Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -463,21 +463,6 @@
     1.45,
     1.2,
     5.5
-   ]
-  },
-  "challenger1_mk2": {
-   "sealed": true,
-   "openPx": 5,
-   "openViews": 0,
-   "insideOutPx": 109,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 105144,
-   "frame": [
-    -0.05,
-    1.4,
-    1.6,
-    6.4
    ]
   },
   "challenger1_mk3": {
@@ -2264,13 +2249,25 @@
    "openViews": 0,
    "insideOutPx": 47,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
+   "netSeeThroughPx": 2806,
    "tris": 128604,
    "frame": [
     0,
     1.75,
     1.05,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "christian2-262 dressed the Strv 121 in its Swedish field suit (an ulcans cover and spruce boughs) whose alpha-cut netting shows sky between the leaves",
+     "by": "integ-263",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "strv122": {
@@ -3710,6 +3707,261 @@
       "netSeeThroughPx": 2790
      }
     }
+   ]
+  },
+  "t64bm1m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 146,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 119541,
+   "frame": [
+    0,
+    1.85,
+    1.15,
+    5.5
+   ]
+  },
+  "t64bv": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 144,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 121238,
+   "frame": [
+    0,
+    1.85,
+    1,
+    5.6
+   ]
+  },
+  "t64b1v_2022": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 160,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 122886,
+   "frame": [
+    0,
+    1.85,
+    1.1,
+    5.6
+   ]
+  },
+  "pt64_tur": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 144,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 123823,
+   "frame": [
+    0,
+    1.85,
+    1,
+    5.6
+   ]
+  },
+  "bm_oplot_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 110923,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "bm_oplot_t": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 118462,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "challenger3_td": {
+   "sealed": true,
+   "openPx": 6,
+   "openViews": 0,
+   "insideOutPx": 84,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4053,
+   "tris": 110062,
+   "frame": [
+    0,
+    2.95,
+    1.25,
+    7.7
+   ]
+  },
+  "challenger3_td_rws": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 90,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 96509,
+   "frame": [
+    0,
+    2.95,
+    1.25,
+    7.6
+   ]
+  },
+  "christian2": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 470,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 3742,
+   "tris": 110599,
+   "frame": [
+    0,
+    1.95,
+    0.75,
+    5.8
+   ]
+  },
+  "t55a": {
+   "sealed": true,
+   "openPx": 14,
+   "openViews": 0,
+   "insideOutPx": 538,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 62972,
+   "frame": [
+    0,
+    1.45,
+    0.95,
+    5.1
+   ]
+  },
+  "ztz20": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 178,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 100168,
+   "frame": [
+    0,
+    1.5,
+    0.55,
+    5.4
+   ]
+  },
+  "ztz20_prototype": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 91793,
+   "frame": [
+    0,
+    1.45,
+    0.5,
+    5.4
+   ]
+  },
+  "type10_dozer": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 288,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 96622,
+   "frame": [
+    0,
+    2.05,
+    0.9,
+    5.6
+   ]
+  },
+  "challenger1_mk1": {
+   "sealed": true,
+   "openPx": 9,
+   "openViews": 0,
+   "insideOutPx": 655,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116100,
+   "frame": [
+    0,
+    2,
+    1.45,
+    6.1
+   ]
+  },
+  "challenger_x": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 303,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 107232,
+   "frame": [
+    0,
+    2.25,
+    1.3,
+    6.9
+   ]
+  },
+  "challenger_x_sleek": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 328,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 91573,
+   "frame": [
+    0,
+    2.15,
+    1.6,
+    6.6
+   ]
+  },
+  "challenger1_mk2": {
+   "sealed": true,
+   "openPx": 9,
+   "openViews": 0,
+   "insideOutPx": 655,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116111,
+   "frame": [
+    0,
+    2,
+    1.45,
+    6.1
    ]
   }
  }

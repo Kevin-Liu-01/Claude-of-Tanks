@@ -42,8 +42,9 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
 - The Oplot-M's installed frame and base armour; ERAWA-2 sectors where the build carries the grids: glacis, cheeks and
   flanks 0.20 / 440 mm, skirts 0.12 / 320 mm (a two-layer cassette short of the Duplet's 0.26 / 480 with its anti-tandem
   layer).
-- The KBM2 120 mm in the carousel loader: 6.3 s, K279 APFSDS (700 mm at 2 km on the fleet scale), K280 HEAT-MP, K281 HE,
-  Falarick 120 (750 mm, guided, 6 rounds); -5 / +14 with its own measured depression curve (held up from 137 degrees,
+- The KBM2 120 mm in the carousel loader: 6.3 s, K279 APFSDS (700 mm at 2 km on the fleet scale), K280 HEAT-MP, K281 HE
+  (the Falarick 120 is owed: a gun-fired guided round fits neither a gun channel nor the auxiliary-missile cadence, the
+  integrator's 263 ruling on the Oplots' Kombat); -5 / +14 with its own measured depression curve (held up from 137 degrees,
   where the barrel crosses the framed skirts' rear fields).
 - 52.0 t (the grids), 1,200 hp, 70 km/h, hp 2,750, traverse 44 deg/s, flanker.
 

@@ -77,8 +77,10 @@ for(const key of Object.keys(ZTZ100_PROTOTYPE_BASELINE)) {
 }
 assert.throws(()=>validatedPreservationOracle({...ztz,preservation:REVOLUTION_PROTO_BASELINE},'ztz100_prototype'),/invalid or unpinned/);
 assert.throws(()=>validatedPreservationOracle({...preserved,preservation:ZTZ100_PROTOTYPE_BASELINE},'leo2_revolution_proto'),/invalid or unpinned/);
-assert.equal(validatedPreservationOracle(registry.ztz100,'ztz100'),null);
-assert.equal(requiredMinimumForQualityBar(registry.ztz100.qualityBar),92,'service source fidelity is unchanged');
+// 262: the ZTZ-100 left the source-comparison route (the ZTZ-20 family concept); the other service comparisons keep 92
+assert.equal(registry.ztz100,undefined,'the retired ZTZ-100 comparison is not registered');
+assert.equal(validatedPreservationOracle(registry.strv122,'strv122'),null);
+assert.equal(requiredMinimumForQualityBar(registry.strv122.qualityBar),92,'service source fidelity is unchanged');
 await assert.rejects(verifyPreservationBytes(new ArrayBuffer(8),ZTZ100_PROTOTYPE_BASELINE),/hash mismatch/);
 const ztzOracle=new URL('../public/models/community-candidates/ztz100_prototype_preservation.glb',import.meta.url);
 if(fs.existsSync(ztzOracle)) {

@@ -4,6 +4,7 @@ import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {T80UK_X_GUN_PITCH_BY_YAW_DEG} from './t80uXArmor.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
+import {applyT64PhysicalFrame,T64_DATUMS} from './t64Armor.ts';
 import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
 import {OPLOT_FLANK_CASSETTE,oplotFlankCassetteSeat} from './oplotFlankLayout.ts';
 import type {FleetTankSpec} from './specContracts.ts';
@@ -83,6 +84,11 @@ export function synchronizeFleetRenewalMetadata():void{
     return target[id as string];
   }});
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
+  // 262: the true T-64s (t64FamilySpecs.ts) take the T-64 frame (t64Armor.ts) on the T-72B3's balanced combat record
+  applyT64PhysicalFrame(TANK_SPECS.t64bv,donors.t72b3,'bv',T64_DATUMS.dims);
+  applyT64PhysicalFrame(TANK_SPECS.t64b1v_2022,donors.t72b3,'b1v2022',{...T64_DATUMS.dims,widthM:3.72});
+  applyT64PhysicalFrame(TANK_SPECS.t64bm1m,donors.t72b3,'bm1m',{...T64_DATUMS.dims,widthM:3.61});
+  applyT64PhysicalFrame(TANK_SPECS.pt64_tur,donors.t72b3,'tur',{...T64_DATUMS.dims,widthM:3.55});
   TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
   // release 231: the T-80UK's own measured stops (its command kit over the rear deck; t80uXArmor.ts)
   TANK_SPECS.t80uk.gunPitchByYawDeg=T80UK_X_GUN_PITCH_BY_YAW_DEG;

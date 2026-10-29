@@ -119,22 +119,31 @@ function make(
 // heightM uses the over-mounted-MG convention ONLY where the mesh actually
 // mounts one; every other row keeps the published roof datum. (The T-44 and
 // T-54 rows retired with the hidden fleet on 2026-09-23.)
+/**
+ * Release 262: the T-54/T-55 family's main gun by turret yaw (the Type 59 and the T-55A share hull and gun), measured
+ * (tools/gun-depression-sweep.mjs --ids=type59, the whole gun 26 mm off every hull mesh; no mount conflict, clear at
+ * full elevation): -4.2 degrees dead ahead over the glacis; near level from 6 to 28 degrees, where the canvas mantlet
+ * cover passes over the driver's hatch (on the real tank the gun over that hatch keeps it shut); -2.8 to -4 over the
+ * flanks; over the rear drums and their brackets from 158 degrees, 2-5 degrees above level.
+ */
+const T54_FAMILY_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -4.2], [3, -4.2], [4, -3.3], [6, -1.9], [7, -1.3], [10, -0.2],
+  [12, 0.4], [22, 0.5], [23, 0.5], [25, 0], [28, -1], [29, -1.5], [31, -2.9], [32, -4], [53, -3.9], [59, -3], [62, -2.8],
+  [101, -2.8], [106, -3.2], [108, -4], [111, -3.8], [116, -3.8], [157, -4.2], [158, -0.7], [159, 2.1], [160, 3.3],
+  [161, 3.7], [165, 3.7], [167, 4.8], [169, 4.9], [170, 4.9], [173, 3.8], [179, 3.9], [180, 3.2]] as const);
+
 const SPECS: FleetTankSpec[] = [
   make('t62_1975', 'type59', 'Type 59', 'China',
-    // §5.304 REDESIGN (owner order verbatim 2026-08-17: "update our t62 obr
-    // 1975 10% wider and then redeisgn our type 59 to be based off of
-    // that"): the visual is profiles/china.ts buildType59 — the WZ-120
-    // (T-54A-family) dome + 100 mm kit on the WIDENED obr-1975 chassis.
-    // Stats stay the Type 59's; dims RE-DERIVE from the widened base
-    // (hull/width = the t62_1975 rows, height = the authored cupola crown,
-    // overall = the authored 100 mm gun-forward total). silhouette* rows
-    // are type59's OWN gate-measured envelope (they also override the
-    // donor-inherited t62_1975 print rows — the §5.259 leak class, which
-    // zeroed this id's dims row until this landing). The LastTriarius
-    // Type 69 print remains the registered measurement oracle; its gate
-    // deltas vs this owner-decreed redesign are documented divergence
-    // (docs/references/tanks/type59.md §5.304), never chased back.
+    // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
+    // the visual is the PLA Type 59 (licensed T-54A) on the T-55A's construction (profiles/t54Family.ts, the owner's 262
+    // "make the type 59 be based on a type 55"), checked against the published dimensions and museum photographs
+    // (docs/references/tanks/type59.md §262). Stats stay the Type 59's; dims are the published
+    // 6.04 m hull, 9.00 m gun forward, 3.27 m width and 2.40 m height without the AA gun ([CZ-T54A], [GS-59spec]).
+    // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The registered
+    // measurement oracle is the owner's T-55A model (procedural-fidelity.html; the LastTriarius Type 69 print retired).
     { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
+      // the D-10T's own -5/+18 (262, Main: the donor T-62's -9/+20 was never sourced for these)
+      gunElevationDeg: 18, gunDepressionDeg: 5,
+      gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
       gun: {
         caliberMm: 100, reloadS: 7.6,
         shells: requireFleetSpec('t62_1975').gun.shells.map((round, index) => ({
@@ -144,17 +153,39 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 490 }),
         })),
       },
-      dims: { hullLengthM: 5.67, overallLengthM: 8.14, widthM: 3.11, heightM: 2.23,
-        // gate-measured authored envelope (§5.304 run receipts: 12%-band
-        // body trace includes the base's drum/fender tail like t62_1975's;
-        // height p95 = the cupola crown band)
-        silhouetteHullLengthM: 6.09, silhouetteOverallLengthM: 8.14,
-        silhouetteHeightM: 2.24 },
+      dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.40,
+        // the drawn envelope (262 geometry gate's body extents): rear drums to the fender tips, drums to the muzzle, the
+        // DShK and cupola crown band
+        silhouetteHullLengthM: 6.54, silhouetteOverallLengthM: 8.86,
+        silhouetteHeightM: 2.57 },
       // china-palette hooks (PLA green family, ztz85_iii grammar — values
       // distinct per §H.4 family separation)
       visual: { marking: 'number', number: '406', base: '#374836',
         weather: '#49573f', patches: ['#2a3629', '#5c6349', '#6f684e'],
-        camoScale: 0.52 } }, TRIARIUS_T69),
+        camoScale: 0.52, trackWidthM: 0.60 } }, TRIARIUS_T69),
+  // Release 262 (owner 2026-10-27, "make the type 59 be based on a type 55 which we should add to russia. match the
+  // geometries well"): the T-55A (1963), profiles/t54Family.ts, the construction the Type 59 shares, measured from the
+  // owner-supplied T-55A model (a local-only comparison oracle under CC BY-NC-ND 4.0, never shipped:
+  // docs/references/tanks/t55a.md). The same 100 mm D-10T family gun and chassis as the Type 59, so the same numbers;
+  // dims are the published 6.04 m hull, 9.00 m gun forward (over the drums), 3.27 m width and 2.35 m to the roof.
+  make('t62_1975', 't55a', 'T-55A', 'USSR/Russia',
+    { hp: 1650, enginePowerHp: 580, weightTons: 36, topSpeedKmh: 50,
+      // the D-10T's own -5/+18 (262, Main: the donor T-62's -9/+20 was never sourced for these)
+      gunElevationDeg: 18, gunDepressionDeg: 5,
+      gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
+      gun: {
+        caliberMm: 100, reloadS: 7.6,
+        shells: requireFleetSpec('t62_1975').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { name: '3BM8 APDS', dmg: 410, pen100Mm: 500, pen1000Mm: 450, pen2000Mm: 390 }
+            : index === 1 ? { name: '3BK5M HEAT', dmg: 410, pen100Mm: 430, pen1000Mm: 430 }
+              : { name: '3OF10 HE', dmg: 490 }),
+        })),
+      },
+      dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.35,
+        // the drawn envelope (262 geometry gate's body extents: drums to fender tips, drums to muzzle, cupola crown)
+        silhouetteHullLengthM: 6.52, silhouetteOverallLengthM: 8.87, silhouetteHeightM: 2.46 },
+      visual: { marking: 'number', number: '214', trackWidthM: 0.60 } }),
   // -- T-80 turbine family ---------------------------------------------------
   make('t80uk', 't80', 'T-80', 'USSR/Russia',
     { hp: 1780, enginePowerHp: 1000, weightTons: 42, gun: { reloadS: 7.8 },
@@ -253,14 +284,19 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 510 }),
         })),
       },
-      dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
-      // 2026-10-26 (the trunnion at 2.10 under the compact A5 shield, patton.ts): measured by tools/gun-depression-sweep.mjs
-      // (26 mm from the hull): the full -9 deg over the front 16 deg either side, the fender stowage's stops abeam and the
-      // engine deck's -3 deg over the rear
-      gunPitchByYawDeg: [[0, -9], [16, -9], [18, -7.1], [19, -6.7], [31, -5.8], [33, -5.8], [41, -7.4], [44, -6.9], [46, -6.9],
-        [54, -8.4], [56, -7.5], [58, -7.5], [61, -7.8], [62, -7.5], [65, -7.5], [76, -9], [104, -9], [107, -8], [109, -7], [110, -6.6],
-        [115, -5.9], [119, -5.8], [120, -6.1], [123, -7.5], [137, -5.6], [138, -5.4], [139, -4.4], [140, -4], [142, -3.7], [148, -3],
-        [180, -3]],
+      dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.06 },
+      // release 262: +19 / -9 deg (Hunnicutt via docs/references/tanks/m48a5_patton.md)
+      gunElevationDeg: 19, gunDepressionDeg: 9,
+      // release 262 (the owner's model: the bore at 1.921, the pivot at the source-world station z 1.7616, the model's deck,
+      // air cleaners, engine-deck hump, fender boxes and the tow cable on the left fender; pattonCast.ts): measured by
+      // tools/gun-depression-sweep.mjs (26 mm from the hull). The full -9 deg over the front 25 deg either side, the
+      // headlight guards, the fender boxes and the cable abeam, the air cleaners' and the engine deck's stops over the rear
+      // quarters (it lays level and up there)
+      gunPitchByYawDeg: [[0, -9], [25, -9], [32, -8], [33, -7.2], [34, -6.7], [36, -6.1], [38, -5.6], [41, -5.4],
+        [45, -5.4], [46, -5.5], [47, -4.6], [48, -4.1], [51, -4.1], [81, -7.9], [103, -7.6], [123, -5], [124, -4.2],
+        [125, -2.7], [126, -2.2], [133, -0.1], [136, 0.7], [146, 0.9], [149, 0.7], [150, 0.5], [152, -0.3],
+        [153, -0.5], [154, -1.5], [156, -1.6], [157, -2.2], [159, -1], [160, 0.6], [161, 1.6], [162, 1.8], [165, 1.9],
+        [166, 2.6], [167, 2.9], [180, 2.9]],
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 2250, enginePowerHp: 750, weightTons: 52, reverseSpeedKmh: 18,

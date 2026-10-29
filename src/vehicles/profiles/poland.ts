@@ -3,6 +3,7 @@ import {addPL01FieldTurret} from './pl01FieldTurret.ts';
 import { addPL01GunAssembly } from './pl01GunAssembly.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
+import { buildPT64Tur } from './pt64Tur.ts';
 import { buildPT91Twardy } from './pt91Twardy.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
@@ -834,4 +835,5 @@ export const POLAND_PROFILES = {
   pt91a_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
   pl01_105: { build: buildPL01 },
+  pt64_tur: { build: (P: TankBuilderPort) => buildPT64Tur(P) },
 } satisfies VehicleProfileRecord;

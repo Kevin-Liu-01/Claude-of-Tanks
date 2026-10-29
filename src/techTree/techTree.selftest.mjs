@@ -99,14 +99,14 @@ const FAMILY_UPGRADES = Object.freeze({
     ...after('t80u', ['t80u_kursk', 't80uk', 't84', 't80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'])],
   t90: [['t72bu', 't90_1992'], ['t90_1992', 't90'], ['t90a_2004', 't90a'], ['t90a_2006', 't90a_vladimir'],
     ['t90ms_2011', 't90ms_tagil'], ['t90sm_2013', 't90sm'], ['t90am', 't90m']],
-  challenger: [['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk3', 'challenger2'],
+  challenger: [['challenger1_mk1', 'challenger1_mk2'], ['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk3', 'challenger2'],
     ...after('challenger2', ['challenger2e', 'ua_challenger2', 'challenger3'])],
   leclerc: [['leclerc_s1', 'leclerc_s2'], ['leclerc_s2', 'leclerc_sxxi'], ['leclerc_sxxi', 'leclerc_xlr']],
   merkava: [['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'], ['merkava3c', 'merkava3_baz'],
     ['merkava3_baz', 'merkava3d'], ['merkava3d', 'merkava4'], ...after('merkava4', ['merkava4b', 'merkava4_trophy', 'merkava4_barak'])],
   other: [['chieftain3', 'chieftain5'], ['chieftain5', 'chieftain_mk9'], ['chieftain_mk9', 'chieftain_mk10'],
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
-    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['type90', 'type90a'],
+    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
@@ -114,8 +114,9 @@ for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `
 for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displayTier(base), `${upgrade} never shows below ${base}`);
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
+  ['challenger3_td', 'challenger3'], ['challenger3_td_rws', 'challenger3'],
   ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
-  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100'], ['t84', 't84bm_oplot_m']]) {
+  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100'], ['ztz20_prototype', 'ztz20'], ['t84', 't84bm_oplot_m']]) {
   assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
 }
 // no tier piles up: at most about 1.6x the average
@@ -144,11 +145,26 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above). 262 (owner approval 2026-10-27): the T-84BM Oplot-M and Oplot-T at X on the Kharkiv line;
+// (FAMILY_UPGRADES above). 262: the Challenger 1 Mk 1 at VIII on the Challenger line, lane 0, off the Chieftain Mk 5
+// beside the Mk 2; the fictional FV4030/5 and FV4030/6 (the rebuilt hull's turrets as their own tanks) at VIII, lanes 4
+// and 5, off the Chieftain Mk 10.
+// 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
+// added; 'Denmark' joins the tree's nations).
+// 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975.
+// 262: China's line ends ZTZ-100 Prototype → ZTZ-100 → ZTZ-20 Prototype → ZTZ-20, all at X.
+// 262: the new true T-64s, the T-64BM1M and the T-64B1V mod. 2022 at IV under the T-64BV mod. 2017
+// and the T-64BV at III beside the T-64BV1.
+// 262 (owner approval 2026-10-27): the T-84BM Oplot-M and Oplot-T at X on the Kharkiv line;
 // the older pair renamed Object 478DU2 (VI) and T-84U Oplot (VI on its period 2000 ammunition, score 0.772), the T-84U
 // leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
-// the Oplot-M's connector clears it. 262 (owner 2026-10-28): the PT-84 Orzeł, the Polish concept on the Oplot-M's base,
-// ends Poland's Twardy line at X (lane 3: the Upiór holds lane 2 at X); its light hunter, the PT-84 Sokół, leads to it at
-// IX and the assault PT-84 Żbik branches from the Sokół at X (lane 4).
-assert.equal(digest, '747a8005b1791c46', `tree content changed: re-pin to ${digest} if deliberate`);
+// the Oplot-M's connector clears it.
+// 262: the Challenger 3 TD in the UK special lane at VIII (with its prototype's tier), its RWS field fit as its twin.
+// 2026-10-28 re-cut (263, the merged release tree): every node above at once (the T-55A, the Challenger 1 Mk 1, the
+// FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
+// 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
+// Granby's place.
+// 262 (owner 2026-10-28): the PT-84 Orzeł, the Polish concept on the Oplot-M's base, ends Poland's Twardy line at X (lane 3:
+// the Upiór holds lane 2 at X); its light hunter, the PT-84 Sokół, leads to it at IX and the assault PT-84 Żbik branches
+// from the Sokół at X (lane 4). Re-pinned on the merged tree (main 637c3b4ccf + the PT-84s).
+assert.equal(digest, '61e910bc6624f205', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

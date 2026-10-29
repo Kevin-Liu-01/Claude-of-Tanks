@@ -74,8 +74,9 @@ const ztz99a2Prototype = inspect('ztz99a');
 const ztz99a2 = inspect('ztz99a2');
 const vt4a1 = inspect('vt4a1');
 
-// The Longwei (release 233) keeps the certified Type 99A hull and running gear under its own terraced turret; the
-// VT-derived chevron turret it carried through release 232 is retired (profiles/longwei.ts).
+// The Longwei keeps the certified Type 99A hull and running gear under its own turret: release 262's 99A-proportioned
+// arrowhead (the terraced front of release 233 and the VT-derived chevron turret before it are retired;
+// profiles/longwei.ts).
 const longweiReceipt = ztz99_longwei.turretRig.userData.longweiTurretReceipt;
 assert.equal(ztz99_longwei.hullRig.userData.runningGearReceipts[0].trackW, 0.629,
   'Longwei: certified native running gear is retained');
@@ -83,12 +84,14 @@ assert.deepEqual(ztz99_longwei.turretRig.position.toArray(), [0, 1.57, 0.64],
   'Longwei: the turret pivot (a gameplay datum) is unchanged');
 assert.deepEqual(ztz99_longwei.gunRig.position.toArray(), [0, 0.3198, 0.74],
   'Longwei: the trunnion (a gameplay datum) is unchanged');
-assert.equal(longweiReceipt?.architecture, 'longwei-terraced-r233', 'Longwei: the terraced turret is built');
+assert.equal(longweiReceipt?.architecture, 'longwei-arrowhead-r262', 'Longwei: the arrowhead turret is built');
+assert.equal(longweiReceipt?.terracedFrontRetired, true, 'Longwei: the terraced front is gone');
+assert.equal(longweiReceipt?.commanderSide, 'right', 'Longwei: the commander sits right of the gun, as on the 99A');
 assert.equal(longweiReceipt?.legacyVtDerivativeRetired, true, 'Longwei: the VT-derived turret is gone');
 assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt, undefined,
   'Longwei: no VT-derivative receipt survives');
 assert(longweiReceipt.mantletHalfWidthM < longweiReceipt.throatHalfWidthM,
-  'Longwei: the box mantlet clears its throat walls');
+  'Longwei: the mantlet clears its throat walls');
 for (const name of ['turret', 'turretDark', 'turretExternalArmor']) {
   const object = ztz99_longwei.tank.root.getObjectByName(name);
   assert(object && minimumRearDeckClearance(object) >= 0.02,
@@ -200,4 +203,4 @@ ztz99_longwei.tank.dispose();
 ztz99a2Prototype.tank.dispose();
 ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: forward/taller VT-4A1, the A2 family and the Longwei\'s own terraced turret verified');
+console.log('type99AAngularTurret.selftest: forward/taller VT-4A1, the A2 family and the Longwei\'s own arrowhead turret verified');

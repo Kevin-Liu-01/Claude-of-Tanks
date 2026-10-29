@@ -22,7 +22,7 @@ The assault tank of the PT-84 family: a first-party Polish game concept on the T
 
 - Krata-2 ERAWA-2 a step heavier than the Orzeł's: glacis, cheeks and flanks 0.24 / 480 mm, the full skirt run 0.16 /
   360.
-- The KBM2 120 mm, 6.5 s: K279 APFSDS, K280 HEAT-MP, K281 HE and Falarick 120 (6, guided); its depression held up from 137
+- The KBM2 120 mm, 6.5 s: K279 APFSDS, K280 HEAT-MP, K281 HE (the Falarick 120 owed, as on the Orzeł); its depression held up from 137
   degrees over the deeper rear skirt frames (measured).
 - 55.5 t, 1,200 hp, 64 km/h (reverse 25), hp 2,950, traverse 40 deg/s; assault doctrine (the breakthrough facet), view
   410 m.

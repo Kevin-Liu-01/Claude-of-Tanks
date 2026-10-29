@@ -116,12 +116,27 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['K2B Black Panther', 'Korean stealth K2'],
   },
   chieftain3: { displayName: 'Chieftain Mk 3' },
+  challenger1_mk1: { displayName: 'Challenger 1 Mk 1' },
   challenger1_mk2: { displayName: 'Challenger 1 Mk 2' },
+  // The fictional Challenger 1 developments take the numbers after the Challenger 1's FV4030/4 (the Shir 1 was /2, the
+  // Shir 2 /3); no real vehicle carries FV4030/5 or /6 (the owner, 2026-10-28: "proper numerical or fv designations").
+  challenger_x: { displayName: 'FV4030/5', searchAliases: ['Challenger X', 'FV 4030/5', 'Challenger 1 development'] },
+  challenger_x_sleek: {
+    displayName: 'FV4030/6', searchAliases: ['Challenger X Sleek', 'FV 4030/6', 'Challenger 1 development'],
+  },
   fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
   challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },
   ua_challenger2: {
     displayName: 'Challenger 2 (Ukraine)', shortName: 'Challenger 2 UA',
     searchAliases: ['Ukrainian Challenger 2', 'Ukraine Challenger 2'],
+  },
+  challenger3_td: {
+    displayName: 'Challenger 3 TD', shortName: 'Challenger 3 TD',
+    searchAliases: ['Challenger 3 Technology Demonstrator', 'Challenger 3 ATD', 'CR3 TD', 'RBSL demonstrator'],
+  },
+  challenger3_td_rws: {
+    displayName: 'Challenger 3 TD (RWS)', shortName: 'Challenger 3 TD RWS',
+    searchAliases: ['Challenger 3 TD remote weapon station', 'CR3 TD RWS', 'Challenger 3 TD field fit'],
   },
   challenger3: {
     displayName: 'Challenger 3', shortName: 'Challenger 3',
@@ -158,6 +173,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
+  christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
@@ -263,7 +279,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   ztz100: {
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
-    searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
+    searchAliases: ['Type 100', 'Type 100 main battle tank', 'ZTZ-20 pre-production', 'ZTZ-20 prototype', '100式坦克'],
+  },
+  ztz20_prototype: {
+    displayName: 'ZTZ-20 Prototype', shortName: 'ZTZ-20 Proto',
+    searchAliases: ['ZTZ-20 prototype', 'ZTZ 20 prototype', 'ZTZ-20 testbed', '20式坦克 原型车'],
+  },
+  ztz20: {
+    displayName: 'ZTZ-20', shortName: 'ZTZ-20',
+    searchAliases: ['ZTZ 20', 'Type 20', 'PLA next-generation tank', 'ZTZ-100 production', '20式坦克'],
   },
   ztz100_prototype: {
     displayName: 'ZTZ-100 Prototype', shortName: 'ZTZ-100 Proto',
@@ -298,6 +322,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // owner 2026-10-22: the Ukrainian Army's 2017 T-64BV modernisation (T-64BV zrazka 2017 roku); "Donbas" was the
   // kitbash source's label. The id stays.
   t64bv_donbas: { displayName: 'T-64BV mod. 2017', shortName: 'T-64BV mod. 2017', searchAliases: ['T-64BV Donbas'] },
+  t64bm1m: { displayName: 'T-64BM1M', shortName: 'T-64BM1M', searchAliases: ['T-64B1M', 'T-64BV-1M'] },
+  t64bv: { displayName: 'T-64BV', shortName: 'T-64BV' },
+  t64b1v_2022: { displayName: 'T-64B1V mod. 2022', shortName: 'T-64B1V mod. 2022', searchAliases: ['T-64BV mod. 2022'] },
+  pt64_tur: { displayName: 'PT-64 Tur', shortName: 'PT-64 Tur', searchAliases: ['T-64 Tur', 'Polish T-64'] },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
   t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
   // Release 262 (owner 2026-10-27: "make the existing ones into lower tier tanks with new names / prototype names"): the

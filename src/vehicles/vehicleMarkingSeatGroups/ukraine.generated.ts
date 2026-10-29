@@ -55,6 +55,104 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
+  "t64b1v_2022": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          1.0999354,
+          0.4845676,
+          -0.3975522
+        ],
+        "quaternion": [
+          -0.2331614,
+          0.7499911,
+          0.1837598,
+          0.591085
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64b1v_2022",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0177485
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          0.8635237,
+          0.4847909,
+          -0.8306084
+        ],
+        "quaternion": [
+          -0.3325501,
+          0.8129878,
+          0.1809608,
+          0.4423963
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64b1v_2022",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0133395
+      }
+    ]
+  },
+  "t64bm1m": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          1.1514571,
+          0.3754016,
+          -0.4040383
+        ],
+        "quaternion": [
+          -0.1289723,
+          0.7873344,
+          0.097459,
+          0.5949558
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64bm1m",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0112918
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          0.949209,
+          0.3749237,
+          -0.7915807
+        ],
+        "quaternion": [
+          -0.1278645,
+          0.8843339,
+          0.0642526,
+          0.4443825
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64bm1m",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0055725
+      }
+    ]
+  },
   "ua_t80bv": {
     "schemaVersion": 1,
     "seats": [

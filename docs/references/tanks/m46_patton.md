@@ -1,5 +1,80 @@
 # M46 Patton — reference packet
 
+## Release 262 rebuild — current status (2026-10-27)
+
+- Owner: "also should update/redesign the m47, m46, and m48 pattons"; for the batch, "based on proper historical
+  referrences so they will no longer look so chungus".
+- Implementation: new M26-derived hull, Pershing turret, rotor shield and 90 mm M3A1 in
+  `src/vehicles/profiles/pattonCast.ts` (`buildM46CastSteps`); the old `buildPershing` path is deleted. Lane
+  `item/patton-family-262` (base `b93941ce9d`). The chronological record below describes the retired builds.
+- The August 2026 "lower turrets" pass (`6d44952320`) had compressed this casting to 0.78 of its height and widened its
+  cheeks; that squash is the main reason the old build read squat and bloated.
+
+| Source key | Source |
+|---|---|
+| WP46 | https://en.wikipedia.org/wiki/M46_Patton (Hunnicutt 2015 p.422) |
+| AFV46 / AFV26 | https://afvdatabase.com/usa/m46patton.html, https://afvdatabase.com/usa/m26pershing.html |
+| VK46 | https://www.valka.cz/topic/view/658 |
+| TMB | https://tankmuseum.org/article/the-patton-family/ |
+| Photos | Commons: `M46_Patton_-_Tancrémont_-_left_view.jpg`, `..._right_view.jpg`, `..._rear_view.jpg` (CC BY-SA 4.0, Brigade Piron); `M46_Patton_front-left_2017_Bovington.jpg` (CC BY-SA 4.0, Morio); `M46_Patton_–_Kubinka_Tank_Museum_(26177368769).jpg` (CC BY-SA 2.0, Alan Wilson) |
+| Oracle | `/models/tanks/community/recovered/m46_patton.glb` (Bergman, local-only; the turret proportions agree with the photographs) |
+
+| Item | Release 260 build | Source | Release 262 build |
+|---|---|---|---|
+| Hull length | 6.333 | 250.3 in = 6.358 m | tail -4.25 to toe 2.09 (6.34); 6.49 over the pintle and fittings |
+| Width | 3.504 | 138.3 in = 3.513 m over the sandshields | 3.513 |
+| Height over MG | 3.233 | 125.1 in = 3.178 m | M2 on its roof post (spec 3.18) |
+| Turret casting | 2.35 W × 0.81 H × 3.29 L, roof 2.54 (squashed 0.78) | Pershing turret, ring 69 in; ~2.78 m to the cupola top | 2.00 W × 0.87 H × 2.58 L; floor 1.74, roof 2.61, cupola 2.81 |
+| Mantlet | 1.43 m slab pair | 4.5 in Pershing rotor shield | D-section rotor shield, 1.02 wide, face radius 0.54 on the trunnion |
+| Gun axis / trunnion | 1.931 at z 1.21 | ~78 in (1.98 m) fire height | 2.07 (oracle) at z 0.40 |
+| Gun | M3A1, evacuator mid-tube | 90 mm M3A1: single-baffle brake, evacuator directly behind it | single-baffle brake 3.89-4.23, evacuator 3.36-3.86; muzzle 4.23 (8.48 overall) |
+| Gun limits | +20 / -9 | +20 / -10 | +20 / -10 with a measured depression curve |
+| Road wheels | 6, r 0.33 | 6 dual, ~26 in | 6, r 0.33, stations 1.02..-2.68 |
+| Return rollers | 3 | 5 dual (AFV46, Tancrémont photo) | 5 |
+| Track-tension wheel | none | small dual wheel behind the last road wheel | yes, r 0.20 at z -3.22 |
+| Track | 0.60 | 23 in (0.584) on 110 in centres | 0.584 on 2.794 centres |
+| Glacis | — | 4 in at 46° from vertical | 46° |
+| Mufflers | fender drums | rearward mufflers on the rear fenders | drums in the rear corners under the fenders, X end guards |
+| Bow MG | yes | .30 cal ball mount, right front | yes, right |
+
+### Rebuilt against the gate's reference model (2026-10-28)
+
+The first release-262 build followed the dimension tables and photographs alone and scored 0 against the geometry
+gate's reference (the recovered GLB above, scaled to the published 3.51 m width; main's slab build had scored 91.2). The
+reference is a sound M46 (turret, rotor shield, hull and running gear agree with the Tancrémont and Bovington
+photographs), so the castings and the running gear now follow it, measured in the gate's own frame, while every part
+stays a first-party closed casting or fitting (no slab stacks, no per-column pods).
+
+| Item | First release-262 build | Rebuilt to the reference |
+|---|---|---|
+| Turret | floor 1.69, roof 2.61, sides 1.00, short bustle to -2.08 | floor 1.63, roof 2.47 (front) to 2.59 (rear), 1.03-1.05 over the ring narrowing to 0.63 over the bustle, rounder shoulders |
+| Basket | 0.92 m drum, flattened by the turret seat (it lay outside the ring's rim) | 0.69 m drum down to 0.84 m, inside the rim |
+| Rotor shield | 1.02 wide, foot 1.85 | 1.46 wide, foot 1.76 |
+| M2 | on a post behind the cupola | on a pedestal right of the gun, z -0.45 to 1.24, top 3.17, its ammunition chest beside it |
+| Cupola | r 0.30 at (-0.52, -0.72) | r 0.36 at (-0.49, -0.79), top 2.80 |
+| Cheek stowage | none | three boxes stacked on the left cheek (x to 1.21) |
+| Bustle rack | to -2.42 | load to -2.14, side rails and corner posts to -2.36 |
+| Antennas, lift eyes | two whips, four eyes | none (the reference carries neither) |
+| Glacis | knee 1.55, toe 2.09 at 1.10 | knee 1.17 at 1.65, toe 1.72 at 0.92, nose 0.10 deep |
+| Fenders | 1.56 with 0.22 boxes | 1.40 (the reference's plate) with 0.25 boxes along its length and a square rear end plate: outboard of the track it hangs to 1.03 as the reference draws it; over the track it stops at 1.20, clear of the sprocket's wrap; no front flap (it hung on the track over the idler) |
+| Mufflers | drums on the rear fenders | none above the fenders (the reference has none) |
+| Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres (the reference's 1.04-1.68 lane) |
+| Sprocket / idler | (-3.80, 0.88) / (1.70, 0.70) | (-3.86, 1.02) / (1.63, 0.88): the raised Pershing sprocket |
+| Gun | r 0.112-0.075 | r 0.125-0.095 (the reference's tube is 0.31 m across throughout; the real M3A1's is not, so ours stops short of it) |
+| Headlights | on the glacis | on brackets ahead of the nose with brush guards to z 2.09, three rods each (an open guard window read as a plan hole) |
+
+The gate's hull registration is the side silhouette's body span; the build's ends match the reference's (z -4.25 and
+2.01), so the turret is compared in place.
+
+Track containment (the release check's strict `track-clip-audit --exact --strict`): the first reference-fitted build read
+front 188, rear 204, sweep 392/16 (the front flap and the sponson box's bracket on the belt over the idler, the rear plate
+on the sprocket's wrap). The flap is gone, the plate stops over the track and the bracket stands under the box's inner
+edge (x 0.98): 0/0/0 and shoes 0/0/0 in the lane's offline copy of the audit
+(`~/cot-lanes/patton-262-evidence/tools/clipsim.mjs`, which reproduces the page's counts exactly).
+
+
+## Historical record (release 260 and earlier)
+
 Exact vehicle: **Medium Tank M46 Patton** — re-engined M26 with the
 **90 mm M3A1** gun (bore evacuator + single-baffle muzzle brake) and the big
 fender **mufflers**; distinctive **track tension idler** below/ahead of the

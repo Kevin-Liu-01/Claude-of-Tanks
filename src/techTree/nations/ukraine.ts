@@ -34,6 +34,8 @@ export const UKRAINE_TREE: NationTree = Object.freeze({
     node({ id: 'bm_oplot_t', tier: 10, line: 'kharkiv', lane: 1, parents: ['bm_oplot_m'], slot: 'line' }),
     // T-64 and T-80 upgrades
     node({ id: 't64bv_donbas', tier: 4, line: 'soviet', lane: 2, parents: [], slot: 'line' }),
+    node({ id: 't64b1v_2022', tier: 4, line: 'soviet', lane: 1, parents: ['t64bv_donbas'], slot: 'line' }),
+    node({ id: 't64bm1m', tier: 4, line: 'soviet', lane: 0, parents: ['t64b1v_2022'], slot: 'line' }),
     node({ id: 'ua_t80bv', tier: 5, line: 'soviet', lane: 3, parents: ['t64bv_donbas'], slot: 'line' }),
     node({ id: 't72b3_sich', tier: 7, line: 'soviet', lane: 2, parents: ['ua_t80bv'], slot: 'line' }),
     // Allied tanks

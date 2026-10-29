@@ -62,7 +62,6 @@ const SKEW_MIN = 0.15;            // min |skew| for a meaningful flip read
 // CRITIC_REFERENCE_OVERRIDES (graduates have no MODEL_SOURCE; the recovered
 // GLBs stay measurement oracles). Page-local injection; never ships.
 const CRITIC_REFERENCE_OVERRIDES = {
-  ztz100: SECOND_WAVE_X_REFERENCE_OVERRIDES.ztz100,
   c1_ariete: SECOND_WAVE_X_REFERENCE_OVERRIDES.c1_ariete,
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...ARES_APC_X_REFERENCE_OVERRIDES,
@@ -75,14 +74,16 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
   centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // m48a5_patton §5.45 build flip (patton lane 2026-08-08): render = buildM48
-  // procedural; the CC-BY print stays the measurement reference here.
-  m48a5_patton: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // release 262: the owner's M48A5, source-world certified (second-wave-x-reference-overrides.ts)
+  m48a5_patton: SECOND_WAVE_X_REFERENCE_OVERRIDES.m48a5_patton,
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): renders =
   // buildT44/buildType59 procedurals; the CC prints stay the measurement
   // references here (userdrops7 glb() helper expansion, verbatim).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262: the Type 59 and the new T-55A share the T-54/T-55 family construction measured from the owner's T-55A model
+  // (profiles/t54Family.ts); both compare against that prepared oracle (the Type 69 print retired)
+  type59: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
+  t55a: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // Owner-supplied articulated Leopard 1 oracle (Marina.Kardava,
@@ -233,6 +234,14 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // fidelity harness row.
   challenger3_proto: { source:'glb', glb:{ path:'/models/tanks/community/challenger_3.glb',
     turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true, yawOffset:-Math.PI/2 } },
+  // release 262: the Challenger 3 TD oracle (Jeyhun1985, CC-BY-4.0, measurement only); mirrors the fidelity row
+  challenger3_td: { source:'glb', glb:{ path:'/models/community-candidates/challenger3_td_x_source.glb',
+    turretNode:'^Object_26$', turretFollowers:'^Object_(?:19|22|23)$', gunNode:'^Object_6$', gunFollowers:'^Object_3$',
+    autoPivot:true, pivot:[0, 1.98, 0.7106], gunPivot:[0, 2.2341, 1.9195],
+    componentSubsets:[
+      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
+      { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
+    ] } },
   leo2a4: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
     turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },
   kf51_evo: { source:'glb', glb:{ path:'/models/tanks/kf51_grip420.glb',

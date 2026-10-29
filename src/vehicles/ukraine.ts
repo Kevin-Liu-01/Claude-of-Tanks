@@ -268,14 +268,14 @@ const UKRAINE_SPECS = {
     // Kalina class); the fleet's tier X MBT median (balanceAudit) reads them at 2.0, not under its floor of peers
     spec.gun.baseAccuracy = 0.30;
     spec.gun.aimTimeS = 1.63;
+    // 263 (integrator): every playable gun exposes one to three ammunition channels (ammunitionFlow.selftest, the HUD's
+    // three slots), and a guided channel on a gun tank is an auxiliary missile with a 2-3 s cadence. The lane's fourth
+    // round, the gun-fired Kombat ATGM (guided, 8 s), fits neither, so the pair carries the fleet's 125 mm Soviet-pattern
+    // set as the T-84, T-80UK and T-90M do: APFSDS, HEAT and HE as authored. A guided Kombat is owed to the Oplot lane.
     spec.gun.shells = [
       shell('BTA-4 APFSDS', 'APFSDS', 125, 840, 780, 545, 1780, { pen2000Mm: 710, count: 18 }),
       shell('3BK29M HEAT', 'HEAT', 125, 700, 700, 490, 905, { count: 10 }),
       shell('3OF26 HE-Frag', 'HE', 125, 50, 50, 600, 850, { count: 12 }),
-      shell('Kombat ATGM', 'HEAT', 125, 800, 800, 520, 350, {
-        pen2000Mm: 800, guided: true, guidanceTurnRateRadS: 0.62, reloadS: 8.0, count: 6, launcherTubes: 0,
-        soundProfile: 'arkan-launch',
-      }),
     ];
   }
 }
@@ -283,8 +283,9 @@ const UKRAINE_SPECS = {
 // The PT-84 Polish concepts (release 262): the Oplot-M's installed frame and base armour, ERAWA-2 where each build carries
 // its Krata grids: a two-layer cassette short of the Duplet, no anti-tandem layer; the Żbik's Krata-2 pillows a step
 // heavier. Their gun is the PT-17's: the KMDB KBM2 120 mm smoothbore in the carousel loader (Bumar-Łabędy / KMDB, MSPO
-// 2017), firing the Polish Army's NATO stock, the K2PL's K279 / K280 / K281, and (the Orzeł and the Żbik) Luch's
-// Falarick 120 gun-launched missile, made for NATO 120 mm guns.
+// 2017), firing the Polish Army's NATO stock, the K2PL's K279 / K280 / K281. Luch's Falarick 120 gun-launched missile
+// (the Orzeł's and the Żbik's fourth round) is owed: a gun-fired guided round fits neither a gun channel nor the
+// auxiliary-missile cadence (ammunitionFlow.selftest, the integrator's 263 ruling on the Oplots' Kombat).
 {
   const ERAWA2: EraProtection = Object.freeze({ keReduction: 0.20, ceFlatMm: 440 });
   const ERAWA2_SKIRT: EraProtection = Object.freeze({ keReduction: 0.12, ceFlatMm: 320 });
@@ -295,21 +296,21 @@ const UKRAINE_SPECS = {
   interface PolishRow {
     front: EraProtection; skirt: EraProtection;
     /** where the skirt sector starts (installed z): the full run, or the Sokół's three forward panels */
-    skirtZ0: number; flank: boolean; missile: boolean; reloadS: number;
+    skirtZ0: number; flank: boolean; reloadS: number;
     /** the KBM2's depression by turret yaw over this build (tools/gun-depression-sweep.mjs; oplotBMGun.selftest.mjs) */
     curve: [number, number][];
   }
   const ROWS: Record<'pt84_orzel' | 'pt84_sokol' | 'pt84_zbik', PolishRow> = {
     // held up from 137 degrees, where the barrel crosses the framed skirts' rear fields
-    pt84_orzel: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: -2.80, flank: true, missile: true, reloadS: 6.3,
+    pt84_orzel: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: -2.80, flank: true, reloadS: 6.3,
       curve: [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
         [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
     // the Oplot-M's curve: no framed fields aft of the three forward panels
-    pt84_sokol: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: 1.19, flank: false, missile: false, reloadS: 6.1,
+    pt84_sokol: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: 1.19, flank: false, reloadS: 6.1,
       curve: [[0, -5], [142, -5], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5], [163, -3.2],
         [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
     // held up from 137 degrees over the deeper Krata-2 frames of the rear skirt fields
-    pt84_zbik: { front: KRATA2, skirt: KRATA2_SKIRT, skirtZ0: -2.80, flank: true, missile: true, reloadS: 6.5,
+    pt84_zbik: { front: KRATA2, skirt: KRATA2_SKIRT, skirtZ0: -2.80, flank: true, reloadS: 6.5,
       curve: [[0, -5], [137, -5], [138, -4.7], [141, -4.2], [145, -3.7], [150, -3.6], [152, -3.6], [154, -3.9],
         [159, -4.7], [162, -3.5], [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
   };
@@ -349,14 +350,10 @@ const UKRAINE_SPECS = {
     spec.gun.aimTimeS = id === 'pt84_sokol' ? 1.8 : 1.63;
     const k279 = apfsdsPenetration(700);
     spec.gun.shells = [
-      shell('K279 APFSDS', 'APFSDS', 120, k279[0], k279[1], 530, 1760, { pen2000Mm: k279[2], count: row.missile ? 18 : 22 }),
-      shell('K280 HEAT-MP', 'HEAT', 120, 610, 610, 470, 1130, { count: row.missile ? 10 : 12 }),
+      shell('K279 APFSDS', 'APFSDS', 120, k279[0], k279[1], 530, 1760, { pen2000Mm: k279[2], count: 22 }),
+      shell('K280 HEAT-MP', 'HEAT', 120, 610, 610, 470, 1130, { count: 12 }),
       shell('K281 HE', 'HE', 120, 45, 45, 580, 1000, { count: 12 }),
     ];
-    if (row.missile) spec.gun.shells.push(shell('Falarick 120 ATGM', 'HEAT', 120, 750, 750, 500, 380, {
-      pen2000Mm: 750, guided: true, guidanceTurnRateRadS: 0.62, reloadS: 8.0, count: 6, launcherTubes: 0,
-      soundProfile: 'arkan-launch',
-    }));
   }
 }
 

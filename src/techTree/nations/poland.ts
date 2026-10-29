@@ -34,6 +34,8 @@ export const POLAND_TREE: NationTree = Object.freeze({
     }),
     // Twardy
     node({ id: 'pt91a_twardy', tier: 5, line: 'pt91_side', lane: 2, parents: ['t72m1_jaguar'], slot: 'line' }),
+    // release 262: the PT-64 Tur, the Polish what-if on the true T-64 (profiles/pt64Tur.ts)
+    node({ id: 'pt64_tur', tier: 4, line: 'pt91_side', lane: 1, parents: ['t72m1_jaguar'], slot: 'line' }),
     node({ id: 'pt84_sokol', tier: 9, line: 'pt91_side', lane: 3, parents: ['pt91a_twardy'], slot: 'line' }),
     node({ id: 'pt84_orzel', tier: 10, line: 'pt91_side', lane: 3, parents: ['pt84_sokol'], slot: 'line' }),
     node({ id: 'pt84_zbik', tier: 10, line: 'pt91_side', lane: 4, parents: ['pt84_sokol'], slot: 'line' }),

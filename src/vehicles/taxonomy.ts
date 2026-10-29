@@ -45,9 +45,9 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'challenger1_mk3',
     't72bu',
     'chieftain5',
-    't62_1975', 't64bv1', 't72bu_1989', 't80', 't80b', 't80bv',
+    't55a', 't62_1975', 't64bv1', 't64bv', 't72bu_1989', 't80', 't80b', 't80bv',
     't80uk', 'strv81', 'udes03', 'strv103a', 'strv103b',
-    'chieftain3', 'chieftain_mk9', 'challenger1_mk2', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
+    'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
     'amx40_proto', 'leo1a5', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
@@ -70,13 +70,13 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams',
     'm1a1_abrams_hc', 't72b3m_2022', 'pt91m', 't84', 't90_1992', 't90a_2004',
     't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv',
-    'strv121', 'challenger2', 'challenger2e', 'ua_challenger2', 'xk2_black_panther', 'k1e1', 'type10_tk_x', 'type10_dozer',
+    'strv121', 'challenger2', 'challenger2e', 'ua_challenger2', 'xk2_black_panther', 'k1e1', 'type10_tk_x', 'type10_dozer', 'christian2',
     'm6_linebacker', 'marder2', 'dardo', 'puma_s1', 'cv9040c', 'spz_puma', 'spz_wotan', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m',
     'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'leclerc_s2', 'leclerc_sxxi',
     'leclerc_s1', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'm1a1_abrams_sa', 'm1a1_abrams_aim',
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
-    'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 'ua_t80bv', 't80u_kursk',
-    't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
+    'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
+    'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
     'm3a3_bradley', 'bmpt_t90', 'cv90',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
@@ -85,7 +85,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // 1989 Type 89 and M551A1 TTS left next generation.
     't72b3m_hetman_ii', 't72b3_zubr_ii', 't80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk',
     't72b3_zubr', 't80u_yun', 't72b3m_kunlun', 't72b3_qilin', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
-    'challenger3_proto', 'challenger3', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
+    'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
@@ -93,7 +93,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
     'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
-    'type100', 'ztz100', 'ztz100_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
+    'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
   ]),
 });
 
