@@ -138,6 +138,27 @@ export function glacisCassettes(o: {
 }
 
 /**
+ * A floor in the release hull's stern rack (leopard2Hull.ts: its rails across at z -4.14, its sides at x ±0.55): a ledger
+ * on the louvre band's face, a dark sheet under the low rail, four slats along it, as the 2A4 V's stern frame floors its
+ * bay. Left empty the rack read through to the ground from above (the standard check's contiguity: 54 cells, release
+ * 264's gate). Returns the floor's top and the bay's centre so a kit can load it.
+ */
+export function sternRackFloor(P: TankBuilderPort): { floorY: number; zc: number } {
+  const { box } = KIT;
+  // the sheet runs under the low rail to a 1 cm lip behind it: the rail's own back edge fell on a pixel boundary in the
+  // Improved's census frame and read as a 30 px seam (the sealed check, release 264's gate)
+  const front = -3.835, back = -4.165, zc = (front + back) / 2, depth = front - back;
+  P.addEquipment('hullDetail', box(1.10, 0.04, 0.03), 0, 1.68, -3.839);
+  P.addEquipment('hullDark', box(1.10, 0.012, depth), 0, 1.706, zc);
+  for (let k = 0; k < 4; k++) P.addEquipment('hullDetail', box(0.035, 0.018, depth), -0.4125 + k * 0.275, 1.721, zc);
+  // the rack's rails and back posts sleeved 5 mm over the hull's 3 cm tubes: their faces at z -4.125 fell on a column of
+  // pixel centres in the Improved's census frame, where the raster took the tubes' undersides (38 px, the sealed check)
+  for (const y of [1.72, 1.82]) P.addEquipment('hullDetail', box(1.11, 0.04, 0.04), 0, y, -4.14);
+  for (const dx of [-0.55, 0.55]) P.addEquipment('hullDetail', box(0.04, 0.14, 0.04), dx, 1.765, -4.14);
+  return { floorY: 1.730, zc };
+}
+
+/**
  * An open stowage rack on the bustle's rear plate: rails across, posts, a slatted floor; returns the floor's height and
  * the rack's depth so a kit can load it.
  */

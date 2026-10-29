@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-27T11:49:32.087Z",
+ "generatedAt": "2026-10-29T17:50:58.484Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1179,38 +1179,6 @@
     5.9
    ]
   },
-  "leo2a4": {
-   "sealed": false,
-   "openPx": 17,
-   "openViews": 1,
-   "openViewNames": [
-    "cube_1_0_-1"
-   ],
-   "insideOutPx": 211,
-   "seeThroughPx": 7,
-   "netSeeThroughPx": 0,
-   "tris": 131680,
-   "frame": [
-    0,
-    1.45,
-    1.65,
-    6.1
-   ],
-   "accepts": [
-    {
-     "kind": "rebaseline",
-     "reason": "framed re-base recorded this row open (seethrough/apply-rebaseline3.mjs, not --reframe): a real slit about 1 cm tall along the turret roof line at y 2.56 m, x 0.51..0.63, z -0.30..-0.07 (back-facing turret facets 14 cm before any front face; 9-17 px in the four level front, rear and front-diagonal views at 1024 px), one 6 px hole cluster in view cube_1_0_-1 at 256 px (2 px under the old frame, below the cluster size). The row holds its one hole view: a new hole cluster fails. A vehicle-lane work order: close the slit, then --tighten-ledger=leo2a4.",
-     "by": "guards-229",
-     "date": "2026-10-20",
-     "from": {
-      "sealed": true,
-      "openPx": 0,
-      "seeThroughPx": 27,
-      "netSeeThroughPx": 0
-     }
-    }
-   ]
-  },
   "leo2a4_otco": {
    "sealed": true,
    "openPx": 0,
@@ -1224,21 +1192,6 @@
     1.7,
     1.75,
     6.3
-   ]
-  },
-  "leo2a4_v": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 99,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 129808,
-   "frame": [
-    0,
-    1.45,
-    1.05,
-    5.7
    ]
   },
   "leo2a4m": {
@@ -3658,6 +3611,36 @@
       "netSeeThroughPx": 2790
      }
     }
+   ]
+  },
+  "leo2a4": {
+   "sealed": true,
+   "openPx": 14,
+   "openViews": 0,
+   "insideOutPx": 430,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 108781,
+   "frame": [
+    0,
+    1.45,
+    0.85,
+    5.7
+   ]
+  },
+  "leo2a4_v": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 407,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 115071,
+   "frame": [
+    0,
+    2.1,
+    0.85,
+    5.9
    ]
   }
  }

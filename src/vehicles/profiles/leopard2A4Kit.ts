@@ -10,7 +10,7 @@ import { KIT } from './kit.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4FamilyId } from '../leopard2A4FamilyArmor.ts';
-import { HULL_SURFACES as HS, TURRET_SURFACES as TS, bustleRack, crosswindMast, deckFrame, deckY, foldedWhip } from './leopard2A4KitParts.ts';
+import { HULL_SURFACES as HS, TURRET_SURFACES as TS, bustleRack, crosswindMast, deckFrame, deckY, foldedWhip, sternRackFloor } from './leopard2A4KitParts.ts';
 
 /** What a variant's kit knows about its build. */
 export interface Leopard2A4KitContext {
@@ -68,6 +68,8 @@ function hullKit(P: TankBuilderPort): void {
   for (const sx of [-1, 1]) bowShackle(P, sx * 0.70, 0.93, 3.50);
   P.add('hullDetail', box(0.16, 0.12, 0.10), 0, 1.00, 3.42);
   bowShackle(P, 0, 0.92, 3.49);
+  // the stern rack's floor (its load went to the deck's corners, critic round 3)
+  sternRackFloor(P);
   // the blackout lamps inboard of the headlight pods
   for (const sx of [-1, 1]) {
     const z = HS.pods[1] + 0.02, y = deckY(z) + 0.06;
