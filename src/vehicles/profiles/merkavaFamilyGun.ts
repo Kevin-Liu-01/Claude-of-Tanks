@@ -59,6 +59,9 @@ export interface MerkavaGunSpec {
   readonly muzzleZ: number;
   /** The barrel's revolved profile, closing on the axis at both ends. */
   readonly barrel: readonly RevolveStation[];
+  /** The corrugated boot from the mantlet cover to the barrel as measured (its ribs' radii), revolved on the gun's mount
+   *  so it pitches with the gun; null where the source has none. */
+  readonly boot: readonly RevolveStation[] | null;
   /** The gun mask's measured stations, its cradle on its crown: z, the x extents and the y extents (gun frame). */
   readonly mantlet: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[];
   /** The mount over the gun as measured. */
@@ -102,6 +105,7 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
   const seg = P.q ? 36 : 20;
   P.gunG.position.set(gun.trunnion[0], gun.trunnion[1], gun.trunnion[2]);
   P.add('gun', revolveZ(gun.barrel, seg));
+  if (gun.boot) P.add('gunMount', revolveZ(gun.boot, seg));
   const mantlet = mantletGeometry(gun.mantlet);
   if (mantlet) P.add('gunMount', mantlet);
   // cradle trunnion caps behind the mantlet (gun steel), and the coaxial 7.62 mm port beside the gun on its left

@@ -2,8 +2,8 @@
 // welded faces between straight crease lines, each solid lofted through the stations where its faces turn (the Mk 1 and
 // Mk 2's wedge over its flared base "ears"; the Mk 3's flat-sided core; the Mk 4's broad core under its modules); ahead of
 // the gun's slot the Mk 1 to Mk 3's two cheeks and the base under the slot's floor are their own solids. Then its ring
-// collar, the bustle basket and its ball-and-chain curtain, the working roof machine guns at their measured mounts and
-// the whip antennas. The hatches, sights, add-on armour, smoke launchers and stowage are the measured detail parts
+// collar, the working roof machine guns at their measured mounts and the whip antennas (the bustle basket is measured:
+// merkavaFamilyDetails.ts). The hatches, sights, add-on armour, smoke launchers and stowage are the measured detail parts
 // (merkavaFamilyDetails.ts). Turret frame: the ring centre at deck height, +Z forward.
 import { KIT, FITTINGS } from './kit.ts';
 import type * as THREE from 'three';
@@ -136,54 +136,6 @@ export function turretFlankAt(shell: readonly ShellSolid[], z: number): readonly
 /** The shell's highest point (hull frame). */
 export function turretShellTop(shell: readonly ShellSolid[]): number {
   return Math.max(...shell.flatMap((solid) => solid.rings.flatMap((ring) => ring.map(([, y]) => y))));
-}
-
-export interface MerkavaBasket {
-  readonly z0: number; readonly z1: number; readonly halfWidth: number; readonly floor: number; readonly rail: number;
-}
-
-/** The bustle basket (hull frame numbers, drawn in the turret frame): an open welded frame round the bustle's rear with
- *  a floor, posts and two rails, stowage riding in it, and the ball-and-chain curtain hung from its rear rail. */
-export function buildMerkavaBasket(P: TankBuilderPort, b: MerkavaBasket, pivot: readonly [number, number]): void {
-  const { box } = KIT, slot = 'turretOpenLattice', [py, pz] = pivot;
-  const z0 = b.z0 - pz, z1 = b.z1 - pz, floor = b.floor - py, rail = b.rail - py, hw = b.halfWidth, depth = z0 - z1;
-  P.add('turretPaintedDetail', box(hw * 2, 0.025, depth), 0, floor, (z0 + z1) / 2);
-  for (const y of [floor + (rail - floor) * 0.5, rail]) {
-    P.add(slot, box(hw * 2, 0.03, 0.03), 0, y, z1 + 0.015);
-    for (const side of [-1, 1]) P.add(slot, box(0.03, 0.03, depth), side * hw, y, (z0 + z1) / 2);
-  }
-  for (let i = 0; i < 5; i++) P.add(slot, box(0.03, rail - floor, 0.03), -hw + (i / 4) * hw * 2, (rail + floor) / 2, z1 + 0.015);
-  for (const side of [-1, 1]) for (const z of [z0 - 0.02, (z0 + z1) / 2]) P.add(slot, box(0.03, rail - floor, 0.03), side * hw, (rail + floor) / 2, z);
-  // the ball-and-chain curtain under the rear rail
-  const jit = (i: number, k: number): number => {
-    let h = Math.imul(i + 1, 0x9e3779b1) ^ Math.imul(k + 7, 0x85ebca6b);
-    h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12;
-    return (h >>> 0) / 4294967296 - 0.5;
-  };
-  const drop = 0.42;
-  const chain = (i: number, x: number, z: number): void => {
-    const d = drop * (1 + jit(i, 3) * 0.3), lean = jit(i, 4) * 0.06;
-    P.add('turretOpenLatticeDark', box(0.008, d, 0.008), x + Math.sin(lean) * d / 2, floor - 0.015 - Math.cos(lean) * d / 2, z, 0, 0, lean);
-    const r = 0.02 * (1 + jit(i, 6) * 0.3);
-    P.add('turretOpenLatticeDark', KIT.sph(r, 7), x + Math.sin(lean) * d, floor - 0.015 - Math.cos(lean) * d - r * 0.8, z);
-  };
-  // across the rear
-  const cz = z1 - 0.01, span = hw * 2 - 0.08, n = Math.max(12, Math.round(span / 0.05)) + 1, pitch = span / (n - 1);
-  P.add(slot, box(hw * 2, 0.035, 0.035), 0, floor, cz);
-  for (let i = 0; i < n; i++) {
-    if (i > 0 && i < n - 1 && jit(i, 1) > 0.40) continue;
-    chain(i, -hw + 0.04 + i * pitch + jit(i, 2) * pitch * 0.3, cz + jit(i, 5) * 0.01);
-  }
-  // and down both sides, from the rear corner to the bustle
-  const sn = Math.max(6, Math.round((depth - 0.06) / 0.05)), sp = (depth - 0.06) / sn;
-  for (const side of [-1, 1]) {
-    P.add(slot, box(0.035, 0.035, depth), side * (hw - 0.01), floor, (z0 + z1) / 2);
-    for (let k = 1; k <= sn; k++) {
-      const i = 100 + k * 2 + (side > 0 ? 1 : 0);
-      if (jit(i, 1) > 0.45) continue;
-      chain(i, side * (hw - 0.01) + jit(i, 2) * 0.01, z1 + 0.02 + k * sp + jit(i, 5) * sp * 0.3);
-    }
-  }
 }
 
 // The fleet MAG at scale 1 (FITTINGS.pintleMG cls 'mag', measured): from 0.308 behind its pintle to 0.951 ahead of it.

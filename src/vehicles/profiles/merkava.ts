@@ -11,8 +11,8 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
 import { buildMerkavaBelly, buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
-import { buildMerkavaBasket, buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
-import { buildMerkavaSourceDetails } from './merkavaFamilyDetails.ts';
+import { buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
+import { buildMerkavaBasket, buildMerkavaSourceDetails } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
 
 function isTankBuilderPort(value: object): value is TankBuilderPort {
@@ -53,7 +53,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   const channel = mark.slot ? { z0: mark.slot.z0, z1: shellFront, halfWidth: mark.slot.halfWidth }
     : moduleFront > shellFront + 0.2 ? { z0: shellFront - 0.05, z1: moduleFront, halfWidth: 0.25 } : null;
   buildMerkavaTurretShell(P, mark.shell, mark.pivot, channel);
-  buildMerkavaBasket(P, mark.basket, mark.pivot);
+  if (mark.basket) buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts);
   buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
@@ -67,7 +67,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [flank[0] * 0.98, flank[1] - py, flankZ - pz], Math.PI / 2);
   P.topY = turretShellTop(mark.shell) - py + 0.10;
   P.hullG.userData.merkavaFamilyReceipt = Object.freeze({
-    revision: 'merkava-family-262-r4', mark: mark.id, gun: gunReceipt,
+    revision: 'merkava-family-262-r5', mark: mark.id, gun: gunReceipt,
     pivotM: Object.freeze([...mark.pivot]), roadWheelStations: mark.gear.wheelZs.length,
     returnRollers: mark.gear.rollers.length, sourceParts: mark.parts.length,
     turretStations: mark.shell.reduce((n, solid) => n + solid.z.length, 0),

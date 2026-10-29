@@ -6,8 +6,8 @@
 // sources' hull plates are open and carry the turret ring's and hatches' openings. Sources and gap tables:
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
 import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
-import type { MerkavaBasket, ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
-import type { SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
+import type { ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
+import type { MerkavaBasket, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -34,8 +34,8 @@ export interface MerkavaMark {
   readonly slot: TurretSlot | null;
   readonly parts: readonly SourcePart[];
   readonly gun: MerkavaGunSpec;
-  /** The bustle basket: from the shell's rear (z0) to the rack's end (z1), half-width, floor and rail heights (hull frame). */
-  readonly basket: MerkavaBasket;
+  /** The bustle basket as measured (hull frame); null where the source has none behind the shell. */
+  readonly basket: MerkavaBasket | null;
   /** Roof machine guns as measured (hull frame): the mount's x, foot y and z, and the gun's span along z. */
   readonly roofGuns: readonly (readonly [x: number, foot: number, z: number, z0: number, z1: number])[];
   /** Whip antennas as measured: x, foot y, z, height (on the turret, or on the hull where the foot is under the deck). */
@@ -148,6 +148,9 @@ const OVER_GUN: Readonly<Record<MerkavaMarkId, OverGunRecord>> = {
   merkava4b: { m2: [1.152, 2.812, 2.814], ammoBox: null },
 };
 
+/** Rows of numbers (the record's basket and boot as plain rows: mapped as their literal tuples, their union is too large). */
+type Rows = readonly (readonly number[])[];
+
 /** The measured barrel profile with each radial step's outer corner chamfered (up to 6 mm along the bore, within the
  *  shorter neighbouring run): the sleeve clamps and evacuator bands read as machined collars, not flat washers. */
 function chamfered(profile: readonly (readonly [number, number])[]): [number, number][] {
@@ -177,6 +180,9 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   const trunnion: [number, number, number] = [0, axisY - pivot[0], tz - pivot[1]];
   const barrel: RevolveStation[] = [[r.barrel[0]![0] - tz, 0], ...chamfered(r.barrel).map(([z, rr]): RevolveStation => [z - tz, rr]),
     [r.barrel[r.barrel.length - 1]![0] - tz, 0]];
+  const bootRows = r.boot as unknown as Rows | null;
+  const boot: RevolveStation[] | null = bootRows ? [[bootRows[0]![0]! - tz, 0],
+    ...bootRows.map(([z, rr]): RevolveStation => [z! - tz, rr!]), [bootRows[bootRows.length - 1]![0]! - tz, 0]] : null;
   const start = r.slot ? r.slot.z0 - 0.05 : r.noseZ - 0.55;
   const sections = r.gunMask.filter(([z]) => z >= start);
   const kept: (typeof sections)[number][] = [];
@@ -204,7 +210,7 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   };
   return {
     model: r.barrel.some(([, rr]) => rr > 0.083) && r.barrel[r.barrel.length - 1]![1] > 0.079 ? 'MG25x' : 'M64',
-    trunnion, muzzleZ: r.barrel[r.barrel.length - 1]![0] - tz, barrel, mantlet, overGun,
+    trunnion, muzzleZ: r.barrel[r.barrel.length - 1]![0] - tz, barrel, boot, mantlet, overGun,
   };
 }
 
@@ -233,7 +239,15 @@ function fenderOf(r: SourceRecord): MerkavaFender | null {
 const decodePart = (p: SourcePart): SourcePart =>
   p.map((v, i) => (i === 0 || i === 1 || i === 12 || i === 13 ? v : v / (i >= 14 ? 10000 : 1000)));
 
-function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, basket: MerkavaMark['basket']): MerkavaMark {
+/** The measured basket in metres (bars' ends in thousandths, radii in ten-thousandths; boxes' quaternions in
+ *  ten-thousandths). */
+function basketOf(r: SourceRecord): MerkavaBasket | null {
+  const bk = r.basket as unknown as { readonly b: Rows; readonly p: Rows } | null;
+  return bk ? { bars: bk.b.map((v) => v.map((n, i) => n / (i === 6 ? 10000 : 1000))),
+    boxes: bk.p.map((v) => v.map((n, i) => n / (i >= 6 ? 10000 : 1000))) } : null;
+}
+
+function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): MerkavaMark {
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
@@ -242,22 +256,17 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, ba
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s) })),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
       axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
-    basket, roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
+    basket: basketOf(r),
+    roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };
 }
 
 export const MERKAVA_MARKS: Readonly<Record<MerkavaMarkId, MerkavaMark>> = Object.freeze({
-  merkava1b: mark('merkava1b', MK12_HULL, 0.42,
-    { z0: -3.05, z1: -3.80, halfWidth: 1.10, floor: 2.00, rail: 2.50 }),
-  merkava2b: mark('merkava2b', MK12_HULL, 0.42,
-    { z0: -3.10, z1: -3.92, halfWidth: 1.12, floor: 2.00, rail: 2.50 }),
-  merkava2d: mark('merkava2d', MK12_HULL, 0.42,
-    { z0: -3.10, z1: -3.92, halfWidth: 1.12, floor: 2.00, rail: 2.50 }),
-  merkava3c: mark('merkava3c', MK3_HULL, 0.40,
-    { z0: -3.25, z1: -4.08, halfWidth: 1.10, floor: 2.00, rail: 2.45 }),
-  merkava3_baz: mark('merkava3_baz', MK3_HULL, 0.40,
-    { z0: -3.25, z1: -4.08, halfWidth: 1.10, floor: 2.00, rail: 2.45 }),
-  merkava4b: mark('merkava4b', MK4_HULL, 0.45,
-    { z0: -3.25, z1: -3.80, halfWidth: 1.15, floor: 2.08, rail: 2.56 }),
+  merkava1b: mark('merkava1b', MK12_HULL, 0.42),
+  merkava2b: mark('merkava2b', MK12_HULL, 0.42),
+  merkava2d: mark('merkava2d', MK12_HULL, 0.42),
+  merkava3c: mark('merkava3c', MK3_HULL, 0.40),
+  merkava3_baz: mark('merkava3_baz', MK3_HULL, 0.40),
+  merkava4b: mark('merkava4b', MK4_HULL, 0.45),
 });

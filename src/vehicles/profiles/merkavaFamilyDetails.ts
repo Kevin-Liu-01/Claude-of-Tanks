@@ -104,6 +104,33 @@ export interface SolidPart {
   readonly solids: readonly ShellSolid[];
 }
 
+/** The bustle basket as measured (basketfit.py, hull frame): bars (two ends and a radius) along the rails, posts and
+ *  frames' tubes, and the box-like pieces (the floor, mesh panels, strips, posts, cans: centre, size, quaternion). */
+export interface MerkavaBasket {
+  readonly bars: readonly (readonly number[])[];
+  readonly boxes: readonly (readonly number[])[];
+}
+
+const UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
+/** Draws the measured basket in the turret frame: each bar a six-sided member between its ends, each box-like piece its
+ *  oriented box. The sources hang no ball-and-chain curtain under it. */
+export function buildMerkavaBasket(P: TankBuilderPort, basket: MerkavaBasket, pivot: readonly [number, number]): void {
+  const [py, pz] = pivot;
+  for (const [x0, y0, z0, x1, y1, z1, r] of basket.bars as readonly (readonly [number, number, number, number, number, number, number])[]) {
+    const len = Math.hypot(x1 - x0, y1 - y0, z1 - z0);
+    if (len < 0.005) continue;
+    q.setFromUnitVectors(UP, dir.set((x1 - x0) / len, (y1 - y0) / len, (z1 - z0) / len));
+    e.setFromQuaternion(q);
+    P.add('turretOpenLattice', KIT.cylY(r, r, len, 6), (x0 + x1) / 2, (y0 + y1) / 2 - py, (z0 + z1) / 2 - pz, e.x, e.y, e.z);
+  }
+  for (const [cx, cy, cz, sx, sy, sz, qx, qy, qz, qw] of basket.boxes as readonly (readonly [number, number, number, number,
+    number, number, number, number, number, number])[]) {
+    q.set(qx, qy, qz, qw).normalize();
+    e.setFromQuaternion(q);
+    P.add('turretPaintedDetail', KIT.box(sx, sy, sz), cx, cy - py, cz - pz, e.x, e.y, e.z);
+  }
+}
+
 /** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted),
  *  and the turret armour modules' solids in their side's removable package. */
 export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number],
