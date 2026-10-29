@@ -9,6 +9,9 @@ import {
   rightCheekPlate as chR, leftCheekPlate as chL, moduleBox as mbox, crewBox as cbox, type ArmorEnvelope,
 } from './specHelpers.ts';
 import { LEOPARD2_HULL, leopard2HullArmor } from './leopard2HullDatums.ts';
+import {
+  LEOPARD2_CHEEK_SWEEP_DEG, cheekCornerZ, cheekFaceZ as sharedCheekFaceZ, sightBackZ, type Leopard2CheekFront,
+} from './leopard2CheekFrontDatums.ts';
 
 /** The turret's datums (turret metres). */
 export const LEO2A3B4_TURRET = Object.freeze({
@@ -21,31 +24,35 @@ export const LEO2A3B4_TURRET = Object.freeze({
    * The cheek blocks: their faces at the gun slot frontZ (hull z 2.02, over the driver's hatch: Björn Huber's 2A4 side
    * drawing registered by road-wheel pitch, the 2A4 lane 2026-10-28), straight across to 1.20 m off the bore and swept
    * back cheekSweepDeg toward the outer ends (the owner, 2026-10-28: "if you look top down, the chheeks are at a slight
-   * slope, like \ / but not extreme"; shown both readings: "A built now is correct", the outer ends set back), a short
+   * slope, like \ / but not extreme"; shown both readings: "A built now is correct", the outer ends set back; 2026-10-29,
+   * on the 6 degrees first built: "i think it nneeds to be a lot mroe than 6 degrees"). 27 degrees is fitted to the
+   * owner's photo: its two cheek faces' rails (slopes +0.02 and -0.37), the turret side's rail (+0.52) and their faces'
+   * widths (150 and 80 px) give 24 to 31 degrees over the focal lengths its vertical edges allow, 6 the worst fit. A short
    * chamfer to the side walls; the faces vertical to faceTopY, then a bevel back cheekBevelM to the flat tops at cheekTopY
    * (the photographed 2A4 fronts; the owner via the 2A4 lane: "fronts of leo 2a4s are sloped though"); the welded shell
-   * ends at cheekRootZ and the blocks stand in front of it.
+   * ends at cheekRootZ, behind the outer ends' bevelled tops, and the blocks stand in front of it.
    */
   frontZ: 1.65,
-  cheekSweepDeg: 6,
+  cheekSweepDeg: LEOPARD2_CHEEK_SWEEP_DEG,
   frontHalfWidthM: 1.20,
   slotHalfWidthM: 0.475,
   halfWidthM: 1.27,
-  cheekRootZ: 1.03,
+  cheekRootZ: 0.88,
   cornerChamferM: 0.10,
   faceTopY: 0.60,
   cheekTopY: 0.775,
   cheekBevelM: 0.22,
   /**
    * The EMES 15's notch in the right cheek's top inboard corner, open to the front and the top through the bevel: its
-   * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head; the head's
-   * armoured housing on the cheek's top behind it, its foot sightLintelY, its top sightTopY. Measured from the cited photos
-   * (docs/references/tanks/leo2a3_b4.md, "Turret front").
+   * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head (its back
+   * parallel to the cheek's face); the head's armoured housing on the cheek's top behind it, its foot sightLintelY, its top
+   * sightTopY. Measured from the cited photos (docs/references/tanks/leo2a3_b4.md, "Turret front"); the lintel rose 5 cm
+   * after the photo critic (its face over the opening is a thin lip in the owner's photo, not a deep brow).
    */
   sightInnerX: 0.50,
   sightOuterX: 0.94,
   sightSillY: 0.42,
-  sightLintelY: 0.70,
+  sightLintelY: 0.75,
   sightTopY: 0.86,
   sightDepthM: 0.22,
   stepZ: -1.62,
@@ -67,18 +74,30 @@ export const LEO2A3B4_TURRET = Object.freeze({
   bustleFloorY: 0.21,
 });
 
+/** The cheek front's datums (leopard2CheekFrontDatums.ts, shared with the 2A4 family's turret): both sides alike. */
+export const LEO2A3B4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
+  frontZ: LEO2A3B4_TURRET.frontZ, slotHalfWidthM: LEO2A3B4_TURRET.slotHalfWidthM, sweepDeg: LEO2A3B4_TURRET.cheekSweepDeg,
+  floorY: LEO2A3B4_TURRET.floorY, faceTopY: LEO2A3B4_TURRET.faceTopY, cheekTopY: LEO2A3B4_TURRET.cheekTopY,
+  cheekBevelM: LEO2A3B4_TURRET.cheekBevelM, rootZ: LEO2A3B4_TURRET.cheekRootZ, cornerChamferM: LEO2A3B4_TURRET.cornerChamferM,
+  right: Object.freeze({ faceHalfWidthM: LEO2A3B4_TURRET.frontHalfWidthM, wallHalfWidthM: LEO2A3B4_TURRET.halfWidthM }),
+  left: Object.freeze({ faceHalfWidthM: LEO2A3B4_TURRET.frontHalfWidthM, wallHalfWidthM: LEO2A3B4_TURRET.halfWidthM }),
+  sight: Object.freeze({
+    innerX: LEO2A3B4_TURRET.sightInnerX, outerX: LEO2A3B4_TURRET.sightOuterX, sillY: LEO2A3B4_TURRET.sightSillY,
+    lintelY: LEO2A3B4_TURRET.sightLintelY, topY: LEO2A3B4_TURRET.sightTopY, depthM: LEO2A3B4_TURRET.sightDepthM,
+    housingDepthM: 0.62,
+  }),
+});
+
 /** The vertical cheek face's z at |x| off the bore (turret metres): frontZ at the slot, swept back cheekSweepDeg outward. */
 export function cheekFaceZ(x: number): number {
-  const T = LEO2A3B4_TURRET;
-  return T.frontZ - Math.max(0, Math.abs(x) - T.slotHalfWidthM) * Math.tan(T.cheekSweepDeg * Math.PI / 180);
+  return sharedCheekFaceZ(LEO2A3B4_CHEEK_FRONT, x);
 }
 
 /** Where the chamfer meets the side wall (turret metres). */
-export const LEO2A3B4_CORNER_Z = cheekFaceZ(LEO2A3B4_TURRET.frontHalfWidthM) - LEO2A3B4_TURRET.cornerChamferM;
+export const LEO2A3B4_CORNER_Z = cheekCornerZ(LEO2A3B4_CHEEK_FRONT, LEO2A3B4_CHEEK_FRONT.right);
 
-/** The notch's back (the sight head's face): sightDepthM behind the face at the notch's centre. */
-export const LEO2A3B4_SIGHT_BACK_Z = cheekFaceZ((LEO2A3B4_TURRET.sightInnerX + LEO2A3B4_TURRET.sightOuterX) / 2)
-  - LEO2A3B4_TURRET.sightDepthM;
+/** The notch's back (the sight head's face) at the notch's centre: sightDepthM behind the face, parallel to it. */
+const LEO2A3B4_SIGHT_BACK_Z = sightBackZ(LEO2A3B4_CHEEK_FRONT);
 
 /** How much deeper the production Leopard 2's three heavy fore skirt blocks hang than the aft run (the photographed step). */
 export const EARLY_LEOPARD2_FORE_SKIRT_DROP_M = 0.16;
@@ -118,8 +137,11 @@ export function leo2a3B4Armor(): ArmorEnvelope {
   const sill = Td.sightSillY, back = LEO2A3B4_SIGHT_BACK_Z;
   const fso = cheekFaceZ(Td.sightOuterX), fsi = cheekFaceZ(Td.sightInnerX), fs = (fso + fsi) / 2;
   const rise = Td.sightTopY - sill, run = fs - back;
-  const slope = rise / Math.hypot(rise, run), notch = A.sightNotch;
   const ny = Td.roofY, nz = fso - run * (ny - sill) / rise;
+  // the plate's obliquity to a frontal round, its rise back and the cheek's sweep together (the cosine of its normal on
+  // the bore's axis), so the round's line of sight through it is the sight head's protection
+  const ux = Td.sightOuterX - Td.sightInnerX, uz = fsi - fso, wy = ny - sill, wz = nz - fso;
+  const slope = Math.abs(ux * wy) / Math.hypot(uz * wy, ux * wz, ux * wy), notch = A.sightNotch;
   const mhw = Td.mantletHalfWidthM;
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, fi, Td.frontHalfWidthM, fo, y0, yf, 0, 0, cheek),

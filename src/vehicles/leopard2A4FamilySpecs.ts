@@ -50,7 +50,9 @@ interface FamilyEnvelope {
 /** The 2A4's L/44 penetration record (leo2a4's DM53): the figures the L/44 vehicles of the family fire. */
 const L44_APFSDS_PEN_MM = Object.freeze({ pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700 });
 
-// The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm. The
+// The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm (the
+// OTCO's and the Improved's re-measured on the L/44, release 265: its fume extractor sits where the L/55's thinner tube
+// had cleared their deck stowage at yaw 155). The
 // square turret's guns run free to the rear quarters, where the engine deck and its stowage lift them; on the wedge
 // turrets the 2A6 mantlet cover rides the 2A4's deeper trunnion, and its underside holds the gun over the deck and the
 // sponsons' stowage at the sides.
@@ -69,16 +71,16 @@ const GUN_PITCH_BY_YAW_DEG: Readonly<Record<Leopard2A4FamilyId, NonNullable<Flee
   leo2a4m_can: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [135, -9], [137, -3.9], [138, -3],
     [139, -2.6], [147, -0.5], [148, 0.2], [149, 0.7], [153, 0.7], [154, 1.4], [156, 1.8], [159, 1.8], [165, 0.9],
     [166, 0.9], [167, 4.3], [168, 5.9], [170, 7.3], [172, 7.9], [173, 8], [176, 8], [178, 7.5], [180, 6.2]],
-  leo2a4_otco: [[0, -9], [11, -9], [21, -7.8], [25, -6.9], [26, -6.2], [29, -6.1], [31, -6.7], [37, -6.7], [39, -6.8],
-    [40, -7.6], [44, -6.8], [47, -5.7], [48, -5.5], [56, -5.5], [59, -3.6], [63, -3.4], [72, -3.5], [89, -4.9],
-    [95, -4.2], [100, -4], [105, -4], [106, -3.6], [108, -3.2], [121, -1.8], [127, -1.4], [139, -1.4], [140, -1.5],
-    [143, -1.9], [149, -0.5], [150, -0.4], [155, -0.4], [156, 0.8], [157, 1.7], [158, 1.9], [160, 1.9], [161, 1.5],
-    [162, 0.6], [170, 0.5], [171, 0.8], [174, 0.9], [180, 0.8]],
-  leo2_improved: [[0, -9], [11, -9], [16, -8.4], [26, -8.4], [28, -8.5], [29, -9], [37, -9], [47, -5.7], [48, -5.5],
+  leo2a4_otco: [[0, -9], [11, -9], [21, -7.8], [24, -7.1], [25, -5.6], [26, -4.9], [29, -4.9], [30, -5.5], [31, -6.7],
+    [37, -6.7], [39, -6.8], [40, -7.6], [44, -6.8], [47, -5.7], [48, -5.5], [56, -5.5], [59, -3.6], [63, -3.4],
+    [72, -3.5], [89, -4.9], [95, -4.2], [100, -4], [105, -4], [106, -3.6], [108, -3.2], [121, -1.8], [127, -1.4],
+    [139, -1.4], [140, -1.5], [143, -1.9], [148, -0.4], [149, 0.5], [150, 0.8], [156, 0.7], [157, 1.3], [158, 1.6],
+    [160, 1.6], [163, 1], [178, 0.9], [180, 0.5]],
+  leo2_improved: [[0, -9], [11, -9], [16, -8.4], [26, -8.3], [28, -8.5], [29, -9], [37, -9], [47, -5.7], [48, -5.5],
     [53, -5.5], [54, -4.4], [56, -3.5], [59, -3.4], [69, -3.4], [72, -3.6], [74, -5.1], [87, -6.5], [88, -6.7],
     [90, -5.2], [95, -5], [108, -4.8], [116, -3.8], [118, -3.6], [119, -3.6], [120, -2.6], [138, -2.5], [148, -1.5],
-    [151, -1.3], [152, 2.8], [153, 5.1], [154, 5.8], [159, 6.1], [161, 6.1], [163, 5.4], [164, 4.7], [165, 3.8],
-    [166, 0.4], [173, 0.9], [180, 0.8]],
+    [150, -0.9], [151, -0.2], [152, 5.3], [153, 6.6], [154, 7], [158, 7.4], [161, 7.4], [163, 6.4], [164, 5.7],
+    [165, 4.5], [166, 0.9], [178, 0.9], [180, 0.5]],
 };
 
 const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.freeze({

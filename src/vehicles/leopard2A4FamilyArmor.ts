@@ -23,6 +23,9 @@ import {
   type ArmorEnvelope, type ArmorPlate, type PlateOptions,
 } from './specHelpers.ts';
 import { LEOPARD2_HULL, leopard2HullArmor } from './leopard2HullDatums.ts';
+import {
+  LEOPARD2_CHEEK_SWEEP_DEG, cheekCornerZ, cheekFaceZ, sightBackZ, type Leopard2CheekFront,
+} from './leopard2CheekFrontDatums.ts';
 
 /** The turret's datums (turret metres). */
 export const LEO2A4_TURRET = Object.freeze({
@@ -42,10 +45,6 @@ export const LEO2A4_TURRET = Object.freeze({
   bevelZ: 1.45,
   faceZ: 1.65,
   faceTopY: 0.61,
-  /** The cheeks' "slight arrowhead" (the owner's, with the 262 early-Leopard turret, 2026-10-28: "if you look top down, the
-   *  chheeks are at a slight slope, like \\ / but not extreme"): their vertical faces swept back 6 degrees in plan from the
-   *  slot's edge toward their outer ends; the mantlet stays square to the bore. */
-  faceSweepDeg: 6,
   /** The gun slot between the cheeks, filled by the wide flat mantlet (about 40 % of the front, as photographed). */
   slotHalfWidthM: 0.475,
   /** The 2A6 X's core walls (the turret is wider right of the gun) and the faces' outer edges. */
@@ -79,6 +78,25 @@ export const LEO2A4_TURRET = Object.freeze({
   /** The commander's ring (right) and the loader's (left): the 2A6 X's measured rings [x, z, radius, height]. */
   commander: Object.freeze([-0.6221, -0.0401, 0.31935, 0.164] as const),
   loader: Object.freeze([0.53145, -0.01375, 0.37077, 0.102] as const),
+});
+
+/**
+ * The square block's cheek front (leopard2CheekFrontDatums.ts, the 262 early Leopards' construction shared): the faces at
+ * faceZ across the slot, swept back LEOPARD2_CHEEK_SWEEP_DEG toward their outer ends (the owner, 2026-10-29: "i think it
+ * nneeds to be a lot mroe than 6 degrees"), vertical to faceTopY, bevelled back to the block's top, a 10 cm chamfer to each
+ * wall; the shell's front at 0.98, behind the outer ends' bevelled tops (the right's at 1.03); the EMES 15's notch 0.22 deep,
+ * not shallower than the bevel, its housing on the roof behind it. The 2A6-look wedge front keeps the shell to blockZ.
+ */
+export const LEO2A4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
+  frontZ: LEO2A4_TURRET.faceZ, slotHalfWidthM: LEO2A4_TURRET.slotHalfWidthM, sweepDeg: LEOPARD2_CHEEK_SWEEP_DEG,
+  floorY: LEO2A4_TURRET.floorY, faceTopY: LEO2A4_TURRET.faceTopY, cheekTopY: LEO2A4_TURRET.blockTopY,
+  cheekBevelM: LEO2A4_TURRET.faceZ - LEO2A4_TURRET.bevelZ, rootZ: 0.98, cornerChamferM: 0.10,
+  right: Object.freeze({ faceHalfWidthM: LEO2A4_TURRET.faceRightM, wallHalfWidthM: LEO2A4_TURRET.wallRightM }),
+  left: Object.freeze({ faceHalfWidthM: LEO2A4_TURRET.faceLeftM, wallHalfWidthM: LEO2A4_TURRET.wallLeftM }),
+  sight: Object.freeze({
+    innerX: -LEO2A4_TURRET.emes.x - LEO2A4_TURRET.emes.halfW, outerX: -LEO2A4_TURRET.emes.x + LEO2A4_TURRET.emes.halfW,
+    sillY: LEO2A4_TURRET.emes.y0, lintelY: 0.715, topY: 0.83, depthM: 0.22, housingDepthM: 0.62,
+  }),
 });
 
 /** Linear interpolation along a [z, y] station line, held past its ends (leopard2Hull.ts's lineAt, boot-light). */
@@ -204,36 +222,42 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
   // the turret: the cheek faces either side of the gun slot, the 2A6/2A5 frontal layers inside the block behind them,
   // the EMES 15 window's recess (right), the mantlet, the walls, the rear plate and the roof
   // the mantlet plate on the slot's face (the 262 lane: on the mantlet's own face it squeezed every plate onto the envelope)
-  const gy = T.gunLocal[1], mz = T.faceZ, top = T.blockTopY - 0.01;
+  const gy = T.gunLocal[1], mz = T.faceZ, top = T.blockTopY - 0.01, block = o.front !== 'wedge', F = LEO2A4_CHEEK_FRONT;
+  // the square block's faces sweep back toward their outer ends and meet the walls at the chamfers (the shared cheek
+  // front); the 2A6 look's plates keep their stations
+  const faceOut = (fw: number): number => (block ? cheekFaceZ(F, fw) : T.faceZ);
+  const cornerR = block ? cheekCornerZ(F, F.left) : T.cornerZ, cornerL = block ? cheekCornerZ(F, F.right) : T.cornerZ;
   const turretPlates: ArmorPlate[] = [
     // the cheek plates lean from the faces' foot to the bevel's top edge (the face and its bevel, one plane each side)
-    carry(seated('turret_cheek_R', chR('turret_cheek_R', 1, T.slotHalfWidthM, T.faceZ, T.faceLeftM, T.faceZ, T.floorY, top,
-      T.faceZ - T.bevelZ)),
+    carry(seated('turret_cheek_R', chR('turret_cheek_R', 1, T.slotHalfWidthM, T.faceZ, T.faceLeftM, faceOut(T.faceLeftM),
+      T.floorY, top, T.faceZ - T.bevelZ)),
       'turret_cheek_R', need('turret_cheek_R')),
-    carry(seated('turret_cheek_L', chL('turret_cheek_L', 1, T.slotHalfWidthM, T.faceZ, T.faceRightM, T.faceZ, T.floorY, top,
-      T.faceZ - T.bevelZ)),
+    carry(seated('turret_cheek_L', chL('turret_cheek_L', 1, T.slotHalfWidthM, T.faceZ, T.faceRightM, faceOut(T.faceRightM),
+      T.floorY, top, T.faceZ - T.bevelZ)),
       'turret_cheek_L', need('turret_cheek_L')),
     carry(plate('mantlet', 1, [-0.465, gy - 0.23, mz], [0.465, gy - 0.23, mz], [-0.465, gy + 0.30, mz], { gunFollow: true }),
       'mantlet', need('mantlet')),
     carry(seated('turret_side_R', sR('turret_side_R', 1, T.wallLeftM, T.floorY, T.wallLeftM, T.roofY - 0.03, T.bustleEndZ,
-      T.cornerZ)), 'turret_side_R', need('turret_side_R')),
+      cornerR)), 'turret_side_R', need('turret_side_R')),
     carry(seated('turret_side_L', sL('turret_side_L', 1, T.wallRightM, T.floorY, T.wallRightM, T.roofY - 0.03, T.bustleEndZ,
-      T.cornerZ)), 'turret_side_L', need('turret_side_L')),
+      cornerL)), 'turret_side_L', need('turret_side_L')),
     carry(rr('turret_rear', 1, T.rearLeftM, T.rearFloorY, T.rearZ, T.rearRoofY, T.rearZ), 'turret_rear', need('turret_rear')),
     carry(rf('turret_roof', 1, T.wallLeftM * 0.92, T.roofY, T.rearZ, T.blockZ), 'turret_roof', need('turret_roof')),
   ];
-  const emes = T.emes, ez = emes.pocketZ, wedge = o.front === 'wedge', W = T.wedge;
+  const wedge = !block, W = T.wedge, S = F.sight;
   const recess = take('turret_sight_recess');
   if (recess) {
-    // the EMES 15's window: in the block's notch, or (the 2A6 look) the raised housing's canted window on the roof
+    // the EMES 15's window: on the block's notch's back (the sight head's face, parallel to the swept cheek), or (the 2A6
+    // look) the raised housing's canted window on the roof
+    const back = (x: number): number => cheekFaceZ(F, x) - S.depthM;
     turretPlates.push(carry(wedge
       ? plate('turret_sight_recess', 1, [-0.50, 0.70, 1.72], [-0.94, 0.70, 1.72], [-0.50, 0.85, 1.70])
-      : plate('turret_sight_recess', 1, [emes.x + emes.halfW, emes.y0, ez], [emes.x - emes.halfW, emes.y0, ez],
-        [emes.x + emes.halfW, emes.y1, ez]), 'turret_sight_recess', recess));
+      : plate('turret_sight_recess', 1, [-S.innerX, S.sillY, back(S.innerX)], [-S.outerX, S.sillY, back(S.outerX)],
+        [-S.innerX, S.lintelY, back(S.innerX)]), 'turret_sight_recess', recess));
   }
   // the frontal layers the old wedge-turret builds drew as separate solids: on the 2A6 look, the wedges' own faces; on the
-  // square block, the spaced layer inside it behind its faces
-  const innerZ = (T.blockZ + T.faceZ) / 2;
+  // square block, the spaced layer inside it, halfway between the shell's front and the swept faces
+  const innerZ = (x: number): number => (F.rootZ + cheekFaceZ(F, x)) / 2;
   // [f0, f1]: the share of the layer's width from its inner edge (a chevron's courses tile it side by side)
   const layer = (name: string, sx: number, yLo: number, yHi: number, f0 = 0, f1 = 1): ArmorPlate => {
     const at = (a: number, b: number, f: number): number => a + (b - a) * f;
@@ -247,8 +271,8 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     const xa = sx * T.slotHalfWidthM, xb = sx * (sx > 0 ? T.wallLeftM : T.wallRightM) * 0.96;
     const xi = at(xa, xb, f0), xo = at(xa, xb, f1);
     return sx > 0
-      ? plate(name, 1, [xi, yLo, innerZ], [xo, yLo, innerZ], [xi, yHi, innerZ])
-      : plate(name, 1, [xo, yLo, innerZ], [xi, yLo, innerZ], [xo, yHi, innerZ]);
+      ? plate(name, 1, [xi, yLo, innerZ(xi)], [xo, yLo, innerZ(xo)], [xi, yHi, innerZ(xi)])
+      : plate(name, 1, [xo, yLo, innerZ(xo)], [xi, yLo, innerZ(xi)], [xo, yHi, innerZ(xo)]);
   };
   const lo = wedge ? 0.12 : T.floorY, hi = wedge ? 0.60 : top;
   for (const [name, sx] of [['turret_wedge_R', 1], ['turret_wedge_L', -1]] as const) {
@@ -287,7 +311,8 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     mbox('ammoRack', [0.20, 0.60, 1.55], [1.02, 1.45, 2.85]),
     mbox('turretRing', [-1.02, 1.52, T.pivot[2] - 1.02], [1.02, 1.70, T.pivot[2] + 1.02]),
     hull.radio,
-    mbox('optics', [emes.x - 0.26, 0.38, 0.95], [emes.x + 0.26, 0.92, T.faceZ], true),
+    // the sight head: on the square block at the notch's back (the swept face 0.22 behind it), on the 2A6 look to the face
+    mbox('optics', [T.emes.x - 0.26, 0.38, 0.95], [T.emes.x + 0.26, 0.92, block ? sightBackZ(F) + 0.02 : T.faceZ], true),
     mbox('gun', [-0.20, gy - 0.22, -0.90], [0.20, gy + 0.26, T.faceZ], true),
     ...hull.tracks,
   ];
