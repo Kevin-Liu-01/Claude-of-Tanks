@@ -8058,32 +8058,32 @@ const M1E3_TURRET = {
   floorY: M1A1_TURRET_FLOOR_Y,
   // the gun bay's walls; the cheeks' inner chin corner; plan and face rakes (run per metre)
   bayX: 0.42,
-  chin: [0.42, 0.08, 1.60] as Vec3Tuple,
+  chin: [0.42, 0.08, 1.85] as Vec3Tuple,
   planRake: 0.73,
   faceRake: 0.60,
   // the cheek underside rises from chinRiseZ to the chin
-  chinRiseZ: 0.55,
+  chinRiseZ: 0.80,
   // flank: the band leans in bandLean per metre to bandTopY, the chamfer reaches the roof at roofEdgeX
   bandX: 1.60,
   bandLean: 0.10,
   bandTopY: 0.30,
-  roofY: 0.72,
+  roofY: 0.82,
   roofEdgeX: 1.24,
   // the cheek roofs fall cheekRoofFall per metre ahead of cheekRoofZ
-  cheekRoofZ: -0.05,
+  cheekRoofZ: 0.20,
   cheekRoofFall: 0.15,
   // the body's rear face (under the bustle's front), the rotor's recess face and its chamfer to the roof
   rearZ: -1.25,
   recessZ: 0.66,
-  recessTopY: 0.50,
+  recessTopY: 0.58,
 } as const;
 const M1E3_BUSTLE_FRONT_Z = -1.20;
 const M1E3_BUSTLE_REAR_Z = -2.95;
-const M1E3_BUSTLE_FLOOR_Y = 0.22;
-const M1E3_BUSTLE_ROOF_Y = 0.76;
+const M1E3_BUSTLE_FLOOR_Y = 0.14;
+const M1E3_BUSTLE_ROOF_Y = 0.86;
 const M1E3_BUSTLE_HALF_W = 1.50;
 // the side walls stand to shoulderY, then chamfer in 1/0.9 m per metre to the roof
-const M1E3_BUSTLE_SHOULDER_Y = 0.66;
+const M1E3_BUSTLE_SHOULDER_Y = 0.76;
 // the rear face stands to 0.70, then chamfers 45 degrees to the roof at the knee
 const M1E3_BUSTLE_KNEE_Z = M1E3_BUSTLE_REAR_Z + (M1E3_BUSTLE_ROOF_Y - 0.70);
 
@@ -8643,11 +8643,11 @@ function addM1E3TurretCageAndStowage(P: AbramsBuilderPort): void {
   const cx = 1.72, zFront = -0.20, zr = M1E3_BUSTLE_REAR_Z, zb = zr - 0.28, floor = 0.30;
   const len = zFront - zb, mid = (zFront + zb) / 2, br = M1E3_BUSTLE_ROOF_Y;
   for (const side of [-1, 1]) {
-    for (const y of [0.22, 0.46, 0.70]) P.addExternalArmor('turret', box(0.035, 0.035, len), side * cx, y, mid);
+    for (const y of [0.24, 0.50, 0.76]) P.addExternalArmor('turret', box(0.035, 0.035, len), side * cx, y, mid);
     for (let k = 0; k <= 8; k++) {
-      P.addExternalArmor('turret', box(0.035, 0.52, 0.035), side * cx, 0.46, zFront - 0.02 - k * (len - 0.04) / 8);
+      P.addExternalArmor('turret', box(0.035, 0.56, 0.035), side * cx, 0.50, zFront - 0.02 - k * (len - 0.04) / 8);
     }
-    for (const z of [-0.35, -0.95, -1.55, -2.45]) for (const y of [0.36, 0.66]) {
+    for (const z of [-0.35, -0.95, -1.55, -2.45]) for (const y of [0.40, 0.72]) {
       const wall = m1e3WallX(Math.max(y, z <= M1E3_BUSTLE_FRONT_Z ? M1E3_BUSTLE_FLOOR_Y : y), z);
       P.addExternalArmor('turret', box(cx - wall + 0.02, 0.03, 0.03), side * (cx + wall) / 2, y, z);
     }
@@ -8662,8 +8662,8 @@ function addM1E3TurretCageAndStowage(P: AbramsBuilderPort): void {
       P.addEquipment('turretDark', box(0.018, 0.27, 0.035), side * (1.615 + 0.098), floor + 0.13, -2.68 + dz);
     }
   }
-  for (const y of [0.22, 0.46, 0.70]) P.addExternalArmor('turret', box(cx * 2, 0.035, 0.035), 0, y, zb);
-  for (const x of [-1.15, -0.57, 0, 0.57, 1.15]) P.addExternalArmor('turret', box(0.035, 0.52, 0.035), x, 0.46, zb);
+  for (const y of [0.24, 0.50, 0.76]) P.addExternalArmor('turret', box(cx * 2, 0.035, 0.035), 0, y, zb);
+  for (const x of [-1.15, -0.57, 0, 0.57, 1.15]) P.addExternalArmor('turret', box(0.035, 0.56, 0.035), x, 0.50, zb);
   P.addExternalArmor('turret', box(cx * 2, 0.02, zr - zb + 0.02), 0, floor - 0.01, (zr + zb) / 2);
   for (const x of [-1.0, 1.0]) P.addExternalArmor('turret', box(0.05, 0.05, zr - zb + 0.02), x, floor - 0.045, (zr + zb) / 2);
   for (let k = 1; k < 12; k++) P.add('turretDark', box(0.012, 0.014, zr - zb - 0.02), -cx + k * cx / 6, floor + 0.007, (zr + zb) / 2);

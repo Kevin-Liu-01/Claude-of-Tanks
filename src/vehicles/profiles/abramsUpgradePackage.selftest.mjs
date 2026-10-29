@@ -164,7 +164,7 @@ for (const quality of ['high', 'low']) {
   }
   // Lifting eyes are seated on the body roof and on the bustle roof.
   for (const side of [-1, 1]) {
-    for (const [x, z, y0] of [[1.05,-.30,.80],[.60,-1.85,.95]]) {
+    for (const [x, z, y0] of [[1.05,-.30,.95],[.60,-1.85,1.05]]) {
       const plateTop = verticalHit(m1, ['turretEquipment'], side*x, y0, z, -1);
       const stock = verticalHit(m1, ['turret'], side*x, y0, z, -1);
       assert.ok(plateTop>stock && plateTop-stock<.026, `lifting-eye base is seated at ${side*x},${z}`);
@@ -174,7 +174,7 @@ for (const quality of ['high', 'low']) {
   const sideProbe = new THREE.Mesh(m1.root.getObjectByName('turret').geometry,
     new THREE.MeshBasicMaterial({side: THREE.DoubleSide}));
   const sideRay = new THREE.Raycaster();
-  for (const side of [-1, 1]) for (const [z, minimum, ys] of [[0,.12,[.15,.60]],[-.60,.12,[.15,.60]],[-2.5,.05,[.40,.74]]]) {
+  for (const side of [-1, 1]) for (const [z, minimum, ys] of [[0,.12,[.15,.60]],[-.60,.12,[.15,.60]],[-2.5,.05,[.40,.84]]]) {
     const hits = ys.map(y => {
       sideRay.set(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0));
       const hit = sideRay.intersectObject(sideProbe)[0];

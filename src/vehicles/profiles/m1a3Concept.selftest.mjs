@@ -113,7 +113,7 @@ const hasVertex = (x, y, z) => {
 };
 // The M1E3's own front: the cheeks' inner chin corner and the corner of the mantlet nose's rear section.
 for (const side of [-1, 1]) {
-  assert.ok(hasVertex(side * 0.42, 0.08, 1.60), `${side < 0 ? 'right' : 'left'} cheek keeps its inner chin corner`);
+  assert.ok(hasVertex(side * 0.42, 0.08, 1.85), `${side < 0 ? 'right' : 'left'} cheek keeps its inner chin corner`);
 }
 const shield = tank.root.getObjectByName('gunMount').geometry.attributes.position;
 let shieldCorner = false;
@@ -136,7 +136,7 @@ assert.deepEqual(receipt, {
   roadWheelsPerSide: 7,
   rws: 'r400-class-with-launcher-pod',
   turretRingZ: 0.35,
-  turretLengthM: 4.55,
+  turretLengthM: 4.8,
   hullCageRailsPerSide: 4,
   turretCage: 'integrated-flank-and-basket',
   smokeBanks: 4,

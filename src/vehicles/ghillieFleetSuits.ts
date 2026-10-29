@@ -691,8 +691,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.06, maxHalfWidth: 2.36, hemFloorM: 0.8,
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
-      top: [laid({ x0: -1.75, x1: 1.75, z0: -2.98, z1: 1.65, nx: 44, nz: 58, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-2.90, -0.20, 0.78, 0.42, 1.82, 17),
+      top: [laid({ x0: -1.75, x1: 1.75, z0: -2.98, z1: 1.90, nx: 44, nz: 61, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.90, -0.20, 0.86, 0.46, 1.82, 17),
       face: [face({ z: -3.30, x0: -1.45, x1: 1.45, y0: 0.40, y1: 0.80, nx: 29, ny: 6, seed: 23 })],
     },
     hull: {
