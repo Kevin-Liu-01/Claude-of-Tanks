@@ -152,14 +152,24 @@ export interface CutTextureShade {
   /** The blur radii (texels) the occlusion reads its surroundings at, near and broad. */
   readonly radii: readonly [number, number];
   /**
+   * The lightness (sRGB luma, 0-255) the shade never takes a drawn texel below (one already darker keeps its own):
+   * r6, the critic r5's "black triangle specks at the edge of the turret-roof net", the deep strips' tips under the
+   * bunches shaded to (21, 27, 15). Absent: no floor.
+   */
+  readonly floor?: number;
+  /**
    * The net's gaps under thick garnish. Each clear gap (its connected clear texels, the net repeating) closes whole or
    * not at all: one of up to `cell` texels (a mesh of the net) closes where the broad height over it reaches `fill[0]`
    * of full, a whole mesh by `fill[1]`, and a speck of a fifth of that anywhere. A closed gap takes `tone` (sRGB, the
    * hull in the garnish's shadow). A gap closed whole draws no edge of its own: a contour drawn through an open mesh
    * stepped and fringed under the cut (the 263 critic's "dark stair-step fringes"). A `cell` of the whole image closes
-   * every gap (the fitted cover's cut-outs). Absent: every gap stays open.
+   * every gap (the fitted cover's cut-outs). Absent: every gap stays open. `speck` (texels): a closed gap this small or
+   * smaller takes the colour of the cloth round it a step darker, and one between a quarter of that and it blends to
+   * `tone` (r6; the critic r5's "black triangle specks at the edge of the turret-roof net": the small gaps between the
+   * strips closed in the hull's dark tone, isolated in lighter garnish).
    */
-  readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number]; readonly cell: number };
+  readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number]; readonly cell: number;
+    readonly speck?: number };
 }
 
 /**
@@ -176,7 +186,11 @@ export function shadeFromHeight(d: Uint8ClampedArray, height: Uint8ClampedArray,
     const o = p * 4;
     if (d[o + 3] < cut) continue;
     const under = Math.max(0, 0.6 * near[p] + 0.4 * broad[p] - h[p]);
-    const k = (shade.lowShade + (1 - shade.lowShade) * h[p]) * Math.max(0.3, 1 - shade.occlusion * under);
+    let k = (shade.lowShade + (1 - shade.lowShade) * h[p]) * Math.max(0.3, 1 - shade.occlusion * under);
+    if (shade.floor) {
+      const luma = 0.2126 * d[o] + 0.7152 * d[o + 1] + 0.0722 * d[o + 2];
+      if (luma > 0) k = Math.max(k, Math.min(1, shade.floor / luma));
+    }
     d[o] *= k; d[o + 1] *= k; d[o + 2] *= k;
   }
   const gaps = shade.gaps;
@@ -186,22 +200,28 @@ export function shadeFromHeight(d: Uint8ClampedArray, height: Uint8ClampedArray,
   let closed = 0;
   for (let start = 0; start < n; start++) {
     if (label[start] >= 0 || d[start * 4 + 3] >= cut) continue;
-    let head = 0, tail = 0, sum = 0;
+    let head = 0, tail = 0, sum = 0, rr = 0, rg = 0, rb = 0, rim = 0;
     queue[tail++] = start;
     label[start] = start;
     while (head < tail) {
       const p = queue[head++], x = p % size, y = (p - x) / size;
       sum += broad[p];
       const next = [y * size + (x + 1) % size, y * size + (x + size - 1) % size, ((y + 1) % size) * size + x, ((y + size - 1) % size) * size + x];
-      for (const q of next) if (label[q] < 0 && d[q * 4 + 3] < cut) { label[q] = start; queue[tail++] = q; }
+      for (const q of next) {
+        if (d[q * 4 + 3] >= cut) { rr += d[q * 4]; rg += d[q * 4 + 1]; rb += d[q * 4 + 2]; rim++; continue; }
+        if (label[q] < 0) { label[q] = start; queue[tail++] = q; }
+      }
     }
     const area = tail, mean = sum / area;
     if (area > gaps.cell * (0.2 + 1.2 * THREE.MathUtils.smoothstep(mean, gaps.fill[0], gaps.fill[1]))) continue;
+    // a speck takes its rim's colour a step darker
+    const own = gaps.speck && rim ? 1 - THREE.MathUtils.smoothstep(area, gaps.speck * 0.25, gaps.speck) : 0;
+    const k0 = (0.82 * own) / Math.max(1, rim);
     for (let k = 0; k < tail; k++) {
       const p = queue[k], o = p * 4;
       // darkest under the garnish's middle
-      const t = 1.15 - 0.35 * THREE.MathUtils.smoothstep(broad[p], gaps.fill[0], gaps.fill[1]);
-      d[o] = gaps.tone[0] * t; d[o + 1] = gaps.tone[1] * t; d[o + 2] = gaps.tone[2] * t; d[o + 3] = 255;
+      const t = (1.15 - 0.35 * THREE.MathUtils.smoothstep(broad[p], gaps.fill[0], gaps.fill[1])) * (1 - own);
+      d[o] = gaps.tone[0] * t + rr * k0; d[o + 1] = gaps.tone[1] * t + rg * k0; d[o + 2] = gaps.tone[2] * t + rb * k0; d[o + 3] = 255;
     }
     closed += tail;
   }

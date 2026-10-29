@@ -294,9 +294,9 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
         // shade there, and the map keeps straight alpha with its own coverage mips: no black rim at any cut or range
         const image = ctx.getImageData(0, 0, S, S);
         shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, {
-          cutoff: NET_ALPHA_CUT, lowShade: 0.8, occlusion: 2, radii: [4, 12],
+          cutoff: NET_ALPHA_CUT, lowShade: 0.8, occlusion: 2, radii: [4, 12], floor: 34,
           // a gap of up to a mesh of the net (NET_MESHES a side) closes whole under thick garnish
-          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2 },
+          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2, speck: (S / NET_MESHES) ** 2 * 0.25 },
         });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true);

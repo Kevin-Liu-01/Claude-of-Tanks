@@ -105,4 +105,30 @@ function cordNet() {
   }
 }
 
+// (r6) the floor: no drawn texel shades darker than it (one already darker keeps its own colour), and a speck of a gap
+// closes in its rim's colour a step darker, not the hull's tone
+{
+  const img = cordNet(), height = new Uint8ClampedArray(SIZE * SIZE * 4);
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    const bunch = Math.hypot(x - 16, y - 16) < 12;
+    if (bunch && (x + y) % 3) img.data.set([90, 100, 60, 255], at(x, y));
+    // a deep strip's tip low under the bunch, and a strip darker than the floor
+    if (x === 16 && y === 16) img.data.set([36, 41, 29, 255], at(x, y));
+    if (x === 18 && y === 18) img.data.set([20, 22, 16, 255], at(x, y));
+    height.fill(bunch && (x + y) % 3 ? 210 : img.data[at(x, y) + 3] === 255 ? 120 : 0, at(x, y), at(x, y) + 4);
+  }
+  height.fill(0, at(16, 16), at(16, 16) + 4);
+  const luma = (o) => 0.2126 * img.data[o] + 0.7152 * img.data[o + 1] + 0.0722 * img.data[o + 2];
+  shadeFromHeight(img.data, height, SIZE, { cutoff: 0.5, lowShade: 0.6, occlusion: 2.4, radii: [2, 5], floor: 34,
+    gaps: { tone: [30, 34, 22], fill: [0.3, 0.44], cell: 16, speck: 16 } });
+  assert.ok(luma(at(16, 16)) >= 33.5, `the deep strip's tip under the bunch keeps the floor (${luma(at(16, 16)).toFixed(1)})`);
+  assert.deepEqual([...img.data.slice(at(18, 18), at(18, 18) + 3)], [20, 22, 16], 'a strip darker than the floor keeps its own');
+  // a single-texel gap inside the bunch (between its strips): closed, in its strips' colour a step darker
+  let speck = -1;
+  for (let y = 12; y < 20 && speck < 0; y++) for (let x = 12; x < 20; x++) {
+    if ((x + y) % 3 === 0 && x % 8 >= 2 && y % 8 >= 2 && !(x === 16 && y === 16)) { speck = at(x, y); break; }
+  }
+  assert.ok(speck >= 0 && img.data[speck + 3] === 255 && luma(speck) > 45, `a speck closes in the bunch's colour (${luma(speck).toFixed(1)})`);
+}
+
 console.log('alphaCutTexture selftest passed');
