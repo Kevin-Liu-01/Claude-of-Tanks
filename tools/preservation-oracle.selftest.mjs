@@ -11,16 +11,17 @@ import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from './second-wave-x-reference-ove
 import { ABRAMS_X_REFERENCE_OVERRIDES } from './abrams-x-reference-overrides.ts';
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
 
 const page = fs.readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
 const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n\});/)[1];
 const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE, ZTZ100_PROTOTYPE_BASELINE,
   T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES,
-  ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES });
+  ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES, OPLOT_BM_X_REFERENCE_OVERRIDES });
 const modernIsraeliSources = Object.fromEntries(
   ['merkava4_trophy', 'merkava4_barak', 'namer_ifv'].map(id => [id, WEST_X_REFERENCE_OVERRIDES[id]]),
 );
-for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES, ...modernIsraeliSources})) {
+for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES, ...OPLOT_BM_X_REFERENCE_OVERRIDES, ...modernIsraeliSources})) {
   assert.equal(registry[id], source, 'actual fixed source registration survives the VM fixture');
   assert.equal(requiredMinimumForQualityBar(source.qualityBar), 92);
   assert.equal(validatedPreservationOracle(source, id), null, 'new source builds cannot use a preservation exemption');
@@ -76,8 +77,10 @@ for(const key of Object.keys(ZTZ100_PROTOTYPE_BASELINE)) {
 }
 assert.throws(()=>validatedPreservationOracle({...ztz,preservation:REVOLUTION_PROTO_BASELINE},'ztz100_prototype'),/invalid or unpinned/);
 assert.throws(()=>validatedPreservationOracle({...preserved,preservation:ZTZ100_PROTOTYPE_BASELINE},'leo2_revolution_proto'),/invalid or unpinned/);
-assert.equal(validatedPreservationOracle(registry.ztz100,'ztz100'),null);
-assert.equal(requiredMinimumForQualityBar(registry.ztz100.qualityBar),92,'service source fidelity is unchanged');
+// 262: the ZTZ-100 left the source-comparison route (the ZTZ-20 family concept); the other service comparisons keep 92
+assert.equal(registry.ztz100,undefined,'the retired ZTZ-100 comparison is not registered');
+assert.equal(validatedPreservationOracle(registry.strv122,'strv122'),null);
+assert.equal(requiredMinimumForQualityBar(registry.strv122.qualityBar),92,'service source fidelity is unchanged');
 await assert.rejects(verifyPreservationBytes(new ArrayBuffer(8),ZTZ100_PROTOTYPE_BASELINE),/hash mismatch/);
 const ztzOracle=new URL('../public/models/community-candidates/ztz100_prototype_preservation.glb',import.meta.url);
 if(fs.existsSync(ztzOracle)) {

@@ -17,6 +17,7 @@ import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from '
 import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { drainTankBuild, steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import { sectionSolid } from './sectionSolid.ts';
 
 const {
   box, cylX, cylY, cylZ, sph, torus, lathe,
@@ -3887,6 +3888,120 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   P.decal('turret', 'number', num, 0.20, [-0.92, 0.30, -0.48], -Math.PI / 2);
 }
 
+
+// ---------------------------------------------------------------------------
+// Vickers MBT Mk 1 — release 262 upgrade of the earlier build (the owner, 2026-10-27: "make the vickers look like it
+// did before, just smoothed out and upgraded to our modern aesthetic", and "really lock in manntlets and stuff and
+// turret boxes"). The turret keeps its footprint, crown and bins; the casting is one smooth loft, the mantlet a cast
+// block on a trunnion at the face, the bins lidded boxes on brackets. All values are the earlier build's turret frame
+// (before its 0.95 vehicle scale).
+// ---------------------------------------------------------------------------
+/** The L7A1's trunnion: 4 cm inside the casting's front face, where the mantlet's arced back turns. */
+const VICKERS_TRUNNION_Z = 1.20;
+/** The earlier gun pivot: the tube is authored from it so it keeps its place at rest. */
+const VICKERS_OLD_GUN_Z = 0.60;
+// [z, foot half-width, foot y, shoulder half-width, shoulder y, crown y (the high left plateau), right roof y]
+type VickersCastStation = readonly [number, number, number, number, number, number, number];
+// (round 2: intermediate stations round the cheeks' turn in plan, and the casting's face is the trunnion's plane, where
+// the mantlet's back seats)
+const VICKERS_CASTING: readonly VickersCastStation[] = [
+  [-2.225, .52, .30, .52, .86, .935, .935], [-1.95, .585, .29, .58, .86, .937, .937],
+  [-1.70, .62, .30, .61, .86, .940, .940], [-1.39, .70, .27, .68, .80, 1.042, 1.042],
+  [-1.10, .84, .14, .80, .74, 1.07, .96], [-.75, .95, .10, .90, .70, 1.07, .947],
+  [.10, 1.01, .077, .94, .63, 1.07, .947], [.30, 1.02, .077, .95, .62, .975, .947],
+  [.48, .98, .077, .89, .61, .955, .947], [.66, .91, .077, .81, .60, .947, .947],
+  [.82, .83, .078, .72, .59, .88, .88], [.95, .75, .08, .65, .58, .80, .80],
+  [1.08, .67, .10, .58, .57, .74, .74], [VICKERS_TRUNNION_Z - .01, .60, .12, .52, .56, .70, .70],
+];
+function vickersCasting(P: UKBuilderPort): void {
+  const ring = ([, wb, yb, ws, ys, yc, yr]: VickersCastStation): [number, number][] => [
+    [-wb, yb], [wb, yb], [ws, ys], [ws - .05, yr], [.16, yc], [-(ws - .11), yc], [-(ws - .03), yc - .06], [-ws, ys],
+  ];
+  // the walls and their shoulder rolls are one cast surface; the roof planes keep their edges
+  P.add('turret', sectionSolid(VICKERS_CASTING.map((s) => ({ z: s[0], ring: ring(s) })), { smoothSideEdges: [1, 2, 6, 7] }));
+}
+function vickersBustleRack(P: UKBuilderPort): void {
+  // a welded tube rack off the bustle's rear face: two rails on four posts and a mesh floor bar line
+  const z0 = -2.215, z1 = -2.42;
+  for (const y of [.40, .66]) P.addEquipment('turretDetail', KIT.cylX(.018, 1.08, 8), 0, y, z1);
+  for (const x of [-.52, -.18, .18, .52]) {
+    P.addEquipment('turretDetail', box(.03, .30, .03), x, .53, z1);
+    P.addEquipment('turretDetail', box(.03, .03, z0 - z1), x, .40, (z0 + z1) / 2);
+    P.addEquipment('turretDetail', box(.03, .03, z0 - z1), x, .66, (z0 + z1) / 2);
+    // weld plates where the rack meets the bustle's rear face
+    for (const y of [.40, .66]) P.addEquipment('turretDetail', box(.07, .07, .012), x, y, z0 - .004);
+  }
+  P.addEquipment('turretDark', box(1.06, .02, z0 - z1 - .02), 0, .39, (z0 + z1) / 2);
+  P.addEquipment('turretCloth', box(.90, .22, .16), 0, .48, -2.32);
+  P.add('turretDark', box(1.10, .015, .40), 0, .944, -1.95);
+}
+/** One lidded bin: a sloped-top box along z, its lid lapping over, the hinge rod and two latches on the outer face. */
+function vickersBin(P: UKBuilderPort, side: number, xi: number, xo: number, lo: number, hiIn: number, hiOut: number, z0: number, z1: number): void {
+  const x = (a: number) => side * a;
+  const sec = (z: number) => ({ z, ring: (side > 0
+    ? [[xi, lo], [xo, lo], [xo, hiOut], [xi, hiIn]]
+    : [[-xo, lo], [-xi, lo], [-xi, hiIn], [-xo, hiOut]]) as [number, number][] });
+  P.addEquipment('turretDetail', sectionSolid([sec(z1), sec(z0)].sort((a, b) => a.z - b.z)));
+  // the lid: a separate plate on the sloped top, lapping 1.5 cm over the outer face, on two hinge barrels inboard
+  const len = Math.abs(z0 - z1), zc = (z0 + z1) / 2, slope = Math.atan2(hiIn - hiOut, xo - xi), tilt = -side * slope;
+  P.addEquipment('turretDetail', box(Math.hypot(xo - xi, hiIn - hiOut) + .015, .022, len + .016),
+    x((xi + xo) / 2 + .006), (hiIn + hiOut) / 2 + .011 / Math.cos(slope), zc, 0, 0, tilt);
+  for (const t of [.22, .78]) P.addEquipment('turretDark', KIT.cylZ(.014, .10, 10), x(xi + .018), hiIn + .016, z0 + (z1 - z0) * t);
+  // compartment dividers on the outer face, and the body-coloured hasps
+  for (const t of [1 / 3, 2 / 3]) P.addEquipment('turretDetail', box(.016, hiOut - lo - .04, .035), x(xo + .006), (lo + hiOut) / 2, z0 + (z1 - z0) * t);
+  for (const t of [1 / 6, .5, 5 / 6]) P.addEquipment('turretDetail', box(.022, .07, .05), x(xo + .010), hiOut - .055, z0 + (z1 - z0) * t);
+  // a lower chamfer strip along the foot
+  P.addEquipment('turretDetail', box(.03, .03, len - .04), x(xo - .008), lo + .015, zc, 0, 0, side * .6);
+}
+function vickersFlankBins(P: UKBuilderPort): void {
+  for (const s of [-1, 1]) {
+    const zF = s < 0 ? 0.71 : 0.646, zRm = s < 0 ? -1.25 : -1.246;
+    const zF2 = s < 0 ? 0.66 : 0.60, zRo = s < 0 ? -0.98 : -1.04;
+    // inner tier against the casting wall, the shorter outer tier outboard of it (the earlier build's envelope)
+    vickersBin(P, s, .96, 1.18, .36, .825, .745, zF - .03, zRm);
+    vickersBin(P, s, 1.18, 1.40, .36, .745, .665, zF2 - .03, zRo);
+    for (const zb of [.35, -.35, -1.0]) P.addEquipment('turretDetail', box(.40, .05, .08), s * 1.17, .335, zb);
+    for (const zb of [.35, -1.0]) P.addEquipment('turretDetail', box(.05, .24, .08), s * .985, .22, zb);
+  }
+  // the bucket on the left bin's front
+  P.add('turretDark', cylY(0.055, 0.07, 0.12, 10), -1.12, 0.60, 0.70);
+}
+/** The cast mantlet in the gun's frame: a thick block from `back` to `front` ahead of the trunnion, `halfH` either side
+ *  of the bore and from x `left` to `right`, its edges rounded all round (the cheeks bulge, never scoop). Its back
+ *  corners sit on the trunnion's plane at full elevation and depression, so it seats on the casting's face. */
+function vickersMantlet(back: number, front: number, halfH: number, left: number, right: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape(), rf = .08, rb = .04, bevel = .04;
+  const h = halfH - bevel, b = back + bevel, f = front - bevel;
+  shape.moveTo(b + rb, -h);
+  shape.lineTo(f - rf, -h); shape.quadraticCurveTo(f, -h, f, -h + rf);
+  shape.lineTo(f, h - rf); shape.quadraticCurveTo(f, h, f - rf, h);
+  shape.lineTo(b + rb, h); shape.quadraticCurveTo(b, h, b, h - rb);
+  shape.lineTo(b, -h + rb); shape.quadraticCurveTo(b, -h, b + rb, -h);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: right - left - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 5, steps: 1 });
+  // shape x is the gun's z; the extrusion runs across the gun from left to right
+  return g.rotateY(-Math.PI / 2).translate(right - bevel, 0, 0);
+}
+function vickersGun(P: UKBuilderPort): void {
+  const dz = VICKERS_OLD_GUN_Z - VICKERS_TRUNNION_Z;
+  const turned = (rows: readonly (readonly [number, number])[], segments = P.q ? 28 : 16): THREE.BufferGeometry =>
+    new THREE.LatheGeometry(rows.map(([z, r]) => new THREE.Vector2(r, z + dz)), segments).rotateX(Math.PI / 2);
+  // the earlier tube, turned: the base inside the mantlet, the taper, the fume extractor, the neck and the tip collar
+  P.add('gun', turned([[.60, 0], [.60, .15], [1.02, .15], [1.02, .136], [1.86, .128], [1.90, .158], [2.42, .158],
+    [2.46, .124], [4.40, .108], [4.43, .072], [4.53, .072], [4.53, .126], [4.69, .126], [4.69, 0]]));
+  P.add('gunDark', turned([[1.90, .150], [1.90, .162], [1.95, .162], [1.95, .150]], P.q ? 22 : 12));
+  P.add('gunDark', turned([[2.37, .150], [2.37, .162], [2.42, .162], [2.42, .150]], P.q ? 22 : 12));
+  // the cast mantlet: 0.32 m thick from 0.08 to 0.40 ahead of the trunnion, right-biased like the earlier housing, and
+  // the canvas collar behind it closing it onto the casting's face
+  P.add('gunMount', vickersMantlet(.08, .40, .22, -.27, .37));
+  P.add('gunMountCloth', box(.54, .38, .11), .05, 0, .035);
+  // the tube's root blends out of the mantlet's face in body steel
+  P.add('gunMount', turned([[.98, 0], [.98, .15], [1.04, .145], [1.10, .136], [1.10, 0]], P.q ? 22 : 12));
+  P.add('gunDark', cylZ(.028, .16, 10), .25, -.07, .44);
+  muzzleBore(P, { z: 4.69 + dz, r: 0.126 });
+  P.muzzleZ = 4.69 + dz;
+  P.turretG.userData.gunPort = Object.freeze({ faceZ: VICKERS_TRUNNION_Z - .01, kind: 'mantlet', scale: 0.95 });
+}
+
 // ---------------------------------------------------------------------------
 // Vickers MBT Mk.1 (Vijayanta) — first build, vertex r2 (2026-08-03).
 // Authored column-by-column from docs/references/vertex/vickers_mk1.json
@@ -3926,6 +4041,33 @@ const VICKERS_REAR3 = [   // ±0.55 tier (side silhouette line)
   [-1.45, 1.72], [-1.65, 1.786], [-2.28, 1.786], [-2.42, 1.762], [-2.66, 1.745],
 ];
 
+/** The Vickers' raised rear deck: one loft through the earlier ±0.95 / ±0.78 / ±0.55 tier lines (each held up to the
+ *  one outside it where it has not begun), floored at 1.30. */
+function vickersRearDeck(P: UKGeometryPort): void {
+  const zs = [...new Set([...VICKERS_REAR1, ...VICKERS_REAR2, ...VICKERS_REAR3].map((p) => p[0]))].filter((z) => z <= -.77 && z >= -3.46).sort((a, b) => a - b);
+  const within = (line: ProfileCurve, z: number) => z <= Math.max(...line.map((p) => p[0])) + 1e-6 && z >= Math.min(...line.map((p) => p[0])) - 1e-6;
+  const sections = zs.map((z) => {
+    const h1 = lineAt(VICKERS_REAR1, z), h2 = within(VICKERS_REAR2, z) ? Math.max(h1 + .004, lineAt(VICKERS_REAR2, z)) : h1 + .004;
+    const h3 = within(VICKERS_REAR3, z) ? Math.max(h2 + .004, lineAt(VICKERS_REAR3, z)) : h2 + .004;
+    return { z, ring: [[-.95, 1.30], [.95, 1.30], [.95, h1], [.80, h2], [.56, h3], [-.56, h3], [-.80, h2], [-.95, h1]] as [number, number][] };
+  });
+  // emitted as short courses sharing their end sections (the earlier tiers' 0.45 m segments): one seamless surface, and
+  // no single part large enough to set the combat hull's roof (gen-combat-anatomy reads the largest structural parts)
+  const at = (z: number) => {
+    const i = Math.max(1, sections.findIndex((q) => q.z >= z)), a = sections[i - 1], b = sections[i], t = (z - a.z) / (b.z - a.z);
+    return { z, ring: a.ring.map(([x, y], k) => [x, y + (b.ring[k][1] - y) * t] as [number, number]) };
+  };
+  const cuts = [...new Set([...sections.map((q) => q.z), ...Array.from({ length: 6 }, (_, i) => -3.40 + i * .45)])].sort((x, y) => x - y);
+  let run: typeof sections = [];
+  for (const z of cuts) {
+    run.push(at(z));
+    if (run.length > 1 && (run[run.length - 1].z - run[0].z >= .44 || z === cuts[cuts.length - 1])) {
+      P.add('hull', sectionSolid(run, { smoothSideEdges: [2, 3, 5, 6] }));
+      run = [at(z)];
+    }
+  }
+}
+
 function addVickersMk1Hull(P: UKBuilderPort): void {
   // Keep the measured deck and full exterior sponson sides, but open the
   // concealed underside over the native return run.  The center body stays
@@ -3955,9 +4097,9 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   loftBand(P, 'hull', 1.50, 0.05, [[-3.19, 1.547], [-3.49, 1.547]], () => 1.36, -3.19, -3.49);
   // rear-deck superstructure tiers (see width taper note above; inset thin
   // so the front-view top plane reaches the tier's own width line)
-  loftBand(P, 'hull', 0.95, 0.015, VICKERS_REAR1, () => 1.30, -0.77, -3.46, seg5(-0.77, -3.46));
-  loftBand(P, 'hull', 0.78, 0.015, VICKERS_REAR2, () => 1.55, -0.98, -3.10, seg5(-0.98, -3.1));
-  loftBand(P, 'hull', 0.55, 0.015, VICKERS_REAR3, () => 1.60, -1.45, -2.66, seg5(-1.45, -2.66));
+  // 262 upgrade (owner 2026-10-27: "smoothed out"): the three stepped tiers are one raised deck through their heights,
+  // the slopes between them rolled (the louvres and filler pod still stand on the 1.786 crown)
+  vickersRearDeck(P);
   // glacis band: full width to 3.00 (ref plan holds ±1.585 to ext 1.95).
   // Floor lifts to 1.23 past 2.72 where the raised idler wrap crowns at
   // 1.19 (containment) — the glacis IS a plate over the idler there.
@@ -4119,64 +4261,17 @@ function vickersMk1Build(P: UKBuilderPort): void {
   // ring collar + basket (side_turret bot: collar 1.05 over ±0.785 of the
   // ring, basket 0.838), long shallow face to the mantlet cone ----
   P.turretG.position.set(0, 1.54, 0.463);
-  P.gunG.position.set(0, 0.4855, 0.60);
+  // 262 upgrade: the L7A1 trunnions at the casting's face (4 cm inside it), where the cast mantlet turns; the tube
+  // keeps its place at rest (vickersGun)
+  P.gunG.position.set(0, 0.4855, VICKERS_TRUNNION_Z);
   // ring collar + basket (world 1.05..1.617 / 0.836..1.05)
   P.add('turret', cylY(0.775, 0.79, 0.567, 22), 0, -0.2065, 0.013);
   P.add('turret', cylY(0.645, 0.655, 0.216, 20), 0, -0.596, 0.035);
   P.add('turretDark', box(1.0, 0.5, 1.0), 0, -0.30, 0.05);
-  // main casting belt (skirt 1.617 → shoulder): walls ±1.02; cheek front
-  // corners follow the ref plan (right 1.27 at x 0.5, LEFT recedes to 1.12)
-  P.add('turret', slab(
-    [-0.70, 0.077, 1.08], [0.72, 0.077, 1.10], [1.02, 0.077, 0.30], [-1.02, 0.077, 0.30],
-    [-0.62, 0.60, 1.15], [0.64, 0.60, 1.27], [0.95, 0.62, 0.30], [-0.95, 0.62, 0.30]));
-  P.add('turret', slab(
-    [-1.02, 0.077, 0.30], [1.02, 0.077, 0.30], [0.95, 0.077, -0.75], [-0.95, 0.077, -0.75],
-    [-0.95, 0.62, 0.30], [0.95, 0.62, 0.30], [0.90, 0.70, -0.75], [-0.90, 0.70, -0.75]));
-  P.add('turret', slab(                        // rear taper into the bustle
-    [-0.95, 0.10, -0.75], [0.95, 0.10, -0.75], [0.68, 0.30, -1.46], [-0.68, 0.30, -1.46],
-    [-0.90, 0.70, -0.75], [0.90, 0.70, -0.75], [0.66, 0.80, -1.42], [-0.66, 0.80, -1.42]));
-  // casting-to-bin waist blocks (ref plan dips to −1.54 at |x| 0.70..0.80)
-  P.add('turret', box(0.12, 0.45, 0.16), -0.75, 0.42, -1.47);
-  P.add('turret', box(0.12, 0.45, 0.16), 0.75, 0.42, -1.47);
-  // rear underside skirt (side bot 1.618..1.655 between collar and bustle)
-  P.add('turret', slab(
-    [-0.84, 0.078, -0.70], [0.84, 0.078, -0.70], [0.80, 0.115, -1.12], [-0.80, 0.115, -1.12],
-    [-0.84, 0.32, -0.70], [0.84, 0.32, -0.70], [0.80, 0.34, -1.12], [-0.80, 0.34, -1.12]));
-  // chin under the mantlet (side bot 1.636@0.81..1.07, 1.674@1.08..1.17)
-  P.add('turret', slab(
-    [-0.60, 0.096, 1.07], [0.60, 0.096, 1.07], [0.52, 0.134, 1.17], [-0.52, 0.134, 1.17],
-    [-0.55, 0.55, 1.30], [0.55, 0.55, 1.30], [0.50, 0.55, 1.42], [-0.50, 0.55, 1.42]));
-  // FACE: steep brow then a long shallow plate to the gun line (ref side
-  // top falls FAST 2.49→2.33 over ext 0.08..0.20 then gently to 2.19 by
-  // 0.75); the LEFT cheek recedes earlier than the right (ref plan: left
-  // ends 1.12..1.28, right 1.27..1.60)
-  P.add('turret', slab(
-    [-0.62, 0.55, 0.95], [0.68, 0.55, 0.95], [0.75, 0.60, 0.70], [-0.75, 0.60, 0.70],
-    [-0.60, 0.775, 0.81], [0.64, 0.775, 0.81], [0.55, 0.947, 0.66], [-0.55, 0.947, 0.66]));
-  P.add('turret', slab(
-    [-0.55, 0.55, 1.24], [0.62, 0.55, 1.28], [0.70, 0.55, 0.86], [-0.70, 0.55, 0.86],
-    [-0.38, 0.66, 1.40], [0.42, 0.66, 1.44], [0.62, 0.775, 0.82], [-0.58, 0.775, 0.82]));
-  // mantlet housing (plan: nose 1.60 spans x −0.15..0.40, right-biased;
-  // bottom follows the ref cone line 1.83→1.89 — the r2 worst side_turret
-  // columns were this housing's box-bottom hanging 0.17 low)
-  P.add('turret', slab(
-    [-0.15, 0.31, 1.58], [0.40, 0.31, 1.58], [0.45, 0.27, 1.28], [-0.30, 0.27, 1.28],
-    [-0.15, 0.62, 1.60], [0.40, 0.62, 1.60], [0.45, 0.66, 1.30], [-0.30, 0.66, 1.30]));
-  // ---- roof: crown plateau left+center 2.607-2.614, right shoulder 2.49,
-  // fwd roof 2.487, periscope hood 2.563, cupola right 2.664→2.687 anchor
-  P.add('turret', slab(
-    [-0.92, 0.62, 0.10], [0.22, 0.62, 0.10], [0.22, 0.64, -1.36], [-0.92, 0.64, -1.36],
-    [-0.86, 1.070, 0.06], [0.16, 1.070, 0.06], [0.16, 1.070, -1.35], [-0.86, 1.070, -1.35]));
-  P.add('turret', slab(                        // right shoulder falls outboard
-    [0.16, 0.62, 0.30], [0.96, 0.60, 0.30], [0.96, 0.64, -1.36], [0.16, 0.64, -1.36],
-    [0.16, 1.070, 0.28], [0.94, 0.947, 0.30], [0.94, 0.947, -1.35], [0.16, 1.070, -1.35]));
-  P.add('turret', slab(                        // fwd roof band to the face
-    [-0.90, 0.62, 0.68], [0.90, 0.60, 0.68], [0.92, 0.62, 0.06], [-0.92, 0.62, 0.06],
-    [-0.55, 0.947, 0.67], [0.55, 0.947, 0.67], [0.90, 0.947, 0.10], [-0.90, 0.947, 0.10]));
-  // left roof shoulder (front view: 2.544 at x −0.91..−0.96, gone by −0.97)
-  P.add('turret', slab(
-    [-0.955, 0.62, 0.05], [-0.86, 0.62, 0.05], [-0.86, 0.64, -1.30], [-0.955, 0.64, -1.30],
-    [-0.94, 1.004, 0.03], [-0.87, 1.004, 0.03], [-0.87, 1.004, -1.30], [-0.94, 1.004, -1.30]));
+  // 262 upgrade (owner 2026-10-27: "make the vickers look like it did before, just smoothed out and upgraded to our
+  // modern aesthetic"): one smooth cast loft through the earlier slab stack's outline (belt, face, the high left
+  // crown and the right shoulder falling outboard, the rear taper and the bustle) replaces the stacked slabs.
+  vickersCasting(P);
   // periscope hood (2.563 over ext −0.12..0.01)
   P.add('turret', box(0.30, 0.076, 0.14), -0.20, 0.985, 0.535);
   P.add('turretGlass', box(0.22, 0.03, 0.02), -0.20, 1.005, 0.61);
@@ -4235,68 +4330,17 @@ function vickersMk1Build(P: UKBuilderPort): void {
   liftEye(P, 'turretDetail', 0.85, 0.78, 0.45, -0.5);
   liftEye(P, 'turretDetail', -0.62, 0.90, -1.25, 2.6);
   liftEye(P, 'turretDetail', 0.62, 0.90, -1.25, -2.6);
-  // ---- bustle (flat 2.477 roof, steps up into the crown; rear face at
-  // local −2.225 = ref −2.805 ext within 8 mm — also keeps the st3 station
-  // window catching the bustle sliver on the longer hull). The ref plan
-  // rounds hard: full-rear only inside ±0.545, walls ±0.585, and the outer
-  // ±0.585..0.655 band exists only near the casting (to local −1.44) ----
-  P.add('turret', box(1.17, 0.646, 0.56), 0, 0.614, -1.67);
-  P.add('turret', box(1.09, 0.646, 0.275), 0, 0.614, -2.0875);
-  P.add('turret', box(0.07, 0.593, 0.31), -0.62, 0.6405, -1.285);
-  P.add('turret', box(0.07, 0.593, 0.31), 0.62, 0.6405, -1.285);
-  P.add('turret', slab(                        // fwd floor pan: 1.884 line
-    [-0.655, 0.344, -1.13], [0.655, 0.344, -1.13], [0.655, 0.344, -1.50], [-0.655, 0.344, -1.50],
-    [-0.655, 0.937, -1.13], [0.655, 0.937, -1.13], [0.655, 0.937, -1.50], [-0.655, 0.937, -1.50]));
-  P.add('turret', slab(                        // roof steps 2.518 / 2.582
-    [-0.62, 0.90, -1.36], [0.62, 0.90, -1.36], [0.62, 0.90, -1.70], [-0.62, 0.90, -1.70],
-    [-0.60, 1.042, -1.39], [0.60, 1.042, -1.39], [0.60, 0.937, -1.69], [-0.60, 0.937, -1.69]));
-  // rear corner chamfers (ref plan: bustle walls taper aft of −2.0 ext)
-  for (const s of [-1, 1]) {
-    P.add('turret', slab(
-      [s * 0.545, 0.30, -1.95], [s * 0.585, 0.30, -1.95], [s * 0.585, 0.30, -2.10], [s * 0.545, 0.30, -2.22],
-      [s * 0.545, 0.937, -1.95], [s * 0.585, 0.937, -1.95], [s * 0.585, 0.937, -2.10], [s * 0.545, 0.937, -2.22]));
-  }
-  P.add('turretDark', box(1.18, 0.02, 0.44), 0, 0.925, -1.95);
-  P.add('turretDetail', box(1.05, 0.04, 0.05), 0, 0.62, -2.20);
-  P.add('turretDetail', box(1.05, 0.04, 0.05), 0, 0.34, -2.20);
-  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.03, 0.30, 0.03), -0.52 + k * 0.26, 0.48, -2.20);
+  // ---- bustle: the casting carries it (vickersCasting); its welded rear rack and the stowage on the bustle roof ----
+  vickersBustleRack(P);
   stowage(P, 'turretCloth', rng, [[-0.2, 0.87, -1.75, 0.62, 0.13, 0.5], [0.42, 0.87, -1.85, 0.4, 0.12, 0.4]]);
-  // ---- flank stowage bins: smooth SLOPED masses, not boxes (dense ref
-  // front line: 2.37 at x ±0.98 falling to ~2.20 at ±1.40 then off to the
-  // fender — the earlier "flat 2.364/2.227 tops" read was a summarizer
-  // averaging artifact). Tiers still step shorter outboard in plan. ----
-  for (const s of [-1, 1]) {
-    const zF = s < 0 ? 0.71 : 0.646, zRm = s < 0 ? -1.25 : -1.246;
-    const zF2 = s < 0 ? 0.66 : 0.60, zRo = s < 0 ? -0.98 : -1.04;
-    P.add('turret', slab(                     // inner tier (top 0.825→0.74)
-      [s * 0.97, 0.36, zF], [s * 1.18, 0.36, zF], [s * 1.18, 0.36, zRm], [s * 0.97, 0.36, zRm],
-      [s * 0.97, 0.825, zF - 0.03], [s * 1.18, 0.745, zF - 0.03], [s * 1.18, 0.745, zRm], [s * 0.97, 0.825, zRm]));
-    P.add('turret', slab(                     // outer tier (0.74→0.66)
-      [s * 1.18, 0.36, zF2], [s * 1.40, 0.36, zF2], [s * 1.40, 0.36, zRo], [s * 1.18, 0.36, zRo],
-      [s * 1.18, 0.745, zF2 - 0.03], [s * 1.40, 0.665, zF2 - 0.03], [s * 1.40, 0.665, zRo], [s * 1.18, 0.745, zRo]));
-    for (const zb of [0.35, -0.35, -1.0]) {   // brackets close the 1.653 strip
-      P.add('turret', box(0.16, 0.25, 0.10), s * 1.06, 0.24, zb);
-    }
-    P.add('turretDark', box(0.02, 0.02, 1.5), s * 1.09, 0.79, -0.28);
-  }
-  // edge pouches (the extreme-x sliver is SHORT in the ref plan)
-  P.add('turret', slab(
-    [-1.40, 0.36, 0.17], [-1.435, 0.36, 0.17], [-1.435, 0.36, -0.13], [-1.40, 0.36, -0.13],
-    [-1.40, 0.665, 0.15], [-1.435, 0.60, 0.15], [-1.435, 0.60, -0.13], [-1.40, 0.665, -0.13]));
-  P.add('turret', slab(
-    [1.40, 0.36, 0.07], [1.435, 0.36, 0.07], [1.435, 0.36, -0.25], [1.40, 0.36, -0.25],
-    [1.40, 0.665, 0.05], [1.435, 0.60, 0.05], [1.435, 0.60, -0.25], [1.40, 0.665, -0.25]));
-  // bin lids / straps
-  for (const zb of [0.3, -0.3, -0.9]) {
-    P.add('turretDetail', box(0.39, 0.02, 0.03), -1.145, 0.70, zb);
-    P.add('turretDetail', box(0.32, 0.02, 0.03), 1.10, 0.60, zb);
-  }
-  // 2026-10-19 (owner float sweep): the bucket stood 30 mm off the bin front; it bears on it
-  P.add('turretDark', cylY(0.055, 0.07, 0.12, 10), -1.12, 0.60, 0.768); // bucket on the bin front
+  // ---- flank stowage bins: the earlier two-tier sloped bins, built as lidded bins on brackets (vickersFlankBins) ----
+  vickersFlankBins(P);
   // smoke discharger banks on the cheeks (plan bumps at ±0.55..0.63 → 1.11)
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.05, 0.10, 0.24), s * 0.62, 0.30, 0.98, 0, s * 0.5, 0);
     smokeCluster(P, s * 0.66, 0.42, 1.02, 5, s * 0.9, 0.6);
+    // 262 upgrade: the bank's backing plate, angled up and forward on its bracket
+    P.add('turretDetail', box(0.52, 0.14, 0.035), s * 0.635, 0.40, 0.985, -0.35, s * 0.9, 0);
   }
   // whip antenna base pots ONLY: the print carries no masts, and a tall
   // mast SHARES side columns with the body below it — the column band then
@@ -4305,19 +4349,8 @@ function vickersMk1Build(P: UKBuilderPort): void {
   // span; even a 0.16 stub minted a 2.82 turret_side column in r3).
   P.add('turretDetail', cylY(0.045, 0.055, 0.055, 8), -0.50, 1.055, -1.05);
   P.add('turretDetail', cylY(0.045, 0.055, 0.10, 8), 0.72, 0.90, -1.30);
-  // ---- L7A1: bare tube, fume extractor at ext 1.895..2.445, thin neck +
-  // tip collar at the muzzle (print's own tip read), muzzle 5.75 (overall
-  // anchor 9.75, −0.4%) ----
-  P.addGunExtra(cylZ(0.135, 0.42, 16, 0.205), 0, 0, 0.78);
-  P.addGunExtraDark(cylZ(0.142, 0.05, 14), 0, 0, 1.02);
-  buildGun(P, { len: 4.44, r: 0.13, sleeve: false, evac: null, collar: false, baseR: 0.20 });
-  P.add('gun', cylZ(0.158, 0.55, 14), 0, 0.03, 2.158);          // extractor
-  P.add('gunDark', cylZ(0.05, 0.11, 10), 0, 0, 4.475);          // muzzle neck
-  P.add('gun', cylZ(0.132, 0.16, 12), 0, 0, 4.61);              // tip collar
-  // §B3.1 (shadow-named, 3fca39b): bore on the TIP COLLAR face (4.69) —
-  // the L7A1's neck+collar run PAST the buildGun tube face (first seat at
-  // len-0.02 buried the furniture behind the collar; crop-caught).
-  muzzleBore(P, { z: 4.69, r: 0.132 });
+  // ---- L7A1 in its cast mantlet (vickersGun) ----
+  vickersGun(P);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.03, 0.35, -0.35], Math.PI / 2);
   P.topY = 1.2;
 }
@@ -4904,7 +4937,6 @@ export const UK_PROFILES = {
 // names below carry the §C.1 slab winding guard exactly as local builders
 // see it (slab = orientedSlab).
 export {
-  ukHull, segBoxZ, towCableUK, ukToneKit, ukGearAirBackers,
   box, cylY, cylZ, torus, slab, xform, buildRunningGear, buildGun,
-  liftEye, periscope, headlight, pintleMG, smokeCluster, stowage,
+  liftEye, periscope, headlight, pintleMG, stowage,
 };

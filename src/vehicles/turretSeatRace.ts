@@ -33,6 +33,7 @@
  */
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
+import { faceBoxUV, paintedSurfaceShade, remapCamoUv, type CamoUvRemap } from './factoryGeometry.ts';
 import { TURRET_SWEEP_BIN_M, turretSeatPlane, type TurretSeatLimits, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 
 /** The build's disposables (its geometry is freed with it). */
@@ -541,6 +542,16 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
   const shell = meshes.find((mesh) => mesh.name === 'turret') ?? meshes[0];
   const material = Array.isArray(shell?.material) ? shell.material[0] : shell?.material;
   if (!material) { geometry.dispose(); return; }
+  // 264: the shell's paint reads vertex colour and the camouflage's face projection; with neither the collar drew black
+  // under every seated turret (vertex-color-coverage). It takes the painted shade and the shell's projection (and its
+  // camouflage split), as a bucket part does, so the ring reads in the turret's paint.
+  paintedSurfaceShade(geometry);
+  const camoScale = shell.geometry.userData.camoFaceProjection as number | undefined;
+  if (camoScale) {
+    faceBoxUV(geometry, camoScale);
+    const remap = shell.geometry.userData.camoUvRemap as CamoUvRemap | undefined;
+    if (remap) remapCamoUv(geometry, remap);
+  }
   const collar = new THREE.Mesh(geometry, material);
   collar.name = TURRET_SEAT_COLLAR_NAME;
   collar.userData.turretSeatRace = true;

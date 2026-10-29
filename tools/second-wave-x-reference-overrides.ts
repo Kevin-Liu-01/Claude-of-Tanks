@@ -1,12 +1,9 @@
 // Local QA only. Every mesh listed here is an original complete source node.
 // No source vertices, images, materials or model loading enter playable code.
 export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
-  ztz100: {source:'glb',qualityBar:'exemplar',glb:{
-    path:'/models/community-candidates/ztz100_x_source.glb',
-    // Fifty unnamed Sketchfab material meshes (hull, turret, gun, gear mixed); whole-source comparison only.
-    // The supplied-source batch requires 92 in every view; prior 90-floor receipts remain historical.
-    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
-  }},
+  // ztz100 retired 2026-10-27 (release 262, owner: "the ztz 100 is its prototype"): the ZTZ-100 is the ZTZ-20 family's
+  // pre-production stage, an owner-authored concept (docs/references/concepts/ztz20-family-20261027.json); the same
+  // oracle measures the ZTZ-20 concept and qualifies no comparison.
   strv122: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/strv122_x_source.glb',
     // All18 original fused chunks retained. Mixed material owners cannot
@@ -163,6 +160,14 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     turretNode: '^Object_(?:25|26|27|28|29|30)$', gunNode: '^Object_(?:32|33|34|35|36)$',
     autoPivot: true, pivot: [-.00215336, 1.40294995, .72122934],
     gunPivot: [.018886, 1.8791055, 1.998880],
+    componentMasks: true, directGunComponentMasks: true,
+  } },
+  // Release 262: the owner-supplied M48A5 (docs/references/tanks/m48a5_patton.md), source-world certified; its hull,
+  // turret and gun are separate source meshes.
+  m48a5_patton: { source: 'glb', qualityBar: 'exemplar', glb: {
+    path: '/models/community-candidates/m48a5_patton_x_source.glb',
+    turretNode: '^Object_12$', gunNode: '^Object_16$',
+    autoPivot: true, pivot: [-.001963, 1.638327, .577502], gunPivot: [0, 1.9215, 1.761582],
     componentMasks: true, directGunComponentMasks: true,
   } },
 } as const;

@@ -86,6 +86,16 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'challenger3_proto', { pen100: 880, pen1000: 810, pen2000: 730 });
   }
   {
+    // release 262: the 2021 demonstrator a step under the prototype: DM63A1 for DM73, the Challenger 2's 1,200 hp; its
+    // field fit shares the package (its remote M2 is its own auxiliary weapon, a tonne heavier and a shade slower)
+    for (const id of ['challenger3_td', 'challenger3_td_rws']) {
+      const tank = spec(registry, id);
+      Object.assign(tank, { hp: 2550, topSpeedKmh: id === 'challenger3_td' ? 59 : 58, reverseSpeedKmh: 22 });
+      Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.245, aimTimeS: 1.65 });
+      primary(registry, id, { pen100: 850, pen1000: 780, pen2000: 700 });
+    }
+  }
+  {
     const tank = spec(registry, 'challenger3');
     Object.assign(tank, { hp: 2780, topSpeedKmh: 60, reverseSpeedKmh: 24 });
     // 2026-10-25: aim 1.5 -> 1.65 s, inside the modern Tier X fire-control ceiling, still a step over the prototype
@@ -232,6 +242,16 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'type59', { pen100: 520, pen1000: 475, pen2000: 430 });
   }
   {
+    // 262: the T-55A shares the Type 59's chassis and gun (profiles/t54Family.ts), so it takes the same package
+    const tank = spec(registry, 't55a');
+    Object.assign(tank, {
+      hp: 1700, enginePowerHp: 650, topSpeedKmh: 55, reverseSpeedKmh: 12,
+      hullTraverseDegS: 44, turretTraverseDegS: 40,
+    });
+    tank.gun.reloadS = 6.8;
+    primary(registry, 't55a', { pen100: 520, pen1000: 475, pen2000: 430 });
+  }
+  {
     const tank = spec(registry, 'amx30');
     Object.assign(tank, { hp: 1650, reverseSpeedKmh: 20 });
     Object.assign(tank.gun, { reloadS: 6.2, baseAccuracy: 0.29, aimTimeS: 1.7 });
@@ -348,7 +368,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   // Shared Soviet-derived fire-control floor. These retain looser handling
   // than Western peers without falling outside the complete tier envelope.
   for (const id of [
-    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas',
+    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   ]) {
     Object.assign(spec(registry, id).gun, { baseAccuracy: 0.33, aimTimeS: 2 });
   }
@@ -418,8 +438,9 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
-  for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
+  // 262: the T-64BM1M and the T-64B1V mod. 2022 join the Soviet-pattern line at IV with the mod. 2017's footing
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;
   }
@@ -427,7 +448,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
   for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
   spec(registry, 't80b').gun.aimTimeS = 1.85;
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
   cannonReload(registry, 't80b', 6.2);
   cannonReload(registry, 'pt91m', 6.0);
   // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round

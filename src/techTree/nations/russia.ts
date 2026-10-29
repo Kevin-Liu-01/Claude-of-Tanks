@@ -27,7 +27,10 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
   nodes: Object.freeze([
     // T-62 to T-72B3
     node({ id: 'kv2', tier: 1, line: 't72', lane: 0, parents: [], slot: 'line' }),
-    node({ id: 't62_1975', tier: 1, line: 't72', lane: 1, parents: ['kv2'], slot: 'line' }),
+    // 262 (owner 2026-10-27; tier I approved 2026-10-28): the T-55A, the T-54/T-55 family the T-62 grew from,
+    // stacked between the KV-2 and the T-62
+    node({ id: 't55a', tier: 1, line: 't72', lane: 1, parents: ['kv2'], slot: 'line' }),
+    node({ id: 't62_1975', tier: 1, line: 't72', lane: 2, parents: ['t55a'], slot: 'line' }),
     node({ id: 't62mv1', tier: 2, line: 't72', lane: 0, parents: ['t62_1975'], slot: 'line' }),
     node({ id: 't72b_1987', tier: 3, line: 't72', lane: 0, parents: ['t62mv1'], slot: 'line' }),
     node({ id: 't72bu_1989', tier: 3, line: 't72', lane: 1, parents: ['t72b_1987'], slot: 'line', builds: ['t72bu'] }),
@@ -37,6 +40,7 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     // T-64 and T-80
     node({ id: 't64bv1', tier: 3, line: 't80', lane: 2, parents: ['t62_1975'], slot: 'line' }),
     node({ id: 't80', tier: 3, line: 't80', lane: 7, parents: ['t64bv1'], slot: 'line' }),
+    node({ id: 't64bv', tier: 3, line: 't80', lane: 8, parents: ['t62_1975'], slot: 'line' }),
     node({ id: 't80bv', tier: 4, line: 't80', lane: 6, parents: ['t80'], slot: 'line' }),
     // T-80 variants
     node({ id: 't80b', tier: 4, line: 't80_side', lane: 7, parents: ['t80'], slot: 'line' }),

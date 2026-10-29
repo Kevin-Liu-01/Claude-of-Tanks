@@ -52,7 +52,11 @@ export function countryOfNation(nation: string | null | undefined): CountryId | 
  * Vehicles a team seats under another country than their spec's design `nation` (round 2: the Leopard 2A4M CAN, a
  * Canadian Army hull whose spec names its German design, sat in German teams and Italy's German fill).
  */
-const VEHICLE_COUNTRY: Readonly<Record<string, CountryId>> = Object.freeze({ leo2a4m_can: 'canada' });
+const VEHICLE_COUNTRY: Readonly<Record<string, CountryId>> = Object.freeze({
+  leo2a4m_can: 'canada',
+  // release 262: the Christian II, a Danish Army concept drawn in the Sweden tree, fields with the Nordic (Swedish) teams
+  christian2: 'sweden',
+});
 
 /** The country a vehicle fights for on a team: its operator where VEHICLE_COUNTRY names one, else its spec nation's. */
 export function countryOfVehicle(id: string | null | undefined, nation: string | null | undefined): CountryId | null {

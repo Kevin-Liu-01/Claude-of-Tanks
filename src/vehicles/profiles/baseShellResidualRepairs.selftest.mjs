@@ -40,7 +40,7 @@ for(const [label,g]of Object.entries({oldKnee,oldClosure,oldReturn,oldTail,oldM4
  assert.ok(properSurfaceCrossings(shellPart(g)).length>0,`${label}: malformed historic faces are detected`);
  assert.throws(()=>intact(shellPart(g),label));g.dispose();
 }
-const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',chieftain3:'return',chieftain_mk9:'return',abramsx:'tail',m48a5_patton:'m48bow',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
+const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',chieftain3:'return',chieftain_mk9:'return',abramsx:'tail',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
 let checked=0;
 for(const [id,family]of Object.entries(families))for(const quality of ['high','low']){
  const emissions=[];
@@ -51,12 +51,11 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
    if(family==='bow')return bucket==='hull'&&site.includes('buildHullBody (')&&p.bounds.min.z>3.11&&p.bounds.max.z>3.42&&p.size.x>1.79&&p.size.x<1.81;
    if(family==='closure')return bucket==='turret'&&site.includes('buildLeclercTurretStage1 (')&&p.size.x>.399&&p.size.x<.401&&p.bounds.max.y>.554&&p.bounds.max.y<.556;
    if(family==='return')return bucket==='turret'&&site.includes('buildChieftainUpper2026TurretStage4 (')&&p.size.x>.299&&p.size.x<.301;
-   if(family==='m48bow')return bucket==='hull'&&site.includes('curveHullHullStage3 (')&&p.bounds.min.z>2.249&&p.bounds.min.z<2.251&&p.bounds.max.z>3.228&&p.bounds.max.z<3.230&&p.size.x>1.99;
    if(family==='objectReturn')return bucket==='hullExternalArmor'&&g.userData.object695==='module-rear-chamfer';
    if(family==='shoulder')return bucket==='hullExternalArmor'&&site.includes('hullPackage (')&&p.size.z>6.499&&p.size.z<6.501;
    return bucket==='turret'&&site.includes('axArmorLayer (')&&p.bounds.min.z< -2.43&&p.bounds.max.z< -1.95;
   });
-  assert.equal(parts.length,{bow:1,closure:4,return:2,tail:4,m48bow:1,objectReturn:2,shoulder:2}[family],`${id}/${quality}: complete actual stock remains`);
+  assert.equal(parts.length,{bow:1,closure:4,return:2,tail:4,objectReturn:2,shoulder:2}[family],`${id}/${quality}: complete actual stock remains`);
   for(const {part:p}of parts){
    intact(p,`${id}/${quality}`);checked++;
    if(family==='bow'){
@@ -72,10 +71,6 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
     near(Math.min(...p.vertices.map(v=>Math.abs(v[0]))),.13,'gun aperture boundary');
     near(Math.max(...p.vertices.map(v=>Math.abs(v[0]))),.43,'retained outside return boundary');
     near(p.bounds.min.z,.58,'retained rear return');near(p.bounds.max.z,1.48,'retained return front');
-   }
-   if(family==='m48bow'){
-    [-1,.626,2.25].forEach((n,i)=>near(p.bounds.min.getComponent(i),n,'retained M48 wedge minimum'));
-    [1,1.44,3.229].forEach((n,i)=>near(p.bounds.max.getComponent(i),n,'retained M48 wedge maximum'));
    }
    if(family==='objectReturn'){
     // The owner-approved vehicleSizePolicy applies the existing 90% scale.

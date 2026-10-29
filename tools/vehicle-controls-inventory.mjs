@@ -47,7 +47,8 @@ const WEAPON_FITTINGS=new Set(['pintleMG','openYokeRws','weaponStationMount','au
 const inert={};
 const stationOf=o=>{for(let p=o;p;p=p.parent)if(p.userData?.remoteControlled&&p.userData?.auxiliaryPivot)return p;return null;};
 const gunOwned=o=>{for(let p=o;p;p=p.parent)if(p.name==='rig_gun'||p.name==='rig_recoil')return true;return false;};
-const round=a=>a.map(x=>+x.toFixed(4));
+// (+0: a coordinate that rounds to zero from below is -0, which the compact roof-gun form cannot give back; 262)
+const round=a=>a.map(x=>+x.toFixed(4)+0);
 for(const id of ALL_TANK_IDS){
  if(!measure(id)){
   rows[id]=previous.rows[id];

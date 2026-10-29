@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-27",
+    "request": "add these new tanks using our rigoorous tank generation workflow; the christian 2 is based off the leopard, take innnspo from japanese type 90. but dress it in a ton of netting and ghillie; then: the new leo annd leo changes should rightfully be based on the new model and use totally new tank generation. the type 90 is a separate tank",
+    "scope": "A new Christian II: a fresh first-party build at the supplied concept model's measured proportions (a Leopard 2-pattern hull and seven-wheel running gear) carrying its own Type 90-inspired turret, Danish markings and paint and a heavy field net. The Type 90 X stays a separate tank (type90X.ts byte-identical). Nation ruled by the coordinator the same day: a fictional Danish Army concept drawn as a Nordic special in the Sweden tree. The supplied concept model is read for proportions only (not traced); nothing of it ships."
+  },
+  "concept": {
+    "nation": "Denmark",
+    "operator": "Danish Army (fictional concept; no real-world service history is claimed)",
+    "era": "modern (2020s)",
+    "role": "main battle tank, precision doctrine",
+    "crew": 3,
+    "autoloader": "bustle, three-round cycle",
+    "rationale": "A three-crew tank on a Leopard 2-pattern hull and running gear with a long slab-sided turret in the Type 90 manner (bolt-on frontal modules, box mantlet, the gunner's sight box and the commander's panoramic head on the roof) and a bustle autoloader feeding a 120 mm L/44, with a permanent heavy field net worked with beech garnish for a woodland theatre; it fires a DM53-class APFSDS.",
+    "proportionsReference": {
+      "file": "christian_ii_mbt.glb",
+      "title": "Christian II MBT",
+      "author": "Jeyhun1985 (https://sketchfab.com/Jeyhun1985)",
+      "source": "https://sketchfab.com/3d-models/christian-ii-mbt-8c056681198941bdb6e64f1d84132d17",
+      "statedLicense": "CC-BY-4.0 (the page calls it a War Thunder model; reference-only)",
+      "sha256": "8e41ce95e6c280dde5b3e19e9bb82e2b54f37cfc22548e5aac8d9ea45924be0e",
+      "ships": false
+    }
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "christian2": {
+      "id": "christian2",
+      "test": "src/vehicles/profiles/christian2.selftest.mjs",
+      "ring": [
+        0,
+        1.64,
+        0.37
+      ],
+      "gunLocal": [
+        0,
+        0.36,
+        1.04
+      ],
+      "barrelLengthM": 4.29,
+      "barrelRadiusM": 0.1025,
+      "pitchDeg": [
+        -9,
+        20
+      ],
+      "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.855,
+      "widthM": 3.672,
+      "overallLengthM": 9.866,
+      "tallestM": 3.866,
+      "specDimensions": {
+        "hullLengthM": 7.855,
+        "overallLengthM": 9.866,
+        "widthM": 3.672,
+        "heightM": 2.47
+      },
+      "silhouette": "A Leopard 2-pattern hull (7.25 m between its plates, 7.855 m from the fenders' tips to the stern rack) on seven road wheels a side with four return rollers, heavy bolted skirt blocks forward and thin panels aft, carrying a long slab-sided turret in the Type 90 manner: two bolt-on frontal modules with chamfered outer corners framing a box mantlet, the gunner's armoured sight box on the right of the roof and the commander's panoramic head and vision-block cupola with a working 12.7 mm on the left, a stepped narrower bustle autoloader with blow-off panels, bins and a rear basket; a 120 mm L/44 with a thermal sleeve and evacuator; a permanent heavy field net with beech garnish over the turret, the decks and the skirts and three wraps on the tube. Roof 2.47 m, whips to 3.87 m."
+    }
+  }
+}

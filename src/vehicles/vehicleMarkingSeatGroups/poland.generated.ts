@@ -6,6 +6,55 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "pt64_tur": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          1.1573658,
+          0.3898098,
+          -0.3551586
+        ],
+        "quaternion": [
+          -0.1231003,
+          0.7514877,
+          0.104778,
+          0.6396359
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "pt64_tur",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0091864
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          0.9805706,
+          0.3893264,
+          -0.7431684
+        ],
+        "quaternion": [
+          -0.1264395,
+          0.8744787,
+          0.0670132,
+          0.4634752
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "pt64_tur",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0060159
+      }
+    ]
+  },
   "t72m1_jaguar": {
     "schemaVersion": 1,
     "seats": [

@@ -21,9 +21,11 @@ const sources = {
     gunY: 1.99253, muzzle: 6.91807, boreR: .0878, roadR: .3225,
     wheels: [-2.17585, -1.28085, -.38585, .50915, 1.40415, 2.29915],
     roofs: [[-2.9, 1.7035], [0, 1.5775], [2.6, 1.4145], [3.58, 1.1519]] },
+  // Running gear: the Leopard 2A6 X source stations and wheel (owner 2026-10-27: the KF51 family's side silhouette
+  // follows the Leopard 2 it rides on; the GRIP420 model's r .328 wheels on -2.2118..2.352 are retired).
   kf51_panther: { width: 3.5603123, length: 10.74975, height: 5.7214742,
-    gunY: 1.85491175, muzzle: 6.89975, boreR: .0892, roadR: .328,
-    wheels: [-2.2118, -1.4265, -.6365, .1300, .8573, 1.5808, 2.352],
+    gunY: 1.85491175, muzzle: 6.89975, boreR: .0892, roadR: .34531,
+    wheels: [-2.239845, -1.357925, -.483615, .398305, 1.127355, 1.899555, 2.715785],
     roofs: [[-2.6, 1.8272], [0, 1.6025], [2.5, 1.4145], [3.79, 1.2302]] },
   merkava3d: { width: 3.976352, length: 8.83824, height: 5.15869,
     gunY: 2.0898, muzzle: 4.855985, boreR: .08485, roadR: .371,

@@ -20,6 +20,7 @@ import {
   type MutableVec3Tuple,
   type Vec3Tuple,
 } from './specHelpers.ts';
+import { rateChallenger1Armor, type Challenger1HullFront } from './challenger1Armor.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
@@ -239,9 +240,10 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
   return spec;
 }
 
-const SPECS: FleetTankSpec[] = [
-  make('challenger2', 'challenger1_mk2', 'Challenger 1 Mk.3', 'UK',
-    {
+/** The Challenger 1 combat row (release 262: the Mk 1, the Mk 2 and the Granby share it; a fresh object per call), on
+ *  the Challenger 2's plate layout rated with the Challenger 1's public armour estimates (challenger1Armor.ts). */
+const challenger1Row = (hull: Challenger1HullFront): VariantPatch => ({
+      armor: rateChallenger1Armor(copy(requireFleetSpec('challenger2').armor), hull),
       // Tier IX late-Cold-War heavy MBT: strong protection and a dependable
       // rifled-gun cycle, paid for with lower agility than its faster peers.
       hp: 2350,
@@ -260,7 +262,16 @@ const SPECS: FleetTankSpec[] = [
           shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
         ],
       },
-      dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
+      dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } });
+
+const SPECS: FleetTankSpec[] = [
+  make('challenger2', 'challenger1_mk2', 'Challenger 1 Mk.3', 'UK', challenger1Row('early')),
+  // Release 262 (owner 2026-10-27, "so we can have annother mk"): the Mk 1, the earlier design's sleek turret on the
+  // rebuilt hull, on the Mk 2's combat row.
+  make('challenger2', 'challenger1_mk1', 'Challenger 1 Mk 1', 'UK', challenger1Row('early')),
+  // Release 262 (owner 2026-10-27: the Mk 3 stays as it was, "but we can use the one we made for it into another variant"):
+  // the 1990-91 Op Granby fit (side applique, nose package, rear drums) on the rebuilt hull, on the Mk 2's combat row.
+  make('challenger2', 'challenger1_granby', 'Challenger 1 Granby', 'UK', challenger1Row('late')),
   make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },
