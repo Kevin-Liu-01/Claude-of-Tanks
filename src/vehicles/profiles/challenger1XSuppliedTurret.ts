@@ -124,7 +124,7 @@ function cupola(P:TankBuilderPort):void{
   }
   // The source's cupola mount was empty (rails, hinge and brackets); the commander's gun now rides its own cradle there
   // (below), and the one bracket left carries the MG sight head.
-  caseBox(P,-14.0,105.7,-41.3,1.4,4.8,2.1);
+  caseBox(P,-14.0,106.3,-41.3,1.4,6.0,2.1);
   caseBox(P,-14.0,109.4,-40.0,1.4,1.0,2.0);
   caseBox(P,-15.12,110.43,-38.56,4.02,5.35,3.27);
   caseBox(P,-15.0,105.4,-50,1.8,4.6,12.1);
@@ -141,7 +141,7 @@ function cupola(P:TankBuilderPort):void{
   // through that sight; it is every mark's one roof gun.
   const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',tone:'dark',scale:1,seed:8,riser:.02,working:true,ridingCradle:true});
   mg.name='challenger1SuppliedCommanderL37';
-  const g=p(-21.1,104.4,-41.5);mg.position.set(g[0]-PX,g[1]-PY,g[2]-PZ);
+  const g=p(-21.1,103.6,-41.5);mg.position.set(g[0]-PX,g[1]-PY,g[2]-PZ);
   P.turretG.add(mg);
 }
 /** TOGS: the armoured thermal-sight barbette standing on the right cheek (FR wiki: "dans une boîte blindée sur le flanc
@@ -194,7 +194,8 @@ function optics(P:TankBuilderPort):void{
   caseBox(P,x,99.0,-16.5,24.8,1.0,13.0);
   equipment(P,box(m(19),m(4.6),m(.6)),x,96,-21.4,'turretDark');
   equipment(P,box(m(17.2),m(3.1),m(.3)),x,96,-21.0,'turretGlass');
-  caseBox(P,-.6,90.7,15.5,2.55,4.72,5.3);
+  // seated on the roof (release 262: it stood 16 mm over it, the hull-contact census)
+  caseBox(P,-.6,90.05,15.5,2.55,4.72,5.3);
 }
 function smoke(P:TankBuilderPort):void{
   // The right bank stands on the TOGS barbette's outboard face, the left on its cheek under the hood.

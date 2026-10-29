@@ -63,10 +63,9 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
   for (const id of ['challenger_x', 'challenger_x_sleek']) {
     assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
   }
-  const mk3 = floating('challenger1_mk3');
-  assert.ok(mk3.length <= 2, `challenger1_mk3: ${mk3.length} floating turret fittings (known 2)`);
-  for (const id of ['challenger1_mk1', 'challenger1_mk2']) {
-    assert.deepEqual(floating(id), mk3, `${id}: the plain fit floats no turret fitting the Mk 3 does not`);
+  // release 262 (the three marks' own fits): the commander's L37 rides the cupola and the front box sits on the roof
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) {
+    assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
   }
 }
 console.log('hull-contact-census.selftest: contact law, turret-held launchers, the Challenger 1 turrets, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');

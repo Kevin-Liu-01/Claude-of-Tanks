@@ -126,6 +126,9 @@ function sideSkirts(P:TankBuilderPort,side:number,granbyKit:boolean):void{
   for(const z of[-171.614174,-113.976383,-103.40551,-39.665354,-30.334646,
     33.444882,40.846456,70.629921]){
     caseBox(P,side*69.212597,50.925196,z,.629921,2.559055,3.188976);
+    // each hanger's arm back to the sponson's 67.9 in wall: without the Granby panels' backer bands the skirt stood
+    // 23 mm off the hull, held by nothing (release 262, the hull-contact census on the Mk 1 and Mk 2)
+    caseBox(P,side*68.3,50.2,z,1.9,1.1,3.188976);
   }
   if(granbyKit)sideApplique(P,side);
 }
