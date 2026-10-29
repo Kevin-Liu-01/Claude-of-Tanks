@@ -78,20 +78,36 @@ export interface TurretModule {
   readonly solids: readonly ShellSolid[];
 }
 
+/** Measured solids in their owner's frame (offset subtracted): cut along z, or along x (fitted in the frame (-z, y, x),
+ *  a quarter turn about y back). */
+function solidsGeometry(solids: readonly ShellSolid[], axis: 0 | 2, offset: readonly [number, number, number]): THREE.BufferGeometry[] {
+  return solids.flatMap((solid) => {
+    const g = loftMeasuredSolid(solid.z.map((z, s) => ({ z, ring: solid.rings[s]! })));
+    if (!g) return [];
+    if (axis === 0) g.rotateY(Math.PI / 2);
+    return [g.translate(-offset[0], -offset[1], -offset[2])];
+  });
+}
+
 /** A module's solids in the turret frame. */
 function moduleGeometry(m: TurretModule, pivot: readonly [number, number, number]): THREE.BufferGeometry[] {
-  const [, py, pz] = pivot;
-  return m.solids.map((solid) => {
-    const along = m.axis === 2 ? pz : 0;
-    const g = loftMeasuredSolid(solid.z.map((z, s) => ({ z: z - along, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) })));
-    return m.axis === 2 ? g : g.rotateY(Math.PI / 2).translate(0, 0, -pz);
-  });
+  return solidsGeometry(m.solids, m.axis, pivot);
+}
+
+/** A large source piece fitted as measured solids (bigpieces.py): its owner, its detail role, whether it stood in for a
+ *  loft (the pale kit's bags and rolls), the axis its solids were cut along and the solids. */
+export interface SolidPart {
+  readonly owner: 0 | 1;
+  readonly role: number;
+  readonly loft: boolean;
+  readonly axis: 0 | 2;
+  readonly solids: readonly ShellSolid[];
 }
 
 /** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted),
  *  and the turret armour modules' solids in their side's removable package. */
 export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number],
-  modules: readonly TurretModule[]): void {
+  modules: readonly TurretModule[], solidParts: readonly SolidPart[]): void {
   const seg = P.q ? 20 : 12, none: readonly [number, number, number] = [0, 0, 0];
   const turretArmor: Record<'R' | 'L', SourcePart[]> = { R: [], L: [] };
   for (const p of parts) {
@@ -151,14 +167,42 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         if (sx * sy * sz > 1e-6) P.add(onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail', partGeometry(p, off, seg));
     }
   }
+  // the large pieces as measured solids, in their roles' buckets
+  const turretSolids: Record<'R' | 'L', THREE.BufferGeometry[]> = { R: [], L: [] };
+  for (const part of solidParts) {
+    const onTurret = part.owner === 1, off = onTurret ? pivot : none;
+    const geos = solidsGeometry(part.solids, part.axis, off);
+    for (const g of geos) {
+      g.computeBoundingBox();
+      const b = g.boundingBox!, cx = (b.min.x + b.max.x) / 2, sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z;
+      switch (part.role) {
+        case ROLE.hatch: P.add(onTurret ? 'turretHatch' : 'hullHatch', g); break;
+        case ROLE.hullArmor: {
+          const skirt = Math.abs(cx) > 1.70 && sy > 0.30 && sz > 0.30 && sx < 0.30;
+          P.addExternalArmor(skirt ? (cx > 0 ? 'hullTrackGuardL' : 'hullTrackGuardR') : 'hull', g);
+          break;
+        }
+        case ROLE.turretArmor:
+          if (onTurret) turretSolids[cx > 0 ? 'R' : 'L'].push(g);
+          else P.addExternalArmor('hull', g);
+          break;
+        case ROLE.stowage:
+          P.add(part.loft ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'), g);
+          break;
+        case ROLE.lantern: case ROLE.optic: P.add(onTurret ? 'turretDetail' : 'hullDetail', g); break;
+        default: P.add(onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail', g);
+      }
+    }
+  }
   // the add-on turret armour: the spec's two removable packages (schema-1 names, tankIdAliases.ts; `_R` on +X)
   for (const side of ['R', 'L'] as const) {
     const mods = modules.filter((m) => m.side === side);
-    if (!turretArmor[side].length && !mods.length) continue;
+    if (!turretArmor[side].length && !mods.length && !turretSolids[side].length) continue;
     const sector = `merkava_${tankSeedId(P.spec.id)}_turret_era_${side}`;
     P.destructibleCluster(sector, () => {
       for (const p of turretArmor[side]) P.addExternalArmor('turret', partGeometry(p, pivot, seg));
       for (const m of mods) for (const g of moduleGeometry(m, pivot)) P.addExternalArmor('turret', g);
+      for (const g of turretSolids[side]) P.addExternalArmor('turret', g);
     });
   }
 }

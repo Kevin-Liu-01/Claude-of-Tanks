@@ -25,13 +25,19 @@ export interface TurretSlot {
 
 /** A measured solid lofted through its sections: its end caps keep every crease station (a crease that slid onto its
  *  neighbours' edge stays in the cap's boundary); where a near-collinear spur leaves that triangulation short, the
- *  caps are earcut's own. */
-export function loftMeasuredSolid(sections: readonly SolidSection[]): THREE.BufferGeometry {
-  try {
-    return sectionSolid(sections, { sideQuadDiagonal: 'convex', preserveCapBoundary: true });
-  } catch {
-    return sectionSolid(sections, { sideQuadDiagonal: 'convex' });
+ *  caps are earcut's own; where an end section folds on itself, the solid ends at its neighbour; else null. */
+export function loftMeasuredSolid(sections: readonly SolidSection[]): THREE.BufferGeometry | null {
+  const trims = [[0, 0], [1, 0], [0, 1], [1, 1]] as const;
+  for (const [a, b] of trims) {
+    const kept = sections.slice(a, sections.length - b);
+    if (kept.length < 2) break;
+    try {
+      return sectionSolid(kept, { sideQuadDiagonal: 'convex', preserveCapBoundary: true });
+    } catch {
+      try { return sectionSolid(kept, { sideQuadDiagonal: 'convex' }); } catch { /* the next trim */ }
+    }
   }
+  return null;
 }
 
 /** The gun's channel through the turret's front (hull frame z, from its back wall to its front, and its half-width). */
@@ -46,18 +52,26 @@ export interface GunChannel {
 export function buildMerkavaTurretShell(P: TankBuilderPort, shell: readonly ShellSolid[], pivot: readonly [number, number],
   channel: GunChannel | null): void {
   const [py, pz] = pivot;
+  // the armour shell is the turret bucket; the stowage bins welded on the bustle are not armour: rearward of the ring,
+  // where the shell's section falls under 55 % of its largest (the bins' open U), its solids are painted kit
+  const area = (ring: readonly SectionPoint[]): number =>
+    Math.abs(ring.reduce((a, [x0, y0], i) => { const [x1, y1] = ring[(i + 1) % ring.length]!; return a + x0 * y1 - x1 * y0; }, 0)) / 2;
+  const stations = shell.flatMap((solid) => solid.z.map((z, s) => [z, area(solid.rings[s]!)] as const)).sort((a, b) => b[0] - a[0]);
+  const largest = Math.max(...stations.map(([, a]) => a));
+  const bins = stations.find(([z, a]) => z < pz - 0.5 && a < largest * 0.55)?.[0] ?? -Infinity;
   for (const solid of shell) {
     const sections = solid.z.map((z, s) => ({ z: z - pz, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) }));
-    P.add('turret', loftMeasuredSolid(sections));
+    const g = loftMeasuredSolid(sections);
+    if (g) P.add(solid.z[solid.z.length - 1]! <= bins + 0.03 ? 'turretPaintedDetail' : 'turret', g);
   }
   if (channel) {
-    // the gun channel's floor (the Mk 1 to Mk 3's slot between the cheeks, the Mk 4's channel between its front modules)
-    // at its base, at least 7 cm over the ring's plane (which the fleet's turret seat keeps clear), under the gun's mask
+    // the gun channel's floor (the Mk 1 to Mk 3's slot between the cheeks, the Mk 4's channel between its front modules;
+    // not armour) at its base, at least 7 cm over the ring's plane (which the fleet's turret seat keeps clear), under the gun's mask
     const { z0, z1, halfWidth } = channel;
     const ahead = shell.filter((solid) => solid.z[solid.z.length - 1]! > z0 + 0.05);
     const base = Math.max(ahead.length ? Math.min(...ahead.flatMap((solid) => solid.rings[0]!.map(([, y]) => y))) + 0.01 : -Infinity, py + 0.07);
     const len = z1 - z0 - 0.02;
-    P.add('turret', KIT.box(halfWidth * 2 + 0.04, 0.02, len), 0, base - py, z0 + 0.01 + len / 2 - pz);
+    P.add('turretDetail', KIT.box(halfWidth * 2 + 0.04, 0.02, len), 0, base - py, z0 + 0.01 + len / 2 - pz);
   }
   // the ring collar: from the deck up into the shell's base course, round the race (inside the base course's corners
   // over the stations within 0.4 m of the ring centre)

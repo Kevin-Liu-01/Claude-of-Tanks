@@ -176,8 +176,8 @@ function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
   ];
 }
 
-/** Hull body: the central loft, the two sponsons, the fenders over the track ends and the front fender boxes over the
- *  sprockets, in 'hull'. */
+/** Hull body: the central loft, the two sponsons and the fenders over the track ends in 'hull'; the front fender boxes
+ *  over the sprockets in 'hullDetail'. */
 export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, gear: MerkavaGearSpec,
   box: MerkavaFender | null): void {
   P.add('hull', centralHull(spec));
@@ -188,7 +188,8 @@ export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, 
     P.add('hull', sponson(spec, side, z0, z1));
     if (!box && z1 < nose - 0.05) P.add('hull', fender(spec, side, z1 - 0.02, nose));
     if (z0 > tail + 0.05) P.add('hull', fender(spec, side, tail, z0 + 0.02));
-    if (box) for (const g of fenderBox(box, side)) P.add('hull', g);
+    // the fender boxes are sheet steel over the sprockets, not armour
+    if (box) for (const g of fenderBox(box, side)) P.add('hullDetail', g);
     // the front mudflap hung under the fender's nose
     const flapZ = box ? box.z1 - 0.03 : nose - 0.05, flapY = box ? box.bottom - 0.10 : lineAt(line, flapZ) - 0.15;
     P.hangMudguard(`merkavaBowFlap${side > 0 ? 'L' : 'R'}`, 'hullRubber', KIT.box(gear.trackW * 0.95, 0.20, 0.012),
