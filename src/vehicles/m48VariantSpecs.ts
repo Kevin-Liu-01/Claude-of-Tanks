@@ -71,6 +71,14 @@ const ga2 = m48('m48a2ga2', 'Kpz M48A2GA2', 'Germany');
 Object.assign(ga2.dims, { hullLengthM: 6.87, overallLengthM: 9.30, widthM: 3.63, heightM: 3.16 });
 Object.assign(ga2, { weightTons: 48, topSpeedKmh: 48 });
 ga2.visual = { ...ga2.visual, marking: 'number', number: '211' };
+// measured by tools/gun-depression-sweep.mjs on the release-266 build (the cast shield clear of the race collar)
+ga2.gunPitchByYawDeg = [
+  [0, -9], [27, -9], [32, -7.8], [34, -7.6], [36, -7.6], [37, -7.9], [39, -9], [41, -9], [43, -8.2], [46, -8.2],
+  [48, -9], [54, -9], [55, -8.9], [56, -7.9], [57, -7.5], [58, -7.2], [60, -7.2], [61, -7.5], [62, -8.1], [63, -9],
+  [120, -9], [121, -8.5], [127, -6.9], [132, -6.8], [134, -6.3], [139, -5.8], [140, -4.6], [141, -3.7], [142, -3.5],
+  [143, -3.4], [146, -2.9], [147, -2.4], [149, -2.1], [156, -2.2], [157, -1.5], [158, 0], [161, 2.4], [163, 3.2],
+  [164, 3.3], [180, 3.3]
+];
 
 const sup = m48('m48_super', 'M48 Super', 'Germany');
 Object.assign(sup.dims, { hullLengthM: 6.87, overallLengthM: 9.30, widthM: 3.75, heightM: 3.16 });
