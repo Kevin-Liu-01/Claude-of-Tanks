@@ -387,7 +387,10 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
             assert.equal(ray.intersectObject(hull, false).length, 0,
               `${id}/${quality} actual emitting aperture is not buried behind the rebuilt bow`);
             if(physicalIds.includes(id)){
-              const support=new THREE.Raycaster(point,direction.clone().negate(),0,.025).intersectObject(hull,false)[0];
+              // m1e3-264: the M1E3 carries the M1 family's bow-lamp pods (a pod box and bezel in the detail buckets),
+              // so its lens is held by that pod stock, not by the structural hull 38 mm behind it
+              const stock=id==='m1a3'?['hull','hullDetail','hullDark'].map(n=>visual.root.getObjectByName(n)).filter(Boolean):[hull];
+              const support=new THREE.Raycaster(point,direction.clone().negate(),0,.025).intersectObjects(stock,false)[0];
               assert.ok(support&&support.distance>.005,
                 `${id}/${quality} original pod remains connected to nearby hull stock behind its exposed lens`);
             }
