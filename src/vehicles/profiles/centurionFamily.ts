@@ -1546,7 +1546,8 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
     P.add('gun', cylZ(0.115, 0.05, seg, 0.210), 0, 0, 1.605);
     // the muzzle collar: one plain sleeve over the tube's last 0.22 m, 0.7 of the drum across, with a lip at its face (the
     // critics, 2026-10-29: the waisted spool 2 cm clear of the tube, then a collar nearly as wide as the drum)
-    P.add('gun', cylZ(0.145, 0.26, seg), 0, 0, len - 0.13);
+    // (the lip alone carries the muzzle face: a second cap there leaves the bore cut a ring open)
+    P.add('gun', cylZ(0.145, 0.235, seg), 0, 0, len - 0.1425);
     P.add('gun', cylZ(0.160, 0.025, seg), 0, 0, len - 0.0125);
     muzzleBore(P, { z: len, r: 0.0825 });
   } else if (m.gun === '20pdrB') {
