@@ -6588,5 +6588,41 @@
    "en": "T-64BV, Redrock Divide",
    "zh": "T-64BV，红岩分界"
   }
+ },
+ {
+  "n": 269,
+  "id": "leo1a2a1-ruinspires",
+  "hero": "leo1a2a1",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "ruinspires",
+  "time": "night",
+  "anchor": [
+   -132,
+   273
+  ],
+  "heading": 86,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "leo1a2a1",
+   "leo2a2"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 1A2A1 knocks out a T-72B at Ruinspires at night",
+   "zh": "夜间，一辆 Leopard 1A2A1 在废墟尖塔击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "Leopard 1A2A1, Ruinspires",
+   "zh": "Leopard 1A2A1，废墟尖塔"
+  }
  }
 ]
