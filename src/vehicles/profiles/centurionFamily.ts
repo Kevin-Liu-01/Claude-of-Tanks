@@ -756,11 +756,14 @@ interface CastStation {
   readonly edge: number;
 }
 
-/** The casting, rear to front: bustle overhang, the body over the ring, the rounded front falling to the mantlet. */
+/** The casting, rear to front: bustle overhang, the body over the ring, the rounded front falling to the mantlet. The
+ * bustle stands 0.4 m out behind the ring housing with a broad, rounded-square back (the Bovington Mk 13's right side
+ * and the Duxford AVRE's: the casting 2.25 m long, its back 0.85 m behind the cupola; the critic, 2026-10-29: the
+ * 0.9 m teardrop bustle made the turret read a third too long). */
 const CASTING: readonly CastStation[] = [
-  { z: -2.00, bottom: 0.30, roof: 0.82, low: 0.58, mid: 0.60, up: 0.57, edge: 0.48 },
-  { z: -1.86, bottom: 0.27, roof: 0.92, low: 0.72, mid: 0.74, up: 0.70, edge: 0.58 },
-  { z: -1.52, bottom: 0.25, roof: 0.96, low: 0.84, mid: 0.86, up: 0.82, edge: 0.66 },
+  { z: -1.48, bottom: 0.30, roof: 0.84, low: 0.74, mid: 0.77, up: 0.73, edge: 0.60 },
+  { z: -1.40, bottom: 0.27, roof: 0.93, low: 0.84, mid: 0.87, up: 0.83, edge: 0.69 },
+  { z: -1.27, bottom: 0.25, roof: 0.96, low: 0.89, mid: 0.92, up: 0.88, edge: 0.76 },
   { z: -1.10, bottom: 0.24, roof: 0.97, low: 0.92, mid: 0.95, up: 0.92, edge: 0.80 },
   { z: -1.07, bottom: -0.012, roof: 0.97, low: 0.92, mid: 0.95, up: 0.92, edge: 0.80 },
   { z: -0.55, bottom: -0.012, roof: 0.97, low: 1.10, mid: 1.15, up: 1.08, edge: 0.93 },
@@ -772,6 +775,17 @@ const CASTING: readonly CastStation[] = [
   { z: 1.03, bottom: -0.012, roof: 0.64, low: 0.92, mid: 0.93, up: 0.86, edge: 0.74 },
   { z: 1.10, bottom: 0.03, roof: 0.54, low: 0.82, mid: 0.82, up: 0.76, edge: 0.68 },
 ];
+
+/** The uncovered marks' casting: the nose falls to its chin 12 cm shorter, so the bare cast mantlet stands 0.3 m proud
+ * of it with its top and sides showing (the Bovington Mk 13 and the Strv 81 photographs; the critics, 2026-10-28/29:
+ * the block buried in the nose read as a thin collar). Under a canvas cover the longer nose carries the drape. */
+const CASTING_BARE: readonly CastStation[] = [
+  ...CASTING.slice(0, -3),
+  { z: 0.86, bottom: -0.012, roof: 0.78, low: 1.01, mid: 1.03, up: 0.95, edge: 0.78 },
+  { z: 0.93, bottom: -0.012, roof: 0.65, low: 0.93, mid: 0.94, up: 0.87, edge: 0.74 },
+  { z: 0.98, bottom: 0.03, roof: 0.55, low: 0.83, mid: 0.83, up: 0.77, edge: 0.68 },
+];
+const castingOf = (m: MarkDesign): readonly CastStation[] => (m.cover ? CASTING : CASTING_BARE);
 
 function castSection(st: CastStation): SolidSection {
   const yb = st.bottom, yr = st.roof;
@@ -788,7 +802,7 @@ function castSection(st: CastStation): SolidSection {
 function buildCasting(P: TankBuilderPort, m: MarkDesign): void {
   // every side edge but the floor reads as one continuous casting
   // the walls and shoulders read as one continuous casting; the roof plate's edge stays a crisp line
-  P.add('turret', sectionSolid(CASTING.map(castSection), { smoothSideEdges: [1, 2, 3, 4, 5, 9, 10, 11, 12, 13], centeredSideQuads: true }));
+  P.add('turret', sectionSolid(castingOf(m).map(castSection), { smoothSideEdges: [1, 2, 3, 4, 5, 9, 10, 11, 12, 13], centeredSideQuads: true }));
   // Ring collar: the casting's foot on the race.
   P.add('turret', cylY(1.00, 1.03, 0.07, 48), 0, -0.005, 0.02);
   P.add('turretDark', torus(1.015, 0.012, 48, 6), 0, 0.03, 0.02);
@@ -798,24 +812,24 @@ function buildCasting(P: TankBuilderPort, m: MarkDesign): void {
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       P.add('turretDetail', xform(cylZ(0.012, len, 6), 0, 0, 0, 0, Math.atan2(b[0] - a[0], b[1] - a[1]), 0), (a[0] + b[0]) / 2, 0.972, (a[1] + b[1]) / 2);
     };
-    const plate: [number, number][] = [[0.66, 0.50], [0.72, 0.02], [0.66, -0.80], [0.52, -1.50], [-0.52, -1.50], [-0.66, -0.80], [-0.72, 0.02], [-0.66, 0.50]];
+    const plate: [number, number][] = [[0.66, 0.50], [0.72, 0.02], [0.66, -0.80], [0.52, -1.24], [-0.52, -1.24], [-0.66, -0.80], [-0.72, 0.02], [-0.66, 0.50]];
     for (let i = 0; i < plate.length; i++) bead(plate[i], plate[(i + 1) % plate.length]);
   }
 }
 
 /** The casting's roof height at station z (linear between the stations). */
-function castingRoof(z: number): number {
+function castingRoof(z: number, st: readonly CastStation[] = CASTING): number {
   let k = 0;
-  while (k < CASTING.length - 2 && CASTING[k + 1].z < z) k++;
-  const a = CASTING[k], b = CASTING[k + 1], t = Math.min(1, Math.max(0, (z - a.z) / (b.z - a.z)));
+  while (k < st.length - 2 && st[k + 1].z < z) k++;
+  const a = st[k], b = st[k + 1], t = Math.min(1, Math.max(0, (z - a.z) / (b.z - a.z)));
   return a.roof + (b.roof - a.roof) * t;
 }
 
 /** The casting's half-width at station z and height y (between its lower wall, bin course and upper slope points). */
-function castingHalfWidth(z: number, y: number): number {
+function castingHalfWidth(z: number, y: number, st: readonly CastStation[] = CASTING): number {
   let k = 0;
-  while (k < CASTING.length - 2 && CASTING[k + 1].z < z) k++;
-  const a = CASTING[k], b = CASTING[k + 1], t = Math.min(1, Math.max(0, (z - a.z) / (b.z - a.z)));
+  while (k < st.length - 2 && st[k + 1].z < z) k++;
+  const a = st[k], b = st[k + 1], t = Math.min(1, Math.max(0, (z - a.z) / (b.z - a.z)));
   const at = (st: CastStation): number => {
     const ym = Math.min(0.45, st.roof - 0.16), yu = Math.min(0.75, st.roof - 0.07);
     if (y <= ym) return st.mid;
@@ -855,22 +869,23 @@ function buildTurretBins(P: TankBuilderPort): void {
 /** The rear bustle bin across the turret rear (the Bovington Mk 3's tall flat-faced box) up to the roof line. */
 function buildBustleBin(P: TankBuilderPort): void {
   P.add('turretDetail', slab(
-    [-0.86, 0.28, -1.92], [0.86, 0.28, -1.92], [0.86, 0.28, -2.30], [-0.86, 0.28, -2.30],
-    [-0.86, 0.90, -1.92], [0.86, 0.90, -1.92], [0.86, 0.88, -2.30], [-0.86, 0.88, -2.30]));
-  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.885, -2.305);
-  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.30, -2.305);
-  for (const hx of [-0.42, 0.42]) P.add('turretDark', box(0.06, 0.08, 0.02), hx, 0.78, -2.31);
-  P.add('turretDark', xform(torus(0.07, 0.012, 14, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.58, -2.31);
+    [-0.86, 0.28, -1.40], [0.86, 0.28, -1.40], [0.86, 0.28, -1.78], [-0.86, 0.28, -1.78],
+    [-0.86, 0.90, -1.40], [0.86, 0.90, -1.40], [0.86, 0.88, -1.78], [-0.86, 0.88, -1.78]));
+  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.885, -1.785);
+  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.30, -1.785);
+  for (const hx of [-0.42, 0.42]) P.add('turretDark', box(0.06, 0.08, 0.02), hx, 0.78, -1.79);
+  P.add('turretDark', xform(torus(0.07, 0.012, 14, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.58, -1.79);
 }
 
-/** The Mk 13's open mesh basket on the bustle, its top level with the roof and its floor well clear of the engine deck
- * (the Bovington Mk 13; the critic, 2026-10-28: the solid box bin down to the deck made the turret read 0.9 m long). */
+/** The Mk 13's open mesh basket on the bustle's back, 0.5 m deep and 0.62 m tall, its top rail 0.15 m over the roof
+ * edge and its floor well clear of the engine deck (the Bovington Mk 13; the critics, 2026-10-28: the solid box bin
+ * down to the deck made the turret read 0.9 m long; 2026-10-29: the low open frame read as a rail). */
 function buildLateBustleBasket(P: TankBuilderPort): void {
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.50, d: 0.60, h: 0.42, fill: 0.55, rails: 2, seed: 1360 }),
-    0, 0.44, -2.26);
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.50, d: 0.50, h: 0.62, fill: 0.55, rails: 3, seed: 1360 }),
+    0, 0.38, -1.74);
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.05, 0.30), s * 0.56, 0.45, -1.98);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.40), 0, 0, 0, 0.75, 0, 0), s * 0.56, 0.62, -2.02);
+    P.add('turretDark', box(0.05, 0.05, 0.14), s * 0.56, 0.40, -1.48);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.30), 0, 0, 0, 0.75, 0, 0), s * 0.56, 0.62, -1.56);
   }
 }
 
@@ -942,13 +957,15 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
   }
   // Ventilator dome on the roof's centre line.
   P.add('turret', cylY(0.10, 0.13, 0.06, 16), 0.0, roofY + 0.02, -1.15);
-  for (const [lx, lz] of [[0.70, 0.40], [-0.70, 0.40], [0.52, -1.55], [-0.52, -1.55]] as const) {
+  for (const [lx, lz] of [[0.70, 0.40], [-0.70, 0.40], [0.42, -1.16], [-0.42, -1.16]] as const) {
     KIT.liftEye(P, 'turretDetail', lx, roofY - (lz > 0 ? 0.03 : 0.02), lz, 0);
   }
-  // Wireless aerial bases at the bustle's rear corners.
-  const aerials: readonly (readonly [number, number])[] = m.swedish ? [[0.66, -1.70], [-0.66, -1.70]] : [[0.60, -1.66], [-0.60, -1.66]];
+  // Wireless aerial bases at the bustle's rear corners; the Mk 3 stands with its bases bare (the Bovington Mk 3 and its
+  // registered model carry no whips, and 2 m whips the model lacks dominate its front and station silhouettes)
+  const aerials: readonly (readonly [number, number])[] = m.swedish ? [[0.62, -1.34], [-0.62, -1.34]] : [[0.58, -1.32], [-0.58, -1.32]];
   aerials.forEach(([ax, az], i) => {
     P.add('turretDetail', cylY(0.04, 0.05, 0.07, 10), ax, roofY - 0.02, az);
+    if (!m.mk5 && !m.swedish) return;
     const h = m.idf ? (i === 0 ? 2.9 : 2.6) : i === 0 ? 2.1 : 1.6;
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.011, rake: 0.05,
       seed: (m.swedish ? 8130 : m.idf ? 9720 : 2620) + i }), ax, roofY + 0.02, az);
@@ -965,9 +982,9 @@ interface CornerPackage {
 }
 type FacePoint = (u: number, v: number) => { p: V3; a: V3; b: V3; n: V3 };
 
-function cornerPackage(P: TankBuilderPort, s: number, k: CornerPackage): FacePoint {
+function cornerPackage(P: TankBuilderPort, s: number, k: CornerPackage, st: readonly CastStation[] = CASTING): FacePoint {
   const outer = (z: number): number => k.xBack + (k.xTip - k.xBack) * (Math.min(k.z1, z) - k.z0) / (k.z1 - k.z0);
-  const inner = (z: number): number => Math.max(0.845, castingHalfWidth(z, 0.78) - 0.03);
+  const inner = (z: number): number => Math.max(0.845, castingHalfWidth(z, 0.78, st) - 0.03);
   const top = (z: number): number => Math.max(inner(z) + 0.03, outer(z + k.setback));
   const N = 6, rings: SolidSection[] = [];
   for (let i = 0; i <= N; i++) {
@@ -1081,7 +1098,7 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
   for (const [side, s] of [['L', 1], ['R', -1]] as const) {
     P.destructibleCluster(`centurion5_avre_turret_era_${side}`, () => {
       // two large flat panels on a housing sloped back about 45 deg, flat-topped, with their bolts (the Gulf photographs)
-      cassetteSeams(P, cornerPackage(P, s, k), 2, 1, wFace, hFace);
+      cassetteSeams(P, cornerPackage(P, s, k, CASTING_BARE), 2, 1, wFace, hFace);
       for (const [z0, z1, outF, outR] of faces[side]) {
         const n = Math.max(1, Math.floor((z1 - z0 - 0.04) / 0.29));
         for (let i = 0; i < n; i++) {
@@ -1097,10 +1114,10 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
   }
   // the rear basket of the Duxford and Royal Engineers Museum AVREs, on arms from the bin's lower edge
   mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.80, d: 0.44, h: 0.42, fill: 0.5, rails: 3, seed: 5160 }),
-    0, 0.30, -2.54);
+    0, 0.30, -2.02);
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.05, 0.34), s * 0.78, 0.31, -2.40);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.78, 0.52, -2.42);
+    P.add('turretDark', box(0.05, 0.05, 0.34), s * 0.78, 0.31, -1.88);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.78, 0.52, -1.90);
   }
 }
 
@@ -1109,14 +1126,15 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
  * each side of the bustle - its top level with the roof, its floor well clear of the deck, two rails, the tank's number
  * on its rear face. Ring frame. */
 function buildAusTurretBaskets(P: TankBuilderPort): void {
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.10, d: 0.55, h: 0.50, fill: 0.55, rails: 2, seed: 5112 }), 0, 0.40, -2.60);
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.10, d: 0.55, h: 0.50, fill: 0.55, rails: 2, seed: 5112 }), 0, 0.40, -2.08);
   for (const s of [-1, 1]) {
-    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.90, d: 0.32, h: 0.50, fill: 0.5, rails: 2, seed: 5114 + (s > 0 ? 1 : 0) }),
-      s * 1.05, 0.40, -1.85, [0, Math.PI / 2, 0]);
-    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.41, -2.44);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.62, -2.46);
+    // the side runs flank the bustle and its bin from the side bins' back ends to the rear run
+    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.50, d: 0.32, h: 0.50, fill: 0.5, rails: 2, seed: 5114 + (s > 0 ? 1 : 0) }),
+      s * 1.05, 0.40, -1.555, [0, Math.PI / 2, 0]);
+    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.41, -1.92);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.62, -1.94);
   }
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.66, -2.885], Math.PI);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.66, -2.365], Math.PI);
 }
 
 /** The Olifant Mk 2's turret (LIW, from 2007; the Commons profile and the Armed Forces Day photographs): the Centurion
@@ -1254,11 +1272,11 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
   // the full-width basket hung on the bustle, its top under the roof edge, its floor well clear of the AVDS deck (the
   // Latrun Sho't Kal Alef's rear, the Litani photograph; the critic, 2026-10-28: the shallow rack read as a deck cage)
   mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.90, d: 0.60, h: 0.44, fill: 0.6, rails: 2, seed: 9730 }),
-    0, 0.44, -2.62);
+    0, 0.44, -2.10);
   // the basket hangs on arms from the bin's lower edge
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.05, 0.40), s * 0.80, 0.45, -2.42);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, 0.75, 0, 0), s * 0.80, 0.62, -2.44);
+    P.add('turretDark', box(0.05, 0.05, 0.40), s * 0.80, 0.45, -1.90);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, 0.75, 0, 0), s * 0.80, 0.62, -1.92);
   }
   // jerrycan cage: a welded bar frame on two brackets off the casting
   const cx = -1.08, cz = -1.50, w = 0.30, d = 0.52, h = 0.52, y0 = 0.33;
@@ -1280,10 +1298,10 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
 /** Discharger No. 1 Mk 1: one six-tube block (two rows of three) at each front corner of the casting, facing forward and
  * a little outward (the head-on references), its guard bar round the muzzles. Owner 2026-10-27 ("add smoke canisters at
  * front"): the Sho't Kal carries them too. */
-function buildSmokeDischargers(P: TankBuilderPort, z = 1.00, y = 0.56, xOut?: number): void {
+function buildSmokeDischargers(P: TankBuilderPort, z = 1.00, y = 0.56, xOut?: number, st: readonly CastStation[] = CASTING): void {
   for (const s of [-1, 1]) {
     const yaw = s * 0.30;
-    const x = s * (xOut ?? castingHalfWidth(z - 0.04, y) + 0.06);
+    const x = s * (xOut ?? castingHalfWidth(z - 0.04, y, st) + 0.06);
     const at = (lx: number, lz: number): [number, number] => [x + Math.cos(yaw) * lx + Math.sin(yaw) * lz, z - Math.sin(yaw) * lx + Math.cos(yaw) * lz];
     // the mounting plate welded to the cheek and its bracket arm back into the casting
     const [ax, az] = at(-s * 0.06, -0.12);
@@ -1362,13 +1380,14 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
     P.add('gunMountDark', xform(torus(0.045, 0.014, 10, 6), 0, 0.04, 0, Math.PI / 2, 0, 0), lx, 0.30, 0.30);
     P.add('gunMount', box(0.09, 0.03, 0.06), lx, 0.30, 0.30);
   }
-  // the canvas dust seal laced round the block's rim where it enters the casting
-  const hw = 0.80 * span;
-  P.add('gunMountCloth', sectionSolid([block(0.12, hw + 0.035, 0.335, -0.245), block(0.22, hw + 0.03, 0.33, -0.24)],
+  // the canvas dust seal laced round the block's rim where it enters the casting (10 cm further out of the bare marks'
+  // shorter nose)
+  const hw = 0.80 * span, sz = m.cover ? 0 : 0.10;
+  P.add('gunMountCloth', sectionSolid([block(0.12 + sz, hw + 0.035, 0.335, -0.245), block(0.22 + sz, hw + 0.03, 0.33, -0.24)],
     { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
   for (let k = 0; k < 9; k++) {
     const t = -1 + (2 * k) / 8;
-    P.add('gunMountDark', cylZ(0.010, 0.11, 6), t * (hw - 0.08), 0.335, 0.17);
+    P.add('gunMountDark', cylZ(0.010, 0.11, 6), t * (hw - 0.08), 0.335, 0.17 + sz);
   }
   if (m.cover) {
     // the green canvas cover over the block, sagging between its lacing points, its sleeve strapped to the barrel (the
@@ -1502,7 +1521,8 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     // the Bovington Mk 13)
     if (m.kit === 'strv105' || m.kit === 'avre') buildSmokeDischargers(P, 0.36, 0.88);
     else if (m.mk5 && !m.swedish && !m.idf && m.kit === 'none') buildSmokeDischargers(P, 0.84, 0.50, 1.30);
-    else buildSmokeDischargers(P);
+    // (on the bare marks' shorter nose the blocks stand 12 cm further back, on the cheeks)
+    else buildSmokeDischargers(P, m.cover ? 1.00 : 0.88, 0.56, undefined, castingOf(m));
   }
   yield 'centurionTurretFittings';
   if (m.kit === 'olifant') buildOlifantMantlet(P);
