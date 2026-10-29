@@ -3498,6 +3498,10 @@ export function initHud(bus: EventBus): HudRuntime {
     scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
+  // (battle-camera-264) and once responsiveLayout.ts has sized the root for the new window: read at the resize alone, a
+  // rotated phone's sight kept the old width (the aim point projected on the portrait centre in landscape, its reticle off
+  // where the shell goes) until the next resize
+  window.addEventListener('cot:layoutchange', resize);
   resize();
   root.style.display = 'none'; // starts hidden until setMode/update
 

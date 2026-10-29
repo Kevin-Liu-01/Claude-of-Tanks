@@ -120,4 +120,12 @@ const top = (boxes) => Math.min(...boxes.map((b) => b.y0));
   assert.equal(portraitSightRiseCap(c + SIGHT_BAND_BELOW + 4, rowH, c, ceiling), Infinity, 'a row under the band never moves for the sight');
 }
 
+// 6. the sight's projection follows the window: hud.ts measures again once responsiveLayout.ts has sized the HUD's root
+// (a rotated phone kept the old width, its reticle off the aim point, until the next resize)
+{
+  const { readFileSync } = await import('node:fs');
+  const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
+  assert.match(hud, /window\.addEventListener\('cot:layoutchange', resize\);/, 'the HUD re-measures on the layout change');
+}
+
 console.log('battleSight.selftest: the sight datum, the touch and mouse keep-outs, the countdown and the portrait row follow the risen sight; the scope stays centred');
