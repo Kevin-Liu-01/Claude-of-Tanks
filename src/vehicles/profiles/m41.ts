@@ -232,10 +232,11 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
 
   // ---------------------------------------------------------------- hull fittings --
   const buildM41HullFittings = (): void => {
-    // the driver's hatch (front left, +x) and periscope
-    P.addCupola('hull', cylY(0.25, 0.26, 0.05, P.q ? 20 : 14), 0.55, deckY(1.55) + 0.025, 1.55);
-    P.addEquipment('hull', box(0.16, 0.08, 0.10), 0.55, deckY(1.55) + 0.08, 1.80);
-    P.add('hullGlass', box(0.12, 0.04, 0.012), 0.55, deckY(1.55) + 0.09, 1.852);
+    // the driver's hatch (front left, +x), near flush under the turret nose's 1.48 underside, and his periscope on the
+    // step down ahead of it, below the gun shield's sweep at full depression
+    P.addCupola('hull', cylY(0.25, 0.26, 0.02, P.q ? 20 : 14), 0.55, deckY(1.55) + 0.01, 1.55);
+    P.addEquipment('hull', box(0.16, 0.08, 0.10), 0.55, deckY(1.98) + 0.04, 1.98);
+    P.add('hullGlass', box(0.12, 0.04, 0.012), 0.55, deckY(1.98) + 0.05, 2.032);
     // two headlights a side high on the glacis, in a brush guard of bent rod (the M47's pattern)
     for (const s of [-1, 1] as const) {
       const x = s * 0.86, z = 2.50, y = deckY(z) + 0.04;
@@ -245,7 +246,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       bar('hullDark', [x, y + 0.16, z + 0.10], [x, deckY(z - 0.12) + 0.005, z - 0.12], 0.010);
       P.add('hullDark', box(0.10, 0.12, 0.10), s * 0.62, 0.80, H.noseZ - 0.02);
       P.add('hullDark', torus(0.06, 0.018, 12, 6), s * 0.62, 0.80, H.noseZ + 0.05, Math.PI / 2, 0, 0);
-      liftEye(P, 'hullDetail', s * 1.20, deckY(1.70) + 0.015, 1.70, s * 0.4);
+      liftEye(P, 'hullDetail', s * 1.20, deckY(2.02) + 0.015, 2.02, s * 0.4); // on the step, past the gun collar's reach
       // tail lights in their guards
       P.add('hullGlass', box(0.10, 0.08, 0.018), s * 0.96, 1.05, H.sternZ - 0.045);
       P.add('hullDark', box(0.16, 0.14, 0.06), s * 0.96, 1.05, H.sternZ - 0.07);
@@ -264,13 +265,12 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       bar('hullDark', [0.08, deckY(-2.30) + 0.06, -2.30], [0.08, deckY(-2.0) + 0.06, -2.0], 0.02);
     }
     towCable(P, [[-0.95, deckY(2.68) + 0.05, 2.68], [0, deckY(2.72) + 0.05, 2.72], [0.95, deckY(2.68) + 0.05, 2.68]], 0.022);
-    // fender stowage boxes: the long box amidships each side, the rear pair over the sprocket's run
+    // fender stowage boxes over the sprocket's run, from z -1.30 aft: the turret nose and the gun shield reach 1.9 m from
+    // the ring at 1.48-1.54, so nothing taller than the fender stands inside that radius (gun-depression sweep, 265)
     for (const s of [-1, 1] as const) {
-      P.addEquipment('hull', box(0.30, 0.26, 1.10), s * 1.49, H.fenderY + 0.13, -0.55);
-      P.addEquipment('hullDark', box(0.31, 0.02, 1.11), s * 1.49, H.fenderY + 0.27, -0.55);
-      for (const z of [-0.85, -0.25]) P.addEquipment('hullDark', box(0.014, 0.05, 0.04), s * 1.645, H.fenderY + 0.20, z);
-      P.addEquipment('hull', box(0.30, 0.24, 0.70), s * 1.49, H.fenderY + 0.12, -1.75);
-      P.addEquipment('hullDark', box(0.31, 0.02, 0.71), s * 1.49, H.fenderY + 0.25, -1.75);
+      P.addEquipment('hull', box(0.30, 0.24, 0.72), s * 1.49, H.fenderY + 0.12, -1.66);
+      P.addEquipment('hullDark', box(0.31, 0.02, 0.73), s * 1.49, H.fenderY + 0.25, -1.66);
+      for (const z of [-1.90, -1.42]) P.addEquipment('hullDark', box(0.014, 0.05, 0.04), s * 1.645, H.fenderY + 0.19, z);
     }
     // the engine deck: grille fields either side, the rear exhaust box over the plate (the DK-1's Cummins deck carries a
     // larger box and its own grilles)
@@ -286,8 +286,8 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.addEquipment('hullDark', box(0.34, 0.16, 0.12), s * 0.50, 0.98, H.sternZ - 0.10);
       P.addEquipment('hullDark', cylZ(0.07, 0.10, 12), s * 0.50, 0.98, H.sternZ - 0.19);
     }
-    jerryCan(P, 'hullCloth', -1.49, H.fenderY + 0.18, -2.25, 0.16);
-    if (mark === 'dk1') P.addEquipment('hullDark', cylY(0.06, 0.07, 0.035, 12), -0.95, deckY(1.25) + 0.018, 1.25);
+    // the DK-1's GPS antenna on the step ahead of the turret nose's reach
+    if (mark === 'dk1') P.addEquipment('hullDark', cylY(0.06, 0.07, 0.035, 12), -0.95, deckY(2.05) + 0.018, 2.05);
   };
   buildM41HullFittings();
   yield 'buildM41HullFittings';
@@ -428,7 +428,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     P.addGunExtra(cylZ(0.17, 0.10, P.q ? 20 : 12, 0.18), 0, 0, 0.52);
     if (dk) {
       // the DK-1's canvas cover gathered round the shield and the tube
-      P.add('gunMountCloth', xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.36, 0.58, 0.62]), 0, -0.01, 0.30);
+      P.add('gunMountCloth', xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.36, 0.50, 0.62]), 0, 0.01, 0.30);
       for (const x of [-0.30, 0, 0.30]) P.add('gunMountCloth', box(0.04, 0.34, 0.20), x, -0.01, 0.40);
       // the Jahn Anderson thermal sight and the Ericsson laser rangefinder in one armoured box on the shield's right
       P.add('gunMount', box(0.36, 0.25, 0.56), -0.44, 0.33, 0.26);
