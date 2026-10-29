@@ -98,8 +98,9 @@ function foreDeck(P:TankBuilderPort):void{
 function frontGuards(P:TankBuilderPort,side:number):void{
   // The actual end roof is a folded thin sheet, not a solid wheel-filling
   // ramp. Its separate lower curled return has open air behind its face.
+  // (painted bodywork, not the armour bucket: in 'hull' it carried the armour envelope 0.44 m past the glacis)
   const a=Math.min(side*37.05,side*67.87),b=Math.max(side*37.05,side*67.87);
-  P.addMudguard(`challenger1-supplied-front-roof-${side}`,'hull',roofSheet([
+  P.addMudguard(`challenger1-supplied-front-roof-${side}`,'hullFixedPaintedBodywork',roofSheet([
     [p(0,0,80.67)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,49.88,0)[1],p(0,49.88,0)[1]],
     [p(0,0,95.59)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,48.15,0)[1],p(0,48.15,0)[1]],
     [p(0,0,104.72)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,side<0?40.51:43.98,0)[1],p(0,side<0?43.98:40.51,0)[1]],
