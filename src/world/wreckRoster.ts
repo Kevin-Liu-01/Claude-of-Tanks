@@ -35,8 +35,10 @@ export const WRECK_ROSTER_POOLS: Readonly<Record<VehicleEra, readonly string[]>>
     // Ukrainian T-64BV
     't72m1_jaguar', 't72b3', 't64bv_donbas',
   ]),
+  // (2026-10-28, the world-reds lane) the Challenger 3 and C2 Ariete prototypes and the CV90 Mk IV concept left with
+  // vehicle-eras-254, which made them modern (Mars authors its own cast and keeps its Challenger 3)
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
-    'kf51_evo', 'object148_proto', 'challenger3_proto', 'm1a3', 'abramsx', 'c2_ariete_proto', 'pl01', 'cv90_mk4_concept',
+    'kf51_evo', 'object148_proto', 'm1a3', 'abramsx', 'pl01',
   ]),
 });
 

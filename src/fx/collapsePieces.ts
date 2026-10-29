@@ -1425,6 +1425,22 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     // drawn from below: the world's flatten reads the same) rides the slab it stands on — before the face rule, or a wall
     // dormer's cheeks went with the panels and its frames into the sky
     if (plan.furnitureAt?.(c0[0], c0[2])) { slabAssign(poly, depth, slab); return; }
+    // (2026-10-28, the Saltmere bourg v3's coped gables) what stands on a gable's plane over the slates — its parapet, the
+    // coping and kneelers, the face of a stack it carries up — rides the gable: every corner by its plane, within its
+    // width. The face rule below judged a raking coping by its centroid near the eaves, and the panels' splits left the
+    // coping's apex end on a wall piece 5 m under it
+    for (const g of plan.gables) {
+      if (g.piece < 0) continue;
+      const f = g.face;
+      const u = (c0[0] - f.origin[0]) * f.u[0] + (c0[2] - f.origin[2]) * f.u[2];
+      if (Math.abs(u) > f.width / 2 + 0.3) continue;
+      let near = true;
+      for (const v of poly) {
+        const d = (v[0] - f.origin[0]) * f.out[0] + (v[2] - f.origin[2]) * f.out[2];
+        if (d > 0.6 || d < -g.thickness - 0.6) { near = false; break; }
+      }
+      if (near) { partAssign(poly, depth, null, g.piece); return; }
+    }
     // (within a little of the eaves: a panel draws no more than that over its box)
     if (top && ny < 0.5 && c0[1] <= plan.eaveY + 1.2) {
       const c = c0;

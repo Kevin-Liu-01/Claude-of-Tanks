@@ -25,7 +25,7 @@
    "mid": 5,
    "fine": 3,
    "trisPerWallM2": 20.46,
-   "fineShare": 0.568,
+   "fineShare": 0.483,
    "facePass": 0.833
   },
   "breton": {
@@ -259,7 +259,7 @@
    "mid": 5,
    "fine": 3,
    "trisPerWallM2": 11.66,
-   "fineShare": 0.463,
+   "fineShare": 0.413,
    "facePass": 1
   },
   "lorrain": {
