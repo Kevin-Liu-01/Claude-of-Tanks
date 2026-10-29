@@ -28,6 +28,12 @@ export interface Leopard2HullOptions {
    * the driver's hatch sweeps that station, and sets its eyes forward on the upper glacis.
    */
   readonly forwardLiftEyeZ?: number;
+  /**
+   * The skirts (default 'standard': the three heavy fore blocks and six aft panels on their hanging rails). 'none' leaves
+   * them, their bolts and rails off for a vehicle whose own skirts replace them (the 2A4M CAN's module skirt and cages,
+   * the Leopard 2 Improved's deep modular skirts); the front mudguard and the rear flap stay.
+   */
+  readonly skirts?: 'standard' | 'none';
 }
 
 /** Linear interpolation along a [z, y] station line, held past its ends. */
@@ -74,6 +80,21 @@ function hull(P: TankBuilderPort): void {
 function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
   const { box } = KIT;
   for (const side of [-1, 1]) {
+    if (o.skirts !== 'none') skirtRuns(P, o, side);
+    // front mudguard over the idler, running out ahead of the nose with a turned-down lip, and the rear flap off the
+    // sponson's end
+    P.add('hull', sectionSolid([[3.16, 1.32, 1.40], [3.40, 1.25, 1.33], [3.62, 1.18, 1.26], [3.70, 1.12, 1.24]].map(([z, foot, lid]): SolidSection => {
+      const r: SectionPoint[] = [[1.05, foot], [1.72, foot], [1.72, lid], [1.05, lid]];
+      return { z, ring: side > 0 ? r : mirrorRing(r) };
+    })));
+    P.hangMudguard(o.flapName, 'hullRubber', box(0.60, 0.42, 0.025), side * 1.36, 1.15, -3.74);
+  }
+}
+
+/** One side's skirt runs: the heavy fore blocks, the aft panels and their hanging rails. */
+function skirtRuns(P: TankBuilderPort, o: Leopard2HullOptions, side: number): void {
+  const { box } = KIT;
+  {
     // the skirts hang 0.46 m from the sponson's floor (the fore blocks deeper by the vehicle's drop): the upper hull's
     // band stands bare above them
     const top = H.skirtTopY, bottom = top - 0.46 - (o.foreSkirtDropM ?? 0);
@@ -108,13 +129,6 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
     // the hanging rails along the sponson's edge, flush with each run's face (the fore blocks step 10 cm out)
     P.add('hullDetail', box(0.055, 0.02, b - a + 0.06), side * 1.6975, top + 0.01, (a + b) / 2);
     P.add('hullDetail', box(0.148, 0.02, 1.74), side * 1.744, top + 0.01, 2.29);
-    // front mudguard over the idler, running out ahead of the nose with a turned-down lip, and the rear flap off the
-    // sponson's end
-    P.add('hull', sectionSolid([[3.16, 1.32, 1.40], [3.40, 1.25, 1.33], [3.62, 1.18, 1.26], [3.70, 1.12, 1.24]].map(([z, foot, lid]): SolidSection => {
-      const r: SectionPoint[] = [[1.05, foot], [1.72, foot], [1.72, lid], [1.05, lid]];
-      return { z, ring: side > 0 ? r : mirrorRing(r) };
-    })));
-    P.hangMudguard(o.flapName, 'hullRubber', box(0.60, 0.42, 0.025), side * 1.36, 1.15, -3.74);
   }
 }
 

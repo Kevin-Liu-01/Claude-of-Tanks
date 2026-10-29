@@ -24,7 +24,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
 import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
 import { LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
-import { leopard2A4WedgeFace } from './leopard2A4Wedge.ts';
+import { leopard2A4WedgeFace, leopard2A4WedgeTop } from './leopard2A4Wedge.ts';
 import {
   HULL_SURFACES as HS, TURRET_SURFACES as TS, bustleRack, crosswindMast, deckFrame, deckY, eraField, mudguardY,
   type CassetteSeat,
@@ -52,6 +52,7 @@ function basisEuler(x: V3, y: V3, z: V3): THREE.Euler {
 
 /** A cassette w x h x depth centred at `face` on a surface with outward normal n and in-plane x axis ax, sunk `embed`. */
 function cassette(face: V3, ax: V3, n: V3, w: number, h: number, depth: number, embed: number): CassetteSeat {
+  ax = ax.clone().addScaledVector(n, -ax.dot(n)).normalize();
   const ay = n.clone().cross(ax).normalize();
   return {
     center: face.clone().addScaledVector(n, depth / 2 - embed),
@@ -345,61 +346,141 @@ type Side = 1 | -1;
 /** The wedge's front face (leopard2A4WedgeFace): u from the tip (0) to the shoulder (1), v from its foot (0) to its top
  *  edge (1). Side +1 is the left (+X) wedge, the spec helpers' "R" plate. */
 const wedgeAt = (side: Side, u: number, v: number): ReturnType<typeof leopard2A4WedgeFace> => leopard2A4WedgeFace(side, u, v);
-/** The face's foot and top-edge heights at u. */
-const faceSpan = (side: Side, u: number): [number, number] => [wedgeAt(side, u, 0).point.y, wedgeAt(side, u, 1).point.y];
-
-/** The cheek ERA on each wedge's front face: ten stations from the tip to the shoulder, each with as many courses of
- *  about 5.5 cm as the face's height at the station's narrower edge allows, under the mounting rail (the old field's
- *  7 x 8 sampled a chevron face several times this one's height). */
+/** The cheek ERA's mounting rail under each wedge's front-face top edge (the cassettes themselves lie on the tops, the old
+ *  OTCO's 56 a side; a second course on the faces would grow its coverage past the old build's). */
 const CHEEK = Object.freeze({ stations: 10, gap: 0.012, depth: 0.0588, embed: 0.024, course: 0.055, foot: 0.006,
   rail: 0.016, minH: 0.028 });
 
-/** The cheek ERA's seats on one wedge, turret metres. */
-function cheekEraSeats(side: Side): CassetteSeat[] {
-  const { stations: n, gap, depth, embed } = CHEEK;
-  const tip = wedgeAt(side, 0, 0).point, sh = wedgeAt(side, 1, 0).point;
-  const len = Math.hypot(sh.x - tip.x, sh.z - tip.z), du = gap / len;
+
+/**
+ * The cheek ERA's main field on each wedge's sloped top, where the old OTCO laid it (its 7 courses x 8 stations): eight
+ * stations across the wedge from the mantlet cover's sweep (|x| 0.26) outward, seven courses along each from just behind
+ * the front edge (leopard2A4WedgeTop) back to the side module's turn, or on the right short of the EMES 15 housing. Each
+ * cassette is fitted to the drawn top under it (rays against the turret's armour: the top is lofted between the 2A6 X's
+ * stations, and on the right wedge cut ~10 cm lower than the sampler's planes over the EMES 15's port channel), sunk 8 mm
+ * at its lowest point.
+ */
+const TOP = Object.freeze({ courses: 7, gap: 0.016, depth: 0.0588, lid: 0.011, sink: 0.008, edge: 0.012, inner: 0.275,
+  /** The right wedge's housing clearance (the housing's front runs z 1.66..1.79) and the window's foot: cassettes in the
+   *  sight's lane stay under it. */
+  emesBackZ: 1.82, emesLane: Object.freeze([0.47, 0.98] as const), windowFootY: 0.68 });
+
+/**
+ * The top's stations [centre |x|, width] on one wedge, kept off the edges that run along it: the outboard chamfer's (left
+ * |x| ~1.17, right ~1.27), and on the right the EMES 15 port channel's walls (|x| 0.478 and 0.971, the 2A6 X's strip
+ * stations in leopard2A4Wedge.ts).
+ */
+function topStations(side: Side): Array<[number, number]> {
+  const regions: ReadonlyArray<readonly [number, number, number]> = side > 0 ? [[TOP.inner, 1.15, 8]]
+    : [[TOP.inner, 0.4697, 2], [0.4857, 0.9627, 4], [0.9787, 1.255, 2]];
+  const out: Array<[number, number]> = [];
+  for (const [x0, x1, n] of regions) {
+    const w = (x1 - x0 - (n - 1) * TOP.gap) / n;
+    for (let k = 0; k < n; k++) out.push([x0 + w / 2 + k * (w + TOP.gap), w]);
+  }
+  return out;
+}
+
+/** The front edge of a wedge's top at |x| (where its outer edge reaches x, from the tip back), turret z. */
+function topFrontZ(side: Side, x: number): number {
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (Math.abs(leopard2A4WedgeTop(side, mid, 1).point.x) < x) lo = mid; else hi = mid;
+  }
+  return leopard2A4WedgeTop(side, hi, 1).point.z;
+}
+
+/** A cassette fitted to the drawn top over the plan rectangle |x| xc +- w/2, z zc +- dz/2: its seat, or null where the top
+ *  under it varies more than the cassette can hide, or it would stand into the EMES 15's sight lane. */
+function topCassette(side: Side, xc: number, w: number, zc: number, dz: number, ray: TurretRay, lane: boolean): CassetteSeat | null {
+  const pts: V3[] = [];
+  for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    const hit = ray(v3(side * (xc + i * (w / 2 - 0.004)), 1.5, zc + j * (dz / 2 - 0.004)), v3(0, -1, 0));
+    if (!hit) return null;
+    pts.push(hit.point);
+  }
+  const n = pts[2].clone().sub(pts[0]).cross(pts[3].clone().sub(pts[1])).normalize();
+  if (n.y < 0) n.negate();
+  const c = pts.reduce((t, p) => t.add(p), v3(0, 0, 0)).multiplyScalar(1 / pts.length);
+  const d = pts.map((p) => p.clone().sub(c).dot(n)), lo = Math.min(...d), hi = Math.max(...d);
+  if (hi - lo > TOP.depth - TOP.sink - 0.006) return null;
+  // the cassette's foot 8 mm under the top's lowest point beneath it
+  const foot = c.clone().addScaledVector(n, lo - TOP.sink);
+  if (lane && foot.y + (TOP.depth + TOP.lid) * n.y > TOP.windowFootY) return null;
+  const len = dz * Math.hypot(1, n.z / n.y);
+  return cassette(foot, v3(1, 0, 0), n, w, len, TOP.depth, 0);
+}
+
+/** A station's run on the top (front and back z): on the right in the sight's lane it ends where a cassette would rise
+ *  into the window's view. */
+function topRun(side: Side, xc: number, w: number, ray: TurretRay): { front: number; back: number } {
+  const front = topFrontZ(side, xc + w / 2) - TOP.edge;
+  let back = (side > 0 ? leopard2A4WedgeTop(side, 1, 0.5).point.z : TOP.emesBackZ) + TOP.edge;
+  if (side < 0 && xc > TOP.emesLane[0] && xc < TOP.emesLane[1]) {
+    for (let z = front - 0.06; z > back; z -= 0.01) {
+      if (!topCassette(side, xc, w, z, 0.06, ray, true)) { back = z + 0.03; break; }
+    }
+  }
+  return { front, back };
+}
+
+/** The top field's seats on one wedge, turret metres: seven equal courses a station. */
+function topEraSeats(side: Side, ray: TurretRay): CassetteSeat[] {
   const seats: CassetteSeat[] = [];
-  for (let k = 0; k < n; k++) {
-    const u0 = k / n + du / 2 + (k === 0 ? 0.01 : 0), u1 = (k + 1) / n - du / 2 - (k === n - 1 ? 0.01 : 0);
-    const [f0, t0] = faceSpan(side, u0), [f1, t1] = faceSpan(side, u1);
-    const lo = Math.max(f0, f1) + CHEEK.foot, hi = Math.min(t0, t1) - CHEEK.rail, span = hi - lo;
-    if (span < CHEEK.minH) continue;
-    const courses = Math.max(1, Math.round(span / CHEEK.course)), h = (span - (courses - 1) * gap) / courses;
-    const w = (u1 - u0) * len, uc = (u0 + u1) / 2, [fc, tc] = faceSpan(side, uc);
-    for (let c = 0; c < courses; c++) {
-      const y = lo + h / 2 + c * (h + gap), f = wedgeAt(side, uc, (y - fc) / (tc - fc));
-      seats.push({ center: f.point.clone().addScaledVector(f.normal, depth / 2 - embed), rotation: f.rotation.clone(),
-        scale: [w / ERA_BASE[0], h / ERA_BASE[1], depth / ERA_BASE[2]] });
+  for (const [xc, w] of topStations(side)) {
+    const { front, back } = topRun(side, xc, w, ray);
+    const lane = side < 0 && xc > TOP.emesLane[0] && xc < TOP.emesLane[1];
+    const dz = (front - back - (TOP.courses - 1) * TOP.gap) / TOP.courses;
+    for (let c = 0; c < TOP.courses; c++) {
+      const seat = topCassette(side, xc, w, front - dz / 2 - c * (dz + TOP.gap), dz, ray, lane);
+      if (seat) seats.push(seat);
     }
   }
   return seats;
 }
 
 /**
- * The bar grille over a wedge's ERA, 85 mm out along the face's normal (the old addLeo2A6MCheekCage): rails along the
- * face (the middle two from where it is tall enough), uprights in the field's seams and at its ends, stand-off ties from
- * the face through the seams.
+ * The bar grille over a wedge's top field, 85 mm out along the top's normal (the old addLeo2A6MCheekCage): six rails
+ * across the field at fractions of each station's run, uprights along it at the field's ends and in its seams, stand-off
+ * ties from the top through the seams; on the right it leaves the EMES 15's sight lane open.
  */
-function cheekCage(P: TankBuilderPort, side: Side): void {
-  const off = 0.085;
-  const at = (u: number, v: number, o = off): V3 => {
-    const f = wedgeAt(side, u, v);
-    return f.point.clone().addScaledVector(f.normal, o);
+function cheekCage(P: TankBuilderPort, side: Side, ray: TurretRay): void {
+  const off = 0.085, st = topStations(side), runs = st.map(([xc, w]) => topRun(side, xc, w, ray));
+  /** The cage's point over |x| at fraction f of the run there (runs interpolated between stations). */
+  const at = (x: number, f: number, o = off): V3 | null => {
+    let i = st.findIndex(([xc]) => xc >= x);
+    if (i < 0) i = st.length - 1;
+    const j = Math.max(0, i - 1), t = i === j ? 0 : THREE.MathUtils.clamp((x - st[j][0]) / (st[i][0] - st[j][0]), 0, 1);
+    const front = THREE.MathUtils.lerp(runs[j].front, runs[i].front, t), back = THREE.MathUtils.lerp(runs[j].back, runs[i].back, t);
+    const hit = smoothHit(ray, side * x, THREE.MathUtils.lerp(front, back, f));
+    return hit ? hit.point.addScaledVector(hit.normal, o) : null;
   };
-  const us = [0.015, 0.2, 0.5, 0.8, 0.985];                      // the ends and three of the field's seams
-  for (const [v, from] of [[0.12, 0], [0.42, 1], [0.72, 1], [0.96, 0]] as const) {
-    for (let i = from; i < us.length - 1; i++) bar(P, 'turretDetail', at(us[i], v), at(us[i + 1], v), 0.022);
-  }
-  for (const u of us) bar(P, 'turretDetail', at(u, 0.10), at(u, 0.98), 0.024);
-  for (const u of [0.2, 0.5, 0.8]) {
-    for (const v of [0.30, 0.80]) bar(P, 'turretDark', at(u, v, -0.01), at(u, v), 0.016);
+  const line = (pts: Array<V3 | null>, wbar: number, bucket = 'turretDetail'): void => {
+    for (let k = 0; k + 1 < pts.length; k++) if (pts[k] && pts[k + 1]) bar(P, bucket, pts[k]!, pts[k + 1]!, wbar);
+  };
+  // the cage's spans across the wedge: the whole field on the left; on the right either side of the sight's lane
+  const spans: Array<[number, number]> = side > 0 ? [[TOP.inner, 1.15]] : [[TOP.inner, 0.4697], [0.9787, 1.255]];
+  for (const [x0, x1] of spans) {
+    const inside = st.map(([xc]) => xc).filter((x) => x > x0 && x < x1);
+    const xs = [x0 + 0.01, ...inside, x1 - 0.01];
+    for (const f of [0.04, 0.22, 0.40, 0.58, 0.76, 0.94]) line(xs.map((x) => at(x, f)), 0.022);
+    const seams = inside.slice(0, -1).map((x, k) => (x + inside[k + 1]) / 2);
+    const ups = [x0 + 0.01, ...seams.filter((_, k) => k % 2 === 0), x1 - 0.01];
+    for (const x of ups) line([0.02, 0.25, 0.5, 0.75, 0.96].map((f) => at(x, f)), 0.024);
+    for (const x of seams.filter((_, k) => k % 2 === 0)) {
+      for (const f of [0.15, 0.85]) {
+        const foot = at(x, f, -0.01), head = at(x, f);
+        if (foot && head) bar(P, 'turretDark', foot, head, 0.016);
+      }
+    }
   }
 }
 
 /** A ray against the turret's own armour (the 'turret' bucket's parts, turret metres): the first hit, its normal facing the
  *  ray's origin. */
-function turretRay(P: TankBuilderPort): (from: V3, dir: V3) => { point: V3; normal: V3 } | null {
+type TurretRay = (from: V3, dir: V3) => { point: V3; normal: V3 } | null;
+function turretRay(P: TankBuilderPort): TurretRay {
   const meshes: THREE.Mesh[] = [];
   const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   P.forEachBucketPart('turret', (g) => { meshes.push(new THREE.Mesh(g, mat)); });
@@ -414,6 +495,16 @@ function turretRay(P: TankBuilderPort): (from: V3, dir: V3) => { point: V3; norm
   };
 }
 
+/** A point straight down on the turret's armour at (x, z) and the normal of the top round it (from rays 3 cm either side:
+ *  the drawn tops are lofted, their single triangles' normals kinked by a few degrees). */
+function smoothHit(ray: TurretRay, x: number, z: number, r = 0.03): { point: V3; normal: V3 } | null {
+  const down = v3(0, -1, 0), at = (dx: number, dz: number) => ray(v3(x + dx, 1.5, z + dz), down)?.point;
+  const c = at(0, 0), xa = at(-r, 0), xb = at(r, 0), za = at(0, -r), zb = at(0, r);
+  if (!c || !xa || !xb || !za || !zb) return null;
+  const normal = zb.clone().sub(za).cross(xb.clone().sub(xa)).normalize();
+  return { point: c, normal: normal.y < 0 ? normal.negate() : normal };
+}
+
 /** A part laid on a surface point with its +Y along the normal and its +X along `along` (projected into the surface). */
 function onSurface(P: TankBuilderPort, bucket: string, g: THREE.BufferGeometry, p: V3, n: V3, along: V3, lift: number): void {
   const ax = along.clone().addScaledVector(n, -along.dot(n)).normalize(), az = ax.clone().cross(n).normalize();
@@ -425,7 +516,7 @@ function onSurface(P: TankBuilderPort, bucket: string, g: THREE.BufferGeometry, 
  * The Barracuda and appliqué hardware round the cheek ERA: the ERA's mounting rail along each face's top edge with three
  * clamps hooking over its top course, a thin Barracuda skin on the wedge's top behind it with its five fastener heads.
  */
-function cheekHardware(P: TankBuilderPort, side: Side, ray: ReturnType<typeof turretRay>): void {
+function cheekHardware(P: TankBuilderPort, side: Side, ray: TurretRay): void {
   const { box, cylY } = KIT;
   const top = (u: number, o: number): V3 => {
     const f = wedgeAt(side, u, 1);
@@ -439,18 +530,15 @@ function cheekHardware(P: TankBuilderPort, side: Side, ray: ReturnType<typeof tu
     const f = wedgeAt(side, u, 1), p = f.point.clone().addScaledVector(f.normal, 0.013).setY(f.point.y - CHEEK.rail - 0.012);
     P.addEquipment('turretDetail', box(0.045, 0.06, 0.03), p.x, p.y, p.z, 0, f.rotation.y, 0);
   }
-  // the skin on the wedge's top behind the rail: a thin slab conforming to the plates under it (the top's facets meet
-  // there), its five fastener heads
-  const back = wedgeAt(side, 0.5, 1).normal.clone().setY(0).normalize().negate();
-  const edge = (u: number): V3 => wedgeAt(side, u, 1).point.addScaledVector(back, 0.05);
-  // (the right wedge's inner strip is the EMES port's recessed floor: its skin starts outboard of it)
-  const [p0, p1] = side > 0 ? [edge(0.22), edge(0.80)] : [edge(0.40), edge(0.90)], depth = 0.28;
+  // the Barracuda skin on the strip of the wedge's top the ERA leaves behind it (on the right between the mantlet cover's
+  // sweep and the EMES 15 housing): a thin slab conforming to the plates under it, its five fastener heads
+  const [x0, x1] = side > 0 ? [0.32, 0.86] : [0.285, 0.45], z0 = 1.16, z1 = 1.76;
   const at = (s: number, t: number): { point: V3; normal: V3 } | null =>
-    ray(p0.clone().lerp(p1, s).addScaledVector(back, depth * t).setY(1.5), v3(0, -1, 0));
-  P.addEquipment('turret', conformalSlab(at, 12, 6, 0.012));
-  for (const [s, t] of [[0.06, 0.12], [0.94, 0.12], [0.5, 0.5], [0.06, 0.88], [0.94, 0.88]] as const) {
+    ray(v3(side * THREE.MathUtils.lerp(x0, x1, s), 1.5, THREE.MathUtils.lerp(z1, z0, t)), v3(0, -1, 0));
+  P.addEquipment('turret', conformalSlab(at, 6, 8, 0.012));
+  for (const [s, t] of [[0.10, 0.06], [0.90, 0.06], [0.5, 0.5], [0.10, 0.94], [0.90, 0.94]] as const) {
     const hit = at(s, t);
-    if (hit) onSurface(P, 'turretDetail', cylY(0.018, 0.018, 0.012, 8), hit.point, hit.normal, back, 0.014);
+    if (hit) onSurface(P, 'turretDetail', cylY(0.018, 0.018, 0.012, 8), hit.point, hit.normal, v3(0, 0, 1), 0.014);
   }
 }
 
@@ -488,7 +576,7 @@ function conformalSlab(at: (s: number, t: number) => { point: V3; normal: V3 } |
 }
 
 /** The chamfer studs: four a side on the side modules' steep outboard chamfer, ahead of the wall cassettes. */
-function chamferStuds(P: TankBuilderPort, ray: ReturnType<typeof turretRay>): void {
+function chamferStuds(P: TankBuilderPort, ray: TurretRay): void {
   for (const sx of [-1, 1]) {
     for (const z of [1.20, 1.36, 1.52, 1.68]) {
       const hit = ray(v3(sx * 2.2, 1.0, z), v3(-sx * 0.82, -0.57, 0));
@@ -603,12 +691,13 @@ function bustleFit(P: TankBuilderPort): void {
 }
 
 function turretKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
-  // the cheek fields on the wedges' faces: the spec helpers' "R" is +X (the left wedge), "L" the -X wedge
-  eraField(P, 'a6m_turret_cheek_era_R', cheekEraSeats(1), true);
-  eraField(P, 'a6m_turret_cheek_era_L', cheekEraSeats(-1), true);
+  // the cheek fields on the wedges' tops, the old OTCO's 56 a side: the spec helpers' "R" is +X (the left wedge), "L"
+  // the -X wedge
   const ray = turretRay(P);
+  eraField(P, 'a6m_turret_cheek_era_R', topEraSeats(1, ray), true);
+  eraField(P, 'a6m_turret_cheek_era_L', topEraSeats(-1, ray), true);
   for (const side of [1, -1] as const) {
-    cheekCage(P, side);
+    cheekCage(P, side, ray);
     cheekHardware(P, side, ray);
   }
   chamferStuds(P, ray);
