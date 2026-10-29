@@ -132,31 +132,34 @@ function buildHullBody(P: TankBuilderPort): void {
 }
 
 function buildGuards(P: TankBuilderPort): void {
+  // The guards and the kits' bodywork (the dozer, the fuel tank, the grille boxes) are painted non-armour
+  // (hullFixedPaintedBodywork, kept at every LOD), the skirts the track guards (hullTrackGuardL/R, where the hull numbers
+  // sit): the combat anatomy's hull box is the hull's own, not the guards' edge.
   for (const s of [-1, 1]) {
     const inner = BODY_HALF - 0.01, mid = (inner + GUARD_HALF) / 2, w = GUARD_HALF - inner;
     // Running track guard, rear corner to the front guard (camouflaged bodywork).
-    P.addMudguard('centurion-track-guard', 'hull', box(w, 0.03, 6.62), s * mid, GUARD_Y, -0.39);
+    P.addMudguard('centurion-track-guard', 'hullFixedPaintedBodywork', box(w, 0.03, 6.62), s * mid, GUARD_Y, -0.39);
     // Front guards over the idlers: a level run, then the mudguard raked down to the nose (x 0.92 .. 1.64).
     const fx0 = s < 0 ? -GUARD_HALF : 0.92, fx1 = s < 0 ? -0.92 : GUARD_HALF;
-    P.addMudguard('centurion-front-guard', 'hull', slab(
+    P.addMudguard('centurion-front-guard', 'hullFixedPaintedBodywork', slab(
       [fx0, GUARD_Y - 0.015, 3.30], [fx1, GUARD_Y - 0.015, 3.30], [fx1, GUARD_Y - 0.015, 2.90], [fx0, GUARD_Y - 0.015, 2.90],
       [fx0, GUARD_Y + 0.015, 3.30], [fx1, GUARD_Y + 0.015, 3.30], [fx1, GUARD_Y + 0.015, 2.90], [fx0, GUARD_Y + 0.015, 2.90]));
-    P.addMudguard('centurion-front-mudguard', 'hull', slab(
+    P.addMudguard('centurion-front-mudguard', 'hullFixedPaintedBodywork', slab(
       [fx0, 1.085, 3.78], [fx1, 1.085, 3.78], [fx1, GUARD_Y - 0.065, 3.30], [fx0, GUARD_Y - 0.065, 3.30],
       [fx0, 1.165, 3.78], [fx1, 1.165, 3.78], [fx1, GUARD_Y + 0.015, 3.30], [fx0, GUARD_Y + 0.015, 3.30]));
     // Outboard valance down the front guard's outer edge (the guard is a closed box over the idler).
     const vx0 = s < 0 ? -GUARD_HALF : GUARD_HALF - 0.02, vx1 = s < 0 ? -(GUARD_HALF - 0.02) : GUARD_HALF;
-    P.add('hull', slab(
+    P.add('hullFixedPaintedBodywork', slab(
       [vx0, GUARD_Y - 0.28, 3.30], [vx1, GUARD_Y - 0.28, 3.30], [vx1, GUARD_Y - 0.28, 2.90], [vx0, GUARD_Y - 0.28, 2.90],
       [vx0, GUARD_Y, 3.30], [vx1, GUARD_Y, 3.30], [vx1, GUARD_Y, 2.90], [vx0, GUARD_Y, 2.90]));
-    P.add('hull', slab(
+    P.add('hullFixedPaintedBodywork', slab(
       [vx0, 1.085, 3.77], [vx1, 1.085, 3.77], [vx1, GUARD_Y - 0.28, 3.30], [vx0, GUARD_Y - 0.28, 3.30],
       [vx0, 1.16, 3.77], [vx1, 1.16, 3.77], [vx1, GUARD_Y, 3.30], [vx0, GUARD_Y, 3.30]));
     // Rubber mud flaps at the guard tips.
     P.hangMudguard('centurion-front-flap', 'hullRubber', box(0.56, 0.22, 0.02), s * 1.30, 1.04, 3.77);
     P.hangMudguard('centurion-rear-flap', 'hullRubber', box(0.56, 0.30, 0.02), s * 1.30, 1.35, -3.69);
     // Rear guard returns down the hull corner (the guard's lip) so the rear run closes onto the rear plate.
-    P.add('hull', box(w, 0.20, 0.03), s * mid, GUARD_Y - 0.09, -3.70);
+    P.add('hullFixedPaintedBodywork', box(w, 0.20, 0.03), s * mid, GUARD_Y - 0.09, -3.70);
   }
 }
 
@@ -186,7 +189,7 @@ function buildSkirts(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     const x0 = s < 0 ? -SKIRT.outer : xIn, x1 = s < 0 ? -xIn : SKIRT.outer;
     const plate = (za: number, zb: number, hemA: number, hemB: number, zbLow = zb): void => {
-      P.hangMudguard('centurion-skirt-plate', 'hull', slab(
+      P.hangMudguard('centurion-skirt-plate', s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', slab(
         [x0, hemB, zbLow], [x1, hemB, zbLow], [x1, hemA, za], [x0, hemA, za],
         [x0, SKIRT.top, zb], [x1, SKIRT.top, zb], [x1, SKIRT.top, za], [x0, SKIRT.top, za]));
       // the hem's stiffening lip, following the hem
@@ -209,7 +212,7 @@ function buildSkirts(P: TankBuilderPort): void {
     }
     // the top flange laps the guard edge (no air between plate and guard)
     const fx0 = s < 0 ? -SKIRT.outer : GUARD_HALF - 0.03, fx1 = s < 0 ? -(GUARD_HALF - 0.03) : SKIRT.outer;
-    P.add('hull', box(fx1 - fx0, 0.02, SKIRT.z1 - SKIRT.z0), (fx0 + fx1) / 2, SKIRT.top - 0.012, (SKIRT.z0 + SKIRT.z1) / 2);
+    P.add('hullFixedPaintedBodywork', box(fx1 - fx0, 0.02, SKIRT.z1 - SKIRT.z0), (fx0 + fx1) / 2, SKIRT.top - 0.012, (SKIRT.z0 + SKIRT.z1) / 2);
   }
 }
 
@@ -406,17 +409,17 @@ function buildDozer(P: TankBuilderPort): void {
   const N = 6;
   for (let i = 0; i < N; i++) {
     const ya = y0 + (y1 - y0) * i / N, yb = y0 + (y1 - y0) * (i + 1) / N, za = faceZ(ya), zb = faceZ(yb);
-    P.add('hull', slab(
+    P.add('hullFixedPaintedBodywork', slab(
       [-W, ya, za], [W, ya, za], [W, ya, za - th], [-W, ya, za - th],
       [-W, yb, zb], [W, yb, zb], [W, yb, zb - th], [-W, yb, zb - th]));
   }
   // cutting edge and the curled top lip
   P.add('hullDark', box(2 * W, 0.07, 0.10), 0, y0 + 0.02, zf - 0.03);
-  P.add('hull', xform(box(2 * W, 0.04, 0.12), 0, 0, 0, -0.35, 0, 0), 0, y1 + 0.01, zf + 0.02);
+  P.add('hullFixedPaintedBodywork', xform(box(2 * W, 0.04, 0.12), 0, 0, 0, -0.35, 0, 0), 0, y1 + 0.01, zf + 0.02);
   // end cheeks, raked back to the push arms
   for (const s of [-1, 1]) {
     const x0 = s < 0 ? -W : W - 0.03, x1 = s < 0 ? -(W - 0.03) : W;
-    P.add('hull', slab(
+    P.add('hullFixedPaintedBodywork', slab(
       [x0, y0, zf], [x1, y0, zf], [x1, y0, zf - 0.46], [x0, y0, zf - 0.46],
       [x0, y1, zf + 0.02], [x1, y1, zf + 0.02], [x1, y1, zf - 0.20], [x0, y1, zf - 0.20]));
   }
@@ -477,7 +480,7 @@ function buildOlifantSkirts(P: TankBuilderPort): void {
       const za = S.joints[k] + 0.005, zb = S.joints[k + 1] - 0.005;
       // the rear module's hem rises over the sprocket
       const hemA = k === 0 ? 1.20 : S.bot, hemB = k === 0 ? 0.86 : S.bot;
-      P.add('hull', slab(
+      P.add(s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', slab(
         [x0, hemB, zb], [x1, hemB, zb], [x1, hemA, za], [x0, hemA, za],
         [x0, S.top, zb], [x1, S.top, zb], [x1, S.top, za], [x0, S.top, za]));
       for (const fz of [0.2, 0.8]) {
@@ -492,14 +495,14 @@ function buildOlifantSkirts(P: TankBuilderPort): void {
     // the belt along the modules and the flange over the bins' outer edge
     P.add('hullDetail', box(0.024, 0.05, S.joints[5] - S.joints[0] - 0.40), s * (S.outer + 0.012), 1.48, (S.joints[0] + S.joints[5]) / 2 + 0.20);
     const fx0 = s < 0 ? -S.outer : 1.635, fx1 = s < 0 ? -1.635 : S.outer;
-    P.add('hull', box(fx1 - fx0, 0.025, S.joints[5] - S.joints[0]), (fx0 + fx1) / 2, S.top - 0.0125, (S.joints[0] + S.joints[5]) / 2);
+    P.add('hullFixedPaintedBodywork', box(fx1 - fx0, 0.025, S.joints[5] - S.joints[0]), (fx0 + fx1) / 2, S.top - 0.0125, (S.joints[0] + S.joints[5]) / 2);
     // the wedge fender: its outer plate and its top falling from the skirt's top to the point
     const tip = 3.85;
     const topAt = (z: number): number => S.top + (1.22 - S.top) * (z - S.joints[5]) / (tip - S.joints[5]);
     const botAt = (z: number): number => S.bot + (1.05 - S.bot) * (z - S.joints[5]) / (tip - S.joints[5]);
     const ring = (pts: SectionPoint[]): SectionPoint[] => (s > 0 ? pts : pts.map(([x, y]) => [-x, y] as SectionPoint).reverse());
-    P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[S.outer - S.t, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [S.outer - S.t, topAt(z)]]) }))));
-    P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[1.00, topAt(z) - 0.03], [S.outer - S.t, topAt(z) - 0.03], [S.outer - S.t, topAt(z)], [1.00, topAt(z)]]) }))));
+    P.add('hullFixedPaintedBodywork', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[S.outer - S.t, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [S.outer - S.t, topAt(z)]]) }))));
+    P.add('hullFixedPaintedBodywork', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[1.00, topAt(z) - 0.03], [S.outer - S.t, topAt(z) - 0.03], [S.outer - S.t, topAt(z)], [1.00, topAt(z)]]) }))));
     for (const fz of [3.15, 3.55]) P.add('hullDark', cylX(0.026, 0.02, 8), s * (S.outer + 0.010), (topAt(fz) + botAt(fz)) / 2, fz);
     // the large flared flap hanging from the fender's point ahead of the track (the Armed Forces Day photograph)
     P.hangMudguard('olifant-front-flap', 'hullRubber', xform(box(0.62, 0.50, 0.02), 0, 0, 0, -0.15, 0, 0), s * 1.36, 0.92, 3.80);
@@ -591,7 +594,7 @@ function buildAvdsDeck(P: TankBuilderPort): void {
     P.add('hullDetail', box(0.86, 0.03, 0.04), s * 0.62, top + 0.02, -1.58);
     P.add('hullDetail', box(0.86, 0.03, 0.04), s * 0.62, top + 0.02, -3.02);
   }
-  P.add('hull', box(0.34, 0.02, 1.50), 0, top + 0.01, -2.30);
+  P.add('hullFixedPaintedBodywork', box(0.34, 0.02, 1.50), 0, top + 0.01, -2.30);
   // the deck's sides step down to the guards where the British louvres were
   for (const s of [-1, 1]) {
     // M48-style box air cleaner on the rear guard, its clamped lid and its duct into the deck side
@@ -670,7 +673,7 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
     KIT.spareTrackStrip(P, 'hull', 0, 1.20, REAR_Z - 0.035, 2, -Math.PI / 2);
     // the AVDS conversion's two louvred grille boxes on the upper rear plate (the 1978 rear photograph)
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.62, 0.52, 0.10), s * 0.58, 1.46, REAR_Z - 0.04);
+      P.add('hullFixedPaintedBodywork', box(0.62, 0.52, 0.10), s * 0.58, 1.46, REAR_Z - 0.04);
       P.add('hullDark', box(0.54, 0.44, 0.012), s * 0.58, 1.46, REAR_Z - 0.092);
       for (let i = 0; i < 6; i++) P.add('hullDetail', xform(box(0.54, 0.012, 0.04), 0, 0, 0, -0.6, 0, 0), s * 0.58, 1.27 + i * 0.075, REAR_Z - 0.09);
     }
@@ -678,7 +681,7 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
   if (m.kit === 'aus') {
     // the RAAC's 100-gallon armoured fuel tank across the rear plate on two brackets, its filler and feed (Vietnam,
     // 1968; the infantry telephone on its right end)
-    P.add('hull', box(1.78, 0.46, 0.40), 0, 1.29, REAR_Z - 0.22);
+    P.add('hullFixedPaintedBodywork', box(1.78, 0.46, 0.40), 0, 1.29, REAR_Z - 0.22);
     P.add('hullDark', box(1.80, 0.02, 0.42), 0, 1.525, REAR_Z - 0.22);
     for (const s of [-1, 1]) P.add('hullDark', box(0.10, 0.36, 0.06), s * 0.70, 1.29, REAR_Z - 0.01);
     P.add('hullDetail', cylY(0.07, 0.07, 0.05, 12), 0.55, 1.545, REAR_Z - 0.22);
@@ -1147,7 +1150,7 @@ function buildOlifantTurret(P: TankBuilderPort): void {
     for (const bz of [-2.50, -2.10, -1.70, -1.20, -0.40, 0.00, 0.70]) {
       for (const by of [0.28, 0.76]) P.add('turretDark', cylX(0.022, 0.02, 8), s * (T.hw + 0.008), by, bz);
     }
-    P.add('turret', cylX(0.075, 0.05, 18), s * (T.hw + 0.02), 0.60, -0.45);
+    P.addEquipment('turret', cylX(0.075, 0.05, 18), s * (T.hw + 0.02), 0.60, -0.45);
     P.add('turretDark', xform(torus(0.08, 0.012, 18, 4), 0, 0, 0, 0, 0, Math.PI / 2), s * (T.hw + 0.045), 0.60, -0.45);
     // the front faces' panel seam and bolts
     for (const [fz, by] of [[1.02, 0.30], [1.02, 0.74], [1.22, 0.30], [1.34, 0.30]] as const) {

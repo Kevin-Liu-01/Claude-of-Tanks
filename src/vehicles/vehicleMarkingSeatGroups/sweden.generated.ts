@@ -73,7 +73,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0,
           0.7071068
         ],
-        "surfaceMesh": "hull",
+        "surfaceMesh": "hullTrackGuardR",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
@@ -95,7 +95,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0,
           0.7071068
         ],
-        "surfaceMesh": "hull",
+        "surfaceMesh": "hullTrackGuardL",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
