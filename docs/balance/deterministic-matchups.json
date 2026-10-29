@@ -1235,6 +1235,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo2a6_ua",
+      "revision": "the 2A6's main plates, HP and cadence: drawn on the 2A6's shell with its 2A6M donor's 1.72x plates, it topped IX at 0.86",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2300,
+      "powerWeight": 20.72,
+      "speedKmh": [
+        64,
+        29
+      ],
+      "traverseDegS": [
+        44.9,
+        38.8
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5213.11,
+        "accuracy": 0.27,
+        "aimTimeS": 1.57
+      },
+      "armorCeilingsMm": {
+        "hullKe": 484,
+        "turretKe": 780
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "lrmv_lynx",
       "revision": "bring the 30 mm round to the modern 30 mm penetration",
       "tier": 5,

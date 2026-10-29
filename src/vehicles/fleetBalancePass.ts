@@ -59,6 +59,21 @@ function turretFront(registry: TankSpecRegistry, id: string, factor: number): vo
   }
 }
 
+/** Gives a vehicle drawn on another's shell that shell's main plates (KE and CE, by plate name); add-on plates stay. */
+function mainArmorFrom(registry: TankSpecRegistry, id: string, shellId: string): void {
+  const shell = spec(registry, shellId).armor;
+  const own = spec(registry, id).armor;
+  for (const [plates, shellPlates] of [[own.hullPlates, shell.hullPlates], [own.turretPlates, shell.turretPlates]]) {
+    for (const plate of plates) {
+      if (plate.kind !== 'main') continue;
+      const match = shellPlates.find((candidate) => candidate.kind === 'main' && candidate.name === plate.name);
+      if (!match) throw new Error(`${id}: ${shellId} has no main plate ${plate.name}`);
+      plate.keMm = match.keMm;
+      plate.ceMm = match.ceMm;
+    }
+  }
+}
+
 /** Apply the reviewed 2026-09 full-fleet balance revision exactly once. */
 export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   if (appliedRegistries.has(registry)) return;
@@ -501,5 +516,13 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the Challenger 1 Mk 1, Mk 2 and Mk 3 share the Mk 3's turret, whose sloped gun-face cells read the 624 mm slot and
   // the 682 mm cheeks at ~1,020 mm effective (0.87-0.88, 8-9 of 34 in band); x0.7 brings the three to 0.55 (16 of 34)
   for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) turretFront(registry, id, 0.7);
+
+  // 264 (Main's ruling): the Leopard 2A6 UA is drawn on the source-measured 2A6's shell, but kept its Leopard 2A6M
+  // donor's plates (x1.06), HP and cadence: about 1.72x the 2A6's KE on the same cells, so it topped IX at 0.86 (6 of 35
+  // in band). It takes the 2A6's main plates, HP and loader cadence (same gun and rounds); its Kontakt-1 kit stays its
+  // own. 0.60, 22 of 35 in band, as the 2A6 (0.60).
+  mainArmorFrom(registry, 'leo2a6_ua', 'leo2a6');
+  spec(registry, 'leo2a6_ua').hp = spec(registry, 'leo2a6').hp;
+  cannonReload(registry, 'leo2a6_ua', spec(registry, 'leo2a6').gun.reloadS);
 }
 

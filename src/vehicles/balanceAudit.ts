@@ -86,6 +86,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger1_mk3: 'a x0.7 turret front with the Mk 1 and Mk 2: its sloped gun-face cells read ~1,020 mm',
   challenger_x_sleek: 'a x1.4 gun slot: the Challenger 1\'s upright 624 mm slot was pierced by every VIII round',
   c1_ariete: 'a x0.6 mantlet and x0.85 turret front: its ~730 mm gun face topped VI and shut out the XK2 on the move',
+  // 2026-10-29 (264, Main's ruling)
+  leo2a6_ua: 'the 2A6\'s main plates, HP and cadence: drawn on the 2A6\'s shell with its 2A6M donor\'s 1.72x plates, it topped IX at 0.86',
 } as const);
 
 interface FleetBalanceOutlier {
