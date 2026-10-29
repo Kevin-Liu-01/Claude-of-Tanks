@@ -3149,8 +3149,11 @@ export function createPost(
     const groundRho = groundModel?.mode === 'physical'
       ? 0.2126 * groundModel.groundAlbedo[0] + 0.7152 * groundModel.groundAlbedo[1] + 0.0722 * groundModel.groundAlbedo[2]
       : GROUND_AO_DEFAULT_ALBEDO;
+    // (265; the 264b preview, the owner: "literally just around a square outline of the tank for every tank", on land and
+    // in water, on the tiers with the vehicle-occlusion lever: ultra, high, medium) the ground's sky term beside the hulls
+    // is off; QA: __LIGHT_TUNE.VEHICLE_GROUND_AO = 1 turns it back on
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
-      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
+      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 0) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     // contact round 5 (2026-10-11): the contact blend sets a track's foot into soft ground — the battle maps' grounded rig;
     // the Garage's turntable (the legacy rig) is a hard floor a track stands on, never sinks into
