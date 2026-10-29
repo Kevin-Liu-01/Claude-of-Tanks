@@ -72,6 +72,13 @@ leo1a5dk1.visual = {
   scheme: 'solid', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
 };
 
+// The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the welded turret and its gun): the
+// full 9 degrees to yaw 151, then the engine deck's louvres, the exhaust grilles and the stern stowage over the rear quarter
+const LEO1_DK_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [151, -9], [155, -6.9], [156, -5.5], [159, -3.5],
+  [160, -2.9], [162, -2.8], [163, -2], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2],
+  [173, -0.1], [175, -1.5], [176, -1.9], [177, -2.7], [180, -2.7]] as const);
+for (const spec of [leo1a3dk, leo1a5dk, leo1a5dk1]) spec.gunPitchByYawDeg = LEO1_DK_GUN_PITCH_BY_YAW_DEG;
+
 // ------------------------------------------------------------------------------------------------- Leopard 2 DK --
 // The Leopard 2A5 DK: 51 ex-German 2A4s converted under the 29 June 2000 contract (armyvehicles.dk/leopard2a5.htm):
 // improved hull composite and extra front armour beyond the German/Dutch A5, about 61 t (MLC 70) before the Helmand bar
@@ -90,6 +97,12 @@ leo2a5dk.visual = {
   scheme: 'nato', base: '#4e5a3b', weather: '#5b6646', patches: ['#8d8662', '#1e211b'], marking: 'number', number: '31',
   camoScale: 0.55,
 };
+// its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
+// (the stern cage and quarter cages stay under the barrel's path over the rear deck)
+leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -8.2], [30, -8.3], [32, -9], [35, -9],
+  [37, -8.8], [46, -8.1], [53, -8], [56, -8], [58, -8.2], [59, -9], [122, -9], [124, -8], [136, -4.8], [144, -3.1],
+  [145, -2.5], [146, -2.1], [149, -1.4], [155, -0.6], [156, -0.3], [163, 0.6], [176, 0.6], [177, 6.6], [178, 7.1],
+  [180, 7.1]] as const);
 
 // The Leopard 2A7 DK: the 2A5 DKs rebuilt in 2019-22 (Forsvaret's fact sheet: 44 tanks for Jydske Dragonregiment in
 // Holstebro; about 68 t, up to 60 km/h, 1,500 hp, four crew; the 120 mm L55A1; new thermal sights, an auxiliary
