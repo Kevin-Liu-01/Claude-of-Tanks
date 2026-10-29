@@ -5969,10 +5969,23 @@ const COVER_FALLBACK: Readonly<Record<SuitTheatre, CoverPalette>> = Object.freez
   snow: { base: [214, 216, 212], patches: [[150, 150, 144], [184, 186, 182], [232, 232, 228]] },
 });
 
+/**
+ * A cover's fabric never darker than this (sRGB luma): (r7; the critic r6: "near-black cover interiors", the Strv 121's
+ * splinter black (8, 11, 9) cut into its skirt covers) a scheme's black patch is woven a dark grey-green, not black.
+ */
+const COVER_LUMA_FLOOR = 34;
+const liftedTone = (c: readonly [number, number, number]): [number, number, number] => {
+  const luma = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  if (luma >= COVER_LUMA_FLOOR) return [c[0], c[1], c[2]];
+  // toward a dark olive grey as much as toward the patch's own hue
+  const k = COVER_LUMA_FLOOR / Math.max(1, luma);
+  return [0, 1, 2].map((i) => Math.min(255, (c[i] * k + [30, 36, 30][i]) / 2)) as [number, number, number];
+};
+
 /** A cover's colours from a scheme (its base and patches, and a lighter tone of its base). */
 function coverPaletteOf(vis: MaterialVisual, theatre: SuitTheatre): CoverPalette {
-  const base = hexRgb(vis.base);
-  const patches = (vis.patches ?? []).slice(0, 3).map(hexRgb);
+  const base = liftedTone(hexRgb(vis.base));
+  const patches = (vis.patches ?? []).slice(0, 3).map((hex) => liftedTone(hexRgb(hex)));
   if (!patches.length) return COVER_FALLBACK[theatre];
   const light: [number, number, number] = [Math.min(255, base[0] * 1.1 + 4), Math.min(255, base[1] * 1.1 + 4), Math.min(255, base[2] * 1.06)];
   return { base, patches: [...patches, light] };
