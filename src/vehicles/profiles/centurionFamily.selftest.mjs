@@ -81,7 +81,8 @@ for (const id of ['centurion3', 'strv81']) {
     const r = gunRadii(gun, len), tube = Math.min(...r.slice(20, 30).filter((x) => x > 0));
     const bulge = (a, b) => Math.max(...r.slice(Math.floor(a * 40), Math.ceil(b * 40)));
     if (id === 'centurion3') {
-      assert.ok(bulge(0.3, 0.85) < tube * 1.3, `${id}: the 20-pdr Type A carries no fume extractor`);
+      assert.ok(bulge(0.16, 0.36) > tube * 1.3, `${id}: the 20-pdr Type A's breech-end jacket`);
+      assert.ok(bulge(0.42, 0.85) < tube * 1.3, `${id}: the 20-pdr Type A carries no fume extractor`);
       assert.ok(bulge(0.9, 1.0) > tube * 1.25, `${id}: the Type A's muzzle counterweight`);
     } else {
       assert.ok(bulge(0.42, 0.52) > tube * 1.5 && bulge(0.6, 0.85) < tube * 1.3, `${id}: the Type B's fume extractor 42-52 % along`);
