@@ -414,12 +414,13 @@ export function vehicleMarkingPaintsOnSuit(
   return id === 'm1a1_abrams_fep';
 }
 
-/** Continuous side modules may carry markings outside the core hull. */
+/** Continuous side modules may carry markings outside the core hull. Release 264: the ZTZ-99 Longwei's numbers stand on
+ * its skirt band, spaced armour since the envelope fix (profiles/longwei.ts addSkirts). */
 export function vehicleMarkingIncludesPermanentHullArmor(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'object695' || id === 'amx10p_25';
+  return id === 'object695' || id === 'amx10p_25' || id === 'ztz99_longwei';
 }
 
 /**

@@ -26,7 +26,7 @@ const longwei = build('ztz99_longwei', 'high');
 const reference = longwei.root.getObjectByName('rig_turret').userData.longweiTurretReceipt;
 assert.equal(reference.architecture, 'longwei-arrowhead-r262', 'the Longwei keeps its own kit');
 assert.deepEqual(reference.kit, { faceEra: 'pair', sideEra: false, roofGun: 'pintle', protection: 'gl5', bustle: 'bins', bustleCage: false,
-  floodlight: false });
+  floodlight: false, blockCamo: false });
 longwei.dispose();
 
 for (const m of LONGWEI_FAMILY) {
@@ -45,7 +45,8 @@ for (const m of LONGWEI_FAMILY) {
       // the kit and its ring
       assert.equal(receipt.architecture, m.kit.revision);
       assert.deepEqual(receipt.kit, { faceEra: m.kit.faceEra, sideEra: m.kit.sideEra, roofGun: m.kit.roofGun,
-        protection: m.kit.protection, bustle: m.kit.bustle, bustleCage: m.kit.bustleCage, floodlight: m.kit.floodlight },
+        protection: m.kit.protection, bustle: m.kit.bustle, bustleCage: m.kit.bustleCage, floodlight: m.kit.floodlight,
+        blockCamo: m.kit.blockCamo },
         `${m.id}: its own kit`);
       // the floodlight on the gun mount when the kit carries one
       assert.equal(Boolean(tank.root.getObjectByName('rig_gun')?.userData.gunFloodlight), m.kit.floodlight, `${m.id}: floodlight`);

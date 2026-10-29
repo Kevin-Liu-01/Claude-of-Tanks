@@ -46,11 +46,6 @@ export function synchronizeLongweiFamilyMetadata(): void {
         leftSidePlate('turret_side_era_L', 15, 1.60, 0.23, 1.60, 0.65, -0.97, -0.03, era),
         rightSidePlate('turret_side_era_R', 15, 1.60, 0.23, 1.60, 0.65, -0.97, -0.03, era));
     }
-    // a heavier kit's uprated turret (its main plates only: reactive, spaced and external plates keep their ratings)
-    if (m.turretArmorFactor) for (const plate of s.armor.turretPlates) if (plate.kind === 'main') {
-      plate.keMm = Math.round(plate.keMm * m.turretArmorFactor);
-      plate.ceMm = Math.round(plate.ceMm * m.turretArmorFactor);
-    }
     s.armor.turretPivot = [...m.kit.pivot];
     s.armor.gunPivot = [...turret.armor.gunPivot];
     s.armor.gunBarrel = { ...turret.armor.gunBarrel };
