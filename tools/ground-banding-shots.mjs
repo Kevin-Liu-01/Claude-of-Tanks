@@ -226,7 +226,7 @@ async function shootMap(entry, options, frames, reference) {
     await sleep(1800);
     // (2026-10-29: a pasture's blades still streaming in at the shot left its bare sward on one side of a pair) the tall
     // grass rings settle at the pose before any frame (tools/frame-budget-probe.mjs grassSettled)
-    const settled = await page.waitForFunction(grassSettled, { timeout: 45000, polling: 250 }).then(() => true, () => false);
+    const settled = await page.waitForFunction(grassSettled, { timeout: 30000, polling: 250 }).then(() => true, () => false);
     await sleep(400);
     const shots = { grassSettled: settled };
     for (const variant of options.variants) {
@@ -280,7 +280,7 @@ async function main(argv) {
       const queued = Date.now();
       // (2026-10-29: the game's boot recovery reloads a page whose chunks stall under load, and a page re-staged inside
       // the hold hung there 20 minutes. A page that lost its world is staged again outside the lock — the ticket given
-      // back and taken again — and a hold is capped at four minutes.)
+      // back and taken again — and a hold is capped at six minutes.)
       for (let attempt = 1; attempt <= 3; attempt++) {
         let session = null;
         try {
@@ -322,7 +322,7 @@ async function main(argv) {
             return 'shot';
           })();
           shooting.catch(() => {}); // (a hold past its cap closes the page under it)
-          outcome = await Promise.race([shooting, sleep(240_000).then(() => 'timeout')]);
+          outcome = await Promise.race([shooting, sleep(360_000).then(() => 'timeout')]);
         } catch (error) {
           console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed in the hold: ${String(error?.message ?? error).slice(0, 200)}`);
         } finally {
