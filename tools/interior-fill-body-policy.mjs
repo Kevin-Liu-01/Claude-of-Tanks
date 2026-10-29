@@ -10,7 +10,7 @@ const RENEWED_BODY_IDS = [
   // shells; open external screens and stowage cannot bound interior volume.
   ...NATIONAL_LEGACY_IDS,
   't72b3m_2022', 'bmpt_terminator2', 't80uk', 't72bu_1989', 't72bu',
-  't64bv1', 't64bv_donbas', 't62_1975', 't62mv1', 't72m1_jaguar',
+  't64bv1', 't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur', 't62_1975', 't62mv1', 't72m1_jaguar',
   't72_rys', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei',
   'amx30', 'amx30b2', 'upior', 'type89',
   't84', 'pl01_105', 'vt4a1', 'ztz99a2', 'ztz99a',

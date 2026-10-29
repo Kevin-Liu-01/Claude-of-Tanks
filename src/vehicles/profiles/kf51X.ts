@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
+import { LEOPARD_2_RUNNING_GEAR as LEO2_GEAR } from './leopardA6XWheels.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
 const cylY = (radius: number, height: number, segments: number): THREE.BufferGeometry =>
@@ -20,7 +21,6 @@ const KF51_X_DATUMS = Object.freeze({
   roofHeightM: 2.5603, overallHeightM: 5.7214742,
   turretPivot: [0, RING_Y, RING_Z] as const,
   trunnion: [0, GUN_Y, GUN_Z] as const, muzzleZ: 6.8997,
-  wheelStations: [-2.2118, -1.4265, -.6365, .1300, .8573, 1.5808, 2.3520] as const,
 });
 
 function hullRing(z: number, half: number, top: number, bottom: number): SolidSection {
@@ -149,9 +149,10 @@ function pantherSkirts(P: TankBuilderPort): void {
       [side*.94,1.24,3.85],[side*1.61,1.24,3.745],[side*1.61,1.36,3.04],[side*.94,1.36,3.04],
     ));
     P.addMudguard('panther-x-front-flap','hullRubber',box(.57,.26,.046),side*1.27,1.096,3.75,-.13);
+    // (2026-10-27: its foot steps 0.106 m aft and 0.05 m up, clear of the Leopard 2 sprocket's wrap)
     P.hangMudguard('panther-x-rear-flap','hullRubber',orientedSlab(
-      [side*.986,.751,-3.364],[side*1.546,.751,-3.364],[side*1.546,1.210,-3.746],[side*.986,1.210,-3.746],
-      [side*.986,.770,-3.349],[side*1.546,.770,-3.349],[side*1.546,1.229,-3.731],[side*.986,1.229,-3.731],
+      [side*.986,.801,-3.470],[side*1.546,.801,-3.470],[side*1.546,1.210,-3.746],[side*.986,1.210,-3.746],
+      [side*.986,.820,-3.455],[side*1.546,.820,-3.455],[side*1.546,1.229,-3.731],[side*.986,1.229,-3.731],
     ));
     P.addMudguard('panther-x-rear-hanger','hullDark',box(.56,.30,.045),side*1.27,1.50,-3.54);
     P.addEquipment('hullDark',box(.5563,.1072,.0296),side*1.26445,1.556,-3.7949);
@@ -315,14 +316,16 @@ export function buildKF51X(P: TankBuilderPort): void {
     hullRing(2.447,1.61,1.420,.47),hullRing(3.005,1.61,1.366,.52),
     hullRing(3.745,1.61,1.234,1.06),hullRing(3.85,.95,1.225,1.16),
   ]));
+  // 2026-10-27 (owner, of the KF51-U: "from the side its silhouette should look more like the leopard 2a6s"): the
+  // Panther rides a Leopard 2A4 hull and its running gear, so it draws the Leopard 2 stations, wheels, end wheels and
+  // return rollers (the 2A6 X datum) at its own track width. The GRIP420 comparison model's smaller r .328 wheels on a
+  // 4.56 m wheelbase ended the run 0.37 m behind the nose.
   P.gear=KIT.buildRunningGear(P,leopardReturnRollers(P,{
-    style:'rubber',wheelR:.3280,wheelW:.36,wheelY:.4323,xc:1.2770,
-    wheelZs:[...KF51_X_DATUMS.wheelStations],trackW:.5770,trackTh:.070,
-    sprocket:{z:-2.9275,y:.7982,r:.318},idler:{z:3.1721,y:.7422,r:.293},
-    topY:1.154,botY:.097,paintedEnds:true,arms:true,coveredTop:true,
-  // Four fitted supports occupy actual road-axle pair gaps. The previous
-  // aesthetic stations collided with the unchanged wheels at full stroke.
-  },[-1.81915,-.25325,1.21905,1.9664],0,.90));
+    style:'rubber',wheelR:LEO2_GEAR.wheelR,wheelW:.36,wheelY:LEO2_GEAR.wheelY,xc:1.2770,
+    wheelZs:[...LEO2_GEAR.wheelZs],trackW:.5770,trackTh:.070,
+    sprocket:LEO2_GEAR.sprocket,idler:LEO2_GEAR.idler,
+    topY:LEO2_GEAR.topY,botY:.097,paintedEnds:true,arms:true,coveredTop:true,
+  },LEO2_GEAR.rollerZs,0,.90));
   pantherSkirts(P);
   // (release 240: the grille fields 3.5 cm lower, under the bustle's 1.844 rear underside as it turns)
   for(const x of[-.53,.53]){
