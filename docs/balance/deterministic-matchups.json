@@ -392,76 +392,8 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger1_granby",
-      "revision": "a x1.2 gun slot with the Mk 2: the rebuilt 624 mm slot was pierced by every VIII round",
-      "tier": 8,
-      "era": "cold-war",
-      "role": "mbt",
-      "hp": 2350,
-      "powerWeight": 19.35,
-      "speedKmh": [
-        56,
-        20
-      ],
-      "traverseDegS": [
-        32,
-        32.3
-      ],
-      "primary": {
-        "damage": 520,
-        "penetrationMm": [
-          757,
-          689,
-          620
-        ],
-        "reloadS": 6.7,
-        "sustainedDpm": 4656.72,
-        "accuracy": 0.263,
-        "aimTimeS": 1.76
-      },
-      "armorCeilingsMm": {
-        "hullKe": 516,
-        "turretKe": 749
-      },
-      "guidedWeapons": []
-    },
-    {
-      "id": "challenger1_mk1",
-      "revision": "a x1.2 gun slot with the Mk 2: the rebuilt 624 mm slot was pierced by every VIII round",
-      "tier": 8,
-      "era": "cold-war",
-      "role": "mbt",
-      "hp": 2350,
-      "powerWeight": 19.35,
-      "speedKmh": [
-        56,
-        20
-      ],
-      "traverseDegS": [
-        32,
-        32.3
-      ],
-      "primary": {
-        "damage": 520,
-        "penetrationMm": [
-          757,
-          689,
-          620
-        ],
-        "reloadS": 6.7,
-        "sustainedDpm": 4656.72,
-        "accuracy": 0.263,
-        "aimTimeS": 1.76
-      },
-      "armorCeilingsMm": {
-        "hullKe": 442,
-        "turretKe": 749
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "challenger1_mk2",
-      "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x1.2 gun slot, the rebuilt 624 mm slot pierced by every VIII round",
+      "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile",
       "tier": 8,
       "era": "cold-war",
       "role": "mbt",
@@ -489,7 +421,7 @@
       },
       "armorCeilingsMm": {
         "hullKe": 442,
-        "turretKe": 749
+        "turretKe": 682
       },
       "guidedWeapons": []
     },
@@ -626,6 +558,40 @@
       "armorCeilingsMm": {
         "hullKe": 500,
         "turretKe": 620
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger_x_sleek",
+      "revision": "a x1.4 gun slot: the Challenger 1's upright 624 mm slot was pierced by every VIII round",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 19.35,
+      "speedKmh": [
+        56,
+        20
+      ],
+      "traverseDegS": [
+        32,
+        32.3
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          757,
+          689,
+          620
+        ],
+        "reloadS": 6.7,
+        "sustainedDpm": 4656.72,
+        "accuracy": 0.263,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 442,
+        "turretKe": 874
       },
       "guidedWeapons": []
     },
@@ -2964,15 +2930,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
-      "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 41.57,
-      "averageAEndHp": 448.67,
-      "averageBEndHp": 223.75,
-      "averageADamage": 2356.83,
-      "averageBDamage": 1990.08
+      "aWins": 3,
+      "bWins": 0,
+      "draws": 9,
+      "aScore": 0.625,
+      "averageDurationS": 82.62,
+      "averageAEndHp": 2087.08,
+      "averageBEndHp": 808.42,
+      "averageADamage": 1709.5,
+      "averageBDamage": 262.92
     },
     {
       "id": "nextgen-challengers",
