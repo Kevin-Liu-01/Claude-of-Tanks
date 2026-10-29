@@ -70,6 +70,9 @@ function familyOf(object: THREE.Object3D, turretGroups: ReadonlySet<THREE.Object
   return 'hull';
 }
 
+/** Barycentric points a shaded triangle's cover is read at besides its corners: its middle and its edges' middles. */
+const TRIANGLE_MIDDLES: ReadonlyArray<readonly [number, number, number]> = [[1 / 3, 1 / 3, 1 / 3], [0.5, 0.5, 0], [0, 0.5, 0.5], [0.5, 0, 0.5]];
+
 const smoothstep = (a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -212,6 +215,27 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
   const full = NET_COVER;
   const p = new THREE.Vector3(), n = new THREE.Vector3(), m = new THREE.Matrix4(), nm = new THREE.Matrix3();
   let budget = VERTICES_PER_STEP;
+  /** The cloth's share of the footprint over a point (root frame) facing `n`: the gate's own sum (below). */
+  const gateAt = (grid: Map<number, number[]>, px: number, py: number, pz: number, nx: number, ny: number, nz: number): number => {
+    const G = SUIT_GATE_REACH_M, ex = px + nx * G, ey = py + ny * G, ez = pz + nz * G;
+    const x0 = Math.floor((Math.min(px, ex) - SUIT_GATE_RADIUS_M) / R), x1 = Math.floor((Math.max(px, ex) + SUIT_GATE_RADIUS_M) / R);
+    const y0 = Math.floor((Math.min(py, ey) - SUIT_GATE_RADIUS_M) / R), y1 = Math.floor((Math.max(py, ey) + SUIT_GATE_RADIUS_M) / R);
+    const z0 = Math.floor((Math.min(pz, ez) - SUIT_GATE_RADIUS_M) / R), z1 = Math.floor((Math.max(pz, ez) + SUIT_GATE_RADIUS_M) / R);
+    let gate = 0;
+    for (let ix = x0; ix <= x1; ix++) for (let iy = y0; iy <= y1; iy++) for (let iz = z0; iz <= z1; iz++) {
+      const list = grid.get(cellKey(ix, iy, iz));
+      if (!list) continue;
+      for (let k = 0; k < list.length; k += 7) {
+        const vx = list[k] - px, vy = list[k + 1] - py, vz = list[k + 2] - pz;
+        const along = vx * nx + vy * ny + vz * nz;
+        if (along <= -0.01 || along > G) continue;
+        const g2 = list[k + 6], across = vx * vx + vy * vy + vz * vz - Math.max(0, along) * Math.max(0, along);
+        if (across < g2) gate += list[k + 5] * (1 - across / g2) ** 2;
+      }
+    }
+    return gate / full;
+  };
+  const ta = new THREE.Vector3(), tb = new THREE.Vector3(), tc = new THREE.Vector3(), tn = new THREE.Vector3();
   for (const mesh of draws) {
     const geometry = mesh.geometry;
     // a suit's own draws, and a geometry drawn twice, keep zeros
@@ -269,12 +293,33 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     // corners lay under the deck net and the drape's roll) a triangle is under the cloth only as far as its least
     // covered corner, and a vertex takes the least of its triangles: a coarse panel the cloth reaches at a corner or two
     // takes no shade across its bare span
+    // (r7; the same ledge's other triangle had all three corners under cloth, the drape's roll along its outer edge and
+    // the deck net at its inner corner, its middle bare) and as far as its middle and the middles of its edges are
     const index = geometry.index;
     const tris = index ? index.count : position.count;
     const least = new Float32Array(position.count).fill(Infinity);
     for (let t = 0; t + 2 < tris; t += 3) {
       const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-      const g = Math.min(gates[a], gates[b], gates[c]);
+      let g = Math.min(gates[a], gates[b], gates[c]);
+      if (g > 0) {
+        if (--budget <= 0) { budget = VERTICES_PER_STEP; yield* pause(); }
+        ta.fromBufferAttribute(position, a).applyMatrix4(m);
+        tb.fromBufferAttribute(position, b).applyMatrix4(m);
+        tc.fromBufferAttribute(position, c).applyMatrix4(m);
+        tn.subVectors(tc, tb).cross(p.subVectors(ta, tb));
+        // the face's own normal, turned to the side its vertices face
+        n.fromBufferAttribute(normal, a).applyMatrix3(nm);
+        if (tn.lengthSq() > 1e-12) {
+          tn.normalize();
+          if (tn.dot(n) < 0) tn.negate();
+          for (const [ka, kb, kc] of TRIANGLE_MIDDLES) {
+            const sg = gateAt(grid, ta.x * ka + tb.x * kb + tc.x * kc, ta.y * ka + tb.y * kb + tc.y * kc, ta.z * ka + tb.z * kb + tc.z * kc,
+              tn.x, tn.y, tn.z);
+            if (sg < g) g = sg;
+            if (g <= 0) break;
+          }
+        }
+      }
       if (g < least[a]) least[a] = g;
       if (g < least[b]) least[b] = g;
       if (g < least[c]) least[c] = g;

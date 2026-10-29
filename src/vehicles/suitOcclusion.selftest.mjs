@@ -86,6 +86,25 @@ const shadeAt = (mesh, x, z) => {
     'a panel whose corner lies bare takes no shade across it');
 }
 
+// (r7) and one whose three corners lie under cloth (a roll along its outer edge, a net at its inner corner) but whose
+// middle is bare takes none either
+{
+  const root = new THREE.Group();
+  const ledge = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, 1, -1.4, 0.3, 1, -1.4, 0.3, 1, 1.4], 3));
+  ledge.computeVertexNormals();
+  if (ledge.getAttribute('normal').getY(0) < 0) { ledge.setIndex([0, 2, 1]); ledge.computeVertexNormals(); }
+  const panel = new THREE.Mesh(ledge, paint);
+  const roll = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 3.0, 2, 30).rotateX(-Math.PI / 2).translate(0.3, 1.02, 0), paint);
+  roll.name = 'receipt_ghillie_hull_net';
+  const corner = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4, 4, 4).rotateX(-Math.PI / 2).translate(-0.5, 1.02, -1.4), paint);
+  corner.name = 'receipt2_ghillie_hull_net';
+  root.add(panel, roll, corner);
+  drain(bakeSuitOcclusionSteps(root, []));
+  assert.ok([...ledge.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0),
+    'a panel whose corners lie under cloth but whose middle is bare takes no shade');
+}
+
 // (round 3) a fitted cover's shade is its own cloth's: the plate 20 cm past its edge is untouched, where a net's reaches
 {
   const root = new THREE.Group();
