@@ -15,7 +15,7 @@
 export interface BattleBandBox { x0: number; y0: number; x1: number; y1: number }
 
 /** The HUD's bands (engine/chaseFraming.ts ChaseBands). */
-export interface BattleBands {
+interface BattleBands {
   width: number;
   height: number;
   touch: boolean;

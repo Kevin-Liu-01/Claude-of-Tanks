@@ -100,7 +100,7 @@ const SHOULDER_SCREEN_FRACTION = 0.28;
 const RING_CEILING_FRACTION = 0.15;
 
 /** A screen box, CSS px. */
-export interface ChaseRect { x0: number; y0: number; x1: number; y1: number }
+interface ChaseRect { x0: number; y0: number; x1: number; y1: number }
 
 /** The HUD's bands as battleHudLayout.ts measures them: the bottom chrome that does not move with the sight, the head
  *  band's bottom edge over the centre column, and the most the layout lets the sight rise (its own places that follow
