@@ -34,7 +34,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.947700023651123,
       1.947700023651123
     ],
-    "signature": "6ba8e424",
+    "signature": "5e871d1d",
     "geometryHash": "074f3626333e540108aca4a214c1b1a9bf5cf5a3f3f72c134d11fea12e2a3e8a"
   },
   "ajax": {
@@ -88,7 +88,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6652516957450842,
       0.6872028929188403
     ],
-    "signature": "880c34e6",
+    "signature": "c9c6dc37",
     "geometryHash": "21380d5bbbf66852a073643775f32cf0ad92d7106dd97eede79fc0eafaafe003"
   },
   "amx30": {
@@ -106,7 +106,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5627206751906755,
       0.5854418315990202
     ],
-    "signature": "83e8853d",
+    "signature": "776dcfa2",
     "geometryHash": "8e8e154e46b15b5d591b89d5552a5c8ddfe44b80de7b539996d116612f288696"
   },
   "amx30b": {
@@ -124,7 +124,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5895292071744969,
       0.628803270895812
     ],
-    "signature": "b74fdf4f",
+    "signature": "f02263fc",
     "geometryHash": "491e83ffc73e77059cc651558762f7e83976d69f2b6eaa41dc6c1ba8ceedcbe4"
   },
   "amx30b2": {
@@ -142,7 +142,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6721767282840148,
       0.6404517214611474
     ],
-    "signature": "72b9a019",
+    "signature": "a7c62eee",
     "geometryHash": "c01cfc0e4fbc630cf8f7e26a1f475bbff3eb237cd854928a52b2152fdff3edc1"
   },
   "amx40": {
@@ -268,7 +268,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7779270904786628,
       0.7779270904786628
     ],
-    "signature": "cfc1d8cf",
+    "signature": "6cc61eba",
     "geometryHash": "bf762e1d6f72794183b006bd6938a148e78102e330401279114624461aa62f68"
   },
   "bmp3": {
@@ -286,7 +286,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4247412028549711,
       0.4742695254852549
     ],
-    "signature": "6e5b1085",
+    "signature": "fd575aa3",
     "geometryHash": "9d229411137e60f8def6eaabef91dfa76ba771572f6cf25c360ca25ae46bfc8f"
   },
   "bmp3_rok": {
@@ -322,7 +322,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5940000414848328,
       0.5884303089643801
     ],
-    "signature": "631dc666",
+    "signature": "51d0b107",
     "geometryHash": "267c7abd7440eeed44f3039760a8ad664e04a5d86e67ba9be2aeb83a48fe119f"
   },
   "bmpt_t90": {
@@ -381,7 +381,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8235173020175779,
       0.8280000090599096
     ],
-    "signature": "42e7fef2",
+    "signature": "cb1f15b9",
     "geometryHash": "cc351eccac989d6d7af3d54f057a3273a484dbc7a0490a2b235187e2a36e12a8"
   },
   "bwp1": {
@@ -435,7 +435,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6850000023841858,
       0.6850000023841858
     ],
-    "signature": "52468d9c",
+    "signature": "7d49759c",
     "geometryHash": "410d9f4bf1028ce72a27243cf8a927bd7ee82527fd23c95d5ebc315bdbd34505"
   },
   "c1_ariete_proto_serie1": {
@@ -453,7 +453,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8029999732971191,
       0.8029999732971191
     ],
-    "signature": "31e71104",
+    "signature": "89822f0b",
     "geometryHash": "bd3dc05c47e992e7ec41075d560d883bb23d7f13cc6b8b736d2402bbaa78fd38"
   },
   "c2_ariete": {
@@ -489,7 +489,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.837098958335222,
       0.819432783348514
     ],
-    "signature": "5f9829a3",
+    "signature": "e3860946",
     "geometryHash": "40f96e592f675a6da4fd44eed8a9719815bd24e64c543c28265259bd04977ece"
   },
   "carro45t": {
@@ -507,7 +507,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7856609114578923,
       0.8318771264985614
     ],
-    "signature": "6798cb21",
+    "signature": "5e7344d5",
     "geometryHash": "5a1ebbf462cf3d0fb649fba5caffae518442fd9abcbc7f6606b16a0becd22a70"
   },
   "centurion3": {
@@ -525,7 +525,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.9628230808659701,
       0.967000007629391
     ],
-    "signature": "cdd87442",
+    "signature": "76426031",
     "geometryHash": "7551d6fd781635d023e949a3437250730eed850829e9870238681252717d696b"
   },
   "centurion5_2": {
@@ -543,7 +543,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8291878217907502,
       0.8103506281551951
     ],
-    "signature": "999633bc",
+    "signature": "c642365a",
     "geometryHash": "b11b2b37c50adb4538b19a5142a1d883cf5aca1b12178661afb2fb17e88e6f1e"
   },
   "challenger1_granby": {
@@ -669,7 +669,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7311725417585784,
       0.7299922131688952
     ],
-    "signature": "610c086f",
+    "signature": "8f8a92b8",
     "geometryHash": "c1eb71e97bb5047aaf77b961704a0167efd261c8c58942ab1c5addd6bf977aee"
   },
   "challenger3_proto": {
@@ -687,7 +687,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7281475670838091,
       0.7310983841609513
     ],
-    "signature": "27fef5f5",
+    "signature": "f80fdb50",
     "geometryHash": "ad94da528d6bbe39097a1ce6423f32fc8f5b5c329e020d72c3953f0793b2c0cd"
   },
   "challenger3_td": {
@@ -741,7 +741,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8842808289908781,
       0.8842852578935876
     ],
-    "signature": "4d2dbe58",
+    "signature": "8d1d1312",
     "geometryHash": "4abe9d400dc6825b9d4683f06c91116724cbf5a2652a5021c7a8dacc747a5bca"
   },
   "chieftain_mk9": {
@@ -759,7 +759,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5849118406077487,
       0.5833770833946055
     ],
-    "signature": "e2222e89",
+    "signature": "3cec7123",
     "geometryHash": "4ed239d9b4def1c1e764c4506a14374f77353efe7af7f2a586cfe66d978290c2"
   },
   "chieftain3": {
@@ -777,7 +777,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5849118406077487,
       0.5833770833946055
     ],
-    "signature": "321add8e",
+    "signature": "4b2bc714",
     "geometryHash": "5b8af22cd509a31603e7e579ac64f8acf682fce11a651695d80a1787726afb17"
   },
   "chieftain5": {
@@ -795,7 +795,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7987033395441614,
       0.8180412780192512
     ],
-    "signature": "7f3d1ffd",
+    "signature": "4c609849",
     "geometryHash": "b290714b2afa4ccbf7f63b49bacdb8053598d9a834e3b7e9452ed050c227bd0e"
   },
   "christian2": {
@@ -849,7 +849,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5478538314453836,
       0.5590357246420226
     ],
-    "signature": "4e2abc57",
+    "signature": "cd580957",
     "geometryHash": "da43b4c1cec2323ed911cfd74734077fc2395807fb050e3a5cd573fb8f755408"
   },
   "cv90_mk4_concept": {
@@ -885,7 +885,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6546319455221017,
       0.6624079728952985
     ],
-    "signature": "3ba50020",
+    "signature": "0d2cb36d",
     "geometryHash": "ee38eace7912e6ab942e4f88b4e677f7c11f805a356f5e8fee56c4ec4dd5f36b"
   },
   "cv9040c": {
@@ -903,7 +903,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7773446104121113,
       0.7799999713897705
     ],
-    "signature": "a6a489ba",
+    "signature": "06561caa",
     "geometryHash": "6a72e1290a0a521446bb7958095e8b362bdcbdeea01679904ec9243dbbba77a0"
   },
   "dardo": {
@@ -975,7 +975,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5323335988941196,
       0.5486795334693113
     ],
-    "signature": "58e1395c",
+    "signature": "7400df5d",
     "geometryHash": "498d1ba77c975f2e0a01ca6becaca205b068d6092fb42d4cd6c67a1da5b65032"
   },
   "griffin_viper": {
@@ -1029,7 +1029,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4823858488155537,
       0.5077517957918971
     ],
-    "signature": "c1e708ec",
+    "signature": "5fa44668",
     "geometryHash": "f2b12a1088dc25e6afc7962c0c6832813e245a116af217e7eabe363fea47659f"
   },
   "jpz_e100": {
@@ -1065,7 +1065,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5795167235918086,
       0.6235673349527247
     ],
-    "signature": "34b46e6a",
+    "signature": "3e847f02",
     "geometryHash": "51cee497ea786504e0dba4d53fa9e46581fae094bf49a21227af781035c8473b"
   },
   "k1e1": {
@@ -1087,7 +1087,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5376422808266277,
       0.5465134335588857
     ],
-    "signature": "c95f0a06",
+    "signature": "c28ce7c2",
     "geometryHash": "ba6c6817481c39fc00e3a7e79cb98e339a8cdb587b6cd04e4c06a8d866c40349"
   },
   "k2_black_panther": {
@@ -1231,7 +1231,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.8495265032567367,
       1.8495265032567367
     ],
-    "signature": "5d12794e",
+    "signature": "01e68523",
     "geometryHash": "044afbb5991949b97d133f7e338493803dfde2f94ff114d6ce600d6057632553"
   },
   "kv2": {
@@ -1429,7 +1429,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.9300000071525574,
       0.9300000071525574
     ],
-    "signature": "10831ef3",
+    "signature": "13100948",
     "geometryHash": "06cf695b5e2faf46141bb449e3fccb5270d223752e8e89c8800c51bf03b3a3bc"
   },
   "leo2a4": {
@@ -1447,7 +1447,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7755684094956656,
       0.8083846038431233
     ],
-    "signature": "8bf10a24",
+    "signature": "69b0c55f",
     "geometryHash": "b9518d1e759708e6cd821373c3e59fc9c8969c03b5797a629e35f6e5adb557ac"
   },
   "leo2a4_otco": {
@@ -1537,7 +1537,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8141689801145766,
       0.833116344820656
     ],
-    "signature": "46bd489d",
+    "signature": "86bcb34c",
     "geometryHash": "e23443472634dcac39a4c79cccbaf54bfce8a1581631f0c979eed3519f881c88"
   },
   "leo2a5m": {
@@ -1717,7 +1717,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7674999833106995,
       0.7674999833106995
     ],
-    "signature": "ed34625f",
+    "signature": "75873085",
     "geometryHash": "936e7c1dfefe1b5b5f1e560eae09df54806351efeb1e21c8d924daff89a19243"
   },
   "m1a1_abrams_hc": {
@@ -1753,7 +1753,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7250000238418579,
       0.7250000238418579
     ],
-    "signature": "21b1d6ca",
+    "signature": "5fb5f930",
     "geometryHash": "b45eb31ade7d9b044724e8ec3876c2b68b804b3c346402a96cf4e0d6148be5d0"
   },
   "m1a1ha": {
@@ -1771,7 +1771,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7250000238418579,
       0.7250000238418579
     ],
-    "signature": "5676253d",
+    "signature": "802a9b05",
     "geometryHash": "95f7d1a6e5293c503908148c9e34006b7d3bb2d0200da2a86e0bdbd04bebffd2"
   },
   "m1a2_abrams": {
@@ -1879,7 +1879,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.824999988079071,
       0.824999988079071
     ],
-    "signature": "b986a010",
+    "signature": "bc1cf6b8",
     "geometryHash": "f98b2265efdf810d3609229d89a57c4b8f6d53f24fdef4a3fe07e6b642adcb5f"
   },
   "m3a3_bradley": {
@@ -1959,7 +1959,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8737129798152239,
       0.9095603879981375
     ],
-    "signature": "0a551b70",
+    "signature": "ff7a834c",
     "geometryHash": "806e560812177bf1a968d627766eb32ccc70a08c18273b058fd685fca37b9aeb"
   },
   "m551_sheridan": {
@@ -1977,7 +1977,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.731155469479905,
       0.8040000200271606
     ],
-    "signature": "99c63b81",
+    "signature": "2b169416",
     "geometryHash": "defdeeadb5ac025c30de3bd86d7c718d4827c38e3e42b154fbe28c387fa6524a"
   },
   "m551a1_tts": {
@@ -1999,7 +1999,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.6105882454702183,
       1.6317647018399555
     ],
-    "signature": "cdbfcaeb",
+    "signature": "2dba9746",
     "geometryHash": "fc2e8e26af2b8b2ceb4c15170887f04261737fbf42b9c354334faa29a1fe34a3"
   },
   "m6_linebacker": {
@@ -2017,7 +2017,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.2499171446537787,
       1.25
     ],
-    "signature": "013d11e6",
+    "signature": "abc2977a",
     "geometryHash": "7e9ee118a65bb270cad75c61fd0377d3707563e911b6ed26019eb2f11906e720"
   },
   "m60a1": {
@@ -2035,7 +2035,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8117572145178222,
       0.8135999858379357
     ],
-    "signature": "167af6f6",
+    "signature": "a0c258f8",
     "geometryHash": "f010767b4350e6169125d307743b4d2df5dee65cccae5fe8f35dae6c7a7d79e1"
   },
   "m60a2": {
@@ -2053,7 +2053,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7195385187968277,
       0.7195385187968277
     ],
-    "signature": "294eeebd",
+    "signature": "592ed1ee",
     "geometryHash": "3c6baa2e61ee974269c5ad99bffcff563c594a61076428d5aff7ff862b48fcb7"
   },
   "m60a3": {
@@ -2071,7 +2071,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8117572145178222,
       0.8135999858379357
     ],
-    "signature": "9d34bcb0",
+    "signature": "26c2dbbf",
     "geometryHash": "e22e80b4dfa51e3f704ac18e1f7fcec5aac3031e6a2acfebb66447ccb117757a"
   },
   "marder1a3": {
@@ -2089,7 +2089,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8700000047683751,
       0.8700000047683751
     ],
-    "signature": "c8b107af",
+    "signature": "aa075e71",
     "geometryHash": "adee865ea377ae413dabd58efa598dd57f02cbb7a60c895821ed7cdc3c45ea9b"
   },
   "marder2": {
@@ -2107,7 +2107,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8010852646198927,
       0.8023266443838288
     ],
-    "signature": "fb61a84d",
+    "signature": "680739b7",
     "geometryHash": "576a450fc147bc03b439d75c4a1fb46c9be766b18e7f77ad76454be03e30e64b"
   },
   "mbt70": {
@@ -2435,7 +2435,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8849999904632604,
       0.8849999904632604
     ],
-    "signature": "c4d3d23b",
+    "signature": "51ef45a0",
     "geometryHash": "d73c88d762b7854799b2b15a24e6467562533ea00e9efb962c05f542b9ec57d0"
   },
   "pt91m": {
@@ -2471,7 +2471,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8825059533119166,
       0.8825059533119166
     ],
-    "signature": "47aaac22",
+    "signature": "b0197b2c",
     "geometryHash": "f9d11fbe293663c320b6ab31f67930e0a48ad5e781caa1669b680be8a71f4dc0"
   },
   "raiju_ifv": {
@@ -2507,7 +2507,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.9742079943787658,
       0.9724079960953773
     ],
-    "signature": "6c3c9d05",
+    "signature": "49239b4c",
     "geometryHash": "c127f169ae0f8d4940021eadb5171710ea189d270ca50f09666b89862a7c14bb"
   },
   "spz_puma": {
@@ -2543,7 +2543,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6387909435561454,
       0.6236113412852795
     ],
-    "signature": "ec2cf617",
+    "signature": "cce09bfc",
     "geometryHash": "c6cbc79bffe3981f80505a40242979e4d4b770cac79e9739c848f0e7b6be0dc7"
   },
   "stb1": {
@@ -2633,7 +2633,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6911142268591206,
       0.7095493510842417
     ],
-    "signature": "68c05a10",
+    "signature": "349a28a5",
     "geometryHash": "c776d59f84c31097d05465a5545efd3894e82ed7878be9fa6e3461bf583818b8"
   },
   "strv81": {
@@ -2651,7 +2651,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5066099597444449,
       0.5265350627773273
     ],
-    "signature": "efbdb290",
+    "signature": "83289f83",
     "geometryHash": "04749e08bbc9abe428b7c143282fa20f51f93e9114e4304a8e8236589fd87c67"
   },
   "t14_armata": {
@@ -2709,7 +2709,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8726154482810031,
       0.904240618877413
     ],
-    "signature": "bf4baeeb",
+    "signature": "4b89c660",
     "geometryHash": "c432df500734aeabc8de6c2ce3c2ac0ff2ff7b1b863e08230182992d76a53eaa"
   },
   "t62mv1": {
@@ -2731,7 +2731,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4547349555391449,
       0.4874979775455124
     ],
-    "signature": "291fef9f",
+    "signature": "910b5eb1",
     "geometryHash": "dd7d6ccc49505cbbfd3c337feefe829be9b403f9fa2cc4bc68dc9876e82ad8d7"
   },
   "t64b1v_2022": {
@@ -2819,7 +2819,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4478885099436276,
       0.4250405846770171
     ],
-    "signature": "0cdd0f16",
+    "signature": "d1274d9c",
     "geometryHash": "0d1f836c95153e4c0d67bef7c40e1e9da796f04a10ae41fe970c09ce933ae74a"
   },
   "t64bv1": {
@@ -2841,7 +2841,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4478885099436276,
       0.4250405846770171
     ],
-    "signature": "03a888f4",
+    "signature": "741016b1",
     "geometryHash": "ee1d65f521e159b974354c643938906efb00b3f00f929e3683ba4d0f7b7814e1"
   },
   "t72_rys": {
@@ -2859,7 +2859,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.503401202258722,
       0.5175826172852744
     ],
-    "signature": "eabbaa5f",
+    "signature": "b3ebc873",
     "geometryHash": "5e384035d69dea81f42b70f4444b77d61e4a86e2b126dda91a259b6da281f0aa"
   },
   "t72b_1987": {
@@ -2881,7 +2881,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4547349555391449,
       0.4874979775455124
     ],
-    "signature": "758caaea",
+    "signature": "b5cc72f8",
     "geometryHash": "b5a7134a0f66a12b3df4f33f56f43a6899c1238ffba24428ad8d38cb80da4781"
   },
   "t72b3": {
@@ -2903,7 +2903,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5900313565090762,
       0.5334304348272703
     ],
-    "signature": "45b4081e",
+    "signature": "0ab4aec7",
     "geometryHash": "b96d9c52c3ca4ed5ec27e14a50ca2a76434d7584d0ab2ae5f0e1f94e768a485a"
   },
   "t72b3_bastion_m": {
@@ -2921,7 +2921,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6511355158238104,
       0.6568458749218138
     ],
-    "signature": "931e8b4a",
+    "signature": "10f83f4c",
     "geometryHash": "ab51aa26808f42d3b3a0b4cbbca177a81267442ab429fcb9eed8fc7a46494ef1"
   },
   "t72b3_qilin": {
@@ -2957,7 +2957,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7400000095367467,
       0.7400000095367467
     ],
-    "signature": "169de7ed",
+    "signature": "dd453538",
     "geometryHash": "52e17090881bc8ba14b85a5982e18da36076bf77ab83e3ca2fac8d3ba8a9d5ef"
   },
   "t72b3_zubr": {
@@ -3059,7 +3059,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.751081063859953,
       0.7340540384493011
     ],
-    "signature": "00ac2b52",
+    "signature": "de71edb6",
     "geometryHash": "41c42ba04017914df951dbbc5ef8f90cc473e133c4d6a2d05156f0ed671ca7dc"
   },
   "t72b3m_hetman": {
@@ -3201,7 +3201,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5900313565090762,
       0.5334304348272703
     ],
-    "signature": "69e05c0c",
+    "signature": "bf6c57a6",
     "geometryHash": "1450ce9ae2839c4ae70be315fc86b5074bf6b7d8c3e1251fead1372f035ca577"
   },
   "t80": {
@@ -3219,7 +3219,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6524999737739563,
       0.6524999737739563
     ],
-    "signature": "c503431a",
+    "signature": "b8952f92",
     "geometryHash": "6d7facecec65c97e0eb0877ac3283ad7249f39a908fc33f87162d2095b8460ef"
   },
   "t80b": {
@@ -3237,7 +3237,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6524999737739563,
       0.6524999737739563
     ],
-    "signature": "87e3eba9",
+    "signature": "bef71ae1",
     "geometryHash": "601b5e86b0f5eadd45c31e699ccaec6f7396c4ec227f6dc3e6dc886c0573cda7"
   },
   "t80bv": {
@@ -3277,7 +3277,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.44740420682860815,
       0.47329905189884514
     ],
-    "signature": "a4fa40bd",
+    "signature": "b1d09fa5",
     "geometryHash": "fbfd84469994c3b4ba92211f584d2c96cb38ee65b5d6b5e653b5c3422303d272"
   },
   "t80u_bars_m": {
@@ -3295,7 +3295,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6921476493337835,
       0.6979346454141186
     ],
-    "signature": "725963a9",
+    "signature": "64b49d93",
     "geometryHash": "318906089cafc8975b41bd0176301993457e29a218bd4afc2daaf2e1b4739ee9"
   },
   "t80u_husarz": {
@@ -3317,7 +3317,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.732761991499217,
       0.7231816602059951
     ],
-    "signature": "3bbcdb88",
+    "signature": "5108cd7c",
     "geometryHash": "c1b89e3cc10fa30b7e886b1996d63de2e061cc44047ab88fbf9cce8737829736"
   },
   "t80u_kursk": {
@@ -3371,7 +3371,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.0679999589920008,
       1.0679999589920044
     ],
-    "signature": "fb90a0cb",
+    "signature": "e908d2cb",
     "geometryHash": "aef03e960026cf905d863cf04226753f20f4b2460aa178512727c1406d2ec456"
   },
   "t80uk": {
@@ -3389,7 +3389,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.44740420682860815,
       0.47329905189884514
     ],
-    "signature": "bcfe8df6",
+    "signature": "13ff0332",
     "geometryHash": "a07bb83fb8fdb89c7e40258fd889833aeba942e048805b8c20624e36e34d3b11"
   },
   "t84": {
@@ -3461,7 +3461,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6908402440088786,
       0.6919320665792057
     ],
-    "signature": "bfcb8852",
+    "signature": "df23c61d",
     "geometryHash": "d1b2fe6d4befc6ecb15a0fab9bf6b69f209037f90f845e31b521fb0be766c51a"
   },
   "t90a": {
@@ -3555,7 +3555,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5599798101340951,
       0.6067334075859918
     ],
-    "signature": "80376852",
+    "signature": "a6f4499d",
     "geometryHash": "58116c077762fe1aa759e2dbdc5bc0e7023b6a56bc3b69f1aecf4d64df4cfcd2"
   },
   "t90a_vladimir": {
@@ -3595,7 +3595,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.45987022517572385,
       0.5084624916315086
     ],
-    "signature": "74bd93f7",
+    "signature": "7f068ccd",
     "geometryHash": "130632b35cb7aec408f6a5b83e6df2aa90d0f99ca720556f73698e70217d9942"
   },
   "t90m": {
@@ -3613,7 +3613,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.62948438770837,
       0.6662520170211792
     ],
-    "signature": "c9bee11b",
+    "signature": "3109566e",
     "geometryHash": "bd0ea5273d8cc9b18380f79be487c226da3236f37c45fc43228c3ace9bebaab9"
   },
   "t90m_proryv": {
@@ -3631,7 +3631,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.4268639063660409,
       0.4303808615555589
     ],
-    "signature": "46d81d4d",
+    "signature": "36eb932a",
     "geometryHash": "2426d2e8fd25ce1b60102e14f795de4e20e18f2af999f39bc8e2463a83bde4eb"
   },
   "t90ms_2011": {
@@ -3649,7 +3649,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.664988548232067,
       0.630877707931301
     ],
-    "signature": "fcce015f",
+    "signature": "8fd908fa",
     "geometryHash": "b65e4b43706f4799f3bee2ff00e66172e3ea44757d5e71102cf6a05e9ff11359"
   },
   "t90ms_tagil": {
@@ -3703,7 +3703,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6142500042915344,
       0.5407499670982361
     ],
-    "signature": "b253b795",
+    "signature": "c50feaef",
     "geometryHash": "fcf37555f68c1256038800a3b15f6a934120b01770f358ec123e394178dcb266"
   },
   "tos1a_tagil": {
@@ -3739,7 +3739,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5741226401931918,
       0.496123868035955
     ],
-    "signature": "c764a981",
+    "signature": "4ac8f492",
     "geometryHash": "e04d67fbc3a7707598031b036ddfa35ff015d89da1df0cf9ed44a6e7d32d0512"
   },
   "type10_dozer": {
@@ -3757,7 +3757,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6482303815867141,
       0.6286130163016459
     ],
-    "signature": "08956b2c",
+    "signature": "222a69f7",
     "geometryHash": "67fff184fb0fc9c2a9c728f1890282d9f1b578a5d581050e0e22417bb4fba8e9"
   },
   "type10_tk_x": {
@@ -3811,7 +3811,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.5923264392491667,
       0.6090118708492653
     ],
-    "signature": "012f1886",
+    "signature": "a5fcd31c",
     "geometryHash": "dcae59429cc3eb7271ce7eb46cf77768f88de7cb92b3616068991106bc6ee59d"
   },
   "type59": {
@@ -4039,7 +4039,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       1.534999966621399,
       1.534999966621399
     ],
-    "signature": "17baa938",
+    "signature": "07034c7a",
     "geometryHash": "295de859dfdbadd9f0e978bc7a4f3d750461a9ea4f49d01eec24c32018e8646e"
   },
   "ua_m1a2_abrams": {
@@ -4075,7 +4075,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.824999988079071,
       0.824999988079071
     ],
-    "signature": "a11dc61c",
+    "signature": "d1006bc4",
     "geometryHash": "25f86fe10fac148f7486bf12270beb8261d3b6b73bc800ae019116ab442d454a"
   },
   "ua_t80bv": {
@@ -4129,7 +4129,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.641374095529244,
       0.669483819462279
     ],
-    "signature": "abfd2b8b",
+    "signature": "d53d98b2",
     "geometryHash": "37b37aeb285e8a46a6f1af2931730d03dca5a60f9f28ee71b7ba19aede52e1ed"
   },
   "vickers_mk1": {
@@ -4201,7 +4201,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.468895686370459,
       0.44455990374828147
     ],
-    "signature": "50eee169",
+    "signature": "7b6b1bd3",
     "geometryHash": "51c11e3c5baaf294ffbe92b53d0c5ca6b778a760ded36c3aa7d496f65b8d7eb1"
   },
   "ztz100": {
@@ -4331,7 +4331,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.8899999856948853,
       0.8899999856948888
     ],
-    "signature": "8eaf8c61",
+    "signature": "b7a8aa13",
     "geometryHash": "70bb8bbcf5b831dccc094e7f39ca37fe2f6e017b50e80fbe8cd27e31521d732c"
   },
   "ztz99a2": {
@@ -4349,7 +4349,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.800000011920929,
       0.800000011920929
     ],
-    "signature": "4a220905",
+    "signature": "62319a67",
     "geometryHash": "e56209d0bcef2c854cb704a1b135d5a59d5d5c5e6b62abacab3ca75e75dc2763"
   }
 };
