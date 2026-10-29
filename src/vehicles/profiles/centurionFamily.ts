@@ -467,11 +467,12 @@ function buildDozer(P: TankBuilderPort): void {
   P.add('hullDark', box(0.14, 0.12, 0.12), 0, 1.42, r1[1] + 0.02);
 }
 
-/** The AVRE's fascine cradle (the FV4003 photographs: tubular arms hinged at the nose, lying back along the glacis, their
- * tips turned up a little, tied by cross tubes; the critic, 2026-10-28: it was missing). Four arms clear of the glacis
- * panels, the ram's bracket and the front bins. Hull frame. */
+/** The AVRE's fascine cradle (the FV4003 photographs: tubular arms hinged at the nose, lying back along the glacis,
+ * tied by cross tubes; the critic, 2026-10-28: it was missing). Four arms resting on the glacis panels, clear of the
+ * ram's bracket and the front bins, ending on the plate (upturned tips stood in the muzzle's path over the bow
+ * quarters). Hull frame. */
 function buildFascineCradle(P: TankBuilderPort, onGlacis: (t: number) => [number, number], pitch: number): void {
-  const nY = Math.cos(pitch), nZ = Math.sin(pitch), lift = 0.14, r = 0.040;
+  const nY = Math.cos(pitch), nZ = Math.sin(pitch), lift = 0.12, r = 0.040;
   const at = (t: number, extra = 0): V3 => { const [z, y] = onGlacis(t); return [0, y + nY * (lift + extra), z + nZ * (lift + extra)]; };
   const tube = (a: V3, b: V3, rr: number): void => {
     const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
@@ -479,8 +480,8 @@ function buildFascineCradle(P: TankBuilderPort, onGlacis: (t: number) => [number
       (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   };
   for (const x of [-0.86, -0.40, 0.40, 0.86]) {
-    const h = at(0.02), mid = at(0.55), end = at(0.92), tip = at(0.97, 0.10);
-    for (const [a, b] of [[h, mid], [mid, end], [end, tip]] as const) tube([x, a[1], a[2]], [x, b[1], b[2]], r);
+    const h = at(0.02), mid = at(0.55), end = at(0.90);
+    for (const [a, b] of [[h, mid], [mid, end]] as const) tube([x, a[1], a[2]], [x, b[1], b[2]], r);
     // its hinge lug on the nose plate
     P.add('hullDark', box(0.10, 0.10, 0.10), x, h[1] - 0.08, h[2] + 0.03);
   }
