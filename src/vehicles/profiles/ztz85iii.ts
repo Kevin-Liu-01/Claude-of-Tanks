@@ -175,9 +175,10 @@ function addFenders(P: TankBuilderPort): void {
     const cheek: THREE.BufferGeometry[] = [];
     for (let i = 0; i < guard.length - 1; i++) {
       const [za, ya] = guard[i], [zb, yb] = guard[i + 1];
-      const xo = side * FENDER_OUT, xi = side * (FENDER_OUT - 0.026);
-      cheek.push(KIT.slab([xi, yb, zb], [xo, yb, zb], [xo, ya, za], [xi, ya, za],
-        [xi, 0.80, zb], [xo, 0.80, zb], [xo, 0.80, za], [xi, 0.80, za]));
+      // slab order: the lower face first, then the upper, each from -x to +x (forward end first), so both sides wind out
+      const xa = Math.min(side * FENDER_OUT, side * (FENDER_OUT - 0.026)), xb = Math.max(side * FENDER_OUT, side * (FENDER_OUT - 0.026));
+      cheek.push(KIT.slab([xa, 0.80, zb], [xb, 0.80, zb], [xb, 0.80, za], [xa, 0.80, za],
+        [xa, yb, zb], [xb, yb, zb], [xb, ya, za], [xa, ya, za]));
     }
     P.addMudguard('ztz85iii-front-guard-cheek', 'hull', KIT.mergeAll(cheek));
     // the sponson's front corner over the guard, closing the deck between the upper hull's end and the guard
