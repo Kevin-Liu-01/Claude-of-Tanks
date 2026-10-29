@@ -145,7 +145,9 @@ try {
     const wrong = structuredClone(rigid); mutate(wrong);
     await assert.rejects(replaySourceAssembly(wrong, { root: temp }), expected);
   }
-  const legacyIds = ["aft10", "ajax", "amx30b", "amx40", "c1_ariete", "challenger1_mk3", "chieftain5", "chieftain_mk10", "cv90105_tml", "cv90_mk4", "jpz_e100", "k1a1", "kf41_lynx", "kf51_panther", "amx56", "leclerc_xlr", "leo2a5", "leo2a6", "m1a2_abrams_sepv2", "sabra_mk2", "strv122", "t62mv1", "t72b3", "t72b3m_2016", "t72b_1987", "t72bu", "t80u", "t90", "t90a_burlak", "t90a", "t90m", "t90ms_tagil", "t90sm", "type10", "type90", "type96b", "ztz100"];
+  // 263 (ztz20-262): the ZTZ-100's '[OD]ZTZ-20 Test-3' certificate (7eeb9852…758f1) is retired with its comparison (the bake
+  // measures the ZTZ-20 family concept and certifies none); every other historical certificate is byte-identical.
+  const legacyIds = ["aft10", "ajax", "amx30b", "amx40", "c1_ariete", "challenger1_mk3", "chieftain5", "chieftain_mk10", "cv90105_tml", "cv90_mk4", "jpz_e100", "k1a1", "kf41_lynx", "kf51_panther", "amx56", "leclerc_xlr", "leo2a5", "leo2a6", "m1a2_abrams_sepv2", "sabra_mk2", "strv122", "t62mv1", "t72b3", "t72b3m_2016", "t72b_1987", "t72bu", "t80u", "t90", "t90a_burlak", "t90a", "t90m", "t90ms_tagil", "t90sm", "type10", "type90", "type96b"];
   // Raw assembly/hash evidence is immutable; the explicit owner size target
   // is a separate frame layer, independently asserted against every entry.
   const legacy = Object.fromEntries(legacyIds.map(id => [id, AUTHORING_SOURCE_WORLD_FRAMES[id]]));
@@ -153,7 +155,7 @@ try {
   checkArieteRegistrationRecipe();
   // The certificate names each vehicle by the id it was issued under (schema 1, tankIdAliases.ts, SSOT 2.19).
   const certified = (frames) => Object.fromEntries(Object.entries(frames).map(([id, frame]) => [tankSeedId(id), frame]));
-  assert.equal(sha(Buffer.from(JSON.stringify(certified(restoreArieteRegistration(legacy))))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
+  assert.equal(sha(Buffer.from(JSON.stringify(certified(restoreArieteRegistration(legacy))))), "0e4e8f7e0bd23bc175862e821a8533d16a2a25bac7286e98b71e2d097d81abe5", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
   for (const mutate of [frame => { frame.sha256 = originalArieteFrame.sha256; },
     frame => { frame.turret[1] += .001; }, frame => { frame.gun[2] *= 1.01; },
     frame => { frame.fused = false; }]) {

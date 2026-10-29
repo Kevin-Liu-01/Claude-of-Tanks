@@ -63,7 +63,9 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // 7.37 MB at integ/231 for release 252 (pinned math's detMath and the world-kernel bindings, rust-support-solve-253, on
 // mp-scale's wire): the coordinator's ruling re-pins the bound to that measure plus 2 % (7.52 MB); the host Worker's
 // size goes to the lockdown budgets next.
-assert.ok(sourceBytes < 7.52e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 7.57 MB at integ/231 for release 263 (fourteen new tanks' specs and armour models, the fleet at 235; no builder, kit
+// or calibration literal entered): the bound re-pinned by the same rule, that measure plus 2 % (7.72 MB).
+assert.ok(sourceBytes < 7.72e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
