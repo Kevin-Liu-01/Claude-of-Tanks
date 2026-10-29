@@ -24,7 +24,9 @@ const ARROW_KEYS: Readonly<Record<string, readonly [IconId, string]>> = {
 };
 const kbd = (label: string): string => {
   const arrow = ARROW_KEYS[label];
-  return arrow ? `<kbd class="cot-c-kbd" aria-label="${esc(t(arrow[1]))}">${icon(arrow[0], { size: 12 })}</kbd>` : `<kbd class="cot-c-kbd">${esc(label)}</kbd>`;
+  // a Chinese key cap (空格, 左键) is a word, set at the zh floor; a Latin one is a figure (docs.css .cot-c-kbd[data-cjk])
+  return arrow ? `<kbd class="cot-c-kbd" aria-label="${esc(t(arrow[1]))}">${icon(arrow[0], { size: 12 })}</kbd>`
+    : `<kbd class="cot-c-kbd"${/[\u3400-\u9fff]/.test(label) ? ' data-cjk' : ''}>${esc(label)}</kbd>`;
 };
 
 /** The settings panel's groups, in its order, each with its icon. */

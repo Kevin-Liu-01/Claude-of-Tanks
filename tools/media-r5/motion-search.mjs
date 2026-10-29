@@ -254,7 +254,7 @@ function lensMoves(kind, town = false) {
 const FRAMING_V = Number(process.env.FRAMING_V ?? 2);
 const framing = (report) => framingScore(report, { version: FRAMING_V });
 
-const featuresOf = (() => { const cache = new Map(); return (map) => { if (!cache.has(map)) { const f = join(SHOTS_DIR, 'features', `features-${map}.json`); cache.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); } return cache.get(map); }; })();
+const featuresOf = (() => { const cache = new Map(); return (map) => { if (!cache.has(map)) { const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`); cache.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); } return cache.get(map); }; })();
 
 /** The take's lens metrics: range (far / near to the hero), climb (lift range), front share (lens ahead of the hull's
  * travel), hero speed. */

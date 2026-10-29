@@ -512,21 +512,22 @@ function mergeStaticDisplayBatch(
   };
 }
 
-function mergeStaticDisplayOwner(
+function* mergeStaticDisplayOwnerSteps(
   owner: THREE.Object3D,
   otherOwners: ReadonlySet<THREE.Object3D>,
   firstMergeIndex: number,
   materialLifecycle?: BakedMaterialLifecycle,
-): MergedDisplayOwner {
+): Generator<void, MergedDisplayOwner, void> {
   const byMaterial = collectStaticDisplayBatches(owner, otherOwners);
   const sourceGeometries = new Set<THREE.BufferGeometry>();
   const generatedGeometries: TrackedGeometry[] = [];
   let meshesMerged = 0;
   let mergeBatches = 0;
   let elementsMerged = 0;
-  _rootWorldInverse.copy(owner.matrixWorld).invert();
   for (const byState of byMaterial.values()) {
     for (const batch of byState.values()) {
+      // (each batch reads the owner's inverse afresh: a cooperative pass yields between batches)
+      _rootWorldInverse.copy(owner.matrixWorld).invert();
       const merged = mergeStaticDisplayBatch(
         owner,
         batch,
@@ -539,6 +540,7 @@ function mergeStaticDisplayOwner(
       meshesMerged += merged.meshesMerged;
       mergeBatches += 1;
       elementsMerged += merged.elementsMerged;
+      yield;
     }
   }
   return {
@@ -568,11 +570,11 @@ function pruneEmptyDisplayGroups(owner: THREE.Object3D): void {
  * state are unchanged; only redundant leaf draw owners and empty rig groups
  * disappear from the live scene graph.
  */
-function mergeStaticDisplayOwners(
+function* mergeStaticDisplayOwnersSteps(
   owners: readonly THREE.Object3D[],
   generated: TrackedGeometry[],
   materialLifecycle?: BakedMaterialLifecycle,
-): StaticMergeResult {
+): Generator<void, StaticMergeResult, void> {
   let meshesMerged = 0;
   let mergeBatches = 0;
   let elementsMerged = 0;
@@ -582,7 +584,7 @@ function mergeStaticDisplayOwners(
   for (const owner of ownerSet) {
     const otherOwners = new Set(ownerSet);
     otherOwners.delete(owner);
-    const merged = mergeStaticDisplayOwner(owner, otherOwners, mergeBatches + 1, materialLifecycle);
+    const merged = yield* mergeStaticDisplayOwnerSteps(owner, otherOwners, mergeBatches + 1, materialLifecycle);
     for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
     generated.push(...merged.generatedGeometries);
     meshesMerged += merged.meshesMerged;
@@ -639,7 +641,13 @@ function isAuthoredShadowOwner(object: THREE.Mesh): boolean {
  * shade is beneath useful screen resolution. Authored vehicle shadow proxies
  * and explicitly retained casters are never pruned.
  */
-export function optimizeGarageDressing(
+/**
+ * (2026-10-27, the room-stalls lane) The optimization as steps, each a bounded piece of the one pass: the freeze and
+ * shadow cut in runs of OPTIMIZE_OBJECTS_PER_STEP objects, the prop instancing, the prop merge, and each display merge
+ * batch. The work, its order and its output are optimizeGarageDressing's; a caller that yields between steps keeps
+ * the pass out of one long task (the rooms census's leave: optimizeWorkshopDisplays, 206-330 ms in one task).
+ */
+export function* optimizeGarageDressingSteps(
   root: THREE.Object3D,
   {
     minimumShadowRadiusM = 0.4,
@@ -647,7 +655,7 @@ export function optimizeGarageDressing(
     additionalResourceRoots = [],
     bakedMaterialLifecycle,
   }: GarageDressingOptimizationOptions = {},
-): GarageDressingOptimizationReceipt {
+): Generator<void, GarageDressingOptimizationReceipt, void> {
   const cutoff = Math.max(0, minimumShadowRadiusM);
   let objectsFrozen = 0;
   let shadowCastersBefore = 0;
@@ -656,7 +664,11 @@ export function optimizeGarageDressing(
   // (2026-10-25, lockdown-251) ancestors too, so each caster's world matrix below is what getWorldScale's own walk up
   // its parents would compose: that walk, per caster, was most of the Garage's idle optimize task (169 ms)
   root.updateWorldMatrix(true, true);
-  root.traverse((object) => {
+  const objects: THREE.Object3D[] = [];
+  root.traverse((object) => { objects.push(object); });
+  for (let index = 0; index < objects.length; index++) {
+    if (index > 0 && index % OPTIMIZE_OBJECTS_PER_STEP === 0) yield;
+    const object = objects[index]!;
     if (object !== root && object.matrixAutoUpdate) {
       object.updateMatrix();
       object.matrixAutoUpdate = false;
@@ -664,7 +676,7 @@ export function optimizeGarageDressing(
     }
 
     const mesh = object as THREE.Mesh;
-    if (!mesh.isMesh || !mesh.castShadow || !mesh.geometry) return;
+    if (!mesh.isMesh || !mesh.castShadow || !mesh.geometry) continue;
     shadowCastersBefore += 1;
     if (!isAuthoredShadowOwner(mesh)) {
       if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
@@ -674,12 +686,16 @@ export function optimizeGarageDressing(
       if (Number.isFinite(radius) && radius < cutoff) mesh.castShadow = false;
     }
     if (mesh.castShadow) shadowCastersAfter += 1;
-  });
+  }
+  objects.length = 0;
+  yield;
 
   const instancing = instanceStaticWorkshopProps(root);
+  yield;
   const merging = mergeStaticWorkshopProps(root);
+  yield;
   const generated = root.userData.optimizationDisposables ||= [];
-  const displayMerging = mergeStaticDisplayOwners(staticDisplayOwners, generated, bakedMaterialLifecycle);
+  const displayMerging = yield* mergeStaticDisplayOwnersSteps(staticDisplayOwners, generated, bakedMaterialLifecycle);
   const rangedInstances = new Set<THREE.InstancedMesh>();
   for (const owner of staticDisplayOwners) owner.traverse(object => {
     // A nested owner is reached from its parent owner too; install once.
@@ -716,4 +732,19 @@ export function optimizeGarageDressing(
   };
   root.userData.optimizationReceipt = receipt;
   return receipt;
+}
+
+/** The objects the freeze and shadow cut take a step (a Verdant dressing holds several thousand). */
+const OPTIMIZE_OBJECTS_PER_STEP = 400;
+
+/** The whole optimization at once (optimizeGarageDressingSteps, drained). */
+export function optimizeGarageDressing(
+  root: THREE.Object3D,
+  options: GarageDressingOptimizationOptions = {},
+): GarageDressingOptimizationReceipt {
+  const steps = optimizeGarageDressingSteps(root, options);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
 }

@@ -44,9 +44,9 @@ interface SoloBattleEntryRuntimeOptions {
    * Entry resilience (2026-09-25): show the player why the battle did not
    * start, after the recovered Garage is painted and the loader has faded.
    * Demand-loaded by the composition root; a failed notice never masks the
-   * original failure.
+   * original failure. `retry` runs the same entry again: the notice's one action (loading states, 2026-10-27).
    */
-  presentFailure?(error: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
+  presentFailure?(error: RuntimeValue, retry: () => void): Promise<RuntimeValue> | RuntimeValue;
   /** Beacon port: the bounded outcome of a failed solo entry. */
   onFailure?(error: RuntimeValue): void;
 }
@@ -114,7 +114,7 @@ export function createSoloBattleEntryRuntime({
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
       try {
-        await presentFailure(error);
+        await presentFailure(error, () => { void begin(specId, mapId, options); });
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
       }

@@ -16,6 +16,7 @@
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
 //     [--out=outputs/battle-hud-overlap]
+// A --case outside CASES runs as its own window: WxH with a mouse, WxHt on touch (--case=1210x702t,744x1001t, the iPads).
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -71,7 +72,9 @@ const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['
 const report = [];
 let failures = 0;
 try {
-  for (const [name, width, height, touch] of CASES) {
+  const extra = arg('case', '').split(',').filter((name) => /^\d+x\d+t?$/.test(name) && !CASES.some(([known]) => known === name))
+    .map((name) => { const [width, height] = name.replace('t', '').split('x').map(Number); return [name, width, height, name.endsWith('t')]; });
+  for (const [name, width, height, touch] of [...CASES, ...extra]) {
     if (arg('case', '') && !arg('case', '').split(',').includes(name)) continue;
     for (const state of STATES) {
       if (arg('state', '') && !arg('state', '').split(',').includes(state)) continue;

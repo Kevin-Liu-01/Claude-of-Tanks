@@ -59,14 +59,17 @@ assert.match(battleIntent, /battleMode === 'solo'/,
   'only solo mode may start the solo roster/world warm');
 assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
   'network modes should warm their own selected path');
+// (d82a48e34e, Proving Ground is a mode) the warm's map is the field the battle will be fought on: a mode with its own
+// battlefield (rulesetBattlefield) warms that one, any other the selected map (garage.ts fieldMapId)
+assert.match(battleIntent, /mapId: fieldMapId\(\)/, 'the solo warm takes the battle\'s field, not the selected map alone');
 class IntentNode {}
-for (const mode of ['solo', 'private', 'lan']) {
+for (const [mode, field] of [['solo', 'coastal'], ['solo', 'proving_ground'], ['private', 'coastal'], ['lan', 'coastal']]) {
   const calls = [], idle = [], multiplayerTarget = new IntentNode();
   // (click-perf-244) the callback queues its warm for an idle slot, once, however many intents arrive first
-  const intent = new Function('opts', 'battleMode', 'Node', 'multiplayerEntry', 'selectedId', 'selectedMapId',
+  const intent = new Function('opts', 'battleMode', 'Node', 'multiplayerEntry', 'selectedId', 'fieldMapId',
     'battleIntentQueued', 'requestIdleCallback', `return ${stripTypeScriptTypes(battleIntent)};`)(
     { onBattleIntent: value => calls.push(['solo', value]), onPlayModeIntent: value => calls.push(['network', value]) },
-    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', 'coastal', false, (run) => idle.push(run));
+    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', () => field, false, (run) => idle.push(run));
   intent({ target: multiplayerTarget });
   assert.deepEqual([calls, idle.length], [[], 0], 'multiplayer configuration must not warm a solo battle');
   intent({ target: new IntentNode() });
@@ -75,8 +78,8 @@ for (const mode of ['solo', 'private', 'lan']) {
   assert.equal(idle.length, 1, `${mode}: one warm however many intents arrive before it runs`);
   idle.shift()();
   assert.deepEqual(calls, mode === 'solo'
-    ? [['solo', { specId: 'm1a1', mapId: 'coastal' }]] : [['network', mode]],
-  `${mode}: actual callback warms only its selected path`);
+    ? [['solo', { specId: 'm1a1', mapId: field }]] : [['network', mode]],
+  `${mode}: actual callback warms only its selected path (${field})`);
 }
 
 // the strip carries one delegated set of card listeners (perf 249): a pointer crossing into a card starts the dwell warm,

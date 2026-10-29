@@ -987,8 +987,8 @@
    "group": "fleet",
    "vehicle": "m1a2",
    "title": {
-    "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
-    "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+    "en": "An M1A1 Abrams HC knocks out a T-90M Proryv at Kestrel Airfield in the morning",
+    "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "M1A1 Abrams HC, Kestrel Airfield",
@@ -3157,6 +3157,40 @@
    "durationMs": 6600,
    "scene": "/media/site50-r14/scenes/s142-ru-t72b3-modern-whiteout.scene.json",
    "thumb": "/media/site50-r14/fleet/ru_t72b3_modern.jpg"
+  },
+  {
+   "id": "s253-type10-dozer-mangrove",
+   "group": "fleet",
+   "vehicle": "type10_dozer",
+   "title": {
+    "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+    "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+   },
+   "short": {
+    "en": "Type 10 Kaitaku, Mangrove Reach",
+    "zh": "Type 10 Kaitaku，红树林水道"
+   },
+   "map": "mangrove",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json",
+   "thumb": "/media/site50-r14/fleet/type10_dozer.jpg"
+  },
+  {
+   "id": "s208-m60a3-copper-mesa",
+   "group": "fleet",
+   "vehicle": "m60a3",
+   "title": {
+    "en": "An M60A3 knocks out a T-64BV1 at Copper Mesa Mine",
+    "zh": "一辆 M60A3 在铜台地矿场击毁一辆 T-64BV1"
+   },
+   "short": {
+    "en": "M60A3, Copper Mesa Mine",
+    "zh": "M60A3，铜台地矿场"
+   },
+   "map": "copper_mesa",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json",
+   "thumb": "/media/site50-r14/fleet/m60a3.jpg"
   }
  ]
 }
