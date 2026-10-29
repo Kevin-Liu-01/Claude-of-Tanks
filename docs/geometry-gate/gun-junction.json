@@ -236,7 +236,7 @@
   "xk2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"98724b45b165e578","gun":"df234ddd933b1475"}},
   "ztz100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6e0048c44c4849dd","gun":"795d1d2f602897e1"}},
   "ztz100_prototype": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8bfa2e4837f824e7","gun":"51f6e4f11daba255"}},
-  "ztz85_iii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2692848700193d77","gun":"dc17131956f3dcec"}},
+  "ztz85_iii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2692848700193d77","gun":"63913cc84dc499fd"}},
   "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c770d7cbd38b31dc","gun":"037191e19cf582d3"}},
   "ztz99a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"53d7f9f8d1b85ff1","gun":"ca5600f2c3578d4f"}},
   "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"284804a89b2d5c11","gun":"f9f012f1579d8e6d"}}
