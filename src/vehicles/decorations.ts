@@ -2767,14 +2767,26 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
   ],
   // 264: the Leopard 2A4 on the release construction. Its kit (profiles/leopard2A4Kit.ts) draws the bustle rack and its
-  // load, the whips, the bow shackles and the wall crosses, and carries the spare links on the glacis as the photographed
-  // 2A4s do, so the decor keeps only the field load the kit does not (a second basket leaned off the bustle's corner and
-  // four links on the turret wall hid the cross; no 2A4 photograph shows either)
+  // load, the bow shackles and the wall crosses, and carries the spare links on the glacis as the photographed 2A4s do,
+  // so the decor keeps the standing whips and the field load the kit does not (a second basket leaned off the bustle's
+  // corner and four links on the turret wall hid the cross; no 2A4 photograph shows either)
   leo2a4: () => [
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
+    // on the deck's back corners as on the 262 family (the release hull's hullRearRack slot resolves under the bustle,
+    // which tipped them up its corner)
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1, back: true }] },
+  ],
+  // 264: the Stridsvagn 121 on the release construction. Its kit (profiles/leopard2A4Strv121Kit.ts) draws the radios'
+  // whips, the Swedish rear basket and its load, and the field suit dresses the hull, so the decor keeps the cans, tools
+  // and shackles (the fleet default hung four links on the turret wall, which no Strv 121 photograph shows)
+  strv121: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   xk2_black_panther: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.38, h: 0.3 }, slot: ['turretRearFrame', {}] },

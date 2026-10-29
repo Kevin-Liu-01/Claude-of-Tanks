@@ -360,7 +360,7 @@ const CHEEK = Object.freeze({ stations: 10, gap: 0.012, depth: 0.0588, embed: 0.
  * stations, and on the right wedge cut ~10 cm lower than the sampler's planes over the EMES 15's port channel), sunk 8 mm
  * at its lowest point.
  */
-const TOP = Object.freeze({ courses: 7, gap: 0.016, depth: 0.0588, lid: 0.011, sink: 0.008, edge: 0.012, inner: 0.275,
+const TOP = Object.freeze({ courses: 7, gap: 0.008, depth: 0.0588, lid: 0.011, sink: 0.008, edge: 0.012, inner: 0.275,
   /** The right wedge's housing clearance (the housing's front runs z 1.66..1.79) and the window's foot: cassettes in the
    *  sight's lane stay under it. */
   emesBackZ: 1.82, emesLane: Object.freeze([0.47, 0.98] as const), windowFootY: 0.68 });
@@ -727,7 +727,7 @@ function turretKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
   bustleFit(P);
   // the cross on the left wall and the number on the right, over the cassettes
   P.decal('turret', 'crossgrey', null, 0.20, [TS.wallLeft + 0.002, 0.57, 0.43], Math.PI / 2);
-  P.decal('turret', 'number', 'A6M', 0.17, [-(TS.wallRight + 0.002), 0.57, 0.43], -Math.PI / 2);
+  P.decal('turret', 'number', null, 0.17, [-(TS.wallRight + 0.002), 0.57, 0.43], -Math.PI / 2);
 }
 
 /** The Leopard 2A4 OTCO's kit, after the hull and the turret. */
