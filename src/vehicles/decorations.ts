@@ -62,7 +62,6 @@ import {
   vehicleAmbientFloorHook, registerVehicleMaterial, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
 } from './materials.ts';
-import { LONGWEI_FAMILY_IDS } from './longweiFamilyConfig.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
 import { VEHICLE_ERAS, decorEraOverrideForId, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
@@ -3204,10 +3203,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
   // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts): a decor
-  // pair would double them, and a roll on a turret side stood against the blocks' outer faces. Release 264: so does
-  // every Longwei-family concept on its turret (critic round 4 on the Xuanwu: a tarp roll ran into the banks and the
-  // decor pair stood above the roofline as a comb).
-  if (spec.id === 'ztz99_longwei' || (LONGWEI_FAMILY_IDS as readonly string[]).includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke'
+  // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
+  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or

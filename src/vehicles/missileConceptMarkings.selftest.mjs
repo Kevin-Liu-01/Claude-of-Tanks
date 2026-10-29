@@ -8,7 +8,7 @@ import { createTankState } from '../sim/movement.ts';
 
 const ids = ['ztz100_prototype', 'object695'];
 const results = [];
-assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor).sort(), ['amx10p_25', 'object695', 'ztz99_longwei'],
+assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor).sort(), ['amx10p_25', 'object695'],
   'only explicitly fitted permanent side armor can receive hull markings');
 assert.equal(vehicleMarkingIncludesPermanentHullArmor('unknown'), false);
 assert.equal(vehicleMarkingIncludesPermanentHullArmor(null), false);

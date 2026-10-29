@@ -123,8 +123,6 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t84:b32Nsvt,t90:b32Nsvt,t90a_2004:b32Nsvt,t90a_burlak_proto:b32Nsvt,t90a_burlak:b32Nsvt,t90a_2006:b32Nsvt,
   t90am:b32Nsvt,t90sm_2013:b32Nsvt,
   type59:type54,ztz99_longwei:type54,ztz85_iii:type54,ztz99a2:type54,ztz99a:type54,
-  // release 264: the Longwei family's roof guns (its QJC-88 pintles and the Qinglong's remote 12.7 mm)
-  ztz99a2_qinglong:type54,vt4a1_baihu:type54,t72b3_zhuque:type54,t72b3m_xuanwu:type54,
 };
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {

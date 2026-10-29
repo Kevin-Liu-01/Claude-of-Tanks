@@ -234,16 +234,11 @@ function addHullBody(P: TankBuilderPort): void {
 }
 
 /** Fenders: the flat shelves over both tracks, the curved front mudguards over the idlers (the T-54's deep scoops,
- * with a down-turned outer lip and three pressed ribs) and short rear flaps behind the sprockets. Release 264 (envelope
- * honesty): sheet metal, not the hull's armour (in `hull` the shelves set the anatomy's armour envelope 0.585 m out from
- * the hull sides a side); painted bodywork, its silhouette and paint kept. */
+ * with a down-turned outer lip and three pressed ribs) and short rear flaps behind the sprockets. */
 function addFenders(P: TankBuilderPort): void {
   const { box } = KIT;
   const shelfZ0 = -2.94, shelfZ1 = 2.58;
-  for (const side of [-1, 1]) {
-    const x0 = HULL_HALF_W - 0.01, x1 = FENDER_OUT;
-    P.add('hullFixedPaintedBodywork', box(x1 - x0, 0.03, shelfZ1 - shelfZ0), side * (x0 + x1) / 2, FENDER_Y, (shelfZ0 + shelfZ1) / 2);
-  }
+  KIT.fenders(P, HULL_HALF_W - 0.01, FENDER_OUT, FENDER_Y, shelfZ0, shelfZ1, 0.03);
   const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.74, FENDER_Y + 0.005], [2.87, FENDER_Y - 0.035],
     [2.97, FENDER_Y - 0.10], [3.035, FENDER_Y - 0.19], [3.05, FENDER_Y - 0.27]];
   for (const side of [-1, 1]) {
@@ -251,23 +246,23 @@ function addFenders(P: TankBuilderPort): void {
     // the scoop runs in to the glacis edge (the tub's ±0.98: the upper hull ends at the fender line), and a short
     // plate closes the deck corner between the upper hull's end and the scoop
     const s0 = side > 0 ? TUB_HALF_W - 0.01 : -FENDER_OUT, s1 = side > 0 ? FENDER_OUT : -(TUB_HALF_W - 0.01);
-    P.addMudguard('type59-front-scoop', 'hullFixedPaintedBodywork', bentPlateX(scoop, s0, s1, 0.028));
+    P.addMudguard('type59-front-scoop', 'hull', bentPlateX(scoop, s0, s1, 0.028));
     const upperEnd = GLACIS_TOP_Z + (ROOF_Y - (TUB_TOP_Y + 0.04)) / UPPER_GLACIS_TAN, cornerZ0 = upperEnd - 0.005;
     P.add('hull', box(HULL_HALF_W - TUB_HALF_W, 0.028, scoop[0][0] - cornerZ0), side * (TUB_HALF_W + HULL_HALF_W - 0.02) / 2,
       FENDER_Y + 0.001, (cornerZ0 + scoop[0][0]) / 2);
     // the scoop's outer lip turns down along its curve, shallow over the idler's wrap and 0.10 m at the nose (262
     // track-clip gate: a uniform 0.12 m lip dropped into the track's outer edge over the idler)
-    P.add('hullFixedPaintedBodywork', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
+    P.add('hull', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
     // pressed stiffening ribs along the scoop
     for (const f of [0.25, 0.5, 0.75]) {
       const x = side * (HULL_HALF_W + (FENDER_OUT - HULL_HALF_W) * f);
       P.add('hullDetail', bentPlateX(scoop.slice(0, 5).map(([z, y]) => [z, y + 0.012] as [number, number]), x - 0.012, x + 0.012, 0.012));
     }
     // the rear flap behind the sprocket, turned down
-    P.addMudguard('type59-rear-flap', 'hullFixedPaintedBodywork', bentPlateX([[-3.03, FENDER_Y - 0.13], [-3.00, FENDER_Y - 0.02], [shelfZ0 + 0.02, FENDER_Y + 0.015]],
+    P.addMudguard('type59-rear-flap', 'hull', bentPlateX([[-3.03, FENDER_Y - 0.13], [-3.00, FENDER_Y - 0.02], [shelfZ0 + 0.02, FENDER_Y + 0.015]],
       x0 + side * 0.02, x1 - side * 0.0, 0.026));
     // the shelf's turned-down outer lip, 7 cm deep, closing most of the view onto the track's upper run
-    P.add('hullFixedPaintedBodywork', box(0.012, 0.07, shelfZ1 - shelfZ0), side * (FENDER_OUT - 0.006), FENDER_Y - 0.04, (shelfZ0 + shelfZ1) / 2);
+    P.add('hull', box(0.012, 0.07, shelfZ1 - shelfZ0), side * (FENDER_OUT - 0.006), FENDER_Y - 0.04, (shelfZ0 + shelfZ1) / 2);
   }
 }
 

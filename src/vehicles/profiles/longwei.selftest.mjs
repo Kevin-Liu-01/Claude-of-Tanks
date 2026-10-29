@@ -25,16 +25,12 @@ for (const quality of ['high', 'low']) {
       return object;
     };
 
-    // hull: the armour shell 7.12 m from the stern plate to the nose over ±1.70 sponsons; the stern rack to −3.96 (7.58 m
-    // overall), the fenders and skirt band to ±1.856 and the skirt course to ±1.866 (3.73 m). Release 264 (envelope
-    // honesty): the rack is equipment, the fenders painted bodywork and the skirts spaced armour, none the hull's armour.
+    // hull: 7.58 m from the stern rack to the nose, ±1.857 sponsons, the single skirt course inside ±1.866 (3.73 m)
     const hull = box(named('hull'));
-    near(hull.min.z, -3.500, `${quality} stern plate`);
+    near(hull.min.z, -3.960, `${quality} stern`);
     near(hull.max.z, 3.616, `${quality} nose`);
-    near(hull.max.x, 1.700, `${quality} hull half width`);
-    near(-hull.min.x, 1.700, `${quality} hull half width (right)`);
-    near(box(named('hullEquipment')).min.z, -3.960, `${quality} stern rack`);
-    near(box(named('hullFixedPaintedBodywork')).max.x, 1.856, `${quality} fender half width`);
+    near(hull.max.x, 1.857, `${quality} hull half width`);
+    near(-hull.min.x, 1.857, `${quality} hull half width (right)`);
     near(box(named('hullExternalArmor')).max.x, 1.866, `${quality} skirt course half width`);
 
     // turret: 3.14 m over the side modules (±1.57), the roof at 2.35 m, the rear wall at local −2.60 on the 0.64 ring

@@ -91,10 +91,3 @@ its pinned datums (ring 0/1.57/0.64, trunnion 0/0.3198/0.74, the 6.454 m 125 mm 
 envelope within 3% at both qualities (3.732 m wide, 11.811 m long, 3.668 m to the whip tips) and its native fixture
 `src/vehicles/profiles/longwei.selftest.mjs` (hull, skirts, turret, basket, commander's station, muzzle and a closed
 roof at both qualities). Its variants are unchanged; the ZTZ-99A2 and the VT-4A1 keep their own comparison registrations.
-
-## Release 264: face-fitted cheek modules and envelope honesty
-
-The two dual-reactive modules on each cheek face are blocks whose corners lie on the face, their tops parallel to its
-rising top edge (they were boxes whose inner top corners stood 1 cm past it). The fender shelves, front fender boxes and
-hood cheeks are painted bodywork, the skirts spaced armour and the stern rack equipment, so the anatomy's armour envelope
-is the 3.40 x 7.12 m hull shell. See `docs/references/tanks/longwei_family.md`.

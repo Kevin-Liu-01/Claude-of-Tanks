@@ -16,8 +16,7 @@ import {
   type ChevronStation,
 } from './chineseChevron.ts';
 import { buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
-import { buildLongwei, buildLongweiTurret } from './longwei.ts';
-import { LONGWEI_FAMILY } from '../longweiFamilyConfig.ts';
+import { buildLongwei } from './longwei.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { TYPE100_PROFILES } from './type100.ts';
 import { ZTZ20_PROFILES } from './ztz20.ts';
@@ -513,23 +512,9 @@ const buildVT4A1 = steppedBuilder(function* (P: FrontlinePort): TankProfileBuild
   }
 });
 
-/** Release 264 (owner 2026-10-28): the Longwei family's two members on the ZTZ-99A2 / VT-4A1 hull (longweiFamilyConfig.ts),
- * each the shared hull under a modernized Longwei turret on the VT-4A1's ring; the Baihu carries its number on the
- * hull's flank as the VT-4A1 does. */
-const LONGWEI_FAMILY_99_PROFILES = Object.fromEntries(LONGWEI_FAMILY
-  .filter((m) => m.host === 'ztz99a2' || m.host === 'vt4a1')
-  .map((m) => [m.id, Object.freeze({ build: steppedBuilder(function* (P: FrontlinePort): TankProfileBuild {
-    buildZTZ99A2Hull(P);
-    yield 'hull';
-    buildLongweiTurret(P, m.kit);
-    if (m.host === 'vt4a1') P.decal('hull', 'number', P.spec.visual.number || m.number, 0.25, [1.82, 1.30, 0.84], Math.PI / 2);
-    P.hullG.userData.longweiFamily = Object.freeze({ host: m.host, sharedHullBuilder: 'buildZTZ99A2Hull', turret: m.kit.revision });
-  }) })]));
-
 export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),
   ztz99_longwei: Object.freeze({ build: buildLongwei }),
-  ...LONGWEI_FAMILY_99_PROFILES,
   ...TYPE100_PROFILES,
   ...ZTZ20_PROFILES,
   ...ZTZ100_PROTOTYPE_PROFILES,

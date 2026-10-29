@@ -412,9 +412,3 @@ Track clip (262 release gate, strict exact audit): the upper hull's underside ro
 since the pads rode 2-3 cm into the 9 cm overhang over the wheels and both wraps. The tub meets the glacis where the upper
 hull ends (z 2.52), the front scoops run in to the glacis edge (±0.97) with a short corner plate, and the scoop's outer lip
 tapers 0.045 → 0.10 m so it clears the belt's outer edge over the idler. Band and pad cells: 108/0 + 15-17 → 0/0 + 0.
-
-## Release 264: envelope honesty
-
-The T-54 family's fender shelves, front scoops and their lips, the shelf lips and the rear flaps are painted bodywork
-(`hullFixedPaintedBodywork`), not the hull's armour: in `hull` they set the anatomy's armour envelope 0.585 m out from
-the hull sides on each side. The envelope is now the 2.14 x 6.00 m hull. See `docs/references/tanks/longwei_family.md`.

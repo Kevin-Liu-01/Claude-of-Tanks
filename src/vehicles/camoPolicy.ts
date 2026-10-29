@@ -148,17 +148,6 @@ const RELEASE_233_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_233_SIGNATURE_
   sig_m1a1_abrams_fep: 'M1A1 FEP USMC Woodland',
   sig_m60a3: 'M60A3 MERDC Woodland',
 });
-/** Release 264 (owner 2026-10-28): the Longwei family's own Signatures, each in its symbol's colour. Appended after every
- * earlier id, so no serialized index moves. */
-const RELEASE_264_SIGNATURE_IDS = Object.freeze([
-  'sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu',
-] as const);
-const RELEASE_264_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_264_SIGNATURE_IDS[number], string>> = Object.freeze({
-  sig_ztz99a2_qinglong: 'Qinglong Azure Digital',
-  sig_vt4a1_baihu: 'Baihu Desert Digital',
-  sig_t72b3_zhuque: 'Zhuque Red Earth',
-  sig_t72b3m_xuanwu: 'Xuanwu Night Digital',
-});
 const AUTHORED_PAINT_IDS_BEFORE_GT = AUTHORED_PAINT_IDS.filter(
   (id): id is Exclude<typeof id, AuthoredPaintIdAfterGt> => !isAuthoredPaintIdAfterGt(id));
 
@@ -170,7 +159,6 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
   ...AUTHORED_PAINT_IDS_AFTER_262,
-  ...RELEASE_264_SIGNATURE_IDS,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -304,7 +292,6 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
   ...RELEASE_233_SIGNATURE_LABEL,
-  ...RELEASE_264_SIGNATURE_LABEL,
 } as Record<CamoPatternId, string>);
 
 /**
@@ -542,16 +529,6 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#35453a', weather: '#4a5847', patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43 }),
   preset('sig_ztz99a2', 'ztz99a2', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#36463a', weather: '#4c5a49', patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43 }),
-  // release 264: the Longwei family, each in its symbol's colour (azure, white-sand, vermilion earth, black)
-  preset('sig_ztz99a2_qinglong', 'ztz99a2_qinglong', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#3d4a45', weather: '#4f5c55', patches: ['#26302d', '#5b6a5e', '#7a7558'], camoScale: 0.40 }),
-  preset('sig_vt4a1_baihu', 'vt4a1_baihu', signatureTags('cn', 'desert', 'digital'),
-    { scheme: 'digital', base: '#8c7f5e', weather: '#a39572', patches: ['#5e5240', '#b8a983', '#6d6a4f'], camoScale: 0.42 }),
-  preset('sig_t72b3_zhuque', 't72b3_zhuque', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#5b5a3f', weather: '#6c6a4c', patches: ['#7a4f36', '#333a2b', '#8d8360'], camoScale: 0.44 }),
-  // (critic round 1: the darker coat lost the side modules' shape)
-  preset('sig_t72b3m_xuanwu', 't72b3m_xuanwu', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#3a4540', weather: '#4c5850', patches: ['#222a26', '#5a675a', '#6c6650'], camoScale: 0.42 }),
   // Broad olive/sage digital fields with subdued earth and charcoal accents.
   // Six-centimetre cells stay readable on armor without the fine grey speckle.
   preset('sig_type100', 'type100', signatureTags('cn', 'woodland', 'digital'),
@@ -783,7 +760,6 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   'type10b', 'type90_kyumaru', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
   'type59', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'type100', 'ztz100',
-  'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
   // Russia — the Object 695 owns its own digital service paint.
   'object695',
   // Poland — PL-01 itself owns the national Factory reference.

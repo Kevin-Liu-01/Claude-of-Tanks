@@ -123,14 +123,11 @@ for (const audit of [
 for (const audit of [
   {
     id: 'vt4a1', receipt: 'vtFamilyTurretReceipt',
-    // release 264 (main-reds 261): since the 241 regen published its turretRing row, the turret seat
-    // (turretSeatRace.ts seatTurretOverDeck) stands the low chevron corner on its seat plane, 0.1028 -> 0.1514
-    permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1514, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
+    permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1028, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
   },
   {
     id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt',
-    // release 264: the same seat stands its low chevron corner on the seat plane, -0.02 -> 0.1525
-    permanentPoints: [[-0.62, 0.81, 0.18], [0.78, 0.1525, 0.70]], channel: { halfWidth: 0.40, minZ: 0.62 },
+    permanentPoints: [[-0.62, 0.81, 0.18], [0.78, -0.02, 0.70]], channel: { halfWidth: 0.40, minZ: 0.62 },
   },
 ]) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
