@@ -88,7 +88,7 @@ function hullScene() {
     assert.equal(faceValues(meshes.indexed.geometry, axis).length, 1, `an indexed box: one value a face (${axis})`);
   }
   assert.ok([...meshes.gear.geometry.getAttribute('apZone').array].every((v) => v === -1), 'gear above the hull\'s cells is bare');
-  assert.equal(meshes.tyre.geometry.getAttribute('apZone'), undefined, 'an unpainted draw carries no panels');
+  assert.ok(meshes.tyre.geometry.getAttribute('apZone') === undefined, 'an unpainted draw carries no panels');
   assert.ok([...meshes.twinA.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a geometry drawn twice keeps the per-point score');
   assert.equal(stats.shared, 1);
   assert.ok(stats.baked > 0 && stats.bare > 0 && stats.clusters > 0 && stats.votes <= 4 * stats.triangles, `the tally (${JSON.stringify(stats)})`);

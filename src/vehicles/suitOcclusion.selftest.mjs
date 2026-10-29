@@ -68,7 +68,7 @@ const shadeAt = (mesh, x, z) => {
   const deck = new THREE.Mesh(plate(1, 4, 1), paint);
   root.add(deck);
   assert.equal(drain(bakeSuitOcclusionSteps(root, [])), null, 'no suit: no bake');
-  assert.equal(deck.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE), undefined, 'no suit: no attribute');
+  assert.ok(deck.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE) === undefined, 'no suit: no attribute');
   assert.deepEqual(paint.defaultAttributeValues?.[VEHICLE_SUIT_OCCLUSION_ATTRIBUTE], [0], 'a registered vehicle material reads 0 without it');
   const direct = withSuitShadeDefault(new THREE.MeshStandardMaterial());
   assert.deepEqual(direct.defaultAttributeValues?.[VEHICLE_SUIT_OCCLUSION_ATTRIBUTE], [0], 'a material compiling the hook directly too');
