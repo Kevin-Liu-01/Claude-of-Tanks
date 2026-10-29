@@ -516,8 +516,13 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       lights.position.set(side * fx, fy, fz);
       P.hullG.add(lights);
       P.add('hullDark', box(0.12, fy - H.fenderY + 0.02, 0.10), side * fx, (fy + H.fenderY) / 2 - 0.05, fz - 0.06);
-      for (const dx of [-0.06, 0, 0.06]) bar(P, 'hullDark', [side * (fx + dx), fy - 0.06, fz - 0.08], [side * (fx + dx), fy + 0.07, fz + 0.16], 0.01);
-      P.add('hullDark', box(0.16, 0.012, 0.012), side * fx, fy + 0.07, fz + 0.16);
+      // the big tubular U guard: two legs from the fender up and forward round the lamps, the hoop across their front
+      const gy = fy + 0.16, gz = fz + 0.18;
+      for (const dx of [-0.17, 0.17]) {
+        bar(P, 'hullDark', [side * (fx + dx), H.fenderY, fz - 0.12], [side * (fx + dx), gy, fz + 0.02], 0.016);
+        bar(P, 'hullDark', [side * (fx + dx), gy, fz + 0.02], [side * (fx + dx), gy - 0.06, gz], 0.016);
+      }
+      bar(P, 'hullDark', [side * (fx - 0.17), gy - 0.06, gz], [side * (fx + 0.17), gy - 0.06, gz], 0.016);
       continue;
     }
     if (H.bowLights) {
@@ -1781,7 +1786,7 @@ const M60_HULL_SPEC: PershingHullSpec = {
   sponsonHW: 1.30, sponsonY: 1.46, fenderHW: 1.82, fenderY: 1.52, trackW: 0.71, xc: 1.46,
   // the fender level from the rear corner, sloping down over the idler at the bow
   fenderLine: [[-3.56, 1.40], [-3.32, 1.52], [2.95, 1.52], [3.25, 1.45], [3.56, 1.25]],
-  fenderBoxH: 0.26, fenderBoxX: [1.32, 1.78], fenderBoxes: [[2.85, 2.10], [1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
+  fenderBoxH: 0.26, fenderBoxX: [1.32, 1.78], fenderBoxes: [[1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
   mufflers: false, frontFlap: false, noseDepth: 0.37, driverHatchX: [0], fenderLights: [1.62, 1.42, 3.05],
   gear: {
     wheelR: 0.34, wheelY: 0.428, span: [2.01, -2.296], wheelZs: [-2.296, -1.427, -0.591, 0.259, 1.141, 2.010],
@@ -1895,48 +1900,47 @@ function m60Mantlet(q: boolean | undefined): Geo {
 // The M60A2 "Starship" (the owner's model, registered to the A1's frame by its turret ring: .qa-dev/m60-265/a2-recipe.json):
 // the A1's hull under its own low turret, a wide cast skirt round the ring under a narrow upper body that runs from the
 // launcher's mantlet to a wide bustle, the big commander's cupola on top.
-// the lower casting: a big full dome on the ring (the model's: 1.33 m out at the ring's centre line, still 1.07 m out at
-// 2.14 m before its shoulder rolls over at 2.24 m), its chin reaching 0.5 m forward under the mantlet so the gun's
-// assembly seats in it (the owner, 2026-10-28: "the round dome on the bottom side its turret should be a lot bigger annnd
-// fit the gunn assembly"), and back under the bustle
+// The Starship's two castings (the owner's model and the Fort Hood, Army Aviation museum and field photographs): a broad,
+// low, smooth dome on the ring almost as wide as the hull (1.31 m out, its rim just over the deck, the owner: "the round
+// dome on the bottom side its turret should be a lot bigger annnd fit the gunn assembly"), its front meeting the
+// mantlet's foot; on it the narrow upper turret, 1.3 m across with rounded edges, from the mantlet back to the cupola's
+// rear edge, where the open rack takes over.
 const M60A2_SKIRT: readonly CastStation[] = [
-  // (under the mantlet the chin is a low lip, clear of the mantlet's foot at the gun's -9 deg)
-  { z: 2.30, bot: 1.74, top: 1.86, hw: 0.55, roof: 0.78, foot: 0.90, waist: 0.40, nUp: 3.2, nLo: 2.4 },
-  { z: 2.16, bot: 1.72, top: 1.88, hw: 0.76, roof: 0.78, foot: 0.92, waist: 0.40, nUp: 3.2, nLo: 2.4 },
-  { z: 2.00, bot: 1.71, top: 1.92, hw: 0.88, roof: 0.78, foot: 0.93, waist: 0.35, nUp: 3.2, nLo: 2.6 },
-  { z: 1.80, bot: 1.74, top: 2.23, hw: 0.96, roof: 0.78, foot: 0.94, waist: 0.18, nUp: 3.2, nLo: 2.6 },
-  { z: 1.62, bot: 1.70, top: 2.24, hw: 1.03, roof: 0.78, foot: 0.94, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: 1.40, bot: 1.70, top: 2.23, hw: 1.08, roof: 0.78, foot: 0.95, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: 1.10, bot: 1.70, top: 2.24, hw: 1.22, roof: 0.78, foot: 0.95, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: 0.80, bot: 1.70, top: 2.24, hw: 1.30, roof: 0.78, foot: 0.96, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: 0.50, bot: 1.70, top: 2.24, hw: 1.33, roof: 0.78, foot: 0.96, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: 0.20, bot: 1.70, top: 2.24, hw: 1.31, roof: 0.78, foot: 0.96, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: -0.10, bot: 1.70, top: 2.23, hw: 1.25, roof: 0.78, foot: 0.96, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: -0.40, bot: 1.71, top: 2.24, hw: 1.17, roof: 0.78, foot: 0.95, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: -0.65, bot: 1.74, top: 2.22, hw: 1.13, roof: 0.78, foot: 0.94, waist: 0.16, nUp: 3.2, nLo: 2.6 },
-  { z: -0.82, bot: 1.78, top: 2.18, hw: 1.08, roof: 0.78, foot: 0.92, waist: 0.18, nUp: 3.2, nLo: 2.6 },
+  { z: 1.95, bot: 1.74, top: 2.00, hw: 0.66, roof: 0.35, foot: 0.92, waist: 0.10, nUp: 2.0, nLo: 3 },
+  { z: 1.80, bot: 1.72, top: 2.10, hw: 0.86, roof: 0.35, foot: 0.94, waist: 0.08, nUp: 2.0, nLo: 3 },
+  { z: 1.60, bot: 1.72, top: 2.16, hw: 1.02, roof: 0.35, foot: 0.95, waist: 0.07, nUp: 2.0, nLo: 3 },
+  { z: 1.30, bot: 1.72, top: 2.20, hw: 1.17, roof: 0.35, foot: 0.96, waist: 0.06, nUp: 2.0, nLo: 3 },
+  { z: 1.00, bot: 1.72, top: 2.22, hw: 1.26, roof: 0.35, foot: 0.96, waist: 0.06, nUp: 2.0, nLo: 3 },
+  { z: 0.60, bot: 1.72, top: 2.22, hw: 1.31, roof: 0.35, foot: 0.96, waist: 0.06, nUp: 2.0, nLo: 3 },
+  { z: 0.20, bot: 1.72, top: 2.22, hw: 1.30, roof: 0.35, foot: 0.96, waist: 0.06, nUp: 2.0, nLo: 3 },
+  { z: -0.20, bot: 1.72, top: 2.21, hw: 1.24, roof: 0.35, foot: 0.96, waist: 0.06, nUp: 2.0, nLo: 3 },
+  { z: -0.55, bot: 1.73, top: 2.18, hw: 1.12, roof: 0.35, foot: 0.95, waist: 0.07, nUp: 2.0, nLo: 3 },
+  { z: -0.85, bot: 1.75, top: 2.10, hw: 0.92, roof: 0.35, foot: 0.94, waist: 0.08, nUp: 2.0, nLo: 3 },
+  { z: -1.02, bot: 1.77, top: 1.98, hw: 0.60, roof: 0.35, foot: 0.92, waist: 0.10, nUp: 2.0, nLo: 3 },
 ];
 const M60A2_BODY: readonly CastStation[] = [
-  { z: 1.82, bot: 1.80, top: 2.48, hw: 0.60, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.03 },
-  { z: 1.66, bot: 1.80, top: 2.60, hw: 0.64, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.05 },
-  { z: 1.20, bot: 1.80, top: 2.60, hw: 0.70, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.05 },
-  { z: 0.60, bot: 1.80, top: 2.63, hw: 0.74, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.04 },
-  { z: 0.00, bot: 1.80, top: 2.64, hw: 0.76, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.04 },
-  { z: -0.50, bot: 1.80, top: 2.64, hw: 0.86, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.03 },
-  { z: -0.78, bot: 1.78, top: 2.62, hw: 1.22, roof: 0.70, foot: 0.92, waist: 0.40, nUp: 2.2, nLo: 3, crown: 0.02 },
-  { z: -1.42, bot: 1.86, top: 2.60, hw: 1.20, roof: 0.72, foot: 0.92, waist: 0.40, nUp: 2.2, nLo: 3, crown: 0.02 },
-  { z: -1.62, bot: 1.98, top: 2.56, hw: 0.92, roof: 0.72, foot: 0.90, waist: 0.40, nUp: 2.2, nLo: 3 },
-  { z: -1.80, bot: 2.04, top: 2.52, hw: 0.72, roof: 0.72, foot: 0.90, waist: 0.40, nUp: 2.2, nLo: 3 },
+  { z: 1.84, bot: 1.86, top: 2.46, hw: 0.60, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.03 },
+  { z: 1.66, bot: 1.84, top: 2.60, hw: 0.63, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.04 },
+  { z: 1.20, bot: 1.84, top: 2.62, hw: 0.65, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.04 },
+  { z: 0.60, bot: 1.84, top: 2.64, hw: 0.66, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.04 },
+  { z: 0.00, bot: 1.84, top: 2.64, hw: 0.66, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.04 },
+  { z: -0.50, bot: 1.84, top: 2.63, hw: 0.66, roof: 0.70, foot: 0.95, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.03 },
+  { z: -0.80, bot: 1.90, top: 2.58, hw: 0.62, roof: 0.70, foot: 0.94, waist: 0.45, nUp: 2.6, nLo: 3, crown: 0.02 },
+  { z: -0.92, bot: 2.00, top: 2.48, hw: 0.50, roof: 0.65, foot: 0.92, waist: 0.45, nUp: 2.6, nLo: 3 },
 ];
-/** The M60A2's mantlet (gun frame) under its canvas cover, read off the owner's model: rounded sections tapering from the
- * turret (1.23 x 0.83 m, its centre 3.5 cm right of the bore) to the front plate (1.0 x 0.49 m) 0.53 m out. */
-function m60a2Mantlet(q: boolean | undefined): Geo {
-  // z (along the bore), half-width, half-height, corner radius
-  const rows: readonly (readonly [number, number, number, number])[] = [
-    [-0.03, 0.615, 0.415, 0.14], [0.10, 0.61, 0.40, 0.14], [0.28, 0.58, 0.34, 0.12], [0.40, 0.54, 0.29, 0.10],
-    [0.53, 0.495, 0.245, 0.06],
-  ];
-  const n = q ? 4 : 2;
+/** The M60A2's mantlet (gun frame), read off the owner's model: rounded sections tapering from the turret (1.23 x 0.83 m,
+ * its centre 3.5 cm right of the bore) to the front plate (1.0 x 0.49 m) 0.53 m out. */
+const M60A2_MANTLET_ROWS: readonly (readonly [number, number, number, number])[] = [
+  [-0.03, 0.615, 0.415, 0.22], [0.10, 0.61, 0.40, 0.22], [0.28, 0.58, 0.34, 0.19], [0.40, 0.54, 0.29, 0.15],
+  [0.53, 0.495, 0.245, 0.10],
+];
+/** Its canvas cover's slack round the rear of the block, bulging past its sides where it meets the turret. */
+const M60A2_BOOT_ROWS: readonly (readonly [number, number, number, number])[] = [
+  [-0.06, 0.68, 0.44, 0.34], [0.04, 0.71, 0.44, 0.35], [0.14, 0.69, 0.42, 0.33], [0.23, 0.63, 0.38, 0.28],
+];
+function m60a2Mantlet(q: boolean | undefined, rows = M60A2_MANTLET_ROWS): Geo {
+  // rows: z (along the bore), half-width, half-height, corner radius
+  const n = q ? 6 : 4;
   const sections = rows.map(([z, w, h, r]) => {
     const ring: SectionPoint[] = [];
     // a rounded rectangle, counter-clockwise from the right side's middle
@@ -1964,37 +1968,32 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   P.add('turret', castSolid(M60A2_SKIRT, P.q, T.ringZ, T.ringY));
   P.add('turret', castSolid(M60A2_BODY, P.q, T.ringZ, T.ringY));
   yield 'm60a2TurretCasting';
-  // the commander's cupola (the model's): a wide armoured drum 1.38 m across at (0, -0.13) with its vision blocks round
-  // the rim, the upper body tapering from 0.62 to 0.45 m set back on it with its periscope housing at the front and its
-  // hatch on top; the M85 in its mount on the cupola's right flank with the ammunition box behind it
+  // the commander's cupola (the photographs and the model): a squat armoured dome 1.32 m across at (0, -0.13), its vision
+  // blocks sunk round its foot, its sides sloping in to the rounded crown and the hatch; the M85's housing, a rounded box
+  // flush with its right-front wall, the gun out of its face
   {
     const [cx, cz] = [0, -0.13];
     const roof = frameTop(T, cx, cz);
     const b0 = roof - 0.02;
-    P.add('turret', cylY(0.66, 0.69, 0.18, P.q ? 32 : 18), cx, L.y(b0 + 0.09), L.z(cz));
-    P.add('turretDetail', KIT.torus(0.675, 0.018, P.q ? 32 : 18), cx, L.y(b0 + 0.18), L.z(cz));
+    P.add('turret', cylY(0.64, 0.66, 0.12, P.q ? 36 : 18), cx, L.y(b0 + 0.06), L.z(cz));
     for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * Math.PI * 2;
-      P.add('turretDetail', box(0.13, 0.07, 0.05), cx + Math.sin(a) * 0.665, L.y(b0 + 0.11), L.z(cz + Math.cos(a) * 0.665), 0, a, 0);
-      P.add('turretGlass', box(0.10, 0.04, 0.012), cx + Math.sin(a) * 0.692, L.y(b0 + 0.11), L.z(cz + Math.cos(a) * 0.692), 0, a, 0);
+      const a = (k / 12) * Math.PI * 2 + Math.PI / 12;
+      if (Math.sin(a) < -0.45 && Math.cos(a) > -0.2) continue;
+      P.add('turretGlass', box(0.11, 0.05, 0.012), cx + Math.sin(a) * 0.655, L.y(b0 + 0.07), L.z(cz + Math.cos(a) * 0.655), 0, a, 0);
     }
-    const [ux, uz] = [-0.05, -0.20];
-    P.add('turret', cylY(0.45, 0.62, 0.48, P.q ? 30 : 16), ux, L.y(b0 + 0.42), L.z(uz));
-    P.add('turret', xform(sph(0.45, P.q ? 22 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.16, 1]), ux, L.y(b0 + 0.66), L.z(uz));
-    P.add('turretDark', cylY(0.28, 0.29, 0.04, P.q ? 22 : 12), ux + 0.02, L.y(b0 + 0.70), L.z(uz - 0.06));
-    P.add('turretDetail', box(0.30, 0.04, 0.08), ux + 0.02, L.y(b0 + 0.72), L.z(uz - 0.36));
-    // the periscope housing on the upper body's front, its window and brow
-    P.add('turret', moldedBox(0.42, 0.20, 0.26, 0.03, P.q ? 2 : 1, 0.015), ux, L.y(b0 + 0.56), L.z(uz + 0.42), -0.15, 0, 0);
-    P.add('turretGlass', box(0.32, 0.08, 0.012), ux, L.y(b0 + 0.57), L.z(uz + 0.555), -0.15, 0, 0);
-    P.add('turretDetail', box(0.46, 0.03, 0.10), ux, L.y(b0 + 0.67), L.z(uz + 0.50));
-    // the M85: its armoured cradle on the right flank, the receiver, the barrel and its jacket forward, the box behind
-    const mx = -0.70;
-    P.add('turret', moldedBox(0.22, 0.30, 0.52, 0.03, P.q ? 2 : 1, 0.015), mx, L.y(b0 + 0.48), L.z(cz + 0.02));
-    P.add('turretDark', box(0.12, 0.12, 0.40), mx, L.y(b0 + 0.56), L.z(cz + 0.30));
-    P.add('turretDark', cylZ(0.024, 0.85, 10), mx, L.y(b0 + 0.56), L.z(cz + 0.92));
-    P.add('turretDark', cylZ(0.036, 0.24, 10), mx, L.y(b0 + 0.56), L.z(cz + 0.60));
-    P.add('turretDark', xform(KIT.cylX(0.03, 0.06, 8), 0, 0, 0), mx, L.y(b0 + 0.56), L.z(cz + 1.36));
-    P.add('turretDetail', moldedBox(0.16, 0.24, 0.30, 0.02, 1, 0.01), mx - 0.02, L.y(b0 + 0.42), L.z(cz - 0.40));
+    P.add('turret', cylY(0.44, 0.64, 0.34, P.q ? 36 : 18), cx, L.y(b0 + 0.29), L.z(cz));
+    P.add('turret', xform(sph(0.44, P.q ? 24 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.32, 1]), cx, L.y(b0 + 0.46), L.z(cz));
+    P.add('turretDark', KIT.torus(0.30, 0.012, P.q ? 28 : 14), cx + 0.03, L.y(b0 + 0.58), L.z(cz - 0.06));
+    P.add('turretDetail', box(0.26, 0.04, 0.08), cx + 0.03, L.y(b0 + 0.58), L.z(cz - 0.38));
+    // the periscope's head on the crown's front, its window
+    P.add('turret', moldedBox(0.34, 0.14, 0.20, 0.03, P.q ? 2 : 1, 0.015), cx, L.y(b0 + 0.56), L.z(cz + 0.24), -0.20, 0, 0);
+    P.add('turretGlass', box(0.26, 0.06, 0.012), cx, L.y(b0 + 0.56), L.z(cz + 0.345), -0.20, 0, 0);
+    // the M85's housing on the right-front wall, the gun's jacket and barrel out of its face
+    const [mx, mz] = [cx - 0.40, cz + 0.40];
+    P.add('turret', moldedBox(0.45, 0.50, 0.60, 0.08, P.q ? 3 : 2, 0.03), mx, L.y(b0 + 0.30), L.z(mz));
+    P.add('turretDark', cylZ(0.045, 0.22, 10), mx, L.y(b0 + 0.30), L.z(mz + 0.40));
+    P.add('turretDark', cylZ(0.024, 0.66, 10), mx, L.y(b0 + 0.30), L.z(mz + 0.83));
+    P.add('turretDetail', moldedBox(0.18, 0.22, 0.30, 0.02, 1, 0.01), mx - 0.31, L.y(b0 + 0.22), L.z(mz - 0.05));
   }
   loaderHatch(P, T, 0.42, 0.62, 0.24);
   for (const x of [0.32, 0.52]) P.add('turretDark', box(0.05, 0.04, 0.26), x, L.y(frameTop(T, x, 0.62) + 0.075), L.z(0.62));
@@ -2015,28 +2014,52 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   P.add('turretDetail', cylY(0.10, 0.11, 0.07, P.q ? 16 : 10), 0.40, L.y(frameTop(T, 0.40, 0.30) + 0.03), L.z(0.30));
   P.add('turretDark', KIT.xform(KIT.torus(0.05, 0.015, 10), 0, 0, 0, 0, 0, Math.PI / 2), 0.40, L.y(frameTop(T, 0.40, 0.30) + 0.12), L.z(0.30));
   yield 'm60a2TurretRoof';
-  // the AN/VSS-3 searchlight in its box on the turret's left front, on its arm from the body (the model's: 1.25 m out
-  // from the body's side to 1.56, 1.97-2.67 high, 0.82-1.64 along), its lens forward
-  P.add('turretDetail', box(0.50, 0.20, 0.32), 0.62, L.y(2.30), L.z(1.20));
-  P.add('turret', moldedBox(0.72, 0.70, 0.82, 0.10, P.q ? 3 : 2, 0.04), 1.20, L.y(2.32), L.z(1.23));
-  P.add('turretDark', box(0.62, 0.60, 0.02), 1.20, L.y(2.32), L.z(1.645));
-  P.addModuleVisual('optics', 'turretGlass', cylZ(0.25, 0.02, P.q ? 22 : 12), 1.20, L.y(2.32), L.z(1.66));
-  // its handles, the cable from its back over the skirt into the body
-  for (const y of [2.05, 2.59]) P.add('turretDark', box(0.40, 0.03, 0.03), 1.20, L.y(y), L.z(1.62));
-  bar(P, 'turretDark', [1.20, L.y(2.40), L.z(0.80)], [0.98, L.y(2.30), L.z(0.55)], 0.02);
-  bar(P, 'turretDark', [0.98, L.y(2.30), L.z(0.55)], [0.72, L.y(2.42), L.z(0.30)], 0.02);
+  // the AN/VSS-3 searchlight on the dome's left front beside the upper turret (the photographs): its housing 0.62 x
+  // 0.55 m with rounded corners, its top level with the mantlet's, the 7 cm bezel round the recessed lens; the handles
+  // and the cable over the dome into the turret's flank
+  {
+    const [lx, ly, lz] = [0.99, 2.285, 1.22];
+    P.add('turretDetail', box(0.14, 0.18, 0.30), 0.70, L.y(2.20), L.z(lz));
+    P.add('turret', moldedBox(0.62, 0.55, 0.55, 0.10, P.q ? 3 : 2, 0.04), lx, L.y(ly), L.z(lz));
+    for (const [dx, dy, w, h] of [[0, 0.205, 0.48, 0.07], [0, -0.205, 0.48, 0.07], [0.205, 0, 0.07, 0.34], [-0.205, 0, 0.07, 0.34]] as const) {
+      P.add('turretDetail', box(w, h, 0.03), lx + dx, L.y(ly + dy), L.z(lz + 0.285));
+    }
+    P.add('turretDark', cylZ(0.17, 0.02, P.q ? 22 : 12), lx, L.y(ly), L.z(lz + 0.27));
+    P.addModuleVisual('optics', 'turretGlass', cylZ(0.15, 0.01, P.q ? 22 : 12), lx, L.y(ly), L.z(lz + 0.278));
+    for (const y of [ly + 0.30, ly - 0.30]) P.add('turretDark', box(0.36, 0.03, 0.03), lx, L.y(y), L.z(lz - 0.05));
+    bar(P, 'turretDark', [lx, L.y(ly + 0.10), L.z(lz - 0.28)], [0.90, L.y(2.30), L.z(0.80)], 0.02);
+    bar(P, 'turretDark', [0.90, L.y(2.30), L.z(0.80)], [0.67, L.y(2.40), L.z(0.40)], 0.02);
+  }
   // the smoke dischargers on the body's rear flanks, raked forward and up
   for (const side of [-1, 1]) {
     const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.04, len: 0.26, pitch: -0.65, splay: side * 0.55,
       arc: 0.4, spacing: 0.10, seed: side > 0 ? 614 : 615 });
-    bank.position.set(side * 0.95, L.y(2.52), L.z(-0.90));
+    bank.position.set(side * 0.70, L.y(2.40), L.z(-0.62));
     P.turretG.add(bank);
   }
-  // the bustle's rack and its load, the two whips (the model's: at (0.40, -1.05) to 4.75 m and (-0.50, -1.40) to
-  // 4.31 m), the numbers on its flanks
-  bustleBasket(P, T, -1.62, -1.98, 0.80, 2.20, 2.62, 611);
-  P.add('turretDetail', KIT.cylX(0.36, 0.14, P.q ? 24 : 14), -0.55, L.y(2.58), L.z(-1.80));
-  P.add('turretDark', KIT.cylX(0.10, 0.16, P.q ? 14 : 8), -0.55, L.y(2.58), L.z(-1.80));
+  // the open rack behind the turret (the photographs): a frame 2 m across from the turret's rear corners back 1.2 m,
+  // nearly as tall as the turret, its rails and posts round a slatted floor; its load: bags, the tarpaulin, the cans, the
+  // drum at its right rear
+  {
+    const yf = 1.98, rails = [2.18, 2.38, 2.58];
+    const outline: number[][] = [[0.64, -0.80], [0.98, -1.02], [1.00, -1.40], [1.00, -1.80], [0.86, -2.06], [-0.86, -2.06],
+      [-1.00, -1.80], [-1.00, -1.40], [-0.98, -1.02], [-0.64, -0.80]];
+    for (let k = 0; k + 1 < outline.length; k++) {
+      const [x0, z0] = outline[k], [x1, z1] = outline[k + 1];
+      for (const y of [yf, ...rails]) bar(P, 'turretDetail', [x0, L.y(y), L.z(z0)], [x1, L.y(y), L.z(z1)], y === yf ? 0.022 : 0.018);
+      bar(P, 'turretDetail', [x0, L.y(yf), L.z(z0)], [x0, L.y(rails[rails.length - 1]), L.z(z0)], 0.018);
+    }
+    bar(P, 'turretDetail', [-0.64, L.y(yf), L.z(-0.80)], [-0.64, L.y(2.58), L.z(-0.80)], 0.018);
+    for (const x of [-0.6, -0.2, 0.2, 0.6]) bar(P, 'turretDetail', [x, L.y(yf), L.z(-0.95)], [x, L.y(yf), L.z(-2.04)], 0.016);
+    KIT.tarpRoll(P, 'turretCloth', 0.05, L.y(yf + 0.12), L.z(-1.96), 1.40, 0.11, true, P.q ? 12 : 8);
+    KIT.stowage(P, 'turretCloth', mulberry(616), [
+      [0.48, L.y(yf + 0.22), L.z(-1.25), 0.70, 0.40, 0.46], [-0.20, L.y(yf + 0.20), L.z(-1.20), 0.56, 0.36, 0.40],
+      [0.30, L.y(yf + 0.20), L.z(-1.66), 0.60, 0.34, 0.40],
+    ]);
+    for (const x of [0.78, 0.60]) P.add('turretDetail', moldedBox(0.16, 0.46, 0.34, 0.02, 1, 0.01), x, L.y(yf + 0.25), L.z(-1.75));
+    P.add('turretDetail', KIT.cylX(0.30, 0.16, P.q ? 24 : 14), -0.62, L.y(yf + 0.33), L.z(-1.72));
+    P.add('turretDark', KIT.cylX(0.09, 0.18, P.q ? 14 : 8), -0.62, L.y(yf + 0.33), L.z(-1.72));
+  }
   antennaWhips(P, T, [[0.40, -1.05]], 1.30, 612, { top: 4.75, rake: 0 });
   antennaWhips(P, T, [[-0.50, -1.40]], 1.30, 613, { top: 4.31, rake: 0 });
   bustleNumbers(P, T, -1.10, 0.55, 0.24);
@@ -2047,19 +2070,35 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   const G = M60A2_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
   P.addGunExtra(m60a2Mantlet(P.q), 0, 0, 0);
-  P.addGunExtra(box(0.98, 0.48, 0.03), -0.035, 0.0, 0.545);
-  P.addGunExtra(cylZ(0.16, 0.08, P.q ? 22 : 12), 0, 0, 0.595);
-  P.addGunExtraDark(cylZ(0.12, 0.02, P.q ? 22 : 12), 0, 0, 0.64);
+  P.addGunExtra(m60a2Mantlet(P.q, M60A2_BOOT_ROWS), 0, -0.02, 0);
+  P.addGunExtra(moldedBox(0.98, 0.48, 0.04, 0.06, P.q ? 2 : 1, 0.015), -0.035, 0.0, 0.545);
   for (const y of [0.08, -0.11]) {
     P.addGunExtra(cylZ(0.075, 0.04, P.q ? 16 : 10), -0.27, y, 0.575);
     P.addGunExtraDark(cylZ(0.05, 0.02, P.q ? 16 : 10), -0.27, y, 0.60);
   }
-  P.addGunExtra(moldedBox(0.56, 0.16, 0.42, 0.02, P.q ? 2 : 1, 0.01), 0.05, 0.37, 0.30);
-  P.addGunExtra(box(0.40, 0.06, 0.10), 0.05, 0.47, 0.40);
-  P.addGunExtraDark(box(0.22, 0.07, 0.012), 0.05, 0.37, 0.515);
+  // the guidance and sight housing: nearly the mantlet's width, jutting a little ahead of it, its hood sloping over the
+  // recessed window
+  P.addGunExtra(moldedBox(0.85, 0.26, 0.48, 0.04, P.q ? 2 : 1, 0.02), 0.0, 0.38, 0.33);
+  P.addGunExtra(xform(box(0.85, 0.04, 0.24), 0, 0, 0, 0.35, 0, 0), 0.0, 0.50, 0.56);
+  P.addGunExtraDark(box(0.56, 0.11, 0.012), 0.0, 0.37, 0.576);
   P.addGunExtra(moldedBox(0.16, 0.18, 0.30, 0.02, 1, 0.01), 0.40, 0.33, 0.36);
   P.addGunExtraDark(cylZ(0.05, 0.02, 12), 0.40, 0.33, 0.515);
-  pattonGun(P, G);
+  // the stubby M162 (the photographs): its collar on the mantlet's plate, the thick rear section over 45 % of what stands
+  // out, the step down to the chase, the lip at the muzzle
+  {
+    const seg = P.q ? 24 : 14;
+    const tube = (r0: number, r1: number, z0: number, z1: number): void => {
+      P.add('gun', cylZ(r1, z1 - z0, seg, r0), 0, 0, (z0 + z1) / 2);
+    };
+    tube(0.155, 0.155, 0.20, 0.56);
+    tube(0.19, 0.19, 0.56, 0.64);
+    tube(0.157, 0.155, 0.64, 1.16);
+    tube(0.155, 0.13, 1.16, 1.21);
+    tube(0.13, 0.128, 1.21, 1.90);
+    tube(0.145, 0.145, 1.90, 1.94);
+    muzzleBore(P, { z: 1.944, r: 0.076 });
+    P.muzzleZ = 1.94;
+  }
   P.topY = L.y(3.30) + 0.12;
   yield 'm60a2Gun';
 }
