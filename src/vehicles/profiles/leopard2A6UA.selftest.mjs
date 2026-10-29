@@ -8,7 +8,7 @@ import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 import { LEOPARD_A6_X_DATUMS } from './leopardA6X.ts';
-import { LEOPARD_A6_UA_KIT, LEOPARD_A6_UA_PIVOT } from '../leopardA6UaLayout.ts';
+import { LEOPARD_A6_UA_KIT, LEOPARD_A6_UA_PIVOT, LEOPARD_A6_UA_SHELL_DIMS } from '../leopardA6UaLayout.ts';
 import { AUXILIARY_INVENTORY } from '../auxiliaryInventory.generated.ts';
 
 const id = 'leo2a6_ua';
@@ -43,9 +43,17 @@ const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => sectorNames.includes(plate.name));
 assert.deepEqual([...new Set(eraSectors.map((plate) => plate.name))].sort(), [...sectorNames].sort(),
   'six named ERA banks back the Kontakt-1 courses');
-// 264b: no 2A6M wedge pair floats over the 2A6 roof; the turret is the 2A6's main cells under the UA's Kontakt-1
+// 264b (germany.ts): no 2A6M wedge pair floats over the 2A6 roof; the turret is the 2A6's main cells under the UA's
+// Kontakt-1, and the skirts and tracks are the 2A6's faces, at the UA's own ratings
 assert.ok(spec.armor.turretPlates.every((plate) => plate.kind === 'main' || plate.kind === 'era'),
   'the turret carries the 2A6\'s main cells and its own Kontakt-1, no donor spaced plates');
+assert.deepEqual({ ...LEOPARD_A6_UA_SHELL_DIMS }, { hullLengthM: D.dims.hullLengthM, overallLengthM: D.dims.overallLengthM,
+  widthM: D.dims.widthM, heightM: D.dims.heightM }, 'the kit\'s layout names the 2A6\'s dimensions');
+{
+  const faces = (s) => s.armor.hullPlates.filter((p) => p.kind === 'spaced' || p.kind === 'external')
+    .map((p) => [p.name, p.verts.map((v) => v.map((x) => Math.round(x * 1e6)))]);
+  assert.deepEqual(faces(spec), faces(a6), 'the skirt leaves, heavy panels and track faces are the 2A6\'s');
+}
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable ERA`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} has shaped-charge protection`);

@@ -6,6 +6,12 @@
 /** The source-measured 2A6 turret ring (profiles/leopardA6X.ts LEOPARD_A6_X_DATUMS.leo2a6.turretPivot). */
 export const LEOPARD_A6_UA_PIVOT = Object.freeze([.000005, 2.14836, 1.047795] as const);
 
+/** The source-measured 2A6's dimensions (LEOPARD_A6_X_DATUMS.leo2a6.dims): the shell the UA's armour sits on (germany.ts);
+ * the UA's own spec dimensions are its kit's. */
+export const LEOPARD_A6_UA_SHELL_DIMS = Object.freeze({
+  hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111,
+});
+
 export const LEOPARD_A6_UA_KIT = Object.freeze({
   turretScreenX: 1.60, screenBottomY: 2.00, screenTopY: 2.66, chainBottomY: 1.875,
   rearScreenZ: -2.95, frontPostZ: 1.00, roofFrontZ: 1.20,
