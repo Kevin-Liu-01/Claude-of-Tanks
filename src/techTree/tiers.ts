@@ -16,7 +16,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   chieftain_mk10: 4, chieftain_mk9: 4, cv90: 4, cv90105_tml: 2, cv9040c: 4, cv90_mk4: 7, cv90_mk4_concept: 7,
   dardo: 4, fv4034: 4, fv510: 2, fv510_milan: 3, griffin50mm: 10, griffin_viper: 3, hayate_ifv: 2, jpz_e100: 1,
   k1a1: 8, k1e1: 4, k21: 5, k2_black_panther: 10, k2b: 7, kf41_lynx: 5, kf51_evo: 10, kf51_panther: 10, kf51_u: 10,
-  kurganets25: 10, kv2: 1, leclerc_s1: 8, leclerc_s2: 9, leclerc_sxxi: 9, leclerc_xlr: 10, leo1a1: 1,
+  kurganets25: 10, kv2: 1, leclerc_s1: 8, leclerc_s2: 9, leclerc_sxxi: 9, leclerc_xlr: 10, leo1a2a1: 1,
   leo1a5: 1, leo2_improved: 8, leo2_revolution: 8, leo2_revolution_proto: 8, leo2a2: 3, leo2a3: 4, leo2a4: 8,
   leo2a4_otco: 8, leo2a4_v: 8, leo2a4m: 8, leo2a4m_can: 8, leo2a5: 9, leo2a5m: 9, leo2a6: 9, leo2a6_ua: 9, leo2a6m: 9,
   leo2a7v: 10, leopard2_proto: 3, lrmv_lynx: 5, m1a1: 8, m1a1_abrams_aim: 8, m1a1_abrams_fep: 8, m1a1_abrams_hc: 8,

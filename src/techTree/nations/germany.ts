@@ -34,9 +34,9 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({ id: 'leo2a7v', tier: 10, line: 'leopard2', lane: 3, parents: ['leo2a6m'], slot: 'line' }),
     node({ id: 'kf51_panther', tier: 10, line: 'leopard2', lane: 1, parents: ['leo2a7v'], slot: 'line' }),
     // Leopard 1 and 2 variants
-    // release 263: the bare cast-turret Leopard 1A1 drawn on its 1A5's node
+    // release 263: the bare cast-turret Leopard 1A2A1 drawn on its 1A5's node
     node({
-      id: 'leo1a5', tier: 1, line: 'leopard_side', lane: 5, parents: ['jpz_e100'], slot: 'line', builds: ['leo1a1'],
+      id: 'leo1a5', tier: 1, line: 'leopard_side', lane: 5, parents: ['jpz_e100'], slot: 'line', builds: ['leo1a2a1'],
     }),
     node({ id: 'leo2a3', tier: 4, line: 'leopard_side', lane: 3, parents: ['leo2a2'], slot: 'line' }),
     node({ id: 'leo2a6', tier: 9, line: 'leopard_side', lane: 0, parents: ['leo2a5'], slot: 'line' }),

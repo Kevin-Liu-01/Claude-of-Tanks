@@ -1,30 +1,29 @@
-// The Leopard 1A1 (release 263; the owner, 2026-10-28: "keep ur new leopard variants and make one that uses the old
-// hull and has like a rounder 'unarmored' version that looks more like the world of tanks leopard 1", then "the old
-// turret is still bad and the new turret for leopard is better, but need it to look accurate"): the Bundeswehr's
-// first-series Leopard 1 with the 1A1's thermal sleeve and rubber skirts, before the Blohm & Voss appliqué of the
-// 1A1A1. It keeps the Leopard 1A5's pre-262 hull and running gear and carries the bare cast turret
-// (profiles/leopard1A1.ts; docs/references/tanks/leo1a1.md). It clones the 1A5 (the L7A3, the hull's armour) with the
-// thinner bare casting and the 1A1's period round.
+// The Leopard 1A2A1 (release 263; the owner, 2026-10-28: a Leopard 1 on the old hull "that looks more like the world of
+// tanks leopard 1", then "completely redesign this current leopard. it needs to take a lot more inspo from that 1a2"):
+// the Panzermuseum Munster's Leopard 1A2A1, the 1A2's heavier bare casting (no Blohm & Voss appliqué), the chevron
+// mantlet, the thermal sleeve and rubber skirts, and the A2A1's PERI R12. It keeps the Leopard 1A5's pre-262 hull and
+// running gear (profiles/leopard1A2A1.ts; docs/references/tanks/leo1a2a1.md) and clones the 1A5 (the L7A3, the hull's
+// armour) with the thinner bare casting and the period round.
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
-const spec = cloneFleetVariant(registries.tankSpecs, 'leo1a1', 'leo1a5', { name: 'Leopard 1A1', nation: 'Germany', era: 'cold-war' });
+const spec = cloneFleetVariant(registries.tankSpecs, 'leo1a2a1', 'leo1a5', { name: 'Leopard 1A2A1', nation: 'Germany', era: 'cold-war' });
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
-// The 1A1's own depression curve, measured on its casting and the old hull (tools/gun-depression-sweep.mjs, 26 mm; no
+// Its own depression curve, measured on its casting and the old hull (tools/gun-depression-sweep.mjs, 26 mm; no
 // mount conflict): the full -9 degrees but for the bow's width rods at 26-31 and the stern deck, exhaust and fuel cans aft
 // of 149 degrees.
 spec.gunPitchByYawDeg = [[0, -9], [25, -9], [27, -7.7], [28, -7.6], [30, -7.6], [31, -8], [32, -9], [149, -9],
   [154, -6.8], [155, -5.6], [158, -3.9], [159, -3.5], [164, -3.4], [165, -2.5], [166, -2.1], [167, -1.8], [172, -1.8],
   [175, -3], [180, -3]];
 stripSilhouetteDimensions(spec.dims);
-// 40.0 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.61 m over the cupola.
-Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.61 });
+// About 40 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.70 m over the PERI R12.
+Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.70 });
 Object.assign(spec, { weightTons: 40.0, hp: 1450 });
 // The bare casting: no spaced plates over the cheeks, sides or mantlet.
 for (const plate of spec.armor.turretPlates) {
@@ -36,4 +35,4 @@ for (const plate of spec.armor.turretPlates) {
 spec.gun.shells[0] = { ...spec.gun.shells[0], name: 'DM23 APFSDS', pen100Mm: 404, pen1000Mm: 368, pen2000Mm: 331 };
 spec.visual = { ...spec.visual, number: '211' };
 
-registerFleetSpecs(registries, ['leo1a1'], { leo1a1: spec });
+registerFleetSpecs(registries, ['leo1a2a1'], { leo1a2a1: spec });

@@ -29,7 +29,7 @@ import './modern2Specs.generated.ts';
 import './chineseFrontlineSpecs.ts';
 import './russianFrontlineSpecs.ts';
 import './kf51Specs.ts';
-import './leo1a1Specs.ts';
+import './leo1a2a1Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
 import './modern3Specs.ts';
