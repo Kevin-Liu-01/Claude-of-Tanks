@@ -24,6 +24,7 @@
 //                own plate gives another
 import { writeFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { uniqueIds } from './id-list.mjs';
 
 await import('../src/vehicles/tankFactory.ts');
 const fleet = await import('../src/vehicles/specs.ts');
@@ -34,7 +35,7 @@ const { setArmorZonePlates, zonePlateCounters } = await import('../src/sim/armor
 const { zoneAt, zonePlates } = await import('../src/sim/armorZones.ts');
 
 const arg = (name, fallback = null) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const ids = arg('ids') ? arg('ids').split(',') : [...fleet.ALL_TANK_IDS];
+const ids = arg('ids') ? uniqueIds(arg('ids').split(','), 'armor-zone-plates-report --ids') : [...fleet.ALL_TANK_IDS];
 const seeds = Number(arg('seeds', '3'));
 // --angles=plate: the zone plates at their own plates' angles (the variant beside the default, each cell face's angle)
 const angles = arg('angles', 'face') === 'plate' ? 'plate' : 'face';
