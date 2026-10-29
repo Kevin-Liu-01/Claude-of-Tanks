@@ -1865,7 +1865,7 @@ const M60_HULL_SPEC: PershingHullSpec = {
   fenderLine: [[-3.56, 1.40], [-3.32, 1.52], [2.95, 1.52], [3.25, 1.45], [3.56, 1.25]],
   fenderBoxH: 0.26, fenderBoxX: [1.32, 1.78], fenderBoxes: [[1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
   mufflers: false, noseDepth: 0.04, noseRound: 0.52, driverHatchX: [0], fenderLights: [0.82, 0.09, 3.22],
-  rearGrille: [0.94, 1.36, 1.80, 0.12, 0.30],
+  rearGrille: [0.94, 1.08, 1.44, 0.12, 0.30],
   gear: {
     wheelR: 0.34, wheelY: 0.428, span: [2.01, -2.296], wheelZs: [-2.296, -1.427, -0.591, 0.259, 1.141, 2.010],
     rollerN: 3, rollerY: 1.19, rollerZs: [-1.424, 0.097, 1.823], rollerR: 0.167,
@@ -1980,10 +1980,10 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     // the box on the left flank, 2.2-2.7 m behind the shield's face, its top at the roof edge
     const sx = castSideAt(M60_TURRET, 2.50, -0.30);
     P.add('turretDetail', moldedBox(0.15, 0.28, 0.50, 0.02, 1, 0.01), sx + 0.07, L.y(2.50), L.z(-0.30));
-    // the crosswind sensor's short mast on the bustle roof's left rear edge (the owner's model)
-    const wy = frameTop(T, 0.83, -1.35);
-    P.add('turretDark', cylY(0.02, 0.025, 2.95 - wy, 8), 0.83, L.y((2.95 + wy) / 2), L.z(-1.35));
-    P.add('turretDark', box(0.10, 0.08, 0.10), 0.83, L.y(2.99), L.z(-1.35));
+    // the crosswind sensor's mast on the bustle roof's left rear
+    const wy = frameTop(T, 0.67, -1.35);
+    P.add('turretDark', cylY(0.02, 0.025, 3.40 - wy, 8), 0.67, L.y((3.40 + wy) / 2), L.z(-1.35));
+    P.add('turretDark', box(0.10, 0.08, 0.10), 0.67, L.y(3.44), L.z(-1.35));
   }
   bustleNumbers(P, T, -1.30, 0.55, 0.24);
   yield 'm60TurretFittings';
