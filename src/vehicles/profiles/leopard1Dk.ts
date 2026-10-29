@@ -97,7 +97,7 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
 function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
-  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false });
+  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
