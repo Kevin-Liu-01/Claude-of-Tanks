@@ -174,7 +174,7 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
         assert.equal(clone.customProgramCacheKey(),src.customProgramCacheKey()+keySuffix,`${at}: the source's program key, the skin's suffix`);
         if(k==='burning'){
           assert.equal(shader.uniforms.uBurnT,burnU.uBurnT,`${at}: the source's burn mask still wraps it (its live driver)`);
-          assert.match(clone.customProgramCacheKey(),/\|burn-r7\|/);
+          assert.match(clone.customProgramCacheKey(),/\|burn-r8\|/);
         }
         if(k==='steel'){
           assert.ok(shader.fragmentShader.includes('uWeaponWornColor'),`${at}: the source's weapon wear still wraps it`);
@@ -277,7 +277,7 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
   const burnt2=compiled();skin.onBeforeCompile(burnt2,{});
   assert.equal(burnt2.vertexShader.split('varying vec3 vBrnW;').length-1,1,'one burn mask in the skin\'s program');
   assert.equal(burnt2.uniforms.uBurnT,burnU.uBurnT,'driven by the visual\'s own burn');
-  assert.match(skin.customProgramCacheKey(),/\|burn-r7\|tank-mode-energy-v7\|burn-r7$/,'its key names both hooks (one text a key)');
+  assert.match(skin.customProgramCacheKey(),/\|burn-r8\|tank-mode-energy-v7\|burn-r8$/,'its key names both hooks (one text a key)');
   clearJuggernautVisual(other,true);box.dispose();paint2.dispose();burnt.dispose();
 }
 

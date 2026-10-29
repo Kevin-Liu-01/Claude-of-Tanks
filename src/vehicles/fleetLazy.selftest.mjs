@@ -9,7 +9,7 @@ import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
   'amx40_proto', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
-  'challenger3_proto', 'challenger3', 'mbt70', 'object148_proto',
+  'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws', 'mbt70', 'object148_proto',
   'k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv',
 ]);
 const owners = new Map();
