@@ -257,6 +257,8 @@ interface GearSpec {
   readonly sprocket: { readonly z: number; readonly y: number; readonly r: number; readonly axialScaleLeft?: number;
     readonly axialScaleRight?: number };
   readonly tension?: { readonly z: number; readonly y: number; readonly r: number };
+  /** The tension wheel rides inside the track's rising lower run (the M48's): it stays out of the top run's path. */
+  readonly tensionInside?: boolean;
   readonly contactZF?: number;
   readonly contactZR?: number;
   readonly botY?: number;
@@ -289,7 +291,7 @@ function pattonGear(P: CastPort, xc: number, trackW: number, G: GearSpec): void 
   }
   KIT.buildRunningGear(P, {
     style: 'dished', wheelR: G.wheelR, wheelW, wheelY: G.wheelY, xc, wheelZs,
-    sprocket: G.sprocket, idler: G.idler, rollers: G.tension ? [...rollers, G.tension] : rollers, trackW,
+    sprocket: G.sprocket, idler: G.idler, rollers: G.tension && !G.tensionInside ? [...rollers, G.tension] : rollers, trackW,
     topY: G.rollerY + 0.04, paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: false,
     contactZF: G.contactZF, contactZR: G.contactZR, botY: G.botY,
     ...(G.wheelZsBySide ? { wheelZsLeftM: G.wheelZsBySide[0], wheelZsRightM: G.wheelZsBySide[1], fitStaggeredGroundRun: true } : {}),
@@ -1385,7 +1387,8 @@ const M48_GEAR: GearSpec = {
  * behind the last road wheel (the Sultan Yacoub tank; the Latrun M48A3 has none, as the A5); the A2 hull carries three
  * return rollers (the GA2's photographs). */
 function m48Gear(V: M48Variant): GearSpec {
-  if (V.gear === 'a1') return { ...M48_GEAR, tension: { z: -2.60, y: 0.50, r: 0.18 } };
+  // (its centre 0.18 m inside the run's inner face, the common tangent below the last road wheel and the sprocket)
+  if (V.gear === 'a1') return { ...M48_GEAR, tension: { z: -2.60, y: 0.61, r: 0.18 }, tensionInside: true };
   if (V.gear === 'a2') return { ...M48_GEAR, rollerN: 3, rollerZs: [-1.723, -0.065, 1.492] };
   return M48_GEAR;
 }
