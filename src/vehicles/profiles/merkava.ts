@@ -12,7 +12,7 @@ import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.t
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
 import { buildMerkavaBelly, buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
 import { buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
-import { buildMerkavaBasket, buildMerkavaSourceDetails } from './merkavaFamilyDetails.ts';
+import { buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
 
 function isTankBuilderPort(value: object): value is TankBuilderPort {
@@ -56,6 +56,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   if (mark.basket) buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts);
+  buildMerkavaStuds(P, mark.studs);
   buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
   yield 'merkavaDetails';
 

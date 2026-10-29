@@ -4,9 +4,10 @@
 // MG253 of the Mk 4. The barrel is one solid of revolution about the gun's +Z axis through the measured radii (revolveZ):
 // the tube, the thermal sleeve's sections and flanged clamps, the evacuator drum and its bands, the bare muzzle, each
 // section its own band so the steps read crisp and the tube stays circular. The gun mask (the Mk 1 to Mk 3's long mask
-// riding in the turret's slot, the Mk 4's pointed housing; the over-gun cradle on its crown) is lofted through its
-// measured stations; it, the coaxial port and the over-gun M2 pitch with the gun (rig_gun); only the barrel recoils
-// (rig_recoil). Gun frame: origin on the trunnion axis, +Z along the bore.
+// riding in the turret's slot, the Mk 4's pointed housing: its own cast pieces, not the mount over it) is lofted through
+// its measured stations; it, the over-gun cradle's posts and plates, the boot, the coaxial port and the over-gun M2
+// pitch with the gun (rig_gun); only the barrel recoils (rig_recoil). Gun frame: origin on the trunnion axis, +Z along
+// the bore.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
@@ -62,10 +63,12 @@ export interface MerkavaGunSpec {
   /** The corrugated boot from the mantlet cover to the barrel as measured (its ribs' radii), revolved on the gun's mount
    *  so it pitches with the gun; null where the source has none. */
   readonly boot: readonly RevolveStation[] | null;
-  /** The gun mask's measured stations, its cradle on its crown: z, the x extents and the y extents (gun frame). */
+  /** The gun mask's measured stations: z, the x extents and the y extents (gun frame). */
   readonly mantlet: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[];
   /** The mount over the gun as measured. */
   readonly overGun: MerkavaOverGun | null;
+  /** The over-gun mount's posts and plates between the mask's top and the M2, as measured boxes (gun frame). */
+  readonly cradle: readonly MeasuredBox[];
 }
 
 /** A box as measured: min and max corners (gun frame). */
@@ -113,6 +116,7 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
   for (const side of [-1, 1]) P.add('gunMountDark', KIT.cylX(0.07, 0.06, 14), side * (rootR + 0.20), 0, 0);
   const face = gun.mantlet.length ? gun.mantlet[gun.mantlet.length - 1]![0] : 0.4;
   P.add('gunMountDark', KIT.cylZ(0.022, 0.12, 12), 0.20, -0.04, face - 0.04);
+  for (const piece of gun.cradle) { const [box, bx, by, bz] = boxOf(piece); P.add('gunMount', box, bx, by, bz); }
   const top = gun.overGun;
   if (top) {
     if (top.m2) {
@@ -124,6 +128,18 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
         shield: false, ring: false, mount: 'external-cradle' });
       m2.name = 'merkavaOverGunM2';
       m2.position.set(0, axisY - FLEET_M2.axisY * scale, rearZ - FLEET_M2.rearZ * scale);
+      // its saddle under the receiver, down to the highest cradle post or mask section beneath it (the measured posts
+      // stop 1-5 cm short of the fleet gun's cradle)
+      m2.updateMatrixWorld(true);
+      const seat = new THREE.Box3().setFromObject(m2), z0 = rearZ + 0.02, z1 = rearZ + 0.24;
+      let support = -Infinity;
+      for (const [min, max] of gun.cradle) {
+        if (min[2] < z1 && max[2] > z0 && min[0] < 0.035 && max[0] > -0.035 && max[1] <= seat.min.y + 0.005) support = Math.max(support, max[1]);
+      }
+      for (const [z, , , , y1] of gun.mantlet) if (z >= z0 && z <= z1 && y1 <= seat.min.y + 0.005) support = Math.max(support, y1);
+      if (Number.isFinite(support) && seat.min.y - support > 0.004) {
+        P.add('gunMount', KIT.box(0.07, seat.min.y - support + 0.01, z1 - z0), 0, (seat.min.y + support) / 2, (z0 + z1) / 2);
+      }
       P.gunG.add(m2);
     }
     if (top.ammoBox) {

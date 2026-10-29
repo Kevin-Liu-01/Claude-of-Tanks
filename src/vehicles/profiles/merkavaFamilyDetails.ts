@@ -131,6 +131,16 @@ export function buildMerkavaBasket(P: TankBuilderPort, basket: MerkavaBasket, pi
   }
 }
 
+/** The hull armour's bolt heads as measured (studfit.py: x, y, z and size, hull frame): a small cube each on its panel's
+ *  armour owner, the skirt panels' track guards outboard of the track lane (they leave with their panel), else the hull's
+ *  appliqué. Drawn at HIGH only (some 350-1,100 a mark). */
+export function buildMerkavaStuds(P: TankBuilderPort, studs: readonly (readonly number[])[]): void {
+  if (!P.q) return;
+  for (const [x, y, z, size] of studs as readonly (readonly [number, number, number, number])[]) {
+    P.addExternalArmor(Math.abs(x) > 1.70 ? (x > 0 ? 'hullTrackGuardL' : 'hullTrackGuardR') : 'hull', KIT.box(size, size, size), x, y, z);
+  }
+}
+
 /** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted),
  *  and the turret armour modules' solids in their side's removable package. */
 export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number],
@@ -156,12 +166,12 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         break;
       case ROLE.lantern:
         if (p[0] === 6) {
-          // a twin headlamp: the rounded housing across its measured box and its two round lenses forward
+          // a twin headlamp: the square housing across its measured box, a rim round each of its two lenses forward
           const h = Math.min(sy, sx / 2), cy = p[3]!, cz = p[4]!, front = cz + sz / 2;
-          P.add('hullDetail', KIT.box(sx - h, h, sz), cx, cy, cz);
+          P.add('hullDetail', KIT.box(sx, sy, sz), cx, cy, cz);
           for (const side of [-1, 1]) {
-            P.add('hullDetail', KIT.cylZ(h / 2, sz, seg), cx + side * (sx - h) / 2, cy, cz);
-            P.addEquipment('hullGlass', markVehicleNightLens(KIT.xform(KIT.cylZ(h * 0.38, 0.012, seg), cx + side * sx / 4, cy, front + 0.004),
+            P.add('hullDetail', KIT.cylZ(h * 0.44, 0.024, seg), cx + side * sx / 4, cy, front + 0.008);
+            P.addEquipment('hullGlass', markVehicleNightLens(KIT.xform(KIT.cylZ(h * 0.36, 0.012, seg), cx + side * sx / 4, cy, front + 0.018),
               'headlight'));
           }
           break;

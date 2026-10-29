@@ -34,6 +34,8 @@ export interface MerkavaMark {
   readonly slot: TurretSlot | null;
   readonly parts: readonly SourcePart[];
   readonly gun: MerkavaGunSpec;
+  /** The hull armour's bolt heads as measured: x, y, z and size (hull frame). */
+  readonly studs: readonly (readonly number[])[];
   /** The bustle basket as measured (hull frame); null where the source has none behind the shell. */
   readonly basket: MerkavaBasket | null;
   /** Roof machine guns as measured (hull frame): the mount's x, foot y and z, and the gun's span along z. */
@@ -130,7 +132,7 @@ function gearOf(r: SourceRecord): MerkavaGearSpec {
 }
 
 /** The over-gun 12.7 mm as the source measures it (hull frame): the M2 (its `mg_twin` group: back plate, muzzle, bore
- *  height) and its side ammunition box. Its cradle is the gun mask's top (the mask's measured sections carry it). */
+ *  height) and its side ammunition box, on the measured cradle's posts and plates over the mask (gunCradle). */
 interface OverGunRecord {
   readonly m2: readonly [rearZ: number, muzzleZ: number, axisY: number] | null;
   readonly ammoBox: MeasuredBox | null;
@@ -148,7 +150,8 @@ const OVER_GUN: Readonly<Record<MerkavaMarkId, OverGunRecord>> = {
   merkava4b: { m2: [1.152, 2.812, 2.814], ammoBox: null },
 };
 
-/** Rows of numbers (the record's basket and boot as plain rows: mapped as their literal tuples, their union is too large). */
+/** Rows of numbers (the record's basket, boot, cradle and studs as plain rows: mapped as their literal tuples, their union
+ *  is too large). */
 type Rows = readonly (readonly number[])[];
 
 /** The measured barrel profile with each radial step's outer corner chamfered (up to 6 mm along the bore, within the
@@ -208,9 +211,12 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
     m2: top.m2 ? { rearZ: top.m2[0] - tz, muzzleZ: top.m2[1] - tz, axisY: top.m2[2] - axisY } : null,
     ammoBox: top.ammoBox ? local(top.ammoBox) : null,
   };
+  // the over-gun mount's posts and plates in the slot (the M2 and its box stand on them, over the mask's top)
+  const cradle = ((r.gunCradle ?? []) as unknown as Rows).filter((v) => v[2]! >= start)
+    .map((v): MeasuredBox => local([[v[0]!, v[1]!, v[2]!], [v[3]!, v[4]!, v[5]!]]));
   return {
     model: r.barrel.some(([, rr]) => rr > 0.083) && r.barrel[r.barrel.length - 1]![1] > 0.079 ? 'MG25x' : 'M64',
-    trunnion, muzzleZ: r.barrel[r.barrel.length - 1]![0] - tz, barrel, boot, mantlet, overGun,
+    trunnion, muzzleZ: r.barrel[r.barrel.length - 1]![0] - tz, barrel, boot, mantlet, overGun, cradle,
   };
 }
 
@@ -256,7 +262,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s) })),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
       axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
-    basket: basketOf(r),
+    basket: basketOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
     roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };
