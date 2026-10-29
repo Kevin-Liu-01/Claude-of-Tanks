@@ -168,9 +168,6 @@ export const GARNISH_STRIP_TILES = [2, 3] as const;
 export const GARNISH_STRIP_BASE_SRGB: readonly [number, number, number] = [200, 189, 160];
 
 const garnishAtlasCache = new Map<string, THREE.Texture | null>();
-/** A fitted cover's tuft against a field bough (ghillieSuit.ts addTufts 0.24 against addFieldTufts 0.6 of the leaf scale):
- * its sprig is drawn this much larger on the tile, near its real needle size and keeping its frond's fishbone. */
-const COVER_SPRIG_SCALE = 1.7;
 
 /** Paint one tile of knotted burlap strips (stem seat at the tile's bottom centre, tips toward the top). */
 function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
@@ -296,9 +293,9 @@ function finishGarnishTiles(d: Uint8ClampedArray, size: number, S: number, tiles
  * strip tiles are the cover's cut flaps (paintFlapTile) instead of hessian, its boughs the species'.
  */
 export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind,
-  flaps?: 'garnish-woodland' | 'garnish-arid', sprigs = false): Generator<void, THREE.Texture | null, void> {
+  flaps?: 'garnish-woodland' | 'garnish-arid'): Generator<void, THREE.Texture | null, void> {
   // the netting lane's fix round: a field net's garnish mixes two species, its second bough tile the second's bough
-  const key = `${second && second !== species ? `${species}+${second}` : species}${flaps ? `|${flaps}${sprigs ? '+sprigs' : ''}` : ''}`;
+  const key = `${second && second !== species ? `${species}+${second}` : species}${flaps ? `|${flaps}` : ''}`;
   if (garnishAtlasCache.has(key)) return garnishAtlasCache.get(key)!;
   let texture: THREE.Texture | null = null;
   if (typeof document !== 'undefined') {
@@ -319,14 +316,8 @@ export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind
       };
       const rng = seeded(kindSeed(`ghillie-strips:${species}`));
       for (const tile of GARNISH_STRIP_TILES) {
-        // a cover whose crew tucked the species in (`sprigs`): its tufts are short sprigs of it, laid flat on the cover
-        // (the cover's tufts are short flat cards: ghillieSuit.ts addTufts, wave 253; its own fabric carries the flaps)
-        inTile(tile, () => {
-          if (sprigs && flaps && paintGarnishBough(ctx as CanvasRenderingContext2D, S,
-            seeded(kindSeed(`ghillie-sprig:${species}:${tile}`)), species, COVER_SPRIG_SCALE)) return;
-          if (flaps) paintFlapTile(ctx as CanvasRenderingContext2D, S, rng, FLAP_PALETTES[flaps]);
-          else paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
-        });
+        inTile(tile, () => (flaps ? paintFlapTile(ctx as CanvasRenderingContext2D, S, rng, FLAP_PALETTES[flaps])
+          : paintStripTile(ctx as CanvasRenderingContext2D, S, rng)));
         yield;
       }
       // the boughs: the first tile the species', the second the second species' (or another of the first's)
