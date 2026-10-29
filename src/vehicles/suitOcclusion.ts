@@ -38,6 +38,8 @@ const SUIT_GATE_RADIUS_M = 0.09;
 const SUIT_GATE_REACH_M = 0.2;
 const SUIT_GATE_FROM = 0.2;
 const SUIT_GATE_TO = 0.7;
+/** A triangle this long along an edge is read across its middle as well as at its corners (bakeSuitOcclusionSteps). */
+const SUIT_LARGE_TRIANGLE_M = 0.9;
 /** A suit mesh (ghillieSuit.ts addMerged / the garnish: `<id>_ghillie_<owner>_net|leaves`). */
 const SUIT_MESH = /_ghillie_(?:hull|turret|gun)_(?:net|leaves)$/;
 /** The share of a cloth triangle's area that is cloth (the net's cut texture covers about this much of it). */
@@ -289,23 +291,24 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
       any = true;
     }
     if (!any) continue;
-    // (r7; the critic r6: "shade on the bare sponson ledge, which no suit covers", one 2.75 m triangle whose two far
-    // corners lay under the deck net and the drape's roll) a triangle is under the cloth only as far as its least
-    // covered corner, and a vertex takes the least of its triangles: a coarse panel the cloth reaches at a corner or two
-    // takes no shade across its bare span
-    // (r7; the same ledge's other triangle had all three corners under cloth, the drape's roll along its outer edge and
-    // the deck net at its inner corner, its middle bare) and as far as its middle and the middles of its edges are
+    // (r7; the critic r6: "shade on the bare sponson ledge, which no suit covers": two 2.75 m triangles, one with two
+    // corners under the deck net and the drape's roll, the other with all three, their middles bare) a large triangle
+    // (an edge past SUIT_LARGE_TRIANGLE_M) is under the cloth only as far as its least covered corner, its middle and its
+    // edges' middles, and its corners take no more than that: a coarse panel the cloth reaches at its corners takes no
+    // shade across its bare span. A small one keeps its corners' own (the shade between them is the cloth's).
     const index = geometry.index;
     const tris = index ? index.count : position.count;
     const least = new Float32Array(position.count).fill(Infinity);
     for (let t = 0; t + 2 < tris; t += 3) {
       const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+      if (!gates[a] && !gates[b] && !gates[c]) continue;
+      if (--budget <= 0) { budget = VERTICES_PER_STEP; yield* pause(); }
+      ta.fromBufferAttribute(position, a).applyMatrix4(m);
+      tb.fromBufferAttribute(position, b).applyMatrix4(m);
+      tc.fromBufferAttribute(position, c).applyMatrix4(m);
+      if (Math.max(ta.distanceToSquared(tb), tb.distanceToSquared(tc), tc.distanceToSquared(ta)) <= SUIT_LARGE_TRIANGLE_M ** 2) continue;
       let g = Math.min(gates[a], gates[b], gates[c]);
       if (g > 0) {
-        if (--budget <= 0) { budget = VERTICES_PER_STEP; yield* pause(); }
-        ta.fromBufferAttribute(position, a).applyMatrix4(m);
-        tb.fromBufferAttribute(position, b).applyMatrix4(m);
-        tc.fromBufferAttribute(position, c).applyMatrix4(m);
         tn.subVectors(tc, tb).cross(p.subVectors(ta, tb));
         // the face's own normal, turned to the side its vertices face
         n.fromBufferAttribute(normal, a).applyMatrix3(nm);
@@ -327,7 +330,7 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     let touched = false;
     for (let i = 0; i < position.count; i++) {
       if (!amounts[i]) continue;
-      const amount = amounts[i] * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, Number.isFinite(least[i]) ? least[i] : gates[i]);
+      const amount = amounts[i] * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, Math.min(least[i], gates[i]));
       const byte = Math.round(amount * 255);
       if (!byte) continue;
       out[i] = byte;
