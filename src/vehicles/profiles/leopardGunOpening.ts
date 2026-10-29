@@ -32,11 +32,9 @@ function clip(points: THREE.Vector3[], distance:(v:THREE.Vector3)=>number):THREE
   return [...unique.values()];
 }
 
-// 264 (envelope honesty): `bucket` lets a caller draw a bolt-on shell (the wedge modules) as turretExternalArmor
-export function addLeopardTurretWithGunOpening(P:TankBuilderPort,sections:readonly SolidSection[],gunX:number,gunY:number,gunZ:number,
-  bucket='turret'):void {
+export function addLeopardTurretWithGunOpening(P:TankBuilderPort,sections:readonly SolidSection[],gunX:number,gunY:number,gunZ:number):void {
   const back=gunZ-.70,half=.40;
-  if(sections.at(-1)!.z<=back) {P.add(bucket,sectionSolid(sections));return;}
+  if(sections.at(-1)!.z<=back) {P.add('turret',sectionSolid(sections));return;}
   const emit=(points:THREE.Vector3[])=>{
     if(points.length<4)return;
     const bounds=new THREE.Box3().setFromPoints(points),size=bounds.getSize(new THREE.Vector3());
@@ -45,11 +43,11 @@ export function addLeopardTurretWithGunOpening(P:TankBuilderPort,sections:readon
     const p=geometry.getAttribute('position');
     for(let i=0;i<p.count;i++)uv.push(p.getX(i),p.getZ(i));
     geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
-    P.add(bucket,geometry);
+    P.add('turret',geometry);
   };
   for(let i=1;i<sections.length;i++) {
     const pair=[sections[i-1],sections[i]];
-    if(pair[1].z<=back){P.add(bucket,sectionSolid(pair));continue;}
+    if(pair[1].z<=back){P.add('turret',sectionSolid(pair));continue;}
     const points=pair.flatMap(s=>s.ring.map(([x,y])=>new THREE.Vector3(x,y,s.z)));
     if(pair[0].z<back)emit(clip(points,p=>back-p.z));
     const front=clip(points,p=>p.z-back);
@@ -106,7 +104,7 @@ export function addLeopardMovingMantlet(P:TankBuilderPort,fit:LeopardMantletFit)
   ]));
   P.add('gunMount',KIT.cylZ(fit.collarR??.195,.26,32),0,0,fit.noseZ-.035);
   for(const side of [-1,1]) {
-    P.addEquipment('turret',KIT.cylX(.19,.09,24),
+    P.add('turret',KIT.cylX(.19,.09,24),
       P.gunG.position.x+side*.397,P.gunG.position.y,P.gunG.position.z);
     P.addEquipment('gunMountDark',KIT.cylX(.105,.015,20),side*.378,0,0);
     // Fitted panel edges / lifting ears, kept inside the 800 mm opening.
