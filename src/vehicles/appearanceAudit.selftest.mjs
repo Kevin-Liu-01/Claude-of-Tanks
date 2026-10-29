@@ -89,7 +89,8 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
   // rendered materials per tank: Merkava hulls grew by exactly the +2 bound (pale canvas + the fitting paint the
   // jerry cans now share); the other re-roled hulls grew by 0. VEH-13 (2026-10-16): a tank whose spare links are
   // built carries the one shared weathered spare-link steel (cot:spare-link-steel, every link and carrier on it);
-  // the Merkava bow links are built, so +1 (`spareLink`).
+  // the Merkava bow links are built, so +1 (`spareLink`). 262: a tank that wears hull rubber (skirts, flaps, mats) draws
+  // it in its own clone of the tyre rubber (tankFactoryCore separateHullRubber), so +1 (`hullRubber`), no draw more.
   const expected = {
     merkava3c: { canvasPale: 2, materialsMax: 27, before: 24, spareLink: 1 },
     merkava4b: { canvasPale: 2, materialsMax: 25, before: 22, spareLink: 1 },
@@ -105,8 +106,9 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
     if (want.canvasPale) assert.equal(roles.canvasPale, want.canvasPale, `${id}: pale canvas rides hull and turret`);
     else assert.equal(roles.canvasPale, undefined, `${id}: no pale canvas on a non-desert kit`);
     if (want.canvas) assert.ok((roles.canvas ?? 0) >= want.canvas, `${id}: canvas boot/kit present`);
-    assert.ok(materials.size <= want.materialsMax && materials.size <= want.before + 2 + (want.spareLink ?? 0),
-      `${id}: ${materials.size} materials (before ${want.before}, bound +2${want.spareLink ? ` + ${want.spareLink} spare-link steel` : ''})`);
+    const hullRubber = [...materials].some((m) => m.userData?.appearanceRole === 'hullRubber') ? 1 : 0;
+    assert.ok(materials.size <= want.materialsMax + hullRubber && materials.size <= want.before + 2 + (want.spareLink ?? 0) + hullRubber,
+      `${id}: ${materials.size} materials (before ${want.before}, bound +2${want.spareLink ? ` + ${want.spareLink} spare-link steel` : ''}${hullRubber ? ' + 1 hull rubber' : ''})`);
     // the spare links share ONE material: never a second link steel
     assert.ok([...materials].filter((m) => m.name === 'cot:spare-link-steel').length <= (want.spareLink ?? 1),
       `${id}: the spare links share one weathered steel`);

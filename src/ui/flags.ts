@@ -5,6 +5,7 @@
 import ca from 'flag-icons/flags/4x3/ca.svg?url';
 import cn from 'flag-icons/flags/4x3/cn.svg?url';
 import de from 'flag-icons/flags/4x3/de.svg?url';
+import dk from 'flag-icons/flags/4x3/dk.svg?url';
 import fr from 'flag-icons/flags/4x3/fr.svg?url';
 import gb from 'flag-icons/flags/4x3/gb.svg?url';
 import il from 'flag-icons/flags/4x3/il.svg?url';
@@ -20,7 +21,7 @@ import xx from 'flag-icons/flags/4x3/xx.svg?url';
 import { flagIconCode } from './flagCodes.ts';
 
 const FLAG_URL: Readonly<Record<string, string>> = Object.freeze({
-  ca, cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx,
+  ca, cn, de, dk, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx,
 });
 
 /** Bundled official flag URL for CSS backgrounds and image elements. */

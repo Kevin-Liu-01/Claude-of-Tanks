@@ -38,6 +38,7 @@ import './aresApcXSpecs.ts';
 import './classicFleetSpecs.ts';
 import './franceSpecs.ts';
 import './ukraine.ts';
+import './t64FamilySpecs.ts';
 import './china.ts';
 import './sweden.ts';
 import './poland.ts';
@@ -53,6 +54,7 @@ import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts'
 import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
+import './christian2Specs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';

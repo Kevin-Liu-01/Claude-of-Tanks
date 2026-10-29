@@ -73,6 +73,7 @@ import { T72B3_X_PROFILES } from './profiles/t72b3X.ts';
 import { JPZE100_X_PROFILES } from './profiles/jagdpanzerE100X.ts';
 import { TYPE10_X_PROFILES } from './profiles/type10X.ts';
 import { TYPE90_X_PROFILES } from './profiles/type90X.ts';
+import { CHRISTIAN2_PROFILES } from './profiles/christian2.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -99,6 +100,7 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   t90_1992: T90_PROFILES.t90_1992,
   t90ms_2011: T90_PROFILES.t90ms_2011,
   t90a_burlak_proto: T90_PROFILES.t90a_burlak_proto,
+  t55a: RUSSIA_RESIDUE_PROFILES.t55a,
   t62_1975: RUSSIA_RESIDUE_PROFILES.t62_1975,
   t64bv1: RUSSIA_RESIDUE_PROFILES.t64bv1,
   pt91m: T90_PROFILES.pt91m,
@@ -115,6 +117,8 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   // remains in this Russia-order bridge.
   type59: CHINA_PROFILES.type59,
   t84: T80_PROFILES.t84,
+  // 262: the true-T-64 T-64BV (t64KontaktFamily.ts), appended so every earlier key keeps its place
+  t64bv: RUSSIA_RESIDUE_PROFILES.t64bv,
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
@@ -150,6 +154,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...JPZE100_X_PROFILES,
   ...TYPE10_X_PROFILES,
   ...TYPE90_X_PROFILES,
+  ...CHRISTIAN2_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,

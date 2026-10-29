@@ -172,11 +172,26 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   docs-print-261 f10680b6d0); notFound.js +47 B and notFound.css +26 B.
   // Over 261's release build: game +2,944 B (entry +1,184 B), cn +3,136 B, Gallery +150 B, home +807 B, docs +2,225 B,
   // 404 +477 B.
-  game: { brotliBytes: 1106894, requests: 128, entryBrotliBytes: 247401 },
-  cn: { brotliBytes: 1149956, requests: 129, entryBrotliBytes: 247401 },
-  gallery: { brotliBytes: 681893, requests: 75 },
-  home: { brotliBytes: 28260, requests: 8 },
-  docs: { brotliBytes: 36573, requests: 12 },
+  // 2026-10-29 (integrator 263, the tank release, re-pinned at the release build of 442c60d574; requests unchanged on every
+  // page: christian2Armor and leopard2HullDatums ride in the fleetLayouts chunk, vite.config.ts). Fifteen new tanks and
+  // three rebuilt families. By lane, game brotli over 262's release build (each head's own chunks, local builds):
+  // - armor-highlight-262 + its zones (the armour highlight, flag off by default; the zone weights module): +2,815 B,
+  //   entry +90 B;
+  // - cr3td-262 (the Challenger 3 TD and its RWS field fit): +1,763 B; t64bm1m-262 (the four true T-64s and the PT-64
+  //   Tur): +1,461 B; oplot-262 (the BM Oplot-M and Oplot-T, oplotFlankLayout): +1,447 B;
+  // - vickers-cr1-262 (a3b7d3f661: the Challenger 1 Mk 1/Mk 2 on the Mk 3's build, the FV4030/5 and FV4030/6, the
+  //   Vickers Mk 1 restored to main): about +700 B game, Gallery +714 B, cn +447 B, entryRaw +75 B (the lane's measure);
+  // - christian2-262, ztz20-262, cn-type59-longwei-262 (the T-55A, the Type 59 rebase, the Longwei hull), kv2-262,
+  //   patton-family-262 (pattonCast), kf51/leo1a5: the rest of fleetFactory (+4.6 KB in all), materials (+2.4 KB: the
+  //   new camo and coat keys), specs, decorations, tankFactoryCore and the generated presentation anchors;
+  // - orphan-reds-264's painted collar +147 B; the integration's fixes (the KV-2 bead, the ZTZ-20 barrel, the T-54
+  //   cradle, the M46 collar, the balance levers) under 100 B together.
+  // Over 262's release build: game +12,463 B (entry -65 B), cn +12,525 B, Gallery +12,615 B, home +40 B, docs +3 B, 404 0.
+  game: { brotliBytes: 1119357, requests: 128, entryBrotliBytes: 247336 },
+  cn: { brotliBytes: 1162481, requests: 129, entryBrotliBytes: 247336 },
+  gallery: { brotliBytes: 694508, requests: 75 },
+  home: { brotliBytes: 28300, requests: 8 },
+  docs: { brotliBytes: 36576, requests: 12 },
   notFound: { brotliBytes: 18067, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */

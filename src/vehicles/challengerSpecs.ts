@@ -193,6 +193,73 @@ function armorChallenger3X(): ArmorEnvelope {
   armor.boundingRadiusM = 6.85;
   return armor;
 }
+// The TD's measured main-gun depression by absolute turret yaw (tools/gun-depression-sweep.mjs --no-suit, 26 mm, the
+// whole gun in battery and recoiled): the full 10 degrees over the glacis trough, 8-9 off it, 5-6 over the front deck's
+// edges, the full 10 over the flanks, easing over the engine deck and 8.7 up over the stern pole astern (its last
+// three degrees re-measured with the pole on the oracle's Object_2 bounds, .qa-dev rear-floor probe). No mount
+// conflict (the mantlet's lower edge stands 6 cm over the deck). The field fit shares the hull, turret and gun.
+const CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = Object.freeze([
+  [0, -10], [2, -8.9], [9, -8.5], [25, -8], [26, -6.9], [27, -6.2], [28, -6], [30, -6], [31, -6.2], [33, -7.1],
+  [34, -6], [35, -5.2], [37, -4.7], [42, -4.7], [43, -4.8], [44, -5], [45, -5.4], [46, -6.1], [49, -6.2], [65, -8.8],
+  [71, -9.6], [72, -10], [107, -10], [123, -7.5], [125, -7], [141, -4.1], [158, -1.3], [159, -0.5], [160, -0.2],
+  [164, 0], [165, 0.6], [168, 1.4], [177, 1.5], [178, 8.4], [179, 8.7], [180, 8.7]
+]);
+// Challenger 3 TD (release 262, docs/references/tanks/challenger3_td.md): RBSL's Advanced Technology Demonstrator in
+// its trials fit, a Challenger 2 hull under the new turret, no APS. Authored in the installed frame its builder draws
+// (profiles/challenger3Td.ts: the oracle's metres x1.10, its fender span centred), so no plate needs a rig scale. The
+// hull keeps the Challenger 2's Dorchester values; the turret is the new structure without the production package's
+// appliqué (no public figures: game-design values a step under the prototype's).
+function armorChallenger3Td(): ArmorEnvelope {
+  const trkTop = 1.36, floor = 0.633, roofY = 1.958;
+  return {
+    boundingRadiusM: 6.70,
+    turretPivot: [0, 1.98, 0.7106],
+    gunPivot: [0, 0.2541, 1.2089],
+    gunBarrel: { lengthM: 5.89, radiusM: 0.105 },
+    hullPlates: [
+      fr('upper_glacis', 500, 1.878, 1.43, 3.977, roofY, 2.36, { keMm: 500, ceMm: 800 }),
+      fr('lower_front', 300, 1.012, 0.66, 3.603, 1.43, 3.977, { keMm: 300, ceMm: 400 }),
+      sR('hull_side_upper_R', 60, 1.878, 1.463, 1.878, roofY, -4.395, 3.977, { keMm: 100, ceMm: 100 }),
+      sL('hull_side_upper_L', 60, 1.878, 1.463, 1.878, roofY, -4.395, 3.977, { keMm: 100, ceMm: 100 }),
+      sR('hull_side_lower_R', 60, 1.012, floor, 1.012, 1.463, -3.69, 3.603, { keMm: 100, ceMm: 100 }),
+      sL('hull_side_lower_L', 60, 1.012, floor, 1.012, 1.463, -3.69, 3.603, { keMm: 100, ceMm: 100 }),
+      sR('skirt_R', 60, 1.92, 1.034, 1.92, 1.705, -4.02, 4.39, { kind: 'spaced', keMm: 90, ceMm: 300 }),
+      sL('skirt_L', 60, 1.92, 1.034, 1.92, 1.705, -4.02, 4.39, { kind: 'spaced', keMm: 90, ceMm: 300 }),
+      sR('track_R', 25, 1.526, 0.15, 1.526, trkTop, -3.93, 4.19, { kind: 'external', moduleLink: 'trackR' }),
+      sL('track_L', 25, 1.526, 0.15, 1.526, trkTop, -3.93, 4.19, { kind: 'external', moduleLink: 'trackL' }),
+      rr('hull_rear', 45, 1.70, floor, -4.21, 2.057, -4.21),
+      rf('hull_roof', 45, 1.80, roofY, -4.39, 2.36),
+    ],
+    turretPlates: [
+      // the cheek faces: 56 degrees off the axis in plan, 36 degrees up (the builder's cheek planes)
+      chR('turret_cheek_R', 620, 0.484, 2.223, 1.551, 1.526, 0.066, 0.605, 0.729, 0, { keMm: 620, ceMm: 920 }),
+      chL('turret_cheek_L', 620, 0.484, 2.223, 1.551, 1.526, 0.066, 0.605, 0.729, 0, { keMm: 620, ceMm: 920 }),
+      par('mantlet_slot', 400, [-0.462, 0.083, 2.144], [0.462, 0.083, 2.144], [-0.462, 0.506, 2.144],
+        { keMm: 450, ceMm: 550, gunFollow: true }),
+      sR('turret_side_R', 300, 1.556, 0.066, 1.498, 0.77, -3.642, 1.528, { keMm: 300, ceMm: 450 }),
+      sL('turret_side_L', 300, 1.556, 0.066, 1.498, 0.77, -3.642, 1.528, { keMm: 300, ceMm: 450 }),
+      rr('turret_rear', 70, 1.52, 0.155, -3.642, 0.836, -3.818),
+      rf('turret_roof', 50, 1.30, 0.97, -3.80, 0.60),
+    ],
+    modules: [
+      mbox('engine', [-1.15, 0.66, -4.19], [1.15, 1.90, -2.10]),
+      mbox('fuelTank', [-1.32, 0.66, -1.99], [-0.44, 1.43, -0.89]),
+      mbox('ammoRack', [-0.99, 0.66, 0.87], [0.44, 1.32, 2.40]),       // charge bins, hull front
+      mbox('turretRing', [-1.265, 1.88, -0.554], [1.265, 2.02, 1.976]),
+      mbox('radio', [-0.66, 0.15, -3.30], [-0.11, 0.60, -2.70], true),
+      mbox('optics', [-0.99, 0.80, -0.06], [-0.50, 1.13, 0.30], true),
+      mbox('gun', [-0.22, 0.08, -0.30], [0.22, 0.58, 2.10], true),
+      mbox('trackL', [-1.85, 0.0, -3.93], [-1.20, trkTop, 4.19]),
+      mbox('trackR', [1.20, 0.0, -3.93], [1.85, trkTop, 4.19]),
+    ],
+    crew: [
+      cbox('driver', [-0.38, 0.66, 2.60], [0.38, 1.40, 3.50]),
+      cbox('gunner', [-0.94, 0.0, -0.15], [-0.28, 0.77, 0.70], true),
+      cbox('commander', [-1.00, 0.05, -1.20], [-0.28, 0.88, -0.35], true),
+      cbox('loader', [0.28, 0.0, -0.75], [0.99, 0.83, 0.20], true),
+    ],
+  };
+}
 // ---------------------------------------------------------------------------
 // Specs (stats per roster §18.3-4; CR3 per its packet)
 // ---------------------------------------------------------------------------
@@ -203,6 +270,8 @@ const CHALLENGER_SPEC_IDS = [
   'ua_challenger2',
   'challenger3_proto',
   'challenger3',
+  'challenger3_td',
+  'challenger3_td_rws',
 ] as const;
 type ChallengerSpecId = typeof CHALLENGER_SPEC_IDS[number];
 
@@ -365,6 +434,68 @@ const CHALLENGER_SPECS = {
       scheme: 'digital', base: '#384436', weather: '#59624c',
       patches: ['#171d1a', '#69705a', '#2a322b'],
       marking: 'number', number: '3X', trackWidthM: 0.68, camoScale: 0.40,
+    },
+  },
+  challenger3_td: {
+    id: 'challenger3_td', name: 'Challenger 3 TD', nation: 'UK', era: 'modern', role: 'mbt',
+    hp: 2450,
+    // the Challenger 2 automotive set it was built on (CV12-9A, 1,200 hp; TN54E): the demonstrator proved the turret
+    enginePowerHp: 1200, weightTons: 66, topSpeedKmh: 59, reverseSpeedKmh: 20,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gunPitchByYawDeg: CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG,
+    gun: {
+      // Rheinmetall's 120 mm L55A1 smoothbore; its 2021 release names temperature-independent KE and programmable HE
+      caliberMm: 120, reloadS: 6.6, baseAccuracy: 0.25, aimTimeS: 1.7,
+      bloom: { move: 0.04, hullRot: 0.06, turret: 0.06, afterShot: 2.2 },
+      shells: [
+        shell('DM63A1 APFSDS', 'APFSDS', 120, apfsdsPens(650)[0], apfsdsPens(650)[1], 525, 1720, { pen2000Mm: apfsdsPens(650)[2] }),
+        shell('DM12A2 HEAT-MP', 'HEAT', 120, 600, 600, 480, 1400),
+        shell('DM11 HE-ABM', 'HE', 120, 40, 40, 590, 1000),
+      ],
+    },
+    // the built envelope at the family's installed 1.10 as the geometry gate measures it in the source-world frame
+    // (hull 9.63 to the stern pole, 13.15 gun forward, 4.06 over the skirt hooks, 3.74 to the sights; MoD for the
+    // Challenger 3: 11.55 m gun forward, 4.2 m wide with the add-on armour)
+    dims: { hullLengthM: 9.63, overallLengthM: 13.15, widthM: 4.06, heightM: 3.74 },
+    armor: armorChallenger3Td(),
+    visual: {
+      // the demonstrator's three-tone disruptive scheme (green, black, sand) and its RBSL trials number
+      scheme: 'digital', base: '#4f5a3e', weather: '#626a4d',
+      patches: ['#1c201b', '#8a7f5c', '#3a4632'],
+      marking: 'number', number: 'TD', trackWidthM: 0.64, camoScale: 0.44,
+    },
+  },
+  challenger3_td_rws: {
+    // the owner, 2026-10-27: the demonstrator's field fit without the ghillie, with a remote weapon station and kit
+    // (profiles/challenger3Td.ts buildRemoteStation, buildFieldKit): a project-authored fit, not a shown vehicle
+    id: 'challenger3_td_rws', name: 'Challenger 3 TD (RWS)', nation: 'UK', era: 'modern', role: 'mbt',
+    hp: 2450,
+    enginePowerHp: 1200, weightTons: 67, topSpeedKmh: 58, reverseSpeedKmh: 20,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gunPitchByYawDeg: CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG,
+    gun: {
+      caliberMm: 120, reloadS: 6.6, baseAccuracy: 0.25, aimTimeS: 1.7,
+      bloom: { move: 0.04, hullRot: 0.06, turret: 0.06, afterShot: 2.2 },
+      shells: [
+        shell('DM63A1 APFSDS', 'APFSDS', 120, apfsdsPens(650)[0], apfsdsPens(650)[1], 525, 1720, { pen2000Mm: apfsdsPens(650)[2] }),
+        shell('DM12A2 HEAT-MP', 'HEAT', 120, 600, 600, 480, 1400),
+        shell('DM11 HE-ABM', 'HE', 120, 40, 40, 590, 1000),
+      ],
+    },
+    // the TD's envelope; the station's sight head stands 3.18 m (installed) over the roof, under the commander's sight
+    dims: { hullLengthM: 9.63, overallLengthM: 13.15, widthM: 4.06, heightM: 3.74 },
+    armor: armorChallenger3Td(),
+    visual: {
+      // British field green under black bands, sand edges: the field fit's own coat
+      scheme: 'nato', base: '#475538', weather: '#596249',
+      patches: ['#181b16', '#7d7053'],
+      marking: 'number', number: 'T2', trackWidthM: 0.64, camoScale: 0.46,
     },
   },
 } satisfies Readonly<Record<ChallengerSpecId, FleetTankSpec>>;

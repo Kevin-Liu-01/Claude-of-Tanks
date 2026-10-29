@@ -91,7 +91,7 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
     'the hook lands on the original');
   assert.equal(original.version, version + 1, 'the original recompiles');
   assert.equal(applyBurnHook(original, a), true, 'the original next: already burning');
-  assert.ok(twin.customProgramCacheKey().endsWith('|burn-r7') && original.customProgramCacheKey().endsWith('|burn-r7'), 'both programs key the burn');
+  assert.ok(twin.customProgramCacheKey().endsWith('|burn-r8') && original.customProgramCacheKey().endsWith('|burn-r8'), 'both programs key the burn');
   original.dispose();
 }
 
@@ -106,7 +106,7 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
   hooked.customProgramCacheKey = () => 'veh-ambient-floor-v5';
   const ownKey = hooked.customProgramCacheKey;
   assert.equal(applyBurnHook(hooked, a), true);
-  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r7');
+  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r8');
   assert.equal(removeBurnHook(hooked, b), false, 'another visual\'s driver cannot take this hook off');
   let version = hooked.version;
   assert.equal(removeBurnHook(hooked, a), true);
@@ -116,7 +116,7 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
   assert.equal(hooked.version, version + 1, 'the material recompiles');
   assert.equal(removeBurnHook(hooked, a), false, 'once');
   assert.equal(applyBurnHook(hooked, a), true, 'the next battle hooks it again');
-  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r7');
+  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r8');
   const outer = hooked.onBeforeCompile;
   hooked.onBeforeCompile = function (shader, renderer) { outer.call(this, shader, renderer); };
   assert.equal(removeBurnHook(hooked, a), false, 'a hook wrapped again since stays');
