@@ -290,7 +290,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9040c', 'cv90_mk4', 'dardo', 'fv510', 'fv510_milan',
     'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2', 'leclerc_s1', 'leclerc_s2',
     'leclerc_sxxi', 'leclerc_xlr', 'leo1a5', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4',
-    'leo2a4_otco', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m',
+    'leo2a4_otco', 'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m',
     'leo2a7v', 'lrmv_lynx', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa',
     'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley',
     'm3a3_bradley', 'm46_patton', 'm47_patton', 'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2',
@@ -317,9 +317,11 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'ztz100_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
-  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies.
+  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies. The fleet's Leopard 2A4M (the 2A4 V with
+  // a field-modernisation kit) is notional: only Canada fielded a 2A4M (the owner via Main, 2026-10-29).
   concept: Object.freeze([
-    'carro45t', 'christian2', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105',
+    'carro45t', 'christian2', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'leo2a4m', 'm1a3', 'object695', 'pl01',
+    'pl01_105',
     'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
     't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',

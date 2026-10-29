@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo2_improved": {
+      "name": "Leopard 2 Improved",
+      "authority": "Main ruled on 2026-10-29 (DECISIONS.md, ~11:00) that the release-264 2A4-era Leopards, rebuilt on the release Leopard 2 hull with the 2A4 turret derived from our 2A6 X (owner 2026-10-28: \"update and cleanup our old designs ... and have them be the before variants basically\") and unregistered from their later-variant 3D oracles on 2026-10-28 (Main: \"where a rebuild's registered oracle shows a different (later) variant, unregister it\"), qualify the geometry stage by this per-id photographic packet plus a shaded blind photo-critic PASS (lane evidence ~/cot-lanes/leo2a4-family-264-evidence, critic rounds on the SwiftShader Gallery stills). Numerical 3D comparison remains unverified. The Leopard 2 Improved is KMW's KWS II trial series (the KVT test bed of 1989, the TVM min and max of 1990; TVM max trialled in Sweden in 1992-94, leading to the Strv 122 and the 2A5), which ran with the L/44; TVM max later became the 2A6EX \"Demo I\" with the L/55 (tanks-encyclopedia). The fleet's Improved carries the L/44 with the L/44's round figures (the owner via Main, 2026-10-29; its old build drew the L/55 and fired the L/55 figures of the 2A7V spec it was copied from). The 2A6-look wedge front (owner 2026-10-28).",
+      "sources": [
+        "https://tanks-encyclopedia.com/modern/germany/leopard-2-kampfwertsteigerung",
+        "https://en.wikipedia.org/wiki/Leopard_2",
+        "https://www.ointres.se/strv_121_och_strv_122.htm"
+      ],
+      "widthM": 3.662,
+      "overallLengthM": 11.306,
+      "tallestM": 4.986,
+      "envelopeBasis": "Width is as built, 3.66 m over its own deep skirts; the TVM is published at 3.78 m including the track guards and 3.54 m without (tanks-encyclopedia). Length is as built: the L/44 gun forward from the stern plate (9.70 m, the 2A4's published 9.67 m, which the fixture holds) plus the hull's stern rack (0.36 m); the TVM is published at 9.97 m with the turret at 12 o'clock on its longer KVT-pattern hull (tanks-encyclopedia), which this build on the release hull does not reproduce. Tallest is the tip of its long whip antenna as built (4.99 m); the TVM is published at 2.48 m to the turret roof and 3.03 m to the commander's sight.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/leopard2A4Family.selftest.mjs"
+    }
+  }
+}

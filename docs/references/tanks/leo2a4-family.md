@@ -21,9 +21,10 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   release keeps its base build, every table row equal to the base's.
 - Implementation status: built; regen chain, gun stops, gun lines, rigs, seats, spare track and ledger green on the six.
 - Qualification status: blind critics (SwiftShader Gallery stills, front34/side/rear34/front): PASS on all six
-  (leo2a4m, leo2a4m_can, leo2_improved, leo2a4_v round 1; leo2a4_otco round 3; leo2a4 round 4). The release gate's
-  lock-free steps pass by hand (module-visual-align red as on the base's 262 family); its capture-locked scoring stage,
-  the asset hold and the hero cards timed out in the 2026-10-29 capture queue and are owed.
+  (leo2a4m, leo2a4m_can, leo2_improved, leo2a4_v round 1; leo2a4_otco round 3; leo2a4 round 4). The lane release gate
+  (2026-10-29) read B2 contiguity and sealed reds, fixed in R4; its stage A is the photo packets for the five
+  unregistered ids (Main 2026-10-29) and the CAN's registered gate (an inherited red: main's own CAN reads min 0 fresh).
+  module-visual-align is red as on the base's 262 family. The gates re-run after R4's regen chain.
   Fairness (VIII round robin, 120 m) before -> after: leo2a4 0.497 -> 0.468, leo2a4_v 0.724 -> 0.747, leo2a4m 0.842 ->
   0.909, leo2a4m_can 0.493 -> 0.474, leo2a4_otco 0.83 -> 0.911, leo2_improved 0.833 -> 0.915 (balanceMatchups 20/20).
 - Publication: lane branch; Main integrates. Main (2026-10-29): the frozen 263+264 release ships without it; the six go
@@ -47,8 +48,12 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   re-seated on this geometry after it lands.
 - Combat data: every stat, gun and round, paint and every armour plate's protection (physical, KE, CE, kind, ERA, module
   link) stands under its own name; only where the plates stand moves (the 2A6/2A5 wedge and chevron layers become the
-  spaced layer inside the 2A4 front block). Gun geometry: L/44 on leo2a4, leo2a4_v, leo2a4m, leo2a4m_can; L/55 on
-  leo2a4_otco and leo2_improved (leo2a4's old build drew a 2A6's L/55; its published gun-forward length becomes 9.67 m).
+  spaced layer inside the 2A4 front block). Gun geometry: the L/44 on all six (leo2a4's old build drew a 2A6's L/55; the
+  OTCO and the Improved drew their 2A6M and 2A7V records' L/55 until the owner's ruling via Main, 2026-10-29, R5).
+  Combat changes, all R5 (Main rulings 2026-10-29): leo2_improved's APFSDS from the 2A7V record's L/55 891/811/730 mm to
+  the L/44's 855/778/700 (the OTCO's already fired the L/44's figures); leo2a4m_can heightM 2.62 -> 2.75 m (the DND;
+  tankBodyContacts and spotting read it). Published lengths: leo2a4 and leo2a4_otco 9.67 m, leo2_improved 9.97 m (the
+  KWS II TVM).
 
 ## Sources (per id)
 
@@ -107,3 +112,33 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   missed cells dropped (its gun junction closes); the Garage worker registers the family; blind critic rounds (leo2a4's
   decor rebuilt: standing whips, deck load, the fleet cargo off the turret its kit loads; the OTCO's label and tighter
   cheek ERA); the Strv 121 returned to its base build for this release.
+- R4 (2026-10-29, the release gate): the lane gate's reds and their fixes.
+  - B2 contiguity: the hull's stern rack sat empty on leo2a4 and leo2_improved (54 cells: the 2A4 V's stern frame floors
+    it, the others' loads had moved to the deck), the CAN's tall rack left its outer bays open (30), the OTCO's rear slat
+    panel stood 8 cm off the plate (26 + 144 phase-only) and its bow flares left the mudguards' corners open. Fixed with
+    `sternRackFloor` (leopard2A4KitParts.ts; also the Strv 121), the CAN's bay floors, the OTCO's panel flange and flare
+    plates: the Node replica reads 0 at all nine phases on the six.
+  - Sealed: the 2A4 turret's smoke tubes were bare open cylinders (their inside read as an opening from a low front view):
+    lined to the grenade's face 4 cm in (open px 120-170 -> 5-38). The stern rack's tubes fell on a pixel-centre column in
+    the Improved's census frame: sleeved 5 mm (38 -> 6 px). leo2a4m, leo2a4m_can, leo2a4_otco and leo2_improved hold
+    their rows; leo2a4 and leo2a4_v went OUT OF FRAME (the L/55 build's frame; the standing whips) and were re-recorded
+    as new vehicles (Main 2026-10-29): SEALED, 14 and 4 single-pixel clusters (lane evidence sealed-rerecord/).
+  - Stage A (Main 2026-10-29): the five unregistered ids qualify by per-id photo packets
+    (docs/references/photos/leopard-*-20261029.json, item/photo-packets-265's format: the as-built envelope in the
+    fields, the published figures in envelopeBasis) and the blind critic PASSes; the native fixture is
+    `profiles/leopard2A4Family.selftest.mjs`. Their PHOTO_REFERENCE_PACKETS rows land after item/photo-packets-265.
+  - leo2a4m_can stays registered (leo2a4m_arrafi.glb): dims 41.7 (height p95 2.79 against the spec's 2.62, length 9.69
+    in the oracle's frame against 9.96), whole 84.9. A fresh main run with the same oracle (2026-10-29) reads main's own
+    CAN at min 0: dims 0 (height 2.50, hull 7.06, overall 9.27), whole 79.2; the stored 86.1 record was stale. The spec's
+    9.96 m is the DND's published 2A4M CAN length; its 2.62 m is the old build's p95 recipe line (leo2a4m.md), and the
+    DND publishes 2.75 m. heightM also drives tankBodyContacts and spotting, so it stays (combat data unchanged): Main's
+    call.
+  - Sourcing (published figures, release 264): "Leopard 2A4 V" and the fleet's "Leopard 2A4M" are not fielded
+    designations (only Canada fielded a 2A4M); the real OTCo tank is a Dutch 2A4NL with the L/44 and the Leopard 2
+    Improved (KWS II TVM) trialled with the L/44, so their L/55 rode the old builds' specs.
+- R5 (2026-10-29, the owner's rulings via Main): leo2a4m is labelled a concept (vehicleFacets.ts); leo2a4_otco and
+  leo2_improved take the L/44 (its geometry and round figures; their gun stops re-measured); leo2a4m_can's heightM is the
+  DND's 2.75 m; leo2a4_v becomes the Ukrainian-service 2A4 under Kontakt-1 on its own head (item/leo2a4v-era-265).
+  - The Strv 121 (item/strv121-2a4-265): its stern rack floored; its track sweep (28 voxels) is the field suit's
+    `strv122_ghillie_hull_net` at x ±1.68, y 1.16-1.22, and its netting px (2,243 against main's 2,806 row) moved with
+    the re-seated suit: both routed to the ghillie lane (Main).
