@@ -20,8 +20,10 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   re-seated suit (Main, 2026-10-29: its nationalGunClearance read 18.84 mm from the suit's hull net at yaw 180); this
   release keeps its base build, every table row equal to the base's.
 - Implementation status: built; regen chain, gun stops, gun lines, rigs, seats, spare track and ledger green on the six.
-- Qualification status: blind critics (SwiftShader Gallery stills, front34/side/rear34/front): PASS leo2a4m, leo2a4m_can,
-  leo2_improved, leo2a4_v, leo2a4_otco (round 3); leo2a4 in its fourth round. Release gate queued in the capture lock.
+- Qualification status: blind critics (SwiftShader Gallery stills, front34/side/rear34/front): PASS on all six
+  (leo2a4m, leo2a4m_can, leo2_improved, leo2a4_v round 1; leo2a4_otco round 3; leo2a4 round 4). The release gate's
+  lock-free steps pass by hand (module-visual-align red as on the base's 262 family); its capture-locked scoring stage,
+  the asset hold and the hero cards timed out in the 2026-10-29 capture queue and are owed.
   Fairness (VIII round robin, 120 m) before -> after: leo2a4 0.497 -> 0.468, leo2a4_v 0.724 -> 0.747, leo2a4m 0.842 ->
   0.909, leo2a4m_can 0.493 -> 0.474, leo2a4_otco 0.83 -> 0.911, leo2_improved 0.833 -> 0.915 (balanceMatchups 20/20).
 - Publication: lane branch; Main integrates.
