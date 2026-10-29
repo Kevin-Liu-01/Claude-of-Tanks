@@ -71,13 +71,16 @@ const ga2 = m48('m48a2ga2', 'Kpz M48A2GA2', 'Germany');
 Object.assign(ga2.dims, { hullLengthM: 6.87, overallLengthM: 9.30, widthM: 3.63, heightM: 3.16 });
 Object.assign(ga2, { weightTons: 48, topSpeedKmh: 48 });
 ga2.visual = { ...ga2.visual, marking: 'number', number: '211' };
-// measured by tools/gun-depression-sweep.mjs on the release-266 build (the cast shield clear of the race collar)
+// measured by tools/gun-depression-sweep.mjs on the release-266 build (the squared shield block over the ring face); over
+// the rear (yaw 158-180) the block stands within 2.3 deg of the engine deck's grilles where the barrel alone would depress
+// further: the curve follows the barrel there (the sweep's mount-conflict window)
 ga2.gunPitchByYawDeg = [
-  [0, -9], [27, -9], [32, -7.8], [34, -7.6], [36, -7.6], [37, -7.9], [39, -9], [41, -9], [43, -8.2], [46, -8.2],
-  [48, -9], [54, -9], [55, -8.9], [56, -7.9], [57, -7.5], [58, -7.2], [60, -7.2], [61, -7.5], [62, -8.1], [63, -9],
-  [120, -9], [121, -8.5], [127, -6.9], [132, -6.8], [134, -6.3], [139, -5.8], [140, -4.6], [141, -3.7], [142, -3.5],
-  [143, -3.4], [146, -2.9], [147, -2.4], [149, -2.1], [156, -2.2], [157, -1.5], [158, 0], [161, 2.4], [163, 3.2],
-  [164, 3.3], [180, 3.3]
+  [0, -9], [23, -9], [24, -8.9], [25, -8.1], [35, -7.6], [36, -7.6], [39, -8.5], [46, -8.5], [47, -7.8], [48, -6.2],
+  [49, -5], [50, -4.3], [51, -3.9], [52, -3.6], [54, -3.1], [56, -3.1], [57, -3.3], [58, -3.6], [59, -4.3], [63, -4.5],
+  [68, -5.1], [69, -5.3], [71, -6], [75, -9], [105, -9], [106, -8.3], [107, -6.9], [108, -4.4], [109, -3.5],
+  [110, -2.9], [112, -2.9], [113, -3], [118, -4.5], [120, -2.9], [121, -2], [123, -1.1], [124, -0.9], [126, -0.9],
+  [128, -1.5], [130, -3.1], [140, -3.1], [141, -2.2], [147, -0.5], [149, -0.5], [155, -2.2], [156, 0.6], [159, 0.8],
+  [161, 2.4], [163, 3.2], [164, 3.3], [180, 3.3]
 ];
 
 const sup = m48('m48_super', 'M48 Super', 'Germany');
