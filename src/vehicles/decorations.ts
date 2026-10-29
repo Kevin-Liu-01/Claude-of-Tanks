@@ -2978,9 +2978,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: -0.25, along: true }] },
   ];
   if (spec.id === 'challenger1_mk2') return [
+    // the packs seat first (release 264: behind the net roll they had found support only on the bustle's stray tie bar,
+    // and fell off the tank when it went)
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretRear', { low: true }] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.2 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.25, along: true }] },
