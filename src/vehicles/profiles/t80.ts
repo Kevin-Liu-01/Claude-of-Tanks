@@ -498,10 +498,11 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
     // the symmetric ±0.88 boxes printed -1.40 into the ±0.92..1.08 columns.
     // Main boxes narrow to -0.82..0.88 (BV keeps the guarded symmetric form);
     // the right corner box carries the deep -1.41 read only to x 1.005.
-    // 264 (envelope honesty): the rear bin is stowage behind the dome's armour, not armour: all of it rides turretEquipment
-    P.add('turretEquipment', box(v === 2 ? 1.76 : 1.70, 0.45, 0.31), v === 2 ? 0 : 0.03, roofY(0.50), -1.245);
+    // 264 (envelope honesty): the rear bin is stowage behind the dome's armour, not armour: it rides turretEquipment; the BV
+    // keeps its bin in turret, the drone dock's seat (missionAttachmentSeats) rests on its tail box
+    P.add(v === 2 ? 'turret' : 'turretEquipment', box(v === 2 ? 1.76 : 1.70, 0.45, 0.31), v === 2 ? 0 : 0.03, roofY(0.50), -1.245);
     if (v === 2) {
-      P.add('turretEquipment', box(1.76, 0.32, 0.23), 0, roofY(0.57), -1.515);
+      P.add('turret', box(1.76, 0.32, 0.23), 0, roofY(0.57), -1.515);
     } else {
       P.add('turretEquipment', box(0.125, 0.45, 0.31), 0.9425, roofY(0.50), -1.245);
       // r27b: the compressed ref's rear-most bustle column is a THIN
