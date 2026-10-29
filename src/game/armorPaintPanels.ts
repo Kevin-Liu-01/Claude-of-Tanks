@@ -17,7 +17,7 @@
 // layout; a draw without it reads 0 (the hook's defaultAttributeValues).
 
 import * as THREE from 'three';
-import { queryAimArmor, type ArmorModel, type TankArmorPose } from '../sim/armor.ts';
+import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type TankArmorPose } from '../sim/armor.ts';
 import { zoneAt, type ZonePlate } from '../sim/armorZones.ts';
 import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
 
@@ -214,6 +214,37 @@ function plateName(zone: ZonePlate | undefined): string {
   return String((zone?.plate as { name?: string } | undefined)?.name ?? '');
 }
 
+/** The face a segment (o + d·t, t in [0, 1]) enters a convex cell by, and where (sim/armor.ts intersectConvexCell). */
+let _entryFace: ArmorCollisionCell['faces'][number] | null = null;
+function enterCell(cell: ArmorCollisionCell, o: THREE.Vector3, d: THREE.Vector3): number {
+  _entryFace = null;
+  // the cell's bounds first
+  let lo = 0, hi = 1;
+  for (let axis = 0; axis < 3; axis++) {
+    const oa = axis === 0 ? o.x : axis === 1 ? o.y : o.z, da = axis === 0 ? d.x : axis === 1 ? d.y : d.z;
+    if (Math.abs(da) < 1e-12) { if (oa < cell.min[axis] || oa > cell.max[axis]) return -1; continue; }
+    let a = (cell.min[axis] - oa) / da, b = (cell.max[axis] - oa) / da;
+    if (a > b) { const swap = a; a = b; b = swap; }
+    if (a > lo) lo = a;
+    if (b < hi) hi = b;
+    if (lo > hi) return -1;
+  }
+  let t0 = 0, t1 = 1;
+  let entry: ArmorCollisionCell['faces'][number] | null = null;
+  for (const face of cell.faces) {
+    const n = face.normal;
+    const distance = n[0] * o.x + n[1] * o.y + n[2] * o.z + face.constant;
+    const denominator = n[0] * d.x + n[1] * d.y + n[2] * d.z;
+    if (Math.abs(denominator) < 1e-12) { if (distance > 1e-7) return -1; continue; }
+    const t = -distance / denominator;
+    if (denominator < 0) { if (t > t0) { t0 = t; entry = face; } } else if (t < t1) t1 = t;
+    if (t0 > t1 + 1e-8) return -1;
+  }
+  if (t1 < 0 || t0 > 1) return -1;
+  _entryFace = entry;
+  return Math.max(0, t0);
+}
+
 function find(parent: Int32Array, v: number): number {
   while (parent[v] !== v) { parent[v] = parent[parent[v]]; v = parent[v]; }
   return v;
@@ -236,6 +267,11 @@ const FLAT_SAMPLED = 8;
  * this far out along its normal. */
 const CELL_SLACK_M = 0.03;
 const STANDOFF_REACH_M = 1.5;
+/** One ray answers every spaced part within this cell of its frame (m) facing the same way; a part smaller than
+ * STANDOFF_MIN_M2 (a bolt, a rivet) asks only the answers already cast. A ray counts as this many triangles of a slice. */
+const STANDOFF_CELL_M = 0.15;
+const STANDOFF_MIN_M2 = 0.002;
+const STANDOFF_RAY_COST = 12;
 
 /** A cluster with no majority under this area (m²: a dome, a hatch, a lamp's casing) takes its plurality as one part;
  * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
@@ -359,8 +395,13 @@ export function* bakePaintPanelSteps(
   authority: PanelAuthority | null = null,
 ): Generator<void, PanelBakeStats, void> {
   const model = armor as ArmorModel;
-  const cellsOf = { hull: model.collisionShells?.hull ?? [], turret: model.collisionShells?.turret ?? [] };
+  // the cells the authority traces (sealed as it seals them)
+  const cellsOf = {
+    hull: tracedCollisionCells(model.collisionShells?.hull) ?? [], turret: tracedCollisionCells(model.collisionShells?.turret) ?? [],
+  };
   const byPlate = zoneByPlateOf(template);
+  // the spaced parts' answers, by frame, cell and facing (one vehicle's bake)
+  const behindCache = new Map<string, number>();
   const split = frameZonesOf(template);
   const barrel = !!frames.gun && Number.isFinite(template.barrelFrom) && template.barrelRadius > 0;
   const users = new Map<THREE.BufferGeometry, THREE.Mesh[]>();
@@ -375,7 +416,7 @@ export function* bakePaintPanelSteps(
   // a tally of one cluster's votes by area (VOTE_LIVE .. the last zone), and the slots it touched
   const tally = new Float64Array(template.zones.length + 3);
   const touched: number[] = [];
-  let sliceStarted = performance.now(), sliceWork = 0;
+  let sliceStarted = performance.now(), sliceWork = 0, rayWork = 0;
   const yieldSlice = (): void => {
     const took = performance.now() - sliceStarted;
     stats.ms += took;
@@ -458,7 +499,7 @@ export function* bakePaintPanelSteps(
       for (let t = 0; t < triangles; t++) order[fill[roots[t]]++] = t;
       if (spend(triangles >> 3)) { yield; sliceStarted = performance.now(); }
       // the zone of the first main plate behind a part standing outside every cell of its frame, or -1
-      const behindZone = (x: number, y: number, z: number, nx: number, ny: number, nz: number): number => {
+      const behindZone = (x: number, y: number, z: number, nx: number, ny: number, nz: number, area: number): number => {
         const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
         if (!(length > 1e-9) || !authority) return -1;
         nx /= length; ny /= length; nz /= length;
@@ -467,15 +508,36 @@ export function* bakePaintPanelSteps(
           if (local.x >= cell.min[0] - CELL_SLACK_M && local.y >= cell.min[1] - CELL_SLACK_M && local.z >= cell.min[2] - CELL_SLACK_M
             && local.x <= cell.max[0] + CELL_SLACK_M && local.y <= cell.max[1] + CELL_SLACK_M && local.z <= cell.max[2] + CELL_SLACK_M) return -1;
         }
-        _from.set(x + nx * STANDOFF_REACH_M, y + ny * STANDOFF_REACH_M, z + nz * STANDOFF_REACH_M);
-        _dir.set(-nx, -ny, -nz);
+        const ln = _n.set(nx, ny, nz).transformDirection(owner === 'hull' ? pose.hullInv : pose.turretInv);
+        const key = `${owner === 'hull' ? 'h' : 't'}${Math.round(local.x / STANDOFF_CELL_M)},${Math.round(local.y / STANDOFF_CELL_M)},${Math.round(local.z / STANDOFF_CELL_M)}`
+          + `|${Math.round(ln.x * 2)},${Math.round(ln.y * 2)},${Math.round(ln.z * 2)}`;
+        const known = behindCache.get(key);
+        if (known !== undefined) return known;
+        if (area < STANDOFF_MIN_M2) return -1;
+        const zone = castBehind(x, y, z, nx, ny, nz);
+        behindCache.set(key, zone);
+        return zone;
+      };
+      // the authority's own test (sim/armor.ts intersectConvexCell): the segment from outside the part to as far behind it,
+      // against every cell of both frames, the plate of the face it enters first; that entry must lie behind the part
+      const castBehind = (x: number, y: number, z: number, nx: number, ny: number, nz: number): number => {
+        rayWork += STANDOFF_RAY_COST;
         stats.standoffRays++;
-        const info = queryAimArmor(_from, _dir, 2 * STANDOFF_REACH_M, authority.pose, model);
-        const main = info?.layers.find((layer) => layer.plate.kind === 'main');
-        if (!main) return -1;
-        // behind the part, never in front of it
-        if ((main.point.x - x) * _dir.x + (main.point.y - y) * _dir.y + (main.point.z - z) * _dir.z < -CELL_SLACK_M) return -1;
-        return byPlate.get(String(main.plate.name ?? '')) ?? -1;
+        let bestT = Infinity, bestPlate: { name?: string } | null = null;
+        for (let frame = 0; frame < 2; frame++) {
+          const cells = frame === 0 ? cellsOf.hull : cellsOf.turret;
+          if (!cells.length) continue;
+          const inv = frame === 0 ? pose.hullInv : pose.turretInv;
+          const o = _from.set(x + nx * STANDOFF_REACH_M, y + ny * STANDOFF_REACH_M, z + nz * STANDOFF_REACH_M).applyMatrix4(inv);
+          const d = _dir.set(x - nx * STANDOFF_REACH_M, y - ny * STANDOFF_REACH_M, z - nz * STANDOFF_REACH_M).applyMatrix4(inv).sub(o);
+          for (const cell of cells) {
+            const t = enterCell(cell, o, d);
+            if (t >= 0 && t < bestT && _entryFace) { bestT = t; bestPlate = _entryFace.plate as { name?: string }; }
+          }
+        }
+        // the part stands at the segment's middle: the plate must lie behind it, never in front of it
+        if (!bestPlate || bestT < 0.5 - CELL_SLACK_M / (2 * STANDOFF_REACH_M)) return -1;
+        return byPlate.get(String(bestPlate.name ?? '')) ?? -1;
       };
       const cast = (t: number, weight: number): void => {
         const slot = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
@@ -640,7 +702,7 @@ export function* bakePaintPanelSteps(
             const t = order[k], area = areas[t];
             nx += normals[t * 3] * area; ny += normals[t * 3 + 1] * area; nz += normals[t * 3 + 2] * area;
           }
-          const behind = behindZone(cx / total, cy / total, cz / total, nx, ny, nz);
+          const behind = behindZone(cx / total, cy / total, cz / total, nx, ny, nz, total);
           if (behind >= 0) { value = behind + 1; stats.standoff += kept; }
         }
         if (value === 0 && voted > 0 && top !== VOTE_LIVE) {
@@ -662,7 +724,9 @@ export function* bakePaintPanelSteps(
           }
         }
         start = end;
-        if (spend(flat ? kept * (kept > FLAT_SAMPLED ? 1 : 3) : Math.min(kept, MAX_VOTES) * 4)) { yield; sliceStarted = performance.now(); }
+        const rays = rayWork;
+        rayWork = 0;
+        if (spend(rays + (flat ? kept * (kept > FLAT_SAMPLED ? 1 : 3) : Math.min(kept, MAX_VOTES) * 4))) { yield; sliceStarted = performance.now(); }
       }
       if (measureDisagreement) {
         for (let t = 0; t < triangles; t++) {
