@@ -2388,7 +2388,7 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number, dense = false): {
         // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
         const image = ctx.getImageData(0, 0, S, S);
         // (r7) the fabric's shade floored at a dark step of its own base (the critic r6: "near-black cover interiors")
-        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.72, occlusion: 2.4,
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.66, occlusion: 2.6,
           radii: [3, 9], floor: 0.62 * (0.2126 * pal.base[0] + 0.7152 * pal.base[1] + 0.0722 * pal.base[2]),
           gaps: { tone: [pal.base[0] * 0.74, pal.base[1] * 0.74, pal.base[2] * 0.7], fill: [0, 0], cell: S * S } });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
