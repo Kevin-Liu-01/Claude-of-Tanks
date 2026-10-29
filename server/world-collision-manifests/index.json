@@ -12,8 +12,8 @@
       "concealers": 7940
     },
     "desert": {
-      "bytes": 1234058,
-      "sha256": "bfa0e1e35d38accb43fdb87d1f761cb9be4a209e7fd56331c0b53249637dcdcd",
+      "bytes": 1233843,
+      "sha256": "a8f91cbee0551c3a6104113296cf161431e89b6571209bde8ca4f67b9956c3d8",
       "obstacles": 1760,
       "colliders": 1830,
       "concealers": 1261
@@ -47,8 +47,8 @@
       "concealers": 5993
     },
     "steppe": {
-      "bytes": 1141105,
-      "sha256": "7b16cf7ebeb43708aaf5de22c49f3118cd1c6b076f10b7062cf66e8327ccbd6e",
+      "bytes": 1139699,
+      "sha256": "ba192a2a93f9355ebbb143f77e01206b6844858255e2d452d1515ceb1132ece4",
       "obstacles": 2252,
       "colliders": 2318,
       "concealers": 1210
@@ -75,8 +75,8 @@
       "concealers": 6853
     },
     "delta": {
-      "bytes": 1781355,
-      "sha256": "cc0b5aa72ecc3c2b8017776ba2f47ddcd3ddf541ed8ef1ebf3738c0296c40a18",
+      "bytes": 1780353,
+      "sha256": "884428cb80828bc6f797cfc6df8ccc6b2e2fce32799cc60244eafda6fc7279ed",
       "obstacles": 8816,
       "colliders": 8801,
       "concealers": 10067
@@ -117,8 +117,8 @@
       "concealers": 2730
     },
     "ruinspires": {
-      "bytes": 5460848,
-      "sha256": "59492d69c8b59719c61baf415f2b0f773cdf04369864822ab56689a5bd6dd708",
+      "bytes": 5460467,
+      "sha256": "2713cfc53884e57e3076cdb1afbd21f82c432959ede1145136e07fd3af7a5ca0",
       "obstacles": 2475,
       "colliders": 8844,
       "concealers": 388
@@ -166,8 +166,8 @@
       "concealers": 3872
     },
     "oasis": {
-      "bytes": 1262321,
-      "sha256": "e0977a98568d47d9500f6ed1f753477447dc097a7517776bf253bd50f3b5fce4",
+      "bytes": 1262169,
+      "sha256": "aa0f6d7737d8df00eacc6ece844521c2e919fc5ddb524940050ea111062b46da",
       "obstacles": 1677,
       "colliders": 1938,
       "concealers": 874
@@ -194,15 +194,15 @@
       "concealers": 2285
     },
     "mangrove": {
-      "bytes": 1133710,
-      "sha256": "11893a820c8d405b8a52277a552106db3c78d65bdb433c2059c7ff2e59d1b4ae",
+      "bytes": 1132435,
+      "sha256": "82873f95a71ec377a946d672bee71dcb71796992d135b3bc177b41208a71fccf",
       "obstacles": 5591,
       "colliders": 5568,
       "concealers": 6579
     },
     "saltwind": {
-      "bytes": 2176135,
-      "sha256": "e35637645cd7256e5253fe48e82ecb031350f34be1259e9b949eaced7e8fa5a2",
+      "bytes": 2176118,
+      "sha256": "b7788a4a8613064e4c3baac63f763f46f02cfb736cb2cae3fed516a725215331",
       "obstacles": 8503,
       "colliders": 8658,
       "concealers": 4095
