@@ -147,7 +147,7 @@ function cheeks(P: TankBuilderPort): void {
 /**
  * The mantlet set 3 cm back in the gun slot (0.93 m wide, its vertical edges bevelled 3 cm, its top one chamfer from the
  * face's top edge back up to the brow, a lifting eye and two bolts on it), the gun's root one cone from the face to the
- * sleeve's bolted ring (the owner's photo);
+ * sleeve's bolted ring, then a canvas boot down onto the tube (the owner's photo);
  * the coaxial MG3's port on the gun's left (a raised ring round a 68 mm hole) and the FERO Z18 auxiliary sight's on its
  * right (an 85 mm aperture in a 140 mm collar, its lens back in the bore, the cap hanging on its chain); the 2A2's
  * collar stands longer. The 120 mm L/44.
@@ -165,10 +165,11 @@ function gunAssembly(P: TankBuilderPort, v: EarlyLeopard2): void {
     { z: face - bevel, ring: rect(hw, faceTop + (crown - faceTop) * bevel / run) },
     { z: face, ring: rect(hw - bevel, faceTop) },
   ]), 0, 0, 0);
-  // on the chamfer, a lifting eye just right of the bore and two bolt heads outboard of it
+  // on the chamfer, a lifting eye just right of the bore (a thick loop facing forward, its foot sunk in the chamfer so it
+  // stands off it as an arch, the photo) and two bolt heads outboard of it
   const onChamfer = (t: number): readonly [number, number] => [face - run + t * run, crown - t * (crown - faceTop)];
   const [ez, ey] = onChamfer(0.3), [bz, by] = onChamfer(0.45);
-  P.addGunExtra(xform(torus(0.028, 0.008, 12, 6), 0, 0, 0, -Math.PI / 2, 0, 0), -0.07, ey + 0.03, ez);
+  P.addGunExtra(xform(torus(0.03, 0.011, 14, 8), 0, 0, 0, -Math.PI / 2, 0, 0), -0.07, ey + 0.016, ez);
   for (const bx of [-0.44, -0.33]) P.addGunExtraDark(cylY(0.011, 0.011, 0.014, 6), bx, by + 0.004, bz);
   // the gun's root: one cone from the face, 0.47 m across, to the sleeve's bolted ring 0.26 m out
   P.addGunExtra(cylZ(0.16, 0.26, seg, 0.235), 0, 0, face + 0.135);
@@ -177,6 +178,8 @@ function gunAssembly(P: TankBuilderPort, v: EarlyLeopard2): void {
     const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
     P.addGunExtraDark(cylZ(0.012, 0.015, 6), Math.cos(a) * 0.176, Math.sin(a) * 0.176, face + 0.215);
   }
+  // the canvas boot from the ring down onto the sleeved tube, so the root narrows into the barrel without a step
+  P.addGunExtra(cylZ(1.3 * T.barrelRadiusM, 0.14, seg, 0.155), 0, 0, face + 0.335);
   // a port: a raised ring (a lathe turned onto the bore's direction: its outer wall up, across, its inner wall down)
   // round the hole's dark floor, the ring's own height deep
   const port = (x: number, y: number, rIn: number, rOut: number, proud: number): void => {
@@ -188,10 +191,11 @@ function gunAssembly(P: TankBuilderPort, v: EarlyLeopard2): void {
   const fero = v.batch === '2A2' ? 0.12 : 0.045;
   port(-0.285, 0, 0.0425, 0.07, fero);                                              // FERO Z18
   P.add('gunMountGlass', cylZ(0.038, 0.006, P.q ? 16 : 10), -0.285, 0, face + 0.017);
-  // the FERO's cap, smaller than the collar, hanging on its chain from the collar's foot in toward the gun (the photo)
-  const chain = Math.atan2(0.04, 0.064);
-  P.addGunExtraDark(xform(box(0.006, 0.075, 0.006), 0, 0, 0, 0, 0, chain), -0.245, -0.10, face + 0.012);
-  P.addGunExtra(xform(cylZ(0.036, 0.03, P.q ? 14 : 8), 0, 0, 0, 0.35, 0, 0), -0.222, -0.165, face + 0.02);
+  // the FERO's cap, smaller than the collar, hanging on its chain from the collar's foot in toward the gun, clear of
+  // the root's cone (the photo)
+  const chain = Math.atan2(0.03, 0.07);
+  P.addGunExtraDark(xform(box(0.006, 0.076, 0.006), 0, 0, 0, 0, 0, chain), -0.247, -0.101, face + 0.012);
+  P.addGunExtra(xform(cylZ(0.036, 0.03, P.q ? 14 : 8), 0, 0, 0, 0.35, 0, 0), -0.232, -0.172, face + 0.02);
   KIT.buildGun(P, { len: T.barrelLengthM, r: T.barrelRadiusM, sleeve: true, evac: 0.56, evacR: 1.78, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }

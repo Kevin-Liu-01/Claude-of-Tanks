@@ -100,10 +100,10 @@ cavity in the front armour in previous models").
   back 0.22 m to the cheeks' flat tops (the photographed 2A4 fronts; the owner to that lane: "fronts of leo 2a4s are
   sloped though"); the roof's front plates over them 70 mm (btvt).
 - The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.23 m over it at its face, its vertical edges
-  bevelled 3 cm and its top one chamfer 0.22 m back up to the brow, where the seal runs (a lifting eye and two bolt heads
-  on it; the gun's root one cone from the face, 0.47 m across, to the sleeve's bolted ring 0.26 m out: the owner's
-  photo), set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
-  2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
+  bevelled 3 cm and its top one chamfer 0.22 m back up to the brow, where the seal runs (a thick lifting eye standing
+  off it as an arch and two bolt heads on it; the gun's root one cone from the face, 0.47 m across, to the sleeve's
+  bolted ring 0.26 m out, then a canvas boot down onto the tube: the owner's photo), set 3 cm back in the slot (R4's
+  photo critic and the 2A4 lane's four photographed 2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
   estimate), with the dark gun-port recess under it; the trunnion and the muzzle stay where they were.
 - The grab rails, round bars on standoff brackets across both cheek faces, the right one under the notch's sill (0.30 m)
   and the left one higher (0.37 m); a rubber-faced pad 0.40 by 0.10 m on the right face's foot under the notch; a shallow
@@ -162,6 +162,13 @@ cavity in the front armour in previous models").
   past the outer wall, round rails on brackets, the panel on the left cheek's bevel, and a lug no photo shows removed.
   Left as built: wider cheeks and the notch 8 cm farther from the slot (both would move the armour; the cheek-to-mantlet
   ratio was read across parts at different distances from the camera), a rounded seal cover.
+- R8 (2026-10-29, a blind critic of the textured renders at the photo's camera against the owner's photo and the strip):
+  PASS on the 2A3 and the OTCO. Its one 2A2 finding, the FERO collar standing about three times as far out, stands as
+  built: the 2A2 kept the long Z18 tube and the 2A3 shortened it (Panzerbaer, de.wikipedia; the photo is a 2A4). From
+  its minor list: the mantlet's eye a thick arch standing off the chamfer (it read as a thin ring lying on it), a canvas
+  boot from the bolted ring down onto the tube (the root stepped hard to the barrel), the FERO cap 1 cm farther from the
+  root's cone. Left as built: the ribbed seal and the doors' hinges (small fittings), and the right cheek's angle (the
+  critic's own reading: the older photos are flat-fronted).
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.
