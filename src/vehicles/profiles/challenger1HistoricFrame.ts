@@ -1,7 +1,9 @@
 // Challenger 1 datums (release 262), from the published dimensions and the measured drawings in
 // docs/references/tanks/challenger1_mk2.md. Vehicle frame: ground y = 0, hull nose z = +4.165, +x the vehicle's left.
-/** mk2 and granby share the historical turret (granby in its Op Granby fit); mk1 carries the sleek turret on the same hull. */
-export type Challenger1Mark = 'mk1' | 'mk2' | 'granby';
+/** The fictional FV4030/5 and FV4030/6 on the rebuilt hull (owner 2026-10-28: "use the weird turrets we invented to
+ *  make new tanks like ... X variants"): 'x' carries the wide wedge turret and the applique kit, 'x_sleek' the sleek turret. The
+ *  real Challenger 1 marks use the supplied-file build (challenger1X.ts). */
+export type Challenger1Mark = 'x' | 'x_sleek';
 type Point = readonly [number, number, number];
 
 export const CR1_HISTORIC = Object.freeze({
@@ -26,7 +28,7 @@ export const CR1_HISTORIC = Object.freeze({
   }),
 });
 
-/** Op Granby applique cassettes outside the skirts (the Granby variant; drawn, not yet charged as armour zones). */
+/** The FV4030/5 applique cassettes outside the skirts, after the Op Granby fit (drawn, not yet charged as armour zones). */
 export const CR1_GRANBY_APPLIQUE = Object.freeze({
   innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .24, low: .36, high: 1.44, rear: -2.58, front: 3.30,
 });
