@@ -1389,7 +1389,9 @@ const M48_GEAR: GearSpec = {
 function m48Gear(V: M48Variant): GearSpec {
   // (its centre 0.18 m inside the run's inner face, the common tangent below the last road wheel and the sprocket)
   if (V.gear === 'a1') return { ...M48_GEAR, tension: { z: -2.60, y: 0.61, r: 0.18 }, tensionInside: true };
-  if (V.gear === 'a2') return { ...M48_GEAR, rollerN: 3, rollerZs: [-1.723, -0.065, 1.492] };
+  // (2.5 cm higher than the A5's five: a 1.66 m span hangs its full 6.5 cm, and the run's inner edge kept 2 cm over the
+  // hull's lower chamfer; raised it keeps 4.6 cm there and 4.5 cm under the fender boxes)
+  if (V.gear === 'a2') return { ...M48_GEAR, rollerN: 3, rollerY: M48_GEAR.rollerY + 0.025, rollerZs: [-1.723, -0.065, 1.492] };
   return M48_GEAR;
 }
 // the model's track centres (1.6 cm a side over the published 115 in) and the 28 in track: the gate measures this hull
