@@ -26,7 +26,9 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   the asset hold and the hero cards timed out in the 2026-10-29 capture queue and are owed.
   Fairness (VIII round robin, 120 m) before -> after: leo2a4 0.497 -> 0.468, leo2a4_v 0.724 -> 0.747, leo2a4m 0.842 ->
   0.909, leo2a4m_can 0.493 -> 0.474, leo2a4_otco 0.83 -> 0.911, leo2_improved 0.833 -> 0.915 (balanceMatchups 20/20).
-- Publication: lane branch; Main integrates.
+- Publication: lane branch; Main integrates. Main (2026-10-29): the frozen 263+264 release ships without it; the six go
+  in the next release with the early Leopards and the balance lane's lever for the wedge three (~0.91), and the Strv 121
+  rebuild with its ghillie fix.
 
 ## Scope and preservation
 
