@@ -122,8 +122,11 @@ export function leo2a3B4Armor(): ArmorEnvelope {
   const sill = Td.sightSillY, back = LEO2A3B4_SIGHT_BACK_Z;
   const fso = cheekFaceZ(Td.sightOuterX), fsi = cheekFaceZ(Td.sightInnerX), fs = (fso + fsi) / 2;
   const rise = Td.sightTopY - sill, run = fs - back;
-  const slope = rise / Math.hypot(rise, run), notch = A.sightNotch;
   const ny = Td.roofY, nz = fso - run * (ny - sill) / rise;
+  // the plate's obliquity to a frontal round, its rise back and the cheek's sweep together (the cosine of its normal on
+  // the bore's axis), so the round's line of sight through it is the sight head's protection
+  const ux = Td.sightOuterX - Td.sightInnerX, uz = fsi - fso, wy = ny - sill, wz = nz - fso;
+  const slope = Math.abs(ux * wy) / Math.hypot(uz * wy, ux * wz, ux * wy), notch = A.sightNotch;
   const mhw = Td.mantletHalfWidthM;
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, fi, Td.frontHalfWidthM, fo, y0, yf, 0, 0, cheek),
