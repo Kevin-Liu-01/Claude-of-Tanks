@@ -54,9 +54,13 @@ export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, reade
     let warranted = false, run = `npm run test:heavy -- ${name}`;
     if (name === 'balance' && balance?.length) {
       warranted = true;
-      const classes = [...new Set(balance.flatMap((row) => row.classes))].map((word) => CLASS_WORDS[word] ?? word);
       const tiers = tierList(balance.map((row) => row.tier));
-      parts.push(`${balance.length} ${balance.length === 1 ? 'tank' : 'tanks'} changed ${classes.join('/')} in tier${/[-,]/.test(tiers) ? 's' : ''} ${tiers} (${list(balance.map((row) => row.id), 6)})`);
+      const fresh = balance.filter((row) => row.classes.includes('new')).length, gone = balance.filter((row) => row.classes.includes('removed')).length;
+      const moved = balance.filter((row) => !row.classes.includes('new') && !row.classes.includes('removed'));
+      const classes = [...new Set(moved.flatMap((row) => row.classes))].map((word) => CLASS_WORDS[word] ?? word);
+      const counts = [fresh && `${fresh} new ${fresh === 1 ? 'tank' : 'tanks'}`, moved.length && `${moved.length} ${moved.length === 1 ? 'tank' : 'tanks'} changed ${classes.join('/')}`,
+        gone && `${gone} removed`].filter(Boolean);
+      parts.push(`${counts.join(', ')} in tier${/[-,]/.test(tiers) ? 's' : ''} ${tiers} (${list(balance.map((row) => row.id), 6)})`);
     }
     const onMaps = [], ofTanks = [];
     for (const [file, guard] of Object.entries(guards)) {
