@@ -1209,6 +1209,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleAccess.selftest.mjs',
     // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
     'src/game/soloKernelObstacleQuery.selftest.mjs',
+    // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
+    'src/game/soloKernelMemoryGrowth.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
