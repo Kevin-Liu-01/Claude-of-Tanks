@@ -115,12 +115,13 @@ function turretB(P: TankBuilderPort): THREE.Group {
   const ring = (half: number, top: number, roofHalf: number): [number, number][] =>
     [[B.x - half, B.race + .05], [B.x + half, B.race + .05], [B.x + roofHalf, top], [B.x - roofHalf, top]];
   w.add('turretDetail', sectionSolid([
-    { z: B.z - .44, ring: ring(.25, B.race + .27, .21) },
-    { z: B.z - .24, ring: ring(.30, B.race + .32, .24) },
-    { z: B.pivotZ - .10, ring: ring(.30, B.race + .32, .24) },
+    // 264: the roof stands 3 cm higher over the true-scale 7.62 mm receiver, whose top rises 73 mm over its bore
+    { z: B.z - .44, ring: ring(.25, B.race + .30, .21) },
+    { z: B.z - .24, ring: ring(.30, B.race + .35, .24) },
+    { z: B.pivotZ - .10, ring: ring(.30, B.race + .35, .24) },
     { z: B.pivotZ + .03, ring: ring(.28, B.race + .14, .26) },
   ]), 0, 0, 0);
-  w.add('turretDark', box(.36, .02, .24), B.x, B.race + .325, B.z - .06);                          // roof hatch
+  w.add('turretDark', box(.36, .02, .24), B.x, B.race + .355, B.z - .06);                          // roof hatch
   w.add('turretDetail', box(.52, .04, .05), B.x, B.race + .25, B.z - .46);                          // bustle lip
   // the sight on its left wall, under its armoured hood
   w.add('turretDetail', box(.12, .17, .24), B.x - .35, B.race + .22, B.pivotZ - .16);
