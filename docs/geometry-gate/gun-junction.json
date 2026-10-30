@@ -70,6 +70,8 @@
   "cv90_mk4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1ffcd5b3549f9b8a","gun":"b74203f4043013ba"}},
   "cv90_mk4_concept": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b2d987cf46c0f5f5","gun":"c41a9e7c36f5eba7"}},
   "dardo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d88dfa911649d927","gun":"ff9d88beec97d0a0"}},
+  "ee_t3_osorio": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d96bd724bc74fecf","gun":"2b9d9d09980abd83"}},
+  "ee_t4_osorio": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"757f0ef143aeb4ab","gun":"028486339de1de06"}},
   "fv4034": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"704f70df7fc58dda","gun":"7e5badefa4489d1c"}},
   "fv510": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"53e4aa36267e9a92","gun":"1c6f8d2b3620e725"}},
   "fv510_milan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b3b3b6112394d152","gun":"30cc9c17bd9d7a42"}},

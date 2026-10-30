@@ -107,6 +107,13 @@ const CURVES = {
   t64bv: [],
   t64b1v_2022: [],
   pt64_tur: [],
+  // 266: the Brazil line (brazilSpecs.ts; the X1s keep their full depression all round and publish no curve)
+  tamoyo1: [],
+  tamoyo3: [],
+  osorio_p1: [],
+  osorio_p2: [],
+  ee_t3_osorio: [],
+  ee_t4_osorio: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
