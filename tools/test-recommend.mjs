@@ -163,7 +163,9 @@ async function main(argv) {
   }
   const partition = await fleetPartition(root, { world: true });
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase });
-  const maps = changedMaps(partition.world, diff.paths, { ids: idChanges.ids, core: idChanges.core });
+  // The world steps' Node captures never read a page: their keys hold index.html and 404.html only because the locale
+  // route table names them (src/ui/localeRouting.ts) and the probe runtime's browser mode serves them (declared modeOnly).
+  const maps = changedMaps(partition.world, diff.paths.filter((path) => !ENTRY_HTML.test(path)), { ids: idChanges.ids, core: idChanges.core });
   const tanks = manualSuiteFiles(registered, ['tanks']);
   const { selectLane } = await import('./test-lane.mjs');
   const { receiptsNaming } = await import('./test-diff.mjs');
