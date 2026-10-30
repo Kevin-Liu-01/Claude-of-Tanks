@@ -89,9 +89,12 @@ interface GroundLitterState {
   cached: number;
   builds: number;
   publishes: number;
+  /** (local-fps-265, diagnostics) The nearest cell still to build, metres from the last update's camera in plan (Infinity
+   *  when none): a cell nearer than GROUND_LITTER.fadeOutM is a hole on screen. */
+  nearestPendingM: number;
 }
 
-interface GroundLitter {
+export interface GroundLitter {
   readonly group: THREE.Group;
   readonly meshes: readonly [THREE.InstancedMesh, THREE.InstancedMesh, THREE.InstancedMesh];
   update(cameraPosition: { x: number; z: number }): void;
@@ -115,6 +118,13 @@ export const GROUND_LITTER = Object.freeze({
   // detail — they shrink away from 18 m and are gone by 26 m, inside the ring (cellM * ring = 32 m)
   fadeInM: 18,
   fadeOutM: 26,
+  /**
+   * (local-fps-265) A live update's wall-clock cap (ms): cells are built while it lasts, one at least. A step across a
+   * cell boundary lists a new edge column of five cells 32-48 m out, past the 26 m fade, and built them all in one update
+   * (~2.5-2.9 ms, about one frame a second while driving: the world's bursts, local-fps-265's world split). Only a cell
+   * inside the ring's edge to build (the first fill, a camera that jumped) takes the cold budget (cellsPerUpdate) at once.
+   */
+  liveUpdateMs: 0.6,
   minSlopeY: 0.86,
   roadCoreM: 3.2,
   shoulderM: 7.5,
@@ -655,8 +665,10 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
     });
   }
 
+  let lastCamX = 0, lastCamZ = 0;
   function update(cameraPosition: { x: number; z: number }): void {
     if (!enabled) return;
+    lastCamX = cameraPosition.x; lastCamZ = cameraPosition.z;
     const ix = Math.floor(cameraPosition.x / GROUND_LITTER.cellM);
     const iz = Math.floor(cameraPosition.z / GROUND_LITTER.cellM);
     if (ix !== cellX || iz !== cellZ) {
@@ -672,16 +684,37 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       published = false;
     }
     let budget = cellsPerUpdate;
-    while (pending.length && budget-- > 0) {
+    // (local-fps-265) live: the cells one wall-clock slice builds (liveUpdateMs, one at least); a caller's own
+    // cellsPerUpdate and a cold ring (an interior cell to build) take their whole budget
+    const deadline = options.cellsPerUpdate === undefined && !interiorPending() ? performance.now() + GROUND_LITTER.liveUpdateMs : Infinity;
+    let first = true;
+    while (pending.length && budget-- > 0 && (first || performance.now() < deadline)) {
+      first = false;
       const [cx, cz] = pending.shift()!;
       remember(cx, cz, buildCell(cx, cz));
     }
     if (!pending.length && !published) publish();
   }
 
+  /** A cell inside the ring's edge is still to build (the first fill, a camera that jumped or outran the live slices). */
+  function interiorPending(): boolean {
+    const inner = GROUND_LITTER.ring - 1;
+    for (let i = 0; i < pending.length; i++) {
+      const cell = pending[i];
+      if (Math.abs(cell[0] - cellX) <= inner && Math.abs(cell[1] - cellZ) <= inner) return true;
+    }
+    return false;
+  }
+
   function getState(): GroundLitterState {
+    const m = GROUND_LITTER.cellM;
+    let nearestPendingM = Infinity;
+    for (const [ix, iz] of pending) {
+      nearestPendingM = Math.min(nearestPendingM, Math.hypot(Math.max(ix * m - lastCamX, 0, lastCamX - (ix + 1) * m),
+        Math.max(iz * m - lastCamZ, 0, lastCamZ - (iz + 1) * m)));
+    }
     return { cellX, cellZ, cells: CELLS, pending: pending.length, counts: [...counts] as [number, number, number],
-      cached: cache.size, builds, publishes };
+      cached: cache.size, builds, publishes, nearestPendingM };
   }
 
   function dispose(): void {

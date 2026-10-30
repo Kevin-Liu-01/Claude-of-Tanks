@@ -100,6 +100,9 @@ interface TallGrassRingState {
   builds: number;
   publishes: number;
   truncated: number;
+  /** (local-fps-265, diagnostics) The nearest cell still to build, metres from the last filling update's camera in plan
+   *  (Infinity when none): a cell nearer than the ring's fade (TALL_GRASS.<ring>.fade) is a hole on screen. */
+  nearestPendingM: number;
 }
 
 interface TallGrassState {
@@ -110,6 +113,8 @@ interface TallGrassState {
   far: TallGrassRingState;
   pressure: boolean;
   pressureSteps: number;
+  /** (local-fps-265) The last filling update ran cold (an interior cell to build), not on the live slices. */
+  cold: boolean;
 }
 
 export interface TallGrass {
@@ -200,10 +205,24 @@ export const TALL_GRASS = Object.freeze({
   /** How much darker a crushed blade stays while the bruise lasts (the lane behind the tracks). */
   crushDarken: 0.28,
   cacheCells: 720,  // the 529-cell far ring plus recently visited columns; bounded and larger than the active ring
-  // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
-  // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
-  candidatesPerUpdate: 120,
+  // (local-fps-265) a live update's candidate ceiling a ring (the mid's 0.6 of it, the far's 0.5): its time caps
+  // (liveUpdateMs, liveCatchUpMs) are what bind; a cold ring (cold below) takes the larger one
+  candidatesPerUpdate: 1200,
   coldCandidatesPerUpdate: 2400,
+  /**
+   * (local-fps-265) A live update's wall-clock cap (ms) over the three rings, checked every coldChunk candidates; each
+   * ring still takes one chunk an update. Live was 120 candidates (~0.3 ms) and every step across a cell boundary made the
+   * stepping ring cold until it published again (recentre cleared `published`), so driving ran 2,400-candidate cold
+   * updates of ~3.6 ms in about one frame in ten (the world's bursts, local-fps-265's world split). Now only an interior
+   * cell pending makes a ring cold (the first fill, a re-seeded ring, a camera that jumped); a step's new edge column
+   * (60-72 m near, past its 46 m fade; 96-112 m mid, inside its 90-106 m fade only once the camera is 6 m into its new
+   * cell; 264-288 m far, past its 240 m fade) builds a slice a frame, the same cells. A Steppe candidate costs ~3-4 us:
+   * ~920 candidates a metre driven, ~1.3 ms of slices a frame at 15 m/s and 37 fps, which 0.75 ms fell behind (mid and
+   * far a column behind, then cold catch-ups of 10-20 ms: the world split on Steppe).
+   */
+  liveUpdateMs: 1.0,
+  /** (local-fps-265) The live cap while a ring is more than its edge column behind (a diagonal step, a fast hull). */
+  liveCatchUpMs: 2.0,
   /**
    * (battle-spikes-253) A cold update's wall-clock cap (ms), checked every coldChunk candidates; each ring still takes
    * one chunk an update. Uncapped, a cold update admitted ~5,000 candidates over the three rings in one call: 150-170 ms
@@ -730,6 +749,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   let generation = 0;
   let disposed = false;
   let sniperTarget = 0;
+  let lastCold = false;
+  let lastCamX = 0, lastCamZ = 0;
 
   function cellKey(ix: number, iz: number): string { return `${generation}:${ix},${iz}`; }
 
@@ -1202,14 +1223,32 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     ring.published = false;
   }
 
-  function updateRing(
-    ring: Ring, cameraPosition: { x: number; z: number }, density: number, budget: number, deadline = Infinity,
-  ): void {
+  /** The ring centred on the camera's cell (a new cell lists what is still to build). */
+  function follow(ring: Ring, cameraPosition: { x: number; z: number }): void {
     const ix = Math.floor(cameraPosition.x / ring.cellM);
     const iz = Math.floor(cameraPosition.z / ring.cellM);
     if (ix !== ring.cellX || iz !== ring.cellZ) recentre(ring, ix, iz);
+  }
+
+  /** (local-fps-265) A cell inside the ring's edge is still to build: the first fill, a re-seeded ring, a camera that
+   *  jumped or outran the live slices. A step across one cell boundary leaves only the new edge column pending. */
+  function interiorPending(ring: Ring): boolean {
+    const inner = ring.ring - 1, cx = ring.cellX, cz = ring.cellZ;
+    const job = ring.building;
+    if (job && Math.abs(job.ix - cx) <= inner && Math.abs(job.iz - cz) <= inner) return true;
+    for (let i = 0; i < ring.pending.length; i++) {
+      const cell = ring.pending[i];
+      if (Math.abs(cell[0] - cx) <= inner && Math.abs(cell[1] - cz) <= inner) return true;
+    }
+    return false;
+  }
+
+  function updateRing(
+    ring: Ring, cameraPosition: { x: number; z: number }, density: number, budget: number, deadline = Infinity,
+  ): void {
+    follow(ring, cameraPosition);
     let left = budget;
-    // a capped (cold) update admits in chunks and stops at its deadline, after one chunk at least
+    // a capped update (cold or live) admits in chunks and stops at its deadline, after one chunk at least
     const chunk = deadline === Infinity ? budget : TALL_GRASS.coldChunk;
     let first = true;
     while (left > 0 && (first || performance.now() < deadline)) {
@@ -1247,13 +1286,22 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       return;
     }
     const density = biome!.density * quality;
-    const cold = !near.published || !mid.published || !far.published;
-    const budget = options.candidatesPerUpdate ?? (cold ? TALL_GRASS.coldCandidatesPerUpdate : TALL_GRASS.candidatesPerUpdate);
-    // the cold default is capped in time (coldUpdateMs); a caller's own budget is exact
-    const deadline = cold && options.candidatesPerUpdate === undefined ? performance.now() + TALL_GRASS.coldUpdateMs : Infinity;
     if (fill) {
-      updateRing(near, cameraPosition, density, budget, deadline);
+      lastCamX = cameraPosition.x; lastCamZ = cameraPosition.z;
+      for (const ring of rings) follow(ring, cameraPosition);
+      // (local-fps-265) cold only while a ring has an interior cell to build, never for a step's edge column
+      const cold = lastCold = interiorPending(near) || interiorPending(mid) || interiorPending(far);
+      const behind = !cold && (near.pending.length > 2 * near.ring + 1 || mid.pending.length > 2 * mid.ring + 1
+        || far.pending.length > 2 * far.ring + 1);
+      const budget = options.candidatesPerUpdate ?? (cold ? TALL_GRASS.coldCandidatesPerUpdate : TALL_GRASS.candidatesPerUpdate);
+      // the defaults are capped in time (coldUpdateMs, liveUpdateMs, liveCatchUpMs); a caller's own budget is exact
+      const deadline = options.candidatesPerUpdate === undefined
+        ? performance.now() + (cold ? TALL_GRASS.coldUpdateMs : behind ? TALL_GRASS.liveCatchUpMs : TALL_GRASS.liveUpdateMs) : Infinity;
+      // cold fills from under the camera out; live slices serve the mid ring first, whose new column reaches its fade
+      // band soonest (the near and far columns stay past theirs for a whole cell)
+      if (cold || deadline === Infinity) updateRing(near, cameraPosition, density, budget, deadline);
       updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
+      if (!cold && deadline !== Infinity) updateRing(near, cameraPosition, density, budget, deadline);
       updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
     }
     if (pressure) {
@@ -1263,12 +1311,23 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
   }
 
+  /** The plan distance from the last filling camera to the nearest unbuilt cell of the ring (diagnostics). */
+  function nearestPending(ring: Ring): number {
+    const m = ring.cellM;
+    const gap = (ix: number, iz: number) => Math.hypot(Math.max(ix * m - lastCamX, 0, lastCamX - (ix + 1) * m),
+      Math.max(iz * m - lastCamZ, 0, lastCamZ - (iz + 1) * m));
+    let best = ring.building ? gap(ring.building.ix, ring.building.iz) : Infinity;
+    for (const [ix, iz] of ring.pending) if (!ring.cache.has(cellKey(ix, iz))) best = Math.min(best, gap(ix, iz));
+    return best;
+  }
+
   function getState(): TallGrassState {
     const ringState = (ring: Ring): TallGrassRingState => ({
       cellX: ring.cellX, cellZ: ring.cellZ, cells: (ring.ring * 2 + 1) ** 2, pending: ring.pending.length + (ring.building ? 1 : 0),
       count: ring.count, cached: ring.cache.size, builds: ring.builds, publishes: ring.publishes, truncated: ring.truncated,
+      nearestPendingM: nearestPending(ring),
     });
-    return { enabled, quality, near: ringState(near), mid: ringState(mid), far: ringState(far), pressure: !!pressure, pressureSteps: pressure?.steps ?? 0 };
+    return { enabled, quality, near: ringState(near), mid: ringState(mid), far: ringState(far), pressure: !!pressure, pressureSteps: pressure?.steps ?? 0, cold: lastCold };
   }
 
   function dispose(): void {

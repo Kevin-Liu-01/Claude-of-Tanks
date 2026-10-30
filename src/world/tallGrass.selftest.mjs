@@ -330,6 +330,39 @@ for (const ring of [grass.mid, grass.far]) {
   assert.ok(grass.getState().near.cached <= TALL_GRASS.cacheCells, 'the cell cache is bounded');
 }
 
+// (local-fps-265) A step across a cell boundary builds its new edge column on the live slices (liveUpdateMs), not cold:
+// each ring's edge lies beyond its fade, and the cold budget on every step was the world's driving bursts (~3.6 ms an
+// update in about one frame in ten). The streamed carpet is the one an exact budget builds; a camera that jumps (an
+// interior cell to build) fills cold.
+{
+  const realNow = performance.now.bind(performance);
+  const make = (exact) => createTallGrass(field, { seed: 11, tier: 'desktop', biome: meadow, blocked, qualityScale: () => 1,
+    ...(exact ? { candidatesPerUpdate: TALL_GRASS.coldCandidatesPerUpdate } : {}) });
+  const ringBytes = (g) => [g.near, g.mid, g.far].map((m) => Array.from(m.instanceMatrix.array.subarray(0, m.count * 16)).join()).join('|');
+  const live = make(false);
+  settle(live, cam);
+  const east = new THREE.Vector3(TALL_GRASS.near.cellM + 1, 2, 0);
+  const before = live.getState().near.builds;
+  // three updates on a slow clock (0.25 ms between reads): before, the step's own update was live and recentring cleared
+  // `published`, so the next ran cold and built the whole column at once
+  let fake = 0, colds = 0;
+  performance.now = () => (fake += 0.25);
+  try { for (let i = 0; i < 3; i++) { live.update(1 / 60, east, null, null); if (live.getState().cold !== false) colds++; } }
+  finally { performance.now = realNow; }
+  const stepped = live.getState();
+  assert.ok(stepped.near.pending > 0 && stepped.near.builds - before <= Math.ceil((TALL_GRASS.near.ring * 2 + 1) / 2),
+    `three live updates build slices of the new column (${stepped.near.builds - before} of ${TALL_GRASS.near.ring * 2 + 1} cells), not the column`);
+  assert.equal(colds, 0, 'a step across one cell boundary is never cold');
+  settle(live, east, 4000);
+  const direct = make(true);
+  settle(direct, east, 4000);
+  assert.equal(ringBytes(live), ringBytes(direct), 'the live-sliced stream settles on the carpet an exact budget builds');
+  live.update(1 / 60, new THREE.Vector3(500, 2, 300), null, null);
+  assert.equal(live.getState().cold, true, 'a camera that jumps fills cold');
+  assert.ok(TALL_GRASS.liveUpdateMs > 0 && TALL_GRASS.liveUpdateMs < TALL_GRASS.coldUpdateMs);
+  live.dispose(); direct.dispose();
+}
+
 // 7. Reeds are a MARGIN (round 73b): densest at the waterline, gone by the open water, the bank's meadow thinner than
 //    the margin; a meadow with a reed margin (Monsoon's) grows tall olive reeds along its lake; a plain meadow keeps
 //    off the water. The fixture's water mask ramps from 0 at z = 0 to 1 at z = −40 (the waterline class 0.04–0.12 at
