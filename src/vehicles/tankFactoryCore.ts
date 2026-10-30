@@ -2413,6 +2413,20 @@ function installProceduralShadowProxies(
       'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG,
     ['turret', ...(additionalSources?.turret ?? [])]), PROC_SHADOW_BODY_INSET_M);
+  // (264c) a merged part flagged rangeSilhouette (an equipment box that is a major silhouette piece: the Challenger 1's
+  // TOGS barbette) casts with its owner's proxy as a hull of its own, joined into that proxy's one draw: a hull over the
+  // shell and the box together would bridge from the box's top across the roof. Without one the proxy is unchanged.
+  const silhouetteHulls = (owner: THREE.Group): (THREE.BufferGeometry | null)[] => {
+    const hulls: (THREE.BufferGeometry | null)[] = [];
+    owner.traverse((object) => {
+      if (object.userData.rangeSilhouette && isVehicleMesh(object)) {
+        hulls.push(authoredShadowHull(owner, [object], PROC_SHADOW_BODY_INSET_M));
+      }
+    });
+    return hulls;
+  };
+  const hullCaster = joinShadowHulls([hullGeo, ...silhouetteHulls(hullG)]);
+  const turretCaster = joinShadowHulls([turretGeo, ...silhouetteHulls(turretG)]);
   // Mantlet + barrel share gun pitch, in gunG coordinates; recoil travel is
   // deliberately omitted from the shadow proxy to preserve the three-draw
   // budget during the short firing kick. 243: each is its own convex hull,
@@ -2459,8 +2473,8 @@ function installProceduralShadowProxies(
     parent.add(mesh);
     sources.push(mesh);
   };
-  if (hullGeo) add(hullG, hullGeo, 'hull');
-  if (turretGeo) add(turretG, turretGeo, 'turret');
+  if (hullCaster) add(hullG, hullCaster, 'hull');
+  if (turretCaster) add(turretG, turretCaster, 'turret');
   if (gunGeo) add(gunG, gunGeo, 'gun');
   return sources;
 }
@@ -8358,6 +8372,9 @@ function* buildTankCoreSteps(
     // receipts (and therefore shell hit volumes) can never grow around an MG,
     // sight, antenna, stowage box, or other roof equipment. Cupolas continue
     // to use P.add('hull'/'turret') because they are structural hit surfaces.
+    // (264c) A box that is a major silhouette piece opts in with
+    // geo.userData.rangeSilhouette = true: it keeps the equipment bucket's
+    // hit role, stays past LOD1 and casts with its owner's shadow proxy.
     addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
@@ -9268,7 +9285,10 @@ function* buildTankCoreSteps(
       if (eraBoundParts.has(part)) eraPartSpans.set(part, { mesh, start: spanStart, built: merged.getAttribute('position') });
       spanStart += part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
     }
-    if (LOD0_KEEP.has(bucket)) parent.add(mesh);
+    // (264c) a part flagged rangeSilhouette merges apart (the grouping key below) and stays past LOD1 like the shells;
+    // installProceduralShadowProxies joins its hull into its owner's proxy
+    if (list.every((part) => part.userData.rangeSilhouette)) mesh.userData.rangeSilhouette = true;
+    if (LOD0_KEEP.has(bucket) || mesh.userData.rangeSilhouette) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
@@ -9277,6 +9297,9 @@ function* buildTankCoreSteps(
   };
   // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
   const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
+  // (264c) an opt-in silhouette part (userData.rangeSilhouette) merges in a mesh of its own, so the parts beside it in its
+  // bucket keep their LOD and their shadow
+  const rangeSilhouetteKey=(part:THREE.BufferGeometry):string=>part.userData.rangeSilhouette?':range-silhouette':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -9293,7 +9316,7 @@ function* buildTankCoreSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part)+issueDrabKey(part);
+      const key=stationKey(part)+issueDrabKey(part)+rangeSilhouetteKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);

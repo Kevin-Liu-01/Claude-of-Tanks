@@ -42,9 +42,11 @@ import { resolveTankId } from './tankIdAliases.ts';
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
 // b46847ff7755abb9.
-// Re-pinned 2026-10-28 (release 262): one row moved. The Challenger 1 Mk 2 (schema-1 challenger1) rides the Mk 3's
-// build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 -> 24af537fcedf03bc.
-// Selections and every other row are unchanged.
+// Re-pinned 2026-10-28 (release 262; owner: the Challenger 1 Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"):
+// two rows moved. The Mk 3 (schema-1 challenger1_x) is the Op Granby fit and wears desert sand: stock
+// service_challenger_3 -> desert, Factory 24af537fcedf03bc -> ac6d88a92bedf83a. The Mk 2 (schema-1 challenger1) rides
+// the Mk 3's build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 ->
+// 24af537fcedf03bc. Selections and every other row are unchanged.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });

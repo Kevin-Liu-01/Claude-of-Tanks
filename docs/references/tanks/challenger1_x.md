@@ -1,5 +1,21 @@
 # Challenger 1 X — owner-selected supplied-file reconstruction
 
+## Release 262: the Mk 3's Op Granby fit — 2026-10-28
+
+This file's build is the Challenger 1 Mk 3 (`challenger1_mk3`). The owner asked on 2026-10-28 for "the turrets and
+decorations and equipmennt and optics and machine guns" of all three Challenger 1 marks to be updated, and for the Mk 1
+and Mk 2 to look "A LOT DIFERENT FROM MK 3". The shared turret now carries:
+- the TOGS armoured barbette on the right cheek (FR wiki: "dans une boîte blindée sur le flanc droit de la tourelle"),
+  with its port glazed behind an armoured door hinged on its top edge and propped open, and the right smoke bank on
+  its outboard face;
+- the commander's L37A2 7.62 mm GPMG riding the No. 32 cupola's cradle, which the source left empty;
+- the cupola's nine glazed episcopes, the glass of the MG sight head, and the loader's periscope.
+
+The Mk 3 keeps the Op Granby kit (side armour, the nose array and the rear drums). Its stock coat is now desert sand,
+the Granby finish of the Bovington 64 KG 87, and its decor is the Granby desert load: water cans, bedrolls, ration
+boxes and a net. The Mk 1 and Mk 2 are described in [challenger1_mk1.md](challenger1_mk1.md) and
+[challenger1_mk2.md](challenger1_mk2.md).
+
 ## Current supplied-file draft — 2026-09-06
 
 The owner explicitly superseded the earlier handbook/photo target with

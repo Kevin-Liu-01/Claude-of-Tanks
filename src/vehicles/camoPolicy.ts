@@ -833,6 +833,9 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz20_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // Release 262 (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"): the Mk 3 is the Op Granby
+  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87); the Mk 1 and Mk 2 keep the BAOR coat.
+  challenger1_mk3: 'desert',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)

@@ -135794,16 +135794,148 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              -0.8675,
+              -1.0698,
               0.8322,
-              0.1403
+              -1.2121
             ],
             "max": [
-              -0.4368,
-              0.9098,
+              0.518,
+              1.2717,
               0.1478
             ],
             "parts": [
+              {
+                "min": [
+                  -0.747,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.6672,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -0.372,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.2922,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -1.0178,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.9708,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -0.0684,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.0214,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -1.0698,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  -1.049,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  0.0098,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  0.0306,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  -0.9057,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.8382,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.201,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.1335,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.4147,
+                  1.2166,
+                  -0.2562
+                ],
+                "max": [
+                  -0.3396,
+                  1.2717,
+                  -0.2496
+                ]
+              },
+              {
+                "min": [
+                  0.386,
+                  0.8371,
+                  -0.1531
+                ],
+                "max": [
+                  0.518,
+                  0.8866,
+                  -0.1465
+                ]
+              },
+              {
+                "min": [
+                  -0.5608,
+                  0.9892,
+                  -0.135
+                ],
+                "max": [
+                  -0.4783,
+                  1.0332,
+                  -0.1284
+                ]
+              },
               {
                 "min": [
                   -0.8675,
@@ -135846,6 +135978,59 @@
               1.6012,
               1.1104,
               3.8739
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M11",
+            "name": "roofGun",
+            "min": [
+              -0.0874,
+              -0.0964,
+              -0.28
+            ],
+            "max": [
+              0.1186,
+              0.0765,
+              0.674
+            ],
+            "parts": [
+              {
+                "min": [
+                  -0.0679,
+                  -0.0409,
+                  -0.078
+                ],
+                "max": [
+                  0.0386,
+                  0.0119,
+                  0.0125
+                ]
+              },
+              {
+                "min": [
+                  -0.0874,
+                  -0.0964,
+                  -0.28
+                ],
+                "max": [
+                  0.1184,
+                  0.0765,
+                  0.674
+                ]
+              },
+              {
+                "min": [
+                  0.0173,
+                  -0.0959,
+                  -0.1115
+                ],
+                "max": [
+                  0.1186,
+                  0.0722,
+                  0.1348
+                ]
+              }
             ],
             "turretLocal": false
           }
@@ -135913,17 +136098,17 @@
           }
         ]
       },
-      "geometryHash": "bff808a0",
-      "metadataHash": "48bbc2ac",
+      "geometryHash": "17eb75f4",
+      "metadataHash": "f4398fcd",
       "presentationAnchor": {
-        "xM": 0.0016,
-        "zM": 0.1423
+        "xM": 0.0015,
+        "zM": 0.143
       },
-      "presentationHash": "d6b18c14",
+      "presentationHash": "8666a7f3",
       "presentationProjection": {
-        "centerYM": 2.0846,
-        "topHalfM": 7.0838,
-        "sideHalfM": 3.5419
+        "centerYM": 2.0055,
+        "topHalfM": 7.083,
+        "sideHalfM": 3.5415
       },
       "appearance": {
         "version": 1,
@@ -135938,11 +136123,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 12,
           "opticGlass": 2,
-          "unclassified": 19,
+          "unclassified": 11,
           "gunmetal": 5,
           "gearShadow": 1,
+          "machineGun": 4,
           "canvas": 1,
           "fittingPaint": 1
         }
@@ -135973,15 +136159,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23636,
-          "sha256": "81438fd522bdcd9d30cd280b02d3c96f06d512ed27353765252cc25f8201bd8a",
+          "bytes": 22102,
+          "sha256": "085e251e087900b5c4bb105d9ca2058a00b72fe87b8c2d4f53ce387cbb316bfd",
           "thumbnail": {
             "file": "thumbs/challenger1_mk1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10102,
-            "sha256": "ebffb0381baf9154373932c0e12f32379f0c11d957d63e2ab45f6ac0f6d44ccd"
+            "bytes": 9568,
+            "sha256": "c7d34b6152d2c262cc1d5edc24fb8341c014205a5da331f61455d175eb65728d"
           }
         },
         "top": {
@@ -135989,56 +136175,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8360,
-          "sha256": "0c60286e0d1aa35b217aa97cbe920bd168f77b4df91b28143f06e7cd3c3f96e1"
+          "bytes": 7848,
+          "sha256": "186d0fc8f9891ebbf5b90fb1b53045803e93ed6ec3e5e80fee90aba77d7ffbc4"
         },
         "side": {
           "file": "challenger1_mk1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9154,
-          "sha256": "4e0602750756374d677adee1da72ec54576bcdc48ca850d60afd248d564b5683"
+          "bytes": 9146,
+          "sha256": "befe5df1b0a90ddf58983bc3639ae76b1b8caf5780bb552dfa8ea5d47fb9daad"
         },
         "topSilhouette": {
           "file": "challenger1_mk1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1216,
-          "sha256": "d6573d75a608d459277766fbb0f53aad2c2ccd3bf9e1adaf9f20cccb80293492"
+          "bytes": 1242,
+          "sha256": "f577a85e43c84607efb2dfd2f6ecacde8f3ee30974b897d5fdbeda6ddf0f7987"
         },
         "sideSilhouette": {
           "file": "challenger1_mk1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4339,
-          "sha256": "2a3d7d2252c00e78f09a661bb9a7e23104bc2eb71e62d15f5d5b00f536e26a03"
+          "bytes": 4287,
+          "sha256": "65232984b95347f4fae48ec1892427a2a050bf6105536016ef3d242f2cb269c9"
         },
         "armorSide": {
           "file": "challenger1_mk1_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22788,
-          "sha256": "b54490d2483c7d101d2c5d60c289e9084fe6f8cdb24feb63556683a8552cecd8"
+          "bytes": 22542,
+          "sha256": "b4e677819ddebad268a581123a94d76df26778b5d876ac7424ed63810de1f1ee"
         },
         "modulesSide": {
           "file": "challenger1_mk1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22274,
-          "sha256": "25a6214c16681cfe114671ebba930f96e10cb474191f856053025a541c5975a9"
+          "bytes": 22336,
+          "sha256": "e74901d24cbd162cca71c881b2def31f264f0a52550f4b9fb083788e1970d98d"
         },
         "crewSide": {
           "file": "challenger1_mk1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18668,
-          "sha256": "8f2f46bb0496671990cd9fb61e4ee2d3d712820155e1e6cfc36bfc8a5dc1186c"
+          "bytes": 17664,
+          "sha256": "88d3514f9b70d93cbba1742ff3cbc98812ef009df35b403410e53a1ef93941ec"
         },
         "markings": {
           "file": "challenger1_mk1_markings.png",
@@ -136051,8 +136237,8 @@
         "technicalLabels": {
           "file": "challenger1_mk1_technical.json",
           "mime": "application/json",
-          "bytes": 4229,
-          "sha256": "8fba146cfff96051f2688f2622471ac7ba2b6c99ec4abd9f97d8f2339a79a830"
+          "bytes": 5505,
+          "sha256": "6019f5bc1d8d6c9384a9c97b492ae3e7202c69143f42d1ebdc02fc9e9672c383"
         }
       }
     },
@@ -137228,16 +137414,148 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              -0.8675,
-              0.8322,
-              0.1403
+              -1.2695,
+              0.5484,
+              -1.2121
             ],
             "max": [
-              -0.4368,
-              0.9098,
-              0.1478
+              0.518,
+              1.2717,
+              1.3759
             ],
             "parts": [
+              {
+                "min": [
+                  -0.747,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.6672,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -0.372,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.2922,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -1.0178,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.9708,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -0.0684,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.0214,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -1.0698,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  -1.049,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  0.0098,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  0.0306,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  -0.9057,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.8382,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.201,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.1335,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.4147,
+                  1.2166,
+                  -0.2562
+                ],
+                "max": [
+                  -0.3396,
+                  1.2717,
+                  -0.2496
+                ]
+              },
+              {
+                "min": [
+                  0.386,
+                  0.8371,
+                  -0.1531
+                ],
+                "max": [
+                  0.518,
+                  0.8866,
+                  -0.1465
+                ]
+              },
+              {
+                "min": [
+                  -0.5608,
+                  0.9892,
+                  -0.135
+                ],
+                "max": [
+                  -0.4783,
+                  1.0332,
+                  -0.1284
+                ]
+              },
               {
                 "min": [
                   -0.8675,
@@ -137248,6 +137566,18 @@
                   -0.4368,
                   0.9098,
                   0.1478
+                ]
+              },
+              {
+                "min": [
+                  -1.2695,
+                  0.5484,
+                  1.3693
+                ],
+                "max": [
+                  -1.0605,
+                  0.6694,
+                  1.3759
                 ]
               }
             ],
@@ -137280,6 +137610,59 @@
               1.6012,
               1.1104,
               3.8739
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M11",
+            "name": "roofGun",
+            "min": [
+              -0.0874,
+              -0.0964,
+              -0.28
+            ],
+            "max": [
+              0.1186,
+              0.0765,
+              0.674
+            ],
+            "parts": [
+              {
+                "min": [
+                  -0.0679,
+                  -0.0409,
+                  -0.078
+                ],
+                "max": [
+                  0.0386,
+                  0.0119,
+                  0.0125
+                ]
+              },
+              {
+                "min": [
+                  -0.0874,
+                  -0.0964,
+                  -0.28
+                ],
+                "max": [
+                  0.1184,
+                  0.0765,
+                  0.674
+                ]
+              },
+              {
+                "min": [
+                  0.0173,
+                  -0.0959,
+                  -0.1115
+                ],
+                "max": [
+                  0.1186,
+                  0.0722,
+                  0.1348
+                ]
+              }
             ],
             "turretLocal": false
           }
@@ -137347,17 +137730,17 @@
           }
         ]
       },
-      "geometryHash": "ca4c6165",
-      "metadataHash": "1f12d9fc",
+      "geometryHash": "65657c8f",
+      "metadataHash": "3725e71f",
       "presentationAnchor": {
         "xM": 0.0016,
-        "zM": 0.1423
+        "zM": -0.0146
       },
-      "presentationHash": "d6b18c14",
+      "presentationHash": "83535a42",
       "presentationProjection": {
         "centerYM": 2.0055,
-        "topHalfM": 7.0838,
-        "sideHalfM": 3.5419
+        "topHalfM": 7.2517,
+        "sideHalfM": 3.6258
       },
       "appearance": {
         "version": 1,
@@ -137372,11 +137755,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 12,
           "opticGlass": 2,
-          "unclassified": 21,
+          "unclassified": 19,
           "gunmetal": 5,
           "gearShadow": 1,
+          "machineGun": 4,
           "canvas": 1,
           "fittingPaint": 1
         }
@@ -137407,15 +137791,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23330,
-          "sha256": "7f4cac63a0f7b646ca16f7d545dff7842bda8f198f540edf085be6b57cc46b3b",
+          "bytes": 22744,
+          "sha256": "a6024793e13f081b9981cbe4b624e14533078206af5687416bfb17cd2ec71089",
           "thumbnail": {
             "file": "thumbs/challenger1_mk2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9964,
-            "sha256": "f6715524930cc2d0c5ad0f9011a713cd55a031a863dd3273b8eb6ba84c8cf8bd"
+            "bytes": 9784,
+            "sha256": "c8e7c1033b8a3724de5b6dd8ac82b6c2c6a486100e923bbeb3b79ea969ba1e78"
           }
         },
         "top": {
@@ -137423,56 +137807,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8384,
-          "sha256": "f03d7cbb78f400a0ec59bd5e4480e4a2549decc42e1e1d85573a2e257867a23a"
+          "bytes": 8598,
+          "sha256": "8aa9f605f6a466f9ef0053ae1787c1e11134e0d49d670905a8e339f821df33bb"
         },
         "side": {
           "file": "challenger1_mk2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9394,
-          "sha256": "0b7f2700a6ac89b5ae534cc92b1977f6321d3867b4c5c02fc5a980866003c7f1"
+          "bytes": 9224,
+          "sha256": "8c726632af4d926a1f0000f1af6c6ebe2eae49ec6a82581d8946bf1ec5cdd2bf"
         },
         "topSilhouette": {
           "file": "challenger1_mk2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1216,
-          "sha256": "d6573d75a608d459277766fbb0f53aad2c2ccd3bf9e1adaf9f20cccb80293492"
+          "bytes": 1144,
+          "sha256": "16b6347958794f05c201cd848db0ff8d603fa1873405341d9a677639d0a42a96"
         },
         "sideSilhouette": {
           "file": "challenger1_mk2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4369,
-          "sha256": "fbe6fefb0016291bd1319f78bad527a75c6a773ff9f9af3cfdfd3850d53e24af"
+          "bytes": 4473,
+          "sha256": "74a076e79e4829bd0d9d292fd5a1dea7d536d0ab7f87cd659b1fd4730fb0f2a8"
         },
         "armorSide": {
           "file": "challenger1_mk2_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22278,
-          "sha256": "d7ddd37bdf7c80e333668fd0e0484d9a79f97b6aed193245f849a499fbb902c4"
+          "bytes": 21886,
+          "sha256": "5c48f1046ce8b8df6f3fe9ac353a5e22774840a16655180da42f998eb1667c8c"
         },
         "modulesSide": {
           "file": "challenger1_mk2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22676,
-          "sha256": "da4a3907022f317b497da6f63dbd75fe2f58e3e2374791c692e38415f7aac926"
+          "bytes": 22146,
+          "sha256": "8356630ae43e191959d1c2db6604182942612e094288ed3db7862364c87ea3c2"
         },
         "crewSide": {
           "file": "challenger1_mk2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18432,
-          "sha256": "c5d32ef0daff1ad0c532b88cd6c25f82660ce087169de54526748206dd71d83a"
+          "bytes": 18440,
+          "sha256": "f805e7ab243d4801d499b29d27e78ead5b8a172cd1504cf6e00d79e0757b6441"
         },
         "markings": {
           "file": "challenger1_mk2_markings.png",
@@ -137485,8 +137869,8 @@
         "technicalLabels": {
           "file": "challenger1_mk2_technical.json",
           "mime": "application/json",
-          "bytes": 4221,
-          "sha256": "bb821231b10cde8f578c6f2c9f6229693625835ad3756874f674d725b658382f"
+          "bytes": 5278,
+          "sha256": "44fe7f930809da5242620d183722c6c4ec0fba5482b5b7c7c20fe25625cc3a87"
         }
       }
     },
@@ -143168,16 +143552,148 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              -0.8675,
-              0.8322,
-              0.1403
+              -1.2695,
+              0.5484,
+              -1.2121
             ],
             "max": [
-              -0.4368,
-              0.9098,
-              0.1478
+              0.518,
+              1.2717,
+              1.3759
             ],
             "parts": [
+              {
+                "min": [
+                  -0.747,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.6672,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -0.372,
+                  0.9892,
+                  -1.2121
+                ],
+                "max": [
+                  -0.2922,
+                  1.0332,
+                  -1.1777
+                ]
+              },
+              {
+                "min": [
+                  -1.0178,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.9708,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -0.0684,
+                  0.9892,
+                  -0.9913
+                ],
+                "max": [
+                  -0.0214,
+                  1.0332,
+                  -0.9165
+                ]
+              },
+              {
+                "min": [
+                  -1.0698,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  -1.049,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  0.0098,
+                  0.9892,
+                  -0.6258
+                ],
+                "max": [
+                  0.0306,
+                  1.0332,
+                  -0.5434
+                ]
+              },
+              {
+                "min": [
+                  -0.9057,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.8382,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.201,
+                  0.9892,
+                  -0.289
+                ],
+                "max": [
+                  -0.1335,
+                  1.0332,
+                  -0.2309
+                ]
+              },
+              {
+                "min": [
+                  -0.4147,
+                  1.2166,
+                  -0.2562
+                ],
+                "max": [
+                  -0.3396,
+                  1.2717,
+                  -0.2496
+                ]
+              },
+              {
+                "min": [
+                  0.386,
+                  0.8371,
+                  -0.1531
+                ],
+                "max": [
+                  0.518,
+                  0.8866,
+                  -0.1465
+                ]
+              },
+              {
+                "min": [
+                  -0.5608,
+                  0.9892,
+                  -0.135
+                ],
+                "max": [
+                  -0.4783,
+                  1.0332,
+                  -0.1284
+                ]
+              },
               {
                 "min": [
                   -0.8675,
@@ -143188,6 +143704,18 @@
                   -0.4368,
                   0.9098,
                   0.1478
+                ]
+              },
+              {
+                "min": [
+                  -1.2695,
+                  0.5484,
+                  1.3693
+                ],
+                "max": [
+                  -1.0605,
+                  0.6694,
+                  1.3759
                 ]
               }
             ],
@@ -143220,6 +143748,59 @@
               1.6012,
               1.1104,
               3.8739
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M11",
+            "name": "roofGun",
+            "min": [
+              -0.0874,
+              -0.0964,
+              -0.28
+            ],
+            "max": [
+              0.1186,
+              0.0765,
+              0.674
+            ],
+            "parts": [
+              {
+                "min": [
+                  -0.0679,
+                  -0.0409,
+                  -0.078
+                ],
+                "max": [
+                  0.0386,
+                  0.0119,
+                  0.0125
+                ]
+              },
+              {
+                "min": [
+                  -0.0874,
+                  -0.0964,
+                  -0.28
+                ],
+                "max": [
+                  0.1184,
+                  0.0765,
+                  0.674
+                ]
+              },
+              {
+                "min": [
+                  0.0173,
+                  -0.0959,
+                  -0.1115
+                ],
+                "max": [
+                  0.1186,
+                  0.0722,
+                  0.1348
+                ]
+              }
             ],
             "turretLocal": false
           }
@@ -143287,17 +143868,17 @@
           }
         ]
       },
-      "geometryHash": "4fe385ca",
-      "metadataHash": "819fa7f0",
+      "geometryHash": "7fe553c6",
+      "metadataHash": "7d6cacfb",
       "presentationAnchor": {
         "xM": 0.0006,
-        "zM": 0.1457
+        "zM": 0.1455
       },
-      "presentationHash": "cfaff81a",
+      "presentationHash": "cbb46efc",
       "presentationProjection": {
         "centerYM": 2.0055,
-        "topHalfM": 7.0802,
-        "sideHalfM": 3.5401
+        "topHalfM": 7.0804,
+        "sideHalfM": 3.5402
       },
       "appearance": {
         "version": 1,
@@ -143312,11 +143893,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 12,
           "opticGlass": 2,
-          "unclassified": 20,
+          "unclassified": 17,
           "gunmetal": 5,
           "gearShadow": 1,
+          "machineGun": 4,
           "canvas": 1,
           "fittingPaint": 1
         }
@@ -143347,39 +143929,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23994,
-          "sha256": "91f14b15d545ba28c5cd8538f6af5f95c1f979e07c83d32ddc41922ba541e85a"
+          "bytes": 25894,
+          "sha256": "40dc509f518c12a825ef794cae48935a7cc98baea798e57cfafca27ba388cb25"
         },
         "modulesSide": {
           "file": "challenger1_mk3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23894,
-          "sha256": "ebf12e88a94f1fd554a67ae9ba70bf3244287357bc89230ecf0cec042deb26cc"
+          "bytes": 25900,
+          "sha256": "1340be57b791e214cb51c207c172a4ce28d998eda3f7410ab982fcc0f07d6405"
         },
         "crewSide": {
           "file": "challenger1_mk3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19658,
-          "sha256": "59ecd353d7549210444b6dc8dd93895f634a4e13549b332f223982564b81655d"
+          "bytes": 23908,
+          "sha256": "a6943a93e602cf93988912ba9ec8cd1667b2819372b7b8d8bed7becbeb7ed248"
         },
         "angle": {
           "file": "challenger1_mk3_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24040,
-          "sha256": "b69eb1691b1942ec54e653145cd5de41ace4f67bd071fce05e6ea6af555b0079",
+          "bytes": 27776,
+          "sha256": "e2bb9a45ade9967b894253a84572d226f9c4d306dc8b4b8c463d983770687794",
           "thumbnail": {
             "file": "thumbs/challenger1_mk3_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10148,
-            "sha256": "481c181844fa2e99685e169595b5b0363294b94144b907150337e32148119178"
+            "bytes": 11696,
+            "sha256": "4d2f480e9c67d47b317f57e9d18cb55092c630f36375240327da0ce80738d82a"
           }
         },
         "top": {
@@ -143387,32 +143969,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9696,
-          "sha256": "20f2e27e2794890b8d3696efcbab5ba0d2072e00ec80db714685b2c388538877"
+          "bytes": 12110,
+          "sha256": "27cda4fc68aa0f796b899a216a545aef485f04f1cd6e4f06713c5062e488accb"
         },
         "side": {
           "file": "challenger1_mk3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10050,
-          "sha256": "38b0da6219141a0a3127334e908cf0d68d4aef2c64dfa1523bc9132eaf0ae3b5"
+          "bytes": 12442,
+          "sha256": "f131ddd2f499819a62d8d4c83035491ca744338baea66b511693097ac3c0f670"
         },
         "topSilhouette": {
           "file": "challenger1_mk3_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1340,
-          "sha256": "2875e9ae9773ee26829391c3060c301c65580874faf7383bec00615b48830740"
+          "bytes": 1358,
+          "sha256": "1cab40eafaa2ded769cc9cc1654e1d6eeb8e68f913a51b4b924db3b5ba13e579"
         },
         "sideSilhouette": {
           "file": "challenger1_mk3_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4472,
-          "sha256": "eb0276b68716a970d9286f79c28bff7b89e89d9faa981acd69f0cf092623c83c"
+          "bytes": 4346,
+          "sha256": "db29a481dd85a964085278efaed48e0e264e459e82f2818bad8a862123c77b4d"
         },
         "markings": {
           "file": "challenger1_mk3_markings.png",
@@ -143425,8 +144007,8 @@
         "technicalLabels": {
           "file": "challenger1_mk3_technical.json",
           "mime": "application/json",
-          "bytes": 4272,
-          "sha256": "313cfdc83040447482b61859dccff604c49ae77f02d2925bfd080657f46139a9"
+          "bytes": 5554,
+          "sha256": "779812f280d7609d59c23bc4aa9a44ec42bd3eb32b94e6c812fc2e1f6880b0ca"
         }
       }
     },

@@ -610,6 +610,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
     'src/vehicles/profiles/challenger1XSupplied.selftest.mjs',
     'src/vehicles/profiles/challenger1XSourceHood.selftest.mjs',
+    // 264c: the TOGS barbette past LOD1 and in the turret shadow proxy (rangeSilhouette)
+    'src/vehicles/profiles/challenger1XRangeSilhouette.selftest.mjs',
     'src/vehicles/profiles/strv122X.selftest.mjs',
     'src/vehicles/profiles/strv122XSupplied.selftest.mjs',
     'src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs',
