@@ -386,12 +386,14 @@ for (const [
 
 const merkavaProgression = [
   // 258: the shown tiers; the Mk 2B's engine lifted over its shown-tier mobility floor (applyShownTierFloors)
-  ['merkava2b', 3, 2200, 1060, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
+  // 265 (FAIRNESS-265 P11): its sloped glacis read 1,055-1,850 mm at III, hull front x0.5 (500 -> 250)
+  ['merkava2b', 3, 2200, 1060, 18, 30.4, 6.9, 525, 794, 650, 250, 650],
   // 235: the Merkava 3C's true (unsquashed) wedge slope stops more of a frontal round, so its wedge plates carry less
   // (fleetBalancePass TURRET_FRONT_COMPENSATION x0.852 keeps its frontal protection where it was)
   ['merkava3c', 8, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 596],
   ['merkava3_baz', 8, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
-  ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
+  // 265 (FAIRNESS-265 P12): the Mk 4M's M338 and 2,850 HP on the same hull
+  ['merkava4b', 9, 2850, 1500, 25, 38, 6.5, 550, 900, 740, 650, 850],
 ];
 let previousMerkavaDpm = 0;
 for (const [

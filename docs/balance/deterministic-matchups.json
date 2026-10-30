@@ -494,6 +494,74 @@
       "guidedWeapons": []
     },
     {
+      "id": "centurion13",
+      "revision": "262: the new Mk 13 shares the Mk 5/2 package (hull, armour factor, round, cadence, engine)",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 16.99,
+      "speedKmh": [
+        48,
+        15
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "centurion5_1_aus",
+      "revision": "262: the new Australian Mk 5/1: the Strv 81's Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1450,
+      "powerWeight": 12.55,
+      "speedKmh": [
+        35,
+        12
+      ],
+      "traverseDegS": [
+        28.6,
+        24.5
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          488,
+          444,
+          400
+        ],
+        "reloadS": 7.1,
+        "sustainedDpm": 4056.34,
+        "accuracy": 0.32,
+        "aimTimeS": 2.35
+      },
+      "armorCeilingsMm": {
+        "hullKe": 315,
+        "turretKe": 399
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "centurion5_2",
       "revision": "remove the Tier VIII Centurion survivability and mobility trough; 258: an engine over its shown-tier floor",
       "tier": 3,
@@ -524,6 +592,40 @@
       "armorCeilingsMm": {
         "hullKe": 336,
         "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "centurion5_avre",
+      "revision": "262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 16.99,
+      "speedKmh": [
+        35,
+        12
+      ],
+      "traverseDegS": [
+        26.6,
+        27
+      ],
+      "primary": {
+        "damage": 1150,
+        "penetrationMm": [
+          165,
+          165,
+          null
+        ],
+        "reloadS": 20,
+        "sustainedDpm": 3450,
+        "accuracy": 0.561,
+        "aimTimeS": 3.26
+      },
+      "armorCeilingsMm": {
+        "hullKe": 300,
+        "turretKe": 380
       },
       "guidedWeapons": []
     },
@@ -2215,7 +2317,7 @@
     },
     {
       "id": "merkava1b",
-      "revision": "remove the Tier VII armor and penetration ceiling",
+      "revision": "remove the Tier VII armor and penetration ceiling; 265: on the frontal arc only, the roof, sides and rear keep their thickness",
       "tier": 1,
       "era": "cold-war",
       "role": "mbt",
@@ -2243,13 +2345,13 @@
       },
       "armorCeilingsMm": {
         "hullKe": 175,
-        "turretKe": 212
+        "turretKe": 350
       },
       "guidedWeapons": []
     },
     {
       "id": "merkava2b",
-      "revision": "lift the engine over the shown-tier MBT mobility floor",
+      "revision": "lift the engine over the shown-tier MBT mobility floor; 265: a x0.5 hull front, its sloped glacis read 1,055-1,850 mm at III",
       "tier": 3,
       "era": "cold-war",
       "role": "mbt",
@@ -2276,8 +2378,76 @@
         "aimTimeS": 1.82
       },
       "armorCeilingsMm": {
-        "hullKe": 500,
+        "hullKe": 250,
         "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "merkava2d",
+      "revision": "a x0.5 hull front: its sloped glacis read 1,055-1,850 mm at III",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2150,
+      "powerWeight": 23.08,
+      "speedKmh": [
+        50,
+        25
+      ],
+      "traverseDegS": [
+        36.1,
+        39.5
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          794,
+          722,
+          650
+        ],
+        "reloadS": 7.2,
+        "sustainedDpm": 4333.33,
+        "accuracy": 0.316,
+        "aimTimeS": 1.82
+      },
+      "armorCeilingsMm": {
+        "hullKe": 250,
+        "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "merkava4b",
+      "revision": "the Mk 4M's M338 round and 2,850 HP on the same hull: its flat gun notch read 481 mm at IX",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2850,
+      "powerWeight": 23.08,
+      "speedKmh": [
+        64,
+        25
+      ],
+      "traverseDegS": [
+        38,
+        41.6
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          900,
+          820,
+          740
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 5076.92,
+        "accuracy": 0.316,
+        "aimTimeS": 1.82
+      },
+      "armorCeilingsMm": {
+        "hullKe": 650,
+        "turretKe": 850
       },
       "guidedWeapons": []
     },
@@ -2312,6 +2482,40 @@
       "armorCeilingsMm": {
         "hullKe": 900,
         "turretKe": 300
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "olifant_mk2",
+      "revision": "262: the new Olifant Mk 2 package: the 1,040 hp diesel, the composite turret and glacis, a stabilised fire control and the GT-3B's APFSDS",
+      "tier": 3,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 17.33,
+      "speedKmh": [
+        58,
+        20
+      ],
+      "traverseDegS": [
+        28.6,
+        26.5
+      ],
+      "primary": {
+        "damage": 420,
+        "penetrationMm": [
+          520,
+          490,
+          460
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3600,
+        "accuracy": 0.25,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 400,
+        "turretKe": 520
       },
       "guidedWeapons": []
     },
@@ -2529,6 +2733,40 @@
       ]
     },
     {
+      "id": "shot_kal",
+      "revision": "262: the new Sho't Kal shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel's power",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 18.53,
+      "speedKmh": [
+        48,
+        17
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "spz_puma",
       "revision": "balance the Tier VIII cannon and protection package against its peers",
       "tier": 4,
@@ -2645,6 +2883,40 @@
       "armorCeilingsMm": {
         "hullKe": 113,
         "turretKe": 201
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "strv105",
+      "revision": "262: the new Strv 105 shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel's power and its FFV cassettes",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 17.14,
+      "speedKmh": [
+        48,
+        15
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
       },
       "guidedWeapons": []
     },
@@ -4478,11 +4750,11 @@
       "bWins": 4,
       "draws": 0,
       "aScore": 0.667,
-      "averageDurationS": 21.13,
-      "averageAEndHp": 278.42,
-      "averageBEndHp": 98.67,
-      "averageADamage": 1870.92,
-      "averageBDamage": 1390.67
+      "averageDurationS": 20.63,
+      "averageAEndHp": 192.08,
+      "averageBEndHp": 126.25,
+      "averageADamage": 1896.42,
+      "averageBDamage": 1478.92
     },
     {
       "id": "puma-tier8-peer",
