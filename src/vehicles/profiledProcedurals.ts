@@ -74,6 +74,7 @@ import { JPZE100_X_PROFILES } from './profiles/jagdpanzerE100X.ts';
 import { TYPE10_X_PROFILES } from './profiles/type10X.ts';
 import { TYPE90_X_PROFILES } from './profiles/type90X.ts';
 import { CHRISTIAN2_PROFILES } from './profiles/christian2.ts';
+import { BRAZIL_PROFILES } from './profiles/brazil.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -155,6 +156,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...TYPE10_X_PROFILES,
   ...TYPE90_X_PROFILES,
   ...CHRISTIAN2_PROFILES,
+  ...BRAZIL_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,

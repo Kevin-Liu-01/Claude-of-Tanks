@@ -39,6 +39,10 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  // 266: the Engesa EE-T1 Osório (Forças Terrestres 2015: the driver front left, the commander and gunner on the turret's
+  // right, the loader on its left; 12 rounds in the bustle magazine behind a sliding armoured door, 28-33 in the hull front)
+  engesaOsorio: Object.freeze({ title: 'Forças Terrestres, "Engesa EE-T1 Osório" (2015), after Engesa and E. C. S. Bastos',
+    url: 'https://www.forte.jor.br/2015/12/27/engesa-ee-t1-osorio/', kind: 'operator-history' }),
   ownerNationalModernization: Object.freeze({title:'Owner-approved national modernization concepts, 2026-10-01',url:'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/national-modernization-20261001.json',kind:'owner-authored-concept'}),
   amx10pHandbook: Object.freeze({ title: 'USMC MCIA Qatar and Singapore country handbooks: AMX-10P',
     url: 'https://info.publicintelligence.net/MCIA-QatarHandbook.pdf', kind: 'military-handbook' }),
@@ -379,6 +383,8 @@ const LAYOUTS = Object.freeze({
     missileRack: { placement: 'hull', form: 'gunLaunchedRounds' },
   }) },
   westernTwoPart: { confidence: 'documented', sources: ['britishChallenger'], crew: FOUR_MAN_TURRET, systems: systems({ ammoRack: { placement: 'hull', form: 'twoPartStowage' } }) },
+  osorio: { confidence: 'documented', sources: ['engesaOsorio'], crew: [ { role: 'driver', frame: 'hull', station: 'frontLeft' }, ...FOUR_MAN_TURRET.slice(1) ],
+    systems: systems({ ammoRack: { placement: 'split', form: 'hullAndBustleRacks' } }) },
   leopard: { confidence: 'documented', sources: ['bundeswehrLeopard', 'bundeswehrLeopardVersions'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontRight'],
     ['commander', 'turret', 'rearRight'], ['loader', 'turret', 'frontLeft'],
@@ -528,6 +534,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   pershingFive: ['m46_patton', 'm47_patton'],
   westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3'],
   starship: ['m60a2'],
+  osorio: ['osorio_p1', 'osorio_p2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
   leopard: ['strv122', 'leo2a6', 'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5'],
