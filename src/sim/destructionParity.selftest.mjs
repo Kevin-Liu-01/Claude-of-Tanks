@@ -35,6 +35,10 @@ for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'],
   assert.match(text, /tankDeath\((String\(payload\.cause\)|cause), (dead|ent)\.spec\.weightTons,/, `${name}: a hull's death bursts on the structures beside it`);
 }
 assert.match(authority, /advanceRepairs\(dt\);\s*advanceDestruction\(\);\s*updateVisibility\(\);/, 'the authority steps destruction before sight');
+// (2026-10-29) both clock their ground with the match: a collapsed structure's heap rises over RUBBLE_GROW_S with its fall.
+// The solo step had none, and on the page's own battle every heap stood up whole the instant its building came down
+assert.match(authority, /timeS \+= dt;\s*\/\/[^\n]*\n\s*ground\.setTime\(timeS\);/, 'the authority clocks its ground each tick');
+assert.match(solo, /game\.timeS \+= SIM_DT;\s*(\/\/[^\n]*\n\s*)*groundFor\(world\)\.overlay\.setTime\(game\.timeS\);/, 'the solo step clocks its ground each tick');
 // the detonations (§11): solo raises munition:blast where the round burst; the authority carries the same facts to the
 // peers (shell_impact: class, charge, struck structure; the direct shell_hit: the burst point), which raise it alike
 assert.match(solo, /const blast = munitionBlastEventFor\(shell\.spec, hit\.point\.x, hit\.point\.y, hit\.point\.z,[\s\S]{0,260}hit\.record\?\.structureIdx, craterId\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);\s*bus\.emit\('shell:expired'/,

@@ -36,6 +36,7 @@
 // back faces -1 per pixel: a closed surface sums to zero at every pixel (each ray in leaves again), and a crack, where a
 // ray gets in without crossing a front face, does not. Gated for the drawn surface; reported for the closed boxes.
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve, join } from 'node:path';
 import { materialClass } from './tank-surface-collect.mjs'; // installs the node canvas shim builders paint through
 
@@ -117,7 +118,7 @@ async function dump() {
   const { ensureTankBuilder, createTank } = await import('../src/vehicles/fleetFactory.ts');
   const { FLEET_GROUP_BY_ID } = await import('../src/vehicles/fleetManifest.ts');
   const { staticMergePartsOf } = await import('../src/vehicles/staticMergeParts.ts');
-  const ids = flag('all') ? Object.keys(FLEET_GROUP_BY_ID).sort() : opt('ids', '').split(',').filter(Boolean);
+  const ids = flag('all') ? Object.keys(FLEET_GROUP_BY_ID).sort() : uniqueIds(opt('ids', '').split(',').filter(Boolean), 'interior-fill-surface-compare --ids');
   if (!ids.length) throw new Error('dump needs --all or --ids');
   const skipExisting = flag('resume');
   for (const id of ids) {
@@ -248,7 +249,7 @@ async function raster() {
   const { INTERIOR_FILL_GROUP_LOADERS } = await import('../src/vehicles/interiorFillLoaders.generated.ts');
   const records = {};
   for (const load of Object.values(INTERIOR_FILL_GROUP_LOADERS)) Object.assign(records, (await load()).INTERIOR_FILLS);
-  const ids = flag('all') ? Object.keys(records).sort() : opt('ids', '').split(',').filter(Boolean);
+  const ids = flag('all') ? Object.keys(records).sort() : uniqueIds(opt('ids', '').split(',').filter(Boolean), 'interior-fill-surface-compare --ids');
   if (!ids.length) throw new Error('raster needs --all or --ids');
   const DIRS = Number(opt('dirs', '96')), PX_PER_VOXEL = Number(opt('px-per-voxel', '3')), SNAP = Number(opt('snap', '0'));
   const MAX_RES = 2048, TIE = 1e-6, EDGE_SLACK = 1e-4;

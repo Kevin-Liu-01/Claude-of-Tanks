@@ -257,7 +257,7 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 | Reload a partial magazine | `C` | Remappable |
 | Consumables | `4` / `5` / `6` | Remappable |
 | Handbrake | `Space` | `A` |
-| Shot log / performance / menu | `L` / `F8` / `Esc` | Interface controls |
+| Shot log / battle diagnostics / menu | `L` / `F9` / `Esc` | Interface controls |
 
 Every desktop action is remappable. `RMB` can use hold-to-aim, toggle-aim, or classic free-look behavior. Touch devices
 receive dedicated movement, aim, scope, fire, ammunition, equipment, and special-action controls rather than a scaled

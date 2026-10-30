@@ -2811,8 +2811,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (text) busy.textContent = text;
     },
     setStage(stage) {
-      app.inert = !!stage;
-      app.toggleAttribute('aria-busy', !!stage);
+      // everything waits but the way out: Exit stays live through the build, and its press abandons the entry (studio.ts
+      // doExit; the loading census 262: the whole app went inert, Exit included)
+      const waiting = !!stage;
+      for (const part of app.children) if (part !== head) (part as HTMLElement).inert = waiting;
+      for (const part of head.children) if (part !== headRight) (part as HTMLElement).inert = waiting;
+      for (const part of headRight.children) if (part !== exitBtn) (part as HTMLElement).inert = waiting;
+      app.toggleAttribute('aria-busy', waiting);
       if (!stage) {
         stagePlate.hidden = true;
         return;

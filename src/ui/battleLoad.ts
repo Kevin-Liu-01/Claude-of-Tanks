@@ -193,7 +193,11 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}.cot-bl .thead .flags:empty{display:none;}
 .cot-bl .team.ally .thead{color:var(--text-own);}
-.cot-bl .team.foe .thead{color:var(--text-enemy);flex-direction:row-reverse;}
+/* (the foe heading reads right to left from its right edge, so the flags the roster brings widen it leftward from where
+   it stands: laid out left to right and pushed right, its box moved 26 px left as its flag arrived, the loading census on
+   a phone; its words and flags keep their own direction) */
+.cot-bl .team.foe .thead{color:var(--text-enemy);direction:rtl;}
+.cot-bl .team.foe .thead>*{direction:ltr;}
 /* (each side's name on a plate of its own, in its team's ink: red on the pale sky read 1.2:1 with a halo alone, and a
    team-coloured underline was a one-edge stripe, gauntlet r2) */
 .cot-bl .team .thead{align-self:flex-start;width:max-content;height:auto;min-height:24px;padding:var(--s1) var(--s3);
@@ -509,10 +513,12 @@ export const PENDING_ROSTER_SLOTS = 7;
 
 /**
  * The rules row's mode chip: the mode alone, as its normalized id names it ("Turbo Ball"; a Standard battle reads
- * "Random Battle · Standard"). The screen names the battlefield in its title, so the chip carries no battlefield
- * subtitle, and the plan's objectives (modeId) are this same mode's.
+ * "Random Battle · Standard"), and a campaign operation by its own title ("Operation Iron Ridge"). The screen names the
+ * battlefield in its title, so the chip carries no battlefield subtitle, and the plan's objectives (modeId) are this
+ * same mode's.
  */
-export function battleLoadModeLabel(modeId: string): string {
+export function battleLoadModeLabel(modeId: string, campaignOperationId?: string | null): string {
+  if (campaignOperationId) return t(`campaign.op.${campaignOperationId}.title`);
   return modeId === 'standard' ? t('battleLoad.randomStandard') : t(`playMenu.matchMode.${modeId}.label`);
 }
 
@@ -530,6 +536,8 @@ export interface PendingBattlefield {
    *  frame, so the loading owner's show does not grow the head under the sides (phones dropped them 25-50 px). */
   readonly modeId?: string;
   readonly campaign?: boolean;
+  /** The campaign operation the chip names (its title, battleLoadModeLabel). */
+  readonly campaignOperationId?: string | null;
 }
 
 /**
@@ -956,7 +964,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const sides = planned ? { allies: side(planned.allies, seats?.allies), enemies: side(planned.enemies, seats?.enemies) } : seats;
       api.show({
         mapName: chosen?.mapName ?? '',
-        mode: t('battleLoad.kicker'),
+        // (the chosen mode from the cover's first frame, as the loading owner's show names it: the placeholder's words
+        // stood over a Proving Ground and a campaign operation until that show, the 262 production check)
+        mode: pending?.modeId ? battleLoadModeLabel(pending.modeId, pending.campaignOperationId) : t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         ...(pending?.modeId ? { modeId: pending.modeId } : {}),

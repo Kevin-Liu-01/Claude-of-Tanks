@@ -60,7 +60,7 @@ const air = createMapAmbience({
   clock: () => clock, getTierScale: () => tier,
 });
 air.prepare(42, 'autumn', 'day');
-assert.equal(air.group.parent, scene);
+assert.ok(air.group.parent === scene);
 assert.equal(air.group.children.length, 2);
 assert.equal(air.stats.draws, 2);
 assert.ok(air.isActive());
@@ -106,13 +106,13 @@ assert.equal(leafMesh.geometry.instanceCount, AMBIENCE_KINDS.leaf.count);
 air.setDensityOverride(null);
 // a re-prepare of the same battle keeps the cards; a new hour rebuilds; the Garage clears them
 air.prepare(42, 'autumn', 'day');
-assert.equal(air.group.children[0], leafMesh);
+assert.ok(air.group.children[0] === leafMesh);
 air.prepare(42, 'verdant', 'night');
 assert.deepEqual(air.stats.layers.map((l) => l.kind), ['firefly']);
 air.prepare(42, 'moon', 'day');
 assert.equal(air.stats.draws, 0);
 air.reset();
-assert.equal(air.group.parent, null);
+assert.ok(air.group.parent === null);
 assert.equal(scene.userData.mapAmbience, undefined);
 air.dispose();
 assert.throws(() => air.prepare(1, 'verdant', 'day'));

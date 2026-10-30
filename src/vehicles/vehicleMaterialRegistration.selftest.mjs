@@ -130,9 +130,10 @@ try {
     assert.equal(floorless.defines.COT_VEHICLE_FLOORLESS, 1, 'a floorless clone carries the switch');
     const text = compile(floorless).fragmentShader;
     const at = (needle) => text.indexOf(needle);
-    const gate = at('#ifndef COT_VEHICLE_FLOORLESS'), cavity = at('#ifdef COT_GEAR_CAVITY');
-    assert.ok(gate >= 0 && gate < at('float vehFill') && at('float vehFill') < at('uVehGround.xyz')
-      && at('uVehGround.xyz') < text.lastIndexOf('#endif', cavity), 'the switch holds the readability floors and the ground occlusion out');
+    // (264: the ground occlusion's own read; VH.05's field dust, c94376534a, reads uVehGround earlier, outside the switch)
+    const gate = at('#ifndef COT_VEHICLE_FLOORLESS'), cavity = at('#ifdef COT_GEAR_CAVITY'), ground = at('vehWorldPos - uVehGround.xyz');
+    assert.ok(gate >= 0 && gate < at('float vehFill') && at('float vehFill') < ground
+      && ground < text.lastIndexOf('#endif', cavity), 'the switch holds the readability floors and the ground occlusion out');
     assert.ok(text.includes('gl_FragColor.a += 2.0;'), 'and leaves the vehicle tag');
     for (const m of [source, hand, rehooked, floorless]) m.dispose();
   }

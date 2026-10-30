@@ -77,6 +77,9 @@ export interface MouseNoticeInput {
   /** The medal card's widest box at this width (full card) and in its compact form. */
   readonly medal: PlanSize;
   readonly medalCompact: PlanSize;
+  /** The battle sight's y (battleSight.ts: the chase framing's lens shift raises it over the centre); the scope's is
+   *  always height / 2. Default: the centre. */
+  readonly sightY?: number;
 }
 
 /** [left top, left bottom, right top, right bottom]: each side lane's band while the element shows (NaN: its own). */
@@ -216,8 +219,9 @@ interface SightChoices { markUp: boolean; countdown: 'under' | 'beside' | 'over'
  * one seated. The range tag is left to the caller (it moves diagonally with the bloom).
  */
 function sightMarks(boxes: number[], width: number, height: number, r: number, scope: boolean, chip: boolean,
-  furniture: readonly PlanRect[], choose: boolean, made: SightChoices): void {
-  const R = MOUSE_RETICLE, g = R.markGapPx, cx = width / 2, cy = height / 2;
+  furniture: readonly PlanRect[], choose: boolean, made: SightChoices, sightY = height / 2): void {
+  // (the battle sight at `sightY`, battleSight.ts; the scope's at the centre)
+  const R = MOUSE_RETICLE, g = R.markGapPx, cx = width / 2, cy = scope ? height / 2 : sightY;
   const gap = (x0: number, y0: number, x1: number, y1: number) => furnitureGap(furniture, x0, y0, x1, y1);
   const room = (x0: number, y0: number, x1: number, y1: number) => Math.min(gap(x0, y0, x1, y1), x0, y0, width - x1, height - y1);
   const pad = R.inkPadPx;
@@ -407,19 +411,22 @@ const sameChoices = (a: SightChoices, b: SightChoices) => a.markUp === b.markUp 
  * the chip and the row with nothing over them.
  */
 export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1 | 2 = 2, out: PlanKeepOut[] = [],
-  furniture: readonly PlanRect[] = NONE): PlanKeepOut[] {
+  furniture: readonly PlanRect[] = NONE, sightY = height / 2): PlanKeepOut[] {
   const R = MOUSE_RETICLE;
   out.length = 0;
+  // the battle sight at `sightY` (battleSight.ts: the chase framing's lens shift), the scope's at the centre
   const cx = width / 2, cy = height / 2;
   const floor = R.ringFloorPx;
   const ceil = Math.max(floor, R.ringCeilFraction * Math.min(width, height));
   const widest = tier === 0 ? floor : ceil;
   const rect = (x0: number, y0: number, x1: number, y1: number) => { out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); };
-  out.push({ cx, cy, r: widest + R.ringStrokePx });
-  rect(cx - R.stackHalfWidthPx, cy + R.stackTopPx, cx + R.stackHalfWidthPx, cy + R.stackBottomPx);
-  // the chip with nothing over it (at rest too: a gun-limit warning shows whatever the bloom)
-  rect(cx - R.chipHalfWidthPx - R.inkPadPx, cy + R.chipMinPx - R.chipAbovePx - R.inkPadPx, cx + R.chipHalfWidthPx + R.inkPadPx,
-    cy + Math.max(R.chipMinPx, widest + R.chipRingPx) + R.chipBelowPx + R.inkPadPx);
+  for (const sy of tier === 2 && sightY !== cy ? [sightY, cy] : [sightY]) {
+    out.push({ cx, cy: sy, r: widest + R.ringStrokePx });
+    rect(cx - R.stackHalfWidthPx, sy + R.stackTopPx, cx + R.stackHalfWidthPx, sy + R.stackBottomPx);
+    // the chip with nothing over it (at rest too: a gun-limit warning shows whatever the bloom)
+    rect(cx - R.chipHalfWidthPx - R.inkPadPx, sy + R.chipMinPx - R.chipAbovePx - R.inkPadPx, cx + R.chipHalfWidthPx + R.inkPadPx,
+      sy + Math.max(R.chipMinPx, widest + R.chipRingPx) + R.chipBelowPx + R.inkPadPx);
+  }
   let scopeFurniture = furniture;
   if (tier === 2) {
     const arm = ceil * R.armFactor + R.armPx;
@@ -444,9 +451,9 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
     const sweep = (choices: SightChoices, r0: number, r1: number, around: readonly PlanRect[]) => {
       const boxes = SIGHT_BOXES;
       boxes.length = 0;
-      sightMarks(boxes, width, height, r1, scope, chip, around, false, choices);
+      sightMarks(boxes, width, height, r1, scope, chip, around, false, choices, sightY);
       const wide = boxes.length;
-      sightMarks(boxes, width, height, r0, scope, chip, around, false, choices);
+      sightMarks(boxes, width, height, r0, scope, chip, around, false, choices, sightY);
       for (let i = 0; i < wide; i += 4) {
         const j = wide + i;
         rect(Math.min(boxes[i], boxes[j]), Math.min(boxes[i + 1], boxes[j + 1]), Math.max(boxes[i + 2], boxes[j + 2]),
@@ -460,7 +467,7 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
     let tagUp = false;
     for (const around of [NONE, marks]) {
       for (let k = 0; k <= RADII; k++) {
-        sightMarks(SIGHT_BOXES, width, height, floor + (widest - floor) * k / RADII, scope, chip, around, true, made[k]);
+        sightMarks(SIGHT_BOXES, width, height, floor + (widest - floor) * k / RADII, scope, chip, around, true, made[k], sightY);
         tagUp ||= made[k].tagUp;
       }
       const r = (i: number) => floor + (widest - floor) * Math.min(RADII, Math.max(0, i)) / RADII;
@@ -1151,7 +1158,8 @@ function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[],
   const size = input.countdown, rulesSize = input.countdownRules ?? null;
   if (!size || size.w <= 0 || size.h <= 0) return null;
   const blocks = input.obstacles.map((r) => ({ x0: r.x, y0: r.y, x1: r.x + r.w, y1: r.y + r.h }));
-  const place = placeCountdown(input.width, input.height, input.top, size, rulesSize, blocks, MOUSE_NOTICE_GAP_PX, false, maxScale);
+  const place = placeCountdown(input.width, input.height, input.top, size, rulesSize, blocks, MOUSE_NOTICE_GAP_PX, false, maxScale,
+    input.sightY);
   const w = size.w * place.scale, h = size.h * place.scale, cx = noticeCentreX(input.width);
   const dial: PlanRect = { x: cx - w / 2, y: place.top, w, h };
   const rules = place.rulesShown && rulesSize ? { x: cx - rulesSize.w * place.rulesScale / 2, y: place.rulesTop,
@@ -1189,7 +1197,7 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   const id = ++plansMade;
   let pair: PairResult | null = null;
   let clearance: MouseNoticePlan['clearance'] = -1;
-  const keeps = TIERS.map((tier) => mouseReticleFootprint(input.width, input.height, tier, [], input.furniture));
+  const keeps = TIERS.map((tier) => mouseReticleFootprint(input.width, input.height, tier, [], input.furniture, input.sightY));
   const clear: [number, number] = [NaN, NaN];
   for (let side = 0; side < 2; side++) {
     const lane = input.lanes[side];

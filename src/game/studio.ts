@@ -5829,7 +5829,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!active || exiting) return;
     exiting = true;
     exitRun = transition.run(() => doExit(), {
-      kicker: 'Scene Studio', title: 'Garage',
+      kicker: t('transition.kicker.sceneStudio'), title: t('transition.title.garage'),
       mapId: getWorld()?.mapId,
       progress: false, minShowMs: 250,
     }).finally(() => { exiting = false; exitRun = null; });

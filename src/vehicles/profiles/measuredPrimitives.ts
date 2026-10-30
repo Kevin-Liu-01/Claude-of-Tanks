@@ -33,9 +33,9 @@ export function roofSheet(rows:readonly(readonly[z:number,left:number,right:numb
 }
 
 /** Original beam aligned between two measured physical endpoints. */
-export function beamBetween(a:Point3,b:Point3,radius:number,segments=10):THREE.BufferGeometry {
+export function beamBetween(a:Point3,b:Point3,radius:number,segments=10,openEnded=false):THREE.BufferGeometry {
   const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),delta=to.clone().sub(from);
-  const geometry=KIT.cylY(radius,radius,delta.length(),segments);
+  const geometry=KIT.cylY(radius,radius,delta.length(),segments,openEnded);
   geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize()));
   return geometry.translate(...from.add(to).multiplyScalar(.5).toArray());
 }
