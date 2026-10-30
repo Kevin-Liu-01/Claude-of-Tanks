@@ -680,6 +680,35 @@ function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
 }
 
 /** Release 262 (the Christian II): a small Dannebrog, the white Nordic cross on red, its upright off the hoist. */
+function drawBundeswehrFlaredCross({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const L = radius * 0.86, a = L * 0.17, b = L * 0.44;
+  const pts: [number, number][] = [[-a, -a], [-b, -L], [b, -L], [a, -a], [L, -b], [L, b], [a, a], [b, L], [-b, L], [-a, a],
+    [-L, b], [-L, -b]];
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(cx + x, cy + y) : ctx.moveTo(cx + x, cy + y)));
+  ctx.closePath();
+  ctx.strokeStyle = '#e4e0d4';
+  ctx.lineWidth = size * 0.09;
+  ctx.lineJoin = 'miter';
+  ctx.stroke();
+  ctx.fillStyle = '#1d1f1d';
+  ctx.fill();
+}
+
+function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.84;
+  ctx.fillStyle = '#ebe7db';
+  for (let k = 0; k < 5; k++) {
+    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5;
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(t) * r * 0.5, cy + Math.sin(t) * r * 0.5, r * 0.5, r * 0.34, t, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#b8343a';
+  starPath(ctx, cx, cy, r * 0.30);
+  ctx.fill();
+}
+
 function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
   ctx.fillStyle = '#b8343a';
@@ -742,6 +771,10 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'dk-dannebrog': drawDenmarkDannebrog,
+  // release 265 (the M41 family's blind critics): the early Bundeswehr's flared black cross with its white border, and the
+  // JGSDF's cherry-blossom badge (its tanks wore no national roundel)
+  'de-cross-1956': drawBundeswehrFlaredCross,
+  'jp-jgsdf-sakura': drawJgsdfSakura,
   'ua-trident': drawUkraineTrident,
   'th-flag': drawThaiFlag,
 });

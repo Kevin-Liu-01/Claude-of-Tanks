@@ -301,9 +301,10 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
       [-0.39, -0.24, -0.10], [0.39, -0.24, -0.10], [0.31, -0.18, 0.42], [-0.31, -0.18, 0.42],
       [-0.39, 0.18, -0.10], [0.39, 0.18, -0.10], [0.31, 0.18, 0.42], [-0.31, 0.18, 0.42],
     ));
+    // (r3, the Latvia side photograph: a compact wedge at the turret face, the barrel bare beyond it)
     P.addGunExtra(orientedSlab(
-      [-0.31, -0.18, 0.40], [0.31, -0.18, 0.40], [0.17, -0.11, 1.30], [-0.17, -0.11, 1.30],
-      [-0.31, 0.18, 0.40], [0.31, 0.18, 0.40], [0.17, 0.11, 1.30], [-0.17, 0.11, 1.30],
+      [-0.31, -0.18, 0.40], [0.31, -0.18, 0.40], [0.13, -0.10, 0.74], [-0.13, -0.10, 0.74],
+      [-0.31, 0.18, 0.40], [0.31, 0.18, 0.40], [0.13, 0.10, 0.74], [-0.13, 0.10, 0.74],
     ));
   }
   // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III: a heavier barrel than the 40 mm's and its long slotted
@@ -311,11 +312,10 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   const gunLen = danish ? 3.20 : 3.12, gunR = danish ? 0.070 : 0.064;
   KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13 });
   if (danish) {
+    // the brake in plain steel, stepped (r3: camouflage over slots read as hazard stripes)
     const seg = P.q ? 20 : 12, brakeL = 0.40, z0 = gunLen - brakeL;
-    P.add('gun', cylZ(0.125, brakeL, seg), 0, 0, z0 + brakeL / 2);
-    for (let k = 0; k < 4; k++) for (const side of [-1, 1] as const) {
-      P.add('gunDark', box(0.02, 0.15, 0.045), side * 0.118, 0, z0 + 0.07 + k * 0.085);
-    }
+    P.add('gunDark', cylZ(0.125, brakeL, seg), 0, 0, z0 + brakeL / 2);
+    for (const [r, dz] of [[0.135, 0.06], [0.135, 0.20], [0.135, 0.34]] as const) P.add('gunDark', cylZ(r, 0.03, seg), 0, 0, z0 + dz);
     P.add('gunDark', cylZ(0.095, 0.02, seg), 0, 0, gunLen + 0.002);
     P.addGunExtraDark(cylZ(0.018, 0.30, 12), 0.22, -0.035, 1.47);
     muzzleTipDot(P, 0.22, -0.035, 1.62, 0.011, { parent: 'gunG' });
@@ -393,11 +393,28 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   }
 }
 
+/** The CV9035 DK's bow and flanks (the Holstebro photograph; r3 critics): boxy mudguards hung under each shoulder's tip
+ * in place of the bare blade, their bracket frames, two heavy shackles on the nose plate, and a cap over the sliver
+ * between the skirt carrier and the inner bridge that showed sky from above. */
+function addCv9035DkBowKit(P: CvBuilderPort): void {
+  const { box, torus } = KIT;
+  for (const side of [-1, 1] as const) {
+    P.add('hull', box(0.60, 0.06, 0.42), side * 1.50, 1.24, 3.08);
+    P.add('hull', box(0.60, 0.34, 0.04), side * 1.50, 1.04, 3.29);
+    P.add('hull', box(0.04, 0.34, 0.40), side * 1.80, 1.04, 3.09);
+    for (const x of [1.28, 1.72]) P.add('hullDetail', box(0.04, 0.30, 0.03), side * x, 1.05, 3.315);
+    P.add('hullDetail', box(0.48, 0.03, 0.03), side * 1.50, 0.92, 3.315);
+    P.add('hullDark', torus(0.075, 0.022, 14, 8), side * 0.62, 0.90, 3.18, 0, 0, 0); // on the raked lower glacis
+    P.add('hull', box(0.10, 0.06, 5.96), side * 1.68, 1.655, -0.74);
+  }
+}
+
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */
 export function buildCv90(P: CvBuilderPort, kit: { readonly danish?: boolean } = {}): void {
   buildCv90Hull(P);
   buildCv90RunningGear(P);
   buildCv90Turret(P, kit.danish);
+  if (kit.danish) addCv9035DkBowKit(P);
   if (!kit.danish) P.decal('hull', 'roundel', null, 0.27, [-1.89, 1.35, -1.36], -Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '9040', 0.22,
     [1.89, 1.16, 0.78], Math.PI / 2);

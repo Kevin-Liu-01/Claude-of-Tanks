@@ -339,7 +339,27 @@ function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
 }
 
 /** Stencilled black lettering with a thin pale edge (the United Nations' "UN" on white vehicles). */
-function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
+  const draw = (): void => {
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.beginPath();
+    ctx.arc(128, 128, 118, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(214,170,46,0.97)';
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(20,20,18,0.9)';
+    ctx.stroke();
+    ctx.font = `bold ${text.length > 2 ? 100 : 130}px 'Cot UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(18,18,18,0.95)';
+    ctx.fillText(text, 128, 134);
+  };
+  draw();
+  redrawWhenMarkingFontReady(draw);
+}
+
+function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): void {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
@@ -347,9 +367,9 @@ function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(232,230,222,0.55)';
+    ctx.strokeStyle = white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)';
     ctx.strokeText(text, 128, 128);
-    ctx.fillStyle = 'rgba(18,18,18,0.94)';
+    ctx.fillStyle = white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)';
     ctx.fillText(text, 128, 128);
   };
   draw();
@@ -372,6 +392,9 @@ function paintDecal(
   else if (kind === 'soot') paintSootDecal(ctx);
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
   else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
+  else if (kind === 'stencilWhite') paintStencilDecal(ctx, text ?? '', true);
+  // a NATO bridge-classification disc: black number on a yellow disc
+  else if (kind === 'mlc') paintMlcDecal(ctx, text ?? '');
   // a flag on its pole (the text names the insignia painter, e.g. 'dk-dannebrog'): drawn as itself, never re-seated as
   // the vehicle's national insignia
   else if (kind === 'flag') drawNationalInsignia(ctx, text ?? '', 128, 128, 250);

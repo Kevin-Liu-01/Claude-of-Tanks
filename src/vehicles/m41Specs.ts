@@ -52,12 +52,17 @@ m41a3.visual = { ...m41a3.visual, scheme: 'solid', base: '#4b4e32', weather: '#5
 
 // The Bundeswehr's M41 (1956-66, the armoured reconnaissance battalions), in RAL 6014 Gelboliv (the German national coat).
 const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
-m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#4e4530', weather: '#5a5139', patches: [], marking: 'number', number: '231', camoScale: 0.5 };
+// r3 (critics: too light and sandy for Gelboliv; the cross straight-armed): darker, and the early Bundeswehr's flared cross
+m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#4a4230', weather: '#544b39', patches: [], marking: 'number', number: '231', camoScale: 0.5,
+  insignia: 'de-cross-1956' };
 
 // The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
 // came after it), warmer and greener than the Bundeswehr's Gelboliv.
 const m41_jgsdf = m41('m41_jgsdf', 'M41 (JGSDF)', 'Japan');
-m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#5c5832', weather: '#68643e', patches: [], marking: 'number', number: '12', camoScale: 0.5 };
+// r3 (critics: too light and yellow; nothing said Japan): a darker brown-green, greener than the Bundeswehr's, and the
+// JGSDF's cherry-blossom badge in place of a national roundel its tanks never wore
+m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#474c30', weather: '#51563a', patches: [], marking: 'number', number: '12', camoScale: 0.5,
+  insignia: 'jp-jgsdf-sakura' };
 
 // The Danish M41 DK-1 of the late 1980s: the Cummins diesel, skirts, the thermal sight and laser rangefinder, the AAI
 // APFSDS at the tier II footing.
@@ -74,8 +79,9 @@ m41dk1.gun = {
 m41dk1.armor = { ...m41dk1.armor };
 m41dk1.visual = {
   ...m41dk1.visual,
-  // the late-1980s Danish Army coat (the Aalborg DK-1): a dull grey-olive with large black-green and blue-grey patches
-  scheme: 'nato', base: '#5a5f4b', weather: '#656a55', patches: ['#2c3129', '#3e4446'], marking: 'number', number: '26', camoScale: 0.62,
+  // the late-1980s Danish Army coat (the Aalborg DK-1): a medium olive with large irregular fields of black-green and slate
+  // blue-grey (r3: the sage base read pale, the patches small)
+  scheme: 'nato', base: '#4f5638', weather: '#5a6142', patches: ['#262b22', '#4a535a'], marking: 'number', number: '26', camoScale: 0.42,
 };
 
 // The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun): the
