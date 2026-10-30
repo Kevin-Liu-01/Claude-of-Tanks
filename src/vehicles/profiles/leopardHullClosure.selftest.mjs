@@ -8,13 +8,12 @@ const expectedHalfWidths = new Map([
   ['leo2a4m_can', 0.88],
   ['leo2a4', 0.88],
   ['leo2a4_otco', 0.88],
-  ['leo2a6_ua', 0.88],
 ]);
 
-const upperGlacisFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']);
-const upperShoulderFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']);
+const upperGlacisFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco']);
+const upperShoulderFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco']);
 const fenderSkirtClosureIds = [
-  'leo2a4_v', 'strv121', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua',
+  'leo2a4_v', 'strv121', 'leo2a4m', 'leo2a4', 'leo2a4_otco',
 ];
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {

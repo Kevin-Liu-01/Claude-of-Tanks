@@ -93,6 +93,15 @@ const pb = boxes(piers);
 assert.ok(Math.abs(pb[0].hi[1] - 2.5) < 1e-4 && Math.abs(pb[0].lo[1]) < 1e-6, `the pier's top at 2.5 m, its foot kept (${pb[0].lo[1]}..${pb[0].hi[1]})`);
 assert.ok(Math.abs(pb[1].hi[1] - 7.5) < 1e-6, 'the held member stands as drawn');
 assert.ok(Math.abs(pb[2].hi[1] - 4) < 1e-6, 'unknown drawn form: as drawn');
+// (2026-10-28, fjord #6's naust cut into the shore) a stub seated on a hillside 3 m up, over walls drawn to 2 m that the
+// ground buried, is no remnant of them: flattened to a point; the held member 6 m over the ground still stands
+const seated = geometryOf([...box(0, 3, 0, 0.6, 4.5, 0.6), ...box(5, 6, 0, 5.3, 7.5, 0.3)]);
+const hill = (x) => (x < 3 ? 3.1 : 0);
+assert.equal(clampPieceTops(seated, topAt, 0.5, hill), 1, 'the seated stub flattened');
+const sb = boxes(seated);
+assert.ok(sb[0].hi[1] - sb[0].lo[1] < 1e-6 && sb[0].hi[0] - sb[0].lo[0] < 1e-6, 'to a point');
+assert.ok(Math.abs(sb[1].hi[1] - 7.5) < 1e-6, 'the held member over open ground stands as drawn');
+assert.equal(clampPieceTops(geometryOf(box(0, 3, 0, 0.6, 4.5, 0.6)), topAt, 0.5), 0, 'no ground given: left as before');
 
 
 // perched plates: a plate 1.7 m up over a block (x 0..1.6), reaching to x 4.2: a third of it held, the rest over nothing

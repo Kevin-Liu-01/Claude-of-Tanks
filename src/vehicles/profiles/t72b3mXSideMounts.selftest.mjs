@@ -4,6 +4,7 @@ import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { renderedMarkingFootprints } from '../markingFootprints.test-support.mjs';
 
 // The held-out per-mesh preservation ledger (docs/references/tanks/t72b3m_x.side-mount-preservation.json, rewritten by
 // COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_2016 is the fleet geometry ledger's. The marking
@@ -19,49 +20,26 @@ function legacyAttributeNames(g){
   }
   return Object.keys(g.attributes).filter(k=>k!=='nightEmissionMask');
 }
-function paintQuadSide(m,start){
-  // 2026-09-14: the insignia pair may sit on the hull tub or, with the fender-to-skirt gap closed,
-  // on the turret cheek. The quad is verified structurally: one 240 mm square with four distinct
-  // corners, planar, all four normals equal and facing outward on its side of the tank.
-  const p=m.geometry.attributes.position,normal=m.geometry.attributes.normal;
-  const points=[0,1,2,3].map(j=>new T.Vector3().fromBufferAttribute(p,start+j).applyMatrix4(m.matrixWorld));
-  const centre=points.reduce((c,v)=>c.add(v),new T.Vector3()).multiplyScalar(.25);
-  const side=Math.sign(centre.x);
-  assert.ok(side!==0&&Math.abs(centre.x)>.9,'paint sits on one side of the tank');
-  const n0=new T.Vector3().fromBufferAttribute(normal,start).transformDirection(m.matrixWorld);
-  assert.ok(n0.x*side>.15,'paint faces outward on its side (hull tub wall, or the raked turret cheek)');
-  const corners=new Set();
-  for(let j=0;j<4;j++){
-    const v=points[j],d=v.clone().sub(centre);
-    assert.ok(Math.abs(Math.abs(d.dot(n0)))<1e-4,'paint quad is planar on its seat');
-    assert.ok(Math.abs(d.length()-.12*Math.SQRT2)<1e-3,'excluded paint is exactly the approved 240 mm marking square');
-    // corner signature in the quad's own plane
-    const up=new T.Vector3(0,1,0),ax=new T.Vector3().crossVectors(up,n0).normalize(),ay=new T.Vector3().crossVectors(n0,ax).normalize();
-    corners.add(`${Math.sign(d.dot(ax))},${Math.sign(d.dot(ay))}`);
-    const n=new T.Vector3().fromBufferAttribute(normal,start+j).transformDirection(m.matrixWorld);
-    assert.ok(n.distanceTo(n0)<1e-6,'paint vertices share one outward normal');
-  }
-  assert.equal(corners.size,4,'paint has four distinct corners, not extra physical stock');
-  return side;
-}
-
+// 2026-10-28 (264): every seated marking is a film cut to the armour under its seat since lane 243 (markingFilm.ts,
+// 09ec72afe1 / 26fd711d80), not a four-corner quad, so the excluded paint is read through the footprints each draw records
+// (markingFootprints.test-support.mjs, the fleet's marking law, as 257's chieftain10XMk5Foundation reads it): one or two
+// full-size 240 mm footprints, every painted triangle inside one and at least MIN_PAINT_COVERAGE of each painted, each on
+// one side of the tank and facing outward there.
+const MIN_PAINT_COVERAGE=.75;
 function verifiedPaintBuffer(m){
   assert.equal(m.isInstancedMesh,undefined,'no physical instances may be excluded as paint');
   assert.deepEqual(legacyAttributeNames(m.geometry).sort(),['normal','position','uv']);
   const mask=m.geometry.getAttribute('nightEmissionMask');
   assert.ok(!mask||mask.array.every(v=>v===0),'authenticated paint cannot contain a glowing lamp face');
-  const {position:p,normal,uv}=m.geometry.attributes,index=m.geometry.index;
-  assert.ok(p.count===4||p.count===8,'only one or two complete marking quads may be excluded');
-  assert.equal(p.itemSize,3);assert.equal(normal.itemSize,3);assert.equal(uv.itemSize,2);
-  assert.equal(normal.count,p.count);assert.equal(uv.count,p.count);assert.equal(index?.count,p.count/4*6);
-  const indices=[],uvs=[],sides=[];
-  for(let start=0;start<p.count;start+=4){
-    indices.push(...[0,2,1,2,3,1].map(i=>i+start));uvs.push(0,1,1,1,0,0,1,0);
-    sides.push(paintQuadSide(m,start));
-  }
-  assert.deepEqual(Array.from(index.array),indices,'every excluded triangle is a marking-plane triangle');
-  assert.deepEqual(Array.from(uv.array),uvs,'complete marking UVs, not a physical mixed batch');
-  return sides;
+  const footprints=renderedMarkingFootprints(m,{minCoverage:MIN_PAINT_COVERAGE,label:m.name});
+  assert.ok(footprints.length===1||footprints.length===2,'only one or two complete markings may be excluded');
+  return footprints.map(({center,u,v,normal})=>{
+    near(u.length(),.24,1e-6,'excluded paint is exactly the approved 240 mm marking square');near(v.length(),.24,1e-6,'and square');
+    const side=Math.sign(center.x);
+    assert.ok(side!==0&&Math.abs(center.x)>.9,'paint sits on one side of the tank');
+    assert.ok(normal.x*side>.15,'paint faces outward on its side (hull tub wall, or the raked turret cheek)');
+    return side;
+  });
 }
 
 function verifiedPaintMeshes(tank){

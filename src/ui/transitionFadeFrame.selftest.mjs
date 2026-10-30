@@ -34,6 +34,7 @@ class ElementFixture {
     return this.children.get(selector);
   }
   appendChild(child) { return child; }
+  setAttribute(name, value) { (this.attributes ??= {})[name] = String(value); }
   getClientRects() { return this.classes.has('on') ? [{}] : []; }
 }
 

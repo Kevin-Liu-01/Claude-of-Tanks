@@ -60,7 +60,10 @@ for(const quality of ['high','low'])for(const [id,c] of Object.entries(ESCORT_FI
     const m=new Mesh(o.geometry,mat);m.updateMatrixWorld(true);stock.push(m);
    }});
    ray.set(new Vector3(mouth.x,mouth.y,mouth.z+.01),new Vector3(0,0,-1));ray.near=0;ray.far=.9*f;
-   assert.equal(ray.intersectObjects(stock).length,0,'launcher has a real deep mouth, not a capped tube');
+   // (264: the owner's launch-tube standard, 233 ce18a5030c: the Spike cell is a 45 cm dark bore with a sealed end, so
+   // the first stock behind the mouth is that terminal, at least 45 cm (sized) deep, never a cap at the mouth)
+   const deep=ray.intersectObjects(stock)[0];
+   assert.ok(deep&&deep.distance-.01>=.45*f,`launcher has a real deep mouth, not a capped tube (${deep?.distance})`);
    for(const yaw of [-1.4,0,1.4]){
     turret.rotation.y=yaw;gun.rotation.x=-.2;t.root.updateMatrixWorld(true);
     const expected=turret.localToWorld(new Vector3(mouth.x,mouth.y,mouth.z));

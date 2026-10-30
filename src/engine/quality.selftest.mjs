@@ -193,6 +193,13 @@ console.log('quality.selftest: device, texture, preset, and subscription contrac
   assert.ok(Math.abs(internalPixelRatio(2, autoAgain, dynamicScaleHold(2, autoAgain)) - 1.2501) < 1e-9, 'held at 1.25');
   assert.equal(dynamicScaleHold(1, autoAgain), 0.67, 'a native-density display has no hold: its floor');
   assert.equal(q.PRESETS.high.dynHold, undefined, 'the explicit High has none');
+  // (local-fps-265) the tiers an Auto cut lands on keep High's native-density floor, an explicit choice its own fence
+  for (const name of ['medium', 'low']) {
+    q.setPresetName(name);
+    assert.equal(dynamicScaleFloor(1, q.getPreset()), 1, `an explicit ${name} keeps one sample per CSS pixel`);
+    assert.equal(q.PRESETS[name].autoNativeDynMin, 0.67);
+  }
+  q.setPresetName('auto');
   assert.equal(dynamicScaleHold(2, q.PRESETS.high), 0.9, 'the explicit High holds at its own floor');
   assert.equal(q.PRESETS.high.rcasMinScale, 0.49);
   assert.equal(reconstructionMode(1729 / 3456, autoAgain.rcasMinScale), 'easu+rcas', 'Auto High\'s 1.0 raster keeps RCAS');

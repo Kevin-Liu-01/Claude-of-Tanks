@@ -63,9 +63,10 @@ const RESTING_RING_PX = 14;
  * The reticle's footprint at full bloom on a touch layout (see the module's note), as boxes. `seated`: the warning chip
  * sits by the sight (a portrait, or a landscape 550 px tall or more), so its seats under and over the ring count.
  */
-export function touchSightKeepOut(width: number, height: number, scope: boolean, seated: boolean): TouchBox[] {
+export function touchSightKeepOut(width: number, height: number, scope: boolean, seated: boolean, sightY = height / 2): TouchBox[] {
   const cx = width / 2;
-  const cy = height / 2;
+  // (the battle sight at `sightY`, battleSight.ts: the chase framing's lens shift; the scope's at the centre)
+  const cy = scope ? height / 2 : sightY;
   const r = Math.min(width, height) * RING_CEILING;
   // (the ring's stroke and its halo)
   const ring = r + 3;
@@ -124,7 +125,7 @@ export function touchFreePlace(size: TouchSize, top: number, width: number, heig
  *  buttons); a place over the block itself costs OVER_FACTOR times as much again (at 568x256 the margins alone set the
  *  detection 10 px onto a consumable). */
 function leastIntrusive(size: TouchSize, top: number, width: number, height: number,
-  layers: readonly (readonly [readonly TouchBox[], number])[], resting = false): { y: number; cost: number } {
+  layers: readonly (readonly [readonly TouchBox[], number])[], resting = false, aim = height / 2): { y: number; cost: number } {
   const x0 = noticeCentreX(width) - size.w / 2, x1 = x0 + size.w;
   const grown: { box: TouchBox; weight: number }[] = [];
   for (const [blocks, weight] of layers) {
@@ -134,7 +135,7 @@ function leastIntrusive(size: TouchSize, top: number, width: number, height: num
       grown.push({ box: grow(block, TOUCH_NOTICE_GAP), weight: Math.min(weight, MARGIN_WEIGHT) }, { box: block, weight: weight * OVER_FACTOR });
     }
   }
-  const aim = height / 2, over = aim - (resting ? RESTING_RING_PX : SIGHT_CLEAR_PX) - TOUCH_SIGHT_GAP;
+  const over = aim - (resting ? RESTING_RING_PX : SIGHT_CLEAR_PX) - TOUCH_SIGHT_GAP;
   const under = aim + MARKS_BELOW_PX + TOUCH_SIGHT_GAP;
   let best = { y: Math.max(top, TOUCH_NOTICE_GAP), cost: Infinity };
   for (const crosshair of [true, false]) {
@@ -190,6 +191,9 @@ interface TouchNoticeInput {
   readonly oneRow?: boolean;
   /** Where integ put the detection's top (the stack's, centred). */
   readonly fallbackTop: number;
+  /** The battle sight's y (battleSight.ts: the chase framing's lens shift raises it over the centre); the scope's is
+   *  always height / 2. Default: the centre. */
+  readonly sightY?: number;
 }
 
 /** Each element's top on the window's centre line (noticeCentreLine.ts: no element has an x of its own). */
@@ -239,12 +243,15 @@ const CANDIDATES: readonly (readonly [boolean, boolean, boolean])[] = [[true, fa
 /** The notices' places (see the module's note). */
 export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const { width, height, top, scope, seated } = input;
+  const sightY = input.sightY ?? height / 2;
+  // (the crosshair this plan keeps clear: the battle sight's, or the scope's at the centre)
+  const aim = scope ? height / 2 : sightY;
   const compactAlert = input.alertCompact ?? TOUCH_COMPACT_ALERT;
   const gap = TOUCH_NOTICE_GAP;
   const cx = noticeCentreX(width);
   const centred = (y: number, size: TouchSize) => boxOf(cx, y, size);
   // (the footprint's boxes drawn in by the difference, so a uniform gap keeps TOUCH_SIGHT_GAP from them)
-  const keep = touchSightKeepOut(width, height, scope, seated).map((box) => grow(box, TOUCH_SIGHT_GAP - gap));
+  const keep = touchSightKeepOut(width, height, scope, seated, sightY).map((box) => grow(box, TOUCH_SIGHT_GAP - gap));
   const labels = input.labels ?? [];
   const map = input.map ? [input.map] : [];
   const blocks = [...input.obstacles, ...input.soft, ...map, ...labels, ...keep];
@@ -268,9 +275,10 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const placed: TouchBox[] = [];
   if (input.countdown) {
     const rules = input.countdownRules ?? null;
-    const place = placeCountdown(width, height, top, input.countdown, rules, [...input.obstacles, ...input.soft, ...map, ...labels], gap, true);
+    const place = placeCountdown(width, height, top, input.countdown, rules, [...input.obstacles, ...input.soft, ...map, ...labels], gap, true,
+      1, sightY);
     plan.countdownTop = place.top; plan.countdownScale = place.scale;
-    plan.dialOverSight = place.top + input.countdown.h * place.scale > height / 2 - SIGHT_CLEAR_PX;
+    plan.dialOverSight = place.top + input.countdown.h * place.scale > sightY - SIGHT_CLEAR_PX;
     plan.rulesTop = place.rulesTop; plan.rulesScale = place.rulesScale; plan.rulesShown = place.rulesShown;
     if (!place.cleared) plan.cleared = false;
     placed.push(centred(place.top, scaled(input.countdown, place.scale)));
@@ -283,7 +291,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     plan.noticeTop = plan.countdownTop;
     const alert = touchFreePlace(input.alert, start, width, height, [...blocks, ...placed]);
     const compact = alert === null ? touchFreePlace(compactAlert, start, width, height, [...blocks, ...placed]) : null;
-    const y = alert ?? compact ?? leastIntrusive(compactAlert, start, width, height, layers(placed)).y;
+    const y = alert ?? compact ?? leastIntrusive(compactAlert, start, width, height, layers(placed), false, aim).y;
     if (alert === null && compact === null) plan.cleared = false;
     plan.alertCompact = alert === null;
     plan.alertW = alert !== null ? input.alert.w : compactAlert.w;
@@ -324,7 +332,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
       const size = { w: Math.min(w, width - 2 * gap), h: TOUCH_ONE_ROW.h };
       const free = touchFreePlace(size, rowStart, width, height, [...blocks, ...placed]);
       if (free !== null) { row = { y: free, w: size.w, free: true }; break; }
-      const least = leastIntrusive(size, rowStart, width, height, layers(placed), true);
+      const least = leastIntrusive(size, rowStart, width, height, layers(placed), true, aim);
       if (least.cost < PANEL_WEIGHT) { row = { y: least.y, w: size.w, free: false }; break; }
       row = { y: least.y, w: size.w, free: false };
     }
@@ -342,8 +350,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     plan.noticeCompact = plan.alertCompact = true;
     plan.alertW = compactAlert.w;
     const pair = (firstSize: TouchSize, secondSize: TouchSize) => {
-      const first = leastIntrusive(firstSize, start, width, height, layers(placed));
-      const second = leastIntrusive(secondSize, start, width, height, layers([...placed, centred(first.y, firstSize)]));
+      const first = leastIntrusive(firstSize, start, width, height, layers(placed), false, aim);
+      const second = leastIntrusive(secondSize, start, width, height, layers([...placed, centred(first.y, firstSize)]), false, aim);
       return { first, second, cost: first.cost + second.cost };
     };
     const noticeFirst = pair(TOUCH_COMPACT_NOTICE, compactAlert);

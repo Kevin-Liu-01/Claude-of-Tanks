@@ -72,7 +72,8 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
 }
 
 interface ActionInput {
-  onAction(actionId: ActionId, listener: () => void): () => void;
+  /** The listener hears the code that pressed it (a key, a mouse button, Pad<n>). */
+  onAction(actionId: ActionId, listener: (code?: string) => void): () => void;
   /** Round 30: the armour-overlay key flips the live setting; optional so fixtures without settings still work. */
   getSettings?(): { armorAimOverlay: boolean };
   setSetting?(key: 'armorAimOverlay', value: boolean): void;
@@ -138,7 +139,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   const listen = (event: string, listener: (payload: RuntimeValue) => void): void => {
     disposeCallbacks.push(bus.on(event, listener));
   };
-  const onAction = (action: ActionId, listener: () => void): void => {
+  const onAction = (action: ActionId, listener: (code?: string) => void): void => {
     disposeCallbacks.push(input.onAction(action, listener));
   };
 
@@ -181,9 +182,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:magazineReload', {});
   });
 
-  onAction('specialAction', () => {
+  // E is the suspension's alone (owner 2026-10-28: "why is atgm labeled Q? E does it for me"; Main: one action, one key):
+  // Q fires the ATGM and C reloads. A pad's LB, its one system button, still runs a hull's own system where it has no
+  // suspension (the ATGM, else the reload: sim/specialActionPolicy.ts), and its tile names LB (game/battleKeyCaps.ts).
+  onAction('specialAction', (code?: string) => {
     if (!battleInputAllowed()) return;
-    bus.emit('ui:specialAction', {});
+    bus.emit('ui:specialAction', { pad: typeof code === 'string' && code.startsWith('Pad') });
   });
 
   // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (hud.ts: the guided
@@ -307,10 +311,13 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:click', {});
   });
 
-  listen('ui:specialAction', () => {
+  listen('ui:specialAction', (payload) => {
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
-    if (rules.specialActionKind(player.spec) === 'guided_missile') {
+    const kind = rules.specialActionKind(player.spec);
+    // (a hull without suspension answers only the pad's LB: the keyboard's E and the suspension tile are the suspension's)
+    if (kind !== 'hydropneumatic_aim' && (payload as { pad?: boolean } | null)?.pad !== true) return;
+    if (kind === 'guided_missile') {
       // A delayed network snapshot may leave authoritative presentation one
       // slot behind the local request. E toggles the player's requested slot,
       // so reconcile that intent before deciding whether to enter or leave

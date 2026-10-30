@@ -129,6 +129,6 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "ua_m2a3_bradley": {"turretPivot":[0,1.895,-0.45],"gunPivot":[-0.075,0.375,0.6],"lengthM":2.23},
   "ua_t80bv": {"turretPivot":[0,1.44,-0.05],"gunPivot":[0,0.25,1.02],"lengthM":5.3},
   "vickers_mk1": {"turretPivot":[0,1.463,0.4399],"gunPivot":[0,0.4612,0.57],"lengthM":4.4555,"radiusM":0.1254},
-  "ztz85_iii": {"turretPivot":[0,1.44,-0.1],"gunPivot":[0,0.26,1.1],"lengthM":4.03,"radiusM":0.098},
+  "ztz85_iii": {"turretPivot":[0,1.45,0.05],"gunPivot":[0,0.32,0.96],"lengthM":6.195,"radiusM":0.0974},
   "ztz99_longwei": {"turretPivot":[0,1.57,0.64],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
 });
