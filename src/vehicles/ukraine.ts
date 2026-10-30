@@ -301,8 +301,9 @@ const UKRAINE_SPECS = {
     curve: [number, number][];
   }
   const ROWS: Record<'pt84_orzel' | 'pt84_sokol' | 'pt84_zbik', PolishRow> = {
-    // held up from 137 degrees, where the barrel crosses the framed skirts' rear fields
-    pt84_orzel: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: -2.80, flank: true, reloadS: 6.3,
+    // held up from 137 degrees, where the barrel crosses the rear skirt (its slats now, 10 cm under the deck edge); the
+    // skirt sector is the five framed forward panels (262 visual bar: slats over the engine bay behind them)
+    pt84_orzel: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: -0.16, flank: true, reloadS: 6.3,
       curve: [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
         [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
     // the Oplot-M's curve: no framed fields aft of the three forward panels

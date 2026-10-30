@@ -29,8 +29,9 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
   them, stand-off slat armour 14 cm off the skirt box with a cap plate to it.
 - Its own silhouette (the 262 visual bar's blind critics, rounds 1-4: its framed skirt and turret wrap were the Żbik's,
   its side view the Oplot-M's): the PT-17's long welded ammunition bustle, the turret's full width back to 2.64 m behind
-  the ring, three blow-off panels on its roof; and a spaced-armour wedge on each cheek, its edge 0.54 m ahead of the
-  cheek.
+  the ring, its magazine roof stepped up 0.19 m behind the two stations (round 6) with three blow-off panels on it; and a
+  spaced-armour wedge on each cheek, its edge 0.54 m ahead of the cheek. The UKM-2000 turns -93..161 degrees, its
+  depression held up over the raised roof from 146.
 - Tellur 81 mm smoke: the PT-91's two by twelve, a six by two bank low on each smoke housing, its number above it.
 - PCO's round panoramic commander's head on a mast in place of the PNK-6 tower.
 - Obra-3: four laser-warning heads (the cheek boxes' outer tops, the bustle corners) in place of the Varta jammers.
