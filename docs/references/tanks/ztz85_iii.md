@@ -61,6 +61,21 @@ commander right); the carousel under the turret.
   cover's rear ring rose through the mount's top face and its mouth showed a dark slot round the tube. The cover's rear
   rim now sits inside the mount face (0.46 x 0.30 m), and the clamp band (r 0.137 m) closes the mouth over the cloth.
 
+### Qualification by photographs (265)
+Main approved option (a) on 2026-10-28 for the release after 263: the rebuild is qualified on the photographic route,
+not by numerical comparison with its registered print. The print (`ztz85iii_manako.glb`, below) is a fused,
+low-confidence conversion about 9% too tall; the 248-262 build scored 87.4/90 against it and this faithful build
+78.6/90. Its row is retired from `tools/procedural-fidelity.html` (the geometry gate refuses a photo id that keeps
+one); `docs/geometry-gate/ztz85_iii.json` stays as history.
+
+The packet is [`docs/references/photos/ztz85-iii-20261028.json`](../photos/ztz85-iii-20261028.json), with the
+TAFV-85, WP-80/88 and WT-85III sources above. Its complete envelope is the published 3.372 m width, the published
+10.369 m gun forward plus the stern drums as built (10.91 m), and the whip antenna's tip as built (3.26 m). Neither of
+the last two is a published figure. The fixture holds the published 2.29 m cupola crown. It also records the 125 mm,
+three crew, a manned turret, no launchers and the one 12.7 mm roof gun. The gun is now 125 mm itself as well as its
+rounds: the Type 59's 100 mm `caliberMm` had ridden the variant past the 125 mm ammunition set. Numerical 3D
+comparison stays unverified.
+
 ## History: the §5.248 build (releases 248-262), retired by §263
 
 ### Order
