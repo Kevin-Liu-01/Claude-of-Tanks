@@ -107,6 +107,12 @@ leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -
 const leo2a7dk = danishVariant('leo2a7dk', 'leo2a7v', 'Leopard 2A7 DK', 'modern');
 Object.assign(leo2a7dk.dims, { hullLengthM: 7.72, overallLengthM: 11.00, widthM: 3.80, heightM: 3.05 });
 Object.assign(leo2a7dk, { weightTons: 68.0, topSpeedKmh: 60 });
+// its measured gun stops (tools/gun-depression-sweep.mjs --no-suit at 26 mm; the Barracuda cover is cut to them): the
+// full 9 degrees forward and to the sides, then the rear deck's louvres and the stern stowage over the rear quarters
+leo2a7dk.gunPitchByYawDeg = Object.freeze([[0, -9], [31, -9], [32, -8.5], [33, -8.4], [35, -8.4], [36, -8.6], [37, -9],
+  [46, -9], [48, -8.6], [52, -8.3], [62, -8.2], [68, -8.5], [71, -9], [100, -9], [110, -6.1], [121, -3.5], [129, -2],
+  [138, -0.7], [141, -0.5], [142, 0.4], [143, 2.1], [144, 3], [145, 3.5], [146, 3.9], [152, 4.5], [154, 4.5], [158, 4.3],
+  [159, 5.8], [160, 6.6], [161, 6.8], [169, 7.3], [174, 7.3], [180, 6.7]] as const);
 leo2a7dk.visual = {
   ...leo2a7dk.visual,
   // the Barracuda cover's grey-green mottle with tan and rust flecks (the Latvia photograph), fine enough that the
