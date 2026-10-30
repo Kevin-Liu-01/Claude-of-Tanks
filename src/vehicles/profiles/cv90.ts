@@ -161,7 +161,7 @@ function buildCv90Hull(P: CvBuilderPort): void {
     [0.58, 1.20, 2.99], [1.17, 1.36, 2.50]]);
 }
 
-function buildCv90RunningGear(P: CvBuilderPort, danish = false): void {
+function buildCv90RunningGear(P: CvBuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.75, wheelR: 0.325, wheelW: 0.23,
     // Source section: the shoe inner face nearly kisses the 2.04 m belly.
@@ -191,14 +191,11 @@ function buildCv90RunningGear(P: CvBuilderPort, danish = false): void {
     ));
     // The carrier and fender begin inside that shoulder cell. Eight doors
     // continue aft; the shoulder itself is the ninth protected station.
-    // (release 265: the CV9035 DK's carrier, bridges and rear corner end flush with the rear plate; r8 critics, both: on
-    // the CV9040's hull they stood 0.15 m past the stern as stacked fins)
-    const trim = danish ? 0.14 : 0;
-    P.addExternalArmor('hull', KIT.box(0.095, 0.92, 5.96 - trim), side * 1.74, 1.18, -0.74 + trim / 2);
-    P.add('hull', KIT.box(0.25, 0.16, 5.98 - trim), side * 1.54, 1.66, -0.73 + trim / 2);
+    P.addExternalArmor('hull', KIT.box(0.095, 0.92, 5.96), side * 1.74, 1.18, -0.74);
+    P.add('hull', KIT.box(0.25, 0.16, 5.98), side * 1.54, 1.66, -0.73);
     // The inner bridge overlaps the hull shoulder and the armor carrier, so
     // plan and front views no longer reveal sky between body and skirt.
-    P.add('hull', KIT.box(0.25, 0.22, 5.90 - trim), side * 1.39, 1.53, -0.69 + trim / 2);
+    P.add('hull', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
     for (let index = 0; index < 8; index++) {
       const z = 1.87 - index * 0.78;
       // Let adjacent doors share a narrow structural seam. The old 60 mm
@@ -211,10 +208,10 @@ function buildCv90RunningGear(P: CvBuilderPort, danish = false): void {
     }
     // A tapered rear corner closes the carrier into the troop-ramp surround.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.32, 0.70, -3.68 + trim], [side * 1.48, 1.66, -3.68 + trim],
-      [side * 1.50, 1.66, -3.39 + trim], [side * 1.34, 0.70, -3.54 + trim],
-      [side * 1.82, 0.70, -3.68 + trim], [side * 1.82, 1.66, -3.68 + trim],
-      [side * 1.82, 1.66, -3.39 + trim], [side * 1.82, 0.70, -3.54 + trim],
+      [side * 1.32, 0.70, -3.68], [side * 1.48, 1.66, -3.68],
+      [side * 1.50, 1.66, -3.39], [side * 1.34, 0.70, -3.54],
+      [side * 1.82, 0.70, -3.68], [side * 1.82, 1.66, -3.68],
+      [side * 1.82, 1.66, -3.39], [side * 1.82, 0.70, -3.54],
     ));
   }
 }
@@ -322,10 +319,11 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13 });
   if (danish) {
     // the brake in plain steel, stepped (r3: camouflage over slots read as hazard stripes)
+    // (r9 critics, both: the brake slightly small; about twice the barrel in the photographs; r7's 1.8 was "right")
     const seg = P.q ? 20 : 12, brakeL = 0.52, z0 = gunLen - brakeL;
-    P.add('gun', cylZ(0.094, brakeL, seg), 0, 0, z0 + brakeL / 2);
-    for (const [r, dz] of [[0.100, 0.05], [0.100, 0.22], [0.100, 0.39]] as const) P.add('gunDark', cylZ(r, 0.025, seg), 0, 0, z0 + dz);
-    P.add('gun', cylZ(0.100, 0.04, seg), 0, 0, gunLen - 0.02);
+    P.add('gun', cylZ(0.110, brakeL, seg), 0, 0, z0 + brakeL / 2);
+    for (const [r, dz] of [[0.116, 0.05], [0.116, 0.22], [0.116, 0.39]] as const) P.add('gunDark', cylZ(r, 0.025, seg), 0, 0, z0 + dz);
+    P.add('gun', cylZ(0.116, 0.04, seg), 0, 0, gunLen - 0.02);
     P.add('gunDark', cylZ(0.072, 0.02, seg), 0, 0, gunLen + 0.002);
     P.addGunExtraDark(cylZ(0.018, 0.30, 12), 0.22, -0.035, 1.47);
     muzzleTipDot(P, 0.22, -0.035, 1.62, 0.011, { parent: 'gunG' });
@@ -465,15 +463,19 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
   // the idler (r8 critics: it hid the idler and stood past the stern)
   for (const side of [-1, 1] as const) P.add('hull', box(0.095, 0.13, 4.84), side * 1.74, 0.655, -0.18);
   // the add-on armour's V braces along each side's upper doors (r8 critics on the Holstebro photograph: the sides read
-  // as plain panels)
+  // as plain panels); the rear flanks past the troop door closed as full-height bins, their rear faces with the last
+  // doors' ends (r9 Opus on the Latvia photograph: open fins standing 0.4 m past the rear plate; r10: trimming them took
+  // the hull 0.36 m under its 6.61 m)
   const vArm = Math.hypot(0.30, 0.36), vRake = Math.atan2(0.36, 0.30);
   for (const side of [-1, 1] as const) {
     for (let index = 0; index < 8; index++) {
       const z = 1.87 - index * 0.78;
       for (const dir of [-1, 1] as const) {
-        P.add('hull', box(0.025, 0.04, vArm), side * 1.882, 1.27, z + dir * 0.15, dir * vRake, 0, 0);
+        // (r9 Opus: each panel read as a single stroke; deeper, so both arms catch the light)
+        P.add('hull', box(0.04, 0.055, vArm), side * 1.89, 1.27, z + dir * 0.15, dir * vRake, 0, 0);
       }
     }
+    P.add('hull', box(0.54, 0.96, 0.44), side * 1.58, 1.18, -3.765);
   }
   // the troop door's outline and hinges on the rear plate (r7 critics: the plate read blank)
   const dw = 0.46, dh = 0.40, dz = -3.538;
@@ -486,7 +488,7 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */
 export function buildCv90(P: CvBuilderPort, kit: { readonly danish?: boolean } = {}): void {
   buildCv90Hull(P);
-  buildCv90RunningGear(P, kit.danish);
+  buildCv90RunningGear(P);
   buildCv90Turret(P, kit.danish);
   if (kit.danish) addCv9035DkBowKit(P);
   if (!kit.danish) P.decal('hull', 'roundel', null, 0.27, [-1.89, 1.35, -1.36], -Math.PI / 2);

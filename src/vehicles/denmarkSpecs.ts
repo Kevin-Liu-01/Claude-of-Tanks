@@ -171,11 +171,10 @@ cv9035dk.visual = {
   camoScale: 0.45,
 };
 // its measured gun stops (the 35 mm on its solid shroud): the glacis's add-on armour ahead, the rear deck's stowage aft
-// (r8 sweep, the slimmer gun and brake: the full 8 degrees over the bow)
-cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [21, -8], [25, -7.5], [26, -6.5], [27, -6.2], [29, -6], [32, -6],
-  [35, -5.9], [36, -5.5], [37, -5.4], [39, -5.4], [40, -6], [41, -7.2], [42, -7.3], [43, -8], [142, -8], [144, -7],
-  [145, -6.6], [151, -5], [152, -4.9], [155, -4.9], [160, -5.2], [162, -5.4], [166, -6.1], [168, -6.6], [170, -6.6],
-  [171, -6.9], [172, -8], [180, -8]] as const);
+// (r10 sweep, the r10 brake and the rear flank bins: the full 8 degrees over the bow)
+cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [21, -8], [24, -7.7], [26, -6], [28, -5.6], [30, -5.5], [35, -5.5],
+  [36, -5.3], [39, -5.4], [40, -6], [41, -7.2], [42, -7.3], [43, -8], [142, -8], [143, -7.1], [144, -6.5], [145, -6.1],
+  [151, -4.7], [152, -4.5], [159, -4.6], [168, -6.6], [170, -6.6], [171, -6.9], [172, -7.9], [174, -8], [180, -8]] as const);
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'cv9035dk'],
   { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, cv9035dk });
