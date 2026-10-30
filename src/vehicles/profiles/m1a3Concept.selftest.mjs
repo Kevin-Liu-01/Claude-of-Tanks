@@ -120,6 +120,8 @@ const hasVertex = (x, y, z) => {
 // The M1E3's own front: the cheeks' inner chin corner and the corner of the mantlet nose's rear section.
 for (const side of [-1, 1]) {
   assert.ok(hasVertex(side * 0.42, 0.08, 1.85), `${side < 0 ? 'right' : 'left'} cheek keeps its inner chin corner`);
+  // (the owner, 2026-10-30: no square step under the bustle) the undercut's foot at the body's floor and rear face
+  assert.ok(hasVertex(side * 1.50, -0.102, -1.25), `${side < 0 ? 'right' : 'left'} bustle undercut starts at the body's floor`);
 }
 const shield = tank.root.getObjectByName('gunMount').geometry.attributes.position;
 let shieldCorner = false;

@@ -8080,6 +8080,10 @@ const M1E3_TURRET = {
 const M1E3_BUSTLE_FRONT_Z = -1.20;
 const M1E3_BUSTLE_REAR_Z = -2.95;
 const M1E3_BUSTLE_FLOOR_Y = 0.14;
+// the bustle's underside runs up from the body's floor at its rear face to the bustle's floor over this run (about
+// 34 degrees): one undercut line in place of a square step (the owner, 2026-10-30). It stays over the body's floor, so
+// it clears the hull wherever the body's own corners do.
+const M1E3_BUSTLE_UNDERCUT_RUN = 0.36;
 const M1E3_BUSTLE_ROOF_Y = 0.86;
 const M1E3_BUSTLE_HALF_W = 1.50;
 // the side walls stand to shoulderY, then chamfer in 1/0.9 m per metre to the roof
@@ -8336,6 +8340,13 @@ const m1e3ChamferLean = (): number => {
 // One armour plane, n . p <= d.
 type M1E3HalfSpace = readonly [number, number, number, number];
 
+// The bustle's underside at z: the body's floor, the undercut rising behind
+// the body's rear face, then the bustle's floor.
+function m1e3BustleUndersideY(z: number): number {
+  const t = M1E3_TURRET, rise = (M1E3_BUSTLE_FLOOR_Y - t.floorY) / M1E3_BUSTLE_UNDERCUT_RUN;
+  return Math.min(M1E3_BUSTLE_FLOOR_Y, Math.max(t.floorY, t.floorY + rise * (t.rearZ - z)));
+}
+
 // The closed solid bounded by armour planes: every three planes' meeting
 // point inside all the others is a corner, and the corners' hull is the solid,
 // each face flat by construction, so the mirrored copy is the same surface
@@ -8435,11 +8446,20 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
     [-1 / shoulder, 0.9 / shoulder, 0, (bw + 0.9 * bs) / shoulder], [0, 1, 0, br], [0, -1, 0, -bf],
     [0, 0, 1, zf], [0, 0, -1, -zr], [0, 1 / knee, -1 / knee, (0.70 - zr) / knee],
   ]));
-  // Rivet rows along the bustle's lower edge and shoulder, a seam down each
-  // flank's front edge, the two blow-off panels and their centre seam.
+  // Its undercut: from the body's floor at the body's rear face up into the
+  // bustle's floor, flush with its walls.
+  const rise = (bf - t.floorY) / M1E3_BUSTLE_UNDERCUT_RUN, undercut = Math.hypot(1, rise);
+  P.add('turret', m1e3PlateSolid([
+    [1, 0, 0, bw], [-1, 0, 0, bw], [0, 1, 0, bf + 0.02], [0, -1, 0, -t.floorY], [0, 0, 1, zf],
+    [0, -1 / undercut, -rise / undercut, -(t.floorY + rise * t.rearZ) / undercut],
+  ]));
+  // Rivet rows along the bustle's lower edge (up the undercut) and shoulder, a
+  // seam down each flank's front edge, the two blow-off panels and their
+  // centre seam.
   for (const side of [-1, 1]) {
-    for (const y of [bf + 0.05, bs - 0.04]) {
-      for (let k = 0; k <= 7; k++) P.add('turretDetail', cylX(0.016, 0.012, 6), side * (bw + 0.004), y, zf - 0.08 + (zr - zf + 0.18) * k / 7);
+    for (let k = 0; k <= 7; k++) {
+      const z = zf - 0.08 + (zr - zf + 0.18) * k / 7;
+      for (const y of [m1e3BustleUndersideY(z) + 0.05, bs - 0.04]) P.add('turretDetail', cylX(0.016, 0.012, 6), side * (bw + 0.004), y, z);
     }
     P.add('turretDetail', box(0.012, bs - bf - 0.04, 0.018), side * (bw + 0.004), (bf + bs) / 2, zf - 0.03);
   }
