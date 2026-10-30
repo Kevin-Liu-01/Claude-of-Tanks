@@ -624,7 +624,7 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
 
 ### Test gate and result reuse (2026-09-28)
 
-`npm test` considers every registered check in one invocation. `npm run test:all`
+`npm test` considers every default-tier check in one invocation (266: the manual suites only through `npm run test:heavy`). `npm run test:all`
 (or `npm test -- --all`) bypasses result reuse for **every** group. The former
 pretest/test/posttest lifecycle applied extra npm arguments only to the middle
 group. Individual groups remain available as `node tools/run-selftests.mjs pre`
@@ -1159,7 +1159,7 @@ The target check covers generated assets, muzzle bore, geometry standards,
 the fleet geometry ledger and mission-seat receipts for the selected ids,
 tests, and private build. A tank lane adds `--lane`: the same steps without
 the embedded suite and private build, which the integrator mode and the release
-gate (every receipt and `npm run build`) run ("Fast checks" above). See
+gate (the default receipt tier and `npm run build`) run ("Fast checks" above). See
 TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
 the complete vehicle-authoring contract.
 
