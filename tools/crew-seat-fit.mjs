@@ -691,6 +691,8 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed,
         if (py === null) continue;
       }
       if (set.limbs && !keepsLimbs(candidate, py)) continue;
+      // (266) no pass seats a head the armour cannot hold (one in the ring's open gap clips to nothing)
+      if (!clipToArmour(translate(body.parts.shapes[0], [candidate.px, py, candidate.pz]), armour).length) continue;
       return { candidate, py, relaxed: set.relaxed };
     }
     return null;
