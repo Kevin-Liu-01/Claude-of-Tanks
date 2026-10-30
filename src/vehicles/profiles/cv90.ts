@@ -443,8 +443,16 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
   // front lip left of centre (r4 critics: not on the mudguard)
   const slope = Math.atan2(1.79 - 1.12, 3.28 - 1.82), glacisY = (z: number): number => 1.79 - Math.tan(slope) * (z - 1.82);
   const nY = Math.cos(slope), nZ = Math.sin(slope);
-  P.add('hullDark', box(0.40, 0.008, 0.11), 0.35, glacisY(3.15) + 0.004 * nY, 3.15 + 0.004 * nZ, slope, 0, 0);
-  P.decal('hull', 'stencilWhite', '75.145', 0.34, [0.35, glacisY(3.15) + 0.010 * nY, 3.15 + 0.010 * nZ], 0, -(Math.PI / 2 - slope));
+  // (r10 critics, both: the photograph's plate is black, higher toward the vehicle's left corner, a small yellow emblem
+  // at its end)
+  const pz = 3.02, px = 0.52;
+  P.add('hullDark', box(0.44, 0.012, 0.12), px, glacisY(pz) + 0.006 * nY, pz + 0.006 * nZ, slope, 0, 0);
+  P.decal('hull', 'stencilWhite', '75.145', 0.32, [px - 0.02, glacisY(pz) + 0.014 * nY, pz + 0.014 * nZ], 0, -(Math.PI / 2 - slope));
+  P.decal('hull', 'mlc', '', 0.07, [px + 0.18, glacisY(pz) + 0.014 * nY, pz + 0.014 * nZ], 0, -(Math.PI / 2 - slope));
+  // amber indicators on the corner boxes' fronts (r10 critics, both: the Holstebro photograph's)
+  for (const side of [-1, 1] as const) P.decal('hull', 'mlc', '', 0.08, [side * 1.70, 1.15, 3.314], 0, 0);
+  // the number on both sides (r10 Sonnet: the left side bare)
+  P.decal('hull', 'number', P.spec.visual.number || '45', 0.22, [-1.89, 1.16, 0.78], -Math.PI / 2);
   // the engine's air louvres on the front right of the roof, in a frame on the upper glacis's plane (r4 critics on the
   // Holstebro photograph: the front deck read bare)
   const gx = -0.59, gz = 2.18;
@@ -466,15 +474,17 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
   // as plain panels); the rear flanks past the troop door closed as full-height bins, their rear faces with the last
   // doors' ends (r9 Opus on the Latvia photograph: open fins standing 0.4 m past the rear plate; r10: trimming them took
   // the hull 0.36 m under its 6.61 m)
-  const vArm = Math.hypot(0.30, 0.36), vRake = Math.atan2(0.36, 0.30);
+  // (r10 critics, both: scattered single strokes; the Holstebro truss is one continuous zigzag along the modules' upper
+  // half under a top rail): each arm from a door seam high to the door's middle low, the seams shared, and the rail
+  const vArm = Math.hypot(0.39, 0.34), vRake = Math.atan2(0.34, 0.39);
   for (const side of [-1, 1] as const) {
     for (let index = 0; index < 8; index++) {
       const z = 1.87 - index * 0.78;
       for (const dir of [-1, 1] as const) {
-        // (r9 Opus: each panel read as a single stroke; deeper, so both arms catch the light)
-        P.add('hull', box(0.04, 0.055, vArm), side * 1.89, 1.27, z + dir * 0.15, dir * vRake, 0, 0);
+        P.add('hull', box(0.045, 0.06, vArm), side * 1.89, 1.28, z + dir * 0.195, -dir * vRake, 0, 0);
       }
     }
+    P.add('hull', box(0.05, 0.05, 6.24), side * 1.89, 1.47, -0.86);
     P.add('hull', box(0.54, 0.96, 0.44), side * 1.58, 1.18, -3.765);
   }
   // the troop door's outline and hinges on the rear plate (r7 critics: the plate read blank)
