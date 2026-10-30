@@ -39,7 +39,7 @@ import {
   plannedSurfacePaints,
   preloadPropModels,
 } from './props.ts';
-import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
+import { createGroundLitter, groundLitterProfile, type GroundLitter, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
 import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
@@ -374,6 +374,8 @@ export interface WorldRuntime {
   _tallGrass?: TallGrass;
   /** Item 45: the ruts' ring (diagnostics, the cost probe and the capture tools). */
   _trackMarks?: TrackMarks;
+  /** (local-fps-265) The ground litter's ring (diagnostics: its streaming probes). */
+  _litter?: GroundLitter;
 }
 
 const _pt = new THREE.Vector3();
@@ -1072,6 +1074,7 @@ function* assembleWorldSteps(
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     _trackMarks: trackMarks,
+    _litter: litter,
     raycast,
     groundOcclusion,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
