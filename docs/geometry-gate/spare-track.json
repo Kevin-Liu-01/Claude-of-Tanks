@@ -830,6 +830,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "cv9035dk": {
+   "inputHash": "6da3859b56043fe2",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "cv9040c": {
    "inputHash": "5e08c8b62d07772b",
    "runs": [],
@@ -2024,6 +2030,30 @@
      }
     }
    ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41_bw": {
+   "inputHash": "00d58aeaeef8b372",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41_jgsdf": {
+   "inputHash": "b18380954c9ae298",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41a3": {
+   "inputHash": "d43616bb0fa12860",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41dk1": {
+   "inputHash": "1772574d99acefc7",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
