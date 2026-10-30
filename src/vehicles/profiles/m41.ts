@@ -329,19 +329,28 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       }
       // the low fender bins beside the turret, under the nose's sweep (tops at the deck's 1.44)
       // (r4, critics: thin lids; the photographs' bins stand a third of the skirt's depth, the front left one domed)
+      // (r8: the box beside the turret's front, an open grid tray, then the bin further back (Opus r7 on the top
+      // photograph); three full bins under the gun's pass held it at -1 deg from yaw 59 to 71 and 109 to 121)
       const binH = 0.18;
-      for (const s of [-1, 1] as const) for (const [z0, z1] of [[1.85, 0.80], [0.74, -0.24], [-0.30, -1.24]] as const) {
+      for (const s of [-1, 1] as const) for (const [z0, z1] of [[1.85, 1.10], [-0.60, -1.24]] as const) {
         P.addEquipment('hull', box(0.29, binH, z0 - z1), s * 1.49, H.fenderY + binH / 2, (z0 + z1) / 2);
         P.addEquipment('hull', box(0.30, 0.016, z0 - z1 + 0.01), s * 1.49, H.fenderY + binH + 0.008, (z0 + z1) / 2);
         P.addEquipment('hullDark', box(0.012, 0.012, z0 - z1 - 0.02), s * 1.638, H.fenderY + binH - 0.01, (z0 + z1) / 2);
         for (const f of [0.25, 0.75]) P.addEquipment('hullDark', box(0.014, 0.04, 0.04), s * 1.640, H.fenderY + binH / 2, z1 + (z0 - z1) * f);
         if (s > 0 && z0 > 1) {
-          // (r7 critics: the top photograph's front-left box stands tall with a framed lid and a latch; was a dome)
-          const hb = 0.30;
-          P.addEquipment('hull', box(0.29, hb - binH, z0 - z1 - 0.10), s * 1.49, H.fenderY + binH + (hb - binH) / 2, (z0 + z1) / 2);
-          P.addEquipment('hull', box(0.31, 0.02, z0 - z1 - 0.08), s * 1.49, H.fenderY + hb + 0.01, (z0 + z1) / 2);
-          P.addEquipment('hullDark', box(0.014, 0.05, 0.05), s * 1.638, H.fenderY + hb - 0.05, (z0 + z1) / 2);
+          // (r7 critics: the top photograph's front-left box has a framed lid and a latch; was a dome) (r8 sweep: standing
+          // 0.12 m over the bins it held the gun shield's cover at 2.4-4.5 deg above level from yaw 55 to 69 and the
+          // barrel at -0.5 from 38 to 52: its framed lid and latch at the bins' height)
+          P.addEquipment('hull', box(0.31, 0.03, z0 - z1 - 0.06), s * 1.49, H.fenderY + binH + 0.031, (z0 + z1) / 2);
+          P.addEquipment('hullDark', box(0.014, 0.05, 0.05), s * 1.640, H.fenderY + binH - 0.03, z0 - 0.20);
         }
+      }
+      for (const s of [-1, 1] as const) {
+        const z0 = 1.04, z1 = -0.54, th = 0.07, zc = (z0 + z1) / 2, len = z0 - z1;
+        P.addEquipment('hull', box(0.29, 0.012, len), s * 1.49, H.fenderY + 0.006, zc);
+        for (const x of [1.355, 1.625]) P.addEquipment('hull', box(0.02, th, len), s * x, H.fenderY + th / 2, zc);
+        for (const z of [z0 - 0.01, z1 + 0.01]) P.addEquipment('hull', box(0.29, th, 0.02), s * 1.49, H.fenderY + th / 2, z);
+        for (let k = 1; k < 8; k++) P.addEquipment('hullDark', box(0.25, 0.012, 0.012), s * 1.49, H.fenderY + th - 0.01, z1 + len * k / 8);
       }
       // the registration plate and the yellow bridge-class disc on the lower nose plate (the Aalborg front photograph's
       // "26 3-0" and "26"; r4: off the glacis the spare track covers): the belly's rise from 0.50 m at 2.30 to 0.76 at 2.84

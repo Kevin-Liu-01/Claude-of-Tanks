@@ -104,10 +104,14 @@ const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [29, -9.7], [30, -9.6
   [38, -9.1], [39, -9.1], [41, -9.7], [128, -9.7], [129, -5.9], [130, -3.5], [131, -2.9], [143, -2.1], [150, -2.3],
   [151, -2.7], [152, -8.2], [156, -7.4], [158, -7.4], [166, -8], [167, -7.3], [168, -6.7], [170, -6.6], [180, -6.7]] as const);
 for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
-// the DK-1's: the driver's mirror on the left mudguard ahead, the deck's grilles and its closed rear box astern
-m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [28, -9.7], [29, -8.3], [30, -8], [32, -8], [34, -5.1], [35, -4.9],
-  [37, -4.9], [38, -5.1], [39, -5.6], [40, -9.7], [128, -9.7], [129, -9], [130, -5.5], [131, -4.6], [133, -4.3], [134, -3.5],
-  [137, -2], [139, -2], [142, -3], [146, -3], [150, -3.3], [151, -3.8], [152, -9.7], [164, -9.7], [165, -8.9], [166, -8.4],
-  [171, -8.5], [180, -8.8]] as const);
+// the DK-1's (r8 sweep, its fender stowage of the Aalborg top photograph): the mirrors on the mudguards and the box beside
+// the turret's front ahead, the full depression over the grid trays, the rear bins, the deck's grilles and its closed rear
+// box astern
+m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [11, -9.7], [12, -9.5], [25, -9.2], [26, -9], [27, -9], [28, -7.1],
+  [29, -6.1], [30, -5.9], [31, -5.9], [33, -2.5], [34, -2.2], [38, -2.2], [39, -2.3], [41, -4.3], [44, -4], [47, -4],
+  [62, -5.5], [63, -6.2], [64, -7.9], [65, -9.7], [112, -9.7], [113, -8.5], [114, -7.5], [115, -7.3], [117, -6.5],
+  [118, -5.6], [119, -5.2], [121, -5.1], [122, -5.1], [125, -6.1], [129, -5.7], [130, -3.5], [131, -2.9], [148, -1.8],
+  [153, -1.8], [155, -1.9], [156, -2.3], [157, -7.4], [158, -7.4], [163, -7.9], [165, -6.6], [167, -6.5],
+  [180, -6.7]] as const);
 
 registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'], { m41a3, m41_bw, m41_jgsdf, m41dk1 });
