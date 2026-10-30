@@ -97,7 +97,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
-  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // The recovered Centurion oracles' Turret trees (centurion3.glb, centurion5.glb) carry a 36-vertex basket drum down
+  // to 23 % of the model's height inside the hull (the Type 10 class, below). The tree stays mandatory for yaw and
+  // ownership; only its isolated turret mask is suppressed. Hull, cannon, tracks and every whole view stay mandatory.
+  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here

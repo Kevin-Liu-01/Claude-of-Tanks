@@ -439,15 +439,85 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 96,
-   "seeThroughPx": 21,
+   "insideOutPx": 340,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 89090,
+   "tris": 93106,
    "frame": [
     0,
     1.45,
-    1.2,
-    5.5
+    1.1,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 262 rebuilt Centurion family hulls and turrets with their tall wireless whips",
+     "by": "centurion-family-262",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 21,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.2,
+       5.5
+      ]
+     },
+     "to": [
+      0,
+      2.45,
+      1.1,
+      5.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "reframe",
+     "reason": "the Mk 3 lost its 2 m whip aerials so its census frame drops 1 m",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       1.1,
+       5.9
+      ]
+     },
+     "to": [
+      0,
+      1.45,
+      1.1,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "centurion5_2": {
@@ -2338,17 +2408,53 @@
   },
   "strv81": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 78,
-   "seeThroughPx": 6,
+   "insideOutPx": 300,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 93484,
+   "tris": 90285,
    "frame": [
     0,
-    1.6,
-    1.2,
-    5.6
+    2.45,
+    1.1,
+    5.9
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 262 rebuilt Centurion family hull and turret with its tall wireless whips",
+     "by": "centurion-family-262",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 2,
+      "openViews": 0,
+      "seeThroughPx": 6,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.6,
+       1.2,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      2.45,
+      1.1,
+      5.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "t14_armata": {

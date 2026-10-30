@@ -73,7 +73,7 @@ const CURVES = {
   t90am: [[179,180]],
   t90m_proryv: [],
   t90a_burlak_proto: [],
-  strv81: [[2,34],[124,150]],
+  // strv81 left with release 262: the rebuilt Centurion family's curves and their receipt (centurionGunClearance.selftest)
   challenger_x: [],
   challenger_x_sleek: [],
   fv4034: [],
