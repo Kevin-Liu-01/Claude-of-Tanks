@@ -256,17 +256,25 @@ export function buildMerkavaStuds(P: TankBuilderPort, studs: readonly (readonly 
 }
 
 /** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted),
- *  and the turret armour modules' solids in their side's removable package. */
+ *  and the turret armour modules' solids in their side's removable package. Hull hatches from `glacisHatchZ` forward
+ *  stand on the upper glacis (MerkavaMark.glacisHatchZ). */
 export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number],
-  modules: readonly TurretModule[], solidParts: readonly SolidPart[]): void {
+  modules: readonly TurretModule[], solidParts: readonly SolidPart[], glacisHatchZ: number | null): void {
   const seg = P.q ? 20 : 12, none: readonly [number, number, number] = [0, 0, 0];
   const turretArmor: Record<'R' | 'L', SourcePart[]> = { R: [], L: [] };
+  // a hatch on the glacis: its combat-anatomy structure's front face is the glacis it stands on (gen-combat-anatomy
+  // carries the tag as the structure's frontPlate), its sides and top stay the roof's weak spot (Main's 262 ruling)
+  const hullHatch = (g: THREE.BufferGeometry, cz: number): void => {
+    if (glacisHatchZ !== null && cz >= glacisHatchZ) g.userData.structureFrontPlate = 'upper_glacis';
+    P.add('hullHatch', g);
+  };
   for (const p of parts) {
     const owner = p[1]!, cx = p[2]!, sx = p[5]!, sy = p[6]!, sz = p[7]!, role = p[12]!;
     const onTurret = owner === 1, off = onTurret ? pivot : none;
     switch (role) {
       case ROLE.hatch:
-        P.add(onTurret ? 'turretHatch' : 'hullHatch', partGeometry(p, off, seg));
+        if (onTurret) P.add('turretHatch', partGeometry(p, off, seg));
+        else hullHatch(partGeometry(p, off, seg), p[4]!);
         break;
       case ROLE.hullArmor: {
         // skirt panels outboard of the track lane ride the track-guard buckets; sponson boxes and plates are appliqué
@@ -331,7 +339,7 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
       g.computeBoundingBox();
       const b = g.boundingBox!, cx = (b.min.x + b.max.x) / 2, sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z;
       switch (part.role) {
-        case ROLE.hatch: P.add(onTurret ? 'turretHatch' : 'hullHatch', g); break;
+        case ROLE.hatch: if (onTurret) P.add('turretHatch', g); else hullHatch(g, (b.min.z + b.max.z) / 2); break;
         case ROLE.hullArmor: {
           const skirt = Math.abs(cx) > 1.70 && sy > 0.30 && sz > 0.30 && sx < 0.30;
           P.addExternalArmor(skirt ? (cx > 0 ? 'hullTrackGuardL' : 'hullTrackGuardR') : 'hull', g);

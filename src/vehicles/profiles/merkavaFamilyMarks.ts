@@ -48,6 +48,9 @@ export interface MerkavaMark {
   readonly antennas: readonly (readonly [x: number, foot: number, z: number, h: number])[];
   /** Pieces the source fit left out, measured from the same source (MEASURED_ADDENDA). */
   readonly addenda: readonly MerkavaAddendum[];
+  /** The z from which hull hatches stand on the upper glacis (their anatomy structures' front faces take the glacis's
+   *  armour, GLACIS_HATCH_Z), or null. */
+  readonly glacisHatchZ: number | null;
 }
 
 // ---------------------------------------------------------------------------------------------- the three chassis
@@ -176,7 +179,7 @@ const ROOF_GUN_TOP: Readonly<Record<MerkavaMarkId, readonly (number | null)[]>> 
 //    the next, across x 1.866-1.957 (the fit drew only the middle strips, so the plan read sky between the sponson and
 //    the skirt over each joint);
 //  - the front skirt hangers outboard of the sponsons on the 2B, 3C and Baz (x 1.863-1.938, z 2.253-2.479);
-//  - the 3C's and Baz's left rear rack plate (the fit kept its end brackets);
+//  - the 3C's and Baz's rear rack plates, x 1.149-1.719 a side (the fit kept their bars and end brackets);
 //  - the Mk 4B's lamp pedestal between its measured base block (to 2.935) and the head's floor (from 2.992);
 //  - the 2B's right rear mast as the source draws it: its collar (2.79-2.81) and head (to 3.2015) 0.107 across over
 //    the 0.080 stem (source part 754, which the fit read as one 0.105 cylinder).
@@ -186,7 +189,7 @@ const both = (...rows: MerkavaAddendum[]): MerkavaAddendum[] => rows.flatMap((a)
 const MK12_STERN = both(['box', 'hullArmor', 0.395, 0.958, 0.827, 0.985, -4.003, -3.948]);
 const MK3_STERN = both(['box', 'hullArmor', 0.461, 1.041, 0.745, 0.912, -4.192, -4.150]);
 const FRONT_HANGERS = both(['box', 'hullDetail', 1.863, 1.938, 1.33, 1.39, 2.253, 2.479]);
-const MK3_REAR_RACK: MerkavaAddendum = ['box', 'hullArmor', -1.612, -1.148, 1.330, 1.355, -4.040, -3.964];
+const MK3_REAR_RACKS = both(['box', 'hullArmor', 1.149, 1.719, 1.330, 1.355, -4.040, -3.964]);
 const MK1B_SKIRT_ENDS = both(...([
   [1.696, 2.0325], [1.689, 1.3595], [0.407, 0.7325], [0.400, 0.0735],
   [-0.883, -0.5535], [-0.789, -1.2155], [-2.172, -1.8425], [-2.177, -2.343],
@@ -199,9 +202,16 @@ const MEASURED_ADDENDA: Readonly<Record<MerkavaMarkId, readonly MerkavaAddendum[
   merkava1b: [...MK12_STERN, ...MK1B_SKIRT_ENDS],
   merkava2b: [...MK12_STERN, ...FRONT_HANGERS, ...MAST_2B],
   merkava2d: MK12_STERN,
-  merkava3c: [...MK3_STERN, ...FRONT_HANGERS, MK3_REAR_RACK],
-  merkava3_baz: [...MK3_STERN, ...FRONT_HANGERS, MK3_REAR_RACK],
+  merkava3c: [...MK3_STERN, ...FRONT_HANGERS, ...MK3_REAR_RACKS],
+  merkava3_baz: [...MK3_STERN, ...FRONT_HANGERS, ...MK3_REAR_RACKS],
   merkava4b: [['post', 'turretDetail', -1.034, -1.662, 0.022, 2.930, 2.996]],
+};
+
+// Main's 262 ruling (2026-10-30, roofStations §8): the Mk 1B's glacis engine hatches (the glacis from z 1.45, MK12_HULL)
+// make one anatomy structure whose 0.39 m forward face took the roof plate's tier-I KE lever (16 mm), which a 12.7 mm
+// round defeats head-on; that face stands on the glacis and takes its armour. The other marks' roofs are KE 45.
+const GLACIS_HATCH_Z: Readonly<Record<MerkavaMarkId, number | null>> = {
+  merkava1b: 1.45, merkava2b: null, merkava2d: null, merkava3c: null, merkava3_baz: null, merkava4b: null,
 };
 
 /** The 2B's source part 754 (the right rear mast, one 0.105 cylinder from 2.5025 to 3.2055) as its 0.080 stem up to the
@@ -363,7 +373,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
     basket: basketOf(r), load: loadOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
     roofGuns: r.mgs.map(([x, foot, z, z0, z1], i) => [x, foot, z, z0, z1, ROOF_GUN_TOP[id][i] ?? null] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
-    addenda: MEASURED_ADDENDA[id],
+    addenda: MEASURED_ADDENDA[id], glacisHatchZ: GLACIS_HATCH_Z[id],
   };
 }
 

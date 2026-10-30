@@ -60,7 +60,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
     buildMerkavaBasketLoad(P, mark.load, mark.basket, mark.pivot);
   }
   yield 'merkavaTurretShell';
-  buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts);
+  buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts, mark.glacisHatchZ);
   buildMerkavaAddenda(P, mark.addenda, mark.pivot);
   buildMerkavaStuds(P, mark.studs);
   buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
