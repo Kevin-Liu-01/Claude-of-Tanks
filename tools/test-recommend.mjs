@@ -43,10 +43,12 @@ const minutes = (ms) => (ms < 90_000 ? `~${Math.max(1, Math.round(ms / 60_000))}
  * balanceChanges() rows (null when not compared); `ids`: changed tank ids (Map id -> reasons); `core`: changed shared
  * fleet core paths; `maps`: changedMaps() output; `wallMs`: suite -> its idle wall time; `idPins`: the tanks receipts
  * lane mode runs for `ids`, `idPinsDeferred` those it leaves to the owner (more than its share of the suite).
+ * When closure reads alone warrant a suite and they reach at most a quarter of its receipts, the command names just
+ * those (`--only=`), timed by `subsetWallMs(files)`.
  * Returns one row per suite: { suite, warranted, line, run }.
  */
 export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, readers, balance = null, ids = new Map(), core = [],
-  maps = {}, wallMs = {}, idPins = 0, idPinsDeferred = 0 }) {
+  maps = {}, wallMs = {}, idPins = 0, idPinsDeferred = 0, subsetWallMs = null }) {
   const rows = [];
   for (const [name, entry] of Object.entries(suites)) {
     const reading = readers.get(name) ?? new Map();
@@ -97,7 +99,14 @@ export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, reade
       parts.push(`${reading.size} of its ${entry.files.length + entry.commands.length} checks read the change (${list(top, 3)})`);
       if (name === 'balance' && balance && !balance.length) parts.push('no tank\'s armour, gun, HP, mobility, size or role changed');
     }
-    const time = wallMs[name] === undefined ? '' : ` (${minutes(wallMs[name])})`;
+    let timeMs = wallMs[name];
+    const onlyReads = warranted && !onMaps.length && !ofTanks.length && !(name === 'balance' && balance?.length) && !entry.idScoped;
+    const readFiles = [...reading.keys()].filter((file) => entry.files.includes(file));
+    if (onlyReads && readFiles.length === reading.size && readFiles.length <= entry.files.length / 4) {
+      run = `npm run test:heavy -- ${name} --only=${readFiles.join(',')}`;
+      if (subsetWallMs) timeMs = subsetWallMs(readFiles);
+    }
+    const time = timeMs === undefined ? '' : ` (${minutes(timeMs)})`;
     rows.push({ suite: name, warranted, line: `${name}${time}: ${parts.join('; ') || 'nothing it checks changed'}`, run });
   }
   return rows;
@@ -154,7 +163,8 @@ async function main(argv) {
     catch (error) { console.log(`[test:recommend] balance inputs not compared (${error.message}); the receipts' reads stand`); }
   }
   const wallMs = Object.fromEntries(Object.keys(MANUAL_SUITES).map((name) => [name, simulateWall(manualSuiteFiles(registered, [name]), runMsOf).wallMs]));
-  const rows = recommend({ readers, balance, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred });
+  const rows = recommend({ readers, balance, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred,
+    subsetWallMs: (files) => simulateWall(files, runMsOf).wallMs });
   for (const line of reportLines(rows)) console.log(line);
   console.log('[test:recommend] Main relays this to the owner; the owner triggers npm run test:heavy.');
   if (value('json')) writeFileSync(resolve(value('json')), JSON.stringify({ base, mergeBase: diff.mergeBase, changed: diff.paths.length,

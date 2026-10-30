@@ -526,7 +526,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   (`STALE_GUARDS`: `collisionManifestDrift` and `wreckBakePlanDrift` on any map's files, the world core, the fleet core
   or a moved wreck donor, from the changed-only world partition; the fleet passes and the anatomy check on any moved
   tank), or, for balance, when an id's spec armour, gun, HP, mobility, size or role moved (the base's and the head's
-  registries). Main relays that report; the owner triggers the run.
+  registries). When closure reads alone warrant a suite and reach at most a quarter of it, the command names just those
+  receipts (`--only=`) with their own time. Main relays that report; the owner triggers the run.
 - **Must-keep** (`MUST_KEEP`, never manual): sim determinism and driver parity, the authority and spotting receipts,
   an armour, ballistics and damage sample on real builds, the vehicle-core build paths, the cheap generated-output guards
   (the collision shard census and codec, the gun-junction, sealed, spare-track and watertight ledgers, the rounds census),

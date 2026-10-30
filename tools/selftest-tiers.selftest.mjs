@@ -223,6 +223,11 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.equal(lines[1], '  npm run test:heavy -- balance');
   const added = recommend({ readers: none, wallMs: {}, balance: [{ id: 'centurion13', tier: 2, classes: ['new'] }, { id: 'strv81', tier: 3, classes: ['size'] }] });
   assert.match(added.find((row) => row.suite === 'balance').line, /^balance: 1 new tank, 1 tank changed size in tiers II-III \(centurion13, strv81\)$/);
+  const few = recommend({ readers: new Map([['fleet', new Map([['src/vehicles/fleetLazy.selftest.mjs', ['src/ui/hudAmmunitionPresentation.ts']]])]]),
+    wallMs: { fleet: 6_000_000 }, subsetWallMs: () => 72_000 });
+  assert.deepEqual([few.find((row) => row.suite === 'fleet').line, few.find((row) => row.suite === 'fleet').run],
+    ['fleet (~1 min): 1 of its 64 checks read the change (src/ui/hudAmmunitionPresentation.ts)', 'npm run test:heavy -- fleet --only=src/vehicles/fleetLazy.selftest.mjs'],
+    'a few readers: the command and its time name just them');
   const broken = recommend({ readers: none, balance: [{ id: 'leo2a4', tier: 8, classes: ['armour'] }], suites: { balance: { ...MANUAL_SUITES.balance } }, guards: {} });
   assert.equal(broken[0].warranted, true, 'a moved armour value alone warrants balance, even with no closure read');
   const maps = recommend({ readers: none, maps: { collision: new Map([['verdant', ['src/world/maps/verdant.ts']]]) }, wallMs: {} });
