@@ -1176,21 +1176,8 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       P.add('hullDark', box(0.022, 0.09, 0.03), s * 1.784, 1.315, 2.72);         // posts
       P.add('hullDark', box(0.022, 0.09, 0.03), s * 1.646, 1.315, 2.72);
     }
-    towCable(P, [[-1.10, 1.44, 2.30], [0, 1.50, 1.85], [1.10, 1.44, 2.30]]);
-    // 2026-10-21 (sealed ledger work order, "two real ~1 cm hullDark slits at (+-1.04, 1.44, 2.30)"): the cable is
-    // an open tube, so its two ends showed its hollow core over the splash ridge. Swaged ferrules on the cable's own
-    // end tangents close them.
-    {
-      const run = new THREE.CatmullRomCurve3([new THREE.Vector3(-1.10, 1.44, 2.30), new THREE.Vector3(0, 1.50, 1.85),
-        new THREE.Vector3(1.10, 1.44, 2.30)], false, 'centripetal');
-      for (const u of [0, 1]) {
-        const end = run.getPointAt(u), out = run.getTangentAt(u).multiplyScalar(u === 0 ? -1 : 1);
-        const ferrule = cylY(0.029, 0.029, 0.07, 10)
-          .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), out));
-        const at = end.addScaledVector(out, -0.01);
-        P.add('hullDark', ferrule.translate(at.x, at.y, at.z));
-      }
-    }
+    // 266 (owner: "clean up the leclercs"): the tow cable slung across the glacis, its eyes and ferrules as big as the
+    // headlamps, is gone; the Saumur Leclercs carry nothing across the glacis, and their cables ride the engine deck.
     // §B3.2: second tow cable run on the right engine deck — crown 1.62 under
     // the ref's own 1.634 engine line (side cols -1.9..-3.0), interior to the
     // deck plan outline.
@@ -2193,12 +2180,13 @@ function buildAMX56(P: MiscBuilderPort): void {
   });
   for (const s of [-1, 1]) {
     P.visualEraCluster('amx56-skirt-era', 'hull', () => {
+    // 266 (owner: "goofy parts ... smoothed out"): each panel was a 42 mm card standing 104 mm off the 1.70 skirt face on
+    // a spacer, and from above the row read as fins fanned off the skirt. Each is now one solid block from the skirt
+    // face to the same 1.846 outer face, a seam strip on its face.
     for (let k = 0; k < 7; k++) {
       const z = -2.48 + k * 0.68;
-      P.add('hull', box(0.042, 0.48, 0.57), s * 1.825, 1.04, z);
+      P.add('hull', box(0.146, 0.48, 0.57), s * 1.773, 1.04, z);
       P.add('hullDark', box(0.016, 0.36, 0.018), s * 1.849, 1.04, z + 0.22);
-      // 2026-10-19 (owner float sweep): the panels stood 104 mm off the 1.70 skirt face; a spacer block carries each one.
-      P.add('hullDark', box(0.114, 0.30, 0.10), s * 1.75, 1.04, z);
     }
     });
     // Two-course canted cheek ERA, buried into the swept primary shell.

@@ -312,8 +312,9 @@ function buildAMX40(P: FranceBuilderPort): void {
       [s * 1.580, 1.33, 2.35], [s * 1.610, 1.33, 2.35], [s * 1.610, 1.33, 3.18], [s * 1.580, 1.33, 3.18]));
     segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 3.20);                  // low i12/i13 published-width datum, continuous through both source stations
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.016), s * 1.640, 0.97, 1.85 - k * 1.04); // panel seams (2mm proud of the 1.648 face)
-    P.add('hullRubber', box(0.28, 0.20, 0.028), s * 0.51, 1.10, 3.382);         // bow mud flaps INBOARD under the beak jaw (faces 3.396; the ref's own
-                                                                                //   3.433 lip is the thin jaw class)
+    // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
+    // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
+    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.06, 3.395);
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
