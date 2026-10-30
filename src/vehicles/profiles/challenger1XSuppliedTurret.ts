@@ -168,14 +168,18 @@ function cupola(P:TankBuilderPort):void{
  *  sight behind an armoured door hinged on the port's top edge, propped open.
  *  The box is turret equipment, not the turret shell (release 264c): in the shell bucket each of its slices' convex
  *  hit cell bridged from its top to the far cheek, so the turret front over both cheeks read as sloped 50 mm roof and
- *  the barbette as main armour (the Mk 1's tier-8 strength with C2 0.349, against 0.509 without the box in the shell). */
+ *  the barbette as main armour (the Mk 1's tier-8 strength with C2 0.349, against 0.509 without the box in the shell).
+ *  It is a major silhouette piece, so it opts in to rangeSilhouette: past LOD1 like the shell, and its own hull in the
+ *  turret's shadow proxy. */
 const TOGS={inner:.88,outer:1.24,rear:1.02,front:1.84,top:2.20} as const;
 function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
   const {inner,outer,rear,front,top}=TOGS,c=.04,lo=1.42;
   const ring=(hi:number):[number,number][]=>([[inner,lo],[outer-c,lo],[outer,lo+c],[outer,hi-c],[outer-c,hi],[inner,hi]] as
     const).map(([x,y]):[number,number]=>[-x,y]).reverse();
-  P.addEquipment('turret',local(sectionSolid(([[rear,top],[1.55,top],[front-.07,top],[front,top-.07]] as const)
-    .map(([z,hi]):SolidSection=>({z,ring:ring(hi)})))));
+  const shell=local(sectionSolid(([[rear,top],[1.55,top],[front-.07,top],[front,top-.07]] as const)
+    .map(([z,hi]):SolidSection=>({z,ring:ring(hi)}))));
+  shell.userData.rangeSilhouette=true;
+  P.addEquipment('turret',shell);
   const dx=-1.06,dy=1.95;
   if(mark===1){
     at(P,box(.26,.19,.02),dx,dy,front+.01);
