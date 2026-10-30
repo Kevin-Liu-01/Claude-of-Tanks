@@ -126,10 +126,12 @@ const UKRAINE_SPECS = {
       turretTraverseDegS: 44 },
   }),
   // Release 262 (owner 2026-10-28: "make a new polish version based on this style"): a first-party Polish concept on the
-  // Oplot-M's base (docs/references/concepts/pt84-orzel-20261028.json), in the Polish three-tone the Zubr family wears
+  // Oplot-M's base (docs/references/concepts/pt84-orzel-20261028.json), in a Polish sand three-tone of its own: sand with
+  // olive-brown, olive-drab and dark brown blotches (the 262 visual bar, round 9: its green woodland shared the hue of
+  // the Oplot-M's MM-14 digital; a lighter value band than the Sokół's dark digital)
   pt84_orzel: variant('pt84_orzel', 't84', {
-    name: 'PT-84 Orzeł', nation: 'Poland', number: '184', scheme: 'nato', base: '#4a563b', weather: '#4a5c42',
-    patches: ['#29342d', '#827458'], camoScale: 0.52,
+    name: 'PT-84 Orzeł', nation: 'Poland', number: '184', scheme: 'blotch', base: '#ad9a70', weather: '#bcab82',
+    patches: ['#7b6b47', '#56573a', '#3a3326'], camoScale: 0.52,
     // the family's published hull and length (the stern drums excluded) and roof line; the width over the framed skirts
     dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.42, heightM: 2.97 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 52.0, topSpeedKmh: 70, reverseSpeedKmh: 30,

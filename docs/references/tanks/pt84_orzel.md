@@ -41,8 +41,9 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
   box on the left, working auxiliary weapons (auxiliaryWeapons.ts `wkmb`).
 - The Polish rear stowage box and two jerrycans in a rack on the bustle's rear face, a tarpaulin roll on its roof (no
   field basket); twin guarded work lamps on each cheek box; olive drums on the stern.
-- Finish: the Polish three-tone woodland, the Zubr family's authored paint (`paint_pl_t80u_modern`), as its own stock
-  coat (camoPolicy.ts), number 184, the Polish checker (0.34 m) on the right bin's face.
+- Finish: its own Polish sand three-tone (`paint_pt84_orzel`, "Polish Blotch Desert": sand with olive-brown, olive-drab
+  and dark brown blotches) as its stock coat (camoPolicy.ts; round 9 of the 262 visual bar: the Zubr family's green
+  woodland shared the hue of the Oplot-M's MM-14 digital), number 184, the Polish checker (0.34 m) on the right bin's face.
 
 ## Combat data (ukraine.ts)
 
