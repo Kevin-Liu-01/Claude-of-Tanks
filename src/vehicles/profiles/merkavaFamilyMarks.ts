@@ -185,7 +185,7 @@ const mirrored = (a: MerkavaAddendum): MerkavaAddendum =>
 const both = (...rows: MerkavaAddendum[]): MerkavaAddendum[] => rows.flatMap((a) => [a, mirrored(a)]);
 const MK12_STERN = both(['box', 'hullArmor', 0.395, 0.958, 0.827, 0.985, -4.003, -3.948]);
 const MK3_STERN = both(['box', 'hullArmor', 0.461, 1.041, 0.745, 0.912, -4.192, -4.150]);
-const FRONT_HANGERS = both(['box', 'hull', 1.863, 1.938, 1.33, 1.39, 2.253, 2.479]);
+const FRONT_HANGERS = both(['box', 'hullDetail', 1.863, 1.938, 1.33, 1.39, 2.253, 2.479]);
 const MK3_REAR_RACK: MerkavaAddendum = ['box', 'hullArmor', -1.612, -1.148, 1.330, 1.355, -4.040, -3.964];
 const MK1B_SKIRT_ENDS = both(...([
   [1.696, 2.0325], [1.689, 1.3595], [0.407, 0.7325], [0.400, 0.0735],

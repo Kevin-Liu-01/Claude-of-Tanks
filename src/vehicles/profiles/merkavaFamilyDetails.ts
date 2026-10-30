@@ -114,9 +114,9 @@ export interface ModuleRun {
   readonly solids: readonly ShellSolid[];
 }
 
-/** Where a measured addendum is drawn: the hull's external armour, the plain hull, or the turret's detail or painted
- *  detail. */
-export type MerkavaAddendumOwner = 'hullArmor' | 'hull' | 'turretDetail' | 'turretPainted';
+/** Where a measured addendum is drawn: the hull's external armour or detail (never the plain hull, whose extent is the
+ *  sim's hull floor), or the turret's detail or painted detail. */
+export type MerkavaAddendumOwner = 'hullArmor' | 'hullDetail' | 'turretDetail' | 'turretPainted';
 
 /** A piece the source fit left out, measured from the same source (hull frame): a box over its x, y and z ranges, a
  *  vertical post (its x and z centre, radius and y range), or an 8 mm plate across x0..x1 whose top runs from (za, ya) to
@@ -145,7 +145,7 @@ export function buildMerkavaAddenda(P: TankBuilderPort, addenda: readonly Merkav
         (ya + yb) / 2 - (plate / 2) * Math.cos(rise) - dy, (za + zb) / 2 + (plate / 2) * Math.sin(rise) - dz, -rise, 0, 0);
     }
     if (a[1] === 'hullArmor') P.addExternalArmor('hull', g);
-    else P.add(a[1] === 'hull' ? 'hull' : a[1] === 'turretDetail' ? 'turretDetail' : 'turretPaintedDetail', g);
+    else P.add(a[1] === 'hullDetail' ? 'hullDetail' : a[1] === 'turretDetail' ? 'turretDetail' : 'turretPaintedDetail', g);
   }
 }
 
