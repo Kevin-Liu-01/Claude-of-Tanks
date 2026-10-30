@@ -5,6 +5,7 @@
  "tankPolicyKey": "7bbc6d521c76",
  "flagPolicyKey": "2f2e1eaf451f",
  "flags": {
+  "au": {"in":["cbb2206c5e59","2f2e1eaf451f"],"sha":["059b9dbeeacb","4cd937623118","64c5496afb9f"],"bytes":[4122,6690,10602]},
   "cn": {"in":["981da9bdf82d","2f2e1eaf451f"],"sha":["d41c25a4ed35","5d789937d018","acfa9b6dbfd3"],"bytes":[2403,3908,7464]},
   "de": {"in":["efd480af5a15","2f2e1eaf451f"],"sha":["274f075b8ed7","8840c665219f","5088fbc7bd51"],"bytes":[1900,3100,5136]},
   "dk": {"in":["d2847c0bd7a1","2f2e1eaf451f"],"sha":["57355fb95efd","759ee01ec098","311e79221790"],"bytes":[2228,3661,6782]},
@@ -18,7 +19,8 @@
   "ru": {"in":["7100aaae51ff","2f2e1eaf451f"],"sha":["407b38a98575","fa9cf2f97737","4b81cdb489f2"],"bytes":[1988,3174,5164]},
   "se": {"in":["b3b5071e6c1d","2f2e1eaf451f"],"sha":["6271795508e9","7a0e9b8cf9e5","acb9a31f0a20"],"bytes":[2385,3850,7148]},
   "ua": {"in":["2d869c23ebfe","2f2e1eaf451f"],"sha":["ff471b5e0aed","6fb0fb3bc26d","ef3d5ab701b0"],"bytes":[1914,3012,5504]},
-  "us": {"in":["e7be4240cf57","2f2e1eaf451f"],"sha":["484b16cc4ef7","aaf87b4edee3","d01cb4232908"],"bytes":[5827,10143,12966]}
+  "us": {"in":["e7be4240cf57","2f2e1eaf451f"],"sha":["484b16cc4ef7","aaf87b4edee3","d01cb4232908"],"bytes":[5827,10143,12966]},
+  "za": {"in":["1755a5e16f1c","2f2e1eaf451f"],"sha":["2469cad7742d","90535d4b9477","9890dcc8c80a"],"bytes":[3220,5304,9216]}
  },
  "tanks": {
   "abramsx": {"flag":"us","in":["45d9df95","b44424ad88e1"],"b":[0.54,0.7,0.3666,0.5375,0.0492,0.9903],"face":["left","left"],"pose":[30,30,0],"sha":["26271456576d","216d92e1fb18","2adb45b2de9a"],"bytes":[6886,14431,18156],"fill":1,"whips":true,"audit":["45d9df95","ce7efc98"]},
@@ -50,7 +52,7 @@
   "c2_ariete_proto": {"flag":"it","in":["e5f52e14","070b1204f04e"],"b":[0.54,0.7,0.3231,0.5375,0.0635,0.9814],"face":["left","left"],"pose":[30,30,0],"sha":["d44ae6caae8b","696584d31e8c","14b6da4a3069"],"bytes":[7795,17639,19914],"fill":1,"audit":["e5f52e14","76221cb7"]},
   "carro45t": {"flag":"it","in":["f83995e7","3c1456da52d1"],"b":[0.54,0.7,0.3287,0.5375,0.0666,0.9943],"face":["left","left"],"pose":[30,30,0],"sha":["7a96d85d1424","6b27bdf25289","b4b422aff20b"],"bytes":[6825,13688,17976],"fill":1,"whips":true,"audit":["f83995e7","fb39bca8"]},
   "centurion13": {"flag":"gb","in":["8c06c652","e14bb70440f0"],"b":[0.54,0.7,0.3279,0.5375,0.0697,0.9765],"face":["left","left"],"pose":[30,30,0],"sha":["989915f89333","657e275d544e","bf1bff63714c"],"bytes":[6315,13381,17244],"fill":1,"whips":true,"audit":["8c06c652","a6f5724a"]},
-  "centurion3": {"flag":"gb","in":["fc1e42cc","8339fdff19ff"],"b":[0.54,0.7,0.3219,0.5375,0.0693,0.9822],"face":["left","left"],"pose":[30,30,0],"sha":["057fc735ab62","e5fdb1e25956","47fce9aba034"],"bytes":[5759,12498,15294],"fill":1,"audit":["fc1e42cc","73632dfc"]},
+  "centurion3": {"flag":"gb","in":["16266559","2321a666493c"],"b":[0.54,0.7,0.3219,0.5375,0.0693,0.9822],"face":["left","left"],"pose":[30,30,0],"sha":["45e85f549b8f","9de9407a0e0d","29d6ee7fecf6"],"bytes":[5738,12440,15274],"fill":1,"audit":["16266559","73632dfc"]},
   "centurion5_1_aus": {"flag":"au","in":["080bb3a5","982ae9c60758"],"b":[0.54,0.7,0.3322,0.5375,0.0671,0.9853],"face":["left","left"],"pose":[30,30,0],"sha":["d3fb2651202c","6c182973ff64","537e8b5c8e2c"],"bytes":[7587,16337,19818],"fill":1,"whips":true,"audit":["080bb3a5","30c773b5"]},
   "centurion5_2": {"flag":"gb","in":["98c638df","db6bceb9f13a"],"b":[0.54,0.7,0.332,0.5375,0.0695,0.9851],"face":["left","left"],"pose":[30,30,0],"sha":["151ea95cd679","ee1e1c4d98ae","d452848e9506"],"bytes":[6068,13100,16068],"fill":1,"audit":["98c638df","866b2b74"]},
   "centurion5_avre": {"flag":"gb","in":["39354746","8b75b847160e"],"b":[0.54,0.7,0.3222,0.5375,0.0768,0.9757],"face":["left","left"],"pose":[30,30,0],"sha":["db73118d375c","99dcb43882f4","a834ad09e29f"],"bytes":[6179,13251,16630],"fill":1,"whips":true,"audit":["39354746","cc2721e4"]},
