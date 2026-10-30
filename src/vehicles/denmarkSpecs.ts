@@ -40,8 +40,10 @@ leo1a3dk.gun = {
 };
 leo1a3dk.visual = {
   ...leo1a3dk.visual,
-  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive)
-  scheme: 'solid', base: '#474b37', weather: '#545747', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive; r7 critics: a saturated green
+  // under cloudy mottling: flatter and greyer, the mottle light)
+  scheme: 'solid', base: '#484a3b', weather: '#55574a', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  solidWeatheringIntensity: 0.35,
 };
 
 // The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
@@ -122,7 +124,9 @@ leo2a7dk.visual = {
   // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
   // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
   // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
-  scheme: 'nato', base: '#4e5d38', weather: '#5a6a42', patches: ['#3e4a30', '#5b5a3e', '#465435'], marking: 'number',
+  // r7 (critics: the r6 olive read bright lime; the photograph's is a dull grey-olive mottle with tan flecks): a duller
+  // olive, tan flecks, a dusty khaki wash (kept 15 clear of the other Danish coats)
+  scheme: 'nato', base: '#4f5239', weather: '#6a6a4c', patches: ['#3e4231', '#6c6248', '#45492f'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 

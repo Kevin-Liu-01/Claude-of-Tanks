@@ -704,7 +704,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // read pale sage, the boughs as a leafy suit's leftovers): no boughs; r5 (the r4 critics: its cards a bright yellow-green,
     // the photograph's cover a dull grey-green): grey-green cards on a grey-green net; r6 (critics: its cards read as a
     // leafy suit's leaves, tufts past the outline; the cover one mid-olive fabric): fewer, flatter cards close in tone
-    light: 0x58643f, dark: 0x414b33, netColor: 'rgba(72,82,56,0.90)', netTextureSeed: 2765,
+    // r7 (critics: bright lime cards over the paint read as a patchwork): the cards and the net in the paint's own dull olive
+    light: 0x5a5c44, dark: 0x3e4231, netColor: 'rgba(74,78,58,0.92)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)

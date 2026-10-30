@@ -3031,7 +3031,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage); the 2A7 DK's Barracuda cover leaves
   // nothing outside it (r3 critics: the fleet's wooden crate read as a stray part). All three build their own dischargers.
-  if (spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk') return [];
+  // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

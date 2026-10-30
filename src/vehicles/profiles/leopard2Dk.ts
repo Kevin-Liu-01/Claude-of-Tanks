@@ -78,8 +78,10 @@ function addDanishFlag(P: TankBuilderPort, pivot: Vec3, base: Vec3): void {
   // the Dannebrog on both faces, its cross toward the pole on each (a plain quarter turn each way: the decal turns about
   // world Z last, so the old half turn swung the far face back to face +x, and the flag vanished from the right); a
   // 'cross' decal is the national insignia and was re-seated off the cloth
+  // (r7 critics: from the right the cross stood toward the fly; that face takes the reversed cloth)
   for (const s of [-1, 1] as const) {
-    P.decal('turret', 'flag', 'dk-dannebrog', 0.36, [x + s * 0.008, y + 0.58, z - 0.165], s * Math.PI / 2, 0, 0);
+    P.decal('turret', 'flag', s > 0 ? 'dk-dannebrog' : 'dk-dannebrog-reverse', 0.36, [x + s * 0.008, y + 0.58, z - 0.165],
+      s * Math.PI / 2, 0, 0);
   }
 }
 
@@ -154,5 +156,8 @@ export function buildLeopard2A7DK(P: TankBuilderPort): void {
   ribbedModule(P, [0.05, 2.36, -2.90], [2.44, 0.50, 0.80], 0);
   for (const side of [-1, 1] as const) ribbedModule(P, [side * 1.40, 2.38, -2.06], [0.48, 0.46, 1.56], side);
   addDanishFlag(P, LEOPARD_X_DATUMS.leo2a7v.turretPivot, [-0.98, 2.68, -0.92]);
+  // the fender between the deck's edge and the skirts (r6 critics, both models: from above the ground showed through a
+  // 4 cm slit at x 1.82-1.85 from z -2.30 to 1.80, rayed down at 1 cm), a strip just under the deck's edge
+  for (const side of [-1, 1] as const) P.add('hull', KIT.box(0.07, 0.02, 4.14), side * 1.835, 1.315, -0.25);
   P.turretG.userData.leopard2DkReceipt = { mark: '2A7 DK', ribbedStowageModules: 3, barracuda: true, flag: true };
 }

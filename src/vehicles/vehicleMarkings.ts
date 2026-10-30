@@ -684,6 +684,39 @@ function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): voi
   ctx.fillRect(x0, cy - bar / 2, w, bar);
 }
 
+// the Dannebrog seen from the flag's other face (release 265, r7 critics: the far face showed the cross toward the fly):
+// the cross stays at the hoist, so from that side it stands right of centre
+function drawDenmarkDannebrogReverse({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
+  ctx.fillStyle = '#b8343a';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#ece8dc';
+  ctx.fillRect(x0 + w * 0.64 - bar / 2, y0, bar, h);
+  ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
+// the Leopard 1A5 DK's blanked rangefinder port (the Aalborg turret): a white perforated cover round a dark centre hole
+function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.92;
+  ctx.fillStyle = '#e4e2da';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a2c26';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.30, 0, Math.PI * 2);
+  ctx.fill();
+  for (let ring = 0; ring < 2; ring++) {
+    const rr = r * (0.48 + ring * 0.26), n = 10 + ring * 6;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
 function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
   ctx.strokeStyle = '#e0bd4c';
   ctx.lineWidth = size * 0.09;
@@ -737,6 +770,8 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'dk-dannebrog': drawDenmarkDannebrog,
+  'dk-dannebrog-reverse': drawDenmarkDannebrogReverse,
+  'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
   'th-flag': drawThaiFlag,
 });

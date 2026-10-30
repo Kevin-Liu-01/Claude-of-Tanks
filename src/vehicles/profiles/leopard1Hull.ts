@@ -17,8 +17,8 @@ export interface Leo1HullOptions {
   readonly deckTools?: boolean;
   /** The side skirts' hem: the German A5's black rubber, or the coat (the Danish tanks' skirts are painted over). */
   readonly skirtBucket?: 'hullRubber' | 'hull';
-  /** Release 265, r6: broad black bands on the road wheels' outer tyres (the UN-white 1A5 DK-1, whose white wheels read
-   * white-on-white with the style's thin tyre line). */
+  /** Release 265: broad black bands on the road wheels' outer tyres (the Danish Leopard 1s; r6 the UN-white 1A5 DK-1,
+   * whose white wheels read white-on-white with the style's thin tyre line, r7 all three: critics, pale wheels). */
   readonly tyreBands?: boolean;
   /** The two fuel cans in their rear carriers: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
@@ -284,7 +284,8 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true,
     });
     if (tyreBands) for (const z of roadWheelZs) for (const s of [-1, 1] as const) {
-      P.add('hullRubber', torus(roadWheelR - 0.036, 0.030, P.q ? 28 : 16, 6), s * (trackXc + 0.225 / 2 - 0.006), roadWheelY, z,
+      // (r7: proud of the disc's face, its outer edge 2 cm inside the tyre so the belt keeps its clearance)
+      P.add('hullRubber', torus(roadWheelR - 0.052, 0.032, P.q ? 28 : 16, 6), s * (trackXc + 0.225 / 2 + 0.010), roadWheelY, z,
         0, 0, Math.PI / 2);
     }
 
