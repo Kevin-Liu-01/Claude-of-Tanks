@@ -102,7 +102,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3473>"
+      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3526>"
      }
     }
    ],
@@ -204,7 +204,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.922,
-      "host": "hull<buildBMP2@modern3.ts:3976>"
+      "host": "hull<buildBMP2@modern3.ts:4001>"
      }
     }
    ],
@@ -265,7 +265,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildBMP2@modern3.ts:3976>"
+      "host": "hull<buildBMP2@modern3.ts:4001>"
      }
     }
    ],
@@ -366,7 +366,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<buildBMP2@modern3.ts:3950>"
+      "host": "hull<buildBMP2@modern3.ts:3975>"
      }
     }
    ],
@@ -426,7 +426,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildArieteHullStage2@profiles/misc.ts:495>"
+      "host": "hull<buildArieteHullStage2@profiles/misc.ts:497>"
      }
     }
    ],
@@ -455,7 +455,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:319>"
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:322>"
      }
     }
    ],
@@ -515,7 +515,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:319>"
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:322>"
      }
     }
    ],
@@ -648,7 +648,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.977,
-      "host": "hull<loftBand@profiles/uk.ts:365>"
+      "host": "hull<loftBand@profiles/uk.ts:366>"
      }
     },
     {
@@ -670,7 +670,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<loftBand@profiles/uk.ts:365>"
+      "host": "hull<loftBand@profiles/uk.ts:366>"
      }
     },
     {
@@ -692,7 +692,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<loftBand@profiles/uk.ts:365>"
+      "host": "hull<loftBand@profiles/uk.ts:366>"
      }
     }
    ],
@@ -958,7 +958,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.956,
-      "host": "hull<buildType89Hull@modern3.ts:5053>"
+      "host": "hull<buildType89Hull@modern3.ts:5078>"
      }
     }
    ],
@@ -1024,7 +1024,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<buildK1A1Hull@modern3.ts:1248>"
+      "host": "hull<buildK1A1Hull@modern3.ts:1249>"
      }
     }
    ],
@@ -1089,7 +1089,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<cutSlab@profiles/leopard.ts:1619>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     }
    ],
@@ -1270,7 +1270,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1619>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     },
     {
@@ -1321,7 +1321,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1615>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     },
     {
@@ -1372,7 +1372,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.813,
-      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     },
     {
@@ -1394,7 +1394,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     }
    ],
@@ -1423,7 +1423,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.92,
-      "host": "hull<cutSlab@profiles/leopard.ts:1615>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1604>"
      }
     }
    ],
@@ -1454,7 +1454,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2200>"
      }
     },
     {
@@ -1478,7 +1478,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2200>"
      }
     },
     {
@@ -1524,7 +1524,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2200>"
      }
     }
    ],
@@ -1556,7 +1556,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.989,
-      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6417>"
      }
     },
     {
@@ -1581,7 +1581,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6417>"
      }
     },
     {
@@ -1628,7 +1628,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6417>"
      }
     }
    ],
@@ -1657,7 +1657,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1605>"
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1594>"
      }
     },
     {
@@ -1679,7 +1679,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.897,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:15015>"
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14530>"
      }
     }
    ],
@@ -1787,7 +1787,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:497>"
+      "host": "hull<loftBand@profiles/abrams.ts:493>"
      }
     }
    ],
@@ -1822,7 +1822,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1470>"
+      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1466>"
      }
     }
    ],
@@ -1853,7 +1853,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:497>"
+      "host": "hull<loftBand@profiles/abrams.ts:493>"
      }
     }
    ],
@@ -1882,7 +1882,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.966,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3244>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3272>"
      }
     }
    ],
@@ -1941,7 +1941,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2522>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2538>"
      }
     }
    ],
@@ -1972,7 +1972,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.956,
-      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2693>"
+      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2710>"
      }
     },
     {
@@ -2137,7 +2137,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildMBT70@modern2.ts:1230>"
+      "host": "turret<buildMBT70@modern2.ts:1231>"
      }
     },
     {
@@ -2159,7 +2159,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildMBT70@modern2.ts:1230>"
+      "host": "turret<buildMBT70@modern2.ts:1231>"
      }
     }
    ],
@@ -2482,7 +2482,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<<anon>@profiles/poland.ts:683>"
+      "host": "hull<<anon>@profiles/poland.ts:684>"
      }
     }
    ],
@@ -2672,7 +2672,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<addClosureRun@profiles/leopard.ts:2215>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2200>"
      }
     },
     {
@@ -2694,7 +2694,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.92,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1486>"
+      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1471>"
      }
     },
     {
@@ -2718,7 +2718,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.955,
-      "host": "hull<addClosureRun@profiles/leopard.ts:2215>"
+      "host": "hull<addClosureRun@profiles/leopard.ts:2200>"
      }
     },
     {
@@ -2740,7 +2740,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1486>"
+      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1471>"
      }
     }
    ],
@@ -2907,7 +2907,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<<anon>@profiles/russia.ts:1292>"
+      "host": "hull<<anon>@profiles/russia.ts:1294>"
      }
     },
     {
@@ -2931,7 +2931,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<<anon>@profiles/russia.ts:1292>"
+      "host": "hull<<anon>@profiles/russia.ts:1294>"
      }
     }
    ],
@@ -2960,7 +2960,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hullDetail<<anon>@profiles/russia.ts:1312>"
+      "host": "hullDetail<<anon>@profiles/russia.ts:1314>"
      }
     },
     {
@@ -2982,7 +2982,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.955,
-      "host": "hull<loftHull@profiles/russia.ts:507>"
+      "host": "hull<loftHull@profiles/russia.ts:509>"
      }
     },
     {
@@ -3004,7 +3004,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<loftHull@profiles/russia.ts:507>"
+      "host": "hull<loftHull@profiles/russia.ts:509>"
      }
     }
    ],
@@ -3173,7 +3173,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:512>"
+      "host": "hull<loftHull@profiles/russia.ts:514>"
      }
     }
    ],
@@ -3204,7 +3204,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<loftHull@profiles/russia.ts:512>"
+      "host": "hull<loftHull@profiles/russia.ts:514>"
      }
     }
    ],
@@ -3235,7 +3235,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:512>"
+      "host": "hull<loftHull@profiles/russia.ts:514>"
      }
     }
    ],
@@ -3457,7 +3457,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.956,
-      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6673>"
+      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6677>"
      }
     }
    ],
@@ -3983,7 +3983,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2522>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2538>"
      }
     }
    ],
@@ -4098,7 +4098,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildK2HullBody@modern3.ts:260>"
+      "host": "hull<buildK2HullBody@modern3.ts:261>"
      }
     }
    ],
