@@ -33,11 +33,11 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   t72b3m_wilk: 7, t72b_1987: 3, t72bu: 3, t72bu_1989: 3, t72m1_jaguar: 4, t80: 3, t80b: 4, t80bv: 4, t80u: 6,
   t80u_bars_m: 8, t80u_husarz: 7, t80u_kursk: 6, t80u_yun: 7, t80u_zoria: 7, t80uk: 6, t84: 6, t84bm_oplot_m: 6,
   t90: 7, t90_1992: 7, t90a: 9, t90a_2004: 9, t90a_2006: 9, t90a_burlak: 9, t90a_burlak_proto: 9, t90a_vladimir: 9,
-  t90am: 9, t90m: 10, t90m_proryv: 10, t90ms_2011: 9, t90ms_tagil: 9, t90sm: 9, t90sm_2013: 9, tos1a_tagil: 5,
+  t90am: 9, t90m: 10, t90m_proryv: 10, t90ms_2011: 9, t90ms_tagil: 9, t90sm: 9, t90sm_2013: 9, tamoyo1: 2, tamoyo3: 3, tos1a_tagil: 5,
   type10: 10, type100: 10, type10_dozer: 10, type10_tk_x: 9, type10b: 9, type59: 1, t55a: 1, type74: 1, type89: 6, type90: 8,
   type90_kyumaru: 8, type90a: 8, type96_72_long: 5, type96_72m_lei: 6, type96_80_feng: 6, type96b: 6,
   ua_challenger2: 9, ua_m1a1: 9, ua_m1a2_abrams: 9, ua_m2a3_bradley: 4, ua_t80bv: 5, udes03: 1, upior: 10,
-  vickers_mk1: 2, vt4a1: 8, warrior_tes_h: 5, xk2_black_panther: 6, ztz100: 10, ztz100_prototype: 10, ztz20: 10, ztz20_prototype: 10, ztz85_iii: 1,
+  vickers_mk1: 2, vt4a1: 8, warrior_tes_h: 5, x1_pioneiro: 1, x1a2_carcara: 1, xk2_black_panther: 6, ztz100: 10, ztz100_prototype: 10, ztz20: 10, ztz20_prototype: 10, ztz85_iii: 1,
   ztz99_longwei: 6, ztz99a: 9, ztz99a2: 10,
 });
 

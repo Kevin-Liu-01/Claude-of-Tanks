@@ -137,6 +137,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
   osorio_p1: anchor('turret', 'left', .22, .45, .22, 1),
   osorio_p2: anchor('turret', 'left', .22, .45, .22, 1),
+  // 266: the Army plaque on the Tamoyos' turret flanks (Vesp's profiles: amidships, behind the cheek)
+  tamoyo1: anchor('turret', 'left', .50, .40, .22, 1),
+  tamoyo3: anchor('turret', 'left', .50, .45, .22, 1),
+  // 266: the plaque on the BT-90's flank ahead of the bustle
+  x1_pioneiro: anchor('turret', 'left', .55, .45, .20, 1),
+  x1a2_carcara: anchor('turret', 'left', .62, .45, .20, 1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   strv122: anchor('hull', 'right', .26, .82, .24, 1),

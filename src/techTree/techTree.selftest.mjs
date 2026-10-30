@@ -109,7 +109,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 266: the Osório's two prototypes (the 105 mm P.1 before the 120 mm P.2)
-  brazil: [['osorio_p1', 'osorio_p2']],
+  brazil: [['x1_pioneiro', 'x1a2_carcara'], ['tamoyo1', 'tamoyo3'], ['osorio_p1', 'osorio_p2']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -165,7 +165,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
-// 2026-10-29 re-pin (266, Main's ruling on the Brazil line): the Brazil tree (head A in progress: the Osório P.1 (III) and
-// P.2 (IV) on the Bernardini and Engesa line; re-cut again as the line's other nodes land).
-assert.equal(digest, '13dd9f847bf67a14', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-29 re-pin (266, Main's ruling on the Brazil line): the Brazil tree, head A: its root the X1 Pioneiro (I) and the
+// Bernardini and Engesa line on through the X1A2 Carcará (I), the MB-3 Tamoyo 1 (II) and 3 (III) and the EE-T1 Osório P.1
+// (III) and P.2 (IV); head B's Army-fleet line (the M41C, the Leopards, the M60A3 TTS) re-cuts it again.
+assert.equal(digest, 'f6e3e5eccd407e9b', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

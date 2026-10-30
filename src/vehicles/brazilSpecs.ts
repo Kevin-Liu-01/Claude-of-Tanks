@@ -76,4 +76,134 @@ osorio_p1.visual = {
   camoScale: 0.55, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
-registerFleetSpecs(registries, ['osorio_p1', 'osorio_p2'], { osorio_p1, osorio_p2 });
+// ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
+// Tanks Encyclopedia (Tamoyo 1 and 3, after Bastos' "Bernardini MB-3 Tamoyo") and Bastos 2022: the 6.5 m Bernardini hull,
+// welded steel (hull front 40 mm, sides 19 mm; the Tamoyo 1's turret front 40, shield 50, sides 25 mm), torsion bars, four
+// crew. The Tamoyo 1: 30 t, 8.77 m over the gun, 3.22 m wide, 2.2 m to the turret roof, the Scania DSI-14 of 500 hp through
+// the M41's CD-500-3, 67 km/h, the unstabilised 90 mm BR3 (a copy of GIAT's CS Super 90 F4, L/52). The Tamoyo 3: 31 t
+// unstowed, 35 t combat, 8.9 m, 3.29 m, 2.35 m, the Detroit 8V92TA of 736 hp through the CD-850-6A, 65 km/h, the 105 mm
+// L7A3, the Ferranti Falcon fire control with a laser rangefinder, thermal and two-axis stabilisation, a composite and
+// spaced turret front. Rounds: the French 90 mm family of the Super 90 and the L7's at the fleet's 105 mm footing.
+const tamoyoArmor = (o: { barrelLenM: number; gunPivot: [number, number, number]; tFrontZ: number; tRearZ: number; tH: number;
+  tw: number; skirt: boolean; glacis: number; lower: number; cheek: [number, number, number]; mantlet: [number, number, number];
+  tSide: [number, number, number] }) => modernArmor({
+  hl: 3.25, hw: 1.46, inW: 1.05, floor: 0.45, trkTop: 1.12, roofY: 1.565,
+  turretPivot: [0, 1.565, 0.16], gunPivot: o.gunPivot, barrelLenM: o.barrelLenM, barrelRadM: 0.072,
+  glacis: [o.glacis, o.glacis, o.glacis + 30], lower: [o.lower, o.lower, o.lower], side: [19, 19, 19],
+  skirt: o.skirt ? [10, 10, 30] : null, rear: 19, roof: 13,
+  tw: o.tw, tFrontZ: o.tFrontZ, tRearZ: o.tRearZ, tH: o.tH,
+  cheek: o.cheek, tSide: o.tSide, tRear: 25, tRoof: 15, mantlet: o.mantlet, loader: true,
+});
+
+const tamoyo1 = brazilian('tamoyo1', 'm47_patton', 'MB-3 Tamoyo 1', 'cold-war');
+Object.assign(tamoyo1.dims, { hullLengthM: 6.50, overallLengthM: 8.77, widthM: 3.22, heightM: 2.50 });
+Object.assign(tamoyo1, {
+  role: 'medium', hp: 1450, enginePowerHp: 500, weightTons: 30.0, topSpeedKmh: 67, reverseSpeedKmh: 16,
+  hullTraverseDegS: 42, turretTraverseDegS: 34, gunPitchDegS: 28, gunElevationDeg: 18, gunDepressionDeg: 8,
+});
+const [heat90, he90] = [tamoyo1.gun.shells[1], tamoyo1.gun.shells[2]];
+tamoyo1.gun = {
+  ...tamoyo1.gun,
+  caliberMm: 90, reloadS: 5.6, baseAccuracy: 0.31, aimTimeS: 1.9,
+  shells: [
+    { ...tamoyo1.gun.shells[0], name: 'OFL 90 F1 APFSDS', caliberMm: 90, pen100Mm: 420, pen1000Mm: 385, pen2000Mm: 350, dmg: 330, velocityMps: 1350 },
+    { ...heat90, name: 'OCC 90 HEAT', caliberMm: 90, pen100Mm: 320, pen1000Mm: 320, dmg: 330, velocityMps: 950 },
+    { ...he90, name: 'OE 90 HE', caliberMm: 90, dmg: 380, velocityMps: 750 },
+  ],
+};
+tamoyo1.armor = tamoyoArmor({
+  barrelLenM: 4.41, gunPivot: [0, 0.315, 0.95], tFrontZ: 1.20, tRearZ: -2.05, tH: 0.72, tw: 1.12, skirt: true,
+  glacis: 40, lower: 40, cheek: [40, 40, 40], mantlet: [50, 50, 50], tSide: [25, 25, 25],
+});
+tamoyo1.visual = {
+  ...tamoyo1.visual,
+  // the Army's three-tone of the trials (the CIBld tank today): green, brown and a dark green; the 1983-98 plaque
+  scheme: 'nato', base: '#4a5236', weather: '#565d42', patches: ['#6a4630', '#2b3324'], marking: 'number', number: '11',
+  camoScale: 0.55, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+};
+
+const tamoyo3 = brazilian('tamoyo3', 'leo1a5', 'MB-3 Tamoyo 3', 'cold-war');
+Object.assign(tamoyo3.dims, { hullLengthM: 6.48, overallLengthM: 8.90, widthM: 3.29, heightM: 2.50 });
+Object.assign(tamoyo3, {
+  role: 'mbt', hp: 1700, enginePowerHp: 736, weightTons: 35.0, topSpeedKmh: 65, reverseSpeedKmh: 18,
+  hullTraverseDegS: 44, turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 18, gunDepressionDeg: 8,
+});
+tamoyo3.gun = {
+  ...tamoyo3.gun,
+  caliberMm: 105, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8,
+  shells: [
+    { ...l7Rounds[0], name: 'M735 APFSDS' },
+    { ...l7Rounds[1], name: 'M456 HEAT' },
+    { ...l7Rounds[2], name: 'L35 HESH', type: 'HE' },
+  ],
+};
+tamoyo3.armor = tamoyoArmor({
+  barrelLenM: 4.46, gunPivot: [0, 0.335, 1.05], tFrontZ: 1.50, tRearZ: -2.11, tH: 0.75, tw: 1.10, skirt: false,
+  glacis: 110, lower: 60, cheek: [300, 300, 420], mantlet: [220, 220, 300], tSide: [60, 60, 80],
+});
+tamoyo3.visual = {
+  ...tamoyo3.visual,
+  // the May 1987 show coat (Bastos' photograph): green, brown and ochre bands; the 1983-98 plaque
+  scheme: 'nato', base: '#4c5537', weather: '#585f43', patches: ['#6e4a31', '#a08a5a'], marking: 'number', number: '13',
+  camoScale: 0.55, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+};
+
+// ------------------------------------------------------------------------------------------------- the X1 family --
+// Tanks Encyclopedia (CCL X1 Pioneiro, CCL X1A2 Carcará, after Bastos' "Brazilian Stuart"): the 90 mm low-pressure guns
+// (the French D-921 on the X1, Engesa's EC-90, the Cockerill Mk 3 under licence, on the X1A2) fire the Cascavel's rounds,
+// fin-stabilised HEAT first. The X1: 17 t, 5.04 m hull, 6.04 m over the gun, 2.4 m wide, 2.45 m, the Scania-Vabis DS-11 of
+// 256 hp, 55 km/h, hull front 38 mm at 17 degrees over 44 mm, sides 25 mm, the turret 28 mm, four crew (the Stuart's
+// co-driver kept). The X1A2: 19 t, 6.06 m hull, 2.6 m wide, 2.45 m, the DS-11 of 280 hp through the Allison CD-500, 60
+// km/h, hull front 15 mm at 25 degrees over 35 + 28 mm, sides 28 mm, the turret 28 mm, three crew.
+const x1Rounds = (spec: ReturnType<typeof brazilian>, heatPen: number) => {
+  const [first, second] = spec.gun.shells;
+  return [
+    { ...first, name: 'OCC 90 HEAT-T', type: 'HEAT', caliberMm: 90, pen100Mm: heatPen, pen1000Mm: heatPen, pen2000Mm: heatPen, dmg: 280, velocityMps: 760 },
+    { ...second, name: 'OE 90 HE-T', type: 'HE', caliberMm: 90, pen100Mm: 20, pen1000Mm: 20, dmg: 320, velocityMps: 640 },
+    { ...second, name: 'Can 90 HESH-T', type: 'HE', caliberMm: 90, pen100Mm: 110, pen1000Mm: 110, dmg: 300, velocityMps: 700 },
+  ];
+};
+const x1Armor = (o: { hl: number; hw: number; inW: number; roofY: number; trkTop: number; pivot: [number, number, number];
+  gun: [number, number, number]; barrelLenM: number; tw: number; tFrontZ: number; tRearZ: number; tH: number; glacis: number;
+  lower: number; side: number; loader: boolean }) => modernArmor({
+  hl: o.hl, hw: o.hw, inW: o.inW, floor: 0.41, trkTop: o.trkTop, roofY: o.roofY,
+  turretPivot: o.pivot, gunPivot: o.gun, barrelLenM: o.barrelLenM, barrelRadM: 0.062,
+  glacis: [o.glacis, o.glacis, o.glacis], lower: [o.lower, o.lower, o.lower], side: [o.side, o.side, o.side], skirt: null,
+  rear: o.side, roof: 13, tw: o.tw, tFrontZ: o.tFrontZ, tRearZ: o.tRearZ, tH: o.tH,
+  cheek: [28, 28, 28], tSide: [28, 28, 28], tRear: 28, tRoof: 15, mantlet: [40, 40, 40], loader: o.loader,
+});
+
+const x1_pioneiro = brazilian('x1_pioneiro', 'leo1a5', 'CCL X1 Pioneiro', 'cold-war');
+Object.assign(x1_pioneiro.dims, { hullLengthM: 5.04, overallLengthM: 6.04, widthM: 2.40, heightM: 2.45 });
+Object.assign(x1_pioneiro, {
+  role: 'light', hp: 1000, enginePowerHp: 256, weightTons: 17.0, topSpeedKmh: 55, reverseSpeedKmh: 12,
+  hullTraverseDegS: 40, turretTraverseDegS: 28, gunPitchDegS: 24, gunElevationDeg: 15, gunDepressionDeg: 8,
+});
+x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 5.2, baseAccuracy: 0.34, aimTimeS: 2.1, shells: x1Rounds(x1_pioneiro, 300) };
+x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 0.98, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
+  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.30, tRearZ: -1.20, tH: 0.62, glacis: 38, lower: 44, side: 25, loader: true });
+x1_pioneiro.visual = {
+  ...x1_pioneiro.visual,
+  // the Army's plain olive drab of the 1970s and 80s (Gaydos' profiles); the 1983-98 plaque
+  scheme: 'solid', base: '#4d5434', weather: '#596040', patches: [], marking: 'number', number: '31', camoScale: 0.5,
+  trackWidthM: 0.40, insignia: 'br-cruzeiro',
+};
+
+const x1a2_carcara = brazilian('x1a2_carcara', 'leo1a5', 'CCL X1A2 Carcará', 'cold-war');
+Object.assign(x1a2_carcara.dims, { hullLengthM: 6.06, overallLengthM: 6.92, widthM: 2.60, heightM: 2.45 });
+Object.assign(x1a2_carcara, {
+  role: 'light', hp: 1100, enginePowerHp: 280, weightTons: 19.0, topSpeedKmh: 60, reverseSpeedKmh: 14,
+  hullTraverseDegS: 42, turretTraverseDegS: 30, gunPitchDegS: 25, gunElevationDeg: 15, gunDepressionDeg: 8,
+});
+x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 330) };
+x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.08, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
+  barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.64, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
+x1a2_carcara.visual = {
+  ...x1a2_carcara.visual,
+  // the 6º RCB's three-tone (Gaydos' camouflaged profile): green, sand and a dark green; the 1983-98 plaque
+  scheme: 'nato', base: '#4f5a3a', weather: '#5b6545', patches: ['#9c8758', '#2b3324'], marking: 'number', number: '21',
+  camoScale: 0.5, trackWidthM: 0.42, insignia: 'br-cruzeiro',
+};
+
+registerFleetSpecs(registries, ['x1_pioneiro', 'x1a2_carcara', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3'],
+  { x1_pioneiro, x1a2_carcara, osorio_p1, osorio_p2, tamoyo1, tamoyo3 });

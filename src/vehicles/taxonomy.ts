@@ -41,7 +41,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'kv2', 'jpz_e100',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
-    'amx10p', 'amx10p_25', 'amx30b', 'amx40', 'osorio_p1', 'osorio_p2', 't62mv1',
+    'amx10p', 'amx10p_25', 'amx30b', 'amx40', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1_pioneiro', 'x1a2_carcara', 't62mv1',
     'challenger1_mk3',
     't72bu',
     'chieftain5',
