@@ -59,7 +59,14 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // air. Fill only its authored body shells; retain every fitting in the
   // source, continuity and physical-stock audits.
   merkava4_barak: Object.freeze(['hull', 'turret']),
+  // The Challenger 1s' folded left hood, stowage bins, baskets and L8 banks surround exterior air: the pocket behind
+  // the left bank filled to dark voxel steps under the hood (release 265, the minors pass). The turret shell, its ring
+  // and the cupola bound the turret; the hull is unchanged (a turret repair, below).
+  ...Object.fromEntries(['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3'].map(id =>
+    [id, Object.freeze(['hull', 'turret', 'turretSeatRace', 'turretSeatCollar', 'turretCupola'])])),
 });
+// Turret repairs keep the unchanged hull's complete historical boundary input.
+const TURRET_REPAIR_IDS = new Set(['m3a3_bradley', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']);
 
 // Object's twelve closed canisters and their separate pitch frame are exterior
 // equipment, not a single hollow gun casing. Combining their vertical spans
@@ -89,7 +96,7 @@ export function interiorFillBoundaryTriangles(id, triangles, meshes) {
     if (external?.includes(name)) return false;
     // This is a turret repair. Narrowing the Bradley's unchanged hull input
     // would discard its existing sponson closures when regenerating fills.
-    if (id === 'm3a3_bradley' && /^hull/i.test(name)) return true;
+    if (TURRET_REPAIR_IDS.has(id) && /^hull/i.test(name)) return true;
     // Primary-body policies retain the complete gun/mount/bore input. The
     // separate launcher policy keeps the recoiling cannon and its backstop.
     return !primary || !/^(hull|turret)/i.test(name) || primary.includes(name);
