@@ -279,9 +279,9 @@ ee_t3_osorio.gunPitchByYawDeg = [[0, -9.9], [15, -9.7], [17, -9.4], [30, -8.5], 
 ee_t3_osorio.visual = {
   ...osorio_p2.visual,
   // a NATO-style three-tone (the Army's Leopard 1A5BR coat): green the field, brown masses and broad black blotches
-  // (blind critic, round c1: green about 45 %, brown 35 %, black 20 %), the 1998 arms
-  scheme: 'blotch', base: '#434c35', weather: '#4a543b', patches: ['#5a4530', '#1f201b'], marking: 'number',
-  number: '31', camoScale: 0.48, patchK: 1.6, trackWidthM: 0.57, insignia: 'br-eb-arms',
+  // (blind critics, rounds c1 and c2: a deeper green about 40 %, brown 35 %, black 20-25 %), the 1998 arms
+  scheme: 'blotch', base: '#3c4530', weather: '#434d36', patches: ['#5c442d', '#1d1e1a'], marking: 'number',
+  number: '31', camoScale: 0.48, patchK: 1.9, trackWidthM: 0.57, insignia: 'br-eb-arms',
 };
 
 // The EE-T4 (tier X, the 2030s): a 130 mm L/51, the kit heavier and full length, a hard-kill active protection system,
@@ -307,9 +307,10 @@ ee_t4_osorio.gunPitchByYawDeg = [[0, -8.9], [13, -8.2], [27, -7.2], [30, -6.6], 
   [164, -0.7], [165, -1.5], [173, -1.4], [178, -1.6], [180, -1.8]];
 ee_t4_osorio.visual = {
   ...osorio_p2.visual,
-  // a two-scale digital woodland in the Army's tones (olive, brown, black and a light olive-khaki), the 1998 arms (the
-  // khaki laid first, under the others, and darkened toward olive: woodland, not desert; blind critic, round c1)
-  scheme: 'digital', base: '#3f4632', weather: '#474e39', patches: ['#5a5a40', '#5b4934', '#23251f'], marking: 'number',
+  // a two-scale digital woodland in the Army's tones (olive, a light olive, brown and black), the 1998 arms (the light
+  // olive laid first, under the others, and every tone a step darker: a medium olive field, woodland, not sand; blind
+  // critics, rounds c1 and c2)
+  scheme: 'digital', base: '#353d29', weather: '#3d4530', patches: ['#4b4c36', '#4f3e2c', '#1d1e1a'], marking: 'number',
   number: '41', camoScale: 0.48, patchK: 1.6, trackWidthM: 0.57, insignia: 'br-eb-arms',
 };
 
