@@ -58,8 +58,9 @@ leo1a5dk.visual = {
   ...leo1a5dk.visual,
   // the Danish Army's three-tone of the 1990s (the Aalborg museum's 1A5 DK turret): a greyer olive, black and earth brown
   // in large fields
-  // (r8 critics, both models: the Aalborg turret is black-dominant, the brown little): a black and a black-green field
-  scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#2a2d22'], marking: 'number', number: '24',
+  // (r8 tried a black and a black-green field on the r7 critics' "black-dominant, the brown little"; the r8 critics, both
+  // models, then found the brown missing and scored it 0.7 lower: the r7 olive, black and brown, which passed both, again)
+  scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#4e4130'], marking: 'number', number: '24',
   camoScale: 0.72,
 };
 
@@ -94,7 +95,8 @@ leo2a5dk.visual = {
   // black (r2 critics: round blobs read as woodland; r3: thin sprayed bands read as tiger stripes; r4: the splinter
   // wedges tiled into a small checker): the NATO painter's long khaki bands through the olive at one and a half times
   // their size, black shadowing them, the khaki warmed toward yellow-brown (previewed on the CPU, .qa-dev camoprev)
-  scheme: 'nato', base: '#434b34', weather: '#4f5640', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.5,
+  // r9 (r8 critics, both: the olive a light minty sage, the black blotches oversized): a warmer, darker olive, less black
+  scheme: 'nato', base: '#454a30', weather: '#4f5238', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.2,
   marking: 'number', number: '31', camoScale: 0.5,
 };
 // its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
@@ -128,7 +130,9 @@ leo2a7dk.visual = {
   // r7 (critics: the r6 olive read bright lime): a duller olive; r8 (critics, both models: the cover's fabric read as
   // patches pasted over painted tan blobs; the photograph's is one darker grey-green mottle, tan only on the gun's wrap):
   // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
-  scheme: 'nato', base: '#474c3c', weather: '#3c4034', patches: ['#363b2e', '#4f5545', '#3f4436'], marking: 'number',
+  // r9 (r8 critics, both: grey and flat; the photograph's cover a deeper, saturated olive in dark blocks): a greener olive
+  // with near-black green blocks
+  scheme: 'nato', base: '#4a5134', weather: '#3f4530', patches: ['#23281a', '#5a6142', '#333a22'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 

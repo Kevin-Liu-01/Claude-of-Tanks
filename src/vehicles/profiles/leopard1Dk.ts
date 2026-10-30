@@ -58,6 +58,8 @@ const cheekX = (z: number): number => W.halfWidth
 
 function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1DkMark): void {
   const { box, cylZ } = KIT;
+  // the UN-white DK-1's fittings painted over in a grey, not left black (r8 critics: black latches and channels on white)
+  const fit = mark === 'a5dk1' ? 'hullFittingPaint' : 'hullDark';
   const { fenderY, sponsonX, deckEdgeX, deckEdgeY } = hull;
   // Fender bins (Krigsmuseet side view): a long bin ahead of the turret's sweep, one under it and a taller box at the
   // engine deck, each with its outer face on the skirt line and its inner face on the sloped side plate.
@@ -71,8 +73,8 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
       const section = s > 0 ? right : right.map(([x, y]) => [-x, y] as const).reverse();
       P.addEquipment('hull', sectionSolid([{ z: z0, ring: section }, { z: z1, ring: section }]));
       // lid seam and two latches on the outer face
-      P.addEquipment('hullDark', box(0.012, 0.012, z1 - z0 - 0.04), s * 1.676, top - 0.035, zc);
-      for (const f of [0.25, 0.75]) P.addEquipment('hullDark', box(0.014, 0.06, 0.045), s * 1.678, top - 0.075, z0 + (z1 - z0) * f);
+      P.addEquipment(fit, box(0.012, 0.012, z1 - z0 - 0.04), s * 1.676, top - 0.035, zc);
+      for (const f of [0.25, 0.75]) P.addEquipment(fit, box(0.014, 0.06, 0.045), s * 1.678, top - 0.075, z0 + (z1 - z0) * f);
     }
   }
   // The engine's exhaust grilles on the sloped rear side plates behind the bins (Krigsmuseet side view: the last fifth of
@@ -92,14 +94,14 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   const lowerTilt = Math.atan2(3.54 - 3.24, 1.04 - 0.48);
   for (const s of [-1, 1] as const) {
     const y = 0.74, z = 3.24 + (y - 0.48) * Math.tan(lowerTilt) + 0.035;
-    P.addEquipment('hullDark', box(0.12, 0.46, 0.07), s * 0.56, y, z, lowerTilt, 0, 0);
-    P.addEquipment('hullDark', box(0.16, 0.08, 0.10), s * 0.56, 0.55, 3.31 + 0.05, lowerTilt, 0, 0);
-    P.addEquipment('hullDark', cylZ(0.035, 0.12, 10), s * 0.56, 0.95, 3.52, lowerTilt, 0, 0);
+    P.addEquipment(fit, box(0.12, 0.46, 0.07), s * 0.56, y, z, lowerTilt, 0, 0);
+    P.addEquipment(fit, box(0.16, 0.08, 0.10), s * 0.56, 0.55, 3.31 + 0.05, lowerTilt, 0, 0);
+    P.addEquipment(fit, cylZ(0.035, 0.12, 10), s * 0.56, 0.95, 3.52, lowerTilt, 0, 0);
   }
   // the Danish periscope wipe system over the driver's three periscopes
   const periY = hull.deckTopY(1.03);
-  P.addEquipment('hullDark', box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
-  for (const x of [-0.66, -0.45, -0.24]) P.addEquipment('hullDark', box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
+  P.addEquipment(fit, box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
+  for (const x of [-0.66, -0.45, -0.24]) P.addEquipment(fit, box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
   if (mark === 'a5dk1') {
     // r6 critics: UN on the upper glacis (r8: the bins' lettering, squeezed under their latches, read "IIN": gone) (its face 6 cm over the datum) and the rear plate between the fuel cans
     P.decal('hull', 'stencil', 'UN', 0.50, [0, hull.upperGlacisY(3.10) + 0.065, 3.103], 0, -Math.PI / 3);
@@ -209,15 +211,6 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
         // one armoured door hinged up open (the Aalborg turret), one closed over its window
         if (open) P.addEquipment('turret', box(0.19, 0.17, 0.018), x, roof + 0.43, 0.70, -0.12, 0, 0);
         else P.addEquipment('turret', box(0.19, 0.15, 0.018), x, ...on(0.5, 0.026), slope, 0, 0);
-      }
-      // the 1A5 DK's searchlight in its armoured box on the left of the brow beside the mask, its lid hinged up open (the
-      // Aalborg turret; r7 critics: the mantlet's top read bare)
-      if (mark === 'a5') {
-        P.addEquipment('turret', box(0.34, 0.20, 0.30), 0.62, roof + 0.10, 0.66);
-        P.add('turretDark', box(0.26, 0.13, 0.012), 0.62, roof + 0.10, 0.815);
-        // (r8 critics: the lid read as a loose plate: hinged at the box's rear edge, opened up and back)
-        P.addEquipment('turret', box(0.36, 0.018, 0.30), 0.62, roof + 0.341, 0.459, -1.92, 0, 0);
-        P.addEquipment('turretDark', cylX(0.012, 0.36, 8), 0.62, roof + 0.20, 0.51);
       }
       // the 1A5 DK's roof fast fittings for two rifles, behind the loader's hatch
       for (const x of [0.30, 0.12]) {
@@ -394,6 +387,17 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // r4 (critics: a bare lens in a ring read as a camera): the lamp's rain hood over the lens (r6: its guard bars read
       // as a grille; gone)
       P.add('gunMountDark', box(lamp.halfWidth * 2 + 0.04, 0.02, 0.09), lamp.x, lamp.high + 0.01, lamp.frontZ + 0.03, -0.12, 0, 0);
+      yoke(lamp);
+    } else {
+      // the 1A5 DK's light in its armoured box over the mask to the gun's left, its front door shut (the Aalborg turret;
+      // r8 critics, both: the box with its lid up on the roof's brow stood where the photograph has only a periscope)
+      const lamp = { x: 0.20, halfWidth: 0.20, low: 0.30, high: 0.57, rearZ: -0.14, frontZ: 0.12 };
+      const lampY = (lamp.low + lamp.high) / 2;
+      P.add('gunMount', box(lamp.halfWidth * 2, lamp.high - lamp.low, lamp.frontZ - lamp.rearZ), lamp.x, lampY, (lamp.rearZ + lamp.frontZ) / 2);
+      P.add('gunMount', box(lamp.halfWidth * 2 - 0.05, lamp.high - lamp.low - 0.05, 0.025), lamp.x, lampY, lamp.frontZ + 0.012);
+      P.add('gunMountDark', box(lamp.halfWidth * 2 - 0.08, 0.025, 0.03), lamp.x, lamp.high - 0.035, lamp.frontZ + 0.03);
+      for (const dx of [-0.11, 0.11]) P.add('gunMountDark', box(0.04, 0.05, 0.03), lamp.x + dx, lamp.low + 0.06, lamp.frontZ + 0.03);
+      P.add('gunMount', box(lamp.halfWidth * 2 + 0.02, 0.02, lamp.frontZ - lamp.rearZ + 0.02), lamp.x, lamp.high + 0.01, (lamp.rearZ + lamp.frontZ) / 2);
       yoke(lamp);
     }
     // L7A3 105 mm with its thermal sleeve and evacuator; the 1A5 DK added the muzzle reference collimator

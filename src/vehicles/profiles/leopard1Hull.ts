@@ -260,19 +260,21 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     for (let k = 0; k < 7; k++) {
       P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.26, -3.545);
     }
+    // the cans' carriers: black, or (the UN-white DK-1, its cans painted over) a grey (r8 critics: black frames on white)
+    const carrier = rearCanBucket === 'hull' ? 'hullFittingPaint' : 'hullDark';
     for (const s of [-1, 1] as const) {
       const canX = s * 0.72;
       P.addEquipment(rearCanBucket, box(0.56, 0.66, 0.24), canX, 1.32, -3.45);
       P.addEquipment(rearCanBucket, box(0.48, 0.09, 0.22), canX, 1.685, -3.45);
-      P.addEquipment('hullDark', box(0.23, 0.075, 0.07), canX, 1.75, -3.45);
-      P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.7525, -3.45);
-      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.32, -3.582, 0, 0, 0.66);
-      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.32, -3.584, 0, 0, -0.66);
-      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 1.68, -3.45);
-      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 0.96, -3.45);
-      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX - 0.30, 1.32, -3.45);
-      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX + 0.30, 1.32, -3.45);
-      P.addEquipment('hullDark', box(0.075, 0.11, 0.40), canX, 0.98, -3.34, 0.26, 0, 0);
+      P.addEquipment(carrier, box(0.23, 0.075, 0.07), canX, 1.75, -3.45);
+      P.addEquipment(carrier, cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.7525, -3.45);
+      P.addEquipment(carrier, box(0.035, 0.50, 0.020), canX, 1.32, -3.582, 0, 0, 0.66);
+      P.addEquipment(carrier, box(0.035, 0.50, 0.020), canX, 1.32, -3.584, 0, 0, -0.66);
+      P.addEquipment(carrier, box(0.62, 0.035, 0.28), canX, 1.68, -3.45);
+      P.addEquipment(carrier, box(0.62, 0.035, 0.28), canX, 0.96, -3.45);
+      P.addEquipment(carrier, box(0.035, 0.75, 0.28), canX - 0.30, 1.32, -3.45);
+      P.addEquipment(carrier, box(0.035, 0.75, 0.28), canX + 0.30, 1.32, -3.45);
+      P.addEquipment(carrier, box(0.075, 0.11, 0.40), canX, 0.98, -3.34, 0.26, 0, 0);
       P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.24, 1.42, -3.545);
     }
 

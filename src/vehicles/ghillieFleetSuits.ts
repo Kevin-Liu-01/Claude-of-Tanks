@@ -706,7 +706,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // leafy suit's leaves, tufts past the outline; the cover one mid-olive fabric): fewer, flatter cards close in tone
     // r7 (critics: bright lime cards over the paint read as a patchwork): the cards and the net in the paint's own dull olive;
     // r8 (critics: still patches over paint, spikes past the hem): darker grey-greens matching the paint, fewer cards
-    light: 0x4f5444, dark: 0x383d31, netColor: 'rgba(66,72,58,0.92)', netTextureSeed: 2765,
+    // r9 (r8 critics: the skirt drapes read as stickers with paint between them; the cover grey): one drape the length
+    // of each skirt, the greens deeper and more saturated
+    light: 0x535b3a, dark: 0x2e3420, netColor: 'rgba(64,72,44,0.92)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
@@ -721,7 +723,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.06, seed: 31 }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.04, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
+      side: flanks(-3.50, 3.40, 1.62, 0.52, 1.95, 41, {}, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
     },
   },
   // Leopard 2A5: the wedge roof netted round the PERI, the EMES head, the hatches and the roof gun, drapes down the walls

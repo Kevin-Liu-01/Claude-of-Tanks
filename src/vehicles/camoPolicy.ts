@@ -128,9 +128,8 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
 /** Release 265: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white, the 2A5 DK's
- * three-tone of the 2010s, the 2A7 DK's olive under its Barracuda cover, and (r8, its black-dominant fields off the
- * preset it had matched) the 1A5 DK's 1990s three-tone. */
-const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk', 'paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk'] as const);
+ * three-tone of the 2010s and the 2A7 DK's olive under its Barracuda cover. */
+const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_263[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
@@ -824,9 +823,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
-  // release 265: the Danish line in its own coats (the 1A3 DK's olive drab is near a named preset, so it paints its spec's
-  // coat as Factory)
-  leo1a5dk: 'paint_leo1a5dk',
+  // release 265: the Danish line in its own coats (the 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone are near a
+  // named preset, so they paint their spec's coat as Factory)
   leo1a5dk1: 'paint_leo1a5dk1',
   leo2a5dk: 'paint_leo2a5dk',
   leo2a7dk: 'paint_leo2a7dk',

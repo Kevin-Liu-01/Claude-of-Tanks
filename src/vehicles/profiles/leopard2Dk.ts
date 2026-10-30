@@ -26,6 +26,10 @@ interface SlatPanel {
   readonly high: number;
   readonly posts: readonly number[];
   readonly pitch?: number;
+  /** the bars' depth back from the face and thickness edge-on */
+  readonly bar?: readonly [number, number];
+  /** upright bars along the panel with a middle rail (the bustle cage), not slats across it */
+  readonly upright?: boolean;
 }
 
 function slatPanel(P: TankBuilderPort, bucket: 'hullOpenLattice' | 'turretOpenLattice', o: SlatPanel, origin: Vec3 = [0, 0, 0]): void {
@@ -34,8 +38,15 @@ function slatPanel(P: TankBuilderPort, bucket: 'hullOpenLattice' | 'turretOpenLa
     if (o.along === 'x') P.addEquipment(bucket, box(w, h, d), a - ox, y - oy, o.at - oz);
     else P.addEquipment(bucket, box(d, h, w), o.at - ox, y - oy, a - oz);
   };
-  const bars = Math.max(2, Math.round((o.high - o.low) / pitch));
-  for (let k = 1; k < bars; k++) put(len, 0.014, 0.07, mid, o.low + (o.high - o.low) * k / bars);
+  const [depth, thick] = o.bar ?? [0.07, 0.014];
+  if (o.upright) {
+    const bars = Math.max(2, Math.round(len / pitch));
+    for (let k = 1; k < bars; k++) put(thick, o.high - o.low, depth, o.from + len * k / bars, (o.low + o.high) / 2);
+    put(len + 0.05, 0.03, 0.05, mid, (o.low + o.high) / 2);
+  } else {
+    const bars = Math.max(2, Math.round((o.high - o.low) / pitch));
+    for (let k = 1; k < bars; k++) put(len, thick, depth, mid, o.low + (o.high - o.low) * k / bars);
+  }
   for (const y of [o.low, o.high]) put(len + 0.05, 0.04, 0.05, mid, y);
   for (const a of o.posts) put(0.05, o.high - o.low, 0.05, a, (o.low + o.high) / 2);
 }
@@ -51,14 +62,15 @@ function arm(P: TankBuilderPort, bucket: string, a: Vec3, b: Vec3, origin: Vec3 
  * open (the Grafenwöhr rear photograph), and a band on each rear quarter at upper-hull height, ending above the sprocket
  * and standing within the skirts' width. */
 function addA5DkHullSlats(P: TankBuilderPort): void {
-  const sternZ = -3.97, low = 1.22, high = 1.76, sideX = 1.80;
-  slatPanel(P, 'hullOpenLattice', { along: 'x', at: sternZ, from: -1.72, to: 1.72, low, high, posts: [-1.72, -0.86, 0, 0.86, 1.72] });
+  // (r8 critics: the slats read as thin lines; the Grafenwoehr rear's are close-set and heavy, a dark band)
+  const sternZ = -3.97, low = 1.22, high = 1.76, sideX = 1.80, pitch = 0.06, bar = [0.08, 0.022] as const;
+  slatPanel(P, 'hullOpenLattice', { along: 'x', at: sternZ, from: -1.72, to: 1.72, low, high, posts: [-1.72, -0.86, 0, 0.86, 1.72], pitch, bar });
   for (const x of [-1.30, -0.43, 0.43, 1.30]) {
     for (const y of [1.32, 1.66]) arm(P, 'hullOpenLattice', [x, y, sternZ + 0.03], [x, y, -3.64]);
   }
   for (const side of [-1, 1]) {
     const x = side * sideX;
-    slatPanel(P, 'hullOpenLattice', { along: 'z', at: x, from: sternZ, to: -2.35, low, high: 1.74, posts: [-3.43, -2.89, -2.35] });
+    slatPanel(P, 'hullOpenLattice', { along: 'z', at: x, from: sternZ, to: -2.35, low, high: 1.74, posts: [-3.43, -2.89, -2.35], pitch, bar });
     for (const z of [-3.43, -2.89, -2.35]) {
       for (const y of [1.32, 1.64]) arm(P, 'hullOpenLattice', [side * 1.735, y, z], [x - side * 0.025, y, z]);
     }
@@ -89,8 +101,11 @@ function addDanishFlag(P: TankBuilderPort, pivot: Vec3, base: Vec3): void {
 function addA5DkTurretSlats(P: TankBuilderPort): void {
   const pivot = LEOPARD_X_DATUMS.leo2a5.turretPivot;
   // (r4 critics: the cage's top rail stood over the bustle like a railing; the photograph's is level with the bin lids)
-  const rearZ = -3.00, low = 1.96, high = 2.46, sideFront = -1.55;
-  slatPanel(P, 'turretOpenLattice', { along: 'x', at: rearZ, from: -1.42, to: 1.42, low, high, posts: [-1.42, -0.71, 0, 0.71, 1.42] }, pivot);
+  // (r8 critics on the Grafenwoehr rear: the bustle's cage is close-set upright bars, a near-solid dark band, closed over
+  // the top; the horizontal rails read as an open fence)
+  const rearZ = -3.00, low = 1.96, high = 2.46, sideFront = -1.55, cage = { pitch: 0.085, bar: [0.07, 0.022] as const, upright: true };
+  slatPanel(P, 'turretOpenLattice', { along: 'x', at: rearZ, from: -1.42, to: 1.42, low, high, posts: [-1.42, -0.71, 0, 0.71, 1.42], ...cage }, pivot);
+  P.addEquipment('turretOpenLattice', box(2.84, 0.018, -2.78 - rearZ), -pivot[0], high + 0.011 - pivot[1], (rearZ - 2.78) / 2 - pivot[2]);
   // r2 critics (the Grafenwoehr rear): drab kit packed in the cage between the bins and the slats, under the cage's top
   const bz = (rearZ + 0.025 - 2.78) / 2;
   stowage(P, 'turretCloth', P.rng, ([[-0.95, 0.40], [-0.40, 0.44], [0.20, 0.42], [0.80, 0.46]] as const).map(([x, w], k) =>
@@ -100,8 +115,10 @@ function addA5DkTurretSlats(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     const x = side * 1.46, binOuter = side > 0 ? 1.354 : -1.271;
     // the side bands run forward along about half the turret's side, to just behind the smoke banks
-    slatPanel(P, 'turretOpenLattice', { along: 'z', at: x, from: rearZ, to: sideFront, low, high, posts: [-2.42, -1.98, sideFront] }, pivot);
+    slatPanel(P, 'turretOpenLattice', { along: 'z', at: x, from: rearZ, to: sideFront, low, high, posts: [-2.42, -1.98, sideFront], ...cage }, pivot);
     for (const z of [-2.62, -2.05, sideFront + 0.06]) arm(P, 'turretOpenLattice', [binOuter, 2.20, z], [x - side * 0.025, 2.20, z], pivot);
+    P.addEquipment('turretOpenLattice', box(Math.abs(x - binOuter), 0.018, sideFront - rearZ), (x + binOuter) / 2 - pivot[0],
+      high + 0.011 - pivot[1], (rearZ + sideFront) / 2 - pivot[2]);
     P.addEquipment('turretOpenLattice', box(0.05, high - low, 0.05), x - pivot[0], (low + high) / 2 - pivot[1], rearZ - pivot[2]);
   }
 }

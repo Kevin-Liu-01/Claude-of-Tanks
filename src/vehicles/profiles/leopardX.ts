@@ -164,8 +164,15 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sl
   const trimmed = d !== LEOPARD_X_DATUMS.leo2a6m;
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * (trimmed ? 1 : 1.6),
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true,
-    // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve)
-    tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
+    // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve); r9 (r8
+    // critics, both: a flat bare tan tube on a green tank; the photograph's is the cover's texture, lighter, banded): the
+    // tube in the coat, the wrap's lighter bands over the sleeves
+  });
+  if (sleeved) {
+    for (const f of [0.20, 0.27, 0.34, 0.41, 0.56, 0.63, 0.70, 0.77]) {
+      P.add('gunCanvasPale', cylZ(radius * 1.235, 0.07, 24), 0, 0, f * length);
+    }
+  }
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
