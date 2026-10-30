@@ -235,7 +235,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv121: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
   cv90: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
-  cv9035dk: anchor('hull', 'left', 0.39, 0.60, 0.20, 1),
+  cv9035dk: anchor('hull', 'left', .52, .58, .20, 1),
   cv90_mk4_concept: anchor('hull', 'left', 0.36, 0.59, 0.23, 1),
   // Polish family deliberately uses three different, source-appropriate
   // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
@@ -296,6 +296,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
+  t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
   m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
   m41_bw: anchor('turret', 'left', 0.62, 0.40, 0.22, 1),
   m41_jgsdf: anchor('turret', 'left', 0.62, 0.40, 0.20, 1),

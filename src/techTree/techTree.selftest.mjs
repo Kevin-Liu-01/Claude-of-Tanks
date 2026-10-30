@@ -176,5 +176,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
 // Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
 // off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
-assert.equal(digest, 'd21040c684f6cdb0', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265 (the owner 2026-10-30): the T49 at II off the M41A3 on the US M41 line (lane 10, clear of the M551's and M60A3's
+// connectors).
+assert.equal(digest, '47070c600063b556', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

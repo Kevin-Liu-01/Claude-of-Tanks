@@ -126,17 +126,17 @@ leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -
 // laser warning receivers cue the smoke dischargers. The 35 mm rounds and cycle sit at tier V's 35 mm footing (the KF41
 // Lynx's), a little under its damage so the group's median holds.
 const cv9035dk = danishVariant('cv9035dk', 'cv90', 'CV9035 DK', 'modern');
-Object.assign(cv9035dk.dims, { hullLengthM: 6.87, overallLengthM: 7.10, widthM: 3.19, heightM: 2.80 });
-Object.assign(cv9035dk, { weightTons: 31.75, enginePowerHp: 755 });
 {
   const [sabot, he, second] = cv9035dk.gun.shells;
   cv9035dk.gun = {
     ...cv9035dk.gun,
-    caliberMm: 35, reloadS: 0.55, baseAccuracy: 0.24, aimTimeS: 0.95,
+    // the fleet's 35 mm report (the KF41 Lynx's), not the donor CV90's 40 mm Bofors; every round on the 35 mm's cycle (they
+    // kept the 40 mm's 0.44 s until afvBalance.selftest's per-round check)
+    caliberMm: 35, reloadS: 0.55, baseAccuracy: 0.24, aimTimeS: 0.95, soundProfile: 'kde-35',
     shells: [
-      { ...sabot, name: '35 mm APFSDS-T', caliberMm: 35, pen100Mm: 205, pen1000Mm: 188, pen2000Mm: 170, dmg: 115, velocityMps: 1440 },
-      { ...he, name: '35 mm programmable HE (ABM)', caliberMm: 35, pen100Mm: 20, pen1000Mm: 20, dmg: 118, velocityMps: 1050 },
-      { ...second, name: '35 mm FAPDS', caliberMm: 35, pen100Mm: 160, pen1000Mm: 145, pen2000Mm: 130, dmg: 105, velocityMps: 1385 },
+      { ...sabot, name: '35 mm APFSDS-T', caliberMm: 35, pen100Mm: 205, pen1000Mm: 188, pen2000Mm: 170, dmg: 115, velocityMps: 1440, reloadS: 0.55 },
+      { ...he, name: '35 mm programmable HE (ABM)', caliberMm: 35, pen100Mm: 20, pen1000Mm: 20, dmg: 118, velocityMps: 1050, reloadS: 0.55 },
+      { ...second, name: '35 mm FAPDS', caliberMm: 35, pen100Mm: 160, pen1000Mm: 145, pen2000Mm: 130, dmg: 105, velocityMps: 1385, reloadS: 0.55 },
     ],
   };
 }
@@ -152,11 +152,31 @@ cv9035dk.visual = {
   scheme: 'nato', base: '#4a4f40', weather: '#5a5e50', patches: ['#353b2e', '#202319', '#555a4a'], marking: 'number', number: '45',
   camoScale: 0.45,
 };
-// its measured gun stops (the 35 mm on its solid shroud): the glacis's add-on armour ahead, the rear deck's stowage aft
-// (r10 sweep, the r10 brake and the rear flank bins: the full 8 degrees over the bow)
-cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [21, -8], [24, -7.7], [26, -6], [28, -5.6], [30, -5.5], [35, -5.5],
-  [36, -5.3], [39, -5.4], [40, -6], [41, -7.2], [42, -7.3], [43, -8], [142, -8], [143, -7.1], [144, -6.5], [145, -6.1],
-  [151, -4.7], [152, -4.5], [159, -4.6], [168, -6.6], [170, -6.6], [171, -6.9], [172, -7.9], [174, -8], [180, -8]] as const);
+// the CV90 Mk IV under it (the owner 2026-10-30: "the cv9035 should be based on the cv90 mk 4"; profiles/denmark.ts
+// builds it on profiles/cv90MkivSourceX.ts with the Danish kit): the Mk IV's armour frame, pivots, modules and crew
+// seats and its size, the plates at this tier's own thicknesses; BAE's Mk IV figures, the 1,000 hp and 37 t; the 35 mm
+// barrel to its muzzle (2.42 m from the trunnion)
+{
+  const mk4 = registries.tankSpecs.cv90_mk4;
+  const own = new Map([...cv9035dk.armor.hullPlates, ...cv9035dk.armor.turretPlates].map((plate) => [plate.name, plate]));
+  const keep = (plate: typeof mk4.armor.hullPlates[number]) => {
+    const tier = own.get(plate.name);
+    return tier ? { ...structuredClone(plate), physicalMm: tier.physicalMm, keMm: tier.keMm, ceMm: tier.ceMm, kind: tier.kind } : structuredClone(plate);
+  };
+  cv9035dk.armor = {
+    ...structuredClone(mk4.armor),
+    hullPlates: mk4.armor.hullPlates.map(keep),
+    turretPlates: mk4.armor.turretPlates.map(keep),
+    gunBarrel: { lengthM: 2.42, radiusM: 0.05 },
+  };
+  Object.assign(cv9035dk.dims, { hullLengthM: 6.62, overallLengthM: 6.62, widthM: 3.30, heightM: 2.82 });
+  Object.assign(cv9035dk, { weightTons: 37, enginePowerHp: 1000 });
+}
+// its measured gun stops on the Mk IV (tools/gun-depression-sweep.mjs at 26 mm): the full 8 degrees over the bow but
+// over the corner lamp receivers, and almost none over the raised troop roof astern
+cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [14, -8], [15, -7.5], [16, -6.1], [17, -5.5], [24, -5.1], [26, -5.2],
+  [27, -5.4], [28, -5.9], [30, -8], [134, -8], [136, -2.1], [137, -1.8], [139, -1.7], [141, -0.3], [165, -0.2], [176, -0.3],
+  [178, -1.8], [180, -1.8]] as const);
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk'],
   { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, cv9035dk });

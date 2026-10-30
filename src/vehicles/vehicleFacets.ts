@@ -207,7 +207,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'kv2',
   ]),
   light: Object.freeze([
-    'bmp3m_dragun125', 'cv90105_tml', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'pl01', 'pl01_105',
+    'bmp3m_dragun125', 'cv90105_tml', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'pl01', 'pl01_105', 't49',
   ]),
   // Autocannon-armed fighting vehicles, with the cavalry and reconnaissance types (M3A3 CFV, Ajax).
   ifv: Object.freeze([
@@ -272,7 +272,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'k21', 'lrmv_lynx',
-    'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker', 'pl01', 'pl01_105',
+    'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker', 'pl01', 'pl01_105', 't49',
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
   support: Object.freeze([
@@ -318,10 +318,11 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
-  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies; 262: the Challenger 3 TD's field fit.
+  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies; 262: the Challenger 3 TD's field fit;
+  // 265: the T49, the M41's hull under the M551's turret.
   concept: Object.freeze([
     'carro45t', 'challenger3_td_rws', 'christian2', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105', 'pt64_tur',
-    'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
+    'raiju_ifv', 't49', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
     't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'upior', 'ztz20', 'ztz99_longwei',

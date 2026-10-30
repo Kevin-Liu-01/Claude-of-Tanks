@@ -93,8 +93,8 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // within a shade of a named preset, so
 // no authored paint of their own: Denmark has no national Factory coat, and they paint their spec's coat.
 const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
-// Release 265: the US M41A3 wears the US Factory coat (the owner's 2026-10-22 rule for plain coats).
-const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert' };
+// Release 265: the US M41A3 and the T49 wear the US Factory coat (the owner's 2026-10-22 rule for plain coats).
+const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert' };
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).

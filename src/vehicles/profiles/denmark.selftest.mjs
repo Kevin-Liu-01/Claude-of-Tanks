@@ -2,8 +2,8 @@
 // names (docs/references/photos/leopard-*-dk*-20261029.json). At both qualities: the as-built envelope against its packet
 // (widthM the X extent, overallLengthM the Z extent, tallestM the highest point, within 3%); the Leopard 1 DKs' welded
 // 1A3 turret with each mark's kit; the 2A5 DK's Elop sight and bar armour, without the German builds' remote 30 mm
-// station (the 2A7 DK held, 2026-10-30); the CV9035 DK's 35 mm and no roof weapon station (the M41 DK-1 is
-// m41.selftest.mjs's). Then the tree and the team country: one Denmark tree rooted on the 1A3 DK, the Christian II in
+// station (the 2A7 DK held, 2026-10-30); the CV9035 DK on the CV90 Mk IV (the owner 2026-10-30) with the 35 mm and no
+// missile launcher (the M41 DK-1 is m41.selftest.mjs's). Then the tree and the team country: one Denmark tree rooted on the 1A3 DK, the Christian II in
 // its special lane, Denmark a country that fills first from Sweden.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -58,9 +58,11 @@ for (const [id, file] of Object.entries(PACKETS)) {
         assert.ok(r.cheekRoot[0] < r.halfWidth, `${id}: the pointed plan front`);
       } else if (id === 'cv9035dk') {
         assert.equal(spec.role, 'ifv', `${id}: an IFV`);
-        const gun = tank.root.getObjectByName('rig_gun').userData.cv90GunAssemblyReceipt;
-        assert.equal(gun?.mainGunCaliberMm, 35, `${id} ${quality}: the 35 mm Bushmaster III`);
-        assert.equal(turret.userData.cv90RoofRwsReceipt, undefined, `${id} ${quality}: no roof weapon station`);
+        const gun = tank.root.getObjectByName('rig_gun').userData.cv9035DkReceipt;
+        assert.equal(gun?.host, 'cv90_mk4', `${id} ${quality}: on the CV90 Mk IV`);
+        assert.equal(gun.mainGunCaliberMm, 35, `${id} ${quality}: the 35 mm Bushmaster III`);
+        assert.equal(gun.missileLauncher, false, `${id} ${quality}: no missile launcher`);
+        assert.ok(!spec.gun.shells.some((shell) => shell.guided), `${id}: no guided round`);
       } else {
         const r = turret.userData.leopard2DkReceipt;
         assert.ok(r, `${id} ${quality}: the Danish kit's receipt`);

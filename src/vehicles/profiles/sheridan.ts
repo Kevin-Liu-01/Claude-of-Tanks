@@ -1200,7 +1200,7 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
   // aggregate bounds.
   // 2026-10-19 (owner float sweep): the base Sheridan's surveyed lugs stood 0.39-0.47 m clear of its casting too; both
   // marks seat them on the lower cheek
-  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan') {
+  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan' || P.spec.id === 't49') {
     // The donor's surveyed loose lugs sat below and ahead of the casting.
     // Seat each complete three-layer lug on the actual TTS lower cheek.
     // Points/normals are measured from the bare procedural shell, not bounds.
@@ -1455,7 +1455,7 @@ function addTtsLowerCheekEra(P: SheridanBuilderPort, side: number): void {
   }, true);
 }
 
-function addSheridanTurretProtection(P: SheridanBuilderPort): void {
+function addSheridanTurretProtection(P: SheridanBuilderPort, era = true): void {
   const { box } = KIT;
   // Turret cheek ERA follows the cast tangent, with attachment rails buried
   // into the shell rather than suspended in front of it.
@@ -1474,6 +1474,7 @@ function addSheridanTurretProtection(P: SheridanBuilderPort): void {
       addTtsLowerCheekEra(P, side);
       continue;
     }
+    if (!era) continue;
     P.eraCluster(`sheridan_turret_era_${suffix}`, (put) => {
       // Custom applique sits on the lower cast cheek. The previous pass
       // accidentally treated the Object_10 smoke-tube envelopes as ERA
@@ -1832,6 +1833,17 @@ function buildSheridan(P: SheridanBuilderPort): void {
   addSheridanRoofStations(P, isTts);
   addSheridanSmokeAndAntenna(P);
   finishSheridan(P, isTts);
+}
+
+/** The M551's turret on another hull (release 265: the T49 seats it on the M41's ring, profiles/m41.ts; the owner
+ *  2026-10-30): the cast shell and its stowage, the M81 gun-launcher, the cheek rails, both roof stations, the smoke
+ *  banks and the antennas, without the cheek ERA (the T49's armour carries no ERA sectors). */
+export function buildSheridanTurret(P: SheridanBuilderPort): void {
+  addSheridanTurretShellAndStowage(P);
+  addSheridanM81Gun(P);
+  addSheridanTurretProtection(P, false);
+  addSheridanRoofStations(P, false);
+  addSheridanSmokeAndAntenna(P);
 }
 
 export const SHERIDAN_PROFILES = Object.freeze({

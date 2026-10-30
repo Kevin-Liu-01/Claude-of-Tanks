@@ -114,4 +114,38 @@ m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [11, -9.7], [12, -9.5], [25,
   [153, -1.8], [155, -1.9], [156, -2.3], [157, -7.4], [158, -7.4], [163, -7.9], [165, -6.6], [167, -6.5],
   [180, -6.7]] as const);
 
-registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'], { m41a3, m41_bw, m41_jgsdf, m41dk1 });
+// The T49 (the owner 2026-10-30: "now that we have the m41 hull we can put the m551 turret on it and call it a t49"):
+// the M41A3's hull, running gear and Continental under the M551 Sheridan's turret and its 152 mm M81 gun-launcher with
+// the Shillelagh (profiles/m41.ts builds it); the 1950s light-tank programme tried bigger guns on the M41 under that
+// name, and the games know it in this form. The turret's plates, gun, traverse and crew seats are the M551's, its
+// pivot on the M41's ring at the M551's own seat: its shell rests 0.136-0.16 m over the pivot on a raised ring collar
+// (profiles/m41.ts), as on the M551's raised roof (seated on the M41's deck the gun-launcher's shroud met the driver's
+// hatch: 4.1 degrees over the bow); no ERA (the build carries none).
+// Its hit points at the M41 DK-1's tier II footing.
+const t49 = m41('t49', 'T49', 'USA');
+{
+  const sheridan = registries.tankSpecs.m551_sheridan;
+  Object.assign(t49, {
+    hp: 1300, weightTons: 24.5, turretTraverseDegS: sheridan.turretTraverseDegS, gunPitchDegS: sheridan.gunPitchDegS,
+    gunElevationDeg: sheridan.gunElevationDeg, gunDepressionDeg: sheridan.gunDepressionDeg,
+  });
+  t49.gun = structuredClone(sheridan.gun);
+  const inTurret = (entry: { turretLocal?: boolean }): boolean => entry.turretLocal === true;
+  t49.armor = {
+    ...t49.armor,
+    turretPivot: [0, 1.48, 0.20],
+    gunPivot: [...sheridan.armor.gunPivot],
+    gunBarrel: { ...sheridan.armor.gunBarrel },
+    turretPlates: sheridan.armor.turretPlates.filter((plate) => plate.kind !== 'era').map((plate) => structuredClone(plate)),
+    modules: [...t49.armor.modules.filter((m) => !inTurret(m)), ...sheridan.armor.modules.filter(inTurret).map((m) => structuredClone(m))],
+    crew: [...t49.armor.crew.filter((c) => !inTurret(c)), ...sheridan.armor.crew.filter(inTurret).map((c) => structuredClone(c))],
+  };
+  Object.assign(t49.dims, { overallLengthM: 6.30, heightM: 2.31 });
+  t49.visual = { ...t49.visual, scheme: 'solid', base: '#4b4e32', weather: '#575a3e', patches: [], marking: 'star', number: '49', camoScale: 0.5 };
+}
+// the T49's measured gun stops (tools/gun-depression-sweep.mjs at 26 mm, the turret on its ring collar): the M551's full
+// 8 degrees but over the M41's rear quarters, where the gun-launcher crosses the deck's fittings
+t49.gunPitchByYawDeg = Object.freeze([[0, -8], [135, -8], [140, -6.8], [142, -5.7], [145, -5.7], [148, -6.7], [150, -6.9],
+  [151, -7.2], [152, -8], [180, -8]] as const);
+
+registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'], { m41a3, m41_bw, m41_jgsdf, m41dk1, t49 });

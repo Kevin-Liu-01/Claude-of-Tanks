@@ -45,6 +45,9 @@ export const USA_TREE: NationTree = Object.freeze({
     // Sheridan
     // release 265: the M41 Walker Bulldog, the M46 and M47's light-tank contemporary, a step from the root at I
     node({ id: 'm41a3', tier: 1, line: 'm41', lane: 5, parents: ['m46_patton'], slot: 'line' }),
+    // the T49 (the owner 2026-10-30): the M41's hull under the M551's turret, the Sheridan's gun a tier up (lane 10: the
+    // M551's connector to the M2A2 runs down tier II's lanes 1-9, the M60A3's to the M1A1 along lane 0)
+    node({ id: 't49', tier: 2, line: 'm41', lane: 10, parents: ['m41a3'], slot: 'line' }),
     node({ id: 'm551_sheridan', tier: 2, line: 'sheridan', lane: 1, parents: ['m48a5_patton'], slot: 'line' }),
     node({ id: 'm551a1_tts', tier: 4, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),
     node({ id: 'griffin_viper', tier: 3, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),

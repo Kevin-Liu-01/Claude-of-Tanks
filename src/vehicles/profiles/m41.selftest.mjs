@@ -2,7 +2,8 @@
 // qualities. The M41A3's datums are its registered print's (SIpriv's "Low poly M41Walker Bulldog", scaled once on the
 // published 5.82 m hull): five 0.716 m road wheels, the turret on its 1.44 m base with a 0.74 m roof, the muzzle on 5.21 m.
 // The Bundeswehr, JGSDF and Danish DK-1 marks share the build and carry their own kit; each derivative's as-built envelope
-// holds its photo packet (docs/references/photos/m41-*-20261029.json). Every mark sits in its own nation's tree.
+// holds its photo packet (docs/references/photos/m41-*-20261029.json). Every mark sits in its own nation's tree. The T49
+// (the owner 2026-10-30) is the US hull under the M551's turret and 152 mm gun-launcher, a tier over the M41A3.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import * as THREE from 'three';
@@ -18,7 +19,7 @@ const MARKS = {
   'm41_jgsdf': { nation: 'Japan', tree: 'japan', tier: 1, packet: 'm41-jgsdf-20261029.json' },
   'm41dk1': { nation: 'Denmark', tree: 'denmark', tier: 2, packet: 'm41-dk-1-20261029.json' },
 };
-await ensureInteriorFills(Object.keys(MARKS));
+await ensureInteriorFills([...Object.keys(MARKS), 't49']);
 const near = (actual, expected, label, tolerance = 0.01) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual.toFixed(3)} m, expected ${expected} m`);
 
@@ -59,4 +60,27 @@ for (const [id, mark] of Object.entries(MARKS)) {
     }
   }
 }
-console.log(`m41.selftest: ${Object.keys(MARKS).length} M41 marks at both qualities on the print's datums, each in its nation's tree`);
+{
+  const id = 't49', spec = getSpec(id);
+  assert.equal(spec.nation, 'USA', `${id}: the USA's`);
+  assert.equal(spec.role, 'light', `${id}: a light tank`);
+  assert.equal(spec.gun.caliberMm, 152, `${id}: the M551's 152 mm gun-launcher`);
+  assert.ok(spec.gun.shells.some((shell) => shell.guided), `${id}: the Shillelagh`);
+  assert.ok(!spec.armor.turretPlates.some((plate) => plate.kind === 'era'), `${id}: no ERA sectors`);
+  assert.equal(nodeForVehicle(id)?.tree.id, 'usa', `${id}: drawn in the US tree`);
+  assert.equal(displayTier(id), 2, `${id}: a tier over the M41A3`);
+  for (const quality of ['high', 'low']) {
+    const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
+    try {
+      tank.root.updateMatrixWorld(true);
+      const turret = tank.root.getObjectByName('rig_turret');
+      assert.equal(turret.userData.m41TurretReceipt, undefined, `${id} ${quality}: not the M41's turret`);
+      near(turret.getWorldPosition(new THREE.Vector3()).y, 1.48, `${id} ${quality} the M551 turret's seat on its ring collar`);
+      // the M551's tube to 3.19 m ahead of its pivot, the pivot on the M41's ring at 0.20
+      near(new THREE.Box3().setFromObject(tank.root.getObjectByName('rig_gun')).max.z, 3.39, `${id} ${quality} muzzle`, 0.05);
+    } finally {
+      tank.dispose?.();
+    }
+  }
+}
+console.log(`m41.selftest: ${Object.keys(MARKS).length} M41 marks at both qualities on the print's datums, each in its nation's tree; the T49`);

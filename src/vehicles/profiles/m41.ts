@@ -9,6 +9,8 @@
 //   skirts, the Jahn Anderson thermal sight and Ericsson laser rangefinder in a box on the mantlet's right, the mantlet's
 //   canvas cover, Wegmann dischargers, mesh baskets on the turret's sides and rear, the Cummins diesel's deck, the .30 cal
 //   on the cupola.
+// - t49: the T49 (the owner 2026-10-30): the US hull under the M551 Sheridan's turret and 152 mm gun-launcher
+//   (profiles/sheridan.ts buildSheridanTurret).
 // Datums: the published 5.82 m hull, 3.20 m over the tracks, five 25.5 in dual road wheels a side, three return rollers,
 // the drive sprocket at the rear; the turret's stations from the Aalborg DK-1's photographs. The cast loft (a station is
 // a floor, walls rising to the widest point and a superellipse shoulder onto the roof) is the Patton rebuild's
@@ -21,8 +23,9 @@ import { beamBetween } from './measuredPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { buildSheridanTurret } from './sheridan.ts';
 
-export type M41Mark = 'us' | 'bw' | 'jgsdf' | 'dk1';
+export type M41Mark = 'us' | 'bw' | 'jgsdf' | 'dk1' | 't49';
 type Geo = THREE.BufferGeometry;
 
 // ------------------------------------------------------------------------------------------------- the cast loft --
@@ -425,6 +428,20 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
   buildM41HullFittings();
   yield 'buildM41HullFittings';
 
+  if (mark === 't49') {
+    // the T49 (the owner 2026-10-30: "now that we have the m41 hull we can put the m551 turret on it and call it a
+    // t49"): the M551's turret and M81 gun-launcher on the M41's ring at the M551's own seat (m41Specs.ts), its shell on a
+    // raised ring collar from the deck to 5 mm under it, as the M551's raised roof carries it (the shell reaches 0.78 m
+    // from the axis astern, so the collar stays inside that); the white star on its sides at the M551's number seats
+    const collarTop = 1.48 + 0.131, collarFoot = 1.38;
+    P.add('hull', cylY(0.92, 0.97, collarTop - collarFoot, P.q ? 40 : 24), 0, (collarTop + collarFoot) / 2, RING.z);
+    buildSheridanTurret(P as unknown as Parameters<typeof buildSheridanTurret>[0]);
+    for (const s of [-1, 1] as const) P.decal('turret', 'star', null, 0.30, [s * 1.20, 0.43, -0.36], s * Math.PI / 2);
+    P.topY = 0.96;
+    yield 'buildT49Turret';
+    return;
+  }
+
   // ---------------------------------------------------------------- turret --
   P.turretG.position.set(0, RING.y, RING.z);
   const sideAt = (y: number, z: number): number => castSideAt(TURRET, y, z);
@@ -685,10 +702,12 @@ export const buildM41A3 = steppedBuilder((P: TankBuilderPort) => buildM41Steps(P
 export const buildM41BW = steppedBuilder((P: TankBuilderPort) => buildM41Steps(P, 'bw'));
 export const buildM41JGSDF = steppedBuilder((P: TankBuilderPort) => buildM41Steps(P, 'jgsdf'));
 export const buildM41DK1 = steppedBuilder((P: TankBuilderPort) => buildM41Steps(P, 'dk1'));
+export const buildT49 = steppedBuilder((P: TankBuilderPort) => buildM41Steps(P, 't49'));
 
 export const M41_PROFILES = {
   m41a3: { build: buildM41A3 },
   m41_bw: { build: buildM41BW },
   m41_jgsdf: { build: buildM41JGSDF },
   m41dk1: { build: buildM41DK1 },
+  t49: { build: buildT49 },
 };

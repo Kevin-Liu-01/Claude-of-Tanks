@@ -22,7 +22,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   leo2a4_v: 8, leo2a4m: 8, leo2a4m_can: 8, leo2a5: 9, leo2a5dk: 9, leo2a5m: 9, leo2a6: 9, leo2a6_ua: 9, leo2a6m: 9, leo2a7v: 10,
   leopard2_proto: 3, lrmv_lynx: 5, m1a1: 8, m1a1_abrams_aim: 8, m1a1_abrams_fep: 8, m1a1_abrams_hc: 8,
   m1a1_abrams_sa: 8, m1a1ha: 8, m1a2_abrams: 9, m1a2_abrams_sepv2: 9, m1a2_abrams_sepv3: 10, m1a2_abrams_tusk: 9,
-  m1a3: 10, m2a2_bradley: 2, m3a3_bradley: 5, m46_patton: 1, m47_patton: 1, m41_bw: 1, m41_jgsdf: 1, m41a3: 1, m41dk1: 2, m48a5_patton: 1, m551_sheridan: 2,
+  m1a3: 10, m2a2_bradley: 2, m3a3_bradley: 5, m46_patton: 1, m47_patton: 1, m41_bw: 1, m41_jgsdf: 1, m41a3: 1, m41dk1: 2, t49: 2, m48a5_patton: 1, m551_sheridan: 2,
   m551a1_tts: 4, m60a1: 1, m60a2: 2, m60a3: 1, m6_linebacker: 5, marder1a3: 2, marder2: 5, mbt70: 3, merkava1b: 1,
   merkava2b: 3, merkava2d: 3, merkava3_baz: 8, merkava3c: 8, merkava3d: 8, merkava4: 9, merkava4_barak: 9,
   merkava4_trophy: 9, merkava4b: 9, namer_ifv: 4, object148_proto: 10, object695: 10, pl01: 10, pl01_105: 10,

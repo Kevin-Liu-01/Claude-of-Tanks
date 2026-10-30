@@ -223,7 +223,7 @@ const missileVelocityByVehicle = new Map([
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
   ['marder1a3', 130], ['m3a3_bradley', 195], ['bmp3', 240.5], ['upior', 117],
-  ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
+  ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5], ['t49', 208],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
   ['kurganets25', 240], ['warrior_tes_h', 130], ['aft10', 208], ['cv90_mk4', 210], ['k21', 130],

@@ -7,15 +7,16 @@
   "targets": {
     "cv9035dk": {
       "name": "CV9035 DK",
-      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): CV9035 DK at tier V (the in-service vehicle, not the MkIIIC on order), the CV90 family's build with the 35 mm Bushmaster III and the Danish fit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): CV9035 DK at tier V with the 35 mm Bushmaster III and the Danish fit. The owner on 2026-10-30: \"the cv9035 should be based on the cv90 mk 4\": it is built on the fleet's CV90 Mk IV (profiles/cv90MkivSourceX.ts, docs/references/tanks/cv90_mkiv_x.md); no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
       "sources": [
         "https://armyvehicles.dk/cv9035.htm",
-        "https://commons.wikimedia.org/wiki/File:Danish_CV90_75.117.jpg"
+        "https://commons.wikimedia.org/wiki/File:Danish_CV90_75.117.jpg",
+        "https://www.baesystems.com/en/product/cv90"
       ],
-      "widthM": 3.474,
-      "overallLengthM": 6.61,
-      "tallestM": 3.077,
-      "envelopeBasis": "Width, length and tallest are the as-built envelope of the CV90 build with the Danish turret fit: the heavier 35 mm Bushmaster III with its long slotted muzzle brake, the muzzle about 0.3 m short of the bow (r4 and r7: the Latvia side photograph), so the length is the hull's own, laser-warning heads in place of the roof weapon station (the Danish vehicles carry none), and the Danish coat, as the Holstebro photograph of 75.117 (2024, CC0) shows.",
+      "widthM": 3.326,
+      "overallLengthM": 6.695,
+      "tallestM": 3.853,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the CV90 Mk IV build with the Danish fit: the 35 mm Bushmaster III with its long slotted muzzle brake in place of the Mk IV's 50 mm, the muzzle short of the bow, so the length is the hull's own; no missile launcher (the Danish vehicles carry none); the Danish registration plate and coat, as the Holstebro photograph of 75.117 (2024, CC0) shows them on the Danish CV9035. The tallest point is the whip antennas'.",
       "caliberMm": 35,
       "launcherTubes": 0,
       "roofMachineGuns": 0,

@@ -331,7 +331,42 @@ function buildCv90Cannon(P: TankBuilderPort): void {
   P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:outer,innerRadiusM:inner,depthM:depth,rimProjectionM:.0996};
 }
 
-export function buildCv90MkivX(P: TankBuilderPort): void {
+/** The CV9035 DK's 35 mm Bushmaster III on the Mk IV's mount (release 265): a slimmer barrel than the 50 mm's and the
+ *  35 mm's long slotted brake, about twice the barrel across (the Danish CV9035 photographs; the lane's r9 critics),
+ *  in plain steel with dark rings, the muzzle just short of the bow. */
+function buildCv9035DkCannon(P: TankBuilderPort): void {
+  P.add('gunMount',sectionSolid([
+    {z:-.14,ring:[[-.26,-.24],[.26,-.24],[.29,.14],[.20,.26],[-.20,.26],[-.29,.14]]},
+    {z:.42,ring:[[-.13,-.13],[.13,-.13],[.15,.10],[.10,.15],[-.10,.15],[-.15,.10]]},
+  ]));
+  const n=P.q?28:14,barrel=.050,brakeR=.098,ringR=.104,brakeL=.47,mouth=2.42,z0=mouth-brakeL;
+  // open shells (a capped cylinder would close the bore), the brake's back closed by an annulus onto the barrel
+  const shell=(r: number,len: number)=>new THREE.CylinderGeometry(r,r,len,n,1,true).rotateX(Math.PI/2);
+  P.add('gun',shell(barrel,z0+.02-.30),0,0,(z0+.02+.30)/2);
+  P.add('gun',shell(brakeR,brakeL),0,0,z0+brakeL/2);
+  P.add('gun',new THREE.RingGeometry(barrel,brakeR,n).rotateY(Math.PI),0,0,z0);
+  for(const dz of [.05,.20,.35])P.add('gunDark',shell(ringR,.024),0,0,z0+dz);
+  P.add('gun',shell(ringR,.036),0,0,mouth-.018);
+  const inner=.0175,depth=.065;
+  const throat=new THREE.CylinderGeometry(inner,inner,depth,n,1,true).rotateX(Math.PI/2),index=throat.index!;
+  for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}throat.computeVertexNormals();
+  P.add('gunDark',throat,0,0,mouth-depth/2);
+  P.add('gun',new THREE.RingGeometry(inner,ringR,n),0,0,mouth);
+  P.add('gunDark',new THREE.CircleGeometry(inner,n),0,0,mouth-depth);
+  P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:ringR,innerRadiusM:inner,depthM:depth,rimProjectionM:0};
+}
+
+/** The CV9035 DK's Danish Army registration plate, black with white figures, on the nose's upper plate left of centre
+ *  (the Holstebro photograph's "75.177"). */
+function addCv9035DkPlates(P: TankBuilderPort): void {
+  P.addEquipment('hullDark',box(.44,.12,.012),.42,1.05,3.236);
+  P.decal('hull','stencilWhite','75.145',.32,[.40,1.05,3.244],0);
+}
+
+/** The CV90 Mk IV (release 265: `danish` builds the CV9035 DK on it, profiles/denmark.ts; the owner 2026-10-30: "the
+ *  cv9035 should be based on the cv90 mk 4"): the 35 mm in place of the 50 mm, no missile launcher (the Danish CV90s
+ *  carry none) and the Danish plate. */
+export function buildCv90MkivX(P: TankBuilderPort, kit: { readonly danish?: boolean } = {}): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
     hull: ['hullExternalArmor', 'hullHatch'],
@@ -345,9 +380,18 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   buildCv90TurretArmor(P,py,pz);
   buildCv90CrewHatch(P,px,py,pz);
   buildCv90RoofSights(P,px,py,pz);
-  buildCv90MissileCanisters(P);
-  buildCv90Cannon(P);
+  if(kit.danish){
+    optic(P,-.282,2.407,.25,.488,.245,.377);
+    buildCv9035DkCannon(P);
+    addCv9035DkPlates(P);
+    if(P.geometryReceipt)P.gunG.userData.cv9035DkReceipt=Object.freeze({
+      host:'cv90_mk4',mainGunCaliberMm:35,muzzleZ:P.muzzleZ,missileLauncher:false,registrationPlate:'75.145',
+    });
+  }else{
+    buildCv90MissileCanisters(P);
+    buildCv90Cannon(P);
+  }
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.82-py;
-  P.hullG.userData.xRebuild={candidate:'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:kit.danish?'cv9035dk':'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
