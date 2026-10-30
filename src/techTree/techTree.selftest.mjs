@@ -175,5 +175,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Re-pinned 2026-10-30 at integ/265 4e349bd6bc (every other tree check passes): the Pattons' M48 nodes and the Centurion
 // family's six beside the Longwei family.
 // 265: the Leopard 1A2A1 drawn on its 1A5's node at I.
-assert.equal(digest, '5c5d8a86e94c23c4', `tree content changed: re-pin to ${digest} if deliberate`);
+// Re-pinned 2026-10-30 at integ/265 79f8a35382 (every other tree check passes): + the Leopard 1A2A1 on its 1A5's node.
+assert.equal(digest, 'e4b62fac00fccc2c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
