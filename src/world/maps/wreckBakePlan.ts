@@ -20,7 +20,7 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
   frontier: [['m60a3', 2002, 1], ['m1a1', 2133, 1], ['leo1a5', 2264, 1], ['marder1a3', 2395, 1], ['t80b', 2526, 1], ['bmp2', 2657, 0]],
   longleaf: [],
   mangrove: [['type59', 2002, 1], ['type59', 2133, 0], ['bmp2', 2264, 1], ['t62_1975', 2395, 1], ['t62_1975', 2526, 0], ['m48a5_patton', 2657, 1]],
-  mars: [['abramsx', 2002, 1], ['object148_proto', 2133, 0], ['challenger3_proto', 2264, 1], ['m1a3', 2395, 0], ['kf51_evo', 2526, 0]],
+  mars: [['abramsx', 2002, 1], ['object148_proto', 2133, 0], ['pl01', 2264, 1], ['m1a3', 2395, 0], ['kf51_evo', 2526, 0]],
   monsoon: [],
   moon: [],
   oasis: [['m60a3', 2002, 1], ['m60a3', 2133, 0], ['m1a1', 2264, 1], ['t62_1975', 2395, 1], ['type59', 2526, 0]],

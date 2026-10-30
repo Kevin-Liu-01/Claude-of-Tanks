@@ -110,6 +110,22 @@ const HULL_ROWS: readonly HullRow[] = [
 const TUB = 0.92, SPONSON = 1.707, TROUGH = 0.45;
 /** Road-wheel stations, rear to front (the tire bottoms' clusters on both sides). */
 const ROAD_WHEEL_Z = [-2.571, -1.448, -0.537, 0.540, 1.434, 2.363];
+/** The oracle's Hydrogas unit (Object_17), one casting at every station, (z about the wheel centre, y) counter-clockwise:
+ *  the web slanting from over the wheel down to the 0.555 sill ahead of it, and the pivot block ahead with its chamfered
+ *  front; |x| from the tub wall to the track lane's inner edge (the oracle's 0.924-1.105). */
+const UNIT_WEB = [[-0.273, 0.764], [0.273, 0.555], [0.273, 0.791], [0, 0.873], [-0.273, 0.900]] as const;
+const UNIT_BLOCK = [[0.273, 0.555], [0.564, 0.555], [0.582, 0.573], [0.582, 0.764], [0.518, 0.927], [0.327, 0.927],
+  [0.273, 0.809]] as const;
+const UNIT_X = [0.915, 1.090] as const;
+function unitPlanes(profile: readonly (readonly [number, number])[], side: number, wheelZ: number): Plane[] {
+  const planes: Plane[] = side > 0 ? [[1, 0, 0, UNIT_X[1]], [-1, 0, 0, -UNIT_X[0]]] : [[-1, 0, 0, UNIT_X[1]], [1, 0, 0, -UNIT_X[0]]];
+  for (let i = 0; i < profile.length; i++) {
+    const [z0, y0] = profile[i], [z1, y1] = profile[(i + 1) % profile.length];
+    const ny = -(z1 - z0), nz = y1 - y0;
+    planes.push([0, ny, nz, ny * y0 + nz * (z0 + wheelZ)]);
+  }
+  return planes;
+}
 function hullRing([, belly, floor, deck, edge, trough]: HullRow): SectionPoint[] {
   const chamfer = Math.min(0.12, floor - belly - 0.01);
   const shoulder = edge - 0.07;
@@ -187,8 +203,10 @@ function buildHull(P: TankBuilderPort): void {
     const indicator = box(0.08, 0.05, 0.012);
     markVehicleNightLens(indicator, 'marker');
     hull('hullGlass', indicator, side * 1.32, 1.50, 3.266);
-    // Hydrogas units on the hull side above each station, inboard of the track
-    for (const z of ROAD_WHEEL_Z) hull('hullRunningGearDark', box(0.15, 0.35, 0.34), side * 1.005, 1.025, z);
+    // Hydrogas units on the hull side at each station, inboard of the track (the oracle's Object_17 casting)
+    for (const z of ROAD_WHEEL_Z) for (const profile of [UNIT_WEB, UNIT_BLOCK]) {
+      hull('hullRunningGearDark', planeSolid(unitPlanes(profile, side, z)));
+    }
     // headlight clusters and guards on the glacis corners
     KIT.headlight(P, side * 0.55 * S, 1.43 * S, (3.31 + DZ) * S, -0.2, 0.06);
     hull('hullDetail', box(0.03, 0.16, 0.20), side * 0.66, 1.43, 3.27, -0.2);
@@ -245,6 +263,15 @@ function buildGear(P: TankBuilderPort): void {
     rollers: [1.945, 0.0, -2.0].map((r) => ({ z: z(r), y: 1.047 * S, r: 0.11 * S })),
     trackW: 0.585 * S, topY: 1.235 * S, contactZF: z(2.55), contactZR: z(-2.75),
     fitLoadedRun: true, shoeRadialScale: 0.55, paintedEnds: true, coveredTop: 1.20 * S,
+    // the trailing arms on the units' outer faces (installed metres): arm and axle boss in the track lane's shadow at
+    // |x| 1.206-1.257, so nothing inboard of the track reaches under the units' 0.61 m sill (the oracle draws no arm
+    // there), and the pivot boss back through the unit's block to the tub wall; the pattern's own lift and trail
+    suspensionDimensions: {
+      armWidthM: 0.05, armHeightM: 0.15, armAxleHeightM: 0.13, armCenterAbsXM: 1.231,
+      anchorBossWidthM: 0.246, anchorBossRadiusM: 0.075, anchorBossCenterAbsXM: 1.133,
+      axleBossWidthM: 0.052, axleBossRadiusM: 0.075, axleBossCenterAbsXM: 1.231,
+      anchorLiftM: 0.82 * 0.40 * S, anchorTrailM: 1.05 * 0.40 * S,
+    },
   });
 }
 

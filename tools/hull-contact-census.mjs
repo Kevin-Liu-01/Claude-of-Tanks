@@ -5,11 +5,12 @@
 //   node tools/hull-contact-census.mjs --all --json=out.json [--where]   (--where: each part's authoring source lines)
 // Prints one summary line per tank, then each visible float (clearance >= 4 mm) and each belly pit.
 import { writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { hullContactCensus, VISIBLE_FLOAT_GAP_M } from './hull-contact-census-lib.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const ids = process.argv.includes('--all') ? Object.keys(FLEET_GROUP_BY_ID) : (arg('ids') ?? '').split(',').filter(Boolean);
+const ids = process.argv.includes('--all') ? Object.keys(FLEET_GROUP_BY_ID) : uniqueIds((arg('ids') ?? '').split(',').filter(Boolean), 'hull-contact-census --ids');
 if (!ids.length) { console.error('usage: node tools/hull-contact-census.mjs --ids=a,b | --all [--json=path]'); process.exit(1); }
 const allIslands = process.argv.includes('--all-islands');
 const out = [], f = (v) => v.map((n) => n.toFixed(3)).join(',');

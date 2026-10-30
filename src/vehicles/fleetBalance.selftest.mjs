@@ -138,7 +138,10 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 77 -> 79 (263, Main's ruling): the C1 Ariete's gun face and the FV4030/6's gun slot (the Challenger 1 marks ride the
 // Mk 3's turret, vickers-cr1-262, and need no slot lever).
 // 79 -> 81 (263): the three Challenger 1 marks' turret front on the Mk 3's turret (the Mk 2's entry extended).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 81,
+// 81 -> 106 (263, FAIRNESS-263 merged by the 264 integrator): same-tier fairness on the merged 263 fleet at I, VI, VIII
+// and X (applySameTierFairness; fourteen more extend their entries), commit B's 263-build CR1 entries dropped for C1 + C2.
+// 106 -> 107 (264, Main's ruling): the Leopard 2A6 UA on the 2A6's main plates, HP and cadence.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 107,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -174,6 +177,7 @@ assert.deepEqual({
   accuracy: 0.263,
   aim: 1.76,
   alpha: 520,
+  // 263: the marks keep the L26A1's 757 mm round (commit B's 790 mm round dropped for C1 + C2, Main 10-29)
   penetration: [757, 689, 620],
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
 assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
@@ -337,8 +341,9 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), shownGroup(TANK_SPECS.strv103
   'garage normalizes the 103A against its Cold War peers of its shown tier');
 
 const japaneseMbtProgression = [
-  ['type90_kyumaru', 8, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
-  ['type90a', 8, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
+  // 263 (FAIRNESS-263): the Type 90 family's clip cycles 9 s (the Kyū-maru, 2,450 HP) and 8.5 s (the 90A) at VIII
+  ['type90_kyumaru', 8, 2450, 1550, 34, 52.8, 46.6, 30, 9, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90a', 8, 2400, 1500, 30, 50.6, 44.5, 34, 8.5, 3, 2.0, 510, 855, 700, 134, 672],
   ['type10_tk_x', 9, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
   ['type10b', 9, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
@@ -421,7 +426,8 @@ const pattonProgression = [
   // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
   ['m48a5_patton', 1, 2050, 50, 7, 450, 580, 535, 490],
   ['m60a1', 1, 2100, 52, 6.8, 440, 570, 530, 480],
-  ['m60a3', 1, 2200, 50, 6.4, 450, 610, 570, 520],
+  // 263 (FAIRNESS-263): the M60A3 takes the M60A1's 2,100 HP and a 6.8 s cycle at I; its firepower still leads the family
+  ['m60a3', 1, 2100, 50, 6.8, 450, 610, 570, 520],
 ];
 let previousPattonDpm = 0;
 for (const [id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000]

@@ -436,16 +436,18 @@ uniform vec3 uCamRight;
 uniform vec3 uCamUp;
 uniform vec3 uCamFwd;
 uniform vec2 uCamTan;
+// (battle-camera-264) the frustum centre's offset per unit depth: the chase framing's lens shift (cameraLens.ts)
+uniform vec2 uCamShift;
 uniform vec2 uHistorySize;
 uniform vec2 uTraceSize;
 vec3 cloudViewDir( vec2 uv ) {
-	vec2 ndc = ( uv * 2.0 - 1.0 ) * uCamTan;
+	vec2 ndc = ( uv * 2.0 - 1.0 ) * uCamTan + uCamShift;
 	return normalize( uCamFwd + uCamRight * ndc.x + uCamUp * ndc.y );
 }
-vec3 cloudProject( vec3 p, vec3 camPos, vec3 right, vec3 up, vec3 fwd, vec2 tanv ) {
+vec3 cloudProject( vec3 p, vec3 camPos, vec3 right, vec3 up, vec3 fwd, vec2 tanv, vec2 shift ) {
 	vec3 d = p - camPos;
 	float z = dot( d, fwd );
-	vec2 ndc = vec2( dot( d, right ), dot( d, up ) ) / ( tanv * max( z, 1e-4 ) );
+	vec2 ndc = ( vec2( dot( d, right ), dot( d, up ) ) / max( z, 1e-4 ) - shift ) / tanv;
 	return vec3( ndc * 0.5 + 0.5, z );
 }
 `;
@@ -549,6 +551,7 @@ uniform vec3 uDepthRight;
 uniform vec3 uDepthUp;
 uniform vec3 uDepthFwd;
 uniform vec2 uDepthTan;
+uniform vec2 uDepthShift;
 uniform float uDomeRadius;
 varying vec2 vUv;
 layout( location = 0 ) out highp vec4 outColor;
@@ -581,7 +584,7 @@ float cloudSceneT( vec3 dir ) {
 	if ( uSceneDepthOn < 0.5 ) return 1e9;
 	float fz = dot( dir, uDepthFwd );
 	if ( fz < 0.05 ) return 1e9;
-	vec2 uv = 0.5 + 0.5 * vec2( dot( dir, uDepthRight ) / ( fz * uDepthTan.x ), dot( dir, uDepthUp ) / ( fz * uDepthTan.y ) );
+	vec2 uv = 0.5 + 0.5 * ( vec2( dot( dir, uDepthRight ), dot( dir, uDepthUp ) ) / fz - uDepthShift ) / uDepthTan;
 	if ( uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0 ) return 1e9;
 	float depth = textureLod( tSceneDepth, uv, 0.0 ).r;
 	if ( depth >= 0.999999 ) return 1e9;
@@ -910,6 +913,7 @@ uniform vec3 uPrevRight;
 uniform vec3 uPrevUp;
 uniform vec3 uPrevFwd;
 uniform vec2 uPrevTan;
+uniform vec2 uPrevShift;
 uniform float uHistoryValid;
 uniform float uRebuildK;
 uniform float uMinAlpha;
@@ -972,7 +976,7 @@ void main() {
 	m1 /= 9.0; m2 /= 9.0;
 	vec3 anchor = uCamPos + dir * clamp( nearKm * 1000.0, 50.0, 60000.0 );
 	// (2026-10-09) where the wind carried it from: the history follows a drifting cloud instead of trailing it
-	vec3 pr = cloudProject( anchor - uWindStep, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan );
+	vec3 pr = cloudProject( anchor - uWindStep, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan, uPrevShift );
 	// the clip tightens with the reprojection's motion: a still view accumulates every slot's samples (a single slot's
 	// neighbourhood is a sixteenth of the pixels, its spread no measure of a converged history), a moving one keeps only
 	// what this frame's samples support

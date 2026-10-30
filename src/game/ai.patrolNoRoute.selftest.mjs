@@ -49,7 +49,10 @@ console.log('[1] Aegis Crossing: the Type 96 at rest in the gorge pocket, on its
     if (bot.input.throttle !== 0) driving++;
     else if (bot.input.steer === 0) held++;
   }
-  ok(kind === 'direct', `fixture: nothing plans from the pocket, so the search leg is the local router's (${kind})`);
+  // 2026-10-29 (264 integrator, bot-wedge-264 799ea6e444): a route now starts from a cell the hull can drive out of
+  // (botRoutePlanner.ts routeStartCell, cellLeavable; Cliffbridge is among the maps whose start cells moved), so the
+  // pocket plans a search sweep instead of handing the leg to the local router. The no-route bridge leg is case [2].
+  ok(kind === 'sweep', `fixture: the pocket plans from its leavable neighbour cell, a search sweep (${kind})`);
   ok(driving > 14 * 60 * 0.8, `it commands drive on ${driving} of ${14 * 60} ticks after its search begins ` +
     `(held with zero input on ${held})`);
 }

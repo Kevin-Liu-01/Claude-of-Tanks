@@ -2475,6 +2475,26 @@ const VEHICLE_GROUND_DARK = 0.66;
 // fifth of the direct light and a sixth of the sky, so it reads near-black behind the lit rim of its wall
 const GEAR_CAVITY_DIRECT = 0.2;
 const GEAR_CAVITY_INDIRECT = 0.16;
+/**
+ * (264, the ghillie render lane; Main's ruling on the critic's "no shadow under any laid net or drape") The share of a
+ * vertex's light a camouflage suit over it takes (suitOcclusion.ts bakes it; 0 everywhere else): its direct and its
+ * indirect light, at a full cover, keep 1 - these. Every vehicle program reads it (vehicleAmbientFloorHook), after the
+ * readability floors, so the shade under a net is not lifted back; a draw without it reads the material's default, 0.
+ */
+export const VEHICLE_SUIT_OCCLUSION_ATTRIBUTE = 'suitOcc';
+const SUIT_SHADE_DIRECT = 0.62;
+const SUIT_SHADE_INDIRECT = 0.72;
+type SuitShadeDefaults = { defaultAttributeValues?: Record<string, number[]> };
+/**
+ * Give a material that compiles vehicleAmbientFloorHook its suit-shade default (0: unoccluded), so a draw without the
+ * attribute never reads another program's generic value. Set where the material is made, before any later hook
+ * (applyBurnHook keeps and restores the defaults it finds).
+ */
+export function withSuitShadeDefault<T extends THREE.Material>(material: T): T {
+  const m = material as T & SuitShadeDefaults;
+  m.defaultAttributeValues = { ...(m.defaultAttributeValues ?? {}), [VEHICLE_SUIT_OCCLUSION_ATTRIBUTE]: [0] };
+  return material;
+}
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
@@ -2590,10 +2610,11 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
   shader.uniforms.uCotFieldDust = FIELD_DUST_UNIFORM;
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
-  // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves)
-  shader.vertexShader = `varying vec3 vCotFdPos;\n${shader.vertexShader}`.replace(
-    '#include <begin_vertex>', '#include <begin_vertex>\n\tvCotFdPos = transformed;');
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\nvarying float vCotSuitShade;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
+  // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves); (264) the
+  // suit's shade passes through with it
+  shader.vertexShader = `varying vec3 vCotFdPos;\nattribute float ${VEHICLE_SUIT_OCCLUSION_ATTRIBUTE};\nvarying float vCotSuitShade;\n${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', `#include <begin_vertex>\n\tvCotFdPos = transformed;\n\tvCotSuitShade = ${VEHICLE_SUIT_OCCLUSION_ATTRIBUTE};`);
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <emissivemap_fragment>',
     `#include <emissivemap_fragment>
@@ -2809,7 +2830,15 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		reflectedLight.indirectDiffuse *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
 		reflectedLight.indirectSpecular *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
 	}
-	#endif`,
+	#endif
+	{
+`
+    // (264) the camouflage suit over the armour takes its share of the light, after every lift above
+    + `		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.directSpecular *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.indirectDiffuse *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.indirectSpecular *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
+	}`,
   );
 }
 
@@ -2895,6 +2924,7 @@ function vehicleMaterialSetup(
       : null,
     setup: <T extends THREE.Material>(material: T): T => {
       const hook = hookFor(material);
+      withSuitShadeDefault(material);
       if (cascaded && typeof engineCtx?.setupShadowMaterial === 'function') engineCtx.setupShadowMaterial(material, hook);
       else material.onBeforeCompile = hook;
       const registration = material.onBeforeCompile;
@@ -3918,17 +3948,18 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
 
 /**
  * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, the tyres' rubber,
- * canvas, wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings, the dark steel
- * (grilles, recesses, lights) and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
- * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
- * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
+ * wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings, the dark steel (grilles,
+ * recesses, lights), canvas and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
+ * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
  * so a roof gun stays as bare as the main gun's barrel; 4 the hull's rubber as 2, its grain flattened under the colour
  * (its detail maps read as speckle through a tint: the blind critic, 262).
  */
-function armorPaintMode(mat: THREE.Material): number {
+export function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
-  if (role === 'fittingPaint') return 2;
+  // (263) canvas (a mantlet's boot, a tarp on the deck) by where it sits, as fittings: a boot over the mantlet left the
+  // aim point untinted (the blind critics)
+  if (role === 'fittingPaint' || role === 'canvas' || role === 'canvasPale') return 2;
   if (role === 'hullRubber') return 4;
   if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
@@ -3961,7 +3992,16 @@ uniform vec3 uApCounts;
 uniform sampler2D uApZones;
 varying vec3 vApW;
 varying vec3 vApN;
+varying float vApZone;
 `;
+
+/**
+ * (263) The vertex attribute a painted draw's panels carry (game/armorPaintPanels.ts): each connected triangle cluster's
+ * one zone + 1, ARMOR_PAINT_PANEL_BARE for gear left bare, 0 for the per-point score. A draw without it reads 0 (the
+ * hook's defaultAttributeValues).
+ */
+export const ARMOR_PAINT_ZONE_ATTRIBUTE = 'apZone';
+export const ARMOR_PAINT_PANEL_BARE = -1;
 
 const ARMOR_PAINT_VERTEX_GLSL = `
 {
@@ -3977,24 +4017,51 @@ const ARMOR_PAINT_VERTEX_GLSL = `
   #endif
   vApW = ( modelMatrix * apV ).xyz;
   vApN = mat3( modelMatrix ) * apNo;
+  vApZone = ${ARMOR_PAINT_ZONE_ATTRIBUTE};
 }
 `;
 
+/**
+ * The paint, per fragment (the notes in order of the code, kept out of the shader string, which ships in the boot chunk):
+ * - (263) a baked panel (game/armorPaintPanels.ts) takes its cluster's one zone, so a border falls on a part's edge;
+ *   below 0 a bare panel; 0 the per-point score. One value a triangle, so the branch is the same across a pixel quad.
+ * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
+ * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
+ *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
+ *   is the gradient of the sum of q^4 (q the point's place in the bounds), so an ERA brick's facets, a skirt panel's thin
+ *   edges or a curved casting take the zone the cells there face, never one a facet; a fitting's, the box's alone.
+ * - Gear the armour does not cover takes no zone: the gun's barrel (a cylinder along the gun from just ahead of the turret
+ *   and its mantlet, in the gun's own frame, so at any elevation) and, outside the turret, what stands above the hull's
+ *   cells or past their ends (roof guns, antennas, tow gear).
+ * - The mantlet's footprint first (Main's ruling, 262; sim/armorZones.ts zoneAt): a forward surface (n.z > 0.2) over a
+ *   mantlet or gun-notch plate's footprint is that plate's, whatever the score; its border is the box's. apFootIn is how
+ *   deep the point lies inside the footprint it lies deepest in (negative: how far outside the nearest).
+ * - The border lines' margins, their derivatives taken outside the branches: a border is where the margin falls to 0
+ *   across pixels; two plates tied over a whole area (one plane, one outline) draw none. Across a score border the
+ *   colours meet half and half, so the edge is smooth, never a stair of pixels; inside a footprint only its border is a
+ *   border. (264) A border draws its dark line only as far as the two zones' colours differ: two plates of one verdict
+ *   meet without a seam (the blind critics' thin dark lines across one casting).
+ * - The hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
+ *   through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds). (263) The
+ *   camo keeps a quarter of its light and shade (its blotches read as zone borders; every round preferred less of it),
+ *   and its hue gives way, so a zone reads its own colour, never olive or salmon.
+ */
 const ARMOR_PAINT_DIFFUSE_GLSL = `
 vec3 apColor = vec3( 0.0 );
 float apMix = 0.0;
 float apLine = 0.0;
 float apFlat = 0.0;
-if ( uApOn > 0.5 && uApPaint > 0.5 ) {
+int apBaked = int( floor( vApZone + 0.5 ) );
+bool apPanel = apBaked > 0;
+if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
   vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
   int apHullN = int( uApCounts.x + 0.5 );
   int apZoneN = int( uApCounts.x + uApCounts.y + 0.5 );
   int apFootN = int( uApCounts.z + 0.5 );
   int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
-  // the turret's: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells)
   bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
   bool apOverFoot = false;
-  for ( int f = 0; f < apFootN; f++ ) {
+  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
     if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
@@ -4003,10 +4070,6 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   mat4 apInv = apTurret ? uApTurInv : uApHullInv;
   vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
   vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
-  // the part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
-  // inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
-  // is the gradient of the sum of q^4 (q the point's place in the bounds), so an ERA brick's facets, a skirt panel's
-  // thin edges or a curved casting take the zone the cells there face, never one a facet; a fitting's, the box's alone
   vec3 apNs = mat3( apInv ) * vApN;
   vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
   if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
@@ -4016,16 +4079,13 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
   vec3 apLean = apN + 3.0 * apBox;
   apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
-  // gear the armour does not cover takes no zone: the gun's barrel (a cylinder along the gun from just ahead of the
-  // turret and its mantlet, in the gun's own frame, so at any elevation) and, outside the turret, what stands above
-  // the hull's cells or past their ends (roof guns, antennas, tow gear)
   vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
   bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
     || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
     || !apTurret && uApHullH.y > 0.0
       && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? apHullN : 0;
-  int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
+  int apTo = apGear || apPanel ? apFrom : apTurret ? apZoneN : apHullN;
   float apBest = -1e9;
   float apSecond = -1e9;
   int apBestK = -1;
@@ -4051,12 +4111,9 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
       apSecondK = k;
     }
   }
-  // the mantlet's footprint first (Main's ruling, 262; sim/armorZones.ts zoneAt): a forward surface (n.z > 0.2) over a
-  // mantlet or gun-notch plate's footprint is that plate's, whatever the score; its border is the box's. apFootIn is
-  // how deep the point lies inside the footprint it lies deepest in (negative: how far outside the nearest)
   int apFootK = -1;
   float apFootIn = -1e3;
-  for ( int f = 0; f < apFootN; f++ ) {
+  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     int apFk = int( apFa.w + 0.5 );
     if ( apFk < apFrom || apFk >= apTo ) continue;
@@ -4065,10 +4122,8 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
     if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
   }
-  bool apForced = apFootK >= 0 && apFootIn > 0.0;
-  int apZone = apForced ? apFootK : apBestK;
-  // the border lines' margins, their derivatives taken outside the branches: a border is where the margin falls to 0
-  // across pixels; two plates tied over a whole area (one plane, one outline) draw none
+  bool apForced = apPanel || apFootK >= 0 && apFootIn > 0.0;
+  int apZone = apPanel ? apBaked - 1 : apForced ? apFootK : apBestK;
   float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
   float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
   float apMarginW = fwidth( apMargin );
@@ -4076,22 +4131,19 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
   if ( apZone >= 0 ) {
     vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
-    apColor = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
-    // across a score border the colours meet half and half, so the edge is smooth, never a stair of pixels
-    if ( !apForced && apSecondK >= 0 && apMarginPx < 1.5 ) {
-      vec4 apNext = texelFetch( uApZones, ivec2( apSecondK * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
-      apColor = mix( apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 ), apColor, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
-    }
+    vec3 apOwn = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
+    apColor = apOwn;
+    int apOther = apForced ? apBestK : apSecondK;
+    float apPx = apForced ? 1e3 : apMarginPx;
+    if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
+    vec4 apNext = texelFetch( uApZones, ivec2( max( apOther, 0 ) * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
+    vec3 apNextC = apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 );
+    if ( !apForced && apSecondK >= 0 && apMarginPx < 1.5 ) apColor = mix( apNextC, apOwn, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
     apFlat = step( 3.5, uApPaint );
     apMix = 0.45;
-    // inside a footprint only its border is a border; outside, the scores' and a footprint's that takes another zone
-    float apPx = apForced ? 1e3 : apMarginPx;
-    if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
-    apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
-    // the hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
-    // through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds)
+    apLine = apOther >= 0 && !apPanel ? ( 1.0 - smoothstep( 0.6, 1.8, apPx ) ) * clamp( 6.0 * distance( apNextC, apOwn ), 0.0, 1.0 ) : 0.0;
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
-    // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.1 ), 0.75 * ( 1.0 - apFlat ) );
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor * 0.42, apLine * 0.8 );
@@ -4179,7 +4231,9 @@ if ( uBurnT >= 0.0 && uCrOn > 0.5 ) {
 const BURN_HOOK_PRIOR = new WeakMap<THREE.Material, {
   hook: THREE.Material['onBeforeCompile']; key: THREE.Material['customProgramCacheKey'];
   wrapper: THREE.Material['onBeforeCompile']; ownHook: boolean; ownKey: boolean;
+  defaults: Record<string, number[]> | undefined; ownDefaults: boolean;
 }>();
+type AttributeDefaults = { defaultAttributeValues?: Record<string, number[]> };
 
 /**
  * Take this visual's disarmed burn hook off a material (2026-10-24, transitions-249): a surviving battle hero the Garage
@@ -4199,6 +4253,8 @@ export function removeBurnHook(mat: THREE.Material | null | undefined, burnU: Bu
   else delete (mat as { onBeforeCompile?: unknown }).onBeforeCompile;
   if (prior.ownKey) mat.customProgramCacheKey = prior.key;
   else delete (mat as { customProgramCacheKey?: unknown }).customProgramCacheKey;
+  if (prior.ownDefaults) (mat as AttributeDefaults).defaultAttributeValues = prior.defaults;
+  else delete (mat as AttributeDefaults).defaultAttributeValues;
   delete mat.userData.__burnU;
   mat.needsUpdate = true;
   return true;
@@ -4223,8 +4279,12 @@ export function applyBurnHook(
     hook: mat.onBeforeCompile, key: prevKey, wrapper: mat.onBeforeCompile,
     ownHook: Object.prototype.hasOwnProperty.call(mat, 'onBeforeCompile'),
     ownKey: Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey'),
+    defaults: (mat as AttributeDefaults).defaultAttributeValues,
+    ownDefaults: Object.prototype.hasOwnProperty.call(mat, 'defaultAttributeValues'),
   };
   BURN_HOOK_PRIOR.set(mat, prior);
+  // (263) a draw whose geometry carries no panels reads 0, the per-point score, never another program's generic value
+  (mat as AttributeDefaults).defaultAttributeValues = { ...(prior.defaults ?? {}), [ARMOR_PAINT_ZONE_ATTRIBUTE]: [0] };
   const paints = armorPaintMode(mat);
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
@@ -4235,7 +4295,7 @@ export function applyBurnHook(
     // paint (a detail mesh still wearing it): the inner mask stands, the outer adds only its (the same visual's) uniforms
     if (shader.vertexShader.includes('varying vec3 vBrnW;')) return;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\nattribute float ${ARMOR_PAINT_ZONE_ATTRIBUTE};\n${CRUMPLE_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n${CRUMPLE_NORMAL_GLSL}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 transformed += crD;

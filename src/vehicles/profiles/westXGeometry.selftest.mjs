@@ -111,7 +111,8 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       assert.equal(tank.root.getObjectByName('rig_turret')?.userData.merkava3dRightCheekReceipt?.side,'+X',
         `${id}: corrected cheek publishes exact articulated ownership`);
       const deck=tank.root.getObjectByName('hullEquipment'),fittings=tank.root.getObjectByName('hullDetail');
-      for(const [x,z,y]of[[-.8,2,1.76797],[-.3,2,1.79161],[-.8,2.4,1.71453],[-.3,2.4,1.71405],[1.1,2,1.6954]])
+      // (re-measured 264: 247's gun-hull fleet, 9d4c99eef3, lowered the Merkava 3D deck under its turret; -0.8/2 fell 6 mm)
+      for(const [x,z,y]of[[-.8,2,1.76202],[-.3,2,1.79145],[-.8,2.4,1.71386],[-.3,2.4,1.71386],[1.1,2,1.69525]])
         near(verticalHit(deck,x,z),y,.003,`${id}: physically raised asymmetric source armor ${x}/${z}`);
       for(const [x,z,y]of[[.7,2,1.69494],[.7,2.4,1.58405],[-.8,2.85,1.59043],[-.3,2.8,1.60508]])
         near(verticalHit(fittings,x,z),y,.003,`${id}: seated access-panel slope ${x}/${z}`);
