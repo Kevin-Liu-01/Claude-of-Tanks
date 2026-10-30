@@ -92,7 +92,7 @@
   "leclerc_s2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bdaa7a104551402c","gun":"4714d5530cffa2e6"}},
   "leclerc_sxxi": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b91fd8fbaab02b68","gun":"31f28e9739014f86"}},
   "leclerc_xlr": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b760b958e1460a2e","gun":"feaf409009663183"}},
-  "leo1a2a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d00fb8f975bd1791","gun":"e17d6859c4d99ef9"}},
+  "leo1a2a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"aa1866fb017918de","gun":"e17d6859c4d99ef9"}},
   "leo1a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d7cb876d7eb00bc7","gun":"d5ab6da512b99a75"}},
   "leo2_improved": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b0d4743ff346b8a5","gun":"174ff3c32785806a"}},
   "leo2_revolution": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"780129b89561f835","gun":"2dca5d3698c26f32"}},
