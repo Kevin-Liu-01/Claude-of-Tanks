@@ -111,6 +111,8 @@ export interface MatchActor {
   modeGravityScale: number;
   eraNames: string[];
   _networkPoseReady: boolean;
+  /** The round the authority last reported this actor on (updateCombat: the own tank's pick follows it only when it moves). */
+  _authoritySlot: number;
   _networkDestroyed: boolean;
   _networkDestroyPop: boolean;
   _networkEraSpent: Set<string>;
@@ -229,6 +231,11 @@ export interface BattlePresentationOptions {
   /** How long a verdict may sit in snapshot meta before it is presented without its `match_ended` event. */
   verdictGraceMs?: number;
   clock?: () => number;
+  /**
+   * A free sortie on the solo sim Worker (src/game/soloSimBattleRuntime.ts): its end is a solo battle's (`network: false`,
+   * the allies lost), kept in the records as the page's own simulation keeps it.
+   */
+  solo?: boolean;
 }
 
 export interface BattlePresentation extends PresentationAdapter {
@@ -530,6 +537,7 @@ export function createBattlePresentation({
   onRosterProgress,
   verdictGraceMs = 500,
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
+  solo = false,
 }: BattlePresentationOptions): BattlePresentation {
   if (!engineCtx || !engineCtx.scene || !game || !bus) throw new TypeError('engineCtx, game and bus are required');
   const actors = new Map<string, MatchActor>();
@@ -648,7 +656,7 @@ export function createBattlePresentation({
       // Authority uses the spec-derived contact footprint; the visual's measured one stays presentation-only.
       contactGeom: null, rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
       eraNames: eraPlateNames(spec.armor),
-      _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
+      _networkPoseReady: false, _authoritySlot: -1, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
     if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
@@ -766,7 +774,7 @@ export function createBattlePresentation({
     actor.team = actor.networkTeam === reference ? 'player' : 'enemy';
   }
 
-  function updateCombat(actor: MatchActor, sample: EntitySample): boolean {
+  function updateCombat(actor: MatchActor, sample: EntitySample, own = false): boolean {
     const { combat } = actor;
     combat.hp = sample.hp;
     combat.maxHp = sample.maxHp;
@@ -808,7 +816,13 @@ export function createBattlePresentation({
     const destroyed = (sample.flags & ENTITY_FLAGS.DESTROYED) !== 0;
     combat.destroyed = destroyed;
     actor.input.fire = (sample.flags & ENTITY_FLAGS.FIRING) !== 0;
-    actor.input.shellSlot = sample.shellSlot;
+    // The own tank's requested round is the player's: a row writes it only when the authority's own slot moves (an empty
+    // round switched for it, a respawn). Written from every row, it undid a pick still on its way to the authority, and
+    // Q's ATGM or the 2 key flapped back (the solo sim Worker, 261; owner 2026-10-28: "why is atgm labeled Q? E does it
+    // for me")
+    const authorityMoved = actor._authoritySlot !== sample.shellSlot;
+    actor._authoritySlot = sample.shellSlot;
+    if (!own || authorityMoved) actor.input.shellSlot = sample.shellSlot;
     actor.specialAction.active = (sample.flags & ENTITY_FLAGS.SPECIAL_ACTIVE) !== 0;
     actor.state.suspensionAim = actor.specialAction.kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM && actor.specialAction.active;
     return destroyed;
@@ -950,7 +964,7 @@ export function createBattlePresentation({
     }
     if (viewer.row) {
       const sample = decodeRow(viewer.row, scratchSample);
-      const destroyed = updateCombat(actor, sample);
+      const destroyed = updateCombat(actor, sample, true);
       updateEra(actor, viewer.row.eraSpent);
       updateDestruction(actor, destroyed);
       if (!viewer.state) applySamplePose(actor, sample, false);
@@ -1063,10 +1077,11 @@ export function createBattlePresentation({
   }
 
   /**
-   * The killcam's step capture, as state.ts takes it each fixed step before the shells fly: the live shells' traces and
-   * every hull's last pose before this frame's hits (a frame applies, then its events), which a replay restages; at most
-   * once a step of presented time. Its steps also retire the program warm-up rig, which a battle that never captures
-   * leaves drawn throughout. It allocates nothing a step (held frames refreshed in place, pooled trace buffers).
+   * The killcam's step capture, as state.ts takes it each fixed step before the shells fly (a room's battle and a sortie
+   * on the solo sim Worker alike): the live shells' traces and every hull's last pose before this frame's hits (a frame
+   * applies, then its events), which a replay restages; at most once a step of presented time. Its steps also retire the
+   * program warm-up rig, which a battle that never captures leaves drawn throughout. It allocates nothing a step (held
+   * frames refreshed in place, pooled trace buffers).
    */
   function recordKillcamStep(renderTimeMs: number): void {
     if (renderTimeMs - killcamStepAtMs < TICK_MS - 0.5 && renderTimeMs >= killcamStepAtMs) return;
@@ -1088,8 +1103,10 @@ export function createBattlePresentation({
     // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
     // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
-      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: true,
+      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: !solo,
       gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
+      // (a sortie on the solo sim Worker) the allies lost, as state.ts's battle:ended counts them
+      ...(solo ? { alliesLost: roster.filter((actor) => actor.team !== 'enemy' && !actor.isPlayer && actor.combat.destroyed).length } : {}),
     });
   }
 
@@ -1286,6 +1303,12 @@ export function createBattlePresentation({
         const hit: Record<string, RuntimeValue> = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
         // (ac130-fx-228 r2) the hit's source rides only as the authority's two values (as tank_destroyed's does below)
         if ('attackerSource' in hit && hit.attackerSource !== 'ac130' && hit.attackerSource !== 'drone') delete hit.attackerSource;
+        // (a sortie on the solo sim Worker) the hit names its attacker's vehicle as the page's own battle names it (state.ts
+        // enrichHitEvent): the report's final blow and the hit toasts read it
+        if (solo) {
+          const attacker = actors.get(String(hit.attackerId ?? ''));
+          if (attacker) { hit.attackerName = attacker.spec.name; hit.attackerSpecId = attacker.specId; }
+        }
         // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the match let this viewer
         // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
         // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms
@@ -1514,6 +1537,9 @@ export function createBattlePresentation({
       ownState: () => own.state,
       others: () => collidableActors(own),
       mode: typeof game.gameMode === 'string' ? game.gameMode : null,
+      // a building the own ram brings down yields to the drawn hull as the authority's yields (destructionMirror.ts)
+      structureYields: (record, massTons, closingMps) => game.ruleset?.destruction?.structures === true
+        && destruction.yieldsToRam(record, massTons, closingMps),
     });
     return predictionWorldCache;
   }

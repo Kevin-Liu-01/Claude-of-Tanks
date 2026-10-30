@@ -42,10 +42,16 @@ img{display:block;max-width:100%}
 /* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
 .hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
   min-height:max(540px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
-.hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
+.hero__still,.hero__clip,.hero__lqip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
+/* the hero still's inline preview (home-premiere.mjs, tools/hero-lqip.mjs) paints at once under it, cropped as the still
+   is; the still fades in over it once decoded (publicPages.ts marks the hero data-ready), so a slow link never paints it
+   in bands (the slow-load critic: three hard-edged bands over 2 s on a phone); without scripting it shows as it loads */
+.hero__lqip{background:var(--hero-lqip,none) 50% 100%/cover no-repeat}
+@media (scripting:enabled){.home .hero:not([data-ready])>.hero__still{opacity:0}}
+.home .hero__still{transition:opacity var(--dur-base) var(--ease-enter)}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
 /* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
-.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
+.hero__lqip,.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
@@ -102,6 +108,8 @@ img{display:block;max-width:100%}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:50% 50%;background:var(--surface-scene)}
 .hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
+/* the film that cannot load says so over its poster, clear of the close button (homePage.ts mountFilm) */
+.hero__film-failed{position:absolute;top:var(--s3);left:var(--s3);right:calc(2 * var(--s3) + 36px);z-index:var(--z-lift)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -269,12 +277,27 @@ img{display:block;max-width:100%}
 .bento__cap a::after{content:'';position:absolute;inset:0}
 .bento__cap a:focus-visible{outline:none}
 .bento__tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
+/* a tile's words stand on their own plate, the hero's scrim feathered at its open edges (the media box clips it at the
+   tile's): a name that wraps to a second line over bright snow keeps 4.5:1, where the tile's foot fade ends at 62 % */
+.bento__words{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:var(--s1);min-width:0}
+.bento__words::before{--feather:var(--s6);content:'';position:absolute;z-index:var(--z-under);pointer-events:none;background:var(--home-hero-scrim);
+  inset:calc(-1 * var(--feather)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--s4)) calc(-1 * var(--feather) - var(--s5));
+  --plate:linear-gradient(90deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent),linear-gradient(0deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent);
+  -webkit-mask-image:var(--plate);mask-image:var(--plate);-webkit-mask-composite:source-in;mask-composite:intersect}
 .bento__cap b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 .bento__tile--lead .bento__cap b{font-size:var(--fs-36)}
 .bento__where{display:flex;flex-wrap:wrap;gap:0 var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2)}
 .bento__where>span+span:not(.hero__mode)::before{content:'·';margin-right:var(--s2);color:var(--ink-3)}
 /* in battle: four loops two to a row, on the features' own player (its file only on screen, its disc top right) */
 .bento--clips .bento__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* a still under the hero and the trailer button's thumb stand transparent over their box's tone from the first paint and
+   fade in once decoded (publicPages.ts, the page's first module, marks the box data-ready), so one that arrives before the
+   scripts never paints in at full strength; without scripting they show as they load. A still that failed stays hidden
+   over that tone (no broken frame) until homePage.ts loads it again online. */
+.home img[data-failed]{visibility:hidden}
+@media (scripting:enabled){.home .cot-c-media:not([data-ready])>img[loading=lazy],.home .hero__thumb:not([data-ready])>img{opacity:0}}
+.home .cot-c-media>img[loading=lazy]{transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
+.home .hero__thumb>img{transition:opacity var(--dur-fast) var(--ease-enter)}
 .bento__tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
 .bento__tile>video.has-frame{opacity:1}
 .bento__tile .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
@@ -301,11 +324,17 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
    bar held at the bottom of the screen; the features one to a row */
 @media (width < 768px){
   .home{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
+  /* the fixed Play bar is the page's scroll padding below: a focused control or a jump never lands under it, and the
+     media player counts a film under it as off screen (mediaPlayer.ts shownArea) */
+  html{scroll-padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
   .home .public-nav__tools>.public-nav__cta{display:none}
   .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) var(--s4);background:var(--surface-page)}
-  .hero__still,.hero__clip{top:0;bottom:auto;height:640px;object-position:54% 50%}
-  .hero__reel{bottom:auto;height:640px}
-  .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
+  /* the picture spans 640 px, or the hero when it is shorter (a short phone), so its grade always ends in the page tone
+     inside the hero, never cut by the hero's edge (the /home r3 zh critic at 601x702) */
+  .hero__still,.hero__clip,.hero__lqip{top:0;bottom:auto;height:min(640px,100%);object-position:54% 50%}
+  .hero__lqip{background-position:54% 50%}
+  .hero__reel{bottom:auto;height:min(640px,100%)}
+  .hero__grade{bottom:auto;height:min(641px,100%);background:var(--home-phone-grade)}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
@@ -389,6 +418,9 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 100%;overflow:visible}
   .play-acts>.cot-c-btn--icon:first-of-type{margin-left:auto}
 }
+/* a short phone layout (a Split View half, 601 x 702): the hero's picture row gives up the room the fixed Play bar takes, so
+   its counts stand whole above the bar in the first view */
+@media (width < 768px) and (height < 720px){.hero{grid-template-rows:minmax(360px,auto) auto}}
 /* a narrow desktop card (under 900 px) cannot hold the caption beside the actions: the caption and the pause take their
    own row on the right, as tall as the pause, so the card steps 16 px above them and its own foot below (home r25). The
    card is a container only from 768 px, where no fixed Play bar lives inside it */

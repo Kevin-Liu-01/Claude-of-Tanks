@@ -15,6 +15,8 @@ function element(name) {
   let text = '';
   const result = {
     name, id: '', className: '', innerHTML: '', children: [], dataset: {},
+    // (an image already decoded: the plan's reveal, components/reveal.ts, stands it at once)
+    complete: true, naturalWidth: 1,
     get textContent() { return text; },
     set textContent(value) { mutations.push([name, 'text', value]); text = value; this.children.length = 0; },
     get offsetWidth() { throw new Error('loading progress must not force layout'); },
@@ -43,7 +45,10 @@ function element(name) {
 }
 const priorDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
 const priorTimeout = Object.getOwnPropertyDescriptor(globalThis, 'setTimeout');
+const priorVideo = Object.getOwnPropertyDescriptor(globalThis, 'HTMLVideoElement');
 const timers = [];
+// (the plan's reveal asks whether its picture is a film)
+Object.defineProperty(globalThis, 'HTMLVideoElement', { configurable: true, value: class HTMLVideoElement {} });
 Object.defineProperty(globalThis, 'document', { configurable: true, value: {
   head: element('head'), body: element('body'),
   createElement: name => element(name),
@@ -66,6 +71,13 @@ try {
   assert.ok(screen.root === pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
   assert.equal(screen.root.classList.contains('leaving'), false);
   assert.equal(selectors.get('.mapname').textContent, 'Verdant');
+  // loading states (2026-10-27): a labelled region whose stage line and countdown speak, never the whole card at once
+  assert.equal(screen.root.getAttribute('role'), 'region', 'the card is a labelled region, not one status over every row');
+  assert.match(screen.root.innerHTML, /<span class="st" role="status">/, 'its stage line is the status');
+  assert.match(screen.root.innerHTML, /<div class="count" aria-live="polite">/, 'and its countdown speaks');
+  assert.doesNotMatch(screen.root.innerHTML, /class="foot" aria-live/, 'the percent is the progressbar\'s value, never read aloud');
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), 'true', 'the sheets are busy while they fill');
+  assert.ok(screen.root.getAttribute('aria-busy') === undefined, 'the card is never busy: that would hold its stage line back');
   // the direction's five steps (10-battle-load .prog .reg): each fills its fifth of the load
   const steps = [1, 2, 3, 4, 5].map((n) => selectors.get(`.fbar i:nth-child(${n}) b`));
   const fills = () => steps.map((step) => step.style.transform).join(' ');
@@ -98,6 +110,10 @@ try {
     assert.equal(fills(), scales(share, share, share, share, share));
     assert.equal(progress.getAttribute('aria-valuenow'), percent);
   }
+  screen.countdown(3);
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), undefined, 'loaded: the sheets are whole once the countdown runs');
+  screen.show(info);
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), 'true', 'a restaged load is busy again');
   screen.progress(1, 'Ready');
   const leaving = screen.hide();
   assert.equal(screen.visible, false);
@@ -203,6 +219,9 @@ try {
     assert.equal(selectors.get('.map').hidden, false, 'the plan keeps its frame while the room has no map');
     screen.show({ ...info, thumb: '', biome: 'verdant' });
     assert.match(plan.src, /\/minimaps\/verdant\.webp\?v=/, 'the plan loads once the map is known');
+    const planBox = selectors.get('.map .mp');
+    assert.equal(planBox.getAttribute('data-reveal'), '', 'the plan fades in over its plate (components/reveal.ts), never a pop or a broken frame');
+    assert.equal(planBox.getAttribute('data-ready'), '', 'a plan already decoded stands at once');
     screen.show({ ...info, thumb: '', biome: 'none' });
     assert.equal(plan.src, undefined, 'and a room back to no map drops the request');
   }
@@ -213,10 +232,62 @@ try {
   assert.match(css, /\.cot-bl\.on \.fbar i b\{will-change:transform;/,
     'compositor hint is limited to the visible loader');
   assert.match(css, /prefers-reduced-motion:reduce[^\n]*\.cot-bl \.fbar i b\{transition-duration:1ms/);
+
+  // The mode chip on the cover's first frame names the chosen mode, for every mode and every campaign operation (its
+  // title), however the battlefield's description went, and the loading owner's show names it the same (the 262
+  // production check: "Random Battle · Standard" over the Proving Ground and the campaign until that show)
+  {
+    const { createSoloBattleEntryRuntime } = await import('../game/soloBattleEntryRuntime.ts');
+    const { createBattleEntryLifecycle } = await import('../game/battleEntryLifecycle.ts');
+    const { soloBattleLoadingModeLabel } = await import('../game/soloBattleLoadingRuntime.ts');
+    const { GAME_MODE_IDS } = await import('../sim/gameModeCatalog.ts');
+    const { CAMPAIGN_OPERATIONS } = await import('../game/campaignOperations.ts');
+    const descriptions = {
+      none: () => null,
+      throws: () => { throw new Error('no plan'); },
+      described: (_specId, mapId) => ({ mapId: mapId ?? 'random', mapName: 'Cinder Junction' }),
+    };
+    let firstFrame = null;
+    const entry = (describe) => createSoloBattleEntryRuntime({
+      lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
+      loading: { async begin() {} },
+      battleLoad: {
+        // the chip as the cover's first frame draws it (its seats are the sheets' receipt above)
+        showPending: (pending) => { screen.showPending(pending); firstFrame = selectors.get('.kicker').textContent; },
+        hide: async () => {},
+      },
+      audio: { loadingOn: () => {} }, enterGarage: () => {}, nextFrame: async () => {},
+      isVisibleSpecId: () => true, getSelectedSpecId: () => 'leo2_improved', getSelectedMapId: () => 'railyard',
+      reportError: () => {}, presentFailure: async () => {}, onFailure: () => {}, describePendingMap: describe,
+    });
+    const cases = [
+      ...GAME_MODE_IDS.map((gameMode) => ({ gameMode, campaignOperationId: null })),
+      ...CAMPAIGN_OPERATIONS.map((operation) => ({ gameMode: 'frontline_assault', campaignOperationId: operation.id })),
+    ];
+    let checked = 0;
+    for (const [how, describe] of Object.entries(descriptions)) {
+      const runtime = entry(describe);
+      for (const { gameMode, campaignOperationId } of cases) {
+        firstFrame = null;
+        await runtime.beginSelected({ specId: 'leo2_improved', mapId: 'railyard', gameMode, ...(campaignOperationId ? { campaignOperationId } : {}) });
+        const expected = soloBattleLoadingModeLabel(gameMode, campaignOperationId);
+        assert.equal(firstFrame, expected, `${campaignOperationId ?? gameMode} (description ${how}): the cover's first frame names the chosen mode`);
+        if (gameMode !== 'standard' || campaignOperationId) {
+          assert.notEqual(firstFrame, t('battleLoad.kicker'), `${campaignOperationId ?? gameMode}: not the placeholder's words`);
+        }
+        checked++;
+      }
+    }
+    assert.equal(checked, 3 * (GAME_MODE_IDS.length + CAMPAIGN_OPERATIONS.length));
+    assert.equal(soloBattleLoadingModeLabel('proving_ground'), t('playMenu.matchMode.proving_ground.label'));
+    assert.equal(soloBattleLoadingModeLabel('frontline_assault', 'iron_ridge'), t('campaign.op.iron_ridge.title'));
+  }
 } finally {
   if (priorDocument) Object.defineProperty(globalThis, 'document', priorDocument);
   else delete globalThis.document;
   if (priorTimeout) Object.defineProperty(globalThis, 'setTimeout', priorTimeout);
   else delete globalThis.setTimeout;
+  if (priorVideo) Object.defineProperty(globalThis, 'HTMLVideoElement', priorVideo);
+  else delete globalThis.HTMLVideoElement;
 }
-console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging and the unchosen room map passed');
+console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging, the unchosen room map and every mode\'s chip on the first frame passed');

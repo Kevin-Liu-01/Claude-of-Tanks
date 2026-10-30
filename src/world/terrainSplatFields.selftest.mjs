@@ -236,7 +236,8 @@ async function schedule(fineSlices, warmFields = false) {
     const starts = f.state.fieldStarts;
     const warm = drain(f.api.materialSteps(f.engine, f.height._layout, null));
     warm.value.material.dispose();
-    assert.equal(warm.count, 6, 'warm material path keeps its six original checkpoints');
+    // (260) the land-use bake yields every sixteen rows: three more checkpoints on the fixture's map
+    assert.equal(warm.count, 9, 'warm material path keeps its six original checkpoints and the bake\'s three');
     assert.equal(f.state.fieldStarts, starts, 'warm material skips the field iterator entirely');
     return ticks;
   } finally { f.dispose(group); }

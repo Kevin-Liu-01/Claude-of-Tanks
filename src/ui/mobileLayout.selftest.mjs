@@ -57,7 +57,8 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:no
 assert.match(garageSource,
   /<div class="cot-lt-band"><div class="cot-lt-group">[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-group">[\s\S]*?<div class="cot-lt-paint"/,
   'every layout keeps the equipment slots and the paint in view under the name');
-assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
+// (the 261 census builds the band's paint on the kit's picker, so the button is made in code, not markup)
+assert.match(garageSource, /paintAll\.className = 'cot-c-btn cot-c-btn--icon cot-lt-paint-all';\s*paintAll\.dataset\.garagePanel = 'appearance';/,
   'the band\'s last swatch opens every paint');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"[\s\S]*data-deploy-field aria-expanded="false"/,
   'the battle card shows the battlefield and the Deploy screen\'s field chooses it');
@@ -113,17 +114,16 @@ assert.match(garage, /\.cot-garage\.has-room\{--cot-room-row-space:52px;\}/,
   'connected rooms must reserve a full touch-target row above compact previews and drawers');
 assert.match(playMenu, /\.cot-play button\[data-action="ready"\]\{min-height:44px\}/,
   'drawer readiness must retain a full-size touch target');
-assert.match(garage,
-  /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*setGaragePanel\(''\);/,
+// the disclosures, the drawers and Deploy are transient surfaces (components/surfaceStack.ts): opening one replaces the
+// open one in the same press, and Escape (the stack's, in the window's capture) closes only the top one
+assert.match(garage, /const openMobileNavigation = \(\) => \{\s*openSurface\(mobileNavSurface, mobileNavTrigger\);/,
   'page navigation must close garage disclosures instead of stacking over them');
-assert.match(garage,
-  /function openBattleMenu\(\)(?:: void)? \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
+assert.match(garage, /function openBattleMenu\(\)(?:: void)? \{[\s\S]*?openSurface\(deploySurface, battleModeBtn\);/,
   'battle selection must close garage disclosures instead of stacking over them');
-assert.match(garage,
-  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\s*\|\| eventElement\(event\)\?\.closest\('\.cot-c-menu__pop'\)\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
+assert.match(garage, /close: \(reason\) => \{ if \(openGaragePanel\(\) === panel\) setGaragePanel\('', \{ restoreFocus: reason === 'escape' \}\); \}/,
   'Escape must close one garage drawer without leaking into the global Settings shortcut (an open picker menu takes its own)');
-assert.match(garage,
-  /if \(!battleMenu\.classList\.contains\('open'\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*closeBattleMenu\(\{ restoreFocus: true \}\);/,
+assert.doesNotMatch(garage, /event\.code !== 'Escape'\) return;/, 'no Garage surface keeps an Escape listener of its own');
+assert.match(garage, /id: 'deploy',[\s\S]*?close: \(reason\) => closeBattleMenu\(\{ restoreFocus: reason === 'escape' \}\),\s*modal: true,/,
   'Escape must close the Battle menu without leaking into another UI owner');
 
 assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,
@@ -248,8 +248,19 @@ assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input
   'settings and F8 must converge on the same diagnostics visibility path');
 assert.doesNotMatch(perfHud, /cot\.perfhud\.v1|PROD_BUILD/,
   'the diagnostics panel must not retain a second private persistence or production gate');
-assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:40px[^}]*contain:layout paint style/,
+// (its width a stable floor until its copy is measured; its height as its lines compose it, measured with the copy)
+assert.match(hud, /\.cot-hpb\{[^}]*width:128px;[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
+assert.match(hud, /bar\.layoutH = Math\.ceil\(bar\.root\.offsetHeight\)/,
+  'a world tank label measures its height once with its copy, never per frame');
+// (a hidden label is placed at the height its lines will have: the two-line default kept a short window's one-line
+// labels out of every gap, so none showed to be measured)
+assert.match(hud, /if \(bar\.shown\) measureHpBar\(bar\);\s+else measureHiddenHpBar\(bar\);/,
+  'a hidden world tank label is measured, unseen, when its copy changes');
+assert.match(hud, /bar\.measure = true;\s+if \(!bar\.shown\) measureHiddenHpBar\(bar\);/,
+  'a hidden world tank label is measured, unseen, when the window changes');
+assert.match(hud, /function measureHiddenHpBar\(bar: HpBar\): void \{\s+const style = bar\.root\.style;\s+style\.visibility = 'hidden';\s+style\.display = 'flex';\s+measureHpBar\(bar\);\s+style\.display = 'none';\s+style\.visibility = '';/,
+  'a hidden world tank label is laid out unseen to be measured, then hidden again');
 // (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"; tools/marker-census.mjs renders it)
 assert.doesNotMatch(hud, /class="flg"|tgtRefs\.flg|\.cot-(?:hpb|tgt) [^{]*\.cot-flag/,
   'no marker over a tank carries a nation flag');
@@ -265,8 +276,18 @@ assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
   'aimed-at labels must not paint a broad dark rectangle over the battlefield');
 assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
   'world-space player and vehicle labels must never replace names with ellipses');
-assert.match(hud, /const plateX = bar\.sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
-  'world tank labels must remain centered on their literal projected tank anchors');
+assert.match(hud, /const plateX = bar\.sx \+ bar\.seatDx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - bar\.layoutH - bar\.lift \+ bar\.seatDy;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
+  'world tank labels must remain centered on their literal projected tank anchors, but for a slide off a blocked seat');
+// (a slide off a blocked seat, markers r20: each frame starts on the seat, the tank's x stays inside the bar, and the
+// pointer is moved back over the tank)
+assert.match(hud, /bar\.seatDx = 0; bar\.seatDy = 0;\s*if \(!hpBarClear\(x0, y0, x1, y1, count\)\)/,
+  'a hull bar must try its own seat over its tank before any slide');
+assert.match(hud, /const lo = Math\.max\(0, bar\.sx - width \+ TARGET_ANCHOR_INSET\) - x0, hi = Math\.min\(w - width, bar\.sx - TARGET_ANCHOR_INSET\) - x0;/,
+  'a hull bar slide must keep its tank inside the bar');
+assert.match(hud, /const pointerDx = bar\.seatDx === 0 \? 0 : Math\.round\(-bar\.seatDx \/ bar\.k\);/,
+  'a slid hull bar must move its pointer back over its tank');
+assert.match(hud, /\.cot-hpb::after\{[^}]*translate:var\(--hpb-anch-dx,0px\) 0;/,
+  'the hull bar pointer must take the slide offset');
 assert.doesNotMatch(hud, /updateHpBars\._layout|layout\.sort|placed\.layoutY - 36/,
   'world tank labels must be allowed to overlap instead of entering screen-space lanes');
 assert.doesNotMatch(hud, /keep the plate clear of the dispersion circle|aimView\.cy - rNow - 40/,

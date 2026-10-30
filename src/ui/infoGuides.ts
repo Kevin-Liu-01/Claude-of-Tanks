@@ -1,6 +1,7 @@
 import { createGuidePhoto } from './infoGuidePhoto.ts';
 import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
 import { t } from './i18n.ts';
+import { setRoving, tabs, wireRoving } from './components/components.ts';
 import { ensureStyle } from './styleLayers.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
 import { INFO_GUIDE_DIAGRAMS } from './infoGuideCatalog.ts';
@@ -14,15 +15,13 @@ const CSS = `
 .cot-guide__figure figcaption{padding:9px 14px;border-top:1px solid #28363d;color:#8ea3ae;font-size:11px;letter-spacing:.04em}
 .cot-guide__figure [data-part]{opacity:.36;transition:opacity var(--dur-fast)}.cot-guide__figure [data-part].active{opacity:1}
 .cot-guide__steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.cot-guide__step{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;padding:12px;color:#b5c5cd;background:#101a20;border:1px solid #34434a;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;line-height:1.4}
-.cot-guide__step b{display:grid;place-items:center;flex:none;width:25px;height:25px;border:1px solid currentColor;border-radius:50%;font-size:12px}
-.cot-guide__step[aria-pressed='true']{color:#ffd27a;border-color:#d99939;background:#332718}
-.cot-guide__step:focus-visible{outline:2px solid #ffce78;outline-offset:3px}
+.cot-guide__steps .cot-c-tabs__tab{justify-content:flex-start;min-width:0;text-align:left;white-space:normal}
+.cot-guide__steps .cot-c-tabs__count{order:-1}
 .cot-guide__detail{padding:17px 19px;border-left:2px solid #e9a346;background:#111b21;min-height:112px}
 .cot-guide__detail h3{margin:0 0 7px;color:#eef3f5;font-size:15px;line-height:1.4}.cot-guide__detail p{margin:0;color:#b9c9d2;font-size:14px;line-height:1.7}
 .cot-info-modal__recipe summary{cursor:pointer;padding:13px 0;color:#9fb4c0;font-size:13px}
 body[data-cot-width='phone'] .cot-guide__steps{grid-template-columns:1fr;gap:5px}
-body[data-cot-width='phone'] .cot-guide__step{padding:9px 12px}body[data-cot-width='phone'] .cot-guide__overview{font-size:14px}
+body[data-cot-width='phone'] .cot-guide__overview{font-size:14px}
 body[data-cot-width='phone'] .cot-guide__detail{padding:13px;min-height:0}
 .cot-guide__photo{position:relative;aspect-ratio:16/9;container-type:inline-size;isolation:isolate}
 .cot-guide__image-error{padding:20px;color:#b9c9d2;font-size:14px}
@@ -127,23 +126,23 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
       mounted = true;
       void import('./technicalDrawing.ts').then(({ mountTechnicalDrawing }) => {
         mountTechnicalDrawing(drawingBox, vehicle.id, { kind, alt: vehicle.name }).ready.catch(() => {});
-      });
+      }).catch(() => { mounted = false; /* a chunk the network dropped: the next open of the section mounts it again */ });
     });
   }
-  const steps = document.createElement('div'); steps.className = 'cot-guide__steps'; steps.setAttribute('role','group'); steps.setAttribute('aria-label',t('fieldGuide.steps'));
-  const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');
+  const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('role','tabpanel'); detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');
   const heading = document.createElement('h3'); const paragraph = document.createElement('p'); detail.append(heading,paragraph);
+  // the three steps are the kit's tabs (261 census), each numbered as its pin on the photo, over the one detail they show
+  const stepsMarkup = document.createElement('template');
+  stepsMarkup.innerHTML = tabs({ label: t('fieldGuide.steps'), selected: '0', className: 'cot-guide__steps',
+    tabs: [0, 1, 2].map((i) => ({ id: String(i), label: t(`fieldGuide.${id}.${i}.title`), count: i + 1 })) });
+  const steps = stepsMarkup.content.firstElementChild as HTMLElement;
+  for (const tab of steps.querySelectorAll('[role=tab]')) tab.setAttribute('aria-controls', detail.id);
   const choose = (index:number) => {
     photo?.select(index);
-    steps.querySelectorAll('button').forEach((button,i)=>button.setAttribute('aria-pressed', String(i===index)));
+    setRoving(steps, String(index));
     figure.querySelectorAll<SVGGElement>('[data-part]').forEach(part=>part.classList.toggle('active',part.dataset.part===String(index)));
     heading.textContent = t(`fieldGuide.${id}.${index}.title`); paragraph.textContent = t(`fieldGuide.${id}.${index}.body`);
   };
-  for(let i=0;i<3;i++) {
-    const button = document.createElement('button'); button.type='button'; button.className='cot-guide__step'; button.setAttribute('aria-controls',detail.id);
-    const number = document.createElement('b'); number.textContent=String(i+1); number.setAttribute('aria-hidden','true');
-    const label = document.createElement('span'); label.textContent=t(`fieldGuide.${id}.${i}.title`); button.append(number,label);
-    button.addEventListener('click',()=>choose(i)); steps.append(button);
-  }
+  wireRoving(steps, (value) => choose(Number(value)));
   choose(0); root.append(overview,figure,steps,detail); if (technicalDetails) root.append(technicalDetails); return root;
 }

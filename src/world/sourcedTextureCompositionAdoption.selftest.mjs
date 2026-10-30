@@ -11,7 +11,8 @@ globalThis.__sourceTestCap = 2;
 const hooks = registerHooks({ load(path, context, next) {
   if (path === clientUrl) return { format: 'module', shortCircuit: true, source: `
     export const canComposeSourcedTextureInWorker = () => globalThis.__sourcedCompositionTest.available;
-    export const tryComposeSourcedTexture = (...args) => globalThis.__sourcedCompositionTest.compose(...args);` };
+    export const tryComposeSourcedTexture = (...args) => globalThis.__sourcedCompositionTest.compose(...args);
+    export const sourceFileBitmap = (image) => globalThis.__sourcedCompositionTest.bitmap(image);` };
   if (path === qualityUrl) return { format: 'module', shortCircuit: true,
     source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);' };
   const result = next(path, context);
@@ -282,4 +283,38 @@ for (let i = 0; i < 10; i++) {
   assert.ok(_compositeCache.size <= 8);
 }
 assert.equal(_compositeCache.size, 8);
-console.log('sourcedTextureCompositionAdoption.selftest: cache bypass, exact optionals, source settlement, adoption, fallback, cancellation, size invalidation, and bounded retention passed');
+
+// (260) the main thread's compositions draw bitmaps the client decoded off it (sourceFileBitmap): only the draws the
+// caches still miss and only at the photo's own size (a scaled draw, a phone's, keeps its element), the same pixels,
+// every bitmap closed once composed; a bitmap that fails is drawn from its element
+const decodedPhotos = [], closedBitmaps = [];
+globalThis.createImageBitmap = () => assert.fail('the client decodes from the file');
+driver.bitmap = async (image) => {
+  if (driver.bitmapFails) throw new Error('decode refused');
+  decodedPhotos.push(image);
+  const bitmap = { width: image.width, height: image.height, pixels: image.pixels, close() { closedBitmaps.push(bitmap); } };
+  return bitmap;
+};
+const decodeOptions = { separateSurface: true, roughInAlpha: true, roughMul: 0.8 };
+reset(); driver.available = false;
+const expectedDecoded = composeSet('plaster', source, decodeOptions);
+_compositeCache.clear(); _normalCache.clear();
+const viaBitmaps = await composeSetAsync('plaster', source, decodeOptions);
+const sourcePhotos = [source.color, source.normal, source.ao, source.rough].filter(Boolean);
+assert.deepEqual(new Set(decodedPhotos), new Set(sourcePhotos), 'every draw the caches miss reads a bitmap');
+assert.equal(closedBitmaps.length, decodedPhotos.length, 'every bitmap closed once composed');
+for (const name of ['albedo', 'normal', 'surface']) {
+  assert.deepEqual(viaBitmaps[name].pixels, expectedDecoded[name].pixels, `${name}: the same pixels from the bitmaps`);
+}
+decodedPhotos.length = 0; _normalCache.clear();
+await composeSetAsync('plaster', source, decodeOptions);
+assert.deepEqual(decodedPhotos, [source.normal], 'a cached composite decodes its normal alone');
+reset(); driver.available = false; decodedPhotos.length = 0; globalThis.__sourceTestCap = 1;
+await composeSetAsync('plaster', source, decodeOptions);
+assert.deepEqual(decodedPhotos, [], 'a scaled draw keeps its element');
+globalThis.__sourceTestCap = 2;
+reset(); driver.available = false; driver.bitmapFails = true;
+const refused = await composeSetAsync('plaster', source, decodeOptions);
+assert.deepEqual(refused.albedo.pixels, expectedDecoded.albedo.pixels, 'a refused bitmap draws its element');
+driver.bitmapFails = false; delete globalThis.createImageBitmap;
+console.log('sourcedTextureCompositionAdoption.selftest: cache bypass, exact optionals, source settlement, adoption, fallback, cancellation, size invalidation, bounded retention and the off-thread decodes passed');

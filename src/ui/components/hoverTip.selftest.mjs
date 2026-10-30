@@ -61,7 +61,8 @@ const viewport = { width: 1440, height: 900 };
   // off each page's first load: imported when the page is idle (they act only on a hover)
   for (const shell of ['../../presentation/publicNav.ts', '../settings.ts']) {
     const text = read(shell);
-    assert.match(text, /import\('[./]+(?:ui\/)?components\/pageBehaviours\.ts'\)\.then\(\(\{ installPageBehaviours \}\) => installPageBehaviours\(\)\)/, shell);
+    // (264) the public shell asks through the load-failure kit's importWhenOnline (load-failure-264), its .then on the next line
+    assert.match(text, /import\('[./]+(?:ui\/)?components\/pageBehaviours\.ts'\)\s*\.then\(\(\{ installPageBehaviours \}\) => installPageBehaviours\(\)\)/, shell);
     assert.doesNotMatch(text, /^import .*pageBehaviours/m, `${shell} keeps the behaviours off its static graph`);
   }
   assert.match(read('./pageBehaviours.ts'), /installHoverTips\(doc\);\s*installMarkRoll\(doc\);/);

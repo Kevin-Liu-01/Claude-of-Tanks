@@ -4,6 +4,8 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './profiles/leopardImprovedHull.ts';
+import { LEOPARD_A6_UA_SHELL_DIMS } from './leopardA6UaLayout.ts';
+import { applySourceXWesternAuxArmor } from './sourceXWesternAuxArmor.ts';
 import {
   frontPlate,
   leftCheekPlate,
@@ -164,16 +166,39 @@ registerFleetSpecs(registries, GERMANY_IDS, GERMANY_SPECS);
 
 // Clone before adding the A6M's separate fitted frontal package. The
 // Ukrainian vehicle owns its own field-modernized sector layout.
+// 264 (the owner, 2026-10-28: rebuilt "off of our new current actual leopard 2a6"): the visual is the source-measured
+// 2A6 (profiles/leopardA6X.ts) with its field kit (profiles/leopardA6Ua.ts), so the ring, trunnion and muzzle are that
+// rig's (LEOPARD_A6_X_DATUMS.leo2a6; muzzle 7.139555). Its mobility, ERA sectors and dimensions are unchanged (the kit
+// is sized to the 4.44 m width and 3.28 m height); its main plates, HP and cadence are the 2A6's (fleetBalancePass.ts).
 const LEOPARD_2A6_UA_ID = 'leo2a6_ua';
 const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
   name: 'Leopard 2A6 UA', nation: 'Ukraine', number: 'UA 26', scheme: 'digital',
   base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'],
   camoScale: 0.46,
   dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.44, heightM: 3.28 },
+  turretPivot: [.000005, 2.14836, 1.047795], gunPivot: [0, 1.97054 - 2.14836, 1.419495 - 1.047795],
+  gunBarrel: { lengthM: 7.139555 - 1.419495 },
   stats: { hp: 2850, enginePowerHp: 1500, weightTons: 72.4, topSpeedKmh: 64,
     reverseSpeedKmh: 29, turretTraverseDegS: 38, gunPitchDegS: 32 },
   reloadS: 5.8, shellName: 'DM63A1 APFSDS', armorFactor: 1.06,
 });
+// 264b (Main's armour-truth audit, 2026-10-29): the UA's spaced and track plates sit on the 2A6 shell it is drawn on, as
+// leo2a6's do. The 2A6M donor's one-piece spaced wedge pair (turret_wedge_R/L) stood at the 2A6M turret's height, up to
+// 0.7 m over the 2A6 roof, where flank and top fire met it, and its template skirts covered y 0.45-1.15 m against the
+// 2A6's leaves and heavy panels at 0.88-1.33 m. The 2A6's main cells own its wedges, so no wedge pair returns; the skirts
+// take the 2A6's faces with the UA's own ratings (sourceXWesternAuxArmor.ts). Its Kontakt-1 stays seated on both.
+applySourceXWesternAuxArmor(leopard2A6UA, LEOPARD_2A6_UA_ID);
+{
+  // the track faces: the Leopard 2 template's, fitted from the 2A4's dimensions to the 2A6's, as leo2a6 takes them
+  // (sourceXSecondWaveSpecs.ts fitArmorToDims)
+  const from = registries.tankSpecs.leo2a4?.dims, to = LEOPARD_A6_UA_SHELL_DIMS;
+  if (!from) throw new Error(`${LEOPARD_2A6_UA_ID}: the Leopard 2A4 template frame is not registered`);
+  const sx = to.widthM / from.widthM, sy = to.heightM / from.heightM, sz = to.hullLengthM / from.hullLengthM;
+  for (const plate of leopard2A6UA.armor.hullPlates) {
+    if (plate.kind !== 'external' || !/^track_[LR]$/.test(plate.name)) continue;
+    plate.verts = plate.verts.map(([x, y, z]): Vec3Tuple => [x * sx, y * sy, z * sz]);
+  }
+}
 
 interface EraReduction {
   readonly keReduction: number;

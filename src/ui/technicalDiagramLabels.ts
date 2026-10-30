@@ -294,7 +294,7 @@ export function mountTechnicalDiagramLabels(
   host: HTMLElement, data: TechnicalLabelData, kind: TechnicalKind, header: TechnicalHeader | null = null,
   options: TechnicalMountOptions = {},
 ): { refresh(): void; dispose(): void } {
-  sheet ??= import('./technicalDiagramLabels.css');
+  const sheetReady = (sheet ??= import('./technicalDiagramLabels.css'));
   const doc = host.ownerDocument, image = options.image ?? host.querySelector('img');
   const showHeader = options.header !== false && header !== null, showLegend = options.legend !== false;
   let keyBlock: HTMLElement | null = null;
@@ -330,7 +330,12 @@ export function mountTechnicalDiagramLabels(
     setTone(badge, color);
     return badge;
   };
+  // the overlay lays itself out once its stylesheet stands: before it, the chips, pins and key stood unstyled in the host's
+  // flow, and the drawing viewer's dialog grew and snapped back as the sheet arrived (the loading census 264, CLS 0.42 on
+  // Fast 3G); a sheet the network dropped leaves the drawing without its labels
+  let styled = false, disposed = false;
   const render = (): void => {
+    if (!styled) return;
     root.replaceChildren();
     keyBlock?.remove();
     keyBlock = null;
@@ -440,7 +445,7 @@ export function mountTechnicalDiagramLabels(
       lines[index]!.setAttribute('points', points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
     });
   };
-  render();
+  void sheetReady.then(() => { if (disposed) return; styled = true; render(); }, () => {});
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => render()) : null;
   observer?.observe(host);
   if (image) observer?.observe(image);
@@ -449,6 +454,7 @@ export function mountTechnicalDiagramLabels(
   return {
     refresh: render,
     dispose(): void {
+      disposed = true;
       observer?.disconnect();
       image?.removeEventListener('load', render);
       offLocale();

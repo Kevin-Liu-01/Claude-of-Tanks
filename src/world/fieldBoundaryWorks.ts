@@ -26,7 +26,7 @@ export interface FieldWallLod {
   cells: Array<{
     box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean;
     /** (b17) The cell's key, and its stone form while the camera is near (built on demand; false: built, nothing in it). */
-    key: number; stones: THREE.Mesh | false | null; midShown: boolean;
+    key: number; stones: THREE.BatchedMesh | false | null; midShown: boolean;
   }>;
   /** (b17) What the stone forms are built from (null on a phone), and the walls' material they share. */
   fine: FieldWallFineSource | null;
@@ -205,8 +205,15 @@ export function createFieldWallLod(group: THREE.Group): (cameraPos: THREE.Vector
         wallJob = null;
         if (g) {
           lod.crush?.pressBuilt(g, cell.box); // (PH.15: the crushed spans over it)
-          const mesh = new THREE.Mesh(g, lod.material);
+          // (260, the room-stalls lane's reveal receipt on Saltwind: a plain Mesh on the walls' material linked the non-batched
+          // program live in the first frame that built a stone form, where the mid and far forms are batches; Main's ruling)
+          // the stone form is a batch of its one geometry, the mid and far forms' program; a later crush presses the batch's
+          // own geometry (bindStones reads cell.stones.geometry)
+          const mesh = new THREE.BatchedMesh(1, g.getAttribute('position').count, Math.max(1, g.index ? g.index.count : 0), lod.material);
+          mesh.addInstance(mesh.addGeometry(g));
+          g.dispose();
           mesh.name = 'props-field-works-stones';
+          mesh.sortObjects = false;
           mesh.castShadow = false; mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
           group.add(mesh);
           cell.stones = mesh;
@@ -227,7 +234,7 @@ export function createFieldWallLod(group: THREE.Group): (cameraPos: THREE.Vector
         wallJob.steps.return(null); // (the camera turned away before it was done)
         wallJob = null;
       } else if (!wantStones && cell.stones !== null) {
-        if (cell.stones) { group.remove(cell.stones); cell.stones.geometry.dispose(); }
+        if (cell.stones) { group.remove(cell.stones); cell.stones.dispose(); }
         cell.stones = null;
       }
       if (wantStones && cell.stones === null) pending++;

@@ -1,6 +1,6 @@
 # Claude of Tanks technical field manual
 
-> Detailed public documentation for the current Claude of Tanks simulation, 221 production-visible procedural vehicles, 33 battlefields, 13 battle modes, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
+> Detailed public documentation for the current Claude of Tanks simulation, 236 production-visible procedural vehicles, 33 battlefields, 13 battle modes, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
 
 ## Manual
 
@@ -19,7 +19,7 @@
 - [Procedural model pipeline](https://cot.kevinliu.studio/docs/models): How Claude of Tanks researches, constructs, articulates, audits, compares, and releases its first-party procedural tank models.
 - [Rendering and performance](https://cot.kevinliu.studio/docs/rendering): How Claude of Tanks draws and loads: the renderer, lighting, post-processing, adaptive quality, an isolated boot and battle loading staged behind cover.
 - [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Technical guide to bot perception, route planning, tactical positioning, aiming, team behavior, survival, and deterministic verification in Claude of Tanks.
-- [How the media was filmed](https://cot.kevinliu.studio/docs/filming): How the Claude of Tanks site takes, portraits and films were shot in Scene Studio: a motion search, schematic previz, engine reviews and their fixes, supersampled 4K finals, stills and generated sound.
+- [Filming the media](https://cot.kevinliu.studio/docs/filming): How the Claude of Tanks site takes, portraits and films were shot in Scene Studio: a motion search, schematic previz, engine reviews and their fixes, supersampled 4K finals, stills and generated sound.
 
 ## Related
 

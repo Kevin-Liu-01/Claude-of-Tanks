@@ -492,6 +492,109 @@ Steinburg and Verdant (paired, one build, ABBA):
    per-part casters.
 Not taken: instancing across the roster (pose and damage state differ per tank; duplicate picks are few).
 
+### Step 1: what the shadow maps draw (2026-10-26)
+
+`--draw-attribution` now splits the shadow draws by cascade, the static cache's phase (`static`: a rebuild's static
+layer; `dynamic`: the layer drawn over a copy; `full`: an ordinary render) and owner, and names the world's draws in the
+dynamic layer. Two urban 7v7 runs on the current build (the census serves the root's `dist/`: an earlier run measured a
+stale build and read every draw as `full`):
+
+- The cache holds when little breaks: 12 cascades rebuilt to 91 reused in 30 frames, the world's static layer about 42
+  draws a frame across the four cascades.
+- When a building comes down, its flying bodies dominate: `fx-fracture-body` drew 252 times a frame into the shadow maps
+  against 117 in the main pass, about 110 a cascade. The cascades' boxes overlap, so a body near the view stands in
+  every box. Fix (1a8c1ebbee): each shadow-casting body carries a caster profile whose reach (its planar distance from
+  the view) shadowCasterProfiles' reach law reads, so no cascade sampled from beyond it draws the body.
+- The world's dynamic layer (about 90 a frame): the per-cascade caster proxies (`*-shadow-c`, by design) and the
+  promoted buckets (canopy shadows, poles, props buckets that changed recently).
+- Tanks: 75 shadow draws a frame at 7v7, the one tank under 30 m at 22-42 of them (steps 2 and 3).
+
+A census battle rarely brings a building down inside its 30 sampled frames, so the fix's A/B is a staged demolition
+(`tools/tmp-253-collapse-draws.mjs`, untracked: perf-240's staging of Urban's rowhouse 165, 7v7 with the bots frozen,
+the player 42 m before its widest face, HE rounds every 0.45 s until it collapses; 30 frames of draws after the 6th
+round, 0.3 s after the collapse and 2 s after it; base, lane, lane, base on one machine). Fracture-body shadow draws a
+frame, and per body drawn in the main pass:
+
+| Sample | Base (two runs) | Reach law (two runs) |
+|---|---|---|
+| Breach | 307-329 (1.82-1.92 a body), far cascade 44-47 | 225-229 (1.36-1.45), far cascade 0 |
+| Collapse | 387-402 (2.91-2.97), far cascade 57-59 | 385-407 (2.56-2.84), far cascade 0.6-1.7 |
+| 2 s later | 204-262 (2.79-2.94), far cascade 30-38 | 193-212 (2.47-2.80), far cascade 0.5-1.2 |
+
+The far cascade is gone, but a collapse farther from the view still draws its bodies into the near cascades. The near
+law (shadowCasterProfiles.ts law 4) is the reach law's mirror: a caster whose owner reports its nearest view depth is
+hidden from a cascade whose sampled range (`csmSliceToM`, the fade's half-band past its break) ends short of that depth
+less its shadow footprint and the 8 m margin. The fracture bodies report it from the fx update's camera. The same
+staging with both laws (a second ABBA on a rebuilt lane dist):
+
+| Sample | Base (two runs) | Reach and near laws (two runs) |
+|---|---|---|
+| Breach | 279-298 (1.64-1.81 a body) | 221-258 (1.31-1.49) |
+| Collapse | 412-448 (3.01-3.20) | 311-354 (2.42-2.45) |
+| 2 s later | 253-283 (2.93-3.10) | 163-231 (2.34-2.44) |
+
+About a fifth fewer shadow draws a body, and the collapse frame's whole shadow pass 787 -> 695-717 draws. High samples
+cascade 0 to 32 m and cascade 1 to 94 m (its 30 / 89 m breaks and the fade's 6 %): a body leaves the first past about
+45 m of view depth and the second past about 105 m, so these bodies at 42 m mostly stay in cascade 0 (102-112 against
+107-121 in cascade 1).
+
+### Steps 2 and 3, measured before building (2026-10-26)
+
+- **The mid LOD saves nothing.** Built to the vehicles lane's conditions (a sibling of buildFarHull, grouped per
+  parent, material, layout, render order, layers, coplanar depth and ties; gear, markings, lenses, suits, hand-offs and
+  LODs left live), it merged 0-1 draws a tank: T-90M 0, Leopard 2A7V 0, SEPv3 1 (two sources). At 100 m these battle
+  builds draw 51-63 meshes: 11-15 running gear (live by the conditions), 16-22 greebles under the 150 m LODs, and the
+  rest already merged by the 'dual' static merge, one per owner, material and coplanar depth layer. What separates them
+  is the depth layering, which the merge must keep. Shelved (`battle-spikes-253-evidence/mid-lod-shelved.patch`).
+- **The tanks' shadow draws are the near-hull policy, not per-part casters.** A bot casts through one
+  `articulatedShadowBatch` (a BatchedMesh on the shadow-only layer: one draw a cascade). The extra draws are
+  nearVehicleShadowDetail.ts: the six nearest hulls within 90 m cast their real armour into the cascades that cover them
+  (the owner's 2026-09-20 ask), 22-42 draws for the nearest hull and 10-17 for the others. Those casters write depth
+  only, so they could merge per articulation owner across materials; that is the remaining lever here.
+
+### Step 3: the near hulls' merged shadow casters (2026-10-26)
+
+nearVehicleShadowMerge.ts, under the vehicles lane's conditions. A selected hull's real opaque casters merge per owner
+(the detail mesh's parent, a static LOD wrapper skipped: hull, turret, gun mount, recoil, a roof station) and per
+effective shadow side, into the owner's own frame. The merged copy holds positions only, sits on the shadow-only layer,
+and is attached under its owner only while one of its cascades renders. Cut-out casters keep their own cast (alpha test,
+alpha or displacement maps, transparency, field suits, lattice and slat panels), and so do instanced, skinned and morphed
+meshes (the running gear), runtime-written buffers and meshes with their own depth material.
+
+Each source is stamped when merged: geometry, material, position version, visibility, parent and cast flag. A stamp
+that no longer holds (damage, a detached part, a bent gun, a wreck's swap) drops the set, and the hull casts mesh by
+mesh for 30 updates before it is rebuilt. The policy builds one set a frame, holds at most 12 and gives one back after
+600 updates out of the selection. It runs in live battle frames only (`setVehicleShadowMerge(frame.inBattle &&
+!frame.killcamActive)`), never in the reduced tier, and `__SHADOW_DEBUG.noVehicleMerge` turns it off for A/Bs.
+
+Per hull and cascade, high geometry (unique detail meshes; a detail list can name a merged mesh more than once): T-90M
+20 -> 14 shadow draws, Leopard 2A7V 23 -> 15, SEPv3 25 -> 13. The depth triangles per shadow side match the detail's
+(nearVehicleShadowMerge.selftest: count, area, area-weighted centroid and normal).
+
+In the browser (`tools/tmp-253-merge-shadow-ab.mjs`, untracked; one build, merge on and off by `noVehicleMerge`): Urban
+7v7, the bots frozen and moved 400 m off, the player's T-90M with the Leopard 14 m and the SEPv3 24 m ahead, the battle
+held by the settings pause, every cascade rendered each frame.
+
+- Draws: the near hulls' shadow draws 143 -> 109 a frame (cascade 0 55 -> 41, cascade 1 60 -> 40). The whole shadow
+  pass went 175 -> 141 and the main pass held at 451. Off, on, off, on gave the same counts both times.
+- Never cast twice: over 60 frames, 240 hull-cascade checks and 720 merged draws, no merged caster drew in a cascade
+  with a detail mesh it covers.
+- Depth: each hull's shadow depth rendered from cascades 0 and 1 as the policy casts it, into a float target the size
+  of the map, with each caster's own shadow side. Crops of 192 texels about each hull matched merged against mesh by
+  mesh texel for texel: 0 of 3,236-15,175 covered texels differ, max delta 0. The control pair: the merged casters
+  alone (2-4 a hull) against the 8-14 detail meshes they cover alone also match texel for texel (0 of 1,144-13,716),
+  and the merged casters alone against the whole detail differ on 16-45 % of the covered texels, so the comparison
+  sees a caster missing. Final frames cannot show it: the held
+  scene still animates (clouds, wind, temporal post), and two frames with the merge off already differed on about as
+  many crop pixels as off against on.
+- Live battles (2026-10-27, `tools/battle-spike-census.mjs --draw-attribution`, 30 sampled frames; off is
+  `--shadow-debug=noVehicleMerge`): the player's near tank (under 30 m) casts 16.5 shadow draws a frame with the merge
+  on and 22.5 off. The pair on one build (ed163c4af3, Verdant 7v7 cold): 16.5 on, 22.5 off. Earlier pairs on the lane's
+  previous build: Verdant 16.6 and 16.5 on against 22.5 off, Urban 16.5 on against 22.5 off. Its main-pass draws hold at
+  53. The far tanks (past 180 m) cast 3.3-4.2 a tank either way. Whole-pass and per-cascade totals are not an A/B
+  across census battles: the bots, the tanks in each band and the trees' shadows differ from run to run (the pair's
+  tank shadow draws by cascade were 22/9/9/4.5 on with 8 far tanks against 31/20/12/6 off with 11).
+
 ## The HUD's frame cost (UI-LOCKDOWN part E: 0.5 ms a frame)
 
 The Steinburg 14v14 profile: code under the HUD's sources costs 20.8 ms a second (about 1 ms a frame there).

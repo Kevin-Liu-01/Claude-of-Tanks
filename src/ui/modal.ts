@@ -8,6 +8,7 @@ import { ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 
 /** Reduce motion: the player's choice on :root (data-motion reduce or full, src/ui/accessibilityPreferences.ts), or the
  *  OS while they follow it. Inline: the public pages load this modal and never carry the accessibility core. */
@@ -89,6 +90,8 @@ interface ModalOptions {
   /** Whether the modal holds edits a close would drop: while it does, a press on the backdrop leaves it open (Esc and the
    *  close button still close it, on purpose). */
   unsaved?: (() => boolean) | null;
+  /** Its transient-surface id (src/ui/transientSurfaceRegistry.ts); 'modal' for a modal no census names. */
+  surface?: string;
 }
 
 let serial = 0;
@@ -170,7 +173,7 @@ function unlockBody() {
 /** Create a reusable modal controller. Callers populate `body` and `footer`. */
 export function createModal({
   title = '', subtitle = '', size = 'medium',
-  closeLabel = '', className = '', onOpen = null, onClose = null, unsaved = null,
+  closeLabel = '', className = '', onOpen = null, onClose = null, unsaved = null, surface: surfaceId = 'modal',
 }: ModalOptions = {}): ModalController {
   ensureCss();
   const id = `cot-modal-${++serial}`;
@@ -218,6 +221,15 @@ export function createModal({
   let disposed = false;
   let closeTimer = 0;
   let openRevision = 0;
+  // a transient surface (components/surfaceStack.ts), modal: its backdrop answers a press outside it, Escape is the stack's
+  // (one press closes the top surface), and one opened from elsewhere replaces it as it fades
+  const surface: TransientSurface = {
+    id: surfaceId,
+    element: () => panel,
+    owns: (node) => !!trigger?.contains(node),
+    close: (reason) => controller.close({ restoreFocus: reason === 'escape' }),
+    modal: true,
+  };
   const controller: ModalController = {
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
@@ -241,6 +253,7 @@ export function createModal({
       // help inside the trigger's open dialog so it remains visible and focusable.
       const host = trigger?.closest('dialog[open]') || document.body;
       if (root.parentElement !== host) host.appendChild(root);
+      openSurface(surface, trigger);
       body.scrollTop = 0;
       root.hidden = false;
       activeModal = controller;
@@ -257,6 +270,7 @@ export function createModal({
       if (disposed || (root.hidden && activeModal !== controller)) return;
       openRevision++;
       window.clearTimeout(closeTimer);
+      closeSurface(surface);
       root.classList.remove('is-open');
       const wasActive = activeModal === controller;
       if (wasActive) activeModal = null;
@@ -287,14 +301,6 @@ export function createModal({
   backdrop.addEventListener('pointerdown', (event) => {
     if (event.target === backdrop && !unsaved?.()) controller.close();
   });
-  panel.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      controller.close();
-      return;
-    }
-    containModalTab(event, panel, closeButton);
-  });
+  panel.addEventListener('keydown', (event) => { containModalTab(event, panel, closeButton); });
   return controller;
 }

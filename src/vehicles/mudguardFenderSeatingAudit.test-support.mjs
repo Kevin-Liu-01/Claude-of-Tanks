@@ -96,7 +96,7 @@ export function createMudguardFenderSeatingAudit() {
       const expectedClosedShoulders = [
         'chieftain3', 'chieftain_mk9', 't90ms_2011',
         'kf51_evo', 'kf51_u',
-        'leo2a4', 'leo2a4_otco', 'leo2a6_ua',
+        'leo2a4', 'leo2a4_otco',
       ];
       for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
@@ -127,7 +127,7 @@ export function createMudguardFenderSeatingAudit() {
           't90ms_2011: terminal guard follows a decisive forward/downward slope');
       }
 
-      for (const id of ['leo2a4', 'leo2a4_otco', 'leo2a6_ua']) {
+      for (const id of ['leo2a4', 'leo2a4_otco']) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: shoulder flange must merge into the glacis`);

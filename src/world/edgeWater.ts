@@ -376,8 +376,29 @@ export function buildOutlandWaterGeometry(
   waterAt: OutlandWaterQuery | null | undefined,
   halfSize = 512,
   outerRadius = SEA_APRON_OUTER_RADIUS_M,
-  { cellM = 16, depthM = 0, wetThreshold = 0.02, ramp }: { cellM?: number; depthM?: number; wetThreshold?: number; ramp?: readonly [number, number] } = {},
+  options: { cellM?: number; depthM?: number; wetThreshold?: number; ramp?: readonly [number, number] } = {},
 ): THREE.BufferGeometry | null {
+  const steps = buildOutlandWaterGeometrySteps(openings, waterAt, halfSize, outerRadius, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** Rows of cells between buildOutlandWaterGeometrySteps' checkpoints. */
+const OUTLAND_WATER_SLICE_ROWS = 8;
+
+/**
+ * buildOutlandWaterGeometry with a checkpoint every OUTLAND_WATER_SLICE_ROWS rows of cells (260, the room-stalls lane's
+ * rooms census on Saltwind: the apron's grid, five water samples a cell out to a kilometre past the square, was one 190 ms
+ * step of the terrain build); the same cells, vertices and order.
+ */
+export function* buildOutlandWaterGeometrySteps(
+  openings: readonly SeaOpening[],
+  waterAt: OutlandWaterQuery | null | undefined,
+  halfSize = 512,
+  outerRadius = SEA_APRON_OUTER_RADIUS_M,
+  { cellM = 16, depthM = 0, wetThreshold = 0.02, ramp }: { cellM?: number; depthM?: number; wetThreshold?: number; ramp?: readonly [number, number] } = {},
+): Generator<void, THREE.BufferGeometry | null, void> {
   if (!waterAt) return buildSeaApronGeometry(openings, halfSize, outerRadius, { depthM });
   if (!openings.length) return null;
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
@@ -431,7 +452,8 @@ export function buildOutlandWaterGeometry(
   const far = Math.ceil(outerRadius / (cellM * 4)) * 4;
   const patches = far > near ? [[1, 0, near], [4, near, far]] : [[1, 0, near]];
   for (const [stride, inner, outer] of patches) {
-    for (let iz = -outer; iz < outer; iz += stride) for (let ix = -outer; ix < outer; ix += stride) {
+    for (let iz = -outer, rows = 0; iz < outer; iz += stride, rows++) for (let ix = -outer; ix < outer; ix += stride) {
+      if (ix === -outer && rows > 0 && rows % OUTLAND_WATER_SLICE_ROWS === 0) yield;
       const cx = (ix + stride * 0.5) * cellM, cz = (iz + stride * 0.5) * cellM;
       if (Math.max(Math.abs(cx), Math.abs(cz)) < Math.max(halfSize, inner * cellM)) continue;
       if (detMath.hypot(cx, cz) > outerRadius) continue;

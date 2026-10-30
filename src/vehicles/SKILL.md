@@ -448,10 +448,16 @@ family geometry in `profiles/misc.ts`. Its typed builder port owns shared
 running-gear layers, ERA placement, gun-frame geometry, and post-assembly
 articulation; Japanese Type 90 derivatives must explicitly satisfy that donor
 contract.
-Keep the Pershing, Patton, M48, M60, and M60A2 family in
-`profiles/patton.ts`. Preserve its asymmetric cast-loft sections, roof fitting
-inventories, low-profile transformation contract, M60 surface-aligned ERA,
-and explicit invalid-geometry guards behind the narrow Patton builder port.
+Keep the M60, M60A2 and M60A3 builds in `profiles/patton.ts`. Preserve their
+asymmetric cast-loft sections, roof fitting inventories, M60 surface-aligned
+ERA, and explicit invalid-geometry guards behind the narrow Patton builder port.
+The M46, M47 and M48A5 are measured castings in `profiles/pattonCast.ts`
+(release 262, the owner's "no longer look so chungus" redesign): each turret and
+hull is a closed `sectionSolid` loft of a station table taken from
+`docs/references/tanks/<id>.md` (published dimensions, photographs, the
+registered prints and the owner-supplied M48A5 model). Change a station table,
+not the loft, and keep `pattonCastProportions.selftest.mjs` and
+`pattonGunClearance.selftest.mjs` green.
 Keep the Strv 103 base build in `profiles/casemate.ts`; its strict builder,
 loft, material, and running-gear contracts must preserve the authored station
 order and fixed-hull ownership, and Swedish callers depend only on that narrow

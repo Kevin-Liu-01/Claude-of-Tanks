@@ -25,7 +25,7 @@ import {
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
-import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
+import { csmSampledFromM, csmSampledToM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
 } from './renderLayers.ts';
@@ -71,6 +71,8 @@ interface ShadowDebugOptions {
   freezeMask?: number;
   /** Round 28: keep every hull on its convex proxies (A/B probes for the near-hull detail casters). */
   noVehicleDetail?: boolean;
+  /** (battle-spikes-253) The near hulls cast their detail mesh by mesh, never merged (A/B probes for the merge). */
+  noVehicleMerge?: boolean;
   /** 2026-10-02: render every caster into every cascade every frame (the static-caster cache off; A/B probes). */
   noStaticCache?: boolean;
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
@@ -994,6 +996,8 @@ export function createLighting(
   // 2026-10-15 (SKY shadows r2b): six near hulls on Ultra and High, four on Medium and Low
   let nearVehicleMax = nearVehicleShadowMaxFor(resolvePresetName());
   const cascadeRangeScratch: CascadeRange[] = [];
+  // (battle-spikes-253) the near hulls' merged casters: the frame runtime's live battle frames alone (setVehicleShadowMerge)
+  let vehicleShadowMerge = false;
   const nearVehiclePolicy: NearVehicleShadowPolicy = createNearVehicleShadowPolicy({
     camera, scene,
     cascadeRanges: () => {
@@ -1010,6 +1014,7 @@ export function createLighting(
     max: () => nearVehicleMax,
     // 2026-10-14 (SKY shadows r2a): the detail covers every cascade the hull's shadow lands in (its reach down-sun)
     sunDirection: () => csm.lightDirection,
+    merge: () => vehicleShadowMerge && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleMerge),
   });
   setShadowCascadePolicy(nearVehiclePolicy);
   // 2026-10-03: the same near hulls carry the ground's occlusion in the aerial pass (vehicleGroundOcclusion.ts); the
@@ -1597,6 +1602,8 @@ export function createLighting(
       } else sample.frustum = null;
       sample.texelM = (shadowCam.right - shadowCam.left) / Math.max(1, shadow.mapSize.x);
       sample.sampledFromM = csmSampledFromM(i === 0 ? 0 : csm.breaks[i - 1], camera.near, far, csm.fade);
+      // (battle-spikes-253) and to where it is sampled (the near law: the last cascade samples to the shadow far)
+      sample.sampledToM = i === lights.length - 1 ? Infinity : csmSampledToM(csm.breaks[i], camera.near, far, csm.fade);
     }
     profileCascades.length = lights.length;
     // csm.lightDirection points FROM the sun: its -y is the sine of the sun's elevation
@@ -1665,6 +1672,11 @@ export function createLighting(
      * static. Existing depth maps remain bound, so the color result is exact;
      * releasing the latch forces a complete refresh before motion resumes.
      */
+    /** (battle-spikes-253) Whether the near hulls cast their opaque detail through merged casters (a live battle frame). */
+    setVehicleShadowMerge(on: boolean): void {
+      vehicleShadowMerge = on;
+    },
+
     setStaticPresentationDormant(on: boolean): void {
       const next = !!on;
       if (staticPresentationDormant === next) {
@@ -1927,6 +1939,8 @@ export function createLighting(
     /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
     /** Round 28: the hulls casting real armour this frame (probes). */
     get nearVehicleDetail() { return nearVehiclePolicy.selected.map((e) => ({ id: String(e.root.name), depth: +e.depth.toFixed(1), cascadeMask: e.cascadeMask })); },
+    /** (battle-spikes-253) The near hulls' merged caster sets by hull (probes: a hull never cast twice in one cascade). */
+    get nearVehicleMerged() { return nearVehiclePolicy.merged; },
     getShadowTelemetry() {
       return {
         maxFar: csm.maxFar,

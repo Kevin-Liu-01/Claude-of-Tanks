@@ -60,6 +60,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, presetLightWorld, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+import { lensCullProjection, readCameraLens } from '../engine/cameraLens.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
@@ -530,13 +531,14 @@ export interface VegetationRuntime {
   groundCoverSealSteps(blocked: GroundCoverBlocked): Generator<void, void, void>;
   /** Trees perf (2026-10-07): `viewCamera` — the camera this frame's main pass renders with; its view culls the near
    * pools (any other camera still draws them whole); none (the warm, the Studio, the receipts): every near tree draws. */
+  /** True when this update built the tree partition whole (the world's first; map.ts staggers the sward's cold fill). */
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
     cameraForward?: THREE.Vector3 | null,
     focusPosition?: THREE.Vector3 | null,
     viewCamera?: THREE.Camera | null,
-  ): void;
+  ): boolean;
   setWindTime(timeSeconds: number): void;
   setSniperFade(
     fraction: number,
@@ -4929,7 +4931,10 @@ function* vegetationBuildSteps(
         // placement changes, only when invisible distant chunks are generated.
         if (!deferFarGrass || Math.hypot(spawn.x - gc.cx, spawn.z - gc.cz) < initialGrassRadius) {
           beginGrassChunk(gc);
-          advanceGrassChunk(gc, true);
+          // (260, the rooms census: a near chunk's whole job was one 300 ms step of an async build) an async build takes
+          // the job a slice at a time (its 250 steps or 1.5 ms); the same job, the same tufts
+          if (deferFarGrass) while (!advanceGrassChunk(gc)) yield { stage: 'grassScatter', fine: true };
+          else advanceGrassChunk(gc, true);
         }
         yield { stage: 'grassScatter', fine: true, rowEnd: cx === CHUNKS - 1 };
       }
@@ -8041,7 +8046,10 @@ function* vegetationBuildSteps(
     retainedTextures.push(map);
     return [material, depth];
   }
-  function createBushes(): void {
+  // (260, the rooms census: the bushes were one 186 ms step of the vegetation build) a checkpoint after their geometries
+  // and after each pass; the same draws, placements and order
+  const BUSH_SLICE: BuildYield = { stage: 'bushes', fine: true };
+  function* createBushes(): Generator<BuildYield, void, void> {
     // trees round 2: the desktop shrubs take the place's foliage colour where the map palette names none (the phones
     // keep the palette as it is)
     // trees round 4: a place's own shrub colour (treeBiomes.ts shrubColour) wins over the bush slot's palette, as a form's
@@ -8122,6 +8130,7 @@ function* vegetationBuildSteps(
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit),
         buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
+    yield BUSH_SLICE;
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
@@ -8496,15 +8505,20 @@ function* vegetationBuildSteps(
       });
     }
     placeBushFringes();
+    yield BUSH_SLICE;
     placeBeltShrubs();
+    yield BUSH_SLICE;
     placeFieldBushes();
+    yield BUSH_SLICE;
     placeBushClumps();
     evenBushHalves();
+    yield BUSH_SLICE;
     createBushMeshes();
+    yield BUSH_SLICE;
     placeUnderstorey();
     createUnderstoreyMesh();
   }
-  createBushes();
+  yield* createBushes();
   placementAdmission=null;
 
   yield { stage: 'bushes' };
@@ -9105,13 +9119,14 @@ function* vegetationBuildSteps(
     const gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
     return gap < treeNearOut * OUTLAND_NEAR_SCALE + 6;
   }
-  function repartitionTrees(camPos: THREE.Vector3): void {
-    if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
+  function repartitionTrees(camPos: THREE.Vector3): boolean {
+    if (!_partitionBuilt) { rebuildPartitionFull(camPos); return true; }
     for (const t of trees) repartitionTree(t, camPos);
     for (const batch of outlandBatches) {
       if (!outlandBatchLive(batch, camPos)) continue;
       for (const t of batch.trees) repartitionTree(t, camPos);
     }
+    return false;
   }
   /** One-time full partition build (map load / world rebuild): plain full
    * uploads, and seeds the slot bookkeeping the incremental path maintains. */
@@ -9394,25 +9409,26 @@ function* vegetationBuildSteps(
     }
   }
 
-  function updatePartitionCaches(camPos: THREE.Vector3): void {
+  /** True when it built the tree partition whole. */
+  function updatePartitionCaches(camPos: THREE.Vector3): boolean {
     const carpetCellX = Math.floor(camPos.x / CARPET_CELL);
     const carpetCellZ = Math.floor(camPos.z / CARPET_CELL);
     if (carpetCellX !== _carpetCellX || carpetCellZ !== _carpetCellZ) {
       _carpetCellX = carpetCellX;
       _carpetCellZ = carpetCellZ;
       rebuildCarpet(camPos);
-      return;
+      return false;
     }
     if (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending) {
       scopeRepartitionPending = false;
       _lastCam.copy(camPos);
-      repartitionTrees(camPos);
-      return;
+      return repartitionTrees(camPos);
     }
     // Stagger a tree repartition against carpet construction/publication, but
     // keep advancing a stationary camera's unfinished first carpet. Changing
     // cells coalesces to the newest target without discarding completed cells.
     if (!carpetWork.complete) rebuildCarpet(camPos);
+    return false;
   }
 
   // Trees perf (2026-10-07): the near pools' cull volume (the runs, above the partition): the main camera's view
@@ -9446,7 +9462,8 @@ function* vegetationBuildSteps(
   const _cullFwd = new THREE.Vector3();
   const _cullUp = new THREE.Vector3();
   const _cullSun = new THREE.Vector3();
-  let nearCullTanV = 0, nearCullTanH = 0, nearCullFrames = 0, nearCullPasses = 0, nearCullMoved = 0;
+  const _cullLensTan = new THREE.Vector2(), _cullLensShift = new THREE.Vector2();
+  let nearCullTanV = 0, nearCullTanH = 0, nearCullShiftX = 0, nearCullShiftY = 0, nearCullFrames = 0, nearCullPasses = 0, nearCullMoved = 0;
   function updateNearViewCull(viewCamera: THREE.Camera | null): void {
     const cam = nearViewCullOn() && viewCamera && (viewCamera as THREE.PerspectiveCamera).isPerspectiveCamera
       ? viewCamera as THREE.PerspectiveCamera : null;
@@ -9460,7 +9477,9 @@ function* vegetationBuildSteps(
     const e = cam.matrixWorld.elements;
     const fl = Math.hypot(e[8], e[9], e[10]) || 1, ul = Math.hypot(e[4], e[5], e[6]) || 1;
     const fx = -e[8] / fl, fy = -e[9] / fl, fz = -e[10] / fl, ux = e[4] / ul, uy = e[5] / ul, uz = e[6] / ul;
-    const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov) * 0.5) / (cam.zoom || 1), tanH = tanV * cam.aspect;
+    // (battle-camera-264) the lens from the projection: the chase framing's shift moves the frustum off the axis
+    readCameraLens(cam, _cullLensTan, _cullLensShift);
+    const tanV = _cullLensTan.y, tanH = _cullLensTan.x;
     // the light's direction (toward it): the sky's sun, which the cascades cast from (main.ts setSun)
     const sun = engineCtx.scene?.userData.sunDirWorld as THREE.Vector3 | undefined;
     const sl = sun ? Math.hypot(sun.x, sun.y, sun.z) || 1 : 1;
@@ -9473,6 +9492,7 @@ function* vegetationBuildSteps(
       && fx * _cullFwd.x + fy * _cullFwd.y + fz * _cullFwd.z >= turn
       && ux * _cullUp.x + uy * _cullUp.y + uz * _cullUp.z >= turn
       && Math.abs(tanV - nearCullTanV) <= nearCullTanV * 0.004 && Math.abs(tanH - nearCullTanH) <= nearCullTanH * 0.004
+      && Math.abs(_cullLensShift.x - nearCullShiftX) <= nearCullTanH * 0.004 && Math.abs(_cullLensShift.y - nearCullShiftY) <= nearCullTanV * 0.004
       && lx * _cullSun.x + ly * _cullSun.y + lz * _cullSun.z >= 0.99996) return;
     nearCullOn = true;
     nearCullCamera = cam;
@@ -9484,10 +9504,10 @@ function* vegetationBuildSteps(
     _cullSun.set(lx, ly, lz);
     nearCullTanV = tanV;
     nearCullTanH = tanH;
+    nearCullShiftX = _cullLensShift.x;
+    nearCullShiftY = _cullLensShift.y;
     const near = Math.max(0.05, cam.near), far = Math.max(near * 2, cam.far);
-    const wv = Math.tan(Math.min(1.5, Math.atan(tanV) + NEAR_CULL_TURN_RAD));
-    const wh = Math.tan(Math.min(1.5, Math.atan(tanH) + NEAR_CULL_TURN_RAD));
-    _cullProj.makePerspective(-near * wh, near * wh, near * wv, -near * wv, near, far);
+    lensCullProjection(_cullProj, _cullLensTan, _cullLensShift, NEAR_CULL_TURN_RAD, near, far);
     _cullView.copy(cam.matrixWorld).invert();
     _cullFrustum.setFromProjectionMatrix(_cullProj.multiply(_cullView));
     for (let k = 0; k < 6; k++) {
@@ -9514,8 +9534,8 @@ function* vegetationBuildSteps(
     camFwd: THREE.Vector3 | null = null,
     focusPos: THREE.Vector3 | null = null,
     viewCamera: THREE.Camera | null = null,
-  ): void {
-    if (disposed) return;
+  ): boolean {
+    if (disposed) return false;
     // Round 77b: the impostor atlas bakes here, before this frame's render and outside any render pass (the first
     // frame, and again after a GPU suspension disposed it); a no-op once baked and without a renderer.
     treeImpostors?.ensureBaked();
@@ -9547,10 +9567,11 @@ function* vegetationBuildSteps(
     // Rebuild only after crossing a 16 m cache-cell boundary. The previous
     // seven-meter distance trigger uploaded several MB while merely orbiting
     // the camera; the circular shader fade keeps this coarser recenter hidden.
-    updatePartitionCaches(camPos);
+    const partitioned = updatePartitionCaches(camPos);
     tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
     updateNearViewCull(viewCamera); // trees perf: this frame's runs (after the partition moved trees between tiers)
     updateOcclusionFade(dt, camPos, focusPos);
+    return partitioned;
   }
 
   /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */

@@ -19,12 +19,16 @@
 //    Three's CSM with `fade` samples a cascade from its break start x less the fade's half-band (2026-10-14: the linear
 //    law of shadowCascadeFade.ts, 6 % of x, patched over CSMShader's 0.25·closestEdge²; linearDepth = viewZ / (shadowFar −
 //    cameraNear)).
+// 4. NEAR (battle-spikes-253): the mirror of the reach law. A caster whose owner reports the nearest view depth its pieces
+//    stand at this frame is hidden from a cascade whose sampled range ends short of that depth less its shadow footprint
+//    and the margin: its shadow falls down-sun, at most a footprint nearer in view depth (the margin covers a raised view).
+//    A building's flying pieces 40 m out stood in the near cascade's box, which samples the first 12 m.
 import { Frustum, Matrix4, Sphere, Vector3, type InstancedMesh, type Object3D } from 'three';
 import {
   forEachShadowCasterProfile, setShadowCasterDynamicMask, shadowCasterDynamicMaskOf, SHADOW_CASTER_ALL_CASCADES,
   type ShadowCasterProfile,
 } from './renderLayers.ts';
-import { csmSliceFromM } from './renderLayers.ts'; // (the fade law, shadowCascadeFade.ts, through its one import path)
+import { csmSliceFromM, csmSliceToM } from './renderLayers.ts'; // (the fade law, shadowCascadeFade.ts, through its one import path)
 
 /** A ground shadow shorter than this many texels of a cascade's map cannot survive its PCF kernel. */
 export const SHADOW_FOOTPRINT_MIN_TEXELS = 2;
@@ -42,6 +46,8 @@ export interface ShadowCascadeSample {
   texelM: number;
   /** The view depth from which this cascade's map is sampled, metres. */
   sampledFromM: number;
+  /** (battle-spikes-253) The view depth to which it is sampled, metres (absent: the near law is skipped). */
+  sampledToM?: number;
 }
 
 interface ShadowCasterEvaluation {
@@ -57,6 +63,12 @@ interface ShadowCasterEvaluation {
  */
 export function csmSampledFromM(breakStart: number, near: number, far: number, fade: boolean): number {
   return csmSliceFromM(breakStart, near, far, fade);
+}
+
+/** The view depth to which three's CSM samples cascade i whose break ends at fraction `breakEnd` (with `fade`, over the
+ * fade's half-band past it). */
+export function csmSampledToM(breakEnd: number, near: number, far: number, fade: boolean): number {
+  return csmSliceToM(breakEnd, near, far, fade);
 }
 
 /** The ground shadow length of a caster `heightM` tall under a sun at `sunElevationRad` (Infinity under the law's floor). */
@@ -129,6 +141,8 @@ export function evaluateShadowCasterMask(
     if (footprint > 0 && lawTexelM > 0 && footprint < SHADOW_FOOTPRINT_MIN_TEXELS * lawTexelM) shown = false;
     if (shown && profile.reachM !== undefined && footprint > 0
       && profile.reachM + SHADOW_REACH_MARGIN_M + footprint < cascade.sampledFromM) shown = false;
+    if (shown && profile.nearDepthM !== undefined && cascade.sampledToM !== undefined && footprint > 0
+      && profile.nearDepthM - SHADOW_REACH_MARGIN_M - footprint > cascade.sampledToM) shown = false;
     if (shown && cascade.frustum) {
       if (content === undefined) {
         content = profile.instanced && (object as InstancedMesh).isInstancedMesh

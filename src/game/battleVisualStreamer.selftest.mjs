@@ -307,7 +307,7 @@ for (const mode of ['current', 'pooled', 'malformed']) {
   assert.equal(draws.length, 1, 'a staged root draws once');
   assert.ok(draws[0].root === hidden.visual.root && draws[0].attached, 'while attached, before the hidden detach');
   assert.deepEqual(order.map(([kind]) => kind), ['compile', 'draw'], 'after its programs compile');
-  assert.equal(hidden.visual.root.parent, null, 'the hidden opponent is detached after');
+  assert.ok(hidden.visual.root.parent === null, 'the hidden opponent is detached after');
   const skipped = makeEnt();
   await streamer.stageBattleVisualReveal(skipped, async () => {}, false, { compilePrograms: false });
   assert.equal(draws.length, 1, 'no draw when nothing is compiled');
@@ -357,8 +357,8 @@ for (const mode of ['current', 'pooled', 'malformed']) {
     'every build and compile, then the link wait, then the draws');
   assert.ok(order.filter(([kind]) => kind === 'draw').every(([, , shown]) => shown), 'each draw sees its root attached');
   assert.deepEqual(outside, [], 'no hidden opponent stays attached across a yield');
-  assert.equal(ents[0].visual.root.parent, null, 'a hidden opponent is detached again after its draw');
-  assert.equal(ents[1].visual.root.parent, scene, 'a spotted opponent keeps the attachment the battle gave it');
+  assert.ok(ents[0].visual.root.parent === null, 'a hidden opponent is detached again after its draw');
+  assert.ok(ents[1].visual.root.parent === scene, 'a spotted opponent keeps the attachment the battle gave it');
 }
 // (battle-spikes-253) with drawWarmSteps, a stream's deferred draws run a cohort a step with a yield between: a whole
 // tank's first binds in one task made its last upload wait 694 ms (nav-perf's root-v solo entry); a hidden opponent is

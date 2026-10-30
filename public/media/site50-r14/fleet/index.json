@@ -37,8 +37,8 @@
    "take": "s195-m1a2-airfield",
    "map": "airfield",
    "title": {
-    "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
-    "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+    "en": "An M1A1 Abrams HC knocks out a T-90M Proryv at Kestrel Airfield in the morning",
+    "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "M1A1 Abrams HC, Kestrel Airfield",
@@ -202,8 +202,8 @@
    "take": "s181-t84-frontier",
    "map": "frontier",
    "title": {
-    "en": "A T-84 Oplot knocks out a T-90M at Frontier Basin",
-    "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M"
+    "en": "A T-84 Oplot knocks out a T-90M Proryv at Frontier Basin",
+    "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "T-84 Oplot, Frontier Basin",
@@ -382,8 +382,8 @@
    "take": "s161-cv90-mkiv-fjord",
    "map": "fjord",
    "title": {
-    "en": "A CV90 Mk 4 Concept knocks out a T-90M at Nordhavn Fjord",
-    "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M"
+    "en": "A CV90 Mk 4 Concept knocks out a T-90M Proryv at Nordhavn Fjord",
+    "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "CV90 Mk 4 Concept, Nordhavn Fjord",
@@ -877,8 +877,8 @@
    "take": "s87-leo2a4-otco-polders",
    "map": "polders",
    "title": {
-    "en": "A Leopard 2A3 OTCO knocks out a T-90M at Tidegate Polders at sunset",
-    "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M"
+    "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+    "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "Leopard 2A3 OTCO, Tidegate Polders",
@@ -1312,8 +1312,8 @@
    "take": "s169-ares-apc-x-saltwind",
    "map": "saltwind",
    "title": {
-    "en": "An Ares knocks out a T-90M at Saltwind Narrows at night",
-    "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M"
+    "en": "An Ares knocks out a T-90M Proryv at Saltwind Narrows at night",
+    "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "Ares, Saltwind Narrows",
@@ -1402,8 +1402,8 @@
    "take": "s103-merkava3d-oasis",
    "map": "oasis",
    "title": {
-    "en": "A Merkava Mk 3 Baz knocks out a T-90M at Sunscar Oasis",
-    "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M"
+    "en": "A Merkava Mk 3 Baz knocks out a T-90M Proryv at Sunscar Oasis",
+    "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M Proryv"
    },
    "short": {
     "en": "Merkava Mk 3 Baz, Sunscar Oasis",
@@ -2017,12 +2017,12 @@
    "take": "s04-column-under-fire",
    "map": "verdant",
    "title": {
-    "en": "A T-90M column drives into the fight on the country road",
-    "zh": "一支 T-90M 纵队沿乡间公路驶入战斗"
+    "en": "A T-90M Proryv column drives into the fight on the country road",
+    "zh": "一支 T-90M Proryv 纵队沿乡间公路驶入战斗"
    },
    "short": {
-    "en": "T-90M column under fire",
-    "zh": "炮火下的 T-90M 纵队"
+    "en": "T-90M Proryv column under fire",
+    "zh": "炮火下的 T-90M Proryv 纵队"
    },
    "loop": "/media/site50-r14/fleet/t90m_x.webm",
    "poster": "/media/site50-r14/fleet/t90m_x.jpg",
@@ -2257,12 +2257,12 @@
    "take": "s36-barn-knockout",
    "map": "frontier",
    "title": {
-    "en": "A Type 10 knocks out a T-90M beside the burning barn",
-    "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M"
+    "en": "A Type 10 knocks out a T-90M Proryv beside the burning barn",
+    "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M Proryv"
    },
    "short": {
-    "en": "Type 10 knocks out a T-90M",
-    "zh": "Type 10 击毁 T-90M"
+    "en": "Type 10 knocks out a T-90M Proryv",
+    "zh": "Type 10 击毁 T-90M Proryv"
    },
    "loop": "/media/site50-r14/fleet/type10_x.webm",
    "poster": "/media/site50-r14/fleet/type10_x.jpg",
@@ -2777,6 +2777,36 @@
    "loop": "/media/site50-r14/fleet/ru_t72b3_modern.webm",
    "poster": "/media/site50-r14/fleet/ru_t72b3_modern.jpg",
    "scene": "/media/site50-r14/scenes/s142-ru-t72b3-modern-whiteout.scene.json"
+  },
+  "type10_dozer": {
+   "take": "s253-type10-dozer-mangrove",
+   "map": "mangrove",
+   "title": {
+    "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+    "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+   },
+   "short": {
+    "en": "Type 10 Kaitaku, Mangrove Reach",
+    "zh": "Type 10 Kaitaku，红树林水道"
+   },
+   "loop": "/media/site50-r14/fleet/type10_dozer.webm",
+   "poster": "/media/site50-r14/fleet/type10_dozer.jpg",
+   "scene": "/media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json"
+  },
+  "m60a3": {
+   "take": "s208-m60a3-copper-mesa",
+   "map": "copper_mesa",
+   "title": {
+    "en": "An M60A3 knocks out a T-64BV1 at Copper Mesa Mine",
+    "zh": "一辆 M60A3 在铜台地矿场击毁一辆 T-64BV1"
+   },
+   "short": {
+    "en": "M60A3, Copper Mesa Mine",
+    "zh": "M60A3，铜台地矿场"
+   },
+   "loop": "/media/site50-r14/fleet/m60a3.webm",
+   "poster": "/media/site50-r14/fleet/m60a3.jpg",
+   "scene": "/media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json"
   }
  }
 }

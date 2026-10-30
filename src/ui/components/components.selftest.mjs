@@ -45,6 +45,11 @@ assert.match(seg, /role="radiogroup" aria-label="Sides"/);
 assert.equal((seg.match(/aria-checked="true"/g) ?? []).length, 1, 'one option is checked');
 assert.match(seg, /data-value="b" aria-checked="true" tabindex="0"/, 'the checked option holds the tab stop');
 assert.equal((seg.match(/tabindex="-1"/g) ?? []).length, 2, 'the others leave the tab order');
+// an option a key chooses (the Gallery's layers, 1-5) carries the key's cap and names the shortcut
+const keyed = segmented({ label: 'Layers', value: 'a', options: [{ value: 'a', label: 'Exterior', key: '1' }, { value: 'b', label: 'Armor', key: '2' }] });
+assert.match(keyed, /data-value="a" aria-checked="true" tabindex="0" data-ui-sound="select" aria-keyshortcuts="1"><span>Exterior<\/span><kbd class="cot-c-kbd" aria-hidden="true">1<\/kbd><\/button>/,
+  'a keyed option ends on its key cap and names its shortcut');
+assert.doesNotMatch(seg, /aria-keyshortcuts|cot-c-kbd/, 'an option without a key draws no cap');
 const tablist = tabs({ label: 'Deploy', selected: 'quick', panelPrefix: 'deploy', tabs: [
   { id: 'quick', label: 'Quick battle', icon: 'modeStandard' }, { id: 'campaign', label: 'Campaign', count: '3 / 6', key: 'C' }] });
 assert.match(tablist, /role="tablist" aria-label="Deploy"/);
@@ -254,7 +259,8 @@ assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
   const { readdirSync } = await import('node:fs');
   const sheets = (dir) => readdirSync(new URL(dir, import.meta.url), { withFileTypes: true }).flatMap((entry) => entry.isDirectory()
     ? sheets(`${dir}${entry.name}/`) : /\.(css|ts)$/.test(entry.name) && !/\.selftest\./.test(entry.name) ? [new URL(`${dir}${entry.name}`, import.meta.url)] : []);
-  for (const file of [...sheets('../'), ...sheets('../../presentation/')]) {
+  // (the Gallery's stage plates too: its layer dock, camera rail and tools follow the one state, 99f2f7344c)
+  for (const file of [...sheets('../'), ...sheets('../../presentation/'), ...sheets('../../gallery/')]) {
     for (const [, selector, body] of readFileSync(file, 'utf8').matchAll(/([^{}]*\[aria-(?:pressed|checked|selected)=['"]?true['"]?\][^{}]*)\{([^}]*)\}/g)) {
       assert.doesNotMatch(body, /background:var\(--surface-hover\)/, `${file.pathname.split('/src/')[1]}: ${selector.trim().slice(0, 80)} draws a selection on the grey hover plate`);
     }

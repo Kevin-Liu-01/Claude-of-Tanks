@@ -310,6 +310,48 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.70, 3.40, 1.68, 0.50, 1.98, 41),
     },
   },
+  // Challenger 3 TD (release 262; Main, 2026-10-27: "challenger 3 td should get a tonn of ghillie as well"): the field
+  // suit of a demonstrator out on the plain, far heavier than the fleet's garnish and in beech boughs, so it reads apart
+  // from the Ukrainian Challenger 2's oak at a glance (the two other Challenger 3s carry none). The turret roof netted
+  // from the bustle's rear edge over both cheek brows, the gun slot left bare forward of its face, opened round the
+  // gunner's sight box and its view, the cupola, the commander's sight pedestal, the loader's hatch and periscope, the
+  // mast and both whips; drapes down both turret walls behind the cheeks and over the rear face. The hull: the rear deck
+  // and the fuel drums netted behind the turret's sweep, a low band on the engine deck under it, the glacis to the bow
+  // round the driver's hatch, his periscope and the lamps, and five drapes a side over the full-length skirts. Owner-local
+  // metres of the installed build (profiles/challenger3Td.ts: oracle rows x1.10).
+  challenger3_td: {
+    id: 'challenger3_td', seed: 3262, style: 'leafy', density: 2.6, leafScale: 1.0, boughShare: 0.5,
+    foliageKind: 'beech', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.16, hemFloorM: 1.0,
+    clothClearsGunStops: true, cardsClearGunStops: true,
+    turret: {
+      top: [laid({
+        x0: -1.50, x1: 1.50, z0: -3.78, z1: 1.95, nx: 38, nz: 72, y: 0.95,
+        outline: [[-1.50, -3.78], [1.50, -3.78], [1.50, 1.15], [1.12, 1.95], [0.56, 1.95], [0.56, 1.10], [-0.56, 1.10],
+          [-0.56, 1.95], [-1.12, 1.95], [-1.50, 1.15]],
+        holes: [rect(-1.06, -0.43, -0.13, 0.95), rect(-1.17, -0.01, -1.83, -0.66), rect(-0.66, 0.28, -2.96, -2.04),
+          rect(0.43, 1.11, -1.51, -0.75), rect(0.65, 0.89, 0.01, 0.21), rect(0.44, 0.61, -3.09, -2.91),
+          rect(1.04, 1.21, -3.06, -2.88), rect(-1.17, -1.00, -3.06, -2.88)],
+        garnishRiseM: 0.18, seed: 11,
+      })],
+      side: flanks(-3.55, 0.95, 0.78, 0.56, 1.54, 17),
+      face: [face({ z: -3.76, x0: -1.42, x1: 1.42, y0: 0.20, y1: 0.80, nx: 28, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.78, x1: 1.78, z0: -4.40, z1: -3.15, nx: 36, nz: 14, y: 2.08, garnishRiseM: 0.16, seed: 31 }),
+        laid({ x0: -1.78, x1: 1.78, z0: -3.15, z1: -1.93, nx: 36, nz: 14, y: 2.06, garnishRiseM: 0.04, garnishDensity: 0.6,
+          seed: 33 }),
+        laid({ x0: -1.45, x1: 1.45, z0: -5.15, z1: -4.42, nx: 30, nz: 9, y: 2.04, garnishRiseM: 0.16, seed: 35 }),
+        laid({ x0: -1.88, x1: 1.88, z0: 2.36, z1: 4.20, nx: 38, nz: 20,
+          yAt: (_x, z) => 1.964 - Math.max(0, z - 2.36) * 0.25,
+          holes: [rect(-0.40, 0.40, 1.85, 2.50), rect(-0.13, 0.13, 2.43, 2.63), ...pair(0.44, 0.79, 3.70, 4.02)],
+          garnishRiseM: 0.10, seed: 37 }),
+      ],
+      side: [0, 1, 2, 3, 4].flatMap((k) => flanks(-4.00 + k * 1.69, -4.00 + k * 1.69 + 1.55, 1.70, k % 2 ? 0.58 : 0.62, 1.93,
+        41 + 6 * k)),
+    },
+  },
   // Type 10B: the roof netted round the commander's and gunner's sights, both hatches, the roof vents and boxes, drapes
   // down the turret walls behind the side smoke banks and down the bustle basket, a rear drape; the rear deck netted
   // short of the stern (the left rear exhaust bare), the front deck, four drapes a side (the left one cut round the
@@ -674,6 +716,36 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.70, x1: 1.70, z0: 0.66, z1: 3.60, nx: 34, nz: 30, y: 1.70, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.40, 3.50, 1.68, 0.52, 1.76, 41),
+    },
+  },
+  // 264: the Leopard 2A6 UA (profiles/leopardA6Ua.ts; the owner, 2026-10-28: "lets add a ton of extra era and cages and
+  // ghillie on the actual tank parts themselves"). Turret: the roof and the bustle netted on the armour under the cage
+  // (they pass under its raised roof), round the PERI, the EMES head, the hatches, the loader's gun and the whips; the
+  // net the 21st Mechanized Brigade's 2A6s throw over their cages (2025 photos) laid on the cage roof's mesh sheet (no
+  // lid openings up there: the lids are 0.8 m under it); drapes down the bustle walls behind the smoke banks and over
+  // the bustle's rear. The wedges and their Kontakt-1 stay bare. Hull: the front deck netted round the driver's hatch
+  // and periscopes; four drapes a side down the rear hull walls above the skirt cassettes, cut round the trident and
+  // the tactical number; the engine deck under the bustle's and the gun's sweep carries none.
+  leo2a6_ua: {
+    id: 'leo2a6_ua', seed: 2606, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.20, hemFloorM: 0.97,
+    turret: {
+      top: [
+        laid({ x0: -1.52, x1: 1.42, z0: -3.78, z1: 0.10, nx: 37, nz: 49, y: 0.28,
+          holes: [rect(-0.95, -0.81, -2.99, -2.85), rect(0.845, 0.985, -2.99, -2.85)], garnishRiseM: 0.14, seed: 11 }),
+        { x0: -1.62, x1: 1.62, z0: -4.00, z1: 0.15, nx: 33, nz: 42, yAt: () => 1.07, yFromArmour: true, clipToArmour: true,
+          // open round the whips and round the roof dock on its rail (leopardA6UaLayout.ts dock seat, turret-local)
+          riseLimitM: 0.06, rimScale: 0.5,
+          holes: [rect(-0.95, -0.81, -3.09, -2.94), rect(0.845, 0.985, -3.09, -2.94), rect(-1.30, -0.86, -2.45, -2.05)],
+          garnishRiseM: 0.08, garnishDensity: 0.7, seed: 13 },
+      ],
+      side: flanks(-3.55, -2.95, 0.22, 0.38, 1.00, 17),
+      face: [face({ z: -3.80, x0: -0.36, x1: 0.60, y0: -0.26, y1: 0.18, nx: 12, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [laid({ x0: -1.62, x1: 1.62, z0: 2.05, z1: 2.85, nx: 33, nz: 9, y: 1.58, garnishRiseM: 0.05, garnishDensity: 0.8, seed: 37 })],
+      // the marking seats' stretch of the left wall (vehicleMarkings.ts: the 2A6's hull anchor) stays bare
+      side: skirts(-3.60, 0.20, 1.80, 0.42, 1.72, 41, (side) => (side < 0 ? [cut(-3.05, -1.15, 1.25, 1.90)] : [])),
     },
   },
   // KF51-U: the roof netted round the commander's and gunner's sights, the hatches and the roof station (the builder),

@@ -38,14 +38,16 @@ import type {
 } from '../presentation/battlePresentation.ts';
 import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
-import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
 import type { RtcIceConfig } from '../transport/webRtcTransport.ts';
-import { ACTION_BITS, VERDICT } from '../wire/index.ts';
+import { VERDICT } from '../wire/index.ts';
+import { createControlSampler } from '../presentation/controlSampler.ts';
+import type { ControlSampler } from '../presentation/controlSampler.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { programReceipt, type ProgramOriginWatch, type ProgramReceipt, type ReceiptProgram } from '../../engine/programReceipt.ts';
 import { planFromRoom } from '../host/hostPlan.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
@@ -126,6 +128,14 @@ export interface BrowserLoadTrace {
    */
   rewelcomes?: number;
   rewelcomeAtMs?: number[];
+  /**
+   * (2026-10-27, the room-stalls lane) the programs the reveal made: those the renderer gained after the black watchdog,
+   * through the reveal, the loader's fade and the first REVEAL_PROGRAM_FRAMES frames after it (`frames`: the frames
+   * counted so far), with the first few named. The covered warm owns every program: 0 is the receipt (the rooms census
+   * found the first live frame linking the viewer's depth programs, 580-590 ms). `diffs`, beside each name: where its
+   * cache key departs from the nearest program of its type that the warm made (`index:made/warmed`), or 'new'.
+   */
+  revealPrograms?: ProgramReceipt;
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -243,7 +253,13 @@ export interface BrowserWarmPorts {
   /** (battle-spikes-253) Start linking the player panel's programs at the warm's start (no wait): the panel stage below. */
   playerPanelPrograms?(view: BrowserWarmView, viewerId: string): void;
   compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
-  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * The battlefield's offscreen first draws, a cohort at a time, and the opening effects. A room's entry paces them on the
+   * GPU: textures staged one at a time and every batch waiting for the GPU to catch up. (262) The solo sim Worker's sortie
+   * passes `pacing: 'covered'`, the page's solo deployment warm's covered yield between batches (a task, and a painted
+   * frame at most every 32 ms), and no wait on the GPU.
+   */
+  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'covered' }): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
@@ -296,6 +312,13 @@ export interface BrowserPresentationPorts {
   setWaitingForPeers(waiting: boolean): void;
   setGarageLighting(active: boolean): void;
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /** The renderer's live programs (renderer.info.programs: the material's type and name), for the revealPrograms receipt. */
+  programs?(): readonly ReceiptProgram[] | null;
+  /**
+   * The draws that link a program while armed (`material<object<parent<grandparent`), for the receipt's `origins`; the
+   * watch ends at stop() or on its own after a few seconds.
+   */
+  watchProgramOrigins?(): ProgramOriginWatch | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -518,73 +541,9 @@ export interface BrowserComposition {
 
 // ------------------------------------------------------------ controls
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal', number>> = Object.freeze({
-  reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
-  specialAction: ACTION_BITS.SPECIAL_ACTION,
-  selfRight: ACTION_BITS.SELF_RIGHT,
-  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE, supplyAmmo: ACTION_BITS.SUPPLY_AMMO, supplyHeal: ACTION_BITS.SUPPLY_HEAL,
-});
-const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
-const DEFAULT_AIM_DISTANCE_M = 1000;
-const MIN_AIM_DISTANCE_M = 0.01;
-const MAX_AIM_DISTANCE_M = 2000;
-
-function clampAimDistance(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_AIM_DISTANCE_M;
-  return Math.max(MIN_AIM_DISTANCE_M, Math.min(MAX_AIM_DISTANCE_M, value));
-}
-
-export interface ControlSampler {
-  /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
-  sample(tick: number): Readonly<ControlSample> | null;
-  queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
-  reset(): void;
-}
-
-/** v1's browser input frame over the own actor: throttle/steer/brake/fire/aim from the input record, action edges queued by the HUD. */
-export function createControlSampler(getOwn: () => MatchActor | null): ControlSampler {
-  let pendingBits = 0;
-  const scratch: ControlSample = {
-    throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false,
-    aimYaw: 0, aimPitch: 0, aimDistance: DEFAULT_AIM_DISTANCE_M, shellSlot: 0, actionPresses: 0,
-  };
-  return {
-    sample() {
-      const own = getOwn();
-      if (!own || own.combat.destroyed) return null;
-      const { input, state } = own;
-      const pos = own.aerial?.active ? own.aerial : state.pos;
-      const target = input.aimPoint;
-      const dx = target ? target.x - pos.x : Math.sin(state.yaw) * DEFAULT_AIM_DISTANCE_M;
-      const dy = target ? target.y - pos.y : 0;
-      const dz = target ? target.z - pos.z : Math.cos(state.yaw) * DEFAULT_AIM_DISTANCE_M;
-      const horizontal = Math.hypot(dx, dz);
-      scratch.throttle = input.throttle || 0;
-      scratch.steer = input.steer || 0;
-      scratch.brake = !!input.brake;
-      scratch.fire = !!input.fire;
-      scratch.aimLocked = !!input.aimLocked;
-      scratch.aimYaw = Math.atan2(dx, dz);
-      scratch.aimPitch = Math.atan2(dy, Math.max(1e-6, horizontal));
-      scratch.aimDistance = clampAimDistance(Math.hypot(horizontal, dy));
-      scratch.shellSlot = input.shellSlot | 0;
-      scratch.actionPresses = pendingBits;
-      pendingBits = 0;
-      return scratch;
-    },
-    queueConsumable(slot) {
-      if (!Number.isInteger(slot) || slot < 0 || slot > 2) return;
-      pendingBits |= (1 << slot) & CONSUMABLE_BITS;
-    },
-    queueAction(action) {
-      const bit = NAMED_ACTION_BITS[action];
-      if (action==='lights'||action==='lightsOff')pendingBits &= ~(ACTION_BITS.LIGHTS|ACTION_BITS.LIGHTS_OFF);
-      if (bit) pendingBits = action==='roofGun' ? pendingBits^bit : pendingBits|bit;
-    },
-    reset() { pendingBits = 0; },
-  };
-}
+// (the viewer's control sampler, shared with the solo sim Worker's battle: src/mp/presentation/controlSampler.ts)
+export { createControlSampler };
+export type { ControlSampler };
 
 // ------------------------------------------------------------ composition
 
@@ -706,6 +665,8 @@ const COMPILE_CEILING_MS = 120_000;
 const ENTRY_STALL_MS = 120_000;
 const ENTRY_EXTEND_MS = 30_000;
 const ENTRY_CEILING_MS = 600_000;
+/** The frames after the loader's fade that the revealPrograms receipt still counts (half a second at 60 Hz). */
+const REVEAL_PROGRAM_FRAMES = 30;
 
 /** A preparation that ran out of windows made progress if it linked programs, or got its whole cohort submitted. */
 function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWarmPreparation): boolean {
@@ -1117,6 +1078,25 @@ export function createBrowserComposition({
     active.trace.status = status;
     active.trace.endedAt = at;
     active.trace.totalMs = Math.round(at - active.trace.startedAt);
+  };
+
+  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<ReceiptProgram>, frames: number,
+    watch: ProgramOriginWatch | null): void => {
+    const live = activation.programs?.();
+    if (live) active.trace.revealPrograms = programReceipt(live, baseline, frames, watch);
+  };
+
+  /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
+  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<ReceiptProgram>,
+    watch: ProgramOriginWatch | null): Promise<void> => {
+    try {
+      if (!activation.programs) return;
+      for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {
+        try { await load.nextFrame(); } catch { return; }
+        if (round !== active || active.failed) return;
+        noteRevealPrograms(active, baseline, frames, watch);
+      }
+    } finally { watch?.stop(); }
   };
 
   const markStage = (active: ActiveRound, stage: string): void => {
@@ -1549,6 +1529,8 @@ export function createBrowserComposition({
         }
       }
       markStage(active, 'blackWatchdog');
+      const revealBaseline = new Set(activation.programs?.() ?? []);
+      const revealWatch = activation.programs ? activation.watchProgramOrigins?.() ?? null : null;
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
@@ -1562,7 +1544,9 @@ export function createBrowserComposition({
       active.revealed = true;
       if (roomSession?.roomInfo.solo) session?.releaseCountdown?.();
       finishTrace(active, 'complete');
+      noteRevealPrograms(active, revealBaseline, 0, revealWatch);
       settleEntry(true);
+      void countRevealPrograms(active, revealBaseline, revealWatch);
     } catch (error) {
       await failRound(active, error, active.activated ? 'reveal' : 'warm');
     }

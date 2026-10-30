@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 /** The primitives' own homes: they define the constructs the census counts elsewhere. */
-const DEFINITIONS = new Set(['src/ui/components/picker.ts', 'src/ui/components/components.ts', 'src/ui/customSelect.ts']);
+const DEFINITIONS = new Set(['src/ui/components/picker.ts', 'src/ui/components/components.ts', 'src/ui/selectPickerMenu.ts']);
 
 /** Blank out comments, keeping every line break so line numbers hold. A `//` after a colon is a URL, not a comment. */
 function stripComments(text, html = false) {

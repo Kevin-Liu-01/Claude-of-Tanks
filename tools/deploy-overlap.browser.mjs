@@ -25,10 +25,12 @@ const url = arg('url', 'http://127.0.0.1:5189');
 const out = resolve(arg('out', 'outputs/deploy-overlap'));
 await mkdir(out, { recursive: true });
 
-/** [name, width, height, touch]: the UI gauntlet's eight windows. */
+/** [name, width, height, touch]: the UI gauntlet's eight windows, and four iPads (item 262: held wide, the docked plate on
+ *  touch; upright, the column). */
 export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
   ['1280x800', 1280, 800, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
-  ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
+  ['390x844', 390, 844, true], ['844x390', 844, 390, true],
+  ['1133x612', 1133, 612, true], ['1376x900', 1376, 900, true], ['820x1180', 820, 1180, true], ['1024x1366', 1024, 1366, true]];
 /** Every mode Deploy offers (the battle modes and the range), as its picker lists them. */
 export const MODES = [...DEPLOY_MODE_ORDER];
 /** The plate's rows and controls, each a box another may not cross. */

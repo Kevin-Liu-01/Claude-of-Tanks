@@ -598,6 +598,9 @@ const groundOriginal = groundCandidate
   .replace(/      let collected = false;\n      try \{\n([\s\S]*?)        collected = true;\n      } finally \{[\s\S]*?^      }\n/m,
     (_owner, collection) => collection.replace(/^  /gm, ''))
   .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Foundation inputs above stay private until collection completes\./, '')
+  // (260) and the checkpoints between the foundations' layers, with their release of the inputs still private
+  .replace(/      let layered = false;\n      try \{\n        yield \{[^\n]*\n(        lowStones\.layScuffs[^\n]*\n)        yield \{[^\n]*\n        layered = true;\n      \} finally \{[\s\S]*?^      \}\n/m,
+    (_owner, lay) => lay.replace(/^  /gm, ''))
   // (battle-spikes-253) and the scars' slice a scar inside their loop
   .replace(/\n +yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
 // 2026-10-01 (frozen pins retired): the synchronous control above is derived from the live body by removing only the
@@ -732,6 +735,11 @@ for (const [streetRows, foundry, options] of [
     before.run();
     const iterator = after.run();
     advanceFoundationInputs(after, iterator);
+    // (260) a checkpoint after the contact layer and after the scuffs' pool, the aprons still private
+    for (let k = 0; k < 2; k++) {
+      assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundation-layers' } });
+      assert.deepEqual(after.kinds(), ['ground-contact'], 'the contact layer alone is published');
+    }
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
     assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
     // (b44) the contact layer darkens the ground (a multiplicative, unlit, premultiplied blend); the aprons stay lit
@@ -770,7 +778,7 @@ for (const [streetRows, foundry, options] of [
 
 // Real async wrapper must pace both new boundaries without advancing coarse
 // progress. Rejection closes the delegated iterator before another family runs.
-for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
+for (const cancelAt of ['ground-foundation-layers', 'ground-foundations', 'ground-scars', null]) {
   const h = groundFixture(), iterator = h.run(), failure = new Error('cancel decal family'), ticks = [];
   const steps = (function* () { yield* iterator; yield { fine: true, stage: 'ground-decals' }; })();
   const f = fixture(steps);
@@ -785,7 +793,7 @@ for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
       const scarSlices = f.events.filter(([, value]) => value?.stage === 'ground-scars').length - 1;
       assert.ok(scarSlices > 0, 'the scars yield a slice each');
       assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 180]),
-        [0, 180], ...Array.from({ length: scarSlices }, () => [0, 180]), [0, 180], [1, 180]]);
+        [0, 180], [0, 180], [0, 180], ...Array.from({ length: scarSlices }, () => [0, 180]), [0, 180], [1, 180]]);
       assert.ok(h.kinds().includes('churn'));
     } else {
       await assert.rejects(pending, error => error === failure);
@@ -796,6 +804,8 @@ for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
       assert.equal(h.commands.some(command => command[0] === 'clear'), false);
       assert.equal(f.runtime._buildDetail, undefined, 'cancelled props cannot publish a runtime');
       assert.equal(f.args[0][6].signal.aborted, true);
+      // (260) closed between the layers: the aprons' private discs released
+      if (cancelAt === 'ground-foundation-layers') assert.ok(h.disposedInputs.length > 0, 'the private aprons are released');
     }
     assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
   } finally { h.dispose(); }
@@ -938,7 +948,7 @@ for (const [operation, stage, next] of [
   ['yield* placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
   ['placeBattleScars(corridors);', 'ground-scars', 'placeTrackTears(corridors);'],
   ['yield* placeGroundBlendDecals();', 'ground-decals', 'let poleIM:'],
-  ['  dressMapExtras({', 'map-extras', 'function composeAuthoredLoggingYard'],
+  ['  yield* dressMapExtrasSteps({', 'map-extras', 'function composeAuthoredLoggingYard'],
 ]) {
   const op = source.indexOf(operation), checkpoint = source.indexOf("stage: '" + stage + "'", op);
   assert.ok(op > 0 && checkpoint > op && checkpoint < source.indexOf(next, op), stage);

@@ -35,15 +35,17 @@ import {
 } from './surfaceMarkup.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { flagIconCode } from '../ui/flagCodes.ts';
-import { iconUrl } from '../ui/icons.ts';
+import { iconUrl, tankThumbUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
-import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
-import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { emptyState, esc, scale20, scaleCells, segmented, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { createPickerMenu, panelRoom, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
-import { cameraViewGlyphSVG } from './viewGlyphs.ts';
+import { revealWhenReady } from '../ui/components/reveal.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
@@ -105,8 +107,16 @@ const vehicleList = $<HTMLElement>('#vehicleList');
 const loadingState = $<HTMLElement>('#loadingState');
 const loadingSilhouette = $<HTMLElement>('#loadingSil');
 const takeMedia = $<HTMLElement>('#takeMedia');
-const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-mode]')];
-const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+// the layers are the kit's segmented control, each with its key (1 to 5) and its glyph (the 261 census: a hand-built dock)
+const LAYER_GLYPHS: Readonly<Record<GalleryMode, IconId>> = { appearance: 'vehicle', armor: 'layerArmor', modules: 'layerXray', crew: 'team', markup: 'layerMarkup' };
+{
+  const dock = document.createElement('template');
+  dock.innerHTML = segmented({ label: t('gallery.view.modeDockAria'), className: 'layers', value: 'appearance',
+    options: GALLERY_MODES.map((mode, index) => ({ value: mode, label: t(`gallery.view.mode.${mode}`), icon: LAYER_GLYPHS[mode], key: String(index + 1) })) });
+  $('#layerDock').replaceWith(dock.content);
+}
+const layerDock = $<HTMLElement>('.layers');
+const modeButtons = [...layerDock.querySelectorAll<HTMLButtonElement>('[data-value]')];
 const viewLabelKey: Record<string, string> = {
   hero: 'gallery.view.view.hero',
   front: 'gallery.view.view.front',
@@ -117,14 +127,12 @@ const viewLabelKey: Record<string, string> = {
   'elevated-left': 'gallery.view.view.elevatedLeft',
   'elevated-right': 'gallery.view.view.elevatedRight',
 };
-for (const button of viewButtons) {
-  const key = viewLabelKey[button.dataset.view || 'hero'];
-  const label = key ? t(key) : button.dataset.view || '';
-  button.replaceChildren();
-  button.insertAdjacentHTML('beforeend',
-    `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${esc(label)}</span>`);
-  button.setAttribute('aria-pressed', String(button.classList.contains('active')));
-}
+// the camera's eight framings are the kit's picker menu (261 census: a hand-built column of eight)
+const viewMenu = createPickerMenu($<HTMLElement>('.views'), {
+  id: 'gallery-camera-view', label: t('gallery.viewer.viewControlsAria'), value: 'hero', layout: 'list', text: pickerText(),
+  items: Object.keys(viewLabelKey).map((name) => ({ id: name, name: t(viewLabelKey[name]) })),
+  onChoose: (item) => frameView(item.id),
+});
 
 const records = buildGalleryRecords(
   VISIBLE_TANK_IDS.map((id) => getSpec(id) as GalleryVehicleSpec),
@@ -301,7 +309,7 @@ let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts').catch((error: unknown) => { anatomyModule = null; throw error; });
+  anatomyModule ??= import('./anatomyView.ts');
   return anatomyModule;
 }
 const anatomyHost = (): AnatomyHost => ({
@@ -362,7 +370,10 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     colorDamageOverlay();
     if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
+    // a module that did not arrive is not asked for again in this document: the anatomy layers keep the kit's error state,
+    // and their next press reloads the page once online
     settle();
+    markLoadFailed(modeButtons.filter((button) => isAnatomyMode(button.dataset.value as GalleryMode)), t('gallery.anatomy.loadFailed'));
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
@@ -440,16 +451,13 @@ function frameView(requestedName = 'hero'): void {
   controls.target.copy(currentCenter);
   applyGalleryCameraRange(camera, controls, galleryFog, bounds, distance);
   controls.update();
-  viewButtons.forEach((button) => {
-    const on = button.dataset.view === name;
-    button.classList.toggle('active', on);
-    button.setAttribute('aria-pressed', String(on));
-  });
+  viewMenu.setValue(name);
 }
 
 // the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
 // the turntable and photo buttons, and on a stacked page just above the dossier's actions (they ride its sticky bar,
-// where the copy and markup triggers sit)
+// where the copy and markup triggers sit; on a short page the bar scrolls with the dossier, and the notice stands in it,
+// beside the button that raised it: a window-foot notice covered the dossier's tabs at 844 x 390, the g15 critic)
 const stage = document.querySelector<HTMLElement>('#viewport');
 const actions = document.querySelector<HTMLElement>('.acts');
 type NoticeKit = typeof import('../ui/components/notice.ts');
@@ -460,14 +468,12 @@ function loadNotices(): Promise<NoticeKit> {
   noticeKit ??= import('../ui/components/notice.ts').then((kit) => {
     if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
     if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
-    // a short window lets the actions scroll with the page, so its notices stand at the window's foot
-    kit.noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
     return kit;
   });
   return noticeKit;
 }
-const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
-const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px)') : null;
+// (gallery.css: the page scrolls, stage over the panes, on a phone or a short window under 1100 px)
+const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 768px), ((height < 520px) and (width < 1100px))') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
  * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
@@ -491,7 +497,7 @@ function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}
   let shown: GalleryNotice | null = null;
   void loadNotices().then((kit) => {
     if (dismissed) return;
-    shown = kit.notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+    shown = kit.notify({ text: message, severity, region: stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
   }, () => { /* the notice is lost with its module; the page goes on */ });
   return { dismiss() { dismissed = true; shown?.dismiss(); } };
 }
@@ -723,10 +729,34 @@ function renderFacets(): void {
   count.textContent = String(more);
   count.hidden = !more;
   const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
-  if (disclosure && more && !moreFacetsShown) disclosure.open = true;
+  // (laid over the list beside the stage, it stays shut: its count says how many are on)
+  if (disclosure && more && !moreFacetsShown && !matchMedia(MORE_FACETS_OVER).matches) disclosure.open = true;
   moreFacetsShown = true;
 }
+/** The plate over the list stands within the window under its summary and scrolls past that (the g18 critic at 1024 x 600:
+ *  its last row cut by the screen's foot, Sniper, Scout and Support out of reach). */
+function fitMoreFacets(this: HTMLDetailsElement): void {
+  const plate = this.querySelector<HTMLElement>(':scope>.toggles--glyphs');
+  if (!plate) return;
+  plate.style.removeProperty('max-height');
+  if (!this.open || !matchMedia(MORE_FACETS_OVER).matches) return;
+  const room = innerHeight - this.getBoundingClientRect().bottom - 12;
+  if (plate.getBoundingClientRect().height > room) plate.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
+}
 let moreFacetsShown = false;
+/** Where the open More filters lay a plate over the list (gallery.css); there they close as a menu does. */
+const MORE_FACETS_OVER = '(width >= 768px) and (height >= 520px)';
+function closeMoreFacetsOver(event: Event): void {
+  const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
+  if (!disclosure?.open || !matchMedia(MORE_FACETS_OVER).matches) return;
+  if (event instanceof KeyboardEvent) {
+    if (event.key !== 'Escape' || !disclosure.contains(document.activeElement)) return;
+    disclosure.open = false;
+    disclosure.querySelector('summary')?.focus();
+  } else if (!disclosure.contains(event.target as Node)) disclosure.open = false;
+}
+document.addEventListener('pointerdown', closeMoreFacetsOver, true);
+document.addEventListener('keydown', closeMoreFacetsOver);
 function onFacet(event: Event): void {
   const button = (event.target as Element | null)?.closest<HTMLButtonElement>('button[data-facet]');
   if (!button || button.disabled) return;
@@ -844,6 +874,7 @@ function renderRoster(): void {
   const layout = effectiveLayout();
   const focusedId = (document.activeElement as HTMLElement | null)?.closest?.<HTMLElement>('.it')?.dataset.id;
   vehicleList.dataset.layout = layout;
+  vehicleList.removeAttribute('aria-busy');
   const groups = groupRecords(filteredRecords);
   vehicleList.innerHTML = groups.map((group) => (group.label
     ? `<div class="fam__group" role="group" aria-label="${esc(group.label)}"><div class="gh" aria-hidden="true">${group.lead}`
@@ -855,6 +886,8 @@ function renderRoster(): void {
     vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
+  // (a short window sets that line under the search, gallery.css)
+  vehicleList.parentElement?.classList.toggle('is-empty', !filteredRecords.length);
   if (layout === 'grid' && heroCards) {
     for (const row of vehicleList.querySelectorAll<HTMLElement>('.it')) {
       const art = row.querySelector<HTMLElement>('.it__art');
@@ -891,6 +924,12 @@ function revealRowNow(row: HTMLElement, settle = true): void {
   const box = row.getBoundingClientRect();
   if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
   else if (box.bottom > list.bottom) vehicleList.scrollTop += box.bottom - list.bottom + 8;
+  // the list's top stands on a whole row (the g16 critic read a row the scroller's top cut as clipped by the toolbar)
+  const top = list.top;
+  const first = [...vehicleList.querySelectorAll<HTMLElement>('.it, .gh')].find((element) => element.getBoundingClientRect().bottom > top + 1);
+  const cut = first?.getBoundingClientRect();
+  const shown = row.getBoundingClientRect();
+  if (cut && cut.top < top - 0.5 && shown.top - (cut.bottom - top) >= top) vehicleList.scrollTop += cut.bottom - top;
   if (box.left < list.left) vehicleList.scrollLeft += box.left - list.left - 12;
   else if (box.right > list.right) vehicleList.scrollLeft += box.right - list.right + 12;
 }
@@ -1008,7 +1047,16 @@ diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.h
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
 // a press shows the drawing at the window's size, named by its overlay's header; a press or Escape puts it back
 const diagramFigure = diagramImage.closest('figure')!;
+// the zoomed drawing is a modal transient surface (src/ui/components/surfaceStack.ts): opening it closes an open menu, a
+// press on it puts it back, and Escape is the stack's
+const diagramSurface: TransientSurface = {
+  id: 'gallery-drawing',
+  element: () => diagramFigure,
+  close: (reason) => { setDiagramZoom(false); if (reason === 'escape') diagramImage.focus({ preventScroll: true }); },
+  modal: true,
+};
 const setDiagramZoom = (on: boolean): void => {
+  if (on) openSurface(diagramSurface, diagramImage); else closeSurface(diagramSurface);
   diagramFigure.classList.toggle('is-zoomed', on);
   // the dossier's scroll fade is a mask, which masks a fixed descendant to the column too: it lifts while a drawing is
   // zoomed (the g13 critic: the zoom showed only through the dossier, its drawing under the stage)
@@ -1016,6 +1064,16 @@ const setDiagramZoom = (on: boolean): void => {
   diagramImage.setAttribute('aria-expanded', String(on));
   mountDiagramLabels();
 };
+// the zoomed drawing's own close, the kit's icon button in its corner (the g15 critic: a press or Escape put it back, but
+// nothing on the screen said so)
+const diagramClose = document.createElement('button');
+diagramClose.type = 'button';
+diagramClose.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--icon diagram-close';
+diagramClose.setAttribute('aria-label', t('gallery.diagram.close'));
+diagramClose.title = t('gallery.diagram.close');
+diagramClose.innerHTML = icon('close', { size: 18 });
+diagramClose.addEventListener('click', (event) => { event.stopPropagation(); setDiagramZoom(false); diagramImage.focus(); });
+diagramFigure.append(diagramClose);
 diagramImage.tabIndex = 0;
 diagramImage.setAttribute('role', 'button');
 diagramImage.setAttribute('aria-expanded', 'false');
@@ -1023,9 +1081,6 @@ diagramFigure.addEventListener('click', () => setDiagramZoom(!diagramFigure.clas
 diagramImage.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')); }
 });
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && diagramFigure.classList.contains('is-zoomed')) { event.stopPropagation(); setDiagramZoom(false); }
-}, true);
 function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
@@ -1080,10 +1135,19 @@ function decorateTake(id: string): void {
   const still = $<HTMLImageElement>('#takeStill');
   const record = recordById.get(id);
   still.src = record?.image || '';
+  revealWhenReady(still.parentElement!, still);
   for (const layer of takeMedia.querySelectorAll(':scope > picture')) layer.remove();
   takeMedia.classList.remove('cot-hc', 'hc-loaded');
   if (heroCards) heroCards.module.decorateHeroCard(takeMedia, id, heroCards.manifest, { tankSizes: '480px', flagSizes: '480px', priority: true });
 }
+// a still the network dropped loads again, quietly, once it is back
+window.addEventListener('online', () => {
+  const still = $<HTMLImageElement>('#takeStill');
+  const src = still.getAttribute('src');
+  if (!src || !still.parentElement?.hasAttribute('data-failed')) return;
+  still.src = src;
+  revealWhenReady(still.parentElement, still);
+});
 
 function delta(stat: StatDef | null, own: number, rival: number, digits = 0): { delta?: string; better?: boolean } {
   const diff = own - rival;
@@ -1191,7 +1255,7 @@ function populateRivals(): void {
   const items = [...records].sort((a, b) => (order.get(flagIconCode(a.nation)) ?? 99) - (order.get(flagIconCode(b.nation)) ?? 99)
     || a.displayName.localeCompare(b.displayName, getLocale())).map((record) => ({
     id: record.id, name: record.displayName, facts: [t('gallery.tier', { tier: record.tierNumeral }), nationName(record.nation)],
-    tags: [flagIconCode(record.nation)], media: { poster: iconUrl(record.id, 'side') },
+    tags: [flagIconCode(record.nation)], media: { poster: tankThumbUrl(record.id), tank: true },
   }));
   if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
   rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
@@ -1200,15 +1264,20 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number; span?: boolean } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  const top = Math.max(0, bar ? bar.bottom : 0);
+  // on the bar's rule, which hangs 1 px below it (publicNav.css .public-nav::after): the menu's ring lies on that rule,
+  // opaque over the dossier's picture, which runs under it
+  const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
-  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
-    const box = panel.getBoundingClientRect();
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
-  }
-  return { top, bottom: innerHeight };
+  if (!panel) return { top, bottom: innerHeight };
+  // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
+  // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
+  const room = panelRoom(panel);
+  const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
+  // spanned at every width: at 2560 the dossier widens past a column (the 261 critic: a trigger-wide menu cut its text)
+  return { top: scrolls ? Math.max(top, room.top) : top, bottom: scrolls ? room.bottom : innerHeight, left: room.left, right: room.right,
+    span: true };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
@@ -1351,10 +1420,10 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   else anatomyView?.hide();
   surfaceMarkup.setActive(activeMode === 'markup');
   modeButtons.forEach((button) => {
-    const on = button.dataset.mode === activeMode;
-    button.classList.toggle('active', on);
-    button.setAttribute('aria-pressed', String(on));
-    button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance';
+    const on = button.dataset.value === activeMode;
+    button.setAttribute('aria-checked', String(on));
+    button.tabIndex = on ? 0 : -1;
+    button.disabled = !!damageLab?.combat.destroyed && button.dataset.value !== 'appearance';
   });
   if (previousMode !== activeMode || !isAnatomyMode(activeMode)) $('#inspectionReadout').hidden = true;
   markupTab.hidden = activeMode !== 'markup';
@@ -1443,6 +1512,7 @@ async function loadTank(
   renderDossier(record);
   markSelectedRow();
   loadingSilhouette.style.setProperty('--sil', `url(${iconUrl(id, 'side_silhouette')})`);
+  loadingSilhouette.removeAttribute('data-skeleton');
   loadingState.classList.remove('hidden');
   await nextFrame();
   if (version !== loadVersion) return;
@@ -1598,8 +1668,8 @@ vehicleList.addEventListener('pointerover', (event) => {
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
-modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
-viewButtons.forEach((button) => button.addEventListener('click', () => frameView(button.dataset.view)));
+// (a layer whose module did not arrive keeps the kit's error state: its press reloads the page once online)
+wireRoving(layerDock, (mode) => { if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode); });
 $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;

@@ -97,6 +97,8 @@ export interface ShadowCasterProfile {
   instanced?: boolean;
   /** Near-tier content: the farthest planar camera distance its pieces stand at this frame, metres; absent: no reach rule. */
   reachM?: number;
+  /** (battle-spikes-253) The nearest view depth its pieces stand at this frame, metres; absent: no near rule. */
+  nearDepthM?: number;
 }
 /** Every cascade index bit (the dynamic mask of a caster that has not been evaluated yet). */
 export const SHADOW_CASTER_ALL_CASCADES = 0x3fffffff;

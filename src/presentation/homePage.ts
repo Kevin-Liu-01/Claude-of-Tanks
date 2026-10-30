@@ -4,15 +4,43 @@
  * Copyright © 2026 Kevin B. Liu.
  */
 import { t } from '../ui/i18n.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
+import { importWhenOnline } from '../ui/components/loadFailure.ts';
+
+// The landing's stills under the hero (the bentos, the features, the modes rail's cards) fade in once decoded: publicPages.ts,
+// the page's first module, marks their boxes (home.css).
+const stills = [...document.querySelectorAll<HTMLImageElement>('.cot-c-media > img[loading="lazy"]')];
+
+// A still that failed (the link dropped after the page arrived) hides over its box's tone, never a broken frame, and loads
+// again, quietly, once the browser is back online: the hero's poster and the stills under it alike.
+const failed = new Set<HTMLImageElement>();
+const fail = (image: HTMLImageElement): void => {
+  image.setAttribute('data-failed', '');
+  failed.add(image);
+};
+for (const image of [document.querySelector<HTMLImageElement>('.hero__still'), ...stills]) {
+  if (!image) continue;
+  if (image.complete && !image.naturalWidth && image.getAttribute('src')) fail(image);
+  image.addEventListener('error', () => fail(image));
+}
+addEventListener('online', () => {
+  for (const image of failed) {
+    image.removeAttribute('data-failed');
+    // the same addresses again: a failed request is fetched anew
+    const srcset = image.getAttribute('srcset');
+    if (srcset) image.setAttribute('srcset', srcset);
+    image.src = image.getAttribute('src') ?? '';
+  }
+  failed.clear();
+});
 
 // The hero reel (heroReel.ts): its clips take their turns once the page has loaded and gone idle, so the poster, the
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');
 if (reelHero) {
-  const start = (): void => {
-    void import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
-      () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') })));
-  };
+  // (a reel whose module did not arrive leaves the poster: its chunk is not asked for again in this document)
+  const start = (): void => importWhenOnline(() => import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
+    () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') }))));
   const idle = (): void => {
     if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
     else setTimeout(start, 200);
@@ -84,6 +112,29 @@ const trailerDialog = document.querySelector<HTMLDialogElement>('[data-trailer-d
 const trailerVideo = trailerDialog?.querySelector<HTMLVideoElement>('video[data-trailer]') ?? null;
 if (trailerDialog && trailerVideo) {
   mountFilm(trailerDialog, trailerVideo);
+  // While the film buffers the dialog is busy (its poster shows); a film that cannot load (the link dropped, or a file
+  // that never arrives) says so over its poster with the kit's Retry, which loads it again (the loading census: the dialog
+  // waited seconds with nothing announced, and offline it never said the film could not load).
+  const failedNote = trailerDialog.querySelector<HTMLElement>('[data-film-failed]');
+  const busy = (on: boolean): void => { if (on) trailerDialog.setAttribute('aria-busy', 'true'); else trailerDialog.removeAttribute('aria-busy'); };
+  const fail = (): void => {
+    if (!trailerDialog.open || !failedNote) return;
+    busy(false);
+    failedNote.hidden = false;
+  };
+  trailerVideo.addEventListener('canplay', () => busy(false));
+  trailerVideo.addEventListener('error', fail);
+  // (every source failing ends on the last one's error, not the video's)
+  trailerVideo.querySelector('source:last-of-type')?.addEventListener('error', fail);
+  addEventListener('offline', () => { if (trailerVideo.readyState < 3) fail(); });
+  failedNote?.querySelector('button')?.addEventListener('click', () => {
+    failedNote.hidden = true;
+    busy(true);
+    trailerVideo.load();
+    void trailerVideo.play().catch(() => {});
+  });
+  // on the page's surface stack while open (it closes the open nav menu as it opens; Escape is the stack's)
+  dialogSurface(trailerDialog, 'home-trailer');
   document.querySelectorAll<HTMLButtonElement>('[data-trailer-open]').forEach((button) => button.addEventListener('click', () => {
     const named = [...trailerVideo.querySelectorAll<HTMLSourceElement>('source[data-src]')];
     for (const source of named) {
@@ -93,12 +144,16 @@ if (trailerDialog && trailerVideo) {
     if (trailerVideo.dataset.poster && !trailerVideo.poster) trailerVideo.poster = trailerVideo.dataset.poster;
     if (named.length) trailerVideo.load();
     trailerDialog.showModal();
+    if (trailerVideo.readyState < 3) busy(true);
+    if (!navigator.onLine && trailerVideo.readyState < 3) fail();
     void trailerVideo.play().catch(() => {});
   }));
   trailerDialog.querySelector('[data-trailer-close]')?.addEventListener('click', () => trailerDialog.close());
   // a press on the backdrop closes it too
   trailerDialog.addEventListener('click', (event) => { if (event.target === trailerDialog) trailerDialog.close(); });
   trailerDialog.addEventListener('close', () => {
+    busy(false);
+    if (failedNote) failedNote.hidden = true;
     trailerVideo.pause();
     if (document.fullscreenElement) void document.exitFullscreen();
   });

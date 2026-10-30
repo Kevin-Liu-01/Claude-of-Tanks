@@ -71,11 +71,12 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
   for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']){
     await page.locator(`[data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`).waitFor();await tap(`[data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`);
     await check(`setup-${mode}`,['.cot-battle-menu','.cot-deploy-head','.cot-battle-menu-foot']);
-    for(const field of await page.locator('.cot-battle-details .cot-custom-select-trigger').all()){
+    // every dropdown is the kit's picker menu (a sheet on a phone)
+    for(const field of await page.locator('.cot-battle-details .cot-c-menu__trigger').all()){
       if(!await field.isVisible())continue;
       await field.tap();
-      await check(`dropdown-${mode}`,['.cot-custom-select-list:popover-open']);
-      await page.locator('.cot-custom-select-list:popover-open button:not([disabled])').last().tap();
+      await check(`dropdown-${mode}`,['.cot-c-menu__pop:popover-open']);
+      await page.locator('.cot-c-menu__pop:popover-open .cot-c-picker__opt:not([aria-disabled="true"])').last().tap();
     }
     await reachable('[data-battle-launch]');
   }

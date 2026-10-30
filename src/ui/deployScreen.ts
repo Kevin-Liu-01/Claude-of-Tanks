@@ -33,7 +33,7 @@ const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
  * tiles already).
  */
 const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'drone', 'turbo_ball',
-  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130']);
+  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'proving_ground']);
 
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }

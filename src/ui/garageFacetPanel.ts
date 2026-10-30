@@ -10,7 +10,9 @@
 // (no Garage shortcut sees it); Escape clears a non-empty search, then closes and returns focus to the toggle.
 
 import { t } from './i18n.ts';
-import { emptyState } from './components/components.ts';
+import { chip, emptyState } from './components/components.ts';
+import { wholeChips } from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from './vehicleFacetIcons.ts';
 import {
@@ -179,20 +181,12 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       if (value === 'all' || !counts.get(value)) continue;
       const view = optionView(group, value);
       if (!view) continue;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cot-facet-option';
-      button.dataset.facet = group;
-      button.dataset.value = value;
-      if (view.title !== view.label) button.dataset.tip = view.title;
-      // constant glyph markup (vehicleFacetIcons.ts / uiIcons.ts); the label and count are text nodes
-      button.innerHTML = view.glyph;
-      const name = document.createElement('span');
-      name.className = 'nm';
-      name.textContent = view.label;
-      const count = document.createElement('span');
-      count.className = 'ct num';
-      button.append(name, count);
+      // the kit's chip (261, the lead's component audit): its glyph (constant markup, vehicleFacetIcons.ts / uiIcons.ts),
+      // its name and its count, pressed while its value filters the roster
+      const markup = document.createElement('template');
+      markup.innerHTML = chip({ label: view.label, glyph: view.glyph, count: '', pressed: false, className: 'cot-facet-option',
+        attrs: { 'data-facet': group, 'data-value': value, ...(view.title !== view.label ? { 'data-tip': view.title } : {}) } });
+      const button = markup.content.firstElementChild as HTMLButtonElement;
       button.addEventListener('click', () => {
         host.click?.();
         // A second press on the current choice releases the row.
@@ -207,7 +201,21 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     rowElements.push(row);
     const wrap = document.createElement('div');
     wrap.className = 'cot-facet-rowwrap';
-    wrap.append(row);
+    // a bare count at the row's end says how many chips lie past it ("+7", as the nation rail's): a cut chip hides, so the
+    // fade alone faded nothing (the r26 critic at 844 x 390: Light, IFV and the rest gone with no cue)
+    const more = document.createElement('span');
+    more.className = 'cot-facet-more num';
+    more.setAttribute('aria-hidden', 'true');
+    more.hidden = true;
+    wrap.append(row, more);
+    // a swipeable line (a landscape phone) shows whole chips: one its edge would cut hides (the r25 critic at 844 x 390)
+    wholeChips(row, () => {
+      const edge = row.getBoundingClientRect().left;
+      let after = 0;
+      for (const chip of row.children) if (chip.classList.contains('is-cut') && chip.getBoundingClientRect().left >= edge) after += 1;
+      more.textContent = after ? `+${after}` : '';
+      more.hidden = !after;
+    });
     return wrap;
   });
 
@@ -234,7 +242,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
         const n = counts.get(value) ?? 0;
         button.setAttribute('aria-pressed', String(selected));
         button.disabled = !selected && n === 0;
-        const ct = button.querySelector<HTMLElement>('.ct');
+        const ct = button.querySelector<HTMLElement>('.cot-c-chip__count');
         if (ct) ct.textContent = String(n);
       }
     }
@@ -283,9 +291,19 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     updateCues();
   }
 
+  // a transient surface (components/surfaceStack.ts): opening it closes whatever else is open at its level, and Escape (a
+  // search with text keeps its first, which clears it) and a press outside it are the stack's
+  const surface: TransientSurface = {
+    id: 'garage-filters',
+    element: () => panel,
+    owns: (node) => host.toggle.contains(node),
+    close: (reason) => setOpen(false, { restoreFocus: reason === 'escape' }),
+    keepsEscape: (event) => event.target === input && !!input.value,
+  };
   function setOpen(value: boolean, { restoreFocus = false } = {}): void {
     if (open === value) return;
     open = value;
+    if (value) openSurface(surface, host.toggle); else closeSurface(surface);
     panel.hidden = !value;
     host.toggle.setAttribute('aria-expanded', String(value));
     host.onOpenChange?.(value);
@@ -326,12 +344,9 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   closeButton.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
   panel.addEventListener('keydown', (event) => {
     const target = event.target;
+    // Escape in a non-empty search clears it first, like a native search field (the stack leaves it that one: keepsEscape)
     if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      // Escape in a non-empty search clears it first, like a native search field.
-      if (target === input && input.value) commit({ ...state, query: '' });
-      else setOpen(false, { restoreFocus: true });
+      if (target === input && input.value) { event.preventDefault(); event.stopPropagation(); commit({ ...state, query: '' }); }
       return;
     }
     // Typed keys belong to the field: the Garage's arrows (vehicle step) and the game's bindings never see them.
@@ -347,11 +362,6 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     }
   });
   window.addEventListener('resize', fit, { passive: true });
-  document.addEventListener('pointerdown', (event) => {
-    if (!open || !(event.target instanceof Node)) return;
-    if (panel.contains(event.target) || host.toggle.contains(event.target)) return;
-    setOpen(false);
-  }, true);
 
   render();
   return {

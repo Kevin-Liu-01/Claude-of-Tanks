@@ -35,6 +35,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-controls', 'CONTROLS & WATCH MODE', 'public/media/site50-r14/home/mechanics/mobile.webp', '50% 50%'],
   ['docs-start', 'YOUR FIRST BATTLE', 'public/media/site50-r14/home/features/garage.webp', '50% 50%'],
   ['docs-tanks', 'TANKS & EQUIPMENT', 'public/media/site50-r14/home/mechanics/dossiers.webp', '50% 50%'],
+  ['docs-fleet', 'EVERY TANK', 'public/media/home-r2/fleet-kv2-1920.webp', '50% 50%'],
   ['docs-combat', 'ARMOUR, ANGLING & SPOTTING', 'public/media/site50-r14/home/mechanics/armor.webp', '50% 50%'],
   ['docs-battlefields', 'BATTLEFIELDS', 'public/maps/cards/fjord.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/ui-246/gallery-modules.webp', '50% 48%'],
@@ -60,7 +61,7 @@ export const OG_ZH_LABELS = Object.freeze({
   studio: ZH['studio.title'],
   'private-room': ZH['playMenu.private.title'],
   docs: zhTitle('metadata.docs.title'),
-  ...Object.fromEntries(['modes', 'battlefields', 'combat', 'tanks', 'start', 'controls', 'build', 'models', 'simulation', 'rendering', 'ai',
+  ...Object.fromEntries(['modes', 'battlefields', 'combat', 'tanks', 'fleet', 'start', 'controls', 'build', 'models', 'simulation', 'rendering', 'ai',
     'multiplayer', 'audio', 'studio', 'filming'].map((topic) => [`docs-${topic}`, zhTopic(topic)])),
   404: zhTitle('notFound.metaTitle'),
 });

@@ -74,7 +74,7 @@ import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
-import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
@@ -4720,13 +4720,6 @@ float stripeAA(float periodM, vec2 dir) {
   float x = 3.14159 * min(r, 0.95);
   return (x < 1e-3 ? 1.0 : sin(x) / x) * (1.0 - smoothstep(0.30, 0.55, r)) * (1.0 - smoothstep(0.32, 0.50, gFootM / periodM));
 }
-// a ploughed land's tone is a band, not a sine: a square wave of period P across dir (its phase the sine's), its edges
-// box-filtered over the pixel's footprint — crisp where a period spans pixels, fading as stripeAA does
-float bandAA(float phase, float periodM, vec2 dir) {
-  float r = (abs(dot(gDwX, dir)) + abs(dot(gDwY, dir))) / periodM;
-  return clamp(sin(phase) / max(r * 6.2832, 1e-3), -1.0, 1.0) * (1.0 - smoothstep(0.30, 0.55, r))
-    * (1.0 - smoothstep(0.32, 0.50, gFootM / periodM));
-}
 float gFarVis = 1.0; // ground lane: tileVis of the far variants' shortest tile (the base layer's 18 m)
 // Ground lane: a field of the shared noise with no world period — the same texture read twice, at incommensurate
 // scales and turned 42° apart, summed (its variance restored), so no blotch repeats on a grid (the round-73b
@@ -6261,8 +6254,8 @@ void splatCompute() {
         // tone stays a breath near the tank (wave 8's banding) and the furrows read there as relief instead
         vec2 acrossDir = vec2(-rowDir.y, rowDir.x);
         // (wave 69: "the ploughed field nearest the camera smears") the furrows' tone and relief filtered by the pixel's
-        // own box (stripeAA), so they hold their lines to ~3 px a period instead of fading from 10; the lands are crisp
-        // bands (bandAA) a little softer than the old sines' peaks, and the tractor's 13 m passes a breath
+        // own box (stripeAA), so they hold their lines to ~3 px a period instead of fading from 10; the lands a soft
+        // swell (below), and the tractor's 13 m passes a breath
         // (wave 83: "an identical diagonal tilling stripe at a visibly regular interval") every field is ploughed to its
         // own widths (±14 %) and phase, and across it the lands drift ±9 % in width over ~37 m and wander ±0.4 m along
         // the rows (the tractor's line is never ruled) — no period repeats field to field
@@ -6274,11 +6267,39 @@ void splatCompute() {
         // sits at 0.7–2.7 m — more than half a 0.8 m furrow, so every furrow meandered along its run every metre or two.
         // A plough's line is straight over metres; it bends only with the field (the rows' bend above, tens of metres).
         float acrossP = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
-        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
-        rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
-          + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11
-          + sin(acrossP * 0.483 + jit * 6.0) * 0.07 * stripeAA(13.0 * kP, acrossDir);
-        rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.80 * smoothstep(0.05, 0.20, gFootM) : 0.0);
+        // (264 round 7, the blind critics on the turned fields of Reservoir, Railyard, Steppe, Cliffbridge, Foundry and
+        // Verdant: "evenly spaced dark contour lines", "corduroy") the furrows' tone and relief caught the low sun as ruled
+        // lines into the middle distance, and the lands' relief — drawn on every tier — as broad soft bands on the phones. A
+        // turned field's furrows show near the tank only (gone by a 2.5 cm footprint, ~15 m at 1080p) and crumble along
+        // their run into clods and broken ridges (n1, a metre); its lands are a breath of tone and relief broken by the
+        // field's wet and dry (n2), High and Medium only; past the furrows the field is its soil in clods
+        float furrowNear = 1.0 - smoothstep(0.010, 0.025, gFootM);
+        float clodP = smoothstep(0.20, 0.70, n1);
+        // (round 10, Cliffbridge's near field on rounds 8 and 9: "pale streaks … continuous, parallel, across the whole width")
+        // the furrows stand only in patches (n1) and crumble along their run into clods (n1h): a turned field's lines break
+        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) * furrowNear * smoothstep(0.30, 0.65, n1)
+          * (0.45 + 0.55 * smoothstep(0.30, 0.70, n1h)) : 0.0;
+        float landAmp = 0.5 + 0.5 * n2;
+        // (round 8, Delta's turned field "a flat, textureless single colour … plastic") its wet and dry ground in patches of
+        // metres to tens of metres (n2) under the clods
+        cropCol *= 1.0 + 0.14 * (n1h - 0.5) * (1.0 - smoothstep(0.03, 0.12, gFootM)) + 0.14 * (clodP - 0.5) + 0.14 * (n2 - 0.5);
+        // (round 9, the critics on round 8: Foundry's coal-dark field "a flat dark fill", Delta's "plastic") the clods' dry
+        // tops pale and grey a little over the damp soil — in patches (n1, a metre), their crumbs near the tank (n1h) — so
+        // a turned field keeps an irregular grain at every range and none of it is ruled
+        float crustP = smoothstep(0.55, 0.85, n1) * 0.55 + smoothstep(0.50, 0.80, n1h) * 0.45 * (1.0 - smoothstep(0.03, 0.12, gFootM));
+        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.35) * 1.55, 0.55 * crustP);
+        // (round 10, Foundry's turned field ~0.01 linear, "an unlit void") no turned earth darker than black earth's own
+        // albedo (LAND_CROP_ALBEDO's plough, 0.03–0.05), its patches kept
+        cropCol = max(cropCol, vec3(0.034, 0.029, 0.024) * bright * (0.85 + 0.30 * clodP));
+        // (2026-10-28, the owner: "weird parallel lines on ground … on all maps") the lands were crisp square bands of ±9 %
+        // from 40 m on (bandAA), and the turned fields carried ruled stripes at battle range. A land is the light on its
+        // furrow slices turned one way or the other: a soft swell of tone, each land its own width by the tractor's line
+        // (±11 % across the field), a few percent at the chase camera and a little more from the ridge
+        float landPh = acrossP * 1.963 + jit * 3.0 + 0.75 * sin(acrossP * 0.29 + jit * 4.1);
+        rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir) * furrowNear
+          + sin(landPh) * 0.02 * landAmp * stripeAA(3.2 * kP, acrossDir)
+          + sin(acrossP * 0.483 + jit * 6.0) * 0.03 * stripeAA(13.0 * kP, acrossDir);
+        rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.40 * smoothstep(0.05, 0.20, gFootM) : 0.0);
         // (wave 46, Verdant's establishing foreground: "a blurred, brush-stroke smear of dark brown soil … if the streaks
         // are intended furrows, keep their direction and give them ridge-and-furrow relief and clods") the sward's own
         // relief (the base layers' blade strokes, smeared at a grazing view) stands down on the turned earth, and the
@@ -6293,29 +6314,84 @@ void splatCompute() {
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere);
         if (nrmOn && furrowVis > 0.0) {
           float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
-          n.xy += acrossDir * ridge * 0.20 * furrowVis * soilHere;
+          n.xy += acrossDir * ridge * 0.09 * furrowVis * soilHere;
         }
         // (wave 86, Verdant's establishing view: "a smeared, streaky charcoal texture with no clods or furrow relief") past
         // the furrows' own reach the plough keeps its relief: the lands' low crowns, each 3.2 m land a gentle ridge lit and
         // shaded with the sun (2026-10-06, the cost trim: wave 88's clods — a near read of the noise — are gone again)
-        if (nrmOn) n.xy += acrossDir * sin(acrossP * 1.963 + jit * 3.0) * 0.14 * stripeAA(3.2 * kP, acrossDir) * soilHere;
+        if (nrmOn && uLandTier > 0.5) n.xy += acrossDir * sin(landPh) * 0.015 * landAmp * stripeAA(3.2 * kP, acrossDir) * soilHere;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
         // (wave 88: "a pale sandy grey-beige, which is neither Prokhorovka's black chernozem nor Hesse's brown loam")
         // between the cut stalks lies the place's soil — a third of the stubble field's tone
         cropCol = mix(cropCol, soilF * 1.10, 0.35);
         // the combine's swaths, 6 m: a field's own lines from the ridge (waves 46–47, "no … stubble rows")
-        rows = sin(across * 1.047 + jit * 6.0) * 0.10 * stripeVis(6.0, vec2(-rowDir.y, rowDir.x));
-        rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.70 * smoothstep(0.05, 0.20, gFootM) : 0.0);
+        // (2026-10-28: ±7 % at one 6 m width on every stubble field ruled it at battle range) each field cut to its own
+        // header's width (±13 %), the swaths a soft few percent
+        float kS = 0.87 + 0.26 * fract(jit * 4.31 + 0.53);
+        rows = sin(across * 1.047 / kS + jit * 6.0) * 0.08 * stripeVis(6.0 * kS, vec2(-rowDir.y, rowDir.x));
+        rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.50 * smoothstep(0.05, 0.20, gFootM) : 0.0);
       } else if (crop < 6.5) {
         cropCol = vec3(0.942, 1.330, 0.466) * baseL * 0.70 * bright; // sunflower
         rows = sin(across * 8.976) * 0.10 * tileVis(0.7);
       } else if (crop < 7.5) {
-        // row crop (potato, beet, vegetables): ridges 0.75 m apart, dark foliage on the crowns, soil in the furrows —
-        // their mean (two parts leaf to one of soil) past the footprint that can hold a row
-        vec3 leaf = vec3(0.667, 1.400, 0.400) * baseL * bright;
-        float ridge = smoothstep(-0.35, 0.35, sin(across * 8.378));
-        cropCol = mix(mix(soilF * 0.72, leaf, ridge), mix(soilF * 0.72, leaf, 0.67), 1.0 - tileVis(0.75));
+        // row crop (potato, beet, vegetables): ridges 0.75 m apart, the plants' canopy on the crowns, soil in the furrows
+        // (2026-10-28, the owner on Steinburg's spawn: "weird parallel lines on ground … fix that please its weird. on all
+        // maps" — the ridges were a square wave of green leaf and brown soil at full contrast, whole to ~50 m: stripes
+        // painted under the tank, the tall grass standing across them) a row crop's canopy stands ~0.45 m over its
+        // furrows and closes over them seen from a tank: the soil shows only where the gap between two canopies outruns
+        // the canopy's height seen at the view's elevation across the rows, so at the chase camera the field is its leafy
+        // canopy, its rows a soft shade broken plant by plant, and the furrows open looking steeply down or along the
+        // rows. Every field its own pitch, cover and phase; the rows filtered by the pixel's own box (stripeAA), their
+        // mean past it
+        // (round 3, the desktop chase frames of round 2: a canopy of one tone read as a mown lawn, the farmland gone) the
+        // canopy is its plants: a mound across each row (its crown lit, its flanks shaded down to the furrow) broken into
+        // plants ~0.4 m apart along it, each its own size; its leaves a deep shade between lit tops (n1h, a decimetre;
+        // a near read of the noise at leaf size within a 4 cm footprint); a potato leaf's darker, bluer green than a
+        // meadow's; and its relief the plants' own, not the sward's blades. The plants and the rows fade to their means
+        // by the pixel's footprint along and across the row, so nothing ruled is left at range — a darker, rougher field
+        vec2 acrossDir = vec2(-rowDir.y, rowDir.x);
+        float pitchR = 0.75 * (0.88 + 0.24 * fract(jit * 5.77 + 0.29));
+        float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / pitchR + jit * 9.7;
+        float rowF = abs(fract(acrossR) - 0.5) * 2.0; // 0 the furrow, 1 the crown
+        vec3 eyeR = cameraPosition - wp;
+        float soilR = max(0.0, 0.18 + 0.14 * jit2 - 0.45 / pitchR * abs(dot(eyeR.xz, acrossDir)) / max(eyeR.y, 0.05));
+        float rowVis = uLandTier > 0.5 ? stripeAA(pitchR, acrossDir) : 0.0;
+        float rowAA = (abs(dot(gDwX, acrossDir)) + abs(dot(gDwY, acrossDir))) / pitchR;
+        float soilW = mix(soilR, 1.0 - smoothstep(soilR - rowAA, soilR + rowAA, rowF), rowVis);
+        // (round 4: plants on a ruled 0.4 × 0.75 m grid, their relief in the sun, quilted the field like a mattress into
+        // the middle distance) each plant sits off its cell's middle and spreads its own width, some barely grown; the
+        // plants show within ~15 m (a 2 cm footprint) and the rows' mounds soften to a third of themselves past ~5 cm, so
+        // the middle distance is the canopy's leaves, not a lattice
+        float rowI = floor(acrossR + 0.5);
+        float alongR = dot(wp.xz, rowDir) / 0.40 + fract(rowI * 0.618) * 7.0;
+        float plantVis = rowVis * (1.0 - smoothstep(0.008, 0.02, gFootM));
+        vec2 plantH = plantVis > 0.0 ? cellHash2(vec2(rowI, floor(alongR)) + vec2(jit * 53.0, 11.0)) : vec2(0.5);
+        float plantQ = (fract(alongR) - 0.5 - (plantH.y - 0.5) * 0.45) / (0.30 + 0.35 * plantH.x);
+        float crownR = rowF * rowF * (3.0 - 2.0 * rowF);
+        float plantR = (0.30 + 0.70 * plantH.x * plantH.x) * max(0.0, 1.0 - plantQ * plantQ);
+        float rowNear = rowVis * mix(1.0, 0.35, smoothstep(0.01, 0.05, gFootM));
+        float moundR = mix(0.5, crownR, rowNear) * mix(0.55, plantR, plantVis);
+        float leafN = uLandTier > 0.5 && gFootM < 0.04 ? nz(uv, 0.45, vec2(0.17, 0.43)).r : 0.5;
+        float leafF = mix(0.5, smoothstep(0.30, 0.70, leafN), 1.0 - smoothstep(0.015, 0.04, gFootM));
+        // (round 5, the phone's frames: past ~20 m the decimetre leaves, squashed by the view, read as wavy streaks — a
+        // rippled water — once no grass stood over them) the leaves' contrast and relief go with the pixel's footprint
+        // (gone by 12 cm), and the canopy's plants in clumps (n1, ~0.3–1.5 m) carry its texture at range
+        float litAmp = 1.0 - smoothstep(0.03, 0.12, gFootM);
+        float litR = mix(0.5, smoothstep(0.25, 0.80, n1h), litAmp), clumpR = smoothstep(0.30, 0.70, n1);
+        float lightR = (0.62 + 0.50 * moundR) * (0.86 + 0.28 * litR) * (0.75 + 0.50 * leafF) * (0.92 + 0.16 * clumpR);
+        // (round 8, the critics on the phone's row crop: "blue-green and yellow-green blotches like camo", "a cold, washed-out
+        // blue-grey" at range) the shade's hue a breath cooler than the lit leaves, not blue, and the canopy's tone at range
+        // the local sward's (round 6 took a calibrated one there for a streak that was a pasture's, not this field's)
+        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseL * bright * lightR
+          * mix(vec3(0.97, 0.99, 1.03), vec3(1.03, 1.01, 0.96), smoothstep(0.60, 1.10, lightR));
+        cropCol = mix(leaf, soilF * 0.62, soilW);
+        if (nrmOn) {
+          float reliefW = inField * landW;
+          n.xy = mix(n.xy, vec2(0.5), 0.75 * reliefW);
+          n.xy += (acrossDir * sin(acrossR * 6.2832) * 0.07 * rowNear - rowDir * plantQ * plantR * 0.10 * plantVis
+            + (vec2(litR, leafF) - 0.5) * 0.30) * reliefW;
+        }
         rows = sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
@@ -6371,11 +6447,13 @@ void splatCompute() {
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
         // (2026-10-08: the plough's law — the furrows straight along their run, no metre-scale meander from n1)
         float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
-        rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
+        // (264 round 7: the plough's law — the furrows near the tank only, crumbling along their run)
+        float furrowNearR = (1.0 - smoothstep(0.010, 0.025, gFootM)) * (0.35 + 0.65 * smoothstep(0.20, 0.70, n1));
+        rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) * furrowNearR + sin(acrossR * 0.483 + jit * 6.0) * 0.03 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5), 0.80 * inField * landW) + vec2(-rowDir.y, rowDir.x) * cos(acrossR * 7.854) * 0.08
-          * (0.55 + 0.90 * n1h) * (uLandTier > 0.5 ? stripeVis(0.8 * kR, vec2(-rowDir.y, rowDir.x)) : 0.0) * inField * landW;
+          * (0.55 + 0.90 * n1h) * (uLandTier > 0.5 ? stripeVis(0.8 * kR, vec2(-rowDir.y, rowDir.x)) * furrowNearR : 0.0) * inField * landW;
       } else if (crop < 12.5) {
         // a vineyard: rows 2.2 m apart, the vines' dark canopy 0.9 m wide over the earth between them (red on the
         // karst, the soil layer elsewhere)
@@ -6385,12 +6463,23 @@ void splatCompute() {
         // (2026-10-08: the karst's red earth the terra rossa's dusty brick, as above)
         vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.105 : soilF * 0.85;
         earth = mix(earth, aF * vec3(1.10, 1.02, 0.80), 0.30);
-        vec3 vine = vec3(0.860, 1.300, 0.560) * baseL * bright;
+        // (264 round 7, Saltwind's and Cliffbridge's chase frames: "terracotta and olive-green bands … painted on") the
+        // rows drew two thirds red earth whatever the view. A vine row stands ~1.4 m and its canopy closes over the inter-row
+        // seen from a tank: the earth shows only where the gap outruns the canopy's height at the view's elevation across
+        // the rows (the row crop's law), so from the chase camera a vineyard is its rows of dusty olive leaves, broken by
+        // their clumps and lit leaves, and the red earth opens looking down or along them; the rows fade by the footprint
+        vec2 acrossV = vec2(-rowDir.y, rowDir.x);
+        vec3 eyeV = cameraPosition - wp;
+        float earthV = max(0.0, 0.62 - 1.4 / 2.2 * abs(dot(eyeV.xz, acrossV)) / max(eyeV.y, 0.05));
+        vec3 vine = vec3(0.860, 1.300, 0.560) * baseL * bright
+          * (0.84 + 0.32 * mix(0.5, smoothstep(0.25, 0.80, n1h), 1.0 - smoothstep(0.03, 0.12, gFootM))) * (0.90 + 0.20 * smoothstep(0.30, 0.70, n1));
         float vf = fract(across / 2.2 + jit);
-        float vrow = 1.0 - smoothstep(0.24, 0.32, abs(vf - 0.5));
-        float vshade = (1.0 - smoothstep(0.32, 0.42, abs(vf - 0.5))) * (1.0 - vrow) * step(0.5, vf);
+        float vHalf = 0.5 * (1.0 - earthV);
+        float vrow = 1.0 - smoothstep(vHalf - 0.04, vHalf + 0.04, abs(vf - 0.5));
+        float vshade = (1.0 - smoothstep(vHalf, vHalf + 0.10, abs(vf - 0.5))) * (1.0 - vrow) * step(0.5, vf);
+        float vVis = uLandTier > 0.5 ? stripeAA(2.2, acrossV) : 0.0;
         // (wave 8: soft to near-invisible — the canopy's average with a trace of its rows near the camera)
-        cropCol = mix(mix(earth, vine, 0.36), mix(earth * (1.0 - 0.30 * vshade), vine, vrow), 0.30 * tileVis(2.2));
+        cropCol = mix(mix(earth, vine, 1.0 - earthV), mix(earth * (1.0 - 0.30 * vshade), vine, vrow), 0.30 * vVis);
       } else if (crop < 13.5) {
         // hay: a mown meadow, paler and yellower than the standing sward, its windrows every 6 m a greener line
         cropCol = aF * vec3(1.30, 1.12, 0.80);
@@ -8274,7 +8363,8 @@ function* createSplatMaterialSteps(
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
   const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
-  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
+  // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
+  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {
@@ -9305,7 +9395,8 @@ function* terrainBuildSteps(
         total: CHUNKS * CHUNKS + 2,
       };
       const fine = needsFineGrid
-        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
+        // (260, the rooms census: eight rows, 792 height samples, were one 260 ms step under load) two rows a checkpoint
+        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress, 2) : null;
       if (fine) initialFineGridCount++;
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
@@ -9404,6 +9495,8 @@ function* terrainBuildSteps(
           finishHorizonRingGeometry(horizonMesh.geometry, {
             ground: heightField, shoreAt, foldAt, roadExits: ringInfo.roadExits ?? null, columns, bands,
           });
+          // (260, the rooms census: the ring's finish and its ground binding were one step of the world build)
+          yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
         }
         bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
           columns, bands, continuousGround: true, ground: heightField, seamFinished: true,
@@ -9490,8 +9583,15 @@ function* terrainBuildSteps(
       // same material so fresnel, glitter and the deep colour do not end in a straight line at the red line.
       // Round 47 (2026-09-23): the apron follows the bay's own contour past the edge (a grid of wet cells), the derived
       // sector only carries the open sea from 120–360 m out — see edgeWater.ts buildOutlandWaterGeometry.
-      const seaApron = buildOutlandWaterGeometry(seaOpenings, heightField.getOutlandWaterAt ?? null, heightField.size / 2,
+      // (260, the room-stalls lane's rooms census on Saltwind: the apron's grid was one 190 ms step) built a few rows a step
+      const apronSteps = buildOutlandWaterGeometrySteps(seaOpenings, heightField.getOutlandWaterAt ?? null, heightField.size / 2,
         undefined, { cellM: 8, depthM: waterContactProfile(cfg.id || '').depthM, ramp: cfg.splat.seaRamp || [0.40, 0.78] });
+      let apronStep = apronSteps.next();
+      while (!apronStep.done) {
+        yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        apronStep = apronSteps.next();
+      }
+      const seaApron = apronStep.value;
       if (seaApron) {
         const apron = new THREE.Mesh(seaApron, water.mesh.material);
         apron.name = 'shallowWaterSeaApron';

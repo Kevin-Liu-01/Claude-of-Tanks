@@ -178,12 +178,19 @@ export function createMainFrameRuntime({
   const garageFrameRequest: GarageFrameRequest = { animate: false };
   let lastMs = -1;
   let lastFov = camera.fov;
+  // (battle-camera-264) the off-axis terms of the projection the cascades were fitted to: the chase framing's lens shift
+  // (cameraRig.ts applyLens, cameraLens.ts) moves the frustum without a fov change, and CSM's slices are the projection's
+  // unprojection at its last fit
+  let lastLensX = camera.projectionMatrix.elements[8];
+  let lastLensY = camera.projectionMatrix.elements[9];
   let lastCinematicActive = false;
   let lastRenderedPhase = game.phase;
   let viewportChanged = false;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
+    lastLensX = camera.projectionMatrix.elements[8];
+    lastLensY = camera.projectionMatrix.elements[9];
   };
 
   // hot-path: every frame (the scoped fog)
@@ -221,6 +228,8 @@ export function createMainFrameRuntime({
   // hot-path: every frame in the Garage
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
     if (game.phase !== 'garage') { garageModePreview?.clear(); return true; }
+    // (battle-camera-264) the chase's lens shift never rides into the showroom's camera
+    rig.suspendFraming();
     networkSession.pump(dtSeconds, nowMs);
     garageFrameRequest.animate = showroom.moving || pedestal.switchPending || !!garageModePreview?.animated || !!garageModePreview?.pending;
     if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
@@ -230,6 +239,8 @@ export function createMainFrameRuntime({
     return !garageModePreview?.pending;
   };
 
+  /** The last live battle frame's camera was Watch's (a paused one keeps it: no chase preview over a watched battle). */
+  let watchOwnsCamera = false;
   // hot-path: every battle frame
   const updateCombatCamera = (
     frame: BattleFrameReceipt,
@@ -239,7 +250,13 @@ export function createMainFrameRuntime({
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
-      if (!watchFrame?.(dtSeconds)) rig.update(dtSeconds, cameraInput);
+      // (battle-camera-264) Watch's cameras own the frame: the chase's lens shift comes off
+      watchOwnsCamera = !!watchFrame?.(dtSeconds);
+      if (watchOwnsCamera) rig.suspendFraming();
+      else rig.update(dtSeconds, cameraInput);
+    } else if (frame.inBattle && frame.paused && !frame.killcamActive && !watchOwnsCamera) {
+      // a changed camera setting glides in behind the pause menu (battle-camera-264: the settings' live preview)
+      rig.previewFraming(dtSeconds);
     }
     if (frame.killcamActive) killcam.update(dtSeconds);
   };
@@ -289,15 +306,20 @@ export function createMainFrameRuntime({
       && lastRenderedPhase !== 'garage'
       && typeof trace?.mark === 'function';
     const frameStartedAt = profileGarageReturn ? performance.now() : 0;
-    if (camera.fov !== lastFov) {
+    const projection = camera.projectionMatrix.elements;
+    if (camera.fov !== lastFov || projection[8] !== lastLensX || projection[9] !== lastLensY) {
       lighting.updateFov();
       lastFov = camera.fov;
+      lastLensX = projection[8];
+      lastLensY = projection[9];
     }
     const garageShadowsDirty = game.phase === 'garage'
       && (viewportChanged || showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
     lighting.setStaticPresentationDormant(
       game.phase === 'garage' && !garageShadowsDirty,
     );
+    // (battle-spikes-253) the near hulls' merged shadow casters in a live battle frame only (never the Garage or a killcam)
+    lighting.setVehicleShadowMerge(frame.inBattle && !frame.killcamActive);
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
     const stages = frameStages;
     stages?.stage(FRAME_STAGE.lighting);

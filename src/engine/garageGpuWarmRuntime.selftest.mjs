@@ -338,12 +338,16 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
       events.push('settle');
     } },
   };
-  const prepared = await restoreGarageGpuPipeline({ ...options, programsNeedWarm: true });
+  // (2026-10-27, the room-stalls lane) the lateLinks receipt opens once the program warm and the shadow prime are done,
+  // before the upload and settle draws
+  const prepared = await restoreGarageGpuPipeline({ ...options, programsNeedWarm: true,
+    lighting: { ...options.lighting, async primeShadowMaps() { events.push('shadows'); return [1]; } },
+    onProgramsWarmed: () => { assert.deepEqual(reflected, new Set([heroMesh, background])); events.push('warmed'); } });
   assert.equal(prepared.programCohorts, 1, 'actual owner batches hero and background into one readiness cohort');
   assert.equal(prepared.programsPrepared, 2);
   assert.equal(prepared.programCohortMax, 2);
   assert.equal(prepared.programBudgetSlices, 0);
-  assert.deepEqual(events, ['upload', 'settle']);
+  assert.deepEqual(events, ['shadows', 'warmed', 'upload', 'settle']);
   events.length = 0;
   const repeat = await restoreGarageGpuPipeline({ ...options, programsNeedWarm: false,
     forwardPrograms: {
@@ -358,6 +362,41 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   assert.equal(repeat.programWarmSlices, 0);
   heroMesh.geometry.dispose(); heroMesh.material.dispose();
   background.geometry.dispose(); background.material.dispose();
+}
+
+// (2026-10-27, the room-stalls lane) a program warm's restore primes every visible caster's depth program (casterWarmup),
+// and each upload batch waits, a frame at a time, until the GPU has passed the mark before the previous batch
+{
+  let primeOptions = null;
+  let status = 0;
+  const statuses = [0x9111, 0x9111, 0x911a, 0x911a]; // TIMEOUT_EXPIRED twice, then ALREADY_SIGNALED
+  const fencedGl = {
+    SYNC_GPU_COMMANDS_COMPLETE: 0x9117, TIMEOUT_EXPIRED: 0x9111,
+    fenceSync: () => ({}), flush() {}, deleteSync() {}, isContextLost: () => false,
+    clientWaitSync: () => statuses[Math.min(status++, statuses.length - 1)],
+  };
+  let readinessFrames = 0;
+  const run = (programsNeedWarm) => restoreGarageGpuPipeline({
+    renderer: { info: { programs: [] }, getContext: () => fencedGl }, scene: new Scene(), camera,
+    forwardPrograms: { *initializeSteps() {}, *linkerBreathingSlices() {}, compile() {} },
+    post: { render() {} }, resourcesReleased: true, programsNeedWarm, simDt: 1 / 60, now: () => 0,
+    lighting: { update() {}, setStaticPresentationDormant() {}, async primeShadowMaps(_r, _s, _c, options) { primeOptions = options; return [1]; } },
+    createYielder: () => async () => {},
+    yieldProgramReadiness: async () => { readinessFrames++; },
+    warmScene: async (_renderer, _scene, _camera, { yieldBeforeBatch }) => { await yieldBeforeBatch(0); await yieldBeforeBatch(1); return [1, 1]; },
+  });
+  const warmed = await run(true);
+  assert.ok(primeOptions.casterWarmup && typeof primeOptions.casterWarmup.yieldBeforeBatch === 'function',
+    'a program warm\'s restore primes its casters\' depth programs');
+  // the first poll places the mark (one frame), the next two find the GPU behind (two more), the fourth caught up; the
+  // second batch's poll finds the GPU past the mark before the first batch and waits none
+  assert.equal(warmed.uploadCatchUpFrames, 3);
+  assert.equal(readinessFrames, 3);
+  status = 2;
+  readinessFrames = 0;
+  const resident = await run(false);
+  assert.equal(primeOptions.casterWarmup, undefined, 'a restore without a program warm keeps the prime as it was');
+  assert.equal(resident.uploadCatchUpFrames, 1, 'a fresh mark still costs the first batch its frame');
 }
 
 // 2026-10-10 (the MP shader-prep lane; prod 211): a readiness proof that only ran out of time takes the same covered

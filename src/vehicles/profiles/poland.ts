@@ -1,7 +1,9 @@
 import {addEscortFieldKit} from './escortFieldKit.ts';
 import {addPL01FieldTurret} from './pl01FieldTurret.ts';
+import { addPL01GunAssembly } from './pl01GunAssembly.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
+import { buildPT64Tur } from './pt64Tur.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
 // AND exact geometric comparison with the 3d models... leclerc_s2 highest
@@ -135,113 +137,6 @@ interface PolishCupolaOptions {
   readonly arc1: number;
 }
 
-interface FacetedGunHousingStation {
-  readonly z: number;
-  readonly bottomHalfWidth: number;
-  readonly bottomY: number;
-  readonly shoulderHalfWidth: number;
-  readonly shoulderY: number;
-  readonly topHalfWidth: number;
-  readonly topY: number;
-}
-
-// Connected six-facet gun shroud through independently measured transverse
-// stations. The PL-01 housing changes both vertical centre and side rake as
-// it leaves the turret, so a uniformly-scaled polyMultiLoft cannot preserve
-// the cheek contact ring. Keeping every station in one closed geometry also
-// removes the coplanar end caps that made the old three-prism assembly read
-// as stacked parts instead of one welded thermal cover.
-function facetedGunHousing(
-  stations: readonly FacetedGunHousingStation[],
-): THREE.BufferGeometry {
-  if (stations.length < 2) {
-    throw new Error('facetedGunHousing requires at least two stations');
-  }
-  const rings: Vec3Tuple[][] = stations.map((station) => [
-    [-station.topHalfWidth, station.topY, station.z],
-    [-station.shoulderHalfWidth, station.shoulderY, station.z],
-    [-station.bottomHalfWidth, station.bottomY, station.z],
-    [station.bottomHalfWidth, station.bottomY, station.z],
-    [station.shoulderHalfWidth, station.shoulderY, station.z],
-    [station.topHalfWidth, station.topY, station.z],
-  ]);
-  const positions: number[] = [];
-  const triangle = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
-    positions.push(...a, ...b, ...c);
-  };
-  const normalDot = (
-    a: Vec3Tuple,
-    b: Vec3Tuple,
-    c: Vec3Tuple,
-    outward: Vec3Tuple,
-  ): number => {
-    const ab: Vec3Tuple = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    const ac: Vec3Tuple = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    return (ab[1] * ac[2] - ab[2] * ac[1]) * outward[0]
-      + (ab[2] * ac[0] - ab[0] * ac[2]) * outward[1]
-      + (ab[0] * ac[1] - ab[1] * ac[0]) * outward[2];
-  };
-  for (let stationIndex = 0; stationIndex < rings.length - 1; stationIndex++) {
-    const rear = rings[stationIndex];
-    const front = rings[stationIndex + 1];
-    const solidCenter: Vec3Tuple = [
-      0,
-      (stations[stationIndex].bottomY + stations[stationIndex].topY
-        + stations[stationIndex + 1].bottomY + stations[stationIndex + 1].topY) / 4,
-      (stations[stationIndex].z + stations[stationIndex + 1].z) / 2,
-    ];
-    for (let index = 0; index < rear.length; index++) {
-      const next = (index + 1) % rear.length;
-      const a = rear[index];
-      const b = rear[next];
-      const c = front[next];
-      const d = front[index];
-      const faceCenter: Vec3Tuple = [
-        (a[0] + b[0] + c[0] + d[0]) / 4,
-        (a[1] + b[1] + c[1] + d[1]) / 4,
-        (a[2] + b[2] + c[2] + d[2]) / 4,
-      ];
-      const outward: Vec3Tuple = [
-        faceCenter[0] - solidCenter[0],
-        faceCenter[1] - solidCenter[1],
-        faceCenter[2] - solidCenter[2],
-      ];
-      if (normalDot(a, b, c, outward) >= 0) {
-        triangle(a, b, c);
-        triangle(a, c, d);
-      } else {
-        triangle(a, c, b);
-        triangle(a, d, c);
-      }
-    }
-  }
-  const cap = (ring: Vec3Tuple[], forward: boolean): void => {
-    const center: Vec3Tuple = [
-      ring.reduce((sum, point) => sum + point[0], 0) / ring.length,
-      ring.reduce((sum, point) => sum + point[1], 0) / ring.length,
-      ring[0][2],
-    ];
-    const outward: Vec3Tuple = [0, 0, forward ? 1 : -1];
-    for (let index = 0; index < ring.length; index++) {
-      const next = (index + 1) % ring.length;
-      if (normalDot(center, ring[index], ring[next], outward) >= 0) {
-        triangle(center, ring[index], ring[next]);
-      } else {
-        triangle(center, ring[next], ring[index]);
-      }
-    }
-  };
-  cap(rings[0], false);
-  cap(rings[rings.length - 1], true);
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute(
-    'uv',
-    new THREE.Float32BufferAttribute(new Array((positions.length / 3) * 2).fill(0), 2),
-  );
-  geometry.computeVertexNormals();
-  return geometry;
-}
 
 // ---------------------------------------------------------------------------
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
@@ -710,7 +605,6 @@ interface PL01BuildContext {
   readonly turretRoofLocalY: number;
   readonly shellY: (y: number) => number;
   readonly roofEquipmentY: (y: number) => number;
-  readonly gunAssemblyY: (y: number) => number;
   readonly upperGlacisY: (z: number) => number;
   readonly driverDeckY: (z: number) => number;
   readonly glacisPitch: number;
@@ -730,10 +624,6 @@ function createPL01BuildContext(P: PolishBuilderPort): PL01BuildContext {
   // Turret fittings keep their approved physical proportions and translate
   // upward with the new roof instead of stretching with the armor shell.
   const roofEquipmentY = (y: number): number => y * equipmentHeightScale + roofLiftLocalY;
-  // The complete gun plant is reseated by its rig pivot. Its local sleeve,
-  // coax, and thermal-cover offsets remain unchanged so the weapon itself is
-  // not distorted by the structural height increase.
-  const gunAssemblyY = (y: number): number => y * equipmentHeightScale;
   const upperGlacisY = (z: number): number => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
   const driverDeckY = (z: number): number => z <= 1.30
     ? 2.02 + (z - 0.50) * ((1.975 - 2.02) / (1.30 - 0.50))
@@ -749,7 +639,6 @@ function createPL01BuildContext(P: PolishBuilderPort): PL01BuildContext {
     turretRoofLocalY,
     shellY,
     roofEquipmentY,
-    gunAssemblyY,
     upperGlacisY,
     driverDeckY,
     glacisPitch,
@@ -1115,15 +1004,8 @@ function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): vo
         [-wA, shA, zLA], [wA, shA, zLA], [wB, shB, zLB], [-wB, shB, zLB],
         [-rwA, roofA, zLA], [rwA, roofA, zLA], [rwB, roofB, zLB], [-rwB, roofB, zLB]));
     }
-    // nose cap closes the front ring into the gun-cover root (§B2)
-    P.add('turret', slab(
-      [-0.34, shellY(0.09), 1.88], [0.34, shellY(0.09), 1.88], [0.30, shellY(0.10), 2.02], [-0.30, shellY(0.10), 2.02],
-      [-0.22, shellY(0.55), 1.88], [0.22, shellY(0.55), 1.88], [0.20, shellY(0.36), 2.02], [-0.20, shellY(0.36), 2.02]));
-    P.turretG.userData.pl01NoseGunSeat = {
-      revision: 'aligned-r1', rearTopWorldY: 2.07 + shellY(0.55),
-      frontTopWorldY: 2.07 + shellY(0.36),
-      gunAxisWorldY: 2.07 + P.spec.armor.gunPivot[1], connected: true,
-    };
+    // (2026-10-27: the nose cap that closed the front ring round the old housing's overlap is retired; the gun-face
+    // housing, pl01GunAssembly.ts, owns the turret front round the gun)
     // tail cap
     P.add('turret', box(0.18, 0.03 * turretHeightScale, 0.06), 0, shellY(0.30), -2.705);
   }
@@ -1376,86 +1258,15 @@ function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void
 }
 
 function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
-  const { box, cylZ } = KIT;
-  const {
-    equipmentHeightScale, gunAssemblyY, is105, previousRoofLocalY, shellY,
-    turretRoofLocalY,
-  } = context;
-  // ---- gun: angular thermal cover + bare tube to the published muzzle -----
-  // axis world 2.38104 (pivot 2.07 + 0.31104); gun pivot world z 0.55.
-  // One continuous six-facet shell now begins on the turret's structural
-  // nose ring and wraps over the fixed 140 mm nose cap before flowing into
-  // the thermal cover. This deliberately overlaps the cap rather than
-  // balancing a thin wedge on its front edge: in elevation, plan, and pitch
-  // the crown, shoulder and chin therefore retain real cheek engagement.
-  const gunPivotY = P.spec.armor.gunPivot[1];
-  const gunPivotZ = P.spec.armor.gunPivot[2];
-  const throatRearZ = Number((1.88 - gunPivotZ).toFixed(5));
-  const throatBottomY = Number((shellY(0.09) - gunPivotY).toFixed(5));
-  const throatTopY = Number((shellY(0.55) - gunPivotY).toFixed(5));
-  const throatShoulderY = Number(((throatBottomY + throatTopY) / 2).toFixed(5));
-  const housingStations = [
-    {
-      z: throatRearZ,
-      bottomHalfWidth: 0.34, bottomY: throatBottomY,
-      shoulderHalfWidth: 0.28, shoulderY: throatShoulderY,
-      topHalfWidth: 0.22, topY: throatTopY,
-    },
-    {
-      z: 1.18,
-      bottomHalfWidth: 0.26, bottomY: -0.11,
-      shoulderHalfWidth: 0.275, shoulderY: 0.012,
-      topHalfWidth: 0.225, topY: 0.155,
-    },
-    {
-      z: 2.18,
-      bottomHalfWidth: 0.215, bottomY: -0.075,
-      shoulderHalfWidth: 0.225, shoulderY: 0.014,
-      topHalfWidth: 0.19, topY: 0.135,
-    },
-    {
-      z: 3.25,
-      bottomHalfWidth: 0.18, bottomY: -0.069,
-      shoulderHalfWidth: 0.20, shoulderY: 0.012,
-      topHalfWidth: 0.165, topY: 0.111,
-    },
-  ] as const satisfies readonly FacetedGunHousingStation[];
-  P.addGunExtra(facetedGunHousing(housingStations));
-  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the housing pitches about a trunnion
-  // 0.43 m behind its rear ring, so at full elevation (+20 deg) the gun line rose clear of the turret's falling nose
-  // ridge (top 2.52 m at z 0.93) before it reached the ring, and the sky showed through that notch along the gun line
-  // (96 mm, 15 of 24 directions). The gun cradle now shows there: a dark round cradle tube on the gun line, from 2 cm
-  // inside the ring to 0.13 m behind it (radius 88 mm at the ring, 74 mm at its rear), inside the ridge's raked flanks
-  // at rest and at full depression, so only an elevated gun uncovers it, as the cradle running back into the turret.
-  // (r3 closed the notch with a six-facet boss in the housing's paint; at +20 deg it read as a pale stub facet.)
-  P.addGunExtraDark(cylZ(0.088, 0.15, P.q ? 24 : 14, 0.074), 0, 0, throatRearZ - 0.055);
-  P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, gunAssemblyY(0.225), 2.10); // cover spine seam
-  P.addGunExtraDark(box(0.42, 0.36 * equipmentHeightScale, 0.03), 0, gunAssemblyY(0.03), 3.262); // cover end plate
-  // Armored coaxial 7.62 mm fairing and visible receiver beside the main
-  // weapon. It follows gun pitch and gives the angular mantlet a second
-  // functional layer instead of a single uninterrupted cover.
-  P.addGunExtra(box(0.15, 0.16 * equipmentHeightScale, 0.52), 0.31, gunAssemblyY(0.015), 0.82);
-  P.addGunExtraDark(box(0.105, 0.095 * equipmentHeightScale, 0.30), 0.31, gunAssemblyY(0.025), 0.93);
-  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, gunAssemblyY(0.025), 1.48);
-  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, gunAssemblyY(0.025), 1.91);
-  P.gunG.userData.pl01MantletReceipt = {
-    revision: 'continuous-cheek-loft-r2', axisWorldY: 2.38104,
-    coverMinWorldY: 2.14776, coverMaxWorldY: 2.5452,
-    turretRoofWorldY: 2.69208,
-    throatRearZ, throatBottomY, throatShoulderY, throatTopY,
-    throatHalfWidths: [0.34, 0.28, 0.22],
-    stationDepths: housingStations.map((station) => station.z),
-    turretNoseOverlapM: 0.14, contactGapM: 0,
-    singleClosedHousing: true, aligned: true,
-  };
-  const mainTubeR = is105 ? 0.086 : 0.098;
-  tubeGun(P, [
-    [3.26, 4.20, mainTubeR, mainTubeR * 0.96],
-    [4.20, 4.24, mainTubeR * 1.06, mainTubeR * 1.06],
-    [4.24, 4.60, mainTubeR * 0.96, mainTubeR * 0.94],
-    [4.60, 4.71, mainTubeR * 1.02, mainTubeR * 1.02],
-  ], { rings: [[4.22, mainTubeR * 1.08], [4.63, mainTubeR * 1.05]], muzzle: 4.71 });
-  muzzleBore(P, { r: mainTubeR * 0.90, boreR: mainTubeR * 0.59 });
+  const { is105, previousRoofLocalY, turretRoofLocalY } = context;
+  // ---- gun: the fit's own shroud or shield in the turret-face housing ---------
+  // axis world 2.38104 (pivot 2.07 + 0.31104); gun pivot world z 0.55. Owner 2026-10-27 ("make the pl-01's gun and
+  // gun assembly properly match with turret and gun housing on it ... two varieties for the 105 and normal versions"):
+  // the 120 is the MSPO 2013 mock-up's long shroud and slotted brake, the 105 a compact shield and a sleeved tube with
+  // its evacuator (pl01GunAssembly.ts). Until then both carried one six-facet housing that overlapped a fixed nose cap,
+  // so at full elevation the housing lifted clear of the nose and the cap stood out beneath it.
+  P.gunG.userData.pl01GunHousingReceipt = addPL01GunAssembly(P, is105, turretRoofLocalY);
+  muzzleBore(P, is105 ? { r: 0.09, boreR: 0.0525 } : { r: 0.10, boreR: 0.06 });
   const hullMark = P.spec.visual.number || (is105 ? 'PL-105' : 'PL-01');
   P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
   P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
@@ -1482,4 +1293,5 @@ export const POLAND_PROFILES = {
   pt91a_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
   pl01_105: { build: buildPL01 },
+  pt64_tur: { build: (P: TankBuilderPort) => buildPT64Tur(P) },
 } satisfies VehicleProfileRecord;

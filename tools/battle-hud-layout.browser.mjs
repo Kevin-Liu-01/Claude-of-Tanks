@@ -15,6 +15,9 @@ const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
   ['phone-mouse',390,844,false],['tablet',1024,768,true],['tablet-portrait',768,1024,true],
+  // the iPads in Safari (item 262): held wide (mini, Pro 11, Pro 13), upright (mini, Pro 11, Pro 13, in zh too) and a Split View half
+  ['ipad-mini-land',1133,612,true],['ipad-pro11-land',1210,702,true],['ipad-pro13-land',1376,900,true],['ipad-mini-port',744,1001,true],
+  ['ipad-pro11-port',834,1078,true],['ipad-pro13-port',1032,1244,true],['chinese-ipad-pro11-port',834,1078,true,'zh-CN'],['ipad-split-half',601,702,true],
   ['narrow-phone',320,568,true],['short-landscape',568,256,true],['phone',390,844,true],['small-phone',360,640,true],['landscape',844,390,true],
   ['small-landscape',667,375,true],['short-mouse',844,390,false],
   ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],

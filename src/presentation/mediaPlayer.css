@@ -11,5 +11,8 @@
 /* one plate in both states: the glyph says play or pause, never the accent */
 @media (hover:hover){.cot-c-btn.cot-media-toggle:hover{background:var(--surface-hover)}}
 .cot-c-btn.cot-media-toggle[hidden]{display:none}
+/* a loop playing unseen (buffering until it can play through: mediaPlayer.ts reveal) shows no control over its poster until
+   it comes on */
+video.is-playing:not(.has-frame)~.cot-c-btn.cot-media-toggle{visibility:hidden}
 @media (prefers-reduced-motion:reduce){.cot-c-btn.cot-media-toggle{transition:none}}
 }

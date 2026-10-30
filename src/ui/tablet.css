@@ -1,0 +1,159 @@
+/* The tablet layer (owner 2026-10-27: "the base ipad view is really really bad ... fix all ui on ipad"). Copyright © 2026
+   Kevin B. Liu.
+   A touch screen held wide with room for the docked layout (an iPad on its side, a Stage Manager window) keeps the
+   persistent panels (responsiveLayout.ts roomyTouch) instead of the phone's sideways layout stretched over it. This layer
+   sets the docked layout's controls at the touch floor (--cot-control-floor, 44 px), and gives a tablet held upright the
+   room the phone's stack leaves; every measure, plate and primitive stays the layouts' own. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+/* ---- docked on a touch screen: the bar's destinations, the language, the repository, Settings, the readout's compare
+   chip and the fleet's search, filter and arrows each a full touch target; the station tabs too (a short window's row
+   is 48 px, its tabs 40), and every drawer's close ---- */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-gbar,.cot-garage .cot-compare-toggle,.cot-roster-search,
+  .cot-facet-toggle,.cot-nav :is(.cot-gear,.cot-locale-switcher,.cot-github)){height:var(--cot-control-floor);min-height:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-facet-toggle,.cot-car-arrow,.cot-gbar .nv,.cot-nav :is(.cot-gear,
+  .cot-locale-switcher,.cot-github)){min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-car-arrow{flex-basis:var(--cot-control-floor);}
+/* (the language switch and Settings stand in 34 px wrappers: the wrappers take the floor too, so the row keeps one centre
+   line and Settings its column's edge; the iPad critic r1: 5 px low, 5 px past the readout) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-nav :is(.cot-settings-slot,.cot-locale-credit-wrap){
+  min-width:var(--cot-control-floor);height:var(--cot-control-floor);}
+/* the staging plate's picker (garage.css sets its own height over the kit's touch floor) */
+body[data-cot-input='coarse'] .cot-garage-variant-control .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
+/* with no favourites and no count shown, the nations run to the rail's end, flush with the cards under them */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-country-rail:has(>.cot-roster-fav[hidden]):has(>.cot-roster-count[hidden]) .cot-country-chips{
+  grid-column:3 / -1;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--tabs-h:calc(var(--cot-control-floor) + 2 * var(--s1));}
+/* the Deploy screen's tank card change button too, the campaign card's launch (the kit's 36 px size), and every Deploy
+   segment */
+body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg,.cot-deploy-camp .cot-c-btn){
+  --h:var(--cot-control-floor);}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-c-seg__opt,.cot-deploy-tank .chg){min-width:var(--cot-control-floor);}
+/* (and the Deploy tabs past a phone: a three-character zh label, 局域网, is 40 px across; the box takes the floor and centres
+   it, as Settings' tabs do) */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-garage .cot-deploy-tab{min-width:var(--cot-control-floor);justify-content:center;}
+/* the nations: each chip at its content and a touch target, growing to fill the row when every nation fits; when they
+   cannot, the track keeps its fade and swipe (garage.ts's honest overflow contract). Docked, the search folds to its glyph
+   until it is tapped or holds a query, so the row shows more nations (all fourteen at 1210 px) */
+body[data-cot-input='coarse']:is([data-cot-panels='persistent'],[data-cot-orientation='portrait']:not([data-cot-width='phone'])) .cot-country-chip{
+  flex:1 0 auto;padding-inline:var(--s1);gap:var(--s1);}
+/* (and the count that steps the track, a bare "+5" in a 36 px box, takes the floor past a phone) */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-country-step{height:var(--cot-control-floor);min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown){
+  width:var(--cot-control-floor);padding:0;justify-content:center;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
+  flex:0 0 0;width:0;}
+/* the readout's title keeps an 8 px margin under it: at the floor the Compare chip stands level with the title's info
+   button, not 4 px under it (iPad critic g1) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-garage .stats .cot-compare>.cot-compare-toggle{align-self:flex-start;}
+/* a short docked window (an iPad mini held wide, 612 px): the floor's taller tabs and chips leave the readout no room for
+   its fifth action under the figures (cut through its label, g1), so the actions stand three across, every label whole
+   at 95 px; two, four or five share their rows with no hole */
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions{
+  grid-template-columns:repeat(6,minmax(0,1fr));}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions>*{grid-column:span 2;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions:has(>:nth-child(5):last-child)>:nth-child(n+4),
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions:is(:has(>:nth-child(4):last-child),:has(>:nth-child(2):last-child),:has(>:only-child))>*{grid-column:span 3;}
+/* the paint drawer's search, level with the chips beside it (showroom.css docks it at the desktop's small height) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{height:var(--cot-control-floor);}
+/* Settings' tabs past a phone: a two-character label (zh) is 31 px across, so the box takes the floor and centres its
+   label (the underline stays the label's); a phone's tabs reach it by their own inset */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-set-tab{min-width:var(--cot-control-floor);justify-content:center;}
+/* Settings' slider knobs on touch: a 14 px knob is a mouse's; a finger takes iOS's own 28 px (the input's box is already the
+   floor tall, responsiveSurfaces.css; the track stays 4 px, the knob centred on it) */
+body[data-cot-input='coarse'] .cot-set-slider input[type=range]::-webkit-slider-thumb{width:28px;height:28px;margin-top:-12px;}
+body[data-cot-input='coarse'] .cot-set-slider input[type=range]::-moz-range-thumb{width:28px;height:28px;}
+
+/* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
+   The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
+   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
+   (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). A window
+   under 720 px tall (a Split View half on an iPad held wide, 601x702) keeps the phone's three figures and one row of
+   nations: with six and two rows, and the acts on a row of their own, the stack rose to the bar and hid the tank. */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-wordmark .wm{display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage{--cot-figures-h:116px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
+  grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
+/* (the dossier's button runs through the figures' padding to the plate's edges: in a short window's 48 px plate it was 32 tall) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{
+  width:var(--cot-control-floor);margin-block:calc(-1 * var(--s2));}
+/* (the acts follow the slots and the paint follows the acts, at its own width rather than a phone's whole row: the slots
+   and acts share the first row from 744 px, the paint the second; at 601 the acts start the paint's row; at 1032 all is one) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;flex:1 1 auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
+  align-self:flex-end;margin-left:auto;padding-left:0;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{gap:var(--s1);}
+/* (in the band the acts stand over the bright floor beside the slots: they take the slots' plate, not the floating fill
+   they wear under a phone's bar; the iPad critic r2 read them see-through) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);
+  background:var(--plate-fill);box-shadow:var(--ring-2);}
+/* (and every row of the band runs edge to edge: the slots share what their row leaves, the paint's four tiles theirs; the
+   critic g3 read 118-205 px between the consumables and the acts, and 410 px empty after the paint at 744 px. A tile keeps a
+   definite 44 px width as its basis: its canvas's own 300 px would set the paint's width and wrap it under the acts) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>:is(.cot-lt-loadout,.cot-lt-consumables)){
+  flex:1 1 auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group>:is(.cot-lt-loadout,.cot-lt-consumables,.cot-lt-paint){
+  align-self:stretch;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .cot-lt-band:has(.cot-lt-consumables) :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{
+  flex:1 0 auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables) .cot-lt-swatch:not(.cot-lt-paint-all){
+  flex:1 1 44px;width:44px;max-width:none;}
+/* (the chosen nation's wash is a tint: over the bright hangar floor it read grey, its count faint; it lies on the dark plate) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chip.sel{
+  background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--surface-scene);}
+/* (a short window hides the figures' scales: each value stands under its own label, not at its column's far end beside the
+   next one's, 12 px from "Magazine reload" at 601x702) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='short'],[data-cot-height='compact']) .cot-garage .cot-hrow .v{
+  justify-self:start;}
+/* Settings over the Garage upright: the sheet is solid (its plate's tone on the scene's), so the wordmark, the nations and
+   Deploy no longer read through its title and the gaps between its sections */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-set-panel{
+  background:linear-gradient(var(--surface-plate),var(--surface-plate)),var(--surface-scene);}
+/* the Service Record upright sits over the tab bar it opens from, as Deploy does, not across its labels */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-modal-root.cot-service-record{
+  padding-bottom:calc(var(--cot-tabbar-h,60px) + env(safe-area-inset-bottom,0px) + var(--s2));}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-modal-root.cot-service-record .cot-modal{
+  max-height:calc(var(--cot-viewport-height,100dvh) - clamp(8px,2vh,24px) - var(--cot-tabbar-h,60px) - env(safe-area-inset-bottom,0px) - var(--s2));}
+/* Deploy upright with the height for it: the modes take their rows (three or four) and the details follow in the one
+   scrolling column, so no empty band under the modes (58-66 px at 834 and 1032) and no second scroller inside the first */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes{
+  height:auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes :is(.cot-mp__in,.cot-mp__cards){
+  height:auto;grid-template-rows:auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes .cot-c-picker{
+  max-height:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes .cot-c-picker__grid{
+  overflow:visible;-webkit-mask-image:none;mask-image:none;}
+/* the Tech Tree in a window between a phone and a tablet (a Split View half): the render narrows so the name, Select and the
+   two stat columns keep their room (at 601 px the 240 px render ran Select 22 px past the edge and the values over their
+   labels) */
+body[data-cot-width='compact'] .cot-tt{--tt-detail-art-w:160px;}
+body[data-cot-width='compact'] .cot-tt .tt-act .tt-select{min-width:0;}
+/* ---- the battle's touch layout on a tablet: the phone's HUD sizes (a 116 px map, the hull panel at .58, the dial at
+   .78-.82) left a tablet's screen mostly empty and the map unreadable at arm's length. From a tablet's width, short and
+   tight windows aside (a phone held wide keeps its seats), the map reads at 176 px, the hull panel at .82 and the dial at
+   .92; an upright iPad mini (compact width, standard or tall) takes a 140 px map and keeps the phone's HP row. The toasts
+   and the feed follow the larger map on their own (battleHudLayout.ts seats them from its measured foot: a fixed top here
+   stacked the toasts on the left feed, the HUD receipt at every iPad size). FIRE, the stick and every pinned seat stay
+   their own. */
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']){
+  --hud-touch-mm:calc(176px * var(--mm-k,1));}
+body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall']){--hud-touch-mm:calc(140px * var(--mm-k,1));}
+:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-minimap{width:var(--hud-touch-mm)!important;height:var(--hud-touch-mm)!important;}
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-dp{transform:scale(.82);}
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-drive{transform:scale(.92);}
+/* under 800 px across (an iPad mini upright) the fourteen chips do not fit one row: they take two rows of seven, every
+   nation in view, the filter beside both, and the stack over them rises by the row (720 px tall and up: a shorter window
+   keeps the phone's one swiped row) */
+@media (width < 800px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage{
+    --cot-country-height:calc(2 * var(--cot-control-floor) + var(--s1));}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-country-chips{
+    display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:var(--cot-control-floor);gap:var(--s1);
+    overflow:visible;padding-block:0;-webkit-mask-image:none;mask-image:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) :is(.cot-country-chip,.cot-country-rail .cot-facet-toggle){
+    justify-content:center;align-self:stretch;}
+}
+}

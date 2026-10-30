@@ -25,6 +25,13 @@
 // --intent=<ms>: the player's hover before the click: the Garage's battle button hears a pointerenter (its battle intent:
 // solo's warm, and with the flag the network composition and the prepared host thread), and the entry follows <ms> later.
 //
+// --subject=worker measures the solo sim Worker (?soloAuthority=worker) against the page instead of the local host. Its
+// entry is the BATTLE button (the debug entry keeps the page's simulation), so both modes then enter by --click.
+//
+// --viewport=WxH sizes the page (1280x720).
+//
+// --roster-seed=N pins the roster's draw (main.ts draws a seed at boot), so both modes field the same seats.
+//
 // --dist=<dir> serves a production build (vite preview) instead of the dev server: the entry as a player meets it (the
 // dev server loads every module of a path the first time that path runs).
 //
@@ -63,9 +70,13 @@ const profileEntry = process.argv.includes('--profile-entry');
 const intentMs = Number(arg('intent', 0));
 const battles = Math.max(1, Number(arg('battles', 1)));
 const memoryCheck = process.argv.includes('--memory');
-const clickEntry = process.argv.includes('--click');
+const subject = arg('subject', 'host');
+if (subject !== 'host' && subject !== 'worker') throw new Error(`--subject: host or worker, not ${subject}`);
+const clickEntry = process.argv.includes('--click') || subject === 'worker';
+const rosterSeed = arg('roster-seed', null);
+const [viewWidth, viewHeight] = arg('viewport', '1280x720').split('x').map(Number);
 const port = Number(arg('port', 5296));
-const out = resolve(root, '.qa-dev', 'solo-host-probe.json');
+const out = resolve(root, arg('out', '.qa-dev/solo-host-probe.json'));
 
 const lock = smoke ? null : createCaptureLock();
 const dist = arg('dist', null);
@@ -81,7 +92,7 @@ const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocol
 
 async function run(mode, size) {
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720 });
+  await page.setViewport({ width: viewWidth, height: viewHeight });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('error', (error) => errors.push(`crash: ${error}`));
@@ -99,7 +110,7 @@ async function run(mode, size) {
   }, { allies: size - 1, enemies: size });
   // today's solo: the opt-out (the Battle hover prepares no host); the host: forced, through the BATTLE button (--click) or
   // the debug entry (256: the page is the default again, and the debug entry keeps the page's simulation otherwise)
-  const authority = mode === 'host' ? '&soloAuthority=host' : '&soloAuthority=page';
+  const authority = `&soloAuthority=${mode}`;
   await page.goto(`${origin}/?nosplash=1&tier=desktop${authority}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   await waitFor('the garage', () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 300_000);
   const cdp = await page.target().createCDPSession();
@@ -150,7 +161,7 @@ async function memory(page, cdp) {
     try { workerHeaps.push([worker.url().replace(/^.*\//, '').replace(/\?.*$/, ''), mb((await worker.client.send('Runtime.getHeapUsage')).usedSize)]); }
     catch { /* a closing Worker */ }
   }
-  const hostWorkerHeapMB = workerHeaps.filter(([name]) => /matchHostWorker/.test(name)).reduce((sum, [, size]) => sum + size, 0);
+  const hostWorkerHeapMB = workerHeaps.filter(([name]) => /matchHostWorker|soloSimWorker/.test(name)).reduce((sum, [, size]) => sum + size, 0);
   return { pageHeapMB: mb(pageHeap.usedSize), hostWorkerHeapMB, workerHeapsMB: workerHeaps, rss: rssByKind(browser.process().pid) };
 }
 
@@ -172,6 +183,11 @@ async function playBattle(page, cdp, mode, size, waitFor, firstBattle) {
     }, mapId);
     await new Promise((done) => setTimeout(done, intentMs));
   }
+  // a click entry takes the Garage's selection: the battle's tank and map, as the debug entry names them
+  if (clickEntry && intentMs <= 0) {
+    await page.evaluate((map) => { window.__DEBUG.garage?.setSelected?.('m1a1_abrams_hc'); window.__DEBUG.garage?.setSelectedMap?.(map); }, mapId);
+  }
+  if (rosterSeed !== null) await page.evaluate((seed) => { window.__DEBUG.game.rosterSeed = seed; }, Number(rosterSeed) >>> 0);
   const entryTask0 = entryCdp ? (await entryCdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'TaskDuration')?.value ?? 0 : 0;
   const started = performance.now();
   // the page's own marks, a frame each: the click; the reveal (the loading cover, .cot-bl, leaving after it showed); the
@@ -237,9 +253,9 @@ async function playBattle(page, cdp, mode, size, waitFor, firstBattle) {
   const frames = Math.max(1, frames1 - frames0);
   const state = await page.evaluate(() => {
     const game = window.__DEBUG.game, network = window.__DEBUG.network;
-    // the entry's own stages: the composition's load trace on the host, the solo loading's in the page; and the world
-    // activation's (both modes: was the battlefield cached, how long its build took)
-    const trace = window.__NETWORK_LOAD ?? window.__BATTLE_LOAD ?? null;
+    // the entry's own stages: the composition's load trace on the host, the solo sim's on the Worker, the solo loading's in
+    // the page; and the world activation's (both modes: was the battlefield cached, how long its build took)
+    const trace = window.__NETWORK_LOAD ?? window.__SOLO_SIM_LOAD ?? window.__BATTLE_LOAD ?? null;
     const world = window.__WORLD_LOAD ?? null;
     const hostBoot = window.__HOST_BOOT ?? null;
     return { streamedRoster: trace?.streamedRoster ?? null, tanks: (game.rosterTanks ?? game.tanks).length, timeS: game.timeS ?? null,
@@ -252,7 +268,7 @@ async function playBattle(page, cdp, mode, size, waitFor, firstBattle) {
   // what the host Worker fetched (its chunk graph, the roster's anatomy, the battlefield's collision): names and bytes
   let workerFetches = null;
   for (const worker of page.workers()) {
-    if (!/matchHostWorker/.test(worker.url())) continue;
+    if (!/matchHostWorker|soloSimWorker/.test(worker.url())) continue;
     try {
       workerFetches = await worker.evaluate(() => performance.getEntriesByType('resource')
         .map((entry) => [entry.name.replace(/^.*\//, '').replace(/\?.*$/, ''), Math.round(entry.decodedBodySize)]));
@@ -352,15 +368,16 @@ async function watchKillcam(page) {
   }));
 }
 
-const report = { mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, killcamCheck, intentMs, dist, loadStart: loadavg()[0], runs: [] };
+const report = { subject, rosterSeed, viewport: `${viewWidth}x${viewHeight}`, mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, killcamCheck, intentMs, dist, loadStart: loadavg()[0], runs: [] };
 try {
   if (lock) await lock.acquire(90 * 60 * 1000);
   for (const size of sizes) {
     const order = [];
-    for (let c = 0; c < cycles; c++) order.push(...(c % 2 ? ['host', 'page'] : ['page', 'host']));
-    if (smoke) order.splice(0, order.length, 'host');
+    for (let c = 0; c < cycles; c++) order.push(...(c % 2 ? [subject, 'page'] : ['page', subject]));
+    if (smoke) order.splice(0, order.length, subject);
     for (const mode of order) {
-      const result = await run(mode, size).catch((error) => ({ mode, size, failed: String(error).slice(0, 6000) }));
+      const load = loadavg()[0];
+      const result = { ...(await run(mode, size).catch((error) => ({ mode, size, failed: String(error).slice(0, 6000) }))), load };
       report.runs.push(result);
       console.log('run', JSON.stringify(result));
       writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);

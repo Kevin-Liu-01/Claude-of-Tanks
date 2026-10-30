@@ -1,6 +1,7 @@
 import { getLocale, onLocaleChange, t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs as kitTabs, wireRoving } from '../ui/components/components.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
 // The media library: every finished picture of the media rounds' current takes (library-r3, 2026-10-21: r2's one final
 // a subject left out "so many pictures"; r1's 11,215, every render, review sheet and candidate, were "way too much"),
@@ -95,6 +96,7 @@ interface Viewer {
 function createViewer(): Viewer {
   const dialog = document.createElement('dialog');
   dialog.className = 'media-library-viewer';
+  dialogSurface(dialog, 'media-library');
   dialog.setAttribute('aria-label', t('mediaLibrary.viewerAria'));
   dialog.innerHTML = `<figure><div class="media-library-stage"><img alt=""><p class="media-library-wait" hidden></p></div>`
     + `<figcaption><div><strong data-library-name></strong><p data-library-about></p></div>`

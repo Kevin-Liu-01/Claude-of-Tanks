@@ -146,7 +146,8 @@ export function applyAccessibility(prefs: AccessibilityPreferences, root: Root |
   // System with nothing overridden is the document as authored; any choice (or a return from one) syncs every rule.
   if (prefs.motion !== 'system' || motionTouched) {
     motionTouched = true;
-    void import('./accessibilityMotion.ts').then((m) => m.syncMotionRules(globalThis.document));
+    // (a chunk the network dropped keeps the motion rules the page has; the next change of the setting loads them again)
+    void import('./accessibilityMotion.ts').then((m) => m.syncMotionRules(globalThis.document)).catch(() => { motionTouched = false; });
   }
 }
 

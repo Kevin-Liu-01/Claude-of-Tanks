@@ -1,5 +1,8 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { PICTURE_LETTERBOXES, PICTURE_SENSOR_MM } from '../game/studioPicture.ts';
+import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { segmented, setRoving, wireRoving } from './components/components.ts';
+import { pickerText } from './pickerText.ts';
 import { t } from './i18n.ts';
 /**
  * studioPicturePanel.ts — the Scene Studio "Picture" section (media r5): look picker, the key
@@ -51,19 +54,29 @@ interface PicturePanelKit {
 const SENSORS = Object.keys(PICTURE_SENSOR_MM);
 const F_STOPS = [0.95, 1.4, 2, 2.8, 4, 5.6, 8, 11, 16] as const;
 
-function option(select: HTMLSelectElement, value: string, label: string): void {
-  const o = document.createElement('option');
-  o.value = value;
-  o.textContent = label;
-  select.appendChild(o);
-}
-
-function labelledSelect(label: string): { row: HTMLLabelElement; select: HTMLSelectElement } {
-  const row = document.createElement('label');
+/** A labelled choice on the kit (2026-10-27, the dropdown audit: these were raw selects): a set over five on the picker
+ *  menu, two to five values on the segmented control. */
+function labelledMenu(label: string, items: readonly { id: string; name: string }[], onChoose: (id: string) => void): { row: HTMLDivElement; menu: PickerMenu } {
+  const row = document.createElement('div');
   row.className = 'production-lens';
-  const select = document.createElement('select');
-  row.append(label, select);
-  return { row, select };
+  const name = document.createElement('span');
+  name.textContent = label;
+  const host = document.createElement('div');
+  row.append(name, host);
+  const menu = createPickerMenu(host, { id: 'studio-picture', label, items, value: items[0]?.id ?? null, layout: 'list', text: pickerText(),
+    onChoose: (item) => onChoose(item.id) });
+  return { row, menu };
+}
+function labelledSegments(label: string, options: readonly { value: string; label: string }[], onChoose: (value: string) => void): { row: HTMLDivElement; seg: HTMLElement } {
+  const row = document.createElement('div');
+  row.className = 'production-lens';
+  const name = document.createElement('span');
+  name.textContent = label;
+  row.append(name);
+  row.insertAdjacentHTML('beforeend', segmented({ label, className: 'studio-picture-seg', value: options[0]?.value ?? '', options }));
+  const seg = row.lastElementChild as HTMLElement;
+  wireRoving(seg, (value) => onChoose(value));
+  return { row, seg };
 }
 
 /** A kit chip (src/ui/components) that toggles: aria-pressed carries its state. */
@@ -87,9 +100,8 @@ export function mountStudioPicturePanel(
     try { S.setPicture(patch); } catch (error) { kit.flash(error instanceof Error ? error.message : String(error)); }
   };
 
-  const look = labelledSelect(t('studioPanel.picture.look'));
-  for (const preset of S.PICTURE_PRESETS) option(look.select, preset.id, t(`studioPanel.picture.look.${preset.id}`));
-  look.select.addEventListener('change', () => set({ preset: look.select.value }));
+  const look = labelledMenu(t('studioPanel.picture.look'),
+    S.PICTURE_PRESETS.map((preset) => ({ id: preset.id, name: t(`studioPanel.picture.look.${preset.id}`) })), (id) => set({ preset: id }));
   section.appendChild(look.row);
 
   const sliders = {
@@ -111,11 +123,9 @@ export function mountStudioPicturePanel(
     section.appendChild(slider.row);
   }
 
-  const matte = labelledSelect(t('studioPanel.picture.letterbox'));
-  for (const box of PICTURE_LETTERBOXES) {
-    option(matte.select, box, box === 'none' ? t('studioPanel.picture.letterboxNone') : `${box} : 1`);
-  }
-  matte.select.addEventListener('change', () => set({ letterbox: matte.select.value }));
+  const matte = labelledSegments(t('studioPanel.picture.letterbox'),
+    PICTURE_LETTERBOXES.map((box) => ({ value: box, label: box === 'none' ? t('studioPanel.picture.letterboxNone') : `${box} : 1` })),
+    (value) => set({ letterbox: value }));
   matte.row.dataset.pro = '';
   section.appendChild(matte.row);
 
@@ -124,13 +134,13 @@ export function mountStudioPicturePanel(
   dofRow.className = 'grid';
   const dofBtn = chip(t('studioPanel.picture.dof'));
   dofBtn.addEventListener('click', () => set({ dof: { enabled: !S.getPicture().dof.enabled } }));
-  const format = document.createElement('select');
-  format.setAttribute('aria-label', t('studioPanel.picture.sensor'));
-  for (const sensor of SENSORS) option(format, sensor, t(`studioPanel.picture.sensor.${sensor}`));
-  format.addEventListener('change', () => set({ dof: { sensor: format.value } }));
-  dofRow.append(dofBtn, format);
+  dofRow.append(dofBtn);
   dofRow.dataset.pro = '';
   section.appendChild(dofRow);
+  const format = labelledSegments(t('studioPanel.picture.sensor'),
+    SENSORS.map((sensor) => ({ value: sensor, label: t(`studioPanel.picture.sensor.${sensor}`) })), (value) => set({ dof: { sensor: value } }));
+  format.row.dataset.pro = '';
+  section.appendChild(format.row);
 
   const focusRow = document.createElement('div');
   focusRow.className = 'grid';
@@ -148,9 +158,8 @@ export function mountStudioPicturePanel(
   const distance = kit.sliderRow(t('studioPanel.picture.focusMeters'), 1, 200, 0.5, (v) => set({ dof: { focusDistance: v, focusActor: null } }));
   distance.row.dataset.pro = '';
   section.appendChild(distance.row);
-  const aperture = labelledSelect(t('studioPanel.picture.fStop'));
-  for (const stop of F_STOPS) option(aperture.select, String(stop), `f/${stop}`);
-  aperture.select.addEventListener('change', () => set({ dof: { fStop: Number(aperture.select.value) } }));
+  const aperture = labelledMenu(t('studioPanel.picture.fStop'), F_STOPS.map((stop) => ({ id: String(stop), name: `f/${stop}` })),
+    (id) => set({ dof: { fStop: Number(id) } }));
   aperture.row.dataset.pro = '';
   section.appendChild(aperture.row);
 
@@ -164,7 +173,7 @@ export function mountStudioPicturePanel(
   return {
     refresh() {
       const p = S.getPicture();
-      look.select.value = p.preset;
+      look.menu.setValue(p.preset);
       sliders.exposure.set(p.exposure);
       sliders.contrast.set(p.contrast);
       sliders.saturation.set(p.saturation);
@@ -176,14 +185,14 @@ export function mountStudioPicturePanel(
       sliders.aberration.set(p.chromaticAberration);
       sliders.vignette.set(p.vignette.amount);
       sliders.grain.set(p.grain.amount);
-      matte.select.value = p.letterbox;
+      setRoving(matte.seg, p.letterbox);
       dofBtn.setAttribute('aria-pressed', String(p.dof.enabled));
-      format.value = p.dof.sensor;
+      setRoving(format.seg, p.dof.sensor);
       focusTank.setAttribute('aria-pressed', String(p.dof.enabled && p.dof.focusActor != null));
       focusDistanceBtn.setAttribute('aria-pressed', String(p.dof.enabled && p.dof.focusActor == null));
       distance.set(p.dof.focusDistance);
       const nearest = F_STOPS.reduce((best, stop) => (Math.abs(stop - p.dof.fStop) < Math.abs(best - p.dof.fStop) ? stop : best));
-      aperture.select.value = String(nearest);
+      aperture.menu.setValue(String(nearest));
     },
   };
 }

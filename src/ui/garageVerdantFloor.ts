@@ -24,7 +24,20 @@ interface FloorFrame {
  * The hall floor's albedo, RGBA sRGB bytes, row 0 at z = +halfWidth (the texture's v = 0 with flipY off; the floor plane's
  * v runs from z = +halfWidth up to z = -halfWidth), column 0 at x = -halfWidth.
  */
-export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, seed = 0x5eed05): Uint8Array {
+export function buildVerdantFloorAlbedo(frame: FloorFrame, seed = 0x5eed05): Uint8Array {
+  const steps = buildVerdantFloorAlbedoSteps(frame, seed);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * buildVerdantFloorAlbedo a band of rows at a time (boot-261: the Garage stage built the 1024 x 1024 floor in one
+ * section, 0.23 s on the boot-259 phone census): a step every 128 rows of each texel pass and after the marks, the same
+ * statements and random draws, so the same bytes.
+ */
+export function* buildVerdantFloorAlbedoSteps({ halfWidthM, shutterX }: FloorFrame, seed = 0x5eed05): Generator<void, Uint8Array, void> {
   const S = VERDANT_FLOOR_TEXELS;
   const W = halfWidthM * 2;
   const pxPerM = S / W;
@@ -56,6 +69,7 @@ export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, se
       const px = Math.min(P - 1, Math.floor(x / slab));
       tone[y * S + x] = pour[py * P + px] * (1 + mottle);
     }
+    if ((y & 127) === 127) yield;
   }
   const toPx = (xM: number, zM: number): [number, number] => [(xM + halfWidthM) * pxPerM, (halfWidthM - zM) * pxPerM];
   /** Multiplies a soft disc (radius rM, factor at the centre, eased to 1 at the rim) into the tone. */
@@ -117,12 +131,14 @@ export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, se
   scuff(shutterMid - 0.6, doorZ, shutterMid - 3.5, doorZ - 8, -rimR * 0.5, rimR * 0.82, 2.9, 0.58, 0.1);
   // a forklift's tighter lines from the door toward the stores
   scuff(shutterMid + 1.2, doorZ, shutterMid + 6, doorZ - 4, shutterMid + 9, doorZ - 12, 1.1, 0.24, 0.09);
+  yield;
   // the round worn by hulls swinging on and off the turntable
   for (let i = 0; i < 120; i++) {
     const a = rng() * Math.PI * 2, r = rimR + rng() * 2.6;
     spot(Math.cos(a) * r, Math.sin(a) * r, 0.5 + rng() * 0.9, 0.95, 0.5, a + Math.PI / 2);
   }
   for (let i = 0; i < S * S; i++) tone[i] *= 1 - wear[i];
+  yield;
   // oil, hydraulic fluid and coolant at the bays round the hall (never under the turntable)
   for (let i = 0; i < 26; i++) {
     const a = rng() * Math.PI * 2, r = 9 + rng() * 10;
@@ -132,6 +148,7 @@ export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, se
   }
   // the damp band along the trench drain inside the shutter, and the wet tracked in from the apron
   for (let x = shutterX[0] - 0.4; x <= shutterX[1] + 0.4; x += 0.35) spot(x, halfWidthM - 0.62, 0.55, 0.86, 0.5, 0);
+  yield;
   // sealed saw-cut joints: a dark sealant core with a worn light arris on one side
   const out = new Uint8Array(S * S * 4);
   const base = [74, 72, 68]; // a step darker than a fresh pour: the hero keeps its contrast against the floor (v3 stills)
@@ -155,6 +172,7 @@ export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, se
       out[at + 2] = Math.max(0, Math.min(255, Math.round(base[2] * f)));
       out[at + 3] = 255;
     }
+    if ((y & 127) === 127 && y < S - 1) yield;
   }
   return out;
 }

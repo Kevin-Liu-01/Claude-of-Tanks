@@ -9,6 +9,7 @@ import '../../src/ui/components/pickers.css';
 import '../../src/ui/garage.css';
 import '../../src/ui/deploy.css';
 import '../../src/ui/showroom.css';
+import '../../src/ui/tablet.css';
 import '../../src/ui/battleTimeChoices.css';
 import '../../src/ui/richTooltip.css';
 import {installResponsiveLayout} from '../../src/ui/responsiveLayout.ts';
@@ -29,6 +30,9 @@ import {zhTypeFloorStyle} from '../../src/ui/zhTypeFloor.ts';
 await setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
 // A zh-CN capture carries the label floor its /cn/ document ships (src/presentation/localizedHtml.ts).
 if(document.documentElement.lang==='zh-CN')document.head.insertAdjacentHTML('beforeend',zhTypeFloorStyle('game'));
+// ?coarse=1 lays the surfaces out for a touch screen (an iPad's pointer: coarse, no hover) in a desktop browser
+if(new URLSearchParams(location.search).has('coarse')){const native=window.matchMedia.bind(window);
+ window.matchMedia=query=>query==='(pointer: coarse)'||query==='(hover: hover)'?{matches:query==='(pointer: coarse)',media:query,addEventListener(){},removeEventListener(){}}:native(query);}
 installResponsiveLayout();
 const bus=createBus(), input=createInput();
 const full=new URLSearchParams(location.search).has('full');

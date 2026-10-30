@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { primeShadowCascades } from './shadowPrime.ts';
+import { markVehicleShadowDetail } from './nearVehicleShadowDetail.ts';
 import { createLighting } from './lighting.ts';
 import { setPresetName } from './quality.ts';
 
@@ -479,6 +480,52 @@ await withFixture(async (f) => {
   f.restored(true);
 });
 
+// (2026-10-27, the room-stalls lane) a hull's near shadow detail (castShadow false outside its cascade's pass) warms where
+// a mesh brings a depth variant no caster before it has: it casts inside its own batch only and in no final cascade; a
+// mesh repeating a warmed variant, and a hidden one, stay out
+await withFixture(async (f) => {
+  f.addCaster('seen', 3);
+  const hull = new THREE.Group();
+  hull.name = 'hull-root';
+  f.scene.add(hull);
+  const plain = f.addCaster('detail-plain', 3, { parent: hull, castShadow: false });
+  const twin = f.addCaster('detail-twin', 3, { parent: hull, castShadow: false });
+  // a detail mesh that shares the caster before it's material and variant stays out; one with its own material warms
+  plain.material = f.scene.getObjectByName('seen').material;
+  const cut = f.addCaster('detail-cut', 3, { parent: hull, castShadow: false });
+  cut.material.map = new THREE.Texture();
+  cut.material.alphaTest = 0.5;
+  const stowed = new THREE.Group();
+  stowed.visible = false;
+  hull.add(stowed);
+  const hidden = f.addCaster('detail-hidden', 3, { parent: stowed, castShadow: false });
+  hidden.material.displacementMap = new THREE.Texture();
+  // a detail mesh in a level its LOD holds hidden warms with its level shown inside each batch; the level's own caster
+  // joins the list and casts only in its batch
+  const lod = new THREE.LOD();
+  hull.add(lod);
+  const nearLevel = new THREE.Group(), farLevel = new THREE.Group();
+  lod.addLevel(nearLevel, 0);
+  lod.addLevel(farLevel, 50);
+  const pads = f.addCaster('detail-pads', 3, { parent: farLevel, castShadow: false });
+  pads.material.side = THREE.DoubleSide;
+  f.addCaster('far-sibling', 3, { parent: farLevel });
+  farLevel.visible = false;
+  markVehicleShadowDetail(hull, { detail: [plain, twin, cut, hidden, pads], proxies: [] });
+  const castAtYield = [];
+  await f.run({ casterWarmup: { maxCastersPerBatch: 8,
+    yieldBeforeBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
+    onBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
+  } });
+  assert.deepEqual(f.cohorts, [['seen', 'detail-twin'], ['detail-cut'], ['detail-pads', 'far-sibling'], ['seen'], ['seen']],
+    'the cut-out and the hidden level\'s double-sided detail warm in batches of their own; the plain one repeats a warmed '
+    + 'variant; none reaches a final cascade');
+  assert.ok(castAtYield.every((cast) => cast === false), 'the detail casts at no yield');
+  assert.deepEqual([plain.castShadow, twin.castShadow, cut.castShadow, hidden.castShadow, pads.castShadow, stowed.visible,
+    farLevel.visible], [false, false, false, false, false, false, false]);
+  f.restored(true);
+});
+
 await withFixture(async (f) => {
   f.renderer.shadowMap.type = THREE.VSMShadowMap;
   const parent = f.addCaster('vsm-parent', 3, { receiveShadow: true });
@@ -693,4 +740,77 @@ await withFixture(async (f) => {
   'context owner invalidates shadow readiness before any quality or covered restore work');
 }
 
-console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed');
+// (2026-10-27, the room-stalls lane; a diagnostic room census: the prime's camera on its own layer counted none of the
+// battle's 8 point lights, so its depth programs were keyed for a light set no live frame has, and the guard's first frame
+// built the player's again, 580 ms) every prime render counts exactly the lights the live camera counts
+{
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const cascades = [new THREE.DirectionalLight(), new THREE.DirectionalLight()];
+  const points = [new THREE.PointLight(), new THREE.PointLight(), new THREE.PointLight()];
+  const hemi = new THREE.HemisphereLight();
+  const offLayer = new THREE.PointLight();
+  offLayer.layers.set(7);
+  scene.add(...cascades, ...points, hemi, offLayer);
+  const live = [...cascades, ...points, hemi];
+  const before = [...live, offLayer].map((light) => light.layers.mask);
+  const cameraMask = camera.layers.mask;
+  const counted = [];
+  const prior = new THREE.WebGLRenderTarget(4, 4);
+  const target = { value: prior, face: 0, mip: 0 };
+  const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
+    info: {},
+    shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
+    getContext: () => ({ isContextLost: () => false }),
+    getRenderTarget: () => target.value,
+    getActiveCubeFace: () => target.face,
+    getActiveMipmapLevel: () => target.mip,
+    setRenderTarget(next, face = 0, mip = 0) { Object.assign(target, { value: next, face, mip }); },
+    render(activeScene, activeCamera) {
+      const seen = [];
+      activeScene.traverse((object) => { if (object.isLight && object.layers.test(activeCamera.layers)) seen.push(object); });
+      counted.push(seen);
+    },
+  });
+  await primeShadowCascades({ renderer, scene, camera, lights: cascades, count: cascades.length });
+  assert.ok(counted.length > 0, 'the prime rendered');
+  for (const seen of counted) {
+    assert.deepEqual(new Set(seen), new Set(live), 'a prime render counts the live camera\'s lights, never one it cannot see');
+  }
+  assert.deepEqual([...live, offLayer].map((light) => light.layers.mask), before, 'every light\'s layers restored');
+  assert.equal(camera.layers.mask, cameraMask);
+}
+
+// (the room census: one prime task held 307 ms of a depth program's link) a warm batch takes at most one depth-program
+// variant no batch before it took: plain casters batch as before, a new variant opens its own batch
+{
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), light = new THREE.DirectionalLight();
+  scene.add(light);
+  const caster = (name, material) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name; mesh.castShadow = true;
+    scene.add(mesh);
+  };
+  const plain = new THREE.MeshStandardMaterial();
+  const cutout = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
+  const displaced = new THREE.MeshStandardMaterial({ displacementMap: new THREE.Texture() });
+  caster('p1', plain); caster('p2', plain); caster('p3', plain); caster('cut', cutout); caster('p4', plain); caster('disp', displaced);
+  caster('normals', plain);
+  scene.getObjectByName('normals').geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(9), 3));
+  const target = { value: null, face: 0, mip: 0 };
+  const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
+    info: {}, shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
+    getContext: () => ({ isContextLost: () => false }),
+    getRenderTarget: () => target.value, getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0,
+    setRenderTarget(next) { target.value = next; },
+    render() {},
+  });
+  const sizes = [];
+  await primeShadowCascades({ renderer, scene, camera, lights: [light], count: 1,
+    casterWarmup: { onBatch: (batch) => sizes.push(batch.casterCount) } });
+  assert.deepEqual(sizes, [3, 2, 1, 1],
+    'p1-p3 (one new variant), cut and p4 (cut new), disp (new), and a plain caster with normals (new): one new variant a batch');
+}
+
+console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; a hull\'s near shadow detail warms where it brings a new variant');

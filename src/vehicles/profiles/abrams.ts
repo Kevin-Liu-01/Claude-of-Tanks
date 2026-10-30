@@ -389,10 +389,6 @@ function isRenderableMesh(object: THREE.Object3D): object is THREE.Mesh | THREE.
   return object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh;
 }
 
-function abramsProfile(build: (builder: AbramsBuilderPort) => void) {
-  return { build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder)) };
-}
-
 /** A builder written in stages: synchronous callers run it whole, the factory's frame-budgeted builds a stage a slice
  *  (tankBuildCooperation.ts withBuildSteps). */
 function steppedAbramsProfile(build: (builder: AbramsBuilderPort) => TankProfileBuild) {
@@ -8183,8 +8179,9 @@ function m1a3TurretSideX(t: M1A3BuildLayout['t'], y: number, z: number): number 
 const M1A3_SKIRT_PANEL_COUNT = 11;
 const M1A3_CAGE_RAIL_YS = Object.freeze([0.78, 1.04, 1.30, 1.56]);
 
-function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
-  abramsHull(P, g);
+function* addM1A3HullSteps(P: AbramsBuilderPort, g: AbramsHullConfig): TankProfileBuild {
+  yield* abramsHullSteps(P, g);
+  yield 'm1a3HullShoulders';
 
   // Sharp, integrated glacis shoulders and a central sensor/service spine.
   for (const side of [-1, 1]) {
@@ -8247,6 +8244,7 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     P.addExternalArmor('hull', box(0.20, 0.14, 7.18), side * 1.995, 1.53, -0.02);
     P.add('hullDetail', box(0.04, 0.07, 7.04), side * 2.105, 1.60, -0.02);
   }
+  yield 'm1a3HullCages';
   addM1A3HullCagesAndPowerpack(P);
 }
 
@@ -8595,14 +8593,19 @@ function addAbramsXUpgradeEquipment(P: AbramsBuilderPort): void {
     center:[0,0,0], segments:48, bottomY:-.537, topY:-.260 };
 }
 
-function buildM1A3(P: AbramsBuilderPort): void {
+// (boot-261) In stages: the Garage's default hero was the one Abrams body the factory ran whole, its stepped hull drained
+// inside a single 0.7 s slice on the phone census. Synchronous callers drain the same statements (steppedAbramsProfile).
+function* buildM1A3(P: AbramsBuilderPort): TankProfileBuild {
   // 2026-10-10 (owner): the field net and garnish (ghillieFleetSuits.ts Group C), laid on the assembled build
   addVehicleGhillieSuit(P);
   const layout = createM1A3BuildLayout();
-  addM1A3Hull(P, layout.g);
+  yield* addM1A3HullSteps(P, layout.g);
+  yield 'm1a3Turret';
   addM1A3TurretStructure(P, layout.t);
+  yield 'm1a3RemoteWeaponTower';
   addM1A3RemoteWeaponTower(P);
   addM1A3AntennasAndGun(P, layout.t);
+  yield 'm1a3UpgradeEquipment';
   addM1A3UpgradeEquipment(P, layout.t);
   addModernFieldCage(P);
   publishM1A3DesignReceipt(P, layout);
@@ -8644,6 +8647,6 @@ export const ABRAMS_PROFILES = {
   m1a1_abrams_fep: configuredAbramsProfile(buildTejasFamily, {
     station: 'ttsLowProfile', abramsKit: 'sepv3',
   }),
-  m1a3: abramsProfile(buildM1A3),
+  m1a3: steppedAbramsProfile(buildM1A3),
   abramsx: steppedAbramsProfile(buildAbramsX),
 } satisfies VehicleProfileRecord;

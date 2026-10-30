@@ -125,7 +125,8 @@ export interface TallGrass {
   readonly pressure: GroundPressureField | null;
   /** Contact round 5: the fine near field round the focus (GROUND_PRESSURE_FINE_WINDOW_M), null with the coarse one. */
   readonly pressureFine: GroundPressureField | null;
-  update(dt: number, cameraPosition: THREE.Vector3, focus?: { x: number; z: number } | null, cameraForward?: THREE.Vector3 | null): void;
+  /** `fill` false: the rings take no candidates this update (map.ts: the update that built the trees' whole partition). */
+  update(dt: number, cameraPosition: THREE.Vector3, focus?: { x: number; z: number } | null, cameraForward?: THREE.Vector3 | null, fill?: boolean): void;
   setDisturbances(sources: readonly GroundDisturbance[]): void;
   setWindTime(seconds: number): void;
   /** Sniper scope: fade the blades inside the corridor (0 = arcade, 1 = scoped). */
@@ -210,7 +211,9 @@ export const TALL_GRASS = Object.freeze({
    * stopped, so the carpet built is the same; it takes more, shorter updates.
    */
   coldUpdateMs: 24,
-  coldChunk: 200,
+  // (260, the rooms census: a ring past the deadline still takes a chunk, so the opening warm's cold update ran 73-130 ms
+  // under load at 200 a chunk) a smaller chunk; a cell resumes where it stopped, the same carpet
+  coldChunk: 50,
   progressiveCells: 12,
   /** Quads up a blade before the tip triangle: two (five vertices, three triangles) — a third segment cost 40 % more
    * triangles for a bend no 1–4 px strip can show. */
@@ -1227,7 +1230,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
   }
 
-  function update(dt: number, cameraPosition: THREE.Vector3, focus: { x: number; z: number } | null = null, cameraForward: THREE.Vector3 | null = null): void {
+  function update(dt: number, cameraPosition: THREE.Vector3, focus: { x: number; z: number } | null = null, cameraForward: THREE.Vector3 | null = null, fill = true): void {
     if (disposed || !enabled) return;
     shared.uWindTime.value += dt;
     shared.uCamPos.value.copy(cameraPosition);
@@ -1248,9 +1251,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const budget = options.candidatesPerUpdate ?? (cold ? TALL_GRASS.coldCandidatesPerUpdate : TALL_GRASS.candidatesPerUpdate);
     // the cold default is capped in time (coldUpdateMs); a caller's own budget is exact
     const deadline = cold && options.candidatesPerUpdate === undefined ? performance.now() + TALL_GRASS.coldUpdateMs : Infinity;
-    updateRing(near, cameraPosition, density, budget, deadline);
-    updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
-    updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
+    if (fill) {
+      updateRing(near, cameraPosition, density, budget, deadline);
+      updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
+      updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
+    }
     if (pressure) {
       const anchor = focus ?? cameraPosition;
       pressure.step(dt, anchor.x, anchor.z);

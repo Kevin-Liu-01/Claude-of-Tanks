@@ -10,16 +10,23 @@ import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-da
 import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['m6_linebacker','t72b3_zubr_ii','t72b3m_hetman_ii','t80u_zoria','t72b3m_hetman','t72b3_sich','t80u_husarz','t72b3m_wilk','t72b3_zubr','t80u_yun','t72b3m_kunlun','t72b3_qilin','t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m','type96_72_long','type96_80_feng','type96_72m_lei','t72_rys','object148_proto','carro45t','spz_wotan','cv90','cv90_mk4_concept','raiju_ifv','xk2_black_panther','griffin_viper','c2_ariete','tos1a_tagil','ztz100_prototype','object695','type100','christian2']);
+const familyPath='docs/references/concepts/ztz20-family-20261027.json';
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['ztz99_longwei','m6_linebacker','t72b3_zubr_ii','t72b3m_hetman_ii','t80u_zoria','t72b3m_hetman','t72b3_sich','t80u_husarz','t72b3m_wilk','t72b3_zubr','t80u_yun','t72b3m_kunlun','t72b3_qilin','t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m','type96_72_long','type96_80_feng','type96_72m_lei','t72_rys','object148_proto','carro45t','spz_wotan','cv90','cv90_mk4_concept','raiju_ifv','xk2_black_panther','griffin_viper','c2_ariete','tos1a_tagil','ztz100_prototype','object695','type100','christian2','ztz20','ztz100','ztz20_prototype','pt64_tur','challenger3_td_rws']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
+assert.equal(conceptDesignPath('ztz20'),familyPath); assert.equal(conceptDesignPath('ztz100'),familyPath);
+assert.equal(conceptDesignPath('ztz20_prototype'),familyPath);
 // the dated documents keep their schema-1 keys; the policy reads them in today's ids
 const designIds=(file)=>{const doc=JSON.parse(fs.readFileSync(file));return Object.keys(doc.designs).map(key=>resolveTankId(key,doc.tankIdSchema));};
 assert.deepEqual(designIds(oldPath),['ztz100_prototype','object695']);
 assert.deepEqual(designIds(typePath),['type100']);
-assert.deepEqual(partitionConceptIds(['ztz100','ztz100_prototype','object695']),{comparisons:['ztz100'],concepts:['ztz100_prototype','object695']});
-for(const id of ['unknown','ztz100','toString','__proto__']) {
+// 262 (owner 2026-10-27): the ZTZ-20, its pre-production ZTZ-100 and its turret testbed share one family record; the
+// missile testbed keeps its missile-turret record (amended for the family hull)
+assert.deepEqual(designIds(familyPath),['ztz20','ztz100','ztz20_prototype']);
+// 262: the ZTZ-100 left the source-comparison route (its oracle measures the ZTZ-20 concept); strv122 stays a comparison
+assert.deepEqual(partitionConceptIds(['strv122','ztz100','ztz100_prototype','object695']),{comparisons:['strv122'],concepts:['ztz100','ztz100_prototype','object695']});
+for(const id of ['unknown','strv122','toString','__proto__']) {
   assert.equal(firstPartyConcept(id),null);assert.equal(conceptDesignPath(id),null);
   assert.throws(()=>readConceptDesign(id),/no owner-authored/);
 }
@@ -51,7 +58,7 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     designPath,designSha256:hash,startedAt:new Date(2000).toISOString(),test:{path:design.test,exitCode:0},
     inputSha256Before:'a'.repeat(64),inputSha256After:'a'.repeat(64),dimensions:[dimension('high'),dimension('low')]};
   assert.equal(conceptReceiptPassed(id,receipt,1000,hash),conceptDesignReady(id));
-  for(const patch of [{score:99},{id:'ztz100'},{comparisonPurpose:'preservation'},{comparisonApplicable:true},
+  for(const patch of [{score:99},{id:'strv122'},{comparisonPurpose:'preservation'},{comparisonApplicable:true},
     {passed:false},{designPath:'wrong'},{designPath:designPath===oldPath?typePath:oldPath},{designSha256:'b'.repeat(64)},{startedAt:new Date(0).toISOString()},
     {test:{path:design.test,exitCode:1}},{test:{path:'wrong',exitCode:0}},
     {inputSha256After:'c'.repeat(64)},

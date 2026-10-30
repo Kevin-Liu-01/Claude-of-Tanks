@@ -15,7 +15,7 @@ import { sampleObbGround } from './propPlacement.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from './structureCollision.ts';
 import { createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { rebuildRegionalStructure, rebuildRegionalStructureSteps, resolveRegionalArchitecture } from './maps/regional/index.ts';
 // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
 import { bindStructureSpans, describeStructure, tagStructureVertices } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
@@ -101,7 +101,7 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   makeTimberBathhouse, settleCatalogCuts, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
-  rebuildRegionalStructure, resolveRegionalArchitecture,
+  rebuildRegionalStructure, rebuildRegionalStructureSteps, resolveRegionalArchitecture,
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse']
@@ -120,6 +120,7 @@ function build(config, enable) {
     const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const ensureSteelAtlas = () => {};
+    const ensureSteelAtlasSteps = function* () {};
     const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
     const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
     ${section('function mergeInto(', 'type GroundDecalKind')}

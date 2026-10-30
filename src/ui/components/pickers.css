@@ -7,35 +7,37 @@
 /* ---- the picker (picker.ts): the one "choose one of a set". The things themselves as cards, swatches or rows; the
    chosen one wears the accent's wash and edge, as tiles do; a search and chips past eight items ---- */
 .cot-c-picker{display:flex;flex-direction:column;gap:var(--s1);min-width:0;min-height:0;max-height:100%}
-.cot-c-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-bottom:var(--s1)}
+.cot-c-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-bottom:var(--s1);container:picker-bar/inline-size}
 .cot-c-picker__search{flex:1 1 200px;box-sizing:border-box;min-width:0;height:36px;margin:0;padding:0 var(--s3);border:0;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);}
 .cot-c-picker__search::placeholder{color:var(--ink-3)}
 .cot-c-picker__search:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-/* the chips keep one row on the column and scroll sideways, so the cards keep the height; the row's end fades over a
-   32 px band of its own padding (wide enough that a cut word reads as faded), which the last chip clears at the
-   scroll's end */
+/* the chips keep one row on the column, so the cards keep the height, in pages of whole chips (picker.ts syncMore): a chip
+   the row's end would cut stays hidden until the more button brings its page (owner 2026-10-27: chips never clip) */
 .cot-c-picker__filters{display:flex;flex:1 1 100%;align-items:center;gap:var(--s2);min-width:0}
 .cot-c-picker__more{flex:none}
 .cot-c-picker__more[hidden]{display:none}
 .cot-c-picker__more.is-back svg{transform:scaleX(-1)}
-/* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row */
-@media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
-.cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;padding-inline-end:var(--s6);overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 2 * var(--s6)),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 2 * var(--s6)),transparent)}
-.cot-c-picker__chips::-webkit-scrollbar{display:none}
-.cot-c-picker__chips.is-scrolled{
-  -webkit-mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s6),var(--ink-1) calc(100% - 2 * var(--s6)),transparent);
-  mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s6),var(--ink-1) calc(100% - 2 * var(--s6)),transparent)}
+/* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row where
+   the bar is wide enough to show its chips (a 312 px picker beside Deploy's plate kept one chip, cut, Deploy r42-r45) */
+@media (height < 720px){@container picker-bar (width >= 480px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}}
+.cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;overflow:hidden}
+.cot-c-picker__chips>[data-off]{visibility:hidden}
+/* a strip of whole chips (picker.ts wholeChips, the kit's picker rows, the Garage's nations, a sheet's facet rows): it stops
+   on chip starts, and a chip its edge would cut is hidden but focusable */
+.cot-c-whole{scroll-snap-type:x mandatory}
+.cot-c-whole>*{scroll-snap-align:start}
+.cot-c-whole>.is-cut{opacity:0;pointer-events:none}
+.cot-c-picker__chips-tail{flex:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
 /* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot
    carries the scroll edges' fade, so at rest nothing fades and the focus ring stays in view, and scrolled cards pass under
-   the fade instead of a hard cut */
+   the fade instead of a hard cut; a card scrolled into view (a focus, a reveal) stops clear of both fades (Deploy r45: the
+   chosen last card stood half under the foot's) */
 .cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);flex:1 1 auto;min-height:0;
   margin:0 calc(-1 * var(--s1));padding:var(--s2) var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  scroll-padding-block:var(--s2) var(--s6);
   scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent)}
@@ -44,6 +46,13 @@
 .cot-c-picker__grid[data-more]{
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent)}
+/* a list's foot fades over 96 px, to half by its last 40 px, so the last row read fades wherever the foot falls (the 261
+   critics: a foot just past a row's edge spent the whole fade on the next row's blank top) */
+.cot-c-picker--list .cot-c-picker__grid[data-more]{
+  -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s9)),
+    color-mix(in oklab,var(--ink-1) 50%,transparent) calc(100% - var(--s6) - var(--s2)),transparent);
+  mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s9)),
+    color-mix(in oklab,var(--ink-1) 50%,transparent) calc(100% - var(--s6) - var(--s2)),transparent)}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 /* every cell is laid out at its real size (no content-visibility placeholder): the grid opens on its choice by measuring
@@ -56,6 +65,15 @@
 /* a picker without a memory draws no favourite star, so its rows keep no room for one */
 .cot-c-picker--plain.cot-c-picker--list .cot-c-picker__opt{padding-inline-end:var(--s3)}
 .cot-c-picker--list .cot-c-picker__words{flex:1 1 auto}
+/* a list row's picture (owner 2026-10-27: every list of tanks shows each tank): a thumbnail at the row's start, the
+   trigger's picture at row size; it shows once decoded (picker.ts) */
+.cot-c-picker__thumb{position:relative;flex:none;width:64px;aspect-ratio:2/1;overflow:hidden;border-radius:var(--r1)}
+.cot-c-picker__thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+.cot-c-picker__thumb img[data-ready]{opacity:1}
+/* a tank's portrait (icons.ts tankThumbUrl): the fleet's 256 px thumbnails share one framing, the tank within x 16-232 and
+   y 60-244, so the box is that frame and the picture stands over it, every tank as large as its row allows */
+.cot-c-picker__thumb.is-tank{width:auto;height:40px;aspect-ratio:216/184;border-radius:0}
+:is(.cot-c-picker__thumb,.cot-c-menu__media).is-tank img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
 /* a card's facts stand on its foot: the cards of a row share a height, so their facts line up whether a name takes one
    line or two (Rooms r32) */
 .cot-c-picker--cards .cot-c-picker__words{flex:1 1 auto;align-content:space-between}
@@ -64,8 +82,16 @@
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
+/* a card menu whose room holds no whole row of 16:9 pictures crops them to 3:1, so a row stands whole with its names
+   (pickerMenu.ts place, squat) */
+.cot-c-menu__pop.is-squat .cot-c-picker__media{aspect-ratio:3/1}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
 .cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+/* a card's picture, and the battlefield preview's, fades in once decoded over its box's tone (picker.ts onThumb,
+   battlefieldPicker.ts); one that never arrives leaves the tone (the loading census: Deploy's tiles popped in, and
+   offline drew broken frames) */
+:is(.cot-c-picker__media,.cot-bf__hero) img{opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+:is(.cot-c-picker__media,.cot-bf__hero) img[data-ready]{opacity:1}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
@@ -98,7 +124,8 @@
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
   .cot-c-picker--list .cot-c-picker__opt{min-height:60px}
-  .cot-c-picker__more{--h:44px}
+  /* (the kit button's own size class is later in the cascade: two classes outrank it; the 261 critic, a 36 px arrow by 44 px chips) */
+  .cot-c-picker__more.cot-c-btn--36{--h:44px}
   :is(.cot-c-picker__chips>.cot-c-chip,.cot-c-picker__search){height:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }
@@ -163,18 +190,40 @@
 .cot-c-menu__trigger:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-c-menu__trigger[aria-expanded=true]{background:var(--surface-hover);box-shadow:var(--ring-accent)}
 .cot-c-menu__trigger:disabled{opacity:.55;cursor:default}
-.cot-c-menu__media{flex:none;width:40px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-1)}
+.cot-c-menu__media{flex:none;width:40px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-1);
+  opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+.cot-c-menu__media[data-ready]{opacity:1}
 .cot-c-menu__media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+/* a tank's portrait is the list row's thumbnail at the trigger's height (one look for every list of tanks) */
+.cot-c-menu__media.is-tank{position:relative;width:auto;height:28px;aspect-ratio:216/184;border-radius:0;box-shadow:none}
 .cot-c-menu__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-c-menu__words{display:flex;flex:1 1 auto;align-items:baseline;gap:var(--s2);min-width:0}
 .cot-c-menu__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cot-c-menu__fact{flex:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-12))}
 .cot-c-menu__chev{display:flex;flex:none;margin-left:auto;color:var(--ink-3);transition:rotate var(--dur-fast) var(--ease-enter)}
 .cot-c-menu__trigger[aria-expanded=true] .cot-c-menu__chev{rotate:180deg}
-/* placed by pickerMenu.ts (placeMenu): left, top, width and max-height; its grid scrolls inside */
+/* placed by pickerMenu.ts (placeMenu): left, top, width and max-height; its grid scrolls inside. It fades in a step down
+   from its trigger (up when above it, from the foot as a sheet) and out the same way, so a menu that replaces another
+   enters while the other leaves (surfaceStack.ts); display and the top layer flip at the end of the exit */
 .cot-c-menu__pop{position:fixed;inset:auto;box-sizing:border-box;display:none;flex-direction:column;margin:0;padding:var(--s2);border:0;
-  border-radius:var(--plate-radius);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);overflow:hidden}
-.cot-c-menu__pop:popover-open{display:flex}
+  border-radius:var(--plate-radius);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);overflow:hidden;
+  opacity:0;translate:0 calc(-1 * var(--s1));
+  transition:opacity var(--dur-fast) var(--ease-exit),translate var(--dur-fast) var(--ease-exit),
+    display var(--dur-fast) allow-discrete,overlay var(--dur-fast) allow-discrete}
+.cot-c-menu__pop.is-above{translate:0 var(--s1)}
+/* a spanning menu's ring lies on its panel's rules: the plate's colour under it and square corners, so no picture or row
+   shows through the ring or a rounded corner (the 261 critics: the dossier's picture under the ring and in its corner);
+   a phone sheet's top edge too (the 261 critic: the page's buttons through its ring) */
+.cot-c-menu__pop.is-span{border-radius:0;box-shadow:var(--e3-span)}
+.cot-c-menu__pop.is-sheet{box-shadow:var(--e3-span)}
+.cot-c-menu__pop.is-sheet{translate:0 var(--s4)}
+.cot-c-menu__pop:popover-open{display:flex;opacity:1;translate:none;transition-timing-function:var(--ease-enter)}
+.cot-c-menu__pop:not(:popover-open){pointer-events:none}
+@starting-style{
+  .cot-c-menu__pop:popover-open{opacity:0;translate:0 calc(-1 * var(--s1))}
+  .cot-c-menu__pop.is-above:popover-open{translate:0 var(--s1)}
+  .cot-c-menu__pop.is-sheet:popover-open{translate:0 var(--s4)}
+}
 .cot-c-menu__picker{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
 .cot-c-menu__picker>.cot-c-picker{flex:1 1 auto}
 /* a menu is narrow: its search takes its own line and its chips the next, so whole chips show (the r21q critic: a star and
@@ -185,9 +234,10 @@
 .cot-c-menu__pop.is-sheet{border-radius:var(--plate-radius) var(--plate-radius) 0 0;padding-bottom:max(var(--s2),env(safe-area-inset-bottom))}
 /* a sheet is named and closes from its head, over a scrim (the g13 critic: a headless sheet's edge sliced the page under it) */
 .cot-c-menu__head{display:none}
+/* its title stands on its rows' text (the sheet's 8 px and a row's 12 px inset; the 261 critic) */
 .cot-c-menu__pop.is-sheet .cot-c-menu__head{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
-  padding:0 0 var(--s2) var(--s2);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
+  padding:0 0 var(--s2) var(--s3);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
 .cot-c-menu__pop.is-sheet::backdrop{background:var(--scrim)}
 @media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
-@media (prefers-reduced-motion:reduce){.cot-c-menu__chev{transition:none}}
+@media (prefers-reduced-motion:reduce){.cot-c-menu__chev,.cot-c-menu__pop,.cot-c-menu__media,.cot-c-picker__thumb img,:is(.cot-c-picker__media,.cot-bf__hero) img{transition:none}}
 }

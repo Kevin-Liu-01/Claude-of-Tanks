@@ -36,6 +36,9 @@
 @media (hover:hover) and (pointer:fine){
   .cot-header-nav .nv:hover{color:var(--ink-1);background:var(--surface-hover);}
 }
+/* the Studio link holds its pressed look while the Studio's code loads (main.ts onPending; the loading census 262: F8 and the
+   link gave no sign until the entry's cover) */
+:is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[aria-busy='true']{color:var(--ink-1);background:var(--surface-hover);cursor:progress;}
 .cot-header-nav .nv.on{color:var(--ink-1);cursor:default;
   background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--btn-secondary-fill);}
 .cot-header-nav .nv .cot-c-kbd{margin-left:var(--s1);}
@@ -98,8 +101,12 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 .cot-nav [data-github-stars][data-github-stars-state='unavailable']{visibility:hidden;}
 @keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
+/* the bar's glyph-only controls (the language, the repository, Settings) read as one set, as its destinations do: no
+   plate, the destinations' ink, one glyph size (the iPad critic r2: the globe and GitHub marks at 13 px read as ghosts
+   beside a 22 px gear, which wore a frame once the settings sheet loaded) */
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
-  right:auto;top:auto;border-color:transparent;background:transparent;}
+  right:auto;top:auto;border-color:transparent;background:transparent;box-shadow:none;color:var(--ink-2);}
+.cot-nav .cot-gear svg,.cot-header-nav :is(.cot-locale-switcher,.cot-github) .nvi{width:16px;height:16px;}
 @media (hover:hover){.cot-nav .cot-gear:hover{background:var(--surface-hover);}}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
@@ -128,8 +135,8 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 .cot-mobile-nav-copy small{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;
   text-transform:uppercase;}
 @media (hover:hover) and (pointer:fine){
-  .cot-mobile-nav-menu button:hover{color:var(--accent-hi);border-color:var(--accent-lo);
-    background:var(--accent-wash);}
+  .cot-mobile-nav-menu button:hover{color:var(--ink-1);border-color:var(--line-3);
+    background:var(--surface-hover);}
 }
 /* LOCAL SERVICE RECORD: career totals, the medal case, achievement tiers and
    the last battles (serviceRecordView.ts) behind the top-bar Record control.
@@ -346,9 +353,11 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   border:1px solid var(--line-2);cursor:pointer;
   font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
+/* hover is the kit's grey plate, never the accent: an amber hover beside the amber choice read as two tabs selected (the
+   r26 critic at 900 x 700); the choice's rule follows it, so a hovered choice stays the choice */
+@media (hover:hover){.cot-technical-tab:hover{color:var(--ink-1);background:var(--surface-hover);border-color:var(--line-3);}}
 .cot-technical-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-tab:hover{color:var(--accent-hi);border-color:var(--accent-lo);}
 .cot-technical-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
 .cot-technical-figure{position:relative;margin:0;background:var(--surface-nav);border:1px solid var(--line-2);
   box-shadow:var(--e1);}
@@ -356,7 +365,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   box-shadow:inset 0 0 24px rgba(0,0,0,.2);}
 .cot-technical-expand{position:relative;display:block;width:100%;padding:0;overflow:hidden;cursor:zoom-in;
   color:var(--ink-1);background:var(--surface-page);border:0;text-align:inherit;}
-.cot-technical-expand:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
+.cot-technical-expand:focus-visible{outline:2px solid var(--focus-ink);outline-offset:-2px;}
 .cot-technical-figure img{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain;
   background:var(--surface-page);transition:opacity var(--dur-fast) ease-out;}
 .cot-technical-expand-label{position:absolute;right:7px;bottom:7px;display:flex;align-items:center;gap:5px;
@@ -401,17 +410,20 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   border:1px solid var(--line-2);cursor:pointer;
   font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:var(--track-label-s);text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
+@media (hover:hover){.cot-technical-viewer-tab:hover{color:var(--ink-1);background:var(--surface-hover);border-color:var(--line-3);}}
 .cot-technical-viewer-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-viewer-tab:hover{color:var(--accent-hi);border-color:var(--accent);}
 .cot-technical-viewer-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
-.cot-technical-viewer-figure{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin:0;}
+.cot-technical-viewer-figure{--tv-max-h:calc(88vh - 250px);position:relative;display:flex;flex-direction:column;align-items:center;
+  gap:var(--s2);margin:0;}
 /* the drawing is its own plate (its raster carries its ground): shrink-wrapped, never letterboxed inside a second plate
-   (the r18 critic: a lighter inset rectangle with seams down both sides) */
-.cot-technical-viewer-figure img{display:block;width:auto;max-width:100%;height:auto;max-height:calc(88vh - 250px);aspect-ratio:2/1;
-  object-fit:contain;border-radius:var(--r1);box-shadow:var(--ring-1);}
-.cot-technical-viewer-figure figcaption{align-self:stretch;color:var(--ink-2);
-  font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body);}
+   (the r18 critic: a lighter inset rectangle with seams down both sides). Its box is the drawing's 2:1 from the first
+   paint, the widest that fits under --tv-max-h (the loading census 262: an auto width collapsed it until the file came, and
+   the dialog jumped, CLS 0.35); the tone under it stands while the drawing loads, and stays if it never arrives */
+.cot-technical-viewer-figure img{position:relative;display:block;width:min(100%,calc(var(--tv-max-h) * 2));max-width:100%;height:auto;
+  max-height:var(--tv-max-h);aspect-ratio:2/1;object-fit:contain;border-radius:var(--r1);box-shadow:var(--ring-1);}
+.cot-technical-viewer-figure::before{content:'';position:absolute;top:0;left:50%;translate:-50% 0;width:min(100%,calc(var(--tv-max-h) * 2));
+  aspect-ratio:2/1;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1);pointer-events:none;}
 .cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
 .cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
@@ -438,8 +450,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
   grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
-/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows */
-.cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
+/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows; it
+   holds the rail's one row, which the end counts share (an auto row put the phone's flags on the cards: r26) */
+.cot-country-chips{grid-column:3;grid-row:1;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px calc(3px + var(--rail-end,0px)) var(--s1) 3px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-inline:0;touch-action:pan-x;
@@ -452,7 +465,18 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-rail.has-more-left.has-more-right .cot-country-chips{
   -webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);
   mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);}
-/* (a flag not wholly in the track hides, so the rail ends on whole flags; its edge arrow says it continues) */
+/* a nation the track's edge or its end's count would cut hides (garage.ts), so the rail ends on whole flags under its
+   fade; over the fade, a bare count ("+4", no box and no arrow: the owner's 10-25 ruling) says how many lie beyond and
+   steps the track (the r25 critic: a faded "1" and no sign of more) */
+.cot-country-chips>.is-cut{opacity:0;pointer-events:none;}
+.cot-country-step{grid-column:3;grid-row:1;align-self:center;z-index:1;height:var(--btn-h-s);min-width:var(--btn-h-s);padding:0 var(--s1);
+  border:0;background:transparent;box-shadow:none;cursor:pointer;
+  font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);text-shadow:var(--stage-halo);}
+.cot-country-step.is-back{justify-self:start;}
+.cot-country-step.is-on{justify-self:end;}
+.cot-country-step[hidden]{display:none;}
+@media (hover:hover){.cot-country-step:hover{color:var(--ink-1);}}
+.cot-country-step:focus-visible{outline:none;color:var(--ink-1);box-shadow:var(--focus-ring);}
 /* the roster row (owner 10-25 via Main: "completely fix and redesign this row"): every nation a quiet chip of the row's
    one height and frame, a small rounded flag and its count in the data face; the chosen one on the kit's slate plate (the
    segmented control's), never a gold edge */
@@ -466,6 +490,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 .cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
 .cot-country-chip.sel{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);}
+body[data-cot-panels='overlay'] .cot-country-step{grid-column:2;}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -488,8 +513,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-cards:focus-visible>.cot-card.sel{box-shadow:var(--focus-ring);}
 .cot-car-arrow:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
 .cot-car-arrow svg{display:block;}
-.cot-car-arrow:hover{color:var(--text-accent);border-color:var(--accent);
-  background:var(--surface-plate);}
+/* (every hover in the Garage is the kit's grey plate; the accent marks only a choice: the r26 critic) */
+.cot-car-arrow:hover{color:var(--ink-1);border-color:var(--line-3);
+  background:var(--surface-hover);}
 .cot-car-arrow:active{color:var(--accent-hi);}
 /* The strip advertises overflow only where more cards actually exist. Edge
    classes are synchronized from scrollLeft/scrollWidth in JS, so a fleet that
@@ -547,8 +573,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-card.hc-n2{--hc-n2:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:var(--line-control);transform:translateY(-2px);}
 .cot-card.sel:hover{transform:none;}
-.cot-card.sel{border-color:var(--accent);transform:none;
-  box-shadow:0 8px 26px rgba(240,140,20,.28);}
+/* the accent edge alone marks the chosen card, as it marks the chosen nation (the iPad critic r2: an amber glow under it
+   was a second selected look) */
+.cot-card.sel{border-color:var(--accent);transform:none;}
 .cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px var(--s1) 2px;
   font:500 var(--hc-tier)/1 var(--font-mono);letter-spacing:0;
@@ -619,7 +646,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);}
 /* a swatch waiting for its paint is the kit's skeleton, never a stand-in pattern */
-:is(.cot-camo-swatch,.cot-lt-swatch canvas)[data-loading]{background:var(--fill-quiet);}
+:is(.cot-camo-swatch,.cot-lt-paint canvas)[data-loading]{background:var(--fill-quiet);}
 /* the sheet's head carries its actions (the nation's paint, the about tip) beside its close, for the paint sheet only */
 .cot-drawer-actions{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 /* its about trigger stands as tall as the button beside it (the r19q critic: a 16 px circle by a 34 px button) */
@@ -654,14 +681,18 @@ body[data-cot-input='coarse'] .cot-garage .cot-drawer-actions .cot-camo-nation{-
 .cot-custom-draw{display:block;width:100%;height:100%;min-height:250px;touch-action:none;cursor:crosshair}
 .cot-custom-draw-label{position:absolute;left:10px;top:9px;padding:5px 7px;background:var(--scrim);color:var(--ink-2);
   pointer-events:none;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase}
-.cot-custom-tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+/* the lab's brushes and tones are the kit's segmented controls (261), its undo and clear the tool buttons beside them */
+.cot-custom-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cot-custom-tools>.cot-c-seg{flex:1 1 auto}
+.cot-custom-tools>.cot-c-seg>.cot-c-seg__opt{flex:1 1 0;min-height:40px}
+.cot-custom-tools>.cot-custom-tool{flex:0 1 auto}
 .cot-custom-tool{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 var(--s2);border:1px solid var(--line-2);
   background:var(--scrim);color:var(--ink-3);cursor:pointer;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase;
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),transform var(--dur-fast)}.cot-custom-tool:active{transform:scale(.97)}
-.cot-custom-tool:hover{border-color:var(--accent);color:var(--ink-1)}
+.cot-custom-tool:hover{border-color:var(--line-3);color:var(--ink-1);background:var(--surface-hover)}
 .cot-custom-tool:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring)}
 .cot-custom-tool.on{border-color:var(--accent);color:var(--accent-hi);background:var(--accent-wash)}
-.cot-custom-assets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.cot-custom-assets .cot-custom-tool{min-height:46px;flex-direction:column;gap:3px}
+.cot-custom-assets.cot-c-seg{display:grid;width:100%;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}.cot-custom-assets .cot-c-seg__opt{height:auto;min-height:46px;flex-direction:column;gap:3px}
 .cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);}
 .cot-custom-color{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:var(--s2);color:var(--ink-3);
   font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;}
@@ -678,7 +709,7 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab{grid-
 body:is([data-cot-width='compact'],[data-cot-width='phone']) :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:220px}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab__controls{display:grid;grid-template-columns:1fr}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-custom-preview{height:100px}
-body[data-cot-width='phone'] .cot-custom-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-custom-tools>.cot-c-seg{flex-basis:100%}
 body[data-cot-width='phone'] .cot-custom-assets{grid-template-columns:repeat(3,minmax(0,1fr))}
 body[data-cot-width='phone'] .cot-custom-colors{grid-template-columns:1fr}
 body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:190px}
@@ -735,6 +766,14 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   border:1px solid var(--line-3);box-shadow:var(--e3);
   padding:13px 14px var(--s3);}
 .cot-eqpick.open{display:block;}
+/* the equipment's and the consumables' pickers are transient surfaces (components/surfaceStack.ts): each fades a step up
+   into its place and out the same way, so the one that replaces the other enters as the other leaves (owner 2026-10-27);
+   display flips at the end of the exit, and a leaving picker takes no presses */
+.cot-eqpick{opacity:0;translate:0 var(--s2);transition:opacity var(--dur-fast) var(--ease-exit),translate var(--dur-fast) var(--ease-exit),
+  display var(--dur-fast) allow-discrete}
+.cot-eqpick:not(.open){pointer-events:none}
+.cot-eqpick.open{opacity:1;translate:none;transition-timing-function:var(--ease-enter)}
+@starting-style{.cot-eqpick.open{opacity:0;translate:0 var(--s2)}}
 .cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
   margin-bottom:9px;}
 /* the picker's head reads as the paint sheet's does: a sentence-case title and the kit's bare close (the gauntlet 10-25:
@@ -754,12 +793,23 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .cot-c-picker__facts{justify-content:center;flex-wrap:wrap;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.35}
 /* an effect line wraps inside its card (a flex item keeps its text's width: on a phone it ran into the next card) */
 .cot-eqpick .cot-c-picker__facts>span{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:normal;overflow:visible}
+/* a tile's facts (what it does, the slot it is fitted in) stand on lines of their own: run together, a wrapped "· Slot 2"
+   started its line with the dot (the 261 critic) */
+.cot-eqpick .cot-c-picker__facts{flex-direction:column;align-items:center;gap:2px}
+.cot-eqpick .cot-c-picker__facts span+span::before{content:none}
+/* a consumable's tile sets its glyph over its name, as an equipment tile does: glyph-beside-name tiles wrapped one by one
+   (RESTOCK, 自动灭火) into a second layout in the same grid, and their row grew taller than the next (the 261 critic) */
+.cot-cspick .cot-c-picker__words{flex-direction:column;flex-wrap:nowrap;align-items:center;gap:var(--s1)}
+.cot-cspick .cot-c-picker__glyph{display:grid;place-items:center;margin:0}
+.cot-cspick .cot-c-picker__glyph svg{width:24px;height:24px}
 /* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
 html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere}
 /* a shut item reads as unavailable by its quiet glyph and words, still legible (the kit's half opacity took them to 2.9:1) */
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true]{opacity:1}
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true] :is(.cot-c-picker__name,.cot-c-picker__facts){color:var(--ink-3)}
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true] .cot-eq-glyph svg{opacity:.5;filter:grayscale(1) var(--sil-shadow)}
+/* the chosen item reads in the ink on its wash, a shut one included (Empty, chosen, is shut: the r27 critic read it grey) */
+.cot-eqpick .cot-c-picker__opt[aria-selected=true] :is(.cot-c-picker__name,.cot-c-picker__facts){color:var(--ink-1)}
 .cot-eqpick .cot-c-picker__opt[data-id='empty'] .cot-eq-glyph svg{opacity:.55}
 /* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
    the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
@@ -777,6 +827,15 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 /* a short landscape sheet sets the values beside the words in two rows: its readout's height gives the cards the rest (the
    r22q critic: at 844 x 390 one row of cards was cut through its words over 85 px of empty readout) */
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview{block-size:7rem}
+/* a portrait sheet has the height: its readout holds two rows of cards with a wrapped label (the r25 critic at 390 x 844:
+   View range's 415 m and Concealment's values sat under the panel's foot) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpreview{block-size:12rem}
+/* a touch sheet previews nothing under a pointer, so its readout holds only the chosen item's figures: with none (Empty)
+   it is the name's line and the cards take the room (the r26 critic: a 190 px blank block under a short window of cards) */
+body[data-cot-panels='overlay'] .cot-eqpreview:not(:has(.metric)){block-size:auto}
+/* where the tiles carry what each does, the readout does not say it again (the 261 critic: a phone showed the chosen
+   consumable's effect on its tile and under the grid); a short landscape sheet's tiles hide theirs and its readout keeps it */
+body[data-cot-panels='overlay']:not([data-cot-height='short'][data-cot-orientation='landscape']) .cot-eqpreview .detail{display:none}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
@@ -786,9 +845,13 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 /* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
 html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
-/* a narrow card sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by word and
-   the zh value ran over it) */
-.cot-eqpreview .metric{container-type:inline-size}
+/* the docked readout's value cards stand on one line, each as wide as its glyph, label and value: a card sized to its
+   content collapsed to its glyph in zh, its label ran past it and its value fell under the picker's foot (the 261 critic) */
+body[data-cot-panels='persistent'] .cot-eqpreview .metric{display:flex;align-items:center;gap:6px;container-type:normal;white-space:nowrap}
+/* a narrow card in a sheet sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by
+   word and the zh value ran over it); only in the sheet's grid, whose tracks set the cards' widths: the docked readout's
+   cards size to their words, and containment there shrank "Aim time" to 50 px with no value (the r25 critic) */
+body[data-cot-panels='overlay'] .cot-eqpreview .metric{container-type:inline-size}
 @container (width < 220px){
   .cot-eqpreview .metric-label,.cot-eqpreview .metric-values{grid-column:2/-1}
   .cot-eqpreview .metric-values{justify-content:flex-start}
@@ -806,11 +869,10 @@ html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
 .cot-eqpick .cot-c-picker__fav{display:none}
 
 /* the readout's body (the item, what it does, its projected values and what a press does) */
-.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
-  font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtip[data-category="recon"] .eyebrow{color:var(--text-own);}
-.cot-eqtip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
-.cot-eqtip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
+/* the item's category (a consumable's with its cooldown and uses) is a quiet fact in the readout's ink, in sentence case:
+   set in the accent and capitals before the name it read as an eyebrow, and its units read "35 S" (the 261 critic) */
+.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
+  font-weight:600;letter-spacing:0;text-transform:none;}
 .cot-eqtip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
 .cot-eqtip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
@@ -868,20 +930,28 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
   transition:opacity var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
     color var(--cot-motion-fast) ease;}
 .cot-featured .fshot:hover .fnav{opacity:.92;}
-.cot-featured .fnav:hover{border-color:var(--accent);color:var(--accent-hi);}
+.cot-featured .fnav:hover{border-color:var(--line-3);color:var(--ink-1);}
 .cot-featured .fnav.prev{left:0;}
 .cot-featured .fnav.next{right:0;}
 /* the rotation's marks ride on the picture, after it in the order, so above it */
 .cot-featured .ftitle{position:absolute;right:var(--s2);bottom:var(--s2);display:flex;}
 .cot-featured .fdots{display:flex;gap:2px;flex:0 0 auto;}
-.cot-featured .fdots span{width:3px;height:6px;flex:0 0 3px;background:var(--line-control);
+/* each dot is a button (the picture's name, one tab stop, the arrows from it), its mark 3 x 6 px and its press a step
+   taller than the mark (261: mouse-only spans) */
+.cot-featured .fdots button{position:relative;width:3px;height:6px;flex:0 0 3px;padding:0;border:0;background:var(--line-control);
   transition:background var(--dur-base);cursor:pointer;}
-.cot-featured .fdots span:hover{background:var(--ink-1);}
-.cot-featured .fdots span.on{background:var(--accent);}
+.cot-featured .fdots button::after{content:'';position:absolute;inset:-8px -1px;}
+.cot-featured .fdots button:hover{background:var(--ink-1);}
+.cot-featured .fdots button:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
+.cot-featured .fdots button.on{background:var(--accent);}
+/* a touch screen steps the rotation with the 44 px arrows over the picture: twenty dots cannot each take a finger, so there
+   they mark the picture in view and take no press */
+body[data-cot-input='coarse'] .cot-featured .fdots{pointer-events:none;}
+body[data-cot-input='coarse'] .cot-featured .fnav{min-width:44px;min-height:44px;opacity:.92;}
 .cot-featured .fshot{position:relative;isolation:isolate;width:100%;height:104px;overflow:hidden;
   border:1px solid var(--line-3);cursor:pointer;background:var(--surface-page);
   box-shadow:var(--e2);transition:border-color var(--dur-fast);}
-.cot-featured .fshot:hover{border-color:var(--accent);}
+.cot-featured .fshot:hover{border-color:var(--line-3);}
 .cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
   opacity:0;transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
 /* a take crossfades in; its slow 7 s settle from a 1.025 scale was a moving picture with no token (motion lint) */
@@ -903,7 +973,7 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
     border-color var(--cot-motion-fast) ease,color var(--cot-motion-fast) ease;}
 .cot-featured .fleet-take-toggle svg{display:block;width:10px;height:10px;}
 .cot-featured .fshot:hover .fleet-take-toggle,.cot-featured .fleet-take-toggle:focus-visible{opacity:1;}
-.cot-featured .fleet-take-toggle:hover{border-color:var(--accent);color:var(--accent-hi);}
+.cot-featured .fleet-take-toggle:hover{border-color:var(--line-3);color:var(--ink-1);}
 .cot-featured .fleet-take-video[hidden],.cot-featured .fleet-take-toggle[hidden]{display:none;}
 @keyframes cot-g-fade{from{opacity:0;}}
 @keyframes cot-g-rise{from{opacity:0;transform:translateY(12px);}}
@@ -1083,14 +1153,22 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stat
   border:1px solid var(--line-3);box-shadow:var(--e3);
 }
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>:is(.cot-technical-section,.cot-performance-section){display:none}
-body[data-cot-panels='overlay'] .cot-eqpick.open{
+/* (its place holds while it leaves: only display waits for .open) */
+body[data-cot-panels='overlay'] .cot-eqpick{
   left:auto;right:calc(max(var(--cot-overlay-edge),env(safe-area-inset-right)) + var(--cot-compact-stats-width) + 8px);
   top:calc(76px + var(--cot-room-row-space,0px));bottom:var(--cot-drawer-bottom);width:min(420px,calc(100vw - var(--cot-compact-stats-width) - (var(--cot-overlay-edge) * 3)));
-  max-height:none;display:flex;flex-direction:column;
+  max-height:none;flex-direction:column;
   padding:10px;
 }
+body[data-cot-panels='overlay'] .cot-eqpick.open{display:flex}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-eq-picker{flex:1 1 auto}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
+/* its rows take one height (garage.ts fitWholeRows sets it to fill the room with whole rows) and its scroll stops on them,
+   so the window stays whole wherever it scrolls (v261: the chosen tile scrolled 8 px into view and a taller row ran under
+   the sheet's foot); a tile's lines stand in its middle */
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{scroll-snap-type:y mandatory;scroll-padding-block:var(--s2)}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__cell{scroll-snap-align:start}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__opt{justify-content:center}
 /* a Chinese effect line keeps its terms whole: the tiles take two to a phone's row, so no line starts with a comma */
 html[lang^='zh'] body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body[data-cot-panels='overlay'] .cot-garage .cot-technical-section{
@@ -1151,6 +1229,9 @@ body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:40px;min-width:44px
   border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);}
 body[data-cot-panels='overlay'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);box-shadow:var(--ring-accent);}
 body[data-cot-input='coarse'] :is(.cot-country-chip,.cot-facet-toggle){min-height:44px}
+/* the strip's "+N" step is a touch target too (the iPad lane at 1133 x 612: 36 px wide); garage.ts measures its width
+   before it hides the nations it would cover */
+body[data-cot-input='coarse'] .cot-country-step{min-width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1205,7 +1286,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats
   max-height:calc(var(--cot-viewport-height,100dvh) - max(120px,calc(env(safe-area-inset-top) + 114px))
     - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick.open{
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
   top:calc(max(120px,calc(env(safe-area-inset-top) + 114px)) + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
@@ -1250,7 +1331,10 @@ body[data-cot-width='phone'] .cot-card{width:102px;--hc-pad:5px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:max(var(--fs-floor-11),var(--fs-11))}
-body[data-cot-width='phone'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 245px)}
+body[data-cot-width='phone'] .cot-technical-viewer-figure{--tv-max-h:calc(var(--cot-viewport-height,100dvh) - 245px)}
+/* a phone's drawing sheet stands at its full height from the press: the labels' key lands in flow under the drawing, and a
+   sheet sized to its content rose by the key's height as it arrived (the loading census 264, CLS 0.45) */
+body[data-cot-width='phone'] .cot-modal.cot-technical-viewer{height:calc(var(--cot-viewport-height,100dvh) - 16px)}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
   --cot-roster-height:62px;--cot-country-height:38px;
 }
@@ -1268,7 +1352,7 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
   top:calc(72px + var(--cot-room-row-space,0px));width:var(--cot-compact-stats-width);
   max-height:calc(var(--cot-viewport-height,100dvh) - 72px - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
-body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick.open{
+body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick{
   left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
   top:calc(72px + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
@@ -1376,6 +1460,8 @@ html[lang^='zh'] .cot-lt-id .lt-tier{gap:0;}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
 .cot-lt-id .lt-tier b{color:var(--ink-1);}
+/* the tier in the data face it wears on every card and in the record (the iPad critic r2: "Tier" in two faces) */
+.cot-lt-id .lt-tier{font-family:var(--font-data);}
 body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossier-head .sub,.stats-ti){display:none;}
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
@@ -1404,13 +1490,18 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 
 
 
-/* the selected vehicle's actions (overview): kit chips with the glyph, the name and the key; they wrap, never truncate */
-.cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3);}
+/* the selected vehicle's actions (overview): what the tank can do, set as the figures over them are (the iPad critic r2
+   read the kit's framed chips as buttons, which they are not): the glyph in the figures' glyph column, the name in their
+   label's face, the key at the end; under a rule, they wrap, never truncate */
+.cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);margin-top:var(--s3);padding-top:var(--s3);
+  border-top:1px solid var(--line-1);}
 /* the docked readout sets the actions two to a row (four never leave one alone on a line), the key cap at each end */
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
-body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{justify-content:flex-start;min-width:0;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
-.cot-garage .cot-action{padding:0 var(--s2);gap:var(--s2);color:var(--ink-1);}
+.cot-garage .cot-action{display:flex;align-items:center;gap:var(--s3);min-height:var(--s5);
+  font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);color:var(--ink-2);}
+.cot-garage .cot-action>svg{flex:none;width:20px;height:18px;color:var(--ink-3);}
 .cot-garage .cot-action>span{white-space:nowrap;}
 .cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
 
@@ -1473,13 +1564,13 @@ body[data-cot-input='coarse'] .cot-garage .cot-info-trigger:focus-visible{box-sh
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger__icon{width:18px;height:18px}
 body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
-/* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
-   the screen */
-body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick.open{
-  position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
-  top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
-  max-height:calc(100% - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));
-  background:var(--surface-page);
+/* the phone picker is a sheet the screen's height (the 261 critic: sized to its tiles, the equipment sheet stood under the
+   header and sliced a header button, the consumables' rose over it and sliced the logo; the two had two tops), its grid
+   taking the room its readout leaves (garage.ts fits it to whole rows again as the readout's height changes) */
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick{
+  position:absolute;left:0;right:0;top:0;bottom:0;width:auto;max-width:760px;margin-inline:auto;max-height:none;
+  padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  border-block:0;background:var(--surface-page);
 }
 /* the phone picker opens from the dossier's slots: the dossier steps aside under it (the sheet's scrim stays), so the
    picker is never a sheet half over another with two close buttons */
@@ -1496,7 +1587,7 @@ body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){mi
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}
 /* A short viewport must scroll a useful diagram, never collapse its image. */
 /* a touch screen's drawing takes the height the dialog leaves it (a 390 px tall landscape cut its hull and legend off) */
-body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 190px)}
+body[data-cot-input='coarse'] .cot-technical-viewer-figure{--tv-max-h:calc(var(--cot-viewport-height,100dvh) - 190px)}
 
 /* The expanded dossier is a complete reading view, not the compact preview. */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:var(--s6)}

@@ -206,7 +206,7 @@ const shown = shownName;
 assert.equal(shown(resolveTankId('leo2a6m', 1)), 'Leopard 2A4 OTCO', 'schema-1 leo2a6m is the vehicle shown as Leopard 2A4 OTCO');
 assert.equal(shown(resolveTankId('leo2a6m_x', 1)), 'Leopard 2A6M');
 assert.equal(shown(resolveTankId('t90m', 1)), 'T-90AM', 'schema-1 t90m is the vehicle shown as T-90AM');
-assert.equal(shown(resolveTankId('t90m_x', 1)), 'T-90M');
+assert.equal(shown(resolveTankId('t90m_x', 1)), 'T-90M Proryv');
 
 console.log(`tankIdAliases selftest: schema ${TANK_ID_SCHEMA} (${TANK_ID_RENAMES.length} landed maps, protocol ${PROTOCOL_VERSION}); `
   + `${SCHEMA_1_IDS.length} schema-1 ids name one live vehicle each; swaps resolve by schema`);

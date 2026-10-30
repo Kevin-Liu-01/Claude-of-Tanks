@@ -196,7 +196,8 @@ assert.match(showroom, /const onWheel = \(event: WheelEvent\) => \{\s*if \(!enab
   'the garage showroom dolly yields a page-restoring ctrl+wheel before cancelling it');
 assert.match(showroom, /const onGestureStart = [^}]*?if \(!pinchRestoresPage\(event\)\) event\.preventDefault\(\);/,
   'and a Safari gesture may start on a zoomed page');
-assert.match(showroom, /const restores = pinchRestoresPage\(event\);\s*if \(!restores\) event\.preventDefault\(\);[\s\S]*?gestureScale = scale;\s*if \(restores\) return;/,
+// (ipad-ui-262: a touch pinch dollies through its two pointers, so the gesture also returns with two pointers down)
+assert.match(showroom, /const restores = pinchRestoresPage\(event\);\s*if \(!restores\) event\.preventDefault\(\);[\s\S]*?gestureScale = scale;[\s\S]*?if \(restores(?: \|\| [^)]*)?\) return;/,
   'a closing Safari pinch un-zooms the page and keeps the gesture scale in step without dollying');
 const studio = readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
 assert.match(studio, /function onWheel\(e: WheelEvent\): void \{\s*if \(!active \|\| e\.target !== renderer\.domElement \|\| pinchRestoresPage\(e\)\) return;\s*e\.preventDefault\(\);/,

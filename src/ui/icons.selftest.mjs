@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
-import { equipIconIds, equipIconSVG } from './equipIcons.ts';
+import { consumableIconSVG, equipIconIds, equipIconSVG } from './equipIcons.ts';
+import { CONSUMABLE_CATALOG } from '../sim/consumableRules.ts';
+import { CONSUMABLE_ICONS } from '../game/consumableLoadout.ts';
+import { SMALL_MASTERS } from './icons/spriteIndex.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
@@ -34,6 +37,27 @@ for (const item of EQUIPMENT_CATALOG) {
 }
 assert.equal(largeEquipmentIcons.size, EQUIPMENT_CATALOG.length,
   'every equipment item must keep a distinct rendered icon');
+
+// consumables (261: "much better icons and be represented uniquely but as cool-y as equipment"): every item its own cs*
+// glyph with a 16-unit master, on the equipment's badge framed in its category's colour, and bare below 20 px
+const consumableGlyphs = new Set();
+const largeConsumableIcons = new Set();
+for (const item of CONSUMABLE_CATALOG) {
+  const glyph = CONSUMABLE_ICONS[item.id];
+  assert.match(glyph, /^cs[A-Z]/, `${item.id}: its own cs* glyph, never a shared UI glyph`);
+  assert.ok(SMALL_MASTERS.includes(` ${glyph} `), `${item.id}: ${glyph} has its 16-unit master`);
+  consumableGlyphs.add(glyph);
+  const svg = consumableIconSVG(item.id, 38);
+  assert.match(svg, new RegExp(`data-consumable-icon="${item.id}"`), `${item.id}: the badge names its item`);
+  assert.match(svg, new RegExp(`data-icon-category="${item.category}"`), `${item.id}: the badge carries its category`);
+  assert.equal(equipIconSVG(item.id, 38), '', `${item.id}: a consumable id is never an equipment id`);
+  assert.match(svg, /<path d="M4 1\.5h16\.5l2 2v16L20 22\.5H3\.5l-2-2V4Z"/, `${item.id}: the equipment's badge, not a second one`);
+  assert.match(consumableIconSVG(item.id, 16), new RegExp(`<use href="#i-${glyph}-s"/>`), `${item.id}: bare 16-unit master below 20 px`);
+  largeConsumableIcons.add(svg);
+}
+assert.equal(consumableGlyphs.size, CONSUMABLE_CATALOG.length, 'every consumable keeps a distinct glyph');
+assert.equal(largeConsumableIcons.size, CONSUMABLE_CATALOG.length, 'every consumable keeps a distinct rendered badge');
+assert.equal(consumableIconSVG('missing'), '', 'an unknown consumable draws nothing');
 
 for (const id of uiIconIds()) {
   const svg = uiIconSVG(id, 24);

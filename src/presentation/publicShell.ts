@@ -12,6 +12,8 @@
  *   <!--cot:nav-->…<!--/cot:nav-->          skip link, bar (mark, wordmark, pages, language, source, Play), menu sheet
  *   <!--cot:footer-->…<!--/cot:footer-->    (optional) mark, pages, language, source with its star count, credit line
  *
+ * The game's boot screen (index.html) carries the same pages in <!--cot:bootnav-->…<!--/cot:bootnav--> (bootNavHtml).
+ *
  * Dependency-free apart from the sprite index and the wordmark master: the tool and the receipts pass the catalog text in.
  */
 import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
@@ -146,6 +148,36 @@ export function symbolBlock(html: string, sprite: string, flagSvg: (code: string
 }
 
 const MARKER = (name: string): RegExp => new RegExp(`<!--cot:${name}-->[\\s\\S]*?<!--/cot:${name}-->`);
+
+/** The boot screen's pages (owner 2026-10-27): home and the site's pages that load at once while the game loads behind
+ * them. Studio and Play are the game itself; the tech tree is a Garage view. */
+const BOOT_DESTINATIONS: ReadonlyArray<{ readonly href: string; readonly icon: string; readonly key: string }> = Object.freeze([
+  { href: '/home', icon: 'home', key: 'publicNav.home' },
+  ...PUBLIC_DESTINATIONS.filter((d) => d.page === 'gallery' || d.page === 'docs'),
+]);
+
+/** A sprite glyph drawn inline: the boot screen paints before the game mounts the sprite (src/ui/icons/icon.ts). */
+function inlineIconMarkup(id: string, sprite: string, size: number): string {
+  const small = SMALL_MASTERS.includes(` ${id} `);
+  const inner = new RegExp(`<symbol id="i-${id}${small ? '-s' : ''}"[^>]*>([\\s\\S]*?)</symbol>`).exec(sprite)?.[1];
+  if (!inner) throw new Error(`publicShell: the boot screen links #i-${id}, which the sprite does not draw`);
+  const grid = small ? 16 : 24;
+  return `<svg class="cot-boot-link-icon cot-boot-glyph${small ? ' cot-boot-glyph--s' : ''}" viewBox="0 0 ${grid} ${grid}" width="${size}" height="${size}" aria-hidden="true" focusable="false">${inner}</svg>`;
+}
+
+/** The boot screen's links: the site's pages as the splash's quiet buttons, plain anchors (no script, no request). */
+export function bootNavHtml(text: ShellText, sprite: string): string {
+  return `<nav class="cot-boot-nav" data-cot-boot-control aria-label="${escapeHtml(text('publicNav.menuAria'))}" data-i18n-aria-label="publicNav.menuAria">`
+    + BOOT_DESTINATIONS.map((d) => `<a class="cot-boot-link" href="${d.href}">${inlineIconMarkup(d.icon, sprite, 15)}`
+      + `<span data-i18n="${d.key}">${escapeHtml(text(d.key))}</span></a>`).join('')
+    + `</nav>`;
+}
+
+/** Write the boot screen's links into the game document. Idempotent; throws when the marker is missing. */
+export function renderBootNav(html: string, text: ShellText, sprite: string): string {
+  if (!MARKER('bootnav').test(html)) throw new Error('publicShell: <!--cot:bootnav--> … <!--/cot:bootnav--> is missing');
+  return html.replace(MARKER('bootnav'), () => `<!--cot:bootnav-->${bootNavHtml(text, sprite)}<!--/cot:bootnav-->`);
+}
 
 /** The shell's route of a document: its canonical path (the docs topic template names /docs). The missing page has no
  * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address.

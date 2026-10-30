@@ -15,8 +15,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // concussion toggle (persisted with the gameplay settings; broadcast live over
 // the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
 // layer's localStorage stores. Also owns the pause veil, the fading controls-hint strip
-// a player's first battles show at the rollout, and the garage gear button, and broadcasts
-// 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
+// a player's first battles show at the rollout (its caps named again on a rebind), and the garage gear button. The
+// battle's key caps follow the bindings by themselves (game/battleKeyCaps.ts).
 // KILL-CAM aware: while a replay owns the screen ('killcam:begin'/'done' on
 // the bus) the panel never auto-opens, never veils, and closes itself — the
 // replay's ANY-KEY skip always wins (player death hands off to the death cam
@@ -36,7 +36,12 @@ import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import {
+  CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_SHOULDERS, type ChaseNumericSetting, type ChaseShoulder,
+} from '../engine/chaseFraming.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
@@ -144,7 +149,8 @@ type NumericSettingKey =
   | 'volCombat'
   | 'volAmbience'
   | 'volUi'
-  | 'volVoice';
+  | 'volVoice'
+  | ChaseNumericSetting;
 type BooleanSettingKey =
   | 'invertY'
   | 'showPerfMeter'
@@ -398,6 +404,9 @@ const SETTINGS_CSS = `
 /* the unit sits inside its field's end (a multiplier's is empty), so every value field ends on the controls' edge */
 .cot-set-slider .unit{width:20px;margin-left:calc(-1 * (var(--s3) + 20px));pointer-events:none;text-align:start;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+/* (battle-camera-264) the camera's rows end on their reset, the kit's icon button; the shoulder's segments sit beside it */
+.cot-set-reset{flex:none;}
+.cot-set-camera-seg{display:flex;align-items:center;gap:var(--s3);}
 /* the settings of two to five values (difficulty, right click, a phone's quality, language, On/Off) are the kit's segmented
    control (components.css .cot-c-seg); every inline control is 36 px tall. The sets of six (the desktop's quality, the
    colour presets) and the crew voice are the kit's picker menu, as wide as the crew field. */
@@ -587,7 +596,8 @@ const HINT_STAY_MS = 30000;
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has,
   // once the boot is idle: they act only on a hover, so they stay off the game's entry
-  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours())
+    .catch(() => { /* hover-only behaviours: the page works without them */ });
   if (typeof requestIdleCallback === 'function') requestIdleCallback(behaviours, { timeout: 4000 });
   else setTimeout(behaviours, 1000);
   ensureFonts();
@@ -815,21 +825,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const bindLabel = (id: ActionId): string =>
     input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
 
-  /** Broadcast current shell/consumable/map hotkey labels so the HUD tray and the map plate never
-   *  show a stale (or hardcoded) key. */
-  function emitBindings() {
-    emit('ui:bindingsChanged', {
-      shells: (['shell1', 'shell2', 'shell3'] as const).map(bindLabel),
-      consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
-      specialAction: bindLabel('specialAction'),
-      minimapZoom: bindLabel('minimapZoom'),
-      settingsMenu: bindLabel('settingsMenu'),
-    });
-  }
-
+  // (the battle's caps follow the bindings by themselves: game/battleKeyCaps.ts reads input.bindingsRevision)
   function bindingsMutated() {
     refreshChips();
-    emitBindings();
+    refreshHintCaps();
     emit('ui:click', {});
   }
 
@@ -890,6 +889,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
+    // (its action and slot, for the battle key caps' receipt: tools/battle-key-caps.browser.mjs rebinds through it)
+    chip.dataset.bind = `${def.id}:${slotKey}`;
     const labelText = actionName(def);
     chip.dataset.tip = slotKey === 'pad'
       ? `${labelText}, ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
@@ -1000,7 +1001,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     min: number,
     max: number,
     o: SliderOptions = {},
-  ): void {
+  ): { row: HTMLDivElement; wrap: HTMLDivElement; sync(): void } {
     const toD = o.toDisp || ((value: number) => value);
     const fromD = o.fromDisp || ((value: number) => value);
     const digits = o.digits != null ? o.digits : 2;
@@ -1047,6 +1048,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       // judged without leaving the panel
       range.addEventListener('change', () => emit('ui:click', {}));
     }
+    return { row, wrap, sync };
   }
 
   /** settings_ui r2: plate group-card — a cluster (title + rows + notes) on
@@ -1087,6 +1089,57 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     return { group, sync };
   }
 
+  /** A row's reset to the camera setting's default: the kit's quiet icon button, by its classes as the panel's close is
+   *  (the kit's button() would pull its factory into a boot chunk the Gallery shares), named for its row. */
+  function cameraReset(host: HTMLElement, label: string, key: ChaseNumericSetting | 'cameraShoulder', sync: () => void): void {
+    const reset = el('button', 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--quiet cot-set-reset', host);
+    reset.type = 'button';
+    reset.dataset.uiSound = 'press';
+    reset.setAttribute('aria-label', t('settings.camera.reset', { label }));
+    reset.innerHTML = uiIconSVG('undo', 18);
+    reset.addEventListener('click', () => {
+      input.setSetting(key, CHASE_CAMERA_DEFAULTS[key]);
+      sync();
+      emit('ui:click', {});
+    });
+  }
+
+  /** battle-camera-264 (owner 2026-10-28: "be able to change and alter this camera angle as u like in settins"): the chase
+   *  camera over its framing (engine/chaseFraming.ts), each setting with its reset. A change applies at once: in battle the
+   *  camera glides to it behind this menu (cameraRig.previewFraming). */
+  function cameraCard(parent: HTMLElement): void {
+    const card = groupCard(parent, t('settings.camera.title'));
+    const slider = (label: string, key: ChaseNumericSetting, o: SliderOptions) => {
+      const [min, max] = CHASE_CAMERA_RANGES[key];
+      const made = sliderRow(card, label, key, min, max, o);
+      cameraReset(made.wrap, label, key, made.sync);
+    };
+    slider(t('settings.camera.height'), 'cameraHeight', {
+      step: '0.1', dispStep: '0.1', digits: 1, unit: t('settings.camera.unitMetres'),
+    });
+    slider(t('settings.camera.distance'), 'cameraDistance', {
+      step: '0.05', dispStep: '5', unit: '%', digits: 0, toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+    });
+    const shoulderLabel = t('settings.camera.shoulder');
+    const shoulderRow = el('div', 'cot-set-row', card);
+    settingLabel(shoulderRow, shoulderLabel, SETTINGS_OPTION_ICONS.cameraShoulder);
+    const shoulderNames: Readonly<Record<ChaseShoulder, string>> = {
+      left: t('settings.camera.shoulderLeft'), centre: t('settings.camera.shoulderCentre'), right: t('settings.camera.shoulderRight'),
+    };
+    const controls = el('div', 'cot-set-camera-seg', shoulderRow);
+    const shoulder = mountSeg(controls, segmented({ label: shoulderLabel, className: 'cot-set-shoulder', value: input.getSettings().cameraShoulder,
+      options: CHASE_SHOULDERS.map((side) => ({ value: side, label: shoulderNames[side] })) }),
+    () => input.getSettings().cameraShoulder, (side) => input.setSetting('cameraShoulder', side));
+    cameraReset(controls, shoulderLabel, 'cameraShoulder', () => shoulder.sync());
+    slider(t('settings.camera.framing'), 'cameraFraming', {
+      step: '0.01', dispStep: '1', unit: '%', digits: 0, toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+    });
+    slider(t('settings.camera.fov'), 'cameraFov', {
+      step: '1', dispStep: '1', digits: 0, unit: t('settings.camera.unitDegrees'),
+    });
+    el('div', 'cot-set-note', card).textContent = t('settings.camera.note');
+  }
+
   function renderGameplay() {
     body.textContent = '';
     const touchLayout = !!(input.isTouchLayout && input.isTouchLayout());
@@ -1102,6 +1155,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     onOffRow(aim, t('settings.camera.isometric'), 'isometricView');
     const isometricNote = el('div', 'cot-set-note', aim);
     isometricNote.textContent = t('settings.camera.isometricNote');
+    cameraCard(body);
 
 
     const battle = groupCard(body, t('settings.battle.title'));
@@ -1149,12 +1203,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
+      // (a chunk that did not arrive is not asked for again in this document: the press reloads the page once online)
+      if (pressFailed(editHud)) return;
       editHud.disabled = true;
       try {
         const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
         if (open) openHudEditor(editHud);
       } catch {
         editHud.textContent = t('hudEditor.loadError');
+        markLoadFailed([editHud], t('hudEditor.loadError'));
       } finally { editHud.disabled = false; }
     });
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
@@ -1274,7 +1331,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
     // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); });
+    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); })
+      .catch(() => { /* the crew menu keeps its items without their flags */ });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
@@ -1857,9 +1915,20 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     root.classList.toggle('paused', open && isGamePaused());
   }
 
+  // a transient surface (components/surfaceStack.ts), modal: opening it closes whatever the page has open (a picker, a menu),
+  // its own menus stand on it, and Escape is the stack's, which closes the top one; a key being bound or a conflict to
+  // clear keeps its Escape (onPanelKey)
+  const surface: TransientSurface = {
+    id: 'settings',
+    element: () => root.querySelector('.cot-set-panel'),
+    close: () => api.close(),
+    modal: true,
+    keepsEscape: () => !!capture || !!conflict,
+  };
   function openPanel() {
     if (open) return;
     open = true;
+    openSurface(surface);
     hideResumeVeil(); // the panel supersedes the click-to-resume veil
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
@@ -1899,6 +1968,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     open = false;
+    closeSurface(surface);
     root.classList.remove('open');
     root.classList.remove('paused'); // PAUSE: tag never outlives the panel
     window.removeEventListener('keydown', onPanelKey, true);
@@ -2100,10 +2170,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const kbds = actionIds
       .map((action) => {
         const cap = bindLabel(action);
-        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}">${cap}</kbd>`;
+        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}" data-key-cap="${action}">${cap}</kbd>`;
       })
       .join('');
     return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;
+  }
+  /** A rebind while the strip shows (mid-battle from the pause menu): its caps name the new keys. */
+  function refreshHintCaps(): void {
+    for (const kbd of hints.querySelectorAll<HTMLElement>('kbd[data-key-cap]')) {
+      const cap = bindLabel(kbd.dataset.keyCap as ActionId);
+      if (kbd.textContent !== cap) kbd.textContent = cap;
+      kbd.classList.toggle('cjk', CJK_CAP.test(cap));
+    }
   }
 
   // First-battle hints (247; owner 2026-10-25): a keyboard and mouse player's first HINT_BATTLES battles show the strip at
@@ -2197,10 +2275,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     showHints,
   };
 
-  // Let the HUD sync its hotkey labels to the persisted bindings at boot, and
-  // the audio graph its channel levels (the graph also reads cot.settings.v1
-  // directly at build time — this covers a graph that already exists).
-  emitBindings();
+  // Let the audio graph sync its channel levels (the graph also reads cot.settings.v1 directly at build time — this
+  // covers a graph that already exists).
   emitVolumes();
   emitPerfMeter(); // HUD net readout follows the persisted preference (default on)
   emitDirectionalHitValues(); // exact incoming values are persisted and default off

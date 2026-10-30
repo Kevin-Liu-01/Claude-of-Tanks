@@ -10,11 +10,9 @@
 .cot-td{display:flex;flex-direction:column;gap:8px;min-width:0;color:var(--ink-1);--tdl-tone:var(--ink-3);
   font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-data)}
 .cot-td__bar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px}
-.cot-td__tabs{display:flex;gap:2px;padding:2px;border-radius:var(--r1);background:var(--surface-raised)}
-.cot-td__tab{min-height:28px;padding:0 10px;border:0;border-radius:var(--r1);background:none;color:var(--ink-2);
-  font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);cursor:pointer}
-.cot-td__tab[aria-pressed='true']{background:var(--surface-menu);color:var(--ink-1);box-shadow:var(--ring-2)}
-.cot-td__tab:focus-visible,.cot-td__row:focus-visible,.cot-td__fit:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* the views and the kinds are the kit's segmented controls (261 census) */
+.cot-td__tabs{display:flex}
+.cot-td__row:focus-visible,.cot-td__fit:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-td__stage{position:relative;overflow:hidden;aspect-ratio:var(--td-aspect,3/1);border-radius:var(--r1);
   background:var(--surface-page);touch-action:pan-y}
 .can-zoom .cot-td__stage{cursor:zoom-in}

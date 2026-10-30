@@ -42,6 +42,8 @@ export interface DestructiblePropType {
   r: number;
   h: number;
   build: PropBuilder;
+  /** (260) `build` with checkpoints in its bake (the parked vehicles: civilianVehicleKit.ts), for the props build's pacing */
+  buildSteps?: (rng: Rng) => Generator<void, THREE.BufferGeometry, void>;
   broken: PropBuilder | null;
   /**
    * (perf-248) `broken`'s draws from the destructible stream, the body left to a job the broken-vehicle pool builds off

@@ -117,7 +117,12 @@ assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return n
 assert.match(heroReel, /shot\.classList\.toggle\('is-on', shot\.dataset\.reelShot === video\.dataset\.shot\)/, 'the caption turns with its clip');
 const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
 assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
-assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) void import\('\.\/homePage\.ts'\);/, 'the landing\'s behaviour loads with the landing alone');
+// (264, load-failure-264) a chunk that did not arrive is not asked for again in this document: the landing asks through
+// the kit's importWhenOnline, and on a failure its trailer openers keep the kit's error state (their press reloads once online)
+assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) \{\n  importWhenOnline\(\(\) => import\('\.\/homePage\.ts'\), \(\) => \{/,
+  'the landing\'s behaviour loads with the landing alone, asked once online');
+assert.match(publicPages, /markLoadFailed\(openers\);\n    for \(const opener of openers\) opener\.addEventListener\('click', \(\) => pressFailed\(opener\)\);/,
+  '... and a failed landing marks its trailer openers, whose press reloads');
 
 // the features: in their rows, each its poster (lazy, sized, described) and, where the slot has motion, its loop
 const featureMarkup = home.match(/<!--home:features-->([\s\S]*?)<!--\/home:features-->/)?.[1] || '';
@@ -145,7 +150,9 @@ const versus = JSON.parse(await readFile(resolve(root, 'public/media/versus-r1/m
 // the lead uses its 1280, 1920 and 3840 rungs, a small tile its 640, 1280 and 1920 (tools/home-premiere.mjs BENTO_RUNGS)
 const bentoRungs = (rungs, lead) => [...rungs].sort((a, b) => a.width - b.width).filter((rung) => (lead ? [1280, 1920, 3840] : [640, 1280, 1920]).includes(rung.width));
 const bento = (name) => home.match(new RegExp(`<!--home:${name}-->([\\s\\S]*?)<!--/home:${name}-->`))?.[1] || '';
-for (const [name, rungsOf] of [['duels', versus.featured.map((id) => versus.items.find((item) => item.id === id).rungs)], ['fleet', reel.fleetStrip.map((entry) => entry.rungs)]]) {
+// (a featured still that one of the media lane's home-r2 duels moves shows that duel's poster, the loop's first frame)
+const duelStill = (id) => reel.duels?.[id]?.poster.rungs ?? versus.items.find((item) => item.id === id).rungs;
+for (const [name, rungsOf] of [['duels', versus.featured.map(duelStill)], ['fleet', reel.fleetStrip.map((entry) => entry.rungs)]]) {
   const tiles = [...bento(name).matchAll(/<figure class="(bento__tile[^"]*) cot-c-media">([\s\S]*?)<\/figure>/g)];
   assert.equal(tiles.length, rungsOf.length, `${name}: one tile per still`);
   tiles.forEach(([, cls, body], i) => {
@@ -153,7 +160,7 @@ for (const [name, rungsOf] of [['duels', versus.featured.map((id) => versus.item
     const srcset = body.match(/ srcset="([^"]+)"/)?.[1] ?? '';
     assert.deepEqual(srcset.split(', ').map((entry) => entry.split(' ')[0]), bentoRungs(rungsOf[i], i === 0).map((rung) => rung.path), `${name} ${i + 1}: the rungs its size can use`);
     assert.match(body, /width="1920" height="1080" alt="" loading="lazy" decoding="async">/, `${name} ${i + 1}: sized and lazy, named by its caption`);
-    assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b[^>]*>[^<]+<\/b><span class="bento__where"><span data-i18n="/, `${name} ${i + 1}: named, the way to its vehicle`);
+    assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><span class="bento__words"><b[^>]*>[^<]+<\/b><span class="bento__where"><span data-i18n="/, `${name} ${i + 1}: named, the way to its vehicle`);
   });
 }
 
@@ -163,7 +170,7 @@ assert.deepEqual(clipTiles.map((m) => m[1]), reel.clips.map((clip) => clip.id), 
 for (const [, id, body] of clipTiles) {
   assert.match(body, /<img [^>]*width="1280" height="720" alt="" loading="lazy" decoding="async">/, `${id}: its poster is sized and lazy`);
   assert.match(body, /<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/, `${id}: its loop waits for the player`);
-  assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b data-i18n="home\.hero\.shot[A-Za-z]*"/, `${id}: named, the way to its vehicle`);
+  assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><span class="bento__words"><b data-i18n="home\.hero\.shot[A-Za-z]*"/, `${id}: named, the way to its vehicle`);
 }
 
 console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features, the versus twelve, the ${reel.clips.length} battle clips, the fleet strip and the landing-r1 picks pass`);

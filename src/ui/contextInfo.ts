@@ -182,6 +182,7 @@ export function createInfoButton({
   const ensureModal = (): ModalController => {
     if (modal) return modal;
     modal = createModal({
+      surface: 'context-info',
       title: title || t('contextInfo.moreInfo'),
       eyebrow: resolveValue(eyebrow, t('contextInfo.eyebrowDefault')),
       subtitle: resolveValue(subtitle, ''),

@@ -41,9 +41,10 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.deepEqual(
     [...hullBounds.min.toArray(), ...hullBounds.max.toArray()]
       .map((value) => Number(value.toFixed(6))),
-    // 2026-10-08 (the tank-accessories lane, round 5): the hull's top is the deck tow cable's crown, and the cable is
-    // laid wire rope with spliced eyes now (round 5's props batch 2b), its strands 1.2 mm proud of the old smooth rod
-    [-halfWidth, 0, -3.565, halfWidth, 2.204529, 3.44],
+    // 2026-10-08 (the tank-accessories lane, round 5): the hull's top was the deck tow cable's crown. Release 240 laid the
+    // engine-deck kit under the turret's flat 2.121 floor (7594a7c3c2: the cable a flat run on the bare deck, the vent
+    // slats 2.115) and left this pin at the arched cable's 2.2045; the top is the stern vent slats' 2.115 (261 re-pin).
+    [-halfWidth, 0, -3.565, halfWidth, 2.115, 3.44],
     `${id} driver-roof seating must preserve the hull and authored cage envelope`,
   );
   const driverSeat = hull.userData.pl01DriverRoofSeat;
@@ -96,65 +97,33 @@ for (const id of ['pl01', 'pl01_105']) {
     cupolas: 2, periscopes: 10, lights: 4, machineGuns: 2,
     allEquipmentSeated: true,
   }, `${id} must carry the corrected roof suite`);
-  const noseSeat = turret.userData.pl01NoseGunSeat;
-  assert.equal(noseSeat?.revision, 'aligned-r1',
-    `${id} nose cap must expose its gun-seat revision`);
-  assert.ok(near(noseSeat.rearTopWorldY, 2.5452)
-    && near(noseSeat.frontTopWorldY, 2.38104)
-    && near(noseSeat.gunAxisWorldY, 2.38104)
-    && near(noseSeat.frontTopWorldY, noseSeat.gunAxisWorldY),
-  `${id} nose cap must terminate on the raised gun axis`);
-  assert.equal(noseSeat.connected, true,
-    `${id} nose cap and gun sleeve must remain connected`);
-  assert.deepEqual(gun.userData.pl01MantletReceipt, {
-    revision: 'continuous-cheek-loft-r2', axisWorldY: 2.38104,
-    coverMinWorldY: 2.14776, coverMaxWorldY: 2.5452,
-    turretRoofWorldY: 2.69208,
-    throatRearZ: 0.43, throatBottomY: -0.23328,
-    throatShoulderY: -0.03456, throatTopY: 0.16416,
-    throatHalfWidths: [0.34, 0.28, 0.22],
-    stationDepths: [0.43, 1.18, 2.18, 3.25],
-    turretNoseOverlapM: 0.14, contactGapM: 0,
-    singleClosedHousing: true, aligned: true,
-  }, `${id} gun-root prism must fit within the rebuilt turret envelope`);
-  assert.ok(gunMount?.isMesh,
-    `${id} must retain one merged pitch-owned gun housing`);
-  gunMount.geometry.computeBoundingBox();
-  const gunMountBounds = gunMount.geometry.boundingBox;
-  assert.ok(near(gunMountBounds.min.x, -0.34)
-    && near(gunMountBounds.min.y, -0.23328)
-    && near(gunMountBounds.min.z, 0.43),
-  `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
-  // 2026-10-18 (227 gun-gaps, r4): behind that profile a dark round cradle tube on the gun line runs from 2 cm inside
-  // the ring to z 0.30 (88 mm radius at the ring, 74 mm at its rear), so at +20 deg no notch opens behind the raised
-  // housing; at rest and at full depression it lies inside the nose ridge.
-  const cradle = gun.getObjectByName('gunMountDark');
-  assert.ok(cradle?.isMesh, `${id} must carry the gun's dark cradle stock`);
-  cradle.geometry.computeBoundingBox();
-  const cradleBounds = cradle.geometry.boundingBox;
-  assert.ok(near(cradleBounds.min.z, 0.30), `${id} cradle tube reaches z 0.30 behind the housing (${cradleBounds.min.z})`);
+  // 261 (owner 2026-10-27, "make the pl-01's gun and gun assembly properly match with turret and gun housing onnn it ...
+  // two varieties for the 105 and normal versions"): the nose cap (aligned-r1) and the one six-facet housing that wrapped
+  // over it (continuous-cheek-loft-r2) are retired. Each fit pitches in its own turret-face housing (pl01GunAssembly.ts),
+  // its rear an arc about the trunnion between the fixed drum and the cheeks; pl01GunHousing.selftest.mjs measures the
+  // fit at every pitch. Here: the receipt, and the rear seated on its arc.
+  assert.equal(turret.userData.pl01NoseGunSeat, undefined, `${id} carries no retired nose cap`);
+  assert.equal(gun.userData.pl01MantletReceipt, undefined, `${id} carries no retired single housing`);
+  assert.deepEqual(gun.userData.pl01GunHousingReceipt, {
+    revision: id === 'pl01_105' ? 'cv90105-shield-r1' : 'mspo2013-shroud-r1',
+    mantletArcM: 0.5038, drumR: 0.5, cheekR: 0.58, halfWidth: 0.33,
+    slotHalfWidth: id === 'pl01_105' ? 0.206 : 0.286, lowDeg: -24, topDeg: 38.585, browY: 0.62288,
+    rootHalfWidth: id === 'pl01_105' ? 0.2 : 0.28,
+    stationDepths: id === 'pl01_105' ? [0, 0.7, 0.92] : [0, 0.78, 1.7, 2.7, 3.38, 3.56],
+    muzzleZ: 4.71,
+  }, `${id} gun fit and its turret-face housing`);
+  assert.ok(near(turret.userData.pl01RoofLocalY + 0.0008, gun.userData.pl01GunHousingReceipt.browY, 1e-5),
+    `${id} housing brow sits on the roof plane`);
+  assert.ok(gunMount?.isMesh, `${id} must retain one merged pitch-owned gun housing`);
   const housingPositions = gunMount.geometry.getAttribute('position');
-  const rearProfile = new Set();
+  let rearVertices = 0;
   for (let index = 0; index < housingPositions.count; index++) {
-    if (!near(housingPositions.getZ(index), 0.43)) continue;
-    rearProfile.add(`${housingPositions.getX(index).toFixed(5)},${housingPositions.getY(index).toFixed(5)}`);
+    const y = housingPositions.getY(index), z = housingPositions.getZ(index);
+    if (z > 0.6) continue;
+    rearVertices += 1;
+    assert.ok(Math.hypot(y, z) > 0.5038 - 1e-4, `${id} gun housing rear vertex (${y.toFixed(3)}, ${z.toFixed(3)}) inside its arc`);
   }
-  for (const point of [
-    '-0.34000,-0.23328', '0.34000,-0.23328',
-    '-0.28000,-0.03456', '0.28000,-0.03456',
-    '-0.22000,0.16416', '0.22000,0.16416',
-  ]) {
-    assert.ok(rearProfile.has(point),
-      `${id} gun housing rear profile must contain turret-throat point ${point}`);
-  }
-  for (const depth of [1.18, 2.18, 3.25]) {
-    let stationVertices = 0;
-    for (let index = 0; index < housingPositions.count; index++) {
-      if (near(housingPositions.getZ(index), depth)) stationVertices += 1;
-    }
-    assert.ok(stationVertices >= 12,
-      `${id} gun housing must carry a connected faceted station at z ${depth}`);
-  }
+  assert.ok(rearVertices >= 24, `${id} gun housing rear is laid on its arc (${rearVertices} vertices)`);
 
   const trackBands = [];
   tank.root.traverse((node) => {

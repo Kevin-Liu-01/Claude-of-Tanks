@@ -1,6 +1,8 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
+import { wireRoving } from '../ui/components/components.ts';
+import { createSelectPickerMenu } from '../ui/selectPickerMenu.ts';
 
 export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add'] as const);
 type MarkupOperation = (typeof MARKUP_OPERATIONS)[number];
@@ -386,6 +388,11 @@ export function createSurfaceMarkup({
   const operationButtons = [
     ...root.querySelectorAll<HTMLButtonElement>('[data-markup-operation]'),
   ];
+  // the selection's scope (two values) is the kit's segmented control, the primitive (six) the kit's picker menu over its
+  // <select> (2026-10-27, the dropdown audit: both were raw selects)
+  let scope = 'patch';
+  wireRoving($<HTMLElement>('#markupScope'), (value) => { scope = value; });
+  createSelectPickerMenu($<HTMLSelectElement>('#markupPrimitive'), { id: 'markup-primitive' });
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const materials = new Map<string, THREE.MeshBasicMaterial>();
@@ -537,7 +544,7 @@ export function createSurfaceMarkup({
     const annotation = {
       id: `surface-${annotationSequence++}`,
       operation,
-      scope: $('#markupScope').value,
+      scope,
       note: $('#markupNote').value.trim(),
       ownership: ownershipOf(object),
       rigPath: rigPath(object),
@@ -704,7 +711,7 @@ export function createSurfaceMarkup({
     }
     if (!additive) clearAnnotations();
     const angle = THREE.MathUtils.clamp(Number($('#markupPatchAngle').value) || 14, 1, 45);
-    const faces = $('#markupScope').value === 'patch'
+    const faces = scope === 'patch'
       ? coplanarPatch(hit.object.geometry, hit.faceIndex, angle)
       : [hit.faceIndex];
     const annotation = recordFromHit(hit, faces);

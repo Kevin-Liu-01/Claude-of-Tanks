@@ -5,17 +5,15 @@ import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts
 
 // (264: the 2A4, 2A4 V, 2A4M, 2A4 OTCO, Improved and Strv 121 left the A5/A6 arrowhead for the 2A4 turret's square block
 // or 2A6-look wedge, profiles/leopard2A4Family.ts; their front is checked at the end: only that it is no arrowhead)
+// (264: the 2A6 UA took its own build on the source-measured 2A6, profiles/leopardA6Ua.ts: the arrowhead checks hold
+// no tank until the old builder retires)
 const modernProfiles = new Map([
-  ['leo2a6_ua', 'leopard-2a6m'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a6_ua',
 ]);
 const compoundTerminalIds = new Set([
-  'leo2a6_ua',
 ]);
 const compoundTerminalExpectations = new Map([
-  ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
 ]);
 
 for (const id of ['leo2a4_v', 'leo2a4m']) {

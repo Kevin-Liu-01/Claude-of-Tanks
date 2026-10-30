@@ -36,9 +36,10 @@ type WheelDonorId =
   | 'c1_ariete_proto_serie1'
   | 'leclerc_sxxi' | 'amx40_proto'
   | 'challenger3_proto' | 'challenger2e' | 'warrior_tes_h'
-  | 't90_1992' | 't90am' | 'object148_proto' | 'bmp3m_dragun125'
+  | 't90_1992' | 't90am' | 'object148_proto' | 'bmp3m_dragun125' | 't64bm1m'
   | 'kf51_evo' | 'leo2a4' | 'kf41_lynx'
-  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3';
+  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3'
+  | 'type59';
 
 /** Road-wheel face constructions; nationWheelConstructions.ts builds the ones a non-donor hull consumes. */
 export type WheelConstructionId =
@@ -51,9 +52,10 @@ export type WheelConstructionId =
   | 'ariete-recessed-dish'
   | 'leclerc-stepped-plate' | 'amx40-pressed-face'
   | 'challenger-hollow-paired' | 'warrior-plain-web'
-  | 't90-pressed-source-face' | 't14-armoured-hub' | 'dragun-rolled-lip'
+  | 't90-pressed-source-face' | 't14-armoured-hub' | 'dragun-rolled-lip' | 't64-steel-tyred-dual'
   | 'kf51-forged-face' | 'leo2a6-paired-dish' | 'lynx-stamped-web'
-  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke';
+  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke'
+  | 't54-starfish-spoke';
 
 interface NationWheelDonor {
   readonly donor: WheelDonorId;
@@ -65,8 +67,9 @@ interface NationWheelDonor {
 }
 
 export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Object.freeze({
-  ztz100: Object.freeze({ donor: 'ztz100', self: ['ztz100'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
-    note: 'Objects 7/17 raised hub, recessed web and curved rim shoulder over paired tire bands, with the twelve hub hexes and eight web fasteners (ztz100X.ts).' }),
+  // 262: the ZTZ-20 family hull (ztz20Family.ts) draws the construction natively for all four stages
+  ztz100: Object.freeze({ donor: 'ztz100', self: ['ztz100', 'ztz20', 'ztz20_prototype', 'ztz100_prototype'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
+    note: 'Objects 7/17 raised hub, recessed web and curved rim shoulder over paired tire bands, with the twelve hub hexes and eight web fasteners (ztz20Family.ts).' }),
   type100: Object.freeze({ donor: 'type100', self: ['type100'], pattern: 'pressed-six', construction: 'type100-paired-pressed',
     note: 'Two pressed six-rib dishes and two tires around a real guide channel (type100RunningGear.ts).' }),
   merkava4b: Object.freeze({ donor: 'merkava4b', self: ['merkava4b'], pattern: 'deep-dish-eight', construction: 'merkava-deep-dish',
@@ -95,7 +98,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Stepped steel plate and grooved paired tires measured from the Leclerc source (leclercXWheels.ts); XLR and S2 share the wheel.' }),
   amx40_proto: Object.freeze({ donor: 'amx40_proto', self: ['amx40'], pattern: 'scalloped-six', construction: 'amx40-pressed-face',
     note: 'Fleet scalloped disc behind the AMX-40 X pressed face (rim ring, six ribs and bolts) over an open tire annulus (amx40X.ts).' }),
-  challenger3_proto: Object.freeze({ donor: 'challenger3_proto', self: ['challenger3_proto', 'challenger3'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
+  challenger3_proto: Object.freeze({ donor: 'challenger3_proto', self: ['challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Hollow paired rubber-tyred halves with eight hub fasteners as insets (hollowRoadWheelStock.ts); the Challenger 2 and 3 share this construction and differ only in size.' }),
   challenger2e: Object.freeze({ donor: 'challenger2e', self: ['challenger2', 'challenger2e', 'fv4034', 'ua_challenger2'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Same hollow paired construction as the Challenger 3; every other UK MBT hull draws it.' }),
@@ -107,11 +110,15 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet pressed six-rib disc under the T-90 X source-pressed face: six-hole plate, rim ring, hub and bolt heads (t90X.ts).' }),
   object148_proto: Object.freeze({ donor: 'object148_proto', self: ['object148_proto', 't14_armata'], pattern: 'armored-hub-six', construction: 't14-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (t14X.ts draws the generic stock); no other Russian next-generation MBT hull exists.' }),
+  // 262 (owner 2026-10-27, via Main: the true T-64s get "the T-64's distinctive small road wheels, six a side, with
+  // their internal shock absorption, and the thin track"): the T-64 family draws its own construction natively.
+  t64bm1m: Object.freeze({ donor: 't64bm1m', self: ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur'], pattern: 'pressed-eight', construction: 't64-steel-tyred-dual',
+    note: 'The T-64 dual road wheel: steel-tyred pressed halves on an internal rubber ring, twelve pressed dimples round a six-bolt hub (t64RunningGear.ts).' }),
   bmp3m_dragun125: Object.freeze({ donor: 'bmp3m_dragun125', self: ['bmp3m_dragun125'], pattern: 'armored-hub-six', construction: 'dragun-rolled-lip',
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),
   kf51_evo: Object.freeze({ donor: 'kf51_evo', self: ['kf51_evo', 'kf51_u', 'kf51_panther'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
     note: 'Fleet plain dish under the Panther forged face stack (leopard.ts); the KF51 family is the only German next-generation MBT hull.' }),
-  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
+  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6', 'leo2a6_ua'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
   kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),
@@ -122,6 +129,10 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet cast five-spoke disc under the Sheridan pressed rim, dish well, hub drum and cap (sheridan.ts).' }),
   m60a3: Object.freeze({ donor: 'm60a3', self: ['m60a3'], pattern: 'cast-five-spoke', construction: 'm60a3-cast-spoke',
     note: 'Fleet cast five-spoke disc (patton.ts); owner 2026-09-22: the Sabra takes it, and it fits the Patton-era USA hulls better than the Abrams disc.' }),
+  // 262: the T-54/T-55 family's open five-spoke "starfish" wheel; consumed through WHEEL_STANDARD_EXCEPTIONS while
+  // T54_STARFISH_WHEELS holds (no self ids, so both hulls draw it through the one standard path)
+  type59: Object.freeze({ donor: 'type59', self: [], pattern: 'christie-six', construction: 't54-starfish-spoke',
+    note: 'The T-54/T-55 family cast dished wheel with its windows between the arms, on its thick tyre (t54Family.ts), the period exception the Type 59 and the T-55A draw.' }),
 });
 
 export const WHEEL_DONOR_IDS = Object.freeze(Object.keys(WHEEL_DONORS) as WheelDonorId[]);
@@ -207,6 +218,13 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
 
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 
+/**
+ * Release 262 (owner 2026-10-28, "Allow period wheels"): the Type 59 and the T-55A ride the T-54/T-55 "starfish"
+ * five-spoke wheel instead of their national standards (China's ZTZ-100 web, Russia's T-90 face); modern tanks keep the
+ * national standard. One switch: false returns both to the standard.
+ */
+export const T54_STARFISH_WHEELS = true;
+
 /** Per-hull redirects that the nation rule alone would get wrong, each with its reason. */
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
   pt91m: { donor: 't90_1992', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
@@ -215,17 +233,18 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
-  t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
+  t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
   t84: { donor: 't90_1992', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
-  t84bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84 Oplot-M base hull → Russia older T-series donor' },
+  t84bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84U Oplot base hull → Russia older T-series donor' },
+  bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84BM Oplot-M (T-80UD hull) → Russia older T-series donor' },
+  bm_oplot_t: { donor: 't90_1992', reason: 'Ukraine: T-84BM Oplot-T (T-80UD hull) → Russia older T-series donor' },
   ua_m2a3_bradley: { donor: 'm551a1_tts', reason: 'Ukraine: Bradley base hull → USA light donor' },
   bmp3_rok: { donor: 'bmp3m_dragun125', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
   k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
   griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
-  leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
   // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type
@@ -233,6 +252,10 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
   christian2: { donor: 'leo2a4', reason: 'release 262: the Danish Christian II concept rides a Leopard 2-pattern hull and seven-wheel gear (Denmark has no wheel set) → Germany MBT donor' },
+  ...(T54_STARFISH_WHEELS ? {
+    type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
+    t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },
+  } : {}),
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

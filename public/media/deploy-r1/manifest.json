@@ -10,7 +10,7 @@
   "width": 640,
   "height": 360
  },
- "count": 33,
+ "count": 34,
  "items": [
   {
    "id": "standard",
@@ -357,20 +357,30 @@
    "id": "proving_ground-tile",
    "file": "proving_ground-480.webp",
    "mode": "proving_ground",
-   "source": "in-engine battle capture, HUD hidden (battle-243b/deploy/proving_ground #1, 3840x2160)",
+   "source": "in-engine battle capture on main ffe6b0576b (release 259), HUD hidden: a Leclerc fires on the armour plate rack from the firing line of the Kestrel Airfield range, the lane boards 100 to 650 m and their target hulls down the runway, the map ambience off (airfield, day, player leclerc_sxxi; battle-259s/deploy/proving_ground #14, 3840x2160)",
    "capture": {
-    "run": "battle-243b",
+    "run": "battle-259s",
     "slot": "deploy/proving_ground",
-    "candidate": 1,
-    "crop": [
-     480,
-     378,
-     2880,
-     1620
-    ]
+    "candidate": 14,
+    "crop": null
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "proving_ground-panel",
+   "file": "proving_ground-1600.webp",
+   "mode": "proving_ground",
+   "source": "in-engine battle capture on main ffe6b0576b (release 259), HUD hidden: a Leclerc fires on the armour plate rack from the firing line of the Kestrel Airfield range, the lane boards 100 to 650 m and their target hulls down the runway, the map ambience off (airfield, day, player leclerc_sxxi; battle-259s/deploy/proving_ground #14, 3840x2160)",
+   "capture": {
+    "run": "battle-259s",
+    "slot": "deploy/proving_ground",
+    "candidate": 14,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 185348
   },
   {
    "id": "op-01",

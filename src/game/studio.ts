@@ -3996,7 +3996,20 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     productionLoading = true;
     try {
       await setMap(preset.map);
-      const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z));
+      // each act's camera sees its tank: a rig a building, a roof or a bank stands in front of (or around) gives way to
+      // another (261: the sequences' generic rigs met the villages the takes filmed in)
+      const sees = (from: readonly number[], to: readonly number[]): boolean => {
+        const w = getWorld();
+        if (!w) return true;
+        _v1.set(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+        const distance = _v1.length();
+        if (distance < 2) return true;
+        _v1.multiplyScalar(1 / distance);
+        // short of the tank's own ground, and back from the tank (a camera inside a building's shell sees its walls)
+        if (w.raycast(_v2.set(from[0], from[1], from[2]), _v1, distance - 1.5)) return false;
+        return !w.raycast(_v3.set(to[0], to[1], to[2]), _v1.negate(), distance - 0.5);
+      };
+      const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z), sees);
       // Built from this build's presets: current ids, stamped so load() never renames them (SSOT 2.19).
       const result = await load({ ...recipe, ...TANK_IDS.stamp() });
       selectActor('lead');
@@ -5816,7 +5829,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!active || exiting) return;
     exiting = true;
     exitRun = transition.run(() => doExit(), {
-      kicker: 'Scene Studio', title: 'Garage',
+      kicker: t('transition.kicker.sceneStudio'), title: t('transition.title.garage'),
       mapId: getWorld()?.mapId,
       progress: false, minShowMs: 250,
     }).finally(() => { exiting = false; exitRun = null; });

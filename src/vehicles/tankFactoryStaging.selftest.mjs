@@ -302,8 +302,13 @@ try {
   capture = undefined;
   timed = drain(candidate.createTankSteps('m1a1', null, baseOpts), () => { clock += 17; yields++; if (!capture) coreYields++; });
   equal(timed.root.userData.decorBuildMs, 0, 'scheduled pauses are not mislabeled as synchronous decoration cost');
-  equal(timed.root.userData.decorYieldMs, 17 * (yields - coreYields - 1), 'only nested decoration waits enter its wait receipt');
-  equal(timed.root.userData.decorCheckpointCount, yields - coreYields - 1, 'first completed-core pause is not decoration work');
+  // (boot-261) the finishers after the decoration pause at their own checkpoints, kept in tailBuildTiming
+  const tail = timed.root.userData.tailBuildTiming;
+  check(tail.checkpoints > 0, 'the finishers after the decoration yield at their own checkpoints');
+  equal(tail.waitMs, 17 * tail.checkpoints, 'the finishers keep their own checkpoint waits');
+  equal(tail.shareFinishedAt - tail.decorFinishedAt, 0, 'finisher checkpoint waits never enter the finisher stages');
+  equal(timed.root.userData.decorYieldMs, 17 * (yields - coreYields - 1 - tail.checkpoints), 'only nested decoration waits enter its wait receipt');
+  equal(timed.root.userData.decorCheckpointCount, yields - coreYields - 1 - tail.checkpoints, 'first completed-core pause is not decoration work');
   const core = timed.root.userData.coreBuildTiming;
   check(coreYields > 0, 'the core yields at its stage checkpoints (click-perf-244)');
   equal(core.finishedAt - core.startedAt, 0, 'core stage checkpoint waits never enter the core receipt');

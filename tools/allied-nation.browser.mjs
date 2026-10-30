@@ -21,9 +21,9 @@ try{
    await page.waitForFunction(()=>!!window.__MOBILE_SURFACES,{timeout:60000});
    await page.evaluate(()=>localStorage.removeItem('cot.game.teams.v1'));
    await page.click('.cot-battle-mode');
-   const trigger=await page.waitForSelector('[data-mode-field="alliedNation"] + button',{visible:true});
+   const trigger=await page.waitForSelector('[data-mode-field="alliedNation"] + * .cot-c-menu__trigger',{visible:true});
    await trigger.scrollIntoView();await trigger.click();
-   const option=await page.waitForSelector('.cot-custom-select-list:popover-open [data-value="player"]',{visible:true});
+   const option=await page.waitForSelector('.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="player"]',{visible:true});
    const bounds=await option.boundingBox();
    assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=width+1&&bounds.y+bounds.height<=height+1,'option fits viewport');
    if(width<600)assert.ok(bounds.height>=44,'touch target');
@@ -34,9 +34,9 @@ try{
    await page.reload();await page.waitForFunction(()=>!!window.__MOBILE_SURFACES,{timeout:60000});
    await page.click('.cot-battle-mode');
    assert.equal(await page.$eval('[data-mode-field="alliedNation"]',el=>el.value),'player','saved after reload');
-   const saved=await page.$('[data-mode-field="alliedNation"] + button');await saved.scrollIntoView();
+   const saved=await page.$('[data-mode-field="alliedNation"] + * .cot-c-menu__trigger');await saved.scrollIntoView();
    await page.screenshot({path:resolve(out,`${width}x${height}.png`)});
-   await saved.click();await page.click('.cot-custom-select-list:popover-open [data-value=""]');
+   await saved.click();await page.click('.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id=""]');
    assert.equal(await page.$eval('[data-mode-field="alliedNation"]',el=>el.value),'','mixed can be restored');
    assert.deepEqual(errors,[]);await page.close();
    console.log(`allied-nation: ${width}x${height} custom selection, persistence, team-size change, reset passed`);

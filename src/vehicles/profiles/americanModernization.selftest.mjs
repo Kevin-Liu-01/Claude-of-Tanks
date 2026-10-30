@@ -107,9 +107,14 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
     // 2026-10-08 (tank-accessories round 5: the American M2 is the fleet's shared Browning construction at true scale;
     // wave 255 on the M60A1 read its gunmetal chest as part of a "plain dark block"): the can takes the solid fitting
     // paint every shared gun's can takes (browningMachineGunStandard), never the host camouflage.
-    assert.equal(ammoBox?.userData.fittingSlot, 'ammoCan',
-      `${id}: ammunition can is the shared construction's fitting-paint can`);
-    assert.ok((ammoBox?.material?.map ?? null) === null, `${id}: ammunition can does not inherit the camouflage`);
+    // 263 (integrator): patton-family-262 rebuilt the M46 and M47 to their gate reference models, whose roof M2s carry
+    // no can (pattonCast roofM2 ammo: false, the fitting's hasConnectedFeed false); a gun with its can keeps the rule
+    if (gun.userData.hasConnectedFeed === false) assert.equal(ammoBox, undefined, `${id}: a gun without its feed draws no can`);
+    else {
+      assert.equal(ammoBox?.userData.fittingSlot, 'ammoCan',
+        `${id}: ammunition can is the shared construction's fitting-paint can`);
+      assert.ok((ammoBox?.material?.map ?? null) === null, `${id}: ammunition can does not inherit the camouflage`);
+    }
     assert.equal(gun.children.some((object) => object.userData.fittingSlot === 'detail'), false,
       `${id}: no M2 component is routed through camouflaged fitting paint`);
     gun.traverse((object) => {
@@ -241,8 +246,11 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
   assert.ok(loader[0].userData.remoteControlled && loader[0].getObjectByName('auxiliaryWeaponPitch'), `${id}: the loader's gun works`);
   assert.ok(loader[0].position.x > 0,
     `${id}: Browning stays on the right in a head-on view`);
-  const paintedShield = loader[0].children.find(
-    (object) => object.userData.fittingSlot === 'hull');
+  // (264: the shield rides the station's pitch group since the riding cradle, 230 10288f4e6d: found by traversal)
+  const shields = [];
+  loader[0].traverse((object) => { if (object !== loader[0] && object.userData.fittingSlot === 'hull') shields.push(object); });
+  assert.ok(shields.length <= 1, `${id}: one painted Browning shield at most (${shields.length})`);
+  const paintedShield = shields[0];
   if (expectedShield === 'open') {
     assert.ok(paintedShield === undefined, `${id}: open Browning does not invent an armor shield`);
   } else {

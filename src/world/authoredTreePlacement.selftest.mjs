@@ -195,8 +195,11 @@ function dropHedgeLikeRows(before, after) {
   const refused = after.group.userData.hedgeTrees?.refused?.authored ?? 0;
   if (!before.group.userData.hedgeTrees) { assert.equal(refused, 0); return 0; }
   const firstHedge = before.trees.findIndex((t) => t.hedgeRow), base = firstHedge < 0 ? before.trees.length : firstHedge;
-  assert.ok(after.trees.slice(base).every((t) => t.hedgeRow) && !after.trees.slice(0, base).some((t) => t.hedgeRow),
-    'the hedge trees come last in both builds');
+  // (the maps lane 228's civic trees are planted after every other placement, the hedges' too, on a stream of their own:
+  // vegetation.ts plantCivicTrees; 2026-10-28, the world-reds lane: Polders' 11 since 230)
+  const tail = after.trees.slice(base), firstCivic = tail.findIndex((t) => t.civic), hedges = firstCivic < 0 ? tail : tail.slice(0, firstCivic);
+  assert.ok(hedges.every((t) => t.hedgeRow) && (firstCivic < 0 || tail.slice(firstCivic).every((t) => t.civic && !t.hedgeRow))
+    && !after.trees.slice(0, base).some((t) => t.hedgeRow || t.civic), 'the hedge trees come last in both builds, but for the civic trees after them');
   const moved = [];
   for (let i = 0; i < base; i++) {
     const a = before.trees[i], b = after.trees[i];

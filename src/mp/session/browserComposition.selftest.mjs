@@ -723,6 +723,33 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   }
 }
 
+// ------------------------------------------------------------ the reveal's programs receipt (2026-10-27, the room-stalls lane)
+// The rooms census found the first live frame after a room entry linking the viewer's depth programs (580-590 ms): the
+// trace names every program the renderer gained after the black watchdog, through the reveal, the fade and the first
+// frames after it. A program the watchdog made belongs to the covered warm, and one the renderer released is not counted.
+{
+  const live = [{ type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,0,7,false' }, { type: 'ShaderMaterial', name: 'Released' }];
+  const reveal = createHarness({ blackWatchdog: async () => { live.push({ name: 'Watchdog' }); return { failed: false }; } });
+  reveal.ports.presentation.programs = () => live;
+  const watch = { origins: [], stopped: 0, stop() { watch.stopped++; } };
+  reveal.ports.presentation.watchProgramOrigins = () => watch;
+  const primeReveal = reveal.lifecycle.primeReveal;
+  reveal.lifecycle.primeReveal = async () => { live.splice(1, 1); live.push({ type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,0,8,false' }); return primeReveal.call(reveal.lifecycle); };
+  const { entry } = await enterRound(reveal);
+  assert.equal(await entry, true);
+  live.push({ type: 'ShaderMaterial', name: 'LiveFrame' });
+  watch.origins.push('ShaderMaterial<live-frame<fx<Scene');
+  for (let i = 0; i < 4; i++) await tick();
+  assert.deepEqual(reveal.ports.trace.revealPrograms, { made: 2, frames: 30, names: ['MeshDepthMaterial', 'ShaderMaterial:LiveFrame'],
+    diffs: ['2:8/7', 'new'], origins: ['ShaderMaterial<live-frame<fx<Scene'], released: 1 },
+    'the reveal and the first live frames are counted, named, keyed against the warm and traced to their draws; the watchdog\'s and a released program are not');
+  assert.equal(watch.stopped, 1, 'the draw watch ends with the receipt\'s frames');
+  live.push({ name: 'Later' });
+  for (let i = 0; i < 4; i++) await tick();
+  assert.equal(reveal.ports.trace.revealPrograms.made, 2, 'the receipt stops after its frames');
+  reveal.composition.dispose();
+}
+
 // ------------------------------------------------------------ the room closing mid-battle: clear input, return to the Garage, the failure panel
 {
   const kicked = createHarness();
@@ -1272,4 +1299,4 @@ for (const [code, words] of [
   long.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends (named on the loader before the Garage restore), and loads the obstacle identities of the host manifest for a world laid out otherwise');
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends (named on the loader before the Garage restore), loads the obstacle identities of the host manifest for a world laid out otherwise, and names the programs its reveal and first frames made (0 is the receipt)');

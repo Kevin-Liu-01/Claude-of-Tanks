@@ -1007,8 +1007,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Leopard 2A3 OTCO knocks out a T-90M at Tidegate Polders at sunset",
-   "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M"
+   "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+   "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Leopard 2A3 OTCO, Tidegate Polders",
@@ -1588,8 +1588,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Merkava Mk 3 Baz knocks out a T-90M at Sunscar Oasis",
-   "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M"
+   "en": "A Merkava Mk 3 Baz knocks out a T-90M Proryv at Sunscar Oasis",
+   "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Merkava Mk 3 Baz, Sunscar Oasis",
@@ -3405,12 +3405,12 @@
    "service_challenger_3"
   ],
   "title": {
-   "en": "A T-90M Proryv knocks out a Challenger 1 at Suzhou Creek in the evening light",
-   "zh": "傍晚，一辆 T-90M Proryv 在苏州河击毁一辆 Challenger 1"
+   "en": "A T-90AM II knocks out a Challenger 1 at Suzhou Creek in the evening light",
+   "zh": "傍晚，一辆 T-90AM II 在苏州河击毁一辆 Challenger 1"
   },
   "short": {
-   "en": "T-90M Proryv, Suzhou Creek",
-   "zh": "T-90M Proryv，苏州河"
+   "en": "T-90AM II, Suzhou Creek",
+   "zh": "T-90AM II，苏州河"
   }
  },
  {
@@ -3703,8 +3703,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A CV90 Mk 4 Concept knocks out a T-90M at Nordhavn Fjord",
-   "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M"
+   "en": "A CV90 Mk 4 Concept knocks out a T-90M Proryv at Nordhavn Fjord",
+   "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "CV90 Mk 4 Concept, Nordhavn Fjord",
@@ -3994,8 +3994,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "An Ares knocks out a T-90M at Saltwind Narrows at night",
-   "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M"
+   "en": "An Ares knocks out a T-90M Proryv at Saltwind Narrows at night",
+   "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Ares, Saltwind Narrows",
@@ -4431,8 +4431,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A T-84 Oplot knocks out a T-90M at Frontier Basin",
-   "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M"
+   "en": "A T-84 Oplot knocks out a T-90M Proryv at Frontier Basin",
+   "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "T-84 Oplot, Frontier Basin",
@@ -4756,8 +4756,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A T-84BM Oplot-M knocks out a T-90M at Frontier Basin in the morning",
-   "zh": "清晨，一辆 T-84BM Oplot-M 在边疆盆地击毁一辆 T-90M"
+   "en": "A T-84BM Oplot-M knocks out a T-90M Proryv at Frontier Basin in the morning",
+   "zh": "清晨，一辆 T-84BM Oplot-M 在边疆盆地击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "T-84BM Oplot-M, Frontier Basin",
@@ -4936,12 +4936,12 @@
    "t72b3m_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_hc",
    "service_t90m"
   ],
   "title": {
-   "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
-   "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+   "en": "An M1A1 Abrams HC knocks out a T-90M Proryv at Kestrel Airfield in the morning",
+   "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "M1A1 Abrams HC, Kestrel Airfield",
@@ -5010,7 +5010,7 @@
    "t72b3_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_fep",
    "service_t90m"
   ],
   "title": {
@@ -5407,7 +5407,7 @@
    "t62mv1_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m60a3",
    "service_soviet_coldwar"
   ],
   "title": {
@@ -6005,6 +6005,588 @@
   "short": {
    "en": "T-90MS obr. 2011, Highland Reservoir",
    "zh": "T-90MS obr. 2011，高地水库"
+  }
+ },
+ {
+  "n": 253,
+  "id": "type10-dozer-mangrove",
+  "hero": "type10_dozer",
+  "nation": "Japan",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "night",
+  "anchor": [
+   -9.7,
+   -9.7
+  ],
+  "heading": 204.4,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "type10_dozer",
+   "raiju_ifv"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "paint_type10_dozer",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+   "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+  },
+  "short": {
+   "en": "Type 10 Kaitaku, Mangrove Reach",
+   "zh": "Type 10 Kaitaku，红树林水道"
+  }
+ },
+ {
+  "n": 254,
+  "id": "ztz20-delta",
+  "hero": "ztz20",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "delta",
+  "time": "night",
+  "anchor": [
+   -144,
+   34
+  ],
+  "heading": 262.5,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "ztz20",
+   "ztz99a"
+  ],
+  "foes": [
+   "m1a2_x",
+   "type10_x"
+  ],
+  "paint": [
+   "sig_ztz100_x",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A ZTZ-20 advances through Jade River Delta at night",
+   "zh": "夜间，一辆 ZTZ-20 穿过翡翠江三角洲推进"
+  },
+  "short": {
+   "en": "ZTZ-20, Jade River Delta",
+   "zh": "ZTZ-20，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 255,
+  "id": "ztz20-prototype-skybridge",
+  "hero": "ztz20_prototype",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "skybridge",
+  "time": "morning",
+  "anchor": [
+   -177,
+   -42
+  ],
+  "heading": 78,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "ztz20_prototype",
+   "vt4a1",
+   "t72b3_qilin",
+   "t72b3m_kunlun"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x",
+   "type10_x"
+  ],
+  "paint": [
+   "sig_ztz100_x",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A ZTZ-20 Prototype leads the assault across Skybridge Chasm in the morning",
+   "zh": "清晨，一辆 ZTZ-20 Prototype 率队突击天桥裂谷"
+  },
+  "short": {
+   "en": "ZTZ-20 Prototype, Skybridge Chasm",
+   "zh": "ZTZ-20 Prototype，天桥裂谷"
+  }
+ },
+ {
+  "n": 256,
+  "id": "christian2-verdant",
+  "hero": "christian2",
+  "nation": "Denmark",
+  "era": "modern",
+  "map": "verdant",
+  "time": "day",
+  "anchor": [
+   48,
+   138
+  ],
+  "heading": 259,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "christian2"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "paint_christian2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Christian II knocks out a T-80U at Verdant Fields",
+   "zh": "一辆 Christian II 在翠野原击毁一辆 T-80U"
+  },
+  "short": {
+   "en": "Christian II, Verdant Fields",
+   "zh": "Christian II，翠野原"
+  }
+ },
+ {
+  "n": 257,
+  "id": "pt64-tur-ruinspires",
+  "hero": "pt64_tur",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "ruinspires",
+  "time": "day",
+  "anchor": [
+   3,
+   -222
+  ],
+  "heading": 97,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "pt64_tur"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-64 Tur knocks out a T-72B3 at Ruinspires",
+   "zh": "一辆 PT-64 Tur 在废墟尖塔击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "PT-64 Tur, Ruinspires",
+   "zh": "PT-64 Tur，废墟尖塔"
+  }
+ },
+ {
+  "n": 258,
+  "id": "challenger-x-coastal",
+  "hero": "challenger_x",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "sunset",
+  "anchor": [
+   64,
+   -50.6
+  ],
+  "heading": 89.1,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "challenger_x",
+   "vickers_mk1",
+   "chieftain3"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An FV4030/5 returns fire across Saltmere Bay at sunset",
+   "zh": "日落时分，一辆 FV4030/5 在盐沼湾还击"
+  },
+  "short": {
+   "en": "FV4030/5, Saltmere Bay",
+   "zh": "FV4030/5，盐沼湾"
+  }
+ },
+ {
+  "n": 259,
+  "id": "challenger-x-sleek-railyard",
+  "hero": "challenger_x_sleek",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "railyard",
+  "time": "golden",
+  "anchor": [
+   -200,
+   -76
+  ],
+  "heading": 266.6,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "challenger_x_sleek",
+   "fv510",
+   "vickers_mk1"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An FV4030/6 leads the column through Cinder Junction in the evening light",
+   "zh": "傍晚，一辆 FV4030/6 率领纵队穿过灰渣枢纽"
+  },
+  "short": {
+   "en": "FV4030/6, Cinder Junction",
+   "zh": "FV4030/6，灰渣枢纽"
+  }
+ },
+ {
+  "n": 260,
+  "id": "challenger1-mk1-railyard",
+  "hero": "challenger1_mk1",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "railyard",
+  "time": "night",
+  "anchor": [
+   262.8,
+   15
+  ],
+  "heading": 178.1,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "challenger1_mk1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Challenger 1 Mk 1 knocks out a T-64BV1 at Cinder Junction at night",
+   "zh": "夜间，一辆 Challenger 1 Mk 1 在灰渣枢纽击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "Challenger 1 Mk 1, Cinder Junction",
+   "zh": "Challenger 1 Mk 1，灰渣枢纽"
+  }
+ },
+ {
+  "n": 261,
+  "id": "challenger3-td-fjord",
+  "hero": "challenger3_td",
+  "nation": "UK",
+  "era": "modern",
+  "map": "fjord",
+  "time": "night",
+  "anchor": [
+   -42,
+   183
+  ],
+  "heading": 181,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "challenger3_td",
+   "ajax"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "paint_challenger3_td",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Challenger 3 TD advances through Nordhavn Fjord at night",
+   "zh": "夜间，一辆 Challenger 3 TD 穿过诺德港峡湾推进"
+  },
+  "short": {
+   "en": "Challenger 3 TD, Nordhavn Fjord",
+   "zh": "Challenger 3 TD，诺德港峡湾"
+  }
+ },
+ {
+  "n": 262,
+  "id": "challenger3-td-rws-railyard",
+  "hero": "challenger3_td_rws",
+  "nation": "UK",
+  "era": "modern",
+  "map": "railyard",
+  "time": "golden",
+  "anchor": [
+   -35,
+   -295
+  ],
+  "heading": 177.7,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "challenger3_td_rws",
+   "chieftain_mk10_x",
+   "challenger3_td"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "paint_challenger3_td_rws",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Challenger 3 TD (RWS) returns fire across Cinder Junction in the evening light",
+   "zh": "傍晚，一辆 Challenger 3 TD (RWS) 在灰渣枢纽还击"
+  },
+  "short": {
+   "en": "Challenger 3 TD (RWS), Cinder Junction",
+   "zh": "Challenger 3 TD (RWS)，灰渣枢纽"
+  }
+ },
+ {
+  "n": 263,
+  "id": "bm-oplot-m-caldera",
+  "hero": "bm_oplot_m",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   -296.2,
+   24.7
+  ],
+  "heading": 8.7,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "bm_oplot_m"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "paint_bm_oplot_m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-84BM Oplot-M charges through artillery at Obsidian Caldera",
+   "zh": "一辆 T-84BM Oplot-M 冒着炮击冲过黑曜石火山口"
+  },
+  "short": {
+   "en": "T-84BM Oplot-M, Obsidian Caldera",
+   "zh": "T-84BM Oplot-M，黑曜石火山口"
+  }
+ },
+ {
+  "n": 264,
+  "id": "bm-oplot-t-titan-gorge",
+  "hero": "bm_oplot_t",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "day",
+  "anchor": [
+   138,
+   -87
+  ],
+  "heading": 160,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "bm_oplot_t",
+   "t64b1v_2022"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "paint_bm_oplot_t",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-84BM Oplot-T holds its ground at Titan Gorge",
+   "zh": "一辆 T-84BM Oplot-T 在泰坦峡谷坚守阵地"
+  },
+  "short": {
+   "en": "T-84BM Oplot-T, Titan Gorge",
+   "zh": "T-84BM Oplot-T，泰坦峡谷"
+  }
+ },
+ {
+  "n": 265,
+  "id": "t64b1v-2022-cliffbridge",
+  "hero": "t64b1v_2022",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "cliffbridge",
+  "time": "day",
+  "anchor": [
+   183,
+   -222
+  ],
+  "heading": 255,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "t64b1v_2022",
+   "ua_m1a2_abrams"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_ua_t64bv",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-64B1V mod. 2022 knocks out a T-80U at Aegis Crossing",
+   "zh": "一辆 T-64B1V mod. 2022 在神盾渡口击毁一辆 T-80U"
+  },
+  "short": {
+   "en": "T-64B1V mod. 2022, Aegis Crossing",
+   "zh": "T-64B1V mod. 2022，神盾渡口"
+  }
+ },
+ {
+  "n": 266,
+  "id": "t64bm1m-delta",
+  "hero": "t64bm1m",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "delta",
+  "time": "day",
+  "anchor": [
+   -135.1,
+   195.8
+  ],
+  "heading": 26.6,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "t64bm1m",
+   "t72b3m_hetman_ii"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_ua_t64bv",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-64BM1M fires across Jade River Delta",
+   "zh": "一辆 T-64BM1M 在翡翠江三角洲开火"
+  },
+  "short": {
+   "en": "T-64BM1M, Jade River Delta",
+   "zh": "T-64BM1M，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 267,
+  "id": "t55a-caldera",
+  "hero": "t55a",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "caldera",
+  "time": "morning",
+  "anchor": [
+   -265.5,
+   171.6
+  ],
+  "heading": 194.5,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "t55a",
+   "t72bu_x",
+   "t64bv1"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-55A knocks out a Leopard 1A5 at Obsidian Caldera in the morning",
+   "zh": "清晨，一辆 T-55A 在黑曜石火山口击毁一辆 Leopard 1A5"
+  },
+  "short": {
+   "en": "T-55A, Obsidian Caldera",
+   "zh": "T-55A，黑曜石火山口"
+  }
+ },
+ {
+  "n": 268,
+  "id": "t64bv-badlands",
+  "hero": "t64bv",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "night",
+  "anchor": [
+   -193.6,
+   -224.8
+  ],
+  "heading": 276.7,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "t64bv",
+   "t64bv1"
+  ],
+  "foes": [
+   "chieftain5",
+   "leo1a5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-64BV advances through Redrock Divide at night",
+   "zh": "夜间，一辆 T-64BV 穿过红岩分界推进"
+  },
+  "short": {
+   "en": "T-64BV, Redrock Divide",
+   "zh": "T-64BV，红岩分界"
   }
  }
 ]

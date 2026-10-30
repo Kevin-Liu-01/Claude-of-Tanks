@@ -1,4 +1,3 @@
-import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { isPracticeMode } from '../sim/gameModeCatalog.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -143,19 +142,10 @@ assert.match(garageCss, /\.cot-room-reminder,\.cot-room-ready\{min-height:44px/,
   'both room actions keep full mobile touch targets');
 console.log('playMenu.selftest: supported mode boundary, safe persistent alert/actions, and stale request presentation guards');
 
-// A selected option must not scroll the surrounding room panel and dismiss
-// its own popup. Cover upper/lower/visible options and a scrolled popup.
-for (const [optionTop, optionBottom, initialScroll, expected] of [
-  [40,80,100,39],[260,300,0,39],[125,165,75,75],[101,261,0,0],
-]) {
-  let panelScroll=57,focused=false;
-  const list={clientTop:1,clientHeight:160,scrollTop:initialScroll,getBoundingClientRect:()=>({top:100})};
-  const option={getBoundingClientRect:()=>({top:optionTop,bottom:optionBottom}),
-    focus(options){assert.deepEqual(options,{preventScroll:true});focused=true;},
-    scrollIntoView(){panelScroll++;throw new Error('Ancestor-scrolling option reveal');}};
-  revealMenuSelectOption(list,option);
-  assert.equal(focused,true);assert.equal(panelScroll,57);assert.equal(list.scrollTop,expected);
-}
+// (2026-10-27) the room's operation and arrangement are the kit's picker menu over their selects: no select skin of its own
+assert.match(source, /createSelectPickerMenu\(operationSelect, \{ id: 'rooms-operation' \}\)/, "the operation is the kit's picker menu");
+assert.match(source, /createSelectPickerMenu\(select, \{ id: 'rooms-arrangement' \}\)/, "the arrangement's fields are the kit's picker menu");
+assert.doesNotMatch(source, /createCustomSelect|cot-custom-select/, 'no pre-Premiere select skin');
 // (2026-10-26, INTERACTION-REDESIGN line 1) the room's battlefield and vehicle are the kit's pickers: no hand-rolled list
 assert.doesNotMatch(source, /role="listbox"|function bindMenuSelect/, "the room's choices hold no hand-rolled listbox");
 

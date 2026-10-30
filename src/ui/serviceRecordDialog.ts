@@ -8,7 +8,7 @@ import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type Reco
 
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
-  const modal = createModal({ title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
+  const modal = createModal({ surface:'service-record', title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
   modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog'); modal.panel.tabIndex = -1;

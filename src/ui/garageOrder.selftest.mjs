@@ -55,8 +55,8 @@ assert.match(garageSource, /data-lt-callouts aria-pressed="false"/, 'the callout
 // slot carries a visible label, and a clip- or salvo-fed gun shows its rounds per clip and their interval
 assert.match(garageSource, /let compareOn = false;[\s\S]*?const rival = compareOn \? rivalFor\(spec\) : null;/,
   'the rival and its deltas appear only once Compare is on');
-assert.match(garageSource, /class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="\$\{compareOn\}"/,
-  'Compare is a toggle chip');
+assert.match(garageSource, /class="cot-c-chip cot-compare-toggle" data-compare="\$\{compareOn \? 'on' : 'off'\}"/,
+  'Compare is a chip that reads Clear once on, an action with no pressed state');
 const ltActs = garageSource.match(/<div class="cot-lt-acts">[\s\S]*?<\/div><\/div><\/section>/)?.[0] || '';
 assert.equal((ltActs.match(/class="cot-c-btn cot-lt-act"/g) || []).length, 4, 'the band has four acts');
 assert.equal((ltActs.match(/<span>\$\{t\('garage\.(?:act|photo)\.[a-zA-Z]+'\)\}<\/span><\/button>/g) || []).length, 4,
@@ -70,8 +70,8 @@ assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*noteHeroModel\(m
 assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
 assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
-assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 5 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
-  'the readout steps from roomy through its four densities until the station fits');
+assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < READOUT_DENSITY\.length - 1 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
+  'the readout steps from roomy through its densities until the station fits');
 assert.match(garageSource, /activateTechnicalTab\(view\);\s*queueReadoutFit\(false, true\);/,
   'a station change refits the readout and returns it to its top in the frame, not in the press');
 assert.match(garageSource, /else queueReadoutFit\(false, vehicleChanged\);\s*requestAnimationFrame\(syncScrollFades\);/,
@@ -98,9 +98,9 @@ assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) \{
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
-for (const density of ['roomy', '1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
+for (const density of ['roomy', '1', '2', '3', 'bars', '4', '5']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
+assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4', '1 2 3 bars 4 5'\]\);/,
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
@@ -115,7 +115,8 @@ assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !==
 assert.match(garageSource, /const BAND_PAINT_PICKS: readonly string\[\] = Object\.freeze\(\['factory', 'auto',/,
   'the band keeps the service coat among its quick paints');
 assert.match(garageSource, /panel && \(isOverlayPanelLayout\(\) \|\| panel === 'appearance'\)/, 'every paint opens on a docked layout too');
-assert.match(garageSource, /button\[data-garage-panel="appearance"\], \.cot-modal-root'\)\) return;\s*setGaragePanel\(''\);\s*\}, true\);/,
+// every paint is a transient surface (components/surfaceStack.ts): the stack's outside press closes it
+assert.match(garageSource, /owns: \(node\) => node instanceof Element && !!node\.closest\(`button\[data-garage-panel="\$\{panel\}"\]`\)/,
   'a press outside every paint closes it (the root carries the panel attribute too, so only its button is exempt)');
 assert.match(garageSource,
   /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,
@@ -124,8 +125,8 @@ assert.match(garageSource,
   /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.vehicleDossier'\)\}"/,
   'compact dossier affordance labels its selected-tank details action');
 assert.match(garageSource,
-  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger, \.cot-overview-more'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
-  'the compact dossier affordance and the folded figures\' more button open the selected tank\'s dossier');
+  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger, \.cot-overview-more, \.cot-dossier-close'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
+  'the compact dossier affordance and the folded figures\' more button open the selected tank\'s dossier, and its sheet\'s close shuts it');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;z-index:3;left:var\(--hc-pad\);right:var\(--hc-pad\);bottom:calc\(var\(--hc-pad\) \* 0\.8\);[^}]*white-space:normal;/,
   'tank titles sit on the card padding as a stable bottom inset and wrap instead of truncating');
@@ -205,7 +206,7 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'China', filler: 'unlisted_chinese_vehicle',
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
@@ -462,5 +463,37 @@ assert.match(garageSource,
 assert.match(garageSource,
   /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
+// the loading census 262: the drawing's box is 2:1 from the first paint (an auto width collapsed it, CLS 0.35), its tone
+// stands under it, it fades in through the kit's reveal and loads again once the network is back
+assert.match(garageSource, /\.cot-technical-viewer-figure img\{[^}]*width:min\(100%,calc\(var\(--tv-max-h\) \* 2\)\)/,
+  'the expanded drawing holds its 2:1 box before its file arrives');
+assert.match(garageSource, /\.cot-technical-viewer-figure::before\{[^}]*aspect-ratio:2\/1;[^}]*background:var\(--fill-quiet\)/,
+  'a tone stands where the drawing will be');
+assert.match(garageSource, /technicalModalImage\.src = iconUrl\([^;]+;[^]{0,120}?revealWhenReady\(technicalModalPanel, technicalModalImage\)/,
+  'the drawing fades in through the kit\'s reveal');
+assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?data-failed[^]{0,80}?technicalModalImage\.src = src/,
+  'a drawing the network dropped loads again once it is back');
+// the loading census 264: a failed chunk is not asked for again in this document (Chrome 151 keeps a failed import and
+// a failed modulepreload, 156 does not, and a failed chunk stylesheet never applies in either: components/loadFailure.ts),
+// so the failure offers Reload page and its triggers keep a quiet error state that needs no chunk, their next press
+// reloading the page once it is online
+assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\(triggers, text\);[^]{0,400}?actions: \[\{ label: t\('loadFailed\.reload'\), primary: true, keep: true, run: \(\) => \{ if \(navigator\.onLine !== false\) location\.reload\(\); \} \}\]/,
+  'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
+assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,
+  'a marked trigger\'s press reloads the page once it is online (the kit\'s pressFailed)');
+assert.match(garageSource, /if \(recordOpening \|\| reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(techTreeOpening \|\| reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
+assert.match(garageSource, /reportLoadFailure\('cot-techtree-load', t\('garage\.techTree\.loadError'\),\s*\[techTreeTrigger, root\.querySelector<HTMLElement>\('\[data-mobile-nav="techTree"\]'\)\]\)/,
+  'the tech tree\'s failure marks the bar\'s trigger and the phone menu\'s');
+assert.match(await readFile(new URL('./components/components.css', import.meta.url), 'utf8'),
+  /\[data-load-state='error'\]::after\{[^}]*background:var\(--danger\)/, 'a failed trigger shows the kit\'s danger dot');
+// the labels' overlay lays itself out only once its stylesheet stands (unstyled, it grew the dialog and snapped back), and
+// a phone's drawing sheet stands at its full height (the key arriving in flow raised a content-sized sheet)
+const labelsSource = await readFile(new URL('./technicalDiagramLabels.ts', import.meta.url), 'utf8');
+assert.match(labelsSource, /const render = \(\): void => \{\s*if \(!styled\) return;/, 'the overlay does not lay out before its sheet');
+assert.match(labelsSource, /void sheetReady\.then\(\(\) => \{ if \(disposed\) return; styled = true; render\(\); \}/,
+  'the overlay lays out once its sheet stands, unless it was disposed');
+assert.match(garageSource, /body\[data-cot-width='phone'\] \.cot-modal\.cot-technical-viewer\{height:calc\(var\(--cot-viewport-height,100dvh\) - 16px\)\}/,
+  'a phone\'s drawing sheet stands at its full height from the press');
 
 console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');

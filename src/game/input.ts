@@ -4,6 +4,9 @@ import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
+import {
+  CHASE_CAMERA_DEFAULTS, clampChaseSetting, isChaseShoulder, type ChaseNumericSetting, type ChaseShoulder,
+} from '../engine/chaseFraming.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -157,7 +160,17 @@ export interface InputSettings {
   crewVoice: CrewVoiceSetting;
   /** Muffle and ear-ringing after a close blast. */
   audioConcussion: boolean;
+  /** The chase camera (engine/chaseFraming.ts, Settings › Gameplay › Camera): metres over the framed pivot, a multiplier
+   *  on the framed default distance, the shoulder, the picture's rise as a share of the height, the vertical lens. */
+  cameraHeight: number;
+  cameraDistance: number;
+  cameraShoulder: ChaseShoulder;
+  cameraFraming: number;
+  cameraFov: number;
 }
+
+const CAMERA_NUMERIC_KEYS: readonly ChaseNumericSetting[] = ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov'];
+const isCameraNumericKey = (key: string): key is ChaseNumericSetting => (CAMERA_NUMERIC_KEYS as readonly string[]).includes(key);
 
 type BindingMap = Record<ActionId, string | null>;
 type PadBindingMap = Record<ActionId, number | null>;
@@ -184,6 +197,8 @@ export interface InputLayer {
   readonly actionDefs: typeof ACTION_DEFS;
   labelFor(code: string | null): string;
   padLabelFor(index: number | null): string;
+  /** Counts every change of a key or pad binding (the battle's key caps read it, battleKeyCaps.ts). */
+  bindingsRevision(): number;
   getState(): InputState;
   isDown(actionId: ActionId): boolean;
   onAction(actionId: ActionId, callback: ActionHandler): () => void;
@@ -226,6 +241,9 @@ export interface InputLayer {
   releaseToggles(): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
   setEnabled(enabled: boolean): void;
+  /** Start listening for gamepads (idempotent). The first gamepad listener starts the browser's gamepad service: the
+   *  boot calls this once the Garage has settled (main.ts), not while it builds. */
+  watchGamepads(): void;
   isLocked(): boolean;
   requestLock(request?: LockRequest): void;
   isCursorAim(): boolean;
@@ -271,7 +289,9 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   zoomOut: 'WheelDown',
   minimapZoom: 'KeyM',
   shotLog: 'KeyL', // SHOT-INFO: toggle the shot-info / received-damage log
-  perfHud: 'F8', // FEEL r12: fps / frame-time / stall overlay
+  // FEEL r12: fps / frame-time / stall overlay. F9, a key nothing else takes: on F8 it toggled with the Studio's own key
+  // (studio.ts, studioAccess.ts) and its Garage button (owner 2026-10-28: "battle diagnostics randomly appears")
+  perfHud: 'F9',
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
   rangeReset: 'KeyR', // proving ground: every hull back on its mark
@@ -359,6 +379,8 @@ const DEFAULT_SETTINGS: InputSettings = {
   crewVoice: 'national',
   // Close-blast muffle + ringing; optional for players sensitive to tinnitus.
   audioConcussion: true,
+  // The chase camera over its framing solved from the HUD's bands (battle-camera-264): no offsets, 60 degrees.
+  ...CHASE_CAMERA_DEFAULTS,
 };
 
 const VOLUME_KEYS: readonly VolumeSettingKey[] = [
@@ -409,7 +431,8 @@ export function getStoredDifficulty() {
 }
 
 /** The mouse's three buttons' catalog keys (the catalog's en reads LMB, MMB and RMB). */
-const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right' };
+// (the space bar too: a Chinese key cap reads 空格, the manual's r41 leftover)
+const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right', Space: 'input.key.space' };
 const LABEL_SPECIAL: Record<string, string> = {
   Space: 'SPACE', Escape: 'ESC', Tab: 'TAB', CapsLock: 'CAPS',
   Enter: 'ENTER', NumpadEnter: 'NUM ENTER', Backspace: 'BKSP',
@@ -573,6 +596,11 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
         else if (value === null) maps[slot][definition.id] = null;
       }
     }
+    // A map saved under the diagnostics' old default (F8, the Studio's key) takes the new one; a key already taken
+    // in it leaves the diagnostics unbound (dedupeKeyboardMaps)
+    for (let slot = 0; slot < 2; slot++) {
+      if (maps[slot].perfHud === 'F8') maps[slot].perfHud = slot === 0 ? DEFAULT_BINDINGS.perfHud ?? null : null;
+    }
     // Newly introduced defaults must not steal an existing player's custom key.
     for (const action of ['smoke','lights','roofGun','atgm'] as const) {
       const primary=storedMaps[0];
@@ -636,7 +664,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
   let codeToAction = new Map<string, ActionId>(); // code -> actionId (both keyboard slots)
   let padButtonToAction = new Map<number, ActionId>(); // button index -> actionId
+  // (counted on every change of a key or pad binding: the battle's key caps are made again when it moves, battleKeyCaps.ts)
+  let bindingsRevision = 0;
   function rebuildLookup() {
+    bindingsRevision++;
     codeToAction = new Map<string, ActionId>();
     for (let s = 0; s < 2; s++) {
       for (const def of ACTION_DEFS) {
@@ -688,6 +719,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
+    for (const k of CAMERA_NUMERIC_KEYS) {
+      if (typeof storedSettings[k] === 'number') settings[k] = clampChaseSetting(k, storedSettings[k]);
+    }
+    if (isChaseShoulder(storedSettings.cameraShoulder)) settings.cameraShoulder = storedSettings.cameraShoulder;
   }
 
   // --- gameplay settings -------------------------------------------------------
@@ -930,7 +965,15 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // plugged in, so nothing is missed.
   let padEverConnected = false;
   const onPadConnected = () => { padEverConnected = true; };
-  window.addEventListener('gamepadconnected', onPadConnected);
+  // (boot-261) Adding the first gamepad listener starts Chrome's gamepad service through a synchronous round trip to
+  // the browser process (GamepadStartPolling): 1-2 ms on a quiet page, 0.27-0.61 s inside the Garage build on the
+  // boot-259 phone census, where the browser process is busy with the boot. watchGamepads adds it afterwards.
+  let padWatching = false;
+  function watchGamepads(): void {
+    if (padWatching || typeof window === 'undefined') return;
+    padWatching = true;
+    window.addEventListener('gamepadconnected', onPadConnected);
+  }
 
   function resetPadState(): void {
     padHeld.clear();
@@ -1116,6 +1159,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
     /** @param {?number} index @returns {string} display label for a pad button */
     padLabelFor: labelForPadButton,
+
+    bindingsRevision: () => bindingsRevision,
 
     /** Snapshot of every action's held state (cached object, no allocation).
      *  `fire` is press edge OR legitimate hold: a click buffers one shot; a
@@ -1342,7 +1387,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     /** Coarse-pointer devices use the Blitz-style touch HUD and skip pointer
      *  lock. The responsive layout contract deliberately separates available
      *  space from interaction mode: a narrow mouse window keeps desktop aim,
-     *  while a laptop-width iPad keeps touch controls and overlay panels. */
+     *  while a laptop-width iPad keeps touch controls (its panels follow its space: docked held wide, folded upright). */
     isTouchLayout() {
       const responsiveInput = typeof document !== 'undefined'
         ? document.body?.dataset?.cotInput
@@ -1396,6 +1441,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       } else if (key === 'rmbMode') {
         if (typeof value === 'string' && isRmbMode(value)) settings.rmbMode = value;
       }
+      else if (key === 'cameraShoulder') {
+        if (isChaseShoulder(value)) settings.cameraShoulder = value;
+      }
+      else if (isCameraNumericKey(key)) settings[key] = clampChaseSetting(key, value);
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
       saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
     },
@@ -1468,6 +1517,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       }
       return out;
     },
+
+    watchGamepads,
 
     /** Gate the whole layer (settings menu open). Disabling clears held state;
      *  any pending fire edge dies on either flank of the toggle. */

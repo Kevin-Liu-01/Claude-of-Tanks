@@ -188,27 +188,38 @@ function subtractInterior(points:V3[],planes:readonly Plane[]):V3[][]{
 }
 function convexHull(points:readonly V3[],n:V3):V3[]{
   const drop=Math.abs(n[0])>Math.abs(n[1])?(Math.abs(n[0])>Math.abs(n[2])?0:2):(Math.abs(n[1])>Math.abs(n[2])?1:2);
-  const axes=[0,1,2].filter(i=>i!==drop),project=(p:V3):V2=>[p[axes[0]],p[axes[1]]];
-  const sorted=[...points].sort((a,b)=>a[axes[0]]-b[axes[0]]||a[axes[1]]-b[axes[1]])
-    .filter((p,i,a)=>!i||Math.hypot(...sub(p,a[i-1]))>1e-11);
+  const axes=[0,1,2].filter(i=>i!==drop),u=axes[0],w=axes[1];
+  const sorted=[...points].sort((a,b)=>a[u]-b[u]||a[w]-b[w])
+    .filter((p,i,a)=>!i||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1],p[2]-a[i-1][2])>1e-11);
+  // (boot-261) cross2 of the projected points, read in place: the same products without three projected copies a test
+  const turn=(a:V3,b:V3,c:V3)=>(b[u]-a[u])*(c[w]-a[w])-(b[w]-a[w])*(c[u]-a[u]);
   const chain=(rows:readonly V3[]):V3[]=>{
     const out:V3[]=[];
-    for(const p of rows){while(out.length>1&&cross2(project(out[out.length-2]),project(out[out.length-1]),project(p))<=1e-14)out.pop();out.push(p);}
+    for(const p of rows){while(out.length>1&&turn(out[out.length-2],out[out.length-1],p)<=1e-14)out.pop();out.push(p);}
     return out;
   };
   const a=chain(sorted),b=chain([...sorted].reverse());a.pop();b.pop();const hull=[...a,...b];
   return hull.length>=3&&dot(normal(hull),n)<0?hull.reverse():hull;
 }
 function mergePlanarFragments(fragments:V3[][],n:V3):V3[][]{
-  let changed=true;
-  while(changed){changed=false;
-    outer:for(let i=0;i<fragments.length;i++)for(let j=i+1;j<fragments.length;j++){
-      const hull=convexHull([...fragments[i],...fragments[j]],n);
-      if(Math.abs(area(hull)-area(fragments[i])-area(fragments[j]))>1e-13)continue;
-      fragments[i]=hull;fragments.splice(j,1);changed=true;break outer;
+  // (boot-261, as sourceXAuxArmorExposure's mergeFragments) every merge takes the first joinable pair in (i, j) order, as
+  // a rescan from the start after each merge would: an unchanged pair that failed stays failed, so after a merge into i
+  // only the pairs (a, i) with a < i are tested again before the scan goes on from i. Each fragment's area is kept.
+  const areas=fragments.map(area);
+  const join=(i:number,j:number):boolean=>{
+    const hull=convexHull([...fragments[i],...fragments[j]],n),hullArea=area(hull);
+    if(Math.abs(hullArea-areas[i]-areas[j])>1e-13)return false;
+    fragments[i]=hull;areas[i]=hullArea;fragments.splice(j,1);areas.splice(j,1);return true;
+  };
+  let changed=-1,from=0;
+  scan:for(;;){
+    if(changed>=0){
+      for(let a=0;a<changed;a++)if(join(a,changed)){changed=a;continue scan;}
+      from=changed;changed=-1;
     }
+    for(let i=from;i<fragments.length;i++)for(let j=i+1;j<fragments.length;j++)if(join(i,j)){changed=i;continue scan;}
+    return fragments;
   }
-  return fragments;
 }
 function interiorCutEdges(points:V3[],adjacent:readonly Plane[][]):number[]{
   const edges:number[]=[];
@@ -254,6 +265,13 @@ function abramsSourceXRackStockFaces(extended:boolean):StockFace[]{
   const exposed=exposedCourses(out);faceCache.set(extended,exposed);return copyFaces(exposed);
 }
 
+/** A face's trace box about the pivot: Math.min/max a vertex at a time (the same values as over mapped copies). */
+function traceBoundsOf(verts:readonly V3[],pivot:V3):{min:[number,number,number];max:[number,number,number]}{
+  const low=[Infinity,Infinity,Infinity],high=[-Infinity,-Infinity,-Infinity];
+  for(const v of verts)for(let axis=0;axis<3;axis++){low[axis]=Math.min(low[axis],v[axis]);high[axis]=Math.max(high[axis],v[axis]);}
+  return{min:[low[0]-pivot[0]-1e-7,low[1]-pivot[1]-1e-7,low[2]-pivot[2]-1e-7],
+    max:[high[0]-pivot[0]+1e-7,high[1]-pivot[1]+1e-7,high[2]-pivot[2]+1e-7]};
+}
 /** Replace only the inherited exterior rack plane, retaining its protection
  * values and permanent turret frame. Different depths remain separate hits;
  * only coincident triangles of the same actual stock share a seam group. */
@@ -266,10 +284,7 @@ export function applyAbramsSourceXRackArmor(armor:ArmorEnvelope,options:{extende
     ...donor,name:`bustle_rack_${face.stock}_${i}`,convexPolygon:true,
     surfaceGroup:`abrams_source_rack:${face.stock.replace(/^(BasketCourse\d+)_\d+$/,'$1')}`,
     excludedEdges:face.excludedEdges ?? [],
-    traceBounds:{
-      min:[0,1,2].map(axis=>Math.min(...face.verts.map(v=>v[axis]))-pivot[axis]-1e-7) as [number,number,number],
-      max:[0,1,2].map(axis=>Math.max(...face.verts.map(v=>v[axis]))-pivot[axis]+1e-7) as [number,number,number],
-    },
+    traceBounds:traceBoundsOf(face.verts,pivot),
     verts:face.verts.map(v=>[v[0]-pivot[0],v[1]-pivot[1],v[2]-pivot[2]]),
   }));
   armor.turretPlates=armor.turretPlates.flatMap(p=>p===donor?replacements:[p]);

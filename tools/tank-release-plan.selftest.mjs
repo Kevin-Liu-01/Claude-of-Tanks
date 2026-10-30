@@ -268,9 +268,10 @@ for(const step of concept.filter(s=>s.args[0]?.startsWith('tools/')&&s.args.some
   assert.ok(step.args.includes('--ids=ztz100_prototype,object695'),'all physical checks retain both concepts');
 }
 for(const name of ['tank-standard-check','tank-sealed-check'])assert.ok(concept.find(s=>s.args[0]===`tools/${name}.mjs`).args.includes('--gate'));
-const mixed=tankReleaseSteps('ztz100,ztz100_prototype,object695',true,'node-test');
+// 262: the ZTZ-100 is a concept now (the ZTZ-20 family); strv122 is the mixed run's source comparison
+const mixed=tankReleaseSteps('strv122,ztz100_prototype,object695',true,'node-test');
 assert.deepEqual(mixed.find(s=>s.args[0]==='tools/procedural-fidelity.mjs').args,
- ['tools/procedural-fidelity.mjs','--ids=ztz100','--check','--board','--neutral-board']);
+ ['tools/procedural-fidelity.mjs','--ids=strv122','--check','--board','--neutral-board']);
 assert.throws(()=>tankReleaseSteps('unknown_x',true),/known playable/,'unknown IDs cannot obtain N/A qualification');
 
 const type100=tankReleaseSteps('type100',true,'node-test');
@@ -278,9 +279,8 @@ assert.equal(type100.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),
 assert.equal(type100.length,17,'Type100 retains every physical/anatomy/assets/test/build release step');
 for(const step of type100.filter(step=>step.args.some(arg=>arg.startsWith('--ids='))))
   assert.ok(step.args.includes('--ids=type100'));
-const allConcepts=tankReleaseSteps('type100,object695,ztz100_prototype,ztz100',true,'node-test');
-assert.deepEqual(allConcepts.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args,
-  ['tools/procedural-fidelity.mjs','--ids=ztz100','--check','--board','--neutral-board']);
+const allConcepts=tankReleaseSteps('type100,object695,ztz100_prototype,ztz100,ztz20',true,'node-test');
+assert.equal(allConcepts.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,'the ZTZ family runs no source comparison');
 
 // R4c (2026-10-16): a repeated id fails by name before any step runs.
 assert.throws(()=>tankReleaseSteps('leo2a7v,t14_armata,leo2a7v',true,'node-test'),/tank:release:check --ids lists leo2a7v 2 times/);

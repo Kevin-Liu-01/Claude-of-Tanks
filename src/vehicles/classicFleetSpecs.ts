@@ -96,14 +96,28 @@ const SPECS: FleetTankSpec[] = [
   // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
   // builder code dormant in abrams.js; packet historical.
   make('m60a1', 'm46_patton', 'M46 Patton', 'USA',
+    // release 262: the M73 mount's +20 / -10 deg (Hunnicutt via docs/references/tanks/m46_patton.md)
     { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 },
+      gunElevationDeg: 20, gunDepressionDeg: 10,
+      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull) on the release-262 build: the full -10 deg ahead
+      // and abeam (-9 at 24-32 deg off the bow), the engine deck's grilles over the rear
+      gunPitchByYawDeg: [[0, -10], [22, -10], [24, -9.5], [28, -9], [31, -9], [32, -9.1], [35, -10], [106, -10],
+        [107, -9], [108, -8.5], [109, -8.2], [117, -8.1], [119, -6.6], [124, -5.3], [129, -5.2], [154, -5.1],
+        [156, -4.8], [160, -4.5], [161, -3.7], [162, -3.4], [163, -3.2], [180, -3.5]],
       dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
       // bakeDirt deck equalizer (f243966): the Bergman refs paint from the
       // shared canvas with NO deck penalty — knob-on is ref-parity for this
       // print class (m47-top census gap 1029 -> 401 measured).
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm47_patton', 'M47 Patton', 'USA',
+    // release 262: the M78 mount's +19 / -10 deg (TM 9-2350-200-12 and Hunnicutt; the 1952 TM 9-718A gives -5, see
+    // docs/references/tanks/m47_patton.md)
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
+      gunElevationDeg: 19, gunDepressionDeg: 10,
+      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull) on the release-262 build: the full -10 deg over
+      // the front 113 deg either side, the engine deck's grilles over the rear
+      gunPitchByYawDeg: [[0, -10], [113, -10], [114, -8.8], [115, -8.4], [120, -8.3], [123, -7.9], [124, -6.9],
+        [125, -6.4], [127, -5.6], [128, -5.4], [161, -5.2], [162, -4.9], [163, -4.7], [169, -4.7], [180, -5]],
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',

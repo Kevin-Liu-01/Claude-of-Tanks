@@ -23,6 +23,9 @@ assert.ok(start > 0 && end > start, 'garage.ts holds the battle gallery panel');
 const panelSource = garage.slice(start, end + '\n  })();'.length);
 assert.equal(panelSource.match(/import\(/g).length, 1, 'the panel\'s one dynamic import');
 const executable = stripTypeScriptTypes(panelSource.replace("import('./fleetTakes.ts')", '__importFleetTakes()'));
+const escapeStart = garage.indexOf('function escapeHtmlAttribute(');
+const escapeHelper = stripTypeScriptTypes(garage.slice(escapeStart, garage.indexOf('\n}\n', escapeStart) + 2));
+assert.ok(escapeStart > 0, 'garage.ts holds escapeHtmlAttribute');
 
 const dom = createFakeDom();
 const uninstall = dom.install();
@@ -67,7 +70,8 @@ function mountPanel(module) {
     __importFleetTakes() { harness.imports++; return module(); },
     Promise, console,
   };
-  runInNewContext(`${executable}\nglobalThis.featuredPanel = featuredPanel;`, context);
+  // (the panel names its dots through garage.ts's escapeHtmlAttribute since the lead's 261 follow-up: its own source joins)
+  runInNewContext(`${escapeHelper}\n${executable}\nglobalThis.featuredPanel = featuredPanel;`, context);
   harness.panel = context.featuredPanel;
   // the take sits under the dossier on the Garage root (brand-ui S2), not in the left column
   harness.element = root.querySelector('.cot-featured');

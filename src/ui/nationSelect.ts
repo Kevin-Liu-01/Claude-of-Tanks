@@ -1,6 +1,6 @@
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import type { PickerItem } from './components/picker.ts';
-import type { CustomSelectController } from './customSelect.ts';
+import type { SelectMenuController } from './selectPickerMenu.ts';
 import { flagIconUrl } from './flags.ts';
 import { pickerText } from './pickerText.ts';
 
@@ -21,7 +21,7 @@ export function createNationMenu(host: HTMLElement, label: string, choices: read
 }
 
 /** The menu's popover lives in the body: a surface that rebuilds its field disposes the old one. */
-export interface NationSelectController extends CustomSelectController { dispose(): void }
+export type NationSelectController = SelectMenuController;
 
 /** The nation menu over a canonical <select> (a lobby's arrangement field, the crew voice), which keeps its storage and
  *  its change event; a disabled option is left out of the menu. */

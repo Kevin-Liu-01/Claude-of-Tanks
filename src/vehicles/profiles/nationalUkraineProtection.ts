@@ -14,6 +14,9 @@ type ProtectionId='t80u_zoria'|'t72b3m_hetman'|'t72b3_sich'|'t72b3m_hetman_ii';
 interface ProtectionLayout {
   hullX:number; turretX:number; rearZ:number; sideBack:number; sideFront:number;
   bottom:number; top:number; rearHalf:number; hullPanels:readonly(readonly[number,number])[];
+  /** The screen slats' ends stand 12 mm inside their 17 mm rails (the cap's rim 14.4 mm off the rail's axis), so their
+   * end caps are never drawn: open-ended slats (264: Hetman II's triangle ceiling, frontEraPackages). */
+  openSlatEnds?:boolean;
 }
 
 // Owner 2026-10-15 (VEH-21): the Hetman, Hetman II and Sich carry their donor turrets (nationalDonorTurrets.ts); their
@@ -28,7 +31,7 @@ export const NATIONAL_UKRAINE_PROTECTION:Readonly<Record<ProtectionId,Protection
   t72b3_sich:{hullX:2.37,turretX:1.91,rearZ:-2.23,sideBack:-1.47,sideFront:-.50,bottom:.27,top:.74,rearHalf:1.47,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
   t72b3m_hetman_ii:{hullX:2.43,turretX:1.97,rearZ:-3.19,sideBack:-2.40,sideFront:-.65,bottom:.40,top:.81,rearHalf:1.48,
-    hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
+    hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]],openSlatEnds:true},
 };
 
 /** Low hulls need a falling cage header at the gun's outer traverse reach.
@@ -152,8 +155,8 @@ function seat(stock:readonly THREE.BufferGeometry[],origin:Point,direction:Point
   if(nearest.normal.dot(dir)>0)nearest.normal.negate();return nearest;
 }
 
-function rod(P:TankBuilderPort,owner:Owner,a:Point,b:Point,r=.014):void{
-  const geometry=beamBetween(a,b,r,8);
+function rod(P:TankBuilderPort,owner:Owner,a:Point,b:Point,r=.014,openEnded=false):void{
+  const geometry=beamBetween(a,b,r,8,openEnded);
   geometry.userData.ukrainianProtection={role:'open-cage-rod',owner};
   P.addEquipment(`${owner}OpenLattice`,geometry);
 }
@@ -203,7 +206,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,
       for(let i=1;i<cuts.length;i++)rod(P,'hull',
         [side*d.hullX,hullCageTop(id,cuts[i-1]),cuts[i-1]],[side*d.hullX,hullCageTop(id,cuts[i]),cuts[i]],.017);
       const count=Math.ceil((z1-z0)/.105);
-      for(let i=0;i<=count;i++){const z=z0+(z1-z0)*i/count;rod(P,'hull',[side*d.hullX,.977,z],[side*d.hullX,hullCageTop(id,z)-.012,z],.008);}
+      for(let i=0;i<=count;i++){const z=z0+(z1-z0)*i/count;rod(P,'hull',[side*d.hullX,.977,z],[side*d.hullX,hullCageTop(id,z)-.012,z],.008,d.openSlatEnds);}
       rod(P,'hull',[side*d.hullX,1.20,z0],[side*d.hullX,1.20,z1],.010);
       for(const t of [.18,.50,.82]){
         const z=z0+(z1-z0)*t;

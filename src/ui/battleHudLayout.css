@@ -233,6 +233,9 @@ body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button
 /* every HUD key cap is the kit's (components .cot-c-kbd): its ring, no border, the data face, at the battle's 11 px
    (gauntlet r3: three cap styles on one screen) */
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
+/* (a cap with no key stands down: on a pad layout smoke, lights and the roof gun have no button of their own, and their
+   tiles show none, game/battleKeyCaps.ts) */
+.cot-hud :is(.cot-vehicle-controls .sk,.cot-shell .key,.cot-con .key,.cot-c-kbd):empty{display:none}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
 /* (owner 2026-10-25: "in both desktop and mobile, the 'abilities' need to be represented better"): a mouse layout's
    abilities are the rack's own tiles over its slots, the slot's plate, its key cap in the slot number's corner, a count
@@ -379,14 +382,18 @@ body[data-cot-battle-layout] .cot-kill-lane{container:kill-lane/inline-size}
 @container kill-lane (max-width:259px){body[data-cot-battle-layout] .cot-kill-lane .cot-kf :is(.si:not(.src),.relation){display:none}}
 /* A lane narrower still stacks each row (battleHudLayout.ts FEED_STACK_W): the killer on its own line, the cause and the
    victim under it, 38 px a row (two lanes side by side at 390x844 read "Command…", gauntlet r8) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
 /* (the killer's flag beside it on its line, the victim's beside it on the cause's: three items on one line under a 100 %
    killer sent the victim to a third line, cut by the row's 38 px, at 568x256, gauntlet r17) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 calc(100% - 20px);text-align:right}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf .k{flex:0 0 calc(100% - 20px)}
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{text-align:right}
+/* (the left lane's killer led by its flag, as its victim's line by the cause and the flag: after it, at the line's end,
+   the flag stood off its name, gauntlet r19) */
+body[data-cot-battle-layout] .cot-kill-lane.l[data-stack] .cot-kf .k+.cot-flag{order:-1}
 /* (the victim on the cause's line, held to the line less the cause's glyph, its flag and their gaps: a wrapping row breaks an item at its
    whole callsign's width before it can shrink, and the victim fell to a third line, the row's 38 px spilling under the
    toolbar, gauntlet r9) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:calc(100% - 40px)}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf .v{max-width:calc(100% - 40px)}
 /* (and a narrow personal lane gives its rows' inner end 4 px, the screen-edge gutter kept: its victims read "Commande…"
    at 136 px, 320x568) */
 @container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}
@@ -561,7 +568,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
    to layout checks and directly over the system buttons on short phones. */
-.cot-aim-warning{position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
+.cot-aim-warning{position:fixed;left:50%;top:calc(50% - var(--hud-sight-shift,0px) + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
+/* the scope's sight is the screen centre's whatever the chase framing (battle-camera-264: --hud-sight-shift, battleSight.ts) */
+html[data-cot-scoped] .cot-aim-warning{top:calc(50% + 48px)}
 /* (a mouse layout's chip at 13 px, near its centre notices' 15: an 11 px chip under them read as another kit, gauntlet r4) */
 body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);letter-spacing:var(--track-label-s)}
 .cot-aim-warning[hidden]{display:none}
@@ -667,7 +676,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
   top:var(--hud-countdown-top,22%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle-rules{
-  top:var(--hud-countdown-rules-top,calc(50% + 84px));transform:translateX(-50%) scale(var(--hud-countdown-rules-scale,1));
+  top:var(--hud-countdown-rules-top,calc(50% - var(--hud-sight-shift,0px) + 84px));transform:translateX(-50%) scale(var(--hud-countdown-rules-scale,1));
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-revive{
   top:var(--hud-revive-top,30%);transform:translateX(-50%) scale(var(--hud-revive-scale,1));transform-origin:50% 0;
@@ -710,10 +719,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (the planner's slot width, the detection's, so the stacked notices are one column (gauntlet r3 read three widths at
    390x844); never auto: an auto width shrank to the room right of its left edge, and a 150 px alert set five lines 96 px
    wide onto the ammo slot, r10g) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;box-sizing:border-box;width:var(--hud-touch-alert-w,214px);max-width:var(--hud-touch-alert-w,214px);justify-content:center;text-align:center;transform:translate(-50%,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;box-sizing:border-box;width:var(--hud-touch-alert-w,214px);max-width:var(--hud-touch-alert-w,214px);justify-content:flex-start;text-align:left;transform:translate(-50%,7px)}
+/* (and their glyphs in one column, the words after them from the same inset: centred, the two plates of one width set
+   their glyphs in two columns and a wrapped alert's glyph off its words, gauntlet r19 at 844x390) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{justify-content:start}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:left}
 /* (the tiniest landscapes, up to 340 px tall, where no place clears both: one 24 px row, the alert on one line in the
    detection's place while it shows, the detection under it: touchNoticePlan oneRow, the layout receipt at 568x256 and,
    where the parked chip beside the objective met the alert, 568x320) */

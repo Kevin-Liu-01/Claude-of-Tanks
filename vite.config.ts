@@ -405,6 +405,7 @@ export default defineConfig({
         docsTanks: resolve(process.cwd(), 'site/docs-tanks.html'),
         docsStart: resolve(process.cwd(), 'site/docs-start.html'),
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
+        docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
@@ -446,12 +447,17 @@ export default defineConfig({
             // 2026-10-26 (premiere-gallery-studio, 258): the hero cards' tier chip (ui/heroCardChips.ts, 0.4 KB, the Garage's roster
             // at boot and the lazy shared hero tiles) rides here too: it reads the locale runtime as pickerText does, and on its
             // own it was one more game and cn boot request.
-            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (261, the dropdown audit): the kit menu over a form's <select> (ui/selectPickerMenu.ts: the Rooms fields,
+            // the Gallery's markup primitive) rides here too; on its own it was one more Gallery boot request.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|selectPickerMenu|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
             // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
             // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
             // (564 B). It rides with the program warm owner again, as on 256.
-            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (integrator 261): the program receipt (engine/programReceipt.ts, 0.8 KB, the room-stalls lane's
+            // revealPrograms and lateLinks receipts) is a leaf main imports at boot and the lazy network composition imports
+            // too; on its own it was one more game and cn boot request. It rides with the program warm owner it measures.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
@@ -461,7 +467,12 @@ export default defineConfig({
             // 2026-10-26 (consumables-260): the DOM-free consumable rules and the Garage's loadout helpers (sim/consumableRules.ts,
             // game/consumableLoadout.ts) load at boot on exactly the game and cn (the Garage, the room selection) and in the lazy
             // HUD and battle; on their own they were one more boot request on both.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-28 (battle-camera-264): the chase framing (engine/chaseFraming.ts: the camera rig and the input settings at
+            // boot, the lazy Settings card) and the battle sight's datum (ui/battleSight.ts: the aim composition at boot, the lazy
+            // HUD) are DOM-free leaves the game and cn load at boot; on its own the framing was one more boot request on both,
+            // and the sight datum rode in a chunk the game and cn share with the Gallery's preload maps. The lens reader
+            // (engine/cameraLens.ts: post at boot, the lazy clouds and vegetation) likewise: on its own one more request.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -476,7 +487,12 @@ export default defineConfig({
             // supplied frames, skirt and hull layouts, upgrade datums and the national donor designs — are pure tables
             // (no import but other tables) that the builders, the gallery and main all reach, so each split into a chunk of
             // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-28 (integrator 263): the Christian II's turret datums and envelope (christian2Armor.ts, christian2-262) and the
+            // Leopard 2-pattern hull datums it reads are tables the specs (boot) and the lazy builder both import; on their own
+            // they were one more game, cn and Gallery boot request.
+            // 2026-10-29 (integrator 264): the 2A6 UA's shell dimensions and dock seat (leopardA6UaLayout.ts, leo2a6-ua-264b), a
+            // table germany.ts (boot) and the mission receiver read; alone it was one more game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more
@@ -539,7 +555,7 @@ export default defineConfig({
       'site/docs-simulation.html', 'site/docs-rendering.html',
       'site/docs-ai.html',
       'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-studio.html',
-      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
+      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-fleet.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
     ],
     include: [
       'three',

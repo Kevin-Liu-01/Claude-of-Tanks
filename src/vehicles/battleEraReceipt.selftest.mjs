@@ -19,6 +19,7 @@ const ROOT_EXCLUSIONS = new Set([
   'coreBuildTiming', 'decorBuildMs', 'decorYieldMs', // Measured elapsed time only.
   'tailBuildTiming', // FSP-01 (2026-09-25): the finisher stage timestamps — measured time only, never structure.
   'spareTrackMs', // VEH-13 (TRACK-DECOR, 2026-10-15): the spare-track seat pass's elapsed time — measured time only.
+  'suitOcclusionMs', // 264 (ghillie-render suitOcclusion): the suit shade bake's elapsed time — measured time only.
 ]);
 // Three.js allocation identity, event listeners and upload counters are not
 // visual content. These exclusions apply ONLY to resource objects, not metadata

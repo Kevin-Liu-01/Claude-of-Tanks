@@ -95,8 +95,9 @@ assert.match(garageCss,
   'Garage equipment replacement tradeoffs must be visually distinguishable');
 assert.match(garageCss, /\.cot-eqpreview\{flex:none;block-size:9\.5rem;/,
   'Garage equipment readout keeps one height whatever it shows (the panel never jumps under the pointer)');
+// (its place holds while it fades out: only display waits for .open)
 assert.match(garageCss,
-  /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*left:auto;[^}]*right:calc\(max\([^}]*var\(--cot-compact-stats-width\)[^}]*width:min\(420px,calc\(100vw - var\(--cot-compact-stats-width\)[^}]*display:flex;/,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick\{[^}]*left:auto;[^}]*right:calc\(max\([^}]*var\(--cot-compact-stats-width\)[^}]*width:min\(420px,calc\(100vw - var\(--cot-compact-stats-width\)[^}]*\}\nbody\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{display:flex\}/,
   'Compact Garage equipment picker must stay beside the dossier and inside the safe viewport');
 assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-eqpick \.cot-c-picker--swatches \.cot-c-picker__grid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,

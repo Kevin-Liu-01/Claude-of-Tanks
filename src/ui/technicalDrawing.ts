@@ -8,6 +8,7 @@
 // diagrams' tokens (surface-diagram), mapped from data-tone by technicalDiagramLabels.css. First-party: Kevin B. Liu
 // (NOTICE.md).
 import { onLocaleChange, t } from './i18n.ts';
+import { segmented, wireRoving } from './components/components.ts';
 import { TECHNICAL_LEGENDS, type TechnicalKind } from './technicalDiagramLegend.ts';
 import { spreadBadges, technicalLabelText } from './technicalDiagramLabels.ts';
 import {
@@ -131,16 +132,10 @@ export function mountTechnicalDrawing(host: HTMLElement, id: string, options: Te
   const frame = () => data!.views[view]!;
   const labelOf = (element: TechnicalDrawingElement): string => technicalLabelText({ ...element, anchor: [0, 0], weight: 0, color: '' }, kind);
 
-  const tabs = (group: HTMLElement, entries: readonly [string, string][], current: string, pick: (value: string) => void): void => {
-    group.replaceChildren(...entries.map(([value, label]) => {
-      const button = el('button', 'cot-td__tab', label);
-      button.type = 'button';
-      button.setAttribute('aria-pressed', String(value === current));
-      button.addEventListener('click', () => pick(value));
-      return button;
-    }));
-  };
-
+  // the drawing's views and kinds are the kit's segmented controls (261 census), drawn again as the drawing's data names
+  // them; their roving keys and presses are wired once on the groups that hold them
+  wireRoving(viewTabs, (name) => api.setView(name as TechnicalView));
+  wireRoving(kindTabs, (name) => api.setKind(name as TechnicalKind));
   const light = (keyName: string | null): void => {
     if (hot === keyName) return;
     for (const map of [paths, rows, marks]) {
@@ -190,8 +185,10 @@ export function mountTechnicalDrawing(host: HTMLElement, id: string, options: Te
     if (!data || disposed) return;
     if (!data.views[view]) view = views()[0] ?? view;
     const v = frame(), [w, h] = v.size;
-    tabs(viewTabs, views().map((name) => [name, t(VIEW_LABEL[name])]), view, (name) => api.setView(name as TechnicalView));
-    tabs(kindTabs, kinds().map((name) => [name, t(KIND_LABEL[name])]), kind, (name) => api.setKind(name as TechnicalKind));
+    viewTabs.innerHTML = segmented({ label: t('gallery.viewer.viewControlsAria'), className: 'cot-td__views', value: view,
+      options: views().map((name) => ({ value: name, label: t(VIEW_LABEL[name]) })) });
+    kindTabs.innerHTML = segmented({ label: t('gallery.view.modeDockAria'), className: 'cot-td__kinds', value: kind,
+      options: kinds().map((name) => ({ value: name, label: t(KIND_LABEL[name]) })) });
     viewTabs.setAttribute('aria-label', t('gallery.drawing.viewsAria'));
     kindTabs.setAttribute('aria-label', t('gallery.view.modeDockAria'));
     fit.textContent = t('gallery.drawing.fit');

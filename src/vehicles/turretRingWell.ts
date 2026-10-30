@@ -46,7 +46,7 @@ import {
   combatAnatomyCalibration, type AnatomyTurretRingReceipt,
 } from './combatAnatomyCalibrationRegistry.ts';
 import {
-  resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook,
+  resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook, withSuitShadeDefault,
 } from './materials.ts';
 import { programVariantOrigin } from '../engine/programVariants.ts';
 import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatPlane.ts';
@@ -2039,6 +2039,8 @@ export function createTurretRingWellMaterial(engineCtx: RingEngineContext | null
     vehicleAmbientFloorHook(shader);
     turretRingWellShaderHook(shader);
   };
+  // (264) it compiles the vehicle hook, so it reads the suit's shade: its draws carry none, and read 0
+  withSuitShadeDefault(material);
   if (engineCtx && supportsShadowHook(engineCtx) && engineCtx.setupShadowMaterial) {
     engineCtx.setupShadowMaterial(material, hook);
   } else material.onBeforeCompile = hook;

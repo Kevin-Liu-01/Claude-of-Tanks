@@ -111,10 +111,20 @@ function agedPaint(age: number): ReturnType<typeof material> {
 }
 
 function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number): THREE.BufferGeometry {
+  const steps = buildRoleSteps(entry, role, ctx, burnt, seed);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** buildRole with the mesh bake's checkpoints (VehicleMesh.buildSteps), for the props build's pacing. */
+function* buildRoleSteps(
+  entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number,
+): Generator<void, THREE.BufferGeometry, void> {
   const mesh = new VehicleMesh();
   mesh.coarse = ctx.coarse;
   buildModel(mesh, entry.model, { coarse: ctx.coarse, burnt, paint: agedPaint(ctx.fleet.age) });
-  const geometry = mesh.build(vehicleWeathering({
+  const geometry = yield* mesh.buildSteps(vehicleWeathering({
     dirtRgb: linearHex(ctx.climate.dirt), dirt: ctx.climate.dirtAmount,
     dustRgb: linearHex(ctx.climate.dust), dust: ctx.climate.dustAmount,
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
@@ -227,10 +237,11 @@ export function buildBrokenCivilianVehicle(mapId: string, mobile: boolean, role:
 
 function roleBuilders(
   role: CivilianVehicleKind, ctx: BuildContext, map: { mapId: string; mobile: boolean } | null = null,
-): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'brokenJob' | 'shadowBuild' | 'collisionSolid'> {
+): Pick<CivilianVehicleOverride, 'build' | 'buildSteps' | 'broken' | 'brokenJob' | 'shadowBuild' | 'collisionSolid'> {
   const entry = ctx.fleet.roles[role];
   return {
     build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed)),
+    buildSteps: (rng: Rng) => buildRoleSteps(entry, role, ctx, false, spendDraws(LEGACY_DRAWS[role].build, rng)),
     broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(entry, role, ctx, true, seed)),
     // (perf-248) the same draws as `broken`; the body itself is built from the job (buildBrokenCivilianVehicle)
     ...(map ? { brokenJob: (rng: Rng): BrokenVehicleJob => ({ kit: 'civilian', mapId: map.mapId, mobile: map.mobile, role,
@@ -262,8 +273,8 @@ const DEFAULT_CONTEXT: BuildContext = { fleet: FLEETS[DEFAULT_FLEET], climate: c
 
 function receipt(role: CivilianVehicleKind) {
   const box = ROLE_BOXES[role];
-  const { build, broken } = roleBuilders(role, DEFAULT_CONTEXT);
-  return { ...box, build, broken, footprint: () => roleFootprint(DEFAULT_CONTEXT.fleet, role) };
+  const { build, buildSteps, broken } = roleBuilders(role, DEFAULT_CONTEXT);
+  return { ...box, build, buildSteps, broken, footprint: () => roleFootprint(DEFAULT_CONTEXT.fleet, role) };
 }
 
 /** The roles with the default fleet's builders (the destructible table's own entries; each map overrides them). */
@@ -280,6 +291,8 @@ export const CIVILIAN_VEHICLE_RECEIPTS = {
 
 interface CivilianVehicleOverride {
   build: Builder;
+  /** `build` with its bake's checkpoints: the same draws (taken at the call) and geometry (props.ts, the pools' builds) */
+  buildSteps: (rng: Rng) => Generator<void, THREE.BufferGeometry, void>;
   broken: Builder;
   /** (perf-248) `broken`'s draws, the body left to the job (props.ts: the broken-vehicle pool) */
   brokenJob?: (rng: Rng) => BrokenVehicleJob;

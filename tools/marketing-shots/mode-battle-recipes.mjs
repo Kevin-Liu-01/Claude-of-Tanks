@@ -668,6 +668,69 @@ export const RECIPES = {
     },
   },
 
+  // (2026-10-27, the Deploy plate: "the Kestrel Airfield range with its lanes and target plates in frame") the player on
+  // the firing line of the airfield range, shooting in turn at the armour plate rack and at the lane hulls. Every lens is
+  // set from the range as the game laid it out (game._provingRange: sim/provingGround.ts planProvingRange), so the
+  // firing line, the lane marks, the rack and the hulls downrange stay in frame whatever the planner settled on.
+  'deploy/proving_ground': {
+    hour: 'day',
+    windowS: 60,
+    hud: 'hidden',
+    async run(ctx) {
+      // the plate the gun lays on (its face centre: H.point's 2.4 m height puts the aim 1.2 m above y) and the hull on a lane
+      await define(ctx, 'rackPlate', `const r = g && g._provingRange; if (!r || !r.plates.length) return null;
+        const pl = r.plates[(window.__MB.plateIndex || 0) % r.plates.length]; return H.point(pl.x, pl.y - 1.2, pl.z);`);
+      await define(ctx, 'laneHull', `const r = g && g._provingRange; if (!r) return null;
+        const lane = r.lanes.find((m) => m.index === (window.__MB.laneIndex || 0)) || r.lanes[0];
+        let best = null, bd = Infinity; for (const e of H.enemies()) { const d = H.dist(e.state.pos, lane); if (d < bd) { bd = d; best = e; } }
+        return H.info(best);`);
+      const lenses = await ctx.eval(() => {
+        const H = window.__MB.H, r = H.g()?._provingRange;
+        if (!r) return null;
+        const o = r.origin, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), lx = Math.cos(o.yaw), lz = -Math.sin(o.yaw);
+        // a point `range` m down the range and `lateral` m across it (+ the plate rack's side), `h` m above the ground
+        const at = (range, lateral, h) => { const x = o.x + fx * range + lx * lateral, z = o.z + fz * range + lz * lateral; return [x, H.groundY(x, z) + h, z]; };
+        const fixed = (pos, look, fov) => ({ kind: 'fixed', pos, look, fov, hud: 'hidden' });
+        // The rack stands about 100 m down the range, 40 m to the side, and the hull on the firing line; the airfield parks a
+        // box truck and an SUV about 9 m behind the line, 7 m either side of it, so from behind the line they sit just
+        // under the hull. Each lens (searched with landing-r6/site-all/range-lens.py --search) stands 14 m up and 20-30 m
+        // back on the rack's side: the hull large in the lower right third with its gun on the rack, the whole rack and the
+        // lane boards to the 650 m board higher in the frame, and both parked vehicles under its lower edge. (Lower lenses
+        // either take the vehicles in or lose the rack: its plates face the line and stand edge-on from its open side.)
+        return {
+          origin: { x: Math.round(o.x), z: Math.round(o.z) }, lanes: r.lanes.length, plates: r.plates.length,
+          steep: fixed(at(-20, 4, 14), at(20, 8, 0), 42),
+          steepWide: fixed(at(-20, 4, 14), at(20, 12, 0), 46),
+          back: fixed(at(-25, 4, 14), at(30, 4, 0), 38),
+          backLeft: fixed(at(-25, 8, 14), at(30, 8, 0), 38),
+          long: fixed(at(-30, 8, 14), at(40, 4, 0), 34),
+        };
+      });
+      ctx.log('range', JSON.stringify(lenses && { origin: lenses.origin, lanes: lenses.lanes, plates: lenses.plates }));
+      if (!lenses) { ctx.note('no proving range was laid out (game._provingRange)'); return; }
+      ctx.note('lenses set from game._provingRange; the gun lays in turn on a plate of the rack and on a lane hull');
+      // (plates: 0-4 square to the line, 50 to 500 mm; 5-7 laid back. lanes: 0 100 m, 1 200 m, 2 300 m side-on, 3 450 m)
+      const rounds = [
+        { aim: 'rackPlate', plate: 3, camera: lenses.steep },
+        { aim: 'laneHull', lane: 2, camera: lenses.steep },
+        { aim: 'rackPlate', plate: 1, camera: lenses.steepWide },
+        { aim: 'rackPlate', plate: 4, camera: lenses.back },
+        { aim: 'rackPlate', plate: 2, camera: lenses.long },
+        { aim: 'rackPlate', plate: 0, camera: lenses.backLeft },
+      ];
+      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 3 });
+      for (const [i, round] of rounds.entries()) {
+        await ctx.eval((r) => { window.__MB.plateIndex = r.plate ?? 0; window.__MB.laneIndex = r.lane ?? 0; return true; }, round);
+        await ctx.mb('setAim', { target: round.aim, fallback: false });
+        await settle(ctx, 1.5);
+        await ctx.capture({
+          label: `range ${i + 1}`, windowS: 12, cameras: [round.camera], everyS: 1.5, minGapMs: 300,
+          triggers: [T.playerFire([35, 90, 160, 260]), { type: 'shell:hit', who: 'player', onscreen: false, delays: [30, 90], maxDistM: 900 }],
+        });
+      }
+    },
+  },
+
   // ============================================================== mechanics (battle captures)
   'mechanics/missiles': {
     hour: 'sunset',
@@ -795,25 +858,67 @@ export const RECIPES = {
   },
 
   'mechanics/armor': {
-    hour: 'day',
+    hour: 'morning',
+    // the window is wall time; a 4K battle runs at about 0.4x, so 30 s holds some 12 s of the battle
     windowS: 30,
-    // r2: r1 had no battle of its own (the entry is a shot-view) and drew a random map and tank (Suzhou Creek, M1A3)
-    battle: { specId: 'leo2a7v_x', mapId: 'verdant', gameMode: 'standard' },
+    // r2: r1 had no battle of its own (the entry is a shot-view) and drew a random map and tank (Suzhou Creek, M1A3).
+    // r4 (262, the flashlight as paint): r3 on Verdant framed a VT-4A1 a twelfth of the sight wide at 330-380 m, in
+    // its own gun smoke, against a wall of trees. r4 on Tarkhan Steppe looked through a grove of orange canopies (the
+    // sight test checks only the centre line mid-field, and the x16 frame is some 30 m wide at 250 m), the tank a
+    // quarter of the frame wide. r5: Kestrel Airfield's open concrete and grass, grey and green behind the paint.
+    battle: { specId: 'leo2a7v_x', mapId: 'airfield', gameMode: 'standard' },
     async run(ctx) {
-      const contact = await toContact(ctx, { rangeM: 420, minRangeM: 260, dists: [320, 300, 350, 380], enemies: 1 });
+      const contact = await toContact(ctx, { rangeM: 300, minRangeM: 140, dists: [185, 175, 195, 165, 205], enemies: 1 });
       ctx.log('contact', JSON.stringify(contact));
       // r3: r2's target stayed where staged (no spot passed the old sight test), below the gun (GUN TRAVEL LIMIT) and
       // framed by the bush round the player's own sight. H.cleanScope moves both: the player to open ground with no
-      // foliage within 12 m, the target 280-340 m out, level with the gun, on a line the sights see clear, turned 30
-      // degrees off it and held
-      const mark = contact?.lanes?.[0]?.id || null;
+      // foliage within 12 m, the target out on a line the sights see clear, level with the gun, turned off it and held.
+      // r4: the mark is a layered Soviet-school or Chinese MBT when the enemy side has one (ERA and a thick turret
+      // front against thin hull sides: all three colours on one tank). r5: 155-205 m out, so the x16 sight (fov 3.8
+      // degrees tall) frames it about half its width
+      const mark = await ctx.eval((fallbackId) => {
+        const H = window.__MB.H;
+        const pick = H.enemies().find((t) => /^(t90|t72b3|t80b|t14|ztz99|ztz96|type99)/.test(t.specId));
+        return pick?.id || fallbackId;
+      }, contact?.lanes?.[0]?.id || null);
       if (mark) {
         const scope = await ctx.eval((id) => {
           const H = window.__MB.H;
-          return H.cleanScope(H.player(), H.g().tankById.get(id), { dists: [300, 280, 320, 340], angle: 0.52 });
+          const p = H.player(), t = H.g().tankById.get(id), opts = { dists: [185, 175, 195, 165, 205, 155], angle: 0.6 };
+          // r5: for this framing a tree or foliage disc anywhere inside the x16 view (half width 3.4 degrees at 16:9,
+          // out to 15 m behind the mark) fails the line too; failing every spot, the shared test as before
+          const base = H.sightClear, halfTan = Math.tan((3.4 * Math.PI) / 180);
+          H.sightClear = (eye, to, discs = H.concealers(), endM = 30) => {
+            if (!base(eye, to, discs, endM)) return false;
+            const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
+            const inView = (cx, cz, r) => {
+              const wx = cx - eye.x, wz = cz - eye.z, along = wx * ux + wz * uz;
+              return along > 1.5 && along < len + 15 && Math.abs(wx * uz - wz * ux) < along * halfTan + r;
+            };
+            if (discs.some((c) => inView(c.x, c.z, c.r))) return false;
+            for (const o of H.D().world.getObstacles?.() || []) {
+              if (o.crushed || o.dead || !o.min || !o.max || !(o.treeIdx != null || /tree/i.test(o.kind || ''))) continue;
+              if (inView((o.min[0] + o.max[0]) / 2, (o.min[2] + o.max[2]) / 2, Math.hypot(o.max[0] - o.min[0], o.max[2] - o.min[2]) / 2)) return false;
+            }
+            return true;
+          };
+          let moved;
+          try { moved = H.cleanScope(p, t, opts); } finally { H.sightClear = base; }
+          const view = moved ? 'clear view' : 'line only';
+          moved = moved || H.cleanScope(p, t, opts);
+          return { spec: t?.specId, view, ...(moved || { none: true }) };
         }, mark);
         ctx.log('clean scope', JSON.stringify(scope));
-        if (!scope) ctx.note('no clean scope (open player spot, level target, clear sight line) was found; the target stays as staged');
+        if (scope.none) ctx.note('no clean scope (open player spot, level target, clear sight line) was found; the target stays as staged');
+        else if (scope.view !== 'clear view') ctx.note('no spot with a clear x16 view; the shared sight-line test placed the mark');
+        // r4: the rest of both sides hold (no gun smoke or a stray kill in the sight), and the mark rolls forward at a
+        // walk, its hull 34 degrees off the sight line, so its tracks throw dust and the paint follows a moving target
+        // (r4: about 3 m/s along the line, some 35 m over the window)
+        await ctx.eval((id) => {
+          const H = window.__MB.H, t = H.g().tankById.get(id);
+          for (const o of H.liveTanks()) if (o !== t && o !== H.player()) H.freezeBot(o);
+          if (H.live(t)) { t.input.brake = false; t.input.throttle = 0.22; t.input.steer = 0; t.input.fire = false; }
+        }, mark);
       }
       // the armour flashlight is the player's setting (H toggles it; off by default)
       await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
@@ -821,14 +926,14 @@ export const RECIPES = {
       await ctx.mb('setAim', { target, fallback: 'nearestEnemyClear' });
       await settle(ctx, 1.5);
       await ctx.capture({
-        // x16 (the increased-zoom step) fills the sight with the painted hull at 300-380 m; x8 as r1
+        // x16 (the increased-zoom step) fills half the sight with the painted hull at 240-280 m; x8 for the ground
         cameras: [
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 16, hud: 'full' },
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },
         ],
-        cameraEvery: 5,
-        everyS: 1.2,
-        triggers: [T.enemyFireOnScreen([35, 90], 900)],
+        cameraEvery: 6,
+        everyS: 0.7,
+        triggers: [],
       });
     },
   },
@@ -1305,23 +1410,23 @@ async function openCrewRadio(ctx) {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.cot-set.open', { timeout: 8000 }).catch(() => null);
   // src/ui/settings.ts: tabs .cot-set-tab[data-tab], the Sound tab's crew row .cot-set-crew-row whose flag dropdown
-  // (customSelect.ts, created lazily with its flag art) opens .cot-custom-select-list in the page
+  // (the kit's picker menu, nationSelect.ts, each voice by its flag) opens its popover in the page
   const result = await page.evaluate(() => {
     const out = { open: !!document.querySelector('.cot-set.open') };
     const sound = document.querySelector('.cot-set-tab[data-tab="sound"]');
     if (sound) { sound.click(); out.tab = (sound.textContent || '').trim(); }
     return out;
   });
-  await page.waitForSelector('.cot-set-crew-row .cot-custom-select-trigger', { timeout: 8000 }).catch(() => null);
+  await page.waitForSelector('.cot-set-crew-row .cot-c-menu__trigger', { timeout: 8000 }).catch(() => null);
   const select = await page.evaluate(() => {
     const row = document.querySelector('.cot-set-crew-row');
     if (!row) return { found: false };
     row.scrollIntoView({ block: 'center' });
-    const trigger = row.querySelector('.cot-custom-select-trigger');
+    const trigger = row.querySelector('.cot-c-menu__trigger');
     if (trigger) trigger.click();
     return { found: true, trigger: !!trigger, text: (row.textContent || '').trim().slice(0, 80) };
   });
-  await page.waitForSelector('.cot-custom-select-list', { visible: true, timeout: 5000 }).catch(() => null);
+  await page.waitForSelector('.cot-c-menu__pop:popover-open', { visible: true, timeout: 5000 }).catch(() => null);
   return { ...result, select };
 }
 

@@ -27,14 +27,19 @@ export const CONSUMABLE_LOADOUT_EVENT = 'ui:consumableLoadout';
 /** The bus event a battle sends as it starts: the player's items within the mode's gate (the HUD tray). */
 export const BATTLE_CONSUMABLES_EVENT = 'ui:battleConsumables';
 
-/** Each item's glyph (src/ui/icons/sprite.svg): the original three keep theirs, the catalog's others are cs*. */
+/**
+ * Each item's glyph (src/ui/icons/sprite.svg, cs*: a 24-unit master and its 16-unit one), the one source every surface
+ * draws: the Garage's slots and picker on the item badge (ui/equipIcons.ts consumableIconSVG), the battle tray, the
+ * settings rows, the HUD's alerts and the Field Manual. The old three no longer borrow the shared repair, medkit and
+ * extinguisher glyphs (261: "much better icons ... represented uniquely").
+ */
 export const CONSUMABLE_ICONS: Readonly<Record<ConsumableId, IconId>> = Object.freeze({
-  repair: 'repair',
+  repair: 'csRepair',
   repair_large: 'csRepairLarge',
   track_links: 'csTrackLinks',
-  first_aid: 'medkit',
+  first_aid: 'csFirstAid',
   rations: 'csRations',
-  extinguisher: 'extinguisher',
+  extinguisher: 'csExtinguisher',
   fire_suppression: 'csFireSuppression',
   governor_override: 'csGovernor',
   ammo_restock: 'csAmmoRestock',

@@ -398,7 +398,8 @@ for (const [id, capacity, cycleS, reloadS] of [
   ['leclerc_s2', 3, 2.4, 16.5],
   ['leclerc_sxxi', 3, 2.2, 15.5],
   ['leclerc_s1', 3, 2.0, 14.5],
-  ['type90_kyumaru', 3, 2.2, 18.5],
+  // balance-263 (FAIRNESS-263, tier VIII): the Type 90 family's 3-round clip refills in 9 s (fleetBalancePass autoloaderCycle)
+  ['type90_kyumaru', 3, 2.2, 9],
   ['pl01', 3, 2.2, 15],
   ['pl01_105', 4, 1.8, 13.5],
   ['carro45t', 4, 2.5, 21],

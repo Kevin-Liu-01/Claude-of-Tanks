@@ -260,8 +260,10 @@ assert.ok(game.keys.length > fullKeys.length * 0.4 && game.keys.length < fullKey
   `the game shows ${game.keys.length} of ${fullKeys.length} keys`);
 assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chunk');
 // (246) the shared shell's bar, menu and footer carry seventeen keys of their own; the page adds its title, its sentence,
-// its search's three and its report link
-assert.ok(real.catalogs.notFound.keys.length <= 24 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
+// its search's three and its report link; (264) every page's boot runtime adds the kit's load failure, two
+// (components/loadFailure.ts: a trigger whose chunk did not arrive says so with no chunk of its own)
+assert.ok(real.catalogs.notFound.keys.length <= 26 && real.catalogs.notFound.keys.includes('notFound.metaTitle')
+  && real.catalogs.notFound.keys.includes('loadFailed.reload'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
 // gallery.damage.* names)
@@ -477,9 +479,11 @@ assert.deepEqual(bootChunkProblems(unaliased), ['assets/i18n-r1.js holds /p/src/
   'assets/i18n-r1.js lacks src/ui/i18nChunkImport.browser.ts: a page could not import its catalog chunk (the page catalog '
   + 'plugin aliases the registry\'s ./i18nChunkImport.ts to it)']);
 for (const id of ['/p/src/ui/i18n.ts', '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/i18nChunkImport.browser.ts', '/p/src/ui/localeRouting.ts',
-  '/p/src/ui/responsiveLayout.ts', '/p/src/presentation/staticI18n.ts', '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
+  '/p/src/ui/responsiveLayout.ts', '/p/src/presentation/staticI18n.ts', '/p/src/ui/components/reveal.ts', '/p/src/presentation/revealStills.ts',
+  '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
 for (const id of ['/p/src/ui/i18nCatalogEnUS.ts', '/p/src/ui/i18nCatalog.en-US.json', '/p/src/ui/i18nCatalogZhCN.ts',
-  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs', '/p/src/ui/i18nChunkImport.ts']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
+  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs', '/p/src/ui/i18nChunkImport.ts', '/p/src/ui/components/revealProbe.ts',
+  '/p/src/presentation/revealStills.selftest.mjs']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
 
 // The dev server serves the same subsets as virtual modules and names them on the page.
 const plugin = i18nPageCatalogs();

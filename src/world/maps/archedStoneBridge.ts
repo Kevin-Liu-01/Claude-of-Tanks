@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { box, jitterUV, scaleUV, slabBox } from '../propGeometry.ts';
 import { bevelBox } from './bevelBox.ts';
 import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } from '../collision.ts';
-import type { DressingBuckets, DressingHeightField, FocusedDressingContext, LayoutDisc, Rng } from './mapKits.ts';
+import type { DressingBuckets, DressingHeightField, DressingSlice, FocusedDressingContext, LayoutDisc, Rng } from './mapKits.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 
 /** Round 61: the deck plane the river kit builds its arched bridge on (terrain.ts BridgeDeckPlane). */
@@ -652,6 +652,18 @@ export function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext, style: BridgeMasonry = 'plain',
 ): void {
+  for (const _ of addArchedStoneBridgeSteps(deck, heightField, rng, buckets, ctx, style)) { /* one task */ }
+}
+
+// (260, the rooms census: Cliffbridge's Puente Nuevo was one 72 ms step of the props build) the bridge in its parts: the
+// body and its slab, then the masonry, then its toning, then the record; the same pieces, draws and order
+const BRIDGE_SLICE: DressingSlice = { fine: true, progress: false, stage: 'map-extras' };
+
+/** addArchedStoneBridge with a checkpoint between its parts, for the props build's pacing. */
+export function* addArchedStoneBridgeSteps(
+  deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
+  ctx: FocusedDressingContext, style: BridgeMasonry = 'plain',
+): Generator<DressingSlice, void, void> {
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
   const width = halfWidth * 2;
@@ -751,6 +763,7 @@ export function addArchedStoneBridge(
       stoneOut(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
     }
   }
+  yield BRIDGE_SLICE;
   // (#27) a Norman river bridge's masonry over the body: the arch rings, the string course, the coped parapets, the
   // pointed cutwaters with their starlings and the pilasters over them (visual only: the record below is unchanged)
   if (style === 'ronda') {
@@ -762,6 +775,7 @@ export function addArchedStoneBridge(
     rondaBody.push(alignWidth(g.body, ux, uz).translate(cx, 0, cz));
     rondaTrim.push(alignWidth(g.trim, ux, uz).translate(cx, 0, cz));
     buckets.dark.push(alignWidth(g.iron, ux, uz).translate(cx, 0, cz));
+    yield BRIDGE_SLICE;
     // one geometry in the bridge's own ashlar (2026-10-22: props.ts bridgeStone), else the regional stone (a bucket set
     // without either, a receipt's: the stone bucket, untoned)
     const toned = mergeStone([...rondaBody.map((p) => toneRondaBody(p, bottom, seed)), ...rondaTrim.map((p) => toneRondaTrim(p, bottom))], true);
@@ -776,6 +790,7 @@ export function addArchedStoneBridge(
       arcs, piers, seed: Math.round(cx * 13 + cz * 7), copings: !parapetRuns });
     buckets.stone.push(alignWidth(g, ux, uz).translate(cx, 0, cz));
   }
+  yield BRIDGE_SLICE;
   // The record (round 63, 2026-09-24): parts that follow the geometry. The deck part is the spandrel fill and the slab
   // from the crown line up — deckY − crownY = BRIDGE_BODY_TOP_UNDER_DECK_M + BRIDGE_SPANDREL_FILL_M = 1.0 m, over
   // HULL_STANDABLE_HEIGHT_M (0.9), so a hull on the deck mounts it as its floor and is not pushed by its sides — the

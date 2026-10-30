@@ -465,21 +465,6 @@
     5.5
    ]
   },
-  "challenger1_mk2": {
-   "sealed": true,
-   "openPx": 5,
-   "openViews": 0,
-   "insideOutPx": 109,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 105144,
-   "frame": [
-    -0.05,
-    1.4,
-    1.6,
-    6.4
-   ]
-  },
   "challenger1_mk3": {
    "sealed": true,
    "openPx": 5,
@@ -1082,6 +1067,36 @@
     5.7
    ]
   },
+  "leo2_improved": {
+   "sealed": true,
+   "openPx": 17,
+   "openViews": 0,
+   "insideOutPx": 322,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 114382,
+   "frame": [
+    0,
+    2.5,
+    0.85,
+    6.1
+   ]
+  },
+  "leo2a3_b4": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 470,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 102172,
+   "frame": [
+    0,
+    1.95,
+    0.75,
+    5.8
+   ]
+  },
   "leo2_revolution": {
    "sealed": true,
    "openPx": 0,
@@ -1140,6 +1155,51 @@
     1.95,
     0.75,
     5.8
+   ]
+  },
+  "leo2a4": {
+   "sealed": true,
+   "openPx": 14,
+   "openViews": 0,
+   "insideOutPx": 430,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 108781,
+   "frame": [
+    0,
+    1.45,
+    0.85,
+    5.7
+   ]
+  },
+  "leo2a4_otco": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 448,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 120204,
+   "frame": [
+    0,
+    1.75,
+    0.85,
+    5.8
+   ]
+  },
+  "leo2a4_v": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 407,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 115071,
+   "frame": [
+    0,
+    2.1,
+    0.85,
+    5.9
    ]
   },
   "leo2a4m": {
@@ -1219,11 +1279,11 @@
   },
   "leo2a6_ua": {
    "sealed": true,
-   "openPx": 18,
+   "openPx": 51,
    "openViews": 0,
    "insideOutPx": 63,
-   "seeThroughPx": 8,
-   "netSeeThroughPx": 6329,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4463,
    "tris": 156544,
    "frame": [
     0,
@@ -1239,6 +1299,25 @@
      "date": "2026-10-20",
      "from": {
       "openPx": 2
+     }
+    },
+    {
+     "kind": "rebaseline",
+     "reason": "Main ruling 2026-10-28 (release 264): builds the source-measured 2A6 (hull/turret/gun/gunMount byte-identical to leo2a6); bare leo2a6 in the same frame reads 146 open px, sealed; the 51 are that stock's sub-min-area seam aliasing (leo2a6-ua-264 evidence gate/sealed-ua2.json, gate/sealed-a6-uaframe.json)",
+     "by": "leo2a6-ua-264",
+     "date": "2026-10-28",
+     "from": {
+      "openPx": 18
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "release 264 rebuilt on the source-measured 2A6 with the photo-sourced field net laid on the turret roof, the cage roof, the bustle, the front deck and the rear hull walls (ghillieFleetSuits.ts), replacing the 2A6M-rig suit",
+     "by": "leo2a6-ua-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 8,
+      "netSeeThroughPx": 6329
      }
     }
    ]
@@ -1339,13 +1418,25 @@
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3128,
+   "netSeeThroughPx": 2661,
    "tris": 130668,
    "frame": [
     0,
     1.7,
     0.9,
     5.7
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3128
+     }
+    }
    ]
   },
   "m1a1_abrams_hc": {
@@ -2466,7 +2557,7 @@
    "openViews": 0,
    "insideOutPx": 65,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 5217,
+   "netSeeThroughPx": 5068,
    "tris": 146669,
    "frame": [
     0,
@@ -2483,6 +2574,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 6419
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "inherited from main 262 - the field net reads 5068 px with the screen slats closed or open (orphan-reds-264 A-B), so the drift predates this lane",
+     "by": "orphan-reds-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 5217
      }
     }
    ]
@@ -3515,15 +3616,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 266,
+   "insideOutPx": 342,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 94326,
+   "tris": 99510,
    "frame": [
     0,
-    2.45,
-    0.5,
-    5.6
+    1.65,
+    1.75,
+    6.1
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 263 ground-up rebuild, the 125 mm reaches 1.5 m further forward and the turret is a compact welded hexagon",
+     "by": "kevinliu",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       0.5,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      1.65,
+      1.75,
+      6.1
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "ztz99_longwei": {
@@ -3583,79 +3720,259 @@
     }
    ]
   },
-  "leo2a4": {
+  "t64bm1m": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 430,
+   "insideOutPx": 146,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 108781,
+   "tris": 119541,
    "frame": [
     0,
-    1.45,
-    0.85,
-    5.7
+    1.85,
+    1.15,
+    5.5
    ]
   },
-  "leo2a4_v": {
+  "t64bv": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 407,
+   "insideOutPx": 144,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 115071,
+   "tris": 121238,
    "frame": [
     0,
-    2.1,
-    0.85,
-    5.9
+    1.85,
+    1,
+    5.6
    ]
   },
-  "leo2a4_otco": {
+  "t64b1v_2022": {
    "sealed": true,
-   "openPx": 5,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 448,
+   "insideOutPx": 160,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 120204,
+   "tris": 122886,
    "frame": [
     0,
-    1.75,
-    0.85,
-    5.8
+    1.85,
+    1.1,
+    5.6
    ]
   },
-  "leo2_improved": {
+  "pt64_tur": {
    "sealed": true,
-   "openPx": 17,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 322,
+   "insideOutPx": 144,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 114382,
+   "tris": 123823,
    "frame": [
     0,
-    2.5,
-    0.85,
-    6.1
+    1.85,
+    1,
+    5.6
    ]
   },
-  "leo2a3_b4": {
+  "bm_oplot_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 110923,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "bm_oplot_t": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 118462,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "challenger3_td": {
+   "sealed": true,
+   "openPx": 6,
+   "openViews": 0,
+   "insideOutPx": 84,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4053,
+   "tris": 110062,
+   "frame": [
+    0,
+    2.95,
+    1.25,
+    7.7
+   ]
+  },
+  "challenger3_td_rws": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 90,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 96509,
+   "frame": [
+    0,
+    2.95,
+    1.25,
+    7.6
+   ]
+  },
+  "christian2": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
    "insideOutPx": 470,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 102172,
+   "netSeeThroughPx": 3742,
+   "tris": 110599,
    "frame": [
     0,
     1.95,
     0.75,
     5.8
+   ]
+  },
+  "t55a": {
+   "sealed": true,
+   "openPx": 14,
+   "openViews": 0,
+   "insideOutPx": 538,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 62972,
+   "frame": [
+    0,
+    1.45,
+    0.95,
+    5.1
+   ]
+  },
+  "ztz20": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 178,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 100168,
+   "frame": [
+    0,
+    1.5,
+    0.55,
+    5.4
+   ]
+  },
+  "ztz20_prototype": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 91793,
+   "frame": [
+    0,
+    1.45,
+    0.5,
+    5.4
+   ]
+  },
+  "type10_dozer": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 288,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 96622,
+   "frame": [
+    0,
+    2.05,
+    0.9,
+    5.6
+   ]
+  },
+  "challenger1_mk1": {
+   "sealed": true,
+   "openPx": 9,
+   "openViews": 0,
+   "insideOutPx": 655,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116100,
+   "frame": [
+    0,
+    2,
+    1.45,
+    6.1
+   ]
+  },
+  "challenger_x": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 303,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 107232,
+   "frame": [
+    0,
+    2.25,
+    1.3,
+    6.9
+   ]
+  },
+  "challenger_x_sleek": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 328,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 91573,
+   "frame": [
+    0,
+    2.15,
+    1.6,
+    6.6
+   ]
+  },
+  "challenger1_mk2": {
+   "sealed": true,
+   "openPx": 9,
+   "openViews": 0,
+   "insideOutPx": 655,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116111,
+   "frame": [
+    0,
+    2,
+    1.45,
+    6.1
    ]
   }
  }

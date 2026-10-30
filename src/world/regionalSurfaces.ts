@@ -94,13 +94,15 @@ function surfaceFromHeight(h: Float32Array, rough: Float32Array, s: number, anis
   return toTexture(px, s, { anisotropy });
 }
 
-function finish(px: Uint8ClampedArray, hgt: Float32Array, rough: Float32Array, s: number, anisotropy: number,
-  normalStrength: number, aoMin: number): RegionalSurfaceTextures {
-  return {
-    albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, normalStrength, anisotropy),
-    surface: surfaceFromHeight(hgt, rough, s, anisotropy, aoMin),
-  };
+// (260, the rooms census: a 512 px stone's three maps, after its last painted rows, were one step of the props build) a
+// checkpoint between the albedo, the normal and the surface; the same maps
+function* finish(px: Uint8ClampedArray, hgt: Float32Array, rough: Float32Array, s: number, anisotropy: number,
+  normalStrength: number, aoMin: number): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
+  const albedo = toTexture(px, s, { srgb: true, anisotropy });
+  yield { fine: true, stage: 'surface-maps' };
+  const normal = normalFromHeight(hgt, s, normalStrength, anisotropy);
+  yield { fine: true, stage: 'surface-maps' };
+  return { albedo, normal, surface: surfaceFromHeight(hgt, rough, s, anisotropy, aoMin) };
 }
 
 /** sRGB 0..1 channel write with a multiplier tint. */
@@ -917,7 +919,7 @@ export function* makeRegionalRoof(kind: RoofSurfaceKind, tint: Tint, anisotropy:
   const s = 256;
   const [px, hgt, rough] = yield* cached(`roof:${kind}:${tint.join(',')}:${seed}`, () => painter(s, tint, seed));
   const strength = kind === 'sheet' ? 1.4 : kind === 'canal' ? 2.4 : kind === 'slate' ? 1.6 : 2.0;
-  return finish(px, hgt, rough, s, anisotropy, strength, kind === 'sheet' ? 0.82 : 0.7);
+  return yield* finish(px, hgt, rough, s, anisotropy, strength, kind === 'sheet' ? 0.82 : 0.7);
 }
 
 /** The stone bucket's texture set for a style (512 px). */
@@ -929,7 +931,7 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
   // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199; round 6, wave 241: "heavily embossed",
   // "cartoon bevels": the brick and the sandstone a third shallower, their tooling and joints carrying the face)
   const relief = kind === 'brick' || kind === 'sandstone' ? 1.5 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
-  return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
+  return yield* finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 
 /**
@@ -951,7 +953,7 @@ export function* makeBridgeAshlar(tint: Tint, anisotropy: number, seed = 0x7a1e)
   const s = 512;
   const [px, hgt, rough] = yield* cached(`stone:bridge-ashlar:${tint.join(',')}:${seed}`,
     () => masonry(s, 'sandstone', tint, seed, false, false, BRIDGE_ASHLAR));
-  return finish(px, hgt, rough, s, anisotropy, 1.5, 0.66);
+  return yield* finish(px, hgt, rough, s, anisotropy, 1.5, 0.66);
 }
 
 /**
@@ -965,7 +967,7 @@ export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uin
   const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}${worn ? ':worn' : ''}`, () => boardFormed(s, [1, 1, 1], seed, worn, pour));
   tone?.(px);
   // (a pour's relief at two thirds of the formwork's: its lifts and ties only)
-  return finish(px, hgt, rough, s, anisotropy, worn ? 0.9 : pour ? 0.95 : 1.4, 0.72);
+  return yield* finish(px, hgt, rough, s, anisotropy, worn ? 0.9 : pour ? 0.95 : 1.4, 0.72);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */

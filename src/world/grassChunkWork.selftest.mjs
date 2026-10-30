@@ -171,7 +171,7 @@ assert.deepEqual(schedule(null, null, null), []);
 assert.ok(source.indexOf('for (const entry of chunkMeshes) group.add(entry.mesh)')
   > source.indexOf('if (!job.complete) return false'), 'no partial chunk attaches');
 assert.match(source, /grassBuildJob\?\.job\?\.cancel\(\)/, 'world eviction cancels pending CPU ownership');
-assert.match(source, /if \(disposed\) return;[\s\S]*uWindTime\.value \+= dt/, 'disposed worlds cannot resume streaming');
+assert.match(source, /if \(disposed\) return false;[\s\S]*uWindTime\.value \+= dt/, 'disposed worlds cannot resume streaming');
 
 // Exercise actual production publication, including failure rollback. Completed
 // attributes are adopted unchanged; partial mesh containers never attach and

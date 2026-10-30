@@ -413,6 +413,12 @@ interface ShadowStaticCacheFrame {
   changed: string;
   /** (battle-spikes-253) The valid cascades this change's bounds missed: their copies stand (scoped re-renders). */
   keptMask: number;
+  /**
+   * (battle-spikes-253, the draw census) Which of the cache's own renders is drawing right now: 'static' (a rebuild's
+   * static layer), 'dynamic' (the layer drawn over the copy), '' otherwise (an ordinary render). Set only around those
+   * renders; it decides nothing.
+   */
+  drawPhase: '' | 'static' | 'dynamic';
 }
 
 export interface ShadowStaticCache {
@@ -476,7 +482,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
   let rebuildReason = 'cold';
   const frameRecord: ShadowStaticCacheFrame = {
     frame: 0, forced: false, rebuildMask: 0, reuseMask: 0, fullMask: 0, unsettledMask: 0, moveMask: 0, moveField: -1, moveDelta: 0,
-    reason: '', poseField: -1, poseDelta: 0, content: '', changed: '', keptMask: 0,
+    reason: '', poseField: -1, poseDelta: 0, content: '', changed: '', keptMask: 0, drawPhase: '',
   };
   let hashedOnce = false;
   // (battle-spikes-253) scoped content re-renders: a change the cache can bound — an instanced caster's changed
@@ -898,7 +904,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
       // the static layer: every dynamic caster hidden; three clears and renders the live map
       hideAll(dynamicTop);
       hideAll(promotedList());
-      try { render(single, scene, camera); } finally { restore(); }
+      frameRecord.drawPhase = 'static';
+      try { render(single, scene, camera); } finally { frameRecord.drawPhase = ''; restore(); }
       if (!copyDepth(renderer, live, target)) {
         // fail open for the session: this frame renders the whole caster set the ordinary way
         slot.valid = false;
@@ -923,7 +930,9 @@ export function createShadowStaticCache(): ShadowStaticCache {
     muteAll(coverCasters);
     const clear = renderer.clear;
     renderer.clear = noClear;
+    frameRecord.drawPhase = 'dynamic';
     try { render(single, scene, camera); } finally {
+      frameRecord.drawPhase = '';
       renderer.clear = clear;
       restore();
     }

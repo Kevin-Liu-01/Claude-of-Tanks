@@ -1,5 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { importWhenOnline } from '../ui/components/loadFailure.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -23,8 +25,13 @@ if (!localeRouteChanged) {
   localizeDocumentLinks(document, getLocale());
 }
 
+// (a count whose module did not arrive stands down as one that did not load: githubStars.ts's 'unavailable' state)
 const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
-  .then(({ mountGitHubStars }) => mountGitHubStars(document));
+  .then(({ mountGitHubStars }) => mountGitHubStars(document))
+  .catch(() => document.querySelectorAll<HTMLElement>('[data-github-stars]').forEach((node) => {
+    node.dataset.githubStarsState = 'unavailable';
+    node.removeAttribute('aria-busy');
+  }));
 
 const isLocale = (value: string | null): value is SupportedLocale => value === 'en-US' || value === 'zh-CN';
 
@@ -38,25 +45,31 @@ function mountLanguageLinks(): void {
   }
 }
 
-/** The phone and tablet menu sheet: the trigger opens it; Escape, a link or a desktop layout closes it. */
+/** The phone and tablet menu sheet: the trigger opens it; Escape, a press outside it, a link or a desktop layout closes it. */
 function mountMenuSheet(): void {
   const trigger = document.querySelector<HTMLButtonElement>('.public-nav__menu-trigger');
   const menu = document.getElementById('public-nav-menu');
   if (!trigger || !menu) return;
+  // a transient surface (src/ui/components/surfaceStack.ts): opening it closes an open menu (the Gallery's rival), opening
+  // another closes it, and Escape and a press outside it are the stack's
+  const surface: TransientSurface = {
+    id: 'public-nav-menu',
+    element: () => menu,
+    owns: (node) => trigger.contains(node),
+    close: (reason) => set(false, reason === 'escape'),
+  };
   const set = (open: boolean, restoreFocus = false): void => {
+    if (open) openSurface(surface, trigger); else closeSurface(surface);
     menu.hidden = !open;
     trigger.setAttribute('aria-expanded', String(open));
     trigger.setAttribute('aria-label', t(open ? 'publicNav.closeMenu' : 'publicNav.openMenu'));
     if (!open && restoreFocus) trigger.focus();
+    // the focus moves into the sheet it opened, on its first destination
+    if (open) menu.querySelector<HTMLElement>('a[href], button')?.focus({ preventScroll: true });
   };
   trigger.addEventListener('click', () => set(Boolean(menu.hidden)));
   menu.addEventListener('click', (event) => {
     if (event.target instanceof Element && event.target.closest('a')) set(false);
-  });
-  window.addEventListener('keydown', (event) => {
-    if (event.code !== 'Escape' || menu.hidden) return;
-    event.preventDefault();
-    set(false, true);
   });
   matchMedia('(width >= 1100px)').addEventListener('change', (event) => { if (event.matches) set(false); });
 }
@@ -85,9 +98,10 @@ function hydrateIcons(root: ParentNode): void {
     return ref.startsWith('#') && !document.getElementById(ref.slice(1));
   });
   if (!slots.length && !missing) return;
-  void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
+  // (a set that did not arrive leaves the slots empty: its chunk is not asked for again in this document)
+  importWhenOnline(() => import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
     for (const slot of slots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 24);
-  });
+  }));
 }
 
 hydrateIcons(document);
@@ -112,7 +126,9 @@ window.setTimeout(() => {
   else mountStars();
 }, 2400);
 
-// the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load
-const behaviours = (): void => void import('../ui/components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+// the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load (and
+// once: a page without them works)
+const behaviours = (): void => importWhenOnline(() => import('../ui/components/pageBehaviours.ts')
+  .then(({ installPageBehaviours }) => installPageBehaviours()));
 if ('requestIdleCallback' in window) requestIdleCallback(behaviours, { timeout: 1500 });
 else setTimeout(behaviours, 300);

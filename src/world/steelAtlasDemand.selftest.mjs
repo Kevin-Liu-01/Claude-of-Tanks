@@ -60,7 +60,7 @@ assert.match(source, /if \(steelAtlas\.needed\) \{\n\s*const painter = makeSteel
 assert.match(source, /mobileProps \? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE/, 'the half size stays the record\'s size where a phone build ever painted');
 assert.match(source, /if \(steel \|\| mobileProps\) return; \/\/ round 78/, 'the on-demand painter never paints on the mobile tier');
 assert.match(source, /group\.userData\.steelAtlas = steelAtlas;/, 'the timing record for the build probe');
-assert.match(source, /if \(tmp\.steel\?\.length\) ensureSteelAtlas\('plan:' \+ structureId\);/, 'a planned steel part falls back');
-assert.match(source, /ensureSteelAtlas\('yard:'/, 'a yard steel family falls back');
+assert.match(source, /if \(tmp\.steel\?\.length\) yield\* ensureSteelAtlasSteps\('plan:' \+ structureId\);/, 'a planned steel part falls back');
+assert.match(source, /ensureSteelAtlasSteps\('yard:'/, 'a yard steel family falls back');
 assert.match(source, /\.\.\.\(steel \? \{ map: steel\.albedo, normalMap: steel\.normal, roughnessMap: steel\.surface, aoMap: steel\.surface \} : \{\}\)/, 'the material takes the maps only when painted');
 console.log(`steelAtlasDemand self-test passed: ${MAP_IDS.length - without.length} maps paint the atlas, ${without.length} do not; half-size paint checked; the mobile tier paints none (round 78)`);

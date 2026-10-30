@@ -27,7 +27,7 @@
   },
   "s04-column-under-fire": {
    "map": "verdant",
-   "title": "A T-90M column drives into the fight on the country road",
+   "title": "A T-90M Proryv column drives into the fight on the country road",
    "round": "deliver-r14",
    "current": true,
    "sound": true
@@ -251,7 +251,7 @@
   },
   "s36-barn-knockout": {
    "map": "frontier",
-   "title": "A Type 10 knocks out a T-90M beside the burning barn",
+   "title": "A Type 10 knocks out a T-90M Proryv beside the burning barn",
    "round": "deliver-r14",
    "current": true,
    "sound": true
@@ -419,7 +419,7 @@
   },
   "s225-verdant-duel": {
    "map": "verdant",
-   "title": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+   "title": "A Leopard 2A7V races a T-90M Proryv across Verdant Fields at golden hour, trading broadsides",
    "round": "deliver-combat226",
    "current": true,
    "sound": true
@@ -440,7 +440,7 @@
   },
   "s228-street-1v2": {
    "map": "urban",
-   "title": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+   "title": "An AbramsX takes on a T-90M Proryv and a T-72B3 down Steinburg's main street at night",
    "round": "deliver-combat226",
    "current": true,
    "sound": true
@@ -524,7 +524,7 @@
   },
   "s87-leo2a4-otco-polders": {
    "map": "polders",
-   "title": "A Leopard 2A3 OTCO knocks out a T-90M at Tidegate Polders at sunset",
+   "title": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -1093,7 +1093,7 @@
    "id": "b27-recoil",
    "n": 27,
    "technique": "Recoil and blast",
-   "title": "T-90M fires: recoil, muzzle blast and the dust ring at 1/25 s",
+   "title": "T-90M Proryv fires: recoil, muzzle blast and the dust ring at 1/25 s",
    "map": "verdant",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1117,7 +1117,7 @@
    "id": "b30-salvo-longexp",
    "n": 30,
    "technique": "Long exposure",
-   "title": "Four T-14 and T-90M guns in one half-second frame",
+   "title": "Four T-14 and T-90M Proryv guns in one half-second frame",
    "map": "foundry",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1133,7 +1133,7 @@
    "id": "b32-embers",
    "n": 32,
    "technique": "Long exposure",
-   "title": "Embers streaming off a burning T-90M wreck, 1/4 s",
+   "title": "Embers streaming off a burning T-90M Proryv wreck, 1/4 s",
    "map": "foundry",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1173,7 +1173,7 @@
    "id": "b37-rack-near",
    "n": 37,
    "technique": "Rack focus (near)",
-   "title": "Focus on the K2 Black Panther in the foreground, the burning T-90M soft",
+   "title": "Focus on the K2 Black Panther in the foreground, the burning T-90M Proryv soft",
    "map": "autumn",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1181,7 +1181,7 @@
    "id": "b38-rack-far",
    "n": 38,
    "technique": "Rack focus (far)",
-   "title": "The same frame racked to the burning T-90M",
+   "title": "The same frame racked to the burning T-90M Proryv",
    "map": "autumn",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1213,7 +1213,7 @@
    "id": "b42-ots",
    "n": 42,
    "technique": "Over the shoulder",
-   "title": "Over the T-90M's turret toward the burning line",
+   "title": "Over the T-90M Proryv's turret toward the burning line",
    "map": "verdant",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1221,7 +1221,7 @@
    "id": "b43-cookoff",
    "n": 43,
    "technique": "Explosion",
-   "title": "Ammunition cook-off: the T-90M turret leaves the hull",
+   "title": "Ammunition cook-off: the T-90M Proryv turret leaves the hull",
    "map": "badlands",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -2685,10 +2685,10 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 95897,
-   "sha256": "8e7247122e9309b38c696f9b5e6790c4df8c1441b82b308328cd77fa26a9a45e",
+   "bytes": 97082,
+   "sha256": "587c122c826796ad05182b24e8becc86681480581aa4b64c10c1a4b888f0ef5b",
    "source": null,
-   "vehicles": 185
+   "vehicles": 187
   },
   {
    "path": "media/site50-r14/fleet/k1a1_x.jpg",
@@ -3543,25 +3543,25 @@
   },
   {
    "path": "media/site50-r14/fleet/m1a2_sepv3.jpg",
-   "bytes": 39043,
-   "sha256": "cdaae86af40188ec0e2e15dcb330d31ef89fe5803aa8cc120a62b6323728e336",
-   "source": "shots/media-r5/site50/deliver-fleet/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield-close-4k.png",
+   "bytes": 48103,
+   "sha256": "5a00da9f4ee660c2141076c9242e19c7a930b87039eaa749192e4bab87223c04",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield-close-4k.png",
    "take": "s197-m1a2-sepv3-airfield",
-   "round": "shots/media-r5/site50/deliver-fleet",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
    "vehicle": "m1a2_sepv3"
   },
   {
    "path": "media/site50-r14/fleet/m1a2_sepv3.webm",
-   "bytes": 434784,
-   "sha256": "885d4ffb2d400835da60ab087640575556d6878c9a32b9ebf59c88c8e8bdfd0a",
+   "bytes": 549285,
+   "sha256": "67bea6c216c73c908d719c344b9c5b512c1ec34ea991d5afe673a8c4409bbf08",
    "width": 640,
    "height": 360,
-   "fps": 30,
-   "seconds": 6,
+   "fps": 30.0,
+   "seconds": 6.0,
    "audio": null,
-   "source": "shots/media-r5/site50/deliver-fleet/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.mp4",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.mp4",
    "take": "s197-m1a2-sepv3-airfield",
-   "round": "shots/media-r5/site50/deliver-fleet",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
    "vehicle": "m1a2_sepv3"
   },
   {
@@ -3635,25 +3635,25 @@
   },
   {
    "path": "media/site50-r14/fleet/m1a2.jpg",
-   "bytes": 36528,
-   "sha256": "e91a773acdee30d2ef591f2b7ad598b32a80896344eb815810d91de5a209fa32",
-   "source": "shots/media-r5/site50/deliver-fleet/s195-m1a2-airfield/s195-m1a2-airfield-close-4k.png",
+   "bytes": 47083,
+   "sha256": "2c37406f3b628e37797c9a1d1943fde163d27dbc07dd19181723640d6ad63b9d",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s195-m1a2-airfield/s195-m1a2-airfield-close-4k.png",
    "take": "s195-m1a2-airfield",
-   "round": "shots/media-r5/site50/deliver-fleet",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
    "vehicle": "m1a2"
   },
   {
    "path": "media/site50-r14/fleet/m1a2.webm",
-   "bytes": 401886,
-   "sha256": "b032987b4e43bced632b6d0a2a050da042282b922bb17b9a68a7c7c8996d7ab9",
+   "bytes": 534186,
+   "sha256": "6f355f06bf2329ff7708f41448ab491005589898b79369927ca7d0524b1f0380",
    "width": 640,
    "height": 360,
-   "fps": 30,
-   "seconds": 6,
+   "fps": 30.0,
+   "seconds": 6.0,
    "audio": null,
-   "source": "shots/media-r5/site50/deliver-fleet/s195-m1a2-airfield/s195-m1a2-airfield.mp4",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s195-m1a2-airfield/s195-m1a2-airfield.mp4",
    "take": "s195-m1a2-airfield",
-   "round": "shots/media-r5/site50/deliver-fleet",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
    "vehicle": "m1a2"
   },
   {
@@ -5819,6 +5819,52 @@
    "vehicle": "ztz99a2"
   },
   {
+   "path": "media/site50-r14/fleet/type10_dozer.webm",
+   "bytes": 410194,
+   "sha256": "47d9d512b27c4c7d7671a1ace6bab03da39903f531d3cf360829cfbf64bdd376",
+   "width": 640,
+   "height": 360,
+   "fps": 30.0,
+   "seconds": 6.0,
+   "audio": null,
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.mp4",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
+   "path": "media/site50-r14/fleet/type10_dozer.jpg",
+   "bytes": 35627,
+   "sha256": "2f8740d402a8ee13a36268d6406db9ae06206aea7e8ad487a6392b9b84d64b51",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove-close-4k.png",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
+   "path": "media/site50-r14/fleet/m60a3.webm",
+   "bytes": 398162,
+   "sha256": "40497a3896b525316389ce37f835839a2ef2a1344772cd5152400008bf66fc4d",
+   "width": 640,
+   "height": 360,
+   "fps": 30.0,
+   "seconds": 6.0,
+   "audio": null,
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.mp4",
+   "take": "s208-m60a3-copper-mesa",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
+   "vehicle": "m60a3"
+  },
+  {
+   "path": "media/site50-r14/fleet/m60a3.jpg",
+   "bytes": 43780,
+   "sha256": "3acd3ba8adfeefc64a7ceb116303e4aa9971088c5887766232c679785f7e08e2",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa-close-4k.png",
+   "take": "s208-m60a3-copper-mesa",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
+   "vehicle": "m60a3"
+  },
+  {
    "path": "media/site50-r14/frames/b01-pan-runway-thumb.webp",
    "bytes": 8346,
    "sha256": "d346848077ec2062d12f35d4d359d514e109b0ebe590e0e5b8916fa131d9386a",
@@ -6797,15 +6843,15 @@
   },
   {
    "path": "media/site50-r14/home/mechanics/armor-640.webp",
-   "bytes": 57556,
-   "sha256": "b4a7966ec57a33166306f3e7d839406c731466db8f61037bcd4c863cdcc2e120",
+   "bytes": 66646,
+   "sha256": "5557d5b16edb52e851526c26040d3afa824d83d970d540786732ffa17feec688",
    "source": "shots/media-r5/home-r2/deliver/mechanics/armor.png",
    "home": "mechanics/armor"
   },
   {
    "path": "media/site50-r14/home/mechanics/armor.webp",
-   "bytes": 275136,
-   "sha256": "7444bfbdbc33be07efba6e17cca383763af9d0c53c005a079d38f7f194822589",
+   "bytes": 293174,
+   "sha256": "537b1ae775dbb833c872b27887694b237c888ed60c1023f9a5506a1857b0a347",
    "source": "shots/media-r5/home-r2/deliver/mechanics/armor.png",
    "home": "mechanics/armor"
   },
@@ -8371,10 +8417,10 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 98536,
-   "sha256": "f7adae9ffbbec187f0480b5ab9cc3192873706c3442a39035f529e668394c3cd",
+   "bytes": 99600,
+   "sha256": "7323171222034852f7747421d3513e3b7134b6be9755d33a7497d2671e23e368",
    "source": null,
-   "takes": 193
+   "takes": 195
   },
   {
    "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",
@@ -8978,9 +9024,9 @@
   },
   {
    "path": "media/site50-r14/scenes/s195-m1a2-airfield.scene.json",
-   "bytes": 87764,
-   "sha256": "c02152ee613d92dd6151aa3c959d4fe013fe2b9d61f568460022dcfefff14241",
-   "source": "shots/media-r5/site50/deliver-fleet/s195-m1a2-airfield/s195-m1a2-airfield.scene.json"
+   "bytes": 88156,
+   "sha256": "f3c5b9467bd74dce04a751249d29e10f7f1472962813c581351f593d54ece510",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s195-m1a2-airfield/s195-m1a2-airfield.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s196-m1a2-sepv2-badlands.scene.json",
@@ -8990,9 +9036,9 @@
   },
   {
    "path": "media/site50-r14/scenes/s197-m1a2-sepv3-airfield.scene.json",
-   "bytes": 75279,
-   "sha256": "80573cf0523e3bb5f1746547566d2dffea19f8ee3653b25aff97029f2b526dcc",
-   "source": "shots/media-r5/site50/deliver-fleet/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.scene.json"
+   "bytes": 75396,
+   "sha256": "69ae121ff70e591efe3df2285619932e10e7ab5a815a2e86609e752668224d05",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s198-m1a2-tusk-copper-mesa.scene.json",
@@ -9533,6 +9579,18 @@
    "bytes": 76692,
    "sha256": "1fcfd90b5f487b6c31be8630adc70d379f07f24aed0bdbc7e2cfc2c0b03886d3",
    "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera.scene.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json",
+   "bytes": 77948,
+   "sha256": "c3d031063afeb7fb4adbe28c1df778b682563cf9cef7e3d9750fdcdaa3b76e3a",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.scene.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json",
+   "bytes": 76572,
+   "sha256": "0e9e3209009e6436f8e67de54e86d5e04619fe5c19bababed0f5a0f4de638dcc",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.scene.json"
   },
   {
    "path": "media/site50-r14/stills/s01-main-street-push-close-thumb.webp",

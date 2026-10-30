@@ -5,7 +5,8 @@ export const SOURCE_COMPOSITION_PROTOCOL = 'urban-sourced-image-first-compositio
 
 /** Evaluate only the existing source plan: no image IO, Canvas or renderer. */
 export async function urbanCompositionCases(source) {
-  const withoutImports = source.replace(/^import[^\n]*;\s*$/gm, '').replace(/^export /gm, '');
+  // (an import may span lines: sourcedTextures.ts's from the room-world-slices round, 0ee46c9e87)
+  const withoutImports = source.replace(/^import\b[\s\S]*?;[ \t]*$/gm, '').replace(/^export /gm, '');
   const script = stripTypeScriptTypes(withoutImports) + `
     const cases = [];
     sourceJob = async (target, set, layer, options) => {

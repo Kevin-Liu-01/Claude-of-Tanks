@@ -18,8 +18,11 @@ export interface PickerItem {
   readonly name: string;
   /** At most two short data strings: a map's size and biome, a camo's nation and kind. */
   readonly facts?: readonly string[];
-  /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures. */
-  readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[] };
+  /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures.
+   *  A list row shows the poster as its thumbnail, so every list of tanks shows each tank (owner 2026-10-27); `tank` marks
+   *  a tank's portrait (icons.ts tankThumbUrl), cropped to the fleet's shared framing. */
+  readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[];
+    readonly tank?: boolean };
   readonly glyph?: IconId;
   /** A small picture (its image URL) drawn in the glyph's place at 4:3: a nation's flag, a colour preset's swatch. */
   readonly chip?: string;
@@ -77,10 +80,30 @@ interface PickerController {
   dispose(): void;
 }
 
+/**
+ * A sideways strip of chips that shows only whole chips: one the strip's edge would cut is hidden (class is-cut) but stays
+ * in the tab order, so the focus scrolls it in, and the strip stops on chip starts (CSS .cot-c-whole). A surface keeps its
+ * own cue that more follow (a more button, a count). The r25 critic read "Surv", "ecent" and a flag's "1" at strip edges,
+ * under fades, as clipped words. Returns the disconnect; `onChange` hears the cut chips change.
+ */
+export function wholeChips(strip: HTMLElement, onChange?: () => void): () => void {
+  if (typeof IntersectionObserver !== 'function' || typeof MutationObserver !== 'function') return () => {};
+  strip.classList.add('cot-c-whole');
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) entry.target.classList.toggle('is-cut', entry.intersectionRatio < WHOLE_SHARE);
+    onChange?.();
+  }, { root: strip, threshold: [0, WHOLE_SHARE] });
+  const watch = (): void => { seen.disconnect(); for (const chip of strip.children) seen.observe(chip); };
+  const changes = new MutationObserver(watch);
+  watch();
+  changes.observe(strip, { childList: true });
+  return () => { seen.disconnect(); changes.disconnect(); };
+}
+/** The share of a chip that must show for it to count as whole (a subpixel edge does not cut it). */
+const WHOLE_SHARE = 0.98;
+
 /** Search and filters appear past this many items. */
 const SEARCH_FROM = 9;
-/** The width a surface may fade at the chip row's end (garage and showroom mask their last 40 px). */
-const CHIP_FADE = 48;
 /** Recents kept per memory key. */
 const RECENT_MAX = 6;
 
@@ -167,6 +190,15 @@ export function gridStep(at: number, key: string, columns: number, count: number
 
 /* -------------------------------------------------------------------------------------------------- the controller */
 
+/** A list row's picture: the poster as a thumbnail at the row's start (a tank's portrait on its framing, a photograph
+ *  filling a 2:1 box), shown once it has decoded (pickers.css [data-ready]) so a late picture fades in rather than popping.
+ *  Its source waits in data-src until the row nears the list's view (the controller's observer, rooted on the list). */
+const thumbMarkup = (item: PickerItem): string => (item.media?.poster
+  ? `<span class="cot-c-picker__thumb${item.media.tank ? ' is-tank' : ''}"><img data-src="${esc(item.media.poster)}" alt="" decoding="async"></span>` : '');
+/** How far beyond the list's view a row's picture loads: a fling or a jump to the end finds its rows drawn (the 261
+ *  critic: the native lazy load waited for a row to show, so a row half in view had no picture). */
+const THUMB_AHEAD = '600px 0px';
+
 const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean | null, layout: PickerOptions['layout'], text: PickerText): string => {
   const picture = !item.media || layout === 'list' ? ''
     : item.media.mosaic?.length
@@ -180,7 +212,7 @@ const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean | nu
   const tip = item.disabled ? ` data-tip="${esc(item.disabled)}"` : '';
   return `<div class="cot-c-picker__cell" role="presentation">`
     + `<div class="cot-c-picker__opt" role="option" id="" data-id="${esc(item.id)}" aria-selected="${chosen}" tabindex="-1"`
-    + `${item.disabled ? ' aria-disabled="true"' : ''}${tip} data-ui-sound="select">${media}`
+    + `${item.disabled ? ' aria-disabled="true"' : ''}${tip} data-ui-sound="select">${layout === 'list' ? thumbMarkup(item) : media}`
     + `<span class="cot-c-picker__words">${glyph}<span class="cot-c-picker__name">${esc(item.name)}</span>${facts}</span></div>`
     // a picker without a memory (a menu's short set) keeps no favourites, so it draws no star
     + (favourite === null ? '</div>' : `<button type="button" class="cot-c-picker__fav" tabindex="-1" aria-pressed="${favourite}" aria-label="${esc(text.favourite)}"`
@@ -224,25 +256,63 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const empty = host.querySelector<HTMLElement>('.cot-c-picker__empty')!;
   const chipRow = host.querySelector<HTMLElement>('.cot-c-picker__chips')!;
   const more = host.querySelector<HTMLButtonElement>('[data-picker-more]')!;
-  /** The more button shows while chips lie past the row's end (a cut in a gap would hide them, and a mouse has no
-   *  sideways wheel), and turns back once the row is at its end. */
+  /** The chips stand in pages of whole chips (owner 2026-10-27: filter chips never clip): the row shows the chips that fit
+   *  whole from its page's first, a chip cut by the row's end stays hidden (data-off) until its page, and the more button
+   *  shows while chips lie past the page's end, stepping to the next page and turning back at the last. */
+  const chips$ = (): HTMLElement[] => [...chipRow.querySelectorAll<HTMLElement>('[data-chip]')];
+  // a tail as wide as the row after the last chip, so the last page starts on the row's edge too (the scroll's end held it
+  // short: the 261 critic's zh last page started 5 px in and showed three chips of the page before)
+  const tail = document.createElement('span');
+  tail.className = 'cot-c-picker__chips-tail';
+  tail.setAttribute('aria-hidden', 'true');
+  chipRow.append(tail);
   const syncMore = (): void => {
-    const over = chipRow.scrollWidth > chipRow.clientWidth + 1;
-    more.hidden = !over;
-    more.classList.toggle('is-back', over && chipRow.scrollLeft + chipRow.clientWidth >= chipRow.scrollWidth - 1);
-    // scrolled, the row fades at its start too, so no chip stands cut at its left edge (the r22q critic)
-    chipRow.classList.toggle('is-scrolled', over && chipRow.scrollLeft > 1);
-  };
-  const chipsResize = new ResizeObserver(syncMore);
-  chipsResize.observe(chipRow);
-  /** A pressed chip stands in the row's view, clear of a surface's end fade (the r20q critic: the pressed Protection chip
-   *  lay past the row's end, so nothing showed which filter was on). */
-  const revealChip = (chip: HTMLElement): void => {
+    tail.style.width = `${chipRow.clientWidth}px`;
     const row = chipRow.getBoundingClientRect();
-    const box = chip.getBoundingClientRect();
-    if (box.left < row.left) chipRow.scrollLeft -= row.left - box.left;
-    else if (box.right > row.right - CHIP_FADE) chipRow.scrollLeft += box.right - row.right + CHIP_FADE;
+    let off = false, cut = false;
+    for (const chip of chips$()) {
+      const box = chip.getBoundingClientRect();
+      const hidden = box.left < row.left - 0.5 || box.right > row.right + 0.5;
+      chip.toggleAttribute('data-off', hidden);
+      off ||= hidden;
+      if (hidden && box.left >= row.left) cut = true;
+    }
+    more.hidden = !off;
+    more.classList.toggle('is-back', off && !cut);
+  };
+  // a resize changes the chips' widths under a kept offset: a scrolled row pages again from its first chip still in view,
+  // so none stands cut and hidden at its start (premiere-gallery-studio's 261 finding: a 52 px gap before "Sequences")
+  // each chip's width is rounded up to a whole pixel, so every page's offset is whole and its first chip stands on the row's
+  // edge exactly as the first page's does (the 261 critics: a page 1 px in, then a chip a fraction out and hidden)
+  const wholeChipWidths = (): void => {
+    const list = chips$();
+    for (const chip of list) chip.style.width = '';
+    for (const chip of list) chip.style.width = `${Math.ceil(chip.getBoundingClientRect().width)}px`;
+  };
+  const chipsResize = new ResizeObserver(() => {
+    // (a hidden row has no widths to round: it is measured once it shows)
+    if (!chipRow.clientWidth) return;
+    wholeChipWidths();
+    if (chipRow.scrollLeft <= 0) { syncMore(); return; }
+    const row = chipRow.getBoundingClientRect();
+    pageTo(chips$().find((chip) => chip.getBoundingClientRect().right > row.left + 0.5));
+  });
+  chipsResize.observe(chipRow);
+  /** The page that starts at `chip` (the row's own start for the first). */
+  const pageTo = (chip: HTMLElement | undefined): void => {
+    // (the chips' whole widths make this offset whole: the scroll keeps it exactly)
+    chipRow.scrollLeft = chip ? chip.offsetLeft - chips$()[0]!.offsetLeft : 0;
     syncMore();
+  };
+  /** The next page: from the first chip the row's end cuts or hides, or back to the start after the last. */
+  const nextPage = (): void => {
+    const row = chipRow.getBoundingClientRect();
+    pageTo(more.classList.contains('is-back') ? undefined : chips$().find((chip) => chip.getBoundingClientRect().right > row.right + 0.5));
+  };
+  /** A pressed chip stands in the row's view (the r20q critic: the pressed Protection chip lay past the row's end, so
+   *  nothing showed which filter was on): a hidden one brings its page. */
+  const revealChip = (chip: HTMLElement): void => {
+    if (chip.hasAttribute('data-off')) pageTo(chip);
   };
 
   const options$ = (): HTMLElement[] => [...grid.querySelectorAll<HTMLElement>('.cot-c-picker__opt')];
@@ -309,6 +379,14 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     shown = filterItems(items, query, memory, options.randomId);
     grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
     options$().forEach((element, i) => { element.id = `${uid}-${i}`; });
+    for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__thumb img[data-src]')) {
+      if (thumbs) thumbs.observe(img.parentElement!);
+      else { img.src = img.dataset.src!; delete img.dataset.src; }
+    }
+    // a card's picture already decoded (a re-render, a filter) stands at once; a late one fades in on its load (onThumb)
+    for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__media img')) {
+      if (img.complete && img.naturalWidth > 0) img.setAttribute('data-ready', '');
+    }
     empty.hidden = shown.length > 0;
     grid.hidden = shown.length === 0;
     rove(options$().find((element) => element.getAttribute('aria-selected') === 'true') ?? options$()[0], false);
@@ -350,11 +428,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const onFocusOut = (event: FocusEvent): void => { if (!host.contains(event.relatedTarget as Node | null)) preview(null); };
   const onClick = (event: MouseEvent): void => {
     const target = event.target as Element;
-    if (target.closest('[data-picker-more]')) {
-      chipRow.scrollLeft = more.classList.contains('is-back') ? 0 : chipRow.scrollLeft + chipRow.clientWidth * 0.8;
-      syncMore();
-      return;
-    }
+    if (target.closest('[data-picker-more]')) { nextPage(); return; }
     if (target.closest('[data-picker-clear]')) {
       query = { text: '', tags: [], favourites: false, recent: false };
       search.value = '';
@@ -410,6 +484,25 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     rove(list[to], true);
   };
   const onInput = (): void => { query = { ...query, text: search.value }; render(); };
+  // a list row's thumbnail and a card's picture show once decoded (a cached card's at once, in render): load events reach
+  // the grid in capture; one that never loads leaves its box's tone (pickers.css), never a broken frame
+  const onThumb = (event: Event): void => { if ((event.target as Element).parentElement?.closest('.cot-c-picker__thumb,.cot-c-picker__media')) (event.target as Element).setAttribute('data-ready', ''); };
+  // a card's picture that could not load (the network dropped) asks again once it is back: its tone stood in meanwhile
+  const onOnline = (): void => {
+    for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__media img:not([data-ready])')) {
+      const src = img.getAttribute('src');
+      if (src && img.complete && img.naturalWidth === 0) img.src = src;
+    }
+  };
+  // (it watches the thumbnail's box: an image with no source yet has no height, and a box of none never intersects)
+  const thumbs = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      thumbs!.unobserve(entry.target);
+      const img = entry.target.querySelector<HTMLImageElement>('img[data-src]');
+      if (img) { img.src = img.dataset.src!; delete img.dataset.src; }
+    }
+  }, { root: grid, rootMargin: THUMB_AHEAD }) : null;
 
   grid.addEventListener('pointerover', onPointerOver);
   grid.addEventListener('pointerleave', onPointerLeave);
@@ -418,8 +511,9 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   host.addEventListener('click', onClick);
   host.addEventListener('keydown', onKey);
   search.addEventListener('input', onInput);
-  chipRow.addEventListener('scroll', syncMore, { passive: true });
   grid.addEventListener('scroll', markRowsBelow, { passive: true });
+  grid.addEventListener('load', onThumb, true);
+  globalThis.addEventListener?.('online', onOnline);
   render();
   requestAnimationFrame(revealChosen);
 
@@ -450,10 +544,12 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       host.removeEventListener('click', onClick);
       host.removeEventListener('keydown', onKey);
       search.removeEventListener('input', onInput);
-      chipRow.removeEventListener('scroll', syncMore);
       grid.removeEventListener('scroll', markRowsBelow);
+      grid.removeEventListener('load', onThumb, true);
+      globalThis.removeEventListener?.('online', onOnline);
       chipsResize.disconnect();
       gridResize.disconnect();
+      thumbs?.disconnect();
       host.replaceChildren();
     },
   };

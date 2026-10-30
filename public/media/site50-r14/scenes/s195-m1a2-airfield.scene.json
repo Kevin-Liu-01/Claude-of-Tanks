@@ -1,4 +1,5 @@
 {
+ "tankIdSchema": 3,
  "map": "airfield",
  "timeOfDay": "morning",
  "light": {
@@ -11,7 +12,7 @@
  "seed": 895,
  "actors": [
   {
-   "id": "m1a2",
+   "id": "m1a1_abrams_hc",
    "name": "hero",
    "pos": [
     126.7,
@@ -20,7 +21,7 @@
    "facingDeg": 82.38,
    "turretDeg": -9.87,
    "gunDeg": 1,
-   "camo": "service_usa_desert",
+   "camo": "sig_m1a1_abrams_hc",
    "camoSeed": 6265,
    "state": "intact"
   },
@@ -34,7 +35,7 @@
    "facingDeg": 95.35,
    "turretDeg": -14.74,
    "gunDeg": 1,
-   "camo": "service_usa_desert",
+   "camo": "sig_m1a1_abrams_hc",
    "camoSeed": 6266,
    "state": "intact"
   },
@@ -48,12 +49,12 @@
    "facingDeg": 84.65,
    "turretDeg": -6.58,
    "gunDeg": 1,
-   "camo": "service_usa_desert",
+   "camo": "sig_m1a1_abrams_hc",
    "camoSeed": 6267,
    "state": "intact"
   },
   {
-   "id": "t90m_x",
+   "id": "t90m",
    "name": "foe0",
    "pos": [
     252.7,
@@ -67,7 +68,7 @@
    "state": "intact"
   },
   {
-   "id": "t72b3m_x",
+   "id": "t72b3m_2016",
    "name": "foe1",
    "pos": [
     257.2,
@@ -186,8 +187,8 @@
    "id": "beat3-boom",
    "type": "explosion",
    "at": [
-    191.01,
-    81.24
+    182.32,
+    92.79
    ],
    "params": {
     "size": "large",
@@ -199,8 +200,8 @@
    "id": "beat3-debris",
    "type": "debris",
    "at": [
-    191.01,
-    81.24
+    182.32,
+    92.79
    ],
    "params": {
     "count": 34,
@@ -4557,7 +4558,7 @@
   "n": 195,
   "id": "s195-m1a2-airfield",
   "kind": "battle",
-  "title": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
+  "title": "An M1A1 Abrams HC knocks out a T-90M Proryv at Kestrel Airfield in the morning",
   "set": "fleet-m1a2-airfield",
   "map": "airfield",
   "time": "morning",
@@ -4573,7 +4574,7 @@
    400
   ],
   "paint": {
-   "unit": "service_usa_desert",
+   "unit": "sig_m1a1_abrams_hc",
    "enemy": "service_t90m"
   },
   "turrets": {
@@ -4582,30 +4583,58 @@
     "stabilised: hero on foe0, ally1 on foe1, ally2 on foe0"
    ]
   },
-  "beats": 1
+  "beats": 1,
+  "fitBursts": {
+   "moved": 1,
+   "left": [
+    "large burst at 3300 ms"
+   ]
+  }
  },
  "crushes": [
   {
-   "tMs": 3633,
-   "kind": "hedgehog",
+   "tMs": 700,
+   "kind": "fencerail",
    "speedMps": 15,
    "pos": [
-    176.07,
-    4.32,
-    93.68
+    140.62,
+    4.43,
+    102.17
    ],
-   "heightM": 1.47
+   "heightM": 1.08
   },
   {
-   "tMs": 4017,
-   "kind": "fencerail",
+   "tMs": 3900,
+   "kind": "bench",
    "speedMps": 15.6,
    "pos": [
-    158.69,
-    4.36,
-    92.24
+    173.55,
+    4.41,
+    104.85
    ],
-   "heightM": 1.05
+   "heightM": 0.97
+  },
+  {
+   "tMs": 4000,
+   "kind": "bucket",
+   "speedMps": 15.6,
+   "pos": [
+    174.12,
+    4.4,
+    105.61
+   ],
+   "heightM": 0.62
+  },
+  {
+   "tMs": 4050,
+   "kind": "bucket",
+   "speedMps": 15.6,
+   "pos": [
+    174.42,
+    4.4,
+    106.01
+   ],
+   "heightM": 0.62
   },
   {
    "tMs": 6183,

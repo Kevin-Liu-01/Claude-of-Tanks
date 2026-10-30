@@ -34,6 +34,7 @@ class ElementFixture {
     return this.children.get(selector);
   }
   appendChild(child) { return child; }
+  setAttribute(name, value) { (this.attributes ??= {})[name] = String(value); }
   getClientRects() { return this.classes.has('on') ? [{}] : []; }
 }
 
@@ -258,6 +259,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     lighting: {
       updateFov: frame('lighting-fov'),
       setStaticPresentationDormant: frame('lighting-dormant'),
+      setVehicleShadowMerge: () => {},
       update: frame('lighting'),
     },
     post: { render: () => {

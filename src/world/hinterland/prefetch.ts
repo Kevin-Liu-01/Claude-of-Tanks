@@ -6,7 +6,7 @@
 // a rematch on the same map takes it and skips the worker.
 import * as THREE from 'three';
 import type { HinterlandBuildContext, HinterlandSupply } from '../hinterlandHook.ts';
-import { createHinterlandObject } from './install.ts';
+import { createHinterlandObjectSteps } from './install.ts';
 import type { HinterlandJob, HinterlandReply, HinterlandRequest } from './worker.ts';
 import { copyHinterlandWire, type HinterlandWire } from './wire.ts';
 import { applyHinterlandTreeImpostors, hinterlandTreeBinding } from './trees.ts';
@@ -89,9 +89,10 @@ export function startHinterlandBuild(
       root.name = 'hinterland-root';
       root.matrixAutoUpdate = false;
       root.userData.hinterlandLoad = stats;
-      const attach = (): void => {
+      // (260) the worker's answer in hand: the object in steps (installed later, on its answer: in one go)
+      const attach = function* (): Generator<void, void, void> {
         if (!wire) return;
-        const object = createHinterlandObject(wire, context.engineCtx, context.ground);
+        const object = yield* createHinterlandObjectSteps(wire, context.engineCtx, context.ground);
         root.add(object);
         object.updateMatrixWorld(true);
         // (the world assembled first: its impostor atlas draws the near trees — trees.ts)
@@ -100,8 +101,8 @@ export function startHinterlandBuild(
         stats.attachedMs = Math.round(now() - t0);
         wire = null; // (the scene holds what it needs; the kept copy serves a rematch)
       };
-      if (wire) { attach(); yield; }
-      else void settled.then(attach);
+      if (wire) { yield* attach(); yield; }
+      else void settled.then(() => { for (const _ of attach()) { /* one task */ } });
       return root;
     },
     dispose() { if (worker) finish(); },

@@ -4,14 +4,14 @@ import { createTank } from '../tankFactory.ts';
 
 // (262: the 2A2 and the 2A3 OTCO left this family's hull for the new Leopard construction, profiles/leopard2a3B4.ts)
 // (264: the 2A4, 2A4 V, 2A4M, 2A4M CAN, 2A4 OTCO, Improved and Strv 121 followed them, profiles/leopard2A4Family.ts)
+// (264: the 2A6 UA took its own build on the source-measured 2A6, profiles/leopardA6Ua.ts.) No tank rides this hull any
+// more: the receipt holds until the old builder retires.
 const expectedHalfWidths = new Map([
-  ['leo2a6_ua', 0.88],
 ]);
 
-const upperGlacisFillIds = new Set(['leo2a6_ua']);
-const upperShoulderFillIds = new Set(['leo2a6_ua']);
+const upperGlacisFillIds = new Set([]);
+const upperShoulderFillIds = new Set([]);
 const fenderSkirtClosureIds = [
-  'leo2a6_ua',
 ];
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {

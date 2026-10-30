@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   SHADOW_FOOTPRINT_MIN_TEXELS, SHADOW_LAW_MIN_SUN_ELEVATION_RAD, SHADOW_REACH_MARGIN_M,
-  csmSampledFromM, evaluateShadowCasterMask, evaluateShadowCasterProfiles, instanceShadowSpheres, shadowFootprintM,
+  csmSampledFromM, csmSampledToM, evaluateShadowCasterMask, evaluateShadowCasterProfiles, instanceShadowSpheres, shadowFootprintM,
 } from './shadowCasterProfiles.ts';
 import {
   SHADOW_CASTER_ALL_CASCADES, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterDynamicMaskOf,
@@ -25,6 +25,9 @@ import {
   assert.ok(Math.abs(csmSampledFromM(x, near, far, false) - x * (far - near)) < 1e-9, 'no fade: the break itself');
   assert.ok(csmSampledFromM(x, near, far, true) < csmSampledFromM(x, near, far, false), 'the fade reaches the map earlier');
   assert.equal(csmSampledFromM(-1, near, far, true), 0, 'a negative break is clamped');
+  // (battle-spikes-253) and sampled to its end plus the same half-band (the next cascade's fade starts there)
+  assert.ok(Math.abs(csmSampledToM(x, near, far, true) - (x + 0.06 * x) * (far - near)) < 1e-9, 'fade: to x plus its half-band');
+  assert.ok(Math.abs(csmSampledToM(x, near, far, false) - x * (far - near)) < 1e-9, 'no fade: to the break itself');
 }
 
 // --- the footprint law
@@ -99,6 +102,24 @@ const evaluation = { cascades, sunElevationRad: sun24 };
   assert.ok(230 + SHADOW_REACH_MARGIN_M + shadowFootprintM(20, sun24) < cascades[3].sampledFromM);
 }
 
+// --- the near law (battle-spikes-253): content whose nearest view depth, less its shadow and the margin, lies past a
+// cascade's sampled range cannot shadow that cascade
+{
+  const ranged = cascades.map((c, i) => ({ ...c, sampledToM: [85, 180, 320, Infinity][i] }));
+  const at = (nearDepthM, heightM = 2) => evaluateShadowCasterMask(object, { heightM, nearDepthM },
+    { cascades: ranged, sunElevationRad: sun24 }, SHADOW_CASTER_ALL_CASCADES) & 0b1111;
+  // a body 2 m across at 24°: a 4.5 m shadow; 100 m deep leaves the near cascade (100 - 8 - 4.5 > 85)
+  assert.equal(at(100), 0b1110, 'a piece 100 m deep leaves the near cascade');
+  assert.equal(at(95), 0b1111, 'one 95 m deep may still shadow its far edge (95 - 8 - 4.5 < 85): kept');
+  assert.equal(at(200), 0b1100, 'one 200 m deep leaves both near cascades');
+  assert.equal(at(1000), 0b1000, 'the last cascade samples to the shadow far: never left');
+  assert.equal(at(200, 0), 0b1111, 'no height: the near law cannot bound the shadow, nothing hidden');
+  assert.equal(evaluateShadowCasterMask(object, { heightM: 2, nearDepthM: 200 }, evaluation, SHADOW_CASTER_ALL_CASCADES) & 0b1111, 0b1111,
+    'a cascade without its sampled end skips the law');
+  assert.equal(evaluateShadowCasterMask(object, { heightM: 2, nearDepthM: 200 }, { cascades: ranged, sunElevationRad: 0.01 },
+    SHADOW_CASTER_ALL_CASCADES) & 0b1111, 0b1111, 'under the elevation floor nothing is hidden by the near law');
+}
+
 // --- instanced content: spheres from the instance matrices, refreshed when they change
 {
   const geometry = new THREE.BoxGeometry(2, 1, 2);
@@ -152,6 +173,8 @@ const evaluation = { cascades, sunElevationRad: sun24 };
   assert.match(lighting, /function evaluateCasterProfiles\(all: boolean\): void \{\n\s+if \(mobileTier\) return;/, 'the phones keep their cascades as they are');
   assert.match(lighting, /sample\.texelM = \(shadowCam\.right - shadowCam\.left\) \/ Math\.max\(1, shadow\.mapSize\.x\);/, 'the live texel size');
   assert.match(lighting, /csmSampledFromM\(i === 0 \? 0 : csm\.breaks\[i - 1\], camera\.near, far, csm\.fade\)/, 'the sampled range from the live breaks and fade');
+  assert.match(lighting, /sample\.sampledToM = i === lights\.length - 1 \? Infinity : csmSampledToM\(csm\.breaks\[i\], camera\.near, far, csm\.fade\);/,
+    'and to where it is sampled, the last cascade to the shadow far');
   assert.match(lighting, /Math\.asin\(Math\.max\(-1, Math\.min\(1, -csm\.lightDirection\.y\)\)\)/, 'the sun elevation from the CSM light direction');
 }
-console.log('shadowCasterProfiles.selftest: the content, footprint and reach laws, the CSM sampled-from formula against three\'s shader, instanced sphere refresh, the frame evaluation and the lighting wiring pinned');
+console.log('shadowCasterProfiles.selftest: the content, footprint, reach and near laws, the CSM sampled-from formula against three\'s shader, instanced sphere refresh, the frame evaluation and the lighting wiring pinned');

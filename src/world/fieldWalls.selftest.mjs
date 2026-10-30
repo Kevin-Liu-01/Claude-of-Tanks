@@ -310,7 +310,11 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /while \(!step\.done && performance\.now\(\) - start < FIELD_WALL_STONE_BUDGET_MS\) step = wallJob\.steps\.next\(\);/, 'built a few milliseconds a frame');
   assert.ok(Number(/const FIELD_WALL_STONE_BUDGET_MS = (\d+(?:\.\d+)?);/.exec(props)[1]) <= 3, 'within a small share of a frame');
   assert.match(props, /\} else if \(!wantStones && wallJob\?\.cell === cell\) \{\n\s*wallJob\.steps\.return\(null\);/, 'dropped when the camera turns away before it is done');
-  assert.match(props, /if \(cell\.stones\) \{ group\.remove\(cell\.stones\); cell\.stones\.geometry\.dispose\(\); \}/, 'let go (its geometry, never the shared material) when the camera leaves');
+  // (260, the room-stalls lane's revealPrograms on Saltwind) a stone form is a batch of its one geometry on the walls'
+  // material, as the mid and far forms: no plain-mesh program of the material links live
+  assert.match(props, /const mesh = new THREE\.BatchedMesh\(1, g\.getAttribute\('position'\)\.count, Math\.max\(1, g\.index \? g\.index\.count : 0\), lod\.material\);\n\s*mesh\.addInstance\(mesh\.addGeometry\(g\)\);/,
+    'the stone form batched on the walls\' material');
+  assert.match(props, /if \(cell\.stones\) \{ group\.remove\(cell\.stones\); cell\.stones\.dispose\(\); \}/, 'let go (its batch\'s own geometry, never the shared material) when the camera leaves');
   assert.match(props, /mesh\.castShadow = false; mesh\.receiveShadow = true; mesh\.matrixAutoUpdate = false;/, 'casting no shadow, as the other forms');
   // the readiness the probes wait on: the cells still to build, as the grass's work state (a snapshot, no work done)
   assert.match(props, /if \(wantStones && cell\.stones === null\) pending\+\+;/, 'the cells still wanting their stones counted');

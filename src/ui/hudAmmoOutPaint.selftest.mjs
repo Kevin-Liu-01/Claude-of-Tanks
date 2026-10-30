@@ -992,12 +992,12 @@ const scopeStates = {
 // under 540 px wide takes the compact 104x46 plate in the mouse seat (the full plate has no room beside the ring there).
 const AERIAL_CSS = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
 const MOUSE_SEAT = 'left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%)';
-const COMPACT_SEAT = '@media(pointer:coarse),(max-width:539px){\n .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}\n'
+const COMPACT_SEAT = '@media(pointer:coarse),(max-width:539px){\n .cot-scope-vision .flight-key{display:none}\n'
   + ' .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;'
   + 'min-height:46px;';
 // (a portrait under 343 px wide narrows it to fit on the screen's 12 px gutter: at 8 px it stood off the plates, gauntlet r8)
 const TOUCH_SEAT = ' .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);'
-  + 'width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}\n}';
+  + 'width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:92px}\n';
 assert.ok(AERIAL_CSS.includes(MOUSE_SEAT) && AERIAL_CSS.includes('min-width:156px;min-height:48px'),
   'the sheet seats the mouse vision switch right of the sight, 156x48 at least');
 assert.ok(AERIAL_CSS.includes(COMPACT_SEAT), 'the sheet seats the compact plate (touch, a narrow mouse window) right of the sight');
@@ -1006,8 +1006,14 @@ function visionSwitchBox(width, height, touch) {
   const vmin = Math.min(width, height);
   if (touch) {
     const x1 = width / 2 - 0.15 * vmin - 8;
-    const w = Math.max(88, Math.min(104, width / 2 - 0.15 * vmin - 16));
-    return { x0: x1 - w, y0: height / 2 - 23, x1, y1: height / 2 + 23 };
+    // (the four views two by two on touch, 44 px each: 94 px tall; under 300 px tall the lit view alone, 48 px)
+    // (a portrait phone's on the 12 px gutter at the views' own width: 2 x 44 + 2 and its 2 px padding; the lit view alone,
+    // 48 px, under 300 px tall or 340 px wide)
+    const single = height <= 300 || width <= 340;
+    if (height > width) return { x0: 12, y0: height / 2 - (single ? 24 : 47), x1: 12 + (single ? 48 : 94), y1: height / 2 + (single ? 24 : 47) };
+    if (single) return { x0: x1 - 48, y0: height / 2 - 24, x1, y1: height / 2 + 24 };
+    const w = Math.max(92, Math.min(104, width / 2 - 0.15 * vmin - 16));
+    return { x0: x1 - w, y0: height / 2 - 47, x1, y1: height / 2 + 47 };
   }
   if (width < 540) {
     const x0 = Math.min(width / 2 + Math.max(0.15 * vmin + 8, 80), width - 112);
@@ -1025,9 +1031,13 @@ function visionSwitchBox(width, height, touch) {
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
 /** Publishes the recorded furniture of `width`x`height` (as the layout pass would; `variant` ':objective' for a mode
  *  with an objective, which shows its panel) and returns its boxes. */
-function installFurniture(width, height, touch, variant = '') {
-  const boxes = FURNITURE.sizes[`${width}x${height}${touch ? 't' : ''}${variant}`];
-  assert.ok(boxes?.length, `${width}x${height}${touch ? ' touch' : ''}: recorded furniture`);
+/** The warning's own chip and notice: furniture only while the gun travel warning shows (recorded on the warning's stage;
+ *  since UI-LOCKDOWN B14 the parked chip is the battle notices' notice, over the sight on a small portrait phone). */
+const WARNING_FURNITURE = new Set(['.cot-aim-warning', '.cot-battle-notices .cot-aim-notice']);
+function installFurniture(width, height, touch, variant = '', warning = true) {
+  const recorded = FURNITURE.sizes[`${width}x${height}${touch ? 't' : ''}${variant}`];
+  assert.ok(recorded?.length, `${width}x${height}${touch ? ' touch' : ''}: recorded furniture`);
+  const boxes = warning ? recorded : recorded.filter(([name]) => !WARNING_FURNITURE.has(name));
   clearSightFurniture();
   for (const [, x0, y0, x1, y1] of boxes) addSightFurniture(x0, y0, x1, y1);
   settleSightFurniture();
@@ -1172,7 +1182,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
   for (const [width, height, touch] of sizes) {
     resize(width, height);
     documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
-    const boxes = installFurniture(width, height, !!touch);
+    // (installed per case below: the warning's own notice only while the warning shows)
+    installFurniture(width, height, !!touch);
     // (a wide tray's short window also sweeps the rings just wide enough to cross the rack or the struck round, which drop
     // them below the ring: 26 to 31 m put the readouts as much as 6.5 px into the controls row before rowBeside)
     for (const metres of (!touch && width >= 1000 && height <= 470) || (touch && width > height)
@@ -1182,6 +1193,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         const tank = make();
         tank.state.gunLimitSpec = warn;
         const at = `${width}x${height}${touch ? ' touch' : ''} scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const caseBoxes = installFurniture(width, height, !!touch, '', warn);
         const { ring, chip, line, zoom, stack, tag, furniture } = reticleGaps(quickPaint(tank), at,
           { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true, touch: !!touch });
         if (chip?.op === 'dom') modes.seatedChip++;
@@ -1221,7 +1233,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         }
         // every mark of the sight, the readout row, the countdown, the rack, the empty marks, the range tag and the
         // warning chip, keeps 3 px from every panel and control the layout measured
-        assertFurnitureClear([...stack, ...furniture], boxes, at, `${width}x${height}${touch ? 't' : ''}`);
+        assertFurnitureClear([...stack, ...furniture], caseBoxes, at, `${width}x${height}${touch ? 't' : ''}`);
       }
     }
   }

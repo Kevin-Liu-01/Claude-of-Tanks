@@ -1,5 +1,5 @@
 /** Director workspace: curated scenes and camera tools, backed by the same Studio API as captures. */
-import { PRODUCTION_PRESETS, productionAspect, type ProductionFormat } from '../game/studioProduction.ts';
+import { PRODUCTION_PRESETS, productionAspect, productionPreset, productionShotNames, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import type { NoticeSeverity } from './components/notice.ts';
@@ -7,10 +7,12 @@ import { uiIconSVG } from './uiIcons.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { createPickerMenu } from './components/pickerMenu.ts';
 import { pickerText } from './pickerText.ts';
+import { tankThumbUrl } from './icons.ts';
 import { getLocale, t } from './i18n.ts';
-import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
+import { sequenceTemplates, takeTemplates, type SiteTake, type StudioTemplate, type TemplateWords } from './studioTemplates.ts';
+import { createTemplateSheet } from './studioTemplateSheet.ts';
 
 /**
  * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the
@@ -21,25 +23,17 @@ const SITE_TAKES_INDEX = '/media/site50-r14/scenes/index.json';
 
 interface SiteTakesIndex { takes: SiteTake[]; tankIdSchema?: unknown }
 /**
- * The index's fleet takes with each vehicle in today's spelling: the media index names vehicles under the tank id schema
+ * The index's takes with each fleet vehicle in today's spelling: the media index names vehicles under the tank id schema
  * it was written in (`tankIdSchema`, missing = 1), so a renamed tank keeps its take and a swapped id never offers
  * another tank's (SSOT 2.19, tankIdAliases.ts).
  */
-function siteFleetTakes(index: SiteTakesIndex): SiteTake[] {
-  return index.takes.filter((take) => take.group === 'fleet' && typeof take.vehicle === 'string')
-    .map((take) => ({ ...take, vehicle: resolveTankId(take.vehicle as string, index.tankIdSchema) }));
+function siteTakes(index: SiteTakesIndex): SiteTake[] {
+  return index.takes.map((take) => (take.group === 'fleet' && typeof take.vehicle === 'string'
+    ? { ...take, vehicle: resolveTankId(take.vehicle, index.tankIdSchema) } : take));
 }
-interface SiteTake {
-  id: string; title: { en: string; zh: string }; short: { en: string; zh: string };
-  map: string; durationMs: number | null; scene: string; thumb?: string;
-  /** 'fleet': one production vehicle's own take (src/ui/fleetTakes.ts); the default list is every other take. */
-  group?: string; vehicle?: string;
-}
-// Every tank's own take is reached by a search, at most this many cards at a time, never as a 220-card list.
-const FLEET_RESULTS = 6;
 
 /** The Director's words: the catalogs' studio.director.ui.* (the Studio's demand-loaded slice). */
-type CopyKey = 'director' | 'scene' | 'actors' | 'effects' | 'timeline' | 'output' | 'library' | 'stage' | 'staging' |
+type CopyKey = 'director' | 'scene' | 'actors' | 'effects' | 'timeline' | 'output' | 'templates' | 'stage' | 'staging' |
   'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' |
   'camera' | 'hero' | 'track' | 'rear' | 'overhead' | 'detail' | 'lens' | 'wide' | 'natural' | 'tight' | 'guides' |
   'play' | 'pause' | 'restart' | 'scrub' | 'export' | 'photo' | 'video' | 'stop' | 'saved' | 'unsupported' |
@@ -129,6 +123,8 @@ export type WorkspaceId = 'director' | 'battlefield' | 'tanks' | 'effects' | 'ci
 interface StudioWorkspaceHosts {
   readonly head?: (id: WorkspaceId, head: HTMLButtonElement) => void;
   readonly takes?: HTMLElement;
+  /** The shelf head's actions: the browser's second door, beside Field frames. */
+  readonly browse?: HTMLElement;
   readonly toggle?: HTMLElement;
   readonly guides?: HTMLElement;
   /** The Studio's toast (the kit's notices): what an action did, or why it failed. */
@@ -173,7 +169,7 @@ function segments<V extends string>(label: string, key: string, choices: readonl
 
 export function mountStudioProductionPanel(
   S: StudioPanelApi, root: HTMLElement, dock: HTMLElement, refreshAll: () => void, hosts: StudioWorkspaceHosts = {},
-): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void } {
+): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void; openTemplates(): void } {
   let visible = false;
   function syncPreviewViewport(): void {
     if (visible) document.body.dataset.studioWorkspace = root.dataset.controlsCollapsed === 'true' ? 'collapsed' : 'open';
@@ -191,32 +187,99 @@ export function mountStudioProductionPanel(
   let shotSignature = '';
   const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
   const failure = (error: unknown): void => { say(error instanceof Error ? error.message : String(error), true); };
-  const librarySection = node('section');
-  librarySection.append(heading('film', productionLabel('library')));
-  const library = node('div', 'production-library');
-  const cards = new Map<string, HTMLButtonElement>();
+  const librarySection = node('section', 'production-templates');
+  librarySection.append(heading('film', productionLabel('templates')));
+  // The templates (owner 2026-10-27: "make template presentation a lotttt more and better"): the Director's sequences, the
+  // site's filmed scenes and every tank's own take, one set (studioTemplates.ts). The inspector shows the current sequence
+  // large with the way into the whole set, the shelf lays the sequences and the scenes out in a row, and the browser
+  // (studioTemplateSheet.ts) holds all of them with search, chips and a moving preview.
+  const words: TemplateWords = {
+    zh: getLocale() === 'zh-CN',
+    mapName: (id) => mapName(id),
+    tankName: (id) => { try { return S.getSpecInfo(id).name; } catch (_) { return id; } },
+    time: (id) => t(`atmosphere.${id}`),
+    seconds: (ms) => t('studio.ws.seconds', { s: Math.round(ms) % 1000 ? (ms / 1000).toFixed(1) : String(Math.round(ms / 1000)) }),
+    kind: (kind) => t(`studio.director.ui.kind.${kind}`),
+    shots: (count) => t('studio.director.ui.shotCount', { count }),
+    presetText,
+    shotNames: (id) => productionShotNames(productionPreset(id)),
+  };
+  const sequences = sequenceTemplates(PRODUCTION_PRESETS, words);
+  let takes: StudioTemplate[] = [];
+  /** The template staged last ('seq:…' or 'take:…'): the browser opens on it and the shelf marks it. */
+  let currentTemplate = `seq:${selectedId}`;
+  const shelfCards = new Map<string, HTMLButtonElement>();
+  // the current sequence, large: its still, its kind, its name and its facts; a press opens the browser on it
+  const feature = button('', () => openTemplates(), 'production-feature');
+  feature.dataset.productionFeature = '';
+  const featurePhoto = node('img');
+  featurePhoto.width = 640;
+  featurePhoto.height = 400;
+  featurePhoto.alt = '';
+  featurePhoto.decoding = 'async';
+  featurePhoto.addEventListener('error', () => {
+    const map = productionPreset(selectedId).map;
+    if (!featurePhoto.src.endsWith(`/maps/cards/${map}.webp`)) featurePhoto.src = `/maps/cards/${map}.webp`;
+  });
+  const featureKind = node('span', 'production-kind', words.kind('sequence'));
+  const featureName = node('span', 'production-feature-name');
+  const featureFacts = node('small');
+  feature.append(featurePhoto, featureKind, featureName, featureFacts);
+  const browse = button('', () => openTemplates(), `${KIT_BUTTON} production-browse`);
+  browse.dataset.productionBrowse = '';
+  browse.innerHTML = uiIconSVG('media', 16);
+  const browseLabel = node('span');
+  browse.append(browseLabel);
+  // the shelf's door: a chip beside Field frames
+  const shelfBrowse = button('', () => openTemplates(), 'cot-c-chip production-browse');
+  shelfBrowse.dataset.uiSound = 'press';
+  shelfBrowse.innerHTML = uiIconSVG('film', 16);
+  const shelfBrowseLabel = node('span', 'cot-c-chip__label');
+  shelfBrowse.append(shelfBrowseLabel);
+  hosts.browse?.prepend(shelfBrowse);
+  function countTemplates(): void {
+    const label = t('studio.director.ui.browse', { count: sequences.length + takes.length });
+    browseLabel.textContent = label;
+    shelfBrowseLabel.textContent = label;
+  }
+  countTemplates();
   function selectPreset(id: string): void {
     selectedId = id;
-    for (const [cardId, card] of cards) card.setAttribute('aria-pressed', String(cardId === id));
+    const template = sequences.find((item) => item.preset === id) ?? sequences[0];
+    if (!template) return;
+    featurePhoto.src = template.media?.poster ?? '';
+    feature.title = template.summary;
+    featureName.replaceChildren(caption(template.name));
+    featureFacts.textContent = template.meta.slice(1).join(' · ');
   }
-  for (const preset of PRODUCTION_PRESETS) {
-    const card = button('', () => selectPreset(preset.id), 'production-card');
-    card.dataset.productionPreset = preset.id;
-    card.title = presetText(preset.id, 'description', preset.description);
-    // the sequence's own frame, rendered by the engine (public/media/studio-r1, its manifest); its battlefield's card if
-    // a still is missing. Sized, so the library never shifts as the pictures arrive.
-    const photo = node('img');
-    photo.src = `/media/studio-r1/sequence-${preset.id}-640.webp`;
-    photo.width = 640;
-    photo.height = 400;
-    photo.addEventListener('error', () => { photo.src = `/maps/cards/${preset.map}.webp`; }, { once: true });
-    photo.alt = '';
-    photo.loading = 'lazy';
-    photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), caption(presetText(preset.id, 'title', preset.title)),
-      node('small', '', `${S.getMapInfo(preset.map).name} · ${t('studio.director.ui.shotCount', { count: preset.shots.length })}`));
-    cards.set(preset.id, card);
-    library.append(card);
+  function markCurrent(id: string): void {
+    currentTemplate = id;
+    for (const [cardId, card] of shelfCards) card.setAttribute('aria-pressed', String(cardId === id));
+  }
+  const sheet = createTemplateSheet({
+    title: productionLabel('templates'),
+    count: (count) => t('studio.director.ui.templateCount', { count }),
+    stars: () => (featuredTank() ? t('studio.director.ui.stars', { tank: words.tankName(featuredTank()) }) : t('studio.director.ui.starsDefault')),
+    text: pickerText(),
+    filters: [
+      { id: 'sequence', label: t('studio.director.ui.kinds.sequence'), icon: 'cameraPath' },
+      { id: 'scene', label: t('studio.director.ui.kinds.scene'), icon: 'film' },
+      { id: 'tank', label: t('studio.director.ui.kinds.tank'), icon: 'vehicle' },
+      { id: 'showcase', label: t('studio.director.ui.category.showcase'), icon: 'toolPhoto' },
+      { id: 'combat', label: t('studio.director.ui.category.combat'), icon: 'fireGun' },
+      { id: 'environment', label: t('studio.director.ui.category.environment'), icon: 'regionWoodland' },
+      { id: 'night', label: t('studio.director.ui.category.night'), icon: 'regionNight' },
+    ],
+    onChoose: (template) => useTemplate(template),
+  });
+  function openTemplates(): void {
+    if (staging || loadingTake || S.recordingStatus().active) return;
+    sheet.open([...sequences, ...takes], currentTemplate);
+  }
+  /** Stage a template: a sequence casts the featured tank, a take stages as filmed. */
+  function useTemplate(template: StudioTemplate): void {
+    if (template.kind === 'sequence' && template.preset) { selectPreset(template.preset); stageSequence(); }
+    else if (template.take) loadSiteTake(template.take);
   }
   const fields = node('div', 'production-fields');
   const frameLabel = node('div', 'production-choice', productionLabel('format'));
@@ -235,32 +298,32 @@ export function mountStudioProductionPanel(
     memory: 'studio-tank',
     items: [{ id: FEATURED_DEFAULT, name: productionLabel('defaultTank') }, ...S.TANK_IDS.map((id) => {
       const info = S.getSpecInfo(id);
-      return { id, name: info.name, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
+      // each tank's portrait, as every list of tanks shows it (owner 2026-10-27)
+      return { id, name: info.name, media: { poster: tankThumbUrl(id), tank: true }, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
     })],
-    onChoose: (item) => {
-      featured = item.id;
-      if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes();
-    },
+    onChoose: (item) => { featured = item.id; },
   });
   frameLabel.append(frame.group); tankLabel.append(tankHost);
   // in the Studio app the frame is the header's (and on a phone the palette's): one datum, one control (the s15 critic:
   // the Director's frame row repeated the header's switch); the receipts' bare dock keeps its own
   if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
-  const stage = button(productionLabel('stage'), () => {
+  function stageSequence(): void {
     if (staging || S.recordingStatus().active) return;
     staging = true; refresh(); say(productionLabel('staging'));
-    S.directProduction({ presetId: selectedId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
-      .then(() => { say(productionLabel('ready')); refreshAll(); })
+    const presetId = selectedId;
+    S.directProduction({ presetId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
+      .then(() => { markCurrent(`seq:${presetId}`); say(productionLabel('ready')); refreshAll(); })
       .catch(failure)
       .finally(() => { staging = false; refresh(); });
-  }, `${KIT_PRIMARY} production-stage`);
+  }
+  const stage = button(productionLabel('stage'), stageSequence, `${KIT_PRIMARY} production-stage`);
   stage.dataset.productionStage = '';
-  librarySection.append(library, fields, stage);
+  librarySection.append(feature, browse, fields, stage);
   selectPreset(selectedId);
   director.append(librarySection);
 
-  // The site's takes: fetched the first time the Director opens; a card stages its take exactly as filmed (S.load, as
-  // Load JSON does), ready to play, change and film again.
+  // The shelf's row (the Studio app's hosts.takes, else the Director's own section): the sequences, then the site's filmed
+  // scenes once the take index arrives; every tank's own take is the browser's (its search and its Every tank chip).
   const takesSection = node('section', 'production-takes');
   if (!hosts.takes) takesSection.append(heading('play', productionLabel('takes')));
   const takesLibrary = node('div', 'production-library');
@@ -268,10 +331,8 @@ export function mountStudioProductionPanel(
   const takesStatus = node('div', 'production-takes-status');
   takesSection.append(takesLibrary, takesStatus);
   (hosts.takes ?? director).append(takesSection);
-  const takeCards = new Map<string, HTMLButtonElement>();
   let takesRequested = false;
   let loadingTake = false;
-  let stagedTake = '';
   // the kit's inline notice (components/notice.ts notice(): its severity's glyph, the line, a status or an alert), built as
   // nodes so no Studio sink writes text as markup (studioSceneShare.selftest §10)
   const TAKE_NOTICE_GLYPH: Readonly<Record<NoticeSeverity, string>> = { info: 'info', success: 'check', warning: 'alert', error: 'alert', progress: 'clock' };
@@ -287,25 +348,41 @@ export function mountStudioProductionPanel(
     box.append(glyph, body);
     takesStatus.replaceChildren(box);
   }
+  /** A battlefield's name in the reader's language (the catalog's map.<id>; the Studio's own name where it has none). */
   function mapName(id: string): string {
+    const key = `map.${id}`;
+    if (t(key) !== key) return t(key);
     try { return S.getMapInfo(id).name; } catch (_) { return id; }
   }
-  function takeCard(take: SiteTake): HTMLButtonElement {
-    const zh = getLocale() === 'zh-CN';
-    const card = button('', () => loadSiteTake(take), 'production-card');
-    card.dataset.siteTake = take.id;
-    card.title = zh ? take.title.zh : take.title.en;
-    card.setAttribute('aria-pressed', String(take.id === stagedTake));
+  /** A template on the shelf: its still with its length on the corner, its name under it; a press stages it. */
+  function shelfCard(template: StudioTemplate): HTMLButtonElement {
+    const card = button('', () => useTemplate(template), 'production-card');
+    if (template.take) card.dataset.siteTake = template.take.id;
+    if (template.preset) card.dataset.productionPreset = template.preset;
+    card.dataset.templateKind = template.kind;
+    card.title = template.summary;
+    card.setAttribute('aria-pressed', String(template.id === currentTemplate));
     const photo = node('img');
-    photo.src = take.thumb || `/maps/cards/${take.map}.webp`;
+    photo.src = template.media?.poster ?? '';
+    photo.width = 640;
+    photo.height = template.kind === 'sequence' ? 400 : 360;
+    photo.addEventListener('error', () => { photo.src = `/maps/cards/${template.map}.webp`; }, { once: true });
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: ((take.durationMs ?? 0) / 1000).toFixed(1) })),
-      caption(zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
-    takeCards.set(take.id, card);
+    card.append(photo, node('span', 'production-duration', template.meta[template.kind === 'sequence' ? 3 : 2] ?? ''),
+      caption(template.name), node('small', '', template.facts?.[0] ?? ''));
+    // a sequence wears the camera path on its still's corner: it directs your tank, where a scene stages as filmed
+    if (template.kind === 'sequence') {
+      const mark = node('span', 'production-mark');
+      mark.innerHTML = uiIconSVG('cameraPath', 14);
+      mark.setAttribute('aria-hidden', 'true');
+      card.append(mark);
+    }
+    shelfCards.set(template.id, card);
     return card;
   }
+  for (const template of sequences) takesLibrary.append(shelfCard(template));
   function loadSiteTakes(): void {
     if (takesRequested) return;
     takesRequested = true;
@@ -316,71 +393,14 @@ export function mountStudioProductionPanel(
         return response.json() as Promise<SiteTakesIndex>;
       })
       .then((index) => {
-        for (const take of index.takes) if (take.group !== 'fleet') takesLibrary.append(takeCard(take));
-        listFleetTakes(siteFleetTakes(index));
+        takes = takeTemplates(siteTakes(index), words);
+        for (const template of takes) if (template.kind === 'scene') takesLibrary.append(shelfCard(template));
+        countTemplates();
         takeStatus('');
         refresh();
       })
-      .catch(() => { takesRequested = false; fleetSection.hidden = true; takeStatus(productionLabel('takesUnavailable'), 'warning'); });
+      .catch(() => { takesRequested = false; takeStatus(productionLabel('takesUnavailable'), 'warning'); });
   }
-
-  // Every tank's own take (owner 2026-10-12): the index's fleet entries stay out of the list above and are reached by
-  // a search instead. With no query the finder offers the take of the Director's featured tank, else of the tank last
-  // selected in the Garage.
-  const fleetSection = node('section', 'production-takes production-fleet');
-  // the section holds its place from the first layout (its search waits for the index): appearing once the index arrived,
-  // it pushed the shot list 75 px down on a cold entry (248)
-  const fleetSearchLabel = node('div', 'production-fleet-search');
-  const fleetSearch = node('input');
-  fleetSearch.type = 'search';
-  fleetSearch.setAttribute('aria-label', t('studio.director.fleet.search'));
-  fleetSearch.autocomplete = 'off';
-  fleetSearch.spellcheck = false;
-  fleetSearch.placeholder = t('studio.director.fleet.placeholder');
-  fleetSearch.dataset.fleetSearch = '';
-  fleetSearch.disabled = true;
-  fleetSearchLabel.append(fleetSearch);
-  const fleetLibrary = node('div', 'production-library');
-  const fleetStatus = node('div', 'production-hint');
-  fleetStatus.setAttribute('role', 'status');
-  fleetStatus.setAttribute('aria-live', 'polite');
-  fleetSection.append(heading('vehicle', t('studio.director.fleet.heading')), fleetSearchLabel, fleetLibrary, fleetStatus);
-  director.append(fleetSection);
-  let fleetTakes: SiteTake[] = [];
-  const fleetText = new Map<string, string>();
-  function garageTank(): string {
-    try { return localStorage.getItem(LAST_TANK_STORAGE_KEY) || ''; } catch (_) { return ''; }
-  }
-  function listFleetTakes(takes: SiteTake[]): void {
-    fleetTakes = takes;
-    for (const take of takes) {
-      const vehicle = take.vehicle ?? '';
-      let name = vehicle;
-      try { name = S.getSpecInfo(vehicle).name; } catch (_) { /* a vehicle this build lacks keeps its id */ }
-      fleetText.set(take.id, [vehicle, name, take.title.en, take.title.zh, take.short.en, take.short.zh, take.map,
-        mapName(take.map)].join(' ').toLocaleLowerCase());
-    }
-    fleetSearch.setAttribute('aria-description', t('studio.director.fleet.intro', { count: takes.length }));
-    fleetSearch.disabled = !takes.length;
-    fleetSection.hidden = !takes.length;
-    if (takes.length) renderFleetTakes();
-  }
-  function renderFleetTakes(): void {
-    const typed = fleetSearch.value.trim();
-    const query = typed.toLocaleLowerCase();
-    const tank = featuredTank() || garageTank();
-    const matches = query
-      ? fleetTakes.filter((take) => fleetText.get(take.id)?.includes(query))
-      : fleetTakes.filter((take) => take.vehicle === tank);
-    for (const take of fleetTakes) takeCards.delete(take.id);
-    fleetLibrary.replaceChildren(...matches.slice(0, FLEET_RESULTS).map(takeCard));
-    fleetStatus.textContent = !query
-      ? (matches.length ? t('studio.director.fleet.yourTank') : '')
-      : !matches.length ? t('studio.director.fleet.none', { query: typed })
-      : matches.length > FLEET_RESULTS ? t('studio.director.fleet.more', { shown: FLEET_RESULTS, count: matches.length }) : '';
-    refresh();
-  }
-  fleetSearch.addEventListener('input', renderFleetTakes);
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
     if (!path || loadingTake || staging || S.recordingStatus().active) return;
@@ -394,8 +414,7 @@ export function mountStudioProductionPanel(
       })
       .then((json) => S.load(json))
       .then(() => {
-        stagedTake = take.id;
-        for (const [id, card] of takeCards) card.setAttribute('aria-pressed', String(id === take.id));
+        markCurrent(`take:${take.id}`);
         say(productionLabel('takeLoaded'));
         refreshAll();
       })
@@ -533,8 +552,10 @@ export function mountStudioProductionPanel(
     tanks.setDisabled(locked);
     frame.lock(locked);
     lens.lock(locked);
-    for (const element of cards.values()) element.disabled = locked;
-    for (const element of takeCards.values()) element.disabled = locked || loadingTake;
+    feature.disabled = locked || loadingTake;
+    browse.disabled = locked || loadingTake;
+    shelfBrowse.disabled = locked || loadingTake;
+    for (const element of shelfCards.values()) element.disabled = locked || loadingTake;
     for (const element of rigs.querySelectorAll('button')) element.disabled = locked || S._internal.actors.length === 0;
     play.textContent = productionLabel(S.playing ? 'pause' : 'play');
     video.textContent = productionLabel(recording.active ? 'stop' : 'video');
@@ -564,5 +585,5 @@ export function mountStudioProductionPanel(
   // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
   // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
   loadSiteTakes();
-  return { refresh, setVisible, activate };
+  return { refresh, setVisible, activate, openTemplates };
 }

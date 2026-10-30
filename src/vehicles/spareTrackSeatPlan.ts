@@ -55,9 +55,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "k2b": {
     "fitting@hull(-1.28,1.55,-3.30)": -1,
   },
-  "kv2": {
-    "fitting@hull(1.32,1.72,1.10)": [1.4205, 1.72585, 1.56847, 0.04289, 0, 0, 0.99908, 1],
-  },
   "m1a1_abrams_aim": {
     "fitting@hull(0.64,1.36,2.86)": [0.689, 0.68876, 3.61935, 0.63792, 0.30505, 0.63792, 0.30505, 1],
   },
@@ -73,9 +70,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "m3a3_bradley": {
     "fitting@hull(0.50,1.67,2.21)": [0.5098, 1.56662, 2.64883, 0.03951, 0.706, 0.03951, 0.706, 1],
     "fitting@turret(-0.48,0.59,-1.04)": [0.27775, 0.69926, 0.20107, 0.01219, 0, 0, 0.99993, 1],
-  },
-  "m46_patton": {
-    "fitting@turret(1.11,0.56,-0.01)": [-1.07252, 0.59945, -0.03196, 0.00016, 0.00011, 0.57109, 0.82089, 1],
   },
   "merkava1b": {
     "merkava-bow-links@hull(0.00,1.29,2.74)": [1.70727, -0.97119, 1.43791, 0.15616, -0.68774, -0.17258, 0.68764, 1],
@@ -124,9 +118,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "t80bv": {
     "fitting@hull(0.58,1.40,0.30)": [0.35837, 0.81058, -3.10208, 0.65868, -0.25718, 0.65868, -0.25718, 1],
   },
-  "t84bm_oplot_m": {
-    "fitting@hull(1.72,1.51,2.88)": [2.11924, 1.17714, 3.07225, 0, 0, -0.70838, 0.70583, 1],
-  },
   "t90_1992": {
     "fitting@hull(0.58,1.61,0.58)": [1.9173, 1.02515, -0.43113, 0, 0, -0.70711, 0.70711, 1],
   },
@@ -143,12 +134,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "type10b": {
     "fitting@hull(-1.12,1.79,-3.15)": [-1.701, 1.01835, 2.442, 0.5, -0.5, 0.5, 0.5, 0],
     "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
-  },
-  "type59": {
-    "fitting@hull(-0.58,1.43,0.60)": -1,
-    "strip@hull(-0.74,1.52,1.73)": -1,
-    "t62-aft-links-L@hull(-0.58,1.42,-2.61)": 20,
-    "t62-aft-links-R@hull(0.58,1.42,-2.61)": [0, 0.006, -0.09982, 0.03, 0, 0, 0.99955, 1],
   },
   "ua_m1a1": {
     "fitting@turret(0.30,0.35,-3.22)": [0.404, 0.8165, -2.022, 0, 0, 0, 1, 0],

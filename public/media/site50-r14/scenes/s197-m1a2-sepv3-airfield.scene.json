@@ -1,4 +1,5 @@
 {
+ "tankIdSchema": 3,
  "map": "airfield",
  "timeOfDay": "golden",
  "light": {
@@ -11,7 +12,7 @@
  "seed": 897,
  "actors": [
   {
-   "id": "m1a2_sepv3",
+   "id": "m1a1_abrams_fep",
    "name": "hero",
    "pos": [
     -315,
@@ -20,12 +21,12 @@
    "facingDeg": 117.36,
    "turretDeg": -1.36,
    "gunDeg": 1,
-   "camo": "service_usa_desert",
+   "camo": "sig_m1a1_abrams_fep",
    "camoSeed": 6279,
    "state": "intact"
   },
   {
-   "id": "m1a2_sepv2",
+   "id": "m1a1_abrams_aim",
    "name": "ally1",
    "pos": [
     -327.8,
@@ -34,12 +35,12 @@
    "facingDeg": 130.37,
    "turretDeg": -1.03,
    "gunDeg": 1,
-   "camo": "service_usa_desert",
+   "camo": "sig_m1a1_abrams_fep",
    "camoSeed": 6280,
    "state": "intact"
   },
   {
-   "id": "t72b3m_x",
+   "id": "t72b3m_2016",
    "name": "foe0",
    "pos": [
     -228,
@@ -53,7 +54,7 @@
    "state": "intact"
   },
   {
-   "id": "t72b3_x",
+   "id": "t72b3",
    "name": "foe1",
    "pos": [
     -223.5,
@@ -3900,7 +3901,7 @@
    400
   ],
   "paint": {
-   "unit": "service_usa_desert",
+   "unit": "sig_m1a1_abrams_fep",
    "enemy": "service_t90m"
   },
   "turrets": {
@@ -3909,7 +3910,13 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   },
-  "beats": 3
+  "beats": 3,
+  "fitBursts": {
+   "moved": 0,
+   "left": [
+    "large burst at 950 ms"
+   ]
+  }
  },
  "crushes": [],
  "still": {

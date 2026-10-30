@@ -497,7 +497,7 @@ assert.equal(cachePins.released, cachePins.held, 'and release every hold');
   const body = stageSource.slice(stageSource.indexOf('export function* createGarageStageSteps('));
   assert.ok(body.length < stageSource.length, 'the stage has a stepped build');
   assert.ok((body.match(/^  yield;$/gm) ?? []).length >= 10, 'yields between its procedural sections');
-  assert.match(stageSource, /export function createGarageStage\([\s\S]*?const steps = createGarageStageSteps\(engineCtx, pos, initialVariantId, requestRender\);/);
+  assert.match(stageSource, /export function createGarageStage\([\s\S]*?const steps = createGarageStageSteps\(engineCtx, pos, initialVariantId, requestRender, whenSettled\);/);
   const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
   const boot = main.slice(main.indexOf("bootStage('garage'"), main.indexOf("bootStage('garage'") + 1200);
   assert.match(boot, /createGarageStageSteps\(/, 'the boot builds the stage in steps');

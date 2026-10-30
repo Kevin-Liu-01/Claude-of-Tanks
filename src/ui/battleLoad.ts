@@ -26,6 +26,7 @@ import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
+import { revealWhenReady } from './components/reveal.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
@@ -192,7 +193,11 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}.cot-bl .thead .flags:empty{display:none;}
 .cot-bl .team.ally .thead{color:var(--text-own);}
-.cot-bl .team.foe .thead{color:var(--text-enemy);flex-direction:row-reverse;}
+/* (the foe heading reads right to left from its right edge, so the flags the roster brings widen it leftward from where
+   it stands: laid out left to right and pushed right, its box moved 26 px left as its flag arrived, the loading census on
+   a phone; its words and flags keep their own direction) */
+.cot-bl .team.foe .thead{color:var(--text-enemy);direction:rtl;}
+.cot-bl .team.foe .thead>*{direction:ltr;}
 /* (each side's name on a plate of its own, in its team's ink: red on the pale sky read 1.2:1 with a halo alone, and a
    team-coloured underline was a one-edge stripe, gauntlet r2) */
 .cot-bl .team .thead{align-self:flex-start;width:max-content;height:auto;min-height:24px;padding:var(--s1) var(--s3);
@@ -325,6 +330,9 @@ ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:
 /* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
    would take the name's room) */
 ${PORTRAIT_ROWS} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;--bl-row-min:32px;}
+/* (a long side's rows a pixel nearer, so one more whole row fits over its cue: at 4 px fourteen a side left 34 px under
+   their seventh row at 320x568, the cue floating under it, gauntlet r19) */
+${PORTRAIT_ROWS} .cot-bl .team.long{--bl-row-gap:3px;}
 /* (its two lines hold 32 px at the least: a long side scrolls before they squeeze, 16 px rows cut them at 320x568) */
 ${PORTRAIT_ROWS} .cot-bl .team:not(.cards) .rows{grid-template-rows:repeat(var(--bl-count),minmax(var(--bl-row-min),var(--bl-row-height)));}
 /* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */
@@ -505,10 +513,12 @@ export const PENDING_ROSTER_SLOTS = 7;
 
 /**
  * The rules row's mode chip: the mode alone, as its normalized id names it ("Turbo Ball"; a Standard battle reads
- * "Random Battle · Standard"). The screen names the battlefield in its title, so the chip carries no battlefield
- * subtitle, and the plan's objectives (modeId) are this same mode's.
+ * "Random Battle · Standard"), and a campaign operation by its own title ("Operation Iron Ridge"). The screen names the
+ * battlefield in its title, so the chip carries no battlefield subtitle, and the plan's objectives (modeId) are this
+ * same mode's.
  */
-export function battleLoadModeLabel(modeId: string): string {
+export function battleLoadModeLabel(modeId: string, campaignOperationId?: string | null): string {
+  if (campaignOperationId) return t(`campaign.op.${campaignOperationId}.title`);
   return modeId === 'standard' ? t('battleLoad.randomStandard') : t(`playMenu.matchMode.${modeId}.label`);
 }
 
@@ -526,6 +536,8 @@ export interface PendingBattlefield {
    *  frame, so the loading owner's show does not grow the head under the sides (phones dropped them 25-50 px). */
   readonly modeId?: string;
   readonly campaign?: boolean;
+  /** The campaign operation the chip names (its title, battleLoadModeLabel). */
+  readonly campaignOperationId?: string | null;
 }
 
 /**
@@ -574,7 +586,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   ensureStyle('cot-bl-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-bl';
-  root.setAttribute('role', 'status');
+  // (loading states, 2026-10-27) a labelled region: only its stage line and countdown speak (the whole card as one status
+  // read every roster row and percent aloud), the progressbar carries the figure, and the sheets are busy while they fill
+  // (on the sheets, not the card: a busy card would hold its own stage line's announcements back)
+  root.setAttribute('role', 'region');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   // (each side's cue at its foot while more of its list lies below, as the end report's columns: .team.more)
   const MORE_CUE = `<div class="bl-more" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</div>`;
@@ -593,11 +608,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div>${MORE_CUE}</div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta"${datumAttr('load-progress')}>` +
-    `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st">${t('battleLoad.loading')}</span></div>` +
+    `<div class="foot"><div class="fmeta"${datumAttr('load-progress')}>` +
+    `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st" role="status">${t('battleLoad.loading')}</span></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
     `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
-    `<div class="count"></div></div></main>`;
+    `<div class="count" aria-live="polite"></div></div></main>`;
   document.body.appendChild(root);
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
@@ -667,8 +682,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
+  const mapPlan = requiredElement<HTMLElement>(root, '.map .mp');
   // the objectives over the plan: a uiCanvas the Deploy screen's lazy drawer draws (deployObjectives.ts)
-  const objCanvas = createUiCanvas(requiredElement<HTMLElement>(root, '.map .mp'), 'obj').canvas;
+  const objCanvas = createUiCanvas(mapPlan, 'obj').canvas;
   objCanvas.setAttribute('aria-hidden', 'true');
   let objectivesPass = 0, objectivesDrawn = false;
   /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
@@ -776,7 +792,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     void import('./flags.ts').then(({ flagIconHTML }) => {
       if (host.dataset.flagsPass !== pass) return; // a later roster took this side
       host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => flagIconHTML(fill, 14, 10)).join('');
-    });
+    }).catch(() => { /* a flag is decoration: its held box stays empty, and the next roster tries again */ });
   }
 
   /** Tiers show only where the battle mixes them: a rank every vehicle shares says nothing (less text). */
@@ -948,7 +964,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const sides = planned ? { allies: side(planned.allies, seats?.allies), enemies: side(planned.enemies, seats?.enemies) } : seats;
       api.show({
         mapName: chosen?.mapName ?? '',
-        mode: t('battleLoad.kicker'),
+        // (the chosen mode from the cover's first frame, as the loading owner's show names it: the placeholder's words
+        // stood over a Proving Ground and a campaign operation until that show, the 262 production check)
+        mode: pending?.modeId ? battleLoadModeLabel(pending.modeId, pending.campaignOperationId) : t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         ...(pending?.modeId ? { modeId: pending.modeId } : {}),
@@ -986,6 +1004,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       mapEl.hidden = !info.biome;
       if (planId) mapImg.src = minimapAssetUrl(planId);
       else mapImg.removeAttribute('src');
+      // the plan fades in once decoded over the plate (a warm entry's is decoded already); offline it leaves the plate,
+      // never a broken frame (the loading census)
+      if (planId) revealWhenReady(mapPlan, mapImg);
       drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
       // (a battle's side with no rows yet holds the default split's seats open, never an empty bar; an entry with no
@@ -1014,6 +1035,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       root.classList.remove('leaving');
       root.style.display = '';
       root.classList.add('on');
+      teamsEl.setAttribute('aria-busy', 'true');
     },
 
     /** Update the team sheets without resetting the progress bar or tip. */
@@ -1074,6 +1096,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
     countdown(n: number) {
       if (loadStartedAt) { recordBattleLoad((performance.now() - loadStartedAt) / 1000); loadStartedAt = 0; }
+      teamsEl.removeAttribute('aria-busy'); // loaded: the sheets are whole, and the countdown is the battle's
       countEl.innerHTML = n > 0
         ? t('battleLoad.countdown', { n }) + ''
         : `<b>${t('battleLoad.go')}</b>`;
@@ -1088,6 +1111,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // so removing it alone would cut the fade to a hard pop)
       root.classList.add('leaving');
       root.classList.remove('on');
+      teamsEl.removeAttribute('aria-busy');
       return new Promise<void>((resolve) => setTimeout(() => {
         if (!visible) {
           root.classList.remove('leaving');

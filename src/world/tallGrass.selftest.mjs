@@ -103,6 +103,9 @@ for (const mesh of [grass.near, grass.mid, grass.far]) {
 assert.equal(grass.near.material.customProgramCacheKey(), TALL_GRASS.near.programKey);
 assert.equal(grass.mid.material.customProgramCacheKey(), TALL_GRASS.mid.programKey);
 assert.equal(grass.far.material.customProgramCacheKey(), TALL_GRASS.far.programKey);
+// (260) an update without its fill (map.ts: the one that built the trees' whole partition) takes no candidate
+grass.update(1 / 60, cam, null, null, false);
+for (const ring of ['near', 'mid', 'far']) assert.equal(grass.getState()[ring].builds + grass.getState()[ring].pending, 0, `${ring}: no fill`);
 grass.update(1 / 60, cam);
 assert.ok(grass.getState().near.pending > 0, 'a fresh ring builds over several updates');
 settle(grass, cam);
@@ -463,7 +466,8 @@ const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(map, /createTallGrass\(heightField, \{/, 'the world builds the tier on its height field');
 assert.match(map, /blocked: groundCoverClearance\(\)/, 'kept out of the sealed footprints (and the scenery\'s holes)');
 assert.match(map, /splatNoise: sampleSplatNoise,/, 'thinned by the terrain\'s own dirt fields');
-assert.match(map, /tallGrass\.update\(dt, cameraPos, focusPos, cameraFwd\)/, 'the frame update streams the rings and steps the press');
+assert.match(map, /tallGrass\.update\(dt, cameraPos, focusPos, cameraFwd, !partitioned\)/,
+  'the frame update streams the rings and steps the press (no fill in the update that built the trees\' whole partition)');
 assert.match(map, /tallGrass\.dispose\(\)/, 'released with the world');
 assert.match(map, /tallGrass\.setWindTime\(t\)/, 'frozen with the world clock');
 assert.match(map, /tallGrass\.setSniperFade\(foliageSeeThrough \? f : 0, immediate\)/,

@@ -37,10 +37,10 @@
     },
     "s04-column-under-fire": {
       "map": "verdant",
-      "en": "A T-90M column drives into the fight on the country road",
-      "zh": "一支 T-90M 纵队沿乡间公路驶入战斗",
-      "shortEn": "T-90M column under fire",
-      "shortZh": "炮火下的 T-90M 纵队"
+      "en": "A T-90M Proryv column drives into the fight on the country road",
+      "zh": "一支 T-90M Proryv 纵队沿乡间公路驶入战斗",
+      "shortEn": "T-90M Proryv column under fire",
+      "shortZh": "炮火下的 T-90M Proryv 纵队"
     },
     "s05-barn-advance": {
       "map": "verdant",
@@ -261,10 +261,10 @@
     },
     "s36-barn-knockout": {
       "map": "frontier",
-      "en": "A Type 10 knocks out a T-90M beside the burning barn",
-      "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M",
-      "shortEn": "Type 10 knocks out a T-90M",
-      "shortZh": "Type 10 击毁 T-90M"
+      "en": "A Type 10 knocks out a T-90M Proryv beside the burning barn",
+      "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M Proryv",
+      "shortEn": "Type 10 knocks out a T-90M Proryv",
+      "shortZh": "Type 10 击毁 T-90M Proryv"
     },
     "s37-river-village": {
       "map": "delta",
@@ -429,10 +429,10 @@
     },
     "s225-verdant-duel": {
       "map": "verdant",
-      "en": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
-      "zh": "黄金时刻，一辆 Leopard 2A7V 与一辆 T-90M 在翠野原上疾驰对射",
-      "shortEn": "Leopard 2A7V races a T-90M",
-      "shortZh": "Leopard 2A7V 与 T-90M 疾驰对射",
+      "en": "A Leopard 2A7V races a T-90M Proryv across Verdant Fields at golden hour, trading broadsides",
+      "zh": "黄金时刻，一辆 Leopard 2A7V 与一辆 T-90M Proryv 在翠野原上疾驰对射",
+      "shortEn": "Leopard 2A7V races a T-90M Proryv",
+      "shortZh": "Leopard 2A7V 与 T-90M Proryv 疾驰对射",
       "closePortrait": false
     },
     "s226-church-duel": {
@@ -452,8 +452,8 @@
     },
     "s228-street-1v2": {
       "map": "urban",
-      "en": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
-      "zh": "夜间，一辆 AbramsX 在斯泰因堡主街上以一敌二，迎战 T-90M 与 T-72B3",
+      "en": "An AbramsX takes on a T-90M Proryv and a T-72B3 down Steinburg's main street at night",
+      "zh": "夜间，一辆 AbramsX 在斯泰因堡主街上以一敌二，迎战 T-90M Proryv 与 T-72B3",
       "shortEn": "AbramsX against two",
       "shortZh": "AbramsX 以一敌二",
       "closePortrait": false
@@ -548,8 +548,8 @@
     },
     "s87-leo2a4-otco-polders": {
       "map": "polders",
-      "en": "A Leopard 2A3 OTCO knocks out a T-90M at Tidegate Polders at sunset",
-      "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M",
+      "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+      "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv",
       "shortEn": "Leopard 2A3 OTCO, Tidegate Polders",
       "shortZh": "Leopard 2A3 OTCO，潮闸圩田",
       "fleet": true
@@ -1190,8 +1190,8 @@
       {
         "id": "multiplayer",
         "alt": {
-          "en": "Two players' live views from one room: a Challenger 3 and a T-90M aim at each other across the Tarkhan Steppe at sunset",
-          "zh": "同一房间里两名玩家的实时视角：日落时分，Challenger 3 与 T-90M 隔着塔尔罕草原互相瞄准"
+          "en": "Two players' live views from one room: a Challenger 3 and a T-90M Proryv aim at each other across the Tarkhan Steppe at sunset",
+          "zh": "同一房间里两名玩家的实时视角：日落时分，Challenger 3 与 T-90M Proryv 隔着塔尔罕草原互相瞄准"
         },
         "standIn": null,
         "size": [
@@ -1203,14 +1203,14 @@
       {
         "id": "killcam",
         "alt": {
-          "en": "X-ray kill cam on Verdant Fields by day: a T-72B3M's 3BM46 APFSDS round is traced into an X-rayed T-90M through the upper left hull side for 449 damage, with the struck modules labelled, the ballistic-analysis card and the Destroyed By card.",
-          "zh": "白天的翠野原，X 光击杀回放：T-72B3M 发射的 3BM46 APFSDS 弹被追踪着从左侧车体上部射入 X 光透视下的 T-90M，造成 449 点伤害，画面中标出被击中的模块，并有弹道分析卡片与“击毁者”卡片。"
+          "en": "X-ray kill cam on Verdant Fields by day: a T-72B3M's 3BM46 APFSDS round is traced into an X-rayed T-90M Proryv through the upper left hull side for 449 damage, with the struck modules labelled, the ballistic-analysis card and the Destroyed By card.",
+          "zh": "白天的翠野原，X 光击杀回放：T-72B3M 发射的 3BM46 APFSDS 弹被追踪着从左侧车体上部射入 X 光透视下的 T-90M Proryv，造成 449 点伤害，画面中标出被击中的模块，并有弹道分析卡片与“击毁者”卡片。"
         },
         "standIn": null
       }
     ],
     "studio": {
-      "label": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
+      "label": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M Proryv it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
       "posterS": 4.6,
       "standIn": {
         "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
@@ -1223,8 +1223,8 @@
       {
         "id": "armor",
         "alt": {
-          "en": "Armor flashlight on Verdant Fields by day: through a Leopard 2A7V's sight at x16, an angled T-90M Proryv 275 m away is painted green where the loaded APFSDS round penetrates and red where it does not, in front of a brick farmhouse.",
-          "zh": "白天的翠野原，装甲手电：透过 Leopard 2A7V 的 16 倍瞄准镜，275 米外一辆斜置的 T-90M Proryv 被染上颜色，已装填的 APFSDS 弹能击穿处为绿色，不能击穿处为红色，背后是一座砖砌农舍。"
+          "en": "Armor flashlight on Kestrel Airfield in the morning: through a Leopard 2A7V's sight at x16, a ZTZ-99A2 under a camouflage net 159 m away is painted green where the loaded APFSDS round penetrates and red on its turret top and hull front, where it does not.",
+          "zh": "清晨的红隼机场，装甲手电：透过 Leopard 2A7V 的 16 倍瞄准镜，159 米外一辆披着伪装网的 ZTZ-99A2 被染上颜色，已装填的 APFSDS 弹能击穿处为绿色，炮塔顶部与车体前部不能击穿处为红色。"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
@@ -1232,8 +1232,8 @@
       {
         "id": "ricochet",
         "alt": {
-          "en": "A shell ricochets off a T-90M's sloped glacis in a fan of sparks on the snow of Frosthollow",
-          "zh": "在霜谷的雪地上，一发炮弹从 T-90M 倾斜的首上装甲跳飞，溅起扇形火花"
+          "en": "A shell ricochets off a T-90M Proryv's sloped glacis in a fan of sparks on the snow of Frosthollow",
+          "zh": "在霜谷的雪地上，一发炮弹从 T-90M Proryv 倾斜的首上装甲跳飞，溅起扇形火花"
         },
         "standIn": null
       },
@@ -1354,8 +1354,8 @@
       {
         "id": "map-vehicles",
         "alt": {
-          "en": "Map vehicles on Steinburg by day: a T-90M rolls onto a parked box truck at the roadside and crushes its cab under the tracks in a spray of dust and debris, the village on the road behind.",
-          "zh": "白天的斯泰因堡，地图车辆：一辆 T-90M 压上停在路边的厢式货车，履带碾碎驾驶室，尘土与碎片四溅，身后公路上是村庄。"
+          "en": "Map vehicles on Steinburg by day: a T-90M Proryv rolls onto a parked box truck at the roadside and crushes its cab under the tracks in a spray of dust and debris, the village on the road behind.",
+          "zh": "白天的斯泰因堡，地图车辆：一辆 T-90M Proryv 压上停在路边的厢式货车，履带碾碎驾驶室，尘土与碎片四溅，身后公路上是村庄。"
         },
         "standIn": null
       },
@@ -1370,8 +1370,8 @@
       {
         "id": "impact",
         "alt": {
-          "en": "A T-90M rams a Leopard 2A6 in a shower of sparks at Sirocco Wadi",
-          "zh": "在西罗科旱谷，一辆 T-90M 撞上 Leopard 2A6，火花四溅"
+          "en": "A T-90M Proryv rams a Leopard 2A6 in a shower of sparks at Sirocco Wadi",
+          "zh": "在西罗科旱谷，一辆 T-90M Proryv 撞上 Leopard 2A6，火花四溅"
         },
         "standIn": null
       },
@@ -1439,8 +1439,8 @@
       {
         "id": "mobile",
         "alt": {
-          "en": "Phone-landscape battle on Verdant Fields by day: a T-90M has just fired at a PT-91M Pendekar, the shot's smoke rising over its turret and the 6.4 s reload counting down by the sight, with the touch HUD (the movement stick, Fire, Scope and Auto Aim buttons, the consumables and the APFSDS selector).",
-          "zh": "白天的翠野原，手机横屏战斗：一辆 T-90M 刚向 PT-91M Pendekar 开火，炮塔上方升起硝烟，瞄准镜旁 6.4 秒的装填倒计时正在进行，画面中是触控 HUD（移动摇杆、开火、瞄准镜与自动瞄准按钮、消耗品和 APFSDS 弹种选择）。"
+          "en": "Phone-landscape battle on Verdant Fields by day: a T-90M Proryv has just fired at a PT-91M Pendekar, the shot's smoke rising over its turret and the 6.4 s reload counting down by the sight, with the touch HUD (the movement stick, Fire, Scope and Auto Aim buttons, the consumables and the APFSDS selector).",
+          "zh": "白天的翠野原，手机横屏战斗：一辆 T-90M Proryv 刚向 PT-91M Pendekar 开火，炮塔上方升起硝烟，瞄准镜旁 6.4 秒的装填倒计时正在进行，画面中是触控 HUD（移动摇杆、开火、瞄准镜与自动瞄准按钮、消耗品和 APFSDS 弹种选择）。"
         },
         "standIn": null
       }
@@ -1458,8 +1458,8 @@
       {
         "id": "capture_the_flag",
         "alt": {
-          "en": "A T-90M races home with the enemy flag across Saltmere Bay",
-          "zh": "一辆 T-90M 带着敌方旗帜穿过盐沼湾，全速驶回基地"
+          "en": "A T-90M Proryv races home with the enemy flag across Saltmere Bay",
+          "zh": "一辆 T-90M Proryv 带着敌方旗帜穿过盐沼湾，全速驶回基地"
         },
         "standIn": null
       },
@@ -1546,8 +1546,8 @@
       {
         "id": "ac130",
         "alt": {
-          "en": "AC-130 on Kestrel Airfield at night: the gunship's infrared view looks down on the convoy (an M6 Linebacker, an M1A2 Abrams SEPv2, a T-90M and a T-72 Ryś) by the extraction ring as a 152 mm HE round bursts among them, with the Splash card on a Leopard 2A5 and the 30 mm, 152 mm and guided-missile selector.",
-          "zh": "夜晚的红隼机场，AC-130：炮艇机的红外视角俯视撤离圈旁的车队（一辆 M6 Linebacker、一辆 M1A2 艾布拉姆斯 SEPv2、一辆 T-90M 和一辆 T-72 Ryś），一发 152 毫米高爆弹在其中炸开，画面中有对 Leopard 2A5 的命中卡片，以及 30 毫米、152 毫米与制导导弹的武器选择。"
+          "en": "AC-130 on Kestrel Airfield at night: the gunship's infrared view looks down on the convoy (an M6 Linebacker, an M1A2 Abrams SEPv2, a T-90M Proryv and a T-72 Ryś) by the extraction ring as a 152 mm HE round bursts among them, with the Splash card on a Leopard 2A5 and the 30 mm, 152 mm and guided-missile selector.",
+          "zh": "夜晚的红隼机场，AC-130：炮艇机的红外视角俯视撤离圈旁的车队（一辆 M6 Linebacker、一辆 M1A2 艾布拉姆斯 SEPv2、一辆 T-90M Proryv 和一辆 T-72 Ryś），一发 152 毫米高爆弹在其中炸开，画面中有对 Leopard 2A5 的命中卡片，以及 30 毫米、152 毫米与制导导弹的武器选择。"
         },
         "standIn": null
       }

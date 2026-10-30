@@ -199,6 +199,26 @@ function kitBuilder(style: ArchitectureStyle, mapId: string, structureId: string
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
 export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number): RegionalParts {
+  return drain(buildRegionalPartsSteps(style, ctx, weatherRng));
+}
+
+/** A checkpoint between a regional build's stages, where the props build paces (props.ts PropsBuildSlice). */
+interface RegionalSlice { fine: true; progress: false; stage: string }
+// (260, the rooms census: a regional house's rebuild was one step of the props build, 119 ms on Cliffbridge) a checkpoint
+// once the builder has returned (its scopes, withWear and the rest, closed: nothing of theirs is held across it) and once
+// the parts are weathered; the same parts, streams and order
+const REGIONAL_SLICE: RegionalSlice = { fine: true, progress: false, stage: 'regional-rebuild' };
+
+function drain<T>(steps: Generator<RegionalSlice, T, void>): T {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** buildRegionalParts with a checkpoint after the builder and after the weathering, for the props build's pacing. */
+function* buildRegionalPartsSteps(
+  style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number,
+): Generator<RegionalSlice, RegionalParts, void> {
   const palette = style.weather ?? DEFAULT_WEATHER;
   const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
@@ -218,6 +238,7 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
   const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => builder(ctx)))));
+  yield REGIONAL_SLICE;
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
   // (the looks lane, 2026-10-14, the 225 integrity ledger: a war-worn window's thin strips and the damp band's cut at a
@@ -226,6 +247,7 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     ...(style.foldThirdPlaster ? { plaster3Fold: foldOf(style) } : {}) }));
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info,
     ...(ruinWalls.length ? { ruinWalls } : {}), ...(lattices.length ? { lattices } : {}) });
+  yield REGIONAL_SLICE;
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;
@@ -268,6 +290,14 @@ export function rebuildRegionalStructure(
   style: ArchitectureStyle, structureId: string, base: Buckets, info: { w: number; d: number; h: number },
   wallBucket: string, context: RebuildContext, x: number, z: number, yaw: number,
 ): PropsLikeBuckets | null {
+  return drain(rebuildRegionalStructureSteps(style, structureId, base, info, wallBucket, context, x, z, yaw));
+}
+
+/** rebuildRegionalStructure with buildRegionalPartsSteps' checkpoints, for the props build's pacing. */
+export function* rebuildRegionalStructureSteps(
+  style: ArchitectureStyle, structureId: string, base: Buckets, info: { w: number; d: number; h: number },
+  wallBucket: string, context: RebuildContext, x: number, z: number, yaw: number,
+): Generator<RegionalSlice, PropsLikeBuckets | null, void> {
   if (!kitBuilder(style, context.mapId, structureId)) return null;
   const bounds = measure(base);
   const ctx: RegionalBuildContext = {
@@ -281,7 +311,7 @@ export function rebuildRegionalStructure(
     ...(context.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: context.sunAzimuthDeg } : {}),
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
-  const parts = buildRegionalParts(style, ctx,
+  const parts = yield* buildRegionalPartsSteps(style, ctx,
     streamFrom(hashSeed(`${style.id}:weather:${context.mapId}:${structureId}`, context.seed, x, z, yaw)));
   for (const list of Object.values(base)) if (Array.isArray(list)) for (const geometry of list) geometry.dispose();
   const out = {} as PropsLikeBuckets;

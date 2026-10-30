@@ -9,11 +9,11 @@ import {
 } from '../../vehicles/vehicleFacets.ts';
 import { EQUIP_CATEGORIES, EQUIP_SLOTS, EQUIPMENT_CATALOG, type EquipmentItem } from '../../game/equipment.ts';
 import { CONSUMABLE_RULES } from '../../game/consumables.ts';
-import { CONSUMABLE_ICONS, consumableEffectKey, consumableNameKey } from '../../game/consumableLoadout.ts';
+import { consumableEffectKey, consumableNameKey } from '../../game/consumableLoadout.ts';
 import { AERIAL_RULES } from '../../sim/matchRuleset.ts';
 import { SMOKE_COOLDOWN_S } from '../../sim/auxiliarySystems.ts';
 import { SMOKE_DURATION_S } from '../../sim/smokeScreen.ts';
-import { equipIconSVG } from '../../ui/equipIcons.ts';
+import { consumableIconSVG, equipIconSVG } from '../../ui/equipIcons.ts';
 import { flagMarkup } from '../../presentation/publicShell.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
@@ -110,8 +110,9 @@ function equipmentSection(): string {
 
 function kitsSection(): string {
   const drone = AERIAL_RULES.drone;
-  // the catalog (2026-10-26): every consumable with its glyph, name, effect and cooldown (game/consumableLoadout.ts)
-  const kits = CONSUMABLE_RULES.map((rule) => `<li>${icon(CONSUMABLE_ICONS[rule.id], { size: 20 })}<div><b>${esc(t(consumableNameKey(rule.id)))}</b>`
+  // the catalog (2026-10-26): every consumable with its badge, name, effect and cooldown (ui/equipIcons.ts, as the
+  // equipment list's)
+  const kits = CONSUMABLE_RULES.map((rule) => `<li>${consumableIconSVG(rule.id, 26)}<div><b>${esc(t(consumableNameKey(rule.id)))}</b>`
     + `<span>${esc(t(consumableEffectKey(rule.id)))} · ${esc(t('docs.tanks.cooldown', { value: String(rule.cooldownS) }))}</span></div></li>`).join('');
   const systems: Array<[IconId, string, Record<string, string>]> = [
     ['smoke', 'docs.tanks.smoke', { screen: String(SMOKE_DURATION_S), cooldown: String(SMOKE_COOLDOWN_S) }],
