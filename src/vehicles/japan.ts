@@ -150,7 +150,9 @@ const JAPAN_SPECS = {
     base: '#3c4937', weather: '#59624d', patches: ['#273126', '#59604b', '#77715b'],
     camoScale: 0.46,
     // 262 (Main's ruling): heightM is the P95 combat height the geometry gate measures on the build, the Type 74's rule;
-    // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/stb1.md)
+    // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/stb1.md).
+    // 263 (Main's ruling): it is the body's height, hull and turret without roof weapons, antennas or whips (bots aim at
+    // 0.85 of it, the eye height reads it), so the roof M2 leaves it; the gate's p95 counts the gun and reads 3.04 m
     dims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.73 },
     stats: { hp: 1750, enginePowerHp: 750, weightTons: 37.9, topSpeedKmh: 53,
       reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27, gunPitchByYawDeg: STB1_GUN_PITCH_BY_YAW_DEG },

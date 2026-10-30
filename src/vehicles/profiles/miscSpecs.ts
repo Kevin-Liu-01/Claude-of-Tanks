@@ -55,7 +55,9 @@ const TYPE74_SPEC = {
     ],
   },
   // 262 (Main's ruling): heightM is the P95 combat height the geometry gate measures on the build (the STB-1's rule too);
-  // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/type74.md)
+  // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/type74.md).
+  // 263 (Main's ruling): it is the body's height, hull and turret without roof weapons, antennas or whips (bots aim at
+  // 0.85 of it, the eye height reads it), so the roof M2 leaves it; the gate's p95 counts the gun and reads 2.93 m
   dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.83 },
   armor: communityArmor({
     // 262: the Type 74 family at the owner's model's own proportions (profiles/type74Family.ts): the ring datum 1.60 m up,

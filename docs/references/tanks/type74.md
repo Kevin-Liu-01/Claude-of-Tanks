@@ -478,6 +478,11 @@ that read as one. It now stands on the fleet's classic emplacement at the cupola
 ahead and clear of the hatch lid (`stb1.md`, "Roof machine guns"). A socket post is welded to the ring by a web plate,
 and the full-size M2 rides its pintle column and cradle with its ammunition can.
 
+The geometry gate's p95 height counts roof weapons (the fidelity page's `bodyExtent` leaves out only thin columns),
+and the owner's model has no gun, so the gun lowers this tank's geometry rows: the p95 height 2.83 -> 2.93 m against
+`heightM` 2.83, the gate's minimum 79.9 -> 58.4. Main's 263 ruling keeps `heightM` at the body's height, hull and
+turret without roof weapons, antennas or whips, because bots aim at 0.85 of it and the eye height reads it.
+
 ### The mask shaped by the turret (263)
 
 Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shaped" by the turret shape instead of

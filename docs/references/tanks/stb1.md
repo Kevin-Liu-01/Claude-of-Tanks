@@ -150,6 +150,12 @@ of the hatch lid. On the STB-1 the station hid the socket's post, and blind crit
 crown on its cradle's arm. It now stands on the fleet's riser (`riser` 0.05: a sleeve and clamp collar over the pintle),
 its flange 4 cm over the crown.
 
+The geometry gate's p95 height counts roof weapons (the fidelity page's `bodyExtent` leaves out only thin columns),
+and the owner's model has no gun, so the gun lowers this tank's geometry rows: the p95 height 2.74 -> 3.04 m against
+`heightM` 2.73, the gate's minimum 55.4 -> 5.1, the turret curves 55.4 -> 29.1. Main's 263 ruling keeps `heightM` at
+the body's height, hull and turret without roof weapons, antennas or whips, because bots aim at 0.85 of it and the eye
+height reads it.
+
 ### The mask shaped by the turret (263)
 
 Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shaped" by the turret shape instead of
