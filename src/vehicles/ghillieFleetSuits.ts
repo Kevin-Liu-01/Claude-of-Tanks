@@ -646,30 +646,33 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.10, 3.20, 1.34, 0.40, 2.25, 41),
     },
   },
-  // T-90AM: the roof netted round the commander's panorama and its guard, the gunner's sight, both hatches and the roof
-  // boxes, drapes down the walls behind the smoke banks and down the bustle box, a rear drape; the engine deck netted
-  // (the left fender's exhaust and the stern drums bare) and the front deck, four drapes a side (the left one cut round
-  // the exhaust).
+  // T-90AM: the roof netted round the remote weapon station, the commander's panorama, the gunner's sight and the
+  // hatches, drapes down the walls ahead of the bustle and a rear drape down the bustle basket; the engine deck netted
+  // (the stern drums bare) and the front deck, four drapes a side over the Relikt skirts.
+  // 2026-10-30 (lane t90-family-266): refitted to the family chassis and the AM-type turret (no 65 % turret scale): the
+  // roof lies at 0.62-0.79 in the turret frame, the station stands at x 0.05..0.75, z -1.50..-0.45, the bustle ends at
+  // z -2.66, the fenders at 1.44 m.
   t90am: {
     id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     // 245: under its measured curve (turretScaleGunPitch.ts) the front deck's net lay 10.9 mm under the barrel at yaw 37
     clothClearsGunStops: true,
     turret: {
-      top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
-        holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-3.40, -0.30, 0.98, 0.46, 1.84, 17),
-      face: [face({ z: -3.55, x0: -1.30, x1: 1.30, y0: 0.50, y1: 0.92, nx: 26, ny: 6, seed: 23 })],
+      top: [laid({ x0: -1.80, x1: 1.80, z0: -2.62, z1: 1.90, nx: 43, nz: 54, y: 0.66,
+        holes: [rect(0.05, 0.75, -1.50, -0.45), rect(0.10, 0.55, 0.15, 0.90), rect(-0.95, -0.35, -0.95, -0.45)],
+        garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.55, -0.25, 0.60, 0.40, 1.80, 17),
+      face: [face({ z: -2.66, x0: -1.20, x1: 1.20, y0: 0.22, y1: 0.60, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
         // 245: the engine deck's centre lane carries no garnish under the gun turned aft, whose curve dips to -0.5 degrees
         // at yaw 180 (its leaves stood 19.3 mm under the barrel there)
-        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.60, holes: [rect(-1.95, -1.40, -3.50, -2.20)], garnishRiseM: 0.14, seed: 31,
+        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.55, garnishRiseM: 0.14, seed: 31,
           foliageExclude: [rect(-0.40, 0.40, -3.95, -1.20)] }),
-        laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.50, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.05, 3.35, 1.52, 0.48, 1.95, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
+      side: skirts(-3.05, 3.35, 1.47, 0.50, 1.95, 41),
     },
   },
   // Leopard 2A7V: the arrowhead roof netted round the PERI, the EMES head, the hatches and the remote station (the
