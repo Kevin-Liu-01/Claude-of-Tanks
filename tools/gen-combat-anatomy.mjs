@@ -47,7 +47,7 @@ const { measureTurretRing, measureTurretSweep, turretRingRadius, TURRET_RING_SID
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
-const { authoredCombatAnatomy, finalizeCombatAnatomy } = await import('../src/vehicles/combatAnatomy.ts');
+const { authoredCombatAnatomy, finalizeCombatAnatomy, moduleHitShapes } = await import('../src/vehicles/combatAnatomy.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
 const { fitCrewSeats, placeModules } = await import('./crew-seat-fit.mjs');
@@ -733,7 +733,7 @@ function seatsFor(id, calibration) {
   const ring = calibration.turretRing ?? null;
   const crewSeats = fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null, ring);
   const drawn = new Set((calibration.moduleShapes || []).map((receipt) => `${receipt.module}|${!!receipt.turretLocal}`));
-  const { seats: moduleSeats, report } = placeModules(probe, crewSeats, { drawn, ring });
+  const { seats: moduleSeats, report } = placeModules(probe, crewSeats, { drawn, ring, hitShapes: moduleHitShapes });
   // a sketch that lies largely outside its armour is wrong data: the pass keeps the part inside, and says so
   for (const entry of report) {
     if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.unplaced) {

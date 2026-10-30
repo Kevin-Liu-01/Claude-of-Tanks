@@ -657,16 +657,18 @@ function moduleUsesInternalShell(volume: ModuleVolume): boolean {
     && volume.module !== 'optics';
 }
 
-function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+/** The hit shapes a module volume carries (266: the placement pass in tools/crew-seat-fit.mjs judges a module by them). */
+export function moduleHitShapes(armor: ArmorAnatomy, volume: ModuleVolume): AnatomyShape[] {
   const parts = Array.isArray(volume.parts) && volume.parts.length
     ? volume.parts
     : [volume];
   const cells = collisionCellsForVolume(armor, volume);
   const internal = moduleUsesInternalShell(volume);
-  volume.shapes = [];
-  for (const part of parts) {
-    volume.shapes.push(...fitModulePartToShell(volume.module, part, cells, internal));
-  }
+  return parts.flatMap((part) => fitModulePartToShell(volume.module, part, cells, internal));
+}
+
+function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+  volume.shapes = moduleHitShapes(armor, volume);
 }
 
 function crewBodyShapes(volume: CrewVolume): AnatomyShapeEllipsoid[] {

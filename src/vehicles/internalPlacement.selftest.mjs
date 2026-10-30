@@ -5,8 +5,9 @@
 //   - sides: every side-named station's seated body on its own side of its frame's axis (5 cm dead band), the known
 //     layouts of five families as built (Abrams, Leopard 2, T-72, Merkava, Challenger 2), turret crew beside the drawn
 //     sight their role uses;
-//   - ring: turret crew under the deck inside the turret ring's radius, hull crew under the deck outside it where a basket
-//     turns (2 cm tolerance);
+//   - ring: turret crew under the deck inside the turret ring's radius about the axis the turret turns on (or inside the
+//     turret's own armour where it hangs below the deck), hull crew under the deck outside it where a basket turns (2 cm
+//     tolerance); trimmed stations (no posture fits; pinned in crewSeats.selftest) are held there, not here;
 //   - overlap: no crew hit shape inside a module's hit shapes, no module's inside another's (2 cm tolerance), except the
 //     carousel autoloader inside the ammunition it carries;
 //   - negative controls: the checks flag a mirrored M1A2 crew (3 of 3), a module shape planted in a gunner, a turret
@@ -20,7 +21,8 @@ import { finalizeCombatAnatomy } from './combatAnatomy.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
-import { pointInShape, shapeSurfaceSamples } from '../../tools/crew-seat-fit.mjs';
+import { crewShell, shapeSurfaceSamples, shapesIntersect } from '../../tools/crew-seat-fit.mjs';
+import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 
 assert.equal(stationSideSign('frontLeft'), 1);
 assert.equal(stationSideSign('rearRight'), -1);
@@ -45,14 +47,8 @@ const centreX = (shapes) => {
   const xs = shapes.map((shape) => (shape.kind === 'capsule' ? (shape.a[0] + shape.b[0]) / 2 : shape.center[0]));
   return xs.reduce((sum, x) => sum + x, 0) / xs.length;
 };
-/** A shape's surface samples and its core (centre, or a capsule's axis ends and middle). */
-const samplesOf = (shape) => [...shapeSurfaceSamples(shape), ...(shape.kind === 'capsule'
-  ? [shape.a, shape.b, shape.a.map((value, axis) => (value + shape.b[axis]) / 2)] : [shape.center])];
-/** Whether any sample of `a` lies more than TOL_M inside one of `b`'s shapes, or of `b` inside `a`'s. */
-function intersects(a, b) {
-  const into = (from, to) => from.some((shape) => samplesOf(shape).some((p) => to.some((other) => pointInShape(other, p, -TOL_M))));
-  return into(a, b) || into(b, a);
-}
+/** Whether a sample of `a` lies more than TOL_M inside one of `b`'s shapes, or of `b` inside `a`'s. */
+const intersects = (a, b) => shapesIntersect(a, b, TOL_M);
 
 /** Side-named stations whose body sits across the axis from the side the station names. */
 function wrongSides(id, crew) {
@@ -67,16 +63,20 @@ function wrongSides(id, crew) {
   return out;
 }
 
-/** Crew bodies crossing the turret ring's cylinder under the deck. */
-function ringCrossings(id, armor, crew, ring) {
+/** Crew bodies crossing the turret ring's cylinder (about the turret's yaw axis) under the deck. */
+function ringCrossings(id, armor, crew, ring, trimmed = new Set()) {
   if (!ring || !(armor.collisionShells?.turret || []).length) return [];
   const basket = crew.some((volume) => volume.turretLocal);
+  const pivot = armor.turretPivot;
+  const turret = crewShell({ ...armor, collisionShells: { hull: [], turret: armor.collisionShells.turret } }, 'turret');
+  const inTurret = (p) => turret.inside([p[0] - pivot[0], p[1] - pivot[1], p[2] - pivot[2]], -TOL_M);
   const out = [];
   for (const volume of crew) {
+    if (trimmed.has(volume.crew)) continue;
     const samples = hullShapes(armor, volume).flatMap(shapeSurfaceSamples).filter((p) => p[1] < ring.deckY - TOL_M);
-    const r = (p) => Math.hypot(p[0] - ring.seat[0], p[2] - ring.seat[2]);
+    const r = (p) => Math.hypot(p[0] - pivot[0], p[2] - pivot[2]);
     const crossing = volume.turretLocal
-      ? samples.filter((p) => r(p) > ring.rimR + TOL_M).length
+      ? samples.filter((p) => r(p) > ring.rimR + TOL_M && !inTurret(p)).length
       : basket ? samples.filter((p) => r(p) < ring.rimR - TOL_M).length : 0;
     if (crossing) out.push(`${id}/${volume.crew} ${volume.turretLocal ? 'turret crew past' : 'hull crew inside'} the ring (${crossing} samples)`);
   }
@@ -107,7 +107,8 @@ for (const id of ALL_TANK_IDS) {
   const crew = armor?.crew || [];
   sided += (INTERNAL_LAYOUT_BY_TANK[id]?.crew || []).filter((station) => stationSideSign(station.station)).length;
   wrong.push(...wrongSides(id, crew));
-  rings.push(...ringCrossings(id, armor, crew, combatAnatomyCalibration(id)?.turretRing));
+  const trimmed = new Set((COMBAT_ANATOMY_CALIBRATIONS[id]?.crewSeats || []).filter((seat) => seat.trimmed !== undefined).map((seat) => seat.crew));
+  rings.push(...ringCrossings(id, armor, crew, combatAnatomyCalibration(id)?.turretRing, trimmed));
   overlapping.push(...overlaps(id, armor));
 }
 assert.ok(sided > 600, `the fleet names a side for most stations (${sided})`);
