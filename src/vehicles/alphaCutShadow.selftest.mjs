@@ -20,6 +20,11 @@ const { vehicleShadowDetailOf } = await import('../engine/nearVehicleShadowDetai
   const depth = alphaCutDepthMaterial(cloth);
   assert.equal(alphaCutDepthMaterial(cloth), depth, 'one cut depth a material');
   assert.notEqual(alphaCutDepthMaterial(new THREE.MeshStandardMaterial({ alphaTest: 0.5 })), depth, 'and its own for another (three uploads its map only when the material changes)');
+  // (264c) a seat's builds share their net textures, not their materials: one cut texture, one depth draw
+  const net = new THREE.Texture();
+  const first = alphaCutDepthMaterial(new THREE.MeshStandardMaterial({ alphaTest: 0.5, map: net }));
+  assert.equal(alphaCutDepthMaterial(new THREE.MeshStandardMaterial({ alphaTest: 0.5, map: net })), first, 'two materials on one cut texture share its depth');
+  assert.notEqual(alphaCutDepthMaterial(new THREE.MeshStandardMaterial({ alphaTest: 0.5, map: new THREE.Texture() })), first, 'another texture has its own');
   const shader = { vertexShader: THREE.ShaderLib.depth.vertexShader, fragmentShader: THREE.ShaderLib.depth.fragmentShader, uniforms: {} };
   depth.onBeforeCompile(shader);
   assert.match(shader.fragmentShader, /textureLod\( map, vMapUv, 0\.0 \)/, 'the cut depth reads the map at level 0');
