@@ -3,10 +3,10 @@
 // ghillie", then "the new leo ... should rightfully be based on the new model and use totally new tank generation. the
 // type 90 is a separate tank"). A Leopard 2-pattern hull and seven-wheel running gear at the supplied concept model's
 // measured proportions, carrying our own Type 90-inspired turret: one long slab-sided box with a stepped, narrower
-// autoloader bustle, two bolt-on frontal modules swept back in plan from the gun slot (the supplied model's arrowhead) and
-// a box mantlet flush between them,
-// the gunner's armoured sight box on the right front of the roof and the commander's stabilised panoramic head on the
-// left. The supplied model was read for proportions only; nothing of it is traced or shipped
+// autoloader bustle; in front, the early Leopards' and the 2A4 family's swept cheek blocks (leopard2CheekFront.ts) on the
+// supplied model's arrowhead, the gunner's sight in the right one's window under its armoured housing, a box mantlet proud
+// between them; the commander's stabilised panoramic head on the left of the roof. The supplied model was read for
+// proportions only; nothing of it is traced or shipped
 // (docs/references/tanks/christian2.md; docs/references/concepts/christian2-20261027.json). Heavy field netting and garnish
 // ride over it (ghillieFleetSuits.ts christian2).
 //
@@ -15,13 +15,15 @@
 // construction (leopard2Hull.ts); the turret datums are christian2Armor.ts's. The gunner, the gunner's
 // sight and the driver sit on the right (-X), the commander's cupola, panoramic sight and the working 12.7 mm on the left
 // (+X), the autoloader in the bustle.
-import { KIT, FITTINGS, muzzleBore, convexSlab } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { addLeopard2SternRackFloor, buildLeopard2Hull } from './leopard2Hull.ts';
+import { addLeopard2CheekBlocks, addLeopard2Emes15 } from './leopard2CheekFront.ts';
+import { cheekFaceZ } from '../leopard2CheekFrontDatums.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { CHRISTIAN2_TURRET, christian2ModuleFaceZ } from '../christian2Armor.ts';
+import { CHRISTIAN2_CHEEK_FRONT, CHRISTIAN2_TURRET } from '../christian2Armor.ts';
 
 const T = CHRISTIAN2_TURRET;
 
@@ -46,59 +48,58 @@ function turretShell(P: TankBuilderPort): void {
     s(T.stepZ, T.halfWidthM, T.bustleFloorY, 0.77, T.roofRearY),
     s(-1.10, T.halfWidthM, T.bustleFloorY, 0.77, 0.825),
     s(-1.06, T.halfWidthM, T.floorY, 0.77, 0.825),
-    s(0.86, T.halfWidthM, T.floorY, 0.75, 0.79),
-    s(T.coreFrontZ, T.halfWidthM, T.floorY, 0.73, T.roofFrontY),
+    s(0.60, T.halfWidthM, T.floorY, 0.755, 0.795),
+    // its front behind the cheek blocks' bevelled outer tops (leopard2CheekFrontDatums.ts), its roof edge the blocks' tops
+    s(T.coreFrontZ, T.halfWidthM, T.floorY, 0.735, T.cheekTopY + 0.005),
   ], { sideQuadDiagonal: 'convex' }));
 }
 
 /**
- * Two bolt-on frontal modules either side of the gun slot, their faces swept back in plan from the slot's edges to the side
- * walls at the shell's front (the supplied model's arrowhead), vertical from the floor; their tops run on from the shell's
- * front roof edge and fall 8 cm to the faces' tips. Each is one convex piece from 2 cm inside the shell's front, its outer
- * side 3 mm inside the wall's plane; two rows of bolt heads stand square to the face.
+ * The front block, the early Leopards' and the 2A4 family's construction (leopard2CheekFront.ts) on the Christian II's
+ * datums: the two swept cheek blocks in front of the shell, the gunner's sight window cut through the right one's top
+ * inboard corner; the welded joints of the faces with the slot's walls and of the blocks with the shell; a grab rail
+ * across each face (the right one under the window's sill, the left higher) and the lifting lug low on the right face.
  */
-function frontalModules(P: TankBuilderPort): void {
-  const { cylZ } = KIT;
-  const inner = T.slotHalfWidthM, hw = T.halfWidthM - 0.003, root = T.coreFrontZ - 0.02, lo = 0.04;
-  const face = christian2ModuleFaceZ, zi = face(inner), zo = face(hw);
-  const fall = (T.roofFrontY - T.moduleNoseTopY) / (zi - root);
-  const topAt = (z: number): number => T.roofFrontY - (z - root) * fall;
-  const sweep = Math.atan2(T.moduleFrontZ - T.coreFrontZ, T.halfWidthM - T.slotHalfWidthM);
+function frontBlock(P: TankBuilderPort): void {
+  const { box } = KIT;
+  const F = CHRISTIAN2_CHEEK_FRONT, slot = F.slotHalfWidthM, floor = T.floorY, sweep = F.sweepDeg * Math.PI / 180;
+  const face = (x: number): number => cheekFaceZ(F, x);
+  addLeopard2CheekBlocks(P, F);
   for (const sx of [-1, 1]) {
-    P.add('turret', convexSlab(
-      [sx * inner, lo, root], [sx * hw, lo, root], [sx * hw, lo, zo], [sx * inner, lo, zi],
-      [sx * inner, T.roofFrontY, root], [sx * hw, T.roofFrontY, root], [sx * hw, topAt(zo), zo], [sx * inner, topAt(zi), zi],
-    ));
-    for (const y of [0.16, 0.54]) for (const x of [0.60, 0.85, 1.10]) {
-      P.add('turretDetail', cylZ(0.022, 0.016, 8), sx * x, y, face(x) + 0.006, 0, sx * sweep, 0);
+    P.addEquipment('turretDark', box(0.012, F.faceTopY - floor - 0.04, 0.012), sx * (slot + 0.006), (F.faceTopY + floor) / 2,
+      face(slot) - 0.006);
+    P.addEquipment('turretDark', box(0.014, F.cheekTopY - floor - 0.06, 0.014), sx * (T.halfWidthM + 0.003),
+      (F.cheekTopY + floor) / 2 - 0.02, F.rootZ + 0.02);
+  }
+  for (const [x0, x1, y] of [[-0.53, -1.10, 0.30], [0.53, 1.10, 0.37]] as const) {
+    // a round bar on two standoff brackets, along the face
+    const xc = (x0 + x1) / 2, sx = Math.sign(xc), len = Math.abs(x1 - x0) / Math.cos(sweep);
+    P.add('turretDetail', KIT.cylZ(0.013, len, 8), xc, y, face(xc) + 0.055, 0, Math.PI / 2 + sx * sweep, 0);
+    for (const xe of [x0, x1]) {
+      const xs = xe + Math.sign(xc - xe) * 0.02;
+      P.add('turretDetail', box(0.03, 0.03, 0.06), xs, y, face(xs) + 0.025);
     }
   }
-  // the brow over the slot, from the shell's front roof edge down to 1.4 cm over the mantlet's top at every pitch (its rear
-  // corner rises to 0.672 at full depression, its front to 0.663 at full elevation): the 8 cm step between the mantlet's
-  // top and the roof's edge read as a hole (the R7c blind critic)
-  const by = 0.676, bz0 = T.coreFrontZ - 0.005, bz1 = T.coreFrontZ + 0.06;
-  P.add('turret', convexSlab(
-    [-inner, by, bz0], [inner, by, bz0], [inner, by, bz1], [-inner, by, bz1],
-    [-inner, T.roofFrontY + 0.002, bz0], [inner, T.roofFrontY + 0.002, bz0], [inner, 0.69, bz1], [-inner, 0.69, bz1],
-  ));
+  P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, face(0.86) + 0.024, 0, -sweep, 0);
 }
 
 /**
- * The pitching box mantlet filling the slot, as the supplied model's: its face 6 cm proud of the modules' tips, its top
- * level with them, its underside rising 6 cm over its front 0.30 m so that, traversed over the engine deck, it keeps clear
- * of the deck's net at the published stops; the coax port and the gun's framed sight port either side of the bore, and
- * the 120 mm L/44-class tube.
+ * The pitching box mantlet filling the slot, as the supplied model's: its face 6 cm proud of the cheeks' faces, its top
+ * level with the cheeks' flat tops and bevelled to the faces' top line, its rear inside the shell's front; its underside
+ * rising 6 cm over its front 0.30 m so that, traversed over the engine deck, it keeps clear of the deck's net at the
+ * published stops; the coax port and the gun's framed sight port either side of the bore, and the 120 mm L/44-class tube.
  */
 function gunAssembly(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
   const m = T.mantletFaceZ, w = T.mantletHalfWidthM, top = T.mantletTopM, lo = T.mantletBottomM;
+  const faceTop = T.faceTopY - T.gunLocal[1], bevel = m - 0.16;
   const rect = (hw: number, b: number, t: number): SectionPoint[] => [[-hw, b], [hw, b], [hw, t], [-hw, t]];
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
   const mantlet = sectionSolid([
-    { z: -0.10, ring: rect(w, lo, top) },
+    { z: T.coreFrontZ - T.gunLocal[2] - 0.01, ring: rect(w, lo, top) },
     { z: m - 0.30, ring: rect(w, lo, top) },
-    { z: m - 0.10, ring: rect(w, lo + 0.04, top) },
-    { z: m, ring: rect(w - 0.025, lo + 0.06, top - 0.02) },
+    { z: bevel, ring: rect(w, lo + 0.06 * (bevel - m + 0.30) / 0.30, top) },
+    { z: m, ring: rect(w - 0.025, lo + 0.06, faceTop) },
   ]);
   // its camouflage phased off the projection's origin, where one dark blob covered the whole face (three blind critics)
   mantlet.userData.camoUvOffset = [0.37, 0.21];
@@ -112,13 +113,9 @@ function gunAssembly(P: TankBuilderPort): void {
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }
 
-/** Gunner's armoured sight box (right front) and the commander's panoramic head (left front). */
+/** The commander's panoramic head (left front) and the side periscopes; the gunner's sight is in the right cheek's window. */
 function roofSights(P: TankBuilderPort): void {
   const { box, cylY } = KIT;
-  P.add('turret', box(0.50, 0.28, 0.48), -0.62, 0.90, 0.64);
-  P.add('turretDetail', box(0.54, 0.035, 0.16), -0.62, 1.055, 0.91);
-  P.add('turretGlass', box(0.36, 0.13, 0.016), -0.62, 0.93, 0.886);
-  P.add('turretDark', box(0.42, 0.012, 0.03), -0.62, 0.855, 0.89);
   P.add('turretDetail', cylY(0.14, 0.16, 0.20, P.q ? 18 : 12), 0.62, 0.88, 0.52);
   P.add('turretDetail', box(0.30, 0.20, 0.30), 0.62, 1.08, 0.52);
   P.add('turretDetail', box(0.32, 0.03, 0.32), 0.62, 1.195, 0.52);
@@ -212,7 +209,8 @@ function turret(P: TankBuilderPort): void {
   P.turretG.position.set(T.pivot[0], T.pivot[1], T.pivot[2]);
   P.add('turret', KIT.cylY(1.00, 1.00, 0.03, P.q ? 48 : 24), 0, 0.013, 0);                       // ring guard
   turretShell(P);
-  frontalModules(P);
+  frontBlock(P);
+  addLeopard2Emes15(P, CHRISTIAN2_CHEEK_FRONT);
   gunAssembly(P);
   roofSights(P);
   roofHatches(P);

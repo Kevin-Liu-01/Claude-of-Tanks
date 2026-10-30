@@ -417,8 +417,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       top: [laid({
         // to the frontal modules' swept tips (z 1.66; the net ends at the faces)
         x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.68, nx: 36, nz: 61, y: 0.84,
-        // the gun slot (the sights, lids and posts open the net round their own shapes)
-        holes: [rect(-0.50, 0.50, 0.80, 1.72)],
+        // the gun slot and the gunner's sight window in the right cheek (the sights, lids and posts open the net round
+        // their own shapes)
+        holes: [rect(-0.50, 0.50, 0.80, 1.72), rect(-0.92, -0.53, 1.00, 1.50)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // the walls' shoulders stand at 0.76-0.77 under the roof's bevel: the drapes hang from over them, behind the smoke

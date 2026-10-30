@@ -83,10 +83,13 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
   three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
-  frontal modules swept back 33.8 degrees in plan from z 1.58 at a 0.95 m gun slot to the walls at the shell's front
-  (z 1.04), their tops running on from the shell's front roof edge and falling 8 cm to the tips; the 0.88 m box
-  mantlet's face 6 cm proud of the tips (gun z 0.60), its top level with them (gun +0.30) and its underside at -0.26;
-  trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+  the cheek blocks on the early Leopards' and the 2A4 family's construction (leopard2CheekFront.ts; R8): faces at
+  z 1.58 across a 0.95 m gun slot, swept back 33.8 degrees to 1.17 m off the bore, vertical to 0.64, a 10 cm bevel
+  back to flat tops at 0.74, a 10 cm chamfer to the walls, the shell's front behind them at z 0.91; the gunner's sight
+  window through the right block's top inboard corner (0.57-0.88 m off the bore, sill 0.38, back 0.35 m behind the
+  face), the EMES 15-pattern head, door leaves and armoured housing in it; the 0.91 m box mantlet's face 6 cm proud
+  of the faces (gun z 0.60), its top level with the blocks' tops and bevelled to the faces' top line, its underside at
+  -0.26; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
@@ -159,3 +162,14 @@ See the round log; filled as each gate runs.
   every round (one dark blob of the projection covered it). R7d: a brow over the slot from the roof's edge down to
   1.4 cm over the mantlet's top at every pitch, and the mantlet's camouflage phased off the projection's origin
   (userData.camoUvOffset, as the Sabra's cheek covers).
+  R7d's blind critic: PASS (the build's faces about 32 degrees, the model's 34 and 37; the mantlet's width, height and
+  position the model's, its face lit and painted; the net clear of the front and the gun). Minors left: the slot's
+  2 cm running clearance beside the mantlet reads dark from the side; the gun's plain collar where the model wraps a
+  stepped sleeve in cloth.
+- R8 (2026-10-30, the owner: "make sure the christain has the winndow cutout and other things on leopard 2a4
+  session"): the cheeks rebuilt on the shared Leopard cheek front (addLeopard2CheekBlocks, addLeopard2Emes15) with
+  the model's datums; its window sliced from the model's right cheek (0.57-0.88 m off the bore, open from 2.02 m
+  through the top, its back parallel to the face 0.35 m behind it) replaces R1's roof sight box; the 2A4's welded
+  joints and lifting lug and the early Leopards' face rails; the mantlet's top level with the blocks' and bevelled
+  like theirs (the 2A4's brow over the slot would meet this deep box at elevation, so the slot stays open over it);
+  the window's plate and the optics module in it (the early Leopards' armour); the roof net opened over the window.
