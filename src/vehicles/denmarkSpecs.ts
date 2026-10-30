@@ -162,6 +162,10 @@ cv9035dk.visual = {
   scheme: 'nato', base: '#545c4f', weather: '#5f6759', patches: ['#776a4b', '#262a21'], marking: 'number', number: '45',
   camoScale: 0.58,
 };
+// its measured gun stops (the 35 mm on its solid shroud): the glacis's add-on armour ahead, the rear deck's stowage aft
+cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -6.9], [20, -6.6], [34, -6.4], [36, -5.6], [37, -5.5], [39, -5.5],
+  [40, -6.2], [41, -7.2], [42, -7.3], [43, -8], [142, -8], [150, -5.9], [151, -5.2], [152, -5], [155, -5], [166, -5.7],
+  [168, -5.9], [169, -6.6], [170, -6.6], [171, -6.9], [172, -8], [180, -8]] as const);
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'cv9035dk'],
   { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, cv9035dk });

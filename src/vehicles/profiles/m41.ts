@@ -273,8 +273,9 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
         P.addEquipment('hullDark', box(0.18, 0.10, 0.12), s * H.trackXc, H.fenderY + 0.06, 2.50);
         headlight(P, s * H.trackXc, H.fenderY + 0.07, 2.57, 0, 0.045);
       }
-      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.36, 8), 1.66, H.fenderY + 0.18, 2.47);
-      P.addEquipment('hullDark', box(0.02, 0.15, 0.11), 1.67, H.fenderY + 0.40, 2.47);
+      // the mirror's head kept under the barrel's pass at the front stop (on a 0.36 m stalk it held the gun at +5.5 deg)
+      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.12, 8), 1.66, H.fenderY + 0.06, 2.47);
+      P.addEquipment('hullDark', box(0.02, 0.10, 0.11), 1.67, H.fenderY + 0.15, 2.47);
       // the low fender bins beside the turret, under the nose's sweep (tops at the deck's 1.44)
       for (const s of [-1, 1] as const) for (const [z0, z1] of [[1.85, 0.80], [0.74, -0.24], [-0.30, -1.24]] as const) {
         P.addEquipment('hull', box(0.29, 0.10, z0 - z1), s * 1.49, H.fenderY + 0.05, (z0 + z1) / 2);
@@ -482,9 +483,10 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     P.addGunExtra(cylZ(0.12, 0.08, P.q ? 20 : 12, 0.13), 0, 0, 0.53);
     if (dk) {
       // the DK-1's weathered canvas cover gathered round the nose and the tube's root, in folds
-      P.add('gunMountCanvasPale', xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.38, 0.54, 0.64]), 0, 0.0, 0.30);
-      for (const [y, z] of [[0.20, 0.32], [-0.02, 0.56], [-0.21, 0.36]] as const) {
-        P.add('gunMountCanvasPale', xform(cylX(0.035, 0.96, 10), 0, 0, 0, 0, 0, 0), 0, y, z);
+      // (its underside kept up at the nose's own -0.21 m: a fold lower held the gun at -4.3 deg over the driver's hatch)
+      P.add('gunMountCanvasPale', xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.38, 0.50, 0.64]), 0, 0.02, 0.30);
+      for (const [y, z, len] of [[0.20, 0.32, 0.96], [-0.02, 0.56, 0.96], [-0.15, 0.38, 0.84]] as const) {
+        P.add('gunMountCanvasPale', xform(cylX(0.035, len, 10), 0, 0, 0, 0, 0, 0), 0, y, z);
       }
       P.add('gunMountCanvasPale', cylZ(0.10, 0.22, P.q ? 16 : 10, 0.15), 0, 0, 0.66);
       // the Jahn Anderson thermal sight and the Ericsson laser rangefinder: a tall armoured housing on the shield's right,

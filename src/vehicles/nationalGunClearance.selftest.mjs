@@ -56,6 +56,11 @@ const CURVES = {
   leo1a5dk1: [],
   leo2a5dk: [],
   leo2a7dk: [], // its measured curve over the rear deck (the 2A7V publishes none)
+  cv9035dk: [], // the 35 mm on its solid shroud
+  // 265: the M41 family (profiles/m41.ts), the gun shield the cast turret's own nose
+  m41a3: [],
+  m41_bw: [],
+  m41_jgsdf: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

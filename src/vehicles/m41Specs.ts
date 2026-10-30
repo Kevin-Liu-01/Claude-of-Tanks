@@ -78,4 +78,10 @@ m41dk1.visual = {
   scheme: 'nato', base: '#5a5f4b', weather: '#656a55', patches: ['#2c3129', '#3e4446'], marking: 'number', number: '26', camoScale: 0.62,
 };
 
+// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun): the
+// full 9.7 degrees to yaw 128, then the engine deck's grilles and the stern stowage over the rear quarters
+const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [128, -9.7], [129, -9], [130, -5.5], [131, -4.6], [140, -3.2],
+  [142, -3], [146, -3], [150, -3.3], [151, -3.8], [152, -9.7], [167, -9.7], [168, -9], [169, -8.5], [180, -8.8]] as const);
+for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
+
 registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'], { m41a3, m41_bw, m41_jgsdf, m41dk1 });
