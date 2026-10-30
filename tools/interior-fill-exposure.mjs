@@ -31,7 +31,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, columnSpans, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
-import { ledgerBuildOptions, digestTankRoot } from './fleet-geometry-digest.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from '../src/vehicles/interiorFillLoaders.generated.ts';
 import { interiorFillSpans } from '../src/vehicles/interiorFills.ts';
@@ -42,7 +41,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 /** What this checker reads besides the fleet's bodies and fill records: a change re-measures every id in --lane. */
 const CHECKER_INPUTS = Object.freeze(['tools/interior-fill-exposure.mjs', 'tools/tank-voxel-body.mjs',
   'tools/interior-fill-body-policy.mjs', 'tools/tank-surface-collect.mjs', 'tools/fleet-geometry-digest.mjs',
-  'src/vehicles/interiorFills.ts', 'src/vehicles/nationalModernizationConfig.ts', 'src/vehicles/nationalLegacyConfig.ts']);
+  'tools/fleet-geometry-ledger.mjs', 'src/vehicles/interiorFills.ts', 'src/vehicles/nationalModernizationConfig.ts',
+  'src/vehicles/nationalLegacyConfig.ts']);
+const LEDGER_TOOL = fileURLToPath(new URL('./fleet-geometry-ledger.mjs', import.meta.url));
 
 /** The committed fill record of an id (read through the loader map, never registered: builds here stay fill-free). */
 export async function committedFillRecord(id, fillsFrom = null) {
@@ -194,18 +195,6 @@ function fillRecordLines(ids, rev = null) {
   return lines;
 }
 
-/** One fill-free build per id at the fleet geometry ledger's HIGH options: its hull, turret and gun digests. */
-async function digestIds(ids) {
-  const { createTank } = await import('../src/vehicles/tankFactory.ts');
-  const rows = {};
-  for (const id of ids) {
-    const tank = createTank(id, null, ledgerBuildOptions('high'));
-    try { const { groups } = digestTankRoot(tank.root); rows[id] = Object.fromEntries(COMPONENTS.map((group) => [group, groups[group]])); }
-    finally { tank.dispose?.(); }
-  }
-  return rows;
-}
-
 /** Measure ids in this process: one build each, fills never applied. */
 async function measureIds(ids, { fillsFrom = null } = {}) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
@@ -238,18 +227,14 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const jobs = Math.max(1, Number(value('jobs') ?? 1) | 0);
   // A tank build keeps geometry outside the V8 heap: more than a dozen ids run as child processes of at most twelve.
   const CHUNK = 12;
-  const measure = async (list, extra = []) => {
-    const digest = extra.includes('--digest');
-    if (list.length <= CHUNK) return digest ? digestIds(list) : measureIds(list, { fillsFrom });
-    const scratch = mkdtempSync(join(tmpdir(), 'cot-fill-exposure-'));
+  const inChildren = async (list, label, command) => {
     const chunks = []; for (let i = 0; i < list.length; i += CHUNK) chunks.push(list.slice(i, i + CHUNK));
     const rows = {};
     const runChunk = (part, k) => new Promise((done, fail) => {
-      const json = join(scratch, `part${k}.json`);
-      const proc = execFile(process.execPath, ['--max-old-space-size=4096', import.meta.filename, `--ids=${part.join(',')}`, '--child', `--json=${json}`,
-        ...extra, ...(fillsFrom ? [`--fills-from=${fillsFrom}`] : [])], { maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: '' } },
-      (error, stdout, stderr) => { process.stdout.write(stdout); if (error) { process.stderr.write(stderr); fail(new Error(`part ${k} failed`)); } else done(JSON.parse(readFileSync(json, 'utf8'))); });
-      proc.on('spawn', () => console.log(`[fill-exposure] ${digest ? 'digest ' : ''}part ${k}: ${part.length} id(s), pid ${proc.pid}`));
+      const { argv, read } = command(part, k);
+      const proc = execFile(process.execPath, ['--max-old-space-size=4096', ...argv], { maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: '' } },
+        (error, stdout, stderr) => { if (error) { process.stdout.write(stdout); process.stderr.write(stderr); fail(new Error(`${label} part ${k} failed`)); } else done(read(stdout)); });
+      proc.on('spawn', () => console.log(`[fill-exposure] ${label} part ${k}: ${part.length} id(s), pid ${proc.pid}`));
     });
     let next = 0;
     await Promise.all(Array.from({ length: Math.min(jobs, chunks.length) }, async () => {
@@ -257,8 +242,24 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     }));
     return rows;
   };
+  const measure = (list) => {
+    if (list.length <= CHUNK) return measureIds(list, { fillsFrom });
+    const scratch = mkdtempSync(join(tmpdir(), 'cot-fill-exposure-'));
+    return inChildren(list, 'exposure', (part, k) => {
+      const json = join(scratch, `part${k}.json`);
+      return { argv: [import.meta.filename, `--ids=${part.join(',')}`, '--child', `--json=${json}`, ...(fillsFrom ? [`--fills-from=${fillsFrom}`] : [])],
+        read: (stdout) => { process.stdout.write(stdout); return JSON.parse(readFileSync(json, 'utf8')); } };
+    });
+  };
+  // Body digests come from the ledger tool's own worker: this module loads tank-surface-collect's canvas fixture, under
+  // which builders paint suits, nets and kit fabrics as shipped, so a build here never digests to the ledger's row.
+  const digestBodies = (list) => inChildren(list, 'digest', (part) => ({
+    argv: [LEDGER_TOOL, '--worker', '--shard=0/1', `--ids=${part.join(',')}`, '--quality=high'],
+    read: (stdout) => Object.fromEntries(Object.entries(JSON.parse(stdout))
+      .map(([id, row]) => [id, Object.fromEntries(COMPONENTS.map((group) => [group, row.high.groups[group]]))])),
+  }));
   let measured = ids, rows;
-  if (child) rows = args.includes('--digest') ? await digestIds(ids) : await measureIds(ids, { fillsFrom });
+  if (child) rows = await measureIds(ids, { fillsFrom });
   else {
     if (lane) {
       const base = value('base') ?? git('merge-base', 'HEAD', 'origin/main').trim();
@@ -270,7 +271,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
         const now = fillRecordLines(all), then = fillRecordLines(all, base);
         let ledger = {};
         try { ledger = JSON.parse(git('show', `${base}:docs/references/fleet-geometry-ledger.json`)).tanks ?? {}; } catch {}
-        const digests = await measure(lanePending({ all, selected: ids, now, then }), ['--digest']);
+        const digests = await digestBodies(lanePending({ all, selected: ids, now, then }));
         const scope = laneScope({ all, selected: ids, now, then, ledger, digests });
         measured = scope.ids;
         console.log(`[fill-exposure] lane against ${base.slice(0, 10)}: ${ids.length} selected + ${scope.bodies.length} moved bod${scope.bodies.length === 1 ? 'y' : 'ies'}`
