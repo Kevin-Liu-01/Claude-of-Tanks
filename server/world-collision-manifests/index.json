@@ -54,8 +54,8 @@
       "concealers": 1210
     },
     "railyard": {
-      "bytes": 1833604,
-      "sha256": "bee32d6d965868299ad8cb3ac0688de3956e59de428bc38bada203e3965ad96f",
+      "bytes": 1833168,
+      "sha256": "7ea962d282a8bcc62962d6c1f71e25bdf3fc043e92d40ed8f09606ad4727e959",
       "obstacles": 3446,
       "colliders": 4159,
       "concealers": 1904
@@ -82,8 +82,8 @@
       "concealers": 10067
     },
     "badlands": {
-      "bytes": 1966465,
-      "sha256": "0bf0adf6a7e0fd73de5a5e5bf39a449f2febd6a230423cdca6362249b78b44e0",
+      "bytes": 1965880,
+      "sha256": "bd2d463b3b42873b0f22659020305b674ea5a43fce8081ffc7b157b077d8b8c9",
       "obstacles": 2298,
       "colliders": 2314,
       "concealers": 221
@@ -152,8 +152,8 @@
       "concealers": 3393
     },
     "copper_mesa": {
-      "bytes": 1645169,
-      "sha256": "868aa0a46042a3d51e5ebcac4e102b00f76acb0efdb383048e0f393519be1c7e",
+      "bytes": 1644548,
+      "sha256": "066e76883d6b73831b313b9e840f9887b6109e1cd8b3c9a42ad4c1fc2e37ca22",
       "obstacles": 2050,
       "colliders": 2754,
       "concealers": 958
@@ -180,8 +180,8 @@
       "concealers": 0
     },
     "orchard": {
-      "bytes": 1385762,
-      "sha256": "f1d37cfb67d9cbc1135889cf7391a8811a41ecfba5cc78ac666207e71ce0ebfd",
+      "bytes": 1385653,
+      "sha256": "285241447b4bf173c6348e053db09b1c3bf18a1b24e05ee22fb317261216fe45",
       "obstacles": 4537,
       "colliders": 4669,
       "concealers": 4807
