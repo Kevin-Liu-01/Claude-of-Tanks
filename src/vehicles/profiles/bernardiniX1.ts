@@ -14,12 +14,18 @@
 //   roller on each bracket; the sprockets enlarged to the profiles; each mark its own turret; the M2s seated; the roofs
 //   clear; the X1's running gear raised (larger wheels and idler) under a shallower side; the X1A2's tools, cage brake,
 //   flank boxes and bow registration.
+// Round 3: the X1's turret a true wedge (one long front slope from the ring to the roof, undercut flanks, a sloped bustle
+//   overhang) behind a pot mantlet, its two-baffle box brake and flat-topped slit cupola; the X1A2's undercut flanks,
+//   longer bustle and low periscope cupola; both marks' open spoked sprockets with their teeth proud of the track and
+//   spoked idlers; the X1A2's shallower upper hull side over its smaller wheels, its glacis-top lamps, bow mudguards and
+//   rear side boxes; the X1's curved rear fenders.
 // Datums: the X1's published 5.04 m hull and 6.04 m over the gun, 2.4 m wide, 2.45 m; the X1A2's 6.06 m hull, 2.6 m wide,
 // 2.45 m, 19 t (Tanks Encyclopedia, after Bastos' "Brazilian Stuart"); stations from Brian Gaydos' profiles for Tanks
 // Encyclopedia, scaled on the hull (the X1A2's turret roof reads 2.5 m against the published 2.45, recorded in its packet;
 // the X1A2's bogies spread their wheels 0.77 m and stand 0.64 m apart wheel to wheel, as drawn).
 // A +Z hull's right is -X: the commander at -X.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
+import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
@@ -29,17 +35,18 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type BernardiniX1Mark = 'x1' | 'x1a2';
 
-/** One turret cross-section (turret-local metres): the flank stands vertical from the floor `yb` to the crease `yc` at
- * half-width `hwb`, then leans in to the roof edge at `hwt`, `top`. */
+/** One turret cross-section (turret-local metres): the undercut lower flank leans out from the floor `yb` at half-width
+ * `hwb` to the crease `yc` at `hwc`, then the upper flank leans in to the roof edge at `hwt`, `top`. */
 interface TurretSection {
-  readonly z: number; readonly yb: number; readonly yc: number; readonly top: number; readonly hwb: number; readonly hwt: number;
+  readonly z: number; readonly yb: number; readonly yc: number; readonly top: number; readonly hwb: number; readonly hwc: number;
+  readonly hwt: number;
 }
 
 interface X1Datums {
   readonly noseZ: number; readonly sternZ: number; readonly bellyY: number; readonly lowerX: number; readonly sponsonX: number;
   readonly sponsonFloorY: number; readonly deckY: number; readonly noseY: number; readonly glacisZ: number; readonly bowZ: number;
   readonly rearTopZ: number; readonly rearY: number; readonly rearBellyZ: number; readonly fenderX: number; readonly fenderY: number;
-  readonly sponsonFrontZ: number;
+  readonly sponsonFrontZ: number; readonly sponsonRearZ: number;
   readonly trackXc: number; readonly trackW: number; readonly wheelR: number; readonly wheelY: number;
   readonly wheelZs: readonly number[]; readonly bogieZs: readonly number[];
   readonly sprocket: { readonly z: number; readonly y: number; readonly r: number };
@@ -52,46 +59,130 @@ interface X1Datums {
   readonly muzzleHullZ: number;
 }
 
-const sec = (z: number, yb: number, yc: number, top: number, hwb: number, hwt: number): TurretSection =>
-  Object.freeze({ z, yb, yc, top, hwb, hwt });
+const sec = (z: number, yb: number, yc: number, top: number, hwb: number, hwc: number, hwt: number): TurretSection =>
+  Object.freeze({ z, yb, yc, top, hwb, hwc, hwt });
+
+type Polar = [number, number];
+const polar = (rho: number, a: number): Polar => [rho * Math.cos(a), rho * Math.sin(a)];
+/** A plate in a wheel's plane (axis +X), `depth` thick and centred on `x`: an outline and holes in polar-plotted (u, v). */
+function axialPlate(outline: readonly Polar[], holes: readonly (readonly Polar[])[], depth: number, x: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape(outline.map(([u, v]) => new THREE.Vector2(u, v)));
+  for (const h of holes) shape.holes.push(new THREE.Path(h.map(([u, v]) => new THREE.Vector2(u, v))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, -depth / 2);
+  g.rotateY(Math.PI / 2);
+  g.translate(x, 0, 0);
+  return g;
+}
+const circle = (rho: number, n: number): Polar[] => Array.from({ length: n }, (_, k) => polar(rho, (k / n) * Math.PI * 2));
+/** The openings between `count` spokes of half-width `hw` (m), from `ri` to `ro`. */
+function spokeHoles(count: number, ri: number, ro: number, hw: number, phase = 0): Polar[][] {
+  const holes: Polar[][] = [];
+  for (let j = 0; j < count; j++) {
+    const a0 = phase + (j / count) * Math.PI * 2, a1 = phase + ((j + 1) / count) * Math.PI * 2, h: Polar[] = [];
+    for (let k = 0; k <= 6; k++) h.push(polar(ro, a0 + hw / ro + ((a1 - a0 - 2 * hw / ro) * k) / 6));
+    for (let k = 3; k >= 0; k--) h.push(polar(ri, a0 + hw / ri + ((a1 - a0 - 2 * hw / ri) * k) / 3));
+    holes.push(h);
+  }
+  return holes;
+}
+/** The Stuart-pattern drive sprocket (local +X outboard): two toothed rings riding just proud of the track's edges, the
+ * outer one on six spokes with the openings dark behind them, the hub barrel and cap. */
+function sprocketStock(r: number, trackW: number): { body: THREE.BufferGeometry; dark: THREE.BufferGeometry } {
+  const n = Math.max(10, Math.round((Math.PI * 2 * r) / 0.165)), p = (Math.PI * 2) / n, toothed: Polar[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = k * p;
+    toothed.push(polar(r * 0.90, a - 0.32 * p), polar(r + 0.045, a - 0.13 * p), polar(r + 0.045, a + 0.13 * p),
+      polar(r * 0.90, a + 0.32 * p));
+  }
+  const face = trackW / 2 + 0.012;
+  const body = [
+    axialPlate(toothed, spokeHoles(6, r * 0.30, r * 0.68, 0.035), 0.022, face),
+    axialPlate(toothed, [circle(r * 0.66, 18)], 0.022, -face),
+    KIT.cylX(r * 0.27, trackW + 0.03, 14),
+    xformX(KIT.cylX(r * 0.15, 0.04, 12), face + 0.01),
+  ];
+  const dark = [xformX(KIT.cylX(r * 0.70, 0.02, 18), face - 0.06)];
+  return { body: mergeGeometries(body), dark: mergeGeometries(dark) };
+}
+/** A spoked idler (symmetric about its plane): the rim the track wraps, two eight-spoke faces, the hub, the dark web. */
+function idlerStock(r: number, trackW: number): { body: THREE.BufferGeometry; dark: THREE.BufferGeometry } {
+  const w = trackW * 0.64, face = w / 2 + 0.011;
+  const body = [
+    axialPlate(circle(r * 0.99, 28), [circle(r * 0.86, 28)], w, 0),
+    axialPlate(circle(r * 0.97, 28), spokeHoles(8, r * 0.28, r * 0.80, 0.028, Math.PI / 8), 0.022, face),
+    axialPlate(circle(r * 0.97, 28), spokeHoles(8, r * 0.28, r * 0.80, 0.028, Math.PI / 8), 0.022, -face),
+    KIT.cylX(r * 0.24, w + 0.10, 14),
+  ];
+  const dark = [KIT.cylX(r * 0.86, 0.02, 24)];
+  return { body: mergeGeometries(body), dark: mergeGeometries(dark) };
+}
+const xformX = (g: THREE.BufferGeometry, x: number): THREE.BufferGeometry => g.translate(x, 0, 0);
+/** Merged into one non-indexed geometry: positions, normals and UVs. */
+function mergeGeometries(parts: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [];
+  for (const part of parts) {
+    const g = part.index ? part.toNonIndexed() : part;
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    const p = g.getAttribute('position'), t = g.getAttribute('uv');
+    for (let i = 0; i < p.count; i++) {
+      pos.push(p.getX(i), p.getY(i), p.getZ(i));
+      nor.push(g.getAttribute('normal').getX(i), g.getAttribute('normal').getY(i), g.getAttribute('normal').getZ(i));
+      uv.push(t ? t.getX(i) : 0, t ? t.getY(i) : 0);
+    }
+    if (g !== part) g.dispose();
+    part.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return out;
+}
 
 const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
   x1: Object.freeze({
     noseZ: 2.52, sternZ: -2.52, bellyY: 0.40, lowerX: 0.74, sponsonX: 1.12, sponsonFloorY: 1.14, deckY: 1.62, noseY: 1.12,
     glacisZ: 1.55, bowZ: 2.30, rearTopZ: -1.85, rearY: 1.22, rearBellyZ: -2.30, fenderX: 1.20, fenderY: 1.14,
-    sponsonFrontZ: 2.16,
+    sponsonFrontZ: 2.16, sponsonRearZ: -2.47,
     // the Stuart's bogies: each pair spread 0.84 m, the two bogies' inner wheels nearly touching (Gaydos' X1 profile)
     trackXc: 0.98, trackW: 0.40, wheelR: 0.28, wheelY: 0.34, wheelZs: [1.47, 0.63, 0.02, -0.82], bogieZs: [1.05, -0.40],
     sprocket: { z: 2.03, y: 0.74, r: 0.36 }, idler: { z: -1.76, y: 0.41, r: 0.36 }, rollerZs: [0.89, -0.56], rollerY: 0.96,
     rollerR: 0.10,
     ring: { y: 1.62, z: 0.08 },
     turret: {
-      front: 1.10, slopeTop: 0.55, rear: -1.43, roof: 0.68,
+      // a lozenge in profile (Gaydos' X1): the front a point at the mantlet, one long slope from it to the roof, its
+      // floor undercut back to the ring; the flanks leaning in from the ring; the bustle sloping down to a point astern
+      // over its own rising floor
+      front: 1.02, slopeTop: 0.15, rear: -1.46, roof: 0.66,
       sections: Object.freeze([
-        sec(-1.43, 0.22, 0.44, 0.62, 0.80, 0.62), sec(-1.25, 0.12, 0.46, 0.68, 0.88, 0.68),
-        sec(-0.85, 0.12, 0.46, 0.68, 0.90, 0.68), sec(-0.84, 0.02, 0.46, 0.68, 0.90, 0.68),
-        sec(0.55, 0.02, 0.46, 0.68, 0.90, 0.68), sec(0.85, 0.02, 0.29, 0.53, 0.78, 0.54),
-        sec(1.10, 0.02, 0.14, 0.40, 0.62, 0.44),
+        sec(-1.46, 0.30, 0.35, 0.40, 0.54, 0.64, 0.48), sec(-1.20, 0.20, 0.29, 0.47, 0.70, 0.82, 0.56),
+        sec(-0.80, 0.04, 0.10, 0.58, 0.84, 0.90, 0.60), sec(-0.66, 0.02, 0.05, 0.62, 0.88, 0.90, 0.62),
+        sec(0.15, 0.02, 0.05, 0.66, 0.88, 0.90, 0.64), sec(0.62, 0.02, 0.16, 0.54, 0.82, 0.88, 0.60),
+        sec(0.80, 0.03, 0.20, 0.49, 0.72, 0.82, 0.56), sec(1.02, 0.14, 0.27, 0.40, 0.44, 0.54, 0.42),
       ]),
     },
     trunnion: { y: 0.33, z: 1.02 }, muzzleHullZ: 3.52,
   }),
   x1a2: Object.freeze({
-    noseZ: 3.03, sternZ: -3.03, bellyY: 0.42, lowerX: 0.84, sponsonX: 1.25, sponsonFloorY: 1.18, deckY: 1.74, noseY: 1.24,
-    glacisZ: 1.67, bowZ: 2.80, rearTopZ: -2.30, rearY: 1.32, rearBellyZ: -2.75, fenderX: 1.30, fenderY: 1.18,
-    sponsonFrontZ: 2.80,
-    trackXc: 1.09, trackW: 0.42, wheelR: 0.27, wheelY: 0.33, wheelZs: [1.79, 1.02, 0.38, -0.38, -1.00, -1.73],
+    // (the upper hull side from 1.34: the drawing's dark band between the track and the side panel)
+    noseZ: 3.03, sternZ: -3.03, bellyY: 0.42, lowerX: 0.84, sponsonX: 1.25, sponsonFloorY: 1.34, deckY: 1.74, noseY: 1.24,
+    glacisZ: 1.67, bowZ: 2.80, rearTopZ: -2.30, rearY: 1.32, rearBellyZ: -2.75, fenderX: 1.30, fenderY: 1.34,
+    sponsonFrontZ: 2.40, sponsonRearZ: -2.85,
+    trackXc: 1.09, trackW: 0.42, wheelR: 0.245, wheelY: 0.305, wheelZs: [1.79, 1.02, 0.38, -0.38, -1.00, -1.73],
     bogieZs: [1.405, 0, -1.365],
     sprocket: { z: 2.52, y: 0.74, r: 0.36 }, idler: { z: -2.46, y: 0.62, r: 0.29 }, rollerZs: [1.405, 0, -1.365], rollerY: 0.96,
     rollerR: 0.085,
     ring: { y: 1.74, z: 0.10 },
     turret: {
-      front: 1.28, slopeTop: 0.70, rear: -1.71, roof: 0.77,
+      front: 1.28, slopeTop: 0.70, rear: -1.86, roof: 0.77,
+      // undercut flanks (the floor 0.88 out to the crease's 1.00 at 0.18), the angled cheeks to a pointed nose, the bustle
+      // overhanging the ring from -0.70 to its back at -1.86
       sections: Object.freeze([
-        sec(-1.71, 0.19, 0.44, 0.73, 0.86, 0.70), sec(-1.55, 0.17, 0.46, 0.77, 0.96, 0.80),
-        sec(-0.72, 0.17, 0.46, 0.77, 0.98, 0.80), sec(-0.71, 0.02, 0.46, 0.77, 0.98, 0.80),
-        sec(0.70, 0.02, 0.46, 0.77, 0.98, 0.80), sec(1.00, 0.02, 0.26, 0.62, 0.84, 0.56),
-        sec(1.28, 0.02, 0.06, 0.48, 0.64, 0.40),
+        sec(-1.86, 0.22, 0.30, 0.72, 0.78, 0.88, 0.68), sec(-1.70, 0.17, 0.25, 0.77, 0.86, 0.98, 0.80),
+        sec(-0.86, 0.17, 0.25, 0.77, 0.88, 1.00, 0.80), sec(-0.70, 0.02, 0.18, 0.77, 0.88, 1.00, 0.80),
+        sec(0.70, 0.02, 0.18, 0.77, 0.88, 1.00, 0.80), sec(1.00, 0.02, 0.14, 0.62, 0.74, 0.86, 0.56),
+        sec(1.28, 0.02, 0.05, 0.48, 0.56, 0.62, 0.42),
       ]),
     },
     trunnion: { y: 0.43, z: 1.30 }, muzzleHullZ: 3.89,
@@ -99,7 +190,7 @@ const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
 });
 
 function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileBuild {
-  const { box, cylX, cylY, cylZ, sph, torus, xform, buildRunningGear, headlight, liftEye } = KIT;
+  const { box, cylX, cylY, cylZ, torus, xform, buildRunningGear, headlight, liftEye } = KIT;
   const slab = orientedSlab;
   const D = DATUMS[mark], a2 = mark === 'x1a2';
   const glacis = Math.atan2(D.deckY - D.noseY, D.bowZ - D.glacisZ);
@@ -133,10 +224,27 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
           [D.sponsonX - 0.04, deckY(z)], [D.lowerX - 0.01, deckY(z)]]
         : [[-D.sponsonX, D.sponsonFloorY], [-(D.lowerX - 0.01), D.sponsonFloorY], [-(D.lowerX - 0.01), deckY(z)],
           [-(D.sponsonX - 0.04), deckY(z)], [-D.sponsonX, deckY(z) - 0.03]];
-      P.add('hull', sectionSolid([D.sternZ + 0.05, D.rearTopZ, D.glacisZ, D.sponsonFrontZ].map((z) => ({ z, ring: ring(z) }))));
+      P.add('hull', sectionSolid([D.sponsonRearZ, D.rearTopZ, D.glacisZ, D.sponsonFrontZ].map((z) => ({ z, ring: ring(z) }))));
       // the fender lip over the track, the length of the sponson
-      P.add('hullDetail', box(D.fenderX - D.sponsonX + 0.02, 0.022, D.sponsonFrontZ - D.sternZ - 0.08),
-        s * (D.sponsonX + D.fenderX) / 2, D.fenderY - 0.011, (D.sponsonFrontZ + D.sternZ) / 2 + 0.01);
+      P.add('hullDetail', box(D.fenderX - D.sponsonX + 0.02, 0.022, D.sponsonFrontZ - D.sponsonRearZ - 0.03),
+        s * (D.sponsonX + D.fenderX) / 2, D.fenderY - 0.011, (D.sponsonFrontZ + D.sponsonRearZ) / 2);
+      const xin = s * (D.lowerX - 0.01), xout = s * D.fenderX, t = 0.02;
+      if (a2) {
+        // the bow mudguard over the sprocket, falling from the sponson's front to the nose
+        const z0 = D.sponsonFrontZ - 0.02, y0 = deckY(z0) - 0.035, z1 = D.noseZ - 0.08, y1 = D.noseY - 0.07;
+        P.add('hullDetail', slab([xin, y0 - t, z0], [xout, y0 - t, z0], [xout, y1 - t, z1], [xin, y1 - t, z1],
+          [xin, y0, z0], [xout, y0, z0], [xout, y1, z1], [xin, y1, z1]));
+      } else {
+        // the Stuart's curved rear fender, falling from the sponson's floor behind the idler
+        const cz = -1.95, cy = D.fenderY - 0.45, R = 0.45, n = 6, a1 = 1.30;
+        for (let k = 0; k < n; k++) {
+          const p = (a: number, rr: number): [number, number] => [cz - rr * Math.sin(a), cy + rr * Math.cos(a)];
+          const a = (k / n) * a1, b = ((k + 1) / n) * a1;
+          const [za, ya] = p(a, R - t), [zb, yb] = p(b, R - t), [zA, yA] = p(a, R), [zB, yB] = p(b, R);
+          P.add('hullDetail', slab([xin, ya, za], [xout, ya, za], [xout, yb, zb], [xin, yb, zb],
+            [xin, yA, zA], [xout, yA, zA], [xout, yB, zB], [xin, yB, zB]));
+        }
+      }
     }
     P.add('hullDetail', box(D.lowerX * 2, 0.05, 0.06), 0, D.noseY - 0.40, D.noseZ - 0.02);
   };
@@ -149,7 +257,8 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       style: 'holes', wheelR: D.wheelR, wheelW: 0.22, wheelY: D.wheelY, xc: D.trackXc, wheelZs: [...D.wheelZs],
       sprocket: { ...D.sprocket }, idler: { ...D.idler }, rollers: D.rollerZs.map((z) => ({ z, y: D.rollerY, r: D.rollerR })),
       rollerR: D.rollerR, trackW: D.trackW, topY: D.rollerY + 0.04, botY: 0.03, contactZF: D.wheelZs[0],
-      contactZR: a2 ? D.wheelZs.at(-1) : D.idler.z, paintedEnds: true, coveredTop: false, arms: false, sprocketTeeth: true,
+      contactZR: a2 ? D.wheelZs.at(-1) : D.idler.z, paintedEnds: true, coveredTop: false, arms: false, sprocketTeeth: false,
+      sprocketStockGeometry: sprocketStock(D.sprocket.r, D.trackW), idlerGeometry: idlerStock(D.idler.r, D.trackW),
     });
     // each VVSS bogie: the bracket casting bolted to the hull, the volute spring standing in it between the wheels, the two
     // A-arms from the bracket down to the wheel hubs (outboard, as the profiles draw them), the return roller on its top
@@ -190,11 +299,24 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   // ---------------------------------------------------------------- hull fittings --
   const buildX1HullFittings = (): void => {
     for (const s of [-1, 1] as const) {
-      // the headlights in their guards on the bow, the lifting eyes, the tail lights on the rear plate
-      headlight(P, s * (D.sponsonX - 0.18), deckY(D.bowZ - 0.10) + 0.08, D.bowZ - 0.05, -glacis * 0.5, 0.06);
-      bar('hullDark', [s * (D.sponsonX - 0.30), deckY(D.bowZ - 0.10) + 0.02, D.bowZ - 0.18], [s * (D.sponsonX - 0.30), deckY(D.bowZ - 0.10) + 0.16, D.bowZ + 0.02], 0.012);
-      bar('hullDark', [s * (D.sponsonX - 0.06), deckY(D.bowZ - 0.10) + 0.02, D.bowZ - 0.18], [s * (D.sponsonX - 0.06), deckY(D.bowZ - 0.10) + 0.16, D.bowZ + 0.02], 0.012);
-      liftEye(P, 'hullDetail', s * (D.sponsonX - 0.15), deckY(D.glacisZ + 0.20) + 0.012, D.glacisZ + 0.20, s * 0.3);
+      // the headlights in their guards (the X1's on the bow, the X1A2's cluster at the top of the glacis), the lifting
+      // eyes, the tail lights on the rear plate
+      if (a2) {
+        // the twin-lamp cluster in its box on the top of the glacis, the hoop guard over it
+        const lz = D.glacisZ + 0.22, ly = deckY(lz), lx = D.sponsonX - 0.30;
+        P.add('hullDetail', xform(box(0.30, 0.12, 0.12), 0, 0, 0, glacis, 0, 0), s * lx, ly + 0.05, lz);
+        for (const dx of [-0.075, 0.075]) {
+          P.add('hullGlass', xform(cylZ(0.042, 0.012, 12), 0, 0, 0, glacis, 0, 0), s * (lx + dx), ly + 0.07, lz + 0.065);
+        }
+        for (const gx of [lx - 0.18, lx + 0.18]) bar('hullDark', [s * gx, ly + 0.005, lz - 0.05], [s * gx, ly + 0.15, lz + 0.06], 0.012);
+        bar('hullDark', [s * (lx - 0.18), ly + 0.15, lz + 0.06], [s * (lx + 0.18), ly + 0.15, lz + 0.06], 0.012);
+      } else {
+        const lz = D.bowZ - 0.10, ly = deckY(lz), lx = D.sponsonX - 0.18;
+        headlight(P, s * lx, ly + 0.08, lz + 0.05, -glacis * 0.5, 0.06);
+        for (const gx of [lx - 0.13, lx + 0.12]) bar('hullDark', [s * gx, ly + 0.02, lz - 0.08], [s * gx, ly + 0.16, lz + 0.12], 0.012);
+      }
+      const ez = D.glacisZ + (a2 ? 0.55 : 0.20);
+      liftEye(P, 'hullDetail', s * (D.sponsonX - 0.15), deckY(ez) + 0.012, ez, s * 0.3);
       P.add('hullDark', box(0.14, 0.10, 0.06), s * (D.lowerX - 0.18), D.rearY - 0.10, D.sternZ - 0.01);
       P.add('hullGlass', box(0.09, 0.05, 0.012), s * (D.lowerX - 0.18), D.rearY - 0.10, D.sternZ - 0.045);
       P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.45, D.rearY - 0.22, D.sternZ - 0.03, 0, 0, Math.PI / 2);
@@ -206,7 +328,8 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         P.add('hullDark', box(0.045, 0.06, 0.035), s * (D.sponsonX + 0.012), y, z);
       };
       // the shovel: the ash shaft, the D-grip aft, the pointed blade forward
-      const sy = D.sponsonFloorY + (D.deckY - D.sponsonFloorY) * 0.55, sz0 = a2 ? -0.26 : -0.60, sz1 = a2 ? 0.55 : 0.18;
+      const sy = a2 ? D.sponsonFloorY + 0.20 : D.sponsonFloorY + (D.deckY - D.sponsonFloorY) * 0.55;
+      const sz0 = a2 ? -0.26 : -0.60, sz1 = a2 ? 0.55 : 0.18;
       bar('hullWood', [x, sy, sz0], [x, sy, sz1], 0.017);
       bar('hullDark', [x, sy - 0.05, sz0 - 0.02], [x, sy + 0.05, sz0 - 0.02], 0.012);
       bar('hullDark', [x, sy - 0.05, sz0 - 0.02], [x, sy - 0.03, sz0 + 0.08], 0.010);
@@ -216,21 +339,28 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         [x + 0.008, sy + 0.02, sz1 + 0.27], [x - 0.008, sy + 0.02, sz1 + 0.27]));
       for (const z of [sz0 + 0.12, sz1 - 0.06]) clip(sy, z);
       // the crowbar, high on the flank
-      const by = D.deckY - 0.12, bz0 = a2 ? -1.35 : -1.45, bz1 = a2 ? 0.24 : -0.05;
+      const by = D.deckY - (a2 ? 0.065 : 0.12), bz0 = a2 ? -1.35 : -1.45, bz1 = a2 ? 0.24 : -0.05;
       bar('hullDark', [x, by, bz0], [x, by, bz1], 0.016);
       for (const z of [bz0 + 0.12, (bz0 + bz1) / 2, bz1 - 0.12]) clip(by, z);
       if (a2) {
         // the pick: its handle low on the flank and the head across it
-        const py = D.sponsonFloorY + 0.13, pz0 = -1.34, pz1 = -0.50;
+        const py = D.sponsonFloorY + 0.10, pz0 = -1.34, pz1 = -0.50;
         bar('hullWood', [x, py, pz0], [x, py, pz1], 0.017);
-        P.add('hullDark', slab([x - 0.012, py - 0.07, pz1 - 0.03], [x + 0.012, py - 0.07, pz1 - 0.03],
-          [x + 0.012, py - 0.07, pz1 + 0.03], [x - 0.012, py - 0.07, pz1 + 0.03], [x - 0.012, py + 0.22, pz1 - 0.01],
-          [x + 0.012, py + 0.22, pz1 - 0.01], [x + 0.012, py + 0.22, pz1 + 0.01], [x - 0.012, py + 0.22, pz1 + 0.01]));
+        P.add('hullDark', slab([x - 0.012, py - 0.06, pz1 - 0.03], [x + 0.012, py - 0.06, pz1 - 0.03],
+          [x + 0.012, py - 0.06, pz1 + 0.03], [x - 0.012, py - 0.06, pz1 + 0.03], [x - 0.012, py + 0.16, pz1 - 0.01],
+          [x + 0.012, py + 0.16, pz1 - 0.01], [x + 0.012, py + 0.16, pz1 + 0.01], [x - 0.012, py + 0.16, pz1 + 0.01]));
         for (const z of [pz0 + 0.10, pz1 - 0.12]) clip(py, z);
       }
     };
     tools(1);
     tools(-1);
+    if (a2) {
+      // the raised stowage boxes on the rear of each hull side (Gaydos' X1A2 profile)
+      for (const s of [-1, 1] as const) {
+        P.add('hullDetail', box(0.08, 0.30, 0.62), s * (D.sponsonX + 0.04), D.sponsonFloorY + 0.19, -1.95);
+        P.add('hullDark', box(0.012, 0.03, 0.56), s * (D.sponsonX + 0.085), D.sponsonFloorY + 0.30, -1.95);
+      }
+    }
     // the driver's and the co-driver's hatches on the glacis (the X1 kept the Stuart's two front stations)
     const hz = D.glacisZ + 0.40;
     for (const hx of a2 ? [0.40] : [0.40, -0.40]) {
@@ -261,7 +391,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
     for (let i = 1; i < S.length; i++) {
       if (z <= S[i].z) {
         const a = S[i - 1], b = S[i], t = (z - a.z) / (b.z - a.z), m = (k: keyof TurretSection): number => a[k] + (b[k] - a[k]) * t;
-        return { z, yb: m('yb'), yc: m('yc'), top: m('top'), hwb: m('hwb'), hwt: m('hwt') };
+        return { z, yb: m('yb'), yc: m('yc'), top: m('top'), hwb: m('hwb'), hwc: m('hwc'), hwt: m('hwt') };
       }
     }
     return S[S.length - 1];
@@ -269,21 +399,22 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   /** The flank's half-width at (z, y). */
   const flankX = (z: number, y: number): number => {
     const c = sectionAt(z);
-    return y <= c.yc ? c.hwb : c.hwb + (c.hwt - c.hwb) * Math.min(1, (y - c.yc) / Math.max(1e-6, c.top - c.yc));
+    if (y <= c.yc) return c.hwb + (c.hwc - c.hwb) * Math.max(0, (y - c.yb) / Math.max(1e-6, c.yc - c.yb));
+    return c.hwc + (c.hwt - c.hwc) * Math.min(1, (y - c.yc) / Math.max(1e-6, c.top - c.yc));
   };
   const buildX1Turret = (): void => {
     P.add('turret', cylY(0.82, 0.86, 0.10, P.q ? 26 : 16), 0, -0.04, 0);
-    // vertical lower flanks to the crease, upper flanks leaning in to the roof; the cheeks angle in to a short nose and
-    // the roof falls forward to it; the bustle stands on its own floor behind the ring
+    // undercut lower flanks out to the crease, upper flanks leaning in to the roof; the X1's front one slope from the
+    // ring to the roof, the X1A2's cheeks angled in to a pointed nose; each bustle overhanging the ring on a sloped floor
     const body = sectionSolid(S.map((c) => ({
       z: c.z,
-      ring: [[-c.hwb, c.yb], [c.hwb, c.yb], [c.hwb, c.yc], [c.hwt, c.top], [-c.hwt, c.top], [-c.hwb, c.yc]] as SectionPoint[],
+      ring: [[-c.hwb, c.yb], [c.hwb, c.yb], [c.hwc, c.yc], [c.hwt, c.top], [-c.hwt, c.top], [-c.hwc, c.yc]] as SectionPoint[],
     })));
     body.userData.primaryStockRole = a2 ? 'x1a2-wedge-turret' : 'bt90a1-turret';
     P.add('turret', body);
     for (const s of [-1, 1] as const) {
       const fz = T.slopeTop - 0.25, rz = T.rear + 0.30;
-      liftEye(P, 'turretDetail', s * (sectionAt(fz).hwt - 0.10), T.roof + 0.005, fz, s * 0.4);
+      liftEye(P, 'turretDetail', s * (sectionAt(fz).hwt - 0.10), sectionAt(fz).top + 0.005, fz, s * 0.4);
       liftEye(P, 'turretDetail', s * (sectionAt(rz).hwt - 0.10), sectionAt(rz).top + 0.005, rz, s * 2.7);
     }
   };
@@ -292,46 +423,50 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
 
   const buildX1TurretFittings = (): void => {
     const roof = T.roof;
-    // the commander's cupola (right): the X1's domed BT-90A1 cupola, its peak; the X1A2's raised vision-block cupola
-    const cx = -0.34, cz = a2 ? -0.05 : -0.15, cr = 0.30;
-    let cupolaTop: number;
+    // the commander's cupola (right): the X1's tall flat-topped cylinder with its vision slits, the X1A2's low wide drum
+    // with its periscopes round the front
+    const cx = -0.34, cz = a2 ? -0.05 : -0.15, top = (z: number): number => sectionAt(z).top;
+    let cupolaTop: number, mgFootY: number, mgZ: number;
     if (a2) {
-      const rise = 0.13;
-      P.addCupola('turret', cylY(cr, cr * 1.05, 0.12 + rise, P.q ? 22 : 14), cx, roof + (0.12 + rise) / 2, cz);
+      const cr = 0.36, h = 0.09;
+      P.addCupola('turret', cylY(cr, cr + 0.01, h, P.q ? 26 : 16), cx, roof + h / 2, cz);
       for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2 + 0.3;
-        P.add('turretDetail', box(0.09, 0.06, 0.05), cx + Math.sin(a) * cr, roof + 0.07 + rise, cz + Math.cos(a) * cr, 0, a, 0);
-        P.add('turretGlass', box(0.07, 0.03, 0.012), cx + Math.sin(a) * (cr + 0.025), roof + 0.07 + rise, cz + Math.cos(a) * (cr + 0.025), 0, a, 0);
+        const a = -1.9 + (k * 3.8) / 5, rr = cr - 0.065;
+        P.add('turretDetail', box(0.10, 0.07, 0.08), cx + Math.sin(a) * rr, roof + h + 0.035, cz + Math.cos(a) * rr, 0, a, 0);
+        P.add('turretGlass', box(0.07, 0.035, 0.008), cx + Math.sin(a) * (rr + 0.042), roof + h + 0.04, cz + Math.cos(a) * (rr + 0.042), 0, a, 0);
       }
-      P.addCupola('turret', cylY(cr * 0.9, cr * 0.94, 0.04, P.q ? 22 : 14), cx, roof + 0.14 + rise, cz);
-      cupolaTop = roof + 0.16 + rise;
+      P.addCupola('turret', cylY(0.22, 0.23, 0.03, P.q ? 22 : 14), cx, roof + h + 0.015, cz);
+      cupolaTop = roof + h + 0.03;
+      mgFootY = roof + h;
+      mgZ = cz - 0.29;
     } else {
-      const wall = 0.13;
-      P.addCupola('turret', cylY(cr, cr * 1.04, wall, P.q ? 24 : 14), cx, roof + wall / 2, cz);
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2 + 0.3;
-        P.add('turretGlass', box(0.08, 0.035, 0.012), cx + Math.sin(a) * (cr + 0.004), roof + wall * 0.62, cz + Math.cos(a) * (cr + 0.004), 0, a, 0);
+      const cr = 0.29, wall = 0.19, base = top(cz) - 0.01;
+      P.addCupola('turret', cylY(cr, cr + 0.015, wall, P.q ? 24 : 14), cx, base + wall / 2, cz);
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2 + 0.2;
+        P.add('turretGlass', box(0.075, 0.028, 0.012), cx + Math.sin(a) * (cr + 0.006), base + wall * 0.66, cz + Math.cos(a) * (cr + 0.006), 0, a, 0);
       }
-      const dome = sph(cr * 0.97, P.q ? 24 : 14, Math.PI / 2);
-      dome.scale(1, 0.62, 1);
-      P.addCupola('turret', dome, cx, roof + wall - 0.005, cz);
-      P.add('turretDetail', cylY(0.15, 0.16, 0.025, P.q ? 18 : 12), cx, roof + wall + cr * 0.97 * 0.62 - 0.004, cz);
-      cupolaTop = roof + wall + cr * 0.97 * 0.62 + 0.008;
+      P.addCupola('turret', cylY(0.25, 0.26, 0.03, P.q ? 22 : 14), cx, base + wall + 0.015, cz);
+      P.add('turretDetail', box(0.12, 0.035, 0.07), cx + 0.21, base + wall + 0.012, cz);
+      cupolaTop = base + wall + 0.03;
+      mgZ = -0.62;
+      mgFootY = top(mgZ);
     }
     // the .50: on the X1A2's cupola behind the hatch, on the X1's roof left of the cupola (its foot on the surface)
     const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.60, elev: 0.03, ring: false,
       shield: false, seed: a2 ? 6651 : 6641, working: true });
     mg.name = a2 ? 'x1a2CommanderM2' : 'x1CommanderM2';
-    if (a2) mg.position.set(cx, cupolaTop, cz - 0.15);
-    else mg.position.set(0.08, roof, -0.62);
+    mg.position.set(a2 ? cx : 0.08, mgFootY, mgZ);
     P.turretG.add(mg);
     // the gunner's periscope ahead of the cupola, the loader's hatch (left), the roof ventilator
-    const pz = Math.min(T.slopeTop - 0.20, cz + 0.55);
-    P.addEquipment('turret', box(0.18, 0.12, 0.22), -0.36, roof + 0.06, pz);
-    P.add('turretGlass', box(0.12, 0.05, 0.008), -0.36, roof + 0.07, pz + 0.115);
-    P.addCupola('turret', cylY(0.25, 0.26, 0.05, P.q ? 20 : 12), 0.36, roof + 0.025, -0.25);
-    P.add('turretDetail', cylY(0.22, 0.23, 0.03, P.q ? 20 : 12), 0.36, roof + 0.065, -0.25);
-    P.addEquipment('turret', cylY(0.12, 0.14, 0.05, 12), 0.10, roof + 0.025, T.rear + 0.55);
+    // (the X1's periscope stands on its front slope)
+    const pz = a2 ? Math.min(T.slopeTop - 0.20, cz + 0.55) : 0.32, tilt = a2 ? 0 : Math.atan2(top(0.15) - top(0.62), 0.47);
+    P.addEquipment('turret', xform(box(0.18, 0.12, 0.22), 0, 0, 0, tilt, 0, 0), -0.36, top(pz) + 0.05, pz);
+    P.add('turretGlass', xform(box(0.12, 0.05, 0.008), 0, 0, 0, tilt, 0, 0), -0.36, top(pz) + 0.06 - Math.sin(tilt) * 0.115,
+      pz + 0.115);
+    P.addCupola('turret', cylY(0.25, 0.26, 0.05, P.q ? 20 : 12), 0.36, top(-0.25) + 0.015, -0.25);
+    P.add('turretDetail', cylY(0.22, 0.23, 0.03, P.q ? 20 : 12), 0.36, top(-0.25) + 0.055, -0.25);
+    P.addEquipment('turret', cylY(0.12, 0.14, 0.05, 12), 0.10, top(T.rear + 0.55) + 0.015, T.rear + 0.55);
     for (const s of [-1, 1] as const) {
       if (a2) {
         // three dischargers on each front cheek, firing forward and out (Gaydos' profile, the parade photograph)
@@ -341,11 +476,14 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
           P.addEquipment('turret', xform(markSmokeTube(cylZ(0.036, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.45, s * 0.42, 0),
             s * (x + 0.08), y + 0.05, z + 0.06);
         }
-        // the six-tube box on each rear flank: a frame standing on the lower flank, braced to the upper, its six tubes
-        // upright in front of it
-        const z0 = -0.46, z1 = -1.15, y0 = 0.28, y1 = 0.67, xb = sectionAt(-0.8).hwb;
+        // the six-tube box on each rear flank: a frame standing off the crease, braced to the flank top and bottom, its
+        // six tubes upright in front of it
+        const z0 = -0.46, z1 = -1.15, y0 = 0.28, y1 = 0.67, xb = sectionAt(-0.8).hwc;
         P.addEquipment('turret', box(0.05, y1 - y0, z0 - z1), s * (xb + 0.025), (y0 + y1) / 2, (z0 + z1) / 2);
-        P.addEquipment('turret', box(xb + 0.05 - flankX(-0.8, y1), 0.03, z0 - z1), s * (flankX(-0.8, y1) + xb + 0.05) / 2, y1 - 0.015, (z0 + z1) / 2);
+        for (const yy of [y0 + 0.015, y1 - 0.015]) {
+          const fx = flankX(-0.8, yy) - 0.01;
+          P.addEquipment('turret', box(xb + 0.05 - fx, 0.03, z0 - z1), s * (fx + xb + 0.05) / 2, yy, (z0 + z1) / 2);
+        }
         for (let k = 0; k < 6; k++) {
           const z = z0 - 0.06 - k * ((z0 - z1 - 0.12) / 5);
           P.addEquipment('turretDark', xform(markSmokeTube(cylZ(0.044, y1 - y0 - 0.06, P.q ? 12 : 8)), 0, 0, 0, -Math.PI / 2, 0, 0),
@@ -355,24 +493,25 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         }
       } else {
         // the X1's two dischargers each side at the turret rear, on a bracket on the lower flank
-        const y = 0.34;
-        P.addEquipment('turret', box(0.06, 0.08, 0.34), s * (sectionAt(-0.95).hwb + 0.03), y, -0.95);
+        const y = 0.36, fx = flankX(-0.95, y);
+        P.addEquipment('turret', box(0.06, 0.08, 0.34), s * (fx + 0.02), y, -0.95);
         for (let k = 0; k < 2; k++) {
           P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.45, 0),
-            s * (sectionAt(-0.95).hwb + 0.08), y + 0.06, -0.87 - k * 0.16);
+            s * (fx + 0.07), y + 0.06, -0.87 - k * 0.16);
         }
       }
     }
     // the bustle: the X1's rear bin across its back plate; the raked antenna on the rear
     if (!a2) {
       const back = sectionAt(T.rear);
-      P.addEquipment('turret', box(back.hwb * 1.6, 0.24, 0.20), 0, (back.yb + back.top) / 2 - 0.02, T.rear - 0.09);
+      P.addEquipment('turret', box(back.hwc * 1.5, back.top - back.yb + 0.04, 0.18), 0, (back.yb + back.top) / 2, T.rear - 0.08);
     }
-    const az = T.rear + 0.25, aTop = sectionAt(az).top;
+    // the whip's base: the X1A2's on the bustle roof, the X1's on the roof ahead of its sloping bustle
+    const az = a2 ? T.rear + 0.25 : -0.70, aTop = sectionAt(az).top;
     P.addEquipment('turret', box(0.08, 0.08, 0.08), 0.55, aTop + 0.04, az);
     P.addEquipment('turret', xform(cylY(0.012, 0.015, 2.2, 8), 0, 1.10, 0, 0.35, 0, 0), 0.55, aTop + 0.08, az);
-    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r2', mark, roofY: roof, front: T.front, rear: T.rear,
-      spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'vision-block' : 'dome', cupolaTopY: +cupolaTop.toFixed(3) };
+    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r3', mark, roofY: roof, front: T.front, rear: T.rear,
+      spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'low-periscope' : 'flat-slit', cupolaTopY: +cupolaTop.toFixed(3) };
   };
   buildX1TurretFittings();
   yield 'buildX1TurretFittings';
@@ -381,12 +520,22 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   const buildX1Gun = (): void => {
     P.gunG.position.set(0, D.trunnion.y, D.trunnion.z);
     const seg = P.q ? 22 : 12;
-    const nose = T.front - D.trunnion.z;
-    // the mantlet block on the nose, the long sleeve out of it, the coaxial MG's port beside the gun
-    P.addGunExtra(box(a2 ? 0.58 : 0.46, a2 ? 0.30 : 0.28, 0.24), 0, 0, nose + 0.08);
-    const sleeve0 = nose + 0.20, sleeve1 = 0.50;
+    // the X1A2's mantlet block on its nose, the X1's pot mantlet (a drum about the trunnion standing out of the front
+    // slope); the long sleeve out of each, the coaxial MG's port beside the gun
+    let sleeve0: number;
+    const sleeve1 = 0.50;
+    if (a2) {
+      const nose = T.front - D.trunnion.z;
+      P.addGunExtra(box(0.58, 0.30, 0.24), 0, 0, nose + 0.08);
+      sleeve0 = nose + 0.20;
+      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.20, -0.04, sleeve0 + 0.01);
+    } else {
+      // the mantlet housing that is the turret's front point (Gaydos' X1)
+      P.addGunExtra(box(0.46, 0.32, 0.26), 0, 0, 0);
+      sleeve0 = 0.13;
+      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.17, -0.04, 0.135);
+    }
     P.addGunExtra(cylZ(a2 ? 0.115 : 0.13, sleeve1 - sleeve0, seg, a2 ? 0.135 : 0.15), 0, 0, (sleeve0 + sleeve1) / 2);
-    P.addGunExtraDark(box(0.06, 0.06, 0.04), a2 ? 0.20 : 0.17, -0.04, nose + 0.21);
     const len = D.muzzleHullZ - (D.ring.z + D.trunnion.z);
     if (a2) {
       // the Engesa EC-90 (the Cockerill Mk 3): a plain tube and the wide multi-baffle cage brake (five baffles on four
@@ -400,11 +549,13 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         P.add('gun', box(0.024, 0.024, brake), Math.cos(a) * 0.104, Math.sin(a) * 0.104, len - brake / 2);
       }
     } else {
-      // the 90 mm D-921: a short tapering tube, the single-baffle brake
-      const r0 = 0.075, r1 = 0.058;
-      P.add('gun', cylZ(r1, len - 0.16 - sleeve1, seg, r0), 0, 0, (sleeve1 + len - 0.16) / 2);
-      P.add('gun', cylZ(0.095, 0.16, seg, 0.085), 0, 0, len - 0.08);
-      P.add('gunDark', box(0.20, 0.05, 0.05), 0, 0, len - 0.08);
+      // the 90 mm D-921: a short tapering tube and its two-baffle box brake (three plates on straps above and below,
+      // the bore dark through both side ports)
+      const r0 = 0.075, r1 = 0.058, brake = 0.34;
+      P.add('gun', cylZ(r1, len - brake - sleeve1, seg, r0), 0, 0, (sleeve1 + len - brake) / 2);
+      P.add('gunDark', cylZ(0.062, brake, seg), 0, 0, len - brake / 2);
+      for (const z of [len - 0.025, len - brake / 2, len - brake + 0.025]) P.add('gun', box(0.22, 0.20, 0.05), 0, 0, z);
+      for (const sy of [-1, 1]) P.add('gun', box(0.22, 0.035, brake), 0, sy * 0.0825, len - brake / 2);
     }
     muzzleBore(P, { z: len + 0.004, r: 0.046 });
     P.muzzleZ = len;

@@ -138,11 +138,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   osorio_p1: anchor('turret', 'left', .22, .45, .22, 1),
   osorio_p2: anchor('turret', 'left', .22, .45, .22, 1),
   // 266: the Army plaque on the Tamoyos' turret flanks (Vesp's profiles: amidships, behind the cheek)
-  tamoyo1: anchor('turret', 'left', .50, .40, .22, 1),
-  tamoyo3: anchor('turret', 'left', .50, .45, .22, 1),
+  tamoyo1: anchor('turret', 'right', .50, .40, .22, 1), // the tank's left (+x), as Vesp's profiles
+  tamoyo3: anchor('turret', 'right', .50, .45, .22, 1),
   // 266: the plaque on the BT-90's flank ahead of the bustle
-  x1_pioneiro: anchor('turret', 'right', .55, .45, .20, 1), // 'right' seats on +x, the tank's left (Gaydos' profiles)
-  x1a2_carcara: anchor('turret', 'right', .62, .45, .20, 1),
+  x1_pioneiro: anchor('turret', 'right', .66, .45, .32, 1), // 'right' seats on +x, the tank's left (Gaydos' profiles)
+  x1a2_carcara: anchor('turret', 'right', .58, .45, .32, 1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   strv122: anchor('hull', 'right', .26, .82, .24, 1),
@@ -759,15 +759,15 @@ function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterA
 function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.strokeStyle = '#ece8dc';
   ctx.fillStyle = '#ece8dc';
-  ctx.lineWidth = radius * 0.13;
+  ctx.lineWidth = radius * 0.12;
   ctx.beginPath();
-  ctx.arc(cx, cy, radius * 0.62, 0, Math.PI * 2);
+  ctx.arc(cx, cy, radius * 0.84, 0, Math.PI * 2);
   ctx.stroke();
   ctx.lineWidth = radius * 0.10;
   ctx.beginPath();
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-    ctx.moveTo(cx + dx * radius * 0.56, cy + dy * radius * 0.56);
-    ctx.lineTo(cx + dx * radius * 0.30, cy + dy * radius * 0.30);
+    ctx.moveTo(cx + dx * radius * 0.78, cy + dy * radius * 0.78);
+    ctx.lineTo(cx + dx * radius * 0.42, cy + dy * radius * 0.42);
   }
   ctx.stroke();
   ctx.beginPath();

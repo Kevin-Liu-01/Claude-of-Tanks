@@ -38,7 +38,9 @@ prototype got its definitive armour). No existing id changes.
   upper glacis 15 degrees to the deck at z 1.95, the deck 1.60 m, the rear plate vertical to 1.25 m then sloping to the
   belly; six wheel stations on a 0.895 m pitch; the skirt bottom 0.64 m; the turret 2.29 m wide (70 % of the hull), its
   cheek noses 1.44 m ahead of the ring and the bustle 2.38 m behind; the plan's cheek chamfer from 0.555 m half-width at the
-  front to the 1.145 m slab sides 0.48 m back; the roof heads, cupola, hatch and MG stations; two circular fan grilles on
+  front to the 1.145 m slab sides 0.48 m back; the cheeks arrowheads in profile (the 1987, 2020 and 2022 photographs and the
+  2024 P.1 profile; blind critics, round 2): the upper facet from the roof 0.87 m ahead of the ring to the nose point at
+  0.46 m, the lower facet undercut back to the ring's front; the roof heads, cupola, hatch and MG stations; two circular fan grilles on
   the engine deck (artwork only, flagged in RESEARCH-osorio.md). The road wheels drawn small in the artwork: 0.73 m from the
   photographs, about 0.8 of the pitch (the P.1 profile, the Saudi 1987 and 2022 photographs; blind critics, round 1). The
   gun's trunnion 0.28 m over the ring plane (the P.1 profile photograph; the three-view's 0.25 m left the mantlet's

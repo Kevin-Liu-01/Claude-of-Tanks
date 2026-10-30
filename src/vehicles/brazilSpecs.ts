@@ -48,12 +48,18 @@ osorio_p2.gun = {
   shells: osorio_p2.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 760, pen1000Mm: 690, pen2000Mm: 622, dmg: 510 } : shell),
 };
 osorio_p2.armor = osorioArmor(5.285, 0.104);
+// the measured depression by yaw (tools/gun-depression-sweep.mjs, the whole gun 26 mm off its hull): the published -10
+// over the front, the fender line at the front corners, the engine deck astern
+osorio_p2.gunPitchByYawDeg = [[0, -10], [15, -10], [28, -8.8], [30, -8.8], [35, -8.9], [36, -8.6], [42, -7.5],
+  [45, -7.5], [54, -9], [56, -9], [57, -9.1], [60, -10], [113, -10], [115, -9.6], [121, -9.1], [123, -8.5],
+  [124, -8.3], [130, -7.8], [146, -4.3], [156, -2.6], [157, -2.6], [159, -0.8], [160, -0.5], [162, -0.5],
+  [163, -0.7], [165, -2], [177, -2], [180, -2.5]];
 osorio_p2.visual = {
   ...osorio_p2.visual,
-  // the Army's coat (the CIBld tank, 2020): olive with large hard-edged fields of a dull earth brown and a very dark
-  // green; the 1983-98 Southern Cross plaque
-  scheme: 'nato', base: '#444b31', weather: '#50573c', patches: ['#56402c', '#2a3320'], marking: 'number', number: '02',
-  camoScale: 0.45, patchK: 1.5, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the Army's coat (the CIBld tank, 2020): a dull olive with large fields of a reddish earth brown (about 35-40 %) edged
+  // in a very dark green (the nato painter: patches[0] the boundary bars, patches[1] the fields); the 1983-98 plaque
+  scheme: 'nato', base: '#4a5034', weather: '#555b3e', patches: ['#262c20', '#6f4026'], marking: 'number', number: '02',
+  camoScale: 0.45, patchK: 1.7, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // The 105 mm P.1 (the Army's 1986-87 homologation tank): the Royal Ordnance L7A3 and the OIP LRS-5 sights, mechanically
@@ -75,12 +81,18 @@ osorio_p1.gun = {
   ],
 };
 osorio_p1.armor = osorioArmor(4.545, 0.088);
+// the measured depression by yaw (tools/gun-depression-sweep.mjs, the whole gun 26 mm off its hull): the published -10
+// over the front, the fender line at the front corners, the engine deck astern
+osorio_p1.gunPitchByYawDeg = [[0, -10], [11, -10], [24, -8.9], [27, -9], [32, -9.3], [35, -10], [36, -10],
+  [41, -8.6], [42, -8.4], [45, -8.4], [51, -10], [113, -10], [115, -9.6], [130, -9.1], [135, -7.7], [142, -6],
+  [143, -5.1], [144, -4.7], [152, -3.2], [157, -3], [158, -2.6], [159, -1.4], [160, -1], [162, -1], [163, -1.2],
+  [164, -2.2], [169, -2.4], [176, -2.4], [180, -2.7]];
 osorio_p1.visual = {
   ...osorio_p1.visual,
-  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): earth brown with broad dark-green bands; the
-  // 1983-98 plaque
-  scheme: 'stripes', base: '#6a5942', weather: '#76654d', patches: ['#3a4230', '#363e2d'], marking: 'number', number: '01',
-  camoScale: 0.45, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a darker, greyer earth brown with large irregular
+  // near-black green fields across the full side height; the 1983-98 plaque
+  scheme: 'nato', base: '#5c4f3e', weather: '#675a48', patches: ['#1c2119', '#283022'], marking: 'number', number: '01',
+  camoScale: 0.45, patchK: 1.8, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
@@ -91,11 +103,11 @@ osorio_p1.visual = {
 // unstowed, 35 t combat, 8.9 m, 3.29 m, 2.35 m, the Detroit 8V92TA of 736 hp through the CD-850-6A, 65 km/h, the 105 mm
 // L7A3, the Ferranti Falcon fire control with a laser rangefinder, thermal and two-axis stabilisation, a composite and
 // spaced turret front. Rounds: the French 90 mm family of the Super 90 and the L7's at the fleet's 105 mm footing.
-const tamoyoArmor = (o: { barrelLenM: number; gunPivot: [number, number, number]; tFrontZ: number; tRearZ: number; tH: number;
-  tw: number; skirt: boolean; glacis: number; lower: number; cheek: [number, number, number]; mantlet: [number, number, number];
+const tamoyoArmor = (o: { ringY: number; barrelLenM: number; gunPivot: [number, number, number]; tFrontZ: number; tRearZ: number;
+  tH: number; tw: number; skirt: boolean; glacis: number; lower: number; cheek: [number, number, number]; mantlet: [number, number, number];
   tSide: [number, number, number] }) => modernArmor({
-  hl: 3.25, hw: 1.46, inW: 1.05, floor: 0.45, trkTop: 1.12, roofY: 1.565,
-  turretPivot: [0, 1.565, 0.16], gunPivot: o.gunPivot, barrelLenM: o.barrelLenM, barrelRadM: 0.072,
+  hl: 3.25, hw: 1.46, inW: 1.05, floor: 0.45, trkTop: 1.12, roofY: o.ringY,
+  turretPivot: [0, o.ringY, 0.16], gunPivot: o.gunPivot, barrelLenM: o.barrelLenM, barrelRadM: 0.072,
   glacis: [o.glacis, o.glacis, o.glacis + 30], lower: [o.lower, o.lower, o.lower], side: [19, 19, 19],
   skirt: o.skirt ? [10, 10, 30] : null, rear: 19, roof: 13,
   tw: o.tw, tFrontZ: o.tFrontZ, tRearZ: o.tRearZ, tH: o.tH,
@@ -119,15 +131,19 @@ tamoyo1.gun = {
   ],
 };
 tamoyo1.armor = tamoyoArmor({
-  barrelLenM: 4.41, gunPivot: [0, 0.315, 0.95], tFrontZ: 1.20, tRearZ: -2.05, tH: 0.72, tw: 1.12, skirt: true,
+  ringY: 1.475, barrelLenM: 4.01, gunPivot: [0, 0.315, 1.35], tFrontZ: 1.60, tRearZ: -2.05, tH: 0.72, tw: 1.12,
+  skirt: true,
   glacis: 40, lower: 40, cheek: [40, 40, 40], mantlet: [50, 50, 50], tSide: [25, 25, 25],
 });
+// the measured depression by yaw (tools/gun-depression-sweep.mjs): the full -8 to 137 degrees, the raised engine deck astern
+tamoyo1.gunPitchByYawDeg = [[0, -8], [137, -8], [144, -4.8], [146, -3.2], [151, -2.1], [153, -0.7], [155, -0.1],
+  [163, -0.2], [166, -1.1], [180, -1.2]];
 tamoyo1.visual = {
   ...tamoyo1.visual,
-  // the Army's two-tone of the trials (Vesp's profile, the CIBld tank): olive and earth brown in broad diagonal bands
-  // of about equal area; the 1983-98 plaque
-  scheme: 'stripes', base: '#4a5236', weather: '#565d42', patches: ['#5e4632', '#5a4330'], marking: 'number', number: '11',
-  camoScale: 0.45, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+  // the Army's two-tone of the trials (Vesp's profile, the CIBld tank): a dark olive and an orange earth brown in large
+  // hard-edged fields of about equal area, the same swoops on the decks as on the sides; the 1983-98 plaque
+  scheme: 'nato', base: '#454d31', weather: '#515a3c', patches: ['#70502e', '#634528'], marking: 'number', number: '11',
+  camoScale: 0.42, patchK: 1.7, trackWidthM: 0.53, insignia: 'br-cruzeiro',
 };
 
 const tamoyo3 = brazilian('tamoyo3', 'leo1a5', 'MB-3 Tamoyo 3', 'cold-war');
@@ -146,15 +162,16 @@ tamoyo3.gun = {
   ],
 };
 tamoyo3.armor = tamoyoArmor({
-  barrelLenM: 4.46, gunPivot: [0, 0.335, 1.05], tFrontZ: 1.50, tRearZ: -2.11, tH: 0.75, tw: 1.10, skirt: false,
+  ringY: 1.565, barrelLenM: 4.46, gunPivot: [0, 0.335, 1.05], tFrontZ: 1.50, tRearZ: -2.11, tH: 0.75, tw: 1.10,
+  skirt: false,
   glacis: 260, lower: 60, cheek: [400, 400, 520], mantlet: [300, 300, 380], tSide: [60, 60, 80],
 });
 tamoyo3.visual = {
   ...tamoyo3.visual,
   // the 1987 coat (Vesp's profile, the collector's photograph): olive and earth brown in large fields; the 1983-98
   // plaque
-  scheme: 'nato', base: '#4c5537', weather: '#585f43', patches: ['#5c4530', '#553f2c'], marking: 'number', number: '13',
-  camoScale: 0.45, patchK: 1.4, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+  scheme: 'nato', base: '#4b5434', weather: '#57603f', patches: ['#3e2f20', '#6a4a2c'], marking: 'number', number: '13',
+  camoScale: 0.42, patchK: 1.6, trackWidthM: 0.53, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- the X1 family --
@@ -190,7 +207,7 @@ Object.assign(x1_pioneiro, {
 });
 x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 4.9, baseAccuracy: 0.34, aimTimeS: 2.0, shells: x1Rounds(x1_pioneiro, 480) };
 x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 1.10, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
-  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.10, tRearZ: -1.43, tH: 0.68, glacis: 38, lower: 44, side: 25, loader: true });
+  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.02, tRearZ: -1.46, tH: 0.66, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
   ...x1_pioneiro.visual,
   // the Army's plain grey olive drab of the 1970s and 80s (Gaydos' profile); the white turret ring
@@ -206,12 +223,12 @@ Object.assign(x1a2_carcara, {
 });
 x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 470) };
 x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.10, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
-  barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.28, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
+  barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.28, tRearZ: -1.86, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
   ...x1a2_carcara.visual,
-  // the 6º RCB's three-tone (Gaydos' camouflaged profile): a sand base with green and dark-brown blotches; the white
-  // turret ring
-  scheme: 'nato', base: '#867c5c', weather: '#918767', patches: ['#55623f', '#4a3a2a'], marking: 'number', number: '21',
+  // the 6º RCB's three-tone (Gaydos' camouflaged profile): an olive base with sand fields edged in a narrow dark brown;
+  // the white turret ring
+  scheme: 'nato', base: '#55603f', weather: '#606b4a', patches: ['#463727', '#9a8a60'], marking: 'number', number: '21',
   camoScale: 0.5, patchK: 1.2, trackWidthM: 0.42, insignia: 'br-ring',
 };
 

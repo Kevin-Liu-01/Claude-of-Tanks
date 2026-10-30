@@ -34,7 +34,7 @@ const ROAD_WHEEL_ZS = [2.20, 1.305, 0.41, -0.485, -1.38, -2.275];
 const RING = Object.freeze({ y: 1.60, z: 0.40 });
 /** The turret (turret metres, from the ring at the deck): slab sides, a bevelled roof edge, the bustle's rear plate. */
 const T = Object.freeze({ hw: 1.145, roofY: 0.77, bevelY: 0.66, bevelX: 1.05, floorY: 0.02, frontZ: 1.00, rearZ: -2.38,
-  recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.40, cheekNoseX: 0.56, cheekFootZ: 1.38, roofEdgeZ: 1.14 });
+  recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.46, cheekNoseX: 0.56, cheekFootZ: 1.00, roofEdgeZ: 0.87 });
 const TRUNNION = Object.freeze({ y: 0.28, z: 0.85 });
 
 /** Hull deck height at z: the 15-degree upper glacis from the nose to its knee, then the flat deck. */
@@ -45,7 +45,7 @@ function deckY(z: number): number {
 }
 
 function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBuild {
-  const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, stowage, torus, jerryCan } = KIT;
+  const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, stowage, torus } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const p2 = mark === 'p2';
@@ -204,33 +204,46 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the body: vertical slab sides with a bevel to the flat roof, from the bustle's rear plate to the cheeks' root
     const ring: SectionPoint[] = [[-T.hw, T.floorY], [T.hw, T.floorY], [T.hw, T.bevelY], [T.bevelX, T.roofY],
       [-T.bevelX, T.roofY], [-T.hw, T.bevelY]];
-    const body = sectionSolid([{ z: T.rearZ, ring }, { z: T.frontZ, ring }]);
+    const body = sectionSolid([{ z: T.rearZ, ring }, { z: T.roofEdgeZ, ring }]);
     body.userData.primaryStockRole = 'osorio-turret';
     P.add('turret', body);
-    // the add-on cheek blocks either side of the mantlet's recess: a chevron in profile (an upper facet sloping back to the
-    // roof over a near-vertical lower facet) and swept back in plan to the slab sides
-    const outerX = (z: number): number => T.hw - (z - T.frontZ) / (T.cheekNoseZ - T.frontZ) * (T.hw - T.cheekNoseX);
+    // the add-on cheeks either side of the mantlet's recess, arrowheads in profile (the 1987, 2020 and 2022 photographs,
+    // the 2024 P.1 profile; blind critics, round 2): a long upper facet falling from the roof over about 15 % of the
+    // turret's length to a point at 60 % of its height, the lower facet undercut back to the ring; swept back in plan to
+    // the slab sides, the roof bevel carried down the upper facet
+    const outerX = (z: number): number => z <= T.frontZ ? T.hw
+      : T.hw - (z - T.frontZ) / (T.cheekNoseZ - T.frontZ) * (T.hw - T.cheekNoseX);
     const topY = (z: number): number => z <= T.roofEdgeZ ? T.roofY
-      : T.roofY - (z - T.roofEdgeZ) / (T.cheekNoseZ - T.roofEdgeZ) * (T.roofY - T.cheekNoseY - 0.02);
+      : T.roofY - (z - T.roofEdgeZ) / (T.cheekNoseZ - T.roofEdgeZ) * (T.roofY - T.cheekNoseY);
     const botY = (z: number): number => z <= T.cheekFootZ ? T.floorY
       : T.floorY + (z - T.cheekFootZ) / (T.cheekNoseZ - T.cheekFootZ) * (T.cheekNoseY - 0.02 - T.floorY);
-    const zs = [T.frontZ, T.roofEdgeZ, 1.26, T.cheekFootZ, T.cheekNoseZ];
+    const zs = [T.roofEdgeZ, T.frontZ, 1.15, 1.30, T.cheekNoseZ];
     for (const s of [-1, 1] as const) {
       const cheek = sectionSolid(zs.map((z) => {
         const xo = outerX(z), xi = T.recessX, yb = botY(z), yt = topY(z);
-        const ring: SectionPoint[] = s > 0 ? [[xi, yb], [xo, yb], [xo, yt], [xi, yt]] : [[-xo, yb], [-xi, yb], [-xi, yt], [-xo, yt]];
+        const bv = Math.min(T.roofY - T.bevelY, (yt - yb) * 0.3), bw = (T.hw - T.bevelX) * bv / (T.roofY - T.bevelY);
+        const ring: SectionPoint[] = s > 0 ? [[xi, yb], [xo, yb], [xo, yt - bv], [xo - bw, yt], [xi, yt]]
+          : [[-xo, yb], [-xi, yb], [-xi, yt], [-xo + bw, yt], [-xo, yt - bv]];
         return { z, ring };
       }));
       cheek.userData.primaryStockRole = 'osorio-cheek';
       P.add('turret', cheek);
     }
-    // the roof wedge over the mantlet, rising back to the roof between the cheeks
+    // the recess between the cheeks: the front block behind the mantlet, and the brow over it riding 5 cm above the
+    // cheeks' facet line (the mantlet's top clears its underside at +20 degrees)
+    const browY = (z: number): number => Math.min(T.roofY, topY(z) + 0.05);
+    P.add('turret', sectionSolid([
+      { z: T.roofEdgeZ, ring: [[-T.recessX, T.floorY], [T.recessX, T.floorY], [T.recessX, T.roofY], [-T.recessX, T.roofY]] },
+      { z: T.frontZ, ring: [[-T.recessX, T.floorY], [T.recessX, T.floorY], [T.recessX, browY(T.frontZ)], [-T.recessX, browY(T.frontZ)]] },
+    ]));
     P.add('turret', slab(
-      [-T.recessX, 0.62, 1.28], [T.recessX, 0.62, 1.28], [T.recessX, 0.735, 1.10], [-T.recessX, 0.735, 1.10],
-      [-T.recessX, 0.66, 1.29], [T.recessX, 0.66, 1.29], [T.recessX, 0.775, 1.10], [-T.recessX, 0.775, 1.10]));
+      [-T.recessX, browY(1.28) - 0.04, 1.28], [T.recessX, browY(1.28) - 0.04, 1.28], [T.recessX, browY(T.frontZ) - 0.04, T.frontZ],
+      [-T.recessX, browY(T.frontZ) - 0.04, T.frontZ],
+      [-T.recessX, browY(1.29), 1.29], [T.recessX, browY(1.29), 1.29], [T.recessX, browY(T.frontZ), T.frontZ],
+      [-T.recessX, browY(T.frontZ), T.frontZ]));
     // the roof's lifting eyes
     for (const s of [-1, 1] as const) {
-      liftEye(P, 'turretDetail', s * 0.92, T.roofY + 0.005, 0.90, s * 0.4);
+      liftEye(P, 'turretDetail', s * 0.92, T.roofY + 0.005, 0.78, s * 0.4);
       liftEye(P, 'turretDetail', s * 0.92, T.roofY + 0.005, -2.18, s * 2.7);
     }
   };
@@ -247,7 +260,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.add('turretDark', box(w + 0.03, 0.025, 0.10), x, roof + base + h + 0.012, z + d / 2 - 0.02);
     };
     if (p2) {
-      sightBox(-0.62, 0.68, 0.34, 0.26, 0.42); // the gunner's VS580-10
+      sightBox(-0.62, 0.60, 0.34, 0.26, 0.42); // the gunner's VS580-10
       // the commander's VS580-19 panoramic head on its pedestal (2.89 m over the ground)
       P.addEquipment('turret', cylY(0.11, 0.12, 0.24, P.q ? 18 : 12), -0.60, roof + 0.12, -0.12);
       P.addEquipment('turret', box(0.30, 0.25, 0.32), -0.60, roof + 0.24 + 0.125, -0.12);
@@ -259,7 +272,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.add('turretGlass', cylZ(0.05, 0.01, 12), -0.26, roof + 0.11, 0.545);
     } else {
       // the P.1's two low OIP LRS-5 heads in a row (2.68 m over the ground)
-      sightBox(-0.62, 0.68, 0.30, 0.24, 0.40);
+      sightBox(-0.62, 0.60, 0.30, 0.24, 0.40);
       sightBox(-0.62, 0.05, 0.30, 0.24, 0.40);
     }
     const cx = -0.66, cz = -0.76, cr = 0.34;
@@ -275,11 +288,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     const lx = 0.62, lz = -0.62;
     P.addCupola('turret', cylY(0.31, 0.32, 0.05, P.q ? 22 : 14), lx, roof + 0.025, lz);
     P.add('turretDetail', cylY(0.27, 0.28, 0.03, P.q ? 22 : 14), lx, roof + 0.065, lz);
-    P.addEquipment('turretDark', cylY(0.03, 0.04, 0.26, 10), lx, roof + 0.13, -0.18);
     const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.66, elev: 0.03, ring: false,
       shield: false, seed: 6611, working: true });
     mg.name = 'osorioLoaderM2';
-    mg.position.set(lx, roof + 0.30, -0.18);
+    mg.position.set(lx, roof, -0.18); // the fitting's own pintle stands on the roof
     P.turretG.add(mg);
     // the rear roof: the ventilator dome, the box at the left rear, the P.2's laser-warning head and its tall cylinders at
     // the right rear corner, the mast
@@ -310,15 +322,34 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       const n = Math.round((bz0 - bRear) / 0.30);
       for (let k = 0; k <= n; k++) rail([xo, bLow, bz0 - (bz0 - bRear) * k / n], [xo, bTop, bz0 - (bz0 - bRear) * k / n]);
       P.addEquipment('turretOpenLattice', box(bOut - T.hw, 0.012, bz0 - bRear), s * (T.hw + bOut) / 2, bLow - 0.008, (bz0 + bRear) / 2);
+      // the flat wire mesh across the outer face (the 2022 parade photograph): fine wires on a 6 x 10 cm grid
+      for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLattice', box(0.008, 0.008, bz0 - bRear), xo, bLow + (bTop - bLow) * k / 6, (bz0 + bRear) / 2);
+      for (let k = 1, m = Math.round((bz0 - bRear) / 0.10); k < m; k++) {
+        P.addEquipment('turretOpenLattice', box(0.008, bTop - bLow, 0.008), xo, (bLow + bTop) / 2, bz0 - (bz0 - bRear) * k / m);
+      }
       stowage(P, 'turretCloth', rng, [
         [s * (T.hw + 0.11), bLow + 0.14, -0.62, 0.18, 0.26, 0.48], [s * (T.hw + 0.11), bLow + 0.12, -1.22, 0.17, 0.22, 0.52],
         [s * (T.hw + 0.11), bLow + 0.15, -1.86, 0.18, 0.28, 0.44]]);
     }
     for (const y of [bLow, (bLow + bTop) / 2, bTop]) rail([-bOut, y, bRear], [bOut, y, bRear]);
     for (let k = 0; k <= 7; k++) rail([-bOut + 2 * bOut * k / 7, bLow, bRear], [-bOut + 2 * bOut * k / 7, bTop, bRear]);
+    for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLattice', box(2 * bOut, 0.008, 0.008), 0, bLow + (bTop - bLow) * k / 6, bRear);
+    for (let k = 1; k < 28; k++) if (k % 4) P.addEquipment('turretOpenLattice', box(0.008, bTop - bLow, 0.008), -bOut + 2 * bOut * k / 28, (bLow + bTop) / 2, bRear);
     P.addEquipment('turretOpenLattice', box(2 * T.hw, 0.012, T.rearZ - bRear), 0, bLow - 0.008, (T.rearZ + bRear) / 2);
-    stowage(P, 'turretCloth', rng, [[-0.50, bLow + 0.13, T.rearZ - 0.11, 0.70, 0.24, 0.18], [0.45, bLow + 0.12, T.rearZ - 0.11, 0.60, 0.22, 0.17]]);
-    jerryCan(P, 'turretCloth', 1.0 - 0.02, bLow + 0.20, T.rearZ - 0.11, 0.16);
+    // in the bustle basket: the tall upright cylinders at its corners and the angled-lid bins between them (the 1987 and
+    // 2022 photographs)
+    for (const x of [-0.95, -0.78, 0.95]) P.addEquipment('turret', cylY(0.075, 0.075, 0.46, P.q ? 14 : 10), x, bLow + 0.23, T.rearZ - 0.11);
+    for (const [x, w] of [[-0.30, 0.62], [0.42, 0.66]] as const) {
+      const zf = T.rearZ - 0.02, zb = T.rearZ - 0.20;
+      P.addEquipment('turret', slab(
+        [x - w / 2, bLow, zb], [x + w / 2, bLow, zb], [x + w / 2, bLow, zf], [x - w / 2, bLow, zf],
+        [x - w / 2, bLow + 0.26, zb], [x + w / 2, bLow + 0.26, zb], [x + w / 2, bLow + 0.34, zf], [x - w / 2, bLow + 0.34, zf]));
+      P.addEquipment('turretDark', box(w + 0.01, 0.014, 0.02), x, bLow + 0.30, zb + 0.09);
+    }
+    // the raised box on the left wall behind the cheek (the 1987 photograph; the P.1's marked with a struck circle, 2024)
+    P.addEquipment('turret', box(0.20, 0.40, 0.88), T.hw + 0.10, 0.36, 0.28);
+    P.addEquipment('turretDark', box(0.012, 0.02, 0.84), T.hw + 0.205, 0.52, 0.28);
+    if (!p2) P.decal('turret', 'stencil', 'Ø', 0.22, [T.hw + 0.2035, 0.34, 0.30], Math.PI / 2);
     // the dischargers at the rear of each side, aimed forward, out and up: the P.2 two rows of three, the P.1 two of two
     const cols = p2 ? 3 : 2;
     for (const s of [-1, 1] as const) {
@@ -331,7 +362,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r2', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r3', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, gridBaskets: 'sides-and-rear', panoramicPedestal: p2, sightHeads: p2 ? 3 : 2,
     };
   };
@@ -359,7 +390,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the coaxial MG's port on the left of the gun, the auxiliary sight's on the right
     // (every part below the bore is held inside the -10 degree depression over the flat deck ahead of the turret: the
     // collar, the cover and its rings narrow forward to the deck's edge at z 0.70)
-    P.addGunExtra(box(0.86, 0.36, 0.22), 0, 0.03, 0.35);
+    P.addGunExtra(box(0.86, 0.27, 0.22), 0, -0.015, 0.35);
     P.addGunExtra(cylZ(0.155, 0.08, P.q ? 24 : 14), 0, 0, 0.50);
     P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.25, -0.01, 0.475);
     P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475);
@@ -397,6 +428,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.muzzleZ = len;
       P.gunG.userData.osorioGunReceipt = { mark, caliberMm: 105, muzzleZ: len, fumeExtractor: true, sleeveJoints: 3 };
     }
+    // the dark olive canvas of the mantlet cover (the 2015 museum photograph)
+    P.mats.canvasCloth.color.setHex(0x33372b);
     P.mats.glass.color.setHex(0x3a463f);
     P.mats.glass.roughness = 0.42;
     P.mats.glass.metalness = 0.32;
