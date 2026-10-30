@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 27 entries over 88 vehicles.
+// 31 entries over 92 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -23,15 +23,19 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_m6_linebacker',
   'paint_marder2',
   'paint_object695_x',
+  'paint_osorio_p2',
   'paint_pl_t80u_modern',
   'paint_ru_t80u_modern',
   'paint_strv81',
   'paint_t72b3m',
   'paint_t90ms',
+  'paint_tamoyo1',
+  'paint_tamoyo3',
   'paint_type10_dozer',
   'paint_type74',
   'paint_ua_t80u_modern',
   'paint_ua_t84_oplot_m',
+  'paint_x1a2_carcara',
 ] as const);
 
 export type AuthoredPaintId = typeof AUTHORED_PAINT_IDS[number];
@@ -68,13 +72,17 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_m6_linebacker',lead: 'm6_linebacker',sourceTankIds: ['m6_linebacker'],nation: 'USA',label: 'US Army Three-Tone Desert',tags: ['usa','desert','organic','signature'],visual: {scheme: 'nato',base: '#82734f',weather: '#9e8a60',patches: ['#3f4a35','#3b3830'],camoScale: 0.62}},
   {id: 'paint_marder2',lead: 'marder2',sourceTankIds: ['marder2'],nation: 'Germany',label: 'Bundeswehr Three-Tone Woodland',tags: ['de','woodland','organic','signature'],visual: {scheme: 'nato',base: '#48533f',weather: '#73705b',patches: ['#302e27','#242c24'],camoScale: 0.5}},
   {id: 'paint_object695_x',lead: 'object695',sourceTankIds: ['object695'],nation: 'Russia',label: 'Russian Digital Woodland III',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a44',weather: '#5c6647',patches: ['#7d8664','#33402c','#6f7570'],camoScale: 0.34}},
+  {id: 'paint_osorio_p2',lead: 'osorio_p2',sourceTankIds: ['osorio_p2'],nation: 'Brazil',label: 'Brazilian Bands Woodland',tags: ['woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#3d4532',weather: '#4b5340',patches: ['#6a4630','#5c3e2c'],camoScale: 0.55}},
   {id: 'paint_pl_t80u_modern',lead: 't80u_husarz',sourceTankIds: ['t80u_husarz','t72b3m_wilk','t72b3_zubr','t72b3_zubr_ii','pt64_tur'],nation: 'Poland',label: 'Polish Three-Tone Woodland',tags: ['pl','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4a563b',weather: '#4a5c42',patches: ['#29342d','#827458']}},
   {id: 'paint_ru_t80u_modern',lead: 't80u_bars_m',sourceTankIds: ['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m'],nation: 'Russia',label: 'Russian Woodland',tags: ['ru','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#586145',weather: '#4a5c42',patches: ['#29342d','#827458']}},
   {id: 'paint_strv81',lead: 'strv81',sourceTankIds: ['strv81'],nation: 'Sweden',label: 'Swedish Woodland',tags: ['se','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#39483b',weather: '#4f5948',patches: ['#263129','#62634a','#74664c'],camoScale: 0.55}},
   {id: 'paint_t72b3m',lead: 't72b3m_2022',sourceTankIds: ['t72b3m_2022','t72b3m_2016'],nation: 'Russia',label: 'Russian Plain Deep Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#293a28',weather: '#2e422d',patches: [],solidWeatheringIntensity: 0.03}},
   {id: 'paint_t90ms',lead: 't90ms_2011',sourceTankIds: ['t90ms_2011','t90ms_tagil'],nation: 'USSR/Russia',label: 'Russian Plain Brown',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#6a6047',weather: '#75694e',patches: []}},
+  {id: 'paint_tamoyo1',lead: 'tamoyo1',sourceTankIds: ['tamoyo1'],nation: 'Brazil',label: 'Brazilian Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#4a5236',weather: '#565d42',patches: ['#6a4630','#2b3324'],camoScale: 0.55}},
+  {id: 'paint_tamoyo3',lead: 'tamoyo3',sourceTankIds: ['tamoyo3'],nation: 'Brazil',label: 'Brazilian Three-Tone Woodland II',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#4c5537',weather: '#585f43',patches: ['#6e4a31','#a08a5a'],camoScale: 0.55}},
   {id: 'paint_type10_dozer',lead: 'type10_dozer',sourceTankIds: ['type10_dozer'],nation: 'Japan',label: 'JGSDF Digital Woodland',tags: ['jp','woodland','digital','signature'],visual: {scheme: 'digital',base: '#3e4b33',weather: '#545e43',patches: ['#1f271b','#5e7040','#735a3c'],camoScale: 0.4}},
   {id: 'paint_type74',lead: 'type74',sourceTankIds: ['type74'],nation: 'Japan',label: 'JGSDF Bands Woodland',tags: ['jp','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#44503a',weather: '#4e5a44',patches: ['#4d4133','#37432f'],camoScale: 0.6}},
   {id: 'paint_ua_t80u_modern',lead: 't80u_zoria',sourceTankIds: ['t80u_zoria','t72b3m_hetman','t72b3m_hetman_ii','t72b3_sich'],nation: 'Ukraine',label: 'Ukrainian Woodland',tags: ['ua','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#536243',weather: '#4a5c42',patches: ['#283829','#8b9260']}},
   {id: 'paint_ua_t84_oplot_m',lead: 't84bm_oplot_m',sourceTankIds: ['t84bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Woodland',tags: ['ua','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4b5636',weather: '#5d6646',patches: ['#6b5537','#26281f'],camoScale: 0.48}},
+  {id: 'paint_x1a2_carcara',lead: 'x1a2_carcara',sourceTankIds: ['x1a2_carcara'],nation: 'Brazil',label: 'Brazilian Three-Tone Woodland III',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#4f5a3a',weather: '#5b6545',patches: ['#9c8758','#2b3324'],camoScale: 0.5}},
 ]);

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "x1a2_carcara": {
+      "name": "CCL X1A2 Carcará",
+      "authority": "Main ruled the Brazil line on 2026-10-29 (DECISIONS) on the owner's request the same day (\"lets build brazil, not taiwan, and flesh it out with all its own tanks\"): the X1A2 at tier I, a photo-class first-party build on the Bernardini X1 family's build; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/brazil/bernardini-ccl-x1a2-carcara.php",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2021/07/Bernardini_X1A2ProdCamo.png",
+        "https://tanks-encyclopedia.com/wp-content/uploads/imported/coldwar_brazil_bernardini-ccl-x1a2-carcara_php/Pj7Eash.jpeg",
+        "https://ecsbdefesa.com.br/wp-content/uploads/2022/11/DC38SE100anosBldEBParte2.pdf"
+      ],
+      "widthM": 2.656,
+      "overallLengthM": 7.068,
+      "tallestM": 4.727,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the X1 family build: published 6.06 m (taken as the hull; Tanks Encyclopedia gives it both ways), 2.6 m wide (its table 2.4), 2.45 m high, 19 t; stations from Gaydos' profile scaled on the hull (the turret roof reads 2.51 m against the published 2.45, recorded as a conflict). The envelope holds the bustle's spare links, the rack, the swing-arm .50 and the raked whip.",
+      "caliberMm": 90,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/brazil.selftest.mjs"
+    }
+  }
+}

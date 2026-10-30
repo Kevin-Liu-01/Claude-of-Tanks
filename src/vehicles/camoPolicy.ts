@@ -127,12 +127,17 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 // it appends after GT too and no saved index moves.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
+/** Release 266: the Brazil line's own coats (brazilSpecs.ts): the Osório P.2's Army two-tone bands, the Tamoyo 1's and the
+ * Tamoyo 3's 1980s three-tones and the X1A2's 6º RCB three-tone (the Osório P.1's 1986 three-tone and the X1's olive drab
+ * sit within a shade of a named preset, so they paint their spec's coat as Factory). */
+const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -159,6 +164,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
   ...AUTHORED_PAINT_IDS_AFTER_262,
+  ...AUTHORED_PAINT_IDS_AFTER_265,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -818,6 +824,11 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
+  // release 266: the Brazil line in its own coats
+  osorio_p2: 'paint_osorio_p2',
+  tamoyo1: 'paint_tamoyo1',
+  tamoyo3: 'paint_tamoyo3',
+  x1a2_carcara: 'paint_x1a2_carcara',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

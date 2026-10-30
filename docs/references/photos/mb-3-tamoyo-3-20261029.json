@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "tamoyo3": {
+      "name": "MB-3 Tamoyo 3",
+      "authority": "Main ruled the Brazil line on 2026-10-29 (DECISIONS) on the owner's request the same day (\"lets build brazil, not taiwan, and flesh it out with all its own tanks\"): the Tamoyo 3 at tier III as Bernardini showed it in May 1987, a photo-class first-party build on the Tamoyo's hull with its own turret; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/mb-3-tamoyo-3/",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2022/07/TE_MB-3_Tamoyo_II_-1.png",
+        "https://tanks-encyclopedia.com/wp-content/uploads/imported/mb-3-tamoyo-3/OSXAwcQ.png",
+        "https://ecsbdefesa.com.br/wp-content/uploads/2022/11/DC38SE100anosBldEBParte2.pdf"
+      ],
+      "widthM": 3.277,
+      "overallLengthM": 9.19,
+      "tallestM": 4.355,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the Tamoyo build: published 6.48 m hull, 8.9 m over the 105 mm L7A3, 3.29 m wide, 2.35 m to the turret roof and 2.5 m over the MG (Tanks Encyclopedia after Bastos); stations from Vesp's 1987 profile (one hull and scale with the Tamoyo 1's) and the collector's front photograph. The envelope holds the fenders, the spaced front plate, the rack and jerrycan, the .50 and the whips.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/brazil.selftest.mjs"
+    }
+  }
+}

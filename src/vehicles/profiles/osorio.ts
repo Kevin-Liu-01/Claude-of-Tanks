@@ -28,7 +28,7 @@ export type OsorioMark = 'p1' | 'p2';
 const H = Object.freeze({
   noseZ: 3.565, sternZ: -3.565, bellyY: 0.46, lowerX: 1.00, sponsonX: 1.50, sponsonFloorY: 1.02, deckY: 1.60,
   noseY: 1.12, lipY: 1.06, glacisZ: 1.95, glacisTopY: 1.57, lowerGlacisZ: 3.00, rearPlateY: 1.25, rearBellyZ: -3.21,
-  fenderX: 1.645, fenderY: 1.345, skirtX: 1.655, skirtTop: 1.33, skirtLow: 0.64, trackXc: 1.315, trackW: 0.57,
+  fenderX: 1.635, fenderY: 1.345, skirtX: 1.625, skirtTop: 1.33, skirtLow: 0.64, trackXc: 1.315, trackW: 0.57,
 });
 const ROAD_WHEEL_ZS = [2.20, 1.305, 0.41, -0.485, -1.38, -2.275];
 const RING = Object.freeze({ y: 1.60, z: 0.40 });
@@ -116,9 +116,9 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       for (let k = 0; k < 6; k++) {
         const z0 = taperEnd - k * seg, z1 = z0 - seg;
         P.addEquipment(bucket, box(t, H.skirtTop - H.skirtLow, seg - 0.012), x, (H.skirtTop + H.skirtLow) / 2, (z0 + z1) / 2);
-        P.add('hullDetail', box(t + 0.012, H.skirtTop - H.skirtLow - 0.02, 0.05), x + s * 0.004, (H.skirtTop + H.skirtLow) / 2, z0);
+        P.add('hullDetail', box(t + 0.008, H.skirtTop - H.skirtLow - 0.02, 0.05), x + s * 0.003, (H.skirtTop + H.skirtLow) / 2, z0);
       }
-      P.add('hullDetail', box(t + 0.012, H.skirtTop - 0.94, 0.05), x + s * 0.004, (H.skirtTop + 0.94) / 2, front - 0.02);
+      P.add('hullDetail', box(t + 0.008, H.skirtTop - 0.94, 0.05), x + s * 0.003, (H.skirtTop + 0.94) / 2, front - 0.02);
       // the hinged front mudguard over the idler, leaning forward and down to the hub (the CIBld and 2022 photographs)
       const hz = 3.30, hy = H.fenderY, fz = 3.55, fy = 0.74, xc = s * 1.335, hw = 0.31;
       P.addMudguard('osorio-front-guard', 'hullPaintedDetail', slab(
@@ -344,10 +344,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
   // ---------------------------------------------------------------- markings on the hull --
   const buildOsorioMarkings = (): void => {
     for (const s of [-1, 1] as const) {
-      const x = s * (H.skirtX + 0.014);
+      const x = s * (H.skirtX + 0.0135);
       // the "OSÓRIO / EE-T1" stencil on the front skirt panel and the Engesa oval on the rearmost (every photograph since 2003)
-      P.decal('hull', 'stencil', 'OSÓRIO', 0.46, [x, 1.10, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'EE-T1', 0.30, [x, 0.97, 2.02], s * Math.PI / 2);
+      // (a stencil is a square quad: each sits inside the 0.69 m skirt panel)
+      P.decal('hull', 'stencil', 'OSÓRIO', 0.46, [x, 1.09, 2.02], s * Math.PI / 2);
+      P.decal('hull', 'stencil', 'EE-T1', 0.30, [x, 0.95, 2.02], s * Math.PI / 2);
       P.decal('hull', 'stencil', 'ENGESA', 0.36, [x, 1.02, -2.95], s * Math.PI / 2);
     }
   };

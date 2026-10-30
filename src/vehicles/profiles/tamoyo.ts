@@ -139,11 +139,9 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.add('hullDetail', xform(box(0.11, 0.06, 0.08), 0, 0, 0, glacis, 0, 0), 0.50 + ox, deckY(2.62) + 0.03, 2.62);
       P.add('hullGlass', xform(box(0.09, 0.035, 0.008), 0, 0, 0, glacis, 0, 0), 0.50 + ox, deckY(2.62) + 0.04, 2.665);
     }
-    if (t3) {
-      // the Tamoyo 3's spare links across the glacis between the lamps (the collector's photographs)
-      KIT.spareTrackStrip(P, 'hull', -0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
-      KIT.spareTrackStrip(P, 'hull', 0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
-    }
+    // the spare links across the glacis between the lamps (both marks: the TI-2's front photograph, the collector's Tamoyo 3)
+    KIT.spareTrackStrip(P, 'hull', -0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
+    KIT.spareTrackStrip(P, 'hull', 0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
     // the engine deck: grille fields either side, the louvred band at the rear
     for (const s of [-1, 1] as const) {
       const zc = -2.05, y = deckY(zc);
@@ -155,11 +153,17 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     }
     // the stencils: "VBC XMB 3 TAMOYO" ahead, the BERNARDINI plate and the CTEx mark aft (Vesp's profiles, the photographs)
     for (const s of [-1, 1] as const) {
-      const x = s * (t3 ? H.sponsonX + 0.012 : H.fenderX + 0.026), y = t3 ? 1.42 : 1.02;
-      P.decal('hull', 'stencil', 'TAMOYO', 0.40, [x, y, 2.05], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'BERNARDINI', 0.48, [x, y, -2.30], s * Math.PI / 2);
+      // (a stencil is a square quad: each sits inside its plate, the Tamoyo 3's in the band between fender and deck)
+      const x = s * (t3 ? H.sponsonX + 0.012 : H.fenderX + 0.026), y = t3 ? 1.41 : 1.02;
+      P.decal('hull', 'stencil', 'TAMOYO', t3 ? 0.27 : 0.40, [x, y, 2.05], s * Math.PI / 2);
+      P.decal('hull', 'stencil', 'BERNARDINI', t3 ? 0.29 : 0.44, [x, y, -2.30], s * Math.PI / 2);
     }
-    P.decal('hull', 'stencil', 'TAMOYO', 0.42, [0, 0.82, H.noseZ - 0.18], 0, -0.6);
+    // on the lower nose plate, which faces forward and down (its foot 0.45 m back from the tip)
+    const noseTilt = Math.atan2(H.noseZ - H.lowerNoseZ, H.lipY - H.bellyY);
+    const onNose = (y: number): [number, number, number] =>
+      [0.12, y, H.lowerNoseZ + (y - H.bellyY) / (H.lipY - H.bellyY) * (H.noseZ - H.lowerNoseZ) + 0.01];
+    P.decal('hull', 'stencil', 'TAMOYO', 0.30, onNose(0.93), 0, noseTilt);
+    P.decal('hull', 'stencil', 'BERNARDINI', 0.36, onNose(0.70), 0, noseTilt);
   };
   buildTamoyoHullFittings();
   yield 'buildTamoyoHullFittings';

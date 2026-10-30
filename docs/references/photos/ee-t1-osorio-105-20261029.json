@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "osorio_p1": {
+      "name": "EE-T1 Osório (105)",
+      "authority": "Main ruled the Brazil line on 2026-10-29 (DECISIONS) on the owner's request the same day (\"lets build brazil, not taiwan, and flesh it out with all its own tanks\"): the 105 mm P.1 at tier III, the same Engesa hull and Vickers turret as the P.2 (Bastos 2003), a photo-class first-party build; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.forte.jor.br/2015/12/27/engesa-ee-t1-osorio/",
+        "http://www.forte.jor.br/wp-content/uploads/2015/12/osorio-caracteristicasII.jpg",
+        "https://tecnodefesa.com.br/exercito-recupera-prototipo-do-osorio/",
+        "https://ecsbdefesa.com.br/wp-content/uploads/2020/11/CCOsorioDN.pdf",
+        "https://ecsbdefesa.com.br/wp-content/uploads/2020/04/POLIGONOSORIO2014.pdf"
+      ],
+      "widthM": 3.354,
+      "overallLengthM": 9.6,
+      "tallestM": 4.46,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared Osório build: published 7.13 m hull, 9.36 m over the 105 mm L7A3, 3.26 m over the skirts, 2.37 m to the turret roof and 2.68 m to the sight (Engesa's sheet; Jane's via Nita). The P.1's kit (the two OIP LRS-5 heads, 2x2 dischargers, the fender mirrors, the glacis travel lock, the L7's fume extractor) as the 2015 museum and 2024 Curitiba photographs show it; the envelope holds the mirrors, the M2HB and the whips.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/brazil.selftest.mjs"
+    }
+  }
+}
