@@ -46,37 +46,49 @@ function arm(P: TankBuilderPort, bucket: string, a: Vec3, b: Vec3, origin: Vec3 
   P.addEquipment(bucket, box(...size), (a[0] + b[0]) / 2 - origin[0], (a[1] + b[1]) / 2 - origin[1], (a[2] + b[2]) / 2 - origin[2]);
 }
 
-/** The Helmand bar armour on the 2A5 DK's hull: the stern cage 0.35 m off the louvres, below the deck line so the gun
- * keeps its depression over the stern, and the rear quarter cages outboard of the skirts. */
+/** The Helmand bar armour on the 2A5 DK's hull: a band across the stern's upper half 0.35 m off the louvres, below the
+ * deck line so the gun keeps its depression over the stern, the lower plate with its lights and crossed tow cables left
+ * open (the Grafenwöhr rear photograph), and a band on each rear quarter at upper-hull height, ending above the sprocket
+ * and standing within the skirts' width. */
 function addA5DkHullSlats(P: TankBuilderPort): void {
-  const sternZ = -3.97, low = 0.84, high = 1.76;
+  const sternZ = -3.97, low = 1.22, high = 1.76, sideX = 1.80;
   slatPanel(P, 'hullOpenLattice', { along: 'x', at: sternZ, from: -1.72, to: 1.72, low, high, posts: [-1.72, -0.86, 0, 0.86, 1.72] });
   for (const x of [-1.30, -0.43, 0.43, 1.30]) {
-    for (const y of [1.02, 1.62]) arm(P, 'hullOpenLattice', [x, y, sternZ + 0.03], [x, y, -3.64]);
+    for (const y of [1.32, 1.66]) arm(P, 'hullOpenLattice', [x, y, sternZ + 0.03], [x, y, -3.64]);
   }
   for (const side of [-1, 1]) {
-    const x = side * 1.875;
-    slatPanel(P, 'hullOpenLattice', { along: 'z', at: x, from: sternZ, to: -2.35, low: 0.98, high: 1.74, posts: [-3.43, -2.89, -2.35] });
+    const x = side * sideX;
+    slatPanel(P, 'hullOpenLattice', { along: 'z', at: x, from: sternZ, to: -2.35, low, high: 1.74, posts: [-3.43, -2.89, -2.35] });
     for (const z of [-3.43, -2.89, -2.35]) {
-      for (const y of [1.10, 1.62]) arm(P, 'hullOpenLattice', [side * 1.735, y, z], [x - side * 0.025, y, z]);
+      for (const y of [1.32, 1.64]) arm(P, 'hullOpenLattice', [side * 1.735, y, z], [x - side * 0.025, y, z]);
     }
-    // the corner post joining the stern cage
-    P.addEquipment('hullOpenLattice', box(0.05, high - 0.98, 0.05), x, (high + 0.98) / 2, sternZ);
-    arm(P, 'hullOpenLattice', [side * 1.72, 1.40, sternZ], [x, 1.40, sternZ]);
+    // the corner post joining the stern band
+    P.addEquipment('hullOpenLattice', box(0.05, 1.74 - low, 0.05), x, (1.74 + low) / 2, sternZ);
+    arm(P, 'hullOpenLattice', [side * 1.72, 1.48, sternZ], [x, 1.48, sternZ]);
   }
+}
+
+/** A Danish flag on a short pole beside the commander's hatch (the Grafenwöhr photographs), turret frame. */
+function addDanishFlag(P: TankBuilderPort, pivot: Vec3, base: Vec3): void {
+  const [bx, by, bz] = base, x = bx - pivot[0], y = by - pivot[1], z = bz - pivot[2];
+  P.addEquipment('turretDark', cylY(0.03, 0.035, 0.06, 10), x, y + 0.03, z);
+  P.addEquipment('turretDark', cylY(0.011, 0.013, 0.95, 8), x, y + 0.475, z);
+  P.addEquipment('turretCloth', box(0.012, 0.21, 0.30), x, y + 0.82, z - 0.165);
+  for (const s of [-1, 1] as const) P.decal('turret', 'cross', null, 0.34, [x + s * 0.008, y + 0.82, z - 0.165], s * Math.PI / 2);
 }
 
 /** The bustle cage round the 2A5 DK's rear turret bins (turret frame from the build's datum). */
 function addA5DkTurretSlats(P: TankBuilderPort): void {
   const pivot = LEOPARD_X_DATUMS.leo2a5.turretPivot;
-  const rearZ = -3.00, low = 1.96, high = 2.50;
+  const rearZ = -3.00, low = 1.96, high = 2.50, sideFront = -1.55;
   slatPanel(P, 'turretOpenLattice', { along: 'x', at: rearZ, from: -1.42, to: 1.42, low, high, posts: [-1.42, -0.71, 0, 0.71, 1.42] }, pivot);
   // arms back from the bins' rear faces (z -2.78)
   for (const x of [-1.10, -0.55, 0.60, 1.15]) arm(P, 'turretOpenLattice', [x, 2.20, -2.79], [x, 2.20, rearZ + 0.025], pivot);
   for (const side of [-1, 1]) {
     const x = side * 1.46, binOuter = side > 0 ? 1.354 : -1.271;
-    slatPanel(P, 'turretOpenLattice', { along: 'z', at: x, from: rearZ, to: -1.85, low, high, posts: [-2.42, -1.85] }, pivot);
-    for (const z of [-2.62, -2.05]) arm(P, 'turretOpenLattice', [binOuter, 2.20, z], [x - side * 0.025, 2.20, z], pivot);
+    // the side bands run forward along about half the turret's side, to just behind the smoke banks
+    slatPanel(P, 'turretOpenLattice', { along: 'z', at: x, from: rearZ, to: sideFront, low, high, posts: [-2.42, -1.98, sideFront] }, pivot);
+    for (const z of [-2.62, -2.05, sideFront + 0.06]) arm(P, 'turretOpenLattice', [binOuter, 2.20, z], [x - side * 0.025, 2.20, z], pivot);
     P.addEquipment('turretOpenLattice', box(0.05, high - low, 0.05), x - pivot[0], (low + high) / 2 - pivot[1], rearZ - pivot[2]);
   }
 }
@@ -101,7 +113,8 @@ export function buildLeopard2A5DK(P: TankBuilderPort): void {
   addA5DkCommanderSight(P);
   addA5DkTurretSlats(P);
   addA5DkHullSlats(P);
-  P.turretG.userData.leopard2DkReceipt = { mark: '2A5 DK', elopCommanderSight: true, bustleSlats: true, hullSlats: true };
+  addDanishFlag(P, LEOPARD_X_DATUMS.leo2a5.turretPivot, [-0.66, 2.68, -0.98]);
+  P.turretG.userData.leopard2DkReceipt = { mark: '2A5 DK', elopCommanderSight: true, bustleSlats: true, hullSlats: true, flag: true };
 }
 
 /** A ribbed stowage module: a closed box with vertical ribs on its outer face (`face`: +1/-1 along x for a side
@@ -110,7 +123,7 @@ function ribbedModule(P: TankBuilderPort, c: Vec3, size: Vec3, face: -1 | 0 | 1)
   const pivot = LEOPARD_X_DATUMS.leo2a7v.turretPivot;
   const [cx, cy, cz] = c, [w, h, d] = size;
   P.addEquipment('turretDetail', box(w, h, d), cx - pivot[0], cy - pivot[1], cz - pivot[2]);
-  P.addEquipment('turretDark', box(w + 0.02, 0.025, d + 0.02), cx - pivot[0], cy + h / 2 + 0.0125 - pivot[1], cz - pivot[2]);
+  P.addEquipment('turretDetail', box(w + 0.02, 0.025, d + 0.02), cx - pivot[0], cy + h / 2 + 0.0125 - pivot[1], cz - pivot[2]);
   const span = face === 0 ? w : d, ribs = Math.max(3, Math.round(span / 0.09));
   for (let k = 1; k < ribs; k++) {
     const t = -span / 2 + span * k / ribs;
@@ -124,7 +137,9 @@ export function buildLeopard2A7DK(P: TankBuilderPort): void {
   // the rear module across the bustle and a module down each rear turret side, behind the smoke banks
   // (the rear module runs forward under the bustle's overhang to the turret's rear wall at z -2.49; the side modules sit
   // into the wall)
+  // (the side modules run forward along the turret sides to just behind the smoke banks at z -1.12)
   ribbedModule(P, [0.05, 2.36, -2.90], [2.44, 0.50, 0.80], 0);
-  for (const side of [-1, 1] as const) ribbedModule(P, [side * 1.40, 2.38, -2.30], [0.48, 0.46, 1.08], side);
-  P.turretG.userData.leopard2DkReceipt = { mark: '2A7 DK', ribbedStowageModules: 3, barracuda: true };
+  for (const side of [-1, 1] as const) ribbedModule(P, [side * 1.40, 2.38, -2.06], [0.48, 0.46, 1.56], side);
+  addDanishFlag(P, LEOPARD_X_DATUMS.leo2a7v.turretPivot, [-0.98, 2.68, -0.92]);
+  P.turretG.userData.leopard2DkReceipt = { mark: '2A7 DK', ribbedStowageModules: 3, barracuda: true, flag: true };
 }

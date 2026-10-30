@@ -65,9 +65,11 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 
 ## Concept (owner-authored; nation ruled by Main 2026-10-27)
 
-- Nation / operator: Denmark, a fictional Danish Army concept (no real-world service history is claimed). Drawn as a
-  Nordic node in the Sweden tech tree (`SWEDEN_TREE.nations` gains 'Denmark'; flagNation stays Sweden); it wears the
-  Danish flag and markings, fights with the Swedish teams (`countries.ts` VEHICLE_COUNTRY), and the Nordic decor kit.
+- Nation / operator: Denmark, a fictional Danish Army concept (no real-world service history is claimed). Since 265
+  (Main 2026-10-29, the Denmark line) it is the special of the Denmark tech tree (`src/techTree/nations/denmark.ts`;
+  Sweden's tree is Sweden's alone again) and fights for Denmark, the fifteenth team country (`countries.ts`, filling
+  first from Sweden); it wears the Danish flag and markings and the Nordic decor kit. (262-264: a Nordic node in the
+  Sweden tree, fighting with the Swedish teams.)
 - Era / role: modern (2020s) main battle tank; precision doctrine (the netting is a concealment kit).
 - Design rationale: a three-crew MBT on a Leopard 2-pattern hull and seven-wheel running gear, with a long slab-sided
   turret in the Type 90 manner: bolt-on frontal modules framing a box mantlet, the gunner's armoured sight box (right)

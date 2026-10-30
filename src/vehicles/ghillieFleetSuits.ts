@@ -700,7 +700,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // suits, in the Danish greens.
   leo2a7dk: {
     id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0.12,
-    light: 0x6a7a4c, dark: 0x34422b, netColor: 'rgba(48,62,38,0.86)', netTextureSeed: 2765,
+    // r2 (critics: the Latvia photograph's cover is a darker grey-green mottle with tan and rust flecks)
+    light: 0x77714f, dark: 0x384031, netColor: 'rgba(64,70,54,0.86)', netTextureSeed: 2765,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.01,
     turret: {
       top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.12, seed: 11 })],

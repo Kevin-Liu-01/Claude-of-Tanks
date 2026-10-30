@@ -15,6 +15,8 @@ export interface Leo1HullOptions {
   readonly sideTools?: boolean;
   /** The shovel and crowbar on the deck beside the turret ring (the Danish welded turret's gun sweeps that deck low). */
   readonly deckTools?: boolean;
+  /** The side skirts' hem: the German A5's black rubber, or the coat (the Danish tanks' skirts are painted over). */
+  readonly skirtBucket?: 'hullRubber' | 'hull';
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -34,7 +36,7 @@ export interface Leo1HullDatums {
 }
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
-  const { grouserRack = true, sideTools = true, deckTools = true } = options;
+  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber' } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -150,11 +152,11 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
         [s * 1.05, fenderY - 0.03, 3.30], [s * 1.69, fenderY - 0.03, 3.30], [s * 1.69, 1.02, 3.50], [s * 1.05, 1.02, 3.50],
         [s * 1.05, fenderY, 3.30], [s * 1.69, fenderY, 3.30], [s * 1.69, 1.05, 3.49], [s * 1.05, 1.05, 3.49]));
       // Rubber side skirts: hem over the wheel tops, top on the fender edge (segmented as on service vehicles).
-      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
-      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
+      P.hangMudguard('leo1a5-front-skirt-hem', skirtBucket, box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
+      P.hangMudguard('leo1a5-rear-skirt-hem', skirtBucket, box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
       for (let k = 0; k < 7; k++) {
         const z = 2.40 - k * 0.82;
-        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.33, 0.76), s * skirtX, 0.945, z);
+        P.hangMudguard('leo1a5-skirt-hem', skirtBucket, box(0.014, 0.33, 0.76), s * skirtX, 0.945, z);
         P.add('hullDetail', box(0.012, 0.34, 0.026), s * (skirtX - 0.004), 0.945, z - 0.395);
       }
       if (sideTools) {

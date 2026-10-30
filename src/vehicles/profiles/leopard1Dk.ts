@@ -75,6 +75,18 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
       for (const f of [0.25, 0.75]) P.addEquipment('hullDark', box(0.014, 0.06, 0.045), s * 1.678, top - 0.075, z0 + (z1 - z0) * f);
     }
   }
+  // The engine's exhaust grilles on the sloped rear side plates behind the bins (Krigsmuseet side view: the last fifth of
+  // the hull side): a dark recessed panel and seven louvres along the plate's slope.
+  for (const s of [-1, 1] as const) {
+    const z0 = -2.10, z1 = -3.20, zc = (z0 + z1) / 2, yTop = deckEdgeY(zc) - 0.05, yLow = fenderY + 0.05;
+    const tilt = Math.atan2(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow), slant = Math.hypot(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow);
+    const yc = (yTop + yLow) / 2;
+    P.addEquipment('hullDark', box(0.016, slant, z0 - z1), s * (slopeX(yc, zc) + 0.004), yc, zc, 0, 0, s * tilt);
+    for (let k = 0; k < 7; k++) {
+      const y = yLow + (yTop - yLow) * (k + 0.5) / 7;
+      P.addEquipment('hull', box(0.03, 0.022, z0 - z1 - 0.06), s * (slopeX(y, zc) + 0.018), y, zc, 0, 0, s * (tilt + 0.5));
+    }
+  }
   // Dozer channels (armyvehicles.dk/leopard1a3.htm: "All Danish Leopard 1s had dozer attachment channels on the lower
   // front hull"): two channel brackets on the lower glacis, which leans back 28 degrees toward the belly.
   const lowerTilt = Math.atan2(3.54 - 3.24, 1.04 - 0.48);
@@ -98,7 +110,7 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
 function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
-  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false });
+  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -146,13 +158,15 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     // The 1A5 DK's EMES 18 made the rangefinder redundant and its ports carry blanking covers with a pale ring.
     for (const s of [-1, 1] as const) {
       const x = sideX(W.halfWidth, roof, W.rangefinderY);
-      P.add('turret', xform(cylX(0.20, 0.10, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0), s * (x + 0.03), W.rangefinderY, W.rangefinderZ);
+      P.add('turret', xform(cylX(0.24, 0.12, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0), s * (x + 0.04), W.rangefinderY, W.rangefinderZ);
       if (mark === 'a3') {
-        P.add('turretDark', cylX(0.13, 0.03, P.q ? 20 : 14), s * (x + 0.085), W.rangefinderY, W.rangefinderZ);
-        P.add('turretGlass', cylX(0.085, 0.012, P.q ? 20 : 14), s * (x + 0.098), W.rangefinderY, W.rangefinderZ);
+        P.add('turretDark', cylX(0.16, 0.03, P.q ? 20 : 14), s * (x + 0.105), W.rangefinderY, W.rangefinderZ);
+        P.add('turretGlass', cylX(0.11, 0.012, P.q ? 20 : 14), s * (x + 0.118), W.rangefinderY, W.rangefinderZ);
       } else {
-        P.addEquipment('turretDetail', cylX(0.155, 0.025, P.q ? 24 : 16), s * (x + 0.09), W.rangefinderY, W.rangefinderZ);
-        P.addEquipment('turretDark', cylX(0.085, 0.03, P.q ? 20 : 14), s * (x + 0.10), W.rangefinderY, W.rangefinderZ);
+        // the blanking cover: a bolted flange ring and a bulging armoured cap
+        P.addEquipment('turretDetail', cylX(0.21, 0.03, P.q ? 24 : 16), s * (x + 0.11), W.rangefinderY, W.rangefinderZ);
+        P.addEquipment('turret', xform(sph(0.17, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [0.42, 1, 1]), s * (x + 0.12), W.rangefinderY,
+          W.rangefinderZ);
       }
     }
     // Commander's cupola (right, -x: a +Z hull's right) with its PERI R12 ahead of it, raised on the 1A5 DK to see over
@@ -179,12 +193,20 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // EMES 18: the armoured thermal sight box on the right (-x) front roof, its two windows behind armoured doors (one
       // door hinged open on the Aalborg turret)
       P.addEquipment('turret', box(0.48, 0.10, 0.46), -0.66, roof + 0.05, 0.56);
-      P.addEquipment('turret', box(0.52, 0.25, 0.48), -0.66, roof + 0.22, 0.56);
-      P.addEquipment('turret', box(0.56, 0.035, 0.52), -0.66, roof + 0.36, 0.56);
-      P.add('turretDark', box(0.40, 0.16, 0.025), -0.66, roof + 0.22, 0.81);
-      for (const x of [-0.57, -0.75]) {
-        P.add('turretGlass', box(0.115, 0.105, 0.014), x, roof + 0.22, 0.826);
-        P.addEquipment('turret', box(0.15, 0.14, 0.014), x, roof + 0.22, 0.842);
+      P.addEquipment('turret', box(0.52, 0.25, 0.36), -0.66, roof + 0.22, 0.50);
+      P.addEquipment('turret', box(0.56, 0.035, 0.40), -0.66, roof + 0.36, 0.50);
+      // the armoured hood's sloped front, 42 degrees back from the vertical
+      const hood = (w: number): readonly SectionPoint[] => [[-w, 0.095], [w, 0.095], [w, 0.345], [-w, 0.345]];
+      const hoodLow = (w: number): readonly SectionPoint[] => [[-w, 0.095], [w, 0.095], [w, 0.20], [-w, 0.20]];
+      P.addEquipment('turret', sectionSolid([{ z: 0.68, ring: hood(0.26) }, { z: 0.84, ring: hoodLow(0.26) }]), -0.66, roof, 0);
+      const n = new THREE.Vector2(0.16, 0.145).normalize(), slope = -Math.atan2(n.x, n.y);
+      const on = (t: number, out: number): [number, number] => [roof + 0.345 - 0.145 * t + n.x * out, 0.68 + 0.16 * t + n.y * out];
+      P.add('turretDark', box(0.44, 0.15, 0.02), -0.66, ...on(0.5, 0.004), slope, 0, 0);
+      for (const [x, open] of [[-0.55, true], [-0.77, false]] as const) {
+        P.add('turretGlass', box(0.15, 0.11, 0.014), x, ...on(0.5, 0.012), slope, 0, 0);
+        // one armoured door hinged up open (the Aalborg turret), one closed over its window
+        if (open) P.addEquipment('turret', box(0.19, 0.17, 0.018), x, roof + 0.43, 0.70, -0.12, 0, 0);
+        else P.addEquipment('turret', box(0.19, 0.15, 0.018), x, ...on(0.5, 0.026), slope, 0, 0);
       }
       // the 1A5 DK's roof fast fittings for two rifles, behind the loader's hatch
       for (const x of [0.30, 0.12]) {
@@ -233,7 +255,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // conditioning system mounted on the rear of the turret"), standing over the roof with its louvred rear face.
       const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.20;
       P.addEquipment('turret', box(1.80, top - W.binLowY, z0 - z1), 0, (top + W.binLowY) / 2, (z0 + z1) / 2);
-      P.addEquipment('turretDark', box(1.82, 0.03, z0 - z1 + 0.02), 0, top + 0.015, (z0 + z1) / 2);
+      P.addEquipment('turret', box(1.82, 0.03, z0 - z1 + 0.02), 0, top + 0.015, (z0 + z1) / 2);
       for (let k = 0; k < 7; k++) P.addEquipment('turretDark', box(1.30, 0.022, 0.02), 0, W.binLowY + 0.16 + k * 0.08, z1 - 0.01);
       for (const x of [-0.84, 0.84]) P.addEquipment('turretDark', box(0.05, top - W.binLowY, 0.05), x, (top + W.binLowY) / 2, z1);
     } else {
@@ -273,6 +295,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     for (const s of [-1, 1] as const) {
       P.decal('turret', 'number', P.spec.visual.number || '21', 0.20,
         [s * (sideX(W.halfWidth, roof, 0.30) + 0.004), 0.30, -1.10], s * Math.PI / 2);
+      // the United Nations' black "UN" on the DK-1's white turret sides (UNPROFOR, 1994-95)
+      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.46, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.92],
+        s * Math.PI / 2);
     }
   };
   buildLeo1DkTurretRear();
@@ -318,15 +343,19 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     };
     if (mark === 'a3') {
       // the XSW-30-U infrared / white-light searchlight over the gun, as on every early Leopard 1
-      const lamp = { halfWidth: 0.27, low: 0.33, high: 0.74, rearZ: -0.18, frontZ: 0.15, lensR: 0.165 };
+      const lamp = { halfWidth: 0.27, low: 0.33, high: 0.74, rearZ: -0.18, frontZ: 0.15, lensR: 0.185 };
       const lampY = (lamp.low + lamp.high) / 2;
       P.add('gunMount', sectionSolid([
         { z: lamp.rearZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
         { z: lamp.frontZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
       ]), 0, 0, 0);
-      P.add('gunMountDark', cylZ(lamp.lensR + 0.025, 0.03, P.q ? 28 : 18), 0, lampY, lamp.frontZ + 0.012);
+      P.add('gunMountDark', cylZ(lamp.lensR + 0.03, 0.03, P.q ? 28 : 18), 0, lampY, lamp.frontZ + 0.012);
       P.add('gunMountGlass', markVehicleNightLens(cylZ(lamp.lensR, 0.008, P.q ? 28 : 18), 'headlight', { searchlight: true }),
         0, lampY, lamp.frontZ + 0.029);
+      // the shutter's hinge bar and the lamp's cooling fins along its top
+      P.add('gunMountDark', box(lamp.halfWidth * 2 - 0.06, 0.03, 0.03), 0, lamp.high - 0.02, lamp.frontZ + 0.02);
+      for (let f = 0; f < 5; f++) P.add('gunMountDark', box(0.02, 0.035, lamp.frontZ - lamp.rearZ - 0.06), -0.16 + f * 0.08, lamp.high + 0.015,
+        (lamp.rearZ + lamp.frontZ) / 2);
       yoke(lamp);
     } else if (mark === 'a5dk1') {
       // the M41 DK-1's halogen searchlight, taken over when the M41s left: a round lamp on a low yoke over the mask

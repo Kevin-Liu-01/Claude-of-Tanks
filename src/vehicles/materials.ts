@@ -338,6 +338,24 @@ function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
   redrawWhenMarkingFontReady(draw);
 }
 
+/** Stencilled black lettering with a thin pale edge (the United Nations' "UN" on white vehicles). */
+function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string): void {
+  const length = Math.max(1, text.length);
+  const draw = (): void => {
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.font = `bold ${Math.min(150, Math.floor(400 / length))}px 'Cot UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(232,230,222,0.55)';
+    ctx.strokeText(text, 128, 128);
+    ctx.fillStyle = 'rgba(18,18,18,0.94)';
+    ctx.fillText(text, 128, 128);
+  };
+  draw();
+  redrawWhenMarkingFontReady(draw);
+}
+
 // Transparent marking decal canvases.
 function paintDecal(
   kind: string,
@@ -353,6 +371,7 @@ function paintDecal(
   else if (kind === 'cross') paintCrossDecal(ctx);
   else if (kind === 'soot') paintSootDecal(ctx);
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
+  else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
   else paintTextDecal(ctx, text ?? '');
   return canvas;
 }
