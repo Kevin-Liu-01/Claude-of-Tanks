@@ -216,6 +216,13 @@ function matchCompound(node, simple) {
     else if (part.name === 'is' || part.name === 'where' || part.name === 'matches') { if (!part.list.some((s) => matches(node, s))) return false; }
     else if (part.name === 'has') { const any = (n) => n.children.some((c) => part.list.some((s) => matches(c, s)) || any(c)); if (!any(node)) return false; }
     else if (part.name === 'root') { if (node.tag !== 'html') return false; }
+    // (264) :lang(x): the nearest lang attribute equals x or starts with x- (responsiveSurfaces.css's zh-CN indent reset)
+    else if (part.name === 'lang') {
+      let lang = null;
+      for (let p = node; p; p = p.parent) if (p.attrs.has('lang')) { lang = p.attrs.get('lang').toLowerCase(); break; }
+      const want = part.arg.trim().replace(/^["']|["']$/g, '').toLowerCase();
+      if (!lang || !(lang === want || lang.startsWith(`${want}-`))) return false;
+    }
     else if (part.name === 'empty') { if (node.children.length || node.attrs.has('#text')) return false; }
     else if (part.name === 'first-child') { if (index !== 0) return false; }
     else if (part.name === 'last-child') { if (index !== siblings.length - 1) return false; }

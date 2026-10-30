@@ -52,6 +52,10 @@ const runtime = createBattleHudFrameRuntime({
     getSettings: () => ({ armorAimOverlay: true }),
     getBinding: () => 'KeyF',
     labelFor: () => 'F',
+    getPadBinding: () => null,
+    padLabelFor: () => 'LB',
+    padActive: () => false,
+    bindingsRevision: () => 1,
   },
   aimController: {
     update: () => { aimUpdates += 1; },
@@ -79,6 +83,7 @@ assert.equal(hudFrames[0].player, player);
 assert.equal(hudFrames[0].mode, 'sniper');
 assert.equal(hudFrames[0].pingMs, 73);
 assert.equal(hudFrames[0].selfRightKeyLabel, 'F');
+assert.equal(hudFrames[0].keyCaps?.shell1, 'F', 'the frame carries every key cap (game/battleKeyCaps.ts)');
 assert.equal(hudFrames[0].rosterTanks, game.tanks);
 assert.deepEqual(hudFrames[0].spotting.player, { id: 'player', timeS: 12 });
 assert.equal(hudFrames[0].spotting.isSpotted('enemy'), true);

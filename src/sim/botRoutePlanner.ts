@@ -1446,11 +1446,48 @@ function findLegVia(clearance: NavigationClearance, ax: number, az: number, ah: 
 }
 
 /**
- * The cell a route starts from: the nearest open cell on the hull's own level that it reaches on a clear straight
- * leg — one on the goal cell's side of the hull edges first — else one it reaches through a detour point (left in
- * _legVia), else the nearest open cell as before.
+ * A cell the hull can drive out of: an edge from it open under the route search's rules (the reachability flood's edge
+ * rule, and the wrecks' edges). A route from a cell it cannot leave is that cell alone, and clearRoute makes no route of
+ * it (bot-wedge-264; Infected seed 2, Badlands: the 10 m cell on the mesa's flank at (-25, -300) is open and on every
+ * goal's side of the hull edges, which read no slope, but each of its eight edges is a cliff. It was the start of every
+ * route from the low ground north of the mesa, where the leg to the nearer cells crosses the rocks, so each plan came
+ * back empty, setWaypoints handed the local router the bare destination behind the mesa, and a T-72B3M Kunlun drove
+ * at the face for some 80 s, its reverses putting it back on the same line each time.)
  */
-function routeStartCell(navigation: BotNavigationGrid, from: Position2, goalIndex: number): number {
+const _leaveNode: HeapNode = { index: 0, ix: 0, iz: 0, score: 0 };
+function cellLeavable(navigation: BotNavigationGrid, spec: TerrainMobilitySpec, index: number): boolean {
+  _leaveNode.index = index; _leaveNode.ix = index % GRID_N; _leaveNode.iz = Math.floor(index / GRID_N);
+  const wreckEdges = navigation.wreckOverlay?.count ? navigation.wreckOverlay.blockedEdges : null;
+  for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
+    if (wreckEdges && (wreckEdges[index] & (1 << direction))) continue;
+    if (reachableNeighbor(_leaveNode, direction, navigation, spec) >= 0) return true;
+  }
+  return false;
+}
+
+/** A hull within this height of its own cell's centre stands on that cell; further off, the centre is on another face
+ * of the ground (the Badlands flank cell's centre stood 7-9 m above the wedged hull, inside that cell's square). */
+const NAV_STAND_M = 3;
+
+/**
+ * A start cell the route may leave from: one the hull can drive out of (cellLeavable), or the cell the hull stands on
+ * (its own, at its height; no height reads as standing there), which it keeps rather than drop off an edge it could not
+ * climb back (botNavigationWater's weak tank on its lip).
+ */
+function startCellUsable(navigation: BotNavigationGrid, spec: TerrainMobilitySpec, from: Position2,
+  index: number): boolean {
+  if (cellLeavable(navigation, spec, index)) return true;
+  return index === cellIndex(worldCell(from.x), worldCell(from.z))
+    && (from.y === undefined || Math.abs(from.y - navigation.heights[index]) <= NAV_STAND_M);
+}
+
+/**
+ * The cell a route starts from: the nearest open cell on the hull's own level that it may leave from (startCellUsable)
+ * and reaches on a clear straight leg — one on the goal cell's side of the hull edges first — else one it reaches
+ * through a detour point (left in _legVia), else the nearest open cell as before.
+ */
+function routeStartCell(navigation: BotNavigationGrid, from: Position2, goalIndex: number,
+  spec: TerrainMobilitySpec): number {
   _legVia.x = _legVia.z = NaN;
   const clearance = navigation.hullClearance, components = navigation.hullComponents;
   if (clearance) {
@@ -1460,12 +1497,14 @@ function routeStartCell(navigation: BotNavigationGrid, from: Position2, goalInde
       for (let i = 0; i < count; i++) {
         const index = _startCells[i], h = navigation.heights[index];
         if (sameSide && components![index] !== goalSide) continue;
+        if (!startCellUsable(navigation, spec, from, index)) continue;
         if (clearance.legClear(from.x, from.z, from.y ?? h, cellX(navigation.cellPositions, index),
           cellZ(navigation.cellPositions, index), h, true, false)) return index;
       }
       for (let i = 0, tried = 0; i < count && tried < 9; i++) {
         const index = _startCells[i], h = navigation.heights[index];
         if (sameSide && components![index] !== goalSide) continue;
+        if (!startCellUsable(navigation, spec, from, index)) continue;
         tried++;
         if (findLegVia(clearance, from.x, from.z, from.y ?? h, cellX(navigation.cellPositions, index),
           cellZ(navigation.cellPositions, index), h, true, true, false)) return index;
@@ -1507,7 +1546,7 @@ function solveRoute(
     if (nearbyOpenCells(navigation, to)) openIndex = _startCells[0];
     else levelGoal = false;
   }
-  const startIndex = routeStartCell(navigation, from, openIndex);
+  const startIndex = routeStartCell(navigation, from, openIndex, spec);
   const goalIndex = routeGoalCell(navigation, to, startIndex, openIndex);
   const sx = startIndex % GRID_N, sz = Math.floor(startIndex / GRID_N);
   const goalX = goalIndex % GRID_N, goalZ = Math.floor(goalIndex / GRID_N);
@@ -1554,12 +1593,15 @@ function solveRoute(
  * The cell a dry route starts from (bots lane, 2026-10-02; Reservoir pacing seed 120006 on the maps lane's tree). The
  * hull's own cell, unless the grid refuses it (its sample is liquid) or the leg to its centre is not drivable: through
  * solid cover, or further into the liquid (the liquid guard's own rule, which lets a hull already in it drive out but
- * never deeper in). Then the nearest open cell within two rings with a drivable leg, and failing that the nearest open
- * cell, as the wet grid's start does. A hull whose own cell is refused can always plan out of it.
+ * never deeper in), or the hull may not leave from it (startCellUsable). Then the nearest open cell within
+ * two rings with a drivable leg, and failing that the nearest open cell, as the wet grid's start does. A hull whose
+ * own cell is refused can always plan out of it.
  */
-function dryStartCell(navigation: BotNavigationGrid, from: Position2, safe: LiquidCorridorGuard | null): number {
+function dryStartCell(navigation: BotNavigationGrid, from: Position2, safe: LiquidCorridorGuard | null,
+  spec: TerrainMobilitySpec): number {
   const own = cellIndex(worldCell(from.x), worldCell(from.z));
   const legDrivable = (index: number): boolean => {
+    if (!startCellUsable(navigation, spec, from, index)) return false;
     const x = cellX(navigation.cellPositions, index), z = cellZ(navigation.cellPositions, index);
     const distance = detMath.hypot(x - from.x, z - from.z);
     if (distance < 0.5) return true;
@@ -1587,7 +1629,7 @@ function solveDryRoute(
   if (from.x < WORLD_MIN || from.x > WORLD_MAX || from.z < WORLD_MIN || from.z > WORLD_MAX) {
     return { points: [], cells: [], cost: Infinity, reached: false };
   }
-  const startIndex = dryStartCell(navigation, from, safe);
+  const startIndex = dryStartCell(navigation, from, safe, spec);
   if (startIndex < 0) return { points: [], cells: [], cost: Infinity, reached: false };
   const sx = startIndex % GRID_N, sz = Math.floor(startIndex / GRID_N);
   const costs = new Float64Array(GRID_N * GRID_N);

@@ -99,6 +99,13 @@ export interface QualityPreset {
    * sustained overload. getPreset() carries it as `dynHold` on the Auto variant; an explicit preset has none.
    */
   readonly autoDynHold?: number;
+  /**
+   * (local-fps-265, 2026-10-29) the native-density floor while the player leaves quality on Auto: getPreset() carries it
+   * as `nativeDynMin` on the Auto variant. Medium and Low declare High's 0.67, so the governor's tier cut from High at its
+   * floor keeps the raster it had (renderScalePolicy.carriedDynamicScale) instead of raising it to one sample per CSS
+   * pixel; an explicit Medium or Low keeps its own floor.
+   */
+  readonly autoNativeDynMin?: number;
   /** The governor's hold rung in effect (set on the Auto variant from autoDynHold). */
   readonly dynHold?: number;
   /**
@@ -410,6 +417,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // fallback by another hidden 0.75 dynamic scale: desktop readability
     // remains at least one internal sample per CSS pixel.
     dynMin: 1.0,
+    autoNativeDynMin: 0.67, // Auto only: High's cut lands at High's floor (see QualityPreset.autoNativeDynMin)
     aoScale: 0,
     bloomScale: 0.5,
     shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
@@ -425,6 +433,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     tallGrass: 0.25, // round 73 (2026-09-25): a quarter of the sward
     maxPixelRatio: 1.0,
     dynMin: 1.0,
+    autoNativeDynMin: 0.67, // Auto only (see QualityPreset.autoNativeDynMin)
     aoScale: 0,
     bloomScale: 0.5,
     // Concentrate the same shadow texels into the older Low range. This keeps
@@ -767,17 +776,18 @@ export function setMobilePresetName(name: string): void {
 }
 
 const autoVariants = new Map<PresetName, QualityPreset>();
-/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin floor) */
+/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin and autoNativeDynMin floors) */
 export function getPreset(): QualityPreset {
   const name = resolvePresetName();
   const preset = PRESETS[name];
-  if (preset.autoDynMin === undefined || getStoredChoice() !== 'auto') return preset;
+  if ((preset.autoDynMin === undefined && preset.autoNativeDynMin === undefined) || getStoredChoice() !== 'auto') return preset;
   let variant = autoVariants.get(name);
   if (!variant) {
     variant = Object.freeze({
       ...preset,
-      dynMin: Math.min(preset.dynMin, preset.autoDynMin),
+      dynMin: preset.autoDynMin === undefined ? preset.dynMin : Math.min(preset.dynMin, preset.autoDynMin),
       ...(preset.autoDynHold !== undefined ? { dynHold: preset.autoDynHold } : {}),
+      ...(preset.autoNativeDynMin !== undefined ? { nativeDynMin: preset.autoNativeDynMin } : {}),
     });
     autoVariants.set(name, variant);
   }

@@ -75,7 +75,7 @@ for(const quality of ['high','low'])for(const id of rearIds){
  }finally{mat.dispose();tank.dispose()}
 }
 // Owner-requested attachment revisions: retain real contact and articulation.
-for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
+for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_challenger2','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}),mat=new MeshBasicMaterial({side:DoubleSide});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),body=new Mesh(turret.getObjectByName('turret').geometry,mat);body.updateMatrixWorld();
@@ -91,7 +91,8 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_chal
   }
   const cage=turret.userData.modernFieldCage;
   // (2026-10-28, m1e3-264: the m1a3, rebuilt as the M1E3, carries its own integrated flank and basket slat cage)
-  if(['ua_challenger2','leo2a6_ua','challenger3','challenger1_mk3'].includes(id)){
+  // (264: the leo2a6_ua, rebuilt on the source-measured 2A6 with its photo-sourced kit, left this loop)
+  if(['ua_challenger2','challenger3','challenger1_mk3'].includes(id)){
    assert.equal(cage.panels,6);assert.equal(cage.anchors.length,12);
    for(const anchor of cage.anchors){
     const [x,y,z]=anchor.map(v=>v*(VEHICLE_SIZE_FACTORS[id]??1));

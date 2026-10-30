@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, brotliDecompressSync, constants } from 'node:zlib';
 import {
   TYPE_FACES, TYPE_FAMILY, TYPE_SOURCES, TYPE_STACK, TYPE_WEIGHTS, TYPE_SCALE, TYPE_FLOOR_PX, TYPE_FACE_RANGES,
-  TYPE_FALLBACK_FAMILY, TYPE_FALLBACKS, TYPE_DEFAULT_FAMILIES, TYPE_SYMBOLS, TYPE_ACCENTS,
+  TYPE_FALLBACK_FAMILY, TYPE_FALLBACKS, TYPE_CAPS_RANGE, TYPE_SPACE_RANGE, TYPE_DEFAULT_FAMILIES, TYPE_SYMBOLS, TYPE_ACCENTS,
   fontFaceCss, typeTokenCss, typeFaceFile, typeHead, expandTypeMarkers, parseTypeMarker, TYPE_MARKER,
 } from './typeFaces.ts';
 import { FONT_STACK, FONT_COND } from './fonts.ts';
@@ -305,7 +305,11 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // brotli. The cascade-layer wrapper (brand-ui BUI-F3: the order statement and @layer surfaces{}) adds 82 raw / 27
 // brotli: the game head measures 4,443 raw / 895 brotli. A public page that shows readouts declares the mono face too
 // (bar line 4: the landing's counts and clocks, 2026-10-26, without a preload): /home measures 3,538 raw / 921 brotli.
-const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 925 } });
+// Each Chakra Petch face's fallback is a pair, its capitals' rule and the rest's, and the Bold's has a space rule (264: a
+// caps title keeps its width and its cap height when the face arrives): +1,107 raw / +66 brotli on the game head
+// (5,550 / 961), +1,107 / +71 on /home (4,645 / 992), and on the gallery, which declares the display family as well,
+// +2,512 / +98 (6,632 / 956).
+const HEAD_BUDGET = Object.freeze({ game: { raw: 5580, brotli: 970 }, page: { raw: 6670, brotli: 1000 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])
@@ -370,10 +374,13 @@ const ruleFor = (family, weight, rules = faceRules) => {
   return hits[0];
 };
 const fileOf = (rule) => rule.src.match(/url\(([^)]+)\)/)?.[1];
+// A fallback's capitals rule (unicode-range) stands beside the rule for the rest of the same weights; the rest's rules
+// alone cover every weight once.
+const restRules = faceRules.filter((rule) => !rule['unicode-range']);
 for (const family of ['display', 'body', 'mono', 'ui']) {
   for (let weight = 100; weight <= 1000; weight += 50) {
     ruleFor(TYPE_FAMILY[family], weight);
-    ruleFor(TYPE_FALLBACK_FAMILY[family], weight);
+    ruleFor(TYPE_FALLBACK_FAMILY[family], weight, restRules);
   }
 }
 for (const voice of ['display', 'body', 'mono']) {
@@ -407,18 +414,37 @@ assert.deepEqual([...new Set(gameRules.map((rule) => rule['font-family'].replace
 // (fontTools, 2026-10-17: IBM Plex Sans and Mono 1025/-275, Chakra Petch 992/-308 at 1000 units per em).
 const PLEX = [1025, 275];
 const CHAKRA = [992, 308];
+// Each Chakra Petch face (one weight range each) has a capitals rule after its rest rule, and the Bold face a space rule
+// after those: the browser tries the later rule first for the characters both cover, and takes the line's metrics from
+// the rule that covers the space (src/ui/typeFallbackMetrics.selftest.mjs holds their widths and the Bold cap height).
+const BOLD = '650 1000';
 const FALLBACK_METRICS = {
-  ui: { '100 549': PLEX, '550 1000': CHAKRA },
+  ui: { '100 549': PLEX, '550 649': CHAKRA, '650 1000': CHAKRA },
   body: { '100 549': PLEX, '550 1000': PLEX },
-  display: { '100 549': CHAKRA, '550 1000': CHAKRA },
+  display: { '100 549': CHAKRA, '550 649': CHAKRA, '650 1000': CHAKRA },
   mono: { '100 1000': PLEX },
 };
 for (const [family, ranges] of Object.entries(FALLBACK_METRICS)) {
-  assert.deepEqual(TYPE_FALLBACKS[family].map((face) => face.weight), Object.keys(ranges), `${family}: its fallback ranges`);
-  for (const [range, [ascent, descent]] of Object.entries(ranges)) {
-    const rule = faceRules.find((entry) => entry['font-family'] === `'${TYPE_FALLBACK_FAMILY[family]}'` && entry['font-weight'] === range);
+  assert.deepEqual(TYPE_FALLBACKS[family].filter((face) => !face.range).map((face) => face.weight), Object.keys(ranges), `${family}: its fallback ranges`);
+  assert.equal(faceRules.filter((entry) => entry['font-family'] === `'${TYPE_FALLBACK_FAMILY[family]}'`).length, TYPE_FALLBACKS[family].length,
+    `${TYPE_FALLBACK_FAMILY[family]}: one @font-face rule per fallback face`);
+  const chakraRanges = Object.keys(ranges).filter((range) => ranges[range] === CHAKRA);
+  assert.deepEqual(TYPE_FALLBACKS[family].filter((face) => face.range).map((face) => `${face.weight} ${face.range}`),
+    chakraRanges.flatMap((range) => [`${range} ${TYPE_CAPS_RANGE}`, ...(range === BOLD ? [`${range} ${TYPE_SPACE_RANGE}`] : [])]),
+    `${family}: a capitals rule for each Chakra Petch face, a space rule for its Bold, and no other ranged rule`);
+  const familyRules = faceRules.filter((entry) => entry['font-family'] === `'${TYPE_FALLBACK_FAMILY[family]}'`);
+  for (const range of chakraRanges) {
+    const at = (unicodeRange) => familyRules.findIndex((entry) => entry['font-weight'] === range && entry['unicode-range'] === unicodeRange);
+    const rest = at(undefined), caps = at(TYPE_CAPS_RANGE), space = at(TYPE_SPACE_RANGE);
     const key = `${TYPE_FALLBACK_FAMILY[family]} ${range}`;
-    assert.ok(rule, `${key}: a fallback face`);
+    assert.ok(rest >= 0 && caps > rest, `${key}: the capitals rule follows the rest's`);
+    if (range === BOLD) assert.ok(space > caps, `${key}: the space rule comes last`);
+    for (const index of [caps, space].filter((entry) => entry >= 0)) {
+      assert.equal(familyRules[index].src, familyRules[rest].src, `${key}: every rule draws the same local face`);
+    }
+  }
+  for (const [range, [ascent, descent]] of Object.entries(ranges)) for (const rule of familyRules.filter((entry) => entry['font-weight'] === range)) {
+    const key = `${TYPE_FALLBACK_FAMILY[family]} ${range}${rule['unicode-range'] ? ` ${rule['unicode-range']}` : ''}`;
     const size = parseFloat(rule['size-adjust']);
     assert.ok(size >= 90 && size <= 110, `${key}: size-adjust within 10 %`);
     assert.ok(Math.abs(parseFloat(rule['ascent-override']) - ascent / size * 10) < 0.15, `${key}: ascent matches its face`);

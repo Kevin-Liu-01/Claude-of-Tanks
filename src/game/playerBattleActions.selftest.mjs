@@ -13,8 +13,9 @@ function createInput() {
       group.add(listener);
       return () => group.delete(listener);
     },
-    press(action) {
-      for (const listener of handlers.get(action) || []) listener();
+    // (the code that pressed it, as input.ts passes: a key's, or Pad<n> for a pad's button)
+    press(action, code = 'KeyX') {
+      for (const listener of handlers.get(action) || []) listener(code);
     },
   };
 }
@@ -230,8 +231,13 @@ player.combat.fire = { burning: true, ticksLeft: 4, tickTimer: 0.2 };
 input.press('consumable3');
 assert.deepEqual(player.combat.fire, { burning: false, ticksLeft: 0, tickTimer: 0 });
 
-input.press('specialAction');
-assert.equal(localCalls.at(-1), 'special');
+// (owner 2026-10-28: "why is atgm labeled Q? E does it for me": E is the suspension's alone; a hull without one answers
+// only the pad's LB, its one system button)
+const callsBeforeE = localCalls.length;
+input.press('specialAction', 'KeyE');
+assert.equal(localCalls.length, callsBeforeE, 'E runs nothing on a hull without suspension');
+input.press('specialAction', 'Pad4');
+assert.equal(localCalls.at(-1), 'special', 'the pad\'s LB runs the hull\'s own system');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.action === 'siege'));
 input.press('selfRight');
@@ -253,7 +259,7 @@ networkActive = true;
 player.combat.damagedModule = 'trackL';
 bus.emit('ui:consumable', { slot: 0 });
 bus.emit('ui:magazineReload', {});
-bus.emit('ui:specialAction', {});
+bus.emit('ui:specialAction', { pad: true });
 bus.emit('ui:selfRight', {});
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight']);
 assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns state mutation');
@@ -266,18 +272,23 @@ assert.equal(actions.setTank(spec)[1].type, 'ATGM',
 player.specialAction = {
   kind: 'guided_missile', missileSlot: 1, previousShellSlot: 0, active: false,
 };
+// (E on a launcher without suspension: the ATGM is Q's, the tray's cap, never a hidden second key)
+input.press('specialAction', 'KeyE');
+assert.equal(player.input.shellSlot, 0, 'E never selects the ATGM on a launcher without suspension');
 bus.emit('ui:specialAction', {});
+assert.equal(player.input.shellSlot, 0, 'nor does the special action without the pad\'s press');
+bus.emit('ui:specialAction', { pad: true });
 assert.equal(player.input.shellSlot, 1,
-  'E selects the guided ammunition through the ordinary shell-slot state');
+  'the pad\'s LB selects the guided ammunition through the ordinary shell-slot state');
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight'],
-  'guided E does not enqueue a separate network action mode');
+  'the guided LB does not enqueue a separate network action mode');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
     payload.slot === 1 && payload.active === true));
 player.combat.shellSlot = 0;
-bus.emit('ui:specialAction', {});
+bus.emit('ui:specialAction', { pad: true });
 assert.equal(player.input.shellSlot, 0,
-  'repeating E restores conventional ammo even while authority still reports the old slot');
+  'repeating LB restores conventional ammo even while authority still reports the old slot');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
     payload.slot === 0 && payload.active === false));
@@ -288,13 +299,13 @@ input.press('shell2');
 assert.equal(player.input.shellSlot, 1, 'key 2 directly selects the ATGM');
 assert.equal(player.specialAction.previousShellSlot, 2,
   'direct ATGM selection remembers the conventional shell it replaced');
-input.press('specialAction');
+input.press('specialAction', 'Pad4');
 assert.equal(player.input.shellSlot, 2,
-  'E deselects a key-2-selected ATGM and restores that remembered shell');
+  'LB deselects a key-2-selected ATGM and restores that remembered shell');
 player.combat.ammo[1] = 0;
 player.combat.shellSlot = 0;
 player.input.shellSlot = 0;
-input.press('specialAction');
+input.press('specialAction', 'Pad4');
 assert.equal(player.input.shellSlot, 0, 'an exhausted missile channel cannot become selected');
 assert.ok(events.some(({ event, payload }) =>
   event === 'ui:specialActionDenied' && payload.reason === 'AMMO_EMPTY' && payload.slot === 1),

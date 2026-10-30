@@ -246,8 +246,11 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
   assert.ok(loader[0].userData.remoteControlled && loader[0].getObjectByName('auxiliaryWeaponPitch'), `${id}: the loader's gun works`);
   assert.ok(loader[0].position.x > 0,
     `${id}: Browning stays on the right in a head-on view`);
-  const paintedShield = loader[0].children.find(
-    (object) => object.userData.fittingSlot === 'hull');
+  // (264: the shield rides the station's pitch group since the riding cradle, 230 10288f4e6d: found by traversal)
+  const shields = [];
+  loader[0].traverse((object) => { if (object !== loader[0] && object.userData.fittingSlot === 'hull') shields.push(object); });
+  assert.ok(shields.length <= 1, `${id}: one painted Browning shield at most (${shields.length})`);
+  const paintedShield = shields[0];
   if (expectedShield === 'open') {
     assert.ok(paintedShield === undefined, `${id}: open Browning does not invent an armor shield`);
   } else {

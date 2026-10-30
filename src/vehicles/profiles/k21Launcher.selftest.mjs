@@ -42,16 +42,18 @@ for(const quality of ['high','low']) {
         // Full raw-source Object_27 first-visible witnesses, sampled off seams.
         for(const [r,expected]of[[0,.3939056],[.02,.3907381],[.04,.3823858],[.06,.3635324],[.068,.3479754]]) {
           const a=.173,hit=ray(1.24239+Math.cos(a)*r,v+Math.sin(a)*r,.70,-1,.50);
-          assert.ok(hit&&hit.name==='turretDetail',`closed cap must be first visible stock ${quality}/${yaw}/${i}/${r}: ${JSON.stringify(hit)}`);
+          // (264: the owner's launch-tube standard, 233 ce18a5030c, draws a sealed end in the dark tube stock)
+          assert.ok(hit&&['turretDetail','turretDark'].includes(hit.name),`closed cap must be first visible stock ${quality}/${yaw}/${i}/${r}: ${JSON.stringify(hit)}`);
           assert.ok(Math.abs(hit.n-expected-offset)<.003,`cap is recessed and convex, not the old flat cover: ${JSON.stringify(hit)}`);
         }
         for(const a of[.173,1.173,2.173,3.173,4.173,5.173]) {
           const rim=ray(1.24239+Math.cos(a)*.080,v+Math.sin(a)*.080,.70,-1,.50);
-          assert.ok(rim&&rim.name==='turretDetail'&&Math.abs(rim.n-.4243)<.0005,'real perforated receiving rim remains in front of the cap');
+          // (264: 233's rim collar, ce18a5030c, stands 22 mm proud of the old rim face, the TOS-1A cell standard)
+          assert.ok(rim&&rim.name==='turretDetail'&&Math.abs(rim.n-.4463)<.0005,'real perforated receiving rim remains in front of the cap');
           assert.equal(ray(1.24239+Math.cos(a)*.050,v+Math.sin(a)*.050,.4245,-1,.035),null,'finite air lies ahead of the recessed closed terminal');
         }
         const back=ray(1.24239,v,-.95,1,.10);
-        assert.ok(back&&back.name==='turretDetail'&&Math.abs(back.n+.8886)<.0005,'closed rear receiver supports the full tube, no floating front cap');
+        assert.ok(back&&['turretDetail','turretDark'].includes(back.name)&&Math.abs(back.n+.8886)<.0005,'closed rear receiver supports the full tube, no floating front cap');
       }
       rows.push({quality,yaw,pitch,closedCaps:2});
     }

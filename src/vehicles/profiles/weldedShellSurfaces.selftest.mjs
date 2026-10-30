@@ -77,7 +77,8 @@ const targets={
   strv103a:{expected:19,select:p=>p.bucket==='hull'&&p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'),convexAll:true,mirror:true},
   udes03:{expected:8,select:p=>p.bucket==='hull'&&((p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'))||(p.part.vertices.length===8&&p.part.size.z>2.15&&p.part.size.z<2.17&&p.part.size.x<.61)),convexAll:true,mirror:true},
   m1a2_abrams:{expected:2,select:p=>p.site.includes('buildTurretArmor (')&&p.site.includes('abramsSourceX.ts')&&p.bucket==='turret'&&p.part.size.z>2&&p.part.bounds.max.z>2&&p.part.bounds.min.z>-.02&&p.part.size.x>1},
-  ztz85_iii:{expected:1,select:p=>p.site.includes('buildZTZ85III (')&&p.bucket==='turret'&&p.part.triangles.length===84,panels:56,mirror:true},
+  // release 263: the rebuilt ZTZ-85-III's welded hexagon is one convex hull (profiles/ztz85iii.ts weldedShell)
+  ztz85_iii:{expected:1,select:p=>p.site.includes('addTurret (')&&p.site.includes('ztz85iii.ts')&&p.bucket==='turret'&&p.part.size.x>2.2,convexAll:true,mirror:true},
   // the hull section's 7 stations became 11 when release 240's engine-block ramp climbed under the turret (9b4d25ad55):
   // (11-1)×6×2 sides + 2×4 caps = 128 triangles, 80 before
   sabra_mk2:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===128)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
