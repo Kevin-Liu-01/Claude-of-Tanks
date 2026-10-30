@@ -336,7 +336,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.decal('turret', 'number', P.spec.visual.number || '21', 0.20,
         [s * (sideX(W.halfWidth, roof, 0.30) + 0.004), 0.30, -1.10], s * Math.PI / 2);
       // the United Nations' black "UN" on the DK-1's white turret sides (UNPROFOR, 1994-95)
-      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.46, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.20],
+      // (between the port cover's boss and the rear dischargers: r11 at z -0.20 the cover hid the U)
+      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.42, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.45],
         s * Math.PI / 2);
     }
   };
