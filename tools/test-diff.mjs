@@ -81,17 +81,24 @@ function hunkIds(root, mergeBase, head, path, tableIds) {
   let diff = '';
   try { diff = git(root, ['diff', '-U0', '--no-renames', mergeBase, ...(head === 'HEAD' ? [] : [head]), '--', path]); } catch { return null; }
   const ids = new Set();
-  let text = null;
-  const newText = () => text ??= (() => { try { return readFileSync(join(root, path), 'utf8').split('\n'); } catch { return []; } })();
   const keyed = (line) => { const match = /^\s*['"]?([a-z0-9_]+)['"]?\s*:/.exec(line); return match && tableIds.has(match[1]) ? match[1] : null; };
+  // the row key at or above each line of the new file, in one pass (a 50 MB table has a million lines and many hunks)
+  let owners = null;
+  const ownerAt = (line) => {
+    if (!owners) {
+      let lines = [];
+      try { lines = readFileSync(join(root, path), 'utf8').split('\n'); } catch { /* deleted */ }
+      owners = new Array(lines.length);
+      let last = null;
+      for (let index = 0; index < lines.length; index++) owners[index] = last = keyed(lines[index]) ?? last;
+    }
+    return owners[Math.min(line, owners.length - 1)] ?? null;
+  };
   for (const hunk of diff.split(/^@@/m).slice(1)) {
     const header = /^ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(hunk);
     const named = namedIds(hunk, tableIds);
     for (const line of hunk.split('\n')) { const key = keyed(line.slice(1)); if (key) named.add(key); }
-    if (!named.size && header) {
-      const lines = newText();
-      for (let index = Number(header[1]) - 1; index >= 0 && !named.size; index--) { const key = keyed(lines[index] ?? ''); if (key) named.add(key); }
-    }
+    if (!named.size && header) { const owner = ownerAt(Math.max(0, Number(header[1]) - 1)); if (owner) named.add(owner); }
     if (!named.size) return null; // a hunk no row owns: every id in the file
     for (const id of named) ids.add(id);
   }
