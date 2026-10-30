@@ -126,6 +126,11 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   ztz99a: { doctrine: 'assault', viewM: 420, still: 0.172, moving: 0.113 },
   ztz99a2: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
   vt4a1: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  // release 264: the Longwei family keeps its hosts' doctrines and optics (longweiFamilyConfig.ts)
+  ztz99a2_qinglong: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
+  vt4a1_baihu: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  t72b3_zhuque: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
+  t72b3m_xuanwu: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   type100: { doctrine: 'support', viewM: 450, still: 0.262, moving: 0.202 },
   ztz100: { doctrine: 'assault', viewM: 435, still: 0.188, moving: 0.128 },
   ztz20: { doctrine: 'assault', viewM: 440, still: 0.186, moving: 0.126 },

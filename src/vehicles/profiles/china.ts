@@ -204,6 +204,17 @@ function crownRimTrim(
 // the deck round their rings at about 1.70 (turretSeatRace.ts), clear it and its fittings at every bearing
 const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.685],
   [-0.30, 1.68], [1.90, 1.64], [3.55, 1.02]];
+/** The half of `points`' convex hull on one side of the plane x = xCut (keep +1: x >= xCut; -1: x <= xCut): the hull
+ * of the points on that side and every straddling pair's crossing. Each hull edge is such a pair, so this is exact. */
+function convexHalfX(points: readonly Vector3[], xCut: number, keep: number): ConvexGeometry {
+  const kept = points.filter((p) => (p.x - xCut) * keep >= 0);
+  points.forEach((a, i) => points.slice(i + 1).forEach((b) => {
+    const da = a.x - xCut, db = b.x - xCut;
+    if (da * db < 0) kept.push(a.clone().lerp(b, da / (da - db)));
+  }));
+  return new ConvexGeometry(kept);
+}
+
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
 
@@ -259,23 +270,47 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       [1.02, 1.36], [1.72, 1.18], [1.84, 2.70],
       [1.84, 3.48], [1.10, 3.48], [0.72, 3.32],
     ];
+    // release 265 (main-reds 261: 14 front and 44 sweep strict-clip cells on every tank on this hull): the underside
+    // ran straight from the 1.18 m station to the bow's 0.96-0.98 m and sat inside the track's wrap over the idler
+    // (z 2.7-3.2, its top 1.16). The shoulder is now cut at x 1.12, 3.5 cm inboard of the track's inner face, into two
+    // convex bodies. The inboard one keeps the published shoulder, so the side and plan silhouettes (and the
+    // dimensions) stay as they were. The outboard one, over the track, stands its underside at 1.24 m over the idler's
+    // station and 1.12-1.14 m at the bow, 2 cm or more clear of the wrap. The transverse guard still hangs to 0.98 m
+    // ahead of it. (Raising one convex body across the width, 264's fix, cut the bow's side silhouette.)
+    // Its outer faces keep the published lower edge as thin plates outside the track (the blind critics read the raised
+    // half's open corner as missing geometry): the outer side face 3 cm outboard of the belt (x 1.815-1.84, 1.18 m
+    // at the 2.70 station to 0.98 m at the bow) with its diagonal run aft to x 1.815, and a chamfered nose under the
+    // bow face (from x 1.10, inside the inboard half, to the side plate), its underside rising from 0.98 m at the bow
+    // to 1.14 m at z 3.20, about 5 cm clear of the wrap. Their tops seat 5 mm into the outboard half.
     const shoulderLowerRight = [1.46, 1.42, 1.18, 0.98, 0.98, 0.96];
+    const shoulderLowerOverTrackRight = [1.46, 1.42, 1.24, 1.14, 1.14, 1.12];
     const shoulderUpperRight = [1.62, 1.60, 1.50, 1.40, 1.39, 1.14];
     const shoulderPlan = s > 0
       ? shoulderPlanRight
       : shoulderPlanRight.map(([x, z]) => [-x, z] as Vec2Tuple).reverse();
-    const shoulderLower = s > 0 ? shoulderLowerRight : [...shoulderLowerRight].reverse();
-    const shoulderUpper = s > 0 ? shoulderUpperRight : [...shoulderUpperRight].reverse();
+    const sided = (right: readonly number[]) => (s > 0 ? [...right] : [...right].reverse());
+    const shoulderUpper = sided(shoulderUpperRight);
     // Finite welded support faces replace the concave center fan. The twelve
     // authored perimeter corners still define the shoulder, including its
     // fender/guard contacts; no invented center vertex dents either skin.
-    const shoulder = new ConvexGeometry(shoulderPlan.flatMap(([x,z],i) => [
-      new Vector3(x,shoulderLower[i],z),new Vector3(x,shoulderUpper[i],z),
-    ]));
-    const positions=shoulder.getAttribute('position'),uv:number[]=[];
-    for(let i=0;i<positions.count;i++)uv.push(positions.getX(i),positions.getZ(i));
-    shoulder.setAttribute('uv',new Float32BufferAttribute(uv,2));
-    P.add('hull', shoulder);
+    const corners = (lower: readonly number[]) => shoulderPlan.flatMap(([x,z],i) => [
+      new Vector3(x,lower[i],z),new Vector3(x,shoulderUpper[i],z),
+    ]);
+    // [x, z, lower, upper] on the right side, mirrored by s
+    const plate = (rows: readonly (readonly [number, number, number, number])[]) => new ConvexGeometry(
+      rows.flatMap(([x, z, lo, hi]) => [new Vector3(s * x, lo, z), new Vector3(s * x, hi, z)]));
+    for (const shoulder of [
+      convexHalfX(corners(sided(shoulderLowerRight)), s * 1.12, -s),
+      convexHalfX(corners(sided(shoulderLowerOverTrackRight)), s * 1.12, s),
+      plate([[1.815, 2.70, 1.18, 1.245], [1.84, 2.70, 1.18, 1.245], [1.84, 3.48, 0.98, 1.145], [1.815, 3.48, 0.98, 1.145]]),
+      plate([[1.815, 2.383, 1.230, 1.2825], [1.84, 2.70, 1.18, 1.245], [1.815, 2.70, 1.18, 1.245]]),
+      plate([[1.10, 3.20, 1.14, 1.18], [1.815, 3.20, 1.14, 1.18], [1.815, 3.48, 0.98, 1.145], [1.10, 3.48, 0.98, 1.145]]),
+    ]) {
+      const positions=shoulder.getAttribute('position'),uv:number[]=[];
+      for(let i=0;i<positions.count;i++)uv.push(positions.getX(i),positions.getZ(i));
+      shoulder.setAttribute('uv',new Float32BufferAttribute(uv,2));
+      P.add('hull', shoulder);
+    }
   });
 
   // ---- glacis chevron armor: three raked panel courses with real seam
@@ -372,7 +407,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
-    louvre('hullDetail', box(2.50, 0.020, 0.026), -2.22 - i * 0.24, 0.006);        // release 240: 16 mm proud (was 26), under the turrets' sweep
+    // release 240: 16 mm proud (was 26), under the turrets' sweep; release 264 (main-reds 261): 18 mm deep at 7 mm, so its
+    // underside sits 2 mm into the deck (it sat 4 mm in) with the same 16 mm proud top
+    louvre('hullDetail', box(2.50, 0.018, 0.026), -2.22 - i * 0.24, 0.007);
   });
   // release 240: the two filler caps lie on the deck line (4 mm into it, 1 cm proud), under the turrets' sweep
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {

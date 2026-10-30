@@ -6588,5 +6588,150 @@
    "en": "T-64BV, Redrock Divide",
    "zh": "T-64BV，红岩分界"
   }
+ },
+ {
+  "n": 269,
+  "id": "t72b3-zhuque-mangrove",
+  "hero": "t72b3_zhuque",
+  "nation": "China",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "day",
+  "anchor": [
+   -267,
+   -267
+  ],
+  "heading": 108,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "t72b3_zhuque",
+   "ztz20_prototype",
+   "ztz20"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "sig_t72b3_zhuque",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A T-72B3 Zhuque knocks out a Type 10 at Mangrove Reach",
+   "zh": "一辆 T-72B3 Zhuque 在红树林水道击毁一辆 Type 10"
+  },
+  "short": {
+   "en": "T-72B3 Zhuque, Mangrove Reach",
+   "zh": "T-72B3 Zhuque，红树林水道"
+  }
+ },
+ {
+  "n": 270,
+  "id": "t72b3m-xuanwu-delta",
+  "hero": "t72b3m_xuanwu",
+  "nation": "China",
+  "era": "modern",
+  "map": "delta",
+  "time": "day",
+  "anchor": [
+   -97.4,
+   271.2
+  ],
+  "heading": 26.6,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "t72b3m_xuanwu",
+   "t80u_yun"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "sig_t72b3m_xuanwu",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A T-72B3M Xuanwu knocks out a Type 10 at Jade River Delta",
+   "zh": "一辆 T-72B3M Xuanwu 在翡翠江三角洲击毁一辆 Type 10"
+  },
+  "short": {
+   "en": "T-72B3M Xuanwu, Jade River Delta",
+   "zh": "T-72B3M Xuanwu，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 271,
+  "id": "vt4a1-baihu-delta",
+  "hero": "vt4a1_baihu",
+  "nation": "China",
+  "era": "modern",
+  "map": "delta",
+  "time": "golden",
+  "anchor": [
+   48,
+   183
+  ],
+  "heading": 287,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "vt4a1_baihu"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "sig_vt4a1_baihu",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A VT-4A1 Baihu knocks out a Type 10 at Jade River Delta in the evening light",
+   "zh": "傍晚，一辆 VT-4A1 Baihu 在翡翠江三角洲击毁一辆 Type 10"
+  },
+  "short": {
+   "en": "VT-4A1 Baihu, Jade River Delta",
+   "zh": "VT-4A1 Baihu，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 272,
+  "id": "ztz99a2-qinglong-copper-mesa",
+  "hero": "ztz99a2_qinglong",
+  "nation": "China",
+  "era": "modern",
+  "map": "copper_mesa",
+  "time": "golden",
+  "anchor": [
+   -267,
+   318
+  ],
+  "heading": 75,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "ztz99a2_qinglong",
+   "type96_72_long",
+   "ztz99_longwei"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_ztz99a2_qinglong",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A ZTZ-99A2 Qinglong fires across Copper Mesa Mine in the evening light",
+   "zh": "傍晚，一辆 ZTZ-99A2 Qinglong 在铜台地矿场开火"
+  },
+  "short": {
+   "en": "ZTZ-99A2 Qinglong, Copper Mesa Mine",
+   "zh": "ZTZ-99A2 Qinglong，铜台地矿场"
+  }
  }
 ]

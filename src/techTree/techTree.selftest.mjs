@@ -163,5 +163,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
-assert.equal(digest, 'a7ec2d078c2cbf3c', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265: the Longwei family joins China's special lane (Zhuque, Xuanwu and Baihu at VII, Qinglong at IX; tiers
+// for Main's ruling), out of release 264 into 265.
+assert.equal(digest, '3539d930dd5850e6', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

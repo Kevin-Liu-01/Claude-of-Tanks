@@ -724,6 +724,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     // release 262: the Longwei concept's native profile fixture (its first-party concept route's test)
     'src/vehicles/profiles/longwei.selftest.mjs',
+    // release 264: the Longwei family, four hosts' hulls under the Longwei turret with their own kits
+    'src/vehicles/profiles/longweiFamily.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',

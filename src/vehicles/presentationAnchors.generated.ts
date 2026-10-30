@@ -177,6 +177,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   t72b3_bastion_m: Object.freeze({ xM: 0.0002, zM: -0.015 }),
   t72b3_qilin: Object.freeze({ xM: 0.001, zM: -0.051 }),
   t72b3_sich: Object.freeze({ xM: 0.0013, zM: 0.0469 }),
+  t72b3_zhuque: Object.freeze({ xM: 0.0009, zM: -0.0507 }),
   t72b3_zubr: Object.freeze({ xM: -0.0034, zM: 0.0708 }),
   t72b3_zubr_ii: Object.freeze({ xM: 0.0018, zM: 0.0679 }),
   t72b3m_2016: Object.freeze({ xM: -0.0034, zM: -0.0121 }),
@@ -186,6 +187,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   t72b3m_hetman_ii: Object.freeze({ xM: 0.0004, zM: 0.042 }),
   t72b3m_kunlun: Object.freeze({ xM: 0, zM: -0.0072 }),
   t72b3m_wilk: Object.freeze({ xM: 0.0015, zM: 0.1178 }),
+  t72b3m_xuanwu: Object.freeze({ xM: 0.0005, zM: -0.0066 }),
   t72b_1987: Object.freeze({ xM: 0.0088, zM: -0.2263 }),
   t72bu: Object.freeze({ xM: -0.013, zM: -0.006 }),
   t72bu_1989: Object.freeze({ xM: -0.0053, zM: 0.0162 }),
@@ -242,6 +244,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   upior: Object.freeze({ xM: 0.003, zM: -0.08 }),
   vickers_mk1: Object.freeze({ xM: 0, zM: -0.0629 }),
   vt4a1: Object.freeze({ xM: 0.0001, zM: -0.4323 }),
+  vt4a1_baihu: Object.freeze({ xM: -0.0003, zM: -0.4361 }),
   warrior_tes_h: Object.freeze({ xM: -0.0088, zM: 0.1471 }),
   xk2_black_panther: Object.freeze({ xM: -0.0035, zM: -0.1193 }),
   ztz100: Object.freeze({ xM: 0, zM: -0.1927 }),
@@ -252,6 +255,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   ztz99_longwei: Object.freeze({ xM: 0.0006, zM: -0.0648 }),
   ztz99a: Object.freeze({ xM: 0.0005, zM: -0.4341 }),
   ztz99a2: Object.freeze({ xM: 0.0056, zM: -0.4392 }),
+  ztz99a2_qinglong: Object.freeze({ xM: 0.0004, zM: -0.4368 }),
 });
 
 export function presentationAnchorFor(id: string): TankPresentationAnchor | null {
@@ -423,6 +427,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   t72b3_bastion_m: Object.freeze({ centerYM: 1.4975, topHalfM: 6.6132, sideHalfM: 3.3066 }),
   t72b3_qilin: Object.freeze({ centerYM: 1.5487, topHalfM: 7.2639, sideHalfM: 3.632 }),
   t72b3_sich: Object.freeze({ centerYM: 1.6525, topHalfM: 6.1545, sideHalfM: 3.0772 }),
+  t72b3_zhuque: Object.freeze({ centerYM: 1.8494, topHalfM: 7.8381, sideHalfM: 3.919 }),
   t72b3_zubr: Object.freeze({ centerYM: 1.5389, topHalfM: 6.9208, sideHalfM: 3.4604 }),
   t72b3_zubr_ii: Object.freeze({ centerYM: 1.5538, topHalfM: 6.9239, sideHalfM: 3.4619 }),
   t72b3m_2016: Object.freeze({ centerYM: 1.7273, topHalfM: 7.0616, sideHalfM: 3.5308 }),
@@ -432,6 +437,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   t72b3m_hetman_ii: Object.freeze({ centerYM: 1.701, topHalfM: 7.0037, sideHalfM: 3.5019 }),
   t72b3m_kunlun: Object.freeze({ centerYM: 1.6749, topHalfM: 7.2692, sideHalfM: 3.6346 }),
   t72b3m_wilk: Object.freeze({ centerYM: 1.6525, topHalfM: 6.5233, sideHalfM: 3.2616 }),
+  t72b3m_xuanwu: Object.freeze({ centerYM: 1.8239, topHalfM: 7.843, sideHalfM: 3.9215 }),
   t72b_1987: Object.freeze({ centerYM: 1.6241, topHalfM: 6.4126, sideHalfM: 3.2063 }),
   t72bu: Object.freeze({ centerYM: 1.6988, topHalfM: 7.0245, sideHalfM: 3.5122 }),
   t72bu_1989: Object.freeze({ centerYM: 1.6988, topHalfM: 7.0007, sideHalfM: 3.5004 }),
@@ -488,6 +494,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   upior: Object.freeze({ centerYM: 1.6359, topHalfM: 3.3629, sideHalfM: 1.7511 }),
   vickers_mk1: Object.freeze({ centerYM: 1.836, topHalfM: 5.9556, sideHalfM: 2.9778 }),
   vt4a1: Object.freeze({ centerYM: 1.8103, topHalfM: 8.0756, sideHalfM: 4.0378 }),
+  vt4a1_baihu: Object.freeze({ centerYM: 1.8792, topHalfM: 8.6083, sideHalfM: 4.3041 }),
   warrior_tes_h: Object.freeze({ centerYM: 1.9925, topHalfM: 3.7582, sideHalfM: 2.132 }),
   xk2_black_panther: Object.freeze({ centerYM: 2.1373, topHalfM: 5.674, sideHalfM: 2.837 }),
   ztz100: Object.freeze({ centerYM: 1.4844, topHalfM: 5.7434, sideHalfM: 2.8717 }),
@@ -498,6 +505,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   ztz99_longwei: Object.freeze({ centerYM: 2.186, topHalfM: 8.4678, sideHalfM: 4.2339 }),
   ztz99a: Object.freeze({ centerYM: 1.8304, topHalfM: 7.9886, sideHalfM: 3.9943 }),
   ztz99a2: Object.freeze({ centerYM: 1.7855, topHalfM: 8.315, sideHalfM: 4.1575 }),
+  ztz99a2_qinglong: Object.freeze({ centerYM: 1.9453, topHalfM: 8.609, sideHalfM: 4.3045 }),
 });
 
 export function presentationProjectionFor(id: string): TankPresentationProjection | null {

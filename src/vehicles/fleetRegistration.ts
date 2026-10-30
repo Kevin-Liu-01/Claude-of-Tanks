@@ -64,6 +64,8 @@ import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';
 import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
+// release 264: the Longwei family clones the national concepts' hulls, so it registers and synchronizes after them
+import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
@@ -78,6 +80,7 @@ synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 synchronizeFleetRenewalMetadata();
 synchronizeNationalModernizationMetadata();
+synchronizeLongweiFamilyMetadata();
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);
