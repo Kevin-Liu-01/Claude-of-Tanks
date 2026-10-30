@@ -231,6 +231,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // 266: the Osório prototypes, the AMX-40's flankers (1,040 hp on 43.7 t); the P.1's LRS-5 sights without a thermal see less far
   osorio_p1: { doctrine: 'flanker', viewM: 395, still: 0.238, moving: 0.178 },
   osorio_p2: { doctrine: 'flanker', viewM: 410, still: 0.234, moving: 0.174 },
+  // 266: the fictional EE-T3 and EE-T4 (tiers IX and X), flankers with a modern panoramic thermal sight
+  ee_t3_osorio: { doctrine: 'flanker', viewM: 430, still: 0.236, moving: 0.176 },
+  ee_t4_osorio: { doctrine: 'flanker', viewM: 440, still: 0.238, moving: 0.178 },
   // 266: the Tamoyos, frontline mediums on the Pattons' footing; the Tamoyo 3's Ferranti thermal sees further
   tamoyo1: { doctrine: 'flexible', viewM: 385, still: 0.200, moving: 0.140 },
   tamoyo3: { doctrine: 'flexible', viewM: 405, still: 0.192, moving: 0.132 },

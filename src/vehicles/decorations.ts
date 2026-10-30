@@ -2667,6 +2667,7 @@ const brazilSmallKit = (): DecorManifestRow[] => [
 const brazilBowKit = (): DecorManifestRow[] => [{ kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] }];
 const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
   osorio_p2: brazilSmallKit, osorio_p1: brazilSmallKit, tamoyo1: brazilSmallKit, tamoyo3: brazilSmallKit,
+  ee_t3_osorio: brazilSmallKit, ee_t4_osorio: brazilSmallKit,
   x1_pioneiro: brazilBowKit, x1a2_carcara: brazilBowKit,
 });
 const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {

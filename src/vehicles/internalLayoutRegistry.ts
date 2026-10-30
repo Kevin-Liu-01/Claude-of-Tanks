@@ -547,7 +547,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   pershingFive: ['m46_patton', 'm47_patton'],
   westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3'],
   starship: ['m60a2'],
-  osorio: ['osorio_p1', 'osorio_p2'],
+  osorio: ['osorio_p1', 'osorio_p2', 'ee_t3_osorio', 'ee_t4_osorio'],
   bernardini: ['tamoyo1', 'tamoyo3'],
   bernardiniX1: ['x1_pioneiro'],
   bernardiniX1A2: ['x1a2_carcara'],

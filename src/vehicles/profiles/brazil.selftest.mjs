@@ -22,6 +22,9 @@ const IDS = {
   'tamoyo3': { tier: 3, role: 'mbt', caliber: 105, crew: 4, packet: 'mb-3-tamoyo-3-20261029.json', receipt: 'tamoyoTurretReceipt', muzzle: TAMOYO_DATUMS.muzzleHullZ.t3 },
   'osorio_p1': { tier: 3, role: 'mbt', caliber: 105, crew: 4, packet: 'ee-t1-osorio-105-20261029.json', receipt: 'osorioTurretReceipt', muzzle: OSORIO_DATUMS.muzzleHullZ.p1 },
   'osorio_p2': { tier: 4, role: 'mbt', caliber: 120, crew: 4, packet: 'ee-t1-osorio-120-20261029.json', receipt: 'osorioTurretReceipt', muzzle: OSORIO_DATUMS.muzzleHullZ.p2 },
+  // the fictional EE-T3 and EE-T4 (owner 2026-10-30; the concept facet)
+  'ee_t3_osorio': { tier: 9, role: 'mbt', caliber: 120, crew: 4, packet: 'ee-t3-osorio-concept-20261030.json', receipt: 'osorioTurretReceipt', muzzle: OSORIO_DATUMS.muzzleHullZ.t3 },
+  'ee_t4_osorio': { tier: 10, role: 'mbt', caliber: 130, crew: 4, packet: 'ee-t4-osorio-concept-20261030.json', receipt: 'osorioTurretReceipt', muzzle: OSORIO_DATUMS.muzzleHullZ.t4 },
 };
 await ensureInteriorFills(Object.keys(IDS));
 const within = (actual, expected, label, fraction = 0.03) =>
@@ -85,6 +88,9 @@ assert.deepEqual([p1.rightGrid, p2.rightGrid, p1.leftBasket, p2.leftBasket, p1.g
   ['flat', 'basket', false, false, 'black', 'canvas'], 'the P.1\'s flat grid and black boot, the P.2\'s basket; no left basket');
 assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt('tamoyo3', 'tamoyoTurretReceipt').sideSkirts], [true, false],
   'the Tamoyo 1 on its side plates, the Tamoyo 3 on open gear');
+const t3 = receipt('ee_t3_osorio', 'osorioTurretReceipt'), t4 = receipt('ee_t4_osorio', 'osorioTurretReceipt');
+assert.deepEqual([p2.armourKit, t3.armourKit, t4.armourKit, t3.activeProtection, t4.activeProtection, t3.remoteStation],
+  ['none', 'front', 'full', false, true, true], 'the fictional EE-T3\'s front kit and remote station, the EE-T4\'s full kit and APS');
 const x1 = receipt('x1_pioneiro', 'x1TurretReceipt'), x1a2 = receipt('x1a2_carcara', 'x1TurretReceipt');
 assert.deepEqual([x1.flankSmokeBoxes, x1a2.flankSmokeBoxes, x1.cupola, x1a2.cupola], [false, true, 'tall-slit', 'rect-periscope'],
   'the X1A2\'s six-tube boxes on its rear flanks; the X1\'s tall slit cupola, the X1A2\'s raised rectangular periscope cupola');

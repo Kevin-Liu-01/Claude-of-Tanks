@@ -15,7 +15,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   challenger2: 9, challenger2e: 9, challenger3: 10, challenger3_proto: 8, challenger3_td: 8,
   challenger3_td_rws: 8, chieftain3: 2, chieftain5: 2,
   chieftain_mk10: 4, chieftain_mk9: 4, cv90: 4, cv90105_tml: 2, cv9040c: 4, cv90_mk4: 7, cv90_mk4_concept: 7,
-  dardo: 4, fv4034: 4, fv510: 2, fv510_milan: 3, griffin50mm: 10, griffin_viper: 3, hayate_ifv: 2, jpz_e100: 1,
+  dardo: 4, ee_t3_osorio: 9, ee_t4_osorio: 10, fv4034: 4, fv510: 2, fv510_milan: 3, griffin50mm: 10, griffin_viper: 3, hayate_ifv: 2, jpz_e100: 1,
   k1a1: 8, k1e1: 4, k21: 5, k2_black_panther: 10, k2b: 7, kf41_lynx: 5, kf51_evo: 10, kf51_panther: 10, kf51_u: 10,
   kurganets25: 10, kv2: 1, leclerc_s1: 8, leclerc_s2: 9, leclerc_sxxi: 9, leclerc_xlr: 10, leo1a5: 1,
   leo2_improved: 8, leo2_revolution: 8, leo2_revolution_proto: 8, leo2a2: 3, leo2a3: 4, leo2a4: 8, leo2a4_otco: 8,

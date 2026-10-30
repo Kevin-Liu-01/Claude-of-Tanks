@@ -14,6 +14,13 @@
 // 1.60 m deck at z 1.95, six 0.66 m dual road wheels on a 0.895 m pitch, the skirts from 1.33 m down to 0.64 m, the
 // turret 2.29 m wide, its chevron cheeks 1.44 m ahead of the ring and its bustle 1.95 m behind. A +Z hull's right is -X:
 // the commander and gunner sit at -X, the loader and the driver at +X.
+// - t3, t4: the fictional EE-T3 and EE-T4 Osório (owner 2026-10-30: "now make a super modernized hypotehtical version a
+//   tier 9 and a tier 10"; Main's ruling the same day), continuing Engesa's numbering as the Challenger 1's fictional
+//   FV4030/5 and /6 continue Vickers': the P.2's hull and turret under a bolted armour kit. The EE-T3 (tier IX): a nose
+//   module on the glacis, composite modules on the front three skirt panels, wedge modules on the cheeks and side armour
+//   boxes, a stabilised panoramic sight, the ARES-type remote 12.7 mm station, a 120 mm L/55. The EE-T4 (tier X): the
+//   EE-T3's kit heavier and full length, a hard-kill active protection system (four radar panels and two launchers),
+//   laser-warning heads, slat armour over the rear plate, a 130 mm L/51.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -22,7 +29,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export type OsorioMark = 'p1' | 'p2';
+export type OsorioMark = 'p1' | 'p2' | 't3' | 't4';
 
 // ------------------------------------------------------------------------------------------------- datums --
 const H = Object.freeze({
@@ -48,7 +55,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, stowage, torus } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
-  const p2 = mark === 'p2';
+  // (p2: the 120 mm turret, the P.2's and its fictional successors'; modern: the EE-T3 and EE-T4 kit; t4: the tier X's)
+  const p2 = mark !== 'p1', modern = mark === 't3' || mark === 't4', t4 = mark === 't4';
+  // the EE-T3/T4's bolted nose module over the glacis: its rear and front edges and its thickness
+  const NOSE_MOD = Object.freeze({ z0: 2.86, z1: 3.48, th: t4 ? 0.14 : 0.11 });
   const glacis = Math.atan2(H.glacisTopY - H.noseY, H.noseZ - H.glacisZ);
   const bar = (slot: string, a: readonly number[], b: readonly number[], r: number): void => {
     P.add(slot, beamBetween([a[0], a[1], a[2]], [b[0], b[1], b[2]], r, 8));
@@ -76,7 +86,16 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     }
     // the nose: a lip band at the plates' joint and the bar across the glacis between the lamps
     P.add('hullDetail', box(H.lowerX * 2, 0.06, 0.04), 0, (H.lipY + H.noseY) / 2, H.noseZ - 0.005);
-    P.add('hullDetail', xform(box(1.70, 0.03, 0.06), 0, 0, 0, glacis, 0, 0), 0, deckY(3.32) + 0.02, 3.32);
+    if (!modern) P.add('hullDetail', xform(box(1.70, 0.03, 0.06), 0, 0, 0, glacis, 0, 0), 0, deckY(3.32) + 0.02, 3.32);
+    else {
+      // the EE-T3/T4's bolted nose module over the glacis ahead of the driver's periscopes, its rows of bolts
+      const th = NOSE_MOD.th;
+      P.add('hull', sectionSolid([NOSE_MOD.z0, NOSE_MOD.z1].map((z) => ({ z, ring: [[-H.lowerX, deckY(z) - 0.02], [H.lowerX, deckY(z) - 0.02],
+        [H.lowerX, deckY(z) + th], [-H.lowerX, deckY(z) + th]] as SectionPoint[] }))));
+      for (const z of [2.94, 3.40]) for (let k = 0; k < 7; k++) {
+        P.add('hullDetail', xform(cylY(0.022, 0.022, 0.016, 8), 0, 0, 0, glacis, 0, 0), -0.84 + k * 0.28, deckY(z) + th + 0.006, z);
+      }
+    }
   };
   buildOsorioHull();
   yield 'buildOsorioHull';
@@ -124,6 +143,19 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         P.add('hullDetail', box(t + 0.008, H.skirtTop - H.skirtLow - tooth - 0.02, 0.05), x + s * 0.003, (H.skirtTop + H.skirtLow + tooth) / 2, z0);
       }
       P.add('hullDetail', box(t + 0.008, H.skirtTop - 0.94, 0.05), x + s * 0.003, (H.skirtTop + 0.94) / 2, front - 0.02);
+      if (modern) {
+        // the composite modules hung on the skirts' outer face: the EE-T3's on the front three panels, the EE-T4's the full
+        // length, each a thick plate with a bolt row along its top
+        const mods: Array<readonly [number, number]> = [[front - 0.10, taperEnd + 0.01]];
+        for (let k = 0; k < (t4 ? 6 : 2); k++) mods.push([taperEnd - k * seg - 0.01, taperEnd - (k + 1) * seg + 0.01]);
+        const mt = t4 ? 0.075 : 0.06, mx = s * (H.skirtX + t / 2 + mt / 2 + 0.004), my0 = H.skirtLow + 0.13, my1 = H.skirtTop - 0.03;
+        for (const [z0, z1] of mods) {
+          P.addEquipment(bucket, box(mt, my1 - my0, z0 - z1), mx, (my0 + my1) / 2, (z0 + z1) / 2);
+          for (let b = 0; b < 4; b++) {
+            P.add('hullDetail', cylX(0.02, 0.014, 8), mx + s * (mt / 2 + 0.007), my1 - 0.05, z1 + (z0 - z1) * (b + 0.5) / 4);
+          }
+        }
+      }
       // the hinged front mudguard over the idler, leaning forward and down to the hub (the CIBld and 2022 photographs)
       // (its inner edge laps the nose plate's corner: no slot between guard and glacis from above)
       const hz = 3.30, hy = H.fenderY, fz = 3.55, fy = 0.74, xc = s * 1.3125, hw = 0.3325;
@@ -143,12 +175,21 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the paired round lamps on the glacis against the front mudguards' inner edges, in their housing under a U-shaped
     // guard (one white, one amber; the CIBld 2020 and 2022 photographs; blind critic, round 4: large, not strips)
     for (const s of [-1, 1] as const) {
-      const z = 3.12, y = deckY(z) + 0.05, lx = 0.84;
-      P.add('hullDark', xform(box(0.40, 0.17, 0.10), 0, 0, 0, -glacis * 0.5, 0, 0), s * lx, y + 0.01, z - 0.02);
-      for (const dx of [-0.10, 0.10]) headlight(P, s * lx + dx, y + 0.02, z + 0.04, -glacis * 0.5, 0.075);
-      const g = [[s * (lx + 0.23), y - 0.04, z - 0.10], [s * (lx + 0.23), y + 0.10, z + 0.09], [s * (lx - 0.23), y + 0.10, z + 0.09],
-        [s * (lx - 0.23), y - 0.04, z - 0.10]];
-      for (let i = 0; i + 1 < g.length; i++) bar('hullDark', g[i], g[i + 1], 0.011);
+      const lx = 0.84;
+      if (!modern) {
+        const z = 3.12, y = deckY(z) + 0.05;
+        P.add('hullDark', xform(box(0.40, 0.17, 0.10), 0, 0, 0, -glacis * 0.5, 0, 0), s * lx, y + 0.01, z - 0.02);
+        for (const dx of [-0.10, 0.10]) headlight(P, s * lx + dx, y + 0.02, z + 0.04, -glacis * 0.5, 0.075);
+        const g = [[s * (lx + 0.23), y - 0.04, z - 0.10], [s * (lx + 0.23), y + 0.10, z + 0.09], [s * (lx - 0.23), y + 0.10, z + 0.09],
+          [s * (lx - 0.23), y - 0.04, z - 0.10]];
+        for (let i = 0; i + 1 < g.length; i++) bar('hullDark', g[i], g[i + 1], 0.011);
+      } else {
+        // the EE-T3/T4 carry their lamps set into the nose module's front face, no higher than its top: housings on the
+        // glacis stood in the gun's sweep 10 to 23 degrees off the bow (gun-depression sweep, 2026-10-30: -6 and -4.6)
+        const z = NOSE_MOD.z1, y = deckY(z) + NOSE_MOD.th / 2 - 0.004;
+        P.add('hullDark', box(0.40, NOSE_MOD.th - 0.02, 0.04), s * lx, y, z + 0.012);
+        for (const dx of [-0.10, 0.10]) headlight(P, s * lx + dx, y, z + 0.02, 0, 0.048);
+      }
       // the tow eyes on the lower glacis
       P.add('hullDark', box(0.12, 0.12, 0.08), s * 0.72, 0.86, 3.27);
       P.add('hullDark', torus(0.065, 0.02, 12, 6), s * 0.72, 0.86, 3.34, Math.PI / 2, 0, 0);
@@ -198,6 +239,16 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addEquipment('hull', box(0.70, 0.12, 0.08), 0, 1.30, H.sternZ - 0.04);
     P.add('hullDark', box(0.14, 0.14, 0.12), 0, 0.98, H.sternZ - 0.06);
     P.add('hullDark', torus(0.055, 0.018, 12, 6), 0, 0.92, H.sternZ - 0.14, Math.PI / 2, 0, 0);
+    if (t4) {
+      // the EE-T4's slat armour over the rear plate on four brackets: a frame and its vertical bars
+      const sz = H.sternZ - 0.32, sx = 1.40, sy0 = 1.02, sy1 = 1.58;
+      for (const x of [-1.20, -0.40, 0.40, 1.20]) bar('hullOpenLatticeDark', [x, 1.30, H.sternZ - 0.04], [x, 1.30, sz], 0.02);
+      for (const y of [sy0, sy1]) bar('hullOpenLatticeDark', [-sx, y, sz], [sx, y, sz], 0.022);
+      for (let k = 0; k <= 34; k++) {
+        const x = -sx + (2 * sx) * k / 34;
+        P.add('hullOpenLatticeDark', box(0.012, sy1 - sy0, 0.05), x, (sy0 + sy1) / 2, sz);
+      }
+    }
   };
   buildOsorioHullFittings();
   yield 'buildOsorioHullFittings';
@@ -264,7 +315,17 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.add('turretGlass', box(w * 0.72, h * 0.42, 0.008), x, roof + base + h * 0.56, z + d / 2 + 0.004);
       P.add('turretDark', box(w + 0.03, 0.025, 0.10), x, roof + base + h + 0.012, z + d / 2 - 0.02);
     };
-    if (p2) {
+    if (modern) {
+      // the EE-T3/T4's sights: the gunner's day/thermal head at the front, the commander's stabilised panoramic head on its
+      // pedestal (a drum turning a box with day and thermal windows), the laser rangefinder's window beside the gunner's
+      sightBox(-0.62, 0.60, 0.40, 0.24, 0.44);
+      P.add('turretGlass', box(0.12, 0.08, 0.008), -0.36, roof + 0.13, 0.824);
+      P.addEquipment('turret', cylY(0.13, 0.14, 0.20, P.q ? 18 : 12), -0.60, roof + 0.10, -0.12);
+      P.addEquipment('turret', cylY(0.20, 0.20, 0.06, P.q ? 20 : 12), -0.60, roof + 0.23, -0.12);
+      P.addEquipment('turret', box(0.38, 0.26, 0.34), -0.60, roof + 0.39, -0.12);
+      for (const dx of [-0.085, 0.085]) P.add('turretGlass', box(0.13, 0.12, 0.008), -0.60 + dx, roof + 0.40, 0.054);
+      P.add('turretDark', box(0.40, 0.03, 0.36), -0.60, roof + 0.535, -0.12);
+    } else if (p2) {
       sightBox(-0.62, 0.60, 0.34, 0.26, 0.42); // the gunner's VS580-10
       // the commander's VS580-19 panoramic head on its pedestal (2.89 m over the ground)
       P.addEquipment('turret', cylY(0.11, 0.12, 0.24, P.q ? 18 : 12), -0.60, roof + 0.12, -0.12);
@@ -299,11 +360,19 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     const lx = 0.62, lz = -0.62;
     P.addCupola('turret', cylY(0.31, 0.32, 0.05, P.q ? 22 : 14), lx, roof + 0.025, lz);
     P.add('turretDetail', cylY(0.27, 0.28, 0.03, P.q ? 22 : 14), lx, roof + 0.065, lz);
-    const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.66, elev: 0.03, ring: false,
-      shield: false, seed: 6611, working: true });
-    mg.name = 'osorioLoaderM2';
-    mg.position.set(lx, roof, -0.18); // the fitting's own pintle stands on the roof
-    P.turretG.add(mg);
+    if (modern) {
+      // the EE-T3/T4's remote 12.7 mm station (the ARES REMAX type) ahead of the loader's hatch, worked from inside
+      const rws = FITTINGS.americanRws({ mats: P.mats, scale: 0.80, seed: t4 ? 6614 : 6613 });
+      rws.name = 'osorioRemoteStation';
+      rws.position.set(lx, roof, -0.10);
+      P.turretG.add(rws);
+    } else {
+      const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.66, elev: 0.03, ring: false,
+        shield: false, seed: 6611, working: true });
+      mg.name = 'osorioLoaderM2';
+      mg.position.set(lx, roof, -0.18); // the fitting's own pintle stands on the roof
+      P.turretG.add(mg);
+    }
     // the rear roof: the ventilator dome, the box at the left rear, the P.2's laser-warning head and its tall cylinders at
     // the right rear corner, the mast
     P.addEquipment('turret', cylY(0.15, 0.17, 0.05, P.q ? 18 : 12), 0, roof + 0.025, -1.40);
@@ -374,10 +443,56 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // with the roof's bevel (blind critic, round 4): the P.2's two (the 1987 photograph), the P.1's one (2024; its emblem
     // there is not painted: a vehicle carries one insignia, seated on armour, the anchor's at the right wall's rear, where
     // the 2015 photograph has it)
-    const boxes: ReadonlyArray<readonly [number, number]> = p2 ? [[0.34, 0.82], [-0.20, 0.30]] : [[-0.16, 0.82]];
+    const boxes: ReadonlyArray<readonly [number, number]> = modern ? [] : p2 ? [[0.34, 0.82], [-0.20, 0.30]] : [[-0.16, 0.82]];
     for (const [z0, z1] of boxes) {
       P.addEquipment('turret', box(0.20, 0.64, z1 - z0), T.hw + 0.10, 0.38, (z0 + z1) / 2);
       P.addEquipment('turretDark', box(0.012, 0.02, z1 - z0 - 0.04), T.hw + 0.205, 0.66, (z0 + z1) / 2);
+    }
+    if (modern) {
+      // the EE-T3/T4's side armour boxes on the cheeks' roots, the left the longer (the right ends at the basket), their
+      // bolt rows; the wedge modules laid on the cheeks' upper facets and run forward past the noses, beside the mantlet
+      const mt = t4 ? 0.16 : 0.12;
+      for (const [s, z0, z1] of [[1, -0.40, 0.95], [-1, 0.22, 0.95]] as const) {
+        const mx = s * (T.hw + mt / 2 + 0.004);
+        P.add('turret', box(mt, 0.60, z1 - z0), mx, 0.34, (z0 + z1) / 2);
+        for (let b = 0; b < 5; b++) {
+          P.add('turretDetail', cylX(0.022, 0.014, 8), mx + s * (mt / 2 + 0.006), 0.58, z0 + (z1 - z0) * (b + 0.5) / 5);
+        }
+      }
+      const facetY = (z: number): number => z <= T.roofEdgeZ ? T.roofY
+        : T.roofY - (z - T.roofEdgeZ) / (T.cheekNoseZ - T.roofEdgeZ) * (T.roofY - T.cheekNoseY);
+      const wt = t4 ? 0.15 : 0.11, xi = T.recessX + 0.025, tipZ = T.cheekNoseZ + (t4 ? 0.30 : 0.22);
+      for (const s of [-1, 1] as const) {
+        const ringAt = (xo: number, yb: number, yt: number): SectionPoint[] => s > 0
+          ? [[xi, yb], [xo, yb], [xo, yt], [xi, yt]] : [[-xo, yb], [-xi, yb], [-xi, yt], [-xo, yt]];
+        const wedge = sectionSolid([
+          { z: T.roofEdgeZ - 0.05, ring: ringAt(T.hw, T.roofY - 0.01, T.roofY + wt * 0.5) },
+          { z: T.frontZ, ring: ringAt(T.hw, facetY(T.frontZ) - 0.01, facetY(T.frontZ) + wt) },
+          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseX + 0.06, facetY(T.cheekNoseZ) - 0.01, facetY(T.cheekNoseZ) + wt) },
+          { z: tipZ, ring: ringAt(xi + 0.05, T.cheekNoseY - 0.10, T.cheekNoseY - 0.06) },
+        ]);
+        wedge.userData.primaryStockRole = 'osorio-cheek-module';
+        P.add('turret', wedge);
+      }
+    }
+    if (t4) {
+      // the EE-T4's hard-kill active protection: four radar panels on the turret's corners, angled out, and two launcher
+      // heads on the roof's edges; the laser-warning heads at the roof's corners
+      for (const s of [-1, 1] as const) {
+        for (const [z, yaw] of [[0.62, s * 0.55], [-2.10, s * (Math.PI - 0.55)]] as const) {
+          const px = s * (T.hw + 0.20), pz = z;
+          P.add('turretDark', box(0.40, 0.30, 0.05), px, 0.42, pz, 0, yaw + s * Math.PI / 2, 0);
+          P.addEquipment('turret', box(0.06, 0.10, 0.06), s * (T.hw + 0.14), 0.42, pz);
+        }
+        const lx = s * 0.96, lz = -0.95;
+        P.addEquipment('turret', box(0.26, 0.10, 0.26), lx, T.roofY + 0.05, lz);
+        P.addEquipment('turret', box(0.30, 0.22, 0.22), lx, T.roofY + 0.21, lz, 0, s * 0.35, 0);
+        P.add('turretDark', box(0.24, 0.16, 0.012), lx + s * 0.06, T.roofY + 0.21, lz + 0.115, 0, s * 0.35, 0);
+        for (const z of [0.70, -2.25]) {
+          P.addEquipment('turret', cylY(0.05, 0.055, 0.06, 10), s * 0.98, T.roofY + 0.03, z);
+          P.add('turretGlass', xform(sph(0.045, 10, Math.PI / 2), 0, 0, 0), s * 0.98, T.roofY + 0.06, z);
+        }
+      }
     }
     // the dischargers high on the walls, aimed forward, out and up: the P.2 two rows of three on each rear corner, behind
     // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall at 60-76% of its length (2024) and
@@ -392,9 +507,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r10', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r11', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
-      sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
+      sightHeads: modern ? 2 : 3, gunBoot: p2 ? 'canvas' : 'black', armourKit: modern ? (t4 ? 'full' : 'front') : 'none',
+      activeProtection: t4, remoteStation: modern,
     };
   };
   buildOsorioTurretFittings();
@@ -402,15 +518,18 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
 
   // ---------------------------------------------------------------- markings on the hull --
   const buildOsorioMarkings = (): void => {
+    // (on the EE-T3/T4 the stencils sit on the composite module's face where one hangs on their panel)
+    const seg = (2.48 + 3.45) / 6, moduleT = t4 ? 0.075 : 0.06;
+    const faceX = (z: number): number => H.skirtX + 0.0135 + (modern && (t4 || z > 2.48 - 2 * seg) ? 0.012 + moduleT + 0.004 : 0);
     for (const s of [-1, 1] as const) {
-      const x = s * (H.skirtX + 0.0135);
+      const x = s * faceX(2.02), xr = s * faceX(p2 ? -2.95 : -1.97);
       // the "OSÓRIO / EE-T1" stencil on the front skirt panel and the Engesa oval on the rearmost (every photograph since 2003;
       // the P.1's lower-case badge on the fifth panel, about three-quarters back: the 2024 photograph, blind critic, round 6)
       // (a stencil is a square quad: each sits inside the 0.69 m skirt panel)
       // (about half the round-3 size: blind critic, round 4)
       P.decal('hull', 'stencil', 'OSÓRIO', 0.26, [x, 1.10, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'EE-T1', 0.17, [x, 1.01, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', p2 ? 'ENGESA' : 'engesa', 0.20, [x, 1.08, p2 ? -2.95 : -1.97], s * Math.PI / 2);
+      P.decal('hull', 'stencil', modern ? (t4 ? 'EE-T4' : 'EE-T3') : 'EE-T1', 0.17, [x, 1.01, 2.02], s * Math.PI / 2);
+      P.decal('hull', 'stencil', p2 ? 'ENGESA' : 'engesa', 0.20, [xr, 1.08, p2 ? -2.95 : -1.97], s * Math.PI / 2);
     }
   };
   buildOsorioMarkings();
@@ -429,9 +548,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475);
     P.add('gunMountGlass', cylZ(0.035, 0.008, 12), -0.27, 0.06, 0.498);
     if (p2) {
-      P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.145), 0, 0, 0.71);
+      // (the EE-T3/T4's canvas a size up over the heavier guns' roots)
+      const k = modern ? (t4 ? 1.22 : 1.12) : 1;
+      P.add('gunMountCloth', cylZ(0.12 * k, 0.34, P.q ? 20 : 12, 0.145 * k), 0, 0, 0.71);
       for (const z of [0.58, 0.74, 0.82]) {
-        P.add('gunMountCloth', torus(0.145 - ((z - 0.54) / 0.34) * 0.025, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
+        P.add('gunMountCloth', torus((0.145 - ((z - 0.54) / 0.34) * 0.025) * k, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
       }
     } else {
       // the P.1's large black boot over the gun's root (the 2015 museum photograph; blind critic, round 3), its folds; an
@@ -445,7 +566,22 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     const seg = P.q ? 24 : 12;
-    if (p2) {
+    if (modern) {
+      // the EE-T3's 120 mm L/55 and the EE-T4's 130 mm L/51: a smooth thermal sleeve in four lengths from a heavy root
+      // collar, a muzzle reference sensor on top near the muzzle, a plain muzzle with its collar; the muzzle at hull z 6.895
+      // and 7.055 (0.36 m and 0.52 m past the P.2's)
+      const len = (t4 ? 7.055 : 6.895) - (RING.z + TRUNNION.z), r0 = t4 ? 0.138 : 0.118, r1 = t4 ? 0.124 : 0.104;
+      const sleeveEnd = len - 0.30;
+      P.add('gun', cylZ(r0 + 0.02, 0.12, seg, r0 + 0.014), 0, 0, 0.93);
+      P.add('gun', cylZ(r1, sleeveEnd - 0.87, seg, r0), 0, 0, (0.87 + sleeveEnd) / 2);
+      for (let j = 1; j < 4; j++) P.add('gunDark', cylZ(r0 + 0.004 - (r0 - r1) * j / 4, 0.02, seg), 0, 0, 0.87 + (sleeveEnd - 0.87) * j / 4);
+      P.add('gun', cylZ(r1 - 0.008, len - sleeveEnd, seg, r1 - 0.004), 0, 0, (sleeveEnd + len) / 2);
+      P.add('gun', cylZ(r1 + 0.018, 0.14, seg, r1 + 0.012), 0, 0, len - 0.10);
+      P.add('gunDark', box(0.07, 0.05, 0.10), 0, r1 + 0.03, len - 0.42);
+      muzzleBore(P, { z: len + 0.004, r: t4 ? 0.066 : 0.060 });
+      P.muzzleZ = len;
+      P.gunG.userData.osorioGunReceipt = { mark, caliberMm: t4 ? 130 : 120, muzzleZ: len, fumeExtractor: false, sleeveJoints: 3 };
+    } else if (p2) {
       // GIAT 120 mm G1 smoothbore: the fat segmented thermal sleeve (four joints) from a heavy root collar, no fume
       // extractor, the thick muzzle collar (the CIBld 2020 photograph); the muzzle 6.135 m from the ring (10.10 m over
       // the gun)
@@ -487,9 +623,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
 
 export const buildOsorioP1 = steppedBuilder((P: TankBuilderPort) => buildOsorioSteps(P, 'p1'));
 export const buildOsorioP2 = steppedBuilder((P: TankBuilderPort) => buildOsorioSteps(P, 'p2'));
+export const buildOsorioT3 = steppedBuilder((P: TankBuilderPort) => buildOsorioSteps(P, 't3'));
+export const buildOsorioT4 = steppedBuilder((P: TankBuilderPort) => buildOsorioSteps(P, 't4'));
 
 /** The datums a fixture holds the build to (docs/references/tanks/osorio_p2.md). */
 export const OSORIO_DATUMS = Object.freeze({
   hull: H, roadWheelZs: Object.freeze([...ROAD_WHEEL_ZS]), ring: RING, turret: T, trunnion: TRUNNION,
-  muzzleHullZ: Object.freeze({ p1: 5.795, p2: 6.535 }),
+  muzzleHullZ: Object.freeze({ p1: 5.795, p2: 6.535, t3: 6.895, t4: 7.055 }),
 });

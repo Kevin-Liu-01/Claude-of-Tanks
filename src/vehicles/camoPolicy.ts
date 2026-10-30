@@ -129,9 +129,10 @@ const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_b
   'paint_ua_t84_oplot_m'] as const);
 /** Release 266: the Brazil line's own coats (brazilSpecs.ts): the Osório P.2's Army two-tone bands, the Tamoyo 1's and the
  * Tamoyo 3's 1980s three-tones and the X1A2's 6º RCB three-tone (the Osório P.1's 1986 three-tone and the X1's olive drab
- * sit within a shade of a named preset, so they paint their spec's coat as Factory). */
+ * sit within a shade of a named preset, so they paint their spec's coat as Factory); the fictional EE-T3's three-tone and
+ * the EE-T4's digital woodland. */
 const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara',
-  'paint_osorio_p1'] as const);
+  'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
@@ -831,6 +832,9 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   tamoyo1: 'paint_tamoyo1',
   tamoyo3: 'paint_tamoyo3',
   x1a2_carcara: 'paint_x1a2_carcara',
+  // the fictional EE-T3 (a NATO-style three-tone) and EE-T4 (a digital woodland)
+  ee_t3_osorio: 'paint_ee_t3_osorio',
+  ee_t4_osorio: 'paint_ee_t4_osorio',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -179,6 +179,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   tamoyo1: { displayName: 'MB-3 Tamoyo 1', shortName: 'Tamoyo 1', searchAliases: ['Tamoyo', 'Tamoyo I', 'Bernardini Tamoyo', 'X-30', 'XMB-3'] },
   tamoyo3: { displayName: 'MB-3 Tamoyo 3', shortName: 'Tamoyo 3', searchAliases: ['Tamoyo III', 'Tamoyo 105', 'Bernardini Tamoyo 3', 'XMB-3'] },
   osorio_p2: { displayName: 'EE-T1 Osório (120)', shortName: 'Osório 120', searchAliases: ['EE-T1 Osorio', 'EE-T2 Osorio', 'Osorio P2', 'Osório P.2', 'Al Fahd', 'Engesa Osorio 120'] },
+  // the fictional Osório developments (owner 2026-10-30, Main's ruling the same day: the "concept" facet)
+  ee_t3_osorio: { displayName: 'EE-T3 Osório', shortName: 'Osório T3', searchAliases: ['EE-T3 Osorio', 'Osorio T3', 'Osório modernised', 'Engesa Osorio tier IX'] },
+  ee_t4_osorio: { displayName: 'EE-T4 Osório', shortName: 'Osório T4', searchAliases: ['EE-T4 Osorio', 'Osorio T4', 'Osório APS', 'Engesa Osorio 130'] },
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },

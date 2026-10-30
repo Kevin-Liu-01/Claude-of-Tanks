@@ -56,13 +56,13 @@ assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every pro
 assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
-  'paint_x1a2_carcara', 'paint_osorio_p1'],
+  'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio'],
   'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the 266 Brazilian coats append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
-  'paint_x1a2_carcara', 'paint_osorio_p1']);
+  'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -86,9 +86,10 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 // Release 262: the Christian II and its Danish tri-tone.
 // Release 266: the Osório P.2 and P.1, the Tamoyo 1 and 3 and the X1A2, each in its own coat (the P.1's earth-brown and
-// dark-green bands appended last, after the blind critics' second round).
+// dark-green bands appended last, after the blind critics' second round); the fictional EE-T3 and EE-T4 Osório (owner
+// 2026-10-30) in their three-tone and digital woodland, appended after.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws',
-  'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1'];
+  'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1', 'ee_t3_osorio', 'ee_t4_osorio'];
 // Release 266: the X1's grey olive drab sits within a shade of a named preset, so no authored paint of its own: Brazil
 // has no national Factory coat, and it paints its spec's coat.
 const ADDED_IN_SPEC_COAT = ['x1_pioneiro'];

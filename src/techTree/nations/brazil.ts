@@ -1,8 +1,9 @@
 // The Brazil tech tree (release 266; Main's ruling 2026-10-29 on the owner's "lets build brazil, not taiwan, and flesh it
 // out with all its own tanks"): lines as rows, tiers as columns. One root, the X1 Pioneiro; the indigenous line runs the
 // Army's tank programme as it went (the Bernardini X1 and X1A2, the MB-3 Tamoyo that lost to the Engesa EE-T1 Osório), the
-// Army-fleet line the tanks it fielded from abroad. Brazil never fielded a modern MBT, so the tree tops out at the Osório
-// P.2 (IV). src/techTree/techTree.selftest.mjs checks its shape and pins its content. Pure data, Node-runnable.
+// Army-fleet line the tanks it fielded from abroad. Brazil never fielded a modern MBT: the line goes on past the Osório
+// P.2 (IV) to the fictional EE-T3 (IX) and EE-T4 (X) (owner 2026-10-30, "a super modernized hypotehtical version a tier 9
+// and a tier 10"). src/techTree/techTree.selftest.mjs checks its shape and pins its content. Pure data, Node-runnable.
 // First-party: Kevin B. Liu (NOTICE.md).
 
 import type { NationTree, TreeNode } from '../model.ts';
@@ -28,5 +29,8 @@ export const BRAZIL_TREE: NationTree = Object.freeze({
     node({ id: 'tamoyo3', tier: 3, line: 'indigenous', lane: 1, parents: ['tamoyo1'], slot: 'line' }),
     node({ id: 'osorio_p1', tier: 3, line: 'indigenous', lane: 2, parents: ['tamoyo3'], slot: 'line' }),
     node({ id: 'osorio_p2', tier: 4, line: 'indigenous', lane: 2, parents: ['osorio_p1'], slot: 'line' }),
+    // the fictional successors, the P.2 under a bolted armour kit (concepts)
+    node({ id: 'ee_t3_osorio', tier: 9, line: 'indigenous', lane: 2, parents: ['osorio_p2'], slot: 'line' }),
+    node({ id: 'ee_t4_osorio', tier: 10, line: 'indigenous', lane: 2, parents: ['ee_t3_osorio'], slot: 'line' }),
   ]),
 });
