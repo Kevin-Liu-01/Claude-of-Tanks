@@ -91,6 +91,9 @@ export interface PadInputMapper {
   readonly lastAppliedAt: number;
 }
 
+/** How far behind the newest frame a frame may arrive and still count as late rather than a restarted stream. */
+const PAD_LATE_FRAMES = 64;
+
 /** The aim pad's drag in phone px, scaled to the mouse's units (the touch HUD's aim drag uses 1.18). */
 export const PAD_AIM_GAIN = 1.25;
 
@@ -113,7 +116,12 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
     get lastPhoneT() { return lastPhoneT; },
     get lastAppliedAt() { return lastAt; },
     applyAxes(axes, nowMs) {
-      if (haveFrame && !padSeqNewer(axes.seq, seq)) return false;
+      if (haveFrame && !padSeqNewer(axes.seq, seq)) {
+        // a frame a few behind the newest arrived late (the channel is unordered); one far behind is a phone whose
+        // stream restarted (a reload resumed the pairing): a fresh baseline, never a dropped controller
+        if (((seq - axes.seq) & 0xffff) <= PAD_LATE_FRAMES) return false;
+        haveFrame = false;
+      }
       if (haveFrame) {
         // int32 totals wrap: the difference is the drag since the last frame applied, lost frames included
         const dx = ((axes.aimX - aimX) | 0) / PAD_AIM_SCALE;

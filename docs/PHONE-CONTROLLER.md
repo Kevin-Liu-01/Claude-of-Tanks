@@ -96,29 +96,36 @@ allowance (1,000 GB a month), and a controller uses well under 50 MB an hour.
 - The desktop applies only the newest `axes` seq, takes aim as the difference of totals, and releases every held control
   and zeroes the stick when no frame arrives for 400 ms (a phone that sleeps never leaves the tank driving).
 
-## Controls
+## Controls: the tank in the hand
 
-Landscape, two thumbs:
+Underneath its features the controller is not a remote: it is the tank itself, held in two hands. The screen makes that
+literal, with the game's own material and no text labels.
 
+- The tank. The centre is the vehicle on the field, its plan view (`/icons/<spec>_top.webp`, sent by the desktop),
+  nose up. It turns as the phone turns, so the tank is the steering's readout. Tapping it re-centres the wheel.
+- The gun's bearing. A ring around the tank carries a tick at the turret's bearing off the hull (the desktop's
+  turretYaw), so the gunner sees where the gun points while the hull turns.
 - Steering: tilt like a wheel. The phone's up vector comes from `deviceorientation` (β, γ), rotated into the screen's
   frame (`screen.orientation.angle`); the wheel angle is its angle in the screen plane, so how far the phone leans back
-  does not matter. Re-centre at start and on the Centre button; a 3° dead zone, a 1.6 power curve, full lock at 35°
-  (Sensitivity changes it). iOS asks permission from the Start tap (`DeviceOrientationEvent.requestPermission`) over
-  HTTPS. With no sensor (a laptop, the simulator, a refusal) the left control becomes a stick that steers and drives.
-- Throttle: a spring-centred lever under the left thumb (forward up, reverse down), Brake (the handbrake/neutral turn
-  hold) beside it.
-- Aim: the right half is an aim pad (relative drag, like the touch HUD's); Look holds free-look.
-- Fire under the right thumb (hold for full-auto, as on every device), Scope (sniper toggle), zoom + and − while scoped.
-- Top bar: ammunition 1-3 with type and count (the current one marked), consumables 1-3, pause, the connection chip
-  (live/relay/away and the round trip).
-- Screen Wake Lock keeps the phone awake; `navigator.vibrate` gives a tick on fire and slot changes where supported.
+  does not matter. A 3° dead zone, a 1.6 power curve, full lock at 35° (25 to 60 in options). iOS asks permission from
+  the Start tap over HTTPS. With no sensor (a laptop, the simulator, a refusal) the grip becomes a stick that steers too.
+- Throttle: a track tread under the left thumb. The grip rides it and springs back to neutral; the tread rolls at the
+  throttle's speed and direction (one compositor animation, still under reduced motion). Brake (the handbrake and the
+  neutral turn) sits under it.
+- The gun: the right side is the sight. A drag aims; the reticle leans toward the drag and settles on release. The
+  trigger fills from the bottom as the gun reloads and stands full when it is ready; hold it for full-auto, as on
+  every device. Scope sits beside it, zoom appears while scoped, Look holds free-look.
+- The ready rack: ammunition 1 to 3 with the game's shell glyphs, codes and rounds left, the loaded one raised;
+  consumables, pause and options beside it. A dot and the round trip show the link.
+- Options: tilt on or off, the fire hand (a left-handed mirror), steering lock and aim speed.
+- Screen Wake Lock keeps the phone awake; `navigator.vibrate` ticks on fire and slot changes where supported.
 
 Every button goes through input actions, so the hold-or-toggle Accessibility setting applies to the phone as to keys.
 
 ## Desktop side
 
-Settings › Controls opens with a Phone controller card: Connect phone loads the receiver and shows the QR, the code and
-its countdown; once paired the card shows the phone's state and round trip and Disconnect. Keyboard, mouse and pad keep
+Settings › Controls opens with a Phone controller card: Connect phone loads the receiver and shows the QR, the code, the
+address and the countdown; once paired the card shows the phone's state and round trip and Disconnect. Keyboard, mouse and pad keep
 working at the same time (the stick yields to the keyboard when centred, as the touch HUD's does). The card's state is
 one datum (`phone-link`, `src/ui/surfaceRegistry.ts`).
 

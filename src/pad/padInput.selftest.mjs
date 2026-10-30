@@ -134,6 +134,16 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   mapper.applyAxes(frame(25, { aimX: 900, aimY: 46 }), 3000);
   assert.equal(input.aim[0], aimBefore, 'after a stale gap the next frame is a fresh baseline (no swing)');
 
+  // a phone that reloaded and resumed restarts its sequence: far behind the newest is a new stream, not a late frame
+  const restart = port();
+  const rm = createPadInputMapper(restart);
+  rm.applyAxes(frame(5000, { aimX: 400 }), 0);
+  assert.equal(rm.applyAxes(frame(4990, { steer: 1 }), 16), false, 'ten behind is a late frame');
+  assert.equal(rm.applyAxes(frame(1, { steer: 0.5, aimX: 0 }), 32), true, 'a restarted sequence is taken');
+  assert.ok(restart.move[0] > 0.4, 'the restarted phone steers');
+  assert.equal(restart.aim[0], 0, 'and its new aim total is a baseline, not a swing back');
+  assert.equal(rm.applyAxes(frame(2, { steer: 0.5, aimX: 8 }), 48), true);
+
   // an idle mapper does not keep writing the stick (keyboard keeps working when the phone is centred)
   const idle = port();
   const im = createPadInputMapper(idle);
