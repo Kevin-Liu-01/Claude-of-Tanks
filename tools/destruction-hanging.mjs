@@ -180,15 +180,30 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
    * triangle draws nothing): their samples by plan cell (support) and by voxel (touch), each piece's box, surface and
    * lower envelope (null for a piece drawing nothing).
    */
+  // (destruction-slab-kinds-perf 265) each piece as sampled in the intact building: a piece drawn now exactly as built (each
+  // of its triangles' coordinates the same) is the same piece, its samples, box and envelope reused
+  const intactPieces = new Array(W).fill(null);
+  const unmoved = (p, tris) => {
+    const was = spans[p.span];
+    if (tris === was) return true;
+    for (const t of p.list) {
+      const o = t * 9;
+      if (o + 8 >= tris.length) return false;
+      for (let c = 0; c < 9; c++) if (tris[o + c] !== was[o + c]) return false;
+    }
+    return true;
+  };
   function indexOf(src) {
     const sx = [], sy = [], sz = [], sp = [];
     const shape = new Array(W).fill(null);
     for (const p of pieces) {
       const tris = src[p.span];
-      const live = p.list.filter((t) => t * 9 + 8 < tris.length && drawsAt(tris, t * 9));
+      const same = src !== spans && intactPieces[p.id] && unmoved(p, tris);
+      const live = same ? p.list : p.list.filter((t) => t * 9 + 8 < tris.length && drawsAt(tris, t * 9));
       if (!live.length) continue;
-      const q = pieceOf(tris, live);
+      const q = same ? intactPieces[p.id] : pieceOf(tris, live);
       if (!q) continue;
+      if (src === spans) intactPieces[p.id] = q;
       for (let i = 0; i < q.own.length; i++) { sx.push(q.xyz[i * 3]); sy.push(q.xyz[i * 3 + 1]); sz.push(q.xyz[i * 3 + 2]); sp.push(p.id); }
       shape[p.id] = { lo: q.lo, hi: q.hi, area: q.area, env: q.env, tris, list: live, whole: live.length === p.list.length };
     }
@@ -298,42 +313,58 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
     const grounded = new Uint8Array(M);
     const { sx, sy, sz, sp, N, voxels } = ix;
     const onFloor = (x, y, z) => y - ground(x, z) <= HANG.groundTouchM || (floorUnder && y - floorUnder(x, z, y + 0.05) <= HANG.groundTouchM);
-    for (let i = 0; i < N; i++) if (onFloor(sx[i], sy[i], sz[i])) grounded[sp[i]] = 1;
-    // the presentation's samples into their own voxels beside the world's ([x, y, z, owner] each)
-    const all = new Map();
-    for (const [vk, list] of voxels) all.set(vk, list.slice());
+    // (perf 265: an owner on the ground once is on it; the floor's reading is the same every time)
+    for (let i = 0; i < N; i++) if (!grounded[sp[i]] && onFloor(sx[i], sy[i], sz[i])) grounded[sp[i]] = 1;
+    // the presentation's samples into their own voxels beside the world's ([x, y, z, owner] each): a world voxel they join is
+    // copied first (the index's own lists are the judge's to keep)
+    const extra = new Map();
     xp.forEach((e, k) => {
       const id = W + k;
       for (let i = 0; i < e.xyz.length; i += 3) {
         const x = e.xyz[i], y = e.xyz[i + 1], z = e.xyz[i + 2];
-        if (onFloor(x, y, z)) grounded[id] = 1;
+        if (!grounded[id] && onFloor(x, y, z)) grounded[id] = 1;
         const vk = voxKey(Math.floor(x / V), Math.floor(y / V), Math.floor(z / V));
-        let vl = all.get(vk); if (!vl) all.set(vk, vl = []);
+        let vl = extra.get(vk); if (!vl) extra.set(vk, vl = (voxels.get(vk) ?? []).slice());
         let mine = 0;
         for (let j = vl.length - 1; j >= 0 && mine < 6; j -= 4) if (vl[j] === id) mine++;
         if (mine < 6) vl.push(x, y, z, id);
       }
     });
+    const listAt = (vk) => extra.get(vk) ?? voxels.get(vk);
+    // (perf 265) a voxel's one owner, or -1 when it holds two or more: samples of one owner touch nothing of another
+    const soleMemo = new Map();
+    const soleOf = (list) => {
+      let o = soleMemo.get(list);
+      if (o === undefined) {
+        o = list[3];
+        for (let a = 7; a < list.length; a += 4) if (list[a] !== o) { o = -1; break; }
+        soleMemo.set(list, o);
+      }
+      return o;
+    };
     // touching: two owners' samples within a voxel's size of each other
     const D2 = V * V;
-    for (const [vk, list] of all) {
+    const touchIn = (vk, list) => {
       const vi = Math.floor(vk / VOX_X) - 65536, vj = Math.floor((vk % VOX_X) / VOX_Y) - 65536, vz = (vk % VOX_Y) - 65536;
-      for (let a = 0; a < list.length; a += 4) for (let b = a + 4; b < list.length; b += 4) {
+      const sole = soleOf(list);
+      if (sole < 0) for (let a = 0; a < list.length; a += 4) for (let b = a + 4; b < list.length; b += 4) {
         if (list[a + 3] === list[b + 3]) continue;
         const dx = list[a] - list[b], dy = list[a + 1] - list[b + 1], dz = list[a + 2] - list[b + 2];
         if (dx * dx + dy * dy + dz * dz <= D2) join(list[a + 3], list[b + 3]);
       }
       for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (let dc = -1; dc <= 1; dc++) {
         if (da < 0 || (da === 0 && (db < 0 || (db === 0 && dc <= 0)))) continue;
-        const other = all.get(voxKey(vi + da, vj + db, vz + dc));
-        if (!other) continue;
+        const other = listAt(voxKey(vi + da, vj + db, vz + dc));
+        if (!other || (sole >= 0 && soleOf(other) === sole)) continue;
         for (let a = 0; a < list.length; a += 4) for (let b = 0; b < other.length; b += 4) {
           if (list[a + 3] === other[b + 3]) continue;
           const dx = list[a] - other[b], dy = list[a + 1] - other[b + 1], dz = list[a + 2] - other[b + 2];
           if (dx * dx + dy * dy + dz * dz <= D2) join(list[a + 3], other[b + 3]);
         }
       }
-    }
+    };
+    for (const [vk, list] of voxels) touchIn(vk, extra.get(vk) ?? list);
+    for (const [vk, list] of extra) if (!voxels.has(vk)) touchIn(vk, list);
     const stands = new Uint8Array(M);
     for (let i = 0; i < M; i++) if (grounded[i]) stands[find(i)] = 1;
     return { find, stands };

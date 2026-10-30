@@ -916,7 +916,22 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 // ---------------------------------------------------------------------------------------------------- the staging
 
 /** The check, as a function: the report (pass, per-building rows with their snapshots and findings). */
-export async function runSlabCheck({
+export async function runSlabCheck(options = {}) {
+  const check = await createSlabCheck(options);
+  const rows = [];
+  for (const [id, runFace] of check.runs) { const row = check.runOne(id, runFace); if (row) rows.push(row); }
+  return { mapId: check.mapId, sections: check.sections, fracture: check.fracture, pass: rows.every((r) => r.pass), buildings: rows.length,
+    skipped: check.skipped, rows };
+}
+
+/**
+ * The check's map built once and its runs one at a time (destruction-slab-kinds-perf 265: the kinds receipt hands a map's
+ * runs to whichever worker has it built): `runs` the [id, face] it strikes, `runOne(id, face)` a run's row (null: a roof pass
+ * over a building without a roof section), `runOne(id, face, { list: true })` its row unrun (its fingerprint; `cached` as the
+ * caller's fingerprint store says). Each run stands every record and span back up as built first: a run reads nothing an
+ * earlier one left (the fingerprint cache skips any of them).
+ */
+export async function createSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof: stopAfterRoofAll = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin: rejoinAll = true,
   faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null, fingerprint = null, strikePlan = null,
@@ -947,7 +962,9 @@ export async function runSlabCheck({
   if (config.props?.tankWrecks?.ids?.length) await fleet.ensureTankBuilders(config.props.tankWrecks.ids).catch(() => {});
   const field = terrain.createHeightField(1337, config);
   const engine = { anisotropy: 4, setupShadowMaterial() {} };
-  const flora = vegetation.createVegetation(field, engine, 2001, config);
+  // (destruction-slab-kinds-perf 265) the vegetation as the battle builds it (map.ts createMapAsync): the grass chunks beyond
+  // the first view deferred, the trees, bushes and every rng draw as the eager build makes them (the props build alike)
+  const flora = await vegetation.createVegetationAsync(field, engine, 2001, config, null);
   const built = props.createProps(field, engine, 2002, config, flora);
   log(`props built: ${built.structureDamage.size} structures`);
   const worldMaterials = new Map();
@@ -1046,7 +1063,6 @@ export async function runSlabCheck({
     return [filmFrom.x + filmDir.x * t, filmFrom.y + filmDir.y * t, filmFrom.z + filmDir.z * t, terrainT >= 0 ? null : filmHit.record];
   };
 
-  const rows = [];
   // (destruction-slabs 227 round 2) each building struck from every face asked for (`faces`: wide, wide-back, narrow,
   // narrow-back — its wider or narrower side, the near or the far one), each face's rounds at its own seeded offsets
   // (the receipt's own at seed 0; the critic's variant census: the same building from another face flagged what the
@@ -1056,7 +1072,7 @@ export async function runSlabCheck({
     const d = built.structureDamage.get(id);
     return (facesFor?.(id, d.builder, d.anatomy.kit) ?? faces).map((faceName) => [id, faceName]);
   });
-  for (const [id, runFace] of runs) {
+  const runOne = (id, runFace, { list = false, plant = false } = {}) => {
     // (round 3) a face named `<face>+roof` is that face's roof pass alone (the kinds receipt strikes every roofed kind so:
     // what its roof's fall leaves standing over the eaves)
     const roofRun = runFace.endsWith('+roof');
@@ -1066,14 +1082,14 @@ export async function runSlabCheck({
     const seam = seamOf(id);
     const a = seam.anatomy;
     // (the roof pass) a building without a roof section has no roof to come down: the full pass covers it
-    if (stopAfterRoof && !a.roof) { log(`#${id} ${seam.builder}: no roof section (skipped by the roof pass)`); continue; }
+    if (stopAfterRoof && !a.roof) { if (!list) log(`#${id} ${seam.builder}: no roof section (skipped by the roof pass)`); return null; }
     for (const r of [...built.obstacles, ...built.colliders]) { r.crushed = false; r.dead = false; r.openings = null; }
     restoreSpans();
     // (round 3, the kinds receipt's cost) a run's fingerprint: what it strikes (the structure's spans as built, its anatomy
     // and its enclosure), how (the face, the seed, the staging) and with what (the caller's salt: the code's hash); a
     // fingerprint a clean run passed before is not run again
     let fp = null;
-    if (fingerprint) {
+    if (fingerprint && !plant) {
       const h = createHash('sha1');
       h.update(`${fingerprint.salt}|${mapId}|${id}|${runFace}|${faceSeed}|${rounds}|${roundGapS}|${settleS}|${sections}|${fracture}|${storeys.join(',')}|${maxSnapshots}|${rejoin}|${stopAfterRoof}\n`);
       for (const span of seam.spans) {
@@ -1085,13 +1101,16 @@ export async function runSlabCheck({
       const e = a.enclosure;
       if (e) { h.update(Buffer.from(e.top.buffer)); for (const b of e.bands) h.update(Buffer.from(b.cells.buffer)); }
       fp = h.digest('hex');
-      if (fingerprint.cached(fp)) {
-        rows.push({ id, face: runFace, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2),
-          h: +a.h.toFixed(2), storeys: a.storeys.length, floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired: 0,
-        collapsedAtS: -1, staging: null, events: [], spanIssues: [], snapshots: [], pass: true, cached: true, fingerprint: fp, worst: [], phases: {} });
-        log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: PASS (a clean run of this fingerprint passed before)`);
-        continue;
-      }
+    }
+    const cached = !!fp && fingerprint.cached(fp);
+    if (cached || list) {
+      // (a listing's row is its run unrun: what it strikes and its fingerprint; it passes only once run or cached)
+      const row = { id, face: runFace, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2),
+        h: +a.h.toFixed(2), storeys: a.storeys.length, floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired: 0,
+      collapsedAtS: -1, staging: null, events: [], spanIssues: [], snapshots: [], pass: cached ? true : null, cached, ...(list ? { listed: true } : {}),
+      fingerprint: fp, worst: [], phases: {} };
+      if (!list) log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: PASS (a clean run of this fingerprint passed before)`);
+      return row;
     }
     let clock = 0;
     // every event the match raised (any structure's), in order: what a late joiner's settled log replays
@@ -1422,6 +1441,15 @@ export async function runSlabCheck({
       return `${base}-flags.png`;
     };
     void groundTris;
+    // (destruction-slab-kinds-perf 265) `plant`: the kinds receipt's negative control — a stray slab planted in the building's
+    // own drawing (a 4 x 3 m plate 0.1 m thick, 3 m over its drawn top and 4 m past the plan's side), which every look must
+    // flag; a planted run has no fingerprint (never cached, never stored)
+    if (plant) {
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 3), worldMaterials.values().next().value ?? new THREE.MeshBasicMaterial());
+      plate.name = `fx-control-slab-${id}`;
+      plate.position.set(...toWorld(bx1 + 4, btop + 3, (bz0 + bz1) / 2));
+      fxGroup.add(plate);
+    }
     // before the first round: the building as it stands (its spans), judged as a control
     {
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
@@ -1669,10 +1697,10 @@ export async function runSlabCheck({
         return acc;
       }, {}),
     };
-    rows.push(row);
     log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: ${row.pass ? 'PASS' : `FAIL (${flaggedSnaps.length} of ${snapshots.length} snapshots flag stray slabs; ${spanIssues.length} span issues)`}`);
-  }
-  return { mapId, sections, fracture, pass: rows.every((r) => r.pass), buildings: rows.length, skipped: [...skipped.values()], rows };
+    return row;
+  };
+  return { mapId, sections, fracture, skipped: [...skipped.values()], runs, runOne };
 }
 
 /** Each face's default seed (the wide face's rounds are the receipt's own; the others the critic's variant stagings). */
