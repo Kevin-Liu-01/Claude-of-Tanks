@@ -704,10 +704,16 @@ function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs):
   ctx.fill();
   ctx.fillStyle = '#2a2c26';
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.30, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2);
   ctx.fill();
-  for (let ring = 0; ring < 2; ring++) {
-    const rr = r * (0.48 + ring * 0.26), n = 10 + ring * 6;
+  // (r8 critics: a pin-dot centre in a thin ring read as a target roundel: a larger hole, a thick dark collar)
+  ctx.lineWidth = r * 0.14;
+  ctx.strokeStyle = '#3c4232';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.93, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let ring = 0; ring < 1; ring++) {
+    const rr = r * 0.63, n = 12;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2;
       ctx.beginPath();

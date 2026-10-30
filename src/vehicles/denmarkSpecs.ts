@@ -58,7 +58,8 @@ leo1a5dk.visual = {
   ...leo1a5dk.visual,
   // the Danish Army's three-tone of the 1990s (the Aalborg museum's 1A5 DK turret): a greyer olive, black and earth brown
   // in large fields
-  scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#4e4130'], marking: 'number', number: '24',
+  // (r8 critics, both models: the Aalborg turret is black-dominant, the brown little): a black and a black-green field
+  scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#2a2d22'], marking: 'number', number: '24',
   camoScale: 0.72,
 };
 
@@ -124,9 +125,10 @@ leo2a7dk.visual = {
   // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
   // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
   // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
-  // r7 (critics: the r6 olive read bright lime; the photograph's is a dull grey-olive mottle with tan flecks): a duller
-  // olive, tan flecks, a dusty khaki wash (kept 15 clear of the other Danish coats)
-  scheme: 'nato', base: '#4f5239', weather: '#6a6a4c', patches: ['#3e4231', '#6c6248', '#45492f'], marking: 'number',
+  // r7 (critics: the r6 olive read bright lime): a duller olive; r8 (critics, both models: the cover's fabric read as
+  // patches pasted over painted tan blobs; the photograph's is one darker grey-green mottle, tan only on the gun's wrap):
+  // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
+  scheme: 'nato', base: '#474c3c', weather: '#3c4034', patches: ['#363b2e', '#4f5545', '#3f4436'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 

@@ -101,9 +101,7 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   P.addEquipment('hullDark', box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
   for (const x of [-0.66, -0.45, -0.24]) P.addEquipment('hullDark', box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
   if (mark === 'a5dk1') {
-    // r3 critics: UN service also lettered the hull, here the middle bins' outer faces under their latches
-    for (const s of [-1, 1] as const) P.decal('hull', 'stencil', 'UN', 0.30, [s * 1.682, 1.15, -0.56], s * Math.PI / 2);
-    // r6 critics: UN on the upper glacis (its face 6 cm over the datum) and the rear plate between the fuel cans
+    // r6 critics: UN on the upper glacis (r8: the bins' lettering, squeezed under their latches, read "IIN": gone) (its face 6 cm over the datum) and the rear plate between the fuel cans
     P.decal('hull', 'stencil', 'UN', 0.50, [0, hull.upperGlacisY(3.10) + 0.065, 3.103], 0, -Math.PI / 3);
     P.decal('hull', 'stencil', 'UN', 0.28, [0, 1.47, -3.553], Math.PI);
   }
@@ -113,7 +111,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', tyreBands: true });
+    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', tyreBands: true, denseGrilles: mark === 'a5dk1' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -217,7 +215,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       if (mark === 'a5') {
         P.addEquipment('turret', box(0.34, 0.20, 0.30), 0.62, roof + 0.10, 0.66);
         P.add('turretDark', box(0.26, 0.13, 0.012), 0.62, roof + 0.10, 0.815);
-        P.addEquipment('turret', box(0.36, 0.018, 0.30), 0.62, roof + 0.33, 0.56, -1.15, 0, 0);
+        // (r8 critics: the lid read as a loose plate: hinged at the box's rear edge, opened up and back)
+        P.addEquipment('turret', box(0.36, 0.018, 0.30), 0.62, roof + 0.341, 0.459, -1.92, 0, 0);
+        P.addEquipment('turretDark', cylX(0.012, 0.36, 8), 0.62, roof + 0.20, 0.51);
       }
       // the 1A5 DK's roof fast fittings for two rifles, behind the loader's hatch
       for (const x of [0.30, 0.12]) {
@@ -263,32 +263,25 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   // ---------------------------------------------------------------- rear stowage and markings --
   const buildLeo1DkTurretRear = (): void => {
     if (mark === 'a5dk1') {
-      // The DK-1's air conditioning and Honda generator housing over the rear bin (Pansermuseet: "a generator and an air
-      // conditioning system mounted on the rear of the turret"), standing well over the roof (the RAMTA front photograph)
-      // with a plain rear plate (the Air Show rear photograph) and its louvres along the sides; nothing stowed on it.
-      // r3 critics: the plate is painted with the housing (UN white, black lettering), not a dark panel; r4: 1.4 m wide
-      // and standing on the rear bin (it hung to the bin's foot as a turret-wide wall), the GPS antenna on its top
-      // (r7 critics: its top under the periscope's; the RAMTA photograph's stands clear over it)
-      const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.52, low = roof - 0.04, hw = 0.70, ym = (top + low) / 2;
-      P.addEquipment('turret', box(hw * 2, top - low, z0 - z1), 0, ym, (z0 + z1) / 2);
-      P.addEquipment('turret', box(hw * 2 + 0.04, 0.035, z0 - z1 + 0.03), 0, top + 0.0175, (z0 + z1) / 2);
-      P.addEquipment('turret', box(hw * 2 - 0.30, top - low - 0.10, 0.012), 0, ym, z1 - 0.006);
+      // The DK-1's air conditioning and Honda generator (Pansermuseet: "a generator and an air conditioning system mounted
+      // on the rear of the turret"). r8 (critics on the two DK-1 photographs: the Air Show's rear is one full-width block
+      // at the roof's height carrying the markings; the RAMTA front shows only a narrow unit standing over it; r3-r7's box
+      // over the bin read as a stacked step): the rear bin is the housing, louvred along its sides, its narrow cooling
+      // stack over the middle, the GPS dome on its lid, the UN on its rear face
+      const z0 = W.rearZ, z1 = W.binRearZ, zc = (z0 + z1) / 2, lid = roof - 0.02;
+      for (const s of [-1, 1] as const) for (let k = 0; k < 5; k++) {
+        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.14), s * 1.056, lid - 0.10 - k * 0.07, zc);
+      }
+      const sw = 0.25, sh = 0.36, sd = 0.20;
+      P.addEquipment('turret', box(sw * 2, sh, sd * 2), 0, lid + sh / 2, zc);
+      P.addEquipment('turret', box(sw * 2 + 0.04, 0.03, sd * 2 + 0.04), 0, lid + sh + 0.015, zc);
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
-        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.16), s * (hw + 0.005), roof + 0.06 + k * 0.08, (z0 + z1) / 2);
+        P.addEquipment('turretDark', box(0.02, 0.02, sd * 2 - 0.10), s * (sw + 0.006), lid + 0.08 + k * 0.07, zc);
       }
-      for (const x of [-(hw - 0.06), hw - 0.06]) P.addEquipment('turretDark', box(0.05, top - low, 0.05), x, ym, z1);
-      P.decal('turret', 'stencil', 'UN', 0.50, [0, ym, z1 - 0.014], Math.PI);
-      // r6 (critics: the top view a blank white slab; the GPS a stub): the lid's dark edge, its fan grille, a mushroom GPS
-      const zc = (z0 + z1) / 2, lid = top + 0.035;
-      for (const s of [-1, 1] as const) {
-        P.addEquipment('turretDark', box(0.014, 0.010, z0 - z1 + 0.03), s * (hw + 0.013), lid + 0.002, zc);
-        P.addEquipment('turretDark', box(hw * 2 + 0.04, 0.010, 0.014), 0, lid + 0.002, zc + s * (z0 - z1 + 0.016) / 2);
-      }
-      P.addEquipment('turretDark', box(0.50, 0.010, (z0 - z1) * 0.62), -0.02, lid + 0.004, zc);
-      for (let k = 0; k < 6; k++) P.addEquipment('turret', box(0.46, 0.012, 0.022), -0.02, lid + 0.008, zc - (z0 - z1) * 0.26 + k * (z0 - z1) * 0.104);
-      P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.38, top + 0.06, zc);
-      P.addEquipment('turret', xform(sph(0.085, 14, 7), 0, 0, 0, 0, 0, 0, [1, 0.55, 1]), 0.38, top + 0.085, zc);
-      P.addEquipment('turretDark', cylY(0.012, 0.012, 0.14, 8), -0.40, top + 0.105, (z0 + z1) / 2);
+      P.decal('turret', 'stencil', 'UN', 0.50, [0, (roof + W.binLowY) / 2 + 0.02, z1 - 0.012], Math.PI);
+      P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.62, lid + 0.025, zc);
+      P.addEquipment('turret', xform(sph(0.085, 14, 7), 0, 0, 0, 0, 0, 0, [1, 0.55, 1]), 0.62, lid + 0.05, zc);
+      P.addEquipment('turretDark', cylY(0.012, 0.012, 0.14, 8), -0.62, lid + 0.07, zc);
     } else {
       // (r7 critics: a mound of bundles over the roof; the Krigsmuseet and Aalborg roofs are clear): one pack and the roll
       stowage(P, 'turretCloth', rng, [[-0.50, roof + 0.10, -1.88, 0.44, 0.18, 0.36]]);

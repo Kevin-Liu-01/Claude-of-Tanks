@@ -20,6 +20,9 @@ export interface Leo1HullOptions {
   /** Release 265: broad black bands on the road wheels' outer tyres (the Danish Leopard 1s; r6 the UN-white 1A5 DK-1,
    * whose white wheels read white-on-white with the style's thin tyre line, r7 all three: critics, pale wheels). */
   readonly tyreBands?: boolean;
+  /** Release 265, r8: close-set slats over the engine deck's dark beds (the UN-white DK-1, whose six slats a field read
+   * as black zebra stripes). */
+  readonly denseGrilles?: boolean;
   /** The two fuel cans in their rear carriers: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
 }
@@ -42,7 +45,7 @@ export interface Leo1HullDatums {
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
   const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber', rearCanBucket = 'hullCloth',
-    tyreBands = false } = options;
+    tyreBands = false, denseGrilles = false } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -239,7 +242,8 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, engineDeckY + 0.009, -1.72);
       P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, engineDeckY + 0.012, -1.20);
       P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, engineDeckY + 0.012, -2.24);
-      for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, engineDeckY + 0.012, -1.29 - k * 0.17);
+      if (denseGrilles) for (let k = 0; k < 11; k++) P.addEquipment('hull', box(0.78, 0.014, 0.075), s * 0.52, engineDeckY + 0.012, -1.265 - k * 0.091);
+      else for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, engineDeckY + 0.012, -1.29 - k * 0.17);
       P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.006, -2.50);
       P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.015, -2.50);
       P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, deckTopY(-2.50) + 0.018, -2.50);
@@ -247,7 +251,8 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     }
     const exhaustTopY = deckTopY(-3.00) + 0.022;
     P.add('hullDark', box(1.78, 0.018, 0.44), 0, exhaustTopY - 0.009, -3.00);
-    for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, exhaustTopY + 0.006, -2.84 - k * 0.11);
+    if (denseGrilles) for (let k = 0; k < 7; k++) P.addEquipment('hull', box(1.70, 0.014, 0.05), 0, exhaustTopY + 0.006, -2.82 - k * 0.061);
+    else for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, exhaustTopY + 0.006, -2.84 - k * 0.11);
 
     // Rear service face and two giant NATO fuel cans in proper carriers, against the transom, clear of the sprocket
     // wraps, with braces running forward into the hull.
