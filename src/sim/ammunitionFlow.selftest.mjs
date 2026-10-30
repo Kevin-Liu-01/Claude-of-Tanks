@@ -215,7 +215,10 @@ const laterChannelCounts = {
   challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
   // (release 265 CN) the Longwei-family concepts, each firing its host's three rounds
   ztz99a2_qinglong: 3, vt4a1_baihu: 3, t72b3_zhuque: 3, t72b3m_xuanwu: 3,
+  // 265 (integration, pattons-m48-266): the four new M48s, three rounds each
+  m48a3_patton: 3, magach3: 3, m48a2ga2: 3, m48_super: 3,
 };
+const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
 for (const m of LONGWEI_FAMILY) {
@@ -271,9 +274,10 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three,
-// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265).
+// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265), and the
+// four new M48s' three each (265 integration).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
-  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0), 560,
+  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
