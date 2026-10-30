@@ -208,9 +208,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leo2a6m: { doctrine: 'flexible', viewM: 435, still: 0.176, moving: 0.116 },
   leo2a5m: { doctrine: 'flexible', viewM: 425, still: 0.178, moving: 0.118 },
   leo2a5: { doctrine: 'flexible', viewM: 420, still: 0.181, moving: 0.121 },
-  // 265: the Danish Leopard 2s keep their donors' roles (the 2A5 DK's Elop sight, the 2A7 DK's new thermals)
+  // 265: the Danish Leopard 2A5 DK keeps its donor's role (its Elop sight)
   leo2a5dk: { doctrine: 'flexible', viewM: 425, still: 0.181, moving: 0.121 },
-  leo2a7dk: { doctrine: 'flexible', viewM: 440, still: 0.174, moving: 0.114 },
   k2_black_panther: { doctrine: 'flanker', viewM: 430, still: 0.225, moving: 0.165 },
   kf51_panther: { doctrine: 'flexible', viewM: 440, still: 0.181, moving: 0.121 },
   t90a: { doctrine: 'assault', viewM: 400, still: 0.183, moving: 0.123 },

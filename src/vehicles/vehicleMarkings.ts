@@ -167,7 +167,6 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a5: anchor('hull', 'left', .758, .484, .22, -1),
   // 265: the Danish flag on the hull side ahead of the bar-armour cages / under the Barracuda drapes' cut
   leo2a5dk: anchor('hull', 'left', .62, .484, .20, -1),
-  leo2a7dk: anchor('hull', 'left', .192, .493, .22, 1),
   merkava4: anchor('hull', 'left', .55132, .48234, .24, 1),
   // Source-built variants use exposed permanent armor: Trophy’s turret cheek
   // clears its outer skirts; Barak and Namer retain clear hull-side fields.

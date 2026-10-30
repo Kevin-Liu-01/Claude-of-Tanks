@@ -4,12 +4,11 @@
 //   sight, a drum on the PERI's bearing (US Army photographs at Grafenwöhr, 3-4 July 2014, show it over the roof), and
 //   the bar armour the tanks took for Helmand in 2008 and kept: a cage across the stern and the rear hull quarters and a
 //   cage round the turret bustle (the same photographs, side and rear).
-// - 2A7 DK (44 tanks, Jydske Dragonregiment; the Forsvaret fact sheet): the 2A7's new stowage modules, ribbed boxes
-//   round the bustle and the rear turret sides (the Danish Army's transporter photograph), and the Barracuda mobile
-//   camouflage system ("mobilt sløringssystem"), the suit in ghillieFleetSuits.ts (the Latvian live-fire photograph).
+// - 2A7 DK (44 tanks, Jydske Dragonregiment): held from release 265 (the coordinator, 2026-10-30: its Barracuda cover is
+//   rebuilt as a reusable fit on wip/denmark-2a7dk-265 and lands with its own critics).
 // Neither carries the German builds' remote 30 mm station. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT } from './kit.ts';
-import { LEOPARD_X_DATUMS, buildLeopard2A5X, buildLeopard2A7VX } from './leopardX.ts';
+import { LEOPARD_X_DATUMS, buildLeopard2A5X } from './leopardX.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylY, cylZ, stowage } = KIT;
@@ -147,37 +146,4 @@ export function buildLeopard2A5DK(P: TankBuilderPort): void {
   addA5DkHullSlats(P);
   addDanishFlag(P, LEOPARD_X_DATUMS.leo2a5.turretPivot, [-0.66, 2.68, -0.98]);
   P.turretG.userData.leopard2DkReceipt = { mark: '2A5 DK', elopCommanderSight: true, bustleSlats: true, hullSlats: true, flag: true };
-}
-
-/** A ribbed stowage module: a closed box with vertical ribs on its outer face (`face`: +1/-1 along x for a side
- * module, 0 for the rear face along -z). World frame of the 2A7V build, turret-owned. */
-function ribbedModule(P: TankBuilderPort, c: Vec3, size: Vec3, face: -1 | 0 | 1): void {
-  const pivot = LEOPARD_X_DATUMS.leo2a7v.turretPivot;
-  const [cx, cy, cz] = c, [w, h, d] = size;
-  P.addEquipment('turretDetail', box(w, h, d), cx - pivot[0], cy - pivot[1], cz - pivot[2]);
-  P.addEquipment('turretDetail', box(w + 0.02, 0.025, d + 0.02), cx - pivot[0], cy + h / 2 + 0.0125 - pivot[1], cz - pivot[2]);
-  const span = face === 0 ? w : d, ribs = Math.max(3, Math.round(span / 0.09));
-  for (let k = 1; k < ribs; k++) {
-    const t = -span / 2 + span * k / ribs;
-    if (face === 0) P.addEquipment('turretDetail', box(0.022, h - 0.06, 0.03), cx + t - pivot[0], cy - pivot[1], cz - d / 2 - 0.015 - pivot[2]);
-    else P.addEquipment('turretDetail', box(0.03, h - 0.06, 0.022), cx + face * (w / 2 + 0.015) - pivot[0], cy - pivot[1], cz + t - pivot[2]);
-  }
-}
-
-export function buildLeopard2A7DK(P: TankBuilderPort): void {
-  // the gun's wrap a khaki-brown (r9, r10 critics: the Latvia photograph's sleeve is khaki or tan-brown; r8: the stock pale
-  // sand clashed with the green)
-  P.mats.canvasPale.color.setHex(0x6b6046);
-  buildLeopard2A7VX(P, { danish: true });
-  // the rear module across the bustle and a module down each rear turret side, behind the smoke banks
-  // (the rear module runs forward under the bustle's overhang to the turret's rear wall at z -2.49; the side modules sit
-  // into the wall)
-  // (the side modules run forward along the turret sides to just behind the smoke banks at z -1.12)
-  ribbedModule(P, [0.05, 2.36, -2.90], [2.44, 0.50, 0.80], 0);
-  for (const side of [-1, 1] as const) ribbedModule(P, [side * 1.40, 2.38, -2.06], [0.48, 0.46, 1.56], side);
-  addDanishFlag(P, LEOPARD_X_DATUMS.leo2a7v.turretPivot, [-0.98, 2.68, -0.92]);
-  // the fender between the deck's edge and the skirts (r6 critics, both models: from above the ground showed through a
-  // 4 cm slit at x 1.82-1.85 from z -2.30 to 1.80, rayed down at 1 cm), a strip just under the deck's edge
-  for (const side of [-1, 1] as const) P.add('hull', KIT.box(0.07, 0.02, 4.14), side * 1.835, 1.315, -0.25);
-  P.turretG.userData.leopard2DkReceipt = { mark: '2A7 DK', ribbedStowageModules: 3, barracuda: true, flag: true };
 }

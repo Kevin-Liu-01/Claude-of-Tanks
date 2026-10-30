@@ -8,8 +8,8 @@ import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { auditFleetBalance } from './balanceAudit.ts';
 
 assert.deepEqual(Object.keys(VEHICLE_ROLE_PROFILES).sort(), [...ALL_TANK_IDS].sort(), 'every vehicle has an explicit role profile');
-// 265: the Danish line joins: the Leopard 1A3 DK, 1A5 DK, 1A5 DK-1, 2A5 DK and 2A7 DK (236 -> 241).
-assert.equal(ALL_TANK_IDS.length, 241); // 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15)
+// 265: the Danish line joins: the Leopard 1A3 DK, 1A5 DK, 1A5 DK-1 and 2A5 DK (236 -> 240; the 2A7 DK held).
+assert.equal(ALL_TANK_IDS.length, 240); // 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15)
 const ranges = ALL_TANK_IDS.map(id => viewRangeOf(TANK_SPECS[id]));
 assert.equal(viewRangeOf(TANK_SPECS.m551a1_tts), Math.max(...ranges));
 assert.equal(viewRangeOf(TANK_SPECS.m551_sheridan), 480);

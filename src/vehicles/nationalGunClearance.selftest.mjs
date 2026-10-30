@@ -55,7 +55,6 @@ const CURVES = {
   leo1a5dk: [],
   leo1a5dk1: [],
   leo2a5dk: [],
-  leo2a7dk: [], // its measured curve over the rear deck (the 2A7V publishes none)
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

@@ -109,7 +109,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 265: the Danish Leopards
-  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -166,7 +166,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
 // 2026-10-29 re-pin (265, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
-// Leopard line on through the 1A5 DK (I, the DK-1 its twin), the 2A5 DK (IX) and the 2A7 DK (X); the Christian II moves
-// out of the Sweden tree into Denmark's special lane, and Sweden's nations are Sweden's alone again.
-assert.equal(digest, '4074752114fe8915', `tree content changed: re-pin to ${digest} if deliberate`);
+// Leopard line on through the 1A5 DK (I, the DK-1 its twin) to the 2A5 DK (IX), the 2A7 DK held (2026-10-30, Main: its
+// Barracuda lands later); the Christian II moves out of the Sweden tree into Denmark's special lane, and Sweden's nations
+// are Sweden's alone again.
+assert.equal(digest, '55930523db85a4b3', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
