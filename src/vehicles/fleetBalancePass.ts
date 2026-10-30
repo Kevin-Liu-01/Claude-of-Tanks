@@ -59,6 +59,15 @@ function turretFront(registry: TankSpecRegistry, id: string, factor: number): vo
   }
 }
 
+/** Scales a hull's frontal main plates (the glacis, the lower front and the forward hatch faces), KE and CE. */
+function hullFront(registry: TankSpecRegistry, id: string, factor: number): void {
+  for (const plate of spec(registry, id).armor.hullPlates) {
+    if (plate.kind !== 'main' || !/glacis|lower_front|front/i.test(plate.name) || /side/i.test(plate.name)) continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 /** Gives a vehicle drawn on another's shell that shell's main plates (KE and CE, by plate name); add-on plates stay. */
 function mainArmorFrom(registry: TankSpecRegistry, id: string, shellId: string): void {
   const shell = spec(registry, shellId).armor;
@@ -190,7 +199,10 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank, { hp: 1600, enginePowerHp: 1100 });
     tank.gun.reloadS = 8.1;
     primary(registry, 'merkava1b', { damage: 490, pen100: 560, pen1000: 515, pen2000: 470 });
-    armor(registry, 'merkava1b', 0.35);
+    // 265 (FAIRNESS-265 P10): the Tier VII ceiling comes off the frontal arc only. The whole-armour x0.35 left a 16 mm
+    // roof that a head-on 12.7 mm volley defeated (roofStations); the roof, sides and rear keep their own thickness.
+    turretFront(registry, 'merkava1b', 0.35);
+    hullFront(registry, 'merkava1b', 0.35);
   }
   {
     const tank = spec(registry, 't62_1975');
@@ -485,7 +497,8 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   face; 262's VIII levers with the Challenger 1 marks and the K1A1; the new Tier X Oplots and ZTZ-20s. Armour levers
  *   only where a donor holds the gun and hull (sourceXSecondWave).
  * - 265 (FAIRNESS-265, the next release's new and rebuilt tanks): the CN concepts' box cheeks, the Leopard 2A5's
- *   wedge read, the Leclerc's magazine cycle, the ZTZ-100's footing and the M1E3's lighter armour.
+ *   wedge read, the Leclerc's magazine cycle, the ZTZ-100's footing, the M1E3's lighter armour and the rebuilt
+ *   Merkavas' glacis and round.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
@@ -645,6 +658,13 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the M1E3 on the 120 mm shut out the AbramsX (nextgen-abrams-peer 0.917): the published "about 25 % lighter" comes out
   // of passive armour, x0.75 on its 0.88 (the pair 0.75; its row 0.83 -> 0.55)
   armor(registry, 'm1a3', 0.75);
+  // Tier III: the rebuilt Merkava 2B and 2D's sloped upper glacis read 1,055-1,850 mm on the range (the Mk 3's published
+  // glacis is 760); x0.5 brings them into the band (0.92 / 0.82 -> 0.73 / 0.67)
+  for (const id of ['merkava2b', 'merkava2d']) hullFront(registry, id, 0.5);
+  // Tier IX: the rebuilt Merkava 4B fires the Mk 4M's M338 and carries its 2,850 HP: the same 65 t hull and MG253
+  // (0.11 -> 0.25). Its flat 481 mm gun notch is a raise for 266's per-hit gun-face split.
+  primary(registry, 'merkava4b', { damage: 550, pen100: 900, pen1000: 820, pen2000: 740 });
+  spec(registry, 'merkava4b').hp = 2850;
 }
 
 /** Sets an autoloader's full magazine cycle, which the gun's headline reload repeats (fleetBalance.selftest). */

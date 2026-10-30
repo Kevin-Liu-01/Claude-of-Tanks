@@ -44,7 +44,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',
-  merkava2b: 'lift the engine over the shown-tier MBT mobility floor',
+  merkava2b: 'lift the engine over the shown-tier MBT mobility floor; 265: a x0.5 hull front, its sloped glacis read 1,055-1,850 mm at III',
   t80bv: 'lift the fire control over the shown-tier MBT floor; 259: a slower cycle and less hull for same-tier fairness at IV',
   upior: 'lift the hull and round over the next-generation IFV floors',
   // 2026-10-26 (259): same-tier fairness at the shown tiers IV and VII (fleetBalancePass applySameTierFairness)
@@ -60,7 +60,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   xk2_black_panther: 'trade excess paper DPM for realized frontal protection and ammunition',
   k2b: 'establish a real Tier X protection and ammunition step over K2',
   t90m_proryv: 'separate the Tier X Proryv from its Tier IX T-90M donor',
-  merkava1b: 'remove the Tier VII armor and penetration ceiling',
+  merkava1b: 'remove the Tier VII armor and penetration ceiling; 265: on the frontal arc only, the roof, sides and rear keep their thickness',
   spz_puma: 'balance the Tier VIII cannon and protection package against its peers',
   bmp3_rok: 'restore a complete Tier VIII cannon, missile and protection package',
   spz_wotan: 'remove the Tier X autocannon ceiling while retaining anti-armor utility',
@@ -131,6 +131,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   leclerc_xlr: 'the Type 90\'s 9 s magazine cycle with the S2 and SXXI',
   amx56: 'the Type 90\'s 9 s magazine cycle with its Leclerc S2 donor (sourceXSecondWave)',
   ztz100: '2,750 HP and a 480-damage round, the ZTZ-20 prototype\'s footing',
+  merkava2d: 'a x0.5 hull front: its sloped glacis read 1,055-1,850 mm at III',
+  merkava4b: 'the Mk 4M\'s M338 round and 2,850 HP on the same hull: its flat gun notch read 481 mm at IX',
 } as const);
 
 interface FleetBalanceOutlier {
