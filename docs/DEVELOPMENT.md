@@ -1088,7 +1088,19 @@ The owner's rule (226): "no regenerating for tanks or anything else that didn't 
 
     npm run tank:regen:changed                 # changed ids only, then the final resolve must be empty
     npm run tank:regen:changed -- --verify     # then each step's check on exactly the ids it ran
+    npm run tank:regen:changed -- --ids=<ids>  # every step on exactly a lane's own tanks (the world steps on their donor maps)
     npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
+
+**Refusals and `--ids` (266).** With no `release/fingerprints.tsv` (main before 265's bootstrap), or one recorded on
+another toolchain (`changed-ids` prints this run's toolchain parts next to the table's hash), every id resolves as
+changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before anything runs: "no fingerprints table:
+pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain mismatch, "or --all to re-record").
+`--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors; with a
+table it keeps the fixpoint among the ids and records their rows (the next plain run finds the rest; the chain receipt
+holds that `--ids` then a plain run equals a whole-fleet regen byte for byte), without one it runs each step once and
+records nothing. An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
+names (`docs/references/concepts/*.json` list their receipts) is no build input: five sat in the core key until 266, so
+an edit to one marked every id; `fleet-partition.selftest` now fails on any test-only tooling in a build's or step's key.
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
