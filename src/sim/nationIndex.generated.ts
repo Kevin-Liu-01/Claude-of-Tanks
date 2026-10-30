@@ -80,6 +80,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["object695","russia","next-generation",10],
   ["kf51_evo","germany","next-generation",10],
   ["kf51_u","germany","next-generation",10],
+  ["leo1a2a1","germany","cold-war",1],
   ["chieftain3","uk","cold-war",2],
   ["chieftain_mk9","uk","cold-war",4],
   ["challenger1_mk1","uk","cold-war",8],
