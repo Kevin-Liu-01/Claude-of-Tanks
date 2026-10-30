@@ -37,7 +37,7 @@ const ROAD_WHEEL_ZS = [2.10, 1.245, 0.42, -0.47, -1.31, -2.14];
 const RING_Z = 0.16;
 
 /** Hull top at z: the upper glacis, the flat deck round the turret, the engine deck rising aft. */
-function hullTop(h: typeof HULL, z: number): number {
+function hullTop(h: Readonly<Record<keyof typeof HULL, number>>, z: number): number {
   if (z >= h.glacisZ) return h.noseY + (h.noseZ - z) * (h.deckY - h.noseY) / (h.noseZ - h.glacisZ);
   if (z >= h.rearDeckZ) return h.deckY;
   return h.deckY + (h.rearDeckZ - z) / (h.rearDeckZ - (h.sternZ + 0.20)) * (h.rearDeckY - h.deckY);
