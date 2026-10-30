@@ -9,21 +9,24 @@ import * as THREE from 'three';
 import {
   createWaterRippleField, WATER_RIPPLE_WINDOW_M, WATER_RIPPLE_TEXELS, WATER_RIPPLE_DEPTH_M, WATER_RIPPLE_FIXED_DT,
   WATER_RIPPLE_MAX_SUBSTEPS, WATER_RIPPLE_GRAVITY, WATER_RIPPLE_HULL_DRAFT_M, WATER_RIPPLE_CHURN_FULL_SPEED_MPS,
-  WATER_RIPPLE_SLEEP_AFTER_S,
+  WATER_RIPPLE_SLEEP_AFTER_S, WATER_RIPPLE_STANDING_PRESS, WATER_RIPPLE_PRESS_FULL_SPEED_MPS,
 } from './waterRipples.ts';
 import { createShallowWaterSurface, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function recordingRenderer() {
   const log = [];
+  const materials = [];
   let target = null;
   return {
     log,
+    materials,
     autoClear: true,
     getRenderTarget() { return target; },
     setRenderTarget(value) { target = value; log.push(['target', value?.texture?.name ?? null]); },
     render(root) {
       const material = root.material;
+      if (!materials.includes(material)) materials.push(material);
       log.push(['render', material.name, material.uniforms?.tState?.value?.name ?? null,
         material.uniforms?.uImpulseCount?.value ?? null, this.autoClear]);
     },
@@ -68,9 +71,29 @@ assert.ok(glsl.includes('vel *= 1.0 - uDamping * uDt;'), 'damping');
 assert.ok(glsl.includes('h = mix(h, (l.r + r.r + u.r + d.r) * 0.25, 0.04);'), 'odd-even decoupling control');
 assert.ok(glsl.includes('float window = 1.0 - smoothstep(0.40, 0.47, max(off.x, off.y));')
   && glsl.includes('gl_FragColor = vec4(h, vel, foam) * window;'), 'the state fades to rest toward the seam every step');
-assert.ok(glsl.includes('return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;'), 'rounded-rectangle hull footprint');
-assert.ok(glsl.includes('p += uHullB[i].z * (1.0 - smoothstep(-0.2, 0.6, hullDistance(w, uHullA[i], uHullB[i])));'),
-  'the draft over the footprint, feathered past the skirt');
+// (2026-10-29, the owner's squares in water) the footprint is a stadium, its ends half circles of the half width, and the
+// draft is feathered under the skirt: a rounded rectangle with 0.65 m corners, feathered 0.6 m past the skirt, pressed a
+// dimple whose rim traced the hull's plan round it on the desktop
+assert.ok(glsl.includes('float corner = min(b.x, b.y);') && glsl.includes('return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;'),
+  'a stadium hull footprint');
+assert.ok(glsl.includes('p += uHullB[i].z * (1.0 - smoothstep(-0.9, 0.1, hullDistance(w, uHullA[i], uHullB[i])));'),
+  'the draft over the footprint, feathered under the skirt');
+assert.doesNotMatch(glsl, /min\(0\.65, b\.y \* 0\.45\)|smoothstep\(-0\.2, 0\.6, hullDistance/, 'no rounded-rectangle footprint, no feather round the hull');
+{
+  // the same in JS, for a T-84U's plan (half 3.65 x 2.13 m): the plan's corner stands 0.88 m outside the footprint (a
+  // rounded rectangle's 0.27), its sides are the footprint's, and no draft reaches 0.1 m past the skirt
+  const b = { x: 3.65, y: 2.13 };
+  const hullDistance = (along, across) => {
+    const corner = Math.min(b.x, b.y), qx = Math.abs(along) - b.x + corner, qy = Math.abs(across) - b.y + corner;
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - corner;
+  };
+  const ss = (a, c, x) => { const t = Math.min(1, Math.max(0, (x - a) / (c - a))); return t * t * (3 - 2 * t); };
+  const pressure = (along, across) => 1 - ss(-0.9, 0.1, hullDistance(along, across));
+  assert.ok(hullDistance(b.x, b.y) > 0.85, `the plan's corner is well outside the footprint (${hullDistance(b.x, b.y).toFixed(2)} m)`);
+  assert.ok(Math.abs(hullDistance(0, b.y)) < 1e-9 && Math.abs(hullDistance(b.x, 0)) < 1e-9, 'the sides and the ends are the plan\'s');
+  assert.equal(pressure(0, b.y + 0.1), 0, 'no draft 0.1 m past the skirt');
+  assert.equal(pressure(0, b.y - 0.9), 1, 'the full draft 0.9 m inside it');
+}
 assert.ok(glsl.includes('foam += trackChurn(w) * uDt * 1.25 * wet;') && glsl.includes('float foam = mix(c.a, (l.a + r.a + u.a + d.a) * 0.25, 0.05) * exp(-uFoamDecay * uDt);'),
   'track churn feeds a decaying, spreading foam field that stays where it was churned');
 assert.ok(glsl.includes('h -= imp.w * g;') && glsl.includes('if (i >= uImpulseCount) break;'), 'splash impulses are craters');
@@ -91,7 +114,23 @@ const stepMaterialUniforms = (() => {
 assert.ok(stepMaterialUniforms);
 const hullA = source.includes('hullA[i].set(s.x, s.z, fx, fz);');
 assert.ok(hullA, 'slot A carries position and unit heading');
-assert.ok(source.includes('strength * WATER_RIPPLE_HULL_DRAFT_M, churn);'), 'slot B carries the draft and the churn rate');
+assert.ok(source.includes('strength * WATER_RIPPLE_HULL_DRAFT_M * press, churn);'), 'slot B carries the draft and the churn rate');
+{
+  // a standing hull presses a share of its draft; from 3 m/s the full draft (the moving patch throws the wake)
+  const r = recordingRenderer();
+  const f = createWaterRippleField(r, { tier: 'desktop' });
+  const draftAt = (speed) => {
+    f.setDisturbances([{ x: 0, z: 0, strength: 1, dirX: 0, dirZ: 1, speed, halfLength: 3.65, halfWidth: 2.13 }]);
+    f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+    const step = r.materials.find((m) => m.uniforms?.uHullB);
+    return step.uniforms.uHullB.value[0].z;
+  };
+  assert.ok(Math.abs(draftAt(0) - WATER_RIPPLE_HULL_DRAFT_M * WATER_RIPPLE_STANDING_PRESS) < 1e-9, `a standing hull presses ${WATER_RIPPLE_STANDING_PRESS} of its draft`);
+  assert.ok(Math.abs(draftAt(WATER_RIPPLE_PRESS_FULL_SPEED_MPS / 2) - WATER_RIPPLE_HULL_DRAFT_M * (WATER_RIPPLE_STANDING_PRESS + (1 - WATER_RIPPLE_STANDING_PRESS) / 2)) < 1e-9,
+    'half the press speed: halfway');
+  assert.ok(Math.abs(draftAt(8) - WATER_RIPPLE_HULL_DRAFT_M) < 1e-9, 'a moving hull its full draft');
+  assert.ok(WATER_RIPPLE_STANDING_PRESS > 0 && WATER_RIPPLE_STANDING_PRESS <= 0.35, 'a standing hull keeps a little contact, not a dimple');
+}
 assert.ok(source.includes('const n = Math.min(SLOT_CAP, sources.length);'), 'cap 8 slots');
 assert.ok(WATER_RIPPLE_HULL_DRAFT_M > 0.3 && WATER_RIPPLE_HULL_DRAFT_M < 0.6, 'the draft is a wading tank, not a ship');
 
