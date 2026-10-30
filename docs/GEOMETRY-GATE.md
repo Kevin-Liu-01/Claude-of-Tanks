@@ -121,6 +121,34 @@ pixel columns with > 0.35 m of band — skirts and fenders count toward
 width (published widths include them); whip antennas don't. Score:
 `100 − Σ max(0, pct − 1)·8` — 1% grace per dim, then 8 points per percent.
 
+**The body (Main's rulings 2026-10-30, owner-delegated).** Every dims row
+measures the body: hull and turret without radio whips and antennas, pintle
+and roof weapons and their mounts, or other thin roof fittings, on the build
+and the oracle alike (`tools/body-height-parts.mjs`; every other mask keeps
+them). The build names them by tags, never by shape: `antennaWhip` and the
+roof-gun fitting roots, working auxiliary stations (not a primary-weapon RWS),
+and parts drawn into ordinary buckets under the `antenna` seat role
+(`antennaPart()` or `withSeatRole(P, 'antenna', …)`; the merge keeps their
+spans and the gate cuts them). The oracle names them by node: War Thunder
+`antenna*`, `bone_mg_aa_*`, `mg_aa*`, `bone_mg_[hv]_*`, `mg_NN`,
+`mg_mount_*` (never `mg_twin`, the coaxial), Sketchfab `*Pintle`/`AmmoCan`, or
+a registration's `roofFittingNodes`. A new whip or mast drawn as a raw rod
+needs `antennaPart()`, or it counts as body.
+- A published `heightM` is an interval target, since sources measure to the
+  cupola or the roof gun: it passes anywhere from the body top (the p95 roof)
+  to the roof-fittings top (the highest column with the roof weapons back and
+  the whips still out), and the error outside it is the distance to the
+  nearer end. An oracle comparison (the source ruler, the preservation
+  baseline) stays body against body. `spec.dims.heightM` itself is the sim's
+  and is not changed by the gate.
+- `hullLengthM` comes from the hull's own side trace over the same 12 % band,
+  so a thick barrel column can never count as hull once the whips no longer
+  raise the band; a fused oracle has no hull trace, so both sides use the
+  whole body there.
+- The source ruler keeps its whole-source frame; its physical envelopes are
+  the bodies'. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
+  leaves the height unchanged, a raised hull moves it).
+
 This is the anti-gaming anchor: a build that "matches" a defective oracle
 (sunken hull, sky-high fused turret) still fails dims, and a build that
 matches dims but not the curves fails the curves. You cannot satisfy both
