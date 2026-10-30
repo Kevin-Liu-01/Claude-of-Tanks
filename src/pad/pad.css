@@ -25,7 +25,7 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 
 /* the controller: the tank in the hand. Three zones across the full width (drive, the tank, the gun), no boxes; the
    left-handed layout mirrors them. */
-.pad-ctl{height:100%;display:grid;grid-template-columns:minmax(104px,20%) 1fr minmax(184px,38%);grid-template-rows:auto 1fr;
+.pad-ctl{height:100%;display:grid;grid-template-columns:minmax(104px,20%) 1fr minmax(184px,38%);grid-template-rows:auto minmax(0,1fr);
   grid-template-areas:'top top top' 'drive tank gun';column-gap:var(--s4);row-gap:var(--s2);}
 .pad-ctl[data-hand='left']{grid-template-columns:minmax(184px,38%) 1fr minmax(104px,20%);grid-template-areas:'top top top' 'gun tank drive';}
 .pad-top{grid-area:top;display:flex;align-items:center;gap:var(--s2);min-width:0;}
@@ -64,9 +64,12 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
   background:var(--fill-soft);color:var(--ink-1);}
 
 /* the tank: its plan view turns with the wheel; the ring carries the gun's bearing */
-.pad-mid{grid-area:tank;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);min-width:0;}
-.pad-tank{position:relative;width:min(62vh,100%,300px);aspect-ratio:1;padding:0;border:0;border-radius:50%;background:transparent;
-  color:var(--ink-3);}
+.pad-mid{grid-area:tank;display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-items:center;gap:var(--s2);
+  min-width:0;min-height:0;}
+/* the tank sizes from its grid area, never the viewport unit (iOS measures vh with its toolbars hidden) */
+.pad-tank{position:relative;height:100%;max-height:300px;max-width:100%;aspect-ratio:1;padding:0;border:0;border-radius:50%;
+  background:transparent;color:var(--ink-4);}
+.pad .pad-tank{color:var(--line-3);}
 .pad-tank:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .pad-bearing,.pad-hull{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
 .pad-bearing{transition:transform var(--dur-fast) linear;}
@@ -80,9 +83,9 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-msg{min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
 
 /* the gun: the sight pad, the trigger that fills as the gun loads, scope and zoom beside it */
-.pad-right{grid-area:gun;position:relative;min-height:0;}
-.pad-aim{position:absolute;inset:0;border-radius:var(--plate-radius);background:var(--fill-faint);touch-action:none;display:flex;
-  align-items:center;justify-content:center;}
+.pad-right{grid-area:gun;position:relative;min-width:0;min-height:0;}
+.pad-aim{position:absolute;inset:0;padding-bottom:120px;border-radius:var(--plate-radius);background:var(--fill-faint);touch-action:none;
+  display:flex;align-items:center;justify-content:center;}
 .pad-reticle{width:96px;height:96px;color:var(--ink-3);transform:translate(0,0);}
 .pad-reticle svg{width:100%;height:100%;}
 .pad-fire{position:absolute;right:var(--s3);bottom:var(--s3);width:108px;height:108px;display:flex;align-items:center;justify-content:center;

@@ -961,7 +961,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         markLoadFailed([connect]);
       });
     });
-    el('div', 'cot-set-note', host).textContent = t('settings.phone.note');
   }
 
   function renderControls() {

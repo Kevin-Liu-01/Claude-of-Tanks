@@ -591,7 +591,7 @@ form.addEventListener('submit', (event) => {
 end.querySelector('button')!.addEventListener('click', () => {
   codeInput.value = '';
   submitLabel.textContent = t('pad.join.connect');
-  hint.textContent = t('pad.join.hint');
+  hint.hidden = false;
   show('join');
   codeInput.focus();
 });
@@ -604,7 +604,7 @@ function prefill(): void {
   if (!fromLink && !resume) return;
   codeInput.value = formatPadCode(fromLink ?? resume!.code);
   submitLabel.textContent = t('pad.join.start');
-  hint.textContent = t('pad.join.startHint');
+  hint.hidden = true;
   error.textContent = '';
 }
 window.addEventListener('hashchange', () => { if (!link) { prefill(); show('join'); } });

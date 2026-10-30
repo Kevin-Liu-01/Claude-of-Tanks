@@ -28,8 +28,7 @@ const CARD_CSS = `
 .cot-pad-qr .bg{fill:var(--ink-1);}
 .cot-pad-qr .mods{fill:var(--surface-page);}
 .cot-pad-code{font-family:var(--font-mono);font-size:var(--fs-36);font-weight:var(--fw-semibold);color:var(--ink-1);line-height:1;}
-.cot-pad-how{margin:var(--s3) 0 0;font-size:var(--fs-13);line-height:var(--lh-body);color:var(--ink-2);max-width:42ch;}
-.cot-pad-how b{color:var(--ink-1);font-weight:var(--fw-semibold);}
+.cot-pad-how{margin:var(--s3) 0 0;font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--ink-1);}
 .cot-pad-exp{margin:var(--s2) 0 var(--s3);font-size:var(--fs-12);color:var(--ink-3);}
 @media (max-width:640px){.cot-pad-pair{grid-template-columns:1fr;justify-items:start;}}
 `;
@@ -87,10 +86,6 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
   const fresh = kitButton(text, 'quiet', 'cot-pad-new');
   (fresh.lastElementChild as HTMLElement).textContent = t('settings.phone.newCode');
 
-  const note = host.appendChild(document.createElement('div'));
-  note.className = 'cot-set-note';
-  note.textContent = t('settings.phone.note');
-
   let shownCode = '';
   let expiresAt = 0;
   const tickCountdown = (): void => {
@@ -146,10 +141,7 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
         }
         code.textContent = formatPadCode(shownCode);
         code.setAttribute('aria-label', t('settings.phone.codeAria', { code: shownCode.split('').join(' ') }));
-        how.innerHTML = '';
-        how.append(t('settings.phone.how.scan'), ' ');
-        how.appendChild(document.createElement('b')).textContent = `${location.host}/pad`;
-        how.append(' ', t('settings.phone.how.type'));
+        how.textContent = `${location.host}/pad`;
       }
       tickCountdown();
       countdown = setInterval(tickCountdown, 1000);
