@@ -676,6 +676,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     // dimensions) stay as they were. The outboard one, over the track, stands its underside at 1.24 m over the idler's
     // station and 1.12-1.14 m at the bow, 2 cm or more clear of the wrap. The transverse guard still hangs to 0.98 m
     // ahead of it. (Raising one convex body across the width, 264's fix, cut the bow's side silhouette.)
+    // Its outer faces keep the published lower edge as thin plates outside the track (the blind critics read the raised
+    // half's open corner as missing geometry): the outer side face 3 cm outboard of the belt (x 1.815-1.84, 1.18 m
+    // at the 2.70 station to 0.98 m at the bow) with its diagonal run aft to x 1.815, and a chamfered nose under the
+    // bow face (from x 1.10, inside the inboard half, to the side plate), its underside rising from 0.98 m at the bow
+    // to 1.14 m at z 3.20, about 5 cm clear of the wrap. Their tops seat 5 mm into the outboard half.
     const shoulderLowerRight = [1.46, 1.42, 1.18, 0.98, 0.98, 0.96];
     const shoulderLowerOverTrackRight = [1.46, 1.42, 1.24, 1.14, 1.14, 1.12];
     const shoulderUpperRight = [1.62, 1.60, 1.50, 1.40, 1.39, 1.14];
@@ -690,9 +695,15 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     const corners = (lower: readonly number[]) => shoulderPlan.flatMap(([x,z],i) => [
       new Vector3(x,lower[i],z),new Vector3(x,shoulderUpper[i],z),
     ]);
+    // [x, z, lower, upper] on the right side, mirrored by s
+    const plate = (rows: readonly (readonly [number, number, number, number])[]) => new ConvexGeometry(
+      rows.flatMap(([x, z, lo, hi]) => [new Vector3(s * x, lo, z), new Vector3(s * x, hi, z)]));
     for (const shoulder of [
       convexHalfX(corners(sided(shoulderLowerRight)), s * 1.12, -s),
       convexHalfX(corners(sided(shoulderLowerOverTrackRight)), s * 1.12, s),
+      plate([[1.815, 2.70, 1.18, 1.245], [1.84, 2.70, 1.18, 1.245], [1.84, 3.48, 0.98, 1.145], [1.815, 3.48, 0.98, 1.145]]),
+      plate([[1.815, 2.383, 1.230, 1.2825], [1.84, 2.70, 1.18, 1.245], [1.815, 2.70, 1.18, 1.245]]),
+      plate([[1.10, 3.20, 1.14, 1.18], [1.815, 3.20, 1.14, 1.18], [1.815, 3.48, 0.98, 1.145], [1.10, 3.48, 0.98, 1.145]]),
     ]) {
       const positions=shoulder.getAttribute('position'),uv:number[]=[];
       for(let i=0;i<positions.count;i++)uv.push(positions.getX(i),positions.getZ(i));
