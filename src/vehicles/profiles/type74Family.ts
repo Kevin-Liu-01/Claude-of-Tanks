@@ -276,10 +276,12 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
   // STERN: the vertical plate's large door, the extinguisher handle, the tail lamps (two at -x, one at +x), the tow
   // hooks on the raked lower plate and the rail along the vertical plate's foot. 265 (owner: "make the stb 1 have two
   // big fuel barrels and back"): the fleet's 200 L pair across the plate on a welded shelf (rearSlopeFuelDrums.ts), 11 cm
-  // off it, clear of the door's ring and handle; their tops (1.53 m) stay under the gun's -4.5 degree line over the
-  // stern, and the tail lamps move out onto the sponsons' rear faces beside them
+  // off it, clear of the door's ring and handle, and the tail lamps move out onto the sponsons' rear faces beside them.
+  // Then (owner: "raise em a little higher!!") the saddles stand 11.5 cm tall, so the drums' tops (1.61 m) clear the
+  // deck's edge: the shelf stays under the plate's foot rail, and the gun's curve rides up over them from 168 degrees
+  // round (about -3.3 for -4.4; japan.ts STB1_GUN_PITCH_BY_YAW_DEG, re-swept)
   const rz = -3.41, rake = 0.41 / (STERN_FOOT_Y - BELLY);
-  addSternShelfFuelDrums(P, { plateZ: rz, footY: STERN_FOOT_Y, rake, shelfY: 0.90, halfWidth: 0.97, standoff: 0.11, gussets: [-0.80, 0, 0.80] });
+  addSternShelfFuelDrums(P, { plateZ: rz, footY: STERN_FOOT_Y, rake, shelfY: 0.90, halfWidth: 0.97, standoff: 0.11, seat: 0.115, gussets: [-0.80, 0, 0.80] });
   P.add('hull', box(0.72, 0.50, 0.02), -0.22, 1.22, rz - 0.01);
   P.add('hullDark', box(0.75, 0.53, 0.010), -0.22, 1.22, rz - 0.003);
   for (const dx of [-0.30, 0.30]) P.add('hullDetail', box(0.05, 0.10, 0.04), -0.22 + dx, 1.47, rz - 0.02);

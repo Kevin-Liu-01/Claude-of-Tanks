@@ -8,7 +8,7 @@
 // saddles and hoops take the hull's camouflage (equipment); the straps and bung are dark steel. Hull-owned, visual only.
 // 265 (owner, 2026-10-30: "make the stb 1 have two big fuel barrels and back"): the same pair across a VERTICAL stern
 // plate (addSternShelfFuelDrums), which has no slope to seat them: a welded shelf under them on gussets, the saddles
-// on the shelf, the drums' tops under the line the gun depresses to over the stern.
+// on the shelf, as tall as the tank wants its drums to stand (its gun's curve over the stern follows them).
 // First-party: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -96,10 +96,11 @@ function addDrum(P: Port, cx: number, side: number, centre: THREE.Vector3, strap
 
 /** A vertical stern plate's drum shelf (265): the plate's face at `plateZ` (aft is -z), its foot at `footY` over a lower
  * plate raked forward `rake` m per m of drop, the shelf's top at `shelfY` across `halfWidth` either side, the drums'
- * faces `standoff` off the plate (clear of its fittings) and the gussets under the shelf at `gussets` (x). */
+ * faces `standoff` off the plate (clear of its fittings), the saddles `seat` tall under each drum's lowest point and the
+ * gussets under the shelf at `gussets` (x). */
 export interface SternShelf {
   readonly plateZ: number; readonly footY: number; readonly rake: number; readonly shelfY: number;
-  readonly halfWidth: number; readonly standoff: number; readonly gussets: readonly number[];
+  readonly halfWidth: number; readonly standoff: number; readonly seat: number; readonly gussets: readonly number[];
 }
 
 /** A 12 mm gusset under the shelf at `x`: its top 5 mm into the shelf from the plate out to `reach`, its front 2 cm
@@ -121,17 +122,17 @@ function gusset(shelf: SternShelf, x: number, reach: number): THREE.BufferGeomet
 
 /** The two drums across a vertical stern plate, on a welded shelf (see SternShelf): the shelf a 10 mm plate 2 cm into
  * the stern plate and out past the drums' backs, closing the view to the ground under them, on gussets down to the
- * raked lower plate; each drum in two saddles on it with the slope pair's gap, its straps over them. */
+ * raked lower plate; each drum in two saddles `seat` tall on it, its straps over them. */
 export function addSternShelfFuelDrums(P: Port, shelf: SternShelf): void {
-  const { radius, length, gap, centreX, saddleX } = REAR_SLOPE_DRUM;
-  const { plateZ, shelfY, halfWidth, standoff, gussets } = shelf;
+  const { radius, length, centreX, saddleX } = REAR_SLOPE_DRUM;
+  const { plateZ, shelfY, halfWidth, standoff, seat, gussets } = shelf;
   const cu = standoff + radius, depth = cu + radius + 0.03;
   P.addEquipment('hullDetail', KIT.box(2 * halfWidth, 0.01, depth + 0.02), 0, shelfY - 0.005, plateZ - (depth - 0.02) / 2);
   for (const x of gussets) P.addEquipment('hullDetail', gusset(shelf, x, cu));
   const placed: { centre: [number, number, number]; saddles: number[] }[] = [];
   for (const side of [-1, 1]) {
     const cx = side * centreX, stations = [cx - saddleX, cx + saddleX];
-    const centre = new THREE.Vector3(cx, shelfY + gap + radius, plateZ - cu);
+    const centre = new THREE.Vector3(cx, shelfY + seat + radius, plateZ - cu);
     addDrum(P, cx, side, centre, stations, new THREE.Vector3(0, 1, 0));
     for (const x of stations) {
       // the chord 12 mm over the shelf's top, so the saddle's 2 cm foot stays inside the 10 mm plate
