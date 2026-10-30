@@ -169,8 +169,10 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sl
     // tube in the coat, the wrap's lighter bands over the sleeves
   });
   if (sleeved) {
-    for (const f of [0.20, 0.27, 0.34, 0.41, 0.56, 0.63, 0.70, 0.77]) {
-      P.add('gunCanvasPale', cylZ(radius * 1.235, 0.07, 24), 0, 0, f * length);
+    // r10 (r9 critics, both: the photograph's tube is sleeved in a khaki wrap most of its length): the wrap over both
+    // sleeves and between them, the coat's tube showing at the root and the muzzle
+    for (const [a, b] of [[0.14, 0.47], [0.47, 0.84]] as const) {
+      P.add('gunCanvasPale', cylZ(radius * 1.235, (b - a) * length - 0.02, 24), 0, 0, (a + b) / 2 * length);
     }
   }
   // The existing physical collar pitches but is not part of barrel recoil.

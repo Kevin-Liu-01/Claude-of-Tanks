@@ -708,7 +708,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // r8 (critics: still patches over paint, spikes past the hem): darker grey-greens matching the paint, fewer cards
     // r9 (r8 critics: the skirt drapes read as stickers with paint between them; the cover grey): one drape the length
     // of each skirt, the greens deeper and more saturated
-    light: 0x4d5536, dark: 0x2e3420, netColor: 'rgba(62,70,42,0.92)', netTextureSeed: 2765,
+    light: 0x55553c, dark: 0x30331f, netColor: 'rgba(70,70,48,0.92)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)

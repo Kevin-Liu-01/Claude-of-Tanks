@@ -265,11 +265,13 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       for (const s of [-1, 1] as const) for (let k = 0; k < 5; k++) {
         P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.14), s * 1.056, lid - 0.10 - k * 0.07, zc);
       }
-      const sw = 0.25, sh = 0.36, sd = 0.20;
+      // (r9 critics, both: the raised part short and narrow; the RAMTA front photograph's stands about 0.45 of the turret's
+      // height)
+      const sw = 0.29, sh = 0.46, sd = 0.20;
       P.addEquipment('turret', box(sw * 2, sh, sd * 2), 0, lid + sh / 2, zc);
       P.addEquipment('turret', box(sw * 2 + 0.04, 0.03, sd * 2 + 0.04), 0, lid + sh + 0.015, zc);
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
-        P.addEquipment('turretDark', box(0.02, 0.02, sd * 2 - 0.10), s * (sw + 0.006), lid + 0.08 + k * 0.07, zc);
+        P.addEquipment('turretDark', box(0.02, 0.02, sd * 2 - 0.10), s * (sw + 0.006), lid + 0.10 + k * 0.08, zc);
       }
       P.decal('turret', 'stencil', 'UN', 0.50, [0, (roof + W.binLowY) / 2 + 0.02, z1 - 0.012], Math.PI);
       P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.62, lid + 0.025, zc);
