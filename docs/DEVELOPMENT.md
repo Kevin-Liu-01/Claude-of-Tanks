@@ -1089,10 +1089,34 @@ controls) and `chain.selftest.mjs` (the real chain on a fixture fleet: changed-o
 to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 child-minutes) loads each builder group
 alone and fails on any module outside its keyed closure; `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
 --base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
-covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (about 15 s, no builds):
-once a release commits `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs and
-manifest committed together), any builder, kit, spec, generator or flag edit landed without its regeneration turns it
-red with the ids and the reasons; a toolchain difference is reported, not failed (the nightly covers it).
+covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (one fingerprint state, about 55-75 s warm, no
+builds). Since 265 committed `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs
+and manifest committed together), any builder, kit, spec, generator or flag edit landed without its regeneration turns
+it red with the ids and the reasons, and a missing or unreadable manifest fails too (Main, 2026-10-29: a guard that
+passes vacuously is no guard). Its negative controls, run on the same state, show that an edited generator, a moved
+input and a hand-edited output row are each caught. A toolchain difference is reported, not failed (the nightly covers
+it).
+
+Refreshing the fingerprints in a lane. `release/fingerprints.tsv` is a generated output like the tables: never edit it
+by hand, and never take one side of it whole as the merge result.
+- A lane that changes a builder, kit, spec, generator or per-id table runs `npm run tank:regen:changed` (`--dry-run`
+  or `npm run tank:changed -- --explain=<id>` first shows what it will run). The chain rewrites the marked ids'
+  outputs, their keys and the manifest's component lines; commit the manifest in the same commit as those outputs.
+- A tools-only edit inside a generator's closure (its imports, flags or declared reads) moves that step's tool key, so
+  the chain runs that step on every id. When the outputs come back byte-identical, only the manifest's keys move, and
+  the manifest alone is the commit.
+- After merging main or another lane into a branch that touched generated outputs, resolve the output tables first
+  (keep the rows from both sides). Then take either side's `release/fingerprints.tsv` and run
+  `npm run tank:regen:changed` on the merged tree: it re-runs only the ids whose keys moved and rewrites the manifest.
+  A passing `fresh.selftest.mjs` is the proof.
+- A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
+  handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
+- The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. A route in the
+  app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
+  `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
+  the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in
+  the two checkouts.
 
 The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
 `fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still

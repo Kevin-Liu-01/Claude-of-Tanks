@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
+import { createGraph } from './graph.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-'));
@@ -218,5 +219,31 @@ const m4 = bootstrap(state({ cfg: modeOnly }));
 put('public/out/a1.webp', 'image-4');
 assert.equal(resolveChanged(state({ cfg: modeOnly }), m4).other.mode, 'none', 'a modeOnly path is not an input');
 put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
+
+// 265: a key the committed manifest holds reads the same in every checkout. A route in the app (`/docs/${topic}`) names
+// no directory, so docs/ edits never re-key the GPU steps (the same string in a tool still does); a file under
+// public/models/ (gitignored whole) is a row by its path, the same with any bytes or none.
+{
+  const tree = mkdtempSync(join(tmpdir(), 'cot-changed-only-local-'));
+  const add = (rel, text) => { mkdirSync(dirname(join(tree, rel)), { recursive: true }); writeFileSync(join(tree, rel), text); };
+  add('src/ui/routes.ts', "export const route = (topic) => [`/docs/${topic}`, 'docs.html'];\n");
+  add('docs.html', '<!doctype html>\n');
+  add('docs/ledger.json', '{}\n');
+  add('tools/source.mjs', "export const SOURCE = 'public/models/x_source.glb';\nexport const page = (topic) => `/docs/${topic}`;\n");
+  const mentions = (file) => [...createGraph({ root: tree, cacheDir: mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-')) })
+    .edges(join(tree, file)).mention].map((target) => target.slice(tree.length + 1)).sort();
+  assert.deepEqual(mentions('src/ui/routes.ts'), ['docs.html'], 'an app route names its page, not the docs directory');
+  assert.deepEqual(mentions('tools/source.mjs'), ['docs', 'public/models/x_source.glb'], 'a tool that names a directory keeps it');
+  const rows = () => {
+    const graph = createGraph({ root: tree, cacheDir: mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-')) });
+    return graph.rowsOf(graph.edges(join(tree, 'tools/source.mjs')).mention).filter((row) => !row.startsWith('dir:docs:'));
+  };
+  const absent = rows();
+  assert.deepEqual(absent, ['local:public/models/x_source.glb'], 'a public/models file is keyed by its path');
+  add('public/models/x_source.glb', 'glb-1');
+  assert.deepEqual(rows(), absent, 'present, the same row');
+  add('public/models/x_source.glb', 'glb-2');
+  assert.deepEqual(rows(), absent, 'other bytes, the same row');
+}
 
 console.log('changed-only resolver.selftest: PASS');
