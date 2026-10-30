@@ -10,6 +10,8 @@
 //     a table's moved rows, a path naming the id: tools/test-diff.mjs changedTankIds);
 //   - a `tanks` receipt whose closure holds a changed path outside the shared fleet core. One that reads only core
 //     files is not run here: every id may move, so `npm run test:recommend` lists the whole suite for the owner.
+//     Nor are a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration
+//     names nearly every id): that is the suite itself, which test:recommend names and the owner triggers.
 // A negative control runs on every invocation: a receipt whose closure holds a file is selected when that file changes,
 // and every changed receipt file is selected. A control that fails exits 2 before anything runs.
 // `--root=<dir>` evaluates another checkout's registry and closures (a report only: it implies --dry-run).
@@ -19,17 +21,20 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
-import { changedPaths, changedTankIds, fleetPartition, receiptsNaming, TOOLS_ROOT } from './test-diff.mjs';
+import { changedPaths, changedTankIds, fleetPartition, receiptRunTimes, receiptsNaming, TOOLS_ROOT } from './test-diff.mjs';
 
 const READS = new Set(['named', 'scan']);
 const say = (read, path) => `${read === 'scan' ? 'lists' : 'reads'} ${path}`;
 
 /**
  * The lane selection as data. `readOf(file, path)` is the cache's read ('scan', 'named', 'broad' or null), `core` the
- * shared fleet core's paths, `naming` the receipts that name changed ids (file -> ids). Returns
- * { selected: Map(file -> { tier, reasons }), coreOnly: Map(file -> paths) }.
+ * shared fleet core's paths, `naming` the receipts that name changed ids (file -> ids). With `pinCostOf` (ms per
+ * receipt), pins costing more than `pinShare` of the whole tanks suite are all moved to `deferred`. Returns
+ * { selected: Map(file -> { tier, reasons }), coreOnly: Map(file -> paths), deferred: Map(file -> { tier, reasons }) }.
  */
-export function selectLane({ defaults, tanks, changed, readOf, core = new Set(), naming = new Map() }) {
+export const LANE_PIN_SHARE = 0.25;
+export function selectLane({ defaults, tanks, changed, readOf, core = new Set(), naming = new Map(), pinCostOf = null,
+  pinShare = LANE_PIN_SHARE }) {
   const selected = new Map(), coreOnly = new Map();
   const add = (file, tier, why) => {
     if (!selected.has(file)) selected.set(file, { tier, reasons: [] });
@@ -51,7 +56,13 @@ export function selectLane({ defaults, tanks, changed, readOf, core = new Set(),
     add(file, tankSet.has(file) ? 'tanks' : 'default', `names ${ids.join(', ')} (changed)`);
     coreOnly.delete(file);
   }
-  return { selected, coreOnly };
+  const deferred = new Map();
+  if (pinCostOf) {
+    const cost = (files) => files.reduce((sum, file) => sum + (pinCostOf(file) ?? 0), 0);
+    const pins = [...selected].filter(([, entry]) => entry.tier === 'tanks').map(([file]) => file);
+    if (pins.length && cost(pins) > pinShare * cost(tanks)) for (const file of pins) { deferred.set(file, selected.get(file)); selected.delete(file); }
+  }
+  return { selected, coreOnly, deferred };
 }
 
 /**
@@ -96,7 +107,9 @@ async function main(argv) {
   const partition = await fleetPartition(root);
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase, head: value('head') ?? 'HEAD' });
   const naming = receiptsNaming(root, [...defaults, ...tanks], new Set(idChanges.ids.keys()));
-  const { selected, coreOnly } = selectLane({ defaults, tanks, changed: diff.paths, readOf, core: partition.core, naming });
+  const runMsOf = await receiptRunTimes(root);
+  const { selected, coreOnly, deferred } = selectLane({ defaults, tanks, changed: diff.paths, readOf, core: partition.core, naming,
+    pinCostOf: runMsOf });
   const control = laneControl({ defaults, tanks, changed: diff.paths, selected, readOf, root,
     closureOf: (file) => cache.closureOf(resolve(root, file)) });
   cache.persist();
@@ -112,11 +125,15 @@ async function main(argv) {
     for (const row of mine) console.log(`  ${row.file}: ${row.reasons.slice(0, 2).join('; ')}${row.reasons.length > 2 ? `; +${row.reasons.length - 2} more` : ''}`);
   }
   if (coreOnly.size) console.log(`[test:lane] not run here: ${coreOnly.size} tanks receipts read only the shared fleet core (whole-suite run: npm run test:recommend)`);
+  if (deferred.size) {
+    const minutes = [...deferred.keys()].reduce((sum, file) => sum + (runMsOf(file) ?? 0), 0) / 60_000;
+    console.log(`[test:lane] not run here: the ${deferred.size} tanks pins of the changed ids (~${minutes.toFixed(0)} CPU-min) are more than a quarter of the suite; npm run test:recommend names it for the owner`);
+  }
   if (partition.errors.length) console.log(`[test:lane] fleet partition notes: ${partition.errors.slice(0, 3).join('; ')}`);
   const verdict = control.failures.length ? `FAIL: ${control.failures.join('; ')}` : 'PASS';
   console.log(`[test:lane] negative control: ${control.probe ? `${control.probe.receipt} for a change to ${control.probe.input}; ` : ''}every changed receipt selected: ${verdict}`);
   const report = { base, mergeBase: diff.mergeBase, changed: diff.paths, ids: Object.fromEntries(idChanges.ids), core: idChanges.core,
-    selected: rows, coreOnly: Object.fromEntries(coreOnly), control };
+    selected: rows, coreOnly: Object.fromEntries(coreOnly), deferred: [...deferred.keys()], control };
   if (value('json')) writeFileSync(resolve(value('json')), JSON.stringify(report, null, 1) + '\n');
   if (control.failures.length) return 2;
   if (dryRun) { console.log('[test:lane] --dry-run: nothing run'); return 0; }

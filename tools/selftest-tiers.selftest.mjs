@@ -127,6 +127,14 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
     [['r/pin-own', 'tanks', ['reads src/vehicles/profiles/leo.ts']], ['r/pin-named', 'tanks', ['names leo2a4 (changed)']]],
     'a pin reading a changed group file or naming a changed id runs; one reading only the core does not');
   assert.deepEqual([...own.coreOnly.keys()], ['r/pin-core']);
+  // a lane whose pins come to more than a quarter of the suite's CPU (a whole-fleet regeneration) runs none of them
+  const costly = selectLane({ defaults: [], tanks: ['r/pin-own', 'r/pin-core', 'r/pin-named'], changed: ['src/vehicles/profiles/leo.ts'], readOf,
+    core: new Set(['src/vehicles/tankFactoryCore.ts']), naming: new Map([['r/pin-named', ['leo2a4']]]), pinCostOf: () => 60_000 });
+  assert.deepEqual([[...costly.selected.keys()], [...costly.deferred.keys()]], [[], ['r/pin-own', 'r/pin-named']],
+    'two of three pins are over the quarter share: deferred to the owner');
+  const cheap = selectLane({ defaults: [], tanks: ['r/pin-own', 'r/pin-core', 'r/pin-named', 'r/a', 'r/b', 'r/c', 'r/d', 'r/e'],
+    changed: ['src/vehicles/profiles/leo.ts'], readOf, core: new Set(['src/vehicles/tankFactoryCore.ts']), pinCostOf: () => 60_000 });
+  assert.deepEqual([[...cheap.selected.keys()], cheap.deferred.size], [['r/pin-own'], 0], 'one pin of eight runs');
   // negative control: a receipt that reads a file must be selected when it changes, and a changed receipt must be selected
   const closures = { 'r/default-reader': ['src/a.ts'], 'r/default-lister': [], 'r/default-broad': [] };
   const control = (select, changed = []) => laneControl({ defaults: ['r/default-reader', 'r/default-lister', 'r/default-broad'], tanks: [],
@@ -202,6 +210,9 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.match(maps.find((row) => row.suite === 'world').line, /^world: the collision shards \(the multiplayer host plays on them\) may be stale on 1 map \(verdant\)$/);
   const core = recommend({ readers: new Map([['tanks', new Map([['x', ['src/vehicles/tankFactoryCore.ts']]])]]), core: ['src/vehicles/tankFactoryCore.ts'], wallMs: {} });
   assert.deepEqual(core.filter((row) => row.warranted).map((row) => row.suite), ['fleet', 'tanks'], 'the fleet core warrants fleet and the whole tanks suite');
+  const many = recommend({ readers: none, ids: new Map([['leo2a4', ['x']], ['t90a', ['y']]]), idPinsDeferred: 400, wallMs: {} });
+  assert.equal(many.find((row) => row.suite === 'tanks').line, 'tanks: 2 tanks changed (leo2a4, t90a): their 400 pins are more than lane mode runs');
+  assert.equal(many.find((row) => row.suite === 'tanks').warranted, true);
   const ids = recommend({ readers: none, ids: new Map([['leo2a4', ['x']]]), idPins: 3, wallMs: {} });
   assert.equal(ids.find((row) => row.suite === 'tanks').warranted, false, 'changed ids alone: lane mode runs their pins');
   assert.equal(ids.find((row) => row.suite === 'tanks').run, 'npm run test:heavy -- tanks --ids=leo2a4');

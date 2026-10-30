@@ -537,6 +537,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
   files, a table's moved rows, a path naming the id). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
   pin's inputs: lane mode then runs none of them and reports them, and test:recommend names the whole `tanks` suite.
+  Nor does it run a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration
+  names nearly every id: the fingerprints bootstrap moved 218 tanks); test:recommend then names `tanks` for the owner.
   Every selected receipt prints its reason. A negative control runs every time: a receipt reading a file is selected
   when that file changes, and every changed receipt file is selected, or the run exits 2 before anything runs. The
   uncommitted and untracked files count as changed.

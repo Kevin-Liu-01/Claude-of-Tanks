@@ -42,10 +42,11 @@ const minutes = (ms) => (ms < 90_000 ? `~${Math.max(1, Math.round(ms / 60_000))}
  * The recommendation as data. `readers`: suite -> Map(receipt or tool -> changed paths it reads); `balance`:
  * balanceChanges() rows (null when not compared); `ids`: changed tank ids (Map id -> reasons); `core`: changed shared
  * fleet core paths; `maps`: changedMaps() output; `wallMs`: suite -> its idle wall time; `idPins`: the tanks receipts
- * lane mode runs for `ids`. Returns one row per suite: { suite, warranted, line, run }.
+ * lane mode runs for `ids`, `idPinsDeferred` those it leaves to the owner (more than its share of the suite).
+ * Returns one row per suite: { suite, warranted, line, run }.
  */
 export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, readers, balance = null, ids = new Map(), core = [],
-  maps = {}, wallMs = {}, idPins = 0 }) {
+  maps = {}, wallMs = {}, idPins = 0, idPinsDeferred = 0 }) {
   const rows = [];
   for (const [name, entry] of Object.entries(suites)) {
     const reading = readers.get(name) ?? new Map();
@@ -77,6 +78,9 @@ export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, reade
       if (core.length && coreReads) {
         warranted = true;
         parts.push(`the shared fleet core changed (${list(core, 2)}), so every tank pin's inputs moved`);
+      } else if (ids.size && idPinsDeferred) {
+        warranted = true;
+        parts.push(`${ids.size} tanks changed (${list([...ids.keys()], 6)}): their ${idPinsDeferred} pins are more than lane mode runs`);
       } else if (ids.size) {
         parts.push(`${ids.size} ${ids.size === 1 ? 'tank' : 'tanks'} changed (${list([...ids.keys()], 6)}): lane mode and tank:release:check run their ${idPins} pins; the whole suite is not needed`);
         run = `npm run test:heavy -- ${name} --ids=${[...ids.keys()].join(',')}`;
@@ -136,16 +140,17 @@ async function main(argv) {
   const { selectLane } = await import('./test-lane.mjs');
   const { receiptsNaming } = await import('./test-diff.mjs');
   const naming = receiptsNaming(root, tanks, new Set(idChanges.ids.keys()));
-  const idPins = [...selectLane({ defaults: [], tanks, changed: diff.paths, readOf, core: partition.core, naming }).selected.keys()].length;
+  const runMsOf = await receiptRunTimes(root);
+  const pins = selectLane({ defaults: [], tanks, changed: diff.paths, readOf, core: partition.core, naming, pinCostOf: runMsOf });
+  const idPins = pins.selected.size, idPinsDeferred = pins.deferred.size;
   cache.persist();
   let balance = null;
   if (readers.get('balance').size) {
     try { balance = balanceChanges(withBaseSources(root, diff.mergeBase, (dir) => balanceInputs(dir)), balanceInputs(root)); }
     catch (error) { console.log(`[test:recommend] balance inputs not compared (${error.message}); the receipts' reads stand`); }
   }
-  const runMsOf = await receiptRunTimes(root);
   const wallMs = Object.fromEntries(Object.keys(MANUAL_SUITES).map((name) => [name, simulateWall(manualSuiteFiles(registered, [name]), runMsOf).wallMs]));
-  const rows = recommend({ readers, balance, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins });
+  const rows = recommend({ readers, balance, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred });
   for (const line of reportLines(rows)) console.log(line);
   console.log('[test:recommend] Main relays this to the owner; the owner triggers npm run test:heavy.');
   if (value('json')) writeFileSync(resolve(value('json')), JSON.stringify({ base, mergeBase: diff.mergeBase, changed: diff.paths.length,
