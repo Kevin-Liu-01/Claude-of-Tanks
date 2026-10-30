@@ -12590,17 +12590,16 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     // The A5's grouser (Schneegreifer) rack across the upper glacis: the photos' dense lattice of interlocking links,
     // drawn as two crossing runs of diagonal bars inside a bar frame (critics 265, round 5: "sparse, separated cubes instead of the tightly interlocking chevrons").
     const glacisTilt = THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg);
-    const rack = { halfWidth: 0.72, z0: 2.80, z1: 3.32, pitch: 0.15 };
+    // (shallower, wider and lighter since round 8: "a raised, thick-framed, multi-row lattice" where the photos show a
+    // shallow mesh about half the hull's width)
+    const rack = { halfWidth: 0.78, z0: 2.98, z1: 3.32, pitch: 0.15 };
     const rackSlope = (rack.z1 - rack.z0) / Math.cos(glacisTilt);
     const onRack = (u: number, v: number, lift: number): [number, number, number] => {
       const z = rack.z0 + v * Math.cos(glacisTilt);
       return [u, upperGlacisY(z) + lift, z];
     };
     for (const v of [0, rackSlope]) {
-      P.addEquipment('hullDark', box(rack.halfWidth * 2 + 0.03, 0.025, 0.03), ...onRack(0, v, 0.072), glacisTilt, 0, 0);
-    }
-    for (const s of [-1, 1] as const) {
-      P.addEquipment('hullDark', box(0.03, 0.025, rackSlope), ...onRack(s * rack.halfWidth, rackSlope / 2, 0.072), glacisTilt, 0, 0);
+      P.addEquipment('hullDark', box(rack.halfWidth * 2 + 0.03, 0.02, 0.025), ...onRack(0, v, 0.068), glacisTilt, 0, 0);
     }
     // dir -1 runs along u - v = c, dir 1 along u + v = c (u across the plate, v down its slope), each clipped to the frame
     for (const dir of [-1, 1] as const) {
@@ -12609,7 +12608,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
         const vb = dir < 0 ? Math.min(rackSlope, rack.halfWidth - c) : Math.min(rackSlope, c + rack.halfWidth);
         if (vb - va < 0.03) continue;
         const vm = (va + vb) / 2, um = dir < 0 ? vm + c : c - vm;
-        P.addEquipment('hullDark', box((vb - va) * Math.SQRT2, 0.035, 0.03), ...onRack(um, vm, 0.08),
+        P.addEquipment('hullDark', box((vb - va) * Math.SQRT2, 0.022, 0.026), ...onRack(um, vm, 0.074),
           glacisTilt, dir * Math.PI / 4, 0);
       }
     }
@@ -12925,8 +12924,10 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   // (the rear pad stays inside the receiver and clears the deck at +20 degrees of elevation over the side bearings)
   const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
   // (its rear top stays under the turret's front roof at every legal pitch; its line 0.50 m ahead of the trunnion: at
-  // 0.58 m the 265 critics read "a pointed chevron at the bore", round 6)
-  const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
+  // 0.58 m the 265 critics read "a pointed chevron at the bore", round 6; its full-size body 0.22 m ahead of the trunnion,
+  // so the block stands forward of the cheeks with short faces closing on the line: round 8, "a massive block that
+  // stands forward", where at 0.10 m the gun root sat "in a recess between the cheek wedges")
+  const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.22,
     ridgeHalfWidth: 0.42, ridgeLow: -0.012, ridgeHigh: 0.012, ridgeZ: 0.50 };
   const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
     [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
@@ -12958,7 +12959,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     // the gunner's telescope port on the right of the brow (-x); the coaxial MG's port on the left (+x) at the line,
     // where the 1A5 photographs show it
     P.addGunExtraDark(xform(cylZ(0.035, 0.05, 12), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.010));
-    P.addGunExtraDark(cylZ(0.06, 0.08, 14), 0.30, 0, k.ridgeZ - 0.035);
+    P.addGunExtraDark(cylZ(0.075, 0.08, 16), 0.30, 0, k.ridgeZ - 0.035);
     // The gun's root where it leaves the line: the sleeve's root section from inside the mask out to the thermal sleeve,
     // 0.24 m across, seated in a heavy dark boot 0.28 m across (critics 265, round 5: "a thin pipe with a small elbow
     // collar" where the Munster 1A5's gun leaves its mask fat; round 6: still "a thin black collar"; round 5's dark cone
@@ -12973,7 +12974,8 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     const lamp = { halfWidth: 0.28, low: 0.37, high: 0.79, rearZ: 0.00, frontZ: 0.34, lensR: 0.17 };
     const lampY = (lamp.low + lamp.high) / 2, lampZ = (lamp.rearZ + lamp.frontZ) / 2;
     const browAt = (z: number): number => k.high - (k.high - k.ridgeHigh) * (z - k.bodyZ) / (k.ridgeZ - k.bodyZ);
-    const yokeFoot = browAt(lampZ) - 0.015;
+    // (the yoke stands on the block's top where the lamp sits over the body, on the brow where it sits over the faces)
+    const yokeFoot = (lampZ <= k.bodyZ ? k.high : browAt(lampZ)) - 0.015;
     P.add('gunMount', sectionSolid([
       { z: lamp.rearZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
       { z: lamp.frontZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
