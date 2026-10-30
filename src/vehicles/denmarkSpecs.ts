@@ -179,7 +179,7 @@ cv9035dk.visual = {
   ...cv9035dk.visual,
   // the Danish Army's three-tone on its CV90s (the Holstebro and Latvia photographs): a muted grey-green ground, a darker
   // olive-tan and black
-  scheme: 'nato', base: '#535c46', weather: '#5e6750', patches: ['#776a4b', '#262a21'], marking: 'number', number: '45',
+  scheme: 'nato', base: '#545c4f', weather: '#5f6759', patches: ['#776a4b', '#262a21'], marking: 'number', number: '45',
   camoScale: 0.58,
 };
 
