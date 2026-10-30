@@ -18,10 +18,10 @@
         "https://commons.wikimedia.org/wiki/File:13_05_2022_Solenidade_de_Passagem_de_Comando_do_Comando_Militar_do_Sul._(52070734282).jpg",
         "https://commons.wikimedia.org/wiki/File:EE-T1_Os%C3%B3rio.jpg"
       ],
-      "widthM": 3.354,
+      "widthM": 3.29,
       "overallLengthM": 10.341,
       "tallestM": 4.46,
-      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared Osório build (profiles/osorio.ts): published 7.13 m hull, 10.10 m over the 120 mm gun, 3.26 m over the skirts, 2.37 m to the turret roof and 2.89 m to the sight (Engesa's sheet in Forças Terrestres 2015; Jane's via Nita 2014). The envelope holds the fender mirrors' absence, the skirts' bolt strips, the M2HB on the loader's pintle and the two antenna whips; the stations are Engesa's three-view scaled on the hull (the overall length checks at 10.08 m), the CIBld (2020) and 2022 parade photographs.",
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared Osório build (profiles/osorio.ts): published 7.13 m hull, 10.10 m over the 120 mm gun, 3.26 m over the skirts, 2.37 m to the turret roof and 2.89 m to the sight (Engesa's sheet in Forças Terrestres 2015; Jane's via Nita 2014). The envelope holds the skirts' bolt strips (3.29 m over them, the published 3.26 m), the M2HB on the loader's pintle and the two antenna whips; the stations are Engesa's three-view scaled on the hull (the overall length checks at 10.08 m), the CIBld (2020) and 2022 parade photographs.",
       "caliberMm": 120,
       "launcherTubes": 0,
       "roofMachineGuns": 1,

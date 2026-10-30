@@ -41,8 +41,12 @@ const osorioMobility = {
 // its trials, at the AMX-40's footing.
 const osorio_p2 = brazilian('osorio_p2', 'amx40', 'EE-T1 Osório (120)', 'cold-war');
 Object.assign(osorio_p2.dims, { hullLengthM: 7.13, overallLengthM: 10.10, widthM: 3.26, heightM: 2.89 });
-Object.assign(osorio_p2, { ...osorioMobility, hp: 2000, weightTons: 43.7 });
-osorio_p2.gun = { ...osorio_p2.gun, caliberMm: 120, reloadS: 6.5, baseAccuracy: 0.29, aimTimeS: 1.75 };
+Object.assign(osorio_p2, { ...osorioMobility, hp: 2150, weightTons: 43.7 });
+// the rounds at the shown tier's footing (no published figure for the G1's trial rounds): the IV MBT median, 2026-10-29
+osorio_p2.gun = {
+  ...osorio_p2.gun, caliberMm: 120, reloadS: 6.3, baseAccuracy: 0.29, aimTimeS: 1.75,
+  shells: osorio_p2.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 760, pen1000Mm: 690, pen2000Mm: 622, dmg: 510 } : shell),
+};
 osorio_p2.armor = osorioArmor(5.285);
 osorio_p2.visual = {
   ...osorio_p2.visual,
@@ -56,14 +60,15 @@ osorio_p2.visual = {
 // Leopard 1A5's) for the balance session to measure.
 const osorio_p1 = brazilian('osorio_p1', 'amx40', 'EE-T1 Osório (105)', 'cold-war');
 Object.assign(osorio_p1.dims, { hullLengthM: 7.13, overallLengthM: 9.36, widthM: 3.26, heightM: 2.68 });
-Object.assign(osorio_p1, { ...osorioMobility, hp: 1900, weightTons: 41.0 });
+Object.assign(osorio_p1, { ...osorioMobility, hp: 2050, weightTons: 41.0 });
 const l7Rounds = registries.tankSpecs.leo1a5.gun.shells;
 osorio_p1.gun = {
   ...osorio_p1.gun,
   caliberMm: 105, reloadS: 6.0, baseAccuracy: 0.31, aimTimeS: 1.85,
   bloom: { ...osorio_p1.gun.bloom, move: osorio_p1.gun.bloom.move * 1.15, hullRot: osorio_p1.gun.bloom.hullRot * 1.15 },
   shells: [
-    { ...l7Rounds[0], name: 'M735 APFSDS' },
+    // the L7's mid-1980s APFSDS at the III footing (no published figure for the Army's 1986-87 trial rounds)
+    { ...l7Rounds[0], name: 'M833 APFSDS', pen100Mm: 680, pen1000Mm: 618, pen2000Mm: 556, dmg: 480 },
     { ...l7Rounds[1], name: 'M456 HEAT' },
     { ...l7Rounds[2], name: 'L35 HESH', type: 'HE' },
   ],
@@ -98,7 +103,7 @@ const tamoyoArmor = (o: { barrelLenM: number; gunPivot: [number, number, number]
 const tamoyo1 = brazilian('tamoyo1', 'm47_patton', 'MB-3 Tamoyo 1', 'cold-war');
 Object.assign(tamoyo1.dims, { hullLengthM: 6.50, overallLengthM: 8.77, widthM: 3.22, heightM: 2.50 });
 Object.assign(tamoyo1, {
-  role: 'medium', hp: 1450, enginePowerHp: 500, weightTons: 30.0, topSpeedKmh: 67, reverseSpeedKmh: 16,
+  role: 'medium', hp: 1800, enginePowerHp: 500, weightTons: 30.0, topSpeedKmh: 67, reverseSpeedKmh: 16,
   hullTraverseDegS: 42, turretTraverseDegS: 34, gunPitchDegS: 28, gunElevationDeg: 18, gunDepressionDeg: 8,
 });
 const [heat90, he90] = [tamoyo1.gun.shells[1], tamoyo1.gun.shells[2]];
@@ -106,7 +111,7 @@ tamoyo1.gun = {
   ...tamoyo1.gun,
   caliberMm: 90, reloadS: 5.6, baseAccuracy: 0.31, aimTimeS: 1.9,
   shells: [
-    { ...tamoyo1.gun.shells[0], name: 'OFL 90 F1 APFSDS', caliberMm: 90, pen100Mm: 420, pen1000Mm: 385, pen2000Mm: 350, dmg: 330, velocityMps: 1350 },
+    { ...tamoyo1.gun.shells[0], name: 'OFL 90 F1 APFSDS', caliberMm: 90, pen100Mm: 500, pen1000Mm: 455, pen2000Mm: 410, dmg: 400, velocityMps: 1350 },
     { ...heat90, name: 'OCC 90 HEAT', caliberMm: 90, pen100Mm: 320, pen1000Mm: 320, dmg: 330, velocityMps: 950 },
     { ...he90, name: 'OE 90 HE', caliberMm: 90, dmg: 380, velocityMps: 750 },
   ],
@@ -125,21 +130,21 @@ tamoyo1.visual = {
 const tamoyo3 = brazilian('tamoyo3', 'leo1a5', 'MB-3 Tamoyo 3', 'cold-war');
 Object.assign(tamoyo3.dims, { hullLengthM: 6.48, overallLengthM: 8.90, widthM: 3.29, heightM: 2.50 });
 Object.assign(tamoyo3, {
-  role: 'mbt', hp: 1700, enginePowerHp: 736, weightTons: 35.0, topSpeedKmh: 65, reverseSpeedKmh: 18,
+  role: 'mbt', hp: 1950, enginePowerHp: 736, weightTons: 35.0, topSpeedKmh: 65, reverseSpeedKmh: 18,
   hullTraverseDegS: 44, turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 18, gunDepressionDeg: 8,
 });
 tamoyo3.gun = {
   ...tamoyo3.gun,
   caliberMm: 105, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8,
   shells: [
-    { ...l7Rounds[0], name: 'M735 APFSDS' },
+    { ...l7Rounds[0], name: 'M833 APFSDS', pen100Mm: 660, pen1000Mm: 600, pen2000Mm: 540, dmg: 470 },
     { ...l7Rounds[1], name: 'M456 HEAT' },
     { ...l7Rounds[2], name: 'L35 HESH', type: 'HE' },
   ],
 };
 tamoyo3.armor = tamoyoArmor({
   barrelLenM: 4.46, gunPivot: [0, 0.335, 1.05], tFrontZ: 1.50, tRearZ: -2.11, tH: 0.75, tw: 1.10, skirt: false,
-  glacis: 110, lower: 60, cheek: [300, 300, 420], mantlet: [220, 220, 300], tSide: [60, 60, 80],
+  glacis: 260, lower: 60, cheek: [400, 400, 520], mantlet: [300, 300, 380], tSide: [60, 60, 80],
 });
 tamoyo3.visual = {
   ...tamoyo3.visual,
@@ -176,10 +181,10 @@ const x1Armor = (o: { hl: number; hw: number; inW: number; roofY: number; trkTop
 const x1_pioneiro = brazilian('x1_pioneiro', 'leo1a5', 'CCL X1 Pioneiro', 'cold-war');
 Object.assign(x1_pioneiro.dims, { hullLengthM: 5.04, overallLengthM: 6.04, widthM: 2.40, heightM: 2.45 });
 Object.assign(x1_pioneiro, {
-  role: 'light', hp: 1000, enginePowerHp: 256, weightTons: 17.0, topSpeedKmh: 55, reverseSpeedKmh: 12,
+  role: 'light', hp: 1550, enginePowerHp: 256, weightTons: 17.0, topSpeedKmh: 55, reverseSpeedKmh: 12,
   hullTraverseDegS: 40, turretTraverseDegS: 28, gunPitchDegS: 24, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
-x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 5.2, baseAccuracy: 0.34, aimTimeS: 2.1, shells: x1Rounds(x1_pioneiro, 300) };
+x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 4.9, baseAccuracy: 0.34, aimTimeS: 2.0, shells: x1Rounds(x1_pioneiro, 480) };
 x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 0.98, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
   barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.30, tRearZ: -1.20, tH: 0.62, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
@@ -192,10 +197,10 @@ x1_pioneiro.visual = {
 const x1a2_carcara = brazilian('x1a2_carcara', 'leo1a5', 'CCL X1A2 Carcará', 'cold-war');
 Object.assign(x1a2_carcara.dims, { hullLengthM: 6.06, overallLengthM: 6.92, widthM: 2.60, heightM: 2.45 });
 Object.assign(x1a2_carcara, {
-  role: 'light', hp: 1100, enginePowerHp: 280, weightTons: 19.0, topSpeedKmh: 60, reverseSpeedKmh: 14,
+  role: 'light', hp: 1500, enginePowerHp: 280, weightTons: 19.0, topSpeedKmh: 60, reverseSpeedKmh: 14,
   hullTraverseDegS: 42, turretTraverseDegS: 30, gunPitchDegS: 25, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
-x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 330) };
+x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 470) };
 x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.08, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
   barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.64, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
