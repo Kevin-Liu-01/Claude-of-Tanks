@@ -163,7 +163,9 @@ cv9035dk.visual = {
   // the Danish Army's three-tone on its CV90s (the Holstebro and Latvia photographs): a muted grey-green ground, a dark
   // green and black (r3: no sand; the brown in the Latvia photograph is its cover's; r6 critics: a cool blue-grey against
   // the Holstebro photograph's warmer olive-khaki ground): the ground warmer and lighter, a dark olive-brown third tone
-  scheme: 'nato', base: '#5b5c4a', weather: '#656653', patches: ['#3a4233', '#232521', '#4e4a3a'], marking: 'number', number: '45',
+  // r7 (critics, both: four tones with the brown; the Holstebro coat greens and black on a cooler grey-olive): a dark green,
+  // black and a pale grey-green on a darker ground, its wash light so it stays its own paint
+  scheme: 'nato', base: '#4d5345', weather: '#646a5c', patches: ['#353b30', '#1f221c', '#61675a'], marking: 'number', number: '45',
   camoScale: 0.58,
 };
 // its measured gun stops (the 35 mm on its solid shroud): the glacis's add-on armour ahead, the rear deck's stowage aft

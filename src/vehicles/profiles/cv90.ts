@@ -311,7 +311,9 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III: a heavier barrel than the 40 mm's and its long slotted
   // muzzle brake, about twice the barrel's diameter; r4 (critics on the Latvia side photograph: the brake ends at the bow,
   // the barrel 29% of the hull's length): 0.40 m shorter)
-  const gunLen = danish ? 2.80 : 3.12, gunR = danish ? 0.070 : 0.064;
+  // r7 (critics, both, three rounds: the muzzle stood past the bow; in the Latvia photograph it stops about 0.3 m short):
+  // 0.35 m shorter again
+  const gunLen = danish ? 2.45 : 3.12, gunR = danish ? 0.070 : 0.064;
   KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13 });
   if (danish) {
     // the brake in plain steel, stepped (r3: camouflage over slots read as hazard stripes)
@@ -330,8 +332,9 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   // Gunner sight, commander panorama and RWS are now seated on the new roof
   // stations instead of retaining coordinates from the superseded shell.
   // (the CV9035 DK's gunner's sight head stands taller: r5 critics on the Latvia photograph)
-  const gsY = danish ? 0.74 : 0.69;
-  P.addEquipment('turret', box(0.34, danish ? 0.42 : 0.31, 0.34), 0.48, gsY, 0.51, 0, -0.08, 0);
+  // (r7 critics: the taller head made the turret read tall: halfway back)
+  const gsY = danish ? 0.715 : 0.69;
+  P.addEquipment('turret', box(0.34, danish ? 0.36 : 0.31, 0.34), 0.48, gsY, 0.51, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretDark', box(0.29, 0.22, 0.022),
     0.48, gsY + (danish ? 0.06 : 0), 0.70, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.21, 0.14, 0.014),
@@ -361,6 +364,9 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
     // the commander's hatch behind his sight (r5 critics: the sight alone on its ring read as a weapon station's bump)
     P.addCupola('turret', cylY(0.30, 0.31, 0.05, 20), -0.42, 0.735, -1.06);
     P.add('turretDark', box(0.08, 0.04, 0.10), -0.42, 0.77, -1.38);
+    // the gunner's hatch on the roof's left (r7 critics: the CV90 turret has two)
+    P.addCupola('turret', cylY(0.27, 0.28, 0.05, 20), 0.42, 0.735, -1.00);
+    P.add('turretDark', box(0.08, 0.04, 0.10), 0.42, 0.77, -1.29);
   }
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.42, d: 0.38, h: 0.20, fill: 0.45, rails: 3, seed: 941,
@@ -435,6 +441,14 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
   // a 3 cm slit from the stern to the bow bridge; rayed down at 1 cm on the built tank, whose CV90 geometry stands at 0.9
   // of these builder metres, world x 1.50-1.52 from z -3.04 to 1.60): a strip just under the carrier's top
   for (const side of [-1, 1] as const) P.add('hull', box(0.04, 0.02, 5.16), side * 1.678, 1.62, -0.80);
+  // the skirts' foot lowered over the road wheels' upper quarter (r7 critics on the Holstebro photograph)
+  for (const side of [-1, 1] as const) P.add('hull', box(0.095, 0.13, 5.96), side * 1.74, 0.655, -0.74);
+  // the troop door's outline and hinges on the rear plate (r7 critics: the plate read blank)
+  const dw = 0.46, dh = 0.40, dz = -3.538;
+  for (const sy of [-1, 1] as const) P.add('hullDark', box(dw * 2, 0.025, 0.012), 0, 1.09 + sy * dh, dz);
+  for (const sx of [-1, 1] as const) P.add('hullDark', box(0.025, dh * 2, 0.012), sx * dw, 1.09, dz);
+  for (const y of [0.83, 1.09, 1.35]) P.add('hullDark', box(0.05, 0.10, 0.03), -dw - 0.03, y, dz - 0.008);
+  P.add('hullDark', box(0.12, 0.04, 0.03), dw - 0.14, 1.09, dz - 0.008);
 }
 
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */

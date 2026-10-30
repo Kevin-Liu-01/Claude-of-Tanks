@@ -91,7 +91,9 @@ m41dk1.visual = {
   // blue-grey (r3: the sage base read pale, the patches small; r4: the green too yellow, the grey too blue; r5: the green
   // still yellow, the grey pale, the black heavy): a greyer sage, a darker blue-grey, the black-green lighter in weight
   // (r6: the black still spotty and small; the photographs' are large soft fields of olive and slate, little black)
-  scheme: 'nato', base: '#4c5143', weather: '#565b4d', patches: ['#262c24', '#4d535b'], patchK: 1.4, blackK: 0.5, marking: 'number', number: '26',
+  // (r7 critics: the grey a lavender in small polka dots, the whole too dark; the photographs' a pale olive-grey with large
+  // slate and black-green fields): paler, a neutral slate, the fields about twice as large
+  scheme: 'nato', base: '#5c614d', weather: '#64695a', patches: ['#262c24', '#4a4f51'], patchK: 2.4, blackK: 0.5, marking: 'number', number: '26',
   camoScale: 0.42,
 };
 
