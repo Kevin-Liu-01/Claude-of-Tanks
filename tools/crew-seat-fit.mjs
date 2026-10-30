@@ -712,7 +712,7 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed,
     const candidates = coarse(kinds);
     const found = cascade(candidates, within);
     if (found) return { found, within };
-    const best = bestEffortPlacement(candidates, within);
+    const best = bestEffortPlacement(candidates, within, armour);
     if (!best) return null;
     const near = cascade(fine(best.candidate), within);
     return near ? { found: near, within } : { best, within };
@@ -733,8 +733,11 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed,
   return finishSeat({ candidate: best.candidate, py: best.py, shell: within, armour, relaxed: 'modules+crew', trimmed: ROUND3(outside) });
 }
 
-/** The coarse placement (10 cm, three tucks) that leaves the most of the body inside the shell. */
-function bestEffortPlacement(candidates, shell) {
+/**
+ * The coarse placement (10 cm, three tucks) that leaves the most of the body inside the shell, among those whose head
+ * the armour can hold once trimmed (266: finishSeat never keeps a station without its head).
+ */
+function bestEffortPlacement(candidates, shell, armour) {
   let best = null;
   for (const candidate of candidates) {
     if (candidate.ix % 2 || candidate.iz % 2 || ![0, 0.4, 1].includes(candidate.tuck)) continue;
@@ -747,7 +750,10 @@ function bestEffortPlacement(candidates, shell) {
     for (let py = lo; py <= hi; py += 0.03) {
       let inside = 0;
       for (const column of columns) if (column.some(([a, b]) => py >= a && py <= b)) inside++;
-      if (!best || inside > best.inside || (inside === best.inside && candidate.cost < best.candidate.cost)) best = { candidate, py, inside };
+      if (best && !(inside > best.inside || (inside === best.inside && candidate.cost < best.candidate.cost))) continue;
+      const head = translate(body.parts.shapes[0], [candidate.px, py, candidate.pz]);
+      if (!(trimShape(head, armour) ?? lowerHead(head, armour))) continue;
+      best = { candidate, py, inside };
     }
   }
   return best;
