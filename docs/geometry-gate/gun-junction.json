@@ -152,7 +152,7 @@
   "pl01": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"acd82c13a208a259","gun":"aece4b5aaba36198"}},
   "pl01_105": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"281bab785685c60b","gun":"c6d66f2eaebbc1fc"}},
   "pt64_tur": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a2973980611cfbe1","gun":"8074b41b2439c653"}},
-  "pt84_orzel": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"525c2672c614b31f","gun":"6dba6b72055fca9a"}},
+  "pt84_orzel": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"78b9d1697c49a497","gun":"6dba6b72055fca9a"}},
   "pt84_sokol": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7a181144177ac6de","gun":"cae2d382d9fae739"}},
   "pt84_zbik": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b08fd455ab1e8461","gun":"0d6af448010cc72b"}},
   "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4cfa34ce54e5af4e","gun":"f8e9c808d3012148"}},
