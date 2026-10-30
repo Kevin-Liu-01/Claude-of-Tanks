@@ -234,5 +234,11 @@
  "t64b1v_2022": "s265-t64b1v-2022-cliffbridge",
  "t64bm1m": "s266-t64bm1m-delta",
  "t55a": "s267-t55a-caldera",
- "t64bv": "s268-t64bv-badlands"
+ "t64bv": "s268-t64bv-badlands",
+ "centurion5_1_aus": "s269-centurion5-1-aus-copper-mesa",
+ "shot_kal": "s270-shot-kal-desert",
+ "olifant_mk2": "s271-olifant-mk2-alpine",
+ "strv105": "s272-strv105-fjord",
+ "centurion13": "s273-centurion13-railyard",
+ "centurion5_avre": "s274-centurion5-avre-fjord"
 }
