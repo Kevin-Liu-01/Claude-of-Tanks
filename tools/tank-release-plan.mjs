@@ -24,11 +24,13 @@ export function tankReleaseArgs(argv) {
  * Declarative release composition, tested without launching browser children.
  *
  * Lane mode (`{lane:true}`, 2026-10-16, test-speed R8e) drops exactly the embedded `npm test` and
- * `npm run build:private`: the release gate runs every receipt and `npm run build` (build:private's
+ * `npm run build:private`: the release gate runs the default receipt tier and `npm run build` (build:private's
  * commands plus the public strip) once per release, docs/DEVELOPMENT.md "Fast checks". Every other
- * step, flag and id scope is the integrator mode's, byte for byte. That includes the fleet-wide
- * combat-anatomy freshness check: a shared-builder edit can stale rows of tanks the lane did not
- * select, and nothing proves their inputs unchanged (the COVERAGE RULE), so it is never scoped here.
+ * step, flag and id scope is the integrator mode's, byte for byte.
+ * Tiers (266, owner 2026-10-30): every step is per id. The fleet-wide combat-anatomy check moved to the manual `fleet`
+ * suite (`npm run test:heavy -- fleet` runs `gen-combat-anatomy --check`): a shared-builder edit that can stale other
+ * tanks' rows shows as "the shared fleet core changed" in `npm run test:recommend`, which Main relays to the owner.
+ * The id-scoped `tanks` receipts naming or reading the selected ids run here (tools/test-heavy.mjs tanks --ids).
  */
 export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = false} = {}) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
@@ -52,9 +54,8 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
     ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
-    // Fleet-wide in both modes: gen-combat-anatomy --check --ids would compare every unselected row
-    // with itself, so a shared cage or barrel builder could leave other tanks' rows stale unseen.
-    cpu('gen-combat-anatomy','--check'),
+    // Per id since 266: the fleet-wide form is the manual `fleet` suite's command (see above).
+    cpu('gen-combat-anatomy','--check',selected),
     // 2026-10-29 (the owner's voxel blocks): no committed interior fill stands outside its current body (a skin moved
     // without a fills regen draws its old fills as stair-stepped slabs). --lane (Main, 2026-10-29): the selected ids
     // plus every id whose body or fill record moved against the merge-base with origin/main, so a shared builder's
@@ -82,6 +83,8 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // guards 229: a release naming a counter-drone pinned vehicle re-flies its pinned runs and the owner's rule (CPU only,
     // no capture lease; npm test flies every pin in src/sim/counterDroneRuns.selftest.mjs)
     ...counterDronePinned.length ? [{command:node,args:['tools/counter-drone-engage.mjs',`--ids=${counterDronePinned.join(',')}`,'--check'],capture:false}] : [],
+    // 266: the id-scoped `tanks` receipts that name or read these ids (their own runner pool; no capture lease)
+    {command:node,args:['tools/test-heavy.mjs','tanks',selected],capture:false},
     // Integrator mode only: lane mode leaves the whole suite and the build to the release gate.
     ...(lane ? [] : [
       {command:'npm',args:['test'],capture:false},
@@ -129,7 +132,7 @@ export function tankReleaseInvocation(argv, node = process.execPath) {
 
 /** What a lane run skipped, and where each skipped command still runs. */
 export const TANK_RELEASE_LANE_NOTE = 'npm test and npm run build:private NOT RUN (lane mode): the integrator mode runs both; '
-  + 'the release gate runs every receipt and npm run build (the same vite build and localized pages, plus the public strip)';
+  + 'the release gate runs the default receipt tier and npm run build (the same vite build and localized pages, plus the public strip)';
 
 export const tankReleaseLabel = ({ command, args }) => `${command} ${args.join(' ')}`;
 
