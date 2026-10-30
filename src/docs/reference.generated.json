@@ -3151,6 +3151,27 @@
       "suspension": false
     },
     {
+      "id": "ua_cv9040c",
+      "name": "CV9040C (Ukraine)",
+      "nation": "Ukraine",
+      "role": "ifv",
+      "tier": 4,
+      "hp": 2425,
+      "speed": 70,
+      "reverse": 40,
+      "hull": 51.9,
+      "turret": 69.4,
+      "dispersion": 0.25,
+      "reload": 0.44,
+      "aim": 1.02,
+      "view": 450,
+      "smoke": 18,
+      "lights": true,
+      "roofGun": false,
+      "missile": false,
+      "suspension": false
+    },
+    {
       "id": "object695",
       "name": "Object 695",
       "nation": "Russia",
