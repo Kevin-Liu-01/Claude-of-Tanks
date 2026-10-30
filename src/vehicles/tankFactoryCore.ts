@@ -24,7 +24,8 @@ import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry }
 import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
-  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
+  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry,
+  noteFarLodBuild, parkDraws,
   type FarHull, type FarWheel,
 } from './farLod.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
@@ -10262,6 +10263,10 @@ export function* createTankRuntimeSteps(
   let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[] } | null = null;
   let farLodActive = false;
   let unparkFarLod: (() => void) | null = null;
+  // (local-fps-265) the far LOD's running gear alone, nearer in (GEAR_LOD_ENTER_M): its wheel stations stand in for the
+  // wheel layers while the rest keeps its detail
+  let gearLodActive = false;
+  let unparkGearLod: (() => void) | null = null;
   const buildFarLod = (): NonNullable<typeof farLod> => {
     const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
     for (const cluster of destructibleClusters.values()) {
@@ -10421,9 +10426,39 @@ export function* createTankRuntimeSteps(
       unparkFarLod?.();
       unparkFarLod = null;
       if (farLod) for (const mesh of farLod.meshes) mesh.visible = false;
+      // (the gear stage keeps its wheel stations; the wheel layers go back under its own park, whichever stage parked
+      // them first: a vehicle that went far in one step had them parked by the far LOD, whose undo just restored them)
+      if (farLod?.gear && gearLodActive) {
+        unparkGearLod?.();
+        unparkGearLod = parkDraws(farLod.gearParked);
+        farLod.gear.visible = true;
+      }
       gearForceUpdate = true;
     }
     farLodActive = on;
+  };
+  /** (local-fps-265) Show the far LOD's wheel stations for the wheel layers (building the far LOD the first time, one
+   *  vehicle at a time, as setFarLod) or the wheels again. The full far LOD parks the same layers on top of this. */
+  const setGearLod = (on: boolean): void => {
+    if (on) {
+      if (!farLod) {
+        const startedAt = performance.now();
+        if (!claimFarLodBuild(startedAt)) return;
+        farLod = buildFarLodAtRange();
+        const endedAt = performance.now();
+        noteFarLodBuild(startedAt, endedAt);
+        (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((endedAt - startedAt) * 10) / 10;
+      }
+      if (!farLod.gear) return;
+      unparkGearLod = parkDraws(farLod.gearParked);
+      farLod.gear.visible = true;
+    } else {
+      unparkGearLod?.();
+      unparkGearLod = null;
+      if (farLod?.gear && !farLodActive) farLod.gear.visible = false;
+      gearForceUpdate = true;
+    }
+    gearLodActive = on;
   };
   let battleDetailsAttached = true;
   function setBattleDetailsAttached(attached: boolean): void {
@@ -10951,6 +10986,11 @@ export function* createTankRuntimeSteps(
           const far = viewDistM !== undefined && !destroyed
             && (farLodActive ? viewDistM >= FAR_LOD_RETURN_M : viewDistM >= FAR_LOD_ENTER_M);
           if (far !== farLodActive) setFarLod(far);
+          // (local-fps-265) the wheel stations alone from GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M), under the same
+          // terms: never in an inspection view or on a wreck
+          const gearFar = viewDistM !== undefined && !destroyed
+            && (gearLodActive ? viewDistM >= GEAR_LOD_RETURN_M : viewDistM >= GEAR_LOD_ENTER_M);
+          if (gearFar !== gearLodActive) setGearLod(gearFar);
         }
         root.position.copy(renderState.pos);
       };
@@ -11139,7 +11179,7 @@ export function* createTankRuntimeSteps(
       const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
       // (perf-255) a far-LOD'd vehicle's gear rests: its stand-in draws (the bands hold their last pose)
-      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive;
+      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive && !gearLodActive;
       const syncFromStateAssemblyStage6 = (): void => {
         if (gearVisible !== gearWasVisible) {
           if (gearVisible) gearForceUpdate = true;
@@ -11484,6 +11524,7 @@ export function* createTankRuntimeSteps(
       if (destroyed) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
@@ -11717,6 +11758,7 @@ export function* createTankRuntimeSteps(
       // (perf-250) the parts, never the far copies, in the Garage
       if (farMergeRuns.length) applyFarMerge(false);
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
     },
 
     setVisible(v) { root.visible = v; },
