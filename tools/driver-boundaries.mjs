@@ -42,6 +42,8 @@ const LOCAL_DRIVER_ENTRIES = Object.freeze([
   'src/game/provingRange.ts', 'src/game/watchController.ts', 'src/game/watchSeat.ts', 'src/game/killcam.ts', 'src/game/killcamAccess.ts',
   'src/game/replayPose.ts', 'src/game/campaignOperations.ts', 'src/game/campaignProgress.ts', 'src/game/campaignDebrief.ts',
   'src/game/jevCommander.ts', 'src/world/soloWorldKernels.ts',
+  // the local Worker driver (?localDriver=worker): its page end, and through its Worker edge the Worker's step
+  'src/game/localSimDriver.ts',
 ]);
 /** The online driver's client stack, which a local battle never reaches by any edge. */
 const ONLINE_CLIENT_STACK = /^src\/mp\/(?:match|presentation|transport|wire|session)\//;

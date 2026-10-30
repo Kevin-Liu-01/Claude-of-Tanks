@@ -1862,6 +1862,7 @@
     "tools/wreck-paint-bench.selftest.mjs": 1000,
     "src/vehicles/profiles/ztz85iii.selftest.mjs": 11000,
     "src/sim/driverStepParity.selftest.mjs": 50000,
-    "tools/driver-boundaries.selftest.mjs": 40000
+    "tools/driver-boundaries.selftest.mjs": 40000,
+    "src/game/localSimDriver.selftest.mjs": 90000
   }
 }

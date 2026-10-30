@@ -80,7 +80,7 @@ const _turret = new Matrix4();
  * The gun's muzzle and bore as the authority poses them (sim/authoritativeMatch.ts gunWorldPose): the Worker has no drawn
  * barrel, so its hulls fire from where the online driver's authority fires them, the launchers' tubes included.
  */
-function headlessGunPose(entity: Entity, muzzleOut: Vector3 | null, dirOut: Vector3 | null, muzzleIndex?: number, launchers?: boolean): void {
+export function headlessGunPose(entity: Entity, muzzleOut: Vector3 | null, dirOut: Vector3 | null, muzzleIndex?: number, launchers?: boolean): void {
   const s = entity.state, armor = entity.spec.armor || {};
   const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
   const gunPivot = armor.gunPivot || [0, entity.spec.dims.heightM * 0.15, 0];

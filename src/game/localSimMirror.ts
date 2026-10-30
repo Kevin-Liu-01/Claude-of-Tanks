@@ -8,7 +8,8 @@
  * hashes the shape it saw (every key, every leaf's kind, every array's length); while the hash holds, the schema the
  * page compiled stands and only the values travel. A changed shape (a magazine fitted, a drone launched) sends the new
  * schema with that tick. A Set travels whole when its size or contents change. Aliased objects (a reload channel that is
- * also the hull's reload) are walked once, by their first path. Nothing is allocated while the shape holds.
+ * also the hull's reload) are walked once, by their first path; a frozen object (a ruleset's table) never changes and is
+ * not walked. Nothing is allocated while the shape holds.
  */
 import { Vector3 } from 'three';
 
@@ -145,7 +146,7 @@ export function createMirrorWriter(): MirrorWriter {
   function visit(value: unknown, key: string | number, depth: number): void {
     if (typeof value === 'function') return;
     if (value !== null && typeof value === 'object' && !(value instanceof Set)) {
-      if (value instanceof Map || _seen.has(value) || depth >= MAX_DEPTH) return;
+      if (value instanceof Map || _seen.has(value) || depth >= MAX_DEPTH || Object.isFrozen(value)) return;
       _seen.add(value);
       if (typeof key === 'string') hash = hashString(hash, key); else hash = Math.imul(hash ^ (key + 7), 0x01000193);
       hash = Math.imul(hash ^ (containerKindOf(value) + 211), 0x01000193);
@@ -188,7 +189,7 @@ export function createMirrorWriter(): MirrorWriter {
       const record = (value: unknown, key: string | number, parent: number, depth: number): void => {
         if (typeof value === 'function') return;
         if (value !== null && typeof value === 'object' && !(value instanceof Set)) {
-          if (value instanceof Map || seen.has(value) || depth >= MAX_DEPTH) return;
+          if (value instanceof Map || seen.has(value) || depth >= MAX_DEPTH || Object.isFrozen(value)) return;
           seen.add(value);
           const index = parentOf.length;
           parentOf.push(parent); parentKey.push(key); parentKind.push(containerKindOf(value));
@@ -223,11 +224,17 @@ export function createMirrorWriter(): MirrorWriter {
 /** The page's side for one hull: a schema compiled against the page's own objects, then each tick's values applied. */
 export interface MirrorReader {
   readonly leaves: number;
+  /** Each object's keys this schema writes (its leaves and its containers), so the next schema can drop the ones gone. */
+  readonly written: ReadonlyMap<object, ReadonlySet<string | number>>;
   apply(entity: object, values: Float64Array, offset: number, strings: readonly string[]): void;
   applySets(entity: object, moved: readonly (number | unknown[])[]): void;
 }
 
-export function compileMirrorReader(entity: object, schema: MirrorSchema): MirrorReader {
+/**
+ * A schema compiled against the page's hull. With the hull's previous reader, a key the Worker's hull no longer has (a
+ * field deleted, a container gone) is deleted on the page too.
+ */
+export function compileMirrorReader(entity: object, schema: MirrorSchema, previous: MirrorReader | null = null): MirrorReader {
   // each parent resolved (or built) once on the page's hull: the page never replaces the objects its battle made
   const parents: Bag[] = new Array(schema.parentOf.length);
   const resolve = (index: number): Bag => {
@@ -245,11 +252,26 @@ export function compileMirrorReader(entity: object, schema: MirrorSchema): Mirro
   };
   for (let index = 0; index < schema.parentOf.length; index++) resolve(index);
   const leafOwners: Bag[] = schema.leafParent.map((parent) => (parent < 0 ? entity as Bag : parents[parent]!));
+  const written = new Map<object, Set<string | number>>();
+  const mark = (owner: object, key: string | number) => {
+    let set = written.get(owner);
+    if (!set) written.set(owner, set = new Set());
+    set.add(key);
+  };
+  schema.leafKey.forEach((key, index) => mark(leafOwners[index]!, key));
+  schema.parentKey.forEach((key, index) => mark(schema.parentOf[index]! < 0 ? entity : parents[schema.parentOf[index]!]!, key));
+  if (previous) {
+    for (const [owner, ownerKeys] of previous.written) {
+      const kept = written.get(owner);
+      for (const key of ownerKeys) if (!kept?.has(key)) delete (owner as Bag)[key];
+    }
+  }
   const keys = schema.leafKey;
   const kinds = schema.leafKind;
   const count = kinds.length;
   return {
     leaves: count,
+    written,
     // hot-path: every applied tick, every hull
     apply(_entity, values, offset, strings) {
       for (let index = 0; index < count; index++) {
@@ -260,7 +282,7 @@ export function compileMirrorReader(entity: object, schema: MirrorSchema): Mirro
           case LEAF.boolean: owner[keys[index]!] = value !== 0; break;
           case LEAF.string: owner[keys[index]!] = strings[value]; break;
           case LEAF.null: owner[keys[index]!] = null; break;
-          case LEAF.undefined: if (owner[keys[index]!] !== undefined) owner[keys[index]!] = undefined; break;
+          case LEAF.undefined: owner[keys[index]!] = undefined; break;
           default: break;
         }
       }

@@ -94,7 +94,7 @@ export interface LocalSimDriver {
   /** The battle is over for the page (the Garage, another battle): the Worker stops and the page's own objects return. */
   end(): void;
   /** What the driver measured (the proof's probes read it). */
-  readonly stats: { ticks: number; applied: number; maxTicksPerFrame: number; lateFrames: number; bootMs: number; kernels: string | null; mismatch: string | null };
+  readonly stats: { ticks: number; applied: number; skipped: number; maxTicksPerFrame: number; lateFrames: number; bootMs: number; kernels: string | null; mismatch: string | null };
 }
 
 const quatA = new Quaternion(), quatB = new Quaternion(), position = new Vector3(), unit = new Vector3(1, 1, 1);
@@ -129,7 +129,7 @@ export function createLocalSimDriver({
   const indexById = new Map<string, number>();
   let wreckPrev = new Float64Array(0), wreckCur = new Float64Array(0);
   let wreckHas = new Uint8Array(0), wreckSettled = new Uint8Array(0);
-  const stats = { ticks: 0, applied: 0, maxTicksPerFrame: 0, lateFrames: 0, bootMs: 0, kernels: null as string | null, mismatch: null as string | null };
+  const stats = { ticks: 0, applied: 0, skipped: 0, maxTicksPerFrame: 0, lateFrames: 0, bootMs: 0, kernels: null as string | null, mismatch: null as string | null };
 
   const post = (message: PageToLocalSim, transfer?: Transferable[]): void => { worker?.postMessage(message, transfer ?? []); };
 
@@ -217,7 +217,7 @@ export function createLocalSimDriver({
       for (let at = 0; at < message.schemas.length; at += 2) {
         const index = message.schemas[at] as number;
         const entity = tanks[index];
-        if (entity) readers[index] = compileMirrorReader(entity, message.schemas[at + 1] as MirrorSchema);
+        if (entity) readers[index] = compileMirrorReader(entity, message.schemas[at + 1] as MirrorSchema, readers[index] ?? null);
       }
     }
     game.timeS = block[BLOCK.timeS]!;
@@ -249,6 +249,7 @@ export function createLocalSimDriver({
       const reader = readers[index];
       const entity = tanks[index];
       if (reader && entity && reader.leaves === leaves) reader.apply(entity, block, at, strings);
+      else stats.skipped++;
       at += leaves;
     }
     if (message.sets) {
@@ -458,7 +459,7 @@ export function createLocalSimDriver({
       strings.length = 0;
       specs.clear();
       resolvedSpecs.clear();
-      stats.ticks = 0; stats.applied = 0; stats.maxTicksPerFrame = 0; stats.lateFrames = 0; stats.mismatch = null;
+      stats.ticks = 0; stats.applied = 0; stats.skipped = 0; stats.maxTicksPerFrame = 0; stats.lateFrames = 0; stats.mismatch = null;
       ensureWorker();
       post({ type: 'boot', boot });
     },
