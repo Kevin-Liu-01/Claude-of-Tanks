@@ -16,11 +16,10 @@ delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
 // Its own depression curve, measured on the 1A5-lined casting and the old hull (tools/gun-depression-sweep.mjs, 26 mm;
-// no mount conflict): the full -9 degrees but for a brush of the bow's width rods at 28-30 and the stern deck, exhaust
-// and fuel cans aft of 151 degrees.
-spec.gunPitchByYawDeg = [[0, -9], [27, -9], [28, -8.9], [30, -8.9], [31, -9], [151, -9], [153, -7.8], [155, -6.8],
-  [156, -5.4], [159, -3.6], [160, -3.3], [164, -3.1], [165, -2.4], [166, -1.9], [167, -1.6], [169, -1.5], [172, -1.5],
-  [173, -1.8], [175, -3], [180, -3.1]];
+// no mount conflict): the full -9 degrees to 149 degrees, then the raised grille boxes over the stern quarters (265) and
+// the stern deck and exhaust.
+spec.gunPitchByYawDeg = [[0, -9], [149, -9], [150, -8.5], [151, -6.2], [152, -4.3], [153, -3.4], [155, -2.4], [156, -2.1],
+  [159, -1.7], [161, -1.7], [165, -3.1], [170, -3], [180, -3.1]];
 stripSilhouetteDimensions(spec.dims);
 // About 40 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.70 m over the PERI R12.
 Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.70 });

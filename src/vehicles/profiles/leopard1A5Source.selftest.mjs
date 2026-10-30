@@ -132,7 +132,7 @@ for (const pitchDeg of [-9, 0, 20]) {
 }
 gunRig.rotation.x = 0;
 visual.root.updateMatrixWorld(true);
-mesh('hullCloth');
+// (no hullCloth: the transom's fuel cans came off in 265, the Munster 1A5's clean rear)
 mesh('turretCupola');
 
 console.log('leopard1A5Source.selftest: 262 proportions (hull, deck, tracks, skirts), cast B&V turret, EMES 18, seated rig and kit pass');

@@ -348,12 +348,12 @@ const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.1
 
 /**
  * Leopard 1A5 (262 proportion rebuild): the main gun's depression by turret yaw, measured with
- * tools/gun-depression-sweep.mjs (the whole gun 26 mm off every hull mesh). The full 9 degrees to 154 degrees of yaw;
- * over the stern the engine deck's exhaust bank and the rear fuel cans hold it to about -1.6 degrees at 167-172.
+ * tools/gun-depression-sweep.mjs (the whole gun 26 mm off every hull mesh). The full 9 degrees to 151 degrees of yaw;
+ * over the stern quarters the raised grille boxes (265) hold it to about -3.7 degrees at 158-161, and over the stern
+ * the engine deck's exhaust bank to -4.4.
  */
-const LEO1A5_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [154, -9], [156, -7.2], [158, -5.9], [160, -4.7], [161, -4.6],
-  [162, -4.6], [163, -3.7], [165, -2.5], [166, -2], [167, -1.8], [172, -1.6], [173, -2], [176, -3.6], [177, -4.4],
-  [180, -4.4]] as const);
+const LEO1A5_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [151, -9], [152, -7.5], [153, -6.2], [155, -4.6], [158, -3.8],
+  [161, -3.7], [165, -4.5], [166, -4.4], [180, -4.4]] as const);
 
 export const MODERN2_SPECS: TankSpecRegistry = {
   leo2a2: {
