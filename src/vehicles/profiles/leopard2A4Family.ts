@@ -14,6 +14,7 @@ import { addLeo2A4MKit } from './leopard2A4A5nlKit.ts';
 import { addLeo2A4MCanKit } from './leopard2A4CanKit.ts';
 import { addLeo2A4OtcoKit } from './leopard2A4OtcoKit.ts';
 import { addLeo2ImprovedKit } from './leopard2ImprovedKit.ts';
+import { addStrv121Kit } from './leopard2A4Strv121Kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { EARLY_LEOPARD2_FORE_SKIRT_DROP_M, EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z } from '../leopard2a3B4Armor.ts';
@@ -24,8 +25,9 @@ interface Leopard2A4Variant {
   /** The rear mudguard flaps' articulation name (one per vehicle). */
   readonly flapName: string;
   readonly seed: number;
-  /** Hull parts its kit replaces (the CAN's and the Improved's own skirts). */
-  readonly hull?: { readonly skirts?: 'none' };
+  /** Hull parts its kit replaces (the CAN's and the Improved's own skirts) or its field suit covers (the Strv 121's
+   *  splash board). */
+  readonly hull?: { readonly skirts?: 'none'; readonly splashBoard?: false };
   /** What its turret leaves off or swaps (its kit brings the replacement). */
   readonly turret: Omit<Leopard2A4TurretOptions, 'gun' | 'front' | 'seed'>;
   readonly kit: (P: TankBuilderPort, ctx: Leopard2A4KitContext) => void;
@@ -50,6 +52,8 @@ const VARIANTS: Readonly<Record<Leopard2A4FamilyId, Leopard2A4Variant>> = Object
   leo2_improved: { flapName: 'leo2-improved-rear-flap', seed: 26450, kit: addLeo2ImprovedKit, hull: { skirts: 'none' },
     turret: { loaderMG: { cls: 'mg3', name: 'leo2LoaderMg3' }, faceRails: false, wallRails: false, sideBins: false,
       rearBox: false, whips: false, numberOffsetM: null } },
+  strv121: { flapName: 'strv121-rear-flap', seed: 26460, kit: addStrv121Kit, hull: { splashBoard: false },
+    turret: { loaderMG: { cls: 'mag58', name: 'strv121LoaderKsp58' }, rearBox: false, whips: false, numberOffsetM: null } },
 });
 
 function leopard2A4(id: Leopard2A4FamilyId): (P: TankBuilderPort) => void {
@@ -71,4 +75,5 @@ export const LEOPARD2A4_FAMILY_PROFILES = {
   leo2a4m_can: { build: leopard2A4('leo2a4m_can') },
   leo2a4_otco: { build: leopard2A4('leo2a4_otco') },
   leo2_improved: { build: leopard2A4('leo2_improved') },
+  strv121: { build: leopard2A4('strv121') },
 } satisfies VehicleProfileRecord;

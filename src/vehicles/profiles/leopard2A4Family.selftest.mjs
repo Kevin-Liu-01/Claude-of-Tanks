@@ -20,6 +20,8 @@ const EXPECTED = [
   ['leo2a4m', { front: 'wedge', gun: 'L44' }],
   ['leo2a4_otco', { front: 'wedge', gun: 'L44' }],
   ['leo2_improved', { front: 'wedge', gun: 'L44' }],
+  // release 265: the Swedish 2A4 on the same construction, under its field suit
+  ['strv121', { front: 'block', gun: 'L44' }],
 ];
 /** Gun forward from the stern plate: the L/44's published 9.67 m (Slovak MoD, tanks-encyclopedia; as built 9.70). Every one
  *  of the six carries it (the OTCO and the Improved since the owner's ruling via Main, 2026-10-29). */
@@ -30,8 +32,9 @@ const near = (actual, expected, label, tolerance) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual.toFixed(3)}, expected ${expected}`);
 const box = (object) => new THREE.Box3().setFromObject(object);
 
-assert.deepEqual(Object.keys(LEOPARD2A4_FAMILY_FRONT).sort(), EXPECTED.map(([id]) => id).sort(), 'the family is these six');
-assert.equal(EXPECTED.filter(([, e]) => e.front === 'block').length, 3, 'the owner\'s even split: three square fronts');
+assert.deepEqual(Object.keys(LEOPARD2A4_FAMILY_FRONT).sort(), EXPECTED.map(([id]) => id).sort(), 'the family is these seven');
+assert.equal(EXPECTED.filter(([id, e]) => e.front === 'block' && id !== 'strv121').length, 3,
+  'the owner\'s even split: three square fronts among the six');
 
 const ids = EXPECTED.map(([id]) => id);
 await ensureInteriorFills(ids);
@@ -83,4 +86,4 @@ for (const [id, expected] of EXPECTED) {
   assert.equal(bricks, 102, 'leo2a4_v: 102 containers (the service photographs\' courses)');
   assert.ok(!plates.some((q) => q.kind === 'era' && /glacis/.test(q.name)), 'leo2a4_v: the glacis stays bare');
 }
-console.log('leopard2A4Family: six ids, both qualities: the owner\'s split, the guns, the ring and the roof');
+console.log('leopard2A4Family: seven ids, both qualities: the owner\'s split, the guns, the ring and the roof');

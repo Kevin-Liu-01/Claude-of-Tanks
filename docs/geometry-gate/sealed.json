@@ -2135,13 +2135,35 @@
    "openViews": 0,
    "insideOutPx": 47,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
+   "netSeeThroughPx": 2212,
    "tris": 128604,
    "frame": [
     0,
     1.75,
     1.05,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "release 265 the Swedish 2A4 rebuild on the Leopard 2 release hull, its field suit re-seated by the ghillie lane fix f7ae245d99 and its skirt drapes split around the 2A4 skirts' two open seams (the strict track clip), so the alpha-cut netting covers a new hull, 2139 px against main's 2806 row",
+     "by": "strv121-2a4-265",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "release 265 the 2A4 turret's cheeks swept back 27 degrees (the owner's ruling) and the field suit's turret net laid over the new front, 2212 px",
+     "by": "strv121-2a4-265",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2139
+     }
+    }
    ]
   },
   "strv122": {

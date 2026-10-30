@@ -16,9 +16,12 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   well".
 - IDs (rebuilt in place, names and combat data unchanged): `leo2a4` Leopard 2A4, `leo2a4_v` Leopard 2A4 V, `leo2a4m`
   Leopard 2A4M, `leo2a4m_can` Leopard 2A4M CAN, `leo2a4_otco` Leopard 2A4 OTCO, `leo2_improved` Leopard 2 Improved.
-- The Strv 121 (the owner, mid-lane) is built on `item/strv121-2a4-265` and ships next release with the ghillie lane's
-  re-seated suit (Main, 2026-10-29: its nationalGunClearance read 18.84 mm from the suit's hull net at yaw 180); this
-  release keeps its base build, every table row equal to the base's.
+- The Strv 121 (the owner, mid-lane): this branch, `item/strv121-2a4-265`, rebuilds it on the family's construction
+  with the ghillie lane's re-seated suit (item/ghillie-strv121-265, fieldClearanceM 0.045; Main, 2026-10-29: the old
+  seat read 18.84 mm from the suit's hull net at yaw 180) for the next release. The lane branch keeps its base build.
+  Blind critic PASS (round 3, against a photographed Strv 121 and the 2A4 references); nationalGunClearance at every yaw
+  (no skip window); fairness (IX round robin, 120 m) 0.882 (3/35 pairs in 0.2-0.8) -> 0.362 (17/35), no lever: the old
+  build was the tier's second strongest.
 - Implementation status: built; regen chain, gun stops, gun lines, rigs, seats, spare track and ledger green on the six.
 - Qualification status: blind critics (SwiftShader Gallery stills, front34/side/rear34/front): PASS on all six
   (leo2a4m, leo2a4m_can, leo2_improved, leo2a4_v round 1; leo2a4_otco round 3; leo2a4 round 4). The lane release gate
@@ -44,8 +47,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 - Protected: `leo2a6_ua` (its own session; `buildLeo2A6M` stays), the source-X studies `leo2a5`, `leo2a5m`, `leo2a6`,
   `leo2a6m`, `leo2a7v`, `strv122` (their combat copies are taken before the re-envelope), the 262 family (`leo2a2`,
   `leo2a3`, `leo2a3_b4`, `christian2`). `leopard2Hull.ts` takes one option from this lane (`skirts: 'none'`, default
-  byte-identical) after the 262 turret-front head merged. The strv121 ghillie suit row belongs to the ghillie session,
-  re-seated on this geometry after it lands.
+  byte-identical) after the 262 turret-front head merged, and a second for the Strv 121 (`splashBoard: false`, default
+  on). The strv121 ghillie suit row belongs to the ghillie session (its re-seat on this geometry is merged here).
 - Combat data: every stat, gun and round, paint and every armour plate's protection (physical, KE, CE, kind, ERA, module
   link) stands under its own name; only where the plates stand moves (the 2A6/2A5 wedge and chevron layers become the
   spaced layer inside the 2A4 front block). Gun geometry: the L/44 on all six (leo2a4's old build drew a 2A6's L/55; the
@@ -155,3 +158,11 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   - The Strv 121 (item/strv121-2a4-265): its stern rack floored; its track sweep (28 voxels) is the field suit's
     `strv122_ghillie_hull_net` at x ±1.68, y 1.16-1.22, and its netting px (2,243 against main's 2,806 row) moved with
     the re-seated suit: both routed to the ghillie lane (Main).
+- Strv 121, R4 (2026-10-29, item/strv121-2a4-265; Main: next release): the rebuild merged with the lane head and the ghillie lane's
+  suit fix; the 262 skip window dropped from nationalGunClearance; blind critics: round 1 (skirt height: contradicted by
+  the Huber drawing and the photos, the critic had no images), round 2 (the hull's splash board: the suit nets one arm and
+  clears the driver's periscopes, the bare other arm read as a loose plank) -> the Strv 121 leaves the splash board off;
+  round 3 PASS. Its auxiliary summary counts the 2A4's sixteen smoke tubes (the row had carried the old build's 28).
+- Strv 121, R5 (2026-10-29): the stern rack floored (54 contiguity cells); its suit's skirt drapes split around the 2A4
+  skirts' two open seams (the strict track clip: 28 voxels of the hull net in the sweep -> 0); the netting row
+  re-baselined (2,139 px; main's row 2,806); its photo packet; a shaded side critic PASS (stills4).

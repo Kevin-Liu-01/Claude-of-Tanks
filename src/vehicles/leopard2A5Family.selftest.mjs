@@ -53,8 +53,8 @@ for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; 
   });
   assert.ok(guns > 0, `${id} ${quality}: a roof machine gun is built with visible geometry`);
   // VH.14 (2026-10-14): every A5 host's loader gun is a working station (the exact receiver could not turn); 264 (the
-  // 2A4-family rebuild): the 2A4 V carries it on the 2A4 turret under its own name; the Strv 121 keeps its A5 build
-  const loaderGun = { leo2a4_v: 'leo2a4vLoaderMag', strv121: 'leo2a5_loader_machine_gun' }[id];
+  // 2A4-family rebuild): the 2A4 V and the Strv 121 carry it on the 2A4 turret under their own names
+  const loaderGun = { leo2a4_v: 'leo2a4vLoaderMag', strv121: 'strv121LoaderKsp58' }[id];
   if (loaderGun) assert.ok(tank.root.getObjectByName(loaderGun)?.userData.remoteControlled, `${id}: the working loader gun`);
   tank.dispose();
   builds++;

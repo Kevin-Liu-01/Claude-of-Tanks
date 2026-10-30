@@ -2780,6 +2780,14 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1, back: true }] },
   ],
+  // 264: the Stridsvagn 121 on the release construction. Its kit (profiles/leopard2A4Strv121Kit.ts) draws the radios'
+  // whips, the Swedish rear basket and its load, and the field suit dresses the hull, so the decor keeps the cans, tools
+  // and shackles (the fleet default hung four links on the turret wall, which no Strv 121 photograph shows)
+  strv121: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+  ],
   xk2_black_panther: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.38, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
