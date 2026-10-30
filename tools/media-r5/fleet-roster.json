@@ -6588,5 +6588,40 @@
    "en": "T-64BV, Redrock Divide",
    "zh": "T-64BV，红岩分界"
   }
+ },
+ {
+  "n": 269,
+  "id": "leo2a3-b4-autumn",
+  "hero": "leo2a3_b4",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "autumn",
+  "time": "day",
+  "anchor": [
+   138,
+   48
+  ],
+  "heading": 283,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "leo2a3_b4"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "sig_leo2a4_otco",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A3 knocks out a T-72B3 at Amberford",
+   "zh": "一辆 Leopard 2A3 在安伯福击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "Leopard 2A3, Amberford",
+   "zh": "Leopard 2A3，安伯福"
+  }
  }
 ]

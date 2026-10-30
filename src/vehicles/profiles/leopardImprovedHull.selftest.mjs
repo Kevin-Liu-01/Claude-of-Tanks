@@ -15,7 +15,8 @@ const size = (object) => new THREE.Box3().setFromObject(object, true).getSize(ne
 // 7.820 m long; turret 3.017523 m across. Only the first dimension changes.
 // 264 (the 2A4-family rebuild, profiles/leopard2A4Family.ts): the Improved stands on the release hull with the 2A4 turret
 // and its 2A6-look wedge; the old hull's 0.9 lateral scale went with that hull (leopard2ImprovedKit.ts). Its envelope is
-// re-measured on the rebuild: 3.662 m across the deep skirts, the release hull's 7.902 m and seven 0.348 m road wheels.
+// re-measured on the rebuild: 3.662 m across the deep skirts, the release hull's 7.912 m (release 265: re-measured on the
+// merged tree, the stern rack's rails setting the rear at z -4.165) and seven 0.348 m road wheels.
 for (const quality of ['high', 'low']) {
   const tank = createTank('leo2_improved', null, { proceduralOnly: true, quality, geometryReceipt: true });
   const hull = tank.root.getObjectByName('rig_hull');
@@ -25,7 +26,7 @@ for (const quality of ['high', 'low']) {
   const hullSize = size(hull);
   near(hullSize.x, 3.662000, `${quality}: narrower frontal envelope`);
   near(hullSize.y, 2.067000, `${quality}: hull height retained`);
-  near(hullSize.z, 7.902000, `${quality}: hull length retained`);
+  near(hullSize.z, 7.912000, `${quality}: hull length retained`);
   near(size(turret).x, 2.905157, `${quality}: turret retains its width`);
   near(size(gun.getObjectByName('gunMount')).x, 0.443400, `${quality}: mantlet retains its width`);
   near(getSpec('leo2_improved').dims.widthM, 3.6, 'declared hull width');
