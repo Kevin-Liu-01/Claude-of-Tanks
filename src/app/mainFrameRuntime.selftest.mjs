@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 
-import { createMainFrameRuntime } from './mainFrameRuntime.ts';
+import { createMainFrameRuntime, LENS_REFIT_SLACK } from './mainFrameRuntime.ts';
 import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 import { createLighting } from '../engine/lighting.ts';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
@@ -241,8 +241,11 @@ assert.equal(battle.calls.filter((entry) => entry === 'night-lights').length, 2,
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
 
 // (battle-camera-264) the chase framing's lens shift (cameraRig.ts applyLens: camera.view) moves the projection without
-// the fov. CSM's cascade slices are the projection's unprojection at their last fit, so every change of the lens refits
-// them (lighting.updateFov), as a fov change does; a held lens and a primed fit refit nothing.
+// the fov. CSM's cascade slices are the projection's unprojection at their last fit, so the lens refits them
+// (lighting.updateFov). (local-fps-265) Not at every step of its ease: refitting each step re-shaped the slices every
+// frame and kept the tree canopies' shadow proxies out of the static shadow cache. A move past LENS_REFIT_SLACK from the
+// last fit refits at once, a lens that has settled anywhere off the fit refits once, and a step inside the slack waits;
+// a held lens and a primed fit refit nothing.
 {
   const garage = createFixture();
   garage.runtime.tick(1000);
@@ -264,18 +267,37 @@ const lensView = (shift) => ({ enabled: true, fullWidth: 1, fullHeight: 1, width
   assert.equal(refits(), 1, 'a lens shift with the fov unchanged refits the cascades');
   lens.runtime.tick(1032);
   assert.equal(refits(), 1, 'a held lens refits nothing more');
+  // the projection's off-axis term is -2 x the view offset: a 0.005 step of the ease moves it 0.01, inside the slack
+  assert.equal(LENS_REFIT_SLACK, 0.05);
   lens.camera.view.offsetY = 0.12;
   lens.camera.updateProjectionMatrix();
   lens.runtime.tick(1048);
-  assert.equal(refits(), 2, 'each step of the lens\'s ease refits');
-  lens.camera.clearViewOffset();
+  assert.equal(refits(), 1, 'a step of the ease inside the slack does not refit (the negative control)');
   lens.runtime.tick(1064);
-  assert.equal(refits(), 3, 'clearing the shift (the scope, the Garage) refits them back');
+  assert.equal(refits(), 2, 'the ease\'s end (the lens held at 0.12) refits to the exact lens');
+  lens.runtime.tick(1080);
+  assert.equal(refits(), 2, 'and once only');
+  // steps that each stay inside the slack refit once their sum since the last fit passes it (0.02, 0.04, then 0.06)
+  for (const [t, offsetY, expected] of [[1096, 0.13, 2], [1112, 0.14, 2], [1128, 0.15, 3]]) {
+    lens.camera.view.offsetY = offsetY;
+    lens.camera.updateProjectionMatrix();
+    lens.runtime.tick(t);
+    assert.equal(refits(), expected, `the ease at ${offsetY}: ${expected === 3 ? 'past the slack from the last fit, refits' : 'inside the slack, waits'}`);
+  }
+  lens.camera.clearViewOffset();
+  lens.runtime.tick(1144);
+  assert.equal(refits(), 4, 'clearing the shift (the scope, the Garage) jumps past the slack and refits at once');
   lens.camera.view = lensView(0.05);
   lens.camera.updateProjectionMatrix();
   lens.runtime.noteFovPrimed(lens.camera.fov); // the battle entry's final shadows fit the lens it reveals
-  lens.runtime.tick(1080);
-  assert.equal(refits(), 3, 'a primed fit is not refitted again');
+  lens.runtime.tick(1160);
+  lens.runtime.tick(1176);
+  assert.equal(refits(), 4, 'a primed fit is not refitted again, held or not');
+  // the fov keeps its exact refit: a fov step inside any slack refits at once
+  lens.camera.fov += 0.01;
+  lens.camera.updateProjectionMatrix();
+  lens.runtime.tick(1192);
+  assert.equal(refits(), 5, 'a fov change refits at once');
 }
 // The real lighting: after a lens change the cascades' slices are the shifted projection's own; without the refit they
 // keep the centred one (the negative control)

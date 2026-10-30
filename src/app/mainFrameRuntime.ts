@@ -104,6 +104,13 @@ interface MainFrameRuntime {
  * All scratch objects and latches are retained, so Garage and battle frames
  * remain allocation-neutral while the composition root supplies live ports.
  */
+/**
+ * (local-fps-265) How far the lens may move from the cascades' last fit before they refit, in the projection's off-axis
+ * terms (elements 8 and 9: 2 x the view offset over the full size). A fifth of the chase framing's usual full shift
+ * (~0.23); coverage holds to the whole shift (mainFrameRuntime lensRefitDue).
+ */
+export const LENS_REFIT_SLACK = 0.05;
+
 export function createMainFrameRuntime({
   scene,
   camera,
@@ -183,14 +190,33 @@ export function createMainFrameRuntime({
   // unprojection at its last fit
   let lastLensX = camera.projectionMatrix.elements[8];
   let lastLensY = camera.projectionMatrix.elements[9];
+  // (local-fps-265) the lens the previous frame drew with: a lens equal to it has settled (the ease snaps to its target)
+  let frameLensX = lastLensX;
+  let frameLensY = lastLensY;
   let lastCinematicActive = false;
   let lastRenderedPhase = game.phase;
   let viewportChanged = false;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
-    lastLensX = camera.projectionMatrix.elements[8];
-    lastLensY = camera.projectionMatrix.elements[9];
+    lastLensX = frameLensX = camera.projectionMatrix.elements[8];
+    lastLensY = frameLensY = camera.projectionMatrix.elements[9];
+  };
+
+  /**
+   * (local-fps-265) Whether the lens has moved its cascades' fit: past LENS_REFIT_SLACK from the lens of the last fit (a
+   * jump: the scope, the isometric view, Watch, a cleared shift), or settled anywhere off it. The chase framing's ease
+   * moves the lens a little every frame while the camera works; refitting each step re-shaped CSM's slices every frame, so
+   * the cascades' poses moved, the cascade caster proxies recompacted and the static shadow cache drew the tree canopies'
+   * shadows as dynamic casters (~150 shadow draws a frame on Verdant against 262's ~5). A fit stale by the slack is
+   * covered: fitted to a centred lens, no visible receiver left its cascade's map at any shift the framing makes
+   * (battle-camera-264's measurement); and the ease's end refits to the exact lens. The fov keeps its exact refit.
+   */
+  const lensRefitDue = (lensX: number, lensY: number): boolean => {
+    const dx = lensX - lastLensX, dy = lensY - lastLensY;
+    if (dx === 0 && dy === 0) return false;
+    if (dx > LENS_REFIT_SLACK || dx < -LENS_REFIT_SLACK || dy > LENS_REFIT_SLACK || dy < -LENS_REFIT_SLACK) return true;
+    return lensX === frameLensX && lensY === frameLensY;
   };
 
   // hot-path: every frame (the scoped fog)
@@ -307,12 +333,14 @@ export function createMainFrameRuntime({
       && typeof trace?.mark === 'function';
     const frameStartedAt = profileGarageReturn ? performance.now() : 0;
     const projection = camera.projectionMatrix.elements;
-    if (camera.fov !== lastFov || projection[8] !== lastLensX || projection[9] !== lastLensY) {
+    if (camera.fov !== lastFov || lensRefitDue(projection[8], projection[9])) {
       lighting.updateFov();
       lastFov = camera.fov;
       lastLensX = projection[8];
       lastLensY = projection[9];
     }
+    frameLensX = projection[8];
+    frameLensY = projection[9];
     const garageShadowsDirty = game.phase === 'garage'
       && (viewportChanged || showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
     lighting.setStaticPresentationDormant(
