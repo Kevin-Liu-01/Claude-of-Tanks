@@ -22,7 +22,8 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 - IDs: `merkava1b` (Merkava Mk 1B), `merkava2b` (Mk 2B), `merkava2d` (Mk 2D), `merkava3c` (Mk 3C), `merkava3_baz`
   (Mk 3D Baz; seed id `merkava3d`), `merkava4b` (Mk 4B).
 - Implementation status: implemented (family builder over the supplied sources' measured records), iterating.
-- Qualification status: in progress — see the evidence matrix.
+- Qualification status: Main's bar met (critics r19 6-7, A/B r6 new on all six); the release check in progress — see
+  the evidence matrix.
 - Publication status: not published. Lane branch `item/merkava-family-262`; the integrator ("Claude of Tanks Main")
   owns shared main and the release.
 - Worktree / branch / baseline: `.claude/worktrees/sharp-montalcini-d9c09e`, `item/merkava-family-262`, base
@@ -145,15 +146,15 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 | Registered silhouettes | PASS (rev 7) | 4e6cc8a00a | `procedural-fidelity --ids=<six> --check --board --neutral-board`; boards `shots/procedural-fidelity/boards/<id>-neutral.png` | 94.7 (3C) to 95.7 (3D Baz), every registered view at least 95 (rev 4: 94.1-95.2); re-run owed on 2b7b1d3875 |
 | Geometry components / dimensions | FAIL (rev 7) | 4e6cc8a00a | `geometry-gate --ids=<six> --check` | whole curves 93.2-94.1 PASS; dims on the source ruler 1B 97.6 and 3D 93.1 PASS, 2D 89.2, 2B 82.5, 4B 67.2, 3C 46.5 (every axis within 0.4-2.7 % but the 4B's height, -5 %; the 3C's length carried its old suit, re-seated since); floaters PASS but the 4B's (its suit drapes, re-seated at 2b7b1d3875); re-run owed |
 | Lane overlays against the supplied OBJs | DIAGNOSTIC | rev 3 | `overlay.py` (lane tool), side / top / front IoU | side 0.885-0.898, top 0.965-0.977, front 0.817-0.909 |
-| Independent critic / Gallery | FAIL (rev 7) | 4e6cc8a00a | blind critic subagents: the Mk 1B renders and overlays (rev 3+), the six registered clay boards (rev 4) | rev 4: clay 2-5/10; rev 7: clay 3-5/10, articulation 5-7/10, guns 3-4/10 — the lofted turret shells read soft (no flat hard-edged faces), noses, smoke dischargers, sleeve bands, perforated skirts and loaded baskets missing; the next geometry round |
+| Independent critic / Gallery | PASS (r19) | 8c71fa5e34 | blind critic subagents (two models, the lower counts) on front/rear 3/4 and turret sheets against the source renders; blind A/B r6 against main's build, mirrored | 1B 7, 2B 6, 2D 6, 3C 7, Baz 6, 4B 7; A/B: new on all six both orders. Open (geometry closed by the owner): fender box noses, headlamp guards, rear bin gap |
 | Winding, closure, negative space | NOT RUN | | | |
 | Seats and yaw/pitch/recoil ownership | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` HIGH and LOW | |
-| Gun clearance and depression curves | PASS | ca824ae646+ | `gun-depression-sweep --no-suit`; `merkavaFamilyGunClearance`, `nationalGunClearance` | 1B/2B full depression all round; 2D skip window 139-145 (source rear marker poles; owner decision) |
-| Gear motion / band and shoe | NOT RUN | | | |
+| Gun clearance and depression curves | PASS | r25 sweep on 8c71fa5e34 | `gun-depression-sweep --no-suit`; `merkavaFamilyGunClearance` (suits on), `nationalGunClearance` | 1B/2B full depression all round; 3C/Baz to +-5 degrees, 4B -7.6 ahead; nearest 26.0-60.3 mm; 2D skip window 139-145 (source rear marker poles; owner decision) |
+| Gear motion / band and shoe | PASS | 8c71fa5e34 | `track-clip-audit --exact --strict` (lane harness `.qa-dev/merkava-262/cliprun.mjs`) | 0 voxels front, rear, sweep band and shoe on all six |
 | Triangles / build cost | MEASURED | rev 3 | `.qa-dev/merkava-262/cost.mjs` | weak HIGH-LOW reduction (13 %) |
 | Live/spent/reset packages | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` | |
 | Original-model preservation | PASS | rev 3 | CPU fingerprints, four protected ids | identical |
-| Anatomy update / freshness | PASS (ids-scoped) | 2b7b1d3875 | `gen-combat-anatomy --ids=<six>` to its fixpoint, `--check` | sim floors accepted for the rebuild (sim-floors.json); the fleet-wide `tank:anatomy:update` NOT RUN |
+| Anatomy update / freshness | PASS (ids-scoped) | f1e3b1bde7 | `gen-combat-anatomy --ids=<six>` to its fixpoint, `--check` | sim floors accepted for the rebuild (sim-floors.json); the fleet-wide `tank:anatomy:update` NOT RUN |
 | Assets / centering | NOT RUN | | centering --update, genIcons, genDrawings, genHeroCards (queued in the capture lock) | |
 | Composed release / tests / typecheck | NOT RUN | | `tank:release:check -- --ids=<six> --gate` | typecheck PASS at rev 3 and on the final tree (see the lane report) |
 | Builds / attribution | NOT RUN | | | |
@@ -276,6 +277,24 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   second layer of cans on the chests' lids, the pieces lying with the floor; the basket's volume reserved from the decor
   (`merkavaFamilyBasket.ts`). Loads: 1B 6 pieces, 2B 4, 2D 6, 3C 7, Baz 5, 4B 5. In-game stills:
   `~/cot-lanes/merkava-family-262/ingame-r25/merkava-bustles-ingame.png`. Triangles at HIGH: 158-178k.
+- r19, release steps (2026-10-29): origin/main merged (`637c3b4ccf`, `ae221c858c`); the ids-scoped regeneration chain
+  (`7d254ff15b`). The strict track clip (`track-clip-audit --exact --strict`, 2 cm voxels, the belt dilated a voxel)
+  found the front fender boxes' noses in the belt over the sprocket: each box's top now wraps the sprocket at 6 cm
+  clear and its outer face stands 2.2 cm outboard of the track's edge (`fenderBox`, `merkavaFamilyHull.ts`;
+  `8c71fa5e34`, the rows `f1e3b1bde7`); 0 voxels on all six marks in front, rear, sweep band and shoe. On the 4B the same
+  rule also lifted the two inboard corner chords of its fender over the sprocket, which its measured box did not need
+  (its side plates and nose are as measured; `8c71fa5e34`'s message says otherwise). A second chain pass leaves no
+  diff. The raised noses cost the 3C up to 2 degrees and the Baz up to 1.5 degrees of depression between yaw 20 and
+  30, the 4B 0.2 degrees dead ahead, the 2D a tenth or two at 23 and 147 degrees, the 1B and 2B nothing
+  (`gun-depression-sweep --no-suit`, sweep r25; the national clearance rows unchanged, the 2D's 139-145 skip window
+  still the source's rear marker poles). With its field suit on, the 3C's gun at its full 8 degrees came within 23 mm of
+  the bow deck's leaves at yaw -5 (`merkavaFamilyGunClearance`, which keeps 25 mm); its suit now clears the gun's whole
+  envelope, as the 4B's does (`conservativeGunEnvelope`, `ghillieFleetSuits.ts`; 1.3k fewer triangles in its ledger
+  row). Orchard's collision shards recaptured (the Mk 1B is one of its wreck donors; obstacle 797). Critics r19 (lower
+  of two): 1B 7, 2B 6, 2D 6, 3C 7, Baz 6, 4B 7 (baskets 5-7); their shared notes stay open with the geometry closed:
+  square fender boxes (the references chamfer back to the track), raised headlamps (the references' sit in guards),
+  the dark gap between the rear bins. Blind A/B r6 and its mirror: the new build on all six marks in both orders,
+  confidence 5 (one 4).
 - The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
   sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
   DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS

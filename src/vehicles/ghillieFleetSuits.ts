@@ -231,6 +231,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     clothClearsGunStops: true,
     // 247: the front stop near -2 degrees on the cut mask brings the barrel over the bow deck's leaves
     cardsClearGunStops: true,
+    // 262: at the family rebuild's full 8 degrees ahead the barrel comes within 23 mm of the bow deck's leaves at yaw -5
+    // (merkavaFamilyGunClearance): the cards and the field clear the gun's whole envelope, as the Mk 4B's
+    conservativeGunEnvelope: true,
     // 262: re-seated on the family rebuild's turret (its ring 0.17 m further forward, its roof 0.62-0.93 m over the ring)
     // and hull (its stern at -3.70): the roof net follows the measured roof, the drapes the walls, the basket its rails
     turret: {
