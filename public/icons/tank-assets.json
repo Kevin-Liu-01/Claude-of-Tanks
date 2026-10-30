@@ -92282,16 +92282,16 @@
           }
         ]
       },
-      "geometryHash": "623ecdb5",
+      "geometryHash": "39354746",
       "metadataHash": "2849555c",
       "presentationAnchor": {
         "xM": -0.0001,
-        "zM": 0.1713
+        "zM": 0.1716
       },
-      "presentationHash": "09248509",
+      "presentationHash": "052fb7b0",
       "presentationProjection": {
         "centerYM": 2.4479,
-        "topHalfM": 4.2851,
+        "topHalfM": 4.2854,
         "sideHalfM": 2.6193
       },
       "appearance": {
@@ -92345,15 +92345,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24366,
-          "sha256": "6af0463d0b85a718175a1dfb57d462334ab0e8bfe0a6f9a299f42461e4081599",
+          "bytes": 24304,
+          "sha256": "8b75b847160edafd2480d9b81be38d7d9f9174ef041e7c11ca1a1fa1352d4058",
           "thumbnail": {
             "file": "thumbs/centurion5_avre_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10218,
-            "sha256": "2d3ba23f3c6e0fa98b3167c9e388d040ee5d3986e09ac30e71389fe21e296f9c"
+            "bytes": 10374,
+            "sha256": "751e29431eff7ea4f97909e038398ca31bc2711a4dfa143ce46c704fe845333f"
           }
         },
         "top": {
@@ -92361,16 +92361,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17272,
-          "sha256": "19652d6a64b80921ef8cafeaf1ed59da9f40fb5faab4da90c0d94e47772efe09"
+          "bytes": 17204,
+          "sha256": "ace73376dc370f0d346ee0bb3fe6b0422a97d8d0a50d1a23ba80936e7d7e7409"
         },
         "side": {
           "file": "centurion5_avre_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12934,
-          "sha256": "09ceb481c74e42c606cd839d624f546505072154463155af26721695918f3369"
+          "bytes": 13008,
+          "sha256": "edd361574ad05a95f3b4bfe1b1e10c77ca0970c1f26635db3fe40cd70473c6fb"
         },
         "topSilhouette": {
           "file": "centurion5_avre_top_silhouette.png",
@@ -92385,32 +92385,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5376,
-          "sha256": "219ea85a4d4ff055d3f574fa6e64eb886a8d7e509ff4231ed879b002f9c7467b"
+          "bytes": 5445,
+          "sha256": "98eefb3aea28857bfc916241320e3e3101b0d4e5a888a1e8d84618b404b2ffba"
         },
         "armorSide": {
           "file": "centurion5_avre_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33852,
-          "sha256": "e22d8a1e438b0a2de7f83d547b2129fa39ac0d7dbc69508bb80c02d365894c0f"
+          "bytes": 33446,
+          "sha256": "d1abc6184396bb428f186aef9c069463bae6daa45fe5ca161406002d1b68e751"
         },
         "modulesSide": {
           "file": "centurion5_avre_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32302,
-          "sha256": "50259e49899b9d3dd8349033f2f8ec957a44cdd5315ff9a2bbd881183bb4c9df"
+          "bytes": 32060,
+          "sha256": "2575eb748ca94ec7efa870a4a73a5e0cd0237914cebf19d246e2fa9eaf353465"
         },
         "crewSide": {
           "file": "centurion5_avre_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26236,
-          "sha256": "0e1754eccf6eedb7bbc9bead6e731bba369d2cb9a1b7e8dffc49dcdda0dd0d5f"
+          "bytes": 26276,
+          "sha256": "d9b3c7af19c85e718659fcb097dbd1bb6a681bd8d8d6fbdda7360192c790c777"
         },
         "markings": {
           "file": "centurion5_avre_markings.png",
@@ -92423,8 +92423,8 @@
         "technicalLabels": {
           "file": "centurion5_avre_technical.json",
           "mime": "application/json",
-          "bytes": 5671,
-          "sha256": "c5fb434b0725671a73728e23d5c3a2638397afb29b86f0181a4de49333a4fc58"
+          "bytes": 5668,
+          "sha256": "b7322afbe94647cf6ea6f4374eb3982bc2e85ef7505eb06292081d79e88704bf"
         }
       }
     },
