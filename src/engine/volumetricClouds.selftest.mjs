@@ -243,7 +243,7 @@ function channelMean(bytes, channel) {
   Object.assign(layer, { renderer, trace: 'trace-target', traceMaterial: old, traceTier: other, frame: 15, pendingTrace: null,
     quadLinkGeometry: null, makeTraceMaterial: (tier) => material(tier), resetHistory: () => { resets++; } });
   layer.syncTier();
-  assert.equal(layer.traceMaterial, old, 'the old tier draws while the new one links');
+  assert.ok(layer.traceMaterial === old, 'the old tier draws while the new one links');
   assert.deepEqual(compiles, [[`VolumetricCloudTrace-${live}`, THREE.NoToneMapping, false, false]], 'the new tier submitted at the quad\'s variant');
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.xr.enabled, true);
@@ -251,7 +251,7 @@ function channelMean(bytes, channel) {
   layer.syncTier();
   layer.frame = 30;
   layer.syncTier();
-  assert.equal(layer.traceMaterial, old, 'no swap before the link');
+  assert.ok(layer.traceMaterial === old, 'no swap before the link');
   assert.equal(compiles.length, 1, 'one link in flight');
   finish();
   await new Promise((resolve) => setTimeout(resolve, 0));

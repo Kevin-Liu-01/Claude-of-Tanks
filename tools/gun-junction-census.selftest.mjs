@@ -49,11 +49,13 @@ const live = run(`--ledger=${LEDGER}`, '--check', '--gate', '--ids=m3a3_bradley,
 assert.equal(live.status, 0, `re-measured rows match the ledger (exit ${live.status})\n${live.stdout}\n${live.stderr}`);
 assert.match(live.stdout, /^strv103a: CLOSED — 1 main mouth\(s\) fixed in the hull/m, 'the hull-fixed gun is censused');
 
-// Negative control: the ZTZ-85-III tube, seated 30 mm inside its collar, pulled 60 mm forward opens a ~30 mm junction gap.
-const seeded = run('--ids=ztz85_iii', '--poses=rest', '--res-mm=4', '--azimuths=12', '--seed-recoil-m=0.06', '--gate');
+// Negative control: the ZTZ-85-III tube (release 263: seated 0.22 m inside its canvas cover; 264's ztz85-iii a4f7986470
+// runs it 0.24 m back inside the mount and closes the cover's mouth with a clamp band, so a 0.25-0.35 m pull stays
+// closed), pulled 0.42 m forward, opens a ~28 mm junction gap behind the cover's front (0.40 m reads 8 mm, 0.45 m 60 mm).
+const seeded = run('--ids=ztz85_iii', '--poses=rest', '--res-mm=4', '--azimuths=12', '--seed-recoil-m=0.42', '--gate');
 assert.equal(seeded.status, 1, `the seeded tube gap must fail the gate (exit ${seeded.status})\n${seeded.stdout}\n${seeded.stderr}`);
 const size = Number(seeded.stdout.match(/gun-junction ([\d.]+) mm at/)?.[1]);
-assert.ok(size >= 20 && size <= 45, `the seeded 60 mm pull opens a 20-45 mm gun-junction run (read ${size} mm)\n${seeded.stdout}`);
+assert.ok(size >= 20 && size <= 45, `the seeded 0.42 m pull opens a 20-45 mm gun-junction run (read ${size} mm)\n${seeded.stdout}`);
 console.log(`gun-junction-census.selftest: ${ALL_TANK_IDS.length} rows current (${count('status', 'closed')} closed, `
   + `${count('kind', 'hull-fixed')} of them fixed in the hull; ${count('status', 'launcher')} fixed-canister launchers); `
-  + `m3a3_bradley and strv103a re-measured; seeded 60 mm pull read as a ${size} mm gap PASS`);
+  + `m3a3_bradley and strv103a re-measured; seeded 0.42 m pull read as a ${size} mm gap PASS`);

@@ -13,8 +13,13 @@ import { syncBuiltinESMExports } from 'node:module';
 import { isDeepStrictEqual } from 'node:util';
 
 const GRAPH_FLAGS = ['isObject3D', 'isBufferGeometry', 'isBufferAttribute', 'isInterleavedBufferAttribute', 'isMaterial', 'isTexture'];
-const isGraph = (value) => value !== null && typeof value === 'object' && GRAPH_FLAGS.some((flag) => value[flag] === true);
-const isHit = (value) => value !== null && typeof value === 'object' && isGraph(value.object) && 'distance' in value;
+// A value whose property reads throw (a receipt's sentinel Proxy that must never be inspected, garage-action-timing's
+// result) is no graph object: the guard reads nothing more from it and node's assert decides the call.
+const flagged = (value, read) => { try { return read(value); } catch { return false; } };
+const isGraph = (value) => value !== null && typeof value === 'object'
+  && flagged(value, (v) => GRAPH_FLAGS.some((flag) => v[flag] === true));
+const isHit = (value) => value !== null && typeof value === 'object'
+  && flagged(value, (v) => isGraph(v.object) && 'distance' in v);
 const heavy = (value) => isGraph(value) || isHit(value) || (Array.isArray(value) && value.some((item) => isGraph(item) || isHit(item)));
 
 export function graphLabel(value) {

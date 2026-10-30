@@ -51,9 +51,9 @@ type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result'
   /** The world kernels did not load and the simulation fell back to the TypeScript (world/simKernelsReport.ts, once a
    *  session): `code` the source ('solo' | 'host'), `reason` the failure's code; it folds into one session note. */
   | 'sim_kernels'
-  /** A solo battle's authority, once an entry (main.ts soloAuthorityFor): `code` 'host' (a local host) or 'page', `reason`
-   *  why ('default', 'forced', 'opt_out', 'campaign', 'watch', 'mode', 'mobile', 'no_worker', 'fallback'); the note
-   *  `solo:<code>:<reason>` rides the entry's record. */
+  /** A solo battle's authority, once an entry (main.ts soloAuthorityFor): `code` 'page' (the default: 'local'), 'worker' or
+   *  'host' (forced), `reason` why ('local', 'forced', 'opt_out', 'campaign', 'watch', 'mode', 'jev', 'no_worker',
+   *  'fallback'); the note `solo:<code>:<reason>` rides the entry's record. */
   | 'solo_authority';
 type TelemetryOutcome = 'ok' | 'failed' | 'cancelled' | 'timeout' | 'halted' | 'notice';
 type TelemetryMode = 'solo' | 'private' | 'lan' | 'studio' | 'network' | 'unknown';

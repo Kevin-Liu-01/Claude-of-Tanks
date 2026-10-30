@@ -40,6 +40,7 @@ import { buildChallenger1Historic } from './challenger1Historic.ts';
 import { buildChallenger1SuppliedMk1, buildChallenger1SuppliedMk2 } from './challenger1XSupplied.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { buildChallenger3Td } from './challenger3Td.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
@@ -4043,4 +4044,7 @@ export const CHALLENGER_BUILDERS = {
   ua_challenger2: buildChallenger2,
   challenger3_proto: buildChallenger3,
   challenger3: buildChallenger3,
+  // release 262: the 2021 Advanced Technology Demonstrator, its own measured build on the full port
+  challenger3_td: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
+  challenger3_td_rws: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
 } satisfies Record<string, (builder: ChallengerBuilderPort) => void>;

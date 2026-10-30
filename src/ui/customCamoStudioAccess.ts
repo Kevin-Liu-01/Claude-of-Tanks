@@ -12,9 +12,11 @@ export interface CustomCamoStudioAccess {
 }
 
 /**
- * Own the optional custom-paint transfer and editor generation. Failed
- * transfers are deliberately forgotten so the next click can recover without
- * reloading the game; concurrent clicks share one editor instance.
+ * Own the optional custom-paint transfer and editor generation. A failed
+ * load is forgotten (one that threw for another reason may build next time);
+ * the Garage never asks again for a chunk that did not arrive: its trigger
+ * keeps the kit's error state and the next press reloads the page
+ * (components/loadFailure.ts). Concurrent clicks share one editor instance.
  */
 export function createCustomCamoStudioAccess(
   load: () => Promise<CustomCamoStudioController>,

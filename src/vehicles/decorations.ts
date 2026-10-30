@@ -1484,7 +1484,8 @@ export function fleetEquipmentNationStyle(nation = ''): FleetEquipmentNationStyl
   if (/Germany/i.test(nation)) return 'german';
   if (/France/i.test(nation)) return 'french';
   if (/Italy/i.test(nation)) return 'italian';
-  if (/Sweden/i.test(nation)) return 'nordic';
+  // release 262: the Danish Christian II wears the Nordic kit
+  if (/Sweden|Denmark/i.test(nation)) return 'nordic';
   if (/Poland/i.test(nation)) return 'polish';
   if (/Israel/i.test(nation)) return 'israeli';
   if (/China|Japan|South Korea/i.test(nation)) return 'east-asian';
@@ -2623,7 +2624,7 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
  * Suited hulls (ghillieSuit.ts) and the Garage workshop exhibits stay out of the list.
  */
 const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
-  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' },
+  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' }, bm_oplot_m: { kind: 'oak' },
   ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
   t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a_2004: { kind: 'birch' },
   pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },
@@ -2671,6 +2672,12 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretSide', { side: -1 }] },
   ],
   // --- Cold war ---
+  // 262 (Main's ruling on the T-54/T-55 family): the era default without its hanging bucket (it hung in the air under
+  // the rear drums, which ride outside the hull) and without the decor whip (the turret carries its own antenna, one
+  // mast as on the real tanks). The smoke banks stay: they carry the smoke consumable, and the fleet has no engine
+  // exhaust smoke system (the T-55's TDA) to take it over.
+  type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
+  t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
     // The native M60 builder owns one compact open-lattice bustle envelope
@@ -2822,6 +2829,29 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
+  // Release 262: the Challenger 3 TD carries its own dischargers, whips and mast and no roof weapon (profiles/
+  // challenger3Td.ts), and its heavy field suit covers the decks; its decor is the trials crew's small kit only.
+  challenger3_td: () => [
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+  ],
+  // its field fit (the owner, 2026-10-27: "and equipment and so on"): a bustle basket with the crew's packs, a
+  // rolled net and a tarpaulin, jerrycans and a bin on the rear deck, spare links on a turret wall, the tow cable,
+  // shackles and pioneer tools; the station and the whips are authored
+  challenger3_td_rws: () => [
+    { kit: 'basket', p: 1, v: { w: 1.6, d: 0.45, h: 0.32 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.42 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
   // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): bdbe29f69 seated the
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
@@ -2895,6 +2925,25 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
+  // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
+  // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
+  t64bm1m: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64bv: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64b1v_2022: () => [
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  pt64_tur: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
@@ -2950,7 +2999,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
-  if (spec.id === 'type100' || spec.id === 'ztz100' || spec.id === 'ztz100_prototype' || spec.id === 'object695') return [];
+  // The ZTZ-20 family (262) is authored complete too: racks, bins, launchers and the stern cage or basket are its own.
+  if (spec.id === 'type100' || spec.id === 'ztz20' || spec.id === 'ztz20_prototype' || spec.id === 'ztz100' || spec.id === 'ztz100_prototype' || spec.id === 'object695') return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.
@@ -2998,6 +3048,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
+  // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
+  // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
+  // two of them crossing beside the flank racks. Only the functional smoke pair stays (the control inventory's apertures).
+  if (spec.id === 'm48a5_patton') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3054,16 +3109,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     ['turretSide', { side: seatSide, rear: true }],
     ['fender', { side: seatSide, zFrac: -0.30, small: true }],
   ];
-  const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => (
-    spec.id === 'm48a5_patton'
-      ? [
-        ['hullRearRack', { x: seatSide * (0.12 + xOffset) }],
-        ['rearDeck', { corner: seatSide, back: true, small: true }],
-        ['rearDeck', { center: true, back: true, small: true }],
-        ['fender', { side: seatSide, zFrac: -0.30, small: true }],
-      ]
-      : aftRoutes(seatSide, xOffset)
-  );
+  const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => aftRoutes(seatSide, xOffset);
   // Hull-only service routes keep the rear rack as the preferred station and
   // never climb onto the turret.
   const hullServiceRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => {
@@ -3084,7 +3130,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // fittings already define its silhouette. Keep only one paired fuel-can
   // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
   // tools and duplicate roof equipment would clutter or snag on the cage.
-  if (spec.id === 'ua_m1a1') {
+  // 264: the Leopard 2A6 UA's turret screens, roof cage and hull mesh boxes (profiles/leopardA6Ua.ts) likewise.
+  if (spec.id === 'ua_m1a1' || spec.id === 'leo2a6_ua') {
     return [{
       kit: 'cargo', p: 1,
       v: cargoVariant('twin-can-cradle'),
@@ -3181,9 +3228,21 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
-  // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
-  // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
-  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
+  // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts): a decor
+  // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
+  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
+    && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
+  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
+  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
+  if (spec.id === 'ztz85_iii') return manifest
+    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+      && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
+      && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
+    .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+      ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+      : row));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

@@ -89,8 +89,10 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
   }
 }
 const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
-assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,600}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling\)/,
-  'the solver applies it to touch portraits, centred on the screen-centre sight');
+// (battle-camera-264) on the battle sight, the centre's unless the chase framing raises it (battleSight.ts); the scope's
+// band stays the centre's
+assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
+  'the solver applies it to touch portraits, on the battle sight');
 assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
@@ -306,7 +308,7 @@ try {
       if(boxes.has(part)&&boxes.get(part)!==b)changed.push({target:part});boxes.set(part,b);}return changed;};
     sized();
     const settle=()=>{flush();for(let i=0;i<4;i++){const changed=sized();if(!changed.length)break;resized(changed);flush();}};
-    return {root,body,html,properties,frames,flush,settle,mutate:records=>observer(records),node,parts};
+    return {root,body,html,properties,frames,flush,settle,mutate:records=>observer(records),resize:entries=>resized(entries),node,parts};
   }
   try {
     // touch: no plan (mouseNoticePlanWork untouched), no plan attribute, variable or class, and main's own notice tops
@@ -444,6 +446,41 @@ try {
       assert.equal(run.body.dataset.hudNoticeTiers.endsWith('w'),meet,`${w}x${h}: the tiers mark the waiting card`);
     }
     assert.ok(met>0,`the medal card met the revive count somewhere (${met} met, ${apart} apart)`);
+    // the systems row as the vehicle's controls mount into it: drawn first where its empty box stood, it jumped 271 px
+    // across a phone's window a frame later (the loading census, CLS 0.031). The resize that brings its box into being
+    // holds it hidden; the pass that seats it shows it, the same frame its seat is written.
+    {
+      const arrival=harness({touch:true,width:390,height:844});
+      const row=arrival.parts['.cot-vehicle-controls']??arrival.node();
+      const other=arrival.node();
+      row.matches=sel=>sel==='.cot-vehicle-controls';other.matches=()=>false;
+      arrival.resize([{target:row,contentRect:rect(0,0,0,0)},{target:other,contentRect:rect(0,0,0,0)}]);arrival.flush();
+      assert.equal(arrival.properties.has('visibility'),false,'an empty row is not held');
+      arrival.resize([{target:row,contentRect:rect(0,0,232,44)},{target:other,contentRect:rect(0,0,80,40)}]);
+      assert.equal(arrival.properties.get('visibility'),'hidden','the row that comes into being stands hidden until its pass');
+      assert.equal(arrival.frames.size,1,'and asks for that pass');
+      arrival.flush();
+      assert.equal(arrival.properties.has('visibility'),false,'the pass that seats it shows it');
+      arrival.resize([{target:row,contentRect:rect(0,0,276,44)}]);
+      assert.equal(arrival.properties.has('visibility'),false,'a row that only changes size is not held');
+      arrival.flush();
+    }
+    // the battle decided (endScreen.ts body.cot-es-armed): the HUD holds its seats until the report covers it (the census,
+    // CLS 0.028 on a phone: the countdown's fading dial and the alert under it seated again twice); a new battle lifts it
+    {
+      const decided=harness({touch:true,width:390,height:844});
+      const seat=decided.properties.get('--hud-alert-top');
+      assert.ok(seat,'the alert has its seat before the decision');
+      decided.body.classList.add('cot-es-armed');
+      decided.mutate([{type:'attributes',attributeName:'class',target:decided.body}]);
+      decided.properties.delete('--hud-alert-top');
+      decided.flush();
+      assert.equal(decided.properties.has('--hud-alert-top'),false,'a pass after the decision writes no seat');
+      decided.body.classList.remove('cot-es-armed');
+      decided.mutate([{type:'attributes',attributeName:'class',target:decided.body}]);
+      decided.flush();
+      assert.equal(decided.properties.get('--hud-alert-top'),seat,'the class lifted, the pass seats the HUD again');
+    }
   } finally {
     for(const [key,descriptor] of saved){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}
   }
@@ -683,7 +720,17 @@ try {
 }
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
-assert.match(layout,/new ResizeObserver\(\(entries\) => \{[^}]*?\n[^}]*?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
+// the touch dial keeps its seat and scale once it stands down (it fades out after GO where it stood: set to the plan's
+// default under it, it jumped 98 px over the alert as it faded, the loading census on a phone)
+assert.match(layout,/'touch-countdown-top': touchCountdownShown && touchPlan \? touchPlan\.countdownTop\s+: parseFloat\(document\.body\.style\.getPropertyValue\('--hud-touch-countdown-top'\)\)/,
+  'the touch dial keeps its seat while it stands down');
+assert.match(layout,/const countdownScale = touchCountdownShown \? String\(touchPlan\?\.countdownScale \?\? 1\)\s+: document\.body\.style\.getPropertyValue\('--hud-touch-countdown-scale'\)/,
+  'and its scale');
+// the load card's foe heading grows leftward from its own right edge as the roster's flags arrive (the census: its box
+// moved 26 px as its flag came)
+assert.match(readFileSync(new URL('./battleLoad.ts',import.meta.url),'utf8'),/\.cot-bl \.team\.foe \.thead\{color:var\(--text-enemy\);direction:rtl;\}\n\.cot-bl \.team\.foe \.thead>\*\{direction:ltr;\}/,
+  'the foe heading reads from its right edge, its words and flags in their own direction');
+assert.match(layout,/new ResizeObserver\(\(entries\) => \{[\s\S]{0,900}?planInput\(entry\.target\);[\s\S]{0,900}?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
 assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'virtual keyboard/visual viewport changes reflow through the shared layout event');
 assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
 assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');

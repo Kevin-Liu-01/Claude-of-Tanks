@@ -47,6 +47,7 @@
 //   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--uncapped] [--no-recut] [--no-live] [--no-hulk]
 //        [--receipts=<receipts.json>] [--render=<dir>] [--far-samples=<n>] --out=<rows.jsonl> [--gate]
 import * as THREE from 'three';
+import { uniqueIds } from './id-list.mjs';
 import { appendFileSync } from 'node:fs';
 
 await import('./tank-surface-collect.mjs');
@@ -63,7 +64,7 @@ import { readFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback = '') => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
-const ids = opt('ids').split(',').filter(Boolean);
+const ids = uniqueIds(opt('ids').split(',').filter(Boolean), 'turret-ring-probe --ids');
 const OUT = opt('out');
 const SEEDS = opt('seeds', '77,4242,9001').split(',').map(Number);
 const SKIP_HULK = args.includes('--no-hulk');

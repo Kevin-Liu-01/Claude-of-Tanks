@@ -47,7 +47,9 @@ assert.equal(scene.children[0].parent, scene); assert.notEqual(hit, undefined); 
 legacy.equal(scene, scene); legacy.notStrictEqual(scene, null);
 try { legacy.notDeepEqual([scene, 1], [scene, '1']); throw new Error('passed'); } catch (error) { if (error.message === 'passed') throw new Error('a loose-equal pair passed notDeepEqual'); }
 try { assert.equal(1, 2); } catch (error) { if (!/1 !== 2/.test(error.message)) throw error; }
+const sentinel = new Proxy({}, { get() { throw new Error('must not be inspected'); }, has() { throw new Error('must not be inspected'); } });
+assert.equal(sentinel, sentinel); assert.notEqual(sentinel, null); legacy.strictEqual(sentinel, sentinel);
 console.log('passed');`);
 assert.equal(ok.status, 0, ok.stderr);
 assert.match(ok.stdout, /passed/);
-console.log('assert-graph-guard.selftest: hits, scenes, named, legacy, destructured and Error-message forms fail fast with labels; passing and plain asserts unchanged');
+console.log('assert-graph-guard.selftest: hits, scenes, named, legacy, destructured and Error-message forms fail fast with labels; passing and plain asserts unchanged; a sentinel that throws on every read passes through');

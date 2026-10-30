@@ -22,6 +22,7 @@ import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 import { unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
+import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -105,13 +106,15 @@ const registryUrl = `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&
   for (const id of ids) {
     try {
       let rawSourceComparison=null;
-      if(id==='k1a1'){
+      if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded'});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
         const raw=await page.evaluate('window.__GEO_REPORT');if(!raw)throw new Error('raw source comparison unavailable');
         const file=`${id}.raw-source.json`;fs.writeFileSync(path.join(OUT,file),`${JSON.stringify(raw,null,1)}\n`);
-        rawSourceComparison={file,gatePassed:raw.gatePassed,rawGeoMin:raw.rawGeoMin,scope:'Full armed vehicle against unchanged unarmed source; retained diagnostic, not owner-selected composite target'};
+        rawSourceComparison={file,gatePassed:raw.gatePassed,rawGeoMin:raw.rawGeoMin,scope:id==='k1a1'
+          ? 'Full armed vehicle against unchanged unarmed source; retained diagnostic, not owner-selected composite target'
+          : 'Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target'};
       }
       await page.goto(urlFor(id), { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"', { polling: 60 });

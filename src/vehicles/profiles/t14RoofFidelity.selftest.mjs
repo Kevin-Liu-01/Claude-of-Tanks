@@ -13,7 +13,8 @@ for(const quality of ['high','low']) {
   // Measure the authored structural shells, not the descriptive design flags.
   const belly=parts.find(p=>p.bucket==='hull'&&p.min[2]<-4.23&&p.max[2]>4.31&&p.min[1]<.36);
   assert(belly&&belly.max[0]<=1.001&&belly.min[0]>=-1.001,'new deep hull clears both inside shoe lanes');
-  const capsule=parts.find(p=>p.bucket==='hull'&&Math.abs(p.min[2]-.70)<1e-4&&p.max[1]>1.85);
+  // (264: release 240, fa55a4aad6, lowered the capsule's roof 9.5 cm, 1.86 -> 1.765, under the turret's APS banks and bustle)
+  const capsule=parts.find(p=>p.bucket==='hull'&&Math.abs(p.min[2]-.70)<1e-4&&p.max[1]>1.75);
   assert(capsule&&capsule.max[2]>2.42,'long three-person crew capsule replaces the old hatch hood');
   const rear=parts.find(p=>p.bucket==='turret'&&Math.abs(p.min[2]+2.30)<1e-4&&Math.abs(p.max[2]-.12)<1e-4);
   assert(rear&&rear.max[0]>1.28&&rear.max[1]>.93,'new chamfered service bustle');

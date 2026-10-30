@@ -41,51 +41,38 @@ for (const id of ['t80', 't80b', 't80bv']) {
   tank.dispose();
 }
 
+// Release 262: the T-84U Oplot is the Oplot-M/T family's 2000 stage (profiles/oplotBM.ts variant 'u'): its Kontakt-5
+// boxes on the glacis, the turret front and the forward skirt panels wear the vehicle's paint, every gameplay ERA plate
+// of its spec has exactly one visual cluster, and the fleet's layered ERA finish holds.
 const oplot = createTank('t84bm_oplot_m', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
 assert.ok(oplot.root.getObjectByName('turretTrack') === undefined,
-  'Oplot Duplet modules inherit the turret camouflage palette');
+  'T-84U Kontakt-5 turret boxes inherit the turret camouflage palette');
 assert.ok(oplot.root.getObjectByName('hullTrack') === undefined,
-  'Oplot Nozh modules inherit the hull camouflage palette');
-const eraReceipt = oplot.root.getObjectByName('rig_turret')?.userData.uaOplotMERAReceipt;
-assert.ok(eraReceipt, 'Oplot-M exposes a carrier-contact ERA receipt');
-assert.equal(eraReceipt.carrierDerivedTransforms, true,
-  'all revised Oplot-M ERA transforms come from carrier faces');
-assert.equal(eraReceipt.hullGlacisCassettes, 16,
-  'both four-wide glacis courses remain complete');
-assert.equal(eraReceipt.turretWingCassettes, 30,
-  'both turret wings carry dense three-by-five Duplet fields');
-assert.equal(eraReceipt.turretShoulderCassettes, 8,
-  'both turret shoulders carry four face-following wrap cassettes');
-assert.equal(eraReceipt.additionalTurretCassettes, 8,
-  'the revised turret gains eight cassettes over the replaced layout');
-assert.ok(eraReceipt.contactEmbedM >= 0.01,
-  'every revised cassette penetrates its armor carrier by at least 10 mm');
-assert.equal(eraReceipt.lidNormalOffsetM, 0.003,
-  'Oplot ERA lid overlays stand 3 mm proud of their cassette faces');
-assert.equal(eraReceipt.maxSupportGapM, 0,
-  'carrier-derived seating permits no daylight under the cassette backs');
-assert.equal(eraReceipt.faceNormalAlignmentDeg, 0,
-  'cassette backs and armor faces share the same normal');
-
+  'T-84U Kontakt-5 glacis and skirt boxes inherit the hull camouflage palette');
+const oplotEraPlates = [...new Set(
+  [...TANK_SPECS.t84bm_oplot_m.armor.hullPlates, ...TANK_SPECS.t84bm_oplot_m.armor.turretPlates]
+    .filter((plate) => plate.kind === 'era')
+    .map((plate) => plate.name),
+)].sort();
+assert.deepEqual(oplot.root.userData.eraClusterNames, oplotEraPlates,
+  'every T-84U gameplay ERA plate has one exact visual cluster');
 const finish = oplot.root.userData.eraFinishReceipt;
-assert.ok(finish, 'Oplot publishes the fleet layered ERA finish receipt');
+assert.ok(finish, 'the T-84U publishes the fleet layered ERA finish receipt');
 assert.equal(finish.revision, 'fleet-layered-vehicle-scale-camo-r1');
 assert.equal(finish.camoProjection, 'vehicle-scale-box-uv');
 assert.equal(finish.bodyAndCoverUseVehiclePaint, true,
-  'Oplot cassette bodies and top layers both inherit the vehicle camouflage');
-assert.equal(finish.authoredParts, 112,
-  'Oplot keeps 56 bodies and 56 shallow top layers in the semantic ERA buckets');
+  'T-84U cassette bodies and top layers both inherit the vehicle camouflage');
 assert.deepEqual(finish.owners, ['hull', 'turret']);
 assert.equal(finish.maximumDrawBuckets, 2,
-  'all Oplot ERA remains in one static merged bucket per articulation owner');
+  'all T-84U ERA remains in one static merged bucket per articulation owner');
 assert.equal(finish.perFrameWork, false);
 assert.ok(oplot.root.getObjectByName('turretExternalArmor')?.geometry,
-  'Oplot turret Duplet bodies and covers share the external-armor mesh');
+  'T-84U turret Kontakt-5 bodies and covers share the external-armor mesh');
 assert.ok(oplot.root.getObjectByName('hullExternalArmor')?.geometry,
-  'Oplot glacis Nozh bodies and covers share the external-armor mesh');
+  'T-84U glacis and skirt Kontakt-5 share the external-armor mesh');
 
 oplot.dispose();
 

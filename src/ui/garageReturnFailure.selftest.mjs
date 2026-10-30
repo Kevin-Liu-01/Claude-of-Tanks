@@ -65,6 +65,22 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   assert.equal(footer.children.length, 1, 'a second failure reuses the one action');
   presenter(new Error('no retry here'));
   assert.equal(footer.children[0].hidden, true, 'a failure without a retry hides it');
+  // (264) a chunk that did not arrive is not asked for again in this document: its action reloads the page once online
+  const reloaded = [];
+  globalThis.location = { reload: () => reloaded.push(true) };
+  const online = (value) => Object.defineProperty(globalThis, 'navigator', { value: { onLine: value }, configurable: true, writable: true });
+  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  online(false);
+  presenter(new TypeError('Failed to fetch dynamically imported module: https://x/assets/battleLoad-1a2b3c4d.js'));
+  assert.equal(footer.children[0].hidden, false, 'a chunk failure carries an action');
+  assert.equal(footer.children[0].label.textContent, 'Reload page', 'and it is Reload page');
+  footer.children[0].click();
+  assert.deepEqual(reloaded, [], 'offline the press waits (a reload would be the browser\'s error page)');
+  online(true);
+  footer.children[0].click();
+  assert.deepEqual(reloaded, [true], 'online it reloads the page');
+  delete globalThis.location;
+  if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
   delete globalThis.document;
 }
 {
@@ -83,12 +99,14 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
 const presenterSource = await readFile(new URL('./garageReturnFailure.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(presenterSource, /from '\.\.\/app\/lazyImportRetry\.ts'/,
   'the notice never imports the retry helper: as a third importer it split into a boot request of its own on the game page');
-assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,320}t\('battle\.entryFailed\.body', \{ reason \}\)/,
+assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,420}t\('battle\.entryFailed\.body', \{ reason \}\)/,
   'the solo notice is a second failure-only presenter over the same modal');
+assert.match(presenterSource, /isChunkFailure\(error\) \? t\('battle\.entryFailed\.reload'\)/,
+  'a chunk that did not arrive asks for the page\'s reload (components/loadFailure.ts)');
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(main, /presentFailure: \(error, retry\) => import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error, retry\)\)/,
-  'a failed solo entry demand-loads the notice from the failure-only owner');
+assert.match(main, /presentFailure: \(error, retry\) => \{[\s\S]{0,160}return import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error, reload \? null : retry\)\);/,
+  'a failed solo entry demand-loads the notice from the failure-only owner (a chunk failure without a retry)');
 assert.match(main, /void battleAgainAction\.run\(\)/,
   'the bus must use the action-scoped failure owner');
 assert.match(main, /loadFailure: \(\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,

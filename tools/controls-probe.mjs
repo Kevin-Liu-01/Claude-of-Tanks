@@ -474,11 +474,11 @@ async function runMode(mode, { stubNoLock, width, height }) {
     await page.keyboard.press('KeyL');
 
     const debugBefore = await page.$eval('#cot-perfhud', (node) => getComputedStyle(node).display !== 'none');
-    await page.keyboard.press('F8'); await sleep(100);
+    await page.keyboard.press('F9'); await sleep(100);
     const debugAfter = await page.$eval('#cot-perfhud', (node) => getComputedStyle(node).display !== 'none');
-    check(mode, 'F8 toggles the diagnostics dashboard', debugAfter !== debugBefore,
+    check(mode, 'F9 toggles the diagnostics dashboard', debugAfter !== debugBefore,
       `${debugBefore} -> ${debugAfter}`);
-    await page.keyboard.press('F8');
+    await page.keyboard.press('F9');
 
     await page.keyboard.press('Escape'); await sleep(120);
     const settingsOpen = await page.evaluate(() => window.__DEBUG.settings.isOpen());

@@ -172,12 +172,51 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   docs-print-261 f10680b6d0); notFound.js +47 B and notFound.css +26 B.
   // Over 261's release build: game +2,944 B (entry +1,184 B), cn +3,136 B, Gallery +150 B, home +807 B, docs +2,225 B,
   // 404 +477 B.
-  game: { brotliBytes: 1106894, requests: 128, entryBrotliBytes: 247401 },
-  cn: { brotliBytes: 1149956, requests: 129, entryBrotliBytes: 247401 },
-  gallery: { brotliBytes: 681893, requests: 75 },
-  home: { brotliBytes: 28260, requests: 8 },
-  docs: { brotliBytes: 36573, requests: 12 },
-  notFound: { brotliBytes: 18067, requests: 7 },
+  // 2026-10-29 (integrator 263, the tank release, re-pinned at the release build of 442c60d574; requests unchanged on every
+  // page: christian2Armor and leopard2HullDatums ride in the fleetLayouts chunk, vite.config.ts). Fifteen new tanks and
+  // three rebuilt families. By lane, game brotli over 262's release build (each head's own chunks, local builds):
+  // - armor-highlight-262 + its zones (the armour highlight, flag off by default; the zone weights module): +2,815 B,
+  //   entry +90 B;
+  // - cr3td-262 (the Challenger 3 TD and its RWS field fit): +1,763 B; t64bm1m-262 (the four true T-64s and the PT-64
+  //   Tur): +1,461 B; oplot-262 (the BM Oplot-M and Oplot-T, oplotFlankLayout): +1,447 B;
+  // - vickers-cr1-262 (a3b7d3f661: the Challenger 1 Mk 1/Mk 2 on the Mk 3's build, the FV4030/5 and FV4030/6, the
+  //   Vickers Mk 1 restored to main): about +700 B game, Gallery +714 B, cn +447 B, entryRaw +75 B (the lane's measure);
+  // - christian2-262, ztz20-262, cn-type59-longwei-262 (the T-55A, the Type 59 rebase, the Longwei hull), kv2-262,
+  //   patton-family-262 (pattonCast), kf51/leo1a5: the rest of fleetFactory (+4.6 KB in all), materials (+2.4 KB: the
+  //   new camo and coat keys), specs, decorations, tankFactoryCore and the generated presentation anchors;
+  // - orphan-reds-264's painted collar +147 B; the integration's fixes (the KV-2 bead, the ZTZ-20 barrel, the T-54
+  //   cradle, the M46 collar, the balance levers) under 100 B together.
+  // Over 262's release build: game +12,463 B (entry -65 B), cn +12,525 B, Gallery +12,615 B, home +40 B, docs +3 B, 404 0.
+  // 2026-10-29 (integrator 264, the combined 263+264 release, re-pinned at the release builds of e93c4a67dc and 89b62a1454,
+  // the larger of the two (the entry carries the commit stamp: 123 B between them); requests
+  // unchanged on every page: leopardA6UaLayout rides in the fleetLayouts chunk, vite.config.ts). By lane, game brotli over
+  // 263's release build (each chunk's delta, 263's and this release's builds):
+  // - ghillie-render-264 c053e825af (the suit's shade baked on the armour under it, the Strv 121's cover boughs):
+  //   decorations +4,326 B, tankFactoryCore +1,041 B (the suit-occlusion bake), materials +111 B;
+  // - battle-camera-264 8736e9555e (chase framing, the sight datum, Settings > Gameplay > Camera): the chunk holding
+  //   vehicleActions +1,815 B, the entry and the en-US catalog about +1.2 KB with premiere-battle's b8e8050af7 phone
+  //   markers (entry +1,018 B over A in all);
+  // - premiere-battle 87827bc352 (boot-loading, diagnostics on F9, one action one key, live key caps), load-failure-264
+  //   1328554575 (the loadFailure kit, gallery-studio 87a2c42d93), nav-reds-264 and fallback-metrics-264: the entry
+  //   +1,154 B, i18n +221 B and the en-US catalog +428 B, main.css +159 B, components.css +62 B; Gallery's gallery.js
+  //   +205 B and gallery.css +117 B; on home, docs and 404 i18n.js +220 B and each page's stylesheet +46-72 B;
+  // - leo2a6-ua-264 4a05165a7a/128e35403e and ztz85-iii a4f7986470: fleetFactory +1,069 B, fleetLayouts +570 B;
+  // - armor-zone-panels-263 39cd535a02: materials -518 B, tankFactoryCore +173 B; balance-263, orphan-reds-264,
+  //   ground-stripes-264 and the integration's fixes under 300 B together (rosterState, turretSeatPlane, markings, specs).
+  // Over 263's release build (at e93c4a67dc): game +12,278 B (entry +2,172 B), cn +12,981 B, Gallery +7,516 B, home +317 B,
+  // docs +335 B, 404 +288 B.
+  // 2026-10-29 (integrator 264c: B 8f37dee995 plus the owner's preview fixes; requests unchanged): game, cn and Gallery
+  // re-pinned at 264c's build of 490b3e0c60 (Node 24.22.1), game and cn at the release (preview) build of afcffcd358, the
+  // larger (the entry's commit stamp: +170 B brotli). Over B's local build: game and cn +565 B (entry +100 B), Gallery
+  // +281 B, by lane: battle-camera-264-lens 067f28f029 (engine/cameraLens.ts in the vehicleActions boot group, the aerial
+  // and contact rays' lens shift, the cascade refit on a lens change, ?chaseFraming=0), shadow-bake-fixes-264 5f8189f900
+  // (the armour panels' on-demand bake) and solo-local-feel-264 ab5efb500d (the page sim by default, SOLO_WORKER_MODES gone).
+  game: { brotliBytes: 1132486, requests: 128, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1176313, requests: 129, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 702305, requests: 75 },
+  home: { brotliBytes: 28617, requests: 8 },
+  docs: { brotliBytes: 36911, requests: 12 },
+  notFound: { brotliBytes: 18355, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

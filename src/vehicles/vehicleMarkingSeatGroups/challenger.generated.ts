@@ -442,6 +442,104 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
+  "challenger3_td": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5584097,
+          0.1352745,
+          -1.827057
+        ],
+        "quaternion": [
+          -0.0301407,
+          0.7064641,
+          0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5489273,
+          0.246201,
+          -2.7654449
+        ],
+        "quaternion": [
+          -0.0301407,
+          0.7064641,
+          0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "challenger3_td_rws": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.5127216,
+          0.6697387,
+          -1.827057
+        ],
+        "quaternion": [
+          -0.0301407,
+          -0.7064641,
+          -0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td_rws",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.5196179,
+          0.5890648,
+          -1.1819153
+        ],
+        "quaternion": [
+          -0.0301407,
+          -0.7064641,
+          -0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td_rws",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
   "challenger3_proto": {
     "schemaVersion": 1,
     "seats": [

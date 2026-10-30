@@ -42,7 +42,7 @@ const { createCanvasText } = await import('./canvasText.ts');
 const parent = new Element('div');
 const layer = createCanvasText(parent, 'cot-ret-text');
 assert.equal(layer.root.className, 'cot-ctext cot-ret-text');
-assert.equal(parent.children[0], layer.root, 'the layer goes over its canvas, in the canvas\'s parent');
+assert.ok(parent.children[0] === layer.root, 'the layer goes over its canvas, in the canvas\'s parent');
 
 const style = { font: '700 22px Cot', color: '#f0a030', align: 'left', baseline: 'alphabetic', alpha: 1, haloWidth: 0, halo: '' };
 layer.begin();

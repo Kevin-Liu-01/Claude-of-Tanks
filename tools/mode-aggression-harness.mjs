@@ -39,6 +39,8 @@
 //        player's side is the allied bots'. Frontline Assault ends when the player seat dies (~100 s with the fight
 //        seat), so its push and zone metrics read best with park or shield. In Frontline the fight seat routes to the
 //        attack's objective point (the live sector) and follows the line, like a human attacker (gameplay-modes-228).
+//   --trace=ID[,ID] [--traceFrom=S] [--traceTo=S] [--traceEvery=TICKS] (run): TRACE lines on stderr for those hulls
+//        (entity or spec id): pose, input, contact flags, route and watchdog state (bot-wedge-264)
 //
 // Maps: --map pins one; otherwise seed s plays MAP_ROTATION[(s - 1) % 8] (Redrock = badlands and Steinburg = urban are
 // in it), so an A/B pair on the same seeds plays the same maps. The clock cap is the ruleset's own clock (+5 s), or
@@ -789,7 +791,7 @@ const recOf = (e) => {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
-      flags: { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
+      flags: { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
       slowT: 0, guardSamples: 0, stuckSamples: 0, movingSamples: 0, bunchedSamples: 0,
@@ -834,6 +836,8 @@ const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnCh
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
 const ramStats = { botOnBotDeaths: 0, hunterRams: 0, hunterContacts: 0 };
+const destroyedAtS = new Map(); // entity id -> the time of its last 'destroyed' event
+const wreckBefore = (e, t) => !!e.combat?.destroyed && (destroyedAtS.get(e.id) ?? Infinity) < t;
 const sector1 = { kills: 0, done: false };
 const inf = { infections: 0, firstInfectionS: null, infectionTimes: [], survivors0: 0, infected0: 0, survivorsByMin: [],
   shots: { alpha: 0, bravo: 0 }, hits: { alpha: 0, bravo: 0 }, damage: { alpha: 0, bravo: 0 }, botSamples: { alpha: 0, bravo: 0 },
@@ -874,6 +878,7 @@ function onEvent(ev, t) {
   } else if (ev.kind === 'destroyed') {
     const e = byId.get(ev.id);
     if (!e) return;
+    destroyedAtS.set(e.id, t);
     recOf(e).deaths++;
     const victimTeam = recOf(e).lastTeam ?? normTeam(e.team);
     const causeKey = `${ev.cause ?? 'unknown'}${ev.killerId && ev.killerId !== ev.id ? '' : ':nokiller'}${adapter.isHuman(e) ? ':player' : ''}`;
@@ -898,14 +903,16 @@ function onEvent(ev, t) {
     if ((mode === 'endless_horde' || mode === 'infected') && ev.aId && ev.bId) {
       const a = byId.get(ev.aId), b = byId.get(ev.bId);
       // a hunter's ram: a hostile bot in contact with an alpha hull while it was itself driving into it (its own
-      // velocity toward the other hull over 1 m/s); an alpha hull driving into a hostile is not the hunter's ram
+      // velocity toward the other hull over 1 m/s); an alpha hull driving into a hostile is not the hunter's ram, nor is
+      // a hostile's wreck, destroyed at an earlier tick, coasting into one (bot-wedge-264: Infected seed 2's T-72B3M,
+      // killed at 47.7 s, rolled on 13 m into a Type 90 at 4.5 m/s; a hull the ram itself destroys still counts)
       const drivesInto = (h, o) => {
         const dx = o.state.pos.x - h.state.pos.x, dz = o.state.pos.z - h.state.pos.z, d = Math.hypot(dx, dz) || 1;
         return (Math.sin(h.state.yaw) * dx + Math.cos(h.state.yaw) * dz) / d * h.state.speed > 1;
       };
       if (a && b && normTeam(a.team) !== normTeam(b.team)) {
         const hunter = normTeam(a.team) === 'bravo' && !adapter.isHuman(a) ? a : normTeam(b.team) === 'bravo' && !adapter.isHuman(b) ? b : null;
-        if (hunter) { ramStats.hunterContacts++; if (drivesInto(hunter, hunter === a ? b : a)) ramStats.hunterRams++; }
+        if (hunter && !wreckBefore(hunter, t)) { ramStats.hunterContacts++; if (drivesInto(hunter, hunter === a ? b : a)) ramStats.hunterRams++; }
       }
     }
   } else if (ev.kind === 'mode') {
@@ -1055,7 +1062,15 @@ function sample(t) {
         r.flags.samples++;
         if (info.fallingBack) r.flags.fallingBack++;
         if (info.kiting) r.flags.kiting++;
-        if (info.scooting) r.flags.scooting++;
+        // the scoot window by its driver (ai debugInfo scootKind, 263): only the doctrine's shoot-and-scoot is scooting; a leg
+        // the gun needs (its arc limit, a friendly in the line of fire, a blocked gun lane) is relocating and the pocket escape
+        // is escaping (an AI without scootKind counts the whole window, as before)
+        if (info.scooting) {
+          const kind = info.scootKind;
+          if (kind === 'arc' || kind === 'lane' || kind === 'gun') r.flags.relocating++;
+          else if (kind === 'escape') r.flags.escaping++;
+          else r.flags.scooting++;
+        }
         if (info.settling) r.flags.settling++;
         if (info.reaction) r.flags.reacting++;
         if (info.searching) r.flags.searching++;
@@ -1173,7 +1188,12 @@ function settleArrivals() {
   }
 }
 
-/** Frontline line slots: a defender placed within 300 m of a living attacker, or in one's terrain sight within 450 m. */
+/**
+ * Frontline line slots: a defender placed within the line guard's minAttackM of a living attacker (the ruleset's own
+ * figure, read, never a second literal: 263, the receipt's 300 m against the game's 200 m failed placements the guard
+ * allows), or in one's terrain sight within 450 m.
+ */
+const lineGuardM = rules.assault?.lineGuard?.minAttackM ?? 0;
 function settlePlacements() {
   const ids = front.pendingPlacements.splice(0);
   for (const id of ids) {
@@ -1188,8 +1208,32 @@ function settlePlacements() {
     }
     front.placements++;
     if (nearest < front.placedMinM) front.placedMinM = nearest;
-    if (nearest < 300) front.placedNear++;
+    if (nearest < lineGuardM) front.placedNear++;
     if (seen) front.placedSeen++;
+  }
+}
+
+// --trace=ID[,ID] [--traceFrom=S] [--traceTo=S] [--traceEvery=TICKS]: one TRACE line per traced living hull (entity or
+// spec id) on stderr every traceEvery ticks (default 15): pose, the controller's input, the movement's contact flags and
+// the controller's route and watchdog state (measurement only)
+const traceIds = new Set(String(arg('trace', '')).split(',').filter(Boolean));
+const traceFrom = Number(arg('traceFrom', 0)), traceTo = Number(arg('traceTo', Infinity)), traceEvery = Math.max(1, Number(arg('traceEvery', 15)));
+function traceStep(t) {
+  for (const e of ents) {
+    if (!traceIds.has(e.id) && !traceIds.has(e.specId)) continue;
+    if (!alive(e)) continue;
+    const st = e.state, inp = e.input ?? {};
+    let info = {};
+    try { info = e.aiCtl?.debugInfo?.() ?? {}; } catch { /* measurement only */ }
+    const r1 = (x) => (x == null || !Number.isFinite(x) ? x ?? null : +x.toFixed(2));
+    const pick = ['mode', 'targetId', 'routeOutcome', 'strikes', 'navT', 'wpIndex', 'wpCount', 'waypointX', 'waypointZ', 'driveGoalX', 'driveGoalZ',
+      'steerGoalX', 'steerGoalZ', 'routeCornerX', 'routeCornerZ', 'scootKind', 'terrainBlocked', 'terrainAvoiding', 'losBlockedT', 'wedgeReleased',
+      'wedgeReleases', 'deadLegs', 'pivotCreeps', 'solidBrakes', 'colliderStops', 'searching', 'escaping', 'objectiveShifting'];
+    const row = { t: r1(t), id: e.id, x: r1(st.pos.x), z: r1(st.pos.z), y: r1(st.pos.y), g: r1(world.heightField.getHeightAt(st.pos.x, st.pos.z)), yaw: r1(st.yaw),
+      sp: r1(st.speed), pitch: r1(st.visualPitch), roll: r1(st.visualRoll), gr: st.grounded, th: r1(inp.throttle), steer: r1(inp.steer), br: !!inp.brake,
+      slope: st.slopeBlocked, imp: st.impactSource, impMps: r1(st.impactMps), impN: [r1(st.impactNx), r1(st.impactNz)] };
+    for (const k of pick) if (k in info) row[k] = typeof info[k] === 'number' ? r1(info[k]) : info[k];
+    process.stderr.write(`TRACE ${JSON.stringify(row)}\n`);
   }
 }
 
@@ -1208,6 +1252,7 @@ for (; tick < ticks; tick++) {
   if (horde.pendingArrivals.length) settleArrivals();
   if (front.pendingPlacements.length) settlePlacements();
   if (tick % SAMPLE_TICKS === 0) sample(t);
+  if (traceIds.size && tick % traceEvery === 0 && t >= traceFrom && t <= traceTo) traceStep(t);
   const res = adapter.result();
   if (res) { result = res; break; }
   // a parked seat in Frontline Assault (no respawn; allies revive only when a sector falls): once every allied bot is
@@ -1231,7 +1276,7 @@ const sideSummary = (list) => {
   const aiStates = {};
   for (const r of list) for (const [k, v] of Object.entries(r.ai)) aiStates[k] = (aiStates[k] ?? 0) + v;
   const aiN = Object.values(aiStates).reduce((a, b) => a + b, 0) || 1;
-  const flags = list.reduce((acc, r) => { for (const k in r.flags) acc[k] += r.flags[k]; return acc; }, { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 });
+  const flags = list.reduce((acc, r) => { for (const k in r.flags) acc[k] += r.flags[k]; return acc; }, { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 });
   const engageDist = list.reduce((s, r) => s + r.engageDistSum, 0), engageDistN = list.reduce((s, r) => s + r.engageDistN, 0);
   const engageSamples = list.reduce((s, r) => s + r.engage.samples, 0), engageStill = list.reduce((s, r) => s + r.engage.still, 0);
   const settledSamples = list.reduce((s, r) => s + r.engage.settled, 0), settledStill = list.reduce((s, r) => s + r.engage.settledStill, 0);

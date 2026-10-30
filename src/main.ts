@@ -115,6 +115,7 @@ import {
 } from './world/maps/catalog.ts';
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
+import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
@@ -1025,7 +1026,12 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     getDeviceTier,
   });
   const hudRuntime = createPerfHud({ renderer, game, trace: devTrace,
-    readRenderFrame: () => post.lastCompletedFrame });
+    readRenderFrame: () => post.lastCompletedFrame,
+    // its close and Escape turn the saved setting off, as the Interface switch and F9 do
+    onClose: () => {
+      input.setSetting('showDebugHud', false);
+      perfHud.setVisible(false);
+    } });
   hudRuntime.setTelemetryProvider(telemetry.collect);
   devTrace?.configure({ getTelemetry: telemetry.collect });
   return { hud: hudRuntime, telemetry };
@@ -1577,6 +1583,9 @@ const garageModePreview = createGarageModePreviewRuntime({
 });
 const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag' || garagePreviewMode === 'infected';
 
+// The Garage's Studio button: the Studio access boundary's own open once it is wired below (a press before then does
+// nothing, as an F8 then did)
+let openStudio = (): void => {};
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
@@ -1610,6 +1619,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onOverlayChange: () => invalidateGaragePresentation(),
   actionKeyFor: (binding) => input.labelFor(input.getBinding(binding, 0)),
   onStudioIntent: preloadStudioIntent,
+  onStudio: () => openStudio(),
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
   garageVariants: GARAGE_VARIANTS.map((variant) => ({
@@ -1803,6 +1813,7 @@ const {
   worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
   getIsometricView: () => input.getSettings().isometricView,
+  getCameraSettings: () => input.getSettings(),
   prepareDestination: prepareCameraDestination,
 });
 const {
@@ -2244,6 +2255,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   getSpec,
   prebakeSharedTextures,
   armorAimOverlay,
+  // (265) the armour paint's panels bake at staging only while the overlay is on
+  armorPanelsWanted: () => !!input.getSettings().armorAimOverlay,
   forwardProgramWarm,
   // (perf-245) a staged tank draws once offscreen, every mesh at once, whatever the warm camera frames
   drawWarm: (root) => {
@@ -2460,10 +2473,12 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     devTrace,
   }),
 });
-// The same persisted setting owns both F8 and the Interface switch. The lazy
+// The same persisted setting owns F9, the Interface switch and the panel's close. The lazy
 // facade makes this available in production without adding ordinary-player
 // transfer or per-frame work.
 input.onAction('perfHud', () => {
+  // the diagnostics stand aside while the Studio is open, its keys and panel its own (F8 its exit, studio.ts)
+  if (studio.active) return;
   const next = !perfHud.isVisible();
   input.setSetting('showDebugHud', next);
   perfHud.setVisible(next);
@@ -3319,17 +3334,13 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
 
 /**
  * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7). A solo game against bots never creates a multiplayer
- * session (the owner, 2026-10-26, release 256). Since release 261 (the owner's "yes", DECISIONS 2026-10-27) a free sortie
- * in a mode whose parity the solo sim Worker has passed (SOLO_WORKER_MODES) runs on that Worker
- * (src/game/soloSimBattleRuntime.ts: no room, session or multiplayer UI), and a Worker that cannot boot hands the battle to
- * the page under the same cover. The campaign, a watched battle, the practice and co-op modes, the other versus modes until
- * each passes its own parity check, a battle Jev commands, the mobile tier and a browser without Workers stay on the page.
- * `?soloAuthority=page` keeps every battle on the page (diagnosis, rollback); `?soloAuthority=worker` puts any versus mode on
- * the Worker, and `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis.
+ * session (the owner, 2026-10-26, release 256), and it runs locally, on the page's own simulation: no match client, no
+ * prediction against an authority, no interpolation buffer (the owner, 2026-10-29: "everything is now delayed laggy as if it
+ * was using the multiplayer architecture"; release 261's solo sim Worker default, DECISIONS 2026-10-27, is reverted).
+ * `?soloAuthority=worker` puts any versus mode on the solo sim Worker (src/game/soloSimBattleRuntime.ts), and
+ * `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis; `?soloAuthority=page` names the default.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|worker|page)\b/.exec(location.search)?.[1] ?? null;
-/** The modes a solo battle runs on the solo sim Worker by default: the quick battle's standard rules (phase 4's gates). */
-const SOLO_WORKER_MODES: ReadonlySet<string> = new Set(['standard']);
 function soloAuthorityFor(
   gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
 ): { authority: 'host' | 'worker' | 'page'; reason: string } {
@@ -3344,9 +3355,7 @@ function soloAuthorityFor(
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
   if (SOLO_AUTHORITY_PARAM === 'worker') return { authority: 'worker', reason: 'forced' };
-  if (!SOLO_WORKER_MODES.has(mode)) return page('parity');
-  if (getDeviceTier() === 'mobile') return page('mobile');
-  return { authority: 'worker', reason: 'default' };
+  return page('local');
 }
 
 /** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
@@ -3734,13 +3743,18 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     return {
       mapId: known ? resolved : 'random', ...(known ? { mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : {}),
       ...(teams ? { allies: teams.allies, enemies: teams.enemies, teams: teamNationsFlags(teams.teamNations) } : {}),
-      // the rules row (mode chip, clock) from the cover's first frame, as the loading owner's show draws it
-      modeId: normalizeGameMode(options?.gameMode ?? 'standard'), ...(options?.campaignOperationId ? { campaign: true } : {}),
+      // (the rules row's mode: the entry's own, soloBattleEntryRuntime.ts withChosenMode)
     };
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
-  presentFailure: (error, retry) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, retry)),
+  // A chunk that did not arrive is not asked for again in this document (components/loadFailure.ts): the Battle button keeps
+  // the kit's error state, which needs no chunk (the notice below is one), and the notice offers Reload page, not a retry.
+  presentFailure: (error, retry) => {
+    const reload = isChunkFailure(error);
+    if (reload) garage.noteBattleLoadFailed();
+    return import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, reload ? null : retry));
+  },
   onFailure: (error) => entryTelemetry.send({
     kind: 'entry_result', mode: 'solo', outcome: 'failed', code: 'entry_failed', error: describeError(error, location.origin),
   }),
@@ -4302,6 +4316,7 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+const studioLinks = (): NodeListOf<Element> => document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]');
 let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
@@ -4357,10 +4372,7 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
-      }).catch((error: unknown) => {
-        studioLightRuntime = null; // a failed chunk fetch stays retryable
-        throw error;
-      });
+      }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
       const applied = await (await studioLightRuntime).apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
@@ -4396,8 +4408,20 @@ const studioAccess = createStudioAccess({
   // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
   getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
   keyTarget: window,
+  // the Garage's Studio links read busy while the Studio's code loads (garage.css)
+  onPending: (pending) => {
+    for (const link of studioLinks()) link.toggleAttribute('aria-busy', pending);
+  },
+  // a Studio whose code did not arrive is not asked for again in this document: its links keep the kit's error state, and their
+  // next press (or F8) reloads the page once online (components/loadFailure.ts)
+  onEntryError: (error) => {
+    console.error('[studio] lazy entry failed', error);
+    markLoadFailed(studioLinks());
+  },
+  pressFailed: () => pressFailed(...studioLinks()),
 });
 studio = studioAccess.presentation;
+openStudio = () => studioAccess.open();
 function preloadStudioIntent() { studioAccess.preloadIntent(); }
 function loadStudioRuntime() { return studioAccess.loadRuntime(); }
 

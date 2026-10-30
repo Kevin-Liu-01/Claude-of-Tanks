@@ -79,6 +79,8 @@ const css = await readFile(new URL('./components.css', import.meta.url), 'utf8')
 assert.match(css, /\[data-reveal\]>:is\(img,video,picture\)\{opacity:0;transition:opacity var\(--dur-base\) var\(--ease-enter\)\}/,
   'the kit draws the media transparent until ready, fading on the motion tokens (reduced motion collapses them)');
 assert.match(css, /\[data-reveal\]\[data-ready\]>:is\(img,video,picture\)\{opacity:1\}/);
+assert.match(css, /@media \(scripting:none\)\{\[data-reveal\]>:is\(img,video,picture\)\{opacity:1\}\}/,
+  'a box served with data-reveal never hides its pictures from a page without scripting');
 assert.ok(css.indexOf('[data-reveal]') > css.indexOf('@layer components{') && css.indexOf('[data-reveal]') < css.lastIndexOf('}'),
   'inside the components layer');
 console.log('reveal.selftest: media boxes hold their tone until decoded, fade in, and keep the tone when a file never arrives');

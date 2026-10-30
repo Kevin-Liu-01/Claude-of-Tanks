@@ -172,6 +172,10 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
     spec.visual.trackWidthM = ARIETE_C1_X_DATUMS.trackWidthM;
     // Widest real recoiling sleeve; the independent open bore stays 120 mm.
     spec.armor.gunBarrel.radiusM = .12248 * ARIETE_X_FAMILY_SCALE;
+    // 264: the donor prototype's cheek and skirt ERA zones (modern3Specs.ts, its own add-on kit) stay on the prototype:
+    // the production C1, and the C2 cloned from it (arieteModernSpecs.ts, which adds its own), draw none of its cassettes
+    spec.armor.hullPlates = spec.armor.hullPlates.filter(p => p.kind !== 'era');
+    spec.armor.turretPlates = spec.armor.turretPlates.filter(p => p.kind !== 'era');
   }
   if (id === 'jpz_e100') applyJagdpanzerFixedArmor(spec);
   applySourceXAuxArmor(spec, id);

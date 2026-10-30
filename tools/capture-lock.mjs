@@ -132,12 +132,13 @@ const RENDER_SCRIPTS = /genIcons|genHeroCards|genDrawings|anatomy-render|gauntle
 
 /**
  * The lock class a command line implies: { lockClass, from }. Only its script names count (a path after its last
- * `tools/`, else its file name), so a lane directory such as web-nav-perf-240 does not make a render timing. A timing
- * pattern wins over a render one, and a command matching neither is timing (exclusive, as every hold was).
+ * `tools/`, else its file name), so a lane directory such as web-nav-perf-240 does not make a render timing. A zsh script
+ * counts as one (`/bin/zsh /abs/steps.zsh`): without it the whole line, arguments and lane directory included, was read.
+ * A timing pattern wins over a render one, and a command matching neither is timing (exclusive, as every hold was).
  */
 export function classifyCommand(command) {
   const tokens = String(command ?? '').split(/\s+/).filter(Boolean);
-  const scripts = tokens.filter((token) => !token.startsWith('-') && /\.(?:[cm]?[jt]sx?|sh|py)$/i.test(token))
+  const scripts = tokens.filter((token) => !token.startsWith('-') && /\.(?:[cm]?[jt]sx?|z?sh|py)$/i.test(token))
     .map((token) => (/(?:^|\/)tools\//.test(token) ? token.replace(/^(?:.*\/)?tools\//, '') : token.replace(/^.*\//, '')));
   const subject = (scripts.length ? scripts : tokens).join(' ');
   if (TIMING_SCRIPTS.test(subject)) return { lockClass: 'timing', from: 'command' };
