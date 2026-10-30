@@ -11,7 +11,7 @@
 import { RoomClient } from '../room/roomClient.ts';
 import type { TeamArrangement } from '../../sim/matchRuleset.ts';
 import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
-import { ROOM_MAX_TEAM_SIZE, ROOM_SOLO_MAX_TEAM_SIZE, normalizeRoomCode } from '../room/protocol.ts';
+import { ROOM_MAX_TEAM_SIZE, normalizeRoomCode } from '../room/protocol.ts';
 import type { RoomChatEntry, RoomMatchStartPayload, RoomMode, RoomSnapshot } from '../room/protocol.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
 import { RoomServiceLimitError, type RoomServiceLimit } from './roomServiceLimit.ts';
@@ -26,8 +26,7 @@ export const MULTIPLAYER_V2_SESSION: unique symbol = Symbol.for('cot.mp.v2.sessi
 /** What the menu (and the browser session owner) receives as `connection.session`. */
 export interface V2RoomSession {
   readonly [MULTIPLAYER_V2_SESSION]: true;
-  /** `solo`: a solo battle's room in the page (soloHostEntry.ts): no lobby, no room status, no other seat. */
-  readonly roomInfo: { roomCode: string; peerId: string; hostId: string; hostName: string; mode: RoomMode; solo?: boolean };
+  readonly roomInfo: { roomCode: string; peerId: string; hostId: string; hostName: string; mode: RoomMode };
   readonly client: RoomClient;
   /** The newest lobby the room published, in the shape the menu renders. */
   readonly lobby: SerializedLobby;
@@ -67,8 +66,6 @@ interface RoomConnectRequest {
     arrangement?: TeamArrangement | null;
   };
   teamSize: number;
-  /** A solo battle's room in the page (soloHostEntry.ts): its session says so (roomInfo.solo). */
-  solo?: boolean;
 }
 
 export interface RoomConnectionOptions {
@@ -115,7 +112,7 @@ function connectFailure(code: string, message: string): Error & { code: string }
 function validateConnectRequest(request: RoomConnectRequest): void {
   const validKind = request?.kind === 'create' || request?.kind === 'join';
   const validTeamSize = Number.isSafeInteger(request?.teamSize) && request.teamSize >= 1
-    && request.teamSize <= (request.solo ? ROOM_SOLO_MAX_TEAM_SIZE : ROOM_MAX_TEAM_SIZE);
+    && request.teamSize <= ROOM_MAX_TEAM_SIZE;
   const complete = validKind && Boolean(request.mode) && Boolean(request.player?.id) && Boolean(request.player?.name)
     && Boolean(request.selection?.specId) && Boolean(request.selection?.mapId) && validTeamSize;
   if (!complete) throw new TypeError('room connect request is incomplete');
@@ -152,7 +149,7 @@ export function createRoomConnectionAdapter({
 
   const clearObservation = () => { unsubscribeObservation?.(); unsubscribeObservation = null; };
 
-  const buildConnection = (client: RoomClient, room: RoomSnapshot, mode: RoomMode, attemptGeneration: number, solo: boolean): RoomConnection => {
+  const buildConnection = (client: RoomClient, room: RoomSnapshot, mode: RoomMode, attemptGeneration: number): RoomConnection => {
     let lobby = lobbyOf(room);
     let lastMatchStart: RoomMatchStartPayload | null = client.matchStart;
     const lobbyListeners = new Set<(lobby: SerializedLobby, room: RoomSnapshot) => void>();
@@ -165,7 +162,6 @@ export function createRoomConnectionAdapter({
       get hostId() { return room.adminId; },
       get hostName() { return hostName(); },
       mode,
-      ...(solo ? { solo: true } : {}),
     };
     const session: V2RoomSession = {
       [MULTIPLAYER_V2_SESSION]: true,
@@ -287,7 +283,7 @@ export function createRoomConnectionAdapter({
         })
         : await client.join({ roomCode: normalizeRoomCode(request.roomCode), selection });
       if (pending !== attempt || generation !== attemptGeneration) { client.dispose(); return null; }
-      const connection = buildConnection(client, room, room.mode, attemptGeneration, request.solo === true);
+      const connection = buildConnection(client, room, room.mode, attemptGeneration);
       current = connection;
       pending = null;
       onStatus({ state: 'connected' });

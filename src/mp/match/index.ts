@@ -6,7 +6,7 @@ export { MatchClient } from './matchClient.ts';
 export type {
   MatchClientOptions, MatchClientStats, MatchFrame, OwnShotEvent, PredictionProvider, ViewerFrame,
 } from './matchClient.ts';
-export { PausableClock, ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs } from './clock.ts';
+export { ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs } from './clock.ts';
 export type { ClockSample, ServerClockOptions } from './clock.ts';
 export { InputStream, NEUTRAL_CONTROL, seqNewer, seqNewerOrEqual } from './inputStream.ts';
 export type { ControlSample, InputStreamOptions, InputStreamStats, PredictionControl } from './inputStream.ts';

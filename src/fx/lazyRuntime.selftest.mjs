@@ -131,7 +131,7 @@ if (/from\s+['"]three['"]/.test(playerFrameInput)
 const networkCompositionAt = main.indexOf('function loadMultiplayerV2Composition()');
 const networkBattleAdapters = main.slice(
   networkCompositionAt,
-  main.indexOf('function beginBattleEntry(', networkCompositionAt),
+  main.indexOf('function beginLocalBattleEntry(', networkCompositionAt),
 );
 if (!/loadModules:[\s\S]{0,700}ensureFxRuntime\(\)/.test(networkBattleAdapters)
     || !/await Promise\.all\(\[\s*load\.loadModules\(\),\s*load\.ensureBattleVisuals\(\),/.test(browserComposition)) {

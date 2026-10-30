@@ -1015,8 +1015,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
-    'src/game/soloSimSession.selftest.mjs', // the solo sim Worker: the planned seats, the held count, the pause, no MP structure
-    'src/game/soloSimBattleRuntime.selftest.mjs', // a sortie's battle on the Worker: covered entry, reveal, held count, hold, boot failure, no MP structure
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -1213,6 +1211,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelMemoryGrowth.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
+    // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
+    'tools/driver-boundaries.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
     'src/vehicles/markingFilm.selftest.mjs',
@@ -1496,9 +1496,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
-    'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
-    'src/mp/room/syncCrypto.selftest.mjs',
     'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
@@ -1573,7 +1571,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
-    'server/match/matchActorPause.selftest.mjs', // step 5: a solo match's pause, its unpaused twin's state
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
@@ -1604,6 +1601,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
+    'src/sim/driverStepParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.

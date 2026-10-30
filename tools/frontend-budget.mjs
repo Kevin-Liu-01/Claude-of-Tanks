@@ -211,6 +211,10 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // +281 B, by lane: battle-camera-264-lens 067f28f029 (engine/cameraLens.ts in the vehicleActions boot group, the aerial
   // and contact rays' lens shift, the cascade refit on a lens change, ?chaseFraming=0), shadow-bake-fixes-264 5f8189f900
   // (the armour panels' on-demand bake) and solo-local-feel-264 ab5efb500d (the page sim by default, SOLO_WORKER_MODES gone).
+  // 2026-10-29 (core-two-drivers-265, the owner's one core and two drivers; pins kept at 264c until the 265 integration build):
+  //   main.ts's solo authority routing and the solo sim Worker's and the solo host's composition gone: game and cn -1,980 B,
+  //   entry -1,806 B, Gallery -134 B, docs -2 B (the lane's build against its base 4a6261fb00 on one node_modules); requests
+  //   unchanged.
   game: { brotliBytes: 1132486, requests: 128, entryBrotliBytes: 249894 },
   cn: { brotliBytes: 1176313, requests: 129, entryBrotliBytes: 249894 },
   gallery: { brotliBytes: 702305, requests: 75 },

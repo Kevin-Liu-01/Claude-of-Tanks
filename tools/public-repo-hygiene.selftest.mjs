@@ -108,6 +108,7 @@ const ownedSkillDocs = new Set([
   'src/fx/SKILL.md',
   'src/gallery/SKILL.md',
   'src/game/SKILL.md',
+  'src/mp/SKILL.md',
   'src/presentation/SKILL.md',
   'src/sim/SKILL.md',
   'src/techTree/SKILL.md',

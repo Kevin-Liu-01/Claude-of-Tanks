@@ -41,6 +41,14 @@ map x mode x seed headlessly (one process, 4 GB heap).
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
+**One core, two drivers** (the owner, 2026-10-29; docs/ARCHITECTURE.md §1.6). This directory is the shared core, with the
+bots (`src/game/ai.ts`, `botAbilities.ts`) and the world's collision. It imports nothing from either driver: no `src/mp`,
+no `server/`, no `main.ts` or `src/app`, no browser global, and no three.js beyond its math. The local driver
+(`game/state.ts` `simStep` on the page) and the online driver's authority (`authoritativeMatch.ts` in a room's host) step
+the same core. From one seed, world, hulls and inputs they leave a byte-identical world. Guards:
+`node tools/driver-boundaries.selftest.mjs` and `node src/sim/driverStepParity.selftest.mjs`. A rule added to one loop's
+step goes into the other's in the same change (the two loops are not folded yet). Run the parity receipt after touching
+either step.
 Use meters/seconds/radians, injected seeded RNG, and reusable scratch math.
 Never trust client hit/damage data. Visual track/hull geometry and combat
 hitboxes must derive from the same authored profile where specified. Movement's
