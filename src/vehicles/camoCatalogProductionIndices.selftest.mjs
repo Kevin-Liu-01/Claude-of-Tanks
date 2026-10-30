@@ -97,11 +97,12 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
 // 263 (integrator): the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 wear the Mk 2's British service coat, the ZTZ-20 and its prototype
-// the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here).
+// the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here). Release 265: the Leopard 1A2A1 wears
+// the Leopard 1A5's three-tone.
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
   challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
   challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100',
-  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81' };
+  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
 // Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's

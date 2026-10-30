@@ -174,5 +174,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // and the Australian Mk 5/1, at II beside the Strv 81 it shares a package with, fly their own flags).
 // Re-pinned 2026-10-30 at integ/265 4e349bd6bc (every other tree check passes): the Pattons' M48 nodes and the Centurion
 // family's six beside the Longwei family.
+// 265: the Leopard 1A2A1 drawn on its 1A5's node at I.
 assert.equal(digest, '5c5d8a86e94c23c4', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

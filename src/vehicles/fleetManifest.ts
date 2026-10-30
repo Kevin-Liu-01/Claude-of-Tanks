@@ -83,7 +83,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   leopard: Object.freeze([
     'leo2a2', 'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',
-    'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo2a4m_can', 'leo2a4_otco',
+    'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo1a2a1', 'leo2a4m_can', 'leo2a4_otco',
   ]),
   italy: Object.freeze(['c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto', 'carro45t']),
   sweden: Object.freeze([

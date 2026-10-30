@@ -1235,6 +1235,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo1a2a1",
+      "revision": "the Leopard 1A5's tier I footing, its HP and round damage: the 1A5's spec with the DM23 round",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1750,
+      "powerWeight": 20.75,
+      "speedKmh": [
+        65,
+        25
+      ],
+      "traverseDegS": [
+        44,
+        38.2
+      ],
+      "primary": {
+        "damage": 430,
+        "penetrationMm": [
+          404,
+          368,
+          331
+        ],
+        "reloadS": 5.5,
+        "sustainedDpm": 4690.91,
+        "accuracy": 0.306,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 96
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo1a5",
       "revision": "1,750 HP and the L7 family's 430-damage round: it died a hit early at I and needed a hit more",
       "tier": 1,

@@ -6,6 +6,7 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.
 import {
   bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions,
 } from './fleetSpecRegistry.ts';
+import { LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { vehicleEraForId } from './taxonomy.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
@@ -280,6 +281,7 @@ for (const [id, donorId, name, nation, role] of entries) {
   delete spec.publicVisualFallback;
   delete spec.label;
   delete spec.roster;
+  if (donorId === 'leo1a5') spec.gunPitchByYawDeg = LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG;
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   // The tier-X peer owns combat tuning, not the already fitted source armor frame.

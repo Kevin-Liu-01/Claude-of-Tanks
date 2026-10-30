@@ -50,6 +50,8 @@ const CURVES = {
   m48a5_patton: [],
   // 262: the Leopard 1A5 proportion rebuild (deck 1.58, cast B&V turret); its measured curve (modern2.ts)
   leo1a5: [],
+  // 263: the Leopard 1A2A1, its bare casting on the 1A5's pre-262 hull; its measured curve (leo1a2a1Specs.ts)
+  leo1a2a1: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

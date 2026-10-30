@@ -491,6 +491,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
     'src/sim/specialActions.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
+    'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
     'src/vehicles/profiles/abramsTuskCheek.selftest.mjs',

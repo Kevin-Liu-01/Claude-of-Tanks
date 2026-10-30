@@ -3986,6 +3986,21 @@
     }
    ]
   },
+  "leo1a2a1": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 132,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 114823,
+   "frame": [
+    0,
+    2.2,
+    1.2,
+    5.7
+   ]
+  },
   "shot_kal": {
    "sealed": true,
    "openPx": 1,

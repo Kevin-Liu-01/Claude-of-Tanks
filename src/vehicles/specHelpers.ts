@@ -376,3 +376,13 @@ export function modernArmor(o: ModernArmorInput): ArmorEnvelope {
     ],
   };
 }
+
+/**
+ * The Leopard 1A5's gun depression by turret yaw as release 262 measured it on its own hull (tools/gun-depression-sweep.mjs).
+ * The vehicles copied from the 1A5 spec (the M60A1 and the Patton line and Sabra built on it, the T-62 obr. 1975, the
+ * AMX-30s, the CV90105 TML study) carried it with the copy; 265 re-swept the 1A5 over its new grille boxes, and the copies
+ * keep this curve rather than take a measurement of a deck they do not draw.
+ */
+export const LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [154, -9], [156, -7.2], [158, -5.9],
+  [160, -4.7], [161, -4.6], [162, -4.6], [163, -3.7], [165, -2.5], [166, -2], [167, -1.8], [172, -1.6], [173, -2],
+  [176, -3.6], [177, -4.4], [180, -4.4]] as const);
