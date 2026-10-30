@@ -166,7 +166,7 @@
   "strv122": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"94e247b64f649816","gun":"cf896491fab54e22"}},
   "strv81": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a1ef75afb387a06a","gun":"2b7052591dc1544c"}},
   "t14_armata": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b973574508f746e0","gun":"4281b35901b3a6f9"}},
-  "t55a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6e998328516ff8cc","gun":"019483228585778d"}},
+  "t55a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"dc3ef2808e72577c","gun":"019483228585778d"}},
   "t62_1975": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"aea520541b77c0eb","gun":"78b1a66720799541"}},
   "t62mv1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8363bbe31834c4ae","gun":"b92dc13f14b5f83a"}},
   "t64b1v_2022": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ee47e1cc7d830d0d","gun":"60c96e95028afd38"}},
@@ -179,6 +179,7 @@
   "t72b3_bastion_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a9f417f19ea8df2a","gun":"865aebcaaf993b47"}},
   "t72b3_qilin": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"42e92cbc0a436927","gun":"561766cc12a7e10d"}},
   "t72b3_sich": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"408e9a779a838eb8","gun":"2b29d84d589d1480"}},
+  "t72b3_zhuque": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"616c066fbeeea2be","gun":"792f857847c73c0f"}},
   "t72b3_zubr": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6ee7da379f6d8144","gun":"8571f4b65b54deec"}},
   "t72b3_zubr_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c25e5a8900a59a64","gun":"f0edf7017d742870"}},
   "t72b3m_2016": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b7d107edafabe01d","gun":"124aca15163f3358"}},
@@ -188,6 +189,7 @@
   "t72b3m_hetman_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f5d98bff1d8bd11c","gun":"d3ab2b8977d09ada"}},
   "t72b3m_kunlun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bc1ff38220b31628","gun":"e6c0acd7d7f22d06"}},
   "t72b3m_wilk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b65da12cd0f2ed68","gun":"37adbc4478dd014e"}},
+  "t72b3m_xuanwu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"db776bf33b3f9991","gun":"688098f224308858"}},
   "t72b_1987": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"71be824ea209bff0","gun":"c863abeef405067a"}},
   "t72bu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f9825ddbfadba018","gun":"4417473fd1602371"}},
   "t72bu_1989": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"238fcf4f0e1025b4","gun":"ec5ef73acf84db84"}},
@@ -225,7 +227,7 @@
   "type10_dozer": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"53de7096391dde55","gun":"9173b3ab122d8bcf"}},
   "type10_tk_x": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0f8cff9d462e1fc9","gun":"355e841c78ad2dd4"}},
   "type10b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7674499e1edc0cbb","gun":"ac60f11326983656"}},
-  "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9fd5dc739d5b3abc","gun":"6dcb6418c64dfa00"}},
+  "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7b76aa2eaa9b9e7c","gun":"6dcb6418c64dfa00"}},
   "type74": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f0e338b740aa06f0","gun":"ec5111a6d75f72a1"}},
   "type89": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"828ecfea4c058f33","gun":"c8e169b36147e0b9"}},
   "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"644087a004c5deb3","gun":"778ed0dfb5f808c7"}},
@@ -244,6 +246,7 @@
   "upior": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7bf609b4b71d2f95","gun":"51286d215d5e7922"}},
   "vickers_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"676b5cc489087513","gun":"88f5ede8b8d535a1"}},
   "vt4a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0f7696f1f9cf3b4c","gun":"69447aa46440a991"}},
+  "vt4a1_baihu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b280a33d70aee816","gun":"d10b470c74d72281"}},
   "warrior_tes_h": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a734f73519cea347","gun":"283495ac1719e5c0"}},
   "xk2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d5f791bfec116086","gun":"df234ddd933b1475"}},
   "ztz100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"96c17549e9fb0dc9","gun":"af1c48c0c10a4b82"}},
@@ -251,8 +254,9 @@
   "ztz20": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"50cbb8822134429e","gun":"6a9ab5dac0562aa3"}},
   "ztz20_prototype": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"33b2459e04901214","gun":"2f15d1c1e6560e56"}},
   "ztz85_iii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ca5493ec5c0a3cde","gun":"63913cc84dc499fd"}},
-  "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ecf7e10eb73e28bb","gun":"037191e19cf582d3"}},
+  "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"01d37779ac787709","gun":"037191e19cf582d3"}},
   "ztz99a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9437b3fc7f6327bf","gun":"ca5600f2c3578d4f"}},
-  "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e772f50a705db871","gun":"f9f012f1579d8e6d"}}
+  "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e772f50a705db871","gun":"f9f012f1579d8e6d"}},
+  "ztz99a2_qinglong": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3bbb6c2297bea936","gun":"28d99e7968f8d926"}}
  }
 }
