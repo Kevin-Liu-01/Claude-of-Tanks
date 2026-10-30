@@ -1200,6 +1200,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/selectedVehicleSelection.selftest.mjs',
     'src/game/sniperFillRuntime.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
+    // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
+    'src/game/soloKernelObstacleQuery.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
