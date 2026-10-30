@@ -500,6 +500,17 @@ function checkClassifyCommand() {
     assert.deepEqual(classifyCommand(command), { lockClass: 'render', from: 'command' }, `a render zsh script: ${command}`);
   }
   assert.deepEqual(classifyCommand(`/bin/zsh ${lane}/steps/fleet-census.zsh`), { lockClass: 'timing', from: 'command' });
+  // tank-standard-check's stage holds render and capture only (2026-10-29): each child stage by its command, the clip
+  // audit and the standard check's own render by their process command lines; a timing script still wins
+  for (const command of ['/usr/local/bin/node tools/geometry-gate.mjs --ids=t80u --check',
+    '/usr/local/bin/node tools/first-party-concept-check.mjs --ids=t72_rys --out=/x/concepts',
+    '/usr/local/bin/node tools/photo-reference-check.mjs --ids=a --out=/x/photos',
+    `${lane}/tools/track-clip-audit.mjs --exact --strict --ids=t62mv1 --out-dir=/x/tracks`,
+    `${lane}/tools/tank-standard-check.mjs --ids=t80u,t90m --gate --stages`]) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'render', from: 'command' }, `a standard-check stage: ${command}`);
+  }
+  assert.deepEqual(classifyCommand('tools/geometry-gate.mjs tools/perfprobe.mjs'), { lockClass: 'timing', from: 'command' },
+    'a timing script still wins over a standard-check stage');
 }
 
 // Renders share the lock two at a time in one directory; a third waits for a slot; the last one out frees the path.
