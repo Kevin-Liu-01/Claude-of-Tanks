@@ -11,5 +11,10 @@ export function portraitSideRatio(id: string): number {
   // a touch more frontal shortens its projected barrel without dropping below the dense-core fill.
   if (id === 'kf51_panther') return 0.72;
   if (id === 't72b3' || id === 'strv122') return 0.76;
+  // The Bernardini light tanks' whips stand over a small chassis: the mirrored X1 measured 119.7 and the X1A2 112.1
+  // card px against the 111.8 px full-height envelope (1.27 x 88), so a more side-on view widens the dense core they
+  // scale to (brazil-line-266; the X1 still measured 113.7 x 112.0 at the Lynx's 0.86).
+  if (id === 'x1_pioneiro') return 1.10;
+  if (id === 'x1a2_carcara') return 0.70;
   return 0.56;
 }
