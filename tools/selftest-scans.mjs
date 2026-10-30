@@ -262,6 +262,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // fixture repository
   'tools/code-quality-metrics.ts': cli('trackedRuntimeFiles (git ls-files) runs from the CLI; its receipt analyzes fixture text'),
   'tools/frame-capture-compare.mjs': cli('run() lists the capture directory its CLI names'),
+  'tools/interior-fill-exposure.mjs': cli('--lane diffs its own inputs against the base (git diff --name-only) only when started as ' +
+    'a command; its receipt imports laneScope and fillExposure, and gate.selftest only names the command'),
   'tools/media-r5/combat-check.mjs': cli('lists the scenes directory its CLI names; combat.selftest imports combatVerdict'),
   'tools/qa-evidence-manifest.mjs': cli('lists the evidence roots its CLI names (.qa-dev, .qa-bots, shots, ...)'),
   'tools/release.mjs': cli('the release CLI lists cloudflare/* Workers, .vercel env files and its tree\'s git status; ' +

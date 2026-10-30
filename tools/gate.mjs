@@ -2,7 +2,7 @@
 // The versioned landing gate (2026-10-01; gate audit P13/P14/P2, infra P14). One command for Codex,
 // Claude and CI, run from the checkout under test:
 //
-//   typecheck -> build -> i18n -> budget -> workers -> receipts -> preflight
+//   typecheck -> build -> i18n -> budget -> workers -> receipts -> fills -> preflight
 //
 // - build runs `npm run build`, whose prebuild is `npm run i18n:validate`; the i18n step adds the
 //   other half of `npm run i18n:check` (`tools/i18n-scan.mjs --check`), so nothing runs twice.
@@ -12,6 +12,9 @@
 //   telemetry); `--install` runs `npm ci` for a Worker whose node_modules is missing.
 // - receipts runs `tools/run-selftests.mjs all` (with --only/--shard/--all/--order passed through)
 //   and keeps one log per receipt.
+// - fills runs `tools/interior-fill-exposure.mjs --all --check --jobs=4` (Main, 2026-10-29): no committed interior fill
+//   of any tank stands outside its current body. Fleet-wide once per integration round here; tank:release:check runs
+//   it scoped (--lane: the selected ids and every body that moved). Skipped when the tool is not in the tree.
 // - preflight runs `tools/shared-main-preflight.mjs` for the validated HEAD (in place when the
 //   checkout is clean, else in a reusable detached worktree of HEAD).
 //
@@ -33,7 +36,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
-export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
+export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'fills', 'preflight']);
 const VERDICTS_BLOCKING = Object.freeze({ regression: true, changed: true, flaky: false, unstable: false, inherited: false });
 const RECEIPT_FLAGS = /^--(?:only|shard|order)=.+$|^--all$/;
 
@@ -112,6 +115,12 @@ export function planGate(options, { root, out, exists = (path) => existsSync(joi
     if (step === 'receipts') {
       return { step, commands: [['node', 'tools/run-selftests.mjs', 'all', ...options.receiptArgs,
         `--report=${join(out, 'receipts.json')}`, `--logs=${join(out, 'receipts')}`]] };
+    }
+    if (step === 'fills') {
+      return exists('tools/interior-fill-exposure.mjs')
+        ? { step, commands: [['node', 'tools/interior-fill-exposure.mjs', '--all', '--check', '--jobs=4']],
+          note: 'fleet-wide once per integration round; tank:release:check runs it scoped (--lane)' }
+        : { step, commands: [], skip: 'tools/interior-fill-exposure.mjs is not in this tree' };
     }
     return { step, commands: [] }; // preflight
   });

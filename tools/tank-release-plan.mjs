@@ -55,6 +55,11 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // Fleet-wide in both modes: gen-combat-anatomy --check --ids would compare every unselected row
     // with itself, so a shared cage or barrel builder could leave other tanks' rows stale unseen.
     cpu('gen-combat-anatomy','--check'),
+    // 2026-10-29 (the owner's voxel blocks): no committed interior fill stands outside its current body (a skin moved
+    // without a fills regen draws its old fills as stair-stepped slabs). --lane (Main, 2026-10-29): the selected ids
+    // plus every id whose body or fill record moved against the merge-base with origin/main, so a shared builder's
+    // other tanks run too; the whole fleet runs once per integration round in tools/gate.mjs's fills step.
+    cpu('interior-fill-exposure',selected,'--lane','--check','--jobs=4'),
     // 2026-10-11 (217's closure; 211's TTS before it): a geometry change could pass this check and then
     // fail the closure's ledger and mission-seat checks. Both receipts now gate here, scoped to the ids.
     cpu('fleet-geometry-ledger','--check',selected),
