@@ -92,7 +92,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    1 closes the plates up and drops the side notes (the special systems, the rounds' second line, the plates' headings);
    2 drops the armament's two lines, the view tabs and the links the band already holds, and lays the modules as chips;
    3 keeps the figures and the tables alone: the technical drawing gives up its room last;
-   4 (a short docked window) keeps each station's first plate only, without the rival. */
+   4 (a short docked window) keeps each station's first plate only, without the rival;
+   5 (one shorter still) sets the vehicle's actions as their glyphs and keys, four to a row. */
 /* roomy: a sparse station (six plates, a short table) fills its column: one plate a row, its figure a size up (the
    gauntlet 10-25: small plates over an empty column at 1920 and 2560) */
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-performance-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
@@ -127,6 +128,18 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-cr
 .cot-garage .stats[data-density~='2'] .cot-crew-chip{padding:var(--s1) 2px;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.cot-mag){display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-ammo-tiles){display:none;}
+/* the actions pack at their own widths under a closer rule, each key beside its own glyph (at a two-column cell's far
+   end it stood by the next action's glyph) */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='5'] .cot-actions{display:flex;flex-wrap:wrap;
+  gap:var(--s1) var(--s3);margin-top:var(--s2);padding-top:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='5'] .cot-action{gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='5'] .cot-action .cot-c-kbd{margin-left:0;}
+/* where the key caps show (components.css hides them on touch), the key stands for the name, which stays the action's
+   accessible name, its glyph and tip (data-tip) saying what it does; on touch the names stay (v261 f: four bare glyphs) */
+@media (hover:hover) and (pointer:fine){
+  body[data-cot-panels='persistent']:not(.cot-touch-layout) .cot-garage .stats[data-density~='5'] .cot-action>span{position:absolute;
+    width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
 /* the scale bars go before any plate does: a station keeps its figures, deltas and later plates (1024x600 overflowed by
    26 px; the r25 critic: Firepower at 1280 dropped Ammunition and Armament with room to spare) */
@@ -475,6 +488,10 @@ body[data-cot-panels='persistent'] .cot-eqpreview .metrics{flex:1 1 100%;display
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);
   mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent)}
 body[data-cot-panels='persistent'] .cot-eqpreview .metric{flex:none}
+/* a shut item's reason takes the values' row: its values would not move, and as a third line it fell under the dock's
+   foot ("Unavailable · autoloaders cannot mount a gun rammer" cut at every desktop size, v261 e) */
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip[data-shut] .metrics{display:none}
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip[data-shut] .action{flex:1 1 100%;margin:0}
 /* the docked picker's search and chips share one row, as the paint sheet's do: the panel stands lower over the tank */
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__search{flex:0 1 220px;height:var(--btn-h-s)}

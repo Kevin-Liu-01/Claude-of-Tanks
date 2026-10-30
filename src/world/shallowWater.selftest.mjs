@@ -278,7 +278,26 @@ assert.match(shader.fragmentShader, /float armLine = hw \+ behindBow \* 0\.42;/,
 assert.match(shader.fragmentShader, /sin\(behindStern \* \(1\.25 \/ \(0\.4 \+ spd\)\) \+ uWaterTime \* 0\.8\)/, 'transverse waves lengthen with speed');
 assert.match(shader.fragmentShader, /float trailLen = hl \+ 4\.0 \+ spd \* 22\.0;/, 'the wash lane fades over a speed-scaled trail');
 assert.match(shader.fragmentShader, /wave \+= \(waveFine\.xy \* 2\.0 - 1\.0\) \* wash \* 1\.2;/, 'the wash lane churns the existing fine layer instead of a new fetch');
-assert.match(shader.fragmentShader, /contactBand \* contactBreak \* \(0\.015 \+ 0\.10 \* mov0\)/, 'broken speed-dependent contact foam replaces the constant rectangular outline');
+// (2026-10-29, the owner: "we still have a square outline when going through water", most on the phone tier, which draws
+// this wake everywhere) nothing the wake draws on the water traces the hull's plan: the rings run round an ellipse through
+// the hull's ends, the contact foam is a moving hull's bow and fore flanks only, the stern's waves and wash rise behind it
+assert.match(shader.fragmentShader, /float ringR = length\(vec2\(along, across\) \/ \(vec2\(hl, hw\) \+ 0\.9\)\);\n\s*float outside = max\(relLen \* \(1\.0 - 1\.0 \/ max\(ringR, 1e-3\)\), 0\.0\);/,
+  'the lapping rings run round an ellipse through the hull\'s ends');
+assert.match(shader.fragmentShader, /\* smoothstep\(-0\.1 \* hl, 0\.7 \* hl, along\);\n\s*wakeFoam \+= contactBand \* contactBreak \* 0\.10 \* mov0 \* str;/,
+  'the contact foam is a moving hull\'s bow and fore flanks, never a frame round a hull at rest');
+assert.doesNotMatch(shader.fragmentShader, /step\(0\.001, behindStern\)/, 'no wave or wash cut square at the stern line');
+assert.match(shader.fragmentShader, /float sternIn = smoothstep\(0\.0, 2\.2, behindStern\);/, 'they rise behind the stern over a couple of metres');
+{
+  // the same terms in JS, for a T-84U's plan (half 3.65 x 2.13 m): a metre off its side and a metre off its corner, along the
+  // diagonal, stand at the same distance from the plan — a ring there traced the rectangle — and at different distances
+  // from the ellipse; the contact foam's weight is nothing at the stern and full at the bow
+  const hl = 3.65, hw = 2.13, A = hl + 0.9, B = hw + 0.9;
+  const ringOutside = (along, across) => { const len = Math.hypot(along, across), r = Math.hypot(along / A, across / B); return Math.max(len * (1 - 1 / Math.max(r, 1e-3)), 0); };
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const side = ringOutside(0, hw + 1), cornerDiag = ringOutside(hl + Math.SQRT1_2, hw + Math.SQRT1_2);
+  assert.ok(Math.abs(side - cornerDiag) > 0.5, `the rings leave the plan's corners off their contours (side ${side.toFixed(2)} m, corner ${cornerDiag.toFixed(2)} m)`);
+  assert.ok(ss(-0.1 * hl, 0.7 * hl, -hl - 0.1) < 1e-9 && ss(-0.1 * hl, 0.7 * hl, hl + 0.1) === 1, 'no contact foam at the stern, full at the bow');
+}
 assert.match(shader.fragmentShader, /clamp\(wakeWash, 0\.0, 1\.0\) \* 0\.35 \* waterDeep/, 'the wash lane stirs bed sediment into the body colour');
 assert.match(shader.fragmentShader, /clamp\(wakeFoam, 0\.0, 0\.85\) \* 0\.85/, 'churn whitens the surface');
 assert.equal(shader.uniforms.uWaterWakeCount.value, 0, 'no vehicles published: no slots evaluated');

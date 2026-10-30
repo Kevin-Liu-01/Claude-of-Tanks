@@ -37,6 +37,7 @@ import { consumableIconSVG } from './equipIcons.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { formatNumber, getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
+import { battleSightShift } from './battleSight.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
@@ -274,6 +275,9 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
+  /** Every key cap from the live bindings (game/battleKeyCaps.ts, by action id): the tray's shell digits and consumables,
+   *  the minimap's and the gear's read it (the controls row's come in auxiliaryKeyLabels). */
+  keyCaps?: Readonly<Record<string, string>>;
   auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
@@ -511,6 +515,12 @@ interface HpBar {
   dist: number;
   lift: number;
   k: number;
+  /** Where a slide moved it off its seat (hpBarSlide), the frames it waits before another search where none seated it,
+   *  and the pointer's offset last written (it stays over the tank). */
+  seatDx: number;
+  seatDy: number;
+  slideWait: number;
+  lastPointerDx: number;
 }
 interface SpotMemory {
   vis: boolean;
@@ -1943,7 +1953,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 @keyframes cot-pb-chase{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
 @keyframes cot-pb-burst{to{transform:scale(1.35);opacity:0;}}
 /* The rules (matchRuleset.ts rulesetLines): one calm panel, values in the data voice. */
-.cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% + 84px);transform:translateX(-50%);
+.cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% - var(--hud-sight-shift,0px) + 84px);transform:translateX(-50%);
   transform-origin:50% 0;box-sizing:border-box;width:max-content;max-width:min(840px,calc(100vw - 32px));display:flex;
   flex-wrap:wrap;justify-content:center;gap:7px 20px;padding:10px 20px;border:1px solid var(--line-2);
   border-radius:var(--r1);background:var(--hud-plate);box-shadow:0 10px 30px oklch(from var(--surface-scene) l c h / .32);font:600 var(--battle-fs-13)/1.25 var(--font-ui);
@@ -2141,6 +2151,10 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpbars.short .cot-hpb .nm{padding-inline:5px;letter-spacing:.03em;}
 .cot-hpbars.short .cot-hpb .nm .si{display:none;}
 .cot-hpbars.short .cot-hpb .tr{margin-inline:5px;}
+/* (the ally's chevron closer in on a short window, its shadow still inside the box: the bar fits the band between a
+   phone's panels and the target plate; the enemy's diamond keeps its margins, its tip and ring off the box's edge, which
+   had stood flush on a consumable button, markers r20m4) */
+.cot-hpbars.short .cot-hpb.ally::after{margin-bottom:2px;}
 /* one bar for both plates: the strong plate's track inside a light hairline (it holds against a night sky) and its shadow */
 .cot-hpb .tr,.cot-tgt .tr{background:var(--hud-plate-strong);border:1px solid var(--line-3);
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
@@ -2151,6 +2165,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
    the target plate's, and the ally's chevron, each whole inside the bar's box (the 31 px box cut the old pointer) */
 /* (the enemy's diamond ringed as the target plate's, so it holds its shape over snow, its ring inside the painted box) */
 .cot-hpb::after{content:"";display:block;flex:none;width:6px;height:6px;margin:4px auto;transform:rotate(45deg);
+  translate:var(--hpb-anch-dx,0px) 0;
   background:var(--hud-enemy);box-shadow:var(--battle-mark-ring);}
 /* (the ally's chevron the diamond's weight, edged dark as the diamond is ringed: it read as half the mark, critic r3) */
 .cot-hpb.ally::after{width:0;height:0;margin-top:2px;transform:none;background:none;box-shadow:none;
@@ -2197,13 +2212,17 @@ html[data-cot-scoped] .cot-tgt .rng{display:none;}
 .cot-tgt .hp{height:1.35em;margin-top:2px;font:500 var(--battle-fs-11)/1.35 var(--font-data);color:var(--ink-1);
   white-space:nowrap;}
 /* (its rotated tip and ring inside the plate's painted box, the plate paints contained; clear of the points' slash) */
-.cot-tgt .anch{flex:none;width:10px;height:10px;margin:6px 0 4px;transform:rotate(45deg);background:var(--hud-enemy);
+.cot-tgt .anch{flex:none;width:10px;height:10px;margin:6px 0 4px;transform:translateX(var(--tgt-anch-dx,0px)) rotate(45deg);background:var(--hud-enemy);
   box-shadow:var(--battle-mark-ring);}
 /* hung under the sight (positionTargetPlate): the diamond over the name, pointing up at the tank */
 .cot-tgt.below .anch{order:-1;margin:4px 0 6px;}
-/* under a panel it sank beneath on a phone (positionTargetPlate) the vehicle line stands down, then the points; the name
-   and the bar stay */
-.cot-tgt.tight .mt,.cot-tgt.tighter .hp{display:none;}
+/* the name alone (.tightest) keeps its diamond 4 px closer to the name, its tip's side unchanged (a zh name took 38 px of
+   568x256's 37 px band over the ring; measureTargetPlate reads each level's height as laid out) */
+.cot-tgt.tightest:not(.below) .anch{margin-top:2px;}
+.cot-tgt.tightest.below .anch{margin-bottom:2px;}
+/* under a panel it sank beneath on a phone (positionTargetPlate) the vehicle line stands down, then the points, then the
+   bar: the name stays */
+.cot-tgt.tight .mt,.cot-tgt.tighter .hp,.cot-tgt.tightest .tr{display:none;}
 /* a large window steps the plate up (.lg, resize: it keeps the phone's floor everywhere else) */
 .cot-tgt.lg .pl{font-size:var(--battle-fs-15);}
 .cot-tgt.lg .cg{width:32px;height:16px;margin:-8px 2px 0 0;}
@@ -2402,6 +2421,21 @@ export function initHud(bus: EventBus): HudRuntime {
   const TARGET_RANGE_EM = 1.2;
   /** How far a plate sunk under a panel stands below it (positionTargetPlate). */
   const PLATE_SINK_GAP = 6;
+  /** The target plate's band search (targetPlateBand): its step down the column, what a level of lines costs, and what a
+   *  seat that leaves no hull bar's width beside it in its band costs (owner: at least one hull bar on every window). */
+  const TARGET_BAND_STEP = 4, TARGET_BAND_LEVEL_COST = 60, TARGET_BAND_CROWD_COST = 60;
+  /** The target plate's tightest level, its name alone (targetPlateHeightAt), the classes of its levels, and the gap it
+   *  keeps off the sight's ring as drawn on the band search's second pass. */
+  const TARGET_TIGHTEST = 3, TARGET_TIGHT_CLASSES = ['tight', 'tighter', 'tightest'], TARGET_ON_RING_GAP = 1;
+  /** How far in from the plate's ends its tank's x stays when a band seat slides it (its diamond within the plate). */
+  const TARGET_ANCHOR_INSET = 12;
+  /** How far a hull bar keeps off the sight's ring, off the target plate and off the HUD's furniture (its pointer had
+   *  stood flush on a consumable button, markers r20m4). */
+  const HP_BAR_RING_GAP = 4, HP_BAR_PLATE_GAP = 2, HP_BAR_FURNITURE_GAP = 2;
+  /** A hull bar's slide where its own seat is not clear (hpBarSlide): its steps along its row and up its column, how far
+   *  under its seat it may stand (its pointer still on the tank's top), and the frames a bar no slide seated waits before
+   *  it searches again (the search is the bar pass's dearest work). */
+  const HP_BAR_SLIDE_STEP_X = 4, HP_BAR_SLIDE_STEP_Y = 1, HP_BAR_SLIDE_DOWN = 6, HP_BAR_SLIDE_RETRY = 6;
   /** The narrowest block (its bar never shorter), and its height as composed in full (measured on each new copy). */
   const TARGET_PLATE_MIN_W = 128, TARGET_PLATE_H = 68;
   /** From this large a window (the desktop width band and the tall height band) the plate steps up a size (.lg). */
@@ -2441,8 +2475,10 @@ export function initHud(bus: EventBus): HudRuntime {
   let tgtMeasure = false; // its size step changed (resize): measured again with the next frame's copy
   let tgtRangeChars = 0; // the range copy's length when measured (updateTargetPlateRange)
   // the vehicle line's and the points' shares of the height, which a plate sunk under a panel leaves (.tight, .tighter)
-  let tgtMetaHeight = 0, tgtPointsHeight = 0;
-  let tgtTight = 0, tgtPendingTight = 0; // 0 whole, 1 tight, 2 tighter: as written, and as positionTargetPlate placed it
+  let tgtMetaHeight = 0, tgtPointsHeight = 0, tgtBarHeight = 0;
+  const tgtLevelHeight = [0, 0, 0, 0]; // its height at each tight level as laid out (measureTargetPlate)
+  let tgtTight = 0, tgtPendingTight = 0; // 0 whole, 1 tight, 2 tighter, 3 the name alone: as written, and as placed
+  let tgtAnchorDx = 0, tgtPendingAnchorDx = 0; // the diamond's offset from the plate's centre (a band seat), as written
   let laneNameNumber = -1, laneName = ''; // the proving ground's lane name, written when the laid lane changes
   let aimTargetId: string | null = null;
   /** Whether the player has given or taken a hit this battle (re-armed when the HUD hides between battles). */
@@ -2967,6 +3003,9 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
   const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
+  // (each cap names its action, for the battle key caps' receipt: tools/battle-key-caps.browser.mjs)
+  for (const [cap, action] of [[jumpKey, 'selfRight'], [specialKey, 'specialAction'], [missileKey, 'atgm'], [reloadKey, 'reloadMagazine'],
+    [droneKey, 'drone'], ...auxiliaryButtons.map(({ key, action: id }) => [key, id] as const)] as const) cap.dataset.keyCap = action;
   const vehicleControls={jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,
     smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
   let controlsJumpMode:boolean|null=null;
@@ -3497,6 +3536,10 @@ export function initHud(bus: EventBus): HudRuntime {
     scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
+  // (battle-camera-264) and once responsiveLayout.ts has sized the root for the new window: read at the resize alone, a
+  // rotated phone's sight kept the old width (the aim point projected on the portrait centre in landscape, its reticle off
+  // where the shell goes) until the next resize
+  window.addEventListener('cot:layoutchange', resize);
   resize();
   root.style.display = 'none'; // starts hidden until setMode/update
 
@@ -4301,7 +4344,8 @@ export function initHud(bus: EventBus): HudRuntime {
     frame.forwardX = forwardX;
     frame.forwardZ = forwardZ;
     frame.centerX = w / 2;
-    frame.centerY = h / 2;
+    // (round the battle sight where the chase framing raises it, battleSight.ts; the scope's is the centre)
+    frame.centerY = mode === 'sniper' ? h / 2 : h / 2 - battleSightShift();
     frame.minDimension = Math.min(w, h);
     const drawnRadius = clampRetR(smoothRadPx);
     frame.radius = Math.min(
@@ -5982,7 +6026,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const hpBarOrder: HpBar[] = [];
   const hpBarPlaced = Array.from({ length: 96 }, () => ({ x0: 0, y0: 0, x1: 0, y1: 0 }));
   /** A hull bar's box until measured (.cot-hpb: the name and vehicle lines, the bar and the side's pointer; solo). */
-  const HP_BAR_H = 52, HP_BAR_SOLO_H = 39;
+  const HP_BAR_H = 52, HP_BAR_SOLO_H = 39, HP_BAR_SHORT_H = 36;
   /** Under this tall or this wide (the short height band, the phone width band) every bar keeps its name alone (.short):
    *  a portrait phone's 390 px held no two-line bar beside its panels (battle-hud-overlap's staged markers, 390x844). */
   const HP_BAR_VEHICLE_MIN_H = 520, HP_BAR_VEHICLE_MIN_W = 520;
@@ -6048,6 +6092,10 @@ export function initHud(bus: EventBus): HudRuntime {
       dist: 0,
       lift: 0,
       k: 1,
+      seatDx: 0,
+      seatDy: 0,
+      slideWait: 0,
+      lastPointerDx: 0,
       layoutH: HP_BAR_H,
       solo: false,
     };
@@ -6070,14 +6118,26 @@ export function initHud(bus: EventBus): HudRuntime {
     // (measured shown: a hidden bar's name measures nothing, the target plate's own trap, r14)
     bar.measure = true;
     // (a hidden bar is placed at the height its lines will have: the two-line default kept a short window's one-line bars
-    // out of every gap, so none ever showed to be measured, battle-hud-layout's phones)
+    // out of every gap, so none ever showed to be measured, battle-hud-layout's phones; and a rest height 3 px over a
+    // bar's own kept it out of 568x256's one gap, markers r20)
     if (bar.shown) measureHpBar(bar);
-    else bar.layoutH = hpBarRestH(bar);
+    else measureHiddenHpBar(bar);
+  }
+
+  /** A hidden bar measured laid out but unseen (a bar hidden with display measures nothing), so the seat it first takes
+   *  is the one its lines fill; read with its copy or the window's band only, never per frame. */
+  function measureHiddenHpBar(bar: HpBar): void {
+    const style = bar.root.style;
+    style.visibility = 'hidden';
+    style.display = 'flex';
+    measureHpBar(bar);
+    style.display = 'none';
+    style.visibility = '';
   }
 
   /** A bar's height before it is measured: one line on a short window or with no callsign, else two. */
   function hpBarRestH(bar: HpBar): number {
-    return bar.solo || hpBarsShort ? HP_BAR_SOLO_H : HP_BAR_H;
+    return hpBarsShort ? HP_BAR_SHORT_H : bar.solo ? HP_BAR_SOLO_H : HP_BAR_H;
   }
 
   function measureHpBar(bar: HpBar): void {
@@ -6094,8 +6154,14 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function positionHpBar(bar: HpBar): void {
-    const plateX = bar.sx - bar.layoutW * 0.5;
-    const plateY = bar.sy - bar.layoutH - bar.lift;
+    const plateX = bar.sx + bar.seatDx - bar.layoutW * 0.5;
+    const plateY = bar.sy - bar.layoutH - bar.lift + bar.seatDy;
+    // (its pointer back over the tank where a slide moved the bar along its row: in the bar's own px, before its scale)
+    const pointerDx = bar.seatDx === 0 ? 0 : Math.round(-bar.seatDx / bar.k);
+    if (pointerDx !== bar.lastPointerDx) {
+      bar.root.style.setProperty('--hpb-anch-dx', `${pointerDx}px`);
+      bar.lastPointerDx = pointerDx;
+    }
     // (written only when it moves, to the tenth of a pixel; shown once; scaled about its foot, a near hull's a size up.
     // No fade with range: the side's colour stays its token, the plates critic found far names at 2.9:1)
     const transform = `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0) scale(${bar.k.toFixed(2)})`;
@@ -6125,7 +6191,7 @@ export function initHud(bus: EventBus): HudRuntime {
       hpLayer.classList.toggle('short', short);
       for (const bar of hpPool.values()) {
         bar.measure = true;
-        if (!bar.shown) bar.layoutH = hpBarRestH(bar);
+        if (!bar.shown) measureHiddenHpBar(bar);
       }
     }
     const tanks = frame.tanks || [];
@@ -6154,28 +6220,83 @@ export function initHud(bus: EventBus): HudRuntime {
     // target plate covered a bar under it): the enemies' first and the nearest first, a bar that would cross one shown,
     // the target plate, the HUD's furniture or the plates' obstacles (sightFurniture, measured each relayout) waits
     // hidden until it clears.
-    const placed = hpBarPlaced;
+    hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;
     let count = 0;
     for (let i = 0; i < order.length; i++) {
       const bar = order[i];
       const half = bar.layoutW * bar.k * 0.5, y1 = bar.sy - bar.lift;
       const x0 = bar.sx - half, x1 = bar.sx + half, y0 = y1 - bar.layoutH * bar.k;
-      // (whole on the screen or not at all: a zh bar's end showed at the window's edge, the plates critic)
-      let clear = x0 >= 0 && x1 <= w && y0 >= 0 && worldPlateGap(x0, y0, x1, y1) >= 0
-        && !(tgtShown && tgtRect && x0 < tgtRect.cx + tgtRect.hw && x1 > tgtRect.cx - tgtRect.hw && y0 < tgtRect.bottom && y1 > tgtRect.top);
-      for (let k = 0; clear && k < count; k++) {
-        const other = placed[k];
-        if (x0 < other.x1 && x1 > other.x0 && y0 < other.y1 && y1 > other.y0) clear = false;
+      if (count >= hpBarPlaced.length) break;
+      // Its seat over its tank where clear, else the nearest clear one a slide finds (a short phone's panels took every
+      // bar's seat at 568x256 and the window showed none: owner, at least one hull bar on every window, markers r20)
+      const lastDx = bar.seatDx, lastDy = bar.seatDy;
+      bar.seatDx = 0; bar.seatDy = 0;
+      if (!hpBarClear(x0, y0, x1, y1, count)) {
+        if (bar.slideWait > 0) { bar.slideWait--; continue; }
+        if (!hpBarSlide(bar, x0, y0, x1, y1, count, lastDx, lastDy)) { bar.slideWait = HP_BAR_SLIDE_RETRY; continue; }
       }
-      if (!clear || count >= placed.length) continue;
-      const box = placed[count++];
-      box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
+      const box = hpBarPlaced[count++];
+      box.x0 = x0 + bar.seatDx; box.y0 = y0 + bar.seatDy; box.x1 = x1 + bar.seatDx; box.y1 = y1 + bar.seatDy;
       seen.add(bar);
       positionHpBar(bar);
     }
     for (const bar of hpPool.values()) {
       if (!seen.has(bar) && bar.shown) { bar.root.style.display = 'none'; bar.shown = false; }
     }
+  }
+
+  /** The sight's ring as drawn and the gap a hull bar keeps off it, this frame's (updateHpBars). */
+  let hpBarRingOut = 0;
+  /** Whether a hull bar's box is clear: whole on the screen (a zh bar's end showed at the window's edge, the plates
+   *  critic), HP_BAR_FURNITURE_GAP off the HUD's furniture and the plates' obstacles, HP_BAR_PLATE_GAP off the target
+   *  plate, off the sight's ring as drawn (the reticle is painted, not laid out, and an ally's name crossed its dashes,
+   *  r20) and off the `count` bars placed. */
+  function hpBarClear(x0: number, y0: number, x1: number, y1: number, count: number): boolean {
+    if (x0 < 0 || x1 > w || y0 < 0 || y1 > h || worldPlateGap(x0, y0, x1, y1) < HP_BAR_FURNITURE_GAP) return false;
+    const g = HP_BAR_PLATE_GAP, plate = tgtShown ? tgtRect : null;
+    if (plate && x0 < plate.cx + plate.hw + g && x1 > plate.cx - plate.hw - g && y0 < plate.bottom + g && y1 > plate.top - g) return false;
+    const r = hpBarRingOut;
+    if (x0 < lastCircleX + r && x1 > lastCircleX - r && y0 < lastCircleY + r && y1 > lastCircleY - r) return false;
+    for (let k = 0; k < count; k++) {
+      const other = hpBarPlaced[k];
+      if (x0 < other.x1 && x1 > other.x0 && y0 < other.y1 && y1 > other.y0) return false;
+    }
+    return true;
+  }
+
+  /** The nearest clear seat for a hull bar whose own is not: along its row with its tank's x inside its span
+   *  (TARGET_ANCHOR_INSET from either end, its pointer moved over the tank), up its column as far as its own height and
+   *  down HP_BAR_SLIDE_DOWN; last frame's (`lastDx`, `lastDy`) while it holds, so a bar between two seats of a cost does
+   *  not flap. Sets the bar's seatDx and seatDy and answers true where one is clear. */
+  function hpBarSlide(bar: HpBar, x0: number, y0: number, x1: number, y1: number, count: number, lastDx: number, lastDy: number): boolean {
+    const width = x1 - x0, height = y1 - y0;
+    const lo = Math.max(0, bar.sx - width + TARGET_ANCHOR_INSET) - x0, hi = Math.min(w - width, bar.sx - TARGET_ANCHOR_INSET) - x0;
+    if (lo > hi) return false;
+    if ((lastDx !== 0 || lastDy !== 0) && lastDx >= lo && lastDx <= hi && lastDy >= -height && lastDy <= HP_BAR_SLIDE_DOWN
+      && hpBarClear(x0 + lastDx, y0 + lastDy, x1 + lastDx, y1 + lastDy, count)) {
+      bar.seatDx = lastDx; bar.seatDy = lastDy;
+      return true;
+    }
+    let bestCost = Infinity;
+    // (its rows on whole pixels: a zh bar fitted 568x256's gap under the plate to the pixel, and a seat at y 134.4 stepped
+    // past it)
+    const align = Math.round(y0) - y0;
+    for (let dy = align - Math.ceil(height); dy <= HP_BAR_SLIDE_DOWN; dy += HP_BAR_SLIDE_STEP_Y) {
+      // (along the row from its seat outward, both ways: the first clear seat each way is that way's nearest)
+      for (let side = -1; side <= 1; side += 2) {
+        for (let step = side < 0 ? 0 : 1; ; step++) {
+          const dx = Math.max(lo, Math.min(hi, side * step * HP_BAR_SLIDE_STEP_X));
+          const cost = Math.abs(dy) + Math.abs(dx) * 0.5;
+          if (cost >= bestCost) break;
+          if (hpBarClear(x0 + dx, y0 + dy, x1 + dx, y1 + dy, count)) {
+            bestCost = cost; bar.seatDx = dx; bar.seatDy = dy;
+            break;
+          }
+          if (dx === (side < 0 ? lo : hi)) break;
+        }
+      }
+    }
+    return bestCost < Infinity;
   }
 
   // ---------- over-target marker ----------
@@ -6311,7 +6432,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function measureTargetPlate(): void {
     tgtMeasure = false;
     // (measured whole: a plate sunk under a panel had left its vehicle line)
-    if (tgtTight) { tgtEl.classList.remove('tight', 'tighter'); tgtTight = 0; }
+    if (tgtTight) { tgtEl.classList.remove(...TARGET_TIGHT_CLASSES); tgtTight = 0; }
     // the block is its widest line: the name line (the silhouette, its gap and the name, as laid out), the tier, vehicle
     // and range's reserve, or the points; the bar spans it, so it is never narrower than its floor
     // (the vehicle line's type size and its margin, read once here; a stub window has no computed style)
@@ -6331,6 +6452,23 @@ export function initHud(bus: EventBus): HudRuntime {
     tgtPlateHeight = Math.max(32, Math.ceil(tgtRefs.bk.offsetHeight) || TARGET_PLATE_H);
     tgtMetaHeight = Math.ceil((tgtRefs.mt.offsetHeight || 0) + metaMargin);
     tgtPointsHeight = Math.ceil((tgtRefs.hp.offsetHeight || 0) + (parseFloat(points?.marginTop ?? '') || 0));
+    const bar = computed ? getComputedStyle(tgtRefs.tr) : null;
+    tgtBarHeight = Math.ceil((tgtRefs.tr.offsetHeight || 0) + (parseFloat(bar?.marginTop ?? '') || 0));
+    // (and each tight level's as laid out: the lines it sheds and, its name alone, the diamond's closer margin; the shares
+    // summed had missed a zh plate's by 2 px, which 568x256's band over the ring did not have)
+    tgtLevelHeight[0] = tgtPlateHeight;
+    for (let level = 1; level <= TARGET_TIGHTEST; level++) {
+      tgtEl.classList.add(TARGET_TIGHT_CLASSES[level - 1]);
+      tgtLevelHeight[level] = Math.ceil(tgtRefs.bk.offsetHeight) || 0;
+    }
+    tgtEl.classList.remove(...TARGET_TIGHT_CLASSES);
+  }
+
+  /** The plate's height at a tight level: whole, without its vehicle line, without its points, the name alone (as laid
+   *  out, else its lines' shares where none was: a stub window). */
+  function targetPlateHeightAt(level: number): number {
+    return tgtLevelHeight[level] || tgtPlateHeight - (level > 0 ? tgtMetaHeight : 0) - (level > 1 ? tgtPointsHeight : 0)
+      - (level > 2 ? tgtBarHeight : 0);
   }
 
   /** How near a hull stands, 1 at point-blank range to 0 from PLATE_LIFT_RANGE_M out. */
@@ -6347,7 +6485,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const halfWidth = tgtPlateWidth * 0.5;
     let plateH = tgtPlateHeight;
     const targetX = Math.max(halfWidth + 4, Math.min(w - halfWidth - 4, _sx));
-    const x0 = targetX - halfWidth, x1 = targetX + halfWidth;
+    let x0 = targetX - halfWidth, x1 = targetX + halfWidth;
+    // (the diamond's offset from the plate's centre, where a band seat slid the plate: it stays over the tank)
+    let anchorDx = 0;
     let bottom = Math.max(plateH + 8, Math.min(h - 12, _sy - plateLift(_sDist, 20, 10)));
     // Over the tank where the HUD leaves it clear. Else sunk under what it met (a feed row, Watch's bar: the plates
     // critic, r20), whole or without its vehicle line, its diamond no lower than the tank's top; else hung under the sight's
@@ -6365,7 +6505,7 @@ export function initHud(bus: EventBus): HudRuntime {
       let placed = false;
       for (let level = 0; level <= 2; level++) {
         if (level > 0 && tgtMetaHeight <= 0) break;
-        const height = plateH - (level > 0 ? tgtMetaHeight : 0) - (level > 1 ? tgtPointsHeight : 0);
+        const height = targetPlateHeightAt(level);
         if (top + height > floor || worldPlateGap(x0, top, x1, top + height, true) < 0) continue;
         plateH = height;
         bottom = top + height;
@@ -6376,14 +6516,138 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!placed && under <= h - 12 && worldPlateGap(x0, under - plateH, x1, under, true) >= 0) {
         bottom = under;
         below = true;
+        placed = true;
+      }
+      // Else the nearest clear band in its column, whole or without its lines, down to its name alone (the smallest phones:
+      // owner 2026-10-27, "always have names"), on the world rather than on a panel, off the ring as drawn (at 568x256 and
+      // 320x568 none of the three seats was clear and the plate stood over the score and the systems row, markers r20)
+      if (!placed) {
+        const seat = targetPlateBand(x0, tgtPlateWidth, _sx, bottom, false) ?? targetPlateBand(x0, tgtPlateWidth, _sx, bottom, true);
+        if (seat) {
+          plateH = seat.height;
+          bottom = seat.bottom;
+          tight = seat.level;
+          below = bottom - plateH > _sy;
+          x0 = seat.x0;
+          x1 = x0 + tgtPlateWidth;
+          anchorDx = Math.round(_sx - (x0 + halfWidth));
+        }
       }
     }
     tgtPendingBelow = below;
     tgtPendingTight = tight;
+    tgtPendingAnchorDx = anchorDx;
     const transform = `translate3d(${x0.toFixed(1)}px,${(bottom - plateH).toFixed(1)}px,0)`;
     tgtPendingTransform = transform === tgtTransform ? null : transform;
-    tgtRectScratch.cx = targetX; tgtRectScratch.hw = halfWidth; tgtRectScratch.top = bottom - plateH; tgtRectScratch.bottom = bottom;
+    tgtRectScratch.cx = x0 + halfWidth; tgtRectScratch.hw = halfWidth; tgtRectScratch.top = bottom - plateH; tgtRectScratch.bottom = bottom;
     tgtRect = tgtRectScratch;
+  }
+
+  /** The target plate's band search (targetPlateBand): a band's blocked spans, and the seat it found. */
+  const bandSpanX0 = new Float64Array(48), bandSpanX1 = new Float64Array(48);
+  let bandSpans = 0;
+  const bandSeat = { x0: 0, bottom: 0, height: 0, level: 0 };
+  /** The rows of each span the band holds (bandOverlap, bandLeavesBar), and the margin every span keeps. */
+  const bandSpanY0 = new Float64Array(48), bandSpanY1 = new Float64Array(48);
+  const bandPad = 2;
+  function blockBand(x0: number, x1: number, y0: number, y1: number, top: number, bottom: number): void {
+    if (y0 < bottom + bandPad && y1 > top - bandPad && bandSpans < bandSpanX0.length) {
+      // (2 px off each: a plate flush on a panel's edge read as touching it, the probe's sub-pixel boxes)
+      bandSpanX0[bandSpans] = x0 - bandPad; bandSpanX1[bandSpans] = x1 + bandPad;
+      bandSpanY0[bandSpans] = y0 - bandPad; bandSpanY1[bandSpans] = y1 + bandPad;
+      bandSpans++;
+    }
+  }
+  /** Whether a seat at `x0` in the band's rows `top` to `bottom` leaves a hull bar of the last pass a run beside it that
+   *  its slide reaches (hpBarSlide: its tank's x inside the bar, its rows in reach of the band's): the runs either side
+   *  go to the nearest span or the window's edge. */
+  function bandLeavesBar(x0: number, width: number, top: number, bottom: number): boolean {
+    let left = 0, right = w;
+    for (let k = 0; k < bandSpans; k++) {
+      if (bandSpanY0[k] >= bottom || bandSpanY1[k] <= top) continue;
+      if (bandSpanX1[k] <= x0) left = Math.max(left, bandSpanX1[k]);
+      else if (bandSpanX0[k] >= x0 + width) right = Math.min(right, bandSpanX0[k]);
+    }
+    const g = HP_BAR_PLATE_GAP;
+    for (let i = 0; i < hpBarOrder.length; i++) {
+      const bar = hpBarOrder[i], barW = bar.layoutW * bar.k, barH = bar.layoutH * bar.k;
+      const foot = bar.sy - bar.lift;
+      if (foot - 2 * barH > bottom || foot + HP_BAR_SLIDE_DOWN < top) continue;
+      const lo = bar.sx - barW + TARGET_ANCHOR_INSET, hi = bar.sx - TARGET_ANCHOR_INSET;
+      if (Math.max(lo, left) <= Math.min(hi, x0 - g - barW) || Math.max(lo, x0 + width + g) <= Math.min(hi, right - barW)) return true;
+    }
+    return false;
+  }
+  /** How much of the band's boxes a plate at `x0` would cover (0: it fits). */
+  function bandOverlap(x0: number, width: number, top: number, bottom: number): number {
+    let area = 0;
+    for (let k = 0; k < bandSpans; k++) {
+      const dx = Math.min(x0 + width, bandSpanX1[k]) - Math.max(x0, bandSpanX0[k]);
+      const dy = Math.min(bottom, bandSpanY1[k]) - Math.max(top, bandSpanY0[k]);
+      if (dx > 0 && dy > 0) area += dx * dy;
+    }
+    return area;
+  }
+
+  /** The clear band nearest the target plate's seat over the tank, the plate sliding along it with the tank's x inside
+   *  its span (TARGET_ANCHOR_INSET from either end, its diamond moved over the tank): whole where one holds it, else
+   *  without its vehicle line, its points, then its bar; never on the sight's ring as drawn. A seat that leaves no hull
+   *  bar in view a run beside it costs TARGET_BAND_CROWD_COST (at 568x256 the plate stood mid-band, the runs either side
+   *  too short for a bar, and the window showed none: markers r20). `onRing`: the second pass, the plate
+   *  let stand TARGET_ON_RING_GAP off the ring as drawn, and where no band is clear even so, its name alone where it covers
+   *  least. Null where the window leaves it no span, or where the first pass finds no clear band. */
+  function targetPlateBand(x0: number, width: number, tankX: number, desired: number, onRing: boolean): typeof bandSeat | null {
+    let bestCost = Infinity, leastArea = Infinity, leastCost = Infinity;
+    let leastX0 = 0, leastBottom = 0, leastHeight = 0;
+    const lo = Math.max(4, tankX - width + TARGET_ANCHOR_INSET), hi = Math.min(w - 4 - width, tankX - TARGET_ANCHOR_INSET);
+    if (lo > hi) return null;
+    // (the ring's box takes the spans' margin too: on the second pass, that margin comes off its radius)
+    const ringR = onRing ? lastDrawnR + TARGET_ON_RING_GAP - bandPad : lastDrawnR + PLATE_SINK_GAP;
+    for (let level = 0; level <= TARGET_TIGHTEST; level++) {
+      if (level > 0 && tgtMetaHeight <= 0) break;
+      const height = targetPlateHeightAt(level);
+      for (let top = 8; top + height <= h - 12; top += TARGET_BAND_STEP) {
+        const bottom = top + height;
+        bandSpans = 0;
+        for (let i = 0; i < sightFurniture.count; i++) {
+          const box = sightFurniture.boxes[i];
+          blockBand(box.x0, box.x1, box.y0, box.y1, top, bottom);
+        }
+        for (let i = 0; i < plateObstacles.count; i++) {
+          if (plateObstacles.soft[i]) continue;
+          const box = plateObstacles.boxes[i];
+          blockBand(box.x0, box.x1, box.y0, box.y1, top, bottom);
+        }
+        blockBand(lastCircleX - ringR, lastCircleX + ringR, lastCircleY - ringR, lastCircleY + ringR, top, bottom);
+        // the plate where it stands, else flush against either side of each span the band holds
+        for (let k = -1; k < bandSpans; k++) {
+          for (let side = 0; side < (k < 0 ? 1 : 2); side++) {
+            const at = k < 0 ? Math.min(hi, Math.max(lo, x0)) : side ? bandSpanX1[k] : bandSpanX0[k] - width;
+            if (at < lo || at > hi) continue;
+            const covered = bandOverlap(at, width, top, bottom);
+            const near = Math.abs(bottom - desired) + Math.abs(at - x0) * 0.5;
+            if (covered > 0) {
+              // (the name alone where it covers least, nearest its seat: the fallback where no band is clear)
+              if (onRing && level === TARGET_TIGHTEST && (covered < leastArea || (covered === leastArea && near < leastCost))) {
+                leastArea = covered; leastCost = near; leastX0 = at; leastBottom = bottom; leastHeight = height;
+              }
+              continue;
+            }
+            // (a tight plate by its tank before a whole one far from it: a line's worth of distance a level)
+            let cost = near + level * TARGET_BAND_LEVEL_COST;
+            if (cost >= bestCost) continue;
+            if (hpBarOrder.length && !bandLeavesBar(at, width, top, bottom)) cost += TARGET_BAND_CROWD_COST;
+            if (cost >= bestCost) continue;
+            bestCost = cost;
+            bandSeat.x0 = at; bandSeat.bottom = bottom; bandSeat.height = height; bandSeat.level = level;
+          }
+        }
+      }
+    }
+    if (bestCost < Infinity) return bandSeat;
+    if (leastArea === Infinity) return null;
+    bandSeat.x0 = leastX0; bandSeat.bottom = leastBottom; bandSeat.height = leastHeight; bandSeat.level = TARGET_TIGHTEST;
+    return bandSeat;
   }
 
   /** The range from the player's tank, in whole metres, written before the copy is measured (updateTargetPlate): a range
@@ -6440,9 +6704,15 @@ export function initHud(bus: EventBus): HudRuntime {
   function flushTargetPlateMove(): void {
     yieldFeedRows();
     if (tgtPendingBelow !== tgtBelow) { tgtEl.classList.toggle('below', tgtPendingBelow); tgtBelow = tgtPendingBelow; }
+    if (tgtPendingAnchorDx !== tgtAnchorDx) {
+      if (tgtPendingAnchorDx) tgtEl.style.setProperty('--tgt-anch-dx', `${tgtPendingAnchorDx}px`);
+      else tgtEl.style.removeProperty('--tgt-anch-dx');
+      tgtAnchorDx = tgtPendingAnchorDx;
+    }
     if (tgtPendingTight !== tgtTight) {
       tgtEl.classList.toggle('tight', tgtPendingTight > 0);
       tgtEl.classList.toggle('tighter', tgtPendingTight > 1);
+      tgtEl.classList.toggle('tightest', tgtPendingTight > 2);
       tgtTight = tgtPendingTight;
     }
     if (tgtPendingTransform === null) return;
@@ -8061,26 +8331,24 @@ export function initHud(bus: EventBus): HudRuntime {
   on('ui:directionalHitValues', (p) => {
     directionalHitValuesEnabled = !!(p && p.on);
   });
-  // Live hotkey labels — settings.ts broadcasts at boot and after every
-  // rebind/clear/reset, so the tray never lies about the player's keys.
-  on('ui:bindingsChanged', (p) => {
-    if (!p) return;
-    if (Array.isArray(p.shells)) {
-      for (let i = 0; i < 3 && i < p.shells.length; i++) {
-        const k = slotEls[i].querySelector('.key');
-        if (k) k.textContent = p.shells[i];
-      }
-    }
-    if (Array.isArray(p.consumables)) {
-      for (let i = 0; i < conEls.length && i < p.consumables.length; i++) {
-        const k = conEls[i].querySelector('.key');
-        if (k) k.textContent = p.consumables[i];
-      }
-    }
-    if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
-    if (typeof p.minimapZoom === 'string') mmKey.textContent = p.minimapZoom;
-    if (typeof p.settingsMenu === 'string') gearKey.textContent = p.settingsMenu;
-  });
+  // Live key caps (game/battleKeyCaps.ts, through the frame; owner 2026-10-28: "make sure to relabel if a person changes
+  // it in settings"): the tray's shell digits and consumables, the minimap's and the gear's, written when the caps change
+  // (a rebind, mid-battle from the pause menu too, or the layout turning pad or keyboard). The controls row's come in
+  // the frame's auxiliaryKeyLabels.
+  let shownKeyCaps: Readonly<Record<string, string>> | null = null;
+  function applyKeyCaps(caps: Readonly<Record<string, string>>): void {
+    if (caps === shownKeyCaps) return;
+    shownKeyCaps = caps;
+    const write = (key: Element | null | undefined, action: string): void => {
+      if (!(key instanceof HTMLElement)) return;
+      key.dataset.keyCap = action; // (for the battle key caps' receipt: tools/battle-key-caps.browser.mjs)
+      key.textContent = caps[action] ?? '';
+    };
+    for (let i = 0; i < 3 && i < slotEls.length; i++) write(slotEls[i].querySelector('.key'), `shell${i + 1}`);
+    for (let i = 0; i < 3 && i < conEls.length; i++) write(conEls[i].querySelector('.key'), `consumable${i + 1}`);
+    write(mmKey, 'minimapZoom');
+    write(gearKey, 'settingsMenu');
+  }
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
       showAlert(t(active
@@ -8622,20 +8890,21 @@ export function initHud(bus: EventBus): HudRuntime {
       lastOwnSide = side;
       titleSides();
     }
-    setText(jumpKey, frame.selfRightKeyLabel || 'F');
+    setText(jumpKey, frame.selfRightKeyLabel ?? 'F');
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
+    if(frame.keyCaps)applyKeyCaps(frame.keyCaps);
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)setText(item.key,frame.auxiliaryKeyLabels[item.action]);
-      setText(missileKey,frame.auxiliaryKeyLabels.atgm || 'Q');
-      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine || 'C');
-      setText(specialKey,frame.auxiliaryKeyLabels.specialAction || 'E');
-      setText(droneKey,frame.auxiliaryKeyLabels.drone || 'V');
+      setText(missileKey,frame.auxiliaryKeyLabels.atgm ?? 'Q');
+      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine ?? 'C');
+      setText(specialKey,frame.auxiliaryKeyLabels.specialAction ?? 'E');
+      setText(droneKey,frame.auxiliaryKeyLabels.drone ?? 'V');
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateRangeCard(frame);
     updateSpecialAction(frame.player || playerRef, frame.aim);
     const flier = frame.player || playerRef;
-    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
+    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
@@ -8654,7 +8923,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!rangeCard) {
       rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
         rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
-      }).catch((error) => { rangeCardLoad = null; console.error('[hud] range card failed to load', error); });
+      // (asked once: a chunk that did not arrive is not asked for again in this document, and a frame's retry logged each frame)
+      }).catch((error) => { console.error('[hud] range card failed to load', error); });
       return;
     }
     const player = frame.player || playerRef;
@@ -8665,7 +8935,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // the range from the muzzle along the bore (the shot's own flight distance), not the camera ray's
       laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.gunDistM ?? frame.aim?.distM ?? null,
       hullX: player?.state?.pos.x ?? null, hullZ: player?.state?.pos.z ?? null,
-      resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
+      resetKey: frame.auxiliaryKeyLabels?.rangeReset ?? 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving ?? 'Y',
     });
   }
 

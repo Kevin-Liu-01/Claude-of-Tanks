@@ -23,6 +23,7 @@ import {
 } from '../../sim/destructionEvents.ts';
 import { resetStructureRecords } from '../../sim/destructionMatch.ts';
 import { createStructureDamage, STAGE_ORDER, type StructureDamage, type StructureState } from '../../sim/structureDamage.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../../sim/structureMaterial.ts';
 import { sectionKind, sectionNormal, sectionSpan, storeyDownAt } from '../../sim/structureSections.ts';
 import {
   createDeformedHeightField, createTerrainDeformation, rubbleHeightFor, type DeformableHeightField, type TerrainDeformation,
@@ -36,6 +37,8 @@ interface MirrorWorld {
   heightField?: DeformableHeightField | null;
   getObstacles?(): CollisionRecord[];
   getColliders?(): CollisionRecord[];
+  /** The battlefield's config (world/map.ts): its architecture names the house walls the authority prices rams on. */
+  config?: { props?: unknown } | null;
 }
 
 interface MirrorBus {
@@ -60,6 +63,8 @@ interface DestructionMirror {
   localId(authorityId: number): number | null;
   /** The match plays sections (its ruleset's `destruction.sections`): every stage this mirror raises says so (P2). */
   setSections(on: boolean): void;
+  /** Whether this world's structure of `record` yields to a ram at `closingMps` as the authority's would (structureDamage wouldYield). */
+  yieldsToRam(record: CollisionRecord, massTons: number, closingMps: number): boolean;
 }
 
 const finite = (value: unknown, fallback = 0): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -83,6 +88,8 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
         rubbleHeightFor(structure.topY - structure.baseY), applyingSettled ? -Infinity : undefined),
       // a structure's sections are derived when the authority first opens one (nothing costs until then)
       sections: true,
+      // the map's house walls, as the authority builds its structures (sim/authoritativeMatch.ts): a ram is priced alike
+      wallMaterial: wallMaterialForStyle(architectureStyleOf(world?.config ?? null)),
     })
     : null;
   const groundField = world?.heightField && typeof world.heightField.getHeightAt === 'function'
@@ -216,10 +223,17 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       const stage = payload.stage;
       if (stage !== 'damaged' && stage !== 'breached' && stage !== 'collapsed') return null;
       apply(structure, stage, false, payload);
+      // (2026-10-29) a blow that took its last hit points: the authority's collapse is on its way (its cascade first, then
+      // the 'collapsed' event) and the authority's hulls drive through it meanwhile (structureDamage yieldTo); here too
+      if (stage !== 'collapsed' && structure.collapsible && structure.stage < 3 && payload.integrity === 0) structure.collapsePending = true;
       return structure;
     },
     setSections(on) {
       sectionsOn = on === true;
+    },
+    yieldsToRam(record, massTons, closingMps) {
+      const structure = structures?.structureOf(record) ?? null;
+      return structure !== null && structures!.wouldYield(structure, massTons, closingMps);
     },
     localId(authorityId) {
       if (!structures || !Number.isSafeInteger(authorityId)) return null;

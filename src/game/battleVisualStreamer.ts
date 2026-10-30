@@ -72,6 +72,8 @@ interface TextureUploadRenderer {
 
 interface ArmorAimWarmOwner<Entity extends BattleVisualEntity> {
   prime(entity: Entity): RuntimeValue;
+  /** (263) The armour paint's panels, baked under the staging budget before the programs and the far LOD are made. */
+  bakePanels?(entity: Entity, pause: () => Promise<void>): Promise<void>;
   warm(): () => void;
 }
 
@@ -115,6 +117,8 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
     tick: () => Promise<void>,
   ): Promise<RuntimeValue>;
   armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
+  /** (265) Whether the armour overlay is on: staging bakes a vehicle's paint panels only then. Off when not given. */
+  armorPanelsWanted?: () => boolean;
   forwardProgramWarm: ForwardCompileOwner;
   /**
    * Draw a staged root once offscreen with its production materials, whatever any camera frames (2026-10-24, perf-245;
@@ -233,6 +237,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   getSpec,
   prebakeSharedTextures,
   armorAimOverlay,
+  armorPanelsWanted = () => false,
   forwardProgramWarm,
   drawWarm,
   drawWarmSteps,
@@ -337,6 +342,9 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const compileAt = now();
     visual.prewarmBurn?.();
     armorAimOverlay.prime(entity);
+    // (265) its panels only while the overlay is on: a battle with it off never pays for them (it bakes in the frames'
+    // share once switched on)
+    if (armorAimOverlay.bakePanels && armorPanelsWanted()) await armorAimOverlay.bakePanels(entity, () => yieldForBudget(true));
     const restoreArmorWarmVisibility = armorAimOverlay.warm();
     try {
       if (options.compilePrograms !== false) forwardProgramWarm.compile(root);
