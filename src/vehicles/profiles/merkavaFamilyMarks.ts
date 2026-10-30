@@ -8,7 +8,7 @@
 import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
 import type { BasketLoadItem } from './merkavaFamilyBasket.ts';
-import type { MerkavaBasket, ModulePlate, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
+import type { MerkavaAddendum, MerkavaBasket, ModulePlate, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -41,10 +41,13 @@ export interface MerkavaMark {
   readonly basket: MerkavaBasket | null;
   /** The basket's load: the fleet's field stowage packed on its floor (basketpack.py, hull frame). */
   readonly load: readonly BasketLoadItem[];
-  /** Roof machine guns as measured (hull frame): the mount's x, foot y and z, and the gun's span along z. */
-  readonly roofGuns: readonly (readonly [x: number, foot: number, z: number, z0: number, z1: number])[];
+  /** Roof machine guns as measured (hull frame): the mount's x, foot y and z, the gun's span along z, and the source gun's
+   *  top where it is not the fleet MAG's on its pintle at the foot (else null). */
+  readonly roofGuns: readonly (readonly [x: number, foot: number, z: number, z0: number, z1: number, top: number | null])[];
   /** Whip antennas as measured: x, foot y, z, height (on the turret, or on the hull where the foot is under the deck). */
   readonly antennas: readonly (readonly [x: number, foot: number, z: number, h: number])[];
+  /** Pieces the source fit left out, measured from the same source (MEASURED_ADDENDA). */
+  readonly addenda: readonly MerkavaAddendum[];
 }
 
 // ---------------------------------------------------------------------------------------------- the three chassis
@@ -152,6 +155,65 @@ const OVER_GUN: Readonly<Record<MerkavaMarkId, OverGunRecord>> = {
   merkava3_baz: { m2: [0.449, 2.109, 2.70], ammoBox: MK1_3_BOX },
   merkava4b: { m2: [1.152, 2.812, 2.814], ammoBox: null },
 };
+
+// The roof guns' tops where the source gun is not the fleet MAG standing on its pintle at the mount's foot (hull frame,
+// each source gun group's highest point): the Mk 1 to Mk 3's right gun hangs beside its mount, 0.18 m over the foot
+// against the MAG's 0.28; the Mk 4B's rides a 0.4 m post, 0.47 over it. Null keeps the MAG on its foot (the left guns).
+const ROOF_GUN_TOP: Readonly<Record<MerkavaMarkId, readonly (number | null)[]>> = {
+  merkava1b: [2.884, null],
+  merkava2b: [2.924, null],
+  merkava2d: [null, 2.925],
+  merkava3c: [2.943, null],
+  merkava3_baz: [null, 2.999],
+  merkava4b: [3.301],
+};
+
+// Pieces the source fit left out, measured from the same sources (release 262's gate round: the geometry gate's height,
+// hull length and floater reds and the plan-hole census each traced to a source piece the fit dropped):
+//  - the rear stowage racks' lowest slats, down their stern face to the racks' measured feet (the Mk 1/2 0.827, the
+//    Mk 3 0.745; the fit stopped at 0.97 and 0.91);
+//  - the Mk 1B's skirt panels' end tops: each panel's top falls from its middle strip (1.335) to 1.25 at its joint with
+//    the next, across x 1.866-1.957 (the fit drew only the middle strips, so the plan read sky between the sponson and
+//    the skirt over each joint);
+//  - the front skirt hangers outboard of the sponsons on the 2B, 3C and Baz (x 1.863-1.938, z 2.253-2.479);
+//  - the 3C's and Baz's left rear rack plate (the fit kept its end brackets);
+//  - the Mk 4B's lamp pedestal between its measured base block (to 2.935) and the head's floor (from 2.992);
+//  - the 2B's right rear mast as the source draws it: its collar (2.79-2.81) and head (to 3.2015) 0.107 across over
+//    the 0.080 stem (source part 754, which the fit read as one 0.105 cylinder).
+const mirrored = (a: MerkavaAddendum): MerkavaAddendum =>
+  a[0] === 'post' ? ['post', a[1], -a[2], a[3], a[4], a[5], a[6]] : [a[0], a[1], -a[3], -a[2], a[4], a[5], a[6], a[7]] as MerkavaAddendum;
+const both = (...rows: MerkavaAddendum[]): MerkavaAddendum[] => rows.flatMap((a) => [a, mirrored(a)]);
+const MK12_STERN = both(['box', 'hullArmor', 0.395, 0.958, 0.827, 0.985, -4.003, -3.948]);
+const MK3_STERN = both(['box', 'hullArmor', 0.461, 1.041, 0.745, 0.912, -4.192, -4.150]);
+const FRONT_HANGERS = both(['box', 'hull', 1.863, 1.938, 1.33, 1.39, 2.253, 2.479]);
+const MK3_REAR_RACK: MerkavaAddendum = ['box', 'hullArmor', -1.612, -1.148, 1.330, 1.355, -4.040, -3.964];
+const MK1B_SKIRT_ENDS = both(...([
+  [1.696, 2.0325], [1.689, 1.3595], [0.407, 0.7325], [0.400, 0.0735],
+  [-0.883, -0.5535], [-0.789, -1.2155], [-2.172, -1.8425], [-2.177, -2.343],
+] as const).map(([joint, strip]): MerkavaAddendum => ['ramp', 'hullArmor', 1.866, 1.957, joint, 1.25, strip, 1.335]));
+const MAST_2B: readonly MerkavaAddendum[] = [
+  ['post', 'turretPainted', -1.040, -2.4535, 0.0535, 2.79, 2.81],
+  ['post', 'turretPainted', -1.040, -2.4535, 0.0535, 3.196, 3.2015],
+];
+const MEASURED_ADDENDA: Readonly<Record<MerkavaMarkId, readonly MerkavaAddendum[]>> = {
+  merkava1b: [...MK12_STERN, ...MK1B_SKIRT_ENDS],
+  merkava2b: [...MK12_STERN, ...FRONT_HANGERS, ...MAST_2B],
+  merkava2d: MK12_STERN,
+  merkava3c: [...MK3_STERN, ...FRONT_HANGERS, MK3_REAR_RACK],
+  merkava3_baz: [...MK3_STERN, ...FRONT_HANGERS, MK3_REAR_RACK],
+  merkava4b: [['post', 'turretDetail', -1.034, -1.662, 0.022, 2.930, 2.996]],
+};
+
+/** The 2B's source part 754 (the right rear mast, one 0.105 cylinder from 2.5025 to 3.2055) as its 0.080 stem up to the
+ *  head (MAST_2B); a regenerated table that moves the part fails here rather than narrowing another. */
+function stemOf2bMast(parts: SourcePart[]): SourcePart[] {
+  const p = parts[754];
+  if (!p || p[0] !== 1 || Math.abs(p[2]! + 1.040) > 0.002 || Math.abs(p[4]! + 2.453) > 0.002) {
+    throw new Error('merkava2b: source part 754 is no longer the right rear mast');
+  }
+  parts[754] = p.map((v, i) => (i === 3 ? (2.5025 + 3.196) / 2 : i === 6 ? 3.196 - 2.5025 : i === 5 || i === 7 ? 0.080 : v));
+  return parts;
+}
 
 /** Rows of numbers (the record's basket, boot, cradle and studs as plain rows: mapped as their literal tuples, their union
  *  is too large). */
@@ -296,10 +358,12 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s),
       runs: runsOf(m), plates: platesOf((m as { readonly p?: PackedPlates }).p) })),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
-      axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
+      axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot,
+    parts: id === 'merkava2b' ? stemOf2bMast(src.parts.map(decodePart)) : src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
     basket: basketOf(r), load: loadOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
-    roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
+    roofGuns: r.mgs.map(([x, foot, z, z0, z1], i) => [x, foot, z, z0, z1, ROOF_GUN_TOP[id][i] ?? null] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
+    addenda: MEASURED_ADDENDA[id],
   };
 }
 

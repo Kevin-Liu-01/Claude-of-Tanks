@@ -6,7 +6,7 @@
 // merkavaFamilyDetails.ts). The hatches, sights, add-on armour, smoke launchers and stowage are the measured detail parts
 // (merkavaFamilyDetails.ts). Turret frame: the ring centre at deck height, +Z forward.
 import { KIT, FITTINGS } from './kit.ts';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -144,18 +144,20 @@ const FLEET_MAG = Object.freeze({ rearZ: -0.308, length: 1.260 });
 /** The working roof machine guns at their measured mounts, scaled to the source gun's span, and the whip antennas at
  *  their measured feet and heights (the Mk 4's two short width rods stand on the hull's front corners). */
 export function buildMerkavaRoofWeapons(P: TankBuilderPort, shell: readonly ShellSolid[],
-  guns: readonly (readonly [number, number, number, number, number])[],
+  guns: readonly (readonly [number, number, number, number, number, number | null])[],
   antennas: readonly (readonly [number, number, number, number])[], pivot: readonly [number, number]): void {
   const [py, pz] = pivot;
-  guns.forEach(([x, foot, z, z0, z1], i) => {
+  guns.forEach(([x, foot, z, z0, z1, top], i) => {
     // working crew stations (the coordinator's VH.14 ruling: every drawn roof gun works), on the fleet's riding cradle at
     // the measured mount, on its pintle post down to the shell (the Mk 1's left gun stands 0.35 m over its sloped
-    // shoulder); the gun spans the source gun's z0..z1
+    // shoulder); the gun spans the source gun's z0..z1, its top at the source gun's where that is measured apart (the
+    // Mk 1-3's right gun hangs beside its mount, the Mk 4B's rides a tall post)
     const scale = (z1 - z0) / FLEET_MAG.length;
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale, seed: 904, tone: 'two-tone', ammo: true,
       shield: false, ring: false, working: true, ridingCradle: true });
     mg.name = `merkavaRoofMag${i + 1}`;
-    const surface = turretSurfaceAt(shell, x, z), seat = Math.max(foot, surface);
+    const surface = turretSurfaceAt(shell, x, z);
+    const seat = top === null ? Math.max(foot, surface) : top - new THREE.Box3().setFromObject(mg).max.y;
     mg.position.set(x, seat - py, z0 - FLEET_MAG.rearZ * scale - pz);
     P.turretG.add(mg);
     if (seat - surface > 0.03) {

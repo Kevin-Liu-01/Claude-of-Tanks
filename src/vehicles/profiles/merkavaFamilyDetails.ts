@@ -114,6 +114,41 @@ export interface ModuleRun {
   readonly solids: readonly ShellSolid[];
 }
 
+/** Where a measured addendum is drawn: the hull's external armour, the plain hull, or the turret's detail or painted
+ *  detail. */
+export type MerkavaAddendumOwner = 'hullArmor' | 'hull' | 'turretDetail' | 'turretPainted';
+
+/** A piece the source fit left out, measured from the same source (hull frame): a box over its x, y and z ranges, a
+ *  vertical post (its x and z centre, radius and y range), or an 8 mm plate across x0..x1 whose top runs from (za, ya) to
+ *  (zb, yb). */
+export type MerkavaAddendum =
+  | readonly ['box', MerkavaAddendumOwner, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number]
+  | readonly ['post', MerkavaAddendumOwner, x: number, z: number, r: number, y0: number, y1: number]
+  | readonly ['ramp', MerkavaAddendumOwner, x0: number, x1: number, za: number, ya: number, zb: number, yb: number];
+
+/** The measured addenda (merkavaFamilyMarks.ts MerkavaMark.addenda), turret pieces in the turret's frame. */
+export function buildMerkavaAddenda(P: TankBuilderPort, addenda: readonly MerkavaAddendum[], pivot: readonly [number, number]): void {
+  const seg = P.q ? 20 : 12, plate = 0.008;
+  for (const a of addenda) {
+    const onTurret = a[1] === 'turretDetail' || a[1] === 'turretPainted', dy = onTurret ? pivot[0] : 0, dz = onTurret ? pivot[1] : 0;
+    let g: THREE.BufferGeometry;
+    if (a[0] === 'box') {
+      const [, , x0, x1, y0, y1, z0, z1] = a;
+      g = KIT.xform(KIT.box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2 - dy, (z0 + z1) / 2 - dz);
+    } else if (a[0] === 'post') {
+      const [, , x, z, r, y0, y1] = a;
+      g = KIT.xform(KIT.cylY(r, r, y1 - y0, seg), x, (y0 + y1) / 2 - dy, z - dz);
+    } else {
+      // the plate's top face on the line from (za, ya) to (zb, yb): its centre half a thickness under the line's middle
+      const [, , x0, x1, za, ya, zb, yb] = a, rise = Math.atan2(yb - ya, zb - za);
+      g = KIT.xform(KIT.box(x1 - x0, plate, Math.hypot(zb - za, yb - ya)), (x0 + x1) / 2,
+        (ya + yb) / 2 - (plate / 2) * Math.cos(rise) - dy, (za + zb) / 2 + (plate / 2) * Math.sin(rise) - dz, -rise, 0, 0);
+    }
+    if (a[1] === 'hullArmor') P.addExternalArmor('hull', g);
+    else P.add(a[1] === 'hull' ? 'hull' : a[1] === 'turretDetail' ? 'turretDetail' : 'turretPaintedDetail', g);
+  }
+}
+
 /** Measured solids in their owner's frame (offset subtracted): cut along z, or along x (fitted in the frame (-z, y, x),
  *  a quarter turn about y back). */
 function solidsGeometry(solids: readonly ShellSolid[], axis: 0 | 2, offset: readonly [number, number, number]): THREE.BufferGeometry[] {
