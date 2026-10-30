@@ -29,9 +29,8 @@
         -5,
         14
       ],
-      "cells": 0,
-      "guidedAmmoTotal": 6,
       "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
       "roofMachineGuns": 2,
       "hullLengthM": 7.17,
       "hullWidthM": 4.264,
