@@ -25,16 +25,18 @@ assert.match(preloadSolo, /if \(authority === 'worker'\) return Promise\.all\(\[
   'the quick battle\'s intent loads the solo sim Worker\'s chunk and prepares its Worker (lazily: no boot request)');
 assert.match(preloadSolo, /return preloadSoloBattleRuntime\(\);\n {2}\},/, 'a battle the page simulates warms the page\'s own solo alone');
 // 2026-10-26 (release 256, the owner: a solo game against bots must not create a multiplayer session); 2026-10-27 (release
-// 261, the owner's "yes"): a free sortie in a mode the Worker has passed parity on runs on the solo sim Worker by default;
-// ?soloAuthority=page keeps every battle on the page; the local host only when ?soloAuthority=host forces it
+// 261, the owner's "yes"): the quick battle ran on the solo sim Worker by default; 2026-10-29 (the owner: "everything is now
+// delayed laggy as if it was using the multiplayer architecture"): every solo battle runs locally on the page again, the
+// Worker only when ?soloAuthority=worker forces it, the local host only when ?soloAuthority=host does
 const authorityFor = /\nfunction soloAuthorityFor\([\s\S]*?\n\}\n/.exec(main)?.[0] ?? '';
 assert.ok(authorityFor, 'main.ts keeps the solo authority decision in soloAuthorityFor');
-assert.match(main, /const SOLO_WORKER_MODES: ReadonlySet<string> = new Set\(\['standard'\]\);/, 'the quick battle\'s standard rules alone flip (261)');
+assert.doesNotMatch(main, /SOLO_WORKER_MODES/, 'no mode flips to the Worker by default');
 assert.match(authorityFor, /\n\s+if \(SOLO_AUTHORITY_PARAM === 'page'\) return page\('opt_out'\);\n\s+if \(campaign\) return page\('campaign'\);\n\s+if \(watch\) return page\('watch'\);/,
   'the page override, the campaign and a watched battle come first');
 assert.match(authorityFor, /if \(readBrainSettings\(\)\.opponent === 'jev'\) return page\('jev'\);/, 'a battle Jev commands stays on the page');
-assert.match(authorityFor, /if \(SOLO_AUTHORITY_PARAM === 'host'\) return \{ authority: 'host', reason: 'forced' \};\n\s+if \(SOLO_AUTHORITY_PARAM === 'worker'\) return \{ authority: 'worker', reason: 'forced' \};\n\s+if \(!SOLO_WORKER_MODES\.has\(mode\)\) return page\('parity'\);\n\s+if \(getDeviceTier\(\) === 'mobile'\) return page\('mobile'\);\n\s+return \{ authority: 'worker', reason: 'default' \};\n\}/,
-  'a parity-passed mode runs on the Worker by default; the other modes and the mobile tier on the page');
+assert.match(authorityFor, /if \(SOLO_AUTHORITY_PARAM === 'host'\) return \{ authority: 'host', reason: 'forced' \};\n\s+if \(SOLO_AUTHORITY_PARAM === 'worker'\) return \{ authority: 'worker', reason: 'forced' \};\n\s+return page\('local'\);\n\}/,
+  'a solo battle runs on the page by default; the Worker and the host only when forced');
+assert.equal((authorityFor.match(/\{ authority: 'worker', reason:/g) ?? []).length, 1, 'the forced branch is the only way a solo battle reaches the Worker');
 assert.equal((authorityFor.match(/\{ authority: 'host', reason:/g) ?? []).length, 1, 'the forced branch is the only way a solo battle reaches the host');
 assert.equal((main.match(/(?<!function )\bprepareSoloHost\(\)/g) ?? []).length, 1, 'only the host-gated Battle intent prepares the solo host thread');
 assert.match(intent, /const preload = \([\s\S]{0,700}ignoreFailure\(preloadSoloBattle\)/,
@@ -48,4 +50,4 @@ const runtime = await import('./soloBattleRuntime.ts');
 for (const name of ['createCollider', 'prepareNextOpeningRoute', 'setupBattle', 'simStep']) {
   assert.equal(typeof runtime[name], 'function', `${name} remains exported by the lazy owner`);
 }
-console.log('soloBattleRuntime.selftest: garage exclusion, covered battle acquisition and the solo authority (the Worker for the quick battle, the page override) passed');
+console.log('soloBattleRuntime.selftest: garage exclusion, covered battle acquisition and the solo authority (the page by default, the Worker and the host when forced) passed');

@@ -64,6 +64,7 @@ import {
 } from './quality.ts';
 import {
   baseDynamicScale,
+  carriedDynamicScale,
   dynamicScaleFloor,
   dynamicScaleHold,
   internalPixelRatio,
@@ -86,6 +87,7 @@ import { SceneAAPass, SceneAerialPass, sizeDepthWithTarget } from './sceneSource
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
+import { readCameraLens } from './cameraLens.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
 import {
   CONTACT_SHADOW_GLSL, CONTACT_SHADOW_RANGE_M, createContactShadowUniforms, updateContactShadowUniforms,
@@ -1027,6 +1029,8 @@ const AerialShader = {
     uCamUp: { value: new THREE.Vector3(0, 1, 0) },
     uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
     uTan: { value: new THREE.Vector2(1, 1) },
+    // (battle-camera-264) the frustum centre's offset per unit depth: the chase framing's lens shift (cameraLens.ts)
+    uTanShift: { value: new THREE.Vector2(0, 0) },
     uCamPos: { value: new THREE.Vector3() },
     // 2026-10-01: world y of the haze layer's base (the ground under the camera; setGroundHeightSource)
     uHazeDatum: { value: 0 },
@@ -1089,6 +1093,7 @@ const AerialShader = {
     uniform vec3 uCamUp;
     uniform vec3 uCamFwd;
     uniform vec2 uTan;
+    uniform vec2 uTanShift;
     uniform vec3 uCamPos;
     uniform float uHazeDatum;
     uniform vec4 uHazeLaw;
@@ -1176,8 +1181,8 @@ const AerialShader = {
         float viewZ = ( uNear * uFar ) / ( ( uFar - uNear ) * depth - uFar );
         // world-space view ray for this pixel (directional scatter tint)
         vec3 ray = normalize( uCamFwd
-          + uCamRight * ( vUv.x * 2.0 - 1.0 ) * uTan.x
-          + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
+          + uCamRight * ( ( vUv.x * 2.0 - 1.0 ) * uTan.x + uTanShift.x )
+          + uCamUp * ( ( vUv.y * 2.0 - 1.0 ) * uTan.y + uTanShift.y ) );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
         vec3 hazeCol;
         bool hazeLaw = uAtmo > 0.5 && uHazeLaw.x > 0.0;
@@ -2770,6 +2775,9 @@ export function createPost(
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
+  // (local-fps-265) the raster the governor's own tier change carries into the next preset, set only while it reports
+  // the change (the preset listeners, this module's included, run inside that call)
+  let carriedRasterRatio: number | null = null;
   // perf-governor r1 (R3F PerformanceMonitor pattern, mapped onto this
   // engine): between "resolution at the floor" and "drop the whole preset
   // tier" there is now a SESSION TRIM LADDER driven purely by measured frame
@@ -2853,13 +2861,16 @@ export function createPost(
       return;
     }
     if (action === 'tier-down') {
-      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it)
-      if (reportSustainedOverload()) qualityPolicy.beginTierTrial();
+      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it); the new tier
+      // starts at the raster this one stood at (resetGovernorState, carriedDynamicScale)
+      carriedRasterRatio = internalPixelRatio(renderer.getPixelRatio(), preset, qualityPolicy.dynamicScale);
+      try { if (reportSustainedOverload()) qualityPolicy.beginTierTrial(); } finally { carriedRasterRatio = null; }
       renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action === 'tier-up') {
-      reportSustainedRecovery();
+      carriedRasterRatio = internalPixelRatio(renderer.getPixelRatio(), preset, qualityPolicy.dynamicScale);
+      try { reportSustainedRecovery(); } finally { carriedRasterRatio = null; }
       renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
@@ -2956,7 +2967,8 @@ export function createPost(
   function resetGovernorState() {
     dynPin = null;
     gpuFrameTimer?.reset();
-    qualityPolicy.reset(baseDynamicScale(renderer.getPixelRatio(), preset), dynClock);
+    qualityPolicy.reset(carriedRasterRatio === null ? baseDynamicScale(renderer.getPixelRatio(), preset)
+      : carriedDynamicScale(renderer.getPixelRatio(), preset, carriedRasterRatio), dynClock);
     dynEma = 0;
     dynRingN = 0;
     dynRingI = 0;
@@ -3135,8 +3147,9 @@ export function createPost(
     FOG_LAYER.x = elements[13] - datum;
     FOG_LAYER.y = datum;
     FOG_LAYER.w = FOG_LAYER.x > FOG_LAYER_MIN_M ? lightTune('FOG_LAYER', 1) : 0;
-    const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-    aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
+    // (battle-camera-264) the tangents and the lens shift from the projection itself: a ray rebuilt from the fov alone
+    // missed the chase framing's off-axis lens, and the contact shadows marched from the wrong place under the hull
+    readCameraLens(camera, aerial.uniforms.uTan.value, aerial.uniforms.uTanShift.value);
     const sunDirection = scene.userData.sunDirWorld;
     if (sunDirection) aerial.uniforms.uSunDir.value.copy(sunDirection).normalize();
   }
@@ -3149,8 +3162,11 @@ export function createPost(
     const groundRho = groundModel?.mode === 'physical'
       ? 0.2126 * groundModel.groundAlbedo[0] + 0.7152 * groundModel.groundAlbedo[1] + 0.0722 * groundModel.groundAlbedo[2]
       : GROUND_AO_DEFAULT_ALBEDO;
+    // (265; the 264b preview, the owner: "literally just around a square outline of the tank for every tank", on land and
+    // in water, on the tiers with the vehicle-occlusion lever: ultra, high, medium) the ground's sky term beside the hulls
+    // is off; QA: __LIGHT_TUNE.VEHICLE_GROUND_AO = 1 turns it back on
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
-      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
+      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 0) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     // contact round 5 (2026-10-11): the contact blend sets a track's foot into soft ground — the battle maps' grounded rig;
     // the Garage's turntable (the legacy rig) is a hard floor a track stands on, never sinks into

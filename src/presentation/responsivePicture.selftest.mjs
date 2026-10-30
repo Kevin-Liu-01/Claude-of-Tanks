@@ -60,6 +60,7 @@ const dom = createFakeDom();
 const uninstall = dom.install();
 const element = createPicture({ src: S05, width: 1920, height: 1080, alt: 'x', phone }, false);
 assert.equal(element.localName, 'picture');
+// object3d-assert-ok: a DOM attribute string, not a three.js object
 assert.equal(element.children[0].getAttribute('media'), PHONE_MEDIA);
 assert.equal(element.children[1].getAttribute('width'), '1920');
 const pageRoot = dom.document.createElement('main');

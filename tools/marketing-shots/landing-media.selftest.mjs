@@ -117,9 +117,12 @@ assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return n
 assert.match(heroReel, /shot\.classList\.toggle\('is-on', shot\.dataset\.reelShot === video\.dataset\.shot\)/, 'the caption turns with its clip');
 const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
 assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
-assert.match(publicPages, /const mountLanding = \(\): void => void import\('\.\/homePage\.ts'\)\.catch\(\(\) => addEventListener\('online', mountLanding, \{ once: true \}\)\);/,
-  'the landing\'s behaviour loads (again once back online, if its module did not arrive) ...');
-assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) mountLanding\(\);/, '... with the landing alone');
+// (264, load-failure-264) a chunk that did not arrive is not asked for again in this document: the landing asks through
+// the kit's importWhenOnline, and on a failure its trailer openers keep the kit's error state (their press reloads once online)
+assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) \{\n  importWhenOnline\(\(\) => import\('\.\/homePage\.ts'\), \(\) => \{/,
+  'the landing\'s behaviour loads with the landing alone, asked once online');
+assert.match(publicPages, /markLoadFailed\(openers\);\n    for \(const opener of openers\) opener\.addEventListener\('click', \(\) => pressFailed\(opener\)\);/,
+  '... and a failed landing marks its trailer openers, whose press reloads');
 
 // the features: in their rows, each its poster (lazy, sized, described) and, where the slot has motion, its loop
 const featureMarkup = home.match(/<!--home:features-->([\s\S]*?)<!--\/home:features-->/)?.[1] || '';

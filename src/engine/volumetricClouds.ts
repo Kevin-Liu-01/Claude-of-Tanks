@@ -40,6 +40,7 @@ import { resolvePresetName } from './quality.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
+import { readCameraLens } from './cameraLens.ts';
 import { beginRgba8Readback } from './rgba8Readback.ts';
 import { hazeTargetTerms } from './hazeLaw.ts';
 import {
@@ -758,8 +759,8 @@ export class VolumetricCloudLayer {
   private pendingTrace: { tier: string; material: THREE.ShaderMaterial; linked: boolean } | null = null;
   private quadLinkGeometry: THREE.BufferGeometry | null = null;
   private since = 0;
-  private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
-  private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
+  private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1), shift: new THREE.Vector2() };
+  private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1), shift: new THREE.Vector2() };
   private hasPrev = false;
   private sceneDepthReady = false;
   private readonly hazeTerms = { x: 0, y: 1 };
@@ -803,7 +804,7 @@ export class VolumetricCloudLayer {
     this.traceTier = 'high';
     const camera = () => ({
       uCamPos: { value: new THREE.Vector3() }, uCamRight: { value: new THREE.Vector3(1, 0, 0) }, uCamUp: { value: new THREE.Vector3(0, 1, 0) },
-      uCamFwd: { value: new THREE.Vector3(0, 0, -1) }, uCamTan: { value: new THREE.Vector2(1, 1) },
+      uCamFwd: { value: new THREE.Vector3(0, 0, -1) }, uCamTan: { value: new THREE.Vector2(1, 1) }, uCamShift: { value: new THREE.Vector2() },
       uHistorySize: { value: new THREE.Vector2(4, 4) }, uTraceSize: { value: new THREE.Vector2(1, 1) },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -812,7 +813,7 @@ export class VolumetricCloudLayer {
         ...camera(),
         tTrace: { value: null }, tTraceDepth: { value: null }, tHistory: { value: null }, uSlot: { value: new THREE.Vector2() },
         uPrevCamPos: { value: new THREE.Vector3() }, uPrevRight: { value: new THREE.Vector3(1, 0, 0) }, uPrevUp: { value: new THREE.Vector3(0, 1, 0) },
-        uPrevFwd: { value: new THREE.Vector3(0, 0, -1) }, uPrevTan: { value: new THREE.Vector2(1, 1) },
+        uPrevFwd: { value: new THREE.Vector3(0, 0, -1) }, uPrevTan: { value: new THREE.Vector2(1, 1) }, uPrevShift: { value: new THREE.Vector2() },
         uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: CLOUD_HISTORY_MIN_ALPHA }, uVarianceGamma: { value: 1.5 },
         uWindStep: { value: new THREE.Vector3() },
       },
@@ -891,7 +892,7 @@ export class VolumetricCloudLayer {
       uniforms: {
         ...this.medium,
         uCamPos: { value: new THREE.Vector3() }, uCamRight: { value: new THREE.Vector3(1, 0, 0) }, uCamUp: { value: new THREE.Vector3(0, 1, 0) },
-        uCamFwd: { value: new THREE.Vector3(0, 0, -1) }, uCamTan: { value: new THREE.Vector2(1, 1) },
+        uCamFwd: { value: new THREE.Vector3(0, 0, -1) }, uCamTan: { value: new THREE.Vector2(1, 1) }, uCamShift: { value: new THREE.Vector2() },
         uHistorySize: { value: new THREE.Vector2(4, 4) }, uTraceSize: { value: new THREE.Vector2(1, 1) },
         tAtmoSky: { value: null }, uAtmoSun: { value: new THREE.Vector3(0, 1, 0) }, uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
         uAtmoKnee: { value: knee }, uAtmoIntensity: { value: 1 }, tAtmoTransmittance: { value: null },
@@ -907,7 +908,7 @@ export class VolumetricCloudLayer {
         uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckDusk: { value: new THREE.Vector2(CLOUD_DECK_DUSK_TAU, CLOUD_DECK_DUSK) }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uFarFade: { value: 1 }, uEntryJitter: { value: 1 }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
-        uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
+        uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDepthShift: { value: new THREE.Vector2() }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
         // the sky beyond the medium (round 71's fields and the weather layers)
         tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
         uWindDir: { value: new THREE.Vector2(1, 0) }, uSunRadiance: { value: new THREE.Vector3(8, 8, 8) },
@@ -1331,8 +1332,9 @@ export class VolumetricCloudLayer {
     C.right.set(e[0], e[1], e[2]).normalize();
     C.up.set(e[4], e[5], e[6]).normalize();
     C.fwd.set(-e[8], -e[9], -e[10]).normalize();
-    const tanY = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) / (camera.zoom || 1);
-    C.tan.set(tanY * camera.aspect, tanY);
+    // (battle-camera-264) the tangents and the chase framing's lens shift from the projection (cameraLens.ts): the dome
+    // reads the history at the screen's own uv, so a centred ray drew the clouds off the shifted picture
+    readCameraLens(camera, C.tan, C.shift);
   }
 
   private traceSlot(slot: number): void {
@@ -1367,6 +1369,7 @@ export class VolumetricCloudLayer {
     (u.uCamUp.value as THREE.Vector3).copy(cam.up);
     (u.uCamFwd.value as THREE.Vector3).copy(cam.fwd);
     (u.uCamTan.value as THREE.Vector2).copy(cam.tan);
+    (u.uCamShift.value as THREE.Vector2).copy(cam.shift);
   }
 
   /**
@@ -1561,7 +1564,7 @@ export class VolumetricCloudLayer {
 
     // camera frame; cuts (teleports, big turns, zooms) rebuild the history at four slots a frame
     const P = this.prevCam, C = this.cam;
-    P.pos.copy(C.pos); P.right.copy(C.right); P.up.copy(C.up); P.fwd.copy(C.fwd); P.tan.copy(C.tan);
+    P.pos.copy(C.pos); P.right.copy(C.right); P.up.copy(C.up); P.fwd.copy(C.fwd); P.tan.copy(C.tan); P.shift.copy(C.shift);
     this.captureCamera(camera);
     const low = (m.uHeightRange.value as THREE.Vector2).x;
     const depthTex = sceneDepth ?? this.lastSceneDepth;
@@ -1573,6 +1576,7 @@ export class VolumetricCloudLayer {
     (t.uDepthUp.value as THREE.Vector3).copy(P.up);
     (t.uDepthFwd.value as THREE.Vector3).copy(P.fwd);
     (t.uDepthTan.value as THREE.Vector2).copy(P.tan);
+    (t.uDepthShift.value as THREE.Vector2).copy(P.shift);
     this.depthPlanes.set(camera.near, camera.far);
     let cut = false;
     if (this.hasPrev) {
@@ -1593,6 +1597,7 @@ export class VolumetricCloudLayer {
     (r.uPrevUp.value as THREE.Vector3).copy(P.up);
     (r.uPrevFwd.value as THREE.Vector3).copy(P.fwd);
     (r.uPrevTan.value as THREE.Vector2).copy(P.tan);
+    (r.uPrevShift.value as THREE.Vector2).copy(P.shift);
     // the medium's drift since the last frame (the weather lookup moved by -wx, -wz, so a cloud moved by +wx, +wz)
     (r.uWindStep.value as THREE.Vector3).set(wx, 0, wz);
 
@@ -1603,12 +1608,13 @@ export class VolumetricCloudLayer {
         for (let k = 0; k < CLOUD_REBUILD_SLOTS && this.rebuild < 16; k++) {
           if (k > 0) {
             // no camera motion between the traces of one frame
-            P.pos.copy(C.pos); P.right.copy(C.right); P.up.copy(C.up); P.fwd.copy(C.fwd); P.tan.copy(C.tan);
+            P.pos.copy(C.pos); P.right.copy(C.right); P.up.copy(C.up); P.fwd.copy(C.fwd); P.tan.copy(C.tan); P.shift.copy(C.shift);
             (r.uPrevCamPos.value as THREE.Vector3).copy(C.pos);
             (r.uPrevRight.value as THREE.Vector3).copy(C.right);
             (r.uPrevUp.value as THREE.Vector3).copy(C.up);
             (r.uPrevFwd.value as THREE.Vector3).copy(C.fwd);
             (r.uPrevTan.value as THREE.Vector2).copy(C.tan);
+            (r.uPrevShift.value as THREE.Vector2).copy(C.shift);
             (r.uWindStep.value as THREE.Vector3).set(0, 0, 0);
           }
           r.uRebuildK.value = this.rebuild;

@@ -409,7 +409,7 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     visual.setDestroyed({ pop: true, ageS: 0 });
     const [plate, ...extra] = plates();
     assert.ok(plate && !extra.length, 'the kill puts exactly one ring plate on the hull');
-    assert.equal(plate.parent, hull, 'on rig_hull (it stays when the turret leaves)');
+    assert.ok(plate.parent === hull, 'on rig_hull (it stays when the turret leaves)');
     assert.equal(plate.name, TURRET_RING_PLATE_NAME);
     assert.ok(!Array.isArray(plate.material) && plate.material.name === 'TurretRingWell', 'its own ring material, one draw');
     materials.push(plate.material);

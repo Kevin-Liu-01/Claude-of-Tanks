@@ -93,7 +93,7 @@ console.log('thermalVehicles: the heat stand-ins write the vehicle alpha on opaq
    normal:m.normalMap,alpha:m.alphaMap,alphaTest:m.alphaTest,side:m.side,transparent:m.transparent,flat:m.flatShading,emissiveMap:!!m.emissiveMap});
  assert.deepEqual(features(b),features(a),'two sources that differ only in what the heat cannot show: one stand-in program');
  assert.equal(b.type,'MeshStandardMaterial','a physical source\'s stand-in is a standard material');
- assert.equal(b.normalMap,normal,'the normal detail carries (the heat shades by normal.z)');
+ assert.ok(b.normalMap === normal,'the normal detail carries (the heat shades by normal.z)');
  assert.ok(b.alphaMap===alpha&&b.alphaTest===.4&&b.side===DoubleSide,'the cutouts and faces carry');
  assert.ok(Math.abs(b.color.r-.035)<1e-9&&b.emissive.r===1&&b.roughness===1&&b.metalness===0,'the heat stand-in\'s own surface');
  const glass=heatStandIn(new MeshStandardMaterial({transparent:true,opacity:.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}),0);

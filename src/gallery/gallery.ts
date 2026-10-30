@@ -41,9 +41,11 @@ import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, segmented, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from '../ui/components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
+import { revealWhenReady } from '../ui/components/reveal.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
@@ -307,7 +309,7 @@ let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts').catch((error: unknown) => { anatomyModule = null; throw error; });
+  anatomyModule ??= import('./anatomyView.ts');
   return anatomyModule;
 }
 const anatomyHost = (): AnatomyHost => ({
@@ -368,7 +370,10 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     colorDamageOverlay();
     if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
+    // a module that did not arrive is not asked for again in this document: the anatomy layers keep the kit's error state,
+    // and their next press reloads the page once online
     settle();
+    markLoadFailed(modeButtons.filter((button) => isAnatomyMode(button.dataset.value as GalleryMode)), t('gallery.anatomy.loadFailed'));
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
@@ -869,6 +874,7 @@ function renderRoster(): void {
   const layout = effectiveLayout();
   const focusedId = (document.activeElement as HTMLElement | null)?.closest?.<HTMLElement>('.it')?.dataset.id;
   vehicleList.dataset.layout = layout;
+  vehicleList.removeAttribute('aria-busy');
   const groups = groupRecords(filteredRecords);
   vehicleList.innerHTML = groups.map((group) => (group.label
     ? `<div class="fam__group" role="group" aria-label="${esc(group.label)}"><div class="gh" aria-hidden="true">${group.lead}`
@@ -1129,10 +1135,19 @@ function decorateTake(id: string): void {
   const still = $<HTMLImageElement>('#takeStill');
   const record = recordById.get(id);
   still.src = record?.image || '';
+  revealWhenReady(still.parentElement!, still);
   for (const layer of takeMedia.querySelectorAll(':scope > picture')) layer.remove();
   takeMedia.classList.remove('cot-hc', 'hc-loaded');
   if (heroCards) heroCards.module.decorateHeroCard(takeMedia, id, heroCards.manifest, { tankSizes: '480px', flagSizes: '480px', priority: true });
 }
+// a still the network dropped loads again, quietly, once it is back
+window.addEventListener('online', () => {
+  const still = $<HTMLImageElement>('#takeStill');
+  const src = still.getAttribute('src');
+  if (!src || !still.parentElement?.hasAttribute('data-failed')) return;
+  still.src = src;
+  revealWhenReady(still.parentElement, still);
+});
 
 function delta(stat: StatDef | null, own: number, rival: number, digits = 0): { delta?: string; better?: boolean } {
   const diff = own - rival;
@@ -1497,6 +1512,7 @@ async function loadTank(
   renderDossier(record);
   markSelectedRow();
   loadingSilhouette.style.setProperty('--sil', `url(${iconUrl(id, 'side_silhouette')})`);
+  loadingSilhouette.removeAttribute('data-skeleton');
   loadingState.classList.remove('hidden');
   await nextFrame();
   if (version !== loadVersion) return;
@@ -1652,7 +1668,8 @@ vehicleList.addEventListener('pointerover', (event) => {
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
-wireRoving(layerDock, (mode) => setMode(mode));
+// (a layer whose module did not arrive keeps the kit's error state: its press reloads the page once online)
+wireRoving(layerDock, (mode) => { if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode); });
 $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;

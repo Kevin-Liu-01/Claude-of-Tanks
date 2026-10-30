@@ -1,5 +1,6 @@
 import { onLocaleChange, t } from '../ui/i18n.ts';
 import { designationHtml, holdNameText } from './designations.ts';
+import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
@@ -85,8 +86,10 @@ export function mountBattleReels(scope: Document = document): void {
   let reels: { setItems(items: readonly PickerItem[], value?: string | null): void; setValue(id: string | null): void } | null = null;
   const reelItems = (): PickerItem[] => BATTLE_REELS.map((reel) => ({ id: reel.id, name: holdNameText(reel.title), facts: [reel.map], media: { poster: reel.poster } }));
   let picked = false;
+  // (asked once, never while offline: a module that did not arrive is not asked for again in this document, so the
+  // player keeps its opening take, the grid keeps the kit's error state and its next press reloads the page once online)
   const mountPicker = (): void => {
-    void Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
+    importWhenOnline(() => Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
       .then(([{ createPicker }, { pickerText }]) => {
         reels = createPicker(grid, {
           id: 'docs-battle-reel', label: t('docs.studio.reelsGridAria'), items: reelItems(), value: BATTLE_REELS[activeIndex].id,
@@ -97,10 +100,10 @@ export function mountBattleReels(scope: Document = document): void {
           },
           onChoose: (item) => selectReel(BATTLE_REELS.findIndex((reel) => reel.id === item.id)),
         });
-      }).catch(() => { // the player keeps its opening take; the cards come once the browser is back online
-        picked = false;
-        addEventListener('online', mountOnce, { once: true });
-      });
+      }), () => {
+      markLoadFailed([grid]);
+      grid.addEventListener('click', () => pressFailed(grid));
+    });
   };
   // ... or once the page has loaded and gone idle, whichever comes first: the grid grows from its search bar to two dozen
   // cards as it mounts, and a mount at the near margin moved what follows it on screen after a fast scroll (the loading

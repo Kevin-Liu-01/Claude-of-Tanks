@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
-  MOBILE_OUTPUT_PIXEL_BUDGET, DESKTOP_OUTPUT_PIXEL_BUDGET,
+  MOBILE_OUTPUT_PIXEL_BUDGET, DESKTOP_OUTPUT_PIXEL_BUDGET, WIDE_ASPECT_REFERENCE,
+  desktopOutputBudget,
   outputPixelRatio,
   outputResolution,
   uiPixelRatio,
@@ -108,3 +109,30 @@ for (const [width, height] of [[2560, 1440], [3840, 2160], [5120, 2880]]) {
 }
 assert.equal(outputResolution({ width: 1920, height: 1080, devicePixelRatio: 2 }).pixelRatio, 2,
   'ordinary Retina output keeps the same crisp native pixels');
+
+// (local-fps-265) the 3D canvas of a window wider than 16:9 gets the 16:9 share of the desktop budget
+{
+  const wide = (width, height, devicePixelRatio) => outputResolution({ width, height, devicePixelRatio, wideAspectBudget: true });
+  // the owner's 32:9 G95NC at "looks like 3840x1080": 5430x1527 (the 4K budget) before, a native-density 32:9's 3840x1080 now
+  const before = outputResolution({ width: 3840, height: 1080, devicePixelRatio: 2 });
+  assert.equal(before.bufferWidth, 5431);
+  const g95 = wide(3840, 1080, 2);
+  assert.equal(g95.pixelRatio, 1, 'a DPR-2 32:9 window backs its 3D canvas at its CSS pixels');
+  assert.deepEqual([g95.bufferWidth, g95.bufferHeight], [3840, 1080]);
+  assert.equal(g95.budgetLimited, true);
+  assert.ok(Math.abs(desktopOutputBudget(3840, 1080, true) - DESKTOP_OUTPUT_PIXEL_BUDGET / 2) < 1e-6, '32:9 is twice 16:9: half the budget');
+  // the same 32:9 at native density was inside its share already
+  assert.equal(wide(3840, 1080, 1).pixelRatio, 1);
+  // a 16:9 or 16:10 window keeps the whole budget: no 16:9 screen softens
+  for (const [w, h, dpr] of [[1728, 1117, 2], [1920, 1080, 2], [2560, 1440, 2], [1280, 720, 1], [3840, 2160, 1]]) {
+    assert.equal(wide(w, h, dpr).pixelRatio, outputPixelRatio({ width: w, height: h, devicePixelRatio: dpr }), `${w}x${h}@${dpr} unchanged`);
+  }
+  assert.equal(desktopOutputBudget(1920, 1080, true), DESKTOP_OUTPUT_PIXEL_BUDGET, 'exactly 16:9 is served whole');
+  // a 21:9 at native density stays native (its share, 6.2 MP, is past its 5 MP)
+  assert.equal(wide(3440, 1440, 1).pixelRatio, 1);
+  // the HUD's canvases never take the share: a full-screen sight on the 32:9 keeps the DPR-2 cap's budget
+  assert.equal(uiPixelRatio(3840, 1080, 2, false), before.pixelRatio);
+  // a portrait or square desktop window is not wide
+  assert.equal(desktopOutputBudget(1000, 2000, true), DESKTOP_OUTPUT_PIXEL_BUDGET);
+  assert.equal(WIDE_ASPECT_REFERENCE, 16 / 9);
+}

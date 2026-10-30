@@ -40,11 +40,11 @@ assert.deepEqual(call.materials, ['cot:top-mask-coverage'], 'the coverage stand-
 assert.ok(call.ortho && call.lights === 0, 'an orthographic camera over a light-less scene, as a mask pass');
 assert.equal(current, previous, 'the renderer target restored');
 assert.equal(root.visible, false, 'the source visibility restored');
-assert.equal(root.children[0].material, paint, 'the source materials restored');
+assert.ok(root.children[0].material === paint, 'the source materials restored');
 fail = true;
 assert.equal(warmTopMaskPrograms(root), false, 'a failed compile leaves it to the panel stage');
 assert.equal(current, previous);
-assert.equal(root.children[0].material, paint);
+assert.ok(root.children[0].material === paint);
 assert.equal(warmTopMaskPrograms(null), false);
 
 // the kicks: before the solo warm's camo wait (the panel follows it), and before the network warm's first stage
