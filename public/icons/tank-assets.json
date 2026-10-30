@@ -90006,17 +90006,17 @@
           }
         ]
       },
-      "geometryHash": "19818edd",
+      "geometryHash": "98c638df",
       "metadataHash": "390eca86",
       "presentationAnchor": {
         "xM": -0.0001,
-        "zM": -0.0402
+        "zM": -0.0399
       },
-      "presentationHash": "1415c99e",
+      "presentationHash": "d09c8471",
       "presentationProjection": {
-        "centerYM": 2.4479,
-        "topHalfM": 6.3018,
-        "sideHalfM": 3.1509
+        "centerYM": 1.6083,
+        "topHalfM": 6.3015,
+        "sideHalfM": 3.1507
       },
       "appearance": {
         "version": 1,
@@ -90031,16 +90031,16 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "fittingPaint": 4,
+          "fittingPaint": 2,
           "trackSteel": 1,
-          "armorPaint": 14,
+          "armorPaint": 15,
           "tireRubber": 1,
           "gunmetal": 10,
           "opticGlass": 2,
-          "wood": 1,
-          "unclassified": 19,
+          "wood": 2,
+          "unclassified": 17,
           "gearShadow": 2,
-          "canvas": 1,
+          "canvas": 2,
           "machineGun": 4
         }
       },
@@ -90070,15 +90070,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24380,
-          "sha256": "f7f05f04438735a5ab6121614ef08591edff876be06a7e270d800b5b4810025b",
+          "bytes": 23086,
+          "sha256": "db6bceb9f13a76fd5217c38b80bbae4cb7f3454c6d8745ab50c40f10750b8af1",
           "thumbnail": {
             "file": "thumbs/centurion5_2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10102,
-            "sha256": "63826c29f655b26d6cbc61b10c29fd804e53aae1c0532893151a58a15189b040"
+            "bytes": 9468,
+            "sha256": "1015ad2bfdeb3d0dcba959e0dab0b2974d765c3aa3f0f537af83f67f92eb0a6e"
           }
         },
         "top": {
@@ -90086,56 +90086,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9918,
-          "sha256": "0011d6ed169b5bee11b0001973016b5a8efd58c566c429b108cd6edd27a10a5e"
+          "bytes": 10236,
+          "sha256": "e16d3f269052b8edbfbc871cec4cfb3813d4e723dd2a372bc6142336a9650dae"
         },
         "side": {
           "file": "centurion5_2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10308,
-          "sha256": "411963ddef5a40b27d85fdafd0bc08b2e1fd014cb1116607f91e591ca6c50905"
+          "bytes": 9476,
+          "sha256": "99733834cbd05a361da0a88ad202a94274691011d938adc00b6277dfe30cfe2d"
         },
         "topSilhouette": {
           "file": "centurion5_2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1125,
-          "sha256": "43da072de2eb5d554c36d50a2a7fedd3a666eb1d3b2db38c639bf665755ddf06"
+          "bytes": 1128,
+          "sha256": "e9a78f16e33fa3a7ddc0bc522922b850369ace5e34983302abf71d0b1b2cc6bb"
         },
         "sideSilhouette": {
           "file": "centurion5_2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4716,
-          "sha256": "9eefbe4651d2554a07d1d5667233d3529e746c367bb31cecd8a786701ba6d071"
+          "bytes": 4847,
+          "sha256": "a0508e6e5e970f719d779e79f613735729fa7c4c05c74ce7545ece5aecfefd75"
         },
         "armorSide": {
           "file": "centurion5_2_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27000,
-          "sha256": "63d17ef410baf6a9e043177452fa9c9c3f451289cf8d56d002f5f4b5128447ea"
+          "bytes": 25914,
+          "sha256": "35c4a081f31408c76cca51a187b8bb75bc226e0ea97d1967a4734159da05084d"
         },
         "modulesSide": {
           "file": "centurion5_2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25506,
-          "sha256": "1ed57d31b90964a9a52e8a6ced4b5192c7a70e5412fd3c8ec9680282df48e4de"
+          "bytes": 25582,
+          "sha256": "78e3586298f36ff9d264c32b4d2e3dd6f0674962a66189823e0409c25d512d73"
         },
         "crewSide": {
           "file": "centurion5_2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20496,
-          "sha256": "41395a9b40f85f83403318b52e0a7c88f3a3f3d2fdbee2be83c69f2c3b99a54f"
+          "bytes": 20874,
+          "sha256": "cb281cd3b2ef78b7e193f7c4bf1bb44e00b696cc1d77526b1094544ced915b15"
         },
         "markings": {
           "file": "centurion5_2_markings.png",
@@ -90148,8 +90148,8 @@
         "technicalLabels": {
           "file": "centurion5_2_technical.json",
           "mime": "application/json",
-          "bytes": 5469,
-          "sha256": "fe49ee55be70a751e11d707a5faed51d61b6d0a40b3eca2ca6e259cf022305a4"
+          "bytes": 5477,
+          "sha256": "06043852e48ea5000708d580731197eaed5e3c02dd800383eb582538efe48a4c"
         }
       }
     },
@@ -92282,16 +92282,16 @@
           }
         ]
       },
-      "geometryHash": "dad8446f",
+      "geometryHash": "623ecdb5",
       "metadataHash": "2849555c",
       "presentationAnchor": {
         "xM": -0.0001,
-        "zM": 0.1849
+        "zM": 0.1713
       },
-      "presentationHash": "a371a603",
+      "presentationHash": "09248509",
       "presentationProjection": {
         "centerYM": 2.4479,
-        "topHalfM": 4.2997,
+        "topHalfM": 4.2851,
         "sideHalfM": 2.6193
       },
       "appearance": {
@@ -92345,15 +92345,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25614,
-          "sha256": "c2051201ee5ff59906b5d2fa7460e65db8deb91daa94c74f97d555c50a7e4567",
+          "bytes": 24366,
+          "sha256": "6af0463d0b85a718175a1dfb57d462334ab0e8bfe0a6f9a299f42461e4081599",
           "thumbnail": {
             "file": "thumbs/centurion5_avre_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10242,
-            "sha256": "cdeb95c379bc648af513bfe62a9cb085c31a66ca5559ba9906682c94be8e51bf"
+            "bytes": 10218,
+            "sha256": "2d3ba23f3c6e0fa98b3167c9e388d040ee5d3986e09ac30e71389fe21e296f9c"
           }
         },
         "top": {
@@ -92361,56 +92361,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17862,
-          "sha256": "81251a0fc2bb9b43c47db7804489b75039dc3936c58f844ae2b69b2b18610771"
+          "bytes": 17272,
+          "sha256": "19652d6a64b80921ef8cafeaf1ed59da9f40fb5faab4da90c0d94e47772efe09"
         },
         "side": {
           "file": "centurion5_avre_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13126,
-          "sha256": "c8ae04157093b95bb6b8c0128a61f4438938372b13d94784fd34fccc32dff556"
+          "bytes": 12934,
+          "sha256": "09ceb481c74e42c606cd839d624f546505072154463155af26721695918f3369"
         },
         "topSilhouette": {
           "file": "centurion5_avre_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1222,
-          "sha256": "1a7ca00b9d5ca30737542f41c5d16e98a0bbf7bfd197c8a363e8427f5de4c243"
+          "bytes": 1210,
+          "sha256": "808040c59be659c20e66c65fba9451d1ff02a710cd55c3f91306407908c27681"
         },
         "sideSilhouette": {
           "file": "centurion5_avre_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5358,
-          "sha256": "33f9a4fd5e3941fc410ecd435f3aab6366643a6111da75dd3ea5262742516189"
+          "bytes": 5376,
+          "sha256": "219ea85a4d4ff055d3f574fa6e64eb886a8d7e509ff4231ed879b002f9c7467b"
         },
         "armorSide": {
           "file": "centurion5_avre_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33556,
-          "sha256": "f8be6440c096b914fb8a934dfafc254cf753d0e1e9f6ecd157bd102231c538fb"
+          "bytes": 33852,
+          "sha256": "e22d8a1e438b0a2de7f83d547b2129fa39ac0d7dbc69508bb80c02d365894c0f"
         },
         "modulesSide": {
           "file": "centurion5_avre_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32080,
-          "sha256": "ea5b780a0aed0bd2a5f96ff1e136ca6a97c511538de4fdf47311e774f1c34e56"
+          "bytes": 32302,
+          "sha256": "50259e49899b9d3dd8349033f2f8ec957a44cdd5315ff9a2bbd881183bb4c9df"
         },
         "crewSide": {
           "file": "centurion5_avre_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26244,
-          "sha256": "22f0425e4becf46b43567c90188335f49f9d354df6d54227f6b15001e7ad100a"
+          "bytes": 26236,
+          "sha256": "0e1754eccf6eedb7bbc9bead6e731bba369d2cb9a1b7e8dffc49dcdda0dd0d5f"
         },
         "markings": {
           "file": "centurion5_avre_markings.png",
@@ -92423,8 +92423,8 @@
         "technicalLabels": {
           "file": "centurion5_avre_technical.json",
           "mime": "application/json",
-          "bytes": 5669,
-          "sha256": "ee3ae4d73b47af317ddc6ba88bd88d70a81b8068db7674f2f98338f3c4b29c52"
+          "bytes": 5671,
+          "sha256": "c5fb434b0725671a73728e23d5c3a2638397afb29b86f0181a4de49333a4fc58"
         }
       }
     },
@@ -751560,24 +751560,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.2155,
-                1.3659,
-                3.4059
+                -0.2145,
+                1.3637,
+                3.4095
               ],
               [
-                -0.2565,
-                1.3518,
-                3.4292
+                -0.2457,
+                1.3459,
+                3.439
               ],
               [
-                -0.2293,
-                1.3306,
-                3.4643
+                -0.2112,
+                1.3298,
+                3.4657
               ],
               [
-                -0.1883,
-                1.3447,
-                3.441
+                -0.18,
+                1.3476,
+                3.4362
               ]
             ]
           },
@@ -751591,24 +751591,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.5755,
-                1.3989,
-                3.3513
+                -0.5323,
+                1.3918,
+                3.3631
               ],
               [
-                -0.5413,
-                1.3824,
-                3.3787
+                -0.4978,
+                1.3756,
+                3.3899
               ],
               [
-                -0.5094,
-                1.4,
-                3.3494
+                -0.4666,
+                1.3934,
+                3.3604
               ],
               [
-                -0.5435,
-                1.4166,
-                3.3221
+                -0.5011,
+                1.4096,
+                3.3336
               ]
             ]
           },
@@ -751622,24 +751622,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.849,
-                1.4673,
-                3.2381
+                -0.8203,
+                1.441,
+                3.2817
               ],
               [
-                -0.8946,
-                1.4576,
-                3.2541
+                -0.7909,
+                1.4207,
+                3.3151
               ],
               [
-                -0.876,
-                1.4341,
-                3.2931
+                -0.7518,
+                1.4359,
+                3.29
               ],
               [
-                -0.8304,
-                1.4437,
-                3.2772
+                -0.7812,
+                1.4561,
+                3.2566
               ]
             ]
           },
@@ -751653,24 +751653,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.2563,
-                1.5615,
-                3.0821
+                -0.247,
+                1.5573,
+                3.0891
               ],
               [
-                -0.231,
-                1.5396,
-                3.1185
+                -0.2163,
+                1.5379,
+                3.1212
               ],
               [
-                -0.1885,
-                1.5526,
-                3.0968
+                -0.1787,
+                1.5537,
+                3.095
               ],
               [
-                -0.2138,
-                1.5746,
-                3.0605
+                -0.2094,
+                1.5732,
+                3.0628
               ]
             ]
           },
@@ -751684,24 +751684,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.5382,
-                1.6259,
-                2.9755
+                -0.4927,
+                1.619,
+                2.9869
               ],
               [
-                -0.5766,
-                1.6105,
-                3.0011
+                -0.5336,
+                1.6049,
+                3.0104
               ],
               [
-                -0.5467,
-                1.5906,
-                3.034
+                -0.5062,
+                1.5837,
+                3.0454
               ],
               [
-                -0.5083,
-                1.6061,
-                3.0084
+                -0.4653,
+                1.5979,
+                3.0219
               ]
             ]
           },
@@ -751715,24 +751715,24 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.8965,
-                1.6636,
-                2.9132
+                -0.8201,
+                1.6487,
+                2.9378
               ],
               [
-                -0.8704,
-                1.6419,
-                2.9491
+                -0.7889,
+                1.6296,
+                2.9694
               ],
               [
-                -0.8285,
-                1.6553,
-                2.9268
+                -0.752,
+                1.6458,
+                2.9427
               ],
               [
-                -0.8545,
-                1.677,
-                2.8909
+                -0.7832,
+                1.6648,
+                2.9111
               ]
             ]
           },
@@ -751746,24 +751746,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.1896,
-                1.3421,
-                3.4454
+                0.1793,
+                1.3466,
+                3.4379
               ],
               [
-                0.2344,
-                1.3313,
-                3.4632
+                0.2131,
+                1.3294,
+                3.4663
               ],
               [
-                0.2552,
-                1.3545,
-                3.4248
+                0.2464,
+                1.3469,
+                3.4374
               ],
               [
-                0.2104,
-                1.3652,
-                3.407
+                0.2126,
+                1.3641,
+                3.4089
               ]
             ]
           },
@@ -751777,24 +751777,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.5435,
-                1.4166,
-                3.3221
+                0.4996,
+                1.4098,
+                3.3332
               ],
               [
-                0.5094,
-                1.4,
-                3.3494
+                0.4661,
+                1.3927,
+                3.3616
               ],
               [
-                0.5413,
-                1.3824,
-                3.3787
+                0.4993,
+                1.3753,
+                3.3903
               ],
               [
-                0.5755,
-                1.3989,
-                3.3513
+                0.5328,
+                1.3925,
+                3.3619
               ]
             ]
           },
@@ -751808,24 +751808,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.8284,
-                1.4469,
-                3.2719
+                0.7822,
+                1.4561,
+                3.2566
               ],
               [
-                0.8698,
-                1.433,
-                3.2948
+                0.7519,
+                1.4364,
+                3.2892
               ],
               [
-                0.8966,
-                1.4545,
-                3.2593
+                0.7899,
+                1.4208,
+                3.3151
               ],
               [
-                0.8551,
-                1.4683,
-                3.2365
+                0.8202,
+                1.4404,
+                3.2825
               ]
             ]
           },
@@ -751839,24 +751839,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.2138,
-                1.5746,
-                3.0605
+                0.2081,
+                1.5732,
+                3.0627
               ],
               [
-                0.1885,
-                1.5526,
-                3.0968
+                0.1786,
+                1.5531,
+                3.0961
               ],
               [
-                0.231,
-                1.5396,
-                3.1185
+                0.2176,
+                1.5379,
+                3.1213
               ],
               [
-                0.2563,
-                1.5615,
-                3.0821
+                0.2471,
+                1.558,
+                3.0879
               ]
             ]
           },
@@ -751870,24 +751870,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.5134,
-                1.612,
-                2.9986
+                0.4674,
+                1.5943,
+                3.0278
               ],
               [
-                0.5352,
-                1.5932,
-                3.0296
+                0.5131,
+                1.5848,
+                3.0436
               ],
               [
-                0.5715,
-                1.6045,
-                3.011
+                0.5315,
+                1.6084,
+                3.0045
               ],
               [
-                0.5497,
-                1.6233,
-                2.9799
+                0.4858,
+                1.618,
+                2.9887
               ]
             ]
           },
@@ -751901,24 +751901,24 @@
             "turretLocal": false,
             "verts": [
               [
-                0.8545,
-                1.677,
-                2.8909
+                0.7815,
+                1.6649,
+                2.911
               ],
               [
-                0.8285,
-                1.6553,
-                2.9268
+                0.7518,
+                1.6449,
+                2.9441
               ],
               [
-                0.8704,
-                1.6419,
-                2.9491
+                0.7906,
+                1.6295,
+                2.9695
               ],
               [
-                0.8965,
-                1.6636,
-                2.9132
+                0.8203,
+                1.6496,
+                2.9364
               ]
             ]
           },
@@ -753570,17 +753570,17 @@
           }
         ]
       },
-      "geometryHash": "98c6fbb7",
-      "metadataHash": "f6a859ad",
+      "geometryHash": "28879757",
+      "metadataHash": "2d792095",
       "presentationAnchor": {
         "xM": 0,
-        "zM": -0.0339
+        "zM": -0.034
       },
-      "presentationHash": "d7d26131",
+      "presentationHash": "311b13d5",
       "presentationProjection": {
         "centerYM": 2.4479,
-        "topHalfM": 6.295,
-        "sideHalfM": 3.1475
+        "topHalfM": 6.2952,
+        "sideHalfM": 3.1476
       },
       "appearance": {
         "version": 1,
@@ -753633,15 +753633,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28090,
-          "sha256": "c0c97dcaaba8684052226ab58ee7d198ee51d933f156061f0385917dfadab98e",
+          "bytes": 28424,
+          "sha256": "bc52d71dff9529ed03c722e3dc5d4ba5fc52fe30ac7c84154898c3d27045aff3",
           "thumbnail": {
             "file": "thumbs/strv105_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11460,
-            "sha256": "0b00ea90bc8db131f3b6a4c2c91b917bc54d7ad7c72ec83536f5865c493f6233"
+            "bytes": 11398,
+            "sha256": "4cdfac1f948ce8fefbb51f2aa4086fb265c637ebd6852000eea09fa0c184c97f"
           }
         },
         "top": {
@@ -753649,56 +753649,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13376,
-          "sha256": "92fe6c562e214ea1164b0aceac5cabdbb943029287e6314edca455651baf189f"
+          "bytes": 13408,
+          "sha256": "d11f201a4b575f6a52120cc23c5d8e0785f255a8bef286069fe6591db1eca311"
         },
         "side": {
           "file": "strv105_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11738,
-          "sha256": "1488c355c0c508d201ce846a0285a0acda8b0cb6bab018474626d49e88ab8265"
+          "bytes": 11890,
+          "sha256": "9d00b23008d79ecfb32cc077459f8534f093b4ddaf48c94a328aaa54e45a47a2"
         },
         "topSilhouette": {
           "file": "strv105_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1083,
-          "sha256": "19eae9ad103e121637eb01cad3d3444d0ed470e23c00b1222f9bcf98b6a32af0"
+          "bytes": 1088,
+          "sha256": "533f5d25862111b06b8a00bd6b6c6cc68eace2fe50339faedc2f497ff9b866f5"
         },
         "sideSilhouette": {
           "file": "strv105_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4559,
-          "sha256": "8300363956a31e87373eddabff07b957782b2e04d9bd2329cb8e6b2291ffdfe6"
+          "bytes": 4571,
+          "sha256": "b370284ac51d0b12f77a31d3d40996b45b51155394ac6e0f4758ea7a090f45d5"
         },
         "armorSide": {
           "file": "strv105_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29340,
-          "sha256": "8b28045d38f474a15a1c6c3302b091b164f4db693f52af19a14608f94708b9bc"
+          "bytes": 29172,
+          "sha256": "dcd2fe559aad999626479bcbbeb35ef43b175db1b9547b29a6b245a1bdfbcdc6"
         },
         "modulesSide": {
           "file": "strv105_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27788,
-          "sha256": "3c40909bf03a1d875bce6e8a18200a51e0f8962bef259020a15fa1ee53b285dd"
+          "bytes": 28140,
+          "sha256": "2c00ff91dd8c1a4f169cefbaac661850de6ae98d3e39d1b6294cc35af0b77403"
         },
         "crewSide": {
           "file": "strv105_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24324,
-          "sha256": "74c62bee01e8ec1a6e5cfe0c71802419062a34563d13fae5952f7ebcd14ecf16"
+          "bytes": 24796,
+          "sha256": "f097c0f4906ec48ab6b1efcf23a868ea056973b106a39d91d1e865b990494999"
         },
         "markings": {
           "file": "strv105_markings.png",
@@ -753711,8 +753711,8 @@
         "technicalLabels": {
           "file": "strv105_technical.json",
           "mime": "application/json",
-          "bytes": 5464,
-          "sha256": "f64efd6ebec9889863a1beace64711e92f96008ff6219136286638550c5dbdf6"
+          "bytes": 5463,
+          "sha256": "0a0092a7abf93a66024391aedc1338f70f8449407868919f285623815905849e"
         }
       }
     },
