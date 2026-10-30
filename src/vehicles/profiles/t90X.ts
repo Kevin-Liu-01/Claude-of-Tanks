@@ -37,6 +37,7 @@ import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addShtoraEyes } from './shtora.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { addT90CradleDrums } from './t90CradleDrums.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY=(radius:number,height:number,segments=24): THREE.BufferGeometry => KIT.cylY(radius,radius,height,segments);
@@ -971,6 +972,8 @@ function smRearFixtures(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.0245,.0947,.20),x,1.2164,-3.4521);
     P.addEquipment('hullDetail',box(.1116,.0907,.1137),x,1.2473,-3.5268);
   }
+  // 2026-10-30 (Main's ruling A): the empty cradles read as tusks; two drums ride them (t90CradleDrums.ts)
+  addT90CradleDrums(P,1.5335,-3.86,[[-.8059,-.3655],[.3736,.8001]]);
   P.addEquipment('hullDetail',box(.4013,.3689,.2337),.0018,.855,-3.2142);
   for(const side of [-1,1]) {
     P.snapGroup('t90sm-tow-eye',()=>P.addEquipment('hullDark',torus(.10,.018,16,6),side*.839,1.057,-3.466,0,Math.PI/2),{reachM:.07});
@@ -1582,7 +1585,10 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
     trackShoeDimensions:{padHeight:.036,grouserHeight:.015,webHeight:.018,hornHeight:.125,pinRadius:.018,pinCentreY:-.003}});
   fenders(P,'t90a-vladimir-x',1.825,1.344);addT90VRearGuards(P);
   classicSkirts(P,'kontakt5-vladimir',1.344,-3.20,3.14);
-  engineDeck(P,1.547,-3.39,2.00);fuelDrums(P,-4.1899,1.517,.366,.83,.59);
+  engineDeck(P,1.547,-3.39,2.00);
+  // 2026-10-30 (Main's ruling A): 200 L drums (585 mm across, 880 mm long); the 732 mm drums read oversized. Same
+  // centre station and bracket floor.
+  fuelDrums(P,-4.1164,1.4435,.2925,.88,.59);
   bowGear(P,1.174,3.27,false,1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],

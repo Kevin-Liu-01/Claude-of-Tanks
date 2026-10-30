@@ -15,6 +15,7 @@ import {addT90MSAntennaSeat} from './t90msXMast.ts';
 import {addT90MSSideAssembly} from './t90msXSideAssembly.ts';
 import {addT90MSOpticalHead} from './t90msXOpticalHead.ts';
 import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './t90msXHullEnds.ts';
+import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addShtoraEyes} from './shtora.ts';
@@ -115,7 +116,7 @@ function engineDeck(P:TankBuilderPort):void{
 }
 function rearAndHullCages(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',cylX(.105,3.35,28),-.008,1.0115,-3.213);
-  addT90MSRearCradles(P);addT90MSRearCase(P);addT90MSHullCages(P);
+  addT90MSRearCradles(P);addT90CradleDrums(P,1.5075,-3.60,[[-.79880,-.37350],[.36355,.80275]]);addT90MSRearCase(P);addT90MSHullCages(P);
   for(const side of [-1,1]){
     P.addEquipment('hullDetail',torus(.06,.024,20,8).rotateX(Math.PI/2),side*.967,.94,-3.177);
   }
@@ -216,7 +217,7 @@ function antenna(P:TankBuilderPort):void{
     [.0064,.7986],[.0086,.8041],[.0082,1.0165],[.0078,1.2289],[.0074,1.4414],[.007,1.6538],[.0066,1.8662],[.0062,2.0786],[.0058,2.291],[0,2.291]];
   top(P,'turretDetail',new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6),.55525,2.45610,-1.42175);
 }
-function aps(P:TankBuilderPort):void{
+function aps(P:TankBuilderPort,shtora:boolean):void{
   for(const side of [-1,1]){
     const x=side*.6735;
     top(P,'turretDetail',box(.4431,.4117,.030),x,2.07304,1.65329);
@@ -228,7 +229,8 @@ function aps(P:TankBuilderPort):void{
   // OTShU-1-7 emitter set — housing, ring and red night lens, louvre bars, side plates and bracket —
   // from the shared Shtora vocabulary, seated on the housing fronts (lens face ~1.86, proud of the plate)
   // owner 2026-09-16: "make the t-90ms tagil have blue shtora eyes"
-  addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
+  // 2026-10-30 (t90-family-266): the T-90MS obr. 2011 (t90.ts) keeps the housings blank; the T-90MS carries no Shtora
+  if(shtora)addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
 }
 function remoteWeapon(P:TankBuilderPort):void{
   const station=beginAuxiliaryStation(P,{name:'t90msRemoteGun',caliberMm:12.7,
@@ -298,9 +300,11 @@ export function buildT90MSXChassis(P:TankBuilderPort):void{
   P.hullG.position.set(0,0,0);
   hull(P);runningGear(P);glacis(P);skirts(P);engineDeck(P);rearAndHullCages(P);
 }
-function buildT90MSX(P:TankBuilderPort):void{
+function buildT90MSX(P:TankBuilderPort,shtora=true):void{
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T90MS_X_DATUMS.highestFittingM-YAW[1];
-  buildT90MSXChassis(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P);remoteWeapon(P);smoke(P);mainGun(P);
+  buildT90MSXChassis(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P,shtora);remoteWeapon(P);smoke(P);mainGun(P);
 }
-export const T90MS_X_PROFILES={t90ms_tagil:{build:buildT90MSX}} as const;
+export const T90MS_X_PROFILES={t90ms_tagil:{build:(P:TankBuilderPort):void=>buildT90MSX(P)}} as const;
+/** The Tagil build with blank sensor housings, for the T-90MS obr. 2011 (t90.ts). */
+export function buildT90MSXWithoutShtora(P:TankBuilderPort):void{buildT90MSX(P,false);}

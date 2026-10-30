@@ -7,7 +7,14 @@ import { pushConvexQuad } from '../factoryGeometry.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
 import { T90_X_PROFILES } from './t90X.ts';
 import { T90_AW_X_PROFILES } from './t90AwX.ts';
-import { T90MS_X_PROFILES } from './t90msX.ts';
+import { T90MS_X_PROFILES, buildT90MSXWithoutShtora } from './t90msX.ts';
+import { addT90Mark1992Kit } from './t90Mark1992.ts';
+import { addT90MarkA2004Kit } from './t90MarkA2004.ts';
+import { addT90MarkA2006Kit } from './t90MarkA2006.ts';
+import { addT90MarkMS2011Kit } from './t90MarkMS2011.ts';
+import { addT90MarkSM2013Kit } from './t90MarkSM2013.ts';
+import { addT90MarkAMKit } from './t90MarkAM.ts';
+import { addT90MarkAM2Kit } from './t90MarkAM2.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
@@ -752,17 +759,18 @@ export { T90_FAMILY_RING_Y };
 // and the T-90AM (one design, docs/references/tanks/t90-family.md) from the T-90SM, and the T-90AM II (the T-90M
 // Proryv-3) from the T-90M. Their own kit, camouflage, markings and 1.05 installed size keep them apart.
 type T90XBuild = (builder: TankBuilderPort) => void;
-const fromX = (build: T90XBuild) => ({ build: (builder: TankBuilderPort): void => build(builder) });
+// 2026-10-30 (the owner: "tone down that copying a lil"): each mark lays its own fittings (t90Mark*.ts) on its twin.
+const withKit = (build: T90XBuild, kit: T90XBuild) => ({ build: (builder: TankBuilderPort): void => { build(builder); kit(builder); } });
 
 export const T90_PROFILES = {
-  t90a_2004: fromX(T90_X_PROFILES.t90a.build),
-  t90_1992: fromX(T90_AW_X_PROFILES.t90.build),
-  t90ms_2011: fromX(T90MS_X_PROFILES.t90ms_tagil.build),
+  t90a_2004: withKit(T90_X_PROFILES.t90a.build, addT90MarkA2004Kit),
+  t90_1992: withKit(T90_AW_X_PROFILES.t90.build, addT90Mark1992Kit),
+  t90ms_2011: withKit(buildT90MSXWithoutShtora, addT90MarkMS2011Kit),
   t90a_burlak_proto: t90Profile(buildT90BurlakProto),
   pt91m: {build:buildPT91MPendekar},
-  t90sm_2013: fromX(T90_X_PROFILES.t90sm.build),
-  t90a_2006: fromX(T90_X_PROFILES.t90a_vladimir.build),
+  t90sm_2013: withKit(T90_X_PROFILES.t90sm.build, addT90MarkSM2013Kit),
+  t90a_2006: withKit(T90_X_PROFILES.t90a_vladimir.build, addT90MarkA2006Kit),
   // 2026-10-09 (owner): the T-90AM's field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
-  t90am: fromX((builder) => { addVehicleGhillieSuit(builder); T90_X_PROFILES.t90sm.build(builder); }),
-  t90m_proryv: fromX(T90_X_PROFILES.t90m.build),
+  t90am: withKit((builder) => { addVehicleGhillieSuit(builder); T90_X_PROFILES.t90sm.build(builder); }, addT90MarkAMKit),
+  t90m_proryv: withKit(T90_X_PROFILES.t90m.build, addT90MarkAM2Kit),
 } satisfies VehicleProfileRecord;

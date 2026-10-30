@@ -1,68 +1,55 @@
 import assert from 'node:assert/strict';
-import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 // 2026-10-30 (lane t90-family-266; the owner: "for all of these we can just take inspirration annd update from the
-// later t90s we added that have far more accurate models"): each earlier T-90 mark builds from its source-X twin.
-// This receipt holds that wiring: every hull, turret and gun part of the earlier mark is the twin's own part, in the
-// rig's own frame (the 1.05 installed size, camouflage, markings and fills are per id and stay out of the comparison).
-// The Burlak prototype rides the T-90A X hull under its own turret; the BMPT T-90 rides the T-90M X hull under its
-// station: their hulls are compared alone.
+// later t90s we added that have far more accurate models", then "our new versiosn now just look way too identical to
+// sources. tone down that copying a lil"): each earlier T-90 mark builds from its source-X twin and lays its own
+// fittings on it (t90Mark*.ts). This receipt holds both halves, part for part, from the builder's part census: nearly
+// every hull, turret and gun part of the twin is the mark's own part in the same place, and the mark carries parts the
+// twin does not. The Burlak prototype rides the T-90A X hull under its own turret and the BMPT T-90 rides the T-90M X
+// hull under its station: their hulls are compared alone, and they need no kit of their own.
 const TWINS = Object.freeze([
-  ['t90_1992', 't90', ['hull', 'turret', 'gun']],
-  ['t90a_2004', 't90a', ['hull', 'turret', 'gun']],
-  ['t90a_2006', 't90a_vladimir', ['hull', 'turret', 'gun']],
-  ['t90ms_2011', 't90ms_tagil', ['hull', 'turret', 'gun']],
-  ['t90sm_2013', 't90sm', ['hull', 'turret', 'gun']],
-  ['t90m_proryv', 't90m', ['hull', 'turret', 'gun']],
-  ['t90a_burlak_proto', 't90a', ['hull']],
-  ['bmpt_t90', 't90m', ['hull']],
+  ['t90_1992', 't90', ['hull', 'turret', 'gun'], true],
+  ['t90a_2004', 't90a', ['hull', 'turret', 'gun'], true],
+  ['t90a_2006', 't90a_vladimir', ['hull', 'turret', 'gun'], true],
+  ['t90ms_2011', 't90ms_tagil', ['hull', 'turret', 'gun'], true],
+  ['t90sm_2013', 't90sm', ['hull', 'turret', 'gun'], true],
+  ['t90am', 't90sm', ['hull', 'turret', 'gun'], true],
+  ['t90m_proryv', 't90m', ['hull', 'turret', 'gun'], true],
+  ['t90a_burlak_proto', 't90a', ['hull'], false],
+  ['bmpt_t90', 't90m', ['hull'], false],
 ]);
-const RIGS = { hull: 'rig_hull', turret: 'rig_turret', gun: 'rig_gun' };
+// The share of the twin's parts the mark keeps, and the fewest parts of its own a mark with a kit carries.
+const SHARED_MIN = 0.9, OWN_MIN = 12;
 const options = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true };
 
-const owned = (node, rig, others) => {
-  for (let p = node; p; p = p.parent) {
-    if (p === rig) return true;
-    if (others.includes(p)) return false;
-  }
-  return false;
-};
-
-// Sorted per-part summaries: vertex count and position sums, in the rig's frame, rounded to 0.1 mm. Running gear,
-// per-id overlays (interior fills, markings, decals) and ERA/equipment clones keyed by id are excluded.
-function parts(tank, which) {
-  tank.root.updateMatrixWorld(true);
-  const rigs = Object.fromEntries(Object.entries(RIGS).map(([k, name]) => [k, tank.root.getObjectByName(name)]));
-  const rig = rigs[which], others = Object.values(rigs).filter((r) => r && r !== rig);
-  assert.ok(rig, `${tank.root.name}: ${RIGS[which]} present`);
-  const inv = new THREE.Matrix4().copy(rig.matrixWorld).invert();
-  const out = [], v = new THREE.Vector3(), m = new THREE.Matrix4();
-  rig.traverse((node) => {
-    if (!node.isMesh || node.isInstancedMesh || !owned(node, rig, others)) return;
-    if (node.userData.interiorFill || node.userData.vehicleMarking || node.userData.decal) return;
-    for (let p = node; p && p !== rig; p = p.parent) if (p.userData?.runningGear) return;
-    const pos = node.geometry.getAttribute('position');
-    if (!pos) return;
-    m.multiplyMatrices(inv, node.matrixWorld);
+// Each part as its bucket, vertex count and centroid in the bucket's frame, rounded to 0.1 mm.
+function census(id, rigs) {
+  const counts = new Map();
+  const tank = createTank(id, null, { ...options, partCensus: (bucket, part) => {
+    if (!rigs.some((rig) => bucket.startsWith(rig))) return;
+    const pos = part.getAttribute('position');
+    if (!pos || pos.count === 0) return;
     let sx = 0, sy = 0, sz = 0;
-    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m); sx += v.x; sy += v.y; sz += v.z; }
-    out.push(`${node.name}:${pos.count}:${(sx / pos.count).toFixed(4)},${(sy / pos.count).toFixed(4)},${(sz / pos.count).toFixed(4)}`);
-  });
-  return out.sort();
+    for (let i = 0; i < pos.count; i++) { sx += pos.getX(i); sy += pos.getY(i); sz += pos.getZ(i); }
+    const key = `${bucket}:${pos.count}:${(sx / pos.count).toFixed(4)},${(sy / pos.count).toFixed(4)},${(sz / pos.count).toFixed(4)}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  } });
+  tank.dispose();
+  return counts;
 }
 
-for (const [id, twin, rigs] of TWINS) {
-  const a = createTank(id, null, options), b = createTank(twin, null, options);
-  try {
-    for (const which of rigs) {
-      const pa = parts(a, which), pb = parts(b, which);
-      assert.ok(pa.length > 0, `${id}: ${which} has parts`);
-      assert.deepEqual(pa, pb, `${id}: every ${which} part is its source-X twin ${twin}'s own`);
-    }
-  } finally {
-    a.dispose(); b.dispose();
-  }
+const total = (counts) => [...counts.values()].reduce((a, b) => a + b, 0);
+const rows = [];
+for (const [id, twin, rigs, kit] of TWINS) {
+  const mark = census(id, rigs), source = census(twin, rigs);
+  let shared = 0;
+  for (const [key, n] of source) shared += Math.min(n, mark.get(key) ?? 0);
+  const share = shared / total(source), own = total(mark) - shared;
+  assert.ok(total(source) > 0, `${twin}: has ${rigs.join('/')} parts`);
+  assert.ok(share >= SHARED_MIN, `${id}: keeps ${(share * 100).toFixed(1)} % of its source-X twin ${twin}'s parts (>= ${SHARED_MIN * 100} %)`);
+  if (kit) assert.ok(own >= OWN_MIN, `${id}: carries ${own} parts of its own on ${twin} (>= ${OWN_MIN})`);
+  rows.push(`${id} ${(share * 100).toFixed(1)}%/+${own}`);
 }
 
-console.log('t90XTwins.selftest: the earlier T-90 marks build from their source-X twins part for part');
+console.log(`t90XTwins.selftest: the earlier T-90 marks build from their source-X twins and carry their own fittings (${rows.join(', ')})`);

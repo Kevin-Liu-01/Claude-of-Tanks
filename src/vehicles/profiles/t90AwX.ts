@@ -13,6 +13,7 @@ import {addT90AWCastUnderside} from './t90AwXCastUnderside.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
 import {addT90AWMeteo,addT90AWSideEra,addT90AWProjectors,addT90AWRearCases} from './t90AwXDetails.ts';
 import {addT90AWRearCradles} from './t90AwXHullEnds.ts';
+import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {addT90AWFender,addT90AWExhaust,addT90AWSkirts} from './t90AwXFenders.ts';
 import {addT90AWCheekLeaves} from './t90AwXCheekLeaves.ts';
 import {addT90AWTowCables} from './t90AwXTowCables.ts';
@@ -101,9 +102,10 @@ function deck(P:TankBuilderPort):void{
   P.snapGroup('t90aw-glacis-strip',()=>P.addEquipment('hullDetail',box(1.85,.03,.028),0,1.187,2.593),{reachM:.05});
 }
 function rear(P:TankBuilderPort):void{
-  // Original reference has empty drum cradles, not mounted fuel drums.
+  // The original reference has empty drum cradles; two drums ride them (2026-10-30, t90CradleDrums.ts).
   P.addEquipment('hullDetail',cylX(.105,3.35,28),-.0083,1.0115,-3.2119);
   addT90AWRearCradles(P);
+  addT90CradleDrums(P,1.5075,-3.60,[[-.79865,-.37350],[.36355,.80275]]);
   for(const x of [-.9661,.9696]){
     P.addEquipment('hullDetail',torus(.058,.022,20,8).rotateX(Math.PI/2),x,.90,-3.160);
     P.addEquipment('hullDetail',beamBetween([x,.795,-3.02],[x,1.18,-3.04],.018));
