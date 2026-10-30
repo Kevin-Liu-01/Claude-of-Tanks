@@ -28,11 +28,12 @@
 // the world's build, the kits, the wreck builders, the props model pack, the destruction code; this file; the staging) with
 // every run passed at its fingerprint is not built. Guards: a build or run past its CPU or wall limit is stopped and named;
 // the receipt fails past its CPU budget; and whenever a map is built, a control run — a stray slab planted in one of its
-// buildings — must fail the verdict.
+// buildings — must fail the verdict. The guards read the worker's own clock, never the wall: on a loaded machine a run's wall
+// time is ten times its CPU and more, and a wall limit (the old 25 min a map) turned load into reds.
 //   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset);
-//   COT_SLAB_KINDS_RUN_CPU_S=<s> (a build's or run's CPU limit, default 240); COT_SLAB_KINDS_JOB_MIN=<min> (its wall limit,
-//   default 30; the old COT_SLAB_KINDS_MAP_MIN is read as it); COT_SLAB_KINDS_CPU_MIN=<min> (the receipt's CPU budget,
-//   default 90: the whole detector over every kind, uncached);
+//   COT_SLAB_KINDS_RUN_CPU_S=<s> (a build's or run's CPU limit, default 240); COT_SLAB_KINDS_STALL_MIN=<min> (a build or run
+//   that takes no CPU this long has hung, default 10); COT_SLAB_KINDS_CPU_MIN=<min> (the receipt's CPU budget, default 90:
+//   the whole detector over every kind, uncached);
 //   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits);
 //   COT_SELFTEST_CACHE=0 or --all: every kind runs
 import assert from 'node:assert/strict';
@@ -164,9 +165,10 @@ if (!isMainThread) {
   const passed = new Set(store.fingerprints);
   const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
   const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));
-  // the guards: a build's or run's CPU and wall limits (a hang is stopped and named, the rest finish), the receipt's CPU budget
+  // the guards: a build's or run's CPU limit and its stall (a runaway or a hang is stopped and named, the rest finish), the
+  // receipt's CPU budget
   const RUN_CPU_S = Math.max(10, Number(process.env.COT_SLAB_KINDS_RUN_CPU_S ?? 240));
-  const JOB_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_JOB_MIN ?? process.env.COT_SLAB_KINDS_MAP_MIN ?? 30));
+  const STALL_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_STALL_MIN ?? 10));
   const CPU_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_CPU_MIN ?? 90));
   const runKey = (mapId, r) => `${mapId} #${r.id} ${r.face}`;
   // (what a run or a build took last time, CPU ms; a run never timed counts as the costliest known, a map never built as first)
@@ -311,16 +313,19 @@ if (!isMainThread) {
     });
     return slot;
   };
-  // the guard: a build or run past its CPU limit (the worker thread's clock: a loaded machine is no excuse) or its wall limit
+  // the guard, on each worker thread's own clock: a build or run past its CPU limit, or one whose clock has not moved for
+  // STALL_MIN (waiting on nothing that will come)
   const guard = setInterval(() => {
     for (const slot of slots) {
       const job = slot.job;
       if (!job || slot.stopped) continue;
-      const stop = (why) => { fail(slot, why); slot.job = null; slot.stopped = true; slot.worker.terminate(); };
-      if (performance.now() - job.t0 > JOB_MIN * 60000) { stop(`timed out (${JOB_MIN} min wall; COT_SLAB_KINDS_JOB_MIN)`); continue; }
-      slot.worker.cpuUsage?.().then((u) => {
-        const ms = (u.user + u.system) / 1000 - job.cpu0;
-        if (slot.job === job && !slot.stopped && ms > RUN_CPU_S * 1000) stop(`over its CPU limit (${(ms / 1000).toFixed(0)} s; COT_SLAB_KINDS_RUN_CPU_S=${RUN_CPU_S})`);
+      slot.worker.cpuUsage().then((u) => {
+        if (slot.job !== job || slot.stopped) return;
+        const now = (u.user + u.system) / 1000;
+        const stop = (why) => { fail(slot, why); slot.job = null; slot.stopped = true; slot.worker.terminate(); };
+        if (now - job.cpu0 > RUN_CPU_S * 1000) { stop(`over its CPU limit (${((now - job.cpu0) / 1000).toFixed(0)} s; COT_SLAB_KINDS_RUN_CPU_S=${RUN_CPU_S})`); return; }
+        if (now > (job.seenCpu ?? -Infinity) + 50) { job.seenCpu = now; job.seenAt = performance.now(); }
+        else if (performance.now() - job.seenAt > STALL_MIN * 60000) stop(`stalled: its clock still for ${STALL_MIN} min (COT_SLAB_KINDS_STALL_MIN)`);
       }, () => {});
     }
   }, 5000);

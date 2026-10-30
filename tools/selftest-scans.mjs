@@ -283,8 +283,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/selftest-cache-dir.mjs': none("defaultSelftestCacheDir and sha1: the proof store's name"),
   'tools/selftest-schedule.selftest.mjs': none('sha1 from selftest-cache.mjs'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
-  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) from selftest-cache.mjs: ' +
-    'the closures of fixed files, for its pass fingerprint'),
+  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) and of ' +
+    'tools/destruction-slab-check.mjs from selftest-cache.mjs: the closures of fixed files, for its pass fingerprint and its maps\' listings'),
 });
 
 const KINDS = ['lists', 'tracked', 'caller', 'outside', 'identity', 'cli', 'none'];
