@@ -19,6 +19,33 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   // Israeli modern-family owner studies (2026-09-18): proper-rotation,
   // uniform-only source-x-oracle bakes.  The source meshes are fused for
   // scoring because their ownership is flattened or crosses both sides.
+  // Merkava family 262 (owner 2026-10-27, the supplied Mk 1B, 2B, 2D, 3C, 3D and 4B models): unit-scale identity bakes of
+  // the supplied OBJs (raw hashes in docs/references/tanks/<id>.md). Fused: the OBJs' flattened group names carry no
+  // turret/gun hierarchy. Turret: the measured ring centre at deck height; gun: the trunnion in the source's gun mask.
+  merkava1b: {
+    sha256:'bcf4f84b9685fe25bbacbab3cd89a6d8ed5086fc37fa24267ef9e821e9b8c3aa',
+    fused:true, turret:[0,1.7,-.872], gun:[0,2.0822,1.18],
+  },
+  merkava2b: {
+    sha256:'f15d59be87ffe27a1fa913371316d3a3ab7c0b2720ffeec8eec3a408a2979637',
+    fused:true, turret:[0,1.7,-.867], gun:[0,2.0822,1.18],
+  },
+  merkava2d: {
+    sha256:'c76f1d522eb81314004c714c6fe98bcae19a06dd83f5ebaf5f3a54d76260c725',
+    fused:true, turret:[0,1.7,-1.049], gun:[0,2.0822,1.18],
+  },
+  merkava3c: {
+    sha256:'7d55fb050e1d27b8c6a383484a443a5557052f122910a8fb650fe908b53c87aa',
+    fused:true, turret:[0,1.7,-.928], gun:[0,2.0763,1.05],
+  },
+  merkava3_baz: {
+    sha256:'3f9ea08e23342137b519c767710750dcb4cb95ce7a9cf721323be6babd900760',
+    fused:true, turret:[0,1.7,-.948], gun:[0,2.0762,1.05],
+  },
+  merkava4b: {
+    sha256:'b3d01d76b9bec5e7e5ca28effb6824e15170b6dd72bb6c8f61e0eda195f6fd3e',
+    fused:true, turret:[0,1.7,-1.254], gun:[0,2.1595,.65],
+  },
   merkava4_trophy: {
     sha256:'a155cb6fb3ed46ef77e01f11fbd1d6cc8f5b8e747d09494f98f93579e396f684',
     fused:true,turret:[0,1.605,-.3906],gun:[0,1.9934619,1.93],

@@ -8975,6 +8975,8 @@ function* buildTankCoreSteps(
           min: box.min.toArray(),
           max: box.max.toArray(),
           module: moduleVisualParts.get(part) || null,
+          // a hatch whose anatomy structure's front face stands on a named main plate (gen-combat-anatomy frontPlate)
+          ...(part.userData.structureFrontPlate ? { frontPlate: part.userData.structureFrontPlate as string } : {}),
         });
       }
     }

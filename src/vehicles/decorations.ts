@@ -3081,10 +3081,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Challenger 3 already fills the Garage card with its long gun, bustle and
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
-  // out-of-family portrait crop.
+  // out-of-family portrait crop. Release 262: the rebuilt Merkava Mk 2D's two rear racks (a crate and a tarp pack) made
+  // a band at 28-29 % of its widest row, on the presentation census's 28 % body-row line, so the census and its shipped
+  // top icon read 0.72 px apart; slightly more compact cargo keeps that band at 24-26 %, clear of the line.
   const cargoScale = spec.id === 'challenger3_proto' ? 0.85
     : spec.id === 'ztz85_iii' ? 0.94
-      : 1;
+      : spec.id === 'merkava2d' ? 0.88
+        : 1;
   const cargoVariant = (v: FleetEquipmentVariant) => ({
     v,
     scale: cargoScale,

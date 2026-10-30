@@ -11,6 +11,7 @@ import {MISSION_DOCK_SEATS_PATH,missionDockSeatsSource} from './mission-dock-sea
 import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachmentSignature,missionAttachmentTurretPivot,DRONE_DOCK_CRADLE} from '../src/sim/missionAttachment.ts';
 import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
 import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
+import {DRONE_DOCK_EXEMPT} from '../src/sim/droneDockRules.ts';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
 const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=uniqueIds(value('--ids',Object.keys(TANK_SPECS).join(',')).split(','),'gen-mission-attachment-seats --ids');
 const seeds=value('--seeds','4000,4242,8191').split(',').map(Number),qualities=value('--qualities','high,low').split(',');
@@ -148,6 +149,11 @@ function flush(){
 for(const id of ids){
  stockPool.clear();
  const spec=TANK_SPECS[id];if(!spec)throw new Error('Unknown vehicle '+id);
+ // a sealed dockless vehicle (src/sim/droneDockRules.ts DRONE_DOCK_EXEMPT) keeps no seat record
+ if(Object.hasOwn(DRONE_DOCK_EXEMPT,id)){
+  const pass=!check||!records[id];delete records[id];report.rows.push({id,pass,exempt:DRONE_DOCK_EXEMPT[id]});flush();
+  console.log(id,pass?'EXEMPT':'FAIL','',pass?DRONE_DOCK_EXEMPT[id]:'an exempt vehicle keeps a seat record');continue;
+ }
  await ensureInteriorFills([id]);
  // Authored supports (a receiver's pads, a welded patch) are narrow, and the
  // .06 m native grid can step over them (2026-10-08: no Twardy, M1A1 SA or

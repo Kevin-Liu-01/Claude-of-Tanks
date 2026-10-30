@@ -62,7 +62,7 @@ const PROFILE_HOOK = /\.onBeforeCompile\s*=/g;
 const PROFILE_HOOK_CHAINS = new Map([
   // (263: vickers-cr1-262 31d83cdcdb took the Challenger lift's compile hook out of challenger.ts with the Mk 1/Mk 2's
   // move to the Mk 3's build; no profile chains one there now)
-  ['src/vehicles/profiles/merkava.ts', 1], // roofLift, over `prev`
+  // (262: the Merkava family builder carries no shader hook; the old roofLift chain retired with the merkava.ts pile)
   ['src/vehicles/profiles/uk.ts', 1], // inkLift, over `prev`
 ]);
 

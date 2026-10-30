@@ -2173,151 +2173,32 @@
    "hostSweep": []
   },
   "merkava1b": {
-   "inputHash": "182b90096c6306b8",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.46,
-      "gap": 0.54,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3480>"
-     }
-    }
-   ],
+   "inputHash": "ac424fbbbb7a2d38",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "merkava2b": {
-   "inputHash": "2b8d18fc190b4672",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.78,
-      "gap": 0.22,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3480>"
-     }
-    }
-   ],
+   "inputHash": "766ddb177b06e609",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "merkava2d": {
-   "inputHash": "4127dd128e321192",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.735,
-      "gap": 0.261,
-      "air": 0.004,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3480>"
-     }
-    }
-   ],
+   "inputHash": "c81ad09cd64689d2",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "merkava3_baz": {
-   "inputHash": "2e2ffbc15429bb1f",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0.052,
-      "sunkMaxM": 0.018,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.75,
-      "host": "hull<addClearanceCenterSlab@profiles/merkava.ts:391>"
-     }
-    }
-   ],
+   "inputHash": "190cd6fa63cf2f90",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "merkava3c": {
-   "inputHash": "97b768c7c946ddef",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.159,
-      "gap": 0.841,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<addClearanceSideSlab@profiles/merkava.ts:431>"
-     }
-    }
-   ],
+   "inputHash": "a87e589aae5ca918",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -2414,31 +2295,8 @@
    "hostSweep": []
   },
   "merkava4b": {
-   "inputHash": "db70d2a58ae6075d",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.559,
-      "gap": 0.441,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse26@profiles/merkava.ts:3500>"
-     }
-    }
-   ],
+   "inputHash": "e6000aaa023e97d2",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

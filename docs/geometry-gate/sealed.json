@@ -1945,77 +1945,77 @@
   },
   "merkava1b": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 14,
    "openViews": 0,
-   "insideOutPx": 158,
-   "seeThroughPx": 4,
+   "insideOutPx": 290,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 122034,
+   "tris": 166424,
    "frame": [
     0,
-    1.5,
-    -0.1,
-    5.2
+    2.65,
+    0.35,
+    5.6
    ]
   },
   "merkava2b": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 14,
    "openViews": 0,
-   "insideOutPx": 246,
-   "seeThroughPx": 2,
+   "insideOutPx": 309,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 113946,
+   "tris": 174563,
    "frame": [
     0,
-    2.15,
-    0.05,
-    5.4
+    2.65,
+    0.35,
+    5.6
    ]
   },
   "merkava2d": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 14,
    "openViews": 0,
-   "insideOutPx": 312,
-   "seeThroughPx": 11,
+   "insideOutPx": 295,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 117442,
+   "tris": 171962,
    "frame": [
     0,
-    2.1,
-    -0.15,
-    5.2
+    2.65,
+    0.35,
+    5.6
    ]
   },
   "merkava3_baz": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 242,
+   "insideOutPx": 231,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 130366,
+   "tris": 166539,
    "frame": [
     0,
-    1.6,
-    -0.1,
-    5.4
+    2.65,
+    0.2,
+    5.7
    ]
   },
   "merkava3c": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 188,
+   "insideOutPx": 232,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2387,
-   "tris": 129770,
+   "netSeeThroughPx": 3409,
+   "tris": 167616,
    "frame": [
     0,
-    1.75,
-    -0.05,
-    5.5
+    2.65,
+    0.2,
+    5.7
    ]
   },
   "merkava3d": {
@@ -2080,29 +2080,17 @@
   },
   "merkava4b": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 246,
-   "seeThroughPx": 39,
-   "netSeeThroughPx": 4642,
-   "tris": 123401,
+   "insideOutPx": 150,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 2463,
+   "tris": 189939,
    "frame": [
     0,
-    1.6,
-    0,
-    5.2
-   ],
-   "accepts": [
-    {
-     "kind": "see-through",
-     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
-     "by": "kevinliu",
-     "date": "2026-10-21",
-     "from": {
-      "seeThroughPx": 39,
-      "netSeeThroughPx": 4494
-     }
-    }
+    2.45,
+    0.4,
+    5.8
    ]
   },
   "namer_ifv": {

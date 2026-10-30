@@ -1891,13 +1891,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/accessoryContact.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
-    'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',
-    'src/vehicles/profiles/merkavaRunningGear.selftest.mjs',
-    'src/vehicles/profiles/merkava1bFit.selftest.mjs',
-    'src/vehicles/profiles/merkava2Fit.selftest.mjs',
-    'src/vehicles/profiles/merkava3Fit.selftest.mjs',
-    'src/vehicles/profiles/merkavaEraFinish.selftest.mjs',
-    'src/vehicles/profiles/merkava4bGeometry.selftest.mjs',
+    // 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls; the
+    // old pile's fit receipts (merkavaGunCradle, merkavaRunningGear, merkava1bFit, merkava2Fit, merkava3Fit,
+    // merkavaEraFinish, merkava4bGeometry) retired with the geometry they pinned
+    'src/vehicles/profiles/merkavaFamily.selftest.mjs',
+    'src/vehicles/profiles/merkavaFamilyGunClearance.selftest.mjs',
     'src/vehicles/profiles/swedishSiegeLine.selftest.mjs',
     'src/vehicles/profiles/leopard2A4Ghillie.selftest.mjs',
     'src/vehicles/profiles/t72JaguarRedesign.selftest.mjs',

@@ -430,6 +430,7 @@ function receiptBoxes(root, owner, buckets, predicate = null) {
       module: receipt.module || null,
       min: box.min.toArray(),
       max: box.max.toArray(),
+      ...(receipt.frontPlate ? { frontPlate: receipt.frontPlate } : {}),
     });
   }
   return boxes;
@@ -480,6 +481,7 @@ function clusterBoxes(boxes, tolerance = 0.035) {
     min: box.min.slice(),
     max: box.max.slice(),
     bucket: box.bucket,
+    ...(box.frontPlate ? { frontPlate: box.frontPlate } : {}),
   }));
   const clusters = [];
   while (remaining.length) {
@@ -494,6 +496,7 @@ function clusterBoxes(boxes, tolerance = 0.035) {
           cluster.min[axis] = Math.min(cluster.min[axis], next.min[axis]);
           cluster.max[axis] = Math.max(cluster.max[axis], next.max[axis]);
         }
+        if (next.frontPlate && !cluster.frontPlate) cluster.frontPlate = next.frontPlate;
         changed = true;
       }
     }
@@ -501,6 +504,8 @@ function clusterBoxes(boxes, tolerance = 0.035) {
       min: cluster.min.map(round),
       max: cluster.max.map(round),
       bucket: cluster.bucket,
+      // an authoring hint (tankFactoryCore's part receipt): the structure's front face stands on this main plate
+      ...(cluster.frontPlate ? { frontPlate: cluster.frontPlate } : {}),
     });
   }
   return clusters.sort((a, b) => a.min[2] - b.min[2] || a.min[0] - b.min[0]);
@@ -522,6 +527,7 @@ function structureReceipts(root, owner, frame) {
         max: cluster.max,
         sourceHash: hash.digest('hex').slice(0, 16),
         index,
+        ...(cluster.frontPlate ? { frontPlate: cluster.frontPlate } : {}),
       });
     });
   }
