@@ -699,24 +699,25 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the gun's sleeve wrapped): a cut multispectral cover on the 2A7V's panels, without the boughs of the fleet's leafy
   // suits, in the Danish greens.
   leo2a7dk: {
-    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0,
+    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 1.3, leafScale: 0.94, boughShare: 0,
     // r3 (critics: the Latvia photograph's cover is olive and green, no terracotta or sand); r4 (critics: the grey-green
     // read pale sage, the boughs as a leafy suit's leftovers): no boughs; r5 (the r4 critics: its cards a bright yellow-green,
-    // the photograph's cover a dull grey-green): grey-green cards on a grey-green net
-    light: 0x59614e, dark: 0x30362b, netColor: 'rgba(66,72,58,0.88)', netTextureSeed: 2765,
+    // the photograph's cover a dull grey-green): grey-green cards on a grey-green net; r6 (critics: its cards read as a
+    // leafy suit's leaves, tufts past the outline; the cover one mid-olive fabric): fewer, flatter cards close in tone
+    light: 0x58643f, dark: 0x414b33, netColor: 'rgba(72,82,56,0.90)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
-      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.12, seed: 11 })],
+      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.07, seed: 11 })],
       side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.80, 19)],
       face: [face({ z: -3.36, x0: -1.30, x1: 1.30, y0: 0.45, y1: 0.86, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.10, seed: 31 }),
-        laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.06, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.06, seed: 31 }),
+        laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.04, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
     },

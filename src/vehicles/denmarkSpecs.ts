@@ -119,9 +119,11 @@ leo2a7dk.visual = {
   ...leo2a7dk.visual,
   // the Barracuda cover's dull grey-green mottle (the Latvia photograph; r2 critics: no terracotta; r3: the grey-green
   // read pale sage; r4: the brown base showed between the cover's panels): small grey-green patches in the cover's own
-  // tones, so the painted faces under it read as the same cover
-  scheme: 'nato', base: '#4d5545', weather: '#575f4e', patches: ['#353c30', '#5d6353', '#434a3b'], marking: 'number',
-  number: '11', camoScale: 0.9,
+  // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
+  // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
+  // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
+  scheme: 'nato', base: '#4e5d38', weather: '#5a6a42', patches: ['#3e4a30', '#5b5a3e', '#465435'], marking: 'number',
+  number: '11', camoScale: 1.6,
 };
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk'],

@@ -153,7 +153,7 @@ function a7ForwardCheek(P:TankBuilderPort,d:Datum): void {
   addTurretSections(P,d,sections);
 }
 
-function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): void {
+function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sleeved = false): void {
   const length = d.muzzleZ - d.trunnion[2];
   // Release 240 (gun sweep): the A7V and A5M trunnions stand only 19-25 cm over the deck round the turret, and their
   // mounts hung under it. The .275 m bearing drum stood in the deck at every pitch (A7V 1.758 under 1.796, A5M 1.633
@@ -163,7 +163,9 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   // collar (.195 m, 7-10 cm under the barrel) took the engine deck astern; it now stands 2 cm proud of the sleeve.
   const trimmed = d !== LEOPARD_X_DATUMS.leo2a6m;
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * (trimmed ? 1 : 1.6),
-    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
+    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true,
+    // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve)
+    tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
@@ -1224,7 +1226,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort, kit: LeopardXKit = {}): vo
   }
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
-  mainGun(P,d,.096,true);
+  mainGun(P,d,.096,true,!!kit.danish);
   if(!kit.danish) addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 

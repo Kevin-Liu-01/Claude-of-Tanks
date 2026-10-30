@@ -17,6 +17,9 @@ export interface Leo1HullOptions {
   readonly deckTools?: boolean;
   /** The side skirts' hem: the German A5's black rubber, or the coat (the Danish tanks' skirts are painted over). */
   readonly skirtBucket?: 'hullRubber' | 'hull';
+  /** Release 265, r6: broad black bands on the road wheels' outer tyres (the UN-white 1A5 DK-1, whose white wheels read
+   * white-on-white with the style's thin tyre line). */
+  readonly tyreBands?: boolean;
   /** The two fuel cans in their rear carriers: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
 }
@@ -38,7 +41,8 @@ export interface Leo1HullDatums {
 }
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
-  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber', rearCanBucket = 'hullCloth' } = options;
+  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber', rearCanBucket = 'hullCloth',
+    tyreBands = false } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -279,6 +283,10 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       endRingSpan: 0.50, coveredTop: true, arms: true, paintedEnds: true,
       padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true,
     });
+    if (tyreBands) for (const z of roadWheelZs) for (const s of [-1, 1] as const) {
+      P.add('hullRubber', torus(roadWheelR - 0.036, 0.030, P.q ? 28 : 16, 6), s * (trackXc + 0.225 / 2 - 0.006), roadWheelY, z,
+        0, 0, Math.PI / 2);
+    }
 
     P.hullG.userData.leopard1A5FinishReceipt = {
       revision: 'leo1a5-262-proportions',

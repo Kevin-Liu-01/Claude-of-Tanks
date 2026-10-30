@@ -616,6 +616,9 @@ interface GunBuildConfig {
    * 2026-10-16: the 20-pdr's tube ran to its collar's cap plane after VH.04, the bore carver merged the two coplanar
    * caps into one ring at the tube's radius, and the collar's outer annulus went missing (strv81 open 0 -> 14 px). */
   tubeInset?: number;
+  /** The bucket of the painted tube, its sleeve, evacuator and collars (default 'gun'). Release 265: the Leopard 2A7 DK's
+   * gun wrapped in its Barracuda cover's khaki sleeve ('gunCanvasPale'), the tube's shape unchanged. */
+  tubeBucket?: string;
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -6731,7 +6734,7 @@ function addMuzzleBrake(
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0 } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0, tubeBucket = 'gun' } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
@@ -6745,7 +6748,7 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
   if (brake) addMuzzleBrake(g, gd, len, r, seg, brake);
-  for (const geo of g) P.add('gun', geo);
+  for (const geo of g) P.add(tubeBucket, geo);
   for (const geo of gd) P.add('gunDark', geo);
   Object.assign(builder, { muzzleZ: len });
 }
@@ -7552,6 +7555,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // is a measured source part keeps its own stock (the Type 96B's boot, type96GunOwnership.selftest.mjs)
   gunMountLamp: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // the Leopard 2A7 DK's khaki cover sleeve on the recoiling tube (release 265)
+  gunCanvasPale: ['recoilG', 'canvasPale'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
   gunMountCanvasSkin: ['gunG', 'canvasCloth'],
   gunMountGlass: ['gunG', 'glass'],

@@ -103,6 +103,9 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   if (mark === 'a5dk1') {
     // r3 critics: UN service also lettered the hull, here the middle bins' outer faces under their latches
     for (const s of [-1, 1] as const) P.decal('hull', 'stencil', 'UN', 0.30, [s * 1.682, 1.15, -0.56], s * Math.PI / 2);
+    // r6 critics: UN on the upper glacis (its face 6 cm over the datum) and the rear plate between the fuel cans
+    P.decal('hull', 'stencil', 'UN', 0.50, [0, hull.upperGlacisY(3.10) + 0.065, 3.103], 0, -Math.PI / 3);
+    P.decal('hull', 'stencil', 'UN', 0.28, [0, 1.47, -3.553], Math.PI);
   }
 }
 
@@ -110,7 +113,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth' });
+    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', tyreBands: mark === 'a5dk1' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -265,7 +268,16 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       }
       for (const x of [-(hw - 0.06), hw - 0.06]) P.addEquipment('turretDark', box(0.05, top - low, 0.05), x, ym, z1);
       P.decal('turret', 'stencil', 'UN', 0.50, [0, ym, z1 - 0.014], Math.PI);
-      P.addEquipment('turretDark', cylY(0.085, 0.095, 0.045, 14), 0.38, top + 0.057, (z0 + z1) / 2);
+      // r6 (critics: the top view a blank white slab; the GPS a stub): the lid's dark edge, its fan grille, a mushroom GPS
+      const zc = (z0 + z1) / 2, lid = top + 0.035;
+      for (const s of [-1, 1] as const) {
+        P.addEquipment('turretDark', box(0.014, 0.010, z0 - z1 + 0.03), s * (hw + 0.013), lid + 0.002, zc);
+        P.addEquipment('turretDark', box(hw * 2 + 0.04, 0.010, 0.014), 0, lid + 0.002, zc + s * (z0 - z1 + 0.016) / 2);
+      }
+      P.addEquipment('turretDark', box(0.50, 0.010, (z0 - z1) * 0.62), -0.02, lid + 0.004, zc);
+      for (let k = 0; k < 6; k++) P.addEquipment('turret', box(0.46, 0.012, 0.022), -0.02, lid + 0.008, zc - (z0 - z1) * 0.26 + k * (z0 - z1) * 0.104);
+      P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.38, top + 0.06, zc);
+      P.addEquipment('turret', xform(sph(0.085, 14, 7), 0, 0, 0, 0, 0, 0, [1, 0.55, 1]), 0.38, top + 0.085, zc);
       P.addEquipment('turretDark', cylY(0.012, 0.012, 0.14, 8), -0.40, top + 0.105, (z0 + z1) / 2);
     } else {
       stowage(P, 'turretCloth', rng, [
@@ -374,9 +386,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.add('gunMountDark', cylZ(0.175, 0.025, P.q ? 24 : 16), 0, lampY, lamp.frontZ + 0.01);
       P.add('gunMountGlass', markVehicleNightLens(cylZ(0.13, 0.008, P.q ? 24 : 16), 'headlight', { searchlight: true }),
         0, lampY, lamp.frontZ + 0.026);
-      // r4 (critics: a bare lens in a ring read as a camera): the lamp's rain hood over the lens and its guard bars
+      // r4 (critics: a bare lens in a ring read as a camera): the lamp's rain hood over the lens (r6: its guard bars read
+      // as a grille; gone)
       P.add('gunMountDark', box(0.36, 0.02, 0.11), 0, lampY + 0.165, lamp.frontZ + 0.04, -0.12, 0, 0);
-      for (const dy of [-0.06, 0, 0.06]) P.add('gunMountDark', box(0.25, 0.012, 0.012), 0, lampY + dy, lamp.frontZ + 0.036);
       yoke(lamp);
     }
     // L7A3 105 mm with its thermal sleeve and evacuator; the 1A5 DK added the muzzle reference collimator
