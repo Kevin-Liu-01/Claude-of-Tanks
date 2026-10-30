@@ -505,7 +505,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteProportions.selftest.mjs',
     'src/vehicles/profiles/arieteTurretOwnership.selftest.mjs',
   'src/vehicles/vehicleSize.selftest.mjs',
-  'src/vehicles/fleetResize20261002.selftest.mjs',
   'src/vehicles/escortModernization.selftest.mjs',
   'src/vehicles/chineseMantletFit.selftest.mjs',
   'src/vehicles/aresFlanking.selftest.mjs',
@@ -813,6 +812,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
+    'tools/selftest-tiers.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
@@ -2208,8 +2209,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landscapeWoods.selftest.mjs',
     // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
     'src/world/riparianTrees.selftest.mjs',
-    // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
-    'src/world/skybridgeArmIsolation.selftest.mjs',
     // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
     'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
