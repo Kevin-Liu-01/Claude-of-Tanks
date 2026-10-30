@@ -204,7 +204,7 @@
   "tos1a_tagil": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":980,"pockets":2,"geometry":{"hull":"df101d0e51e25c71","turret":"670f33e9a05abbc2","gun":"5160c9079da11997"}},
   "type10": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"d0d0ca9955cc6849","turret":"49ef637e47e597a7","gun":"687971a1406ef3bf"}},
   "type100": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"0bfc089abaaaf7bc","turret":"e0a9d7c3bfa9b073","gun":"e7a5140839336b4c"}},
-  "type10_dozer": {"turretRaisedCm2":216,"turretBaseCm2":0,"hullCm2":0,"pockets":1,"geometry":{"hull":"bf36838dde13e2a3","turret":"8aff33c4e5cb1cb8","gun":"9173b3ab122d8bcf"}},
+  "type10_dozer": {"turretRaisedCm2":216,"turretBaseCm2":0,"hullCm2":0,"pockets":1,"geometry":{"hull":"bf36838dde13e2a3","turret":"f978600ec128fef1","gun":"9173b3ab122d8bcf"}},
   "type10_tk_x": {"turretRaisedCm2":0,"turretBaseCm2":608,"hullCm2":4368,"pockets":3,"geometry":{"hull":"1651c8ae0125b8c1","turret":"755d23a89ede13b2","gun":"355e841c78ad2dd4"}},
   "type10b": {"turretRaisedCm2":684,"turretBaseCm2":740,"hullCm2":4396,"pockets":8,"geometry":{"hull":"2dd0b0738ed8a03d","turret":"4dc8d64b4e88616c","gun":"ac60f11326983656"}},
   "type59": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"d16c63fc4710ac7e","turret":"a3f525228420b7e8","gun":"3d4fb55600a68223"}},
