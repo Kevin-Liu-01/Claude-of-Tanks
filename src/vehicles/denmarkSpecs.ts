@@ -165,8 +165,10 @@ cv9035dk.visual = {
   // the Holstebro photograph's warmer olive-khaki ground): the ground warmer and lighter, a dark olive-brown third tone
   // r7 (critics, both: four tones with the brown; the Holstebro coat greens and black on a cooler grey-olive): a dark green,
   // black and a pale grey-green on a darker ground, its wash light so it stays its own paint
-  scheme: 'nato', base: '#4d5345', weather: '#646a5c', patches: ['#353b30', '#1f221c', '#61675a'], marking: 'number', number: '45',
-  camoScale: 0.58,
+  // r9 (r8 critics, both: the pale sage bright, small even blobs; the Holstebro coat darker, lower in contrast, fewer and
+  // larger fields): the light tone darker and warmer, the fields larger
+  scheme: 'nato', base: '#4a4f40', weather: '#5a5e50', patches: ['#353b2e', '#202319', '#555a4a'], marking: 'number', number: '45',
+  camoScale: 0.45,
 };
 // its measured gun stops (the 35 mm on its solid shroud): the glacis's add-on armour ahead, the rear deck's stowage aft
 // (r8 sweep, the slimmer gun and brake: the full 8 degrees over the bow)

@@ -279,13 +279,15 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // rust-brown shoes with a centre guide horn and dark end connectors, the two racks staggered): built here on rails
       const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), cg = Math.cos(glacis), sg = Math.sin(glacis);
       const on = (x: number, z: number, h: number): [number, number, number] => [x, glacisY(z) + h * cg, z + h * sg];
-      for (const [x, z0] of [[-0.29, 2.27], [0.29, 2.33]] as const) {
-        for (const dx of [-0.17, 0.17]) P.addEquipment('hullDetail', box(0.03, 0.02, 0.58), ...on(x + dx, z0 + 0.225, 0.010), glacis, 0, 0);
-        for (let k = 0; k < 4; k++) {
+      // (r8 critics, both: two regular 2x4 grids with black pads read as tiles; the photographs' links stand in two
+      // staggered columns, horns and end connectors showing): four links and three, the right column a half link higher
+      for (const [x, z0, n] of [[-0.29, 2.27, 4], [0.29, 2.40, 3]] as const) {
+        const span = (n - 1) * 0.15 + 0.155;
+        for (const dx of [-0.17, 0.17]) P.addEquipment('hullDetail', box(0.03, 0.02, span), ...on(x + dx, z0 + (n - 1) * 0.075, 0.010), glacis, 0, 0);
+        for (let k = 0; k < n; k++) {
           const z = z0 + k * 0.15;
           P.addEquipment('hullWood', box(0.46, 0.035, 0.125), ...on(x, z, 0.0375), glacis, 0, 0);
           P.addEquipment('hullWood', box(0.06, 0.055, 0.07), ...on(x, z, 0.08), glacis, 0, 0);
-          for (const px of [-0.15, 0.15]) P.addEquipment('hullRubber', box(0.12, 0.012, 0.09), ...on(x + px, z, 0.061), glacis, 0, 0);
           for (const ex of [-0.255, 0.255]) P.addEquipment('hullDark', box(0.05, 0.05, 0.09), ...on(x + ex, z, 0.0375), glacis, 0, 0);
         }
       }
@@ -666,9 +668,10 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     // sage, the photographs' a dirty khaki-tan) and its spare links rust-brown (the wood tone: critics, black slats read as
     // louvres); the Bundeswehr's canvas a drab olive (critics: bright green)
     // (r7: it read pale cream-sand; the photographs' a shade lighter than the turret)
-    if (dk) P.mats.canvasPale.color.setHex(0x55554a);
-    // (r7: the rust tint read salmon-orange bricks; the photographs' links a dark rust-brown)
-    if (dk) P.mats.wood.color.setHex(0x4a3a2f);
+    // (r8, critics both: grey-beige; the photographs' a khaki-tan)
+    if (dk) P.mats.canvasPale.color.setHex(0x625a42);
+    // (r7: the rust tint read salmon-orange bricks; the photographs' links a dark rust-brown; r8: still brick-red tiles)
+    if (dk) P.mats.wood.color.setHex(0x3d342b);
     if (mark === 'bw') P.mats.canvasCloth.color.setHex(0x4a4934);
     if (mark === 'jgsdf') P.mats.canvasCloth.color.setHex(0x56543a);
     P.mats.glass.roughness = 0.48;
