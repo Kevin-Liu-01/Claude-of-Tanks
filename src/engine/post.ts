@@ -64,6 +64,7 @@ import {
 } from './quality.ts';
 import {
   baseDynamicScale,
+  carriedDynamicScale,
   dynamicScaleFloor,
   dynamicScaleHold,
   internalPixelRatio,
@@ -2770,6 +2771,9 @@ export function createPost(
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
+  // (local-fps-265) the raster the governor's own tier change carries into the next preset, set only while it reports
+  // the change (the preset listeners, this module's included, run inside that call)
+  let carriedRasterRatio: number | null = null;
   // perf-governor r1 (R3F PerformanceMonitor pattern, mapped onto this
   // engine): between "resolution at the floor" and "drop the whole preset
   // tier" there is now a SESSION TRIM LADDER driven purely by measured frame
@@ -2853,13 +2857,16 @@ export function createPost(
       return;
     }
     if (action === 'tier-down') {
-      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it)
-      if (reportSustainedOverload()) qualityPolicy.beginTierTrial();
+      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it); the new tier
+      // starts at the raster this one stood at (resetGovernorState, carriedDynamicScale)
+      carriedRasterRatio = internalPixelRatio(renderer.getPixelRatio(), preset, qualityPolicy.dynamicScale);
+      try { if (reportSustainedOverload()) qualityPolicy.beginTierTrial(); } finally { carriedRasterRatio = null; }
       renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action === 'tier-up') {
-      reportSustainedRecovery();
+      carriedRasterRatio = internalPixelRatio(renderer.getPixelRatio(), preset, qualityPolicy.dynamicScale);
+      try { reportSustainedRecovery(); } finally { carriedRasterRatio = null; }
       renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
@@ -2956,7 +2963,8 @@ export function createPost(
   function resetGovernorState() {
     dynPin = null;
     gpuFrameTimer?.reset();
-    qualityPolicy.reset(baseDynamicScale(renderer.getPixelRatio(), preset), dynClock);
+    qualityPolicy.reset(carriedRasterRatio === null ? baseDynamicScale(renderer.getPixelRatio(), preset)
+      : carriedDynamicScale(renderer.getPixelRatio(), preset, carriedRasterRatio), dynClock);
     dynEma = 0;
     dynRingN = 0;
     dynRingI = 0;
