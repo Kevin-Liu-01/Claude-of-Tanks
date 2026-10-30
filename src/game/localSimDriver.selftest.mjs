@@ -2,7 +2,8 @@
 // Two copies of one solo battle on Verdant, seated by the page's setupBattle from the same seeds: the first steps on the
 // page (game/state.ts simStep), the second is the page end of the Worker driver (game/localSimDriver.ts) over the Worker's
 // core (game/localSimCore.ts) in-process, its channel cloning every message as a Worker's would (transfers included).
-// The player drives, turns and fires on both; the bots play on both. Every tick the driven page's hulls (every leaf the
+// The player drives, turns and fires on both; the bots play on both. A changed control is stepped as it arrives (off the
+// Worker's cadence, as in the browser): the tick it lands in is the stepped page's too. Every tick the driven page's hulls (every leaf the
 // mirror carries), its shells, its clock and its verdict must be the stepped page's, bit for bit, and the Worker must
 // have seated the page's roster. Negative control: a micrometre on the Worker's aim point at tick 200 is found at that tick.
 // First-party receipt: Kevin B. Liu.
@@ -90,7 +91,8 @@ async function run(ticks, perturbAt = -1) {
   const drivenWorld = worldFor();
   const { worker, port } = workerPair();
   let clock = 0;
-  const core = createLocalSimCore({ port, buildWorld: async () => worldFor(), now: () => clock, schedule: () => null, cancel: () => {} });
+  // the Worker's clock is the receipt's: its timer never fires on its own (a handle, so a changed control steps on arrival)
+  const core = createLocalSimCore({ port, buildWorld: async () => worldFor(), now: () => clock, schedule: () => ({}), cancel: () => {} });
   let driver = null;
   const drivenBus = createBus();
   const driven = seatPage(drivenWorld, (game) => {
@@ -122,6 +124,7 @@ async function run(ticks, perturbAt = -1) {
       aim: foe ? [foe.state.pos.x, foe.state.pos.y + 1.5, foe.state.pos.z] : [0, 0, 0] };
   };
   let divergence = null;
+  let onArrival = 0;
   let shotsSeen = 0;
   let hitsSeen = 0;
   drivenBus.on('shell:hit', () => { hitsSeen++; });
@@ -136,8 +139,11 @@ async function run(ticks, perturbAt = -1) {
     Object.assign(dp, { throttle: b.throttle, steer: b.steer, brake: b.brake, fire: b.fire, shellSlot: 0, aimLocked: false });
     dp.aimPoint.set(...b.aim);
     if (tick === perturbAt) dp.aimPoint.x += 1e-6;
+    const before = core.tick;
     driver.postInput();
-    if (tick > 1) core.stepOnce();
+    // a changed control is stepped as it arrives (off the cadence); else the cadence's tick
+    if (tick > 1 && core.tick === before) core.stepOnce();
+    else if (tick > 1) onArrival++;
     let applied = 0;
     driver.advance(() => { applied++; });
     assert.equal(applied, 1, `one tick applied at tick ${tick}`);
@@ -168,7 +174,7 @@ async function run(ticks, perturbAt = -1) {
     }
     if (String(stepped.result) !== String(driven.result)) divergence = { tick, field: 'result' };
   }
-  const exercised = { shotsSeen, hits: hitsSeen, hpOwn: own(driven).combat.hp, destroyed: driven.tanks.filter((entity) => entity.combat.destroyed).length,
+  const exercised = { shotsSeen, onArrival, hits: hitsSeen, hpOwn: own(driven).combat.hp, destroyed: driven.tanks.filter((entity) => entity.combat.destroyed).length,
     stats: { ...driver.stats } };
   driver.end();
   core.dispose();
@@ -178,6 +184,7 @@ async function run(ticks, perturbAt = -1) {
 const same = await run(1200);
 assert.equal(same.divergence, null, `the driven page parts from the stepped page at ${JSON.stringify(same.divergence)}`);
 assert.ok(same.exercised.shotsSeen > 0 && same.exercised.hits > 0, `shots flew and struck (${JSON.stringify(same.exercised)})`);
+assert.ok(same.exercised.onArrival > 0, 'changed controls were stepped on arrival, off the cadence');
 const perturbed = await run(260, 200);
 assert.ok(perturbed.divergence, 'a micrometre on the Worker\'s aim is found');
 assert.ok(perturbed.divergence.tick >= 200 && perturbed.divergence.tick <= 202, `found at its tick (${JSON.stringify(perturbed.divergence)})`);
