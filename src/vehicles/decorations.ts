@@ -4198,7 +4198,16 @@ function spanPieceBoxes(mesh: THREE.Mesh, start: number, count: number, toSpace:
  * the built geometry, never a per-vehicle list; the other frame and the decor are never read.
  */
 export function launcherKeepOut(group: THREE.Object3D, elevationRad = 0, depressionRad = 0): THREE.Box3[] {
-  const out: THREE.Box3[] = [];
+  return launcherStock(group, elevationRad, depressionRad).map(({ box }) => {
+    box.expandByScalar(LAUNCHER_KEEP_OUT_CLEAR);
+    box.max.y += LAUNCHER_KEEP_OUT_HEAD;
+    return box;
+  });
+}
+
+/** launcherKeepOut's pieces before their clearance, each with whether it rides the gun group (`onGun`). */
+function launcherStock(group: THREE.Object3D, elevationRad: number, depressionRad: number): Array<{ box: THREE.Box3; onGun: boolean }> {
+  const out: Array<{ box: THREE.Box3; onGun: boolean }> = [];
   group.updateWorldMatrix(true, true);
   const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
   const corner = new THREE.Vector3();
@@ -4233,20 +4242,40 @@ export function launcherKeepOut(group: THREE.Object3D, elevationRad = 0, depress
             }
           }
         }
-        b.expandByScalar(LAUNCHER_KEEP_OUT_CLEAR);
-        b.max.y += LAUNCHER_KEEP_OUT_HEAD;
-        out.push(b);
+        out.push({ box: b, onGun: !!gun });
       }
     }
   });
   return out;
 }
 
+/** The gun's pitch limits the launchers are swept over (rad): the decor pass's, elevation then depression. */
+function launcherPitch(spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>): [number, number] {
+  return [(spec.gunElevationDeg ?? 20) * D2R, (spec.gunDepressionDeg ?? 8) * D2R];
+}
+
 /** Both decor frames' launcher keep-out boxes for a built vehicle, swept over its gun's pitch limits (the decor pass's). */
 export function launcherKeepOutVolumes(hullG: THREE.Object3D, turretG: THREE.Object3D,
   spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>): Record<DecorFrame, THREE.Box3[]> {
-  const elevation = (spec.gunElevationDeg ?? 20) * D2R, depression = (spec.gunDepressionDeg ?? 8) * D2R;
+  const [elevation, depression] = launcherPitch(spec);
   return { hull: launcherKeepOut(hullG, elevation, depression), turret: launcherKeepOut(turretG, elevation, depression) };
+}
+
+/**
+ * The turret's launcher stock that rides the gun group, as bands of the hull's turret-sweep guard (2026-10-30, 266): each
+ * piece's annulus about the yaw axis (its box's nearest approach to the axis and farthest corner, turret frame) and its
+ * lowest point anywhere in the gun's pitch range, with no clearance. measureTurretSweep leaves the gun subtree to the bore
+ * guard, which knows only the barrel, so a pod riding the gun swept over the hull unseen: the Griffin Viper's reach
+ * 1.66 m from the axis (the turret's own sweep 1.04 m) and their rear drops about 0.5 m at full elevation.
+ */
+export function launcherSweepBands(turretG: THREE.Object3D, spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>):
+  Array<{ rMin: number; rMax: number; minY: number }> {
+  const [elevation, depression] = launcherPitch(spec);
+  return launcherStock(turretG, elevation, depression).filter((s) => s.onGun).map(({ box: b }) => ({
+    rMin: Math.hypot(Math.max(0, b.min.x, -b.max.x), Math.max(0, b.min.z, -b.max.z)),
+    rMax: Math.max(Math.hypot(b.min.x, b.min.z), Math.hypot(b.min.x, b.max.z), Math.hypot(b.max.x, b.min.z), Math.hypot(b.max.x, b.max.z)),
+    minY: b.min.y,
+  }));
 }
 
 function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
@@ -4908,6 +4937,9 @@ function* decorationSteps(
       return { sweepR, turretMinY, bandMinY };
     }
     const { sweepR, turretMinY, bandMinY } = measureTurretSweep();
+    // 2026-10-30 (266): and the launcher stock riding the gun, which the bands leave to the bore guard: each piece its own
+    // band (launcherSweepBands), its annulus down to its lowest point through the gun's pitch range
+    const launcherBands = casemate ? [] : launcherSweepBands(turretG, spec);
     // 2026-10-09 (the netting lane): a hull dressed in a field suit with working clearances (ghillieSuit.ts
     // fieldClearanceM: its meshes carry userData.fieldSuit) holds its net and garnish on the decks the turret's loads
     // swing over; each load hung on the turret clears the suit's top at its radius by 3 cm through the traverse. The
@@ -5064,8 +5096,7 @@ function* decorationSteps(
       return true;
     };
     gunGuardOK.lastYaw = null;
-    const sweepGuardOK = (bb: THREE.Box3) => {
-      if (casemate) return true;
+    const radialSpan = (bb: THREE.Box3): [number, number] => {
       // closest horizontal approach of the box to the yaw axis (edges count,
       // not just corners — a long cable's mid-span is its nearest point)
       const rMin = Math.hypot(
@@ -5076,6 +5107,11 @@ function* decorationSteps(
       for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) {
         rMax = Math.max(rMax, Math.hypot(x - pivot[0], z - pivot[2]));
       }
+      return [rMin, rMax];
+    };
+    const sweepGuardOK = (bb: THREE.Box3) => {
+      if (casemate) return true;
+      const [rMin, rMax] = radialSpan(bb);
       if (rMin > sweepRLive + 0.07) return true;
       // clear the lowest turret surface among the radial bands overlapped
       let minY = Infinity;
@@ -5085,6 +5121,14 @@ function* decorationSteps(
       if (n1 > 0.8) minY = Math.min(minY, bandMinY[2]);
       if (!Number.isFinite(minY)) minY = turretMinYLive;
       return bb.max.y <= pivot[1] + minY - 0.035;
+    };
+    // under a launcher band's annulus a hull piece clears the launcher's lowest pitched point the way the sweep clears the
+    // turret's: it bites only where the launcher reaches lower than the rest-pose bands, or past their radius
+    const launcherSweepOK = (bb: THREE.Box3) => {
+      if (!launcherBands.length) return true;
+      const [rMin, rMax] = radialSpan(bb);
+      return !launcherBands.some((band) => rMin <= band.rMax + 0.07 && rMax >= band.rMin - 0.07
+        && bb.max.y > pivot[1] + band.minY - 0.035);
     };
 
     // --- collision ledgers (hull & turret frames kept apart) ---------------
@@ -5433,6 +5477,7 @@ function* decorationSteps(
         return rejectCommit(name, parts, reason);
       }
       if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
+      if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && !launcherSweepOK(bb)) return rejectCommit(name, parts, 'launcher-sweep');
       // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
       return true;
