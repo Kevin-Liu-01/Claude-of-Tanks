@@ -73,6 +73,14 @@ function frontalModules(P: TankBuilderPort): void {
       P.add('turretDetail', cylZ(0.022, 0.016, 8), sx * x, y, face(x) + 0.006, 0, sx * sweep, 0);
     }
   }
+  // the brow over the slot, from the shell's front roof edge down to 1.4 cm over the mantlet's top at every pitch (its rear
+  // corner rises to 0.672 at full depression, its front to 0.663 at full elevation): the 8 cm step between the mantlet's
+  // top and the roof's edge read as a hole (the R7c blind critic)
+  const by = 0.676, bz0 = T.coreFrontZ - 0.005, bz1 = T.coreFrontZ + 0.06;
+  P.add('turret', convexSlab(
+    [-inner, by, bz0], [inner, by, bz0], [inner, by, bz1], [-inner, by, bz1],
+    [-inner, T.roofFrontY + 0.002, bz0], [inner, T.roofFrontY + 0.002, bz0], [inner, 0.69, bz1], [-inner, 0.69, bz1],
+  ));
 }
 
 /**
@@ -86,12 +94,15 @@ function gunAssembly(P: TankBuilderPort): void {
   const m = T.mantletFaceZ, w = T.mantletHalfWidthM, top = T.mantletTopM, lo = T.mantletBottomM;
   const rect = (hw: number, b: number, t: number): SectionPoint[] => [[-hw, b], [hw, b], [hw, t], [-hw, t]];
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
-  P.addGunExtra(sectionSolid([
+  const mantlet = sectionSolid([
     { z: -0.10, ring: rect(w, lo, top) },
     { z: m - 0.30, ring: rect(w, lo, top) },
     { z: m - 0.10, ring: rect(w, lo + 0.04, top) },
     { z: m, ring: rect(w - 0.025, lo + 0.06, top - 0.02) },
-  ]), 0, 0, 0);
+  ]);
+  // its camouflage phased off the projection's origin, where one dark blob covered the whole face (three blind critics)
+  mantlet.userData.camoUvOffset = [0.37, 0.21];
+  P.addGunExtra(mantlet, 0, 0, 0);
   P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, m + 0.05);
   P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.27, 0.07, m + 0.025);              // coaxial MG port
   // the gun's own sight port: an armoured frame standing 3 cm off the face, its aperture dark in it

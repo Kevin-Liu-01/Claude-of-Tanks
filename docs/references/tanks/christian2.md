@@ -154,3 +154,8 @@ See the round log; filled as each gate runs.
   cheek's height (the model's 95%), a notch over it showing the shell's wall; its sight port read as a hole. R7c: the
   mantlet from gun -0.26 to +0.30 (the model's face spans 1.70-2.30 m; ours 1.80-2.28, its underside still rising
   6 cm over its front for the engine deck's net), filling the slot to 2 cm a side; the sight port framed.
+  R7c's blind critic (FAIL on one major; the plan, the mantlet's footprint, height and position matched): a black
+  triangle on the 8 cm step between the mantlet's top and the shell's front roof edge; the mantlet's face dark in
+  every round (one dark blob of the projection covered it). R7d: a brow over the slot from the roof's edge down to
+  1.4 cm over the mantlet's top at every pitch, and the mantlet's camouflage phased off the projection's origin
+  (userData.camoUvOffset, as the Sabra's cheek covers).
