@@ -143,20 +143,26 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Shore road follow', 'Village pass', 'Fjord reveal'], headingDeg: -107.8,
     cast: [cast('lead', 'challenger3', [-15.3, -84.1], -107.8, 22), cast('wing', 'challenger2', [3, -81], -107.8, 22)],
     rigs: ['rear', 'track', 'hero', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'dpm', dust: 0.3 },
+  // up the quay by the middle arm's head, the water behind the column from every camera; from behind on the last
+  // vehicle, so none stands between the rear rig and its tank (the inland road showed no water, stills261 f)
   { id: 'harbor-golden', title: 'Harbor at golden hour', description: 'A British column leaves the harbor as the light goes gold: head-on, from behind, then the whole bay.',
     map: 'fjord', timeOfDay: 'golden', durationMs: 8000, category: 'environment',
-    shots: ['Harbor exit', 'Column from behind', 'Bay reveal'], headingDeg: 40.2,
-    cast: [cast('lead', 'ajax', [-38.9, -18.4], 40.2, 22), cast('wing', 'ares_apc', [-56, -20], 40.2, 22), cast('third', 'challenger3', [-43, -35], 40.2, 22)],
-    rigs: ['hero', 'rear', 'track', 'overhead'], subjects: ['lead', 'lead', 'third'], camo: 'dpm', dust: 0.3 },
+    shots: ['Harbor exit', 'Column from behind', 'Bay reveal'], headingDeg: 0,
+    cast: [cast('lead', 'ajax', [276, 32], 0, 22), cast('wing', 'ares_apc', [264, 19.7], 0, 22), cast('third', 'challenger3', [283.6, 16.7], 0, 22)],
+    rigs: ['hero', 'rear', 'track', 'overhead'], subjects: ['lead', 'third', 'third'], camo: 'dpm', dust: 0.3 },
+  // the north-east dunes, the low sun (azimuth 104) behind the eastern palms from the portrait's camera; the souk's
+  // route drove under its shade roof, out of every camera's sight from its third second (stills261 e)
   { id: 'oasis-sunset', title: 'Oasis sunset', description: 'Merkavas cross the oasis as the sun sets behind the palms.',
     map: 'oasis', timeOfDay: 'sunset', durationMs: 8000, category: 'environment',
-    shots: ['Dune follow', 'Palm-line portrait', 'Oasis reveal'], headingDeg: -107.8,
-    cast: [cast('lead', 'merkava4_barak', [141.4, 87.8], -107.8, 22), cast('wing', 'merkava3_baz', [158, 89], -107.8, 22)],
-    rigs: ['rear', 'hero', 'track', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'desert', dust: 0.6 },
+    shots: ['Dune follow', 'Palm-line portrait', 'Oasis reveal'], headingDeg: -120,
+    cast: [cast('lead', 'merkava4_barak', [224, 320], -120, 22), cast('wing', 'merkava3_baz', [236, 331.5], -120, 22)],
+    rigs: ['rear', 'hero', 'track', 'overhead'], subjects: ['lead', 'lead', 'lead'], mirror: true, camo: 'desert', dust: 0.6 },
+  // along the lower east olive groves' rows (maps/orchard.ts east-lower-orchard-1/2): the valley road showed no tree
+  // (stills261 f)
   { id: 'orchard-column', title: 'Orchard column', description: 'Three Italian vehicles thread the orchard rows: from above, at track level, then the valley.',
     map: 'orchard', timeOfDay: 'day', durationMs: 8000, category: 'environment',
-    shots: ['Over the rows', 'Between the trees', 'Valley reveal'], headingDeg: 121.1,
-    cast: [cast('lead', 'c2_ariete', [-76.6, 19.9], 121.1, 20), cast('wing', 'c1_ariete_preserie', [-88, 32], 121.1, 20), cast('third', 'dardo', [-104, 40], 121.1, 20)],
+    shots: ['Over the rows', 'Between the trees', 'Valley reveal'], headingDeg: -40,
+    cast: [cast('lead', 'c2_ariete', [208, -212], -40, 20), cast('wing', 'c1_ariete_preserie', [214.9, -227.1], -40, 20), cast('third', 'dardo', [227.4, -239.9], -40, 20)],
     rigs: ['overhead', 'track', 'hero', 'overhead'], subjects: ['wing', 'lead', 'lead'], camo: 'autumn', dust: 0.4 },
   { id: 'river-village', title: 'River village', description: 'Chinese armor follows the delta road through a waking river village.',
     map: 'delta', timeOfDay: 'morning', durationMs: 8000, category: 'environment',

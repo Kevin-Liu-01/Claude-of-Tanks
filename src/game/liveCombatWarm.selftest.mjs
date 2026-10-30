@@ -62,7 +62,7 @@ function drive(steps, atYield) {
   const { context, record, group, live } = stubContext();
   const yields = drive(createCombatRareWarmSteps(context, { cooperative: true }), (n) => {
     assert.equal(group.visible, true, `yield ${n}: the effect root stays visible`);
-    assert.equal(live.parent, group, `yield ${n}: live effects stay in place`);
+    assert.ok(live.parent === group, `yield ${n}: live effects stay in place`);
     assert.equal(record.resets, 0, `yield ${n}: no live effect is reset`);
   });
   assert.ok(yields >= 4, `the live warm yields (${yields})`);

@@ -64,6 +64,7 @@ import { KF51_X_PROFILES } from './profiles/kf51X.ts';
 import { T14_X_PROFILES } from './profiles/t14X.ts';
 import { KURGANETS_X_PROFILES } from './profiles/kurganetsX.ts';
 import { LEOPARD_A6_X_PROFILES } from './profiles/leopardA6X.ts';
+import { LEOPARD_A6_UA_PROFILES } from './profiles/leopardA6Ua.ts';
 import { K1A1_X_PROFILES } from './profiles/k1a1X.ts';
 import { AMX30_X_PROFILES } from './profiles/amx30X.ts';
 import { T62MV1_X_PROFILES } from './profiles/t62mv1X.ts';
@@ -145,6 +146,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...CHALLENGER1_X_PROFILES,
   ...T72BU_X_PROFILES,
   ...LEOPARD_A6_X_PROFILES,
+  ...LEOPARD_A6_UA_PROFILES,
   ...K1A1_X_PROFILES,
   ...XK2_PROFILES,
   ...AMX30_X_PROFILES,

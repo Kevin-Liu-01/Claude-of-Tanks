@@ -18,6 +18,8 @@
 // stem's plane in a shallow V, so it has depth and never shows one straight edge.
 import * as THREE from 'three';
 import { drainAtlasSteps, makeSprayAtlas, makeSprayAtlasSteps, SPRAY_ATLAS_TILES, type SprayKind } from '../world/treeSprayAtlas.ts';
+import { coverageMipChainSteps, floodClearTexels, type MipImage } from './alphaCutTexture.ts';
+import { paintGarnishBough } from './garnishBoughs.ts';
 
 export type VehicleFoliageKind = SprayKind | 'garnish-woodland' | 'garnish-arid';
 
@@ -28,50 +30,6 @@ export const FOLIAGE_ALPHA_TEST = 0.4;
 
 const ATLAS_SIZE = 512;
 const atlasCache = new Map<VehicleFoliageKind, THREE.Texture | null>();
-
-type MipImage = { data: Uint8ClampedArray; width: number; height: number };
-const mipImage = (size: number): MipImage => (typeof ImageData === 'function'
-  ? new ImageData(size, size) as MipImage
-  : { data: new Uint8ClampedArray(size * size * 4), width: size, height: size });
-
-/**
- * The coverage-preserving mip chain of an ImageData atlas (lighting.ts buildCoverageMipmaps' rule, run on the straight
- * alpha directly: a canvas round trip would premultiply away the flood tone of the transparent texels). Each level is
- * a 2 x 2 box of the one above, then its alpha is remapped so the share of texels passing the cut matches level 0 —
- * a distant card keeps its leafy silhouette instead of thinning below the cut or resolving as a flood rectangle.
- */
-function* coverageMipChainSteps(level0: MipImage, cutoff: number): Generator<void, MipImage[], void> {
-  const cut = Math.round(cutoff * 255);
-  const coverage = (d: Uint8ClampedArray): number => {
-    let pass = 0;
-    for (let i = 3; i < d.length; i += 4) if (d[i] >= cut) pass++;
-    return pass / (d.length / 4);
-  };
-  const target = coverage(level0.data);
-  const chain: MipImage[] = [level0];
-  let prev = level0;
-  for (let size = level0.width >> 1; size >= 1; size >>= 1) {
-    const next = mipImage(size);
-    const src = prev.data, dst = next.data, sw = size * 2;
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const tl = ((y * 2) * sw + x * 2) * 4, bl = tl + sw * 4, o = (y * size + x) * 4;
-      for (let c = 0; c < 4; c++) dst[o + c] = (src[tl + c] + src[tl + 4 + c] + src[bl + c] + src[bl + 4 + c] + 2) >> 2;
-    }
-    const now = coverage(dst);
-    if (target > 0 && size >= 2 && (now < target * 0.7 || now > target * 1.3)) {
-      const alphas: number[] = [];
-      for (let i = 3; i < dst.length; i += 4) alphas.push(dst[i]);
-      alphas.sort((a, b) => b - a);
-      const quantile = Math.max(1, alphas[Math.min(alphas.length - 1, Math.max(0, Math.round(target * alphas.length) - 1))]);
-      for (let i = 3; i < dst.length; i += 4) dst[i] = Math.max(0, Math.min(255, cut + (dst[i] - quantile) * 3));
-    }
-    chain.push(next);
-    prev = next;
-    // (boot-261) a step a level: the first, a quarter of the atlas with its sorted alphas, is most of the chain
-    if (size >= 64) yield;
-  }
-  return chain;
-}
 
 /** Give an ImageData-backed atlas its coverage-preserving mips (idempotent; lighting.ts then leaves it alone). */
 function attachCoverageMips(texture: THREE.Texture): THREE.Texture {
@@ -105,6 +63,51 @@ function seeded(seed: number): () => number {
   };
 }
 
+/** The multispectral garnish's flap tones (sRGB), by theatre. */
+const FLAP_PALETTES: Readonly<Record<'garnish-woodland' | 'garnish-arid', readonly string[]>> = Object.freeze({
+  'garnish-woodland': ['#3d4a2c', '#54583a', '#4a3d2b', '#2f3a26', '#636848'],
+  'garnish-arid': ['#8a7a56', '#9c8a62', '#7a6c4c', '#a89670', '#6c6046'],
+});
+
+/** One tile of the multispectral garnish: jagged cut flaps over a knotted carrier, the stem seat at the bottom centre. */
+function paintFlapTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number, palette: readonly string[]): void {
+  // the carrier: a sparse knotted web behind the flaps, stem seat at the bottom centre (263: a dark olive cord, not the
+  // near-black line that minified into specks)
+  ctx.strokeStyle = 'rgba(58,64,44,0.85)';
+  ctx.lineWidth = 1.2;
+  for (let k = 0; k < 6; k++) {
+    ctx.beginPath();
+    ctx.moveTo(S * 0.5, S * 0.98);
+    ctx.lineTo(S * (0.15 + rng() * 0.7), S * (0.1 + rng() * 0.5));
+    ctx.stroke();
+  }
+  // cut flaps: irregular five- to seven-sided leaves, a darker cut edge, oriented outward from the seat
+  for (let f = 0; f < 26; f++) {
+    const cx = S * (0.18 + rng() * 0.64), cy = S * (0.12 + rng() * 0.7);
+    const r = S * (0.07 + rng() * 0.08);
+    const sides = 5 + ((rng() * 3) | 0);
+    const rot = rng() * Math.PI * 2;
+    ctx.fillStyle = palette[(rng() * palette.length) | 0];
+    ctx.strokeStyle = 'rgba(20,22,16,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < sides; i++) {
+      const a = rot + (i / sides) * Math.PI * 2;
+      const rr = r * (0.55 + rng() * 0.6) * (i % 2 ? 0.72 : 1);
+      const px = cx + Math.cos(a) * rr * 1.25, py = cy + Math.sin(a) * rr * 0.8;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // the cut edge inside the flap only (source-atop): no dark rim under the alpha cut for the filter to smear
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /** Paint the multispectral garnish: jagged cut flaps over a knotted carrier in 2 x 2 tiles, straight alpha. */
 function makeGarnishAtlas(kind: 'garnish-woodland' | 'garnish-arid'): THREE.Texture {
   const size = ATLAS_SIZE, T = FOLIAGE_ATLAS_TILES, S = size / T;
@@ -114,42 +117,11 @@ function makeGarnishAtlas(kind: 'garnish-woodland' | 'garnish-arid'): THREE.Text
   if (!ctx) throw new Error('vehicleFoliage: Canvas2D unavailable');
   ctx.clearRect(0, 0, size, size);
   const rng = seeded(kind === 'garnish-woodland' ? 0x5eed11 : 0x5eed33);
-  const palette = kind === 'garnish-woodland'
-    ? ['#3d4a2c', '#54583a', '#4a3d2b', '#2f3a26', '#636848']
-    : ['#8a7a56', '#9c8a62', '#7a6c4c', '#a89670', '#6c6046'];
   for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
     ctx.save();
     ctx.beginPath(); ctx.rect(tx * S, ty * S, S, S); ctx.clip();
     ctx.translate(tx * S, ty * S);
-    // the carrier: a sparse knotted web behind the flaps, stem seat at the bottom centre
-    ctx.strokeStyle = 'rgba(40,44,32,0.85)';
-    ctx.lineWidth = 1.2;
-    for (let k = 0; k < 6; k++) {
-      ctx.beginPath();
-      ctx.moveTo(S * 0.5, S * 0.98);
-      ctx.lineTo(S * (0.15 + rng() * 0.7), S * (0.1 + rng() * 0.5));
-      ctx.stroke();
-    }
-    // cut flaps: irregular five- to seven-sided leaves, a darker cut edge, oriented outward from the seat
-    for (let f = 0; f < 26; f++) {
-      const cx = S * (0.18 + rng() * 0.64), cy = S * (0.12 + rng() * 0.7);
-      const r = S * (0.07 + rng() * 0.08);
-      const sides = 5 + ((rng() * 3) | 0);
-      const rot = rng() * Math.PI * 2;
-      ctx.fillStyle = palette[(rng() * palette.length) | 0];
-      ctx.strokeStyle = 'rgba(20,22,16,0.55)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = 0; i < sides; i++) {
-        const a = rot + (i / sides) * Math.PI * 2;
-        const rr = r * (0.55 + rng() * 0.6) * (i % 2 ? 0.72 : 1);
-        const px = cx + Math.cos(a) * rr * 1.25, py = cy + Math.sin(a) * rr * 0.8;
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
+    paintFlapTile(ctx, S, rng, FLAP_PALETTES[kind]);
     ctx.restore();
   }
   const image = ctx.getImageData(0, 0, size, size);
@@ -196,17 +168,21 @@ export const GARNISH_STRIP_TILES = [2, 3] as const;
 export const GARNISH_STRIP_BASE_SRGB: readonly [number, number, number] = [200, 189, 160];
 
 const garnishAtlasCache = new Map<string, THREE.Texture | null>();
+/** A fitted cover's tuft against a field bough (ghillieSuit.ts addTufts 0.24 against addFieldTufts 0.6 of the leaf scale):
+ * its sprig is drawn this much larger on the tile, near its real needle size and keeping its frond's fishbone. */
+const COVER_SPRIG_SCALE = 1.7;
 
 /** Paint one tile of knotted burlap strips (stem seat at the tile's bottom centre, tips toward the top). */
 function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
   const [br, bg, bb] = GARNISH_STRIP_BASE_SRGB;
   const knotX = S * (0.46 + rng() * 0.08), knotY = S * 0.965;
-  const count = 7 + Math.floor(rng() * 5);
+  // (263; the critic: "fan-shaped green and tan needle tufts read as pine, not burlap") fewer, broader strips of cloth
+  const count = 5 + Math.floor(rng() * 4);
   const strips: Array<() => void> = [];
   for (let k = 0; k < count; k++) {
     const share = k / (count - 1) - 0.5;
     const ang = -Math.PI / 2 + share * (1.0 + rng() * 0.5) + (rng() - 0.5) * 0.3;
-    const len = S * (0.45 + rng() * 0.48), wid = S * (0.035 + rng() * 0.06);
+    const len = S * (0.45 + rng() * 0.48), wid = S * (0.065 + rng() * 0.07);
     const bend = (rng() - 0.5) * len * 0.6, twist = rng() * Math.PI, twists = 0.4 + rng() * 1.4;
     const value = 0.74 + rng() * 0.34, warm = (rng() - 0.5) * 0.14;
     const fray = rng();
@@ -259,17 +235,20 @@ function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => num
         ctx.fillRect(x + nx * o, y + ny * o, 1 + rng() * 2.2, 1 + rng() * 1.2);
       }
       ctx.restore();
-      ctx.lineWidth = 1.1;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.lineWidth = 2.2;
       ctx.strokeStyle = `rgba(${(tone[0] * 0.48) | 0},${(tone[1] * 0.46) | 0},${(tone[2] * 0.42) | 0},0.5)`;
       ctx.stroke();
+      ctx.restore();
     });
   }
   // the far strips first: the bunch overlaps toward the viewer's side
   for (const draw of strips) draw();
   // loose jute fibres frayed out of the bunch
   ctx.lineCap = 'round';
-  for (let k = 0; k < 5; k++) {
-    const ang = -Math.PI / 2 + (rng() - 0.5) * 1.6, len = S * (0.3 + rng() * 0.4);
+  for (let k = 0; k < 2; k++) {
+    const ang = -Math.PI / 2 + (rng() - 0.5) * 1.6, len = S * (0.18 + rng() * 0.22);
     ctx.strokeStyle = `rgba(${(br * 0.82) | 0},${(bg * 0.8) | 0},${(bb * 0.74) | 0},0.85)`;
     ctx.lineWidth = 1.4 + rng() * 1.2;
     ctx.beginPath(); ctx.moveTo(knotX, knotY);
@@ -312,50 +291,76 @@ function finishGarnishTiles(d: Uint8ClampedArray, size: number, S: number, tiles
  * Garage hero's suit painted it inside one 0.9 s build slice on the boot-259 phone census); a synchronous build drains
  * it. Two builds that start the same species together each paint it; the one that finishes second takes the first's
  * from the cache and disposes its own.
+ * (263) A bough tile is the species' own cut bough (garnishBoughs.ts) where it has a garnish habit, else the trees'
+ * spray tile as before. `flaps`: a multispectral cover's garnish (the Strv 121's Barracuda-style cover with spruce): its
+ * strip tiles are the cover's cut flaps (paintFlapTile) instead of hessian, its boughs the species'.
  */
-export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind): Generator<void, THREE.Texture | null, void> {
-  // the netting lane's fix round: a field net's garnish mixes two species, its second bough tile the second's first spray
-  const key = second && second !== species ? `${species}+${second}` : species;
+export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind,
+  flaps?: 'garnish-woodland' | 'garnish-arid', sprigs = false): Generator<void, THREE.Texture | null, void> {
+  // the netting lane's fix round: a field net's garnish mixes two species, its second bough tile the second's bough
+  const key = `${second && second !== species ? `${species}+${second}` : species}${flaps ? `|${flaps}${sprigs ? '+sprigs' : ''}` : ''}`;
   if (garnishAtlasCache.has(key)) return garnishAtlasCache.get(key)!;
   let texture: THREE.Texture | null = null;
   if (typeof document !== 'undefined') {
     try {
-      const sprays = yield* makeSprayAtlasSteps(species, seeded(kindSeed(species)), ATLAS_SIZE, null, 0);
-      const source = sprays.image as unknown as MipImage;
-      const other = second && second !== species ? yield* makeSprayAtlasSteps(second, seeded(kindSeed(second)), ATLAS_SIZE, null, 0) : null;
-      const otherSource = other ? other.image as unknown as MipImage : null;
       const size = ATLAS_SIZE, T = FOLIAGE_ATLAS_TILES, S = size / T;
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx || !source?.data || source.width !== size) throw new Error('vehicleFoliage: Canvas2D unavailable');
+      if (!ctx) throw new Error('vehicleFoliage: Canvas2D unavailable');
       ctx.clearRect(0, 0, size, size);
-      const rng = seeded(kindSeed(`ghillie-strips:${species}`));
-      for (const tile of GARNISH_STRIP_TILES) {
+      const inTile = (tile: number, paint: () => void): void => {
         const tx = tile % T, ty = Math.floor(tile / T);
         ctx.save();
         ctx.beginPath(); ctx.rect(tx * S, ty * S, S, S); ctx.clip();
         ctx.translate(tx * S, ty * S);
-        paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
+        paint();
         ctx.restore();
+      };
+      const rng = seeded(kindSeed(`ghillie-strips:${species}`));
+      for (const tile of GARNISH_STRIP_TILES) {
+        // a cover whose crew tucked the species in (`sprigs`): its tufts are short sprigs of it, laid flat on the cover
+        // (the cover's tufts are short flat cards: ghillieSuit.ts addTufts, wave 253; its own fabric carries the flaps)
+        inTile(tile, () => {
+          if (sprigs && flaps && paintGarnishBough(ctx as CanvasRenderingContext2D, S,
+            seeded(kindSeed(`ghillie-sprig:${species}:${tile}`)), species, COVER_SPRIG_SCALE)) return;
+          if (flaps) paintFlapTile(ctx as CanvasRenderingContext2D, S, rng, FLAP_PALETTES[flaps]);
+          else paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
+        });
         yield;
       }
-      // the spray tiles keep their straight-alpha bytes (a canvas round trip would premultiply their flood away); the
-      // strip tiles come from the canvas
+      // the boughs: the first tile the species', the second the second species' (or another of the first's)
+      const boughOf = [species, second ?? species] as const;
+      const painted: number[] = [...GARNISH_STRIP_TILES];
+      const sprayed: Array<{ tile: number; from: SprayKind; fromTile: number }> = [];
+      for (const [k, tile] of GARNISH_BOUGH_TILES.entries()) {
+        const kind = boughOf[k];
+        let done = false;
+        inTile(tile, () => { done = paintGarnishBough(ctx as CanvasRenderingContext2D, S, seeded(kindSeed(`ghillie-bough:${kind}:${k}`)), kind); });
+        if (done) painted.push(tile);
+        // a species without a garnish habit: the trees' spray (the second species' first tile, or the first's own)
+        else sprayed.push({ tile, from: kind, fromTile: kind === species ? tile : GARNISH_BOUGH_TILES[0] });
+        yield;
+      }
       const image = ctx.getImageData(0, 0, size, size);
-      const out = image.data, src = source.data;
-      for (const tile of GARNISH_BOUGH_TILES) {
-        const tx = tile % T, ty = Math.floor(tile / T);
-        // the second bough tile from the second species' first spray (its tile 0), when there is one
-        const from = tile === GARNISH_BOUGH_TILES[1] && otherSource?.data && otherSource.width === size ? otherSource.data : src;
-        const fx = from === src ? tx : GARNISH_BOUGH_TILES[0] % T, fy = from === src ? ty : Math.floor(GARNISH_BOUGH_TILES[0] / T);
+      const out = image.data;
+      const sprays = new Map<SprayKind, THREE.Texture>();
+      for (const { tile, from, fromTile } of sprayed) {
+        let atlas = sprays.get(from);
+        if (!atlas) sprays.set(from, atlas = yield* makeSprayAtlasSteps(from, seeded(kindSeed(from)), ATLAS_SIZE, null, 0));
+        const source = atlas.image as unknown as MipImage;
+        if (!source?.data || source.width !== size) throw new Error('vehicleFoliage: Canvas2D unavailable');
+        // the spray tiles keep their straight-alpha bytes (a canvas round trip would premultiply their flood away)
+        const tx = tile % T, ty = Math.floor(tile / T), fx = fromTile % T, fy = Math.floor(fromTile / T);
         for (let y = 0; y < S; y++) {
           const at = ((ty * S + y) * size + tx * S) * 4, at2 = ((fy * S + y) * size + fx * S) * 4;
-          out.set(from.subarray(at2, at2 + S * 4), at);
+          out.set(source.data.subarray(at2, at2 + S * 4), at);
         }
       }
       yield;
-      finishGarnishTiles(out, size, S, GARNISH_STRIP_TILES);
+      finishGarnishTiles(out, size, S, painted);
+      // (263) every texel under the cut takes the colour of the leaf or strip beside it: no dark rim at the cut or in the mips
+      floodClearTexels(out, size, { floor: Math.round(FOLIAGE_ALPHA_TEST * 255), solid: 160, wrap: false, fillRest: false });
       yield;
       texture = new THREE.Texture(image as unknown as HTMLImageElement);
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -363,8 +368,7 @@ export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind
       texture.needsUpdate = true;
       texture.name = `vehicleFoliage:ghillie-garnish:${key}`;
       yield* attachCoverageMipsSteps(texture);
-      sprays.dispose();
-      other?.dispose();
+      for (const atlas of sprays.values()) atlas.dispose();
     } catch {
       texture = null;
     }
@@ -527,6 +531,27 @@ export class FoliageCardBuffer {
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
     return geometry;
   }
+}
+
+/**
+ * (263; the GPU-still critic: "black specks and dark fringes at grazing angles") A garnish card is lit as part of a
+ * volume (FoliageCardBuffer's normals blend its face, its carrier's outward normal and the sky), from either face. three
+ * flips a double-sided material's normal on a back face, which turned that volume normal into the hull: wherever a card
+ * showed its back (a folded card's far half, a bent tip, a drape's card seen edge-on) it went near black. Chained after
+ * the material's registration (its cascade and readability hooks), under its own program key.
+ */
+export function volumeLitFoliage<T extends THREE.Material>(material: T): T {
+  const compile = material.onBeforeCompile, key = material.customProgramCacheKey();
+  material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+    compile.call(this, shader, renderer);
+    const chunk = THREE.ShaderChunk.normal_fragment_begin;
+    if (chunk.includes('normal *= faceDirection;')) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>',
+        chunk.replace('normal *= faceDirection;', '// a foliage card: both faces lit as the volume'));
+    }
+  };
+  material.customProgramCacheKey = () => `${key}|foliage-volume`;
+  return material;
 }
 
 /** Configure a per-visual foliage material clone (map, cut, both faces, tint-driven colour) before registration. */

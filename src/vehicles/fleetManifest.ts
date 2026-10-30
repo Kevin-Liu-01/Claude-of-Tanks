@@ -17,7 +17,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   griffinViper: Object.freeze(['griffin_viper']),
   tos1aTagil: Object.freeze(['tos1a_tagil']),
   aresApcX: Object.freeze(['ares_apc']),
-  leopardA6X: Object.freeze(['leo2a6']),
+  // 264: the Leopard 2A6 UA is the source-measured 2A6 with its field kit (profiles/leopardA6Ua.ts)
+  leopardA6X: Object.freeze(['leo2a6', 'leo2a6_ua']),
   k1a1X: Object.freeze(['k1a1']),
   amx30X: Object.freeze(['amx30b']),
   t62mv1X: Object.freeze(['t62mv1']),
@@ -84,7 +85,6 @@ export const FLEET_GROUP_IDS = Object.freeze({
   leopard: Object.freeze([
     'leo2a2', 'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',
     'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo2a4m_can', 'leo2a4_otco',
-    'leo2a6_ua',
   ]),
   italy: Object.freeze(['c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto', 'carro45t']),
   sweden: Object.freeze([

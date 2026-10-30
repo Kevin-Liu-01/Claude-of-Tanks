@@ -24,7 +24,7 @@ for (const [id, target] of Object.entries(OWNER_KIT_TARGETS)) {
       assert.equal(groups.length, 1, `${id}/${quality}: exactly one ${part.group}`);
       const [group] = groups;
       assert.equal(group.parent?.name, part.parent, `${id}/${quality}: ${part.group} hangs directly under ${part.parent}`);
-      assert.equal(group.parent.parent, tank.root, `${id}/${quality}: ${part.parent} is a direct articulation rig`);
+      assert.ok(group.parent.parent === tank.root, `${id}/${quality}: ${part.parent} is a direct articulation rig`);
       for (const [key, value] of Object.entries(part.metadata)) {
         assert.equal(group.userData[key], value, `${id}/${quality}: ${part.group} userData.${key}`);
       }

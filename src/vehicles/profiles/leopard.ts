@@ -1,7 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
-import { addModernFieldCage } from './modernFieldCage.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -44,7 +43,6 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from
 import { remapCamoUv, type CamoUvRemap } from '../factoryGeometry.ts';
 import { chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
 import { recessClosedTurret, recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
 import { addLeo2PrototypeMantlet, convexCrownedStock, leopardThermalSkin } from './leopardStructuralRepairs.ts';
@@ -292,19 +290,6 @@ interface LeopardCheekEraSeat extends LeopardGlacisEraSeat {
   readonly side: Side;
   readonly courseFraction: number;
   readonly scaleY: number;
-}
-
-interface LeopardUaFrontEraSeat extends LeopardGlacisEraSeat {
-  readonly side: Side;
-}
-
-interface RemoteStationOptions {
-  readonly x: number;
-  readonly z: number;
-  readonly roofMinY: number;
-  readonly roofMaxY: number;
-  readonly heavy: boolean;
-  readonly seed: number;
 }
 
 interface WrapArmorCheekOptions {
@@ -13688,16 +13673,8 @@ function* buildLeo2A6MSteps(P: TankBuilderPort, { fieldEra = true } = {}): TankP
     // hardware line, inside the print's own 2.55-2.66 bustle band).
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.30, 0.645, -2.62);
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
-    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Ukrainian 2A6's MAG on this bustle mount is its
-    // remote station; on the 2A6M the MG3 laid here was a spare gun beside its remote station, and it is gone.
-    if (P.spec.id === 'leo2a6_ua') {
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', remoteControlled: true, ridingCradle: true, tone: 'two-tone', scale: 0.66, elev: 0,
-        shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
-      });
-      mg.position.set(-0.58, 0.67, -2.62);
-      P.turretG.add(mg);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): on the 2A6M the MG3 laid here was a spare gun beside
+    // its remote station, and it is gone (264: the Leopard 2A6 UA that carried a MAG here is now profiles/leopardA6Ua.ts).
     // §5.299 finish: turret-face detail density + wedge-band softening,
     // all WHERE LEGAL — half-buried hardware on faces the masks already own
     // (no silhouette extreme moves; the +6% print-tall lower body stays the
@@ -13777,343 +13754,6 @@ function buildLeo2A6M(...args: Parameters<typeof buildLeo2A6MSteps>): void {
   drainTankBuild(buildLeo2A6MSteps(...args));
 }
 withBuildSteps(buildLeo2A6M, buildLeo2A6MSteps);
-
-// Leopard 2A6 UA — a field-protection package on the certified 2A6M rig.
-// Added ERA is gameplay-backed through six independently strippable sectors;
-// cages and twin remote weapon stations remain merged visual equipment, so
-// the dramatic silhouette does not create extra simulation or frame work.
-function leopardUaCageSurface(
-  side: Side,
-  absX: number,
-  courseFraction: number,
-  offset = 0.095,
-): SurfaceFrame {
-  const surface = leo2A6MCheekSurface(side, absX, courseFraction);
-  return {
-    point: surface.point.clone().addScaledVector(surface.normal, offset),
-    normal: surface.normal,
-  };
-}
-
-function addLeopardUaCageSegment(
-  P: TankBuilderPort,
-  a: SurfaceFrame,
-  b: SurfaceFrame,
-  axis: 'x' | 'y' | 'z',
-): void {
-  const center = a.point.clone().add(b.point).multiplyScalar(0.5);
-  const delta = b.point.clone().sub(a.point);
-  const length = delta.length();
-  const normal = a.normal.clone().add(b.normal).normalize();
-  let xAxis: THREE.Vector3;
-  let yAxis: THREE.Vector3;
-  let zAxis: THREE.Vector3;
-  if (axis === 'x') {
-    xAxis = delta.normalize();
-    zAxis = normal.addScaledVector(xAxis, -normal.dot(xAxis)).normalize();
-    yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-    zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
-  } else if (axis === 'y') {
-    yAxis = delta.normalize();
-    zAxis = normal.addScaledVector(yAxis, -normal.dot(yAxis)).normalize();
-    xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
-    zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
-  } else {
-    zAxis = delta.normalize();
-    yAxis = new THREE.Vector3(0, 1, 0).addScaledVector(zAxis, -zAxis.y).normalize();
-    xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
-    yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-  }
-  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-  const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
-  const geometry = axis === 'x' ? KIT.box(length, 0.026, 0.026)
-    : axis === 'y' ? KIT.box(0.028, length, 0.028)
-      : KIT.box(0.026, 0.026, length);
-  P.add(axis === 'z' ? 'turretDark' : 'turretDetail', geometry,
-    center.x, center.y, center.z, rotation.x, rotation.y, rotation.z);
-}
-
-function addLeopardUaRemoteStation(P: TankBuilderPort, options: RemoteStationOptions) {
-  const { box, cylY, cylZ, torus } = KIT;
-  const { x, z, roofMinY, roofMaxY, heavy, seed } = options;
-  const receiverW = heavy ? 0.48 : 0.40;
-  const barrelR = heavy ? 0.040 : 0.032;
-  const barrelLen = heavy ? 1.22 : 1.05;
-  const seatPenetrationM = 0.012;
-  const capRevealM = 0.030;
-  const baseBottomY = roofMinY - seatPenetrationM;
-  const baseTopY = roofMaxY + capRevealM;
-  const baseHeight = baseTopY - baseBottomY;
-  const baseCenterY = baseBottomY + baseHeight * 0.5;
-  const yShiftM = baseTopY - 0.99;
-  const seatedY = (y: number): number => y + yShiftM;
-  P.addEquipment('turret', cylY(0.22, 0.24, baseHeight, P.q ? 20 : 12),
-    x, baseCenterY, z);
-  P.addEquipment('turret', box(0.16, 0.26, 0.16), x, seatedY(1.10), z);
-  P.addEquipment('turret', box(receiverW, 0.26, 0.54), x, seatedY(1.32), z + 0.10);
-  P.addEquipment('turret', box(receiverW + 0.08, 0.05, 0.62),
-    x, seatedY(1.475), z + 0.10);
-  P.addEquipment('turretDark', cylZ(barrelR, barrelLen, P.q ? 16 : 10),
-    x, seatedY(1.34), z + 0.38 + barrelLen / 2);
-  P.addEquipment('turretDark', torus(barrelR * 1.45, barrelR * 0.32, 14, 6),
-    x, seatedY(1.34), z + 0.38 + barrelLen);
-  P.addEquipment('turretDark', box(0.18, 0.22, 0.30),
-    x - (heavy ? 0.31 : -0.28), seatedY(1.29), z + 0.06);
-  P.addEquipment('turret', box(0.20, 0.28, 0.22),
-    x + (heavy ? 0.31 : -0.29), seatedY(1.30), z - 0.02);
-  P.addEquipment('turretGlass', box(0.10, 0.10, 0.018),
-    x + (heavy ? 0.31 : -0.29), seatedY(1.34), z + 0.10);
-  for (const side of [-1, 1]) {
-    P.addEquipment('turretDark', box(0.035, 0.28, 0.40),
-      x + side * (receiverW / 2 + 0.025), seatedY(1.28), z + 0.08,
-      0, 0, side * 0.08);
-  }
-  return Object.freeze({
-    x, z, heavy, seed, barrelLen, roofMinY, roofMaxY,
-    baseBottomY, baseTopY, seatPenetrationM, capRevealM, yShiftM,
-  });
-}
-
-function addLeopardUaEraProtection(
-  P: TankBuilderPort,
-  turretPivotY: number,
-  turretPivotZ: number,
-  frontEraSeats: LeopardUaFrontEraSeat[],
-): void {
-  const { box } = KIT;
-  for (const side of [-1, 1] as const) {
-    const sector = `ua_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(sector, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 6; station++) {
-          const absX = 0.36 + station * (1.02 / 5);
-          const courseFraction = (row + 0.5) / 3;
-          const surface = leo2A6MCheekSurface(side, absX, courseFraction);
-          const scale = { x: 0.72, y: 1.02, z: 1.14 };
-          const halfDepth = 0.07 * scale.z * 0.5;
-          const overlap = 0.012;
-          const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
-          place(
-            center.x,
-            turretPivotY + center.y,
-            turretPivotZ + center.z,
-            surface.rotation.x, surface.rotation.y, surface.rotation.z,
-            scale.x, scale.y, scale.z,
-          );
-          frontEraSeats.push(Object.freeze({
-            side, row, station,
-            surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
-            centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
-            normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
-            innerFaceOverlapM: overlap,
-          }));
-        }
-      }
-    }, true);
-
-    // (release 240: the backing plate's foot 3 cm higher, over the engine deck's fan rings as the turret turns over them)
-    P.add('turret', box(0.10, 0.67, 4.18), side * 1.53, 0.415, -0.79);
-    const sideSector = `ua_turret_side_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(sideSector, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 8; station++) {
-          place(
-            side * 1.59,
-            turretPivotY + 0.17 + row * 0.205,
-            turretPivotZ - 2.62 + station * 0.54,
-            0, Math.PI / 2, 0,
-            1.55, 1.30, 1.42,
-          );
-        }
-      }
-    }, true);
-
-    const guardBucket = side > 0 ? 'hullTrackGuardR' : 'hullTrackGuardL';
-    P.add(guardBucket, box(0.20, 0.79, 6.42), side * 1.99, 1.10, 0.04);
-    P.add('hullDetail', box(0.30, 0.035, 6.34), side * 1.80, 1.48, 0.03);
-    P.add('hullDark', box(0.25, 0.72, 6.58), side * 2.105, 1.11, -0.03);
-    const skirtSector = `ua_skirt_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(skirtSector, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 10; station++) {
-          place(
-            side * 2.055,
-            0.84 + row * 0.215,
-            -2.98 + station * 0.67,
-            0, Math.PI / 2, 0,
-            1.78, 1.38, 1.48,
-          );
-        }
-      }
-    });
-  }
-}
-
-function addLeopardUaHullCage(P: TankBuilderPort): void {
-  const { box, cylX } = KIT;
-  for (const side of [-1, 1] as const) {
-    for (let row = 0; row < 6; row++) {
-      P.add('hullDetail', box(0.026, 0.026, 6.45), side * 2.22, 0.76 + row * 0.16, 0.03);
-    }
-    for (let station = 0; station < 11; station++) {
-      const z = -3.18 + station * 0.64;
-      P.add('hullDetail', box(0.028, 0.84, 0.028), side * 2.22, 1.16, z);
-      P.add('hullDark', cylX(0.018, 0.23, 8), side * 2.105, 0.84, z);
-      P.add('hullDark', cylX(0.018, 0.23, 8), side * 2.105, 1.43, z);
-    }
-  }
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rear frame stands four rails high (top
-  // 1.83, was 2.06), under the turret's flank cages, whose aft ends sweep 3.8 m off the ring's axis at 1.865 and ran
-  // through its upper rails with the turret turned a few degrees.
-  for (let row = 0; row < 4; row++) {
-    P.add('hullDetail', box(4.42, 0.026, 0.026), 0, 1.46 + row * 0.12, -3.30);
-  }
-  for (let station = 0; station < 9; station++) {
-    P.add('hullDetail', box(0.028, 0.38, 0.028), -2.18 + station * 0.545, 1.64, -3.30);
-  }
-  for (const side of [-1, 1] as const) {
-    P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
-  }
-  // 2026-10-19 (owner float sweep): the bow step stood 68 mm over the nose; dropped onto it.
-  P.snapGroup('leo2a6ua-bow-step', () => P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61), { reachM: 0.10, mode: 'down' });
-}
-
-function addLeopardUaTurretCage(P: TankBuilderPort): void {
-  const { box, cylX } = KIT;
-  for (const side of [-1, 1] as const) {
-    for (let row = 0; row < 6; row++) {
-      P.add('turretDetail', box(0.026, 0.026, 4.28), side * 1.84, 0.08 + row * 0.15, -0.72);
-    }
-    for (let station = 0; station < 8; station++) {
-      const z = -2.82 + station * 0.57;
-      P.add('turretDetail', box(0.028, 0.78, 0.028), side * 1.84, 0.455, z);
-      P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.16, z);
-      P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.71, z);
-    }
-    const contourX = [0.34, 0.55, 0.76, 0.97, 1.18, 1.39];
-    for (const courseFraction of [0.04, 0.27, 0.50, 0.73, 0.96]) {
-      for (let station = 0; station < contourX.length - 1; station++) {
-        addLeopardUaCageSegment(
-          P,
-          leopardUaCageSurface(side, contourX[station], courseFraction),
-          leopardUaCageSurface(side, contourX[station + 1], courseFraction),
-          'x',
-        );
-      }
-    }
-    for (const absX of [0.38, 0.70, 1.02, 1.34]) {
-      addLeopardUaCageSegment(
-        P,
-        leopardUaCageSurface(side, absX, 0.04),
-        leopardUaCageSurface(side, absX, 0.96),
-        'y',
-      );
-    }
-    for (const absX of [0.44, 0.86, 1.28]) {
-      for (const courseFraction of [0.12, 0.88]) {
-        const armor = leopardUaCageSurface(side, absX, courseFraction, 0.012);
-        const rail = leopardUaCageSurface(side, absX, courseFraction);
-        addLeopardUaCageSegment(P, armor, rail, 'z');
-      }
-    }
-  }
-  // (release 240: the bottom rail 4.5 cm higher, over the hull's tail plate as the turret turns over it; the top rail stays)
-  for (let row = 0; row < 6; row++) {
-    P.add('turretDetail', box(3.66, 0.026, 0.026), 0, 0.125 + row * 0.141, -3.58);
-  }
-  for (let station = 0; station < 9; station++) {
-    P.add('turretDetail', box(0.028, 0.735, 0.028), -1.80 + station * 0.45, 0.4775, -3.58);
-  }
-}
-
-function addLeopardUaRoofBasket(P: TankBuilderPort): void {
-  const { box } = KIT;
-  for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.032, 0.032, 3.70), side * 1.55, 0.91, -1.05);
-    P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, -2.75);
-    P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, 0.62);
-  }
-}
-
-function buildLeopard2A6UA(P: TankBuilderPort) {
-  const turretPivot = P.spec.armor.turretPivot;
-  buildLeo2A6M(P, { fieldEra: false });
-  P.clearDecals('turret');
-  const frontEraSeats: LeopardUaFrontEraSeat[] = [];
-
-  const eraReceipt = {
-    cheekTilesPerSide: 18,
-    turretSideTilesPerSide: 24,
-    skirtTilesPerSide: 30,
-    totalTiles: 144,
-    sectors: [
-      'ua_turret_cheek_era_R', 'ua_turret_cheek_era_L',
-      'ua_turret_side_era_R', 'ua_turret_side_era_L',
-      'ua_skirt_era_R', 'ua_skirt_era_L',
-    ],
-  };
-
-  // Conformal Nizh-style cheek courses. Each center is sampled from the
-  // ruled 2A6M cheek rather than sharing one flat diagonal. The brick's back
-  // face overlaps the armor by 12 mm, so all three rows remain visibly seated
-  // while the center gun channel stays clear through elevation and recoil.
-  addLeopardUaEraProtection(P, turretPivot[1], turretPivot[2], frontEraSeats);
-
-  // Stand-off cage around the skirt package. Long rails merge into one
-  // detail bucket and every upright has a short physical tie back to the ERA
-  // carrier, so the assembly reads attached from front, side and rear views.
-  addLeopardUaHullCage(P);
-
-  // A second, wider turret cage wraps the full flank and cheek armor. The
-  // forward rail segments follow the arrowhead rather than bridging the gun.
-  addLeopardUaTurretCage(P);
-
-  // Roof basket rails give the net a believable stand-off support without
-  // closing the hatch, sight or weapon-station service lanes.
-  addLeopardUaRoofBasket(P);
-  addMissionAttachmentReceiver(P, 'leo2a6_ua');
-  addModernFieldCage(P);
-
-  const remoteStations = [
-    // Each min/max pair brackets the authored armor under the full pedestal,
-    // not just its center. The adapter reaches 12 mm into the low edge and
-    // clears the high edge by 30 mm, closing the stepped-roof daylight gap.
-    addLeopardUaRemoteStation(P, {
-      x: -0.70, z: -2.00, roofMinY: 0.640, roofMaxY: 0.778,
-      heavy: true, seed: 2601,
-    }),
-    addLeopardUaRemoteStation(P, {
-      x: 0.70, z: -0.70, roofMinY: 0.780, roofMaxY: 0.855,
-      heavy: false, seed: 2602,
-    }),
-  ];
-
-  // Leave the Ukrainian tactical number on a backed skirt cassette. The
-  // shared nation marking pass adds the trident on its separately audited
-  // seat; neither marking is borrowed from the German donor.
-  P.decal('hull', 'number', null, 0.19, [2.225, 1.28, -1.30], Math.PI / 2);
-
-  if (P.geometryReceipt) {
-    P.turretG.userData.leopard2A6UAProtectionReceipt = Object.freeze({
-      ...eraReceipt,
-      frontEraSeats: Object.freeze(frontEraSeats),
-      frontEraInnerFaceOverlapM: 0.012,
-      hullCageUprightsPerSide: 11,
-      turretCageUprightsPerSide: 8,
-      frontCageContourStations: 6,
-      frontCageRows: 5,
-      frontCageUprightsPerSide: 4,
-      frontCageTiePointsPerSide: 6,
-      frontCageSurfaceOffsetM: 0.095,
-      remoteStations,
-      remoteStationCount: remoteStations.length,
-      equipmentIsNonArmor: true,
-      staticMergedProtection: true,
-    });
-  }
-
-  addVehicleGhillieSuit(P);
-}
 
 // ============================================================================
 // §5.299 ITEM 1 — pre-wave WRAPPER-ERA A4M turret package helpers, copied
@@ -14896,5 +14536,4 @@ export const LEOPARD_PROFILES = {
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).
   leo2a4m_can: { build: buildLeo2A4M },
   leo2a4_otco: { build: buildLeo2A6M },
-  leo2a6_ua: { build: buildLeopard2A6UA },
 } satisfies VehicleProfileRecord;

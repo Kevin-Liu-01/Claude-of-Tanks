@@ -90,6 +90,25 @@ export function dynamicScaleHold(
   return Math.min(1, Math.max(floor, hold));
 }
 
+/**
+ * The dynamic scale the governor's own tier change hands the next preset (local-fps-265, 2026-10-29): the raster it stood
+ * at, carried across the switch inside the next preset's floor and base. A tier cut is relief, so it never raises the
+ * raster: on a native-density display High's governor sits at its 0.67 floor, and the cut to Medium put the raster back at
+ * Medium's full 1.0 (2.2x the pixels), loaded the GPU it was meant to relieve and failed its trial. A failed trial's
+ * restore comes back at the raster it left instead of starting at the full raster and stepping down again (each step
+ * reallocates the composer chain).
+ */
+export function carriedDynamicScale(
+  rendererPixelRatio: number,
+  preset: RenderScalePreset | null | undefined,
+  previousInternalRatio: number,
+): number {
+  const base = baseDynamicScale(rendererPixelRatio, preset);
+  if (!Number.isFinite(previousInternalRatio) || previousInternalRatio <= 0) return base;
+  const carried = previousInternalRatio / cappedPixelRatio(rendererPixelRatio, preset);
+  return Math.min(base, Math.max(dynamicScaleFloor(rendererPixelRatio, preset), carried));
+}
+
 export function internalPixelRatio(
   rendererPixelRatio: number,
   preset: RenderScalePreset | null | undefined,

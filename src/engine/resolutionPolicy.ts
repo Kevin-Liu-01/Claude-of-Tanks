@@ -12,6 +12,15 @@ const MOBILE_OUTPUT_DPR_CAP = 3;
 export const MOBILE_OUTPUT_PIXEL_BUDGET = 4_000_000;
 // Bound very large Retina windows to 4K output instead of 16–33 MP buffers.
 export const DESKTOP_OUTPUT_PIXEL_BUDGET = 8_294_400;
+/**
+ * (local-fps-265, 2026-10-29) The widest aspect the desktop budget serves whole. The 3D canvas of a wider window
+ * (wideAspectBudget) gets the budget of the 16:9 window of the same height: a 32:9 window has twice a 16:9 window's
+ * pixels at the same height and density, and every pass of the scene and its post chain scales with them. The owner's
+ * 32:9 G95NC at "looks like 3840x1080" (DPR 2) backed its canvas at 5430x1527 (the 4K budget) and High's raster with it;
+ * it now backs at 3840x1080 (4.1 MP, a native-density 32:9's), the browser scaling it to the panel. A 16:9 or 16:10
+ * window, a 21:9 one up to the budget, and the HUD's canvases (uiPixelRatio) keep their density.
+ */
+export const WIDE_ASPECT_REFERENCE = 16 / 9;
 
 type NumericInput = number | null | undefined;
 
@@ -21,6 +30,8 @@ interface OutputResolutionOptions {
   devicePixelRatio?: NumericInput;
   mobile?: boolean;
   mobilePixelBudget?: NumericInput;
+  /** The 3D canvas: a desktop window wider than WIDE_ASPECT_REFERENCE gets that aspect's share of the budget. */
+  wideAspectBudget?: boolean;
 }
 
 export interface OutputResolution {
@@ -47,13 +58,23 @@ export function outputPixelRatio({
   devicePixelRatio = 1,
   mobile = false,
   mobilePixelBudget = MOBILE_OUTPUT_PIXEL_BUDGET,
+  wideAspectBudget = false,
 }: OutputResolutionOptions = {}): number {
   const dpr = finitePositive(devicePixelRatio, 1);
   const cap = mobile ? MOBILE_OUTPUT_DPR_CAP : DESKTOP_OUTPUT_DPR_CAP;
   const desired = Math.min(dpr, cap);
-  const area = Math.max(1, finitePositive(width, 1) * finitePositive(height, 1));
-  const budgetRatio = Math.sqrt((mobile ? finitePositive(mobilePixelBudget, MOBILE_OUTPUT_PIXEL_BUDGET) : DESKTOP_OUTPUT_PIXEL_BUDGET) / area);
+  const w = finitePositive(width, 1), h = finitePositive(height, 1);
+  const area = Math.max(1, w * h);
+  const budget = mobile ? finitePositive(mobilePixelBudget, MOBILE_OUTPUT_PIXEL_BUDGET) : desktopOutputBudget(w, h, wideAspectBudget);
+  const budgetRatio = Math.sqrt(budget / area);
   return Math.min(desired, mobile ? Math.max(1, budgetRatio) : budgetRatio);
+}
+
+/** The desktop output budget of a `width` x `height` window: whole up to WIDE_ASPECT_REFERENCE, its share past it. */
+export function desktopOutputBudget(width: number, height: number, wideAspectBudget = false): number {
+  const aspect = width / height;
+  if (!wideAspectBudget || !(aspect > WIDE_ASPECT_REFERENCE)) return DESKTOP_OUTPUT_PIXEL_BUDGET;
+  return DESKTOP_OUTPUT_PIXEL_BUDGET * (WIDE_ASPECT_REFERENCE / aspect);
 }
 
 /** Full diagnostic record used by renderer.userData and browser QA. */

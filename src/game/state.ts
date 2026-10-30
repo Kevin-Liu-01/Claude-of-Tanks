@@ -379,6 +379,9 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _ramPairT?: Map<string, number>;
   /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
   _botNavigation?: Readonly<BotNavigationGrid> | null;
+  /** The battle's obstacle query for its step (simObstacleQuery) and the world it was made for (stepObstacleQuery). */
+  _obstacleQuery?: SoloWorld['queryObstacles'] | null;
+  _obstacleWorld?: SoloWorld | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
@@ -1374,11 +1377,13 @@ export function setupBattle(
   // world (raycast for hard cover, vegetation discs for bush concealment).
   game.spotting = createBattleSpotting(game, world);
 
+  const obstacleQuery = game._obstacleQuery = simObstacleQuery(world);
+  game._obstacleWorld = world;
   const aiDeps = {
     heightField: ground.field,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
-    queryObstacles: world.queryObstacles || null,
+    queryObstacles: obstacleQuery || null,
     // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
     // through real bushes (state.ts nudges their waypoints; ai.ts may sample
     // them for repositioning). Absent in headless fixtures.
@@ -1387,14 +1392,14 @@ export function setupBattle(
   // One immutable terrain/ground/cover scan is shared by every local bot.
   // Opening doctrine still authors the tactical points below; A* only expands
   // each leg into a path this specific drivetrain can actually traverse.
-  const botObstacleQuery = world.queryObstacles
+  const botObstacleQuery = obstacleQuery
     ? (
         minX: number,
         minZ: number,
         maxX: number,
         maxZ: number,
         out: SoloObstacle[],
-      ) => world.queryObstacles!(
+      ) => obstacleQuery(
         minX,
         minZ,
         maxX,
@@ -1404,7 +1409,7 @@ export function setupBattle(
     : null;
   const placement = createMatchPlacement({
     mapId: game.mapId,
-    heightField: world.heightField, obstacles: world.getObstacles(), queryObstacles: world.queryObstacles,
+    heightField: world.heightField, obstacles: world.getObstacles(), queryObstacles: obstacleQuery,
     anchors: matchPlacementAnchors({
       player: { x: sp.player.pos[0], z: sp.player.pos[2], yaw: sp.player.yaw },
       enemies: sp.enemies.map(point => ({ x: point.pos[0], z: point.pos[2], yaw: point.yaw })),
@@ -1772,8 +1777,9 @@ function resolveObstacleCollisions(
   // the hull's footprint at its attitude (world/collision.ts hullFootprint), as the authority pushes it
   const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
   const broadRadius = Math.sqrt(halfLength * halfLength + halfWidth * halfWidth) + 0.01;
-  const candidates = world.queryObstacles
-    ? world.queryObstacles(
+  const query = stepObstacleQuery(game, world);
+  const candidates = query
+    ? query(
       centerX - broadRadius,
       centerZ - broadRadius,
       centerX + broadRadius,
@@ -2767,6 +2773,8 @@ const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
 interface SoloWorldKernels {
   /** Mirror this world's ground onto its own kernels; false when the world cannot ride them. */
   mirrorGround(world: SoloWorld, overlay: TerrainDeformation): boolean;
+  /** The world's obstacle query on its kernels once its ground is mirrored (null: the TypeScript grid). */
+  obstacleQuery?(world: SoloWorld): SoloWorld['queryObstacles'] | null;
   /** The world's structure support field over `terrain` (its ground's field), on its kernels. */
   supportField(world: SoloWorld, terrain: SoloHeightField): StructureSupportField;
 }
@@ -2774,6 +2782,25 @@ let soloWorldKernels: SoloWorldKernels | null = null;
 /** Set (or clear) the solo world kernels: worlds whose support field is made from now on ride them. */
 export function setSoloWorldKernels(kernels: SoloWorldKernels | null): void {
   soloWorldKernels = kernels;
+}
+
+/**
+ * (local-fps-265) The obstacle query a battle's step reads: the world's grid on its kernels when they are loaded (the
+ * authority's own query: headlessCollisionWorld builds it on the same kernel grid), else the world's TypeScript grid.
+ * The kernel grid holds the world grid's records in the same slots and answers bit for bit (docs/RUST-KERNELS.md); its
+ * clearance scan takes the bots' solid sweeps (ai.ts solidAhead, avoidObstacles) off the TypeScript fallback. Mirroring
+ * the ground here, at the battle's setup, makes the grid before the bots are built; without the kernels the support
+ * field stays lazy, so kernels that arrive before the first step still carry it.
+ */
+/** The obstacle query a step reads on `world`: the battle's (setupBattle) when it was made for this world. */
+function stepObstacleQuery(game: SoloGameState, world: SoloWorld | null | undefined): SoloWorld['queryObstacles'] {
+  return world && game._obstacleWorld === world ? game._obstacleQuery ?? world.queryObstacles : world?.queryObstacles;
+}
+
+function simObstacleQuery(world: SoloWorld): SoloWorld['queryObstacles'] {
+  if (!soloWorldKernels?.obstacleQuery) return world.queryObstacles;
+  structureSupportFor(world);
+  return soloWorldKernels.obstacleQuery(world) ?? world.queryObstacles;
 }
 
 const wreckEnvironmentByWorld = new WeakMap<SoloWorld, RigidEnvironment>();
@@ -3318,6 +3345,10 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
+  // the battle's ground on the battle's clock, as the authority's (sim/authoritativeMatch.ts stepPlaying): a collapsed
+  // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the
+  // page's own battle stood up whole the instant its building came down, under the falling pieces (2026-10-29)
+  groundFor(world).overlay.setTime(game.timeS);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
   stages?.stage(FRAME_STAGE.spotting);
@@ -3371,13 +3402,14 @@ const _blastFelled: SoloObstacle[] = [];
 function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | null): void {
   const blasts = game._destructionBlasts;
   if (!blasts?.length) return;
-  if (!world?.queryObstacles || !world.crushObstacle) { blasts.length = 0; return; }
+  const query = stepObstacleQuery(game, world);
+  if (!query || !world?.crushObstacle) { blasts.length = 0; return; }
   const obstacles = world.getObstacles();
   let budget = PROP_FELL_PER_TICK;
   for (let b = 0; b < blasts.length && budget > 0; b += 4) {
     const x = blasts[b], y = blasts[b + 1], z = blasts[b + 2], radius = propFellRadiusM(blasts[b + 3]);
     if (!(radius > 0)) continue;
-    world.queryObstacles(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
+    query(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
     _blastFelled.length = 0;
     for (const obstacle of _blastCandidates) {
       // a pillbox takes a burst on its face as a hit (crushWorldPropFromShell), never a fall to a burst beside it

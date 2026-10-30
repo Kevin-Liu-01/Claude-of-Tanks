@@ -11,6 +11,7 @@
       const MAX_AUTO_RELOADS = 2;
       let navigating = false;
       let scheduled = false;
+      let waitingOnline = false;
 
       function retryCountFromUrl() {
         try {
@@ -40,7 +41,7 @@
         const button = document.createElement('button');
         button.id = 'gallery-runtime-retry';
         button.type = 'button';
-        button.textContent = 'A gallery file did not load — reload';
+        button.textContent = /^zh/i.test((document.documentElement && document.documentElement.lang) || '') ? '图库文件未能加载，重新加载' : 'A gallery file did not load — reload';
         button.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px var(--font-ui);cursor:pointer';
         button.onclick = () => navigate('manual');
         document.body.appendChild(button);
@@ -79,6 +80,16 @@
 
       function recover(reason) {
         if (navigating || scheduled) return;
+        // offline, a reload only trades the page for the browser's own error page: the quiet retry stands, and the
+        // reload runs once the network is back (the loading census 262)
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          showRetry();
+          if (!waitingOnline) {
+            waitingOnline = true;
+            addEventListener('online', () => { waitingOnline = false; recover(reason); }, { once: true });
+          }
+          return;
+        }
         if (retryCount() >= MAX_AUTO_RELOADS) {
           showRetry();
           return;
@@ -162,7 +173,7 @@
           <button type="button" role="radio" class="cot-c-seg__opt" data-value="grid" aria-checked="false" tabindex="-1" data-ui-sound="select" data-i18n-aria-label="gallery.layout.grid" data-i18n-title="gallery.layout.grid"><svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" data-icon="pixels" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-pixels"/></svg></button>
         </div>
       </div>
-      <div class="fam" id="vehicleList" role="listbox" data-i18n-aria-label="gallery.archive.listAria"></div>
+      <div class="fam" id="vehicleList" role="listbox" aria-busy="true" data-i18n-aria-label="gallery.archive.listAria"><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i><i class="fam__skel cot-c-skel" aria-hidden="true"></i></div>
     </aside>
 
     <section class="stage" id="viewport" aria-label="Interactive tank viewer" data-i18n-aria-label="gallery.viewer.aria">
@@ -178,7 +189,7 @@
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
-        <span class="loading-state__sil cot-c-sil" id="loadingSil" aria-hidden="true"></span>
+        <span class="loading-state__sil cot-c-sil" id="loadingSil" aria-hidden="true" data-skeleton></span>
         <i class="loading-state__bar" aria-hidden="true"></i>
         <span class="sr-only" data-i18n="gallery.view.loading">Assembling vehicle</span>
       </div>
@@ -200,9 +211,10 @@
     </section>
 
     <aside class="dossier" data-i18n-aria-label="gallery.dossier.aria">
+      <div class="dossier-skel" aria-hidden="true"><i class="dossier-skel__take cot-c-skel"></i><i class="dossier-skel__tabs cot-c-skel"></i><i class="cot-c-skel"></i><i class="cot-c-skel"></i><i class="cot-c-skel"></i><i class="cot-c-skel"></i></div>
       <div class="dossier-scroll">
         <header class="take" id="dossierTake">
-          <div class="take-media" id="takeMedia" role="group"><img class="take-still" id="takeStill" alt="" width="512" height="512" decoding="async"></div>
+          <div class="take-media" id="takeMedia" role="group"><span class="take-still-box"><img class="take-still" id="takeStill" alt="" width="512" height="512" decoding="async"></span></div>
           <div class="take-actions" id="takeActions"></div>
           <div class="nm"><img class="cot-c-flag" id="dossierFlag" alt="" width="34" height="26" data-datum="nation"><h1 id="dossierName" data-datum="tank-name"></h1></div>
         </header>
