@@ -2123357,7 +2123357,7 @@
           }
         ]
       },
-      "geometryHash": "19447066",
+      "geometryHash": "5d062838",
       "metadataHash": "853e8572",
       "presentationAnchor": {
         "xM": 0.0017,
@@ -2123420,15 +2123420,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32416,
-          "sha256": "02ea0257cc51e4dff026bd2cbf9f68b323cc58bde4890c372773dc34c8462c9f",
+          "bytes": 32398,
+          "sha256": "7ca749cf05d03156f706c4687901984b0a69e7e8340f41d8ab94e13272d6125e",
           "thumbnail": {
             "file": "thumbs/type10_dozer_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12682,
-            "sha256": "588c98bda1e29293f61648fcf8da024176bbd19fd8db89ac8e40dc9b720332e6"
+            "bytes": 12666,
+            "sha256": "57cfa54b7498f8e787e31222cbaacb10f2cad0b3ced2fabfaf1682557fa1e909"
           }
         },
         "top": {
@@ -2123436,8 +2123436,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18436,
-          "sha256": "6be3528cba8eba356fb445fd3d0f0c99fdc384864c848d134e45643b2fc3cccc"
+          "bytes": 18442,
+          "sha256": "eee0a3271ee7a29953e43fcb7fb1673df36162abd3729448a498e2f0512abb0c"
         },
         "side": {
           "file": "type10_dozer_side.webp",
