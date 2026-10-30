@@ -219,6 +219,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
+  "cv9035dk": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.2,
+        "pos": [
+          -1.689,
+          1.053,
+          -0.7050959
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "cv9035dk",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0169741
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.2,
+        "pos": [
+          -1.689,
+          1.053,
+          0.0185657
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "cv9035dk",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0160381
+      }
+    ]
+  },
   "leo2a5dk": {
     "schemaVersion": 1,
     "seats": [
