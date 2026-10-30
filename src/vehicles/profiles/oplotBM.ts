@@ -38,7 +38,7 @@
 // OPLOT_BM_AUTHORING.turret; the gun frame at OPLOT_BM_AUTHORING.gun inside it.
 
 import * as THREE from 'three';
-import { KIT, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { loftHull, tubeGun, ruSaddle, ruBoot } from './russia.ts';
 import { eraCassette, glacisEraCassette } from './modernizationFittings.ts';
@@ -85,7 +85,7 @@ const glacisY = (z: number): number => DECK_Y - (z - GLACIS_TOP_Z) * Math.tan(GL
 // the plate they are on. One layout for every field: `grid` cuts a [u0, u1] x [v0, v1] rectangle into cells with rails
 // `bar` wide between and around them; each surface maps (u, v, out) to its own frame. The level-1 frame is dark steel so
 // the grid reads through the camouflage (the 262 blind critic: the skirt grid was lost in the Orzeł's three-tone); the
-// Krata-2 frame is painted (frameBucket).
+// Krata-2 frame, and the Orzeł's in its sand coat, are painted (frameBucket).
 
 const KRATA_BAR = 0.05, KRATA_CASSETTE = 0.06;
 
@@ -106,16 +106,20 @@ interface PolishFit {
   slabArmour?: boolean;
   /** an add-on armour wedge on each cheek's front (the Orzeł) */
   turretWedges?: boolean;
+  /** level-1 frames in the paint, not dark steel (the Orzeł: round 10 read its dark frames on the sand coat as empty
+   * boxes, holes in the skirt and black blocks on the cheeks; the cassettes 3 cm down in them still draw the grid) */
+  paintedFrame?: boolean;
   /** no hinged rubber skirt behind the framed panels: the road wheels and return rollers in the open (the Sokół) */
   openRunningGear?: boolean;
 }
 // The Orzeł's own silhouette (the 262 blind critics: its framed skirt and turret wrap were the Żbik's, its side view the
-// Oplot-M's): Krata on the five forward skirt panels, slats over the engine bay behind them, the PT-17's long bustle and
-// an armour wedge on each cheek (round 3: the turret front was still the family's five-cell band). The Sokół's: slab
+// Oplot-M's): Krata on the two bow panels, slats over the seven behind them (round 10: the five framed panels of round 8
+// put three under the slats, "slat armour over reactive armour"), the PT-17's long bustle and an armour wedge on each
+// cheek (round 3: the turret front was still the family's five-cell band). The Sokół's: slab
 // armour (all three had worn one framed glacis field, and its few framed patches read as token windows) and its running
 // gear in the open behind them (round 4: without its mast it was the Oplot-M's side).
 const POLISH_FIT: Readonly<Partial<Record<OplotBMVariant, PolishFit>>> = Object.freeze({
-  pl: Object.freeze({ level: 1, skirtFrom: 4, flankGrid: true, rearSlats: true, turretWedges: true }),
+  pl: Object.freeze({ level: 1, skirtFrom: 7, flankGrid: true, rearSlats: true, turretWedges: true, paintedFrame: true }),
   pls: Object.freeze({ level: 1, skirtFrom: 6, flankGrid: false, slabArmour: true, openRunningGear: true }),
   plz: Object.freeze({ level: 2, skirtFrom: 0, flankGrid: true }),
 });
@@ -124,7 +128,8 @@ const krataFrame = (fit: PolishFit): number => (fit.level === 2 ? 0.10 : 0.09);
 /** The frame's bucket: dark steel for level 1, whose cassettes sit down in their frames (the grid has to read through the
  * camouflage); the paint for Krata-2, whose pillows stand flush with theirs (the 262 blind critics read the Żbik's dark
  * frames as rows of windows, and as the Orzeł's armour). */
-const frameBucket = (fit: PolishFit, owner: 'hull' | 'turret'): string => `${owner}${fit.level === 2 ? 'Detail' : 'Dark'}`;
+const frameBucket = (fit: PolishFit, owner: 'hull' | 'turret'): string =>
+  `${owner}${fit.level === 2 || fit.paintedFrame ? 'Detail' : 'Dark'}`;
 /** Krata-2's pillow: the base layer over the whole cell, the face bevelled in by this much on every side. */
 const PILLOW_T = 0.09, PILLOW_BEVEL = 0.025;
 type Rect = [number, number, number, number];
@@ -395,16 +400,18 @@ function coverPlate(P: TankBuilderPort, owner: 'hull' | 'turret', at: SurfaceAt,
 }
 
 /** Stand-off slat armour along one side over `panels` skirt panels from the stern (z from `za` aft to `zb`): a vertical
- * plane 0.14 m outboard of the skirt box's lower edge from 0.80 to 0.10 under the deck edge (the gun's measured depression
- * clears it: oplotBMGun), horizontal slats at 9 cm between top and bottom rails, a post at every panel seam braced back to
- * the skirt face through the seam (the framed fields' bars), and a cap plate from the face to the top rail that closes the
- * plan view (B2 contiguity: no open ground between skirt and slats seen from above). */
+ * plane 0.07 m outboard of the skirt box's lower edge (just outside the hinged rubber skirt; round 10: at 0.14 both
+ * critics saw it stand out past the fenders and the stern) from 0.80 to 0.10 under the deck edge (the gun's measured
+ * depression clears it: oplotBMGun), horizontal slats at 9 cm between top and bottom rails, a post at every panel seam on
+ * two painted brackets back to the skirt face (round 10: the thin dark stays read as no brackets at all), and a cap plate
+ * from the face to the top rail that closes the plan view (B2 contiguity: no open ground between skirt and slats seen
+ * from above). */
 function skirtSlats(P: TankBuilderPort, s: number, faceX: (y: number) => number, za: number, zb: number, panels: number): void {
-  const x = SKIRT_FACE.outerX + 0.14, y0 = 0.80, y1 = DECK_Y - 0.10;
+  const x = SKIRT_FACE.outerX + 0.07, y0 = 0.80, y1 = DECK_Y - 0.10;
   for (let i = 0; i <= panels; i++) {
     const z = za + (zb - za) * i / panels;
     P.addEquipment('hullDetail', box(0.05, y1 - y0 + 0.04, 0.05), side(s, x), (y0 + y1) / 2, z);
-    for (const y of [1.00, y1 - 0.08]) P.addEquipment('hullDark', beamBetween([side(s, faceX(y) - 0.01), y, z], [side(s, x - 0.02), y, z], 0.018, 8));
+    for (const y of [1.04, y1 - 0.08]) P.addEquipment('hullDetail', beamBetween([side(s, faceX(y) - 0.02), y, z], [side(s, x - 0.02), y, z], 0.026, 8));
   }
   for (const y of [y0, y1]) P.addEquipment('hullDetail', beamBetween([side(s, x), y, za], [side(s, x), y, zb], 0.022, 8));
   for (let y = y0 + 0.09; y < y1 - 0.04; y += 0.09) {
@@ -495,19 +502,29 @@ function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
 
 /** The Orzeł's add-on arrowhead on one cheek: a welded spaced-armour wedge standing on the cheek's front from beside the
  * gun throat (|x| 0.46, clear of the 0.42 throat and the 0.30 shield) to the flank, its edge 0.82 m ahead of the cheek
- * at |x| 1.00, from 0.16 to 0.60 (a hand over the cheek boxes, under the gunner's sight line, over the deck's periscopes
- * at every bearing), two convex prisms meeting at the edge (wound as the flank housings' plans) in the turret's paint, a
- * dark strip down the edge (round 8: the smaller wedge left the turret's outline the Oplot-M's). External armour: the
- * hit model reads it. */
+ * at |x| 1.00, from 0.16 (over the deck's periscopes at every bearing) to 0.60 at the edge, its top raked back down to the
+ * cheek stacks' top along the cheek (under the gunner's sight line; round 10: a flat 0.60 top stood 8 cm over the stacks
+ * behind it, a wall above the roofline from the rear quarters), two convex solids meeting at the edge in the turret's
+ * paint, a dark strip down the edge (round 8: the smaller wedge left the turret's outline the Oplot-M's). External
+ * armour: the hit model reads it. */
 function cheekWedge(P: TankBuilderPort, s: number): void {
   const back = (x: number): number => eraFront(x) - 0.02;
-  const a: [number, number] = [0.46, back(0.46)], b: [number, number] = [1.00, 2.62], c: [number, number] = [1.66, back(1.66)];
+  const a: [number, number] = [0.46, back(0.46)], b: [number, number] = [1.00, CHEEK_WEDGE_EDGE_Z], c: [number, number] = [1.66, back(1.66)];
   const d: [number, number] = [1.00, back(1.00)];
-  for (const tri of [[a, d, b], [d, c, b]] as const) P.addExternalArmor('turret', planPrism(sidedPlan([...tri], s), CHEEK_WEDGE_Y[0], CHEEK_WEDGE_Y[1]));
-  P.add('turretDark', box(0.03, CHEEK_WEDGE_Y[1] - CHEEK_WEDGE_Y[0], 0.03), side(s, b[0]), (CHEEK_WEDGE_Y[0] + CHEEK_WEDGE_Y[1]) / 2, b[1] - 0.005);
+  const [y0, y1] = CHEEK_WEDGE_Y;
+  const at = (p: readonly [number, number], y: number): number[] => [side(s, p[0]), y, p[1]];
+  for (const [p, q] of [[a, d], [d, c]] as const) {
+    P.addExternalArmor('turret', convexSlab(at(p, y0), at(q, y0), at(b, y0), at(b, y0), at(p, ERA_Y1), at(q, ERA_Y1), at(b, y1), at(b, y1)));
+  }
+  P.add('turretDark', box(0.03, y1 - y0, 0.03), side(s, b[0]), (y0 + y1) / 2, b[1] - 0.005);
 }
-/** The arrowheads' floor and top (turret frame). */
-const CHEEK_WEDGE_Y = [0.16, 0.60] as const;
+/** The arrowheads' floor and edge top (turret frame), and the edge's z. */
+const CHEEK_WEDGE_Y = [0.16, 0.60] as const, CHEEK_WEDGE_EDGE_Z = 2.62;
+/** The inboard arrowhead's raked top over the cheek front (its back edge, level inboard of |x| 1.00, on the stacks). */
+const cheekWedgeTop = (z: number): number => {
+  const backZ = eraFront(1.00) - 0.02;
+  return ERA_Y1 + (z - backZ) * ((CHEEK_WEDGE_Y[1] - ERA_Y1) / (CHEEK_WEDGE_EDGE_Z - backZ));
+};
 
 /** The stacks' undersides rise toward the nose (the print: 0.09 at z 0.95, 0.24 at the front). */
 const eraUnder = (z: number): number => ERA_Y0 + Math.max(0, z - 0.95) * 0.17;
@@ -1209,9 +1226,9 @@ function buildOrzelKit(P: TankBuilderPort): void {
     [[-4.2935, 0.136], [-4.1539, 0.143], [-4.0666, 0.17], [-0.0873, 0.17]]);
   stationLimits(zsmuStation(P, PL_STATIONS.ukm), [-1.6232, 2.81],
     [[-1.6232, 0.17], [2.5482, 0.17], [2.6354, 0.096], [2.7227, 0.026], [2.81, 0.02]]);
-  // twin guarded work lamps a side, on the arrowhead's top (it stands over the cheek box where they were)
+  // twin guarded work lamps a side, on the arrowhead's raked top (it stands over the cheek box where they were)
   for (const s of [-1, 1]) for (const x of [0.66, 0.88]) {
-    workLamp(P, side(s, x), CHEEK_WEDGE_Y[1], 1.95);
+    workLamp(P, side(s, x), cheekWedgeTop(1.95), 1.95);
   }
   sternDrums(P, DRUM_ISSUE_PAINTS[0], 26252);
 }

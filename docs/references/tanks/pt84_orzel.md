@@ -21,17 +21,20 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
 
 ## What makes it its own tank
 
-- Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of dark steel rails
-  and mullions (5 cm wide, so the grid reads through the camouflage: the 262 blind critic) standing 9 cm proud: two
-  3 x 3 glacis fields either side of the gun's slot; welded cheek boxes on the Duplet stacks' plan (set back 10 cm), each
-  column's face a framed field of two; a 4 x 2 field on each turret flank; and the five forward skirt panels each its own
-  framed field of two (one where the box falls to the bow): the owner's extra side armour. Over the engine bay behind
-  them, stand-off slat armour 14 cm off the skirt box with a cap plate to it.
+- Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of rails and
+  mullions 5 cm wide standing 9 cm proud, in the paint (round 10: dark steel frames on the sand coat read as empty boxes
+  and black blocks; the sunk cassettes draw the grid): two 3 x 3 glacis fields either side of the gun's slot; welded
+  cheek boxes on the Duplet stacks' plan (set back 10 cm), each column's face a framed field of two; a 4 x 2 field on
+  each turret flank; and the two bow skirt panels, one field each where the box falls to the bow. Over the seven panels
+  behind them, the owner's extra side armour: stand-off slat armour 7 cm off the skirt box's lower edge (just outside
+  the rubber skirt), its posts on painted brackets and a cap plate to the face (round 10: at 14 cm, on thin dark stays and
+  over three framed panels, both critics read it as a loose fence over reactive armour).
 - Its own silhouette (the 262 visual bar's blind critics, rounds 1-4: its framed skirt and turret wrap were the Żbik's,
   its side view the Oplot-M's): the PT-17's long welded ammunition bustle, the turret's full width back to 2.64 m behind
   the ring, its magazine roof stepped up 0.19 m behind the two stations (round 6) with three blow-off panels on it; and a
-  full-height spaced-armour arrowhead on each cheek, its edge 0.82 m ahead of the cheek (round 8), its twin work lamps on
-  its top. The UKM-2000 turns -93..161 degrees, its
+  full-height spaced-armour arrowhead on each cheek, its edge 0.82 m ahead of the cheek (round 8), its top raked from
+  0.60 at the edge back down to the cheek stacks (round 10: a flat top stood over them, a wall from the rear quarters),
+  its twin work lamps on that top. The UKM-2000 turns -93..161 degrees, its
   depression held up over the raised roof from 146.
 - Tellur 81 mm smoke: the PT-91's two by twelve, a six by two bank low on each smoke housing, its number above it.
 - PCO's round panoramic commander's head on a mast in place of the PNK-6 tower.
