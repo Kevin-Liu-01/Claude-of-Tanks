@@ -118,7 +118,7 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
   assert.match(authority, /const ground = preparedGround\?\.ground \?\? freshMatchGround\(worldCollision\);/, 'authority: a fresh match');
   assert.match(authority, /const ground = freshMatchGround\(worldCollision\);\s*const heightField = createDeformedHeightField\(base, ground\);/,
     'authority: a standby host\'s prepared ground');
-  assert.match(src('../mp/presentation/destructionMirror.ts'), /const ground = createTerrainDeformation\(\);\s*\/\/[^\n]*\n\s*stampMapCraters\(ground,/,
+  assert.match(src('./destructionMirror.ts'), /const ground = createTerrainDeformation\(\);\s*\/\/[^\n]*\n\s*stampMapCraters\(ground,/,
     'a seat\'s mirror: laid first');
   assert.match(src('../game/studio.ts'), /stampMapCraters\(studioGround, mapCraterStampsOf\(w\)\);/, 'the Studio: every scene');
   assert.match(src('../fx/effects.ts'), /mapCratersOn\(/, 'the presentation lays their surfaces from the bound ground');

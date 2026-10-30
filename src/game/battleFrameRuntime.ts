@@ -44,6 +44,20 @@ interface BattleFrameCountdownPort {
   second?(seconds: number): void;
 }
 
+/**
+ * The local Worker driver (game/localSimDriver.ts, ?localDriver=worker): a local battle whose core steps in a Worker. The
+ * page posts the player's input as it samples it, applies the ticks that arrived and draws the newest, smoothed by at
+ * most one tick; it steps nothing itself.
+ */
+interface BattleFrameLocalSimPort {
+  isActive(): boolean;
+  postInput(): void;
+  /** Applies every tick that arrived (`onTick` after each) and returns the draw's alpha. */
+  advance(onTick: () => void): number;
+  /** The battle does not run this frame. */
+  hold(): void;
+}
+
 interface BattleFramePresentationPort {
   captureSoloPose(): void;
   update(dtSeconds: number, alpha: number): void;
@@ -58,6 +72,7 @@ interface BattleFrameRuntimeOptions {
   network: BattleFrameNetworkPort;
   countdown: BattleFrameCountdownPort;
   presentation: BattleFramePresentationPort;
+  localSim?: BattleFrameLocalSimPort | null;
   getRigMode(): string;
   stepSimulation(): void;
   emitPause(paused: boolean): void;
@@ -91,6 +106,7 @@ export function createBattleFrameRuntime({
   network,
   countdown,
   presentation,
+  localSim = null,
   getRigMode,
   stepSimulation,
   emitPause,
@@ -114,6 +130,12 @@ export function createBattleFrameRuntime({
 
   let simulationAccumulator = 0;
   let networkBattleOwned = false;
+  // the local Worker driver's draw alpha this frame (time since its newest tick, at most one tick)
+  let localSimAlpha = 1;
+  const captureLocalTick = (): void => {
+    frameStages?.stage(FRAME_STAGE.pose);
+    presentation.captureSoloPose();
+  };
   // The countdown's presentation edges, once a battle: the rollout, whether a running count was seen, the last whole
   // second reported (the count only falls, so 3, 2, 1 are each reported once even across a PREPARING hold).
   let rolledOut = false;
@@ -199,6 +221,8 @@ export function createBattleFrameRuntime({
     inputSample.rigMode = getRigMode();
     inputSample.player = game.player as PlayerFrameSample['player'];
     input.poll(inputSample);
+    // the local Worker driver: the input leaves the moment it is sampled
+    if (inBattle && localSim?.isActive()) localSim.postInput();
   };
 
   // hot-path: every countdown frame
@@ -261,6 +285,10 @@ export function createBattleFrameRuntime({
       frameStages?.stage(FRAME_STAGE.countdown);
       advanceCountdown(wallDtSeconds);
       simulationAccumulator = 0;
+      localSim?.hold();
+    } else if (localSim?.isActive()) {
+      simulationAccumulator = 0;
+      localSimAlpha = localSim.advance(captureLocalTick);
     } else {
       advanceLocalSimulation(appliedDtSeconds);
     }
@@ -275,7 +303,7 @@ export function createBattleFrameRuntime({
     killcamActive: boolean,
     livePaused: boolean,
   ): number => {
-    const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    const alpha = networkActive ? 1 : localSim?.isActive() ? localSimAlpha : simulationAccumulator / simulationDt;
     frameStages?.stage(FRAME_STAGE.presentation);
     if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
     return alpha;
@@ -329,6 +357,8 @@ export function createBattleFrameRuntime({
 
     if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
       advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
+    } else {
+      localSim?.hold();
     }
     const presentationAlpha = retiringNetworkBattle ? 1 : updatePresentation(
       appliedDtSeconds, networkActive, killcamActive, livePaused,

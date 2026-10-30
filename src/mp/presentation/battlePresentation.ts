@@ -47,7 +47,7 @@ import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
-import { createDestructionMirror } from './destructionMirror.ts';
+import { createDestructionMirror } from '../../world/destructionMirror.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent } from '../../sim/destructionEvents.ts';
 import { FUEL_CHARGE_KG, cookOffChargeKg } from '../../sim/munitionBlast.ts';
 import { shellHitsWater } from '../../sim/shellSurface.ts';

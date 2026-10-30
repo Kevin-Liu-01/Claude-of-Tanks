@@ -18,7 +18,7 @@ import { GAME_MODE_IDS } from './matchModes.ts';
 import { penetratorHoleRadiusM, structureBlastPoints } from './munitionBlast.ts';
 import { readDestructionEntries, writeDestructionEntries, quantizeDestructionEntry } from '../mp/wire/destructionLog.ts';
 import { ByteReader, ByteWriter } from '../mp/wire/bytes.ts';
-import { createDestructionMirror } from '../mp/presentation/destructionMirror.ts';
+import { createDestructionMirror } from '../world/destructionMirror.ts';
 
 const near = (actual, expected, eps, label) => assert.ok(Math.abs(actual - expected) <= eps,
   `${label}: ${actual} is not within ${eps} of ${expected}`);

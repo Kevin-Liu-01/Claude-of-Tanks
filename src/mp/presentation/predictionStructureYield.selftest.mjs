@@ -26,7 +26,7 @@ import { createTankState, resetTankVerticalState } from '../../sim/movement.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { tankContactRect } from '../../sim/tankContactShape.ts';
 import { getMapConfig } from '../../world/maps/index.ts';
-import { createDestructionMirror } from './destructionMirror.ts';
+import { createDestructionMirror } from '../../world/destructionMirror.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { hostRulesetFor } from '../host/hostRuleset.ts';

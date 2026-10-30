@@ -16,19 +16,19 @@
  * point, in the section at that point here), so its own shells, sight and aim pass them as the host's do, and are
  * emitted as `structure:breach`; the log lays down, settled, those this seat did not see.
  */
-import { mapCraterStampsOf, stampMapCraters, type MapCraterWorld } from '../../world/mapCraters.ts';
+import { mapCraterStampsOf, stampMapCraters, type MapCraterWorld } from './mapCraters.ts';
 import {
   DESTRUCTION_BUS_EVENTS, MUNITION_CLASSES, type DestructionLogEntry, type MunitionClass, type StructureBreachEvent,
   type StructureStage, type StructureStageEvent, type TerrainCraterEvent,
-} from '../../sim/destructionEvents.ts';
-import { resetStructureRecords } from '../../sim/destructionMatch.ts';
-import { createStructureDamage, STAGE_ORDER, type StructureDamage, type StructureState } from '../../sim/structureDamage.ts';
-import { architectureStyleOf, wallMaterialForStyle } from '../../sim/structureMaterial.ts';
-import { sectionKind, sectionNormal, sectionSpan, storeyDownAt } from '../../sim/structureSections.ts';
+} from '../sim/destructionEvents.ts';
+import { resetStructureRecords } from '../sim/destructionMatch.ts';
+import { createStructureDamage, STAGE_ORDER, type StructureDamage, type StructureState } from '../sim/structureDamage.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { sectionKind, sectionNormal, sectionSpan, storeyDownAt } from '../sim/structureSections.ts';
 import {
   createDeformedHeightField, createTerrainDeformation, rubbleHeightFor, type DeformableHeightField, type TerrainDeformation,
-} from '../../sim/terrainDeformation.ts';
-import type { CollisionRecord } from '../../world/collision.ts';
+} from '../sim/terrainDeformation.ts';
+import type { CollisionRecord } from './collision.ts';
 
 /** A footprint centre within this of the event's is the same structure. */
 const IDENTITY_TOLERANCE_M = 0.05;

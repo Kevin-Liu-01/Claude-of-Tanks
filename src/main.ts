@@ -201,6 +201,7 @@ import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAcc
 import { createSoloBattleLoadingAccess } from './game/soloBattleLoadingAccess.ts';
 import type { SoloBattleLoadingStartOptions } from './game/soloBattleLoadingRuntime.ts';
 import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
+import type { LocalSimDriver } from './game/localSimDriver.ts';
 import {
   createSoloBattleEntryRuntime,
   type SoloBattleEntryRequest,
@@ -1803,6 +1804,19 @@ const {
   getCameraSettings: () => input.getSettings(),
   prepareDestination: prepareCameraDestination,
 });
+// ?localDriver=worker (Main 2026-10-29, the owner's A/B; docs/ARCHITECTURE.md "One core, two drivers"): a local battle's
+// core steps in a dedicated Worker and the page draws it (game/localSimDriver.ts, a lazy chunk; its Worker another). The
+// page's own step stays the default until the owner has played both. A battle the Worker cannot seat stays on the page.
+const localSim: { current: LocalSimDriver | null } = { current: null };
+if (/[?&]localDriver=worker\b/.test(location.search)) {
+  void import('./game/localSimDriver.ts').then(({ createLocalSimDriver }) => {
+    localSim.current = createLocalSimDriver({
+      game: game as never, bus, getRig: () => rig, getWorld: () => currentWorld() as never,
+      kernels: new URLSearchParams(location.search).get('simKernels') !== 'ts',
+    });
+    (window as { __LOCAL_SIM?: LocalSimDriver }).__LOCAL_SIM = localSim.current;
+  }, (error: unknown) => console.warn('[local-sim] the driver did not load: the page steps every battle', error));
+}
 const {
   aimController,
   computeDispersionRadM,
@@ -2357,9 +2371,16 @@ playerBattleActions = createPlayerBattleActions({
   input,
   isSettingsOpen: () => settings.isOpen(),
   network: {
-    isActive: onlineMatchActive,
-    queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
-    queueAction: (action) => { onlineMatch.current?.queueAction(action); },
+    // a battle on the local Worker driver takes its player's actions as the online driver's do: queued for the step
+    isActive: () => onlineMatchActive() || !!localSim.current?.active,
+    queueConsumable: (slot) => {
+      if (localSim.current?.active) localSim.current.consumable(slot);
+      else onlineMatch.current?.queueConsumable(slot);
+    },
+    queueAction: (action) => {
+      if (localSim.current?.active) localSim.current.action(action);
+      else onlineMatch.current?.queueAction(action);
+    },
   },
   rules: {
     selectShell: battleClientAccess.selectShell,
@@ -2611,7 +2632,17 @@ const soloBattleStart = createSoloBattleStartAccess({
       setCamoBiome,
       // the hero leaves for battle in the paint it wears, never a try-on's tile
       lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
-      setupBattle,
+      // the local Worker driver seats the same battle from the setup's own inputs (?localDriver=worker)
+      setupBattle: (...args: Parameters<typeof setupBattle>) => {
+        localSim.current?.beforeSetup();
+        const seated = setupBattle(...args);
+        const options = (args[3] ?? {}) as { gameMode?: string; random?: boolean; campaignOperationId?: string | null; watch?: boolean };
+        localSim.current?.begin({
+          specId: String(args[1]), gameMode: options.gameMode ?? 'standard', random: !!options.random,
+          campaignOperationId: options.campaignOperationId ?? null, watch: !!options.watch, opponent: (game as { jev?: unknown }).jev ? 'jev' : null,
+        });
+        return seated;
+      },
       combatWarm,
       presentation: battlePresentation,
       applyPlayerCamo: (specId: string) => applyCamoPatterns(specId),
@@ -3732,8 +3763,15 @@ const battleFrame = createBattleFrameRuntime({
     isActive: onlineMatchActive,
     pump: onlinePump.pump,
   },
+  localSim: {
+    isActive: () => !!localSim.current?.active,
+    postInput: () => localSim.current?.postInput(),
+    advance: (onTick: () => void) => localSim.current?.advance(onTick) ?? 1,
+    hold: () => localSim.current?.hold(),
+  },
   countdown: {
-    isWarmPending: () => battleWarmPending,
+    // (the local Worker driver: the count holds, PREPARING, while the Worker seats the battle)
+    isWarmPending: () => battleWarmPending || !!localSim.current?.pending,
     advance: advancePreBattleCountdown,
     show: (seconds: number, warmPending = false) => {
       currentHud()?.preBattleCountdown(seconds, warmPending);

@@ -4,7 +4,7 @@
 // raises the heap under the prediction's ground, and the wire's destruction log round-trips through a migration's
 // resume state and restores on a new host without one event.
 import assert from 'node:assert/strict';
-import { createDestructionMirror } from './destructionMirror.ts';
+import { createDestructionMirror } from '../../world/destructionMirror.ts';
 import { setCompoundShape, setObbShape } from '../../world/collision.ts';
 import { createDestructionMatch } from '../../sim/destructionMatch.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';

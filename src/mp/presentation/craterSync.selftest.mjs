@@ -18,7 +18,7 @@ import { isHeClass } from '../../sim/damage.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
 import { mapCratersOn } from '../../world/mapCraters.ts';
-import { createDestructionMirror } from './destructionMirror.ts';
+import { createDestructionMirror } from '../../world/destructionMirror.ts';
 
 const MAP = 'verdant';
 const standard = matchRulesetFor('standard');

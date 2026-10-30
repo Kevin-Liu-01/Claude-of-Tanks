@@ -12,7 +12,7 @@ import { CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg } from './munit
 import { createTerrainDeformation } from './terrainDeformation.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
-import { createDestructionMirror } from '../mp/presentation/destructionMirror.ts';
+import { createDestructionMirror } from '../world/destructionMirror.ts';
 import { quantizeDestructionEntry } from '../mp/wire/destructionLog.ts';
 import { getSpec } from '../vehicles/specs.ts';
 

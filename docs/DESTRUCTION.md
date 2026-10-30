@@ -525,7 +525,7 @@ client's baseline is refused). The host actor copies the authority's log (quanti
 frame when it grows. The client keeps the newest frame's log and the stages its event queue still owes
 (`ReliableEventQueue.isStructurePending`, as `isObstaclePending` does for prop falls).
 
-On the peer, `src/mp/presentation/destructionMirror.ts` lays the authority's stages on the peer's own world: a live
+On the peer, `src/world/destructionMirror.ts` (shared by the online driver and the local Worker driver) lays the authority's stages on the peer's own world: a live
 `structure_stage` animates (`structure:stage` on the bus, this world's structure id), the log lays down settled
 (`settled: true`) every stage the seat did not see happen except one whose event is still owed; a collapse flips this
 world's records (the predicted hull stops meeting them, the seat's rays pass) and raises the heap on the prediction's
