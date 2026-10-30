@@ -5736,5 +5736,7 @@
   "pad.flat": "Hold the phone up like a wheel to steer.",
   "pad.waitingBattle": "Start a battle on your computer.",
   "pad.paused": "Paused",
-  "pad.destroyed": "Destroyed"
+  "pad.destroyed": "Destroyed",
+  "pad.opt.lower": "Lower",
+  "pad.opt.raise": "Raise"
 }

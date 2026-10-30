@@ -156,14 +156,14 @@ export function createPadLink(options: PadLinkOptions): PadLink {
         if (channelsOpen()) { setState({ kind: 'live', path: livePath }); return; }
         setState({ kind: 'linking' });
         // the relay carries input at once; the data channel takes over when it opens
-        if (role === 'phone') { offered = false; void startOffer(); }
+        if (role === 'phone') { offered = false; void startOffer().catch(onRtcError); }
         else if (!iceServers) send({ t: 'ice' });
         return;
       case 'ice':
         iceServers = message.iceServers;
         for (const waiter of iceWaiters.splice(0)) waiter(message.iceServers);
         return;
-      case 'signal': void onSignal(message); return;
+      case 'signal': void onSignal(message).catch(onRtcError); return;
       case 'relay': onRelay(message.data); return;
       case 'relay_spent':
         relaySpent = true;
@@ -299,11 +299,20 @@ export function createPadLink(options: PadLinkOptions): PadLink {
     if (ended) return;
     setState(relaySpent ? { kind: 'away' } : { kind: 'live', path: 'relay' });
     // the phone offers again once (a network change, a sleeping radio); the relay carries input meanwhile
-    if (role === 'phone' && peerHere) { offered = false; setTimeout(() => void startOffer(), 1000); }
+    if (role === 'phone' && peerHere) { offered = false; setTimeout(() => void startOffer().catch(onRtcError), 1000); }
+  }
+
+  /** WebRTC refused (no RTCPeerConnection, a bad description): the relay carries the pairing, its budget permitting. */
+  function onRtcError(): void {
+    teardownPeer();
+    livePath = 'relay';
+    if (!ended && peerHere) setState(relaySpent ? { kind: 'away' } : { kind: 'live', path: 'relay' });
   }
 
   // ---- the relay ---------------------------------------------------------------------------------------------
   function onRelay(data: string): void {
+    // frames arriving over the relay before (or without) a data channel: the pairing is live, over the relay
+    if (!channelsOpen() && state.kind !== 'live' && peerHere) setState({ kind: 'live', path: 'relay' });
     if (data.startsWith(PAD_RELAY_AXES)) {
       const bytes = padAxesFromRelay(data.slice(1));
       if (bytes) options.onAxes?.(bytes);

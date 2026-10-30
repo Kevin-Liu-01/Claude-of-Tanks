@@ -174,9 +174,12 @@ export const PAD_TAP_ACTIONS = [
 export type PadHoldAction = (typeof PAD_HOLD_ACTIONS)[number];
 export type PadTapAction = (typeof PAD_TAP_ACTIONS)[number];
 
-/** A shell slot as the phone shows it: the type's short code (AP, APCR, HE, HEAT, HESH, ATGM…) and the rounds left. */
+/** A shell slot as the phone shows it: the type's code as every locale prints it (AP, APCR, HE, HEAT, HESH, ATGM…;
+ *  src/ui/shellLabels.ts shellTypeCode), its glyph's sprite id (shellIcons.ts) and the rounds left. The desktop resolves
+ *  both, so the phone's page loads neither table. */
 export interface PadShell {
   type: string;
+  icon: string;
   count: number;
   unlimited?: boolean;
 }
@@ -233,6 +236,7 @@ function isStatus(value: unknown): value is PadStatus {
   return typeof s.battle === 'boolean' && typeof s.alive === 'boolean' && typeof s.paused === 'boolean' &&
     typeof s.sniper === 'boolean' && Number.isInteger(s.slot) && Array.isArray(s.shells) &&
     s.shells.length <= 4 && s.shells.every((shell) => !!shell && typeof (shell as PadShell).type === 'string' &&
+      typeof (shell as PadShell).icon === 'string' && /^[A-Za-z0-9]{1,32}$/.test((shell as PadShell).icon) &&
       Number.isFinite((shell as PadShell).count)) &&
     Number.isFinite(s.reloadS) && Number.isFinite(s.reloadTotalS);
 }

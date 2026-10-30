@@ -16,9 +16,10 @@ import type { PadAxes, PadHoldAction, PadStatus, PadTapAction } from './padProto
 import { padServiceUrl } from './padEndpoint.ts';
 import { t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
-import { shellIconSVG } from '../ui/shellIcons.ts';
-import { shellTypeCode } from '../ui/shellLabels.ts';
+import type { IconId } from '../ui/icons/icon.ts';
 import { prefersReducedMotion } from '../ui/accessibilityPreferences.ts';
+import { datumAttr } from '../ui/dom.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
 const SETTINGS_KEY = 'cot.pad.v1';
 const RESUME_KEY = 'cot.pad.resume';
@@ -74,7 +75,7 @@ const consumableButtons = consumableGlyphs.map((glyph, i) =>
   `<button class="pad-tool" type="button" data-tap="consumable${i + 1}" aria-label="${esc(t('pad.consumable', { n: i + 1 }))}">${icon(glyph, { size: 18 })}</button>`).join('');
 const ctl = html(`<section class="pad-ctl" hidden>
   <header class="pad-top">
-    <span class="pad-link" data-datum="phone-link" role="status" aria-live="polite"></span>
+    <span class="pad-link num" ${datumAttr('phone-link')} role="status" aria-live="polite"></span>
     <div class="pad-ammo" role="group">${shellButtons}</div>
     <div class="pad-cons" role="group">${consumableButtons}</div>
     <button class="pad-tool" type="button" data-pause aria-label="${esc(t('pad.pause'))}">${icon('pause', { size: 18 })}</button>
@@ -102,9 +103,13 @@ const ctl = html(`<section class="pad-ctl" hidden>
   </div>
   <div class="pad-rotate">${esc(t('pad.rotate'))}</div>
   <dialog class="pad-opts">
-    <div class="row"><span>${esc(t('pad.opt.tilt'))}</span><span class="seg" data-opt="tilt"></span></div>
-    <div class="row"><span>${esc(t('pad.opt.lock'))}</span><span class="seg" data-opt="lockDeg"></span></div>
-    <div class="row"><span>${esc(t('pad.opt.aim'))}</span><span class="seg" data-opt="aim"></span></div>
+    <div class="row"><span>${esc(t('pad.opt.tilt'))}</span><button class="pad-tool" type="button" data-tilt aria-pressed="true"></button></div>
+    ${['lockDeg', 'aim'].map((name) => `<div class="row"><span id="pad-opt-${name}">${esc(t(name === 'aim' ? 'pad.opt.aim' : 'pad.opt.lock'))}</span>`
+      + `<span class="pad-step" role="group" aria-labelledby="pad-opt-${name}">`
+      + `<button class="pad-tool" type="button" data-step="${name}" data-dir="-1" aria-label="${esc(t('pad.opt.lower'))}">${icon('chevronLeft', { size: 18 })}</button>`
+      + `<b class="num" data-value="${name}" aria-live="polite"></b>`
+      + `<button class="pad-tool" type="button" data-step="${name}" data-dir="1" aria-label="${esc(t('pad.opt.raise'))}">${icon('chevronRight', { size: 18 })}</button>`
+      + '</span></div>').join('')}
     <div class="end">
       <button class="cot-c-btn cot-c-btn--danger cot-c-btn--48" type="button" data-disconnect><span class="cot-c-btn__label">${esc(t('pad.opt.disconnect'))}</span></button>
       <button class="cot-c-btn cot-c-btn--secondary cot-c-btn--48" type="button" data-close><span class="cot-c-btn__label">${esc(t('pad.opt.close'))}</span></button>
@@ -353,26 +358,33 @@ $<HTMLButtonElement>('[data-centre]').addEventListener('click', () => {
   send(true);
 });
 
-// ---- options ---------------------------------------------------------------------------------------------------
+// ---- options ----------------------------------------------------------------------------------------------------
+// tilt on or off (a toggle), the steering lock and the aim speed (steppers over their few values), in a native modal on
+// the surface stack
+const tiltToggle = options.querySelector('[data-tilt]') as HTMLButtonElement;
 function paintOptions(): void {
-  const seg = (name: keyof PadSettings, values: ReadonlyArray<boolean | number>, label: (value: boolean | number) => string): void => {
-    const host = options.querySelector(`[data-opt="${name}"]`) as HTMLElement;
-    host.innerHTML = values.map((value) => `<button class="pad-tool" type="button" aria-pressed="${settings[name] === value}" data-value="${String(value)}">${esc(label(value))}</button>`).join('');
-    for (const button of host.querySelectorAll<HTMLButtonElement>('button')) {
-      button.addEventListener('click', () => {
-        const raw = button.dataset.value!;
-        (settings as unknown as Record<string, boolean | number>)[name] = raw === 'true' ? true : raw === 'false' ? false : Number(raw);
-        saveSettings();
-        applyMode();
-        paintOptions();
-        send(true);
-      });
-    }
-  };
-  seg('tilt', [true, false], (value) => t(value ? 'pad.opt.on' : 'pad.opt.off'));
-  seg('lockDeg', LOCKS, (value) => t('pad.opt.lockValue', { deg: Number(value) }));
-  seg('aim', AIMS, (value) => t('pad.opt.aimValue', { n: Number(value) }));
+  tiltToggle.setAttribute('aria-pressed', String(settings.tilt));
+  tiltToggle.textContent = t(settings.tilt ? 'pad.opt.on' : 'pad.opt.off');
+  (options.querySelector('[data-value="lockDeg"]') as HTMLElement).textContent = t('pad.opt.lockValue', { deg: settings.lockDeg });
+  (options.querySelector('[data-value="aim"]') as HTMLElement).textContent = t('pad.opt.aimValue', { n: settings.aim });
 }
+function changed(): void {
+  saveSettings();
+  applyMode();
+  paintOptions();
+  send(true);
+}
+tiltToggle.addEventListener('click', () => { settings.tilt = !settings.tilt; changed(); });
+for (const button of options.querySelectorAll<HTMLButtonElement>('[data-step]')) {
+  button.addEventListener('click', () => {
+    const name = button.dataset.step as 'lockDeg' | 'aim';
+    const values = name === 'aim' ? AIMS : LOCKS;
+    const at = Math.max(0, Math.min(values.length - 1, values.indexOf(settings[name]) + Number(button.dataset.dir)));
+    settings[name] = values[at]!;
+    changed();
+  });
+}
+dialogSurface(options, 'pad-options');
 $<HTMLButtonElement>('[data-menu]').addEventListener('click', () => { paintOptions(); options.showModal(); });
 $<HTMLButtonElement>('[data-close]').addEventListener('click', () => options.close());
 $<HTMLButtonElement>('[data-disconnect]').addEventListener('click', () => {
@@ -389,9 +401,9 @@ function paintStatus(next: PadStatus): void {
     const shell = next.shells[slot];
     button.hidden = !shell;
     if (!shell) return;
-    const code = shellTypeCode(shell.type);
+    const code = shell.type;
     const count = shell.unlimited ? '∞' : String(shell.count);
-    const markup = `${shellIconSVG(shell.type, 18)}<span>${esc(code)}</span><b>${esc(count)}</b>`;
+    const markup = `${icon(shell.icon as IconId, { size: 18 })}<span>${esc(code)}</span><b class="num">${esc(count)}</b>`;
     if (button.dataset.markup !== markup) { button.innerHTML = markup; button.dataset.markup = markup; }
     button.setAttribute('aria-pressed', String(slot === next.slot));
     button.setAttribute('aria-label', t('pad.shell', { n: slot + 1, type: code, count }));
@@ -528,12 +540,17 @@ end.querySelector('button')!.addEventListener('click', () => {
   codeInput.focus();
 });
 
-// A code from the QR (the fragment) or a pairing to resume: one Start tap (a gesture) goes.
-const fromLink = normalizePadCode(decodeURIComponent(location.hash.slice(1)));
-const resume = storedResume();
-if (fromLink || resume) {
+// A code from the QR (the fragment) or a pairing to resume: one Start tap (a gesture) goes. A second QR scanned while
+// the page is open changes only the fragment (no reload): it fills the field again, unless a pairing is running.
+function prefill(): void {
+  const fromLink = normalizePadCode(decodeURIComponent(location.hash.slice(1)));
+  const resume = storedResume();
+  if (!fromLink && !resume) return;
   codeInput.value = formatPadCode(fromLink ?? resume!.code);
   submitLabel.textContent = t('pad.join.start');
   hint.textContent = t('pad.join.startHint');
+  error.textContent = '';
 }
+window.addEventListener('hashchange', () => { if (!link) { prefill(); show('join'); } });
+prefill();
 show('join');

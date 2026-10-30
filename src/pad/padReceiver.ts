@@ -10,11 +10,47 @@ import { createPadInputMapper } from './padInput.ts';
 import type { PadInputPort } from './padInput.ts';
 import { PAD_STALE_MS, decodePadAxes } from './padProtocol.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
+import { shellTypeCode } from '../ui/shellLabels.ts';
+import { shellIconId } from '../ui/shellIcons.ts';
+
+/** The local player as the receiver reads it (the battle entity's fields the phone shows). */
+interface PadPlayer {
+  combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
+  spec: { gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
+}
+
+/** What the composition root hands over (main.ts): the raw facts, so the mapping rides in this lazy chunk. */
+export interface PadStatusSource {
+  battle: boolean;
+  paused: boolean;
+  sniper: boolean;
+  player: PadPlayer | null;
+}
+
+/** The phone's readout of the local player: ammunition (code, glyph, rounds), the slot, reload, scope, pause. */
+export function padStatusOf(source: PadStatusSource | null): PadStatus | null {
+  const player = source?.player;
+  const combat = player?.combat;
+  if (!source?.battle || !player || !combat) return null;
+  return {
+    battle: true,
+    alive: !combat.destroyed,
+    paused: source.paused,
+    sniper: source.sniper,
+    slot: combat.shellSlot | 0,
+    shells: player.spec.gun.shells.slice(0, 3).map((shell, slot) => {
+      const type = shell.guided ? 'ATGM' : shell.type;
+      return { type: shellTypeCode(type), icon: shellIconId(type), count: Math.max(0, Math.floor(combat.ammo[slot] || 0)) };
+    }),
+    reloadS: Math.max(0, combat.reload.t),
+    reloadTotalS: combat.reload.totalS,
+  };
+}
 
 export interface PadReceiverPorts {
   input: PadInputPort;
-  /** The local player's battle state for the phone's ammunition, reload and scope, or null outside a battle. */
-  status(): PadStatus | null;
+  /** The local player's battle facts for the phone's ammunition, reload and scope (null outside a battle). */
+  source(): PadStatusSource | null;
   /** The phone's pause button: the same Settings toggle as Escape. */
   togglePause(): void;
 }
@@ -107,7 +143,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
     mapper.tick(now, relay ? 1000 : PAD_STALE_MS);
     if (view.state.kind !== 'live') return;
     // the phone's readout: on change, at most 5 a second (one on the billed relay), and a heartbeat every 2 s
-    const status = JSON.stringify(ports.status() ?? IDLE_STATUS);
+    const status = JSON.stringify(padStatusOf(ports.source()) ?? IDLE_STATUS);
     const gap = now - lastStatusAt;
     if ((status !== lastStatus && gap >= (relay ? 1000 : 200)) || gap >= 2000) {
       if (link.sendCtl({ k: 'status', s: JSON.parse(status) as PadStatus })) { lastStatus = status; lastStatusAt = now; }

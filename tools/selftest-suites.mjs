@@ -1499,6 +1499,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
+    // 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model and QR
+    'src/pad/padProtocol.selftest.mjs',
+    'src/pad/padActor.selftest.mjs',
+    'src/pad/padInput.selftest.mjs',
+    'src/pad/padLink.selftest.mjs',
+    'src/pad/qr.selftest.mjs',
+    'server/rooms/localPadService.selftest.mjs',
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',

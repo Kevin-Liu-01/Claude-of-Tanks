@@ -32,9 +32,11 @@ assert.deepEqual(readPadCtl('{"k":"down","a":"fire","s":70000}'), { k: 'down', a
 assert.equal(readPadCtl('{"k":"down","a":"leaveBattle","s":1}'), null, 'only the phone\'s hold actions');
 assert.equal(readPadCtl('{"k":"tap","a":"settingsMenu"}'), null, 'only the phone\'s tap actions');
 assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq');
-const status = { battle: true, alive: true, paused: false, sniper: false, slot: 1, shells: [{ type: 'AP', count: 30 }], reloadS: 1.2, reloadTotalS: 6 };
+const status = { battle: true, alive: true, paused: false, sniper: false, slot: 1, shells: [{ type: 'AP', icon: 'shellAp', count: 30 }], reloadS: 1.2, reloadTotalS: 6 };
 assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: status })), { k: 'status', s: status });
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: 'AP' } })), null);
+assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: [{ type: 'AP', icon: '"><img>', count: 1 }] } })), null,
+  'a glyph id is a sprite id, never markup');
 
 // --- the axes frame ---------------------------------------------------------------------------------------------
 const frame = { flags: 1, seq: 65535, t: 2 ** 32 + 17, steer: -0.5, throttle: 1.7, aimX: 12.375, aimY: -40, held: 0b101 };

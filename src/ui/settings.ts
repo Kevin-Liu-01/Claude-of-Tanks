@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { PadStatus } from '../pad/padProtocol.ts';
+import type { PadStatusSource } from '../pad/padReceiver.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -186,8 +186,8 @@ export interface SettingsOptions {
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
   readonly registerMenuAction?: boolean;
-  /** The local player's battle state for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
-  readonly phoneStatus?: () => PadStatus | null;
+  /** The local player's battle facts for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
+  readonly phoneSource?: () => PadStatusSource | null;
 }
 
 export interface SettingsRuntime {
@@ -936,7 +936,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   let padCard: typeof import('../pad/padConnectCard.ts') | null = null;
   const padPorts = () => ({
     input,
-    status: () => opts.phoneStatus?.() ?? null,
+    source: () => opts.phoneSource?.() ?? null,
     // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture
     togglePause: () => { if (!isBattleActive()) return; if (open) closePanel({ noRelock: true }); else openPanel(); },
   });

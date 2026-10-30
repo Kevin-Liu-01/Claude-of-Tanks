@@ -19,7 +19,7 @@ import { button } from '../ui/components/components.ts';
 const CARD_CSS = `
 .cot-pad-card .cot-pad-row{display:flex;align-items:center;gap:var(--s3);}
 .cot-pad-card .cot-pad-row .lb{flex:1 1 auto;min-width:0;}
-.cot-pad-state{font-size:var(--fs-13);color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cot-pad-state{font-size:var(--fs-13);color:var(--ink-3);white-space:nowrap;}
 .cot-pad-state[data-tone='ok']{color:var(--text-ok);}
 .cot-pad-state[data-tone='warn']{color:var(--text-warn);}
 .cot-pad-state[data-tone='danger']{color:var(--text-danger);}
@@ -31,7 +31,7 @@ const CARD_CSS = `
 .cot-pad-code{font-family:var(--font-mono);font-size:var(--fs-36);font-weight:var(--fw-semibold);color:var(--ink-1);line-height:1;}
 .cot-pad-how{margin:var(--s3) 0 0;font-size:var(--fs-13);line-height:var(--lh-body);color:var(--ink-2);max-width:42ch;}
 .cot-pad-how b{color:var(--ink-1);font-weight:var(--fw-semibold);}
-.cot-pad-exp{margin:var(--s2) 0 var(--s3);font-size:var(--fs-12);color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.cot-pad-exp{margin:var(--s2) 0 var(--s3);font-size:var(--fs-12);color:var(--ink-3);}
 @media (max-width:640px){.cot-pad-pair{grid-template-columns:1fr;justify-items:start;}}
 `;
 
@@ -55,7 +55,7 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
   label.appendChild(document.createElement('span')).className = 'cot-setting-label-text';
   label.lastElementChild!.textContent = t('settings.phone.label');
   const state = markDatum(row.appendChild(document.createElement('span')), 'phone-link');
-  state.className = 'cot-pad-state';
+  state.className = 'cot-pad-state num';
   state.setAttribute('role', 'status');
   state.setAttribute('aria-live', 'polite');
   row.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.connect'), variant: 'secondary', size: 36, icon: 'phone', className: 'cot-pad-action' }));
@@ -74,7 +74,7 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
   const how = text.appendChild(document.createElement('p'));
   how.className = 'cot-pad-how';
   const expires = text.appendChild(document.createElement('p'));
-  expires.className = 'cot-pad-exp';
+  expires.className = 'cot-pad-exp num';
   text.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.newCode'), variant: 'quiet', size: 36, className: 'cot-pad-new' }));
   const fresh = text.lastElementChild as HTMLButtonElement;
 

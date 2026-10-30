@@ -5736,5 +5736,7 @@
   "pad.flat": "像方向盘一样竖起手机即可转向。",
   "pad.waitingBattle": "请在电脑上开始战斗。",
   "pad.paused": "已暂停",
-  "pad.destroyed": "已被击毁"
+  "pad.destroyed": "已被击毁",
+  "pad.opt.lower": "降低",
+  "pad.opt.raise": "提高"
 }
