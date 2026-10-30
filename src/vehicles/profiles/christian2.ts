@@ -57,7 +57,8 @@ function turretShell(P: TankBuilderPort): void {
 /**
  * The front block, the early Leopards' and the 2A4 family's construction (leopard2CheekFront.ts) on the Christian II's
  * datums: the two swept cheek blocks in front of the shell, the gunner's sight window cut through the right one's top
- * inboard corner; the welded joints of the faces with the slot's walls and of the blocks with the shell; a grab rail
+ * inboard corner; the welded joints of the faces with the slot's walls (the blocks' seams with the shell stood off the
+ * walls' chamfered feet: the R8 critic); a grab rail
  * across each face (the right one under the window's sill, the left higher) and the lifting lug low on the right face.
  */
 function frontBlock(P: TankBuilderPort): void {
@@ -68,8 +69,6 @@ function frontBlock(P: TankBuilderPort): void {
   for (const sx of [-1, 1]) {
     P.addEquipment('turretDark', box(0.012, F.faceTopY - floor - 0.04, 0.012), sx * (slot + 0.006), (F.faceTopY + floor) / 2,
       face(slot) - 0.006);
-    P.addEquipment('turretDark', box(0.014, F.cheekTopY - floor - 0.06, 0.014), sx * (T.halfWidthM + 0.003),
-      (F.cheekTopY + floor) / 2 - 0.02, F.rootZ + 0.02);
   }
   for (const [x0, x1, y] of [[-0.53, -1.10, 0.30], [0.53, 1.10, 0.37]] as const) {
     // a round bar on two standoff brackets, along the face
@@ -90,7 +89,7 @@ function frontBlock(P: TankBuilderPort): void {
  * published stops; the coax port and the gun's framed sight port either side of the bore, and the 120 mm L/44-class tube.
  */
 function gunAssembly(P: TankBuilderPort): void {
-  const { box, cylZ } = KIT;
+  const { cylZ } = KIT;
   const m = T.mantletFaceZ, w = T.mantletHalfWidthM, top = T.mantletTopM, lo = T.mantletBottomM;
   const faceTop = T.faceTopY - T.gunLocal[1], bevel = m - 0.16;
   const rect = (hw: number, b: number, t: number): SectionPoint[] => [[-hw, b], [hw, b], [hw, t], [-hw, t]];
@@ -106,9 +105,9 @@ function gunAssembly(P: TankBuilderPort): void {
   P.addGunExtra(mantlet, 0, 0, 0);
   P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, m + 0.05);
   P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.27, 0.07, m + 0.025);              // coaxial MG port
-  // the gun's own sight port: an armoured frame standing 3 cm off the face, its aperture dark in it
-  P.addGunExtra(box(0.18, 0.12, 0.03), -0.27, 0.15, m + 0.012);
-  P.addGunExtraDark(box(0.12, 0.065, 0.012), -0.27, 0.15, m + 0.03);
+  // the gun's own sight port: a round armoured collar standing 3 cm off the face, its aperture dark in it (the model's)
+  P.addGunExtra(cylZ(0.075, 0.03, P.q ? 16 : 10), -0.27, 0.15, m + 0.012);
+  P.addGunExtraDark(cylZ(0.045, 0.012, P.q ? 14 : 10), -0.27, 0.15, m + 0.03);
   KIT.buildGun(P, { len: T.barrelLengthM, r: T.barrelRadiusM, sleeve: true, evac: 0.56, evacR: 1.78, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }

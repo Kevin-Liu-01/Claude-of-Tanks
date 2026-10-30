@@ -39,10 +39,11 @@ export const CHRISTIAN2_TURRET = Object.freeze({
   faceHalfWidthM: 1.17,
   cornerChamferM: 0.10,
   /**
-   * The gunner's sight window cut through the right cheek's top inboard corner (the model's: 0.57 to 0.88 m off the bore,
-   * its sill 2.02 m over the ground, its back 0.35 m behind the face and parallel to it), the armoured housing behind it.
+   * The gunner's sight window cut through the right cheek's top inboard corner (the model's: 0.52 to 0.90 m off the bore,
+   * its sill 2.02 m over the ground, its back 0.35 m behind the face and parallel to it), the armoured housing behind it
+   * standing low on the roof as the model's (the 2A4's height).
    */
-  sight: Object.freeze({ innerX: 0.57, outerX: 0.88, sillY: 0.38, lintelY: 0.68, topY: 0.88, depthM: 0.35, housingDepthM: 0.62 }),
+  sight: Object.freeze({ innerX: 0.52, outerX: 0.90, sillY: 0.38, lintelY: 0.68, topY: 0.83, depthM: 0.35, housingDepthM: 0.62 }),
   /** The gun slot between the cheeks, and the box mantlet filling it to 2 cm a side, as the supplied model's (0.95 m). */
   slotHalfWidthM: 0.475,
   mantletHalfWidthM: 0.455,
@@ -76,7 +77,9 @@ export const CHRISTIAN2_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
  */
 export const CHRISTIAN2_PROTECTION = Object.freeze({
   glacis: { ke: 420, ce: 640, phys: 460 }, lowerFront: { ke: 250, ce: 300 }, side: 80, rear: 45, roof: 40,
-  skirtFore: { ke: 60, ce: 220 }, skirtAft: 8, cheek: { ke: 760, ce: 1100, phys: 700 }, mantlet: { ke: 850, ce: 1000 },
+  // the mantlet 750/900 since R8 (its box now 0.91 by 0.64 m, filling the slot to the blocks' tops): at 850/1000 the
+  // tier-fairness-259 round robin read 0.718 (12/34 in band), at 750/900 0.523 (21/34); the cheeks' 760 barely moves it
+  skirtFore: { ke: 60, ce: 220 }, skirtAft: 8, cheek: { ke: 760, ce: 1100, phys: 700 }, mantlet: { ke: 750, ce: 900 },
   turretSide: { ke: 300, ce: 420 }, bustleSide: { ke: 160, ce: 220 }, turretRear: 60, turretRoof: 40,
   // what a round through the sight window meets along its line: the sight head, then the block behind the cavity, 0.6 of
   // the full cheek (the early Leopards' ratio, leopard2a3B4Armor.ts)

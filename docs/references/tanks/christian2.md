@@ -173,3 +173,9 @@ See the round log; filled as each gate runs.
   joints and lifting lug and the early Leopards' face rails; the mantlet's top level with the blocks' and bevelled
   like theirs (the 2A4's brow over the slot would meet this deep box at elevation, so the slot stays open over it);
   the window's plate and the optics module in it (the early Leopards' armour); the roof net opened over the window.
+  R8's blind critic: PASS (the sweep 32-38 degrees against the model's 34-36, the window in the right block beside the
+  mantlet with the head set back, the mantlet's size and stance the model's, the net clear of the window). Its minors
+  taken: the window widened to 0.52-0.90 m (it read 25% narrower than the model's), the housing lowered to the 2A4's
+  0.83, the blocks' seam rods dropped (they stood off the walls' chamfered feet), the mantlet's sight port round.
+  Fairness (tier-fairness-259 round robin, 34 peers at VIII, fairlever.mjs): the bigger mantlet at 850/1000 read 0.718
+  (12/34 in band); 750/900 reads 0.523 (21/34), adopted; the cheeks at 680 or 760 read the same (760 kept).
