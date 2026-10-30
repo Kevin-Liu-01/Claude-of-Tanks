@@ -527,7 +527,10 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   or a moved wreck donor, from the changed-only world partition; the fleet passes and the anatomy check on any moved
   tank), or, for balance, when an id's spec armour, gun, HP, mobility, size or role moved (the base's and the head's
   registries). When closure reads alone warrant a suite and reach at most a quarter of it, the command names just those
-  receipts (`--only=`) with their own time. Main relays that report; the owner triggers the run.
+  receipts (`--only=`) with their own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
+  whose own source names it, and never as a world-step trigger (the locale route table names the pages; the Node
+  captures never read one): the og:video head (12 paths) went from six suites to two narrowed lines. Main relays that
+  report; the owner triggers the run.
 - **Must-keep** (`MUST_KEEP`, never manual): sim determinism and driver parity, the authority and spotting receipts,
   an armour, ballistics and damage sample on real builds, the vehicle-core build paths, the cheap generated-output guards
   (the collision shard census and codec, the gun-junction, sealed, spare-track and watertight ledgers, the rounds census),
@@ -542,7 +545,13 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   names nearly every id: the fingerprints bootstrap moved 218 tanks); test:recommend then names `tanks` for the owner.
   Every selected receipt prints its reason. A negative control runs every time: a receipt reading a file is selected
   when that file changes, and every changed receipt file is selected, or the run exits 2 before anything runs. The
-  uncommitted and untracked files count as changed.
+  uncommitted and untracked files count as changed. A branch carrying an integration tree beyond the base
+  (an origin/integ/* commit not on origin/main) gets the suggested base printed first; `--base=integ` takes it.
+  Speed (266 follow-up): each receipt's reads are computed once per diff from the cache's closure and listings
+  (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt) and the changed tables' rows come from one git
+  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. test:lane and
+  test:recommend stop their children and exit on SIGTERM, SIGINT, SIGHUP or SIGALRM, or when their parent dies
+  (`tools/test-commands-exit.selftest.mjs`, with an unguarded control that orphans).
 - `node tools/run-selftests.mjs all --heavy=<suite>[,<suite>]` selects manual receipts (`test:heavy` passes it);
   `--only` matching only another tier's receipts names that tier; `--only-from=<file>` reads one glob per line;
   `--write-durations` still times every tier.
@@ -1088,7 +1097,19 @@ The owner's rule (226): "no regenerating for tanks or anything else that didn't 
 
     npm run tank:regen:changed                 # changed ids only, then the final resolve must be empty
     npm run tank:regen:changed -- --verify     # then each step's check on exactly the ids it ran
+    npm run tank:regen:changed -- --ids=<ids>  # every step on exactly a lane's own tanks (the world steps on their donor maps)
     npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
+
+**Refusals and `--ids` (266).** With no `release/fingerprints.tsv` (main before 265's bootstrap), or one recorded on
+another toolchain (`changed-ids` prints this run's toolchain parts next to the table's hash), every id resolves as
+changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before anything runs: "no fingerprints table:
+pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain mismatch, "or --all to re-record").
+`--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors; with a
+table it keeps the fixpoint among the ids and records their rows (the next plain run finds the rest; the chain receipt
+holds that `--ids` then a plain run equals a whole-fleet regen byte for byte), without one it runs each step once and
+records nothing. An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
+names (`docs/references/concepts/*.json` list their receipts) is no build input: five sat in the core key until 266, so
+an edit to one marked every id; `fleet-partition.selftest` now fails on any test-only tooling in a build's or step's key.
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
