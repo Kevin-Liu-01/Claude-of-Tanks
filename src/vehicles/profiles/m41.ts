@@ -19,7 +19,6 @@ import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
