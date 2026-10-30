@@ -1410,7 +1410,8 @@ export function buildLeopard2A5X(P: TankBuilderPort, kit: LeopardXKit = {}): voi
   for(const side of [-1,1]) {
     const basketX=side>0?.994:-.911;
     equip(P,d,'turretDetail',box(.72,.53,.89),basketX,2.186,-2.337);
-    equip(P,d,'turretDark',box(.67,.015,.84),basketX,2.457,-2.337);
+    // (the Danish cage leaves the bins' lids in the coat: r3 critics read the dark lids as bare plates)
+    equip(P,d,kit.danish?'turretDetail':'turretDark',box(.67,.015,.84),basketX,2.457,-2.337);
   }
   for(const [x,z] of [[-.604,.070],[.589,.050]]) {
     P.add('turret',cylY(.37,.40,.049,32),x-d.turretPivot[0],2.543-d.turretPivot[1],z-d.turretPivot[2]);

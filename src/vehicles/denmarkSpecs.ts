@@ -87,10 +87,11 @@ Object.assign(leo2a5dk.dims, { hullLengthM: 7.72, overallLengthM: 10.33, widthM:
 Object.assign(leo2a5dk, { weightTons: 62.0 });
 leo2a5dk.visual = {
   ...leo2a5dk.visual,
-  // the Danish Army's three-tone of the 2010s (the Grafenwöhr photographs): a dark olive, drab grey-khaki and black in
-  // long, near-level bands (r2 critics: round blobs read as woodland)
-  scheme: 'stripes', base: '#434b34', weather: '#4f5640', patches: ['#77735a', '#1c1e19'], bandAngle: 0.10,
-  marking: 'number', number: '31', camoScale: 0.78,
+  // the Danish Army's three-tone of the 2010s (the Grafenwöhr side photograph): dark olive, a yellow-olive khaki and
+  // black in large hard-edged angular fields, about a third each (r2 critics: round blobs read as woodland; r3: thin
+  // sprayed bands read as tiger stripes): the splinter painter's wedges at twice their size, without its rain strokes
+  scheme: 'splinter', base: '#434b34', weather: '#4f5640', patches: ['#6c6844', '#1c1e19'], patchK: 2.2, rainK: 0,
+  marking: 'number', number: '31', camoScale: 0.5,
 };
 // its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
 // (the stern cage and quarter cages stay under the barrel's path over the rear deck)
@@ -115,9 +116,9 @@ leo2a7dk.gunPitchByYawDeg = Object.freeze([[0, -9], [31, -9], [32, -8.5], [33, -
   [159, 5.8], [160, 6.6], [161, 6.8], [169, 7.3], [174, 7.3], [180, 6.7]] as const);
 leo2a7dk.visual = {
   ...leo2a7dk.visual,
-  // the Barracuda cover's even grey-green and olive mottle (the Latvia photograph; r2 critics: no terracotta), fine
-  // enough that the painted faces under it read as the same cover
-  scheme: 'nato', base: '#555b47', weather: '#5f6551', patches: ['#3a4134', '#6b6f56', '#2c3129'], marking: 'number',
+  // the Barracuda cover's olive mottle with drab tan pads (the Latvia photograph; r2 critics: no terracotta; r3: the
+  // grey-green read pale sage), fine enough that the painted faces under it read as the same cover
+  scheme: 'nato', base: '#4a5338', weather: '#555d43', patches: ['#2b3124', '#6a6347', '#3b4630'], marking: 'number',
   number: '11', camoScale: 0.30,
 };
 

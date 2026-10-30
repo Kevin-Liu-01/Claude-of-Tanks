@@ -699,9 +699,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the gun's sleeve wrapped): a cut multispectral cover on the 2A7V's panels, without the boughs of the fleet's leafy
   // suits, in the Danish greens.
   leo2a7dk: {
-    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0.12,
-    // r3 (critics: the Latvia photograph's cover is an even grey-green and olive, no terracotta or sand)
-    light: 0x6d7158, dark: 0x353c2f, netColor: 'rgba(60,66,51,0.86)', netTextureSeed: 2765,
+    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0,
+    // r3 (critics: the Latvia photograph's cover is olive and green, no terracotta or sand); r4 (critics: the grey-green
+    // read pale sage, the boughs as a leafy suit's leftovers): darker olive cards on a drab brown net, no boughs
+    light: 0x5a6541, dark: 0x2b3223, netColor: 'rgba(76,67,49,0.88)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
