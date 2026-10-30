@@ -56,12 +56,12 @@ osorio_p2.gunPitchByYawDeg = [[0, -10], [9, -10], [11, -9.4], [20, -8.8], [22, -
   [160, -0.5], [162, -0.5], [163, -0.7], [165, -2], [177, -2], [180, -2.5]];
 osorio_p2.visual = {
   ...osorio_p2.visual,
-  // the Army's two-tone (the CIBld tank, 2020): a mid chocolate brown and a very dark green, each field large enough to
-  // take a whole turret cheek or half the glacis, running near vertical (the merdc painter: the base and patches[0] the
-  // two fields, its accents a shade off them; this recipe's seed lays one dark field about a metre wide in every 2 m
-  // tile, 46-51 % dark in every hull-height band; blind critics, rounds 3 and 4); the 1983-98 plaque
-  scheme: 'merdc', base: '#5a4231', weather: '#624939', patches: ['#232b20', '#5a4231', '#1e241b'], marking: 'number',
-  number: '02', camoScale: 0.48, patchK: 1.9, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the Army's two-tone (the CIBld tank, 2020): a reddish chocolate brown and a dark grey-green in about equal shares,
+  // broad soft-edged patches a metre to a metre and a half across (the blotch painter, as the P.1's coat that the critics
+  // read as the CIBld scheme; this recipe's seed lays 53 % green; blind critics, rounds 3 to 10: near-black stripes, then
+  // narrow streaks); darker and redder than the P.1's tan, which keeps the marks apart; the 1983-98 plaque
+  scheme: 'blotch', base: '#5e4232', weather: '#664a35', patches: ['#323a2c'], marking: 'number',
+  number: '02', camoScale: 0.48, patchK: 2.2, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // The 105 mm P.1 (the Army's 1986-87 homologation tank): the Royal Ordnance L7A3 and the OIP LRS-5 sights, mechanically
@@ -176,10 +176,12 @@ tamoyo3.gunPitchByYawDeg = [[0, -8], [139, -8], [142, -6.4], [144, -4.1], [145, 
   [154, -0.6], [162, -0.3], [177, -0.3], [180, -0.4]];
 tamoyo3.visual = {
   ...tamoyo3.visual,
-  // the 1987 coat (Vesp's profile, the collector's photograph): olive and earth brown in large fields; the 1983-98
-  // plaque
-  scheme: 'nato', base: '#4b5434', weather: '#57603f', patches: ['#3e2f20', '#6a4a2c'], marking: 'number', number: '13',
-  camoScale: 0.42, patchK: 1.6, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+  // the 1987 coat (Vesp's profile, the collector's photograph): the Army's olive and earth brown (the Tamoyo 1's brown),
+  // two tones, in broad masses a metre to a metre and a half across (the blotch painter; this recipe's seed lays 47-73 %
+  // brown in every hull-height band; blind critics, rounds 9 to 12: a near-black third tone, the nato painter's fine
+  // mottle at any field size, then a tan read as desert sand); the 1983-98 plaque
+  scheme: 'blotch', base: '#3b4231', weather: '#444b36', patches: ['#6a4a2c'], marking: 'number', number: '13',
+  camoScale: 0.48, patchK: 2.2, trackWidthM: 0.53, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- the X1 family --

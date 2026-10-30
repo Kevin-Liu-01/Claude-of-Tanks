@@ -93,11 +93,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       paintedEnds: true, coveredTop: true, arms: true, sprocketTeeth: true,
     });
     for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
-      // the hub cap's bolt ring and the rubber tyre's outer band on the cast dual wheels
-      P.add('hullRunningGearDark', torus(roadWheelR * 0.28, 0.014, P.q ? 16 : 10), s * (H.trackXc + wheelW / 2 + 0.010), roadWheelY, z,
-        0, 0, Math.PI / 2);
-      P.add('hullRubber', torus(roadWheelR - 0.026, 0.022, P.q ? 28 : 16, 6), s * (H.trackXc + wheelW / 2 - 0.004), roadWheelY, z,
-        0, 0, Math.PI / 2);
+      // the hub cap's bolt ring on the cast dual wheels, in each side's own bucket: a bucket drawn on both sides spans the
+      // centreline, and its lowest part is read as the belly pan (restPoseContact; a tyre band here set the pan at 7 cm)
+      P.add(s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR', torus(roadWheelR * 0.28, 0.014, P.q ? 16 : 10),
+        s * (H.trackXc + wheelW / 2 + 0.010), roadWheelY, z, 0, 0, Math.PI / 2);
     }
     P.mats.rubber.color.setHex(0x2f312b);
   };
@@ -310,8 +309,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addEquipment('turret', cylY(0.15, 0.17, 0.05, P.q ? 18 : 12), 0, roof + 0.025, -1.40);
     P.addEquipment('turret', xform(sph(0.15, P.q ? 16 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), 0, roof + 0.05, -1.40);
     P.addEquipment('turret', box(0.38, 0.18, 0.40), 0.58, roof + 0.09, -1.80);
-    // (its lid painted on the P.1, the P.2's dark as judged; blind critic, round 5)
-    P.addEquipment(p2 ? 'turretDark' : 'turret', box(0.40, 0.02, 0.42), 0.58, roof + 0.19, -1.80);
+    // (its lid painted on both marks: blind critics, rounds 5 and 9)
+    P.addEquipment('turret', box(0.40, 0.02, 0.42), 0.58, roof + 0.19, -1.80);
     if (p2) {
       P.addEquipment('turret', cylY(0.06, 0.06, 0.12, 12), -0.40, roof + 0.06, -2.05);
       P.add('turretGlass', xform(sph(0.05, 12, Math.PI / 2), 0, 0, 0), -0.40, roof + 0.12, -2.05);
@@ -393,7 +392,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r7', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r10', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
       sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
     };
@@ -455,8 +454,9 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.add('gun', cylZ(r1, sleeveEnd - 0.86, seg, r0), 0, 0, (0.86 + sleeveEnd) / 2);
       for (const z of [1.90, 2.90, 3.90]) P.add('gunDark', cylZ(0.121, 0.035, seg), 0, 0, z);
       P.add('gun', cylZ(0.094, len - sleeveEnd, seg, 0.098), 0, 0, (sleeveEnd + len) / 2);
-      P.add('gun', cylZ(0.128, 0.16, seg, 0.122), 0, 0, len - 0.08);
-      P.add('gunDark', cylZ(0.129, 0.012, seg), 0, 0, len - 0.165);
+      // (the collar's face 3 cm behind the bore's: at the muzzle face its rim rendered as torn flaps, blind critic, round 10)
+      P.add('gun', cylZ(0.128, 0.16, seg, 0.122), 0, 0, len - 0.11);
+      P.add('gunDark', cylZ(0.129, 0.012, seg), 0, 0, len - 0.195);
       muzzleBore(P, { z: len + 0.004, r: 0.060 });
       P.muzzleZ = len;
       P.gunG.userData.osorioGunReceipt = { mark, caliberMm: 120, muzzleZ: len, fumeExtractor: false, sleeveJoints: 3 };

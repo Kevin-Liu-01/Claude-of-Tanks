@@ -264,9 +264,10 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       const stations = [D.sponsonRearZ, D.rearTopZ, D.glacisZ, D.bowZ, D.sponsonFrontZ]
         .filter((z, i, all) => z >= D.sponsonRearZ && z <= D.sponsonFrontZ && all.indexOf(z) === i).sort((u, v) => u - v);
       P.add('hull', sectionSolid(stations.map((z) => ({ z, ring: ring(z) }))));
-      // the fender ledge over the track, the length of the sponson (the X1's standing proud of the track's edge)
+      // the fender ledge over the track, the length of the sponson (the X1's standing proud of the track's edge; the X1's
+      // on its sponson floor, not under it, clear of the band rising over the sprocket: the strict exact track-clip audit)
       P.add('hullDetail', box(D.fenderX - D.sponsonX + 0.02, 0.025, D.sponsonFrontZ - D.sponsonRearZ - 0.03),
-        s * (D.sponsonX + D.fenderX) / 2, D.fenderY - 0.0125, (D.sponsonFrontZ + D.sponsonRearZ) / 2);
+        s * (D.sponsonX + D.fenderX) / 2, D.fenderY + (a2 ? -0.0125 : 0.0125), (D.sponsonFrontZ + D.sponsonRearZ) / 2);
       // the dark recess behind the running gear, up to the sponson floor
       const z0 = Math.min(D.wheelZs.at(-1)!, D.idler.z) - D.wheelR, z1 = D.sprocket.z;
       P.add('hullShadow', box(0.02, D.sponsonFloorY - 0.32, z1 - z0), s * (D.lowerX + 0.012), (D.sponsonFloorY + 0.32) / 2,
@@ -614,7 +615,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       P.addEquipment('turret', cylY(0.035, 0.045, 0.08, 10), -0.50, wy + 0.035, wz);
       P.addEquipment('turret', whip, -0.50, wy + 0.075, wz);
     }
-    P.turretG.userData.x1TurretReceipt = { revision: a2 ? 'x1-266-r7' : 'x1-266-r6', mark, roofY: roof, front: T.front, rear: T.rear,
+    P.turretG.userData.x1TurretReceipt = { revision: a2 ? 'x1-266-r7' : 'x1-266-r8', mark, roofY: roof, front: T.front, rear: T.rear,
       spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'rect-periscope' : 'tall-slit', cupolaTopY: +cupolaTop.toFixed(3),
       ringCollar: a2, smokeTubesPerSide: a2 ? 9 : 3 };
   };
