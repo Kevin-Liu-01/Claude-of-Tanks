@@ -12408,6 +12408,11 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   const trackContactZR = roadWheelZs.at(-1);
   const frontIdler = { z: 3.17, y: 0.66, r: 0.28 };
   const rearSprocket = { z: -2.70, y: 0.73, r: 0.29 };
+  // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the rear louvre boxes' run.
+  const frontGuard = { rearZ: 2.98, frontZ: 3.64, frontY: 1.02 };
+  const frontGuardTopY = (z: number): number =>
+    fenderY - (fenderY - frontGuard.frontY) * (z - frontGuard.rearZ) / (frontGuard.frontZ - frontGuard.rearZ);
+  const rearLouvre = { rearZ: -3.36, frontZ: -2.40, topDrop: 0.06 };
 
   // ---------------------------------------------------------------- hull --
   // Lower tub between the tracks, from the 0.44 belly to the fender line.
@@ -12463,10 +12468,25 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       // Continuous fender shelf over the return run, the sloped side resting on it.
       P.add('hullDetail', box(0.70, 0.03, 6.78), s * 1.345, fenderY - 0.015, -0.02);
       P.add('hullDetail', box(0.012, 0.06, 6.70), s * 1.692, fenderY - 0.03, -0.04);
-      // Front mudguards fall from the shelf over the idler; the rear ones close the shelf behind the sprocket.
+      // Front mudguards (critics 265: "large flared, sloped plates over the track fronts"): long plates falling forward
+      // from the shelf over the idler to past the nose, boxed by a deep outer flange, an inner wall and a deep front lip
+      // (critics 265: "deep angled boxes", not thin plates).
       P.add('hullDetail', slab(
-        [s * 1.05, fenderY - 0.03, 3.30], [s * 1.69, fenderY - 0.03, 3.30], [s * 1.69, 1.02, 3.50], [s * 1.05, 1.02, 3.50],
-        [s * 1.05, fenderY, 3.30], [s * 1.69, fenderY, 3.30], [s * 1.69, 1.05, 3.49], [s * 1.05, 1.05, 3.49]));
+        [s * 1.05, fenderY - 0.03, frontGuard.rearZ], [s * 1.71, fenderY - 0.03, frontGuard.rearZ],
+        [s * 1.71, frontGuard.frontY - 0.03, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.03, frontGuard.frontZ],
+        [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.71, fenderY, frontGuard.rearZ],
+        [s * 1.71, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
+      P.add('hullDetail', slab(
+        [s * 1.69, fenderY - 0.22, frontGuard.rearZ], [s * 1.712, fenderY - 0.22, frontGuard.rearZ],
+        [s * 1.712, frontGuard.frontY - 0.22, frontGuard.frontZ], [s * 1.69, frontGuard.frontY - 0.22, frontGuard.frontZ],
+        [s * 1.69, fenderY, frontGuard.rearZ], [s * 1.712, fenderY, frontGuard.rearZ],
+        [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.69, frontGuard.frontY, frontGuard.frontZ]));
+      P.add('hullDetail', slab(
+        [s * 1.05, fenderY - 0.12, frontGuard.rearZ], [s * 1.072, fenderY - 0.12, frontGuard.rearZ],
+        [s * 1.072, frontGuard.frontY - 0.12, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.12, frontGuard.frontZ],
+        [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.072, fenderY, frontGuard.rearZ],
+        [s * 1.072, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
+      P.add('hullDetail', box(0.662, 0.22, 0.022), s * 1.381, frontGuard.frontY - 0.11, frontGuard.frontZ - 0.011);
       // Rubber side skirts: hem over the wheel tops, top on the fender edge (segmented as on service vehicles).
       P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
       P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
@@ -12482,6 +12502,35 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
         P.addEquipment('hullDark', box(0.04, 0.05, 0.08), s * (xAt(1.30) + 0.012), 1.30, z - 0.30, 0, 0, s * 0.68);
         P.addEquipment('hullDark', box(0.04, 0.05, 0.08), s * (xAt(1.30) + 0.012), 1.30, z + 0.30, 0, 0, s * 0.68);
         P.addEquipment('hullWood', cylZ(0.022, 0.90, 8), s * (xAt(1.32) + 0.035), 1.32, z);
+      }
+      // The engine's louvred air outlets over the sprockets (critics 265: "the raised slatted exhaust grille boxes on
+      // the rear deck corners"): a box standing 6 cm proud of the sloped side from the fender to the deck edge, its top
+      // 6 cm under the deck edge (the gun at its measured stop over the stern quarters keeps 25 mm), end plates proud of
+      // its face and louvre blades standing out of it below its front end's top (the deck, and so the box's top, rises
+      // aft; critics 265: "raised louvre boxes", not flat slatted panels).
+      const louvreRing = (z: number): readonly (readonly [number, number])[] => {
+        const top = deckEdgeY(z) - rearLouvre.topDrop, outerTopX = 1.348 + (1.636 - top) * 0.75;
+        const ring = [[1.24, fenderY], [1.708, fenderY], [1.708, 1.156], [outerTopX, top], [1.24, top]] as const;
+        return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+      };
+      P.addEquipment('hull', sectionSolid([rearLouvre.rearZ, rearLouvre.frontZ].map((z) => ({ z, ring: louvreRing(z) }))));
+      const louvreTop = deckEdgeY(rearLouvre.frontZ) - rearLouvre.topDrop;
+      const louvreFrom = new THREE.Vector2(1.708, 1.156), louvreTo = new THREE.Vector2(1.348 + (1.636 - louvreTop) * 0.75, louvreTop);
+      const louvreLength = rearLouvre.frontZ - rearLouvre.rearZ - 0.08, louvreZ = (rearLouvre.rearZ + rearLouvre.frontZ) / 2;
+      const endPlateRing = (z: number): readonly (readonly [number, number])[] => {
+        const top = deckEdgeY(z) - rearLouvre.topDrop, outerTopX = 1.348 + (1.636 - top) * 0.75;
+        const ring = [[1.24, fenderY], [1.728, fenderY], [1.728, 1.156], [outerTopX, top], [1.24, top]] as const;
+        return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+      };
+      for (const [z0, z1] of [[rearLouvre.rearZ - 0.02, rearLouvre.rearZ], [rearLouvre.frontZ, rearLouvre.frontZ + 0.02]]) {
+        P.addEquipment('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: endPlateRing(z) }))));
+      }
+      // eight blades hinged on a dark backing along the face, each swung 35 degrees out of it (down and outward)
+      for (let k = 0; k < 8; k++) {
+        const at = louvreFrom.clone().lerp(louvreTo, 0.06 + k * 0.11);
+        P.add('hullDark', box(0.012, 0.056, louvreLength), s * (at.x + 0.8 * 0.003), at.y + 0.6 * 0.003, louvreZ, 0, 0, s * 0.6435);
+        P.addEquipment('hull', box(0.010, 0.06, louvreLength), s * (at.x + 0.8 * 0.006 + 0.0285), at.y + 0.6 * 0.006 - 0.0093,
+          louvreZ, 0, 0, s * (0.6435 + 0.6125));
       }
     }
     P.mats.rubber.color.setHex(0x34372d);
@@ -12510,14 +12559,18 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
     P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
     for (const s of [-1, 1] as const) {
-      // Headlights and their guards on the front cheeks, ahead of the glacis corners.
-      headlight(P, s * 1.31, 1.17, 3.27, -0.26);
-      P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.20, 3.30, -0.26, 0, 0);
+      // Headlights in boxed guards on the mudguards at the glacis corners (critics 265: the photos' "guarded headlight
+      // clusters"): the lamp under side plates, a top plate and a back plate, pitched down with the mudguard.
+      headlight(P, s * 1.31, 1.17, 3.27, 0.15, 0.07);
+      for (const [geo, x, y, z] of [[box(0.02, 0.22, 0.24), -0.13, 0, 0.02], [box(0.02, 0.22, 0.24), 0.13, 0, 0.02],
+        [box(0.28, 0.02, 0.24), 0, 0.12, 0.02], [box(0.28, 0.24, 0.02), 0, 0, -0.10]] as const) {
+        P.addEquipment('hull', xform(geo, x, y, z), s * 1.31, 1.17, 3.27, 0.15, 0, 0);
+      }
       P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
       liftEye(P, 'hullDetail', s * 1.17, deckTopY(1.65) + 0.015, 1.65, s * 0.45);
       // width-indicator rods on the front mudguards
-      P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, fenderY + 0.17, 3.36, 0, 0, s * 0.08);
-      P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), fenderY + 0.17 + Math.cos(0.08) * 0.17, 3.36);
+      P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, frontGuardTopY(3.36) + 0.17, 3.36, 0, 0, s * 0.08);
+      P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), frontGuardTopY(3.36) + 0.17 + Math.cos(0.08) * 0.17, 3.36);
     }
     // tow cable run across the bow edge, below the grouser rack
     towCable(P, [
@@ -12525,12 +12578,14 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       [0, upperGlacisY(3.44) + 0.075, 3.44],
       [0.70, upperGlacisY(3.42) + 0.075, 3.42],
     ], 0.024);
-    // The A5's grouser (Schneegreifer) rack across the upper glacis: two rows of spiked cleats on a bar frame.
+    // The A5's grouser (Schneegreifer) rack across the upper glacis: four staggered rows of low diamond cleats on bars,
+    // the photos' lattice (critics 265: "a flush lattice grille", not proud blocks).
     const glacisTilt = THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg);
-    for (const z of [2.92, 3.14]) {
-      P.addEquipment('hullDark', box(1.30, 0.03, 0.04), 0, upperGlacisY(z) + 0.075, z, glacisTilt, 0, 0);
-      for (let k = 0; k < 9; k++) {
-        P.addEquipment('hullDark', box(0.10, 0.07, 0.14), -0.56 + k * 0.14, upperGlacisY(z) + 0.095, z, glacisTilt, 0, 0);
+    for (const [row, z] of [2.82, 2.98, 3.14, 3.30].entries()) {
+      P.addEquipment('hullDark', box(1.44, 0.025, 0.03), 0, upperGlacisY(z) + 0.072, z, glacisTilt, 0, 0);
+      for (let k = 0; k < 11 - (row % 2); k++) {
+        P.addEquipment('hullDark', box(0.10, 0.04, 0.10), -0.70 + (row % 2) * 0.07 + k * 0.14, upperGlacisY(z) + 0.082, z,
+          glacisTilt, Math.PI / 4, 0);
       }
     }
     shovelTool(P, -1.05, deckTopY(-0.25) + 0.015, -0.25);
@@ -12841,7 +12896,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
   // (its rear top stays under the turret's front roof at every legal pitch)
   const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
-    ridgeHalfWidth: 0.58, ridgeLow: -0.02, ridgeHigh: 0.02, ridgeZ: 0.50 };
+    ridgeHalfWidth: 0.42, ridgeLow: -0.012, ridgeHigh: 0.012, ridgeZ: 0.50 };
   const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
     [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
   ];
@@ -12855,7 +12910,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.addGunExtra(sectionSolid([
       { z: k.rearZ, ring: maskRing(k.halfWidth - 0.02, k.low + 0.02, k.rearHigh, 0.05) },
       { z: k.bodyZ, ring: maskRing(k.halfWidth, k.low, k.high, 0.06) },
-      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.015) },
+      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.008) },
     ]));
     // The brow and chin faces' outward normals (y, z), for seating the bolts and the sight / coax ports square to them.
     const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHigh).normalize();
@@ -12864,15 +12919,17 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
     const onChin = (t: number, out: number): [number, number] => [
       k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
-    for (const x of [-0.46, -0.16, 0.16, 0.46]) {
-      for (const t of [0.22, 0.72]) P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), x, ...onBrow(t, 0.007));
+    // (critics 265: the mask a faceted wedge between the cheeks, its line narrower than its body, and few studs)
+    for (const x of [-0.22, 0.22]) {
+      P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), x, ...onBrow(0.30, 0.007));
       P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), x, ...onChin(0.5, 0.007));
     }
-    // the gunner's telescope port on the right of the brow (-x), the coaxial MG's on the left of the chin (+x)
-    P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
-    P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.32, ...onChin(0.55, 0.014));
-    // the collar around the tube where it leaves the ridge
-    P.addGunExtra(cylZ(0.14, 0.10, P.q ? 20 : 14, 0.16), 0, 0, k.ridgeZ + 0.04);
+    // the gunner's telescope port on the right of the brow (-x); the coaxial MG's port on the left (+x) at the line,
+    // where the 1A5 photographs show it
+    P.addGunExtraDark(xform(cylZ(0.045, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
+    P.addGunExtraDark(cylZ(0.05, 0.07, 14), 0.30, 0, k.ridgeZ - 0.028);
+    // the ring around the tube where it leaves the line, just over the sleeve (critics 265: not a big protruding collar)
+    P.addGunExtra(cylZ(0.095, 0.09, P.q ? 20 : 14, 0.10), 0, 0, k.ridgeZ - 0.005);
     // The XSW-30-U infrared / white-light searchlight (owner 2026-10-27: "the big IR/white-light searchlight on the
     // mantlet; add it"): a chamfered box over the gun on a U-yoke whose arms root in the mask's brow, so it pitches with
     // the gun and stays put when the barrel recoils. Its lens throws the runtime's searchlight beam at night. At full
@@ -12897,7 +12954,8 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     }
     P.add('gunMount', box(lamp.halfWidth * 2 + 0.14, 0.04, 0.10), 0, yokeFoot + 0.01, lampZ);
     P.add('gunMountDark', box(0.26, 0.02, 0.02), 0, lamp.high + 0.045, lampZ);
-    buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
+    // (the mantlet root at the sleeve's size, inside the mask: at 0.14 m it stood out through the wedge as a collar)
+    buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.08 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
     P.gunG.userData.leopard1A5MantletReceipt = {
       seated: true,

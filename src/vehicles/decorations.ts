@@ -3205,6 +3205,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // The Leopard 1A5 and 1A2A1 carry their own Wegmann banks on the casting's rear quarters (profiles/leopard.ts,
+  // leopard1A2A1.ts): a decor pair would double them along the side plates (critics 265: "the smoke dischargers forward").
+  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke');
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
