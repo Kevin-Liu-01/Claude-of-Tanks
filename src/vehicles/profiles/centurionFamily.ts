@@ -1091,10 +1091,11 @@ const STRV105_CORNER: CornerPackage = { z0: 0.72, z1: 1.30, yb: 0.30, yt: 0.80, 
 function buildStrv105TurretKit(P: TankBuilderPort): void {
   const k = STRV105_CORNER;
   const wFace = Math.hypot(k.xBack - k.xTip, k.z1 - k.z0), hFace = Math.hypot(k.yt - k.yb, k.setback);
-  for (const [side, s] of [['L', 1], ['R', -1]] as const) {
+  for (const s of [1, -1]) {
     // the housing carries a row of three thick boxes, each standing proud with its own sloped top (the critic's read
     // of the Strv 104: separate boxes, not one slab)
-    P.destructibleCluster(`strv105_turret_era_${side}`, () => faceBricks(P, cornerPackage(P, s, k), 3, 1, wFace, hFace, 0.12));
+    // (the fleet's ERA names count sides as seen from ahead, R on +X: eraSurfaceFrame fits an _R zone's faces at x >= 0)
+    P.destructibleCluster(`strv105_turret_era_${s > 0 ? 'R' : 'L'}`, () => faceBricks(P, cornerPackage(P, s, k), 3, 1, wFace, hFace, 0.12));
   }
   P.destructibleCluster('strv105_turret_roof_era', () => {
     // a low flat plate a side over the roof's front 0.8 m, following the casting's roof and its fall to the face, its
@@ -1141,7 +1142,9 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
     R: [[-1.30, 0.72, 1.54, 1.44]],
   };
   for (const [side, s] of [['L', 1], ['R', -1]] as const) {
-    P.destructibleCluster(`centurion5_avre_turret_era_${side}`, () => {
+    // (the fleet's ERA names count sides as seen from ahead, R on +X: eraSurfaceFrame fits an _R zone's faces at x >= 0;
+    // `side` keys the hull's own left and right bins)
+    P.destructibleCluster(`centurion5_avre_turret_era_${s > 0 ? 'R' : 'L'}`, () => {
       // two large flat panels on a housing sloped back about 45 deg, flat-topped, with their bolts (the Gulf photographs)
       cassetteSeams(P, cornerPackage(P, s, k, CASTING_BARE), 2, 1, wFace, hFace);
       for (const [z0, z1, outF, outR] of faces[side]) {
