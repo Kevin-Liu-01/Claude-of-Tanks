@@ -220,6 +220,25 @@ put('public/out/a1.webp', 'image-4');
 assert.equal(resolveChanged(state({ cfg: modeOnly }), m4).other.mode, 'none', 'a modeOnly path is not an input');
 put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
 
+// 11. Test-only files never key a build (266): a fleet record naming its receipt (as docs/references/concepts/*.json do)
+// keeps the record keyed and the receipt out, so an edit to the receipt or to the test runner marks no id. Negative
+// controls: an edit to the record itself, or to the kit beside it, still marks every id.
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.4 };\n");
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 1;\n');
+const s5 = state(), m5 = bootstrap(s5);
+assert.ok(s5.partition.core.includes('docs/references/concepts/alpha.json'), 'the record a core module names is a core input');
+assert.ok(!s5.partition.core.includes('src/vehicles/profiles/alpha.selftest.mjs'), 'the receipt it names is not');
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha, edited');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 2;\n');
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'none:', other: 'none:' }, 'a receipt or test-runner edit marks no id');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs', note: 'x' })}\n`);
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'the record itself still keys the core');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.45 };\n");
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a kit edit still marks every id');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
 // 265: a key the committed manifest holds reads the same in every checkout. A route in the app (`/docs/${topic}`) names
 // no directory, so docs/ edits never re-key the GPU steps (the same string in a tool still does); a file under
 // public/models/ (gitignored whole) is a row by its path, the same with any bytes or none.
