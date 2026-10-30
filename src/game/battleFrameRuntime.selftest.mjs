@@ -24,8 +24,6 @@ const presentationFrames = [];
 let rollouts = 0;
 let onNetworkPump = () => {};
 
-// the battle's holds (the settings, the killcam) as edges: a solo battle on a local host holds its authority on them
-const heldEdges = [];
 const runtime = createBattleFrameRuntime({
   game,
   settings: { isOpen: () => settingsOpen },
@@ -41,7 +39,6 @@ const runtime = createBattleFrameRuntime({
       networkPumps.push([dtSeconds, nowMs]);
       onNetworkPump();
     },
-    setHeld: (held) => heldEdges.push(held),
   },
   countdown: {
     isWarmPending: () => warmPending,
@@ -127,20 +124,17 @@ assert.equal(runtime.receipt.dtSeconds, 1 / 60, 'resume integrates at most one f
 assert.equal(runtime.pauseInfo.resumes, 1);
 assert.equal(runtime.pauseInfo.lastResumeDtR, 1 / 60);
 assert.deepEqual(pauseEdges, [true, false]);
-assert.deepEqual(heldEdges, [true, false], 'the settings hold the battle and release it');
 
 killcamActive = true;
 const presentationCount = presentationFrames.length;
 runtime.advance(0.05, 0.05, 1000, false);
 assert.equal(presentationFrames.length, presentationCount, 'killcam freezes gameplay presentation');
 assert.equal(inputSamples.at(-1).killcamActive, true);
-assert.deepEqual(heldEdges, [true, false, true], 'the killcam holds the battle as the solo step does');
 
 killcamActive = false;
 runtime.resetSimulationAccumulator();
 runtime.advance(1 / 120, 1 / 120, 1100, false);
 assert.equal(runtime.receipt.presentationAlpha, 0.5, 'explicit reset clears old fixed-step debt');
-assert.deepEqual(heldEdges, [true, false, true, false], 'the killcam\'s end releases it');
 
 networkActive = true;
 onNetworkPump = () => { networkActive = false; };

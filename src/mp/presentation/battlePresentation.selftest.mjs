@@ -124,6 +124,23 @@ assert.equal(game.spotting.isSpotted('foe'), true);
 assert.equal(game.timeS, 12.5);
 assert.equal(game.preBattleS, 0);
 assert.equal(game.gameMode, 'standard');
+// the own tank's requested round is the player's (owner 2026-10-28: "why is atgm labeled Q? E does it for me"): a row
+// holding the authority's old round leaves a pick still on its way; the pick follows the authority when its slot moves
+{
+  const own = presentation.ownActor;
+  assert.equal(own.input.shellSlot, 0, 'the first row seats the authority\'s round');
+  own.input.shellSlot = 1; // Q or the 2 key: the ATGM's slot, sent with the next control sample
+  presentation.applyFrame(frame({ tick: 121 }));
+  assert.equal(own.input.shellSlot, 1, 'a row on the old round does not undo the pick on its way');
+  assert.equal(own.combat.shellSlot, 0, 'the tray shows the authority\'s round until it takes the pick');
+  presentation.applyFrame(frame({ tick: 122, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 1 }) } }));
+  assert.equal(own.input.shellSlot, 1);
+  assert.equal(own.combat.shellSlot, 1, 'the authority took it');
+  presentation.applyFrame(frame({ tick: 123, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 2 }) } }));
+  assert.equal(own.input.shellSlot, 2, 'the authority\'s own switch (an empty round) becomes the pick');
+  presentation.applyFrame(frame({ tick: 124 }));
+  assert.equal(own.input.shellSlot, 0, 'and back');
+}
 const foe = presentation.actors.get('foe');
 assert.equal(foe.combat.hp, 1500);
 assert.equal(foe.combat.reload.t, 1.5);
@@ -319,8 +336,8 @@ assert.equal(game.player, null, 'dispose restores the game state');
 assert.deepEqual(game.tanks, []);
 assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fallback');
 
-// A free sortie on the solo sim Worker (solo): a hit names its attacker's vehicle as state.ts enrichHitEvent does (the
-// report's final blow, the hit toasts), and the end is a solo battle's — network false, the allies lost counted.
+// The killcam's step capture, as state.ts takes it in a page battle: once a step of presented time, each pose the last
+// before the frame and its hits.
 {
   const killcamLog = [];
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null };
@@ -331,7 +348,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   };
   const events = [];
   const p = createBattlePresentation({
-    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit(type, payload) { events.push({ type, payload }); } }, solo: true,
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit(type, payload) { events.push({ type, payload }); } },
     createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
   });
   await p.applyRoster(roster, context);
@@ -344,15 +361,8 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
     pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } }, { own: false, feedbackPredicted: false });
   assert.deepEqual(killcamLog, [['step', -91], ['step', -89], ['hit', 11]],
     'the killcam captures once a step of presented time, each pose the last before the frame and its hits');
-  const hit = events.find((e) => e.type === 'shell:hit');
-  assert.equal(hit?.payload.attackerName, spec.name, "a solo hit names its attacker's vehicle");
-  assert.equal(hit?.payload.attackerSpecId, 'm1a1_abrams_hc');
-  p.applyFrame(frame({ tick: 130, entities: [sample(2, -91, 64), sample(3, 10, 10, { hp: 0, flags: ENTITY_FLAGS.DESTROYED })] }));
   p.applyEvent({ kind: 'match_ended', payload: { result: 'bravo', reason: 'elimination' } }, { own: false, feedbackPredicted: false });
-  const end = events.find((e) => e.type === 'battle:ended');
-  assert.equal(state.result, 'defeat');
-  assert.equal(end?.payload.network, false, "a solo sortie's end is a solo battle's");
-  assert.equal(end?.payload.alliesLost, 1, 'the allies lost, as state.ts counts them');
+  assert.equal(events.find((e) => e.type === 'battle:ended')?.payload.network, true, "a room's end is a network battle's");
   p.dispose();
 }
 {
@@ -432,55 +442,6 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(state.tanks.map(actor => actor.id), ['me', 'bot-3']);
   assert.equal(state.spotting.isSpotted('foe'), false);
   assert.equal(p.actors.get('foe').visual.visible, false);
-  p.dispose();
-}
-
-// A solo room's deferred roster (deferRoster): the viewer's vehicle before the reveal, every other seat after it
-// (streamRoster), the viewer's side first; a frame applied meanwhile passes over the seats not yet built.
-{
-  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
-  const p = createBattlePresentation({
-    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, deferRoster: true,
-    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
-  });
-  await p.applyRoster(roster, context);
-  assert.deepEqual([...p.actors.keys()], ['me'], 'only the viewer before the reveal');
-  p.applyFrame(frame({ entities: [sample(2, 10, 10), sample(3, 12, 10)] }));
-  const streamed = await p.streamRoster();
-  assert.deepEqual(streamed.map((actor) => actor.id), ['bot-3', 'foe'], "the viewer's side first");
-  assert.equal(p.actors.size, 3);
-  assert.deepEqual(await p.streamRoster(), [], 'nothing left to stream');
-  p.dispose();
-}
-// ...and with the other seats' prebuild (started once the world stood): the viewer's vehicle never waits on it, and the
-// stream takes its vehicles instead of building them, then lets the rest go
-{
-  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
-  let release;
-  const held = new Map([['foe', fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false })], ['bot-3', fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false })]]);
-  const taken = [];
-  let disposedPrebuild = false;
-  const prebuilt = {
-    settled: new Promise((resolve) => { release = resolve; }),
-    has: (playerId) => held.has(playerId),
-    take(playerId) { const visual = held.get(playerId) ?? null; held.delete(playerId); if (visual) taken.push(playerId); return visual; },
-    dispose() { disposedPrebuild = true; },
-  };
-  const madeBefore = visuals.length;
-  const p = createBattlePresentation({
-    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, deferRoster: true, prebuilt,
-    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
-  });
-  await p.applyRoster(roster, context);
-  assert.deepEqual([...p.actors.keys()], ['me'], 'the viewer is built while the prebuild still runs');
-  assert.equal(disposedPrebuild, false, 'the prebuild stands until the stream');
-  const streaming = p.streamRoster();
-  release();
-  const streamed = await streaming;
-  assert.deepEqual(streamed.map((actor) => actor.id).sort(), ['bot-3', 'foe']);
-  assert.deepEqual(taken.sort(), ['bot-3', 'foe'], 'the stream takes the prebuilt vehicles');
-  assert.equal(visuals.length - madeBefore, 1, 'and builds only the viewer\'s');
-  assert.equal(disposedPrebuild, true);
   p.dispose();
 }
 
@@ -710,7 +671,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts (the session verdict after its kill), a solo sortie\'s hit names, killcam step capture and end, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts (the session verdict after its kill), killcam step capture and end, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};
@@ -780,15 +741,7 @@ console.log('mp battle presentation: roster → hidden visuals, a deferred roste
     { playerId: 'foe', specId: spec, camo: 'winter', isViewer: false },
     { playerId: 'bot-9', specId: spec, camo: 'winter', isViewer: false },
   ], deps);
-  // whenBuilt: a seat's own build (its group's), before the prebuild has settled; a seat it does not hold at once
-  const order = [];
-  const meBuilt = prebuilt.whenBuilt('me').then(() => order.push(`me:${prebuilt.has('me')}`));
-  void prebuilt.settled.then(() => order.push('settled'));
-  await prebuilt.whenBuilt('nobody');
-  await meBuilt;
   await prebuilt.settled;
-  assert.deepEqual(order, ['me:true', 'settled'], 'the viewer\'s build is ready before the prebuild settles');
-  await prebuilt.whenBuilt('foe');
   assert.deepEqual(built, [`${spec}:ai`, `${spec}:high`, `${spec}:ai`], 'one build per vehicle, paint and build tier: the viewer\'s own (high geometry on a desktop) builds alone');
   assert.deepEqual(copied, ['ai'], 'the other seats of a build are copies');
   for (const opts of builds) {

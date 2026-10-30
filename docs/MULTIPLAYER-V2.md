@@ -2650,79 +2650,43 @@ now read the room size rules (same behaviour).
 - The rooms Worker's `npm run typecheck:rooms` with its node_modules installed.
 - The coordinator's `PROTOCOL_VERSION` bump.
 
-### 13.31 A solo battle on a local host (the Rust lane, RUST-ENGINE-DECISION §7 step 5, 2026-10-25)
+### 13.31 A solo battle on a local host (2026-10-25): retired 2026-10-29
 
-A free sortie plays through this stack by default from 255 (Main's ruling, 2026-10-26), so its authority steps in the
-browser host's Worker on the world kernels and the page keeps only the client.
-**2026-10-26: default reverted to the page** (owner: solo bots games must not create multiplayer sessions); host only
-via `?soloAuthority=host` pending the rework (release 256, `soloAuthorityFor` returns `page('default')`).
-- **Which battles** (`soloAuthorityFor` in main.ts): the Garage's BATTLE button and the Play menu's Solo, in a versus
-  battle mode. The page keeps its own simulation for:
-  - the campaign;
-  - a watched battle;
-  - the practice and co-op modes (rooms host neither);
-  - the mobile tier (it never hosts, §13.3);
-  - a browser without Workers;
-  - `?soloAuthority=page`, the opt-out.
-- **Forcing the host.** `?soloAuthority=host` forces the host for any free versus sortie. The debug entries
-  (`__DEBUG.beginBattleEntry`, `__DEBUG.beginSoloBattle`) keep the page's simulation unless it is set: the probes read the
-  page's fast-forward, forced fire and full roster.
-- **A room that cannot start** hands the battle to the page's own entry, so the Battle button never does nothing.
-- **A page battle releases the host Worker.** A battle that runs in the page lets the Battle hover's prepared host Worker
-  and its world go.
-- **Telemetry.** Each entry's record carries the note `solo:<host|page>:<reason>`, where the reason is one of `default`,
-  `forced`, `opt_out`, `campaign`, `watch`, `mode`, `mobile`, `no_worker` or `fallback`.
+RUST-ENGINE-DECISION §7 step 5 put a free sortie on this stack: the solo local host (255, `?soloAuthority=host`) and then
+the solo sim Worker (261-264). Both played the player's seat through the match client, with its prediction,
+interpolation and stall clock. The owner's 2026-10-29 ruling retires both (§13.32). Removed in item/core-two-drivers-265,
+and git keeps them:
+- `mp/session/soloHostEntry.ts`, `mp/room/inPageRoom.ts`, `mp/room/syncCrypto.ts`;
+- the solo room's hooks: `roomInfo.solo`, `ROOM_SOLO_MAX_TEAM_SIZE`, the deferred roster (`deferRoster`, `streamRoster`,
+  `RosterPrebuild.whenBuilt`, `warm.streamedVehicles`), the held countdown (`holdCountdown`, `releaseCountdown`), the
+  pause (`MatchSession.setPaused` and its `PausableClock`, `MatchHost.setPaused`, the host protocol's
+  `pause`/`countdown`/`paused`, `MatchActor.pause`/`resume`), and the opening warm's covered pacing;
+- `game/soloSim*.ts` and the `cot-solo-sim` chunk; `?soloAuthority`; the telemetry kind `solo_authority`;
+  `tools/solo-host-probe.mjs`.
 
-- **The room in the page** (`src/mp/room/inPageRoom.ts`) is the same `RoomActor` the Durable Object and the LAN helper run.
-  The page's `RoomClient` reaches it through the WebSocket transport's socket factory instead of a network. Frames cross on
-  a microtask, so the room and the client never re-enter each other.
-- **Synchronous crypto.** The actor's ports hash and sign synchronously, which Web Crypto cannot do.
-  `src/mp/room/syncCrypto.ts` computes SHA-256 and HMAC-SHA256, so a seat token signed in the page is byte-identical to
-  Node's and verifies in the host's Worker.
-- **The entry** (`src/mp/session/soloHostEntry.ts`, from `beginSoloBattle` in main) creates a LAN room, readies the only
-  seat and starts it. The room names that seat host, and its `match_start` reaches the browser composition as a Play-menu
-  room's does.
-- **A solo room is no social session** (`roomInfo.solo`):
-  - no Play-menu lobby, no Garage room status and no room-state event, so the end screen keeps Battle Again;
-  - the Garage return closes the room.
-  - It seats up to 21 a side (`ROOM_SOLO_MAX_TEAM_SIZE`), through a policy guard (`maxTeamSize`) that only the page's
-    service sets. Every other room stops at 14.
-- **The hold.** The battle frame raises `network.setHeld` while the settings are open or the killcam plays, until the
-  battle is decided, as the page's solo simulation holds.
-  - `MatchSession.setPaused` acts on it for a solo room only: the host's actor stops at a tick boundary
-    (`MatchActor.pause`, refused for a match with more than one human seat), and the session's clock (a `PausableClock`)
-    stands still with it.
-  - Nothing of it reaches the wire.
-- **The entry is solo's** (the gate for the default: within 10 % of solo's entry):
-  - *The host thread is prepared on the battle intent.* The Garage's hover on Battle prepares a host Worker for the
-    selected map (`prepareSoloHost`, the core's `prepare`), so the boot finds the collision world and the anatomy built.
-  - *The vehicles come after the world.* A solo room never prebuilds its seats beside the world load, which stretched the
-    world's own build on the main thread. Its prebuild (`prebuildRosterVisuals`) starts once the world stands: the
-    viewer's vehicle first, then its side's, then the enemy's.
-  - *The covered warms see one vehicle.* The presentation's `deferRoster` opens the roster with the viewer's vehicle
-    alone, waiting on that seat's build only (`RosterPrebuild.whenBuilt`). Built beside the rest of the prebuild instead,
-    the viewer's vehicle took three times as long. The wreck, panel, shader and effect warms under the cover then cover
-    one vehicle while the other seats build.
-  - *The other seats join under the cover,* as a solo battle builds its bots under its own. After those warms,
-    `streamRoster` takes the prebuilt vehicles into the battle (and builds any seat the prebuild guessed otherwise), and
-    `warm.streamedVehicles` compiles their programs and warms their uniforms. Their wreck states follow in the
-    background, with no scene render. Built in battle frames after the reveal instead, a seat cost about twice its
-    covered time, and the count waited on them.
-  - *The countdown is solo's.* A solo room's match boots with solo's visible count (3 s) and holds it
-    (`HostBootConfig.holdCountdown`, `MatchActor.holdCountdown`): the ticks run, the countdown does not. The page
-    releases it at the reveal (`MatchSession.releaseCountdown`), so 3, 2, 1 runs on the revealed field as solo's does.
-    The hold is host-local, and a match with more than one human seat never holds.
-- **Receipts:**
-  - `src/mp/room/syncCrypto.selftest.mjs`;
-  - `src/mp/room/inPageRoom.selftest.mjs`: a solo room's p2p match on the in-process host, its held countdown, a 2 s
-    pause, 21 a side;
-  - `server/match/matchActorPause.selftest.mjs`: a paused match against its unpaused twin, and the held countdown;
-  - `src/mp/presentation/battlePresentation.selftest.mjs`: the deferred roster and its stream, with and without the
-    prebuild, and the prebuild's `whenBuilt`;
-  - `tools/mp-client-soak.selftest.mjs`: the solo pause case;
-  - `src/game/battleFrameRuntime.selftest.mjs`: the hold's edges.
-  - In Chrome, `tools/solo-host-probe.mjs` (A B B A against the page's solo): click to reveal and click to control (the
-    battle clock running), the main thread's ms a frame, input to motion, the killcam.
+### 13.32 One core, two drivers (the owner, 2026-10-29)
+
+The game is one shared core with two thin drivers (docs/ARCHITECTURE.md §1.6). This stack is the **online driver**: a
+room with people (the Rooms Worker, LAN). The authority, `server/match/matchActor.ts` in the room host's Worker
+(`host/matchHostCore.ts`) or in Node, runs the core's step (`src/sim/authoritativeMatch.ts`). The client predicts,
+interpolates and reconciles because the network is real.
+
+- **A local battle never touches it.** Solo, the campaign, the Proving Ground, Watch, replays, bot battles and the Jev
+  opponent run the core on the page (`game/state.ts` `simStep`). They use no match client, prediction, interpolation,
+  input-delay buffer, loopback, room or wire message. `tools/driver-boundaries.selftest.mjs` fails on any edge from the
+  local driver's owners into `src/mp` or the room host. It also fails when `main.ts` names this stack outside its online
+  declarations (`onlineMatch`, `onlineMatchActive`, `onlinePump`, `loadMultiplayerV2Composition`, the Play menu), or
+  when its local entries name any of it.
+- **A private room with bots is an online room.** It does not pause when Settings opens, as no room does; pausing belongs
+  to a local battle.
+- **The same step.** `src/sim/driverStepParity.selftest.mjs` drives the local step and the authority's step from the
+  same seed, world, hulls and inputs. It requires a byte-identical world every tick (player-driven hulls: drive, turn,
+  gun lay, a crash, shots, hits, knock, bloom, reload). The bots' controllers and the mode controllers still run in each
+  loop on its own; folding the two loops into one core step is the named follow-up.
+- **The ram yield stays covered online.** `presentation/predictionStructureYield.selftest.mjs` part 4 (item/ram-yield-
+  prediction-264) rams Verdant's house #2 through a room's match actor and a seat's `MatchClient` over the loopback
+  pair. A building the own ram brings down yields to the drawn hull as to the authority's: 0 hard snaps, the largest
+  drawn-vs-authority gap 0.95 m, thrown back 0.31 m.
 
 ## 10. Decisions for the owner
 

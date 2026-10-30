@@ -1,12 +1,9 @@
 // Local QA only. Every mesh listed here is an original complete source node.
 // No source vertices, images, materials or model loading enter playable code.
 export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
-  ztz100: {source:'glb',qualityBar:'exemplar',glb:{
-    path:'/models/community-candidates/ztz100_x_source.glb',
-    // Fifty unnamed Sketchfab material meshes (hull, turret, gun, gear mixed); whole-source comparison only.
-    // The supplied-source batch requires 92 in every view; prior 90-floor receipts remain historical.
-    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
-  }},
+  // ztz100 retired 2026-10-27 (release 262, owner: "the ztz 100 is its prototype"): the ZTZ-100 is the ZTZ-20 family's
+  // pre-production stage, an owner-authored concept (docs/references/concepts/ztz20-family-20261027.json); the same
+  // oracle measures the ZTZ-20 concept and qualifies no comparison.
   strv122: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/strv122_x_source.glb',
     // All18 original fused chunks retained. Mixed material owners cannot

@@ -7,7 +7,10 @@ import { SUPPLIED_SOURCE_COMPARISON_IDS } from './supplied-source-reference-over
 const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1987','t80u',
   'leclerc_xlr','amx56','chieftain_mk10','t72b3','jpz_e100','type10','type90',
   'amx40','t72b3m_2016','t72bu','t90','t90a_burlak','t90ms_tagil',
-  'c1_ariete','challenger1_mk3','chieftain5','strv122', 'ztz100', 'ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'm48a5_patton', ...SUPPLIED_SOURCE_COMPARISON_IDS]);
+  'c1_ariete','challenger1_mk3','chieftain5','strv122', 'ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'm48a5_patton',
+  // Merkava family 262 (owner 2026-10-27: the supplied Mk 1B-4B models are the target): measured on their source's ruler
+  'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
+  ...SUPPLIED_SOURCE_COMPARISON_IDS]);
 
 export function usesSourceDimensionFrame(id,registration) {
   return IDS.has(id)&&registration?.passed===true&&registration.mode==='canonical-source-world';

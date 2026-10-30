@@ -121,7 +121,10 @@ const FROZEN_FRONTAGE_SOUTH: readonly { structure: string; x: number; z: number;
   { structure: 'shed', x: 176.54, z: -67.91, yawDeg: 82.72 },
   { structure: 'warehouse', x: 201.46, z: -64.63, yawDeg: 83.61 },
   { structure: 'containerRow', x: 223.71, z: -34.64, yawDeg: 82.26 },
-  { structure: 'warehouse', x: 250.71, z: -20.44, yawDeg: 177.73 },
+  // (2026-10-28, the world-reds lane; mapLayoutBrief since 241) 3.5 m south of where the r2 plan put it (z -20.44): built
+  // as its twin's twin since the 241 restyle, its 27 m end stood 1.8 m on the east crossing's apron and 2 m inside zone
+  // 3's 30 m disc (its twin likewise in zone 1's), so both zones seated 8 m off their aprons
+  { structure: 'warehouse', x: 250.71, z: -23.94, yawDeg: 177.73 },
   { structure: 'shed', x: 251.23, z: -57.3, yawDeg: 84 },
 ];
 

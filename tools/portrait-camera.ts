@@ -11,5 +11,8 @@ export function portraitSideRatio(id: string): number {
   // a touch more frontal shortens its projected barrel without dropping below the dense-core fill.
   if (id === 'kf51_panther') return 0.72;
   if (id === 't72b3' || id === 'strv122') return 0.76;
+  // Release 262: the Sho't Kal's tall IDF whips (2.9 and 2.6 m) stood 115.0 card px against the 111.8 px height
+  // envelope; a more side-on view widens the dense core and brings the whips inside it.
+  if (id === 'shot_kal') return 0.74;
   return 0.56;
 }

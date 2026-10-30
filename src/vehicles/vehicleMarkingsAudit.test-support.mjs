@@ -13,14 +13,14 @@ import { ALL_TANK_IDS } from './specs.ts';
 import { measureSeatedMarkingVisibility } from './vehicleMarkingSeating.ts';
 
 export function createVehicleMarkingsAudit() {
-  const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine'];
+  const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine', 'South Africa', 'Australia'];
   const records = nations.map((nation, index) => vehicleMarkingRecord({
     id: `tank_${index}`,
     nation,
     visual: { number: String(100 + index) },
   }));
 
-  assert.equal(new Set(records.map((record) => record.countryCode)).size, 13, 'USSR and Russia share one country filter while other nations remain distinct');
+  assert.equal(new Set(records.map((record) => record.countryCode)).size, 15, 'USSR and Russia share one country filter while other nations remain distinct');
   assert.equal(new Set(records.map((record) => record.markingCode)).size, records.length, 'marking codes remain vehicle-specific');
   for (const record of records) {
     assert.match(record.designation, /^[A-Z]+-[A-Z0-9 -]+$/, `${record.countryLabel}: designation`);
@@ -47,7 +47,9 @@ export function createVehicleMarkingsAudit() {
     turret: new Set(['turret', 'turretPermanentMarkingSurface']),
   };
 
-  function markingSupportHit(mark, owner) {
+  // the permanent hull armour opt-in is the vehicle's, as the seat solver and the paint film read it
+  // (vehicleMarkingSurfaces): an authored seat's anchor profile is 'authored-surface-seat', never the vehicle id
+  function markingSupportHit(mark, owner, id) {
     owner.updateWorldMatrix(true, true);
     const position = mark.getWorldPosition(new THREE.Vector3());
     const normal = new THREE.Vector3(0, 0, 1)
@@ -64,7 +66,7 @@ export function createVehicleMarkingsAudit() {
       if (visible && object.isMesh && !object.isInstancedMesh
           && (armorNames[mark.userData.surfaceOwner].has(object.name)
             || (mark.userData.surfaceOwner === 'hull'
-              && vehicleMarkingIncludesPermanentHullArmor(mark.userData.markingAnchorProfile)
+              && vehicleMarkingIncludesPermanentHullArmor(id)
               && object.name === 'hullExternalArmor'))) {
         candidates.push(object);
       }
@@ -116,7 +118,7 @@ export function createVehicleMarkingsAudit() {
         assert(owner, `${id}/${mark.name}: owner rig exists`);
         assert.equal(mark.userData.surfaceSupported, true, `${id}/${mark.name}: surface seat solved`);
         assert.equal(mark.userData.supportGapM, SURFACE_MARKING_STYLE.surfaceLiftM, `${id}/${mark.name}: shared paint lift`);
-        assert(markingSupportHit(mark, owner), `${id}/${mark.name}: armor is physically present directly behind paint`);
+        assert(markingSupportHit(mark, owner, id),`${id}/${mark.name}: armor is physically present directly behind paint`);
         assert.equal(mark.userData.visibilitySamples, SURFACE_MARKING_STYLE.visibilitySampleCount, `${id}/${mark.name}: full visibility footprint sampled`);
         assert(mark.userData.visibilityClearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples, `${id}/${mark.name}: paint is not clipped or hidden by vehicle geometry`);
         // the generated receipt's visibility, re-measured on this build: no part added since hides the paint

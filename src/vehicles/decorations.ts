@@ -62,6 +62,7 @@ import {
   vehicleAmbientFloorHook, registerVehicleMaterial, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
 } from './materials.ts';
+import { LONGWEI_FAMILY_IDS } from './longweiFamilyConfig.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
 import { VEHICLE_ERAS, decorEraOverrideForId, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
@@ -1484,7 +1485,8 @@ export function fleetEquipmentNationStyle(nation = ''): FleetEquipmentNationStyl
   if (/Germany/i.test(nation)) return 'german';
   if (/France/i.test(nation)) return 'french';
   if (/Italy/i.test(nation)) return 'italian';
-  if (/Sweden/i.test(nation)) return 'nordic';
+  // release 262: the Danish Christian II wears the Nordic kit
+  if (/Sweden|Denmark/i.test(nation)) return 'nordic';
   if (/Poland/i.test(nation)) return 'polish';
   if (/Israel/i.test(nation)) return 'israeli';
   if (/China|Japan|South Korea/i.test(nation)) return 'east-asian';
@@ -2623,7 +2625,7 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
  * Suited hulls (ghillieSuit.ts) and the Garage workshop exhibits stay out of the list.
  */
 const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
-  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' },
+  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' }, bm_oplot_m: { kind: 'oak' },
   ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
   t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a_2004: { kind: 'birch' },
   pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },
@@ -2671,20 +2673,59 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretSide', { side: -1 }] },
   ],
   // --- Cold war ---
-  // Round 5 (2026-10-08; wave 254: "the rear kit is a few tiny, clean, rigid lumps", the bucket "hangs in space"; wave 262
-  // on the desert line: "olive kit bags, upright green cans, a brown box and a grey bin ... unstrapped"): the Challenger 1
-  // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and
-  // gains a fat canvas roll across the rear deck, laid ahead of the roof gear so the stern reads at play distance; the
-  // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
-  challenger1_mk2: () => [
-    { kit: 'smoke', p: 1, v: { v: '4' }, slot: ['turretCheekPair', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
-    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
-    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
+  // 262 (Main's ruling on the T-54/T-55 family): the era default without its hanging bucket (it hung in the air under
+  // the rear drums, which ride outside the hull) and without the decor whip (the turret carries its own antenna, one
+  // mast as on the real tanks). The smoke banks stay: they carry the smoke consumable, and the fleet has no engine
+  // exhaust smoke system (the T-55's TDA) to take it over.
+  type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
+  t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
+  // Release 262: the rebuilt Centurion family carries its own dischargers, whips and roof guns (profiles/centurionFamily.ts);
+  // its decor is soft stowage only. The British marks a tarpaulin and packs, the Strv 81B the bundled camouflage nets of
+  // its 1950s photographs, the Sho't Kal the IDF's bedrolls and water cans round its own basket and jerrycan cage.
+  centurion3: () => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  centurion5_2: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretRear', { low: true }] },
+  ],
+  strv81: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  centurion13: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  strv105: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  olifant_mk2: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  // the AVRE's rear basket is authored (profiles/centurionFamily.ts): deck stowage only
+  centurion5_avre: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  // the Australian Mk 5/1's baskets are authored (profiles/centurionFamily.ts): the Vietnam deck load only
+  centurion5_1_aus: () => [
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  shot_kal: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
@@ -2837,6 +2878,29 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
+  // Release 262: the Challenger 3 TD carries its own dischargers, whips and mast and no roof weapon (profiles/
+  // challenger3Td.ts), and its heavy field suit covers the decks; its decor is the trials crew's small kit only.
+  challenger3_td: () => [
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+  ],
+  // its field fit (the owner, 2026-10-27: "and equipment and so on"): a bustle basket with the crew's packs, a
+  // rolled net and a tarpaulin, jerrycans and a bin on the rear deck, spare links on a turret wall, the tow cable,
+  // shackles and pioneer tools; the station and the whips are authored
+  challenger3_td_rws: () => [
+    { kit: 'basket', p: 1, v: { w: 1.6, d: 0.45, h: 0.32 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.42 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
   // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): bdbe29f69 seated the
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
@@ -2910,6 +2974,25 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
+  // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
+  // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
+  t64bm1m: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64bv: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64b1v_2022: () => [
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  pt64_tur: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
@@ -2965,7 +3048,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
-  if (spec.id === 'type100' || spec.id === 'ztz100' || spec.id === 'ztz100_prototype' || spec.id === 'object695') return [];
+  // The ZTZ-20 family (262) is authored complete too: racks, bins, launchers and the stern cage or basket are its own.
+  if (spec.id === 'type100' || spec.id === 'ztz20' || spec.id === 'ztz20_prototype' || spec.id === 'ztz100' || spec.id === 'ztz100_prototype' || spec.id === 'object695') return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.
@@ -2974,6 +3058,40 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'leo2_revolution' || spec.id === 'leo2_revolution_proto') return [
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
+  ];
+  // Release 262 (the Challenger 1 rebuild's blind critics, against the reference photos: "the real deck is clean
+  // grilles"; the fleet cargo's roof cans, crates and bags read as clutter on the rebuilt turret and deck): the fictional
+  // FV4030/5 and FV4030/6 carry their own bins, baskets, bustle bin and L8 banks, and the decor lays only a canvas roll
+  // across the rear deck (no smoke pair, whip, bow hooks, side links, IR light, bucket or cargo pools). The real Mk 1 and
+  // Mk 2 ride the Mk 3's supplied-file build and take its default draw.
+  if (spec.id === 'challenger_x' || spec.id === 'challenger_x_sleek') return [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
+  ];
+  // Release 262 (owner 2026-10-28: "CHALLENGER 1 MK. 1 AND MK2 NEED TO LOOK A LOT DIFERENT FROM MK 3", and "the turrets
+  // and decorations and equipmennt and optics and machine guns all need to be updated for all 3"): each Challenger 1
+  // mark carries its own period load in place of the fleet cargo. The Mk 1 is the clean 1983 delivery fit; the Mk 2 the
+  // BAOR exercise fit, nets rolled on the bustle and the turret side, crew kit and cans; the Mk 3 the Op Granby desert
+  // load of water cans, bedrolls and ration boxes.
+  if (spec.id === 'challenger1_mk1') return [
+    { kit: 'tarp', p: 1, v: { v: 'slim', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: -0.25, along: true }] },
+  ];
+  if (spec.id === 'challenger1_mk2') return [
+    // the packs seat first (release 264: behind the net roll they had found support only on the bustle's stray tie bar,
+    // and fell off the tank when it went)
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretRear', { low: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.2 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.25, along: true }] },
+  ];
+  if (spec.id === 'challenger1_mk3') return [
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', {}] },
+    { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
   ];
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
@@ -3026,10 +3144,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Challenger 3 already fills the Garage card with its long gun, bustle and
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
-  // out-of-family portrait crop.
+  // out-of-family portrait crop. Release 262: the rebuilt Merkava Mk 2D's two rear racks (a crate and a tarp pack) made
+  // a band at 28-29 % of its widest row, on the presentation census's 28 % body-row line, so the census and its shipped
+  // top icon read 0.72 px apart; slightly more compact cargo keeps that band at 24-26 %, clear of the line.
   const cargoScale = spec.id === 'challenger3_proto' ? 0.85
     : spec.id === 'ztz85_iii' ? 0.94
-      : 1;
+      : spec.id === 'merkava2d' ? 0.88
+        : 1;
   const cargoVariant = (v: FleetEquipmentVariant) => ({
     v,
     scale: cargoScale,
@@ -3066,7 +3187,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // fittings already define its silhouette. Keep only one paired fuel-can
   // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
   // tools and duplicate roof equipment would clutter or snag on the cage.
-  if (spec.id === 'ua_m1a1') {
+  // 264: the Leopard 2A6 UA's turret screens, roof cage and hull mesh boxes (profiles/leopardA6Ua.ts) likewise.
+  if (spec.id === 'ua_m1a1' || spec.id === 'leo2a6_ua') {
     return [{
       kit: 'cargo', p: 1,
       v: cargoVariant('twin-can-cradle'),
@@ -3163,9 +3285,23 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
-  // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
-  // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
-  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
+  // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts): a decor
+  // pair would double them, and a roll on a turret side stood against the blocks' outer faces. Release 264: so does
+  // every Longwei-family concept on its turret (critic round 4 on the Xuanwu: a tarp roll ran into the banks and the
+  // decor pair stood above the roofline as a comb).
+  if (spec.id === 'ztz99_longwei' || (LONGWEI_FAMILY_IDS as readonly string[]).includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke'
+    && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
+  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
+  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
+  if (spec.id === 'ztz85_iii') return manifest
+    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+      && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
+      && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
+    .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+      ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+      : row));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
@@ -3694,6 +3830,13 @@ function footPlate(x: number, y: number, faceZ: number, w: number, h: number, de
   return merged.translate(x, y, faceZ);
 }
 
+/** A ledge arm's foot plate whose face would lie this far or more behind the turret surface at its height is buried
+ * in it, and stands on that surface instead (m: accessoryContact's touch distance, 265)... */
+const FOOT_BURIED_M = 0.015;
+/** ...where that surface is a wall, its normal at most 32 degrees off the horizontal (a shelf's is not), and stands at
+ * most this far out (m: a face further out is a fitting, a Centurion's side bin; 265). */
+const FOOT_WALL_NZ = 0.85;
+const FOOT_SWELL_MAX_M = 0.15;
 /** How far a rear rack's diagonal struts reach down the plate below its rails (m). */
 function rearRackBrace(bb: THREE.Box3): number {
   return Math.min(0.24, Math.max(0.12, (bb.max.y - bb.min.y) * 0.55));
@@ -3731,7 +3874,7 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  * 2026-10-17 (227): such an arm first slides in along the load to where the wall is, so the load keeps its station.
  */
 function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
-  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
+  wallAt?: (x: number, y: number, under?: boolean) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
   const parts: DecorPart[] = [];
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
@@ -3747,6 +3890,16 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     // load rests against the wall above it); the arm runs from that foot out under the load
     const wall = wallAt?.(x, -0.045) ?? null;
     const z0 = wall ? wall.p.z : wallZ;
+    // 265 (accessoryContact on pt91a_twardy): where the wall stands out past the load's back at the foot's height (a
+    // turret's swell or a lower row of blocks under the load) the probe above refuses it, and the plate on the plane at
+    // wallZ lay buried in it, the strut through it its only contact. The plate and the strut's foot now stand on that
+    // swell where it is a wall (a shelf under the load, or a bin's face standing well out, keeps the plate where it
+    // was: the arm's root meets it there); the arm, the strap and the station stand as they were (the whole ledge moved
+    // onto the swell, the straps lost their wall cleats and a Leopard 2 Improved's side load stood across its rail)
+    const swell = wall ? null : wallAt?.(x, -0.045, true) ?? null;
+    const rise = swell ? swell.p.z - z0 : 0;
+    const foot = swell && rise > FOOT_BURIED_M && rise <= FOOT_SWELL_MAX_M && swell.n.z >= FOOT_WALL_NZ ? swell : null;
+    const footZ = foot ? foot.p.z : z0;
     const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
     // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over. Where
     // the wall is not there at that height (the roof edge falls away above a tall load, a fitting stands out of it) the
@@ -3766,8 +3919,11 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
     steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
     steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
-    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
-    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
+    steel(footPlate(x, -0.045, footZ, 0.06, 0.08, detail, (foot ?? wall)?.n ?? null)); // wall foot plate, bolted
+    // gusset strut; from a foot on the swell it starts at the plate's middle, in front of a swell that slopes out below
+    // it (a Merkava's shelf under the load: from the plate's foot the strut began inside it), while that leaves a length
+    const strutY = foot ? -0.045 : -0.075;
+    if (detail && z0 + reach * 0.7 - footZ > 0.04) steel(roundBar([x, strutY, footZ + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6));
     const band = (geo: THREE.BufferGeometry) => own.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
     const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
     const lowered = cleatY < strapY;
@@ -3894,9 +4050,11 @@ const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, n
   strv103b: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
   strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
-  // round 4 (2026-10-07): the Challenger 1 commander's L37 cupola on the low right roof (turret-local (0.50, -0.81),
-  // turret pivot z 0.362): the bedrolls the decor laid there would bury the new gun's pintle and can.
-  challenger1_mk2: [[0.50, -0.45, 0.62]],
+  // round 4 (2026-10-07): the Challenger 1 roof guns' stations, so the decor's bedrolls never bury a pintle or its can.
+  // Release 262: the FV4030/5's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
+  challenger_x: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  // the X Sleek's low cupola (right) and loader's hatch (left)
+  challenger_x_sleek: [[-0.50, -0.45, 0.60], [0.50, -0.70, 0.52]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */
@@ -6295,13 +6453,15 @@ function* decorationSteps(
           const wallZ = -out * 0.3 - push;
           // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
           const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
-          const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
+          const wallAt = (lx: number, ly: number, under = false): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
             const f = new THREE.Vector3(lx, ly, wallZ).applyQuaternion(qr).add(pos);
             const hit = turP.side(f.y, f.z, side, W / 2 + 1);
             if (!hit || Math.abs(hit.n.x) < 0.3) return null;
             const p = hit.p.clone().sub(pos).applyQuaternion(qi);
-            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
-            return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
+            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it); with
+            // `under`, as far out under the load as leaves an arm 10 cm (a buried foot's swell, 265, sideLedgeParts)
+            const outer = under ? bb.max.z - 0.08 : bb.min.z + 0.01;
+            return p.z > wallZ - 0.12 && p.z < outer ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
           };
           const candidate = clonePartList(parts);
           const carry = (list: DecorPartList, detail: 0 | 1): boolean => {

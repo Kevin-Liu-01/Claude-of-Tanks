@@ -33,7 +33,10 @@ function primitiveChecks(){
  const pieces=[];
  const add=(_slot,g)=>pieces.push(g);
  const port={add,addEquipment:add,addHatch:add,addCupola:add,addExternalArmor:add,
-  addMudguard(_label,slot,g){add(slot,g);},snapGroup:(_label,build)=>build(),muzzleZ:0};
+  addMudguard(_label,slot,g){add(slot,g);},snapGroup:(_label,build)=>build(),muzzleZ:0,
+  // the TOGS lens and periscope glass go through addModuleVisual; the working L37 is a FITTINGS group on turretG (release 262)
+  addModuleVisual(_module,_role,g){add(_role,g);},turretG:new THREE.Group(),
+  mats:new Proxy({},{get:(o,k)=>o[k]??=new THREE.MeshStandardMaterial()})};
  addChallenger1SuppliedHull(port);addChallenger1SuppliedTurret(port);addChallenger1SuppliedGun(port);
  try{
   assert.ok(pieces.length>300,'independent assembled fittings, not donor/template dispatch');
@@ -185,8 +188,10 @@ function surfacesAndAir(t,ms){
  assert.equal(hit([hull],point(45,43,86.8),[0,1,0],.020),undefined,'approved concealed flared-tip relief clears unchanged track material');
  // The visible front roof remains in front of that mechanical relief.
  assert.ok(hit(ms,point(45,43,120),[0,0,-1],.6),'front guard retains the source-visible face');
- let falseMG=0;t.root.traverseVisible(n=>{if(n.userData.fitting==='pintleMG'&&n.userData.fittingRoot)falseMG++;});
- assert.equal(falseMG,0,'an empty source cupola mount never becomes a recognized weapon');
+ // The cupola carries one working L37 (release 262, the owner: "the turrets and ... machine guns all need to be
+ // updated"); the old empty source mount is gone, so it is the only recognized roof weapon.
+ const roofMG=[];t.root.traverseVisible(n=>{if(n.userData.fitting==='pintleMG'&&n.userData.fittingRoot)roofMG.push(n.name);});
+ assert.deepEqual(roofMG,['challenger1SuppliedCommanderL37'],'the cupola carries exactly the one working L37');
 }
 primitiveChecks();
 for(const quality of['high','low']){
@@ -196,4 +201,4 @@ for(const quality of['high','low']){
   framesAndBore(t,ms);gear(t);surfacesAndAir(t,ms);sideCourses(t,ms);
  }finally{t.dispose();}
 }
-console.log('challenger1XSupplied: independent high/low source joints, polygon throat, actual native axle/roller positions, concealed clearance, open carrier and honest empty weapon mount pass');
+console.log('challenger1XSupplied: independent high/low source joints, polygon throat, actual native axle/roller positions, concealed clearance, open carrier and the one working L37 pass');

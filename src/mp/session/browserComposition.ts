@@ -31,7 +31,6 @@ import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import { seatsByTeamSize, terrainVariantFor } from '../../sim/matchRuleset.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
-import { MIN_VISIBLE_PRE_BATTLE_S } from '../../game/preBattleCountdown.ts';
 import type {
   BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, RosterPrebuild,
   RosterPrebuildSeat, TankVisual,
@@ -117,11 +116,6 @@ export interface BrowserLoadTrace {
   };
   /** Seats whose vehicles were warmed beside the world load (prewarmRoster, 2026-10-15). */
   rosterPrewarmed?: number;
-  /**
-   * A solo room's other seats (deferRoster), taken in under the cover after the viewer's warms: how many, and ms until
-   * their vehicles had joined the battle and until their programs too were warmed.
-   */
-  streamedRoster?: { actors: number; buildMs: number; ms: number };
   /**
    * WELCOMEs after the first on this round (the link was replaced and the seat said hello again), and when each came (ms
    * from the entry's start). The first alone marks `roster` (2026-10-15).
@@ -255,20 +249,13 @@ export interface BrowserWarmPorts {
   compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
   /**
    * The battlefield's offscreen first draws, a cohort at a time, and the opening effects. A room's entry paces them on the
-   * GPU: textures staged one at a time and every batch waiting for the GPU to catch up. (262) The solo sim Worker's sortie
-   * passes `pacing: 'covered'`, the page's solo deployment warm's covered yield between batches (a task, and a painted
-   * frame at most every 32 ms), and no wait on the GPU.
+   * GPU: textures staged one at a time and every batch waiting for the GPU to catch up.
    */
-  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'covered' }): MaybePromise<RuntimeValue>;
+  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   finalShadows?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
-  /**
-   * A solo room's other vehicles, taken in after the viewer's warms (deferRoster): their forward programs compiled and
-   * their uniforms warmed, their wreck states after, never a render of the scene.
-   */
-  streamedVehicles?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
 }
 
 /** The strict program preparation's verdict (src/engine/programWarm.ts ProgramPreparationResult, structurally). */
@@ -427,10 +414,6 @@ export interface SessionOwner {
   observeFrame?(frameMs: number): void;
   /** The hosting tab is going away: tell the room now (plan step 11). Optional for doubles. */
   handOffHosting?(reason: string): boolean;
-  /** Pause or resume this page's own solo match (MatchSession.setPaused). Optional for doubles. */
-  setPaused?(paused: boolean): boolean;
-  /** The page revealed its solo battle: its held countdown starts (MatchSession.releaseCountdown). Optional for doubles. */
-  releaseCountdown?(): void;
   leaveMatch(reason?: string): Promise<void>;
   dispose(): void;
   stats(): MatchSessionStats;
@@ -514,11 +497,6 @@ export interface BrowserComposition {
   pumpBackground(nowMs: number): void;
   /** The page is going away (pagehide): a hosting seat hands its match on at once (plan step 11). True when it did. */
   handOffHosting(reason: string): boolean;
-  /**
-   * The battle's pause (the settings open) for a solo battle's room in the page (soloHostEntry.ts): its host's actor and
-   * the session's clock stand still. False outside a solo room.
-   */
-  setPaused(paused: boolean): boolean;
   queueConsumable(slot: number): void;
   queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   /** The Garage return's network port: keep the room across the return? */
@@ -538,12 +516,6 @@ export interface BrowserComposition {
   stats(): BrowserCompositionStats;
   dispose(): void;
 }
-
-// ------------------------------------------------------------ controls
-
-// (the viewer's control sampler, shared with the solo sim Worker's battle: src/mp/presentation/controlSampler.ts)
-export { createControlSampler };
-export type { ControlSampler };
 
 // ------------------------------------------------------------ composition
 
@@ -854,8 +826,6 @@ export function createBrowserComposition({
     const current = roomSession;
     const lobby = latestLobby;
     if (!current || !lobby) return;
-    // a solo battle's room in the page (soloHostEntry.ts) has no lobby to show
-    if (current.roomInfo.solo) return;
     if (roomPorts.getPhase() === 'battle' && !roomPorts.hasResult()) return;
     const menuPromise = roomPorts.getMenu();
     if (!menuPromise) return;
@@ -878,9 +848,6 @@ export function createBrowserComposition({
   const handleLobby = (lobby: SerializedLobby, snapshot: RoomSnapshot): void => {
     latestLobby = lobby;
     latestRoom = snapshot;
-    // a solo battle's room in the page (soloHostEntry.ts) is no social session: no Garage status, and the end screen
-    // keeps its solo actions (Battle Again)
-    if (roomSession?.roomInfo.solo) return;
     roomPorts.setGarageStatus(roomStatus(snapshot));
     roomPorts.emitRoomState({ state: lobby, playerId: playerId(), role: roleOf() });
     syncMenu();
@@ -1004,9 +971,6 @@ export function createBrowserComposition({
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
-          // a solo battle's countdown is solo's: held until the reveal, then the three numerals a solo battle shows after
-          // its loader (its hold credits the load against the rest)
-          ...(next.roomInfo.solo ? { holdCountdown: true, countdownS: MIN_VISIBLE_PRE_BATTLE_S } : {}),
           ice: p2pPorts.createIceResolver ? p2pPorts.createIceResolver(roomMode(), next.client) : undefined,
           onLog: (level, message, fields) => {
             const detail = fields ? `${message} ${JSON.stringify(fields)}` : message;
@@ -1214,7 +1178,6 @@ export function createBrowserComposition({
       const gunshipSeat = (team: string): boolean => sessionRound.room.settings.gameMode === 'ac130' && team === 'alpha';
       const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId && !gunshipSeat(player.team)
         ? [{ playerId: player.id, specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
-      const seatTeams = new Map(sessionRound.room.players.map((player) => [player.id, player.team as string]));
       // 2026-10-21 (item/mp-rejoin-232, lever 7): the bots arrive only with the WELCOME, and their textures (baked in a worker
       // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
       // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
@@ -1222,16 +1185,12 @@ export function createBrowserComposition({
       try {
         for (const bot of planFromRoom(sessionRound.room, { seed: matchStart.seed }).bots) {
           if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo: 'factory', isViewer: false });
-          seatTeams.set(bot.playerId, bot.team);
         }
       } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
       // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
       let prebuilt: RosterPrebuild | null = null;
-      // (a solo battle's room in the page, soloHostEntry.ts) the vehicles are built after the world, as solo's roster is:
-      // built beside it, every seat's full vehicle stretched the world's own build by seconds on the main thread (below)
-      const soloRoom = roomSession?.roomInfo.solo === true;
-      if (load.prebuildRoster && seats.length && !soloRoom) {
+      if (load.prebuildRoster && seats.length) {
         try { prebuilt = load.prebuildRoster(seats, active.abort.signal); } catch { prebuilt = null; }
         if (prebuilt) void prebuilt.settled.then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster builds them */ });
       } else if (load.prewarmRoster && seats.length) {
@@ -1250,14 +1209,6 @@ export function createBrowserComposition({
       ]);
       check('world');
       markStage(active, 'modulesAndWorld');
-      // (a solo room) every seat's vehicle, built from here: the viewer's first (its roster waits on that one alone), then
-      // its side's and the enemy's under the cover's warms, which mostly wait on the GPU; the presentation takes them in
-      // after those warms (deferRoster)
-      if (soloRoom && load.prebuildRoster && seats.length) {
-        const viewerTeam = seatTeams.get(viewerId);
-        const order = (seat: (typeof seats)[number]): number => (seat.isViewer ? 0 : seatTeams.get(seat.playerId) === viewerTeam ? 1 : 2);
-        try { prebuilt = load.prebuildRoster([...seats].sort((a, b) => order(a) - order(b)), active.abort.signal); } catch { prebuilt = null; }
-      }
       const camoOf = new Map(sessionRound.room.players.map((player) => [player.id, player.camo || 'factory']));
       const battlePresentation = createPresentation({
         engineCtx: scene.engineCtx,
@@ -1270,8 +1221,6 @@ export function createBrowserComposition({
         ...(scene.onVisualReady ? { onVisualReady: scene.onVisualReady } : {}),
         camoFor: (entry) => camoOf.get(entry.playerId) ?? 'factory',
         prebuilt,
-        // (a solo battle's room) the viewer's vehicle before the reveal, every other after it (streamSoloRoster)
-        deferRoster: soloRoom,
         onRosterProgress: (fraction, specId) => {
           if (round !== active) return;
           noteProgress(active);
@@ -1407,26 +1356,6 @@ export function createBrowserComposition({
     }
   };
 
-  /**
-   * A solo room's other seats (RUST-ENGINE-DECISION §7 step 5), under the cover once the viewer's warms are done: the
-   * vehicles their prebuild made since the world stood join the battle (BattlePresentation.streamRoster, the viewer's
-   * side first) and their programs are warmed (warm.streamedVehicles), as a solo battle builds its bots under its cover.
-   * Its countdown, held since the boot, runs from the reveal (MatchSession.releaseCountdown).
-   */
-  const streamSoloRoster = async (active: ActiveRound, battlePresentation: BattlePresentation, check: (detail: string) => void): Promise<void> => {
-    const startedAt = now();
-    const streamed = await battlePresentation.streamRoster();
-    check('streamedRoster');
-    const buildMs = Math.round(now() - startedAt);
-    for (const actor of streamed) actor.visual.setGroundSampler?.(scene.groundSampler);
-    if (streamed.length) {
-      warm.shotCards?.(streamed.map((actor) => actor.specId));
-      await warm.streamedVehicles?.({ entities: new Map(streamed.map((actor) => [actor.id, actor])) }, active.abort.signal);
-      check('streamedVehicles');
-    }
-    active.trace.streamedRoster = { actors: streamed.length, buildMs, ms: Math.round(now() - startedAt) };
-  };
-
   /** The first frame with the roster in place: warm under the cover, activate, prove the frame, reveal. */
   const activateRound = async (active: ActiveRound): Promise<void> => {
     const battlePresentation = active.presentation;
@@ -1486,11 +1415,6 @@ export function createBrowserComposition({
       check('openingEffects');
       warm.shotCards?.([...battlePresentation.actors.values()].map((actor) => actor.specId));
       markStage(active, 'combatWarm');
-      if (roomSession?.roomInfo.solo) {
-        load.battleLoad.progress(0.885, 'Painting vehicles');
-        await streamSoloRoster(active, battlePresentation, check);
-        markStage(active, 'streamedRoster');
-      }
       activation.activate({
         viewerId: active.viewerId,
         own: { id: active.viewerId, specId: active.ownSpecId },
@@ -1542,7 +1466,6 @@ export function createBrowserComposition({
       markStage(active, 'loaderFade');
       load.setAdaptiveSuspended(false);
       active.revealed = true;
-      if (roomSession?.roomInfo.solo) session?.releaseCountdown?.();
       finishTrace(active, 'complete');
       noteRevealPrograms(active, revealBaseline, 0, revealWatch);
       settleEntry(true);
@@ -1737,11 +1660,9 @@ export function createBrowserComposition({
     pump,
     pumpBackground,
     handOffHosting,
-    setPaused: (paused) => (roomSession?.roomInfo.solo ? session?.setPaused?.(paused) ?? false : false),
     queueConsumable: (slot) => { round?.controls.queueConsumable(slot); },
     queueAction: (action) => { round?.controls.queueAction(action); },
-    // a solo battle's room in the page ends with its battle: the Garage return closes it
-    shouldPreserveRoom: () => !!roomSession && !roomSession.roomInfo.solo && roomSession.client.phase !== 'closed',
+    shouldPreserveRoom: () => !!roomSession && roomSession.client.phase !== 'closed',
     disposePresentation,
     closeMatch: (reason = 'network_match_closed') => { closeRoom(reason); },
     leaveRoom,

@@ -23,7 +23,7 @@ interface CountryMarking {
 interface VehicleMarkingSpec {
   readonly id?: string;
   readonly nation?: string;
-  readonly visual?: { readonly number?: string };
+  readonly visual?: { readonly number?: string; readonly insignia?: string };
 }
 
 export interface VehicleMarkingRecord {
@@ -78,7 +78,10 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   pl: Object.freeze({ countryLabel: 'Poland', filterLabel: 'PL', insignia: 'pl-checker', designation: 'PL' }),
   kr: Object.freeze({ countryLabel: 'South Korea', filterLabel: 'KR', insignia: 'kr-taeguk', designation: 'ROK' }),
   se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
+  dk: Object.freeze({ countryLabel: 'Denmark', filterLabel: 'DK', insignia: 'dk-dannebrog', designation: 'DK' }),
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
+  za: Object.freeze({ countryLabel: 'South Africa', filterLabel: 'ZA', insignia: 'za-castle', designation: 'SA' }),
+  au: Object.freeze({ countryLabel: 'Australia', filterLabel: 'AU', insignia: 'au-kangaroo', designation: 'AUS' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -128,6 +131,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),
   type90: anchor('hull', 'left', .24, .82, .24, 1),
+  // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
+  christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
@@ -206,6 +211,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // T-62 keeps its own left-rear casting seat; the adjacent T-64 uses the
   // opposite cheek so the Soviet family does not repeat one decal template.
   t62_1975: anchor('turret', 'left', 0.48, 0.46, 0.23, 1),
+  t55a: anchor('turret', 'left', 0.45, 0.48, 0.23, 1),
   t64bv1: anchor('turret', 'right', 0.46, 0.48, 0.24, -1),
   t72b3m_2022: anchor('turret', 'left', 0.40, 0.50, 0.23, 1),
   t72bu_1989: anchor('turret', 'right', 0.43, 0.47, 0.24, -1),
@@ -244,13 +250,20 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // bustle, so seat its roundel on the broad right sponson ahead of the
   // builder-authored V1 designation.
   vickers_mk1: anchor('hull', 'right', 0.58, 0.58, 0.23, -1),
-  challenger1_mk2: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build take its anchor; the fictional X tanks keep the
+  // rebuilt turret's
+  challenger1_mk1: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger1_mk2: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger_x: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  challenger_x_sleek: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
   fv4034: anchor('turret', 'left', 0.39, 0.45, 0.25, 1),
   challenger2: anchor('turret', 'right', 0.37, 0.44, 0.26, -1),
   challenger2e: anchor('turret', 'right', 0.35, 0.44, 0.24, -1),
   ua_challenger2: anchor('hull', 'left', 0.40, 0.60, 0.24, 1),
   challenger3_proto: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
   challenger3: anchor('turret', 'left', 0.32, 0.46, 0.24, 1),
+  challenger3_td: anchor('turret', 'left', 0.34, 0.47, 0.25, 1),
+  challenger3_td_rws: anchor('turret', 'left', 0.34, 0.47, 0.25, 1),
   xk2_black_panther: anchor('turret', 'left', .35, .45, .24, 1),
   k1e1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),
   // K2B (§5.299): the resurrected pre-§5.248 pl01 geometry — reuse that
@@ -291,7 +304,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
   // 2026-10-05: on the turret, where the surface search always landed. The ghillie side drape hides both hull sides,
   // so a hull anchor sent every receipt build through 724 occluded candidates first (167-325 s).
-  leo2a6_ua: anchor('turret', 'left', 0.41, 0.61, 0.24, -1),
+  // 264: the rebuilt UA keeps its 2A6's seat on the rear hull wall, above the skirt cassettes; its turret is screened
+  leo2a6_ua: anchor('hull', 'left', .22, .80, .24, 1),
   leo2_revolution_proto: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2_revolution: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2_improved: anchor('turret', 'left', 0.35, 0.44, 0.25, 1),
@@ -299,12 +313,19 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leclerc_sxxi: anchor('turret', 'left', 0.34, 0.43, 0.24, 1),
   leclerc_s1: anchor('turret', 'right', 0.31, 0.45, 0.24, -1),
   ztz99_longwei: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  // release 264: the Longwei family carries the Longwei turret's anchor
+  ztz99a2_qinglong: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  vt4a1_baihu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3_zhuque: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3m_xuanwu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   type100: anchor('hull', 'left', 0.33, 0.77, 0.26, 1),
   // The missile banks leave the aft spine visible; the former mid-turret
   // number was hidden below their sides in ordinary quarter views.
   ztz100_prototype: anchor('turret', 'left', 0.18, 0.32, 0.24, 1),
   ztz100: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  ztz20: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  ztz20_prototype: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
   // The shallow rotating base cannot carry a flush readable emblem. Use
   // the permanent forward hull modules, clear of their seams and fittings.
   object695: anchor('hull', 'left', 0.60, 0.52, 0.26, 1),
@@ -328,7 +349,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // add-on side armour; 2026-10-23 ("Paint it on the drape"): painted on its ULCANS drape (vehicleMarkingPaintsOnSuit),
   // no window cut in the cloth; the designation keeps the left flank's drape
   m1a1_abrams_fep: anchor('turret', 'right', 0.48, 0.44, 0.27, 1),
-  m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
+  // 2026-10-28 (m1e3-264): the demonstrator's star on its left star skirt panel, behind the flag panel
+  m1a3: anchor('hull', 'left', 0.66, 0.54, 0.50, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),
@@ -353,13 +375,25 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  shot_kal: anchor('turret', 'left', 0.42, 0.49, 0.25, 1),
+  centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk2: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  centurion5_avre: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
+  centurion5_1_aus: anchor('turret', 'left', 0.47, 0.49, 0.25, 1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m47_patton: anchor('turret', 'right', 0.41, 0.49, 0.25, -1),
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),
   t64bv_donbas: anchor('turret', 'right', 0.38, 0.47, 0.23, -1),
+  t64bm1m: anchor('turret', 'right', 0.36, 0.42, 0.22, -1),
+  t64bv: anchor('turret', 'right', 0.38, 0.44, 0.22, -1),
+  t64b1v_2022: anchor('turret', 'right', 0.38, 0.44, 0.22, -1),
+  pt64_tur: anchor('turret', 'right', 0.38, 0.44, 0.22, -1),
   ua_t80bv: anchor('hull', 'left', 0.42, 0.63, 0.24, 1),
   t80u_kursk: anchor('turret', 'left', 0.35, 0.46, 0.24, 1),
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
+  bm_oplot_m: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
+  bm_oplot_t: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
@@ -411,15 +445,17 @@ export function vehicleMarkingPaintsOnSuit(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'm1a1_abrams_fep';
+  // release 262: the Christian II's heavy suit covers its turret walls; its markings are painted on the drape
+  return id === 'm1a1_abrams_fep' || id === 'christian2';
 }
 
-/** Continuous side modules may carry markings outside the core hull. */
+/** Continuous side modules may carry markings outside the core hull. Release 264: the ZTZ-99 Longwei's numbers stand on
+ * its skirt band, spaced armour since the envelope fix (profiles/longwei.ts addSkirts). */
 export function vehicleMarkingIncludesPermanentHullArmor(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'object695' || id === 'amx10p_25';
+  return id === 'object695' || id === 'amx10p_25' || id === 'ztz99_longwei';
 }
 
 /**
@@ -456,15 +492,19 @@ export function vehicleMarkingRecord(
   const country = COUNTRY_MARKINGS[countryCode] || COUNTRY_MARKINGS.xx;
   const tacticalNumber = cleanTacticalNumber(spec?.visual?.number, spec?.id);
   const designationPrefix = spec?.nation === 'USSR' ? 'SU' : country.designation;
+  // An export livery (the Oplot-T's Thai flag) paints its own insignia; the country, its filter and designation stay
+  // the building nation's.
+  const insignia = spec?.visual?.insignia && NATIONAL_INSIGNIA_PAINTERS[spec.visual.insignia]
+    ? spec.visual.insignia : country.insignia;
   return Object.freeze({
     schemaVersion: VEHICLE_MARKING_SCHEMA_VERSION,
     countryCode,
     countryLabel: country.countryLabel,
     filterLabel: country.filterLabel,
-    insignia: country.insignia,
+    insignia,
     tacticalNumber,
     designation: `${designationPrefix}-${tacticalNumber}`,
-    markingCode: `${countryCode.toUpperCase()}:${country.insignia}:${tacticalNumber}`,
+    markingCode: `${countryCode.toUpperCase()}:${insignia}:${tacticalNumber}`,
   });
 }
 
@@ -649,6 +689,16 @@ function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   }
 }
 
+/** Release 262 (the Christian II): a small Dannebrog, the white Nordic cross on red, its upright off the hoist. */
+function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
+  ctx.fillStyle = '#b8343a';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#ece8dc';
+  ctx.fillRect(x0 + w * 0.36 - bar / 2, y0, bar, h);
+  ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
 function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
   ctx.strokeStyle = '#e0bd4c';
   ctx.lineWidth = size * 0.09;
@@ -661,6 +711,53 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.moveTo(cx, cy - radius * 0.72);
   ctx.lineTo(cx, cy + radius * 0.78);
   ctx.stroke();
+}
+
+// The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
+function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const width = size * 0.92, height = size * 0.62, band = height / 6;
+  const x = cx - width / 2, y = cy - height / 2;
+  const bands: readonly [string, number][] = [['#b8333a', 1], ['#ece8dc', 1], ['#2d3a6b', 2], ['#ece8dc', 1], ['#b8333a', 1]];
+  let top = y;
+  for (const [colour, rows] of bands) {
+    ctx.fillStyle = colour;
+    ctx.fillRect(x, top, width, band * rows + 0.5);
+    top += band * rows;
+  }
+}
+
+/** The South African castle: the five-bastioned Castle of Good Hope outline the SANDF's insignia draw, gold on blue. */
+function drawSouthAfricaCastle({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.86, '#2f4f86');
+  ctx.fillStyle = '#e2b84e';
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + k * Math.PI / 5, r = radius * (k % 2 === 0 ? 0.70 : 0.46);
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#ece6d6';
+  ctx.lineWidth = size * 0.035;
+  ctx.stroke();
+}
+
+/** The Australian kangaroo: a red bounding kangaroo in a white disc in a blue ring (the roundel the services share). */
+function drawAustraliaKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.86, '#2f4f86');
+  ring(ctx, cx, cy, radius * 0.62, '#ece6d6');
+  // facing left: tail low behind, the long hind foot, the body leaning forward, the head and ears raised
+  const pts: readonly (readonly [number, number])[] = [
+    [0.50, 0.30], [0.12, 0.22], [-0.10, 0.30], [-0.06, 0.18], [0.10, 0.06], [0.04, -0.12], [-0.14, -0.22], [-0.26, -0.30],
+    [-0.36, -0.26], [-0.40, -0.36], [-0.30, -0.40], [-0.18, -0.36], [-0.04, -0.30], [0.14, -0.20], [0.26, -0.02],
+    [0.24, 0.12], [0.54, 0.24],
+  ];
+  ctx.fillStyle = '#b73a3a';
+  ctx.beginPath();
+  pts.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(cx + x * radius, cy + y * radius) : ctx.lineTo(cx + x * radius, cy + y * radius)));
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
@@ -688,7 +785,11 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'pl-checker': drawPolandChecker,
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
+  'dk-dannebrog': drawDenmarkDannebrog,
   'ua-trident': drawUkraineTrident,
+  'th-flag': drawThaiFlag,
+  'za-castle': drawSouthAfricaCastle,
+  'au-kangaroo': drawAustraliaKangaroo,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */
@@ -707,6 +808,9 @@ export function drawNationalInsignia(
   ctx.restore();
 }
 
+/** The share of its bounds' width a tactical number may fill, outline included (drawTacticalNumber). */
+const TACTICAL_NUMBER_FILL = 0.94;
+
 export function drawTacticalNumber(
   ctx: CanvasRenderingContext2D,
   record: VehicleMarkingRecord,
@@ -716,8 +820,16 @@ export function drawTacticalNumber(
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const text = record.tacticalNumber;
-  const fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
+  let fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
   ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
+  // 264: the 1.75-per-character rule sizes digits; a letter code's bold capitals run wider (the Leopard 2A3's OTCO
+  // clipped at both ends of its 252 px designation decal), so a number that measures wider than its bounds, outline
+  // included, comes down to fit them. One that fits keeps its size.
+  const measured = ctx.measureText?.(text)?.width;
+  if (measured && measured + Math.max(2, fontSize * 0.08) > width * TACTICAL_NUMBER_FILL) {
+    fontSize *= width * TACTICAL_NUMBER_FILL / (measured + Math.max(2, fontSize * 0.08));
+    ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
+  }
   ctx.lineWidth = Math.max(2, fontSize * 0.08);
   ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
   ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;

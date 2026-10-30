@@ -53,12 +53,19 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
     .map((island) => island.parts.map((part) => part.bucket)), [],
     `${id}: every flap, hanger and mudguard plate reaches the hull`);
 }
-// Challenger 1: its postAssemble re-seats the turret pivot and moves every turret child -0.562 m; the census places the
-// bucket parts where their meshes render, so the L37 stations and the bustle panels stand on the turret as built.
+// Challenger 1: the census places the bucket parts where their meshes render. The FV4030/5 and FV4030/6 turrets stand
+// whole on their castings; the Mk 1 and Mk 2 carry the Mk 3's turret (challenger1XSupplied.ts), so the plain fit floats
+// nothing the Mk 3 does not, and the Mk 3 keeps at most its two known gaps (a roof fitting on the right, 2 cm; a
+// fitting on the gun nose, 1.6 cm).
 {
-  const { parts } = collectStock('challenger1_mk2');
-  const floating = bodyIslands(parts, 'turret').filter((island) => (island.gapM ?? 1) >= 0.015);
-  assert.deepEqual(floating.map((island) => island.parts.map((part) => part.bucket)), [],
-    'challenger1_mk2: the L37 stations and the bustle mesh panels sit on the turret as rendered');
+  const floating = (id) => bodyIslands(collectStock(id).parts, 'turret').filter((island) => (island.gapM ?? 1) >= 0.015)
+    .map((island) => island.min.map((v) => v.toFixed(2)).join());
+  for (const id of ['challenger_x', 'challenger_x_sleek']) {
+    assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
+  }
+  // release 262 (the three marks' own fits): the commander's L37 rides the cupola and the front box sits on the roof
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) {
+    assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
+  }
 }
-console.log('hull-contact-census.selftest: contact law, turret-held launchers, moved bucket meshes, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');
+console.log('hull-contact-census.selftest: contact law, turret-held launchers, the Challenger 1 turrets, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');

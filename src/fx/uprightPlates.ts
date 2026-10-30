@@ -98,14 +98,21 @@ function piecesOf(w: Float64Array, count: number, index: THREE.BufferAttribute |
   return pieces;
 }
 
+/** Where the building as drawn stands no more than this over the ground, its walls are buried there (clampPieceTops). */
+const BURIED_M = 0.3;
 /**
  * (round 4: the census's remnant piers standing 1-7 m over the building as it was drawn at their spot — a firestation's
  * steel stub, a stack's stump, a ruin's collapse stub over its banked heap) a standing remnant's pieces no taller than the
  * building was drawn where their tops stand: a piece whose top stands more than `marginM` over `topAt` there (world y; not
  * finite where the drawn form is not known: left alone) is squashed down about its foot to `marginM` over it. A piece
- * wholly over that height (a held storey's member: DESTRUCTION.md §3.4) is left alone. World-space geometry, in place.
+ * wholly over that height (a held storey's member: DESTRUCTION.md §3.4) is left alone — but for one standing where the
+ * building as drawn reaches no higher than the ground (`groundAt`, within BURIED_M): a stub the ruin seated on a hillside
+ * over walls the ground buried, as nothing was drawn there over the ground, is flattened to a point (2026-10-28, fjord
+ * #6's naust cut into the shore: its net store's stub and a course of it stood 1.3-1.4 m over the building as drawn).
+ * World-space geometry, in place.
  */
-export function clampPieceTops(geometry: THREE.BufferGeometry, topAt: (x: number, z: number) => number, marginM = 0.5): number {
+export function clampPieceTops(geometry: THREE.BufferGeometry, topAt: (x: number, z: number) => number, marginM = 0.5,
+  groundAt: ((x: number, z: number) => number) | null = null): number {
   const pos = geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
   if (!pos || pos.count < 4) return 0;
   const count = pos.count;
@@ -123,7 +130,15 @@ export function clampPieceTops(geometry: THREE.BufferGeometry, topAt: (x: number
     const drawn = topAt(tx, tz);
     if (!Number.isFinite(drawn)) continue;
     const cap = drawn + marginM;
-    if (!(y1 > cap + 0.05) || !(cap > y0 + 0.15)) continue;
+    if (!(y1 > cap + 0.05)) continue;
+    if (!(cap > y0 + 0.15)) {
+      if (!groundAt || !(drawn <= groundAt(tx, tz) + BURIED_M)) continue;
+      // (every vertex onto its first: its triangles collapse to a point, as a flattened span's)
+      const f = list[0]! * 3;
+      for (const i of list) pos.setXYZ(i, w[f]!, w[f + 1]!, w[f + 2]!);
+      squashed++;
+      continue;
+    }
     const k = (cap - y0) / (y1 - y0);
     for (const i of list) pos.setY(i, y0 + (w[i * 3 + 1]! - y0) * k);
     squashed++;

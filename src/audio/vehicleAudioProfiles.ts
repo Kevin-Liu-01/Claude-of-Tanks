@@ -109,6 +109,8 @@ const NATION_LANGUAGE: Readonly<Record<string, CrewLanguage>> = Object.freeze({
   germany: 'de', 'west germany': 'de',
   russia: 'ru', ussr: 'ru', 'ussr/russia': 'ru', 'soviet union': 'ru',
   ukraine: 'uk',
+  'south africa': 'en-GB',
+  australia: 'en-GB',
   china: 'zh', prc: 'zh',
   france: 'fr',
   sweden: 'sv',
@@ -153,7 +155,7 @@ export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId
   if (/kv2/.test(id)) return 'diesel_v12_soviet';
   if (/namer|bmpt|tos1a/.test(id)) return /namer/.test(id) ? 'diesel_v12_modern' : 'diesel_v12_soviet';
   if (role === 'ifv' || role === 'light' || mass < 30) return 'diesel_ifv';
-  if (/t72|t90|t62|t14|type59|ztz85|type96_72|pt91|jaguar|t72_rys|zubr/.test(id)) return 'diesel_v12_soviet';
+  if (/t72|t90|t62|t55|t14|type59|ztz85|type96_72|pt91|jaguar|t72_rys|zubr/.test(id)) return 'diesel_v12_soviet';
   if (era === 'ww2') return 'gasoline_v12';
   return 'diesel_v12_modern';
 }

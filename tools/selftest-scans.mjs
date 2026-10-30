@@ -69,6 +69,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
+  // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
+  'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
   'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
@@ -88,6 +90,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
+  'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),
   'src/ui/mapBackdrop.selftest.mjs': lists('public/maps/cards/*.webp'),
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
@@ -177,6 +180,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),
   'src/vehicles/vehicleNightLighting.selftest.mjs': tracked('src/vehicles/**'),
   'tools/attribution-audit.mjs': tracked('**'),
+  // 265: the core's roots are every module under src/sim (git ls-files)
+  'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
@@ -259,6 +264,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // fixture repository
   'tools/code-quality-metrics.ts': cli('trackedRuntimeFiles (git ls-files) runs from the CLI; its receipt analyzes fixture text'),
   'tools/frame-capture-compare.mjs': cli('run() lists the capture directory its CLI names'),
+  'tools/interior-fill-exposure.mjs': cli('--lane diffs its own inputs against the base (git diff --name-only) only when started as ' +
+    'a command; its receipt imports laneScope and fillExposure, and gate.selftest only names the command'),
   'tools/media-r5/combat-check.mjs': cli('lists the scenes directory its CLI names; combat.selftest imports combatVerdict'),
   'tools/qa-evidence-manifest.mjs': cli('lists the evidence roots its CLI names (.qa-dev, .qa-bots, shots, ...)'),
   'tools/release.mjs': cli('the release CLI lists cloudflare/* Workers, .vercel env files and its tree\'s git status; ' +

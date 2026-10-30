@@ -551,6 +551,7 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       }
     }
   }
+  // (none over the sprocket: since the rear-track fix the top run rises straight over it, 3 cm under the fender)
   for (const z of H.fenderBrackets ?? []) {
     for (const side of [-1, 1]) P.add('hullDark', box(0.10, 0.10, 0.06), side * (H.fenderHW - 0.05), H.fenderY - 0.08, z);
   }
@@ -863,6 +864,9 @@ function pattonGun(P: CastPort, G: GunSpec): void {
     P.add('gun', xform(cylZ(0.175, devL, seg), 0, 0, 0, 0, 0, 0, [1.5, 1, 1]), 0, 0, z0 + devL / 2);
     for (const side of [-1, 1]) P.add('gunDark', box(0.012, 0.15, devL * 0.42), side * 0.262, 0, z0 + devL * 0.52);
     P.add('gun', cylZ(G.r1 * 1.25, 0.05, seg), 0, 0, z0 - 0.02);
+    // 263 (muzzle-bore probe: a mouth's lip fits its terminal support, ratio 0.35-1): the bore leaves the drum through
+    // a short collar 1 cm proud of its 0.26 m face, so the mouth seats on a ring of the tube's size
+    P.add('gun', cylZ(G.r1 * 1.15, 0.03, seg), 0, 0, len - 0.005);
   } else if (G.device === 'm36') {
     // 90 mm M36: the T-shaped blast deflector, a short cylinder across the muzzle with the bore running through it to
     // its own collar at the mouth
@@ -873,8 +877,9 @@ function pattonGun(P: CastPort, G: GunSpec): void {
     P.add('gun', box(0.49, 0.20, 0.14), 0, 0, len - 0.08);
     P.add('gun', cylZ(G.r1 * 1.3, 0.06, seg), 0, 0, z0 + 0.03);
   }
-  muzzleBore(P, { z: len + 0.004, r: G.r1 * 0.78 });
-  P.muzzleZ = len;
+  const mouth = G.device === 'm3a1' ? len + 0.01 : len;
+  muzzleBore(P, { z: mouth + 0.004, r: G.r1 * 0.78 });
+  P.muzzleZ = mouth;
 }
 
 /** A rotor shield: a D-section casting on the trunnion (gun frame): its face an arc of radius r about the trunnion axis
@@ -976,7 +981,7 @@ function ventilator(P: CastPort, T: TurretFrame, x: number, z: number, r: number
 
 /** Browning M2 HB on a working mount (world base). */
 function roofM2(P: CastPort, T: TurretFrame, x: number, z: number, baseY: number, opts: { barrel?: number; cls?: 'm2' | 'mag';
-  scale?: number; seed: number; ring?: false; elev?: number; ammo?: false }): void {
+  scale?: number; seed: number; ring?: false; elev?: number; ammo?: false; station?: string }): void {
   const L = tl(T);
   const mg = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: opts.barrel ?? 0.65, elev: opts.elev ?? 0.03,
@@ -984,6 +989,9 @@ function roofM2(P: CastPort, T: TurretFrame, x: number, z: number, baseY: number
     ammo: opts.ammo,
   });
   mg.position.set(x, L.y(baseY), L.z(z));
+  // 263 (integrator, roofWeaponPolicy.selftest): a second station on one roof keeps its own name, which the auxiliary
+  // presentation finds it by (the M48A5's loader's M60D beside the commander's)
+  if (opts.station) mg.name = `${mg.name}_${opts.station}`;
   P.turretG.add(mg);
 }
 
@@ -1201,7 +1209,7 @@ const M46_HULL_SPEC: PershingHullSpec = {
   deckY: 1.62, engineDeckY: 1.73, engineDeckZ: -1.30, tailTopY: 1.61, tailBotY: 0.64,
   sponsonHW: 1.45, sponsonY: 1.40, fenderHW: 1.756, fenderY: 1.40, trackW: 0.64, xc: 1.36,
   fenderLine: [[-4.24, 1.40], [1.45, 1.40], [1.62, 1.32]], rearFlapH: 0.20, rearFlapOuterH: 0.37, rearFlapX: [1.06, 1.75], frontFlap: false, noseDepth: 0.10,
-  sponsonFrontBox: [0.94, 1.17, 1.45, 1.68, 1.50, 1.68], fenderBrackets: [-3.55, -1.80, 0, 0.45, 0.90], fenderBoxH: 0.25, fenderBoxX: [1.45, 1.61],
+  sponsonFrontBox: [0.94, 1.17, 1.45, 1.68, 1.50, 1.68], fenderBrackets: [-1.80, 0, 0.45, 0.90], fenderBoxH: 0.25, fenderBoxX: [1.45, 1.61],
   fenderBoxes: [[1.20, 0.25], [0.20, -0.75], [-0.80, -1.85], [-1.90, -3.05]], mufflers: false, bowLights: [0.70, 1.15, 1.90],
   rearGrille: [0.64, 1.25, 1.52, 0.17],
   gear: {
@@ -1929,7 +1937,7 @@ function m48LoaderM60(P: CastPort, T: TurretFrame, seat: CastSeat): void {
     const roof = seat.topAt(0.60, 0.23);
     P.add('turretDark', box(0.106, 0.04, 0.115), 0.60, L.y(roof + 0.01), L.z(0.23));
     P.add('turretDark', cylY(0.035, 0.045, 2.68 - roof, 10), 0.60, L.y((2.68 + roof) / 2), L.z(0.23));
-    roofM2(P, T, 0.60, 0.23, 2.67, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 486, ring: false, elev: 0, ammo: false });
+    roofM2(P, T, 0.60, 0.23, 2.67, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 486, ring: false, elev: 0, ammo: false, station: 'loader' });
     m60dGrips(P, L, 0.60, -0.109, 2.92);
     m60dSight(P, L, 0.60, -0.109, 2.92);
     P.add('turretDetail', box(0.09, 0.17, 0.27), 0.785, L.y(2.848), L.z(0.225), 0, Math.PI / 2, 0);

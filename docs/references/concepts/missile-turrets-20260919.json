@@ -22,7 +22,7 @@
         0.64,
         0.8
       ],
-      "barrelLengthM": 1.45,
+      "barrelLengthM": 3.5,
       "barrelRadiusM": 0.045,
       "pitchDeg": [
         -6,
@@ -31,12 +31,12 @@
       "cells": 8,
       "backupCaliberMm": 35,
       "roofMachineGuns": 0,
-      "hullLengthM": 6.94,
-      "widthM": 3.734,
+      "hullLengthM": 7.13,
+      "widthM": 3.726,
       "tallestM": 2.64,
       "silhouette": "Broad low armored turret with two open pods of four round canisters and a short backup cannon",
       "hullWidthM": 3.7,
-      "overallLengthM": 7.7
+      "overallLengthM": 7.9
     },
     "object695_x": {
       "id": "object695_x",
@@ -105,6 +105,19 @@
       "date": "2026-10-21",
       "request": "make missible tubes like those for type 100 ifv, ztz 100 proto missile tubes, follow that of the object 695, and tagil, which are more prooper.",
       "result": "ztz100_prototype: the two armored box banks became open pods of round 152 mm canisters (Object 695 collars, recessed sealed terminals, dark bore liners, bands, clamp frames, rails, cradle plates on the trunnion journals, fixed elevation drives). Eight cells and both missile loads unchanged; the canister pitch tightened to 0.30 m, so the launch mouths moved to x 0.93/1.23 and the lower row to y 0.12; the top fell from 2.74 m to 2.64 m."
+    }
+  ],
+  "amendments": [
+    {
+      "date": "2026-10-27",
+      "id": "ztz100_prototype",
+      "reason": "Owner 2026-10-27 (\"the ztz 100 is its prototype\"): the testbed stands on the ZTZ-20 family hull (docs/references/concepts/ztz20-family-20261027.json); its missile turret is unchanged. The row takes the family hull envelope and the 3.50 m backup tube of the 2026-10-22 owner-approved 35 mm L/90 (lane 240).",
+      "changed": [
+        "barrelLengthM",
+        "hullLengthM",
+        "widthM",
+        "overallLengthM"
+      ]
     }
   ]
 }

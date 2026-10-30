@@ -111,7 +111,7 @@ for (const id of IDS) {
     const cloneMs = performance.now() - t0;
     if (options.batchStatic) assert.ok(battleGeometrySharingStats().leases > leases, `${label}: the copy leases the pooled stock`);
     same(drawn(clone), pristine, `${label}: the copy at rest`);
-    assert.notEqual(clone.root, source.root);
+    assert.ok(clone.root !== source.root);
     // the energy skin's unwrap re-seats a battle build's twins (juggernautVisual): the copy is split as its build was
     if (options.batchStatic) {
       assert.ok(clone.root.userData.programVariants?.twins > 0, `${label}: the build split its program variants`);
@@ -120,7 +120,11 @@ for (const id of IDS) {
       same(drawn(clone), drawn(fresh), `${label}: re-seated`);
     }
 
-    // driven alike: the gear, the tracks' scroll, the turret and gun, the distance hand-offs and the far merge
+    // driven alike: the gear, the tracks' scroll, the turret and gun, the distance hand-offs and the far merge. Both far
+    // LODs prepared first, as the battle visual streamer prepares every seat's (prepareFarLod): from 90 m the gear stage
+    // (local-fps-265) draws the far LOD's wheel stations, and a build at range is spaced one vehicle at a time
+    // (claimFarLodBuild), so an unprepared pair would enter it on different frames
+    clone.prepareFarLod?.(); fresh.prepareFarLod?.();
     const a = createTankState(spec, new THREE.Vector3(3, 0.4, -7), 0.3);
     const b = createTankState(spec, new THREE.Vector3(3, 0.4, -7), 0.3);
     const distances = [8, 40, 100, 160, 100, 40, 8, undefined];

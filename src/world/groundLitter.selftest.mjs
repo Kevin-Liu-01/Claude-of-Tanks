@@ -90,9 +90,9 @@ settle(other, { x: 0, z: 0 });
 assert.notDeepEqual([...other.meshes[0].instanceMatrix.array.slice(0, 64)], [...litter.meshes[0].instanceMatrix.array.slice(0, 64)], 'another seed strews differently');
 twin.dispose(); other.dispose();
 
-// streaming: a new cell builds only the fresh column, the cache serves a return trip
-litter.update({ x: 17, z: 0 });
-assert.equal(litter.getState().builds, 30, 'one cell east: five new cells, built inside one update');
+// streaming: a new cell builds only the fresh column (on the live slices: local-fps-265, below), the cache serves a return trip
+litter.update({ x: 17, z: 0 }); settle(litter, { x: 17, z: 0 });
+assert.equal(litter.getState().builds, 30, 'one cell east: five new cells');
 assert.equal(litter.getState().pending, 0); assert.equal(litter.getState().publishes, 2); assert.equal(litter.getState().cached, 30);
 litter.update({ x: 0, z: 0 });
 assert.equal(litter.getState().pending, 0, 'the return trip is served from the cache');
@@ -100,6 +100,35 @@ assert.equal(litter.getState().publishes, 3); assert.equal(litter.getState().bui
 assert.deepEqual(litter.getState().counts, state.counts, 'the cached ring republishes identically');
 for (let i = 0; i < 140; i++) { litter.update({ x: i * 16, z: 400 }); settle(litter, { x: i * 16, z: 400 }); }
 assert.ok(litter.getState().cached <= GROUND_LITTER.cacheCells, 'the cell cache is bounded');
+
+// (local-fps-265) a step's new edge column (32-48 m out, past the 26 m fade) builds a cell a live slice (liveUpdateMs, one
+// cell at least), not all five in one update (~2.5-2.9 ms in battle); a first fill (an interior cell to build) takes the
+// cold budget; the streamed ring is the one an exact budget builds
+{
+  const realNow = performance.now.bind(performance);
+  const make = (exact) => createGroundLitter(field, { seed: 9, blocked, ...(exact ? { cellsPerUpdate: 6 } : {}) });
+  const ringOf = (l) => l.meshes.map((m) => JSON.stringify(positions(m))).join('|');
+  const live = make(false);
+  settle(live, { x: 0, z: 0 });
+  let fake = 0;
+  performance.now = () => (fake += 1); // a slow clock: every read a millisecond on
+  try {
+    const before = live.getState().builds;
+    live.update({ x: 17, z: 0 });
+    assert.equal(live.getState().builds - before, 1, 'a step builds one edge cell a live slice');
+    assert.equal(live.getState().pending, 4, 'the rest of the column waits for the next slices');
+    const cold = make(false);
+    cold.update({ x: 0, z: 0 });
+    assert.equal(cold.getState().builds, 6, 'a first fill takes the cold budget at once');
+    cold.dispose();
+  } finally { performance.now = realNow; }
+  settle(live, { x: 17, z: 0 });
+  const direct = make(true);
+  settle(direct, { x: 17, z: 0 });
+  assert.equal(ringOf(live), ringOf(direct), 'the live-sliced stream settles on the ring an exact budget builds');
+  assert.ok(GROUND_LITTER.liveUpdateMs > 0);
+  live.dispose(); direct.dispose();
+}
 
 // pool mix
 {

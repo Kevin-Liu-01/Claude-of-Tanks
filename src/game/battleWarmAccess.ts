@@ -19,9 +19,6 @@ export interface BattleWarmAccess {
   warmNetworkOpeningEffects(
     options: Parameters<RuntimeModule['warmNetworkOpeningEffects']>[0],
   ): ReturnType<RuntimeModule['warmNetworkOpeningEffects']>;
-  warmStreamedVehicles(
-    options: Parameters<RuntimeModule['warmStreamedVehicles']>[0],
-  ): ReturnType<RuntimeModule['warmStreamedVehicles']>;
   warmStudioEffects(
     options: Parameters<RuntimeModule['warmStudioEffects']>[0],
   ): ReturnType<RuntimeModule['warmStudioEffects']>;
@@ -79,8 +76,6 @@ export function createBattleWarmAccess(
       (await preload()).warmNetworkWrecks(options),
     warmNetworkOpeningEffects: async (options) =>
       (await preload()).warmNetworkOpeningEffects(options),
-    warmStreamedVehicles: async (options) =>
-      (await preload()).warmStreamedVehicles(options),
     warmStudioEffects: async (options) =>
       (await preload()).warmStudioEffects(options),
     stageCombatFxProgramSubmission: async (options) =>

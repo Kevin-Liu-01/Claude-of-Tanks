@@ -829,15 +829,22 @@ export function createShallowWaterSurface(
         float corner = min(0.65, hw * 0.45);
         vec2 q = abs(vec2(along, across)) - vec2(hl, hw) + corner;
         float hullDist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;
-        float outside = max(hullDist, 0.0);
-        vec2 radial = rel / max(length(rel), 1e-3);
+        // (2026-10-29, the owner: "we still have a square outline when going through water", most on the phone tier, which
+        // draws this wake everywhere) the rings round a hull run round an ellipse through its ends, not its plan: the
+        // contours of the plan's distance were rounded rectangles, a square drawn in rings round a standing or slow hull.
+        // outside: the metres past that ellipse along the ray from the hull's centre.
+        float relLen = length(rel);
+        float ringR = length(vec2(along, across) / (vec2(hl, hw) + 0.9));
+        float outside = max(relLen * (1.0 - 1.0 / max(ringR, 1e-3)), 0.0);
+        vec2 radial = rel / max(relLen, 1e-3);
         float lap = sin(outside * 5.5 - uWaterTime * 3.4 + phase) * exp(-outside * 0.9);
-        wave += radial * lap * 0.45 * calm * str * proc * smoothstep(-0.1, 0.25, hullDist);
-        // Small glints at the actual contact, torn by moving water. At rest there
-        // is no continuous white frame; the field's own slope carries displacement.
+        wave += radial * lap * 0.45 * calm * str * proc * smoothstep(0.85, 1.0, ringR);
+        // Small glints at the actual contact, torn by moving water, where a moving hull pushes into it: its bow and the
+        // fore half of its flanks. A band all round the plan was a white frame round the hull (the owner's square).
         float contactBreak = smoothstep(0.42, 0.78, waveFine.x * 0.65 + waveNear.y * 0.35);
-        float contactBand = exp(-pow((hullDist - 0.12) * 3.2, 2.0)) * smoothstep(-0.15, 0.12, hullDist);
-        wakeFoam += contactBand * contactBreak * (0.015 + 0.10 * mov0) * str;
+        float contactBand = exp(-pow((hullDist - 0.12) * 3.2, 2.0)) * smoothstep(-0.15, 0.12, hullDist)
+          * smoothstep(-0.1 * hl, 0.7 * hl, along);
+        wakeFoam += contactBand * contactBreak * 0.10 * mov0 * str;
         // bow wave: a mound pushed ahead of the bow, its slope facing forward on the front face
         float bowCentre = hl + 0.6 + 1.3 * spd;
         float bowAcross = exp(-pow(across / (hw + 1.0), 2.0));
@@ -857,13 +864,19 @@ export function createShallowWaterSurface(
         // transverse waves between the arms behind the stern; the wavelength grows with speed
         float behindStern = max(-hl - along, 0.0);
         float inside = 1.0 - smoothstep(armLine - 1.5, armLine, abs(across));
-        float trans = sin(behindStern * (1.25 / (0.4 + spd)) + uWaterTime * 0.8) * exp(-behindStern * 0.11) * inside * step(0.001, behindStern);
+        // (the waves and the wash lane rise behind the stern over a couple of metres: cut at its line, they drew the plan's
+        // back edge straight across the water)
+        float sternIn = smoothstep(0.0, 2.2, behindStern);
+        float trans = sin(behindStern * (1.25 / (0.4 + spd)) + uWaterTime * 0.8) * exp(-behindStern * 0.11) * inside * sternIn;
         wave += fwd * trans * 0.9 * mov * str;
         // wash lane: churned, foamy water the tracks leave behind, spreading and fading out
         float trailLen = hl + 4.0 + spd * 22.0;
         float back = clamp(behindStern / trailLen, 0.0, 1.0);
         float laneHalf = hw * (1.0 + 0.7 * back);
-        float lane = (1.0 - smoothstep(laneHalf, laneHalf + 1.2, abs(across))) * step(0.001, behindStern);
+        // the tracks' churn spreading behind: soft across, rising behind the stern from its middle out. A plateau the hull's
+        // width with straight sides and a straight front drew a pale box behind it (the owner's square, the phone's stills)
+        float acrossN = abs(across) / laneHalf;
+        float lane = exp(-acrossN * acrossN * 1.6) * smoothstep(0.0, 2.2, behindStern - 1.4 * acrossN * acrossN);
         float wash = lane * (1.0 - back) * (1.0 - back) * mov * str;
         wakeWash += wash;
         wave += (waveFine.xy * 2.0 - 1.0) * wash * 1.2;

@@ -116,12 +116,27 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['K2B Black Panther', 'Korean stealth K2'],
   },
   chieftain3: { displayName: 'Chieftain Mk 3' },
+  challenger1_mk1: { displayName: 'Challenger 1 Mk 1' },
   challenger1_mk2: { displayName: 'Challenger 1 Mk 2' },
+  // The fictional Challenger 1 developments take the numbers after the Challenger 1's FV4030/4 (the Shir 1 was /2, the
+  // Shir 2 /3); no real vehicle carries FV4030/5 or /6 (the owner, 2026-10-28: "proper numerical or fv designations").
+  challenger_x: { displayName: 'FV4030/5', searchAliases: ['Challenger X', 'FV 4030/5', 'Challenger 1 development'] },
+  challenger_x_sleek: {
+    displayName: 'FV4030/6', searchAliases: ['Challenger X Sleek', 'FV 4030/6', 'Challenger 1 development'],
+  },
   fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
   challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },
   ua_challenger2: {
     displayName: 'Challenger 2 (Ukraine)', shortName: 'Challenger 2 UA',
     searchAliases: ['Ukrainian Challenger 2', 'Ukraine Challenger 2'],
+  },
+  challenger3_td: {
+    displayName: 'Challenger 3 TD', shortName: 'Challenger 3 TD',
+    searchAliases: ['Challenger 3 Technology Demonstrator', 'Challenger 3 ATD', 'CR3 TD', 'RBSL demonstrator'],
+  },
+  challenger3_td_rws: {
+    displayName: 'Challenger 3 TD (RWS)', shortName: 'Challenger 3 TD RWS',
+    searchAliases: ['Challenger 3 TD remote weapon station', 'CR3 TD RWS', 'Challenger 3 TD field fit'],
   },
   challenger3: {
     displayName: 'Challenger 3', shortName: 'Challenger 3',
@@ -158,6 +173,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
+  christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
@@ -253,6 +269,22 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-99A2', shortName: 'ZTZ-99A2',
     searchAliases: ['Type 99A2', 'ZTZ 99A2'],
   },
+  ztz99a2_qinglong: {
+    displayName: 'ZTZ-99A2 Qinglong', shortName: 'Qinglong',
+    searchAliases: ['Qinglong', 'Azure Dragon', '青龙', 'Longwei turret on the ZTZ-99A2'],
+  },
+  vt4a1_baihu: {
+    displayName: 'VT-4A1 Baihu', shortName: 'Baihu',
+    searchAliases: ['Baihu', 'White Tiger', '白虎', 'Longwei turret on the VT-4A1'],
+  },
+  t72b3_zhuque: {
+    displayName: 'T-72B3 Zhuque', shortName: 'Zhuque',
+    searchAliases: ['Zhuque', 'Vermilion Bird', '朱雀', 'Longwei turret on the Qilin hull'],
+  },
+  t72b3m_xuanwu: {
+    displayName: 'T-72B3M Xuanwu', shortName: 'Xuanwu',
+    searchAliases: ['Xuanwu', 'Black Tortoise', '玄武', 'Longwei turret on the Kunlun hull'],
+  },
   ztz99a: {
     displayName: 'ZTZ-99A', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],
@@ -263,7 +295,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   ztz100: {
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
-    searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
+    searchAliases: ['Type 100', 'Type 100 main battle tank', 'ZTZ-20 pre-production', 'ZTZ-20 prototype', '100式坦克'],
+  },
+  ztz20_prototype: {
+    displayName: 'ZTZ-20 Prototype', shortName: 'ZTZ-20 Proto',
+    searchAliases: ['ZTZ-20 prototype', 'ZTZ 20 prototype', 'ZTZ-20 testbed', '20式坦克 原型车'],
+  },
+  ztz20: {
+    displayName: 'ZTZ-20', shortName: 'ZTZ-20',
+    searchAliases: ['ZTZ 20', 'Type 20', 'PLA next-generation tank', 'ZTZ-100 production', '20式坦克'],
   },
   ztz100_prototype: {
     displayName: 'ZTZ-100 Prototype', shortName: 'ZTZ-100 Proto',
@@ -276,8 +316,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a1_abrams_fep: { displayName: 'M1A1 Abrams FEP' },
   m1a3: {
-    displayName: 'M1A3 Abrams', shortName: 'M1A3 Abrams',
-    searchAliases: ['M1A3 Abrams concept', 'Next-generation Abrams'],
+    displayName: 'M1E3 Abrams', shortName: 'M1E3 Abrams',
+    searchAliases: ['M1E3', 'M1A3 Abrams', 'M1A3 Abrams concept', 'Next-generation Abrams'],
   },
   kf51_u: { displayName: 'KF51-U', shortName: 'KF51-U', searchAliases: ['KF51B Panther'] },
   merkava1b: { displayName: 'Merkava Mk 1B' },
@@ -300,6 +340,12 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['M48A2GA2', 'Kampfpanzer M48A2GA2', 'M48A2G A2', 'Bundeswehr M48'],
   },
   m48_super: { displayName: 'M48 Super', searchAliases: ['Rheinmetall M48 Super', 'M48A2 Super', 'German M48 upgrade'] },
+  centurion13: { displayName: 'Centurion Mk 13', searchAliases: ['Centurion Mk.13', 'Centurion searchlight', 'Centurion IR'] },
+  shot_kal: { displayName: "Sho't Kal", searchAliases: ['Shot Kal', "Sho't", 'Shot', "Centurion Sho't", 'IDF Centurion'] },
+  strv105: { displayName: 'Strv 105', searchAliases: ['Stridsvagn 105', 'Strv 104', 'Swedish Centurion'] },
+  olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
+  centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
+  centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
   c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
   c1_ariete_proto_serie1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },
@@ -309,9 +355,34 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // owner 2026-10-22: the Ukrainian Army's 2017 T-64BV modernisation (T-64BV zrazka 2017 roku); "Donbas" was the
   // kitbash source's label. The id stays.
   t64bv_donbas: { displayName: 'T-64BV mod. 2017', shortName: 'T-64BV mod. 2017', searchAliases: ['T-64BV Donbas'] },
+  t64bm1m: { displayName: 'T-64BM1M', shortName: 'T-64BM1M', searchAliases: ['T-64B1M', 'T-64BV-1M'] },
+  t64bv: { displayName: 'T-64BV', shortName: 'T-64BV' },
+  t64b1v_2022: { displayName: 'T-64B1V mod. 2022', shortName: 'T-64B1V mod. 2022', searchAliases: ['T-64BV mod. 2022'] },
+  pt64_tur: { displayName: 'PT-64 Tur', shortName: 'PT-64 Tur', searchAliases: ['T-64 Tur', 'Polish T-64'] },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
   t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
-  t84bm_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
+  // Release 262 (owner 2026-10-27: "make the existing ones into lower tier tanks with new names / prototype names"): the
+  // two older Oplot builds take the names of what they are. t84 (an angular welded turret with integrated cheek ERA and
+  // its smoke banks moved to the turret rear, on a T-72-pattern chassis) is the 1992-95 T-84 prototype, Object 478DU2;
+  // t84bm_oplot_m (the welded Duplet turret before the armoured bustle compartment, in its wartime field kit) is the
+  // 2000 serial T-84U Oplot, Object 478DU9. The new T-84BM Oplot-M (478DU9-1) and Oplot-T (478DU9-T) are bm_oplot_m and
+  // bm_oplot_t. The ids stay: saves, rooms, replays and the Gallery key on them.
+  t84: {
+    displayName: 'Object 478DU2', shortName: 'Object 478DU2',
+    searchAliases: ['T-84', 'T-84 prototype', 'T-84 Oplot', 'Obyekt 478DU2', 'Ob. 478DU2'],
+  },
+  t84bm_oplot_m: {
+    displayName: 'T-84U Oplot', shortName: 'T-84U Oplot',
+    searchAliases: ['Object 478DU9', 'BM Oplot (2000)', 'T-84 Oplot (2000)', 'Obyekt 478DU9'],
+  },
+  bm_oplot_m: {
+    displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M',
+    searchAliases: ['BM Oplot-M', 'BM Oplot', 'Object 478DU9-1', 'Oplot M'],
+  },
+  bm_oplot_t: {
+    displayName: 'T-84BM Oplot-T', shortName: 'Oplot-T',
+    searchAliases: ['BM Oplot-T', 'Object 478DU9-T', 'Oplot T', 'Royal Thai Army Oplot', 'Thai Oplot'],
+  },
   ua_m1a1: { displayName: 'M1A1 SA (Ukraine)', shortName: 'M1A1 SA UA', searchAliases: ['M1A1 Abrams UA', 'M1A1 Abrams (Ukraine)'] },
 });
 

@@ -56,9 +56,10 @@ const SPECS: FleetTankSpec[] = [
   make('chieftain_mk9', 'centurion3', 'Centurion Mk.3', 'UK',
     { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
+  // release 262: the L7 stands 2.06 m past the front guards (the 9.83 m was the 20-pdr's; profiles/centurionFamily.ts)
   make('chieftain_mk9', 'centurion5_2', 'Centurion Mk.5/2', 'UK',
     { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 },
-      dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
+      dims: { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.38, heightM: 2.94 } }),
   make('leo2a2', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     {
       hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },

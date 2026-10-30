@@ -3,8 +3,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { boxUV, paintedSurfaceShade } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { leopardA6UaDockSeat } from './leopardA6UaLayout.ts';
 
-type ReceiverId = 'pt91a_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria';
+type ReceiverId = 'pt91a_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria' | 'shot_kal';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
   readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
@@ -29,12 +30,15 @@ interface ReceiverSeat {
 export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> = {
   pt91a_twardy: { x: -.72, z: -.28, topY: .885,
     minX: -.895, maxX: -.545, minZ: -.426, maxZ: -.134 },
-  leo2a6_ua: { x: -1.45, z: .46, topY: .985,
-    minX: -1.625, maxX: -1.275, minZ: .314, maxZ: .606 },
+  // 264: on the cage roof's rail of the rebuilt 2A6 (leopardA6UaLayout.ts)
+  leo2a6_ua: (({ x, z, topY }) => ({ x, z, topY, minX: x - .175, maxX: x + .175, minZ: z - .146, maxZ: z + .146 }))(
+    leopardA6UaDockSeat()),
   ua_m1a1: { x: -1.50, z: -1, topY: 1.535,
     minX: -1.675, maxX: -1.325, minZ: -1.146, maxZ: -.854 },
   t80u_zoria: { x: -1.30, z: -.18, topY: 1.068,
     minX: -1.475, maxX: -1.125, minZ: -.326, maxZ: -.034 },
+  shot_kal: { x: .45, z: -2.10, topY: .894,
+    minX: .275, maxX: .625, minZ: -2.246, maxZ: -1.954 },
 };
 
 /**
@@ -91,12 +95,21 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
         center: [seat.x + x, (bottom + top) / 2, seat.z + z] });
     }
   } else if (id === 'leo2a6_ua') {
-    // These two short sockets overlap the permanent 32 mm roof-basket rail
-    // at x=-1.55, y=.91. They do not use camouflage or a loose crate as a foot.
+    // These two short sockets stand 4 mm into the cage roof's 32 mm dock rail (264: leopardA6UaLayout.ts). They do not
+    // use camouflage or a loose crate as a foot.
+    const { x, socketY } = leopardA6UaDockSeat();
     for (const z of [-.09, .09]) {
-      parts.push({ role: 'rail-post', size: [.026, .041, .026],
-        center: [-1.55, .9425, seat.z + z] });
+      parts.push({ role: 'rail-post', size: [.026, .041, .026], center: [x, socketY, seat.z + z] });
     }
+  } else if (id === 'shot_kal') {
+    // The Sho't Kal's commander's M2 and loader's .30 sweep its whole cast roof, and its raised AVDS deck lies under the
+    // main gun's arc: the dock rides on the IDF bustle basket instead (centurionFamily.ts buildIdfTurretRacks: its top
+    // rear rail at y .858 and z -2.40, the bustle bin's lid at .88 to z -1.78). Two bars run fore and aft under the dock
+    // feet, seated 8 mm into the rear rail and the bin's lid, about 1.9 m from both roof guns' pivots.
+    for (const dx of [-.108, .108]) {
+      parts.push({ role: 'crossarm', size: [.116, .028, .64], center: [seat.x + dx, seat.topY - .014, -2.09] });
+    }
+    return parts;
   } else if (id === 't80u_zoria') {
     // The left roof-cage wing (fieldRoofCage.ts: rails at x -1.62 and -.98,
     // tie at -1.30, top 1.04) covers Zoria's only roof launch column; the

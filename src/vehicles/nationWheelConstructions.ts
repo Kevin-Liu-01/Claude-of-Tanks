@@ -548,6 +548,9 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
       layers: sheridanWheelFaceLayers(q.high) }, q);
   },
   'm60a3-cast-spoke': (q) => standardConstruction('cast-five-spoke', .90, 'dished', q),
+  // 262: the T-54/T-55 cast "starfish" wheel, a dished disc with its windows between the arms (critic round 3: the open
+  // five-spoke rim read as a cart wheel); its thick tyre leaves the dish at 0.84 of the radius
+  't54-starfish-spoke': (q) => standardConstruction('christie-six', .84, 'holes', q),
   'm48-dished-disc': (q) => standardConstruction('deep-dish-eight', .88, 'dished', q),
 });
 

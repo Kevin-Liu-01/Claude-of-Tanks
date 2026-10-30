@@ -7,7 +7,10 @@
 // - back near, the build draws exactly what the identity build draws (the near law of the dual merge holds after a far
 //   trip); never far with no distance (an inspection view), on a wreck, or after the Garage reset;
 // - one build at a time (claimFarLodBuild), and a copied visual (cloneTankVisual) builds its own from its own objects;
-// - a tank moving at the boundary under a jittering camera switches once each way and never inside the band.
+// - a tank moving at the boundary under a jittering camera switches once each way and never inside the band;
+// - (local-fps-265) the gear stage: from GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M) the wheel stations alone stand
+//   in for the wheel layers, the hull, turret and gun keep their detail, the gear rests, and a vehicle that went far in one
+//   step comes back to the gear stage with its wheels parked once.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
@@ -18,7 +21,10 @@ const { createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
 const { cloneTankVisual } = await import('./tankVisualClone.ts');
 const { getSpec } = await import('./specs.ts');
 const { createTankState } = await import('../sim/movement.ts');
-const { FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, FAR_LOD_PARKED_LAYER, claimFarLodBuild, clusterGeometry, noteFarLodBuild } = await import('./farLod.ts');
+const { FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, FAR_LOD_PARKED_LAYER, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, claimFarLodBuild, clusterGeometry,
+  noteFarLodBuild } = await import('./farLod.ts');
+/** The full far LOD's own sign: its hull stand-ins show (the gear stand-in also shows in the gear stage). */
+const farHullShown = (visual) => { let shown = false; visual.root.traverse((o) => { if (o.name === 'farLodHull' && o.visible) shown = true; }); return shown; };
 
 // ---- the clustering law
 {
@@ -84,6 +90,13 @@ const build = (id, mode) => createTank(id, null, { camoSeed: 7, quality: 'ai', g
 const settle = async (visual, state, dist, frames = 2) => {
   for (let i = 0; i < frames; i++) { visual.syncFromState(state, 1 / 30, dist); await new Promise((r) => setTimeout(r, 20)); }
 };
+/** Frames at `dist` until the far LOD is built, as a battle's frames ask: a build waits as long as the last one took
+ * (claimFarLodBuild), so on a loaded machine one slow build holds the next past any fixed number of frames. */
+const settleFar = async (visual, state, dist = 200) => {
+  const until = performance.now() + 30_000;
+  do await settle(visual, state, dist, 1); while (!visual.root.userData.farLod && performance.now() < until);
+  return visual.root.userData.farLod;
+};
 const rows = [];
 for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   await ensureTankBuilder(id);
@@ -91,9 +104,8 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   const identity = build(id, 'identity'), dual = build(id, 'dual');
   await settle(identity, state, 200);
   const before = drawn(identity, 200);
-  await settle(dual, state, 200);
+  const info = await settleFar(dual, state);
   const far = drawn(dual, 200);
-  const info = dual.root.userData.farLod;
   assert.ok(info, `${id}: the far LOD was built at 200 m`);
   assert.equal(identity.root.userData.farLod, undefined, `${id}: an identity build has none`);
   assert.ok(far.triangles <= before.triangles * 0.5, `${id}: half the triangles or fewer at 200 m (${before.triangles} -> ${far.triangles})`);
@@ -123,9 +135,46 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   assert.equal(band.geometry.getAttribute('position').version, bandVersion, `${id}: the gear's runtime rests while far`);
   // the hysteresis, then back near: the identity build's draws exactly
   await settle(dual, state, FAR_LOD_RETURN_M + 1, 1);
-  assert.ok(dual.root.getObjectByName('farLodRunningGear').visible, `${id}: the far LOD holds above the return distance`);
+  assert.ok(farHullShown(dual), `${id}: the far LOD holds above the return distance`);
   await settle(dual, state, FAR_LOD_RETURN_M - 1, 1);
-  assert.ok(!dual.root.getObjectByName('farLodRunningGear').visible, `${id}: and lets go under it`);
+  assert.ok(!farHullShown(dual), `${id}: and lets go under it`);
+  // (local-fps-265) the gear stage under it: the wheel stations stand in for the wheel layers (parked), every other draw
+  // is the identity build's, and the gear rests; it holds above GEAR_LOD_RETURN_M and lets go under it
+  {
+    const gear = dual.root.getObjectByName('farLodRunningGear');
+    for (const dist of [FAR_LOD_RETURN_M - 1, 120, GEAR_LOD_RETURN_M + 1]) {
+      await settle(dual, state, dist, 1);
+      assert.ok(gear.visible && !farHullShown(dual), `${id}: the gear stage alone at ${dist} m`);
+    }
+    let wheelsParked = 0, otherParked = 0;
+    dual.root.traverse((o) => {
+      if (!o.isMesh || o.layers.mask !== 1 << FAR_LOD_PARKED_LAYER) return;
+      if (/^gear(RoadWheel|ReturnRoller|EndWheel)/.test(o.name) || o.isInstancedMesh || o.isBatchedMesh) wheelsParked++; else otherParked++;
+    });
+    assert.ok(wheelsParked >= info.gearParked && otherParked === 0, `${id}: the wheel layers parked (${wheelsParked}), nothing else (${otherParked})`);
+    // inside the band (85 m) beside a twin that came from near (its gear stage off): the same draws but for the wheel
+    // layers and their stand-in
+    const twin = build(id, 'dual');
+    await settle(twin, state, 10); await settle(twin, state, 85);
+    await settle(dual, state, 85);
+    const wheelLayer = (d) => /^gear(RoadWheel|ReturnRoller|EndWheel)/.test(d);
+    const gearDraws = drawn(dual, 85).draws, twinDraws = drawn(twin, 85).draws;
+    assert.ok(gear.visible && !twin.root.getObjectByName('farLodRunningGear')?.visible, `${id}: in the band, the stage from far holds and the twin's from near does not`);
+    assert.ok(gearDraws.every((d) => !wheelLayer(d)) && twinDraws.some(wheelLayer), `${id}: no wheel layer draws in the gear stage`);
+    assert.deepEqual(gearDraws.filter((d) => !d.startsWith('farLodRunningGear|')), twinDraws.filter((d) => !wheelLayer(d)),
+      `${id}: every other draw is the detail's own, to the byte`);
+    twin.dispose();
+    const bandVersion2 = band.geometry.getAttribute('position').version;
+    for (let i = 0; i < 6; i++) { moving.trackScroll.l += 0.3; moving.trackScroll.r += 0.3; dual.syncFromState(moving, 1 / 30, 100); }
+    assert.equal(band.geometry.getAttribute('position').version, bandVersion2, `${id}: the gear rests in the gear stage`);
+    await settle(dual, state, GEAR_LOD_RETURN_M - 1, 1);
+    assert.ok(!gear.visible, `${id}: the gear stage lets go under ${GEAR_LOD_RETURN_M} m`);
+    // near to far in one step and back to the gear stage: the wheels parked once (no detailed wheel draws beside the
+    // stand-in), then near again: the identity build
+    await settle(dual, state, 10, 1); await settle(dual, state, 200, 1); await settle(dual, state, 120, 1);
+    assert.ok(gear.visible && !farHullShown(dual), `${id}: from far to the gear stage in one step`);
+    assert.ok(drawn(dual).draws.every((d) => !/^gear(RoadWheel|ReturnRoller|EndWheel)/.test(d)), `${id}: the wheels stay parked after a far trip`);
+  }
   await settle(identity, state, 10); await settle(dual, state, 10);
   assert.deepEqual(drawn(dual).draws, drawn(identity).draws, `${id}: back near, the identity build's draws to the byte`);
   // never with no distance, never on a wreck, never after the Garage reset
@@ -154,7 +203,7 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   assert.equal(build(id, 'identity').prepareFarLod(), false, 'an identity build has none to prepare');
   await settle(lazy, state, 10);
   assert.deepEqual(drawn(prepared).draws, drawn(lazy).draws, 'preparing changes nothing near');
-  await settle(lazy, state, 200); await settle(prepared, state, 200);
+  await settleFar(lazy, state); await settle(prepared, state, 200);
   const key = (d) => d.split('|').slice(0, 2).join('|');
   assert.deepEqual(drawn(prepared, 200).draws.map(key), drawn(lazy, 200).draws.map(key), 'the prepared far LOD is the one the range builds');
   // (250) prepared hidden, as an unspotted enemy is in the countdown warm (setVisible(false) hides its root): the same
@@ -179,7 +228,7 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   const visual = build(id, 'dual');
   await settle(visual, state, 10);
   assert.equal(visual.prepareFarLod(), true);
-  const gear = visual.root.getObjectByName('farLodRunningGear');
+  const gear = { get visible() { return farHullShown(visual); } };
   let seed = 0x2f6e2b1;
   const jitter = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed / 2 ** 32 - 0.5) * 5; };
   /** Frames along `path(t)` (seconds), from a start state; the switches and the frames under the far LOD. */
@@ -202,6 +251,22 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   // standing inside the band (170.5-174.5 m, 168-177 with the jitter), from either side: never a switch
   assert.equal(drive(false, 30, (t) => 172.5 + 2 * Math.sin(t * 0.7)), 0, 'inside the band from near: no switch');
   assert.equal(drive(true, 30, (t) => 172.5 + 2 * Math.sin(t * 0.7)), 0, 'inside the band from far: no switch');
+  // (local-fps-265) the gear stage's boundary under the same jitter: out from 60 m to 110 m and back, once each way;
+  // standing inside its band (83.5-87.5 m, 81-90 with the jitter), never a switch
+  const stand = visual.root.getObjectByName('farLodRunningGear');
+  const driveGear = (startFar, seconds, path) => {
+    visual.syncFromState(state, 1 / 60, startFar ? 120 : 10);
+    assert.equal(stand.visible, startFar);
+    let switches = 0, was = stand.visible;
+    for (let frame = 1; frame <= seconds * 60; frame++) {
+      visual.syncFromState(state, 1 / 60, path(frame / 60) + jitter());
+      if (stand.visible !== was) { switches++; was = stand.visible; }
+    }
+    return switches;
+  };
+  assert.equal(driveGear(false, 12.5, (t) => (t < 6.25 ? 60 + 8 * t : 110 - 8 * (t - 6.25))), 2, 'the gear stage, out and back: once each way');
+  assert.equal(driveGear(false, 30, (t) => 85.5 + 2 * Math.sin(t * 0.7)), 0, 'inside the gear band from near: no switch');
+  assert.equal(driveGear(true, 30, (t) => 85.5 + 2 * Math.sin(t * 0.7)), 0, 'inside the gear band from far: no switch');
   visual.dispose();
 }
 // ---- a copied visual builds its own far LOD from its own objects
@@ -213,8 +278,8 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   const source = createTank(id, null, options);
   const clone = cloneTankVisual(source, null, options);
   const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
-  await settle(clone, state, 200);
-  await settle(source, state, 200);
+  await settleFar(clone, state);
+  await settleFar(source, state);
   assert.ok(clone.root.userData.farLod && source.root.userData.farLod, 'both build their own far LOD');
   assert.equal(clone.root.userData.farLod.wheels, source.root.userData.farLod.wheels, 'the copy stands in the same wheels');
   let foreign = 0;

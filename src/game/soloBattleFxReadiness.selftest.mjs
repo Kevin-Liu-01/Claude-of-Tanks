@@ -35,8 +35,7 @@ function createFixture(failure) {
   });
   scene.add(worldRoot, playerRoot, fxRoot, retainedRoot);
   const originalSceneRoots = [...scene.children];
-  // a unit cube cell as the combat anatomy hands the overlay one (243's armour skin reads its bounds and its outward
-  // face planes n·x + c <= 0)
+  // a unit cube cell as the combat anatomy hands one over (its bounds and its outward face planes n·x + c <= 0)
   const cell = { min: [0, 0, 0], max: [1, 1, 1], faces: [
     [1, 0, 0, -1], [-1, 0, 0, 0], [0, 1, 0, -1], [0, -1, 0, 0], [0, 0, 1, -1], [0, 0, -1, 0],
   ].map(([x, y, z, constant]) => ({ normal: [x, y, z], constant, plate: 'hull', internal: false })) };
@@ -48,10 +47,10 @@ function createFixture(failure) {
       gun: { shells: [{ caliberMm: 120 }] } },
   };
   const game = { phase: 'battle', preBattleS: 4, player, tanks: [player] };
+  // the scoped armour flashlight is paint on the vehicles' own burn-hooked programs (262): no mesh of its own to borrow
   const armor = createArmorAimOverlay();
-  const armorEntry = armor.prime(player);
-  assert.equal(armorEntry.frames.length, 1, 'positive control: actual overlay owns a borrowed mesh');
-  const armorMesh = armorEntry.frames[0].mesh;
+  assert.equal(armor.prime(player), null, 'a visual without paint handles takes no entry');
+  const sceneRootCount = scene.children.length;
   const fx = {
     group: fxRoot,
     warmOpeningEffects() { meshes[0].visible = true; },
@@ -112,7 +111,7 @@ function createFixture(failure) {
     },
     armorAimOverlay: { warm() {
       const restore = armor.warm();
-      assert.equal(armorMesh.visible, true);
+      assert.equal(scene.children.length, sceneRootCount, 'the armour warm adds nothing to the scene');
       return () => { armorRestores++; restore(); events.push('restore-armor'); };
     } },
     forwardProgramWarm: {
@@ -128,7 +127,6 @@ function createFixture(failure) {
         }
         compileAttempts++;
         assert.equal(fxRoot.visible, true, 'compile sees the staged FX graph');
-        assert.equal(armorMesh.visible, true, 'compile sees the borrowed armor geometry');
         try {
           yield;
           if (failure === 'compile') throw new Error('injected compile renderer failure');
@@ -175,7 +173,6 @@ function createFixture(failure) {
     assertCleanup() {
       assert.equal(fxRestores, 1, 'staged effects restore exactly once');
       assert.equal(armorRestores, 1, 'borrowed armor visibility restores exactly once');
-      assert.equal(armorMesh.visible, false, 'the actual armor owner restored its mesh');
       assert.equal(fxRoot.visible, false, 'the real staging owner restored root visibility');
       assert.ok(meshes.every(mesh => !mesh.visible), 'real staging restore resets every emitted fixture effect');
       assert.deepEqual(meshes.map(mesh => mesh.layers.mask), [1, 1, 1], 'cohort masks do not leak');

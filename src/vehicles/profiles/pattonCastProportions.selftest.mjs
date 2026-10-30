@@ -12,6 +12,7 @@
 // - every cast hull and turret loft is a closed, coherent shell with no crossing faces (the base-shell audit's tests).
 // Negative controls: the release-260 castings (the August squash, the old M48A5 print's 2.96 m dome) fail these laws.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
@@ -32,7 +33,7 @@ const SOURCES = {
   m48a3_patton: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: false, glacis: [55, 65], device: 'm36' },
   magach3: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: true, glacis: [55, 65] },
   m48a2ga2: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 3, tension: false, glacis: [55, 65] },
-  m48_super: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 3, tension: false, glacis: [55, 65] },
+  m48_super: { hullLength: 6.871, width: 3.797, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 3, tension: false, glacis: [55, 65] },
 };
 const box = (o) => new THREE.Box3().setFromObject(o);
 const within = (v, [lo, hi]) => v >= lo && v <= hi;
@@ -108,3 +109,21 @@ assert.ok(m47.turretL / m47.turretW > 1.55, `the M47's long T42 casting (${(m47.
 assert.ok(m46.turretL / m46.turretW < 1.40, `the M46's short Pershing casting (${(m46.turretL / m46.turretW).toFixed(2)})`);
 assert.ok(m48.turretW > m46.turretW + 0.25 && m48.turretL / m48.turretW < 1.40, 'the M48A5\'s wide egg dome');
 console.log('pattonCastProportions: the M46, M47, M48A5 and the M48 marks\' castings, hulls and running gear hold their sources PASS');
+
+// Release 266 photo packets (Main, 2026-10-29 ~11:00: stage A for photo-built marks with no oracle through a per-id
+// packet and the photo-critic PASS): each mark's as-built envelope, the whole tank's bounds as the packet check reads
+// them, within the packet's 3%
+for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {
+  const packet = JSON.parse(readFileSync(new URL(`../../../docs/references/photos/${id}-20261029.json`, import.meta.url), 'utf8'));
+  const target = packet.targets[id];
+  assert.equal(target.test, 'src/vehicles/profiles/pattonCastProportions.selftest.mjs', `${id}: the packet names this fixture`);
+  const tank = createTank(id, null, { quality: 'high', proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
+  tank.root.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(tank.root);
+  for (const [key, value] of [['widthM', b.max.x - b.min.x], ['overallLengthM', b.max.z - b.min.z], ['tallestM', b.max.y]]) {
+    assert.ok(Math.abs(value - target[key]) / target[key] <= packet.dimensionToleranceFraction,
+      `${id}: ${key} ${value.toFixed(3)} m vs the packet's ${target[key]}`);
+  }
+  tank.dispose?.();
+}
+console.log('pattonCastProportions: the four M48 marks hold their photo packets\' envelopes');

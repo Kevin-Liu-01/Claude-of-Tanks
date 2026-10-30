@@ -134,6 +134,51 @@ browser presentation consumer.
 
 ---
 
+### 1.6 One core, two drivers (binding; the owner, 2026-10-29)
+
+The owner's ruling ("lets do this please"): **one shared game core and two thin drivers.** Not two codebases, and not
+one multiplayer path for everything.
+
+- **The core** is everything gameplay: movement, armour, ballistics, damage, modules, bots, spotting, the game-mode rules
+  (`src/sim/matchRuleset.ts`), maps and world collision, the fixed step (`SIM_DT = 1/60`) and the Rust/WASM kernels
+  (`crates/cot-sim`, `src/world/wasmWorldKernels.ts`). It lives in `src/sim`, the bots in `src/game/ai.ts` and
+  `src/game/botAbilities.ts`, and the world's collision and terrain in `src/world`. It is Node-runnable, DOM-free,
+  deterministic and seeded (§1.4), and it imports nothing from either driver.
+- **The local driver** runs the core on the page: a solo quick battle, the campaign, the Proving Ground, Watch, replays,
+  bot battles and the Jev opponent. Input, the fixed step (`src/game/state.ts` `simStep`, through
+  `src/game/battleFrameRuntime.ts`) and the render happen in the same frame. It has no prediction, no snapshot
+  interpolation, no input-delay buffer, no loopback transport, no room and no wire message: nothing from `src/mp`. Its
+  owners are `src/game/state.ts` and the `solo*` owners in `src/game` ("solo" names the local driver there), entered from
+  `src/main.ts` `beginLocalBattleEntry` / `beginLocalBattle`.
+- **The online driver** is a room with people (the Rooms Worker, LAN): `src/mp` and the room host's actor
+  (`server/match/matchActor.ts`). The authority runs the core's step (`src/sim/authoritativeMatch.ts`), and the client
+  predicts, interpolates and reconciles, because the network is real. `src/main.ts` composes it in its online declarations
+  (`onlineMatch`, `onlineMatchActive`, `onlinePump`, `loadMultiplayerV2Composition`, the Play menu). A private room with
+  bots is an online room.
+
+Why: from release 261 to 264 a solo quick battle ran the core in a Worker and drove the player's seat through the
+multiplayer client (`MatchClient` over an in-page loopback; `main.ts` counted it as a network match). The owner felt it:
+"rubberbanding on a LOCAL game", inputs 2-12 ticks ahead, other tanks 100-200 ms behind, and a ram "slingshot".
+RUST-ENGINE-DECISION §7 step 5 (the solo sim Worker) is retired. Any future off-thread local simulation must be a local
+driver, with no prediction or interpolation, and needs the owner's OK after they have played it.
+
+Guards, in `npm test`, each with seeded violations it must catch:
+- `tools/driver-boundaries.selftest.mjs` (`tools/driver-boundaries.mjs`), over every runtime edge (static imports, lazy
+  `import()` and Worker entries):
+  - (a) the core reaches no `src/mp`, `server/`, `main.ts`, `src/app`, `src/entry` or presentation module, and no
+    `src/game` module but the bots. Render-side reach (`src/engine`, `src/ui`, three.js beyond its math, browser globals)
+    is held to a shrink-only pin of what the core reaches today through `world/terrain.ts` (its water, horizon and sourced
+    texture builders), the map catalog's i18n and the flag codes. Splitting those out of the core is the world lane's work.
+  - (b) the local driver's owners never reach `src/mp` or the room host by any edge. `main.ts` names the online driver
+    only in its online declarations, and its local entries name none of it.
+- `src/sim/driverStepParity.selftest.mjs` (c): the same seed, world, hulls and inputs give a byte-identical world on
+  both drivers' steps, every tick. It covers a 1v1 of player-driven hulls on Verdant: drive, turn, gun lay, a crash,
+  shots, hits, knock, bloom and reload.
+
+Still separate, the named follow-up: `game/state.ts` `simStep` and `sim/authoritativeMatch.ts` `step` are two loops over
+the same subsystem functions. The bots' controllers and the mode controllers still run in each loop on its own. Folding
+the two loops into one core step, bots and mode controllers included, is its own lane.
+
 ## 2. Shared data structures (exact shapes)
 
 ### 2.1 `TankId` and roster constants

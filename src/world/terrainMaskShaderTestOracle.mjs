@@ -113,6 +113,9 @@ export function assertTerrainFetchExpressionCensus(source) {
   // ground lane (2026-10-03, the land-use bake): −8 — the nine mask reads (the mask itself, the road distance's four
   // gradient taps, the ice ridges' four) become maskAt calls, whose body is the one read left (+1); the bake's own two
   // reads live in landUse.ts LAND_USE_GLSL (a texelFetch and one filtered read), outside this lexical census.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61 + 2 - 8, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass, plus the ground lane\'s two far-turf taps, minus the eight mask reads maskAt folds into one; lexical census only');
+  // 264b (2026-10-29, Ironworks' slag tip): +3 — on a paved map the rock relief's coarse ground tap and its two wall taps
+  // read the bare ground's normal (uNrmD) in the other arm of an if/else beside the rock layer's own three, so a fragment
+  // still pays three; no new sampler.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61 + 2 - 8 + 3, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass, plus the ground lane\'s two far-turf taps, minus the eight mask reads maskAt folds into one, plus a paved map\'s three coarse relief taps in the other arm; lexical census only');
 }

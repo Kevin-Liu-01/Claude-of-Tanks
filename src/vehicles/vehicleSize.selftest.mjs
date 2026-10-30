@@ -18,6 +18,12 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // measurements; its turret max z is re-measured as the current build / factor.
 // 2026-10-16: r4b (f38db33a0) rebuilt the Ares L111A1 as the fleet M2HB receiver (gunMountDark) with a feed chute
 // and a flash hider; its gunMount min z and gun x/y extents are re-measured as the current build / factor.
+// 2026-10-28 (264): the turret seat (turretSeatRace.ts, 249-252's rollout) stands each seated turret's underside over its
+// deck, so turret min y is re-measured as the current build / factor for k21, kf41_lynx, lrmv_lynx, griffin50mm,
+// griffin_viper and type100; type100's gunMount x and max y since 233's launcher rebuild (ac9734829b, 3e77e2222a).
+// 2026-10-30 (vickers-cr1-262): the Challenger 1 rebuild ends the hull shell at the hull length (the old shell ran 0.4 m
+// past the bow), seats the turret over its deck and narrows the gun mount, so challenger1_mk3's hull max z, turret min y
+// and gunMount x/y are re-measured as the current build / factor; its dims, pivots, contact and muzzle are unchanged.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];

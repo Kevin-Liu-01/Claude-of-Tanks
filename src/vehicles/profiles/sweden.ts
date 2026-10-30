@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 import { addFixedGunPort, buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -172,120 +173,15 @@ function buildStrv103B(P: SwedishBuilderPort): void {
   addVehicleGhillieSuit(P);
 }
 
-function addStrv81Package(P: SwedishBuilderPort): void {
-  const { box, cylX, cylY, cylZ } = KIT;
-  const slab = orientedSlab;
-
-  // Preserve the donor Centurion's closed cast shell. The former full-size
-  // Strv loft duplicated its front roof and produced a broad prism through
-  // the correct casting; Swedish-specific armor below is limited to seated
-  // cheek continuations and discrete crown fittings.
-  // Unequal crown plates follow the cast slopes and create the broken roof
-  // cadence visible on the supplied Strv 81 rather than one broad rectangle.
-  P.add('turret', box(0.74, 0.055, 0.58), -0.39, 0.825, -0.52, 0, -0.08, 0);
-  P.add('turret', box(0.58, 0.050, 0.50), 0.39, 0.817, -0.45, 0, 0.10, 0);
-  P.add('turretDark', box(0.46, 0.016, 0.08), 0.39, 0.850, -0.18, 0, 0.10, 0);
-
-  // Swedish cheek continuations broaden the inherited Centurion casting but
-  // bury into its nose/crown on every edge. They are low, rounded armor
-  // shoulders rather than a second turret shell.
-  for (const side of [-1, 1]) {
-    P.add('turret', slab(
-      [side * 0.42, -0.20, 1.36], [side * 1.02, -0.20, 1.03],
-      [side * 1.18, -0.18, 0.46], [side * 0.66, -0.18, 0.66],
-      [side * 0.40, 0.42, 1.30], [side * 0.94, 0.51, 0.98],
-      [side * 1.08, 0.56, 0.44], [side * 0.62, 0.50, 0.62]));
-    for (let i = 0; i < 3; i++) {
-      plate(P, 'turret', side * 1.10, 0.30 + i * 0.025, 0.28 - i * 0.47,
-        0.14, 0.34, 0.38, [0, 0, side * 0.08], false);
-    }
-
-    // Hull-side applique stays above the wheel tops and is visibly seated on
-    // the original full-length skirt/fender architecture.
-    for (let i = 0; i < 5; i++) {
-      plate(P, 'hull', side * 1.675, 1.11, 1.62 - i * 1.02,
-        0.045, 0.42, 0.84, [0, 0, side * 0.018], false);
-    }
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 5, r: 0.041, len: 0.27,
-      splay: side * 1.00, pitch: -0.42, arc: 0.52,
-      slot: 'detail', seed: 8100 + (side > 0 ? 1 : 0),
-    }), side * 1.03, 0.55, 0.10);
-  }
-
-  // Low Swedish commander cupola, Ksp 58 and twin radio cadence.
-  P.add('turret', cylY(0.27, 0.29, 0.08, 18), -0.47, 0.93, -0.52);
-  P.add('turretDark', KIT.torus(0.26, 0.014, 18), -0.47, 0.98, -0.52);
-  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the cupola and its vision blocks
-  // (feed-side collision census).
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's Ksp 58)
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80,
-    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right', working: true, ridingCradle: true,
-  }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
-  P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
-  P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
-  P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.215);         // 2026-10-19 (owner float sweep): 9 mm off the drum
-  // The source's large side ventilator/search housing is a strong profile
-  // landmark. Both concentric drums are buried into the cast side wall.
-  P.add('turret', cylX(0.21, 0.18, 18, 0.15), 1.13, 0.48, -0.64);
-  P.add('turretDark', cylX(0.155, 0.035, 18, 0.12), 1.225, 0.48, -0.64);
-  for (let i = 0; i < 6; i++) {
-    P.add('turretDetail', box(0.030, 0.22, 0.035), 1.247,
-      0.48, -0.64, 0, 0, i * Math.PI / 3);
-  }
-  addSwedishRadioPair(P, 'turret', 0.78, -1.66, 8130);
-
-  // Periscope cadence and hull lighting keep the early Swedish vehicle
-  // mechanically legible at garage distance without inflating its roof.
-  for (const [x, z, ry] of [
-    [-0.72, -0.40, 0.18], [-0.66, -0.16, 0.08], [-0.43, -0.10, -0.08],
-    [0.28, -0.16, 0.10], [0.54, -0.20, -0.16],
-  ]) {
-    P.add('turretDetail', box(0.13, 0.045, 0.075), x, 0.93, z, 0, ry, 0);
-    P.add('turretGlass', box(0.092, 0.022, 0.014), x, 0.956, z + 0.035, 0, ry, 0);
-  }
-  for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
-      mats: P.mats, pods: 2, spacing: 0.14, r: 0.050,
-      shield: true, seed: 8135 + (side > 0 ? 1 : 0),
-    }), side * 0.78, 1.47, 3.06);
-    // 2026-10-19 (owner float sweep): the tool tube and its clamps stood 17 mm off the hull shoulder; seated on it
-    P.add('hullDetail', cylZ(0.035, 0.92, 10), side * 1.243, 1.507, -1.28);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -0.84);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -1.72);
-  }
-
-  // Backed bustle rack and characteristic side tool cages.
-  // 2026-10-19 (owner float sweep): the backing plate's top stood 50 mm under the rack; it reaches 10 mm into it
-  P.add('turretDark', box(2.18, 0.36, 0.06), 0, 0.37, -2.03);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 2.10, d: 0.48, h: 0.34, fill: 0.38, rails: 3, seed: 8140,
-  }), 0, 0.54, -1.90);
-  for (const side of [-1, 1]) {
-    // 2026-10-19 (owner float sweep): the tool-cage rails stood 53 mm outboard of the rack's sides; against them now
-    P.add('turretDetail', box(0.035, 0.035, 0.64), side * 1.066, 0.56, -1.66);
-    P.add('turretDetail', box(0.035, 0.34, 0.035), side * 1.066, 0.40, -1.98);
-  }
-
-  // Closed, layered 20-pdr gun plant around the inherited bore.
-  P.addGunExtra(box(0.72, 0.55, 0.25), 0, -0.015, 0.35);
-  P.addGunExtra(cylZ(0.19, 0.38, 18, 0.145), 0, 0, 0.62);
-  P.addGunExtraDark(cylZ(0.035, 0.09, 10), 0.27, 0.07, 0.55);
-  P.decal('turret', 'number', '81', 0.25, [1.18, 0.40, -0.66], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.26);
+function buildStrv81(P: TankBuilderPort): void {
+  // release 262: the Strv 81B (the Centurion Mk 5 in Swedish service, 20-pdr Type B) from the rebuilt Centurion family;
+  // its Swedish fittings (lights, glacis link brackets, radios, the cupola Ksp) are that family's 'strv81' mark
+  centurionBuild(P, 'strv81');
 }
 
-function buildStrv81(P: SwedishBuilderPort): void {
-  // one roof gun: the package's cupola Ksp 58, not the Mk.3's low-stowed MAG as well (the owner's field standard)
-  centurionBuild(P, 3);
-  addStrv81Package(P);
-  // The oracle has a squat cast fighting compartment. Scale the complete
-  // turret-owned assembly about its ring, then cancel that scale on the gun
-  // group so the 20-pdr tube and mantlet remain circular.
-  P.turretG.scale.y *= 0.82;
-  P.gunG.scale.y *= 1 / 0.82;
-  P.topY = 1.13;
+function buildStrv105(P: TankBuilderPort): void {
+  // release 262: the Strv 105 prototype (a Strv 104 with its FFV cassettes and a thermal sight) from the rebuilt family
+  centurionBuild(P, 'strv105');
 }
 
 function addStrv122Package(P: SwedishBuilderPort): void {
@@ -972,5 +868,6 @@ export const SWEDEN_PROFILES = {
   strv103b: { build: buildStrv103B },
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
+  strv105: { build: buildStrv105 },
   strv121: { build: buildStrv122 },
 } satisfies VehicleProfileRecord;

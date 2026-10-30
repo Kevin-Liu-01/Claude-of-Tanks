@@ -21,9 +21,11 @@ const sources = {
     gunY: 1.99253, muzzle: 6.91807, boreR: .0878, roadR: .3225,
     wheels: [-2.17585, -1.28085, -.38585, .50915, 1.40415, 2.29915],
     roofs: [[-2.9, 1.7035], [0, 1.5775], [2.6, 1.4145], [3.58, 1.1519]] },
+  // Running gear: the Leopard 2A6 X source stations and wheel (owner 2026-10-27: the KF51 family's side silhouette
+  // follows the Leopard 2 it rides on; the GRIP420 model's r .328 wheels on -2.2118..2.352 are retired).
   kf51_panther: { width: 3.5603123, length: 10.74975, height: 5.7214742,
-    gunY: 1.85491175, muzzle: 6.89975, boreR: .0892, roadR: .328,
-    wheels: [-2.2118, -1.4265, -.6365, .1300, .8573, 1.5808, 2.352],
+    gunY: 1.85491175, muzzle: 6.89975, boreR: .0892, roadR: .34531,
+    wheels: [-2.239845, -1.357925, -.483615, .398305, 1.127355, 1.899555, 2.715785],
     roofs: [[-2.6, 1.8272], [0, 1.6025], [2.5, 1.4145], [3.79, 1.2302]] },
   merkava3d: { width: 3.976352, length: 8.83824, height: 5.15869,
     gunY: 2.0898, muzzle: 4.855985, boreR: .08485, roadR: .371,
@@ -109,7 +111,8 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       assert.equal(tank.root.getObjectByName('rig_turret')?.userData.merkava3dRightCheekReceipt?.side,'+X',
         `${id}: corrected cheek publishes exact articulated ownership`);
       const deck=tank.root.getObjectByName('hullEquipment'),fittings=tank.root.getObjectByName('hullDetail');
-      for(const [x,z,y]of[[-.8,2,1.76797],[-.3,2,1.79161],[-.8,2.4,1.71453],[-.3,2.4,1.71405],[1.1,2,1.6954]])
+      // (re-measured 264: 247's gun-hull fleet, 9d4c99eef3, lowered the Merkava 3D deck under its turret; -0.8/2 fell 6 mm)
+      for(const [x,z,y]of[[-.8,2,1.76202],[-.3,2,1.79145],[-.8,2.4,1.71386],[-.3,2.4,1.71386],[1.1,2,1.69525]])
         near(verticalHit(deck,x,z),y,.003,`${id}: physically raised asymmetric source armor ${x}/${z}`);
       for(const [x,z,y]of[[.7,2,1.69494],[.7,2.4,1.58405],[-.8,2.85,1.59043],[-.3,2.8,1.60508]])
         near(verticalHit(fittings,x,z),y,.003,`${id}: seated access-panel slope ${x}/${z}`);

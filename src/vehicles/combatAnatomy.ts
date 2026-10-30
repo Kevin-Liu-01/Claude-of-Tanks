@@ -369,11 +369,51 @@ function mainPlateDescriptors(plates: readonly ArmorPlate[]): PlateDescriptor[] 
 /** Twice the area (m²) under which a collision triangle is degenerate. */
 const DEGENERATE_FACE_CROSS = 1e-10;
 
+/**
+ * 262 (Main's ruling: the gun face's hit-model fidelity). A forward turret face lying over a mantlet or gun-notch plate
+ * reads that plate. nearestPlate's score (plane distance, edge gap, normal alignment) handed the face in front of the gun
+ * to whichever plane scored first: on 87 vehicles wrap-around cheeks read heavier there (the Challenger 1 Mk 2's 600 mm
+ * cheek over its 450 mm mantlet slot, which the balance range's rounds never reached) and low Soviet-pattern turrets read
+ * their thin roof (the T-90AM). Forward: outward normal z >= 0.2 (turret local). Over: the face centre inside the plate's
+ * x range, within its height +-0.1 m and within 0.35 m of its depth. The nearest such plate wins
+ * (gunFacePlates.selftest.mjs holds the fleet to it).
+ */
+const GUN_FACE_PLATE = /mantlet|gun_notch/i;
+const GUN_FACE_MIN_NORMAL_Z = 0.2;
+const GUN_FACE_HEIGHT_PAD_M = 0.1;
+const GUN_FACE_DEPTH_PAD_M = 0.35;
+
+function gunFaceDescriptors(descriptors: readonly PlateDescriptor[]): PlateDescriptor[] {
+  return descriptors.filter((descriptor) => GUN_FACE_PLATE.test(descriptor.plate.name));
+}
+
+function gunFacePlate(
+  faceCenter: readonly number[],
+  faceNormal: readonly number[],
+  gunPlates: readonly PlateDescriptor[],
+): ArmorPlate | null {
+  if (!gunPlates.length || faceNormal[2] < GUN_FACE_MIN_NORMAL_Z) return null;
+  let best: ArmorPlate | null = null;
+  let bestGap = Infinity;
+  for (const { plate, min, max } of gunPlates) {
+    if (faceCenter[0] < min[0] || faceCenter[0] > max[0]) continue;
+    if (faceCenter[1] < min[1] - GUN_FACE_HEIGHT_PAD_M || faceCenter[1] > max[1] + GUN_FACE_HEIGHT_PAD_M) continue;
+    if (faceCenter[2] < min[2] - GUN_FACE_DEPTH_PAD_M || faceCenter[2] > max[2] + GUN_FACE_DEPTH_PAD_M) continue;
+    const gap = boundsGap(faceCenter, min, max);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = plate;
+    }
+  }
+  return best;
+}
+
 function collisionFaceFromTriangle(
   sourceIndices: readonly number[],
   vertices: Vec3[],
   cellCenter: readonly number[],
   descriptors: readonly PlateDescriptor[],
+  gunPlates: readonly PlateDescriptor[] = [],
 ): CollisionFace | null {
   if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
   const indices = sourceIndices.slice();
@@ -395,7 +435,7 @@ function collisionFaceFromTriangle(
     [indices[1], indices[2]] = [indices[2], indices[1]];
     normal = [-normal[0], -normal[1], -normal[2]];
   }
-  const plate = nearestPlate(faceCenter, normal, descriptors);
+  const plate = gunFacePlate(faceCenter, normal, gunPlates) ?? nearestPlate(faceCenter, normal, descriptors);
   if (!plate) return null;
   return {
     indices,
@@ -409,13 +449,14 @@ function collisionFaceFromTriangle(
 function collisionCellFromCalibration(
   source: AnatomyCalibrationCell,
   descriptors: readonly PlateDescriptor[],
+  gunPlates: readonly PlateDescriptor[] = [],
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
   const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
-    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors);
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gunPlates);
     if (face) faces.push(face);
   }
   if (faces.length < 4) return null;
@@ -465,13 +506,16 @@ function markInternalCollisionFaces(cells: readonly CollisionCell[]): void {
 function prepareCollisionCells(
   sourceCells: readonly AnatomyCalibrationCell[] | undefined,
   plates: readonly ArmorPlate[],
+  gunFaces = false,
 ): CollisionCell[] {
   if (!Array.isArray(sourceCells) || !sourceCells.length) return [];
   const descriptors = mainPlateDescriptors(plates);
   if (!descriptors.length) return [];
+  // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate)
+  const gunPlates = gunFaces ? gunFaceDescriptors(descriptors) : [];
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, descriptors);
+    const cell = collisionCellFromCalibration(source, descriptors, gunPlates);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);
@@ -996,6 +1040,26 @@ function appendStructurePlates(
       structurePlate(`${prefix}_top`, stats,
         [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]]),
     );
+  });
+}
+
+/** A structure whose builder names the main plate its front face stands on (AnatomyCalibrationStructure.frontPlate:
+ *  the Merkava Mk 1B's glacis hatches, Main's 262 ruling) takes that plate's armour on its front face only; its sides,
+ *  rear and top stay the roof's weak spot (appendStructurePlates). Structures without the hint are untouched. */
+function applyStructureFrontPlates(
+  plates: ArmorPlate[],
+  structures: readonly AnatomyCalibrationStructure[] | undefined,
+  frame: string,
+): void {
+  (structures || []).forEach((structure, index) => {
+    if (!structure.frontPlate) return;
+    const source = plates.find((plate) => (plate.kind || 'main') === 'main' && plate.name === structure.frontPlate);
+    const face = plates.find((plate) =>
+      plate.name === `${frame}_${structure.kind || 'roof_structure'}_${String(index + 1).padStart(2, '0')}_front`);
+    if (!source || !face) return;
+    face.physicalMm = source.physicalMm;
+    face.keMm = source.keMm ?? source.physicalMm;
+    face.ceMm = source.ceMm ?? source.physicalMm;
   });
 }
 
@@ -1544,6 +1608,8 @@ function reconcileCalibratedAnatomy(
   applyModuleShapes(armor, calibration.moduleShapes);
   appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
   appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
+  applyStructureFrontPlates(armor.hullPlates, calibration.hullStructures, 'hull');
+  applyStructureFrontPlates(armor.turretPlates, calibration.turretStructures, 'turret');
   // The generator measures authored reactive cassettes. Reapplying its
   // previous fitted quads here would make ERA calibration self-referential.
   if (!isCombatAnatomyMeasurementMode()) {
@@ -1568,7 +1634,7 @@ function assignCollisionOutputs(
     turret: prepareCollisionCells([
       ...(calibration?.turretCollision || []),
       ...(calibration?.turretStructureCollision || []),
-    ], armor.turretPlates),
+    ], armor.turretPlates, true),
   };
   armor.bodyContactPoints = {
     hull: collisionContactPoints(armor.collisionShells.hull),

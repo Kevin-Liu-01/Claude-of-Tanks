@@ -21,9 +21,11 @@ import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
-  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
+  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry,
+  noteFarLodBuild, parkDraws,
   type FarHull, type FarWheel,
 } from './farLod.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
@@ -48,7 +50,7 @@ import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorl
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, removeBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
-  LIVE_TURRET_DENTS,
+  LIVE_TURRET_DENTS, ARMOR_PAINT_ZONE_ATTRIBUTE, armorPaintMode,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
@@ -1149,6 +1151,48 @@ function applyRubberSurfaceUVs(root: THREE.Object3D): void {
   });
 }
 
+/**
+ * 262 (Main's ruling, 2026-10-28): the rubber the hull wears — skirts, flaps, mudguards, mats — draws in its own
+ * material (role hullRubber), so the scoped armour paint takes it by where it sits (materials.ts armorPaintMode) while
+ * the tyres stay bare. One clone per source rubber, after the appearance normaliser set its finish, so it reads as the
+ * tyres do; every static rubber draw off the running gear moves together, so the draws that merged still merge.
+ */
+function separateHullRubber(root: THREE.Object3D, disposables: Array<{ dispose(): void }>): void {
+  const clones = new Map<THREE.Material, THREE.Material>();
+  root.traverse((object) => {
+    if (!isVehicleMesh(object) || Array.isArray(object.material)) return;
+    const material = object.material;
+    if (material?.userData?.appearanceRole !== 'tireRubber') return;
+    for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
+      if (owner.userData?.runningGear || /^gear/.test(owner.name || '')) return;
+    }
+    let clone = clones.get(material);
+    if (!clone) {
+      clone = cloneVehicleMaterial(material);
+      clone.name = 'cot:hull-rubber';
+      clone.userData = { ...(material.userData || {}), appearanceRole: 'hullRubber' };
+      disposables.push(clone);
+      clones.set(material, clone);
+    }
+    object.material = clone;
+  });
+}
+
+/**
+ * (263) Every painted draw of a battle build carries the armour paint's panel attribute from its birth, zeros (the
+ * per-point score), so the draws a far LOD merges keep one vertex layout whenever the overlay bakes the panels into it
+ * (game/armorPaintPanels.ts), and byte-identical sharing compares builds that all carry it.
+ */
+function seedArmorPaintPanels(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || isVehicleBatchedMesh(object)) return;
+    const material = object.material, geometry = object.geometry, position = geometry?.getAttribute('position');
+    if (Array.isArray(material) || !material || !position || geometry.getAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE)) return;
+    if (armorPaintMode(material) < 1) return;
+    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(position.count), 1, false));
+  });
+}
+
 function isolatedGearMaterial<M extends THREE.Material>(
   material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
 ): M {
@@ -1321,6 +1365,14 @@ export interface TankVisual {
   awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
+  /**
+   * The scoped armour paint's handles (262, game/armorAimOverlay.ts): the burn hook's uniforms (materials.ts uAp*: the
+   * paint rides the hook prewarmBurn installs) and the hull's and the turret's rig groups (their frames). Null when the
+   * visual draws nothing.
+   */
+  armorPaint(): {
+    uniforms: ReturnType<typeof makeBurnUniforms>; hull: THREE.Object3D; turret: THREE.Object3D | null; gun: THREE.Object3D | null;
+  } | null;
   /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
   releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
@@ -2361,6 +2413,20 @@ function installProceduralShadowProxies(
       'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG,
     ['turret', ...(additionalSources?.turret ?? [])]), PROC_SHADOW_BODY_INSET_M);
+  // (264c) a merged part flagged rangeSilhouette (an equipment box that is a major silhouette piece: the Challenger 1's
+  // TOGS barbette) casts with its owner's proxy as a hull of its own, joined into that proxy's one draw: a hull over the
+  // shell and the box together would bridge from the box's top across the roof. Without one the proxy is unchanged.
+  const silhouetteHulls = (owner: THREE.Group): (THREE.BufferGeometry | null)[] => {
+    const hulls: (THREE.BufferGeometry | null)[] = [];
+    owner.traverse((object) => {
+      if (object.userData.rangeSilhouette && isVehicleMesh(object)) {
+        hulls.push(authoredShadowHull(owner, [object], PROC_SHADOW_BODY_INSET_M));
+      }
+    });
+    return hulls;
+  };
+  const hullCaster = joinShadowHulls([hullGeo, ...silhouetteHulls(hullG)]);
+  const turretCaster = joinShadowHulls([turretGeo, ...silhouetteHulls(turretG)]);
   // Mantlet + barrel share gun pitch, in gunG coordinates; recoil travel is
   // deliberately omitted from the shadow proxy to preserve the three-draw
   // budget during the short firing kick. 243: each is its own convex hull,
@@ -2407,8 +2473,8 @@ function installProceduralShadowProxies(
     parent.add(mesh);
     sources.push(mesh);
   };
-  if (hullGeo) add(hullG, hullGeo, 'hull');
-  if (turretGeo) add(turretG, turretGeo, 'turret');
+  if (hullCaster) add(hullG, hullCaster, 'hull');
+  if (turretCaster) add(turretG, turretCaster, 'turret');
   if (gunGeo) add(gunG, gunGeo, 'gun');
   return sources;
 }
@@ -8306,6 +8372,9 @@ function* buildTankCoreSteps(
     // receipts (and therefore shell hit volumes) can never grow around an MG,
     // sight, antenna, stowage box, or other roof equipment. Cupolas continue
     // to use P.add('hull'/'turret') because they are structural hit surfaces.
+    // (264c) A box that is a major silhouette piece opts in with
+    // geo.userData.rangeSilhouette = true: it keeps the equipment bucket's
+    // hit role, stays past LOD1 and casts with its owner's shadow proxy.
     addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
@@ -8923,6 +8992,8 @@ function* buildTankCoreSteps(
           min: box.min.toArray(),
           max: box.max.toArray(),
           module: moduleVisualParts.get(part) || null,
+          // a hatch whose anatomy structure's front face stands on a named main plate (gen-combat-anatomy frontPlate)
+          ...(part.userData.structureFrontPlate ? { frontPlate: part.userData.structureFrontPlate as string } : {}),
         });
       }
     }
@@ -9214,7 +9285,10 @@ function* buildTankCoreSteps(
       if (eraBoundParts.has(part)) eraPartSpans.set(part, { mesh, start: spanStart, built: merged.getAttribute('position') });
       spanStart += part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
     }
-    if (LOD0_KEEP.has(bucket)) parent.add(mesh);
+    // (264c) a part flagged rangeSilhouette merges apart (the grouping key below) and stays past LOD1 like the shells;
+    // installProceduralShadowProxies joins its hull into its owner's proxy
+    if (list.every((part) => part.userData.rangeSilhouette)) mesh.userData.rangeSilhouette = true;
+    if (LOD0_KEEP.has(bucket) || mesh.userData.rangeSilhouette) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
@@ -9223,6 +9297,9 @@ function* buildTankCoreSteps(
   };
   // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
   const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
+  // (264c) an opt-in silhouette part (userData.rangeSilhouette) merges in a mesh of its own, so the parts beside it in its
+  // bucket keep their LOD and their shadow
+  const rangeSilhouetteKey=(part:THREE.BufferGeometry):string=>part.userData.rangeSilhouette?':range-silhouette':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -9239,7 +9316,7 @@ function* buildTankCoreSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part)+issueDrabKey(part);
+      const key=stationKey(part)+issueDrabKey(part)+rangeSilhouetteKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);
@@ -10211,6 +10288,10 @@ export function* createTankRuntimeSteps(
   let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[] } | null = null;
   let farLodActive = false;
   let unparkFarLod: (() => void) | null = null;
+  // (local-fps-265) the far LOD's running gear alone, nearer in (GEAR_LOD_ENTER_M): its wheel stations stand in for the
+  // wheel layers while the rest keeps its detail
+  let gearLodActive = false;
+  let unparkGearLod: (() => void) | null = null;
   const buildFarLod = (): NonNullable<typeof farLod> => {
     const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
     for (const cluster of destructibleClusters.values()) {
@@ -10370,9 +10451,39 @@ export function* createTankRuntimeSteps(
       unparkFarLod?.();
       unparkFarLod = null;
       if (farLod) for (const mesh of farLod.meshes) mesh.visible = false;
+      // (the gear stage keeps its wheel stations; the wheel layers go back under its own park, whichever stage parked
+      // them first: a vehicle that went far in one step had them parked by the far LOD, whose undo just restored them)
+      if (farLod?.gear && gearLodActive) {
+        unparkGearLod?.();
+        unparkGearLod = parkDraws(farLod.gearParked);
+        farLod.gear.visible = true;
+      }
       gearForceUpdate = true;
     }
     farLodActive = on;
+  };
+  /** (local-fps-265) Show the far LOD's wheel stations for the wheel layers (building the far LOD the first time, one
+   *  vehicle at a time, as setFarLod) or the wheels again. The full far LOD parks the same layers on top of this. */
+  const setGearLod = (on: boolean): void => {
+    if (on) {
+      if (!farLod) {
+        const startedAt = performance.now();
+        if (!claimFarLodBuild(startedAt)) return;
+        farLod = buildFarLodAtRange();
+        const endedAt = performance.now();
+        noteFarLodBuild(startedAt, endedAt);
+        (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((endedAt - startedAt) * 10) / 10;
+      }
+      if (!farLod.gear) return;
+      unparkGearLod = parkDraws(farLod.gearParked);
+      farLod.gear.visible = true;
+    } else {
+      unparkGearLod?.();
+      unparkGearLod = null;
+      if (farLod?.gear && !farLodActive) farLod.gear.visible = false;
+      gearForceUpdate = true;
+    }
+    gearLodActive = on;
   };
   let battleDetailsAttached = true;
   function setBattleDetailsAttached(attached: boolean): void {
@@ -10900,6 +11011,11 @@ export function* createTankRuntimeSteps(
           const far = viewDistM !== undefined && !destroyed
             && (farLodActive ? viewDistM >= FAR_LOD_RETURN_M : viewDistM >= FAR_LOD_ENTER_M);
           if (far !== farLodActive) setFarLod(far);
+          // (local-fps-265) the wheel stations alone from GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M), under the same
+          // terms: never in an inspection view or on a wreck
+          const gearFar = viewDistM !== undefined && !destroyed
+            && (gearLodActive ? viewDistM >= GEAR_LOD_RETURN_M : viewDistM >= GEAR_LOD_ENTER_M);
+          if (gearFar !== gearLodActive) setGearLod(gearFar);
         }
         root.position.copy(renderState.pos);
       };
@@ -11088,7 +11204,7 @@ export function* createTankRuntimeSteps(
       const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
       // (perf-255) a far-LOD'd vehicle's gear rests: its stand-in draws (the bands hold their last pose)
-      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive;
+      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive && !gearLodActive;
       const syncFromStateAssemblyStage6 = (): void => {
         if (gearVisible !== gearWasVisible) {
           if (gearVisible) gearForceUpdate = true;
@@ -11433,6 +11549,7 @@ export function* createTankRuntimeSteps(
       if (destroyed) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
@@ -11497,6 +11614,10 @@ export function* createTankRuntimeSteps(
      * materials pre-compile. Idempotent (applyBurnHook self-guards); a
      * disarmed hook is exact-identity output (mix factors are 0).
      */
+    armorPaint() {
+      return geometryOnly ? null : { uniforms: burnU, hull: hullG, turret: turretG ?? null, gun: gunG ?? null };
+    },
+
     prewarmBurn() {
       if (destroyed) return [];
       root.traverse((o) => {
@@ -11520,7 +11641,7 @@ export function* createTankRuntimeSteps(
       return [...wreckFallbackWarmSources];
     },
 
-    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r7': the Garage's own programs were
+    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r8': the Garage's own programs were
     // linked without it, so the hero it adopts back from a battle drops the disarmed hooks (the next battle's prewarmBurn
     // puts them back) and its Garage paint compiles as its build did
     releaseBurnHooks() {
@@ -11662,6 +11783,7 @@ export function* createTankRuntimeSteps(
       // (perf-250) the parts, never the far copies, in the Garage
       if (farMergeRuns.length) applyFarMerge(false);
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
     },
 
     setVisible(v) { root.visible = v; },
@@ -11823,6 +11945,7 @@ export function* createTankRuntimeSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    if (root.userData.usesSharedMaterialTextures) separateHullRubber(root, disposables);
     applyRubberSurfaceUVs(root);
     // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
     // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull
@@ -12006,7 +12129,20 @@ export function* createTankRuntimeSteps(
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
+    // (264) a suit's shade on the armour under it, on every build that wears one (suitOcclusion.ts): after the shadow
+    // batch took its sources and every merge, before byte-identical sharing compares the draws that carry it
+    // (264 integrator) the bake's wall-clock time rides apart from its structural stats (suitOcclusionMs, a measured time
+    // the identity receipts leave out: battleEraReceipt ROOT_EXCLUSIONS, deferred-assembly-receipt TIMING)
+    if (!geometryOnly) {
+      const baked = yield* bakeSuitOcclusionSteps(root, [turretG, gunG, recoilG]);
+      if (baked) {
+        const { bakeMs, ...suitOcclusion } = baked;
+        root.userData.suitOcclusion = suitOcclusion;
+        root.userData.suitOcclusionMs = bakeMs;
+      } else root.userData.suitOcclusion = null;
+    }
     const tailShadowBatchFinishedAt = performance.now() - tailWait.ms;
+    if (batchStatic && !geometryOnly) seedArmorPaintPanels(root);
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
     // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
     // looks, so the sniper sight (a narrower field of view, cameraRig fov = 60 / zoom) draws a magnified enemy's near

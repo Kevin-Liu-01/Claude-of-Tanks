@@ -121,6 +121,15 @@ function geometryOnlyParity(renderedRows, optimizedRows) {
   assert.equal(rows.length, renderedRows.length, 'material mode cannot remove scene nodes');
   for (const [i, row] of rows.entries()) {
     const expected = renderedRows[i];
+    // 263 (orphan-reds-264, turretSeatRace addSeatCollar): the turret ring collar takes the painted shade (colour, in both
+    // consumers) and the shell's camouflage face projection, a uv the geometry-only shell carries none of to copy
+    if (row.geometry && row.name === 'turretSeatCollar') {
+      assert.equal(row.geometry.attributes.uv, undefined, 'the geometry-only collar carries no camouflage projection');
+      assert.ok(expected.geometry.attributes.uv, 'the rendered collar takes the shell\'s camouflage projection');
+      row.geometry.attributes = Object.fromEntries(Object.entries({ ...row.geometry.attributes, uv: expected.geometry.attributes.uv })
+        .sort(([a], [b]) => a.localeCompare(b)));
+      continue;
+    }
     if (!row.geometry || !PAINT_BAKED_BUCKETS.has(row.name)) continue;
     assert.equal(row.path, expected.path); assert.equal(row.name, expected.name);
     const attrs = row.geometry.attributes, full = expected.geometry.attributes;
@@ -343,7 +352,7 @@ function sourceFurniture(all, frame) {
   // source tests. The starboard housing is not relabelled an unmeasured TOGS aperture.
   for (const [x, z, y, tolerance] of [[1.5, 0, 2.43372635, .0001],
     [1.8, 0, 2.37359240, .0001], [-1.3, -1.3, 1.942620, .0006],
-    [-.35805, .70, 2.80820, .0002], [-1.25055, .673825, 4.102651, .0001],
+    [-.35805, .70, 2.81010, .0002], [-1.25055, .673825, 4.102651, .0001], // 264: the true-scale L37 barrel's crown
     [1.01390, .747445, 4.249091, .0001]]) {
     const hit = cast([x, 5, z], [0, -1, 0]);
     near(hit?.point.clone().applyMatrix4(inverse).y, y, tolerance, 'source-owned variant fixture crown');

@@ -1,6 +1,7 @@
 import { t } from './i18n.ts';
 import { createModal, type ModalController } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { isChunkFailure } from './components/loadFailure.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type FailureModal = Pick<ModalController, 'setTitle' | 'body' | 'open' | 'close'> & Partial<Pick<ModalController, 'footer'>>;
@@ -36,6 +37,7 @@ export function createGarageReturnFailurePresenter(
   let modal: FailureModal | null = null;
   let retryButton: HTMLButtonElement | null = null;
   let retryAction: (() => void) | null = null;
+  let reloads = false;
   const show = (error: RuntimeValue, retry: (() => void) | null = null): void => {
     const title = getTitle();
     modal ??= makeModal();
@@ -44,15 +46,19 @@ export function createGarageReturnFailurePresenter(
     // notice without assuming an Error's realm or retaining gameplay state.
     modal.body.textContent = formatBody(failureReason(error, title), error);
     // the one action (loading states, owner 2026-10-27: an error gets a quiet retry state): the notice runs the
-    // failed action again itself, instead of telling the player to find it
-    retryAction = retry;
-    if (retry && modal.footer && !retryButton) {
+    // failed action again itself, instead of telling the player to find it. A chunk that did not arrive cannot arrive
+    // again in this document (components/loadFailure.ts), so its action reloads the page once online instead.
+    reloads = !retry && isChunkFailure(error);
+    retryAction = reloads ? () => location.reload() : retry;
+    if (retryAction && modal.footer && !retryButton) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--primary';
       button.innerHTML = `${uiIconSVG('rematch', 17)}<span>${t('battle.entryFailed.retry')}</span>`;
       button.addEventListener('click', () => {
         const action = retryAction;
+        // (offline, a reload is the browser's error page: the notice stays and the press waits)
+        if (reloads && navigator.onLine === false) return;
         modal?.close({ restoreFocus: false, immediate: true });
         action?.();
       });
@@ -60,9 +66,9 @@ export function createGarageReturnFailurePresenter(
       retryButton = button;
     }
     if (retryButton) {
-      retryButton.hidden = !retry;
+      retryButton.hidden = !retryAction;
       const label = retryButton.querySelector('span');
-      if (label) label.textContent = t('battle.entryFailed.retry');
+      if (label) label.textContent = t(reloads ? 'loadFailed.reload' : 'battle.entryFailed.retry');
     }
     modal.open();
   };
@@ -88,6 +94,8 @@ export const hideGarageReturnFailure = (): void => showGarageReturnFailure.hide(
 export const showSoloEntryFailure = createGarageReturnFailurePresenter(
   () => createModal({ size: 'small', surface: 'battle-entry-failure' }),
   () => t('battle.entryFailed.title'),
-  // a file the network dropped says so quietly (no module URL in the player's face); any other failure keeps its reason
-  (reason, error) => (isNetworkFailure(error) ? t('battle.entryFailed.network') : t('battle.entryFailed.body', { reason })),
+  // a file the network dropped says so quietly (no module URL in the player's face), a chunk that did not arrive
+  // asks for the page's reload; any other failure keeps its reason
+  (reason, error) => (isChunkFailure(error) ? t('battle.entryFailed.reload')
+    : isNetworkFailure(error) ? t('battle.entryFailed.network') : t('battle.entryFailed.body', { reason })),
 );

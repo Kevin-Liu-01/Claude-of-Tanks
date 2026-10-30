@@ -60,7 +60,9 @@ and the paint-before-fade Garage recovery transaction for failed cold entry;
 `sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
-`armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay;
+`armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay
+(painted on the vehicle's own paint by `vehicles/materials.ts` ARMOR_PAINT, zone by
+zone from `armorZones.ts`'s plates);
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, the countdown's presentation edges (one rollout a
 battle, solo or network, late for a network battle joined after its count;
@@ -206,6 +208,16 @@ or allocate multiplayer-only presentation policy.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
+**One core, two drivers** (the owner, 2026-10-29; docs/ARCHITECTURE.md §1.6). In this directory `solo*` names the
+**local driver**: `state.ts` and the `soloBattle*` owners, with `battleFrameRuntime.ts`, the Proving Ground, Watch,
+killcam, replays, the campaign and Jev. They run the shared core on the page, with input, the fixed step and the render
+in one frame. They use no match client, prediction, interpolation, input-delay buffer, loopback, room or wire message,
+and nothing from `src/mp`. `ai.ts` and `botAbilities.ts` belong to the core: they import no driver.
+`tools/driver-boundaries.selftest.mjs` fails on any edge from a local owner into `src/mp` or the room host, including
+lazy imports and Worker entries. It also fails when main.ts's local entries (`beginLocalBattleEntry`, `beginLocalBattle`)
+name the online composition. An off-thread local simulation is still a local driver, and it needs the owner's OK after
+they have played it.
+
 Keep authoritative rules deterministic and Node-runnable. Inject world, bus,
 RNG, and presentation dependencies. Keep garage-safe session data in
 `stateCore.ts`, visual/roster policy in `rosterState.ts`, and combat integration

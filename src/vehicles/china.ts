@@ -4,6 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
+import { createZTZ85IIIArmor } from './profiles/ztz85iiiArmor.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
@@ -36,6 +37,7 @@ interface ChinaVariantOptions {
   weather: string;
   patches: string[];
   camoScale: number;
+  trackWidthM?: number;
   dims?: Partial<FleetDimensions>;
   stats?: ChinaStatOverrides;
   reloadS?: number;
@@ -67,6 +69,7 @@ function variant(
     marking: 'number',
     number: options.number,
     camoScale: options.camoScale,
+    ...(options.trackWidthM === undefined ? {} : { trackWidthM: options.trackWidthM }),
   };
   if (options.dims) {
     stripSilhouetteDimensions(spec.dims);
@@ -77,23 +80,39 @@ function variant(
   return spec;
 }
 
+/**
+ * Release 263: the rebuilt ZTZ-85-III's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz85_iii,
+ * the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): the full 6 degrees dead ahead and
+ * abeam; over the driver's periscopes at 7-22 degrees about 5.5, over the headlight guards at 25-39 about 3-4.3; over the
+ * raised engine deck from 138 degrees it rises to 1.1-1.8 degrees down.
+ */
+const ZTZ85III_GUN_PITCH_BY_YAW_DEG = Object.freeze([
+  [0, -6], [6, -6], [17, -5.5], [21, -5.5], [23, -6], [24, -6], [25, -4.3], [26, -3.5], [27, -3.3],
+  [34, -3], [37, -3.2], [38, -3.6], [39, -4.3], [40, -5.8], [41, -6], [137, -6], [139, -4.5], [141, -3.8],
+  [146, -2.8], [151, -2], [159, -1.7], [167, -1.5], [168, -1.2], [174, -1.1], [178, -1.3], [180, -1.8]] as const);
+
 const CHINA_SPECS = {
+  // Release 263 (owner 2026-10-28, "yeah going to need a totally new ztz 85 III"): the ground-up rebuild of
+  // profiles/ztz85iii.ts on the published Type 85 record (docs/references/tanks/ztz85_iii.md §263). Dims are the published
+  // 6.325 m hull, 10.37 m gun forward, 3.372 m over the skirts and 2.29 m over the cupola; the combat envelope follows the
+  // new hull and welded turret at the tier's former strengths (profiles/ztz85iiiArmor.ts).
   ztz85_iii: variant('ztz85_iii', 'type59', {
     name: 'ZTZ-85-III', number: '85-III', base: '#35483a', weather: '#4a5947',
     patches: ['#263229', '#59634c', '#736a4d'], camoScale: 0.50,
-    // Ground-up silhouette receipts include bow/stern fittings and the roof
-    // weapon cluster; gameplay dimensions remain the published base values.
+    // the Type 85-IIM's 0.55 m track
+    trackWidthM: 0.55,
     dims: {
-      hullLengthM: 6.40, overallLengthM: 10.28, widthM: 3.45, heightM: 2.30,
-      silhouetteHullLengthM: 6.47,
-      silhouetteOverallLengthM: 8.43, silhouetteHeightM: 2.53,
+      hullLengthM: 6.325, overallLengthM: 10.37, widthM: 3.372, heightM: 2.29,
+      // the drawn envelope (the build's body extents): the stern drums to the front guards, the drums to the muzzle, the
+      // 12.7 mm on its post over the cupola
+      silhouetteHullLengthM: 6.88, silhouetteOverallLengthM: 10.91, silhouetteHeightM: 2.89,
     },
     stats: {
       hp: 1950, enginePowerHp: 1000, weightTons: 43.7, topSpeedKmh: 57,
       reverseSpeedKmh: 15, turretTraverseDegS: 34,
       gunPitchDegS: 27, gunElevationDeg: 14, gunDepressionDeg: 6,
     },
-    armorFactor: 1.14,
+    armor: createZTZ85IIIArmor(),
   }),
   ztz99a: variant('ztz99a', 'ztz99_longwei', {
     name: 'ZTZ-99A', number: '99A', base: '#35453a', weather: '#4a5847',
@@ -133,11 +152,13 @@ const CHINA_SPECS = {
   }),
 } satisfies Record<string, FleetTankSpec>;
 
-// Tier-VIII fire-control package: keep Type 59 ancestry for geometry while
-// replacing the inherited 100 mm ammunition with the ZTZ-85-III's 125 mm set.
+// Tier-VIII fire-control package: the inherited 100 mm ammunition replaced with the ZTZ-85-III's 125 mm set.
 {
   const spec = CHINA_SPECS.ztz85_iii;
+  spec.gunPitchByYawDeg = ZTZ85III_GUN_PITCH_BY_YAW_DEG;
   spec.hp = 2100;
+  // 265 (the photo packet's 125 mm): the gun itself, not only its rounds; the Type 59's 100 mm rode the variant to here
+  spec.gun.caliberMm = 125;
   spec.gun.reloadS = 6.8;
   spec.gun.baseAccuracy = 0.33;
   spec.gun.aimTimeS = 2.0;

@@ -19,6 +19,33 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   // Israeli modern-family owner studies (2026-09-18): proper-rotation,
   // uniform-only source-x-oracle bakes.  The source meshes are fused for
   // scoring because their ownership is flattened or crosses both sides.
+  // Merkava family 262 (owner 2026-10-27, the supplied Mk 1B, 2B, 2D, 3C, 3D and 4B models): unit-scale identity bakes of
+  // the supplied OBJs (raw hashes in docs/references/tanks/<id>.md). Fused: the OBJs' flattened group names carry no
+  // turret/gun hierarchy. Turret: the measured ring centre at deck height; gun: the trunnion in the source's gun mask.
+  merkava1b: {
+    sha256:'bcf4f84b9685fe25bbacbab3cd89a6d8ed5086fc37fa24267ef9e821e9b8c3aa',
+    fused:true, turret:[0,1.7,-.872], gun:[0,2.0822,1.18],
+  },
+  merkava2b: {
+    sha256:'f15d59be87ffe27a1fa913371316d3a3ab7c0b2720ffeec8eec3a408a2979637',
+    fused:true, turret:[0,1.7,-.867], gun:[0,2.0822,1.18],
+  },
+  merkava2d: {
+    sha256:'c76f1d522eb81314004c714c6fe98bcae19a06dd83f5ebaf5f3a54d76260c725',
+    fused:true, turret:[0,1.7,-1.049], gun:[0,2.0822,1.18],
+  },
+  merkava3c: {
+    sha256:'7d55fb050e1d27b8c6a383484a443a5557052f122910a8fb650fe908b53c87aa',
+    fused:true, turret:[0,1.7,-.928], gun:[0,2.0763,1.05],
+  },
+  merkava3_baz: {
+    sha256:'3f9ea08e23342137b519c767710750dcb4cb95ce7a9cf721323be6babd900760',
+    fused:true, turret:[0,1.7,-.948], gun:[0,2.0762,1.05],
+  },
+  merkava4b: {
+    sha256:'b3d01d76b9bec5e7e5ca28effb6824e15170b6dd72bb6c8f61e0eda195f6fd3e',
+    fused:true, turret:[0,1.7,-1.254], gun:[0,2.1595,.65],
+  },
   merkava4_trophy: {
     sha256:'a155cb6fb3ed46ef77e01f11fbd1d6cc8f5b8e747d09494f98f93579e396f684',
     fused:true,turret:[0,1.605,-.3906],gun:[0,1.9934619,1.93],
@@ -31,16 +58,18 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870',
     fused:true,turret:[0,2.10,-1.15],gun:[.05,2.38,-.13],
   },
+  // T-84BM Oplot-M (release 262): the owner-supplied 42manako print baked by source-x-oracle ([-x, y, -z], uniform 4.10,
+  // tracks centred, ground y 0, hull centred); the gun is fused into TUR, so the whole source is scored at rest.
+  bm_oplot_m: {
+    sha256:'d2adad43bba88a867f743aeeacf969587e7be0c2bbcaeee0259218f3145ab22a',
+    fused:true,turret:[-.012,1.4965,.185],gun:[-.012,1.808,1.518],
+  },
   ares_apc: {
     sha256:'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1',
     fused:true,turret:[-.3835,2.2502,.5027],gun:[-.4265,3.078,.397],
   },
-  // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
-  // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
-  ztz100: {
-    sha256:'7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1',
-    fused:true,turret:[0,1.41,-.55],gun:[0,1.76,.55],
-  },
+  // ztz100 retired 2026-10-27 (release 262): the '[OD]ZTZ-20 Test-3' bake (7eeb9852…758f1) now measures the ZTZ-20
+  // family concept (docs/references/tanks/ztz20.md) and certifies no comparison.
   strv122: {
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],
@@ -59,6 +88,14 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64',
     fused:true,turret:[-.000896347416,1.396470802105,.616221772969],
     gun:[-.014789345038,1.675227177967,1.697635206325],
+  },
+  // Challenger 3 TD (release 262): "Challenger 3 TD MBT" (Jeyhun1985, CC-BY-4.0; raw sha256 3a4b3fbb…) prepared by
+  // tools/source-x-oracle.mjs (.qa-dev recipe challenger3_td_x: axes x y z, the family's installed 1.10, +0.2145 z: the
+  // fender span centred). The ring and trunnion are the packet's measured datums in that frame; the turret and gun
+  // owners are routed by island in the registry (the material groups carry the basket inside the ring).
+  challenger3_td: {
+    sha256:'6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386',
+    turret:[0, 1.98, 0.7106], gun:[0, 2.2341, 1.9195],
   },
   amx56: {
     sha256:'e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0',

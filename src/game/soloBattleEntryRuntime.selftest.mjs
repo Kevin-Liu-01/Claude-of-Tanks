@@ -208,7 +208,7 @@ for (const outcome of ['success', 'import-failure', 'paint-failure']) {
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-const soloComposition = mainSource.slice(mainSource.indexOf('async function beginSoloBattle('), mainSource.indexOf('async function debugStartBattle('));
+const soloComposition = mainSource.slice(mainSource.indexOf('function beginLocalBattle('), mainSource.indexOf('async function debugStartBattle('));
 assert.match(soloComposition, /mapId: operation\?\.mapId \?\? mapId,/,
   'free Mars sorties preserve the selected map; campaigns retain their authored override');
 const entryComposition = mainSource.slice(mainSource.indexOf('const soloBattleEntry = createSoloBattleEntryRuntime({'));
@@ -216,7 +216,7 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /nextFrame: nextPaintFrame,/,
   'browser recovery must cross the real post-rAF task boundary before fading its cover');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
-  /presentFailure: \(error, retry\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
+  /presentFailure: \(error, retry\) => \{[\s\S]{0,160}return import\('\.\/ui\/garageReturnFailure\.ts'\)/,
   'the solo failure notice is demand-loaded from the same failure-only owner as the return notice');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /onFailure: \(error\) => entryTelemetry\.send\(\{[\s\S]{0,160}kind: 'entry_result'/,
@@ -239,14 +239,19 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
     assert.equal(specId, 'm1a1_abrams_hc'); assert.equal(mapId, 'random');
     return { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' };
   }).beginSelected({});
-  assert.deepEqual(covers, [['cover', { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' }], ['load', 'random']],
-    'the cover is named before the loading owner runs, which still receives the request itself');
+  assert.deepEqual(covers, [['cover', { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp', modeId: 'standard' }],
+    ['load', 'random']], 'the cover is named before the loading owner runs, which still receives the request itself');
   covers.length = 0;
   await make(() => { throw new Error('no names yet'); }).beginSelected({ mapId: 'winter' });
-  assert.deepEqual(covers, [['cover', 'winter'], ['load', 'winter']], 'a failing description falls back to the map id');
+  assert.deepEqual(covers, [['cover', { mapId: 'winter', modeId: 'standard' }], ['load', 'winter']],
+    'a failing description falls back to the map id, the chosen mode with it');
   covers.length = 0;
   await make(null).beginSelected({ mapId: 'winter' });
-  assert.deepEqual(covers, [['cover', 'winter'], ['load', 'winter']]);
+  assert.deepEqual(covers, [['cover', { mapId: 'winter', modeId: 'standard' }], ['load', 'winter']]);
+  // (the chosen mode names the cover's chip from its first frame: a campaign operation's with it, the 262 check)
+  covers.length = 0;
+  await make(() => null).beginSelected({ mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' });
+  assert.deepEqual(covers[0], ['cover', { mapId: 'alpine', modeId: 'frontline_assault', campaign: true, campaignOperationId: 'iron_ridge' }]);
 }
 const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null, options\?: SoloBattleLoadingStartOptions\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,

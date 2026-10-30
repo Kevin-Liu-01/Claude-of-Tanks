@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "magach3": {
+      "name": "Magach 3",
+      "authority": "Main ruled on 2026-10-29 (~11:00, owner's blanket approval; DECISIONS) that a photo-built id with no oracle qualifies stage A through a per-id photo packet plus a shaded blind photo-critic PASS. Magach 3 is a release-266 build on the M48A5's measured castings from photographs (the owner, 2026-10-28: \"add the israeli m48 variant to israel\"); its blind photo critic passed at 8/10. Numerical 3D comparison remains unverified: no owner model exists for this mark.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Magach",
+        "https://en.wikipedia.org/wiki/M48_Patton",
+        "https://reviews.ipmsusa.org/review/idf-magach-3-wera",
+        "https://wiki.warthunder.com/unit/il_magach_3"
+      ],
+      "widthM": 3.748,
+      "overallLengthM": 9.241,
+      "tallestM": 3.727,
+      "envelopeBasis": "As built. Width over the fender lips and the fender bins (the published 3.63 m is over the tracks). Length from the stern plate to the M68's muzzle (published 9.31 m). Tallest is the tips of the two whip antennas on the bustle, as built rather than published; the published 2.95 m height is to the Urdan cupola's roof. docs/references/tanks/magach3.md records the sources and the Latrun and Kubinka photographs.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/pattonCastProportions.selftest.mjs"
+    }
+  }
+}

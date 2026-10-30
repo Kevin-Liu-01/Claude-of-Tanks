@@ -14,19 +14,22 @@ export const CHINA_TREE: NationTree = Object.freeze({
   flagNation: 'China',
   name: 'China',
   lines: Object.freeze([
-    { id: 'ztz', name: 'Type 59 to ZTZ-100' },
+    { id: 'ztz', name: 'Type 59 to ZTZ-20' },
     { id: 'type96', name: 'Type 96' },
     { id: 'support', name: 'AFT-10 and Type 100' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
-    // Type 59 to ZTZ-100
+    // Type 59 to ZTZ-20
     node({ id: 'type59', tier: 1, line: 'ztz', lane: 1, parents: [], slot: 'line' }),
     node({ id: 'ztz85_iii', tier: 1, line: 'ztz', lane: 2, parents: ['type59'], slot: 'line' }),
     node({ id: 'ztz99_longwei', tier: 6, line: 'ztz', lane: 2, parents: ['ztz85_iii'], slot: 'line' }),
     node({ id: 'ztz99a', tier: 9, line: 'ztz', lane: 2, parents: ['ztz99_longwei'], slot: 'line' }),
     node({ id: 'ztz99a2', tier: 10, line: 'ztz', lane: 3, parents: ['ztz99a'], slot: 'line' }),
     node({ id: 'ztz100', tier: 10, line: 'ztz', lane: 2, parents: ['ztz99a2', 'vt4a1'], slot: 'line' }),
+    // 262: the ZTZ-20 Prototype turret testbed after the pre-production ZTZ-100, then the production ZTZ-20
+    node({ id: 'ztz20_prototype', tier: 10, line: 'ztz', lane: 1, parents: ['ztz100'], slot: 'line' }),
+    node({ id: 'ztz20', tier: 10, line: 'ztz', lane: 0, parents: ['ztz20_prototype'], slot: 'line' }),
     // Type 96
     node({ id: 'type96_72_long', tier: 5, line: 'type96', lane: 1, parents: ['ztz85_iii'], slot: 'line' }),
     node({ id: 'type96b', tier: 6, line: 'type96', lane: 0, parents: ['type96_72_long'], slot: 'line' }),
@@ -43,5 +46,10 @@ export const CHINA_TREE: NationTree = Object.freeze({
     node({ id: 't72b3m_kunlun', tier: 7, line: 'special', lane: 1, parents: [], slot: 'special' }),
     node({ id: 't72b3_qilin', tier: 7, line: 'special', lane: 2, parents: [], slot: 'special' }),
     node({ id: 't80u_yun', tier: 7, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 264 (owner 2026-10-28): the Longwei family, fleet hulls under a modernized Longwei turret
+    node({ id: 't72b3_zhuque', tier: 7, line: 'special', lane: 3, parents: [], slot: 'special' }),
+    node({ id: 't72b3m_xuanwu', tier: 7, line: 'special', lane: 4, parents: [], slot: 'special' }),
+    node({ id: 'vt4a1_baihu', tier: 7, line: 'special', lane: 5, parents: [], slot: 'special' }),
+    node({ id: 'ztz99a2_qinglong', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

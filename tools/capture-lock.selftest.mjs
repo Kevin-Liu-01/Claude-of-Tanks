@@ -491,6 +491,26 @@ function checkClassifyCommand() {
   assert.deepEqual(classifyCommand('/x/aps-frames.mjs --root=/y/gauntlet-run'), { lockClass: 'timing', from: 'default' },
     'an unknown script is timing by default; its arguments never classify it');
   assert.deepEqual(classifyCommand(''), { lockClass: 'timing', from: 'default' });
+  // a zsh script is a script: its name classifies it, never its arguments or its lane directory (2026-10-29: a lane's
+  // `/bin/zsh /abs/steps.zsh` render chain was read whole and held the lock as exclusive timing)
+  for (const command of ['zsh x.zsh', '/bin/zsh /abs/x.zsh', '/bin/zsh /abs/x.zsh --out=/y/genIcons-out']) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'timing', from: 'default' }, `an unknown zsh script: ${command}`);
+  }
+  for (const command of [`/bin/zsh ${lane}/steps/genIcons-batch.zsh`, 'zsh tools/genDrawings-steps.zsh --out=/y/perf']) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'render', from: 'command' }, `a render zsh script: ${command}`);
+  }
+  assert.deepEqual(classifyCommand(`/bin/zsh ${lane}/steps/fleet-census.zsh`), { lockClass: 'timing', from: 'command' });
+  // tank-standard-check's stage holds render and capture only (2026-10-29): each child stage by its command, the clip
+  // audit and the standard check's own render by their process command lines; a timing script still wins
+  for (const command of ['/usr/local/bin/node tools/geometry-gate.mjs --ids=t80u --check',
+    '/usr/local/bin/node tools/first-party-concept-check.mjs --ids=t72_rys --out=/x/concepts',
+    '/usr/local/bin/node tools/photo-reference-check.mjs --ids=a --out=/x/photos',
+    `${lane}/tools/track-clip-audit.mjs --exact --strict --ids=t62mv1 --out-dir=/x/tracks`,
+    `${lane}/tools/tank-standard-check.mjs --ids=t80u,t90m --gate --stages`]) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'render', from: 'command' }, `a standard-check stage: ${command}`);
+  }
+  assert.deepEqual(classifyCommand('tools/geometry-gate.mjs tools/perfprobe.mjs'), { lockClass: 'timing', from: 'command' },
+    'a timing script still wins over a standard-check stage');
 }
 
 // Renders share the lock two at a time in one directory; a third waits for a slot; the last one out frees the path.
@@ -534,6 +554,7 @@ async function checkTimingExclusion() {
   const lockAt = join(root, 'excl.lock');
   await take(timing, 't', order, { lockClass: 'timing' }).done;
   assert.equal(readToken(lockAt).lockClass, 'timing', 'owner.json shows the class');
+  // object3d-assert-ok: the lock token's JSON group field, not a three.js Group
   assert.equal(readToken(lockAt).group, undefined, 'a timing hold is no group');
   const r = take(render, 'r', order, { lockClass: 'render' });
   await settle(1_300);

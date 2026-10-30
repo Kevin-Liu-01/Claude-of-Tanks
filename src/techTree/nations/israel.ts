@@ -40,8 +40,10 @@ export const ISRAEL_TREE: NationTree = Object.freeze({
     node({ id: 'sabra_mk2', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
     // release 266: the Magach 3, the IDF's M48 (pattonCast.ts on the M48A5's castings)
     node({ id: 'magach3', tier: 1, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    // release 267: the IDF's M60s (pattonCast.ts on the M60A1's castings)
-    node({ id: 'magach6b', tier: 1, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    node({ id: 'magach7c', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 262: the IDF's Centurion of 1973, beside the Sabra (both foreign hulls in IDF service)
+    node({ id: 'shot_kal', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 267: the IDF's M60s (pattonCast.ts on the M60A1's castings), a second special lane beside the Magach 3 and the Sabra
+    node({ id: 'magach6b', tier: 1, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    node({ id: 'magach7c', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
   ]),
 });

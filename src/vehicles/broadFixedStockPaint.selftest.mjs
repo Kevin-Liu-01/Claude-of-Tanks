@@ -84,7 +84,9 @@ try{for(const id of['leo2a5'])for(const quality of['high','low'])for(const camo 
    assert.deepEqual(cloud(now.tank.root,excluded),cloud(old.tank.root,excluded),'entire selected oriented physical stock remains exact after pose/spent ERA');
    assert.deepEqual(others(now.tank.root,excluded),others(old.tank.root,excluded),'all other geometry, finish, wheels, kit and markings remain exact');
    const rig=now.tank.root.getObjectByName('rig_hull'),oldRig=old.tank.root.getObjectByName('rig_hull');
-   const witnesses=[[[.776058,2.3,-1.378049],[0,-1,0],.8],[[-.765934,2.3,-1.365959],[0,-1,0],.8]];
+   // Release 240 (1d91ce7de1): the service covers stand 0.35 m aft of their source stations, out of the turret's sweep;
+   // the witnesses move with them (as leopardA5XDetails' COVER_AFT_M).
+   const witnesses=[[[.776058,2.3,-1.378049-.35],[0,-1,0],.8],[[-.765934,2.3,-1.365959-.35],[0,-1,0],.8]];
    const previous=[...directNames].map(n=>old.tank.root.getObjectByName(n));
    for(const[p,d,max]of witnesses){const hit=(frame,targets)=>new T.Raycaster(frame.localToWorld(new T.Vector3(...p)),
     new T.Vector3(...d).transformDirection(frame.matrixWorld),0,max).intersectObjects(targets,false)[0];

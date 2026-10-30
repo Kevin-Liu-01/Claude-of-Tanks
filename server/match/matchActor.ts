@@ -123,12 +123,6 @@ export interface MatchActorOptions {
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
   autoStart?: boolean;
-  /**
-   * A solo battle's countdown stands until the page that hosts it has revealed the battle (holdCountdown(false)): the
-   * ticks run and the snapshots flow, and nothing moves, as solo's countdown begins when its player first sees the field.
-   * Ignored for a match with more than one human seat.
-   */
-  holdCountdown?: boolean;
   /** Ticks the actor keeps publishing after the verdict before it stops (default: the ruleset's ending hold + 2 s, at least 5 s). */
   endedLingerTicks?: number;
   /** Snapshots per second for the near tier (SNAPSHOT_HZ by default; must divide TICK_HZ). The WELCOME names it; the tiers halve and third it. */
@@ -280,16 +274,6 @@ export interface MatchActor {
   broadcastEvent(event: WireEvent): void;
   advance(nowMs?: number): number;
   start(): void;
-  /**
-   * A solo match's pause (RUST-ENGINE-DECISION §7 step 5: a solo battle on a local host): the loop stops at a tick
-   * boundary and resumes from it on a rebased clock, so every tick runs on the inputs it would have run on. Only a match
-   * with one human seat pauses (false otherwise, or when stopped or already paused); nothing of it reaches the wire.
-   */
-  pause(): boolean;
-  resume(): boolean;
-  readonly paused: boolean;
-  /** Hold or release a solo match's countdown (MatchActorOptions.holdCountdown); false for a match with more humans. */
-  holdCountdown(held: boolean): boolean;
   stop(reason?: CloseReasonId, detail?: string): void;
   stats(): MatchActorStats;
   clientStats(): ActorClientStats[];
@@ -394,7 +378,7 @@ function clampI16(value: number): number {
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
-    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true, holdCountdown = false,
+    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
@@ -1027,15 +1011,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
-    // (a held countdown: the tick runs, its clock does not; the countdown alone reads countdownElapsedS)
-    const countdownElapsedS = countdownHeld ? 0 : dt;
     if (profile) {
       const stepped = profile.clock();
-      authority.step({ dt, countdownElapsedS, inputs: collectInputs(tick) });
+      authority.step({ dt, inputs: collectInputs(tick) });
       profile.stepMs += profile.clock() - stepped;
       profile.ticks++;
     } else {
-      authority.step({ dt, countdownElapsedS, inputs: collectInputs(tick) });
+      authority.step({ dt, inputs: collectInputs(tick) });
     }
     if (!ended) lagComp.record(tick);
     if (profile) {
@@ -1060,32 +1042,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   });
 
   function start(): void {
-    if (stopped || paused) return;
+    if (stopped) return;
     if (authority.phase === 'loading') authority.onMatchReady();
     loop.start();
-  }
-
-  let countdownHeld = holdCountdown && seats.length === 1;
-  function holdMatchCountdown(held: boolean): boolean {
-    if (seats.length !== 1) return false;
-    countdownHeld = held;
-    return true;
-  }
-
-  let paused = false;
-  function pauseMatch(): boolean {
-    if (stopped || paused || seats.length !== 1 || !loop.running) return false;
-    paused = true;
-    loop.stop();
-    actorLog.info('actor paused', { tick: loop.tick });
-    return true;
-  }
-  function resumeMatch(): boolean {
-    if (stopped || !paused) return false;
-    paused = false;
-    loop.start();
-    actorLog.info('actor resumed', { tick: loop.tick });
-    return true;
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
@@ -1240,10 +1199,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),
     start,
-    pause: pauseMatch,
-    resume: resumeMatch,
-    holdCountdown: holdMatchCountdown,
-    get paused() { return paused; },
     stop,
     stats,
     clientStats,

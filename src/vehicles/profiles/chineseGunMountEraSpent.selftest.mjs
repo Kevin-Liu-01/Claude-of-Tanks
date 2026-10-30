@@ -71,14 +71,14 @@ function collapsedVertices(mesh) {
 // Main's owner-directed mantlet fit (2026-10-02, 245aa4e4e) replaced the VT4A1,
 // ZTZ-99A2 and ZTZ-99A gun roots with an articulated cover in a 0.80 m channel
 // (chineseGunOpening.ts; chineseMantletFit.selftest owns its clearances). The Longwei left this family in release 233
-// (its box mantlet: profiles/longwei.ts). The
+// (its box mantlet: profiles/longwei.ts), the ZTZ-85-III in release 263 (its cast box under a short canvas cover:
+// profiles/ztz85iii.ts; cnGunMantlet.selftest owns its fit). The
 // same taper holds there: the cover is broad where it leaves the turret
 // (0.377 m half-width, inside the 0.40 m channel) and narrow at its nose.
 for (const audit of [
   { id: 'vt4a1', fitted: true },
   { id: 'ztz99a', fitted: true },
   { id: 'ztz99a2', fitted: true },
-  { id: 'ztz85_iii', rearZ: 0.13, rearR: 0.23, frontZ: 0.51, frontR: 0.17 },
 ]) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
   const gunMount = tank.root.getObjectByName('gunMount');
@@ -123,11 +123,14 @@ for (const audit of [
 for (const audit of [
   {
     id: 'vt4a1', receipt: 'vtFamilyTurretReceipt',
-    permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1028, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
+    // release 264 (main-reds 261): since the 241 regen published its turretRing row, the turret seat
+    // (turretSeatRace.ts seatTurretOverDeck) stands the low chevron corner on its seat plane, 0.1028 -> 0.1514
+    permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1514, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
   },
   {
     id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt',
-    permanentPoints: [[-0.62, 0.81, 0.18], [0.78, -0.02, 0.70]], channel: { halfWidth: 0.40, minZ: 0.62 },
+    // release 264: the same seat stands its low chevron corner on the seat plane, -0.02 -> 0.1525
+    permanentPoints: [[-0.62, 0.81, 0.18], [0.78, 0.1525, 0.70]], channel: { halfWidth: 0.40, minZ: 0.62 },
   },
 ]) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });

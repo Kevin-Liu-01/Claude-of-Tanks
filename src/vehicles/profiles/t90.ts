@@ -959,8 +959,12 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
   // and latches, and the armoured plates carry their bolt heads.
   P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), sx, headCenterY, sz(0.322), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), sx, headCenterY + fitY(0.088), sz(0.345),
-    -0.18, yaw, 0);
+  // 264 (accessoryContact): the sun hood's rear lower edge rests on the sight housing's top face (headCenterY +
+  // fitY(0.085)) and its tilt lifts the front; centred at fitY(0.088) it sank its rear into the housing and crossed the
+  // bezel's top with no corner resting on either (the T-90AM II's Kord station, since 230's stock clearance)
+  const hoodTilt = 0.18, hoodH = fitY(0.016), hoodD = fit(0.07);
+  P.add('turretDark', box(fit(0.21), hoodH, hoodD), sx,
+    headCenterY + fitY(0.085) + hoodH / 2 * Math.cos(hoodTilt) + hoodD / 2 * Math.sin(hoodTilt), sz(0.345), -hoodTilt, yaw, 0);
   P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.326),
     0, yaw, 0);
   P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.336),
@@ -2484,9 +2488,11 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   P.add('turretDark', box(0.30, 0.014, 0.07), -0.90, 0.627, -0.59);
   // Two compact forward heads complete the hierarchy without rebuilding a
   // continuous roof wall; both feet penetrate the long carrier.
-  P.add('turret', box(0.22, 0.26, 0.30), -0.76, 0.65, 0.76);
+  // 264 (Main, false roofs): their feet stopped at 0.52-0.53 over a 28 cm well down to the cheek course, seen from the
+  // front-left; both bodies now stand on the turret at 0.24 (tops 0.78 and 0.75 kept).
+  P.add('turret', box(0.22, 0.78 - 0.24, 0.30), -0.76, (0.78 + 0.24) / 2, 0.76);
   P.add('turretDark', box(0.19, 0.014, 0.26), -0.76, 0.787, 0.76);
-  P.add('turret', box(0.18, 0.22, 0.24), -0.75, 0.64, 1.02);
+  P.add('turret', box(0.18, 0.75 - 0.24, 0.24), -0.75, (0.75 + 0.24) / 2, 1.02);
   P.add('turretDark', box(0.15, 0.014, 0.20), -0.75, 0.757, 1.02);
   P.add('turretGlass', box(0.14, 0.09, 0.016), -0.75, 0.65, 1.148);
   // rTAIL r13: center-right sight-cluster deck — ref FRONT carries a

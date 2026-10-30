@@ -109,9 +109,11 @@ export default {
     plannedSites: [
       { structure: 'depot', x: -86, z: 6, yawDeg: 0 }, { structure: 'depot', x: -86, z: 32, yawDeg: 0 },
       { structure: 'warehouse', x: -40, z: 58, yawDeg: 180 },
-      // (the huts north of the west zone's clear ground, (-155, 25) and its 30 m)
-      { structure: 'containerRow', x: -125, z: 52, yawDeg: 0, terrace: true }, { structure: 'containerRow', x: -125, z: 63, yawDeg: 0, terrace: true },
-      { structure: 'containerRow', x: -125, z: 74, yawDeg: 0, terrace: true },
+      // (the huts north of the west zone's clear ground, (-155, 25) and its 30 m; 2026-10-28, the world-reds lane, the
+      // mapLayoutBrief red railyard's had hidden: 8 m further north, z 52/63/74 -> 60/71/82 — the placement reads a
+      // footprint's corners mitred, the first row's 30 m out along both axes, and refused the hint 31.6 m from its corner)
+      { structure: 'containerRow', x: -125, z: 60, yawDeg: 0, terrace: true }, { structure: 'containerRow', x: -125, z: 71, yawDeg: 0, terrace: true },
+      { structure: 'containerRow', x: -125, z: 82, yawDeg: 0, terrace: true },
       { structure: 'woodshed', x: -16, z: 50, yawDeg: 90, terrace: true },
     ],
     plannedSitesAfterPlan: true,

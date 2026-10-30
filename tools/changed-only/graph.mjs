@@ -3,12 +3,18 @@
 //
 // Each file's inputs come from the selftest cache's own parser (tools/selftest-inputs.mjs), so a receipt key and a
 // changed-only key read the same syntax. This module adds what the resolver needs on top: typed edges (an executed
-// import versus a file merely named), closures that stop at chosen files, and two parser corrections that only ever
+// import versus a file merely named), closures that stop at chosen files, and three parser corrections that only ever
 // narrow a false input, never a real one:
 //   - a `join`/`resolve` call whose literal segments carry no letter or digit (`.join('')`, `.join('/')`) names no file;
 //     the selftest parser reads `parts.join('')` in materials.ts as "the directory src/vehicles";
 //   - a declared import helper (`imp('src/x.ts')` in spare-track-placement-check.mjs) is followed as an executed import of
-//     its literal argument; a call with any other argument fails the step closed.
+//     its literal argument; a call with any other argument fails the step closed;
+//   - a template string in the app's own source (src/) that starts at a whole top-level directory (`/docs/${topic}`) is a
+//     route, not a read: page code cannot list a directory, and localeRouting.ts's docs topics put every byte of docs/
+//     (the ledgers other steps write there included) into the GPU steps' keys (265).
+// Rows name a file under public/models/ (gitignored whole: source and comparison GLBs) by its path alone, never its bytes
+// or presence, so a key the committed manifest holds reads the same in a checkout without it; a tool that reads one
+// verifies it against a sha256 pinned in a tracked file (tools/barak-source-openings.mjs).
 // Everything the parser flags as computed (opaque import, whole environment, unresolved template import) or broad
 // (child processes, directory reads, servers, browsers) is reported, and the resolver fails that step closed unless
 // the step table (steps.mjs) declares the file's dynamic reads and pins its dynamic call sites.
@@ -46,6 +52,7 @@ const isDir = (path) => { try { return statSync(path).isDirectory(); } catch { r
 const isFile = (path) => { try { return statSync(path).isFile(); } catch { return false; } };
 const inside = (root, path) => path === root || path.startsWith(root + sep);
 const hasWord = (text) => /[A-Za-z0-9]/.test(text);
+const machineLocal = (path) => path === 'public/models' || path.startsWith('public/models/');
 
 export function defaultGraphCacheDir(env = process.env) {
   return env.COT_CHANGED_ONLY_CACHE_DIR
@@ -160,7 +167,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     const files = []; walk(dir, files); files.sort();
     const hash = createHash('sha256');
     for (const file of files) {
-      if (exclude?.has(file)) continue;
+      if (exclude?.has(file) || machineLocal(relative(root, file))) continue;
       let link = '';
       try { link = readlinkSync(file); } catch {}
       hash.update(`${relative(root, file)}\0${link}\0${isDir(file) ? 'directory' : hashFile(file)}\n`);
@@ -213,6 +220,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     edgeMap.set(file, result);
     if (!SOURCE_EXTENSIONS.has(extname(file)) || LEAF_FILE.test(file) || !isFile(file)) return result;
     const meta = info(file);
+    const appSource = relative(root, file).startsWith(`src${sep}`);
     for (const specifier of meta.imports) {
       const target = resolveSpecifier(file, specifier, true);
       if (target && target !== file) exec.add(target);
@@ -237,6 +245,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
       }
       const slash = prefix.lastIndexOf('/');
       const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
+      if (!execute && appSource && dir && ROOT_DIRS.has(relative(root, dir))) continue; // an app route (see header)
       if (!dir || !isDir(dir)) { if (execute) flags.unresolved = true; else flags.broad = true; continue; }
       mention.add(dir);
       if (!execute) continue;
@@ -284,12 +293,14 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     }
     return { files: seen, stopped, expanded };
   };
-  /** Sorted `kind:path:hash` rows for a set of nodes (directories by fingerprint). */
+  /** Sorted `kind:path:hash` rows for a set of nodes (directories by fingerprint; public/models by path, see header). */
   const rowsOf = (nodes, { exclude = null } = {}) => [...nodes]
     .filter((node) => !exclude?.has(node))
-    .map((node) => isDir(node)
-      ? `dir:${relative(root, node)}:${fingerprintDir(node, exclude)}`
-      : `file:${relative(root, node)}:${hashFile(node)}`)
+    .map((node) => {
+      const path = relative(root, node);
+      if (machineLocal(path)) return `local:${path}`;
+      return isDir(node) ? `dir:${path}:${fingerprintDir(node, exclude)}` : `file:${path}:${hashFile(node)}`;
+    })
     .sort();
   const persist = () => {
     if (!dirty) return;

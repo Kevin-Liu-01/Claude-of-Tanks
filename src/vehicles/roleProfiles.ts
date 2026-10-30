@@ -42,13 +42,21 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   kv2: { doctrine: 'siege', viewM: 340, still: 0.108, moving: 0.058 },
   chieftain3: { doctrine: 'precision', viewM: 380, still: 0.245, moving: 0.155 },
   chieftain_mk9: { doctrine: 'precision', viewM: 390, still: 0.245, moving: 0.155 },
+  challenger1_mk1: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
   challenger1_mk2: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
+  challenger_x: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
+  challenger_x_sleek: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
   fv4034: { doctrine: 'precision', viewM: 390, still: 0.241, moving: 0.151 },
   challenger2: { doctrine: 'precision', viewM: 410, still: 0.238, moving: 0.148 },
   challenger2e: { doctrine: 'precision', viewM: 415, still: 0.235, moving: 0.145 },
   ua_challenger2: { doctrine: 'precision', viewM: 410, still: 0.233, moving: 0.143 },
   challenger3_proto: { doctrine: 'precision', viewM: 420, still: 0.234, moving: 0.144 },
   challenger3: { doctrine: 'precision', viewM: 430, still: 0.225, moving: 0.135 },
+  // the demonstrator's new commander's and gunner's sights on the Challenger 2's slower hull: the prototype's view, its
+  // camouflage a shade better standing (no Trophy masts or roof station to break the outline)
+  challenger3_td: { doctrine: 'precision', viewM: 420, still: 0.238, moving: 0.142 },
+  // the field fit: the station's own sight adds reach, its mast and kit cost the bare demonstrator's outline
+  challenger3_td_rws: { doctrine: 'precision', viewM: 430, still: 0.226, moving: 0.136 },
   xk2_black_panther: { doctrine: 'flanker', viewM: 420, still: 0.225, moving: 0.165 },
   k1e1: { doctrine: 'flanker', viewM: 395, still: 0.227, moving: 0.167 },
   stb1: { doctrine: 'flanker', viewM: 390, still: 0.242, moving: 0.182 },
@@ -58,6 +66,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   type10_tk_x: { doctrine: 'flanker', viewM: 420, still: 0.232, moving: 0.172 },
   type10b: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.172 },
   // the dozer Type 10 breaches: assault doctrine, and the blade makes it the easier family member to spot
+  // the Christian II: the Type 90's hull and gun under heavy netting; a precision tank that keeps its cover still
+  christian2: { doctrine: 'precision', viewM: 415, still: 0.250, moving: 0.150 },
   type10_dozer: { doctrine: 'assault', viewM: 410, still: 0.205, moving: 0.145 },
   m2a2_bradley: { doctrine: 'support', viewM: 435, still: 0.270, moving: 0.210 },
   bmp2: { doctrine: 'support', viewM: 420, still: 0.285, moving: 0.225 },
@@ -90,6 +100,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leclerc_sxxi: { doctrine: 'flanker', viewM: 430, still: 0.223, moving: 0.163 },
   leclerc_s1: { doctrine: 'flanker', viewM: 405, still: 0.221, moving: 0.161 },
   type59: { doctrine: 'assault', viewM: 365, still: 0.194, moving: 0.134 },
+  t55a: { doctrine: 'assault', viewM: 365, still: 0.194, moving: 0.134 },
   ztz85_iii: { doctrine: 'assault', viewM: 380, still: 0.186, moving: 0.126 },
   ztz99_longwei: { doctrine: 'assault', viewM: 415, still: 0.175, moving: 0.115 },
   type96b: { doctrine: 'assault', viewM: 400, still: 0.175, moving: 0.115 },
@@ -115,8 +126,15 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   ztz99a: { doctrine: 'assault', viewM: 420, still: 0.172, moving: 0.113 },
   ztz99a2: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
   vt4a1: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  // release 264: the Longwei family keeps its hosts' doctrines and optics (longweiFamilyConfig.ts)
+  ztz99a2_qinglong: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
+  vt4a1_baihu: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  t72b3_zhuque: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
+  t72b3m_xuanwu: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   type100: { doctrine: 'support', viewM: 450, still: 0.262, moving: 0.202 },
   ztz100: { doctrine: 'assault', viewM: 435, still: 0.188, moving: 0.128 },
+  ztz20: { doctrine: 'assault', viewM: 440, still: 0.186, moving: 0.126 },
+  ztz20_prototype: { doctrine: 'assault', viewM: 430, still: 0.188, moving: 0.128 },
   ztz100_prototype: { doctrine: 'assault', viewM: 425, still: 0.186, moving: 0.126 },
   mbt70: { doctrine: 'flanker', viewM: 425, still: 0.230, moving: 0.170 },
   object148_proto: { doctrine: 'assault', viewM: 425, still: 0.175, moving: 0.115 },
@@ -156,13 +174,33 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   vickers_mk1: { doctrine: 'flanker', viewM: 410, still: 0.241, moving: 0.181 },
   centurion3: { doctrine: 'flexible', viewM: 385, still: 0.189, moving: 0.129 },
   centurion5_2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
+  // the Sho't Kal: the Mk 5/2's flexible gun tank with the diesel's quicker pace and the IDF's taller whips
+  shot_kal: { doctrine: 'flexible', viewM: 410, still: 0.190, moving: 0.130 },
+  // the Mk 13: the Mk 5/2's flexible gun tank; its searchlight drum makes it the easier one to spot
+  centurion13: { doctrine: 'flexible', viewM: 410, still: 0.195, moving: 0.135 },
+  // the Strv 105: the Mk 5/2's flexible gun tank with a thermal sight; its cassettes bulk it out
+  strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
+  // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
+  olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
+  centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
+  // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
+  centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },
   t64bv_donbas: { doctrine: 'assault', viewM: 385, still: 0.186, moving: 0.127 },
+  t64bm1m: { doctrine: 'assault', viewM: 390, still: 0.184, moving: 0.126 },
+  t64bv: { doctrine: 'assault', viewM: 375, still: 0.188, moving: 0.128 },
+  t64b1v_2022: { doctrine: 'assault', viewM: 385, still: 0.186, moving: 0.127 },
+  pt64_tur: { doctrine: 'assault', viewM: 385, still: 0.186, moving: 0.127 },
   ua_t80bv: { doctrine: 'flanker', viewM: 395, still: 0.235, moving: 0.175 },
   t80u_kursk: { doctrine: 'flanker', viewM: 410, still: 0.234, moving: 0.174 },
   t84bm_oplot_m: { doctrine: 'flanker', viewM: 425, still: 0.229, moving: 0.169 },
+  // Release 262: the T-84BM Oplot-M and Oplot-T; the PNK-6 panorama gives the commander a hunter-killer view, the
+  // Oplot-T's air conditioner and APU box make it the easier one to spot
+  bm_oplot_m: { doctrine: 'flanker', viewM: 435, still: 0.226, moving: 0.166 },
+  bm_oplot_t: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.170 },
   ua_m1a1: { doctrine: 'flexible', viewM: 400, still: 0.176, moving: 0.116 },
   leo2a6_ua: { doctrine: 'flexible', viewM: 425, still: 0.168, moving: 0.108 },
   object695: { doctrine: 'support', viewM: 440, still: 0.275, moving: 0.215 },

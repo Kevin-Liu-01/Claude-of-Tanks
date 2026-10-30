@@ -978,6 +978,8 @@ export interface HousePlan {
   shaft?: boolean;
   /** a body recorded for the damage reading only (recordBody): drawn nothing, so no census reads its spec as a house's */
   recorded?: boolean;
+  /** a recorded body open to the sky (recordBody `open`: a yard inside its wall): the damage reading gives it no roof */
+  open?: boolean;
 }
 
 /**
@@ -1032,9 +1034,10 @@ export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
  * (a round minaret, a blast furnace, a stove) is a tower body (towerBody: it topples in its courses) and never the main
  * one. A no-op outside withHousePlans. (Props census #13, lane B 2026-10-15.) With `bands` (props census #9, E13: the
  * tower reader) the body is read in storey bands as the shell reading cuts a wall (3.2 m, at most six), so a tower's
- * floors break and fall band by band.
+ * floors break and fall band by band. An `open` body (a works yard inside its kerb and fence) has no roof to fall.
  */
-export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false, bands = false): void {
+export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false, bands = false,
+  open = false): void {
   if (!planSink) return;
   const scratch = new PartSink(sink.uvOffset), pl = sink.placement();
   const n = bands ? Math.max(1, Math.min(6, Math.round((height - 0.1) / 3.2))) : 1;
@@ -1047,6 +1050,7 @@ export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d:
   if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
   planSink[planSink.length - 1].recorded = true;
   if (shaft) planSink[planSink.length - 1].shaft = true;
+  if (open) planSink[planSink.length - 1].open = true;
 }
 
 /** A round or polygonal shaft recorded as a square tower body of its girth (recordBody), in bands when asked. */

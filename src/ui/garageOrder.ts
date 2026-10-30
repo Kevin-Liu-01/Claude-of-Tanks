@@ -72,10 +72,10 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'kf41_lynx', 'kf51_evo', 'kf51_u', 'puma_s1', 'spz_wotan', 'marder2', 'mbt70', 'leo2_improved',
   ]),
   China: Object.freeze([
-    'vt4a1', 'ztz99a2', 'ztz99a',
-    't72b3_qilin', 't72b3m_kunlun', 't80u_yun',
+    'vt4a1', 'ztz99a2', 'ztz99a', 'ztz99a2_qinglong', 'vt4a1_baihu',
+    't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 't72b3_zhuque', 't72b3m_xuanwu',
     'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10',
-    'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long',
+    'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long',
     'ztz99_longwei', 'ztz85_iii', 'type59',
   ]),
   // 2026-09-15 owner roster pass ("our x tanks are better models, i like featuring them

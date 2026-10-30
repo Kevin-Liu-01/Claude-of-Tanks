@@ -59,11 +59,19 @@ for(const side of [-1,1]){
 // second fixture reconstruction. Each selector has an exact expected count
 // so deleting or bypassing the stock cannot silently pass this regression.
 const targets={
-  ztz99a2:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&p.part.size.x>1.1&&p.part.size.x<1.13&&p.part.size.z>2.29&&p.part.size.z<2.31&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
+  // release 265: each bow shoulder is cut at the track's inner face (x 1.12) into its inboard half (0.40 m) and the half
+  // over the track (0.72 m), each convex, each mirrored by its peer of the same width
+  ztz99a2:{expected:4,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&((p.part.size.x>.39&&p.part.size.x<.41&&p.part.size.z>2.14&&p.part.size.z<2.15)||(p.part.size.x>.71&&p.part.size.x<.73&&p.part.size.z>2.29&&p.part.size.z<2.31))&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
   k2_black_panther:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===92&&p.site.includes('k2X.ts'),sectionContour:p=>p.part.size.x>2?8:6},
   k21:{expected:2,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(p.bucket==='turret'&&p.site.includes('buildK21Turret (')&&p.part.vertices.length===30)),sectionContour:p=>p.bucket==='hull'?14:6},
   marder2:{expected:4,select:p=>p.part.geometryType==='BufferGeometry'&&p.site.includes('buildMarder2 (')&&((p.bucket==='hull'&&p.part.size.z>7)||(p.bucket==='turret'&&p.part.vertices.length>8)),sectionContour:p=>p.bucket==='hull'?8:p.part.size.x>2?6:5},
   challenger1_mk3:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
+  // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build
+  challenger1_mk2:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
+  challenger1_mk1:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
+  // release 262: the FV4030/5's slab-sided body, gun ridge, two sloped cheeks and the two gun-nose plates either side
+  // of the slot (challenger1HistoricTurret.ts)
+  challenger_x:{expected:6,select:p=>p.bucket==='turret'&&p.site.includes('at shell (')&&p.site.includes('challenger1HistoricTurret.ts')&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.2?8:p.part.size.z>1?7:6},
   kf41_lynx:{expected:8,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&((p.site.includes('buildLynxTurretArmor (')&&p.part.vertices.length===30)||p.site.includes('addLynxTurretCheek ('))),sectionContour:p=>p.part.geometryType==='ExtrudeGeometry'?null:p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===30?6:5},
   lrmv_lynx:{expected:6,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&p.site.includes('buildLrmvLynx (')&&p.part.geometryType==='BufferGeometry'&&[8,24].includes(p.part.vertices.length)),sectionContour:p=>p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===24?6:4},
   carro45t:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.site.includes('buildCarro45TTurretStage1 (')&&p.part.vertices.length>8,sectionContour:p=>p.part.size.x>2?8:5},
@@ -71,7 +79,8 @@ const targets={
   strv103a:{expected:19,select:p=>p.bucket==='hull'&&p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'),convexAll:true,mirror:true},
   udes03:{expected:8,select:p=>p.bucket==='hull'&&((p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'))||(p.part.vertices.length===8&&p.part.size.z>2.15&&p.part.size.z<2.17&&p.part.size.x<.61)),convexAll:true,mirror:true},
   m1a2_abrams:{expected:2,select:p=>p.site.includes('buildTurretArmor (')&&p.site.includes('abramsSourceX.ts')&&p.bucket==='turret'&&p.part.size.z>2&&p.part.bounds.max.z>2&&p.part.bounds.min.z>-.02&&p.part.size.x>1},
-  ztz85_iii:{expected:1,select:p=>p.site.includes('buildZTZ85III (')&&p.bucket==='turret'&&p.part.triangles.length===84,panels:56,mirror:true},
+  // release 263: the rebuilt ZTZ-85-III's welded hexagon is one convex hull (profiles/ztz85iii.ts weldedShell)
+  ztz85_iii:{expected:1,select:p=>p.site.includes('addTurret (')&&p.site.includes('ztz85iii.ts')&&p.bucket==='turret'&&p.part.size.x>2.2,convexAll:true,mirror:true},
   // the hull section's 7 stations became 11 when release 240's engine-block ramp climbed under the turret (9b4d25ad55):
   // (11-1)×6×2 sides + 2×4 caps = 128 triangles, 80 before
   sabra_mk2:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===128)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
@@ -108,7 +117,7 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
       }
       if(config.convexAll)for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
         for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,`${id}/${quality} convex welded body`);}
-      if(config.mirrorPair){const peer=parts.find(p=>p!==entry&&p.part.bounds.min.x*part.bounds.min.x<0);assert.ok(peer,'opposite shoulder present');
+      if(config.mirrorPair){const peer=parts.find(p=>p!==entry&&p.part.bounds.min.x*part.bounds.min.x<0&&Math.abs(p.part.size.x-part.size.x)<.005);assert.ok(peer,'opposite shoulder present');
         close(mirroredSurfaceError(part,peer.part).maxM,0,`${id}/${quality} paired shoulder interiors`);}
 
       assert.equal(properSurfaceCrossings(part).length,0,`${id}/${quality} structural face crossings`);
