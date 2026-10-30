@@ -53,27 +53,23 @@ function turretShell(P: TankBuilderPort): void {
 
 /**
  * Two bolt-on frontal modules either side of the gun slot, their faces swept back in plan from the slot's edges to the side
- * walls at the shell's front (the supplied model's arrowhead), vertical from the floor, their tops falling 7 cm forward to
- * the faces' tips. Each is one convex piece from 2 cm inside the shell's front, its outer side 3 mm inside the wall's
- * plane; the bolted seams and the bolt heads stand square to the face.
+ * walls at the shell's front (the supplied model's arrowhead), vertical from the floor; their tops run on from the shell's
+ * front roof edge and fall 8 cm to the faces' tips. Each is one convex piece from 2 cm inside the shell's front, its outer
+ * side 3 mm inside the wall's plane; two rows of bolt heads stand square to the face.
  */
 function frontalModules(P: TankBuilderPort): void {
-  const { box, cylZ } = KIT;
+  const { cylZ } = KIT;
   const inner = T.slotHalfWidthM, hw = T.halfWidthM - 0.003, root = T.coreFrontZ - 0.02, lo = 0.04;
   const face = christian2ModuleFaceZ, zi = face(inner), zo = face(hw);
-  const fall = (T.moduleTopY - T.moduleNoseTopY) / (zi - root);
-  const topAt = (z: number): number => T.moduleTopY - (z - root) * fall;
+  const fall = (T.roofFrontY - T.moduleNoseTopY) / (zi - root);
+  const topAt = (z: number): number => T.roofFrontY - (z - root) * fall;
   const sweep = Math.atan2(T.moduleFrontZ - T.coreFrontZ, T.halfWidthM - T.slotHalfWidthM);
   for (const sx of [-1, 1]) {
     P.add('turret', convexSlab(
       [sx * inner, lo, root], [sx * hw, lo, root], [sx * hw, lo, zo], [sx * inner, lo, zi],
-      [sx * inner, T.moduleTopY, root], [sx * hw, T.moduleTopY, root], [sx * hw, topAt(zo), zo], [sx * inner, topAt(zi), zi],
+      [sx * inner, T.roofFrontY, root], [sx * hw, T.roofFrontY, root], [sx * hw, topAt(zo), zo], [sx * inner, topAt(zi), zi],
     ));
-    for (const x of [0.65, 0.95]) {
-      const top = topAt(face(x)) - 0.03;
-      P.add('turretDark', box(0.012, top - 0.08, 0.012), sx * x, (top + 0.08) / 2, face(x) + 0.004, 0, sx * sweep, 0);
-    }
-    for (const y of [0.16, 0.54]) for (const x of [0.50, 0.80, 1.10]) {
+    for (const y of [0.16, 0.54]) for (const x of [0.60, 0.85, 1.10]) {
       P.add('turretDetail', cylZ(0.022, 0.016, 8), sx * x, y, face(x) + 0.006, 0, sx * sweep, 0);
     }
   }
@@ -86,17 +82,18 @@ function frontalModules(P: TankBuilderPort): void {
  */
 function gunAssembly(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
-  const m = T.mantletFaceZ;
+  const m = T.mantletFaceZ, w = T.mantletHalfWidthM;
+  const rect = (hw: number, lo: number, hi: number): SectionPoint[] => [[-hw, lo], [hw, lo], [hw, hi], [-hw, hi]];
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
   P.addGunExtra(sectionSolid([
-    { z: -0.10, ring: [[-0.30, -0.23], [0.30, -0.23], [0.30, 0.23], [-0.30, 0.23]] },
-    { z: m - 0.30, ring: [[-0.30, -0.23], [0.30, -0.23], [0.30, 0.23], [-0.30, 0.23]] },
-    { z: m - 0.10, ring: [[-0.30, -0.157], [0.30, -0.157], [0.30, 0.23], [-0.30, 0.23]] },
-    { z: m, ring: [[-0.27, -0.12], [0.27, -0.12], [0.27, 0.16], [-0.27, 0.16]] },
+    { z: -0.10, ring: rect(w, -0.23, 0.23) },
+    { z: m - 0.30, ring: rect(w, -0.23, 0.23) },
+    { z: m - 0.10, ring: rect(w, -0.157, 0.23) },
+    { z: m, ring: rect(w - 0.03, -0.12, 0.16) },
   ]), 0, 0, 0);
   P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, m + 0.05);
-  P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.205, 0.07, m + 0.025);             // coaxial MG port
-  P.addGunExtraDark(box(0.13, 0.08, 0.015), -0.17, 0.11, m + 0.003);           // the gun's own sight aperture plate
+  P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.27, 0.07, m + 0.025);              // coaxial MG port
+  P.addGunExtraDark(box(0.13, 0.08, 0.015), -0.26, 0.11, m + 0.003);           // the gun's own sight aperture plate
   KIT.buildGun(P, { len: T.barrelLengthM, r: T.barrelRadiusM, sleeve: true, evac: 0.56, evacR: 1.78, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }
@@ -211,7 +208,9 @@ function turret(P: TankBuilderPort): void {
 }
 
 function buildChristian2(P: TankBuilderPort): void {
-  buildLeopard2Hull(P, { flapName: 'christian2-rear-flap', exhaust: 'louvre' });
+  // no splash board under the glacis's net (the Strv 121's ruling, leopard2Hull.ts): the net tented over its arm in four
+  // spikes (the R7 blind critic)
+  buildLeopard2Hull(P, { flapName: 'christian2-rear-flap', exhaust: 'louvre', splashBoard: false });
   addLeopard2SternRackFloor(P);
   turret(P);
   P.topY = 1.24;

@@ -25,13 +25,14 @@ export const CHRISTIAN2_TURRET = Object.freeze({
    * shell's front, 33.8 degrees (the supplied model's faces measure 33.5 on the left and 35.4 on the right; sliced in the
    * christian2 lane, 2026-10-30). The owner, 2026-10-30: "christain 2 missinng thhe angled ness".
    */
-  moduleFrontZ: 1.66,
-  /** The modules' tops: at the shell's front, and at the faces' tips (falling 6 degrees forward, the model's roof). */
-  moduleTopY: 0.725,
-  moduleNoseTopY: 0.655,
-  /** The box mantlet's face, gun metres ahead of the trunnion: flush with the modules' tips, as on the supplied model. */
+  moduleFrontZ: 1.58,
+  /** The modules' tops: the shell's front roof edge (roofFrontY) at its front, falling to the faces' tips. */
+  moduleNoseTopY: 0.66,
+  /** The gun slot between the modules, and the box mantlet in it, as wide as the supplied model's (0.95 m, 0.88 m). */
+  slotHalfWidthM: 0.475,
+  mantletHalfWidthM: 0.44,
+  /** The mantlet's face, gun metres ahead of the trunnion: 6 cm proud of the modules' tips, as on the supplied model. */
   mantletFaceZ: 0.60,
-  slotHalfWidthM: 0.355,
   roofRearY: 0.83,
   roofFrontY: 0.74,
   bustleFloorY: 0.21,
@@ -65,8 +66,8 @@ export function christian2Armor(): ArmorEnvelope {
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
     chL('turret_cheek_L', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
-    plate('mantlet', A.mantlet.ke, [-0.30, gy - 0.23, mz], [0.30, gy - 0.23, mz],
-      [-0.30, gy + 0.20, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
+    plate('mantlet', A.mantlet.ke, [-Td.mantletHalfWidthM, gy - 0.23, mz], [Td.mantletHalfWidthM, gy - 0.23, mz],
+      [-Td.mantletHalfWidthM, gy + 0.20, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
     sR('turret_side_R', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sL('turret_side_L', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sR('turret_bustle_side_R', A.bustleSide.ke, Td.bustleHalfWidthM, Td.bustleFloorY, Td.bustleHalfWidthM, 0.76, Td.rearZ + 0.30, Td.stepZ, { ceMm: A.bustleSide.ce }),

@@ -83,9 +83,9 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
   three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
-  frontal modules swept back 33.8 degrees in plan from z 1.66 at a 0.71 m gun slot to the walls at the shell's front
-  (z 1.04), their tops falling 7 cm to the tips; the box mantlet's face flush with the tips (gun z 0.60); trunnion
-  (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+  frontal modules swept back 33.8 degrees in plan from z 1.58 at a 0.95 m gun slot to the walls at the shell's front
+  (z 1.04), their tops running on from the shell's front roof edge and falling 8 cm to the tips; the 0.88 m box
+  mantlet's face 6 cm proud of the tips (gun z 0.60); trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
@@ -143,4 +143,9 @@ See the round log; filled as each gate runs.
   front 0.30 m (traversed astern, a square box would stand 1-3 cm into the engine deck's net at the +0.6 degree stop);
   the cheek plates on the swept face, the mantlet's plate 4 cm inside its face; the roof net to the tips. The
   Leopards' 27 degrees (leopard2CheekFrontDatums.ts) is the owner's fit to a real 2A4; this concept keeps its own
-  model's angle.
+  model's angle. R7's blind critic (FAIL; the sweep matched, about 33 degrees both sides): the mantlet narrower than the
+  model's and dark between the cheeks, a ledge where the modules' tops met the shell's front roof edge, a wedge at the
+  outer corners, dark seam bars on the faces, the glacis net tented in four spikes over the splash board. R7b: the slot
+  and mantlet at the model's widths (0.95 and 0.88 m; the face line unchanged, so the tips stand at turret z 1.58 and
+  the mantlet 6 cm proud, as the model's), the modules' tops from the shell's front roof edge (0.74), the seam bars
+  gone, and no splash board under the glacis net (the Strv 121's ruling in leopard2Hull.ts).
