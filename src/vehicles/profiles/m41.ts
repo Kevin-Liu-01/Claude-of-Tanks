@@ -272,8 +272,19 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // the DK-1's spare track: two columns of four links standing off the glacis (the Aalborg photographs)
       // (r4: forward of the raised strip's 2.17 m edge, where the old start sat inside it, with the plate moved off the
       // glacis to the lower nose; the seat pass dropped both runs)
-      const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), zc = 2.50;
-      for (const x of [-0.29, 0.29]) KIT.spareTrackStrip(P, 'hullTrack', x, deckY(zc) + 0.035, zc, 4, glacis, 0);
+      // (r6, critics twice: the kit strip's even black slats read as engine louvres; the photographs' links are single
+      // rust-brown shoes with a centre guide horn and dark end connectors, the two racks staggered): built here on rails
+      const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), cg = Math.cos(glacis), sg = Math.sin(glacis);
+      const on = (x: number, z: number, h: number): [number, number, number] => [x, glacisY(z) + h * cg, z + h * sg];
+      for (const [x, z0] of [[-0.29, 2.27], [0.29, 2.33]] as const) {
+        for (const dx of [-0.17, 0.17]) P.addEquipment('hullDetail', box(0.03, 0.02, 0.58), ...on(x + dx, z0 + 0.225, 0.010), glacis, 0, 0);
+        for (let k = 0; k < 4; k++) {
+          const z = z0 + k * 0.15;
+          P.addEquipment('hullWood', box(0.46, 0.035, 0.125), ...on(x, z, 0.0375), glacis, 0, 0);
+          P.addEquipment('hullWood', box(0.06, 0.055, 0.07), ...on(x, z, 0.08), glacis, 0, 0);
+          for (const ex of [-0.255, 0.255]) P.addEquipment('hullDark', box(0.05, 0.05, 0.09), ...on(x + ex, z, 0.0375), glacis, 0, 0);
+        }
+      }
       // the Leopard-pattern front mudguards: curved over the front of each track down toward the idler's hub, a lamp
       // unit on each, the driver's mirror on the left one
       // (r4, critics: thin hoops read as a brush guard; the photographs' guards are broad curved shells out to the skirts)
@@ -293,8 +304,10 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
         const face = new THREE.Shape();
         face.moveTo(2.10, H.fenderY - 0.01);
         for (let k = 0; k <= n; k++) face.lineTo(cz + (r + t) * Math.sin((k / n) * arc), cy + (r + t) * Math.cos((k / n) * arc));
-        face.lineTo(2.62, 0.62);
-        face.lineTo(2.10, 0.56);
+        // (r6, critics: a deep drum to the skirt's foot; the photographs' guard stops at the idler's hub, the idler and the
+        // track's front below it in the open)
+        face.lineTo(2.40, 0.82);
+        face.lineTo(2.10, 1.00);
         face.closePath();
         const faceGeo = new THREE.ExtrudeGeometry(face, { depth: 0.014, bevelEnabled: false, curveSegments: 1 });
         faceGeo.rotateY(-Math.PI / 2);
@@ -343,9 +356,10 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.decal('hull', 'mlc', '24', 0.17, [0.52, deckY(2.50) + 0.006, 2.50], 0, glacisRx);
     } else if (mark === 'jgsdf') {
       // the JGSDF's registration numbers painted white straight onto the glacis and the rear plate (no plates)
-      // (r4: a service number, not a placeholder; the rear's above the exhaust deflectors)
-      P.decal('hull', 'stencilWhite', '21-4087', 0.46, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
-      P.decal('hull', 'stencilWhite', '21-4087', 0.46, [0.32, 1.12, rearZ], Math.PI);
+      // (r4: a service number, not a placeholder; the rear's above the exhaust deflectors; r6, critics: the tracked
+      // armour's 91- class)
+      P.decal('hull', 'stencilWhite', '91-4087', 0.46, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
+      P.decal('hull', 'stencilWhite', '91-4087', 0.46, [0.32, 1.12, rearZ], Math.PI);
     } else if (mark === 'us') {
       // the US Army's bumper codes front and rear (unit left, vehicle right)
       // (r4: sized by their length so the letters match; r5, critics: dark stencils lost in the camouflage: white)
@@ -443,19 +457,22 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.add('turretGlass', box(0.18, 0.10, 0.012), 0.40, ROOF_Y + 0.12, 0.365);
       // Wegmann dischargers: four large-bore tubes on each basket's rear top (the Aalborg photographs)
       for (const s of [-1, 1] as const) {
-        P.addEquipment('turret', box(0.16, 0.06, 0.72), s * 1.20, 0.63, -1.42);
+        // (r6, critics: low at the rear corners behind the baskets' walls; the photographs' stand at mid-length, angled up
+        // over the wall): 0.47 m forward and 4 cm higher
+        P.addEquipment('turret', box(0.16, 0.06, 0.72), s * 1.20, 0.67, -0.95);
         // (r5, critics: the tubes lay like loose pipes): a framed rack, plates either side of the row
-        for (const dx of [-0.11, 0.11]) P.addEquipment('turret', box(0.014, 0.16, 0.74), s * 1.20 + dx, 0.70, -1.42);
+        for (const dx of [-0.11, 0.11]) P.addEquipment('turret', box(0.014, 0.16, 0.74), s * 1.20 + dx, 0.74, -0.95);
         for (let k = 0; k < 4; k++) {
           P.addEquipment('turret', xform(markSmokeTube(cylZ(0.048, 0.26, P.q ? 12 : 8)), 0, 0, 0, -0.62, s * 0.35, 0),
-            s * 1.20, 0.72, -1.16 - k * 0.17);
+            s * 1.20, 0.76, -0.69 - k * 0.17);
         }
       }
       // Leopard-pattern mesh baskets (the Aalborg photographs): closed boxes of fine mesh hung on the upper flanks from
       // flush with the turret's front, one either side of the gun, back to the bustle, standing well out from the walls,
       // so the turret reads square and wide from ahead (r3: an open rail fence to the deck read as a balcony). The mesh is
       // a painted face under a fine dark grid.
-      const bx = 1.33, bLow = 0.22, bTop = 0.64, bz0 = -1.95, bz1 = 0.90, segs = 5;
+      // (r6, critics: down nearly to the deck; the photographs' hang high, half the turret's side, its lower flank below)
+      const bx = 1.33, bLow = 0.30, bTop = 0.64, bz0 = -1.95, bz1 = 0.90, segs = 5;
       for (const s of [-1, 1] as const) {
         // (r4, critics: the painted face read as a wall; the photographs' mesh shows the kit inside): open wire mesh only
         // (r5, critics: low open cages; the photographs' baskets are deep bins of dense expanded mesh that read nearly
@@ -483,13 +500,13 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.addEquipment('turret', sectionSolid([{ z: -2.80, ring: rearBox(0.84, 0.30, 0.62) }, { z: -2.20, ring: rearBox(0.94, 0.22, 0.72) }]));
       P.addEquipment('turretDark', box(1.70, 0.02, 0.02), 0, 0.64, -2.79);
       for (const x of [-0.55, 0.55]) P.addEquipment('turretDark', box(0.06, 0.07, 0.025), x, 0.56, -2.81);
-      // (r5, critics: the box ran on from the roof as one slab; the top photograph's is its own box with lids and seams,
-      // the brief's rear basket mesh-faced): the seam at the bustle, two lids with their hinge line and joint, mesh behind
+      // (r5, critics: the box ran on from the roof as one slab; the top photograph's is its own box with lids and seams):
+      // the seam at the bustle, two lids with their hinge line and joint
       P.addEquipment('turretDark', box(1.86, 0.03, 0.025), 0, 0.705, -2.205);
       P.addEquipment('turretDark', box(1.72, 0.012, 0.025), 0, 0.716, -2.26);
       P.addEquipment('turretDark', box(0.02, 0.012, 0.56), 0, 0.674, -2.50, -0.165, 0, 0);
-      for (let k = 0; k <= 20; k++) P.addEquipment('turretOpenLatticeDark', box(0.006, 0.28, 0.006), -0.80 + k * 0.08, 0.46, -2.806);
-      for (let k = 1; k < 5; k++) P.addEquipment('turretOpenLatticeDark', box(1.62, 0.006, 0.006), 0, 0.32 + k * 0.056, -2.806);
+      // (r6, critics: the mesh made it read as a basket; the photographs' is a sheet box): latches on its rear face
+      for (const x of [-0.25, 0.25]) P.addEquipment('turretDark', box(0.05, 0.08, 0.02), x, 0.58, -2.81);
     } else {
       // the US bustle rack: rails round the bustle's tail with a canvas load (the Pattons' rack); the BW and JGSDF
       // tanks load it with their own kit
@@ -504,7 +521,8 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       for (const fx of [-0.6, 0, 0.6]) P.addEquipment('turretDetail', box(0.04, 0.025, z0 - z1), fx * half, floorY, (z0 + z1) / 2);
       // (r5, critics: the JGSDF's load in the hull's colour read empty, its box black; the Bundeswehr's cans a bright
       // green): the JGSDF's tarp and packs in khaki canvas with a crew box in the coat, the Bundeswehr's cans in the coat
-      const cloth = mark === 'jgsdf' ? 'turretCanvasPale' : 'turretCloth';
+      // (r6, critics: the khaki read as US kit): the JGSDF's in its own olive-drab canvas, lighter than the coat
+      const cloth = 'turretCloth';
       tarpRoll(P, cloth, -half * 0.25, floorY + 0.10, z1 + 0.14, half * 1.1, 0.085, true, P.q ? 12 : 8);
       const load: [number, number, number, number, number, number][] = mark === 'bw'
         ? [[-0.34, floorY + 0.15, -2.43, 0.56, 0.26, 0.30], [0.36, floorY + 0.13, -2.43, 0.52, 0.22, 0.30]]
@@ -558,8 +576,13 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     ].map((st) => ({ ...st, z: st.z - TRUNNION.z, bot: st.bot - TRUNNION.y, top: st.top - TRUNNION.y }));
     P.addGunExtra(castSolid(NOSE, P.q));
     // the telescope's port on the right of the gun, the coaxial MG's on its left, standing out of the nose's face
-    P.addGunExtraDark(box(0.07, 0.07, 0.05), -0.28, 0.07, 0.45);
-    P.addGunExtraDark(box(0.06, 0.06, 0.05), 0.30, 0.02, 0.44);
+    // (r6, critics: both sat behind the face, so the shield read as a bare recess): cast bosses proud of it, their dark
+    // apertures and the coaxial's muzzle
+    P.addGunExtra(box(0.15, 0.13, 0.09), -0.28, 0.07, 0.505);
+    P.addGunExtraDark(box(0.08, 0.065, 0.02), -0.28, 0.07, 0.55);
+    P.addGunExtra(box(0.12, 0.11, 0.09), 0.30, 0.02, 0.505);
+    P.addGunExtraDark(cylZ(0.024, 0.02, 12), 0.30, 0.02, 0.55);
+    P.addGunExtraDark(cylZ(0.012, 0.08, 10), 0.30, 0.02, 0.59);
     P.addGunExtra(cylZ(0.12, 0.08, P.q ? 20 : 12, 0.13), 0, 0, 0.53);
     if (dk) {
       // the DK-1's weathered canvas cover gathered round the nose and the tube's root, in folds
@@ -579,6 +602,10 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
         bag(0.32, 0.73, -0.21, 0.36), bag(0.42, 0.64, -0.19, 0.31), bag(0.48, 0.62, -0.18, 0.30),
         bag(0.56, 0.44, -0.15, 0.22), bag(0.63, 0.25, -0.12, 0.15), bag(0.70, 0.14, -0.11, 0.12),
       ], P.q));
+      // (r6, critics: smooth, a balloon; the photographs' is baggy with straps): two straps round the bag
+      for (const [z, hw, bot, top] of [[0.24, 0.70, -0.20, 0.34], [0.48, 0.62, -0.18, 0.30]] as const) {
+        P.add('gunMountDark', castSolid([bag(z, hw + 0.008, bot - 0.008, top + 0.008), bag(z + 0.03, hw + 0.008, bot - 0.008, top + 0.008)], P.q));
+      }
       P.add(cloth, cylZ(0.13, 0.12, P.q ? 16 : 10), 0, 0, 0.76);
       for (const z of [0.72, 0.80]) P.add('gunMountDark', cylZ(0.137, 0.018, P.q ? 16 : 10), 0, 0, z);
       // the Jahn Anderson thermal sight and the Ericsson laser rangefinder: a tall armoured housing on the shield's right,
@@ -616,11 +643,13 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     P.muzzleZ = len;
     P.gunG.userData.m41MantletReceipt = { thermalSightBox: dk ? 'right' : null, canvasCover: dk, barrelRadius: r1, device: 'T-deflector' };
     P.mats.glass.color.setHex(0x3e493b);
-    // r5: the DK-1's cover a weathered grey-khaki (critics: the pale canvas was the brightest thing on it) and its spare
-    // links rust-brown (critics: black slats read as louvres); the Bundeswehr's canvas a drab olive (critics: bright green)
-    if (dk) P.mats.canvasPale.color.setHex(0x58584a);
-    if (dk) P.mats.spareTrack.color.setHex(0x5c4838);
+    // r5: the DK-1's cover a weathered grey-khaki (critics: the pale canvas was the brightest thing on it; r6: it read
+    // sage, the photographs' a dirty khaki-tan) and its spare links rust-brown (the wood tone: critics, black slats read as
+    // louvres); the Bundeswehr's canvas a drab olive (critics: bright green)
+    if (dk) P.mats.canvasPale.color.setHex(0x5e5846);
+    if (dk) P.mats.wood.color.setHex(0x6a4a35);
     if (mark === 'bw') P.mats.canvasCloth.color.setHex(0x4a4934);
+    if (mark === 'jgsdf') P.mats.canvasCloth.color.setHex(0x56543a);
     P.mats.glass.roughness = 0.48;
     P.mats.glass.metalness = 0.30;
     P.topY = RING.y;

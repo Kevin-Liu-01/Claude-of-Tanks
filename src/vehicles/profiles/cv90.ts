@@ -329,11 +329,13 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   P.muzzleZ = gunLen;
   // Gunner sight, commander panorama and RWS are now seated on the new roof
   // stations instead of retaining coordinates from the superseded shell.
-  P.addEquipment('turret', box(0.34, 0.31, 0.34), 0.48, 0.69, 0.51, 0, -0.08, 0);
+  // (the CV9035 DK's gunner's sight head stands taller: r5 critics on the Latvia photograph)
+  const gsY = danish ? 0.74 : 0.69;
+  P.addEquipment('turret', box(0.34, danish ? 0.42 : 0.31, 0.34), 0.48, gsY, 0.51, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretDark', box(0.29, 0.22, 0.022),
-    0.48, 0.69, 0.70, 0, -0.08, 0);
+    0.48, gsY + (danish ? 0.06 : 0), 0.70, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.21, 0.14, 0.014),
-    0.48, 0.69, 0.715, 0, -0.08, 0);
+    0.48, gsY + (danish ? 0.06 : 0), 0.715, 0, -0.08, 0);
   const rws = FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'hull', sizeStandard: 'k2b-compact-tower',
     scale: 0.80, towerRise: 0.09, variant: 'korean-twin', ammoSide: 1,
@@ -355,6 +357,11 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   P.addModuleVisual('optics', 'turretGlass', box(0.20, 0.13, 0.016),
     -0.47, 0.93, -0.335);
   P.add('turretDark', box(0.27, 0.020, 0.27), -0.47, 1.07, -0.50);
+  if (danish) {
+    // the commander's hatch behind his sight (r5 critics: the sight alone on its ring read as a weapon station's bump)
+    P.addCupola('turret', cylY(0.30, 0.31, 0.05, 20), -0.42, 0.735, -1.06);
+    P.add('turretDark', box(0.08, 0.04, 0.10), -0.42, 0.77, -1.38);
+  }
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.42, d: 0.38, h: 0.20, fill: 0.45, rails: 3, seed: 941,
   }), 0, 0.43, -1.58);
@@ -424,6 +431,10 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
   }
   for (const dz of [-0.31, 0.31]) P.add('hull', box(0.66, 0.016, 0.03), gx, glacisY(gz + dz) + 0.008 * nY, gz + dz + 0.008 * nZ, slope, 0, 0);
   for (const dx of [-0.32, 0.32]) P.add('hull', box(0.03, 0.016, 0.62), gx + dx, glacisY(gz) + 0.008 * nY, gz + 0.008 * nZ, slope, 0, 0);
+  // the roof's edge closed over the skirt carriers (r4 and r5 critics, both models: from above the ground showed through
+  // a 3 cm slit from the stern to the bow bridge; rayed down at 1 cm on the built tank, whose CV90 geometry stands at 0.9
+  // of these builder metres, world x 1.50-1.52 from z -3.04 to 1.60): a strip just under the carrier's top
+  for (const side of [-1, 1] as const) P.add('hull', box(0.04, 0.02, 5.16), side * 1.678, 1.62, -0.80);
 }
 
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */

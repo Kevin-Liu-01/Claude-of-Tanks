@@ -90,7 +90,8 @@ m41dk1.visual = {
   // the late-1980s Danish Army coat (the Aalborg DK-1): a medium olive with large irregular fields of black-green and slate
   // blue-grey (r3: the sage base read pale, the patches small; r4: the green too yellow, the grey too blue; r5: the green
   // still yellow, the grey pale, the black heavy): a greyer sage, a darker blue-grey, the black-green lighter in weight
-  scheme: 'nato', base: '#4c5143', weather: '#565b4d', patches: ['#262c24', '#474b4f'], blackK: 0.75, marking: 'number', number: '26',
+  // (r6: the black still spotty and small; the photographs' are large soft fields of olive and slate, little black)
+  scheme: 'nato', base: '#4c5143', weather: '#565b4d', patches: ['#262c24', '#4d535b'], patchK: 1.4, blackK: 0.5, marking: 'number', number: '26',
   camoScale: 0.42,
 };
 
