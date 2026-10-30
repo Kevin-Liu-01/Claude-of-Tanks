@@ -153,7 +153,7 @@ function a7ForwardCheek(P:TankBuilderPort,d:Datum): void {
   addTurretSections(P,d,sections);
 }
 
-function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): void {
+function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sleeved = false): void {
   const length = d.muzzleZ - d.trunnion[2];
   // Release 240 (gun sweep): the A7V and A5M trunnions stand only 19-25 cm over the deck round the turret, and their
   // mounts hung under it. The .275 m bearing drum stood in the deck at every pitch (A7V 1.758 under 1.796, A5M 1.633
@@ -163,7 +163,20 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   // collar (.195 m, 7-10 cm under the barrel) took the engine deck astern; it now stands 2 cm proud of the sleeve.
   const trimmed = d !== LEOPARD_X_DATUMS.leo2a6m;
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * (trimmed ? 1 : 1.6),
-    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
+    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true,
+    // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve); r9 (r8
+    // critics, both: a flat bare tan tube on a green tank; the photograph's is the cover's texture, lighter, banded): the
+    // tube in the coat, the wrap's lighter bands over the sleeves; r11 (r10 critics, both: the evacuator and the muzzle
+    // in the coat between two sand sleeves; the photograph's one wrap to the muzzle): the whole tube in the wrap, its
+    // shape unchanged
+    tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
+  if (sleeved) {
+    // r12 (r11 critics, both: a flat smooth sand tube; the photograph's wrap mottled): patches of the coat over the wrap,
+    // on the thermal sleeves only (1.4 mm proud of them, so the gun keeps its clearances)
+    for (const [a, b] of [[0.19, 0.25], [0.33, 0.37], [0.41, 0.45], [0.55, 0.62], [0.70, 0.74], [0.77, 0.81]] as const) {
+      P.add('gun', cylZ(radius * 1.235, (b - a) * length, 24), 0, 0, (a + b) / 2 * length);
+    }
+  }
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
@@ -172,7 +185,7 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
       : {crown:.445,noseZ:1.04,noseRoof:.120,drumR:.16,keel:-.11,collarR:.12};
   addLeopardMovingMantlet(P,fit);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
-  P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
+  P.add(sleeved ? 'gunCanvasPale' : 'gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
   P.addEquipment('gun', box(.066, .055, .15), 0, radius + .025, length - .41);
 }
 
@@ -1224,7 +1237,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort, kit: LeopardXKit = {}): vo
   }
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
-  mainGun(P,d,.096,true);
+  mainGun(P,d,.096,true,!!kit.danish);
   if(!kit.danish) addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 

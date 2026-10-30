@@ -42,8 +42,10 @@ leo1a3dk.gun = {
 };
 leo1a3dk.visual = {
   ...leo1a3dk.visual,
-  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive)
-  scheme: 'solid', base: '#474b37', weather: '#545747', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive; r7 critics: a saturated green
+  // under cloudy mottling: flatter and greyer, the mottle light)
+  scheme: 'solid', base: '#484a3b', weather: '#55574a', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  solidWeatheringIntensity: 0.35,
 };
 
 // The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
@@ -58,7 +60,11 @@ leo1a5dk.visual = {
   ...leo1a5dk.visual,
   // the Danish Army's three-tone of the 1990s (the Aalborg museum's 1A5 DK turret): a greyer olive, black and earth brown
   // in large fields
+  // (r8 tried a black and a black-green field on the r7 critics' "black-dominant, the brown little"; the r8 critics, both
+  // models, then found the brown missing and scored it 0.7 lower: the r7 olive, black and brown, which passed both, again)
   scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#4e4130'], marking: 'number', number: '24',
+  // (r10 tried larger fields on the r9 critics' "soft round blobs": the black ran down the centreline as one band, both
+  // critics; the r7-r9 field size kept)
   camoScale: 0.72,
 };
 
@@ -98,6 +104,8 @@ leo2a5dk.visual = {
   // black (r2 critics: round blobs read as woodland; r3: thin sprayed bands read as tiger stripes; r4: the splinter
   // wedges tiled into a small checker): the NATO painter's long khaki bands through the olive at one and a half times
   // their size, black shadowing them, the khaki warmed toward yellow-brown (previewed on the CPU, .qa-dev camoprev)
+  // (r9 tried a warmer olive with less black on the r8 critics' "minty sage, oversized black": the khaki took over the
+  // olive and the black stood as isolated blots; the r7 coat, which passed both, kept)
   scheme: 'nato', base: '#434b34', weather: '#4f5640', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.5,
   marking: 'number', number: '31', camoScale: 0.5,
 };
@@ -132,9 +140,21 @@ leo2a7dk.visual = {
   ...leo2a7dk.visual,
   // the Barracuda cover's dull grey-green mottle (the Latvia photograph; r2 critics: no terracotta; r3: the grey-green
   // read pale sage; r4: the brown base showed between the cover's panels): small grey-green patches in the cover's own
-  // tones, so the painted faces under it read as the same cover
-  scheme: 'nato', base: '#4d5545', weather: '#575f4e', patches: ['#353c30', '#5d6353', '#434a3b'], marking: 'number',
-  number: '11', camoScale: 0.9,
+  // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
+  // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
+  // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
+  // r7 (critics: the r6 olive read bright lime): a duller olive; r8 (critics, both models: the cover's fabric read as
+  // patches pasted over painted tan blobs; the photograph's is one darker grey-green mottle, tan only on the gun's wrap):
+  // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
+  // r9 (r8 critics, both: grey and flat; the photograph's cover a deeper, saturated olive in dark blocks): a greener olive
+  // with near-black green blocks
+  // r10 (r9 critics: a flat saturated yellow-green; the photograph's a matte, warmer sage-olive with darker patches): the
+  // greens warmed toward khaki
+  // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
+  // low-contrast grey-green mottle): no near-black, the tones close together
+  // r12 (r11 Opus: green on green; the photograph's khaki-tan areas in the green): a muted tan for the light patch
+  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#5b5741', '#42473a'], marking: 'number',
+  number: '11', camoScale: 1.6,
 };
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
