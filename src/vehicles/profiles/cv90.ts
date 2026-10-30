@@ -288,17 +288,42 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
     }), side * 1.03, 0.46, 0.05, [0, side * 0.94, 0]);
     P.addEquipment('turret', box(0.18, 0.13, 0.17), side * 0.86, 0.66, 0.28,
       0, side * 0.18, 0);
-    P.addModuleVisual('optics', 'turretGlass', box(0.105, 0.070, 0.014),
+    // (the CV9035 DK's cheek boxes carry no window: its corner heads are the laser warners)
+    if (!danish) P.addModuleVisual('optics', 'turretGlass', box(0.105, 0.070, 0.014),
       side * 0.86, 0.66, 0.375, 0, side * 0.18, 0);
   }
   P.addGunExtraDark(cylZ(0.135, 0.48, 20), 0, 0, 0.41);
-  addCv90ScaffoldedCradle(P);
-  // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III, longer and slimmer than the 40 mm, with its muzzle brake)
-  const gunLen = danish ? 3.42 : 3.12, gunR = danish ? 0.052 : 0.064;
-  KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13, ...(danish ? { brake: true } : {}) });
-  P.addGunExtraDark(cylZ(0.018, 2.08, 12), 0.22, -0.035, 1.72);
-  muzzleTipDot(P, 0.22, -0.035, 2.77, 0.011, { parent: 'gunG' });
-  muzzleBore(P, { len: gunLen, r: gunR, seg: 18, ...(danish ? { brake: true } : {}) });
+  if (!danish) addCv90ScaffoldedCradle(P);
+  else {
+    // the CV9035 DK's solid armoured shroud from the root casting along the barrel (the Holstebro photograph), in place of
+    // the CV9040's open truss
+    P.addGunExtra(orientedSlab(
+      [-0.39, -0.24, -0.10], [0.39, -0.24, -0.10], [0.31, -0.18, 0.42], [-0.31, -0.18, 0.42],
+      [-0.39, 0.18, -0.10], [0.39, 0.18, -0.10], [0.31, 0.18, 0.42], [-0.31, 0.18, 0.42],
+    ));
+    P.addGunExtra(orientedSlab(
+      [-0.31, -0.18, 0.40], [0.31, -0.18, 0.40], [0.17, -0.11, 1.30], [-0.17, -0.11, 1.30],
+      [-0.31, 0.18, 0.40], [0.31, 0.18, 0.40], [0.17, 0.11, 1.30], [-0.17, 0.11, 1.30],
+    ));
+  }
+  // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III: a heavier barrel than the 40 mm's and its long slotted
+  // muzzle brake, about twice the barrel's diameter, the muzzle just ahead of the bow)
+  const gunLen = danish ? 3.20 : 3.12, gunR = danish ? 0.070 : 0.064;
+  KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13 });
+  if (danish) {
+    const seg = P.q ? 20 : 12, brakeL = 0.40, z0 = gunLen - brakeL;
+    P.add('gun', cylZ(0.125, brakeL, seg), 0, 0, z0 + brakeL / 2);
+    for (let k = 0; k < 4; k++) for (const side of [-1, 1] as const) {
+      P.add('gunDark', box(0.02, 0.15, 0.045), side * 0.118, 0, z0 + 0.07 + k * 0.085);
+    }
+    P.add('gunDark', cylZ(0.095, 0.02, seg), 0, 0, gunLen + 0.002);
+    P.addGunExtraDark(cylZ(0.018, 0.30, 12), 0.22, -0.035, 1.47);
+    muzzleTipDot(P, 0.22, -0.035, 1.62, 0.011, { parent: 'gunG' });
+  } else {
+    P.addGunExtraDark(cylZ(0.018, 2.08, 12), 0.22, -0.035, 1.72);
+    muzzleTipDot(P, 0.22, -0.035, 2.77, 0.011, { parent: 'gunG' });
+  }
+  muzzleBore(P, { len: gunLen, r: danish ? 0.035 : gunR, seg: 18 });
   P.muzzleZ = gunLen;
   // Gunner sight, commander panorama and RWS are now seated on the new roof
   // stations instead of retaining coordinates from the superseded shell.

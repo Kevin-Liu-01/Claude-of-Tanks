@@ -3027,6 +3027,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
   // two of them crossing beside the flank racks. Only the functional smoke pair stays (the control inventory's apertures).
   if (spec.id === 'm48a5_patton') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  // Release 265 (the M41 family's blind critics, against the 1957, 1961 and Aalborg photographs): the fleet's field load
+  // read as clutter on a 1950s tank (a roof lamp, a turret-side roll, crates on the bustle roof, a third whip). The M41s
+  // carry the loads their build authors in the bustle rack and the DK-1's baskets. The US, Bundeswehr and JGSDF marks keep
+  // the functional smoke pair (it carries the smoke consumable; the fleet has no exhaust smoke system); the DK-1's own
+  // Wegmann banks carry it there, so it takes no decor pair beside them.
+  if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  if (spec.id === 'm41dk1') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

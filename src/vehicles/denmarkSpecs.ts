@@ -174,9 +174,10 @@ Object.assign(cv9035dk, { weightTons: 31.75, enginePowerHp: 755 });
 }
 cv9035dk.visual = {
   ...cv9035dk.visual,
-  // the Danish Army's three-tone on its CV90s: a lighter green ground, khaki and black
-  scheme: 'nato', base: '#5e6946', weather: '#6a7552', patches: ['#9a9370', '#26291f'], marking: 'number', number: '45',
-  camoScale: 0.52,
+  // the Danish Army's three-tone on its CV90s (the Holstebro and Latvia photographs): a muted grey-green ground, a darker
+  // olive-tan and black
+  scheme: 'nato', base: '#535c46', weather: '#5e6750', patches: ['#776a4b', '#262a21'], marking: 'number', number: '45',
+  camoScale: 0.58,
 };
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk'],
