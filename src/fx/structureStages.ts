@@ -230,14 +230,15 @@ export function bucketAliases(bucket: string): readonly string[] {
  * down to half a metre over the drawn form where their tops stand (the anatomy's enclosure: its tallest drawn over the
  * spot and the cells round it); where the drawn form is not known, as drawn. Its runs are world-space (structureDebris).
  */
-function clampRemnantTops(mesh: THREE.Mesh, a: StructureDamageSeam['anatomy']): void {
+function clampRemnantTops(mesh: THREE.Mesh, a: StructureDamageSeam['anatomy'], groundAt: ((x: number, z: number) => number) | null): void {
   if (!a.enclosure) return;
   const { x: px, y: py, z: pz, yaw } = a.placement;
   const c = Math.cos(yaw), s = Math.sin(yaw);
+  // (2026-10-28) the ground the stubs were seated on: one seated over walls the hillside buried is no remnant of them
   clampPieceTops(mesh.geometry, (x, z) => {
     const dx = x - px, dz = z - pz, top = drawnOverAt(a, dx * c - dz * s, dx * s + dz * c, 1);
     return top >= 0 && Number.isFinite(top) ? py + top : NaN;
-  }, 0.5);
+  }, 0.5, groundAt);
 }
 
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
@@ -1270,7 +1271,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // (round 5) a set piece's pieces the stage laid at rest are seen falling there first (a live stage laid at once)
     if (!settled && !(delayS > 0) && result?.falls?.length) startPieceFalls(seam, result.falls, made);
     // (destruction-slabs 227 round 4) no remnant stands taller than the building was drawn where it stands
-    for (const mesh of made) if (mesh.name.startsWith('fx-structure-remnant-')) clampRemnantTops(mesh, seam.anatomy);
+    for (const mesh of made) if (mesh.name.startsWith('fx-structure-remnant-')) clampRemnantTops(mesh, seam.anatomy, debris.baseGroundY);
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
     const held = !settled && delayS > 0 && result?.hides?.some((h) => h.piece) ? result.hides.filter((h) => h.piece) : null;
     if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });

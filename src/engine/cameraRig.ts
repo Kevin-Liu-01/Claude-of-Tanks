@@ -6,9 +6,11 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * ARCHITECTURE.md §3.1.5:
  *  - one camera, two states (ARCADE orbit / SNIPER first-person), sharing one
  *    aim yaw/pitch pair so mode switches never snap the view;
- *  - arcade: spring-followed pivot 2.5 m above the turret, discrete orbit
- *    steps [24,18,13,9,6,4] m with smooth lerp, collision pull-in, terrain
- *    auto-height, pitch clamp [-65°, +15°];
+ *  - arcade: spring-followed pivot over the turret, discrete orbit steps
+ *    [24,18,13,9,6,4] m with smooth lerp, collision pull-in, terrain
+ *    auto-height, pitch clamp [-65°, +15°]; the pivot's height, the steps'
+ *    scale, a shoulder offset, the lens and a lens shift come from the chase
+ *    framing (chaseFraming.ts: the HUD's bands and the camera settings);
  *  - sniper: camera at the gun trunnion, FOV = 60/zoom, zoom steps ×2/×4/×8
  *    (×16/×25 behind the increased-zoom flag), mouse sensitivity ÷ zoom, own
  *    hull hidden;
@@ -24,6 +26,10 @@ import type { AerialView } from '../sim/aerialCombat.ts';
 import { createIsometricCamera } from './isometricCamera.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
+import {
+  CHASE_BASE_DISTANCE_M, CHASE_PITCH_RAD, chaseTankFromDims, solveChaseFraming,
+  type ChaseBands, type ChaseCameraSettings, type ChaseFraming, type ChaseTank,
+} from './chaseFraming.ts';
 
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
@@ -38,8 +44,13 @@ const PITCH_MIN = THREE.MathUtils.degToRad(-65); // looking down
 // with the atGunLimit reticle pin (movement.ts).
 const PITCH_MAX = THREE.MathUtils.degToRad(30);
 const MAX_AIM_DIST_M = 720;
-// Bring the hull farther into the chase frame without widening the lens.
+// The death cam's and an ally spectate's pivot over the turret (the chase's own comes from its framing).
 const PIVOT_ABOVE_TURRET_M = 1.0;
+// battle-camera-264: the framed orbit steps stay inside these (the closest never in the hull, the farthest readable).
+const ORBIT_MIN_M = 4;
+const ORBIT_MAX_M = 40;
+// The chase lens, shoulder and lens shift glide to a new framing (a settings preview, a band change) over this.
+const FRAMING_TAU_S = 0.22;
 const PIVOT_FOLLOW_TAU_S = 0.1; // critically-damped-feel position lag
 const DIST_LERP_TAU_S = 0.15; // smooth lerp between orbit steps
 // >>> gameplay_feel r4: uphill framing assist -------------------------------
@@ -92,6 +103,11 @@ const _aimAnchor = new THREE.Vector3();
 // >>> gameplay_feel r4: uphill framing assist scratch
 const _lookTarget = new THREE.Vector3();
 // <<< gameplay_feel r4
+const _shoulderDir = new THREE.Vector3();
+const _roofProbe = new THREE.Vector3();
+const _reachInverse = new THREE.Matrix4();
+const _reachMatrix = new THREE.Matrix4();
+const _reachCorner = new THREE.Vector3();
 
 interface CameraRaycastHit {
   point: THREE.Vector3;
@@ -140,6 +156,8 @@ export interface CameraEntity {
   spec?: {
     dims?: {
       heightM: number;
+      widthM?: number;
+      hullLengthM?: number;
     };
   };
   /** Live combat state; `destroyed` ends every scoped view (death r1). */
@@ -162,6 +180,13 @@ export interface CameraRigDeps {
    * (2026-10-24, perf-245; cameraDestinationWarm.ts): the destination is warmed on the way.
    */
   prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
+  /** The HUD's bands the chase framing clears (ui/battleSight.ts battleBands; null before the battle HUD's first layout:
+   *  the base pose). */
+  getChaseBands?(): ChaseBands | null;
+  /** The player's camera settings (input.ts: height, distance, shoulder, framing, field of view). */
+  getCameraSettings?(): Partial<ChaseCameraSettings> | null;
+  /** The framed arcade sight's rise over the screen centre, CSS px (ui/battleSight.ts setBattleSightShift). */
+  publishSightShift?(px: number): void;
 }
 
 interface CameraInputFrame {
@@ -183,6 +208,9 @@ interface CinematicState {
   endYaw: number;
   fwd: THREE.Vector3;
   curve: THREE.CatmullRomCurve3;
+  /** The curve's last control point (the chase pose's offset from the pivot) and its direction (the -10 degree look). */
+  chase: THREE.Vector3;
+  chaseDir: THREE.Vector3;
 }
 
 interface DeathCameraState {
@@ -233,6 +261,13 @@ export interface CameraRig {
   snapArcade(step: number, orbitYaw: number, orbitPitch: number): void;
   snapSniper(zoom: number, aimYaw: number, aimPitch: number): void;
   release(): void;
+  /** The chase framing in force (chaseFraming.ts), solved on a band, setting or tank change. */
+  readonly framing: ChaseFraming;
+  /** A paused battle's frame: the chase glides to a changed camera setting behind the pause menu (no input, no aim
+   *  change but the reticle's new world point). */
+  previewFraming(dt: number): void;
+  /** Another owner drives the camera this frame (Watch, the Garage): the chase's lens shift comes off it. */
+  suspendFraming(): void;
 }
 
 /** True once the player's own combat state reports the wreck (death r1). */
@@ -306,6 +341,22 @@ export function createCameraRig(
   // >>> gameplay_feel r4: current uphill camera lift in meters (eased)
   let climbLift = 0;
   // <<< gameplay_feel r4
+  // battle-camera-264: the chase framing (chaseFraming.ts) and what it was solved from. The pivot and the orbit glide to
+  // a new framing through their own follows; the lens, the shoulder and the lens shift through FRAMING_TAU_S.
+  let framing: ChaseFraming = solveChaseFraming(1000 * camera.aspect, 1000, null);
+  let framedBands: ChaseBands | null | undefined;
+  let framedAspect = 0;
+  let framedSpec: CameraEntity['spec'] | null | undefined;
+  let framedHeight: number | undefined, framedDistance: number | undefined;
+  let framedFraming: number | undefined, framedFov: number | undefined;
+  let framedShoulder: unknown;
+  let framedTank: ChaseTank = chaseTankFromDims(null);
+  let publishedShift = 0;
+  let chaseFov = framing.fovDeg;
+  let shoulder = 0;
+  let lensShift = 0;
+  /** The lens shift camera.view carries (0: none). */
+  let lensOn = 0;
 
   let external = false;
   let prevShift = false;
@@ -366,16 +417,150 @@ export function createCameraRig(
       SPEC_BLEND_S, 2.45);
   }
 
-  /** Resolve the arcade orbit pivot for the current player into `out`. */
-  function pivotTargetFor(player: CameraEntity, out: THREE.Vector3): THREE.Vector3 {
+  /** Resolve the arcade orbit pivot for the current player into `out`, `aboveM` over the turret roof. */
+  function pivotTargetFor(player: CameraEntity, out: THREE.Vector3, aboveM = PIVOT_ABOVE_TURRET_M): THREE.Vector3 {
     if (player.visual !== null && player.visual !== undefined) {
       player.visual.turretTopWorld(out);
     } else {
       out.copy(player.state.pos);
       out.y += (player.spec && player.spec.dims ? player.spec.dims.heightM : 2.4);
     }
-    out.y += PIVOT_ABOVE_TURRET_M;
+    out.y += aboveM;
     return out;
+  }
+
+  /** The default orbit steps scaled by the framing (the wheel keeps its ladder about the framed default). */
+  function orbitDistance(index: number): number {
+    return THREE.MathUtils.clamp(ORBIT_STEPS[index] * framing.distanceM / CHASE_BASE_DISTANCE_M, ORBIT_MIN_M, ORBIT_MAX_M);
+  }
+
+  /** The view's screen right at `yaw` (the shoulder's side: forward × up). */
+  function screenRight(yaw: number, out: THREE.Vector3): THREE.Vector3 {
+    return out.set(-Math.cos(yaw), 0, Math.sin(yaw));
+  }
+
+  /** The point the chase's aim ray runs through from the camera's side (the pivot, the shoulder beside it): an aim that
+   *  must land on a world point is solved from here. */
+  function chaseAnchorFor(player: CameraEntity, yaw: number, out: THREE.Vector3): THREE.Vector3 {
+    pivotTargetFor(player, out, framing.pivotAboveM);
+    if (framing.shoulderM !== 0) out.addScaledVector(screenRight(yaw, _shoulderDir), framing.shoulderM);
+    return out;
+  }
+
+  /** The tank's box for the framing: the spec's dims, the roof's height and its place along the hull from the visual,
+   *  and the visual's own reach behind the roof and across (stowage, skirts and fenders past the hull's length) measured
+   *  once in the hull's frame, so the tracks the band must clear are the model's own. The front stays the spec's (the
+   *  barrel is not the hull), the top the roof's (an antenna is not the hull). Sane values only: a stale matrix at a
+   *  reveal must not frame the Garage pose. */
+  function framingTankFor(player: CameraEntity): ChaseTank {
+    const dims = player.spec?.dims ?? null;
+    let ahead = 0;
+    let height = dims?.heightM;
+    let width = dims?.widthM;
+    let rear = 0;
+    if (player.visual && player.state?.pos) {
+      player.visual.turretTopWorld(_roofProbe);
+      const pos = player.state.pos;
+      const yaw = player.state.yaw ?? 0;
+      const along = (_roofProbe.x - pos.x) * Math.sin(yaw) + (_roofProbe.z - pos.z) * Math.cos(yaw);
+      const half = (dims?.hullLengthM ?? 7) / 2;
+      if (Math.abs(along) < half * 0.7) ahead = along;
+      const roof = _roofProbe.y - pos.y;
+      if (roof > 0.8 && roof < 5) height = roof;
+      const reach = visualReach(player.visual.root, half);
+      if (reach) {
+        width = Math.max(width ?? 0, reach.width);
+        rear = reach.rear;
+      }
+    }
+    const tank = chaseTankFromDims({ heightM: height, widthM: width, hullLengthM: dims?.hullLengthM }, ahead);
+    if (rear > tank.rearM - ahead) tank.rearM = rear + ahead;
+    return tank;
+  }
+
+  /** The visual's reach in its own frame (+Z forward): how far behind its origin and how wide its meshes' boxes run,
+   *  null where it has none (a Node stand-in) or the reach is not a hull's (over twice the hull's half length). */
+  function visualReach(root: THREE.Object3D, halfLengthM: number): { rear: number; width: number } | null {
+    root.updateWorldMatrix(true, true);
+    _reachInverse.copy(root.matrixWorld).invert();
+    let rear = 0, side = 0, meshes = 0;
+    root.traverseVisible((node) => {
+      const mesh = node as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      const instanced = (mesh as THREE.InstancedMesh).isInstancedMesh ? mesh as THREE.InstancedMesh : null;
+      if (instanced && !instanced.boundingBox) instanced.computeBoundingBox();
+      if (!instanced && !mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      const box = instanced ? instanced.boundingBox : mesh.geometry.boundingBox;
+      if (!box || box.isEmpty()) return;
+      _reachMatrix.multiplyMatrices(_reachInverse, mesh.matrixWorld);
+      for (let i = 0; i < 8; i++) {
+        _reachCorner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z)
+          .applyMatrix4(_reachMatrix);
+        if (-_reachCorner.z > rear) rear = -_reachCorner.z;
+        if (Math.abs(_reachCorner.x) > side) side = Math.abs(_reachCorner.x);
+      }
+      meshes++;
+    });
+    if (!meshes || rear > 2 * halfLengthM || side > 2.5) return null;
+    return { rear, width: 2 * side };
+  }
+
+  /** Re-solve the framing when the HUD's bands, the window's shape, the tank or a camera setting changed; publishes the
+   *  framed sight's rise. Cheap when nothing did (a few comparisons). */
+  function refreshFraming(player: CameraEntity): void {
+    const raw = deps.getChaseBands?.() ?? null;
+    // (bands measured for another window shape are stale until the HUD lays out again: the framing in force holds; a
+    // phone's toolbar can leave the layout viewport a little shorter than the canvas, which the tolerance allows)
+    const bands = raw && Math.abs(raw.width / Math.max(1, raw.height) - camera.aspect) < 0.05 ? raw : null;
+    if (raw && !bands && framedSpec !== undefined) return;
+    const settings = deps.getCameraSettings?.() ?? null;
+    const spec = player.spec ?? null;
+    if (bands === framedBands && camera.aspect === framedAspect && spec === framedSpec
+      && settings?.cameraHeight === framedHeight && settings?.cameraDistance === framedDistance
+      && settings?.cameraFraming === framedFraming && settings?.cameraFov === framedFov
+      && settings?.cameraShoulder === framedShoulder) return;
+    if (spec !== framedSpec || framedSpec === undefined) framedTank = framingTankFor(player);
+    framedBands = bands; framedAspect = camera.aspect; framedSpec = spec;
+    framedHeight = settings?.cameraHeight; framedDistance = settings?.cameraDistance;
+    framedFraming = settings?.cameraFraming; framedFov = settings?.cameraFov;
+    framedShoulder = settings?.cameraShoulder;
+    framing = bands
+      ? solveChaseFraming(bands.width, bands.height, bands, settings, framedTank)
+      : solveChaseFraming(1000 * camera.aspect, 1000, null, settings, framedTank);
+    publishShift(framing.sightShiftPx);
+  }
+
+  function publishShift(px: number): void {
+    if (px === publishedShift) return;
+    publishedShift = px;
+    deps.publishSightShift?.(px);
+  }
+
+  /** The lens shift on the camera (camera.view: the picture rises by `shift` of its height; 0 takes it off). The view is
+   *  written directly: setViewOffset would also set the aspect to its full width over its full height. */
+  function applyLens(shift: number): void {
+    const next = Math.abs(shift) < 1e-4 ? 0 : shift;
+    if (next === lensOn) return;
+    lensOn = next;
+    if (next === 0) { camera.clearViewOffset(); return; }
+    const view = camera.view ?? { enabled: true, fullWidth: 1, fullHeight: 1, offsetX: 0, offsetY: 0, width: 1, height: 1 };
+    view.enabled = true;
+    view.fullWidth = view.fullHeight = view.width = view.height = 1;
+    view.offsetX = 0;
+    view.offsetY = next;
+    camera.view = view;
+    camera.updateProjectionMatrix();
+  }
+
+  /** The chase's lens, shoulder and lens shift toward the framing (`snap`: at once). */
+  function easeFraming(dt: number, snap: boolean): void {
+    const k = snap ? 1 : 1 - Math.exp(-Math.max(0, dt) / FRAMING_TAU_S);
+    chaseFov += (framing.fovDeg - chaseFov) * k;
+    shoulder += (framing.shoulderM - shoulder) * k;
+    lensShift += (framing.shift - lensShift) * k;
+    if (Math.abs(framing.fovDeg - chaseFov) < 1e-3) chaseFov = framing.fovDeg;
+    if (Math.abs(framing.shoulderM - shoulder) < 1e-3) shoulder = framing.shoulderM;
+    if (Math.abs(framing.shift - lensShift) < 1e-5) lensShift = framing.shift;
   }
 
   /** Resolve the sniper camera anchor (gun trunnion) into `out`. */
@@ -401,29 +586,36 @@ export function createCameraRig(
   function solveArcade(player: CameraEntity, dt: number, snap: boolean): void {
     if (isIsometric()) {
       if (!wasIsometric || snap) isometric.reset();
+      applyLens(0);
+      // (the isometric view has no arcade sight: the HUD's bands keep the centre while it shows)
+      publishShift(0);
       setFov(isometric.fov);
       isometric.solve(player, dt, snap);
       wasIsometric = true;
       return;
     }
-    if (wasIsometric) { pivotInitialized = false; wasIsometric = false; }
-    pivotTargetFor(player, _pivotTarget);
+    if (wasIsometric) { pivotInitialized = false; wasIsometric = false; framedBands = undefined; }
+    refreshFraming(player);
+    easeFraming(dt, snap);
+    pivotTargetFor(player, _pivotTarget, framing.pivotAboveM);
     if (snap || !pivotInitialized) {
       pivot.copy(_pivotTarget);
       pivotInitialized = true;
-      dist = ORBIT_STEPS[step];
+      dist = orbitDistance(step);
       // >>> gameplay_feel r4: snaps are deterministic screenshot poses — no lift
       climbLift = 0;
       // <<< gameplay_feel r4
     } else {
       pivot.lerp(_pivotTarget, 1 - Math.exp(-dt / PIVOT_FOLLOW_TAU_S));
-      dist += (ORBIT_STEPS[step] - dist) * (1 - Math.exp(-dt / DIST_LERP_TAU_S));
+      dist += (orbitDistance(step) - dist) * (1 - Math.exp(-dt / DIST_LERP_TAU_S));
     }
 
     const viewYaw = aimYaw;
     const viewPitch = THREE.MathUtils.clamp(aimPitch, PITCH_MIN, PITCH_MAX);
     dirFromAngles(viewYaw, viewPitch, _viewDir);
     _desired.copy(pivot).addScaledVector(_viewDir, -dist);
+    // the shoulder: the camera beside the orbit, looking along it (the sight stays on the aim, the tank to one side)
+    if (shoulder !== 0) _desired.addScaledVector(screenRight(viewYaw, _shoulderDir), shoulder);
 
     // >>> gameplay_feel r4: uphill framing assist ---------------------------
     // How steeply does the ground ahead rise above the turret roof line
@@ -460,6 +652,8 @@ export function createCameraRig(
     // Collision pull-in: pivot → desired camera position.
     _rayDir.copy(_desired).sub(pivot);
     const segLen = _rayDir.length();
+    // (how much of the shoulder's offset the camera keeps after a pull-in: the look point keeps the same share)
+    let shoulderKept = 1;
     if (segLen > 1e-4) {
       _rayDir.multiplyScalar(1 / segLen);
       const hit = raycast(pivot, _rayDir, segLen);
@@ -468,6 +662,7 @@ export function createCameraRig(
         // the pivot when the tank brushes a wall, reversing lookAt and aim.
         const pullIn = Math.max(0.15, Math.min(segLen, hit.dist - COLLISION_PAD_M));
         _desired.copy(pivot).addScaledVector(_rayDir, pullIn);
+        shoulderKept = pullIn / segLen;
       }
     }
 
@@ -482,14 +677,18 @@ export function createCameraRig(
     // third (plain lookAt(pivot) when the assist is idle).
     _lookTarget.copy(pivot);
     if (climbLift > 1e-3) _lookTarget.y += climbLift * CLIMB_LOOK_FRAC;
+    if (shoulder !== 0) _lookTarget.addScaledVector(_shoulderDir, shoulder * shoulderKept);
     camera.lookAt(_lookTarget);
     // <<< gameplay_feel r4
-    setFov(BASE_FOV_DEG);
+    setFov(chaseFov);
+    // the screen offset: the picture (and the sight, hud.ts projects the aim point on it) rises by the framed shift
+    applyLens(lensShift);
     camera.userData.scoped = false;
   }
 
   /** Place the sniper camera: glued to the gun, view = aim angles instantly. */
   function solveSniper(player: CameraEntity): void {
+    applyLens(0);
     sniperAnchorFor(player, _desired);
     camera.position.copy(_desired);
     const viewPitch = THREE.MathUtils.clamp(aimPitch, PITCH_MIN, PITCH_MAX);
@@ -610,7 +809,11 @@ export function createCameraRig(
     // screen time comes from startCinematic's 4 s floor.
     const k = THREE.MathUtils.clamp(
       kLin + 0.55 * Math.sin(Math.PI * 2 * kLin) / (Math.PI * 2), 0, 1);
-    pivotTargetFor(player, _pivotTarget);
+    applyLens(0);
+    // the flyby lands on the framed chase pose (its pivot and default step: a band or a setting can change mid-flight)
+    refreshFraming(player);
+    pivotTargetFor(player, _pivotTarget, framing.pivotAboveM);
+    activeCinematic.chase.copy(activeCinematic.chaseDir).multiplyScalar(-orbitDistance(2));
     // path position: world-frame offsets from the (moving) pivot
     activeCinematic.curve.getPoint(k < 0.97 ? k : 0.97 + (k - 0.97) * 0.999, _desired);
     _desired.add(_pivotTarget);
@@ -676,6 +879,7 @@ export function createCameraRig(
     if (!activeSpectate) return;
     const ent = activeSpectate.ent;
     if (!ent || !ent.state) return;
+    applyLens(0);
     camera.userData.scoped = false;
     // pivot: damped follow of the ally's turret line (arcade grammar)
     pivotTargetFor(ent, _pivotTarget);
@@ -744,7 +948,14 @@ export function createCameraRig(
     setLetterbox(false);
     rig.mode = 'ARCADE';
     step = 2;
-    if (player) { solveArcade(player, 0, true); updateAim(player); }
+    if (player) {
+      // the pivot and the step land where the flyby did; its lens (60 degrees, centred, no shift) glides to the
+      // framing's from there (the snap set the framing's: the zero-step solve puts the flyby's back)
+      solveArcade(player, 0, true);
+      chaseFov = BASE_FOV_DEG; shoulder = 0; lensShift = 0;
+      solveArcade(player, 0, false);
+      updateAim(player);
+    }
   }
 
   function stepZoom(dir: number): void {
@@ -768,6 +979,7 @@ export function createCameraRig(
 
   function solveDeathCamera(player: CameraEntity, dt: number): boolean {
     if (!death) return false;
+    applyLens(0);
     camera.userData.scoped = false;
     death.az += 0.22 * dt;
     pivotTargetFor(player, _pivotTarget);
@@ -837,7 +1049,7 @@ export function createCameraRig(
   ): void {
     if (!autoAimPoint) return;
     if (rig.mode === 'SNIPER') sniperAnchorFor(player, _autoAimAnchor);
-    else pivotTargetFor(player, _autoAimAnchor);
+    else chaseAnchorFor(player, aimYaw, _autoAimAnchor);
     const dx = autoAimPoint.x - _autoAimAnchor.x;
     const dy = autoAimPoint.y - _autoAimAnchor.y;
     const dz = autoAimPoint.z - _autoAimAnchor.z;
@@ -970,6 +1182,7 @@ export function createCameraRig(
       if (!player) return;
 
       if (aerialCamera.update(player, camInput, dt)) {
+        applyLens(0);
         cine = null; cursorAimOn = false;
         camera.getWorldDirection(_rayDir);
         const aerialHit = aimRaycast(camera.position, _rayDir, 1600);
@@ -1061,9 +1274,11 @@ export function createCameraRig(
       const side = (right.x * SUN_DIR_X + right.z * SUN_DIR_Z) >= 0 ? 1 : -1;
       const P = (rx: number, y: number, fz: number, out = new THREE.Vector3()): THREE.Vector3 =>
         out.set(0, y, 0).addScaledVector(right, rx * side).addScaledVector(fwd, fz);
-      // exact chase-pose offset (solveArcade: pivot - dir(endYaw, -10deg) * 13 m)
-      dirFromAngles(endYaw, THREE.MathUtils.degToRad(-10), _viewDir);
-      const chase = new THREE.Vector3().addScaledVector(_viewDir, -ORBIT_STEPS[2]);
+      // exact chase-pose offset (solveArcade: pivot - dir(endYaw, -10deg) * the framed default step; solveCinematic keeps
+      // it on the framing in force)
+      const chaseDir = dirFromAngles(endYaw, CHASE_PITCH_RAD, new THREE.Vector3());
+      if (player) refreshFraming(player);
+      const chase = chaseDir.clone().multiplyScalar(-orbitDistance(2));
       // r2: 4th waypoint routed wider + higher (7.5,0.6,-9 -> 9.5,1.6,-10) —
       // the old swing-behind cut over the rear deck through the exhaust
       // plume at ~2.5 s; paired with the solve-time hull standoff clamp.
@@ -1087,6 +1302,8 @@ export function createCameraRig(
         endYaw,
         fwd,
         curve,
+        chase,
+        chaseDir,
       };
       setLetterbox(true);
       rig.mode = 'ARCADE';
@@ -1318,16 +1535,19 @@ export function createCameraRig(
       step = restorePrev && preSniperStep >= 0
         ? preSniperStep
         : ORBIT_STEPS.length - 1;
-      dist = ORBIT_STEPS[step];
+      dist = orbitDistance(step);
       const player = getPlayer();
       if (player && player.state) aimYaw = player.state.yaw + player.state.turretYaw;
       if (!cursorAimOn && player) {
-        pivotTargetFor(player, _pivotTarget);
+        // (the chase's aim ray runs through its anchor: the pivot, and the shoulder beside it)
+        chaseAnchorFor(player, aimYaw, _pivotTarget);
         const dx = rig.aimPoint.x - _pivotTarget.x;
         const dy = rig.aimPoint.y - _pivotTarget.y;
         const dz = rig.aimPoint.z - _pivotTarget.z;
         const h = Math.hypot(dx, dz);
         if (h > 1e-3) {
+          // a shoulder's camera aims across from the side: the yaw comes from its anchor too
+          if (framing.shoulderM !== 0) aimYaw = Math.atan2(dx, dz);
           aimPitch = THREE.MathUtils.clamp(
             Math.atan2(dy, h), PITCH_MIN, PITCH_MAX);
         }
@@ -1374,6 +1594,7 @@ export function createCameraRig(
       trauma = 0;
       camera.userData.scoped = false;
       applyPlayerVisibility(getPlayer(), true);
+      applyLens(0);
       camera.position.copy(pos);
       camera.up.set(0, 1, 0);
       camera.lookAt(lookAt);
@@ -1469,6 +1690,20 @@ export function createCameraRig(
     release(): void {
       external = false;
       rig.externalActive = false;
+    },
+
+    get framing() { return framing; },
+
+    previewFraming(dt: number): void {
+      if (external || spec || cine || death || rig.mode !== 'ARCADE' || isIsometric()) return;
+      const player = getPlayer();
+      if (!player || player.aerial?.active || isWreck(player)) return;
+      solveArcade(player, dt, false);
+      updateAim(player);
+    },
+
+    suspendFraming(): void {
+      applyLens(0);
     },
   };
 

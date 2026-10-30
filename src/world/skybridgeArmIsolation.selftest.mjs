@@ -11,7 +11,7 @@ import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 const BEFORE = {
   verdant: '00c9b6068a16a463',
-  desert: '891caf0f7f23e028', // 2026-10-25 re-pinned (253), was 92a91c9b09712c08: the pinned-math ruling (the terrain's sin/cos/atan2/pow/exp on src/sim/detMath.ts)
+  desert: '1445b738cb70bac0', // 2026-10-29 re-pinned (264 integrator), was 891caf0f7f23e028: world-reds-264's Sirocco apron 1 on a 24 m bank (814a41c7dc, its zones back on their aprons); red on the lane's own head
   winter: '9726f7f88e679a00',
   urban: 'd55a1084385adf87',
   coastal: '595cfd950d2af04f', // 2026-10-25 re-pinned (253), was 0f03646938c5052d: the pinned-math ruling (the terrain's sin/cos/atan2/pow/exp on src/sim/detMath.ts)

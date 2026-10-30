@@ -784,8 +784,8 @@ const groundAt = post.indexOf('vec3 vgShade = cotVehicleGroundShadeRgb(');
 const hazeAt = post.indexOf('float wy = uCamPos.y + ray.y * rayT;');
 assert.ok(vehAt > 0 && groundAt > vehAt && hazeAt > groundAt, 'after the vehicle cavities, before the haze');
 assert.ok(post.indexOf('${VEHICLE_GROUND_OCCLUSION_GLSL}') > post.indexOf('${CONTACT_SHADOW_GLSL}'), 'after the contact block it calls');
-assert.match(post, /updateVehicleGroundOcclusionUniforms\(aerial\.uniforms as unknown as VehicleGroundOcclusionUniforms,\s*scene\.userData\.nearVehicles as readonly \{ root: THREE\.Object3D \}\[\] \| undefined, lightFx\.vehicleOcclusion && lightTune\('VEHICLE_GROUND_AO', 1\) > 0,/,
-  'every frame, on the vehicle-occlusion lever');
+assert.match(post, /updateVehicleGroundOcclusionUniforms\(aerial\.uniforms as unknown as VehicleGroundOcclusionUniforms,\s*scene\.userData\.nearVehicles as readonly \{ root: THREE\.Object3D \}\[\] \| undefined, lightFx\.vehicleOcclusion && lightTune\('VEHICLE_GROUND_AO', 0\) > 0,/,
+  'every frame, on the vehicle-occlusion lever, off unless QA turns it on (265: the owner\'s square outline round every tank)');
 assert.match(post, /const groundRho = groundModel\?\.mode === 'physical'\s*\? 0\.2126 \* groundModel\.groundAlbedo\[0\] \+ 0\.7152 \* groundModel\.groundAlbedo\[1\] \+ 0\.0722 \* groundModel\.groundAlbedo\[2\]\s*: GROUND_AO_DEFAULT_ALBEDO;/,
   'the grounded model\'s ground albedo (luminance), the default on the legacy rig');
 assert.equal(GROUND_AO_DEFAULT_ALBEDO, 0.25);

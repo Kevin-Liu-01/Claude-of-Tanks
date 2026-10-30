@@ -6,16 +6,17 @@ import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
-  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
+  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, volumeLitFoliage, type FoliageCard, type VehicleFoliageKind,
 } from './vehicleFoliage.ts';
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import {
-  FIELD_NET_PALETTES, garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette,
-  type SuitTheatre,
+  FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
+  type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
+import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -2109,7 +2110,7 @@ const srgbLin = (c: number): number => { const v = c / 255; return v <= 0.04045 
 
 /** Metres of cover per texture repeat (the paint's own patch scale). */
 const COVER_TILE_M = 1.6;
-const coverCache = new Map<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null>();
+const coverCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
 
 /** The cover's colours: the scheme's base and patches (sRGB), from the vehicle's active camouflage. */
 interface CoverPalette { readonly base: readonly [number, number, number]; readonly patches: ReadonlyArray<readonly [number, number, number]> }
@@ -2219,23 +2220,30 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
 }
 
 /** The fitted cover's fabric for a scheme (cached per palette and seed; null without a DOM). */
-function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
   const key = `${pal.base.join(',')}|${pal.patches.map((c) => c.join(',')).join('|')}|${seed}`;
   if (coverCache.has(key)) return coverCache.get(key)!;
-  let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
+  let out: { map: THREE.Texture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
     try {
       const canvas = document.createElement('canvas'), height = document.createElement('canvas');
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
-      const hctx = height.getContext('2d') as CanvasRenderingContext2D | null;
+      const hctx = height.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
       if (ctx && hctx) {
-        paintCutLeafCover(ctx, hctx, NET_TEXTURE_PX, pal, seed);
-        const map = new THREE.CanvasTexture(canvas);
-        map.colorSpace = THREE.SRGBColorSpace;
+        const S = NET_TEXTURE_PX;
+        paintCutLeafCover(ctx, hctx, S, pal, seed);
+        // (263, alphaCutTexture.ts) each flap shades the fabric round its foot and the fabric under the flaps darkens,
+        // so the cover reads in relief; a flap cut right out leaves a dark pocket in the fabric under it, not a hole: a
+        // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
+        const image = ctx.getImageData(0, 0, S, S);
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.62, occlusion: 3.2,
+          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.62, pal.base[1] * 0.62, pal.base[2] * 0.58], fill: [0, 0], cell: S * S } });
+        floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
+        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
-        for (const t of [map, bump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
-        map.name = `ghillieCover:${seed}`;
+        bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+        bump.anisotropy = 4;
         bump.name = `ghillieCoverHeight:${seed}`;
         out = { map, bump };
       }
@@ -2363,14 +2371,21 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
   // the sticks and boughs the crew pushed under a deck net stand out of their humps
   if (top && pal.boughs > 0) for (const t of (surface as TopCloth).tents ?? []) clumps.push({ u: t.x, v: t.z, size: 3 + Math.floor(t.h * 20), tent: true });
   const fitted = cfg.style !== 'leafy';
+  // (264; Main on the Strv 121's Barracuda-style cover, the owner's "a ton of netting and ghillie" on it) a fitted cover
+  // whose row asks for boughs (boughShare) carries its crew's cut boughs among its flaps, laid as low as the flaps lie
+  // (wave 253's reason stands: nothing stands off a cover as a shard); a cover whose row does not keeps its flaps alone,
+  // drawing nothing more from the stream
+  const coverBoughs = fitted && (cfg.boughShare ?? 0) > 0;
   for (const clump of clumps) {
     // a fitted cover's tufts are its own cut flaps lying on it (wave 253: "dark leaf shards stick straight out")
-    const bough = fitted ? false : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
+    const bough = fitted ? coverBoughs && !clump.tent && rng() < (cfg.boughShare ?? 0)
+      : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
     if (!surface.sample(clump.u, clump.v)) continue;
     // the tuft's own colour: a strip bunch shares one cut cloth, a bough one cutting
     const tone = pickStripTone(pal, rng);
     const boughBase = clumpTint(cfg, rng);
-    const size = bough ? clump.size : Math.max(2, Math.min(5, clump.size));
+    // a cover's boughs come a few at a tuck, its flaps two to five
+    const size = bough ? (fitted ? Math.max(2, Math.min(4, clump.size)) : clump.size) : Math.max(2, Math.min(5, clump.size));
     const spin0 = rng() * Math.PI * 2;
     const fan = size <= 2 ? 0.5 + rng() * 0.4 : 1.0 + rng() * 0.9;
     const edgeInfo = top && surface.edge ? surface.edge(clump.u, clump.v) : null;
@@ -2380,11 +2395,12 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       // every draw of this card happens here, before any fit
       const jr = rng() * 0.05, ja = rng() * Math.PI * 2;
       const sway = share * fan + (rng() - 0.5) * 0.4;
-      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
+      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough && !fitted ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
       const lenK = bough ? 0.7 + rng() * 0.75 : 0.75 + rng() * 0.6;
       const value = 0.82 + rng() * 0.3;
       const bend = bough ? 0.03 + rng() * 0.06 : 0.12 + rng() * 0.16;
-      const fold = bough ? 0.18 + rng() * 0.18 : 0.05 + rng() * 0.08;
+      // a cover's bough a shallow V (its edges a few centimetres up at most: it lies on the cover)
+      const fold = bough ? (fitted ? 0.08 : 0.18) + rng() * (fitted ? 0.1 : 0.18) : 0.05 + rng() * 0.08;
       const tileK = rng();
       const roll = (rng() - 0.5) * 0.6;
       const tile = bough ? GARNISH_BOUGH_TILES[tileK < 0.5 ? 0 : 1] : GARNISH_STRIP_TILES[tileK < 0.5 ? 0 : 1];
@@ -2394,9 +2410,9 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       let length = base * lenK;
       const width = length * (bough ? 0.6 : 0.62);
       // a fitted cover's flaps take its mid-tones (their atlas is painted dark: "dark clover decals", wave 253)
-      const tint: [number, number, number] = fitted ? [value * 1.32, value * 1.3, value * 1.22]
-        : bough ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
-          : stripTint(tone, value);
+      const tint: [number, number, number] = bough
+        ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
+        : fitted ? [value * 1.32, value * 1.3, value * 1.22] : stripTint(tone, value);
       const su = clump.u + Math.cos(ja) * jr, sv = clump.v + (top ? Math.sin(ja) * jr : Math.sin(ja) * jr * 0.4);
       if (!seatOk(su, sv)) continue;
       const seat = surface.sample(su, sv);
@@ -2414,7 +2430,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
         dir = norm3([nn[0] * nn[1], -1 + nn[1] * nn[1], nn[2] * nn[1]]);
         // a bough tucked under the top cord stands up past the roof line (it breaks the outline); others hang
         const hangs = (panel as unknown as SidePanel).boughsHangAt?.some(([z0, z1]) => clump.u >= z0 && clump.u <= z1);
-        if (bough && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
+        // (a cover's boughs all hang: none stands up past its top)
+        if (bough && !fitted && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
       }
       const side = norm3([nn[1] * dir[2] - nn[2] * dir[1], nn[2] * dir[0] - nn[0] * dir[2], nn[0] * dir[1] - nn[1] * dir[0]]);
       let placed: FoliageCard | null = null;
@@ -3356,9 +3373,10 @@ function makeNet(
       m.map = shared.map;
       m.bumpMap = shared.bump;
       // three's bump slope is the height change per screen pixel times bumpScale: kept near the cloth's own 0.5 so the
-      // cords and strips stand in relief up close without sparkling at range
-      m.bumpScale = leafy ? 0.7 : 0.6;
-      m.alphaTest = 0.5;
+      // cords and strips stand in relief up close without sparkling at range (263: 0.7 -> 0.55 on a garnished net, whose
+      // strips now rise along their length; the critic read glitter on the drape's strips)
+      m.bumpScale = leafy ? 0.55 : 0.6;
+      m.alphaTest = NET_ALPHA_CUT;
       m.transparent = false;
     }
   });
@@ -3381,6 +3399,8 @@ function addMerged(
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = name;
   mesh.castShadow = mesh.receiveShadow = true;
+  // (265) its shadow through the cut the eye sees up close, never the coarse mips' near-solid box
+  castThroughAlphaCut(mesh);
   // A cut net encloses real exterior air: it is suspended dressing, outside the armor's zero-hole scan.
   mesh.userData.combatHitboxRole = 'nonArmor';
   mesh.userData.continuityRole = 'open-lattice';
@@ -3446,23 +3466,6 @@ const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
-// Leopard 2A6 UA roof carriers. The original blanket used a single y=.98
-// roof, leaving visible daylight over the 2A6M wedge; these profiles follow the
-// authored roof tiers (round 5: the cheek nets are gone, so their ruled-face
-// profile went with them). Values are turret-local metres.
-const leo2A6UAFrontRoofY = (x: number, z: number): number => {
-  const armorY = profileY([
-    [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
-  ], z);
-  return armorY - Math.max(0, Math.abs(x) - 0.92) * 0.035 + 0.026;
-};
-const leo2A6UAMidRoofY = (x: number, z: number): number => {
-  const armorY = z < -0.96 ? 0.78 : 0.75;
-  return armorY - Math.max(0, Math.abs(x) - 0.72) * 0.055 + 0.026;
-};
-const leo2A6UARearRoofY = (_x: number, z: number): number => profileY([
-  [-3.34, 0.62], [-3.02, 0.64], [-2.30, 0.66], [-1.58, 0.78],
-], z) + 0.026;
 // Leopard 2A4 full-vehicle suit (2026-10-05: moved from its private copy in profiles/leopard.ts onto this shared
 // builder — the authored A4 cut-net carriers below are its outlines, openings and drapes unchanged; the garnish is
 // the shared spray cards). The hull blanket floats 5-7 cm above the deck and follows the glacis to the beak; the
@@ -3781,98 +3784,6 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)], seed: 245 }],
       // owner 2026-09-15 (evening): the net walls that hung on the cage's sides and front read as
       // grey panels covering the cage; only the roof drape remains (the cage bars stay visible).
-    },
-  },
-  leo2a6_ua: {
-    // Round 5 (2026-10-08; the coordinator after wave 269, fleet B2, 2/10 on the hero, gear and mantlet views: "a
-    // box-shaped shell of bristling leaf shards encloses the turret and runs down the full gun barrel, like a hedgehog /
-    // hedge sculpture", "flat, unshaded, single-sided leaf polygons floating in the air, cutting through the cage bars",
-    // "fish scales" on the hull flanks; the ruling: replace the approach, not tune it). One net thrown over the turret
-    // roof out to the basket rails, sagging off them and falling 30-40 cm over the flank and bustle cages with a ragged
-    // hem; the cheeks, the front cage and the lower flanks bare. The engine deck and glacis nets fall over the hull's
-    // corners as short swags tied along the skirt cage's top rail; the skirts and running gear bare between them. Two
-    // short bound wraps on the barrel (the sleeve root and one band), the bore and muzzle clear. The garnish is bunches
-    // tied at points along the hems, low, with few boughs; the drone dock and both weapon stations keep their columns.
-    id: 'leo2a6_ua', seed: 2606, style: 'leafy', density: 0.42, leafScale: 0.9, boughShare: 0.1,
-    light: 0x747b50, dark: 0x34452f, netColor: 'rgba(38,53,32,0.86)',
-    hull: {
-      top: [
-        { x0: -1.86, x1: 1.86, z0: -3.54, z1: -1.28, nx: 30, nz: 24,
-          yAt: (x, z) => 1.91 + Math.cos(x * 1.7 + z) * 0.016,
-          outline: [[-1.42, -3.54], [1.42, -3.54], [1.86, -3.12], [1.86, -1.28], [-1.86, -1.28], [-1.86, -3.12]],
-          holes: [rect(-1.18, -0.35, -3.18, -2.08), rect(0.35, 1.18, -3.18, -2.08)], seed: 271, tents: [], garnishRiseM: 0.09 },
-        { x0: -1.88, x1: 1.88, z0: 1.24, z1: 3.18, nx: 30, nz: 22,
-          yAt: (x, z) => 1.77 - Math.max(0, z - 2.08) * 0.30 + Math.cos(x * 2.0) * 0.012,
-          outline: [[-1.88, 1.24], [1.88, 1.24], [1.84, 2.66], [1.18, 3.18], [-1.18, 3.18], [-1.84, 2.66]],
-          holes: [rect(0.35, 0.92, 1.25, 1.75)], seed: 277, tents: [], garnishRiseM: 0.07, garnishDensity: 0.6 },
-      ],
-      // the deck nets' corners: short swags over the skirt cage's top rail, the bays between them bare
-      side: [-1, 1].flatMap((side) => [
-        { side, z0: -3.30, z1: -1.70, topAt: () => 1.78, bottomAt: (z: number) => 1.30 + Math.sin(z * 3.1) * 0.035,
-          outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 283 + side },
-        { side, z0: 1.42, z1: 2.92, topAt: (z: number) => z > 2.08 ? 1.76 - (z - 2.08) * 0.28 : 1.78,
-          bottomAt: (z: number) => 1.32 + Math.sin(z * 2.7) * 0.035, outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 287 + side },
-      ]),
-    },
-    turret: {
-      top: [
-        // the bustle, out to the basket rails
-        { x0: -1.62, x1: 1.62, z0: -3.40, z1: -1.54, nx: 30, nz: 18,
-          yAt: leo2A6UARearRoofY,
-          outline: [[-1.10, -3.40], [1.10, -3.40], [1.62, -2.96], [1.62, -1.54], [-1.62, -1.54], [-1.62, -2.96]],
-          holes: [rect(-1.17, -0.46, -2.24, -1.30)], seed: 299, tents: [], garnishRiseM: 0.1 },
-        // the main roof between the hatches, sights and the forward station, out to the basket rails; the drone dock
-        // on the right rail stays open
-        { x0: -1.62, x1: 1.62, z0: -1.58, z1: 0.66, nx: 30, nz: 22,
-          yAt: leo2A6UAMidRoofY,
-          outline: [[-1.62, -1.58], [1.62, -1.58], [1.62, 0.66], [-1.62, 0.66]],
-          holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.98, -0.08),
-            rect(0.32, 0.96, 0.02, 0.52), rect(0.74, 1.10, -1.56, -1.04), rect(-1.70, -1.20, 0.24, 0.70)],
-          seed: 303, tents: [], garnishRiseM: 0.1 },
-        // the crowns over the cheeks: a lip of net, no garnish standing on the front of the arrowhead
-        ...[-1, 1].map<TopPanel>((side) => ({
-          x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
-          z0: 0.46, z1: 1.30, nx: 13, nz: 10,
-          yAt: leo2A6UAFrontRoofY,
-          outline: side < 0
-            ? [[-1.02, 0.46], [-0.28, 0.46], [-0.24, 1.30], [-1.18, 1.30]]
-            : [[0.28, 0.46], [1.02, 0.46], [1.18, 1.30], [0.24, 1.30]],
-          holes: side > 0 ? [rect(0.36, 0.96, 0.46, 0.82)] : [],
-          seed: 311 + side, tents: [], garnishRiseM: 0.06, garnishDensity: 0.5,
-        })),
-      ],
-      // over the basket rails and the flank cage's top rail, 30-40 cm down its outside; the right flank stops short of
-      // the drone dock. 2026-10-08 (the lane lead, merging main's 6763d7cc0): the owner's modern field cage stands its
-      // three side panels 0.19 m off each flank (turret-local z -2.77 to 0.09, top rail 0.82 m), and a drape hung down
-      // them rests on their bars and sags through between them (83 crossings). The owner's rule for cages ("the cage bars
-      // stay visible", 2026-09-15): the flank drapes keep to the bustle corner and the right front, and over the panels'
-      // run the roof net ends at the basket rails.
-      // 2026-10-09 (launch RC; ghillieSuit.selftest, "suit pieces touch nothing within 15 mm"): the bustle corners carry
-      // no flank drape. Between the rear cage's corner post (z -3.57) and the flank cage's last post (z -2.85) there is no
-      // rail, and the bustle wall stands 0.6 m inboard (x 1.05 to 1.26). The armour probe found nothing to hold the
-      // corner drapes, so all but their last station hung on the authored line, a curtain in the air at x 1.87 that was
-      // held only by its end column rolled over the flank cage's post, 2.0 cm off it. The roof net and the rear face net
-      // still cover the bustle.
-      side: [-1, 1].flatMap((side) => ((side > 0 ? [[0.17, 1.05]] : []) as [number, number][]).map(([z0, z1]) => ({
-        side, z0, z1,
-        topAt: () => 0.93, bottomAt: (z: number) => 0.50 + Math.sin(z * 3.4) * 0.035,
-        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side + (z0 > 0 ? 4 : 0) }))),
-      // over the bustle's rear cage
-      face: [{ z: -3.62, x0: -1.50, x1: 1.50, y0: 0.52, y1: 0.95, nx: 20, ny: 5, seed: 317,
-        outline: [[-1.50, 0.52], [1.50, 0.52], [1.50, 0.95], [-1.50, 0.95]] }],
-    },
-    // two short bound wraps on the tube (radius about 0.10 m): over the sleeve root behind the mantlet and one band
-    gun: {
-      top: [
-        { x0: -0.13, x1: 0.13, z0: 0.62, z1: 1.30, nx: 6, nz: 9, yAt: () => 0.115, seed: 331, tents: [],
-          garnishRiseM: 0.05, garnishDensity: 4 },
-        { x0: -0.13, x1: 0.13, z0: 2.70, z1: 3.06, nx: 6, nz: 5, yAt: () => 0.12, seed: 333, tents: [],
-          garnishRiseM: 0.04, garnishDensity: 4 },
-      ],
-      side: [-1, 1].flatMap((side) => [
-        { side, z0: 0.64, z1: 1.28, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 337 + side },
-        { side, z0: 2.72, z1: 3.04, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 341 + side },
-      ]),
     },
   },
 } satisfies Readonly<Record<string, GhillieConfig>>);
@@ -5434,6 +5345,26 @@ function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
   return wheels?.color ? suitTheatreOf(wheels.color) : 'woodland';
 }
 
+/**
+ * A multispectral cover's garnish atlas: its cut flaps in the theatre's tones. (263) Where its row names a species and
+ * asks for boughs (the Strv 121's Barracuda-style cover with spruce: boughShare 0.45, foliageKind spruce), half its
+ * tufts are that species' sprigs: a fitted cover lays only its own short flat tufts (addTufts, wave 253: no bough card
+ * stands off a cover), so the row's spruce had never shown; the second tuft tile now carries it, laid as flat as a flap.
+ */
+function* coverGarnishAtlasSteps(cfg: GhillieConfig, theatre: SuitTheatre): Generator<void, THREE.Texture | null, void> {
+  const flaps = theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland';
+  const kind = cfg.foliageKind;
+  if (!kind || kind === 'garnish-woodland' || kind === 'garnish-arid') return vehicleFoliageAtlas(flaps);
+  return yield* ghillieGarnishAtlasSteps(kind, undefined, flaps, (cfg.boughShare ?? 0) > 0);
+}
+
+/** Run a stepped build at once. */
+function drainSteps<T>(steps: Generator<void, T, void>): T {
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
 function garnishSpecies(cfg: GhillieConfig): SprayKind {
   const kind = cfg.foliageKind ?? 'oak';
   return kind === 'garnish-woodland' || kind === 'garnish-arid' ? 'oak' : kind;
@@ -5716,13 +5647,14 @@ function* addGhillieOwner(
     // (boot-261) the garnish atlas paints in this build's steps the first time a species is asked for
     const atlas = leafy
       ? yield* (field ? ghillieGarnishAtlasSteps(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlasSteps(garnishSpecies(cfg)))
-      : vehicleFoliageAtlas(theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+      : yield* coverGarnishAtlasSteps(cfg, theatre);
     const leavesShared = suitMats.leaves.has(atlas);
-    const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    const mat = leavesShared ? suitMats.leaves.get(atlas)! : volumeLitFoliage(makeCloth(P, (m) => configureFoliageMaterial(m, atlas)));
     if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
+    castThroughAlphaCut(mesh);
     if (clearance) {
       mesh.userData.fieldSuit = true;
       // the fix round: a field card lifted over a load keeps the rule it was placed by (the field lens views)
@@ -5741,7 +5673,7 @@ function* addGhillieOwner(
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
         if (!leafy) {
-          mat.map = vehicleFoliageAtlas(t === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+          mat.map = drainSteps(coverGarnishAtlasSteps(cfg, t));
           return;
         }
         const now = meanStrip(t, field);

@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { boxUV, paintedSurfaceShade } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { leopardA6UaDockSeat } from './leopardA6UaLayout.ts';
 
 type ReceiverId = 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria';
 type Vec3 = readonly [number, number, number];
@@ -27,8 +28,9 @@ interface ReceiverSeat {
  * The openings between the two beams remain empty; the native ray still has
  * to hit an actual upward triangle, never this rectangular search region. */
 export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> = {
-  leo2a6_ua: { x: -1.45, z: .46, topY: .985,
-    minX: -1.625, maxX: -1.275, minZ: .314, maxZ: .606 },
+  // 264: on the cage roof's rail of the rebuilt 2A6 (leopardA6UaLayout.ts)
+  leo2a6_ua: (({ x, z, topY }) => ({ x, z, topY, minX: x - .175, maxX: x + .175, minZ: z - .146, maxZ: z + .146 }))(
+    leopardA6UaDockSeat()),
   ua_m1a1: { x: -1.50, z: -1, topY: 1.535,
     minX: -1.675, maxX: -1.325, minZ: -1.146, maxZ: -.854 },
   t80u_zoria: { x: -1.30, z: -.18, topY: 1.068,
@@ -78,11 +80,11 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
   const seat = MISSION_RECEIVER_SEATS[id], parts: MissionReceiverPart[] = [];
   const feet = [seat.x - .108, seat.x + .108];
   if (id === 'leo2a6_ua') {
-    // These two short sockets overlap the permanent 32 mm roof-basket rail
-    // at x=-1.55, y=.91. They do not use camouflage or a loose crate as a foot.
+    // These two short sockets stand 4 mm into the cage roof's 32 mm dock rail (264: leopardA6UaLayout.ts). They do not
+    // use camouflage or a loose crate as a foot.
+    const { x, socketY } = leopardA6UaDockSeat();
     for (const z of [-.09, .09]) {
-      parts.push({ role: 'rail-post', size: [.026, .041, .026],
-        center: [-1.55, .9425, seat.z + z] });
+      parts.push({ role: 'rail-post', size: [.026, .041, .026], center: [x, socketY, seat.z + z] });
     }
   } else if (id === 't80u_zoria') {
     // The left roof-cage wing (fieldRoofCage.ts: rails at x -1.62 and -.98,

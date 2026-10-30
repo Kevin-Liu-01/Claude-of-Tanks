@@ -17,6 +17,7 @@
 //
 //   node tools/turret-ring-side-caps.mjs [--ids=mbt70,...] [--all] [--check]
 import * as THREE from 'three';
+import { uniqueIds } from './id-list.mjs';
 
 await import('./tank-surface-collect.mjs');
 const { createTank, ensureTankBuilder } = await import('../src/vehicles/fleetFactory.ts');
@@ -29,7 +30,7 @@ const args = process.argv.slice(2);
 const opt = (name, fallback = '') => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const ALL = args.includes('--all');
 const CHECK = args.includes('--check') || !ALL;
-const ids = opt('ids') ? opt('ids').split(',').filter(Boolean) : ALL ? Object.keys(FLEET_GROUP_BY_ID) : Object.keys(TURRET_RING_SIDE_CAPS);
+const ids = opt('ids') ? uniqueIds(opt('ids').split(',').filter(Boolean), 'turret-ring-side-caps --ids') : ALL ? Object.keys(FLEET_GROUP_BY_ID) : Object.keys(TURRET_RING_SIDE_CAPS);
 /** The depth the live cut reaches under the race (turretRingWell.ts LIVE_CUT_DEPTH_M), and the exterior pass's margin. */
 const CUT_DEPTH_M = 0.2, SKIN_MARGIN_M = 0.32;
 const CAP_MARGIN_M = 0.02, SLOT_MIN_POINTS = 100, SLOT_MIN_M = 0.1;

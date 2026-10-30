@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 
@@ -157,8 +158,13 @@ for (const quality of ['high', 'low']) {
       frontRay.set(origin,new THREE.Vector3(-side,0,0));
       const hit=frontRay.intersectObjects(visibleMeshes,false)[0];
       if (hit && /_ghillie_/.test(hit.object.name)) continue;
-      assert.equal(hit?.object.name,'turret','side sightline exposes the thin circular bearing');
-      assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<1.3,'visible stock is the bearing, not a turret side panel');
+      // (264: since 252 the turret seat's ring collar, turretSeatRace.ts addSeatCollar, ce10d80591, stands in the seam just
+      // outside the bearing, in the turret's paint: the ring the sightline meets is the collar or the bearing)
+      assert.ok(['turret', 'turretSeatCollar'].includes(hit?.object.name),'side sightline exposes the thin circular bearing');
+      // (the bearing at r 1.25, or the collar at the race's outer edge, r 1.345: both inside the ring's rim, never a side
+      // panel at 1.5)
+      assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<combatAnatomyCalibration('m1a3').turretRing.rimR,
+        'visible stock is the bearing, not a turret side panel');
       seen++;
     }
     assert.ok(seen>=2,`side ${side}: the bearing shows on at least two of its three sightlines (${seen})`);

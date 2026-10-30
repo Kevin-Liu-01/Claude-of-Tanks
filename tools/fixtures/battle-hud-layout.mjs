@@ -374,11 +374,14 @@ function markers() {
   settle();
 }
 // (a phone's window leaves the plate over the enemy under the gun no room beside it for a bar, and a tank at its depth
-// stands under it, held back: an ally near, its top under the plate, carries the window's bar)
+// stands under it, held back: an ally near, its top under the plate, carries the window's bar. Its callsign is a short
+// one, as a lobby mixes them: at 320x568 the one band of world left between the panels holds the plate over the sight's
+// ring, and a 21-character name's bar fits neither run beside the ring, markers r20)
 function nearAlly() {
   const plate=document.querySelector('.cot-tgt')?.getBoundingClientRect();
   if((innerWidth>=720&&innerHeight>=520)||!plate?.width)return;
   const tank=tanks[2], eye=markerCamera.position;
+  if(tank.displayName)tank.displayName='Wren';
   const ray=new Vector3((plate.left+plate.width/4)/innerWidth*2-1,1-(plate.bottom+68)/innerHeight*2,.5).unproject(markerCamera).sub(eye);
   const along=((tank.spec.dims?.heightM??2.5)-eye.y)/ray.y;
   tank.state.pos.set(eye.x+ray.x*along,0,eye.z+ray.z*along);

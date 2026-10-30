@@ -53,8 +53,9 @@ const sameBits = (a, b) => {
   return true;
 };
 
-// t72b3: hull, turret and gun fills, all three drawn as the surface
-const id = 't72b3';
+// m1a1: hull, turret and gun fills, all three drawn as the surface (264: t72b3's generated record has carried no gun fill
+// since 241's exact conforming fills, cff10513dc; the M1A1's three surfaces each draw well under their boxes)
+const id = 'm1a1';
 await ensureTankBuilder(id);
 const record = interiorFillRecord(id);
 assert.ok(record, `${id}: fill record resident`);
@@ -82,7 +83,7 @@ for (let kill = 0; kill < 2; kill++) {
   visual.setDestroyed({ pop: kill === 1 });
   for (const component of COMPONENTS) {
     const geometry = fills[component].geometry;
-    assert.notEqual(geometry, intact[component], `${id} ${component} kill ${kill}: the wreck swaps the surface out`);
+    assert.ok(geometry !== intact[component], `${id} ${component} kill ${kill}: the wreck swaps the surface out`);
     const positions = geometry.getAttribute('position').array;
     assert.equal(positions.length, closedReference[component].length, `${id} ${component} kill ${kill}: the wreck draws 36 vertices a box`);
     if (component !== 'gun') {
@@ -92,7 +93,7 @@ for (let kill = 0; kill < 2; kill++) {
   }
   visual.resetDestroyed();
   for (const component of COMPONENTS) {
-    assert.equal(fills[component].geometry, intact[component], `${id} ${component} kill ${kill}: the rematch restores the surface`);
+    assert.ok(fills[component].geometry === intact[component], `${id} ${component} kill ${kill}: the rematch restores the surface`);
   }
   assert.equal(disposed.size, 2 * (kill + 1), `kill ${kill}: the swapped-in boxes are disposed at the rematch`);
 }
@@ -108,7 +109,7 @@ for (const [component, mesh] of hulkFills) {
 }
 hulk.setDestroyed({ pop: true, ageS: 1000 });
 for (const [component, mesh] of hulkFills) {
-  if (component !== 'gun') assert.equal(mesh.geometry, hulkGeometry.get(component), `${id} ${component}: a hulk has nothing to swap`);
+  if (component !== 'gun') assert.ok(mesh.geometry === hulkGeometry.get(component), `${id} ${component}: a hulk has nothing to swap`);
 }
 hulk.dispose();
 console.log(`interiorFillWreck selftest PASS (${id}: intact ${COMPONENTS.map((c) => interiorFillTriangleCounts(record, c).drawn).join('/')} surface `

@@ -3104,7 +3104,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // fittings already define its silhouette. Keep only one paired fuel-can
   // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
   // tools and duplicate roof equipment would clutter or snag on the cage.
-  if (spec.id === 'ua_m1a1') {
+  // 264: the Leopard 2A6 UA's turret screens, roof cage and hull mesh boxes (profiles/leopardA6Ua.ts) likewise.
+  if (spec.id === 'ua_m1a1' || spec.id === 'leo2a6_ua') {
     return [{
       kit: 'cargo', p: 1,
       v: cargoVariant('twin-can-cradle'),
@@ -3209,6 +3210,17 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
   // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
   if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
+  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
+  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
+  if (spec.id === 'ztz85_iii') return manifest
+    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+      && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
+      && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
+    .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+      ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+      : row));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

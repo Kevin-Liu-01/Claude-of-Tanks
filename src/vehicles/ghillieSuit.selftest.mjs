@@ -12,8 +12,9 @@ import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-
 
 const ids = [
   't64bv_donbas', 'm1a1_abrams_fep',
-  'strv103a', 'strv103b', 't84', 'ua_m1a1', 'leo2a6_ua',
+  'strv103a', 'strv103b', 't84', 'ua_m1a1',
 ];
+// 264: the Leopard 2A6 UA's suit is a fleet field net now (ghillieFleetSuits.ts), held to the fleet rules below
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
 // net (ghillieFleetSuits.ts) and left this control list; the others stay net-free. Release 262 (the owner, 2026-10-27:

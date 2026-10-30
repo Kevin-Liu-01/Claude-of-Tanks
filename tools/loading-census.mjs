@@ -98,7 +98,7 @@ function plan() {
 }
 
 /** The documents whose first view is a page's own shell (the game's and the Studio's is the boot screen). */
-const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'gallery', '404']);
+const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'docs-fleet', 'gallery', '404']);
 
 /** The findings one row's timeline holds, under one condition. */
 function judge(row, condition, t) {
@@ -128,7 +128,8 @@ function judge(row, condition, t) {
     }
     if (t.broken.length) found.push({ rule: 'broken', why: t.broken.slice(0, 3).join(', ') });
   }
-  return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f, allowed: ALLOW.has(`${row.id}:${f.rule}`) }));
+  return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f,
+    allowed: ALLOW.has(`${row.id}:${f.rule}`) || Boolean(row.allow?.[f.rule]) }));
 }
 
 /** Presses a row's way in from the page at rest: each step in turn; a leading `?` presses one only when it shows, and
@@ -316,8 +317,9 @@ try {
           { label: `loading-census-${pageName}-${layout}` });
         for (const condition of CONDITIONS) {
           const rowsHere = rows.filter((r) => condition === 'slow' || r.offline !== false);
-          // the page at rest: its row's rest, or its first row's box
-          const rest = rows.find((r) => r.rest)?.rest ?? rows[0].box;
+          // the page at rest: its row's rest (read from every row of the page, so an --only run of in-app rows still finds
+          // the Garage's), or its first row's box
+          const rest = Object.values(LOADING_SURFACES).find((r) => r.page === pageName && r.rest)?.rest ?? rows[0].box;
           // a page that cannot run records why and the census goes on: one run reports every page
           if (rowsHere.length) {
             try { report.results.push(...await pageRun(browser, server.origin, pageName, rowsHere, layout, condition, rest)); } catch (error) {

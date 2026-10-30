@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createTransition } from './transition.ts';
+import { FEATURED_IMAGES } from './featuredShots.ts';
+import { preloadImage } from './imagePreload.ts';
+import { t } from './i18n.ts';
 
 class ElementFixture {
   constructor() {
@@ -20,10 +23,11 @@ class ElementFixture {
     return this.children.get(selector);
   }
   appendChild(child) { return child; }
+  setAttribute(name, value) { (this.attributes ??= {})[name] = String(value); }
   getClientRects() { return this.classes.has('on') ? [{}] : []; }
 }
 
-const originals = new Map(['window', 'document', 'getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame', 'scheduler']
+const originals = new Map(['window', 'document', 'getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame', 'scheduler', 'Image']
   .map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
 const roots = [];
 let opaqueObserved = false, atPaint = null, controlledOpacity = null;
@@ -67,14 +71,27 @@ const globals = {
 for (const [name, value] of Object.entries(globals)) Object.defineProperty(globalThis, name, { configurable: true, value });
 try {
   const transition = createTransition();
-  const root = roots.at(-1);
+  const root = roots.at(-1), say = roots.at(-2);
   assert.equal(transition.holdingSceneForFadeIn, false);
+  // the overlay is a picture; a status beside it, in the page while the overlay is off, carries its words
+  assert.equal(root.attributes?.['aria-hidden'], 'true', 'the overlay itself is hidden from assistive technology');
+  assert.equal(say.attributes?.role, 'status', 'the transition announces through a status');
+  assert.notEqual(say, root, 'the status is not inside the overlay a display flip brings in');
   let workCalls = 0;
   atPaint = () => transition.show({ title: 'New owner' });
   await assert.rejects(transition.run(() => { workCalls++; }, { minShowMs: 0 }), { name: 'AbortError' });
   assert.equal(workCalls, 0, 'supersession after cover resolves cannot invoke old work');
   assert.equal(transition.visible, true, 'old failure must not hide the new owner');
   assert.equal(root.querySelector('.title').textContent, 'New owner');
+  assert.equal(say.querySelector('.h').textContent, t('transition.sentence', { text: 'New owner' }), 'the status names where the player is going');
+  assert.equal(say.querySelector('.s').textContent, root.querySelector('.mstage').textContent, 'the status reads the meter stage');
+  await transition.hide();
+  assert.equal(say.querySelector('.h').textContent, '', 'a finished transition leaves no words in the status');
+  assert.equal(say.querySelector('.s').textContent, '');
+  transition.show({ kicker: 'Scene Studio', title: 'Garage', progress: false });
+  assert.equal(say.querySelector('.h').textContent, ['Scene Studio', 'Garage'].map((text) => t('transition.sentence', { text })).join(' '),
+    'each part is one sentence in the page\'s language');
+  assert.equal(say.querySelector('.s').textContent, '', 'a veil without a meter announces no stages');
   await transition.hide();
 
   opaqueObserved = false;
@@ -138,9 +155,31 @@ try {
   await skipped;
   globals.window.location.search = '';
   assert.equal(visibilityListeners.size, 0, 'completed and superseded covers release their document listeners');
+
+  // The picture layers cross-fade. The warm picture fades in from the dark on the low layer, the requested one fades in
+  // over it on the high layer once it decodes, and a finished transition leaves both out of view for the next screen.
+  const pending = new Map();
+  Object.defineProperty(globalThis, 'Image', { configurable: true, value: class {
+    set src(url) { pending.set(url, () => this.onload?.()); }
+  } });
+  const land = async (url) => { pending.get(url)?.(); pending.delete(url); await new Promise((resolve) => setTimeout(resolve, 0)); };
+  const warm = preloadImage(FEATURED_IMAGES[0]);
+  await land(FEATURED_IMAGES[0]);
+  assert.equal(await warm, FEATURED_IMAGES[0]);
+  const low = root.querySelector('.bg.lo'), high = root.querySelector('.bg.hi');
+  const requested = '/media/selftest/requested-hero.webp';
+  transition.show({ hero: requested });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(low.classList.contains('shown') && !high.classList.contains('shown'), 'the warm picture fades in on the low layer');
+  assert.match(low.style.backgroundImage, new RegExp(FEATURED_IMAGES[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  await land(requested);
+  assert.ok(high.classList.contains('shown') && low.classList.contains('shown'), 'the requested picture fades in over the warm one');
+  assert.match(high.style.backgroundImage, /requested-hero/);
+  await transition.hide();
+  assert.ok(!low.classList.contains('shown') && !high.classList.contains('shown'), 'the next screen starts dark');
 } finally {
   for (const [name, descriptor] of originals) {
     if (descriptor) Object.defineProperty(globalThis, name, descriptor); else delete globalThis[name];
   }
 }
-console.log('transitionRuntime.selftest: actual owner handles cover microtask races, stale progress and failed work');
+console.log('transitionRuntime.selftest: actual owner handles cover microtask races, stale progress and failed work; a status announces it; its pictures cross-fade');

@@ -44,6 +44,8 @@ function applyOutputResolution(
     height,
     devicePixelRatio: window.devicePixelRatio || 1,
     mobile: getDeviceTier() === 'mobile',
+    // (local-fps-265) a window wider than 16:9 backs its 3D canvas on the 16:9 share of the budget (the HUD's do not)
+    wideAspectBudget: true,
   });
   renderer.setPixelRatio(resolution.pixelRatio);
   (renderer as GameRenderer).userData.outputResolution = resolution;

@@ -154,6 +154,13 @@ export interface BotDoctrine {
    */
   readonly rollingTurns: boolean;
   /**
+   * The rushers' other turns keep way on too (263: the infected stood still in 12 % of their settled engaged samples,
+   * most of it pivots in the terrain escape and onto a passing leg, and the low-speed watchdog's reverse after them): the
+   * escape turn rolls while the stop corridor ahead reads clear and brakes when it does not; the turn onto a passing leg
+   * rolls unless the parked hull stands too near to turn beside. Frontline's rolling sides keep those pivots.
+   */
+  readonly rollingEscapes: boolean;
+  /**
    * The rusher's no-ram lane without the rush (RUSH_DRIVE.noRamM): a seen enemy hull in the lane ahead brakes and turns
    * the hull — save one within BALL_SHOT.contestM of the Turbo Ball, which is played for (round 2: Turbo Ball's ram deaths
    * rose 0.19 to 1.25 a match with strikers converging on the ball at 1.85x speed).
@@ -182,7 +189,7 @@ export interface BotDoctrine {
 export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
-  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, settleShots: true, jockeyS: 0, rush: false, rollingTurns: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
+  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, settleShots: true, jockeyS: 0, rush: false, rollingTurns: false, rollingEscapes: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
   routeRefreshS: null, routeMoveM: null, claimRangeM: null, packFire: 0,
 });
 /**
@@ -205,6 +212,8 @@ const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, claimRangeM: 60,
   // round 3 (the critic's M2/M3): hard turns driven round (no jockey: a rusher's back leg is a retreat)
   rollingTurns: true,
+  // 263: the terrain escape and the turn onto a passing leg too
+  rollingEscapes: true,
 });
 /**
  * The hunt's drive (mission 'hunt' with `rush`): straight at a visible target inside `directM`, an orbit at
