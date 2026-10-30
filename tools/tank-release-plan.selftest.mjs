@@ -9,7 +9,7 @@ assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'node-test tools/tank-sealed-check.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/sealed.json --gate',
   'node-test tools/procedural-fidelity.mjs --ids=leo2a7v,t14_armata --check --board --neutral-board',
   'node-test tools/gen-combat-anatomy.mjs --check',
-  'node-test tools/interior-fill-exposure.mjs --all --check --jobs=2',
+  'node-test tools/interior-fill-exposure.mjs --ids=leo2a7v,t14_armata --lane --check --jobs=4',
   'node-test tools/fleet-geometry-ledger.mjs --check --ids=leo2a7v,t14_armata',
   'node-test tools/gen-mission-attachment-seats.mjs --check --ids=leo2a7v,t14_armata',
   'node-test tools/presentation-centering.mjs --check --ids=leo2a7v,t14_armata',
@@ -44,6 +44,10 @@ assert.ok(tankReleaseSteps('m1a1_abrams_hc',false,'node-test')[0].args.includes(
 assert.equal(byTool('tank-standard-check').capture,false,'standard children acquire their own phase locks');
 assert.equal(byTool('gen-combat-anatomy').capture,true,'fleet construction uses the shared resource queue');
 assert.equal(byTool('interior-fill-exposure').capture,true,'the fill exposure builds the fleet through the shared resource queue');
+// Main 2026-10-29: the release check scopes the fill exposure to the selected ids and every body that moved against the
+// base (--lane); the whole fleet runs once per integration round in tools/gate.mjs (gate.selftest pins that step).
+assert.ok(byTool('interior-fill-exposure').args.includes('--lane')&&!byTool('interior-fill-exposure').args.includes('--all'),
+  'the release check never runs the fleet-wide fill exposure');
 assert.equal(byTool('module-hit-probe').capture,true,'fleet CPU probing uses the shared resource queue');
 assert.equal(byTool('vehicle-material-registration').capture,true,'the material registration builds through the shared resource queue');
 for(const tool of ['fleet-geometry-ledger','gen-mission-attachment-seats']) {

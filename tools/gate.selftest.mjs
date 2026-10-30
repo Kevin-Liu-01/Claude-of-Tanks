@@ -14,11 +14,11 @@ import { REPO_ROOT } from './selftest-cache.mjs';
 // arguments
 {
   const defaults = parseGateArgs([]);
-  assert.deepEqual(defaults.steps, ['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
+  assert.deepEqual(defaults.steps, ['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'fills', 'preflight']);
   assert.deepEqual(GATE_STEPS, defaults.steps);
   assert.equal(defaults.baseline, null);
   assert.deepEqual(parseGateArgs(['--steps=receipts,typecheck']).steps, ['typecheck', 'receipts'], 'steps keep the canonical order');
-  assert.deepEqual(parseGateArgs(['--skip=build,preflight']).steps, ['typecheck', 'i18n', 'budget', 'workers', 'receipts']);
+  assert.deepEqual(parseGateArgs(['--skip=build,preflight']).steps, ['typecheck', 'i18n', 'budget', 'workers', 'receipts', 'fills']);
   assert.deepEqual(parseGateArgs(['--only=src/ui/**', '--shard=2/6', '--all', '--order=registry']).receiptArgs,
     ['--only=src/ui/**', '--shard=2/6', '--all', '--order=registry'], 'receipt selection passes through to the runner');
   const strict = parseGateArgs(['--baseline=origin/main', '--strict', '--base=24c5c5b03', '--reviewed-main=abcdef1', '--install']);
@@ -48,6 +48,11 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.deepEqual(budget.find((row) => row.step === 'budget').commands, [['node', 'tools/bundle-budget.mjs', '--check']],
   'the budget runs once it exists, and fails the gate when a page is over (--check; without it the tool only reports)');
   assert.match(budget.find((row) => row.step === 'workers').error, /npm ci --prefix cloudflare\/telemetry/, 'a missing Worker install fails with the command to run');
+  // Main 2026-10-29: the whole fleet's fill exposure runs once per integration round here (tank:release:check scopes it).
+  assert.equal(plan.find((row) => row.step === 'fills').skip, 'tools/interior-fill-exposure.mjs is not in this tree');
+  const fills = planGate(options, { root: '/repo', out: '/out', exists: (path) => path === 'tools/interior-fill-exposure.mjs', workers });
+  assert.deepEqual(fills.find((row) => row.step === 'fills').commands, [['node', 'tools/interior-fill-exposure.mjs', '--all', '--check', '--jobs=4']],
+    'the gate measures every tank\'s committed fills against its current body');
   const real = workerPackages(REPO_ROOT);
   assert.deepEqual(real.map((worker) => [worker.dir, worker.scripts]), [['cloudflare/rooms', ['typecheck', 'test']],
     ['cloudflare/telemetry', ['typecheck', 'test']]], 'both Workers are gated with their typecheck and tests');

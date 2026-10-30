@@ -93,7 +93,7 @@ Codex, Claude and CI run the same gate from the checkout under test. It replaces
 the generated landing chain (`.qa-dev/landing/gen-chain.py` writing `release-then-deploy-*.sh` into
 a session scratchpad), which was not versioned and was lost once with a scratchpad.
 
-    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, preflight
+    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, fills, preflight
     node tools/gate.mjs --baseline=<starting-base>     # stop the line (below)
     node tools/gate.mjs --steps=typecheck,build,workers   # a subset, in the canonical order; --skip=<steps> removes some
     node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
@@ -108,6 +108,10 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
   A missing Worker install fails with the `npm ci --prefix cloudflare/<name>` to run; `--install`
   runs it.
 - **receipts** is `tools/run-selftests.mjs all` with one log per receipt (`--logs`).
+- **fills** (2026-10-29) is `tools/interior-fill-exposure.mjs --all --check --jobs=4`: no committed interior fill of
+  any tank stands outside its current body (a skin moved without a fills regen draws its old fills as stair-stepped
+  slabs: the owner's "voxel blocks"). It builds and voxelises the whole fleet, about 20 s a tank, so it runs here once
+  per integration round; `tank:release:check` runs the scoped `--lane` form (below).
 - **preflight** runs `tools/shared-main-preflight.mjs` for the validated HEAD with `--base`
   (default: the merge-base with `origin/main`) and `--reviewed-main` passed through; in place when
   the checkout is clean, otherwise in a reusable detached worktree of HEAD. HEAD moving or a tracked
@@ -549,6 +553,13 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
   changed-only once it is an exact-key gate receipt (the PLAN R8d pattern) or the changed-only
   pipeline's per-id input fingerprints (`tank:regen:changed`, "Changed-only regeneration" below)
   prove the other rows' inputs unchanged.
+- **The fill exposure is scoped in both modes** (2026-10-29): `interior-fill-exposure --ids=<ids> --lane`
+  measures the selected tanks plus every tank whose body moved against the merge-base with `origin/main`: its
+  hull, turret or gun digest at the geometry ledger's HIGH build differs from the base's ledger row, or its fill
+  record line differs from the base's. A shared builder's edit reaches exactly the tanks it moved this way; the
+  import-graph partition would not narrow it (on 2026-10-29, 39 of 51 live branches touched a shared core file such
+  as `decorations.ts` or `camoPolicy.ts`). When the checker's own inputs moved, every tank runs. The whole fleet runs
+  once per integration round in the release gate's `fills` step.
 - **Where the dropped work still runs:** the integrator mode runs both. The release gate
   (`tools/gate.mjs`) runs every receipt (`run-selftests.mjs all`, the same run as `npm test`) and
   `npm run build`. `npm run build` runs build:private's commands (`vite build` and the localized

@@ -4,8 +4,28 @@
 // lattice planes: re-anchoring on the record's 6-decimal origin once read 54 false on-shell voxels there.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { committedFillRecord, fillExposure } from './interior-fill-exposure.mjs';
+import { committedFillRecord, fillExposure, lanePending, laneScope } from './interior-fill-exposure.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+
+// --lane (tank:release:check): the selected ids, plus each id whose fill record line or hull/turret/gun digest moved
+// against the base; an id with no record now has nothing to expose. Only the pending ids are built for digests.
+{
+  const all = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  const row = (hull) => ({ high: { groups: { hull, turret: 't', gun: 'g', runningGear: 'r', other: 'o' } } });
+  const now = { a: 'A', b: 'B', c: 'C2', d: 'D', e: 'E', f: null, g: 'G' };
+  const then = { a: 'A', b: 'B', c: 'C', d: 'D', e: 'E', f: 'F', g: 'G' };
+  const ledger = { a: row('h'), b: row('h'), c: row('h'), d: row('h'), e: row('h'), f: row('h') }; // g: new since the base
+  const body = (hull) => ({ hull, turret: 't', gun: 'g' });
+  assert.deepEqual(lanePending({ all, selected: ['a'], now, then }), ['b', 'd', 'e', 'g'], 'only unselected ids with an unchanged record are built');
+  const digests = { b: body('h'), d: body('h2'), e: { ...body('h'), gun: 'g2' }, g: body('h') };
+  const scope = laneScope({ all, selected: ['a'], now, then, ledger, digests });
+  assert.deepEqual(scope.records, ['c'], 'a changed fill record is measured');
+  assert.deepEqual(scope.bodies, ['d', 'e', 'g'], 'a moved hull or gun, or an id the base ledger lacks, is measured');
+  assert.deepEqual(scope.ids, ['a', 'c', 'd', 'e', 'g'], 'unmoved b and record-less f are not');
+  assert.deepEqual(laneScope({ all, selected: ['f'], now, then, ledger, digests: { ...digests, a: body('h') } }).ids, ['c', 'd', 'e', 'f', 'g'],
+    'a selected id always runs');
+  assert.ok(laneScope({ all, selected: ['f'], now, then, ledger, digests }).bodies.includes('a'), 'a pending id left unbuilt counts as moved');
+}
 
 for (const id of ['kv2', 'challenger2']) {
   const record = await committedFillRecord(id);
@@ -25,4 +45,4 @@ for (const id of ['kv2', 'challenger2']) {
     }
   } finally { tank.dispose?.(); }
 }
-console.log('interior fill exposure: kv2 and challenger2 committed fills inside their bodies; seeded stale fills (up 1, up 2, forward 1) caught PASS');
+console.log('interior fill exposure: --lane scope (selected, moved records and bodies); kv2 and challenger2 committed fills inside their bodies; seeded stale fills (up 1, up 2, forward 1) caught PASS');

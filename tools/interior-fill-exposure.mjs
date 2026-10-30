@@ -2,6 +2,7 @@
 // Interior fill exposure: committed fill voxels standing outside the current body. First-party tooling: Kevin B. Liu.
 //
 //   node tools/interior-fill-exposure.mjs --ids=a,b | --all [--check] [--json=<file>] [--jobs=2] [--fills-from=<dir>]
+//   node tools/interior-fill-exposure.mjs --ids=a,b --lane [--base=<rev>] [--check] [--jobs=4]
 //
 // A fill record is measured on one build of the body (tools/gen-interior-fills.mjs) and never re-measured until its
 // regen. When a hull or turret skin moves without a fills regen the boxes stay where the old skin was: they stand
@@ -15,20 +16,33 @@
 // one voxelisation, no flood rounds); tools/changed-only/fills-check.mjs remains the exact staleness check.
 // `--check` exits 1 when any id has an exposed or on-shell fill voxel. `--fills-from` reads the group modules from
 // another directory (a fills-check scratch part, an archived tree) in place of src/vehicles/interiorFillGroups.
-import { execFile } from 'node:child_process';
+//
+// Where it runs (Main, 2026-10-29): fleet-wide (`--all --jobs=4`) once per integration round, as tools/gate.mjs's
+// `fills` step; scoped in tank:release:check by `--lane`. A lane run measures the selected ids plus every id whose
+// body moved against the base (default: the merge-base of HEAD and origin/main): its hull, turret or gun digest at the
+// fleet geometry ledger's HIGH build differs from the base's ledger row, or its committed fill record line differs
+// from the base's. That is every id a changed shared builder actually moved; an id whose body and record both equal
+// the base's was measured there by the gate. When this checker's own inputs moved against the base, every id runs.
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, columnSpans, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
+import { ledgerBuildOptions, digestTankRoot } from './fleet-geometry-digest.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from '../src/vehicles/interiorFillLoaders.generated.ts';
 import { interiorFillSpans } from '../src/vehicles/interiorFills.ts';
 
 const COMPONENTS = ['hull', 'turret', 'gun'];
 const CELL_M = 0.5;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+/** What this checker reads besides the fleet's bodies and fill records: a change re-measures every id in --lane. */
+const CHECKER_INPUTS = Object.freeze(['tools/interior-fill-exposure.mjs', 'tools/tank-voxel-body.mjs',
+  'tools/interior-fill-body-policy.mjs', 'tools/tank-surface-collect.mjs', 'tools/fleet-geometry-digest.mjs',
+  'src/vehicles/interiorFills.ts', 'src/vehicles/nationalModernizationConfig.ts', 'src/vehicles/nationalLegacyConfig.ts']);
 
 /** The committed fill record of an id (read through the loader map, never registered: builds here stay fill-free). */
 export async function committedFillRecord(id, fillsFrom = null) {
@@ -142,6 +156,56 @@ function offendingRegions(cells) {
     centroid: r.sum.map((x) => +(x / r.voxels).toFixed(3)), box: [r.lo.map((x) => +x.toFixed(3)), r.hi.map((x) => +x.toFixed(3))] }));
 }
 
+/** --lane's ids to digest: not selected, a fill record to expose, and the same record line as at the base. */
+export function lanePending({ all, selected, now, then }) {
+  const chosen = new Set(selected);
+  return all.filter((id) => !chosen.has(id) && now[id] && now[id] === then[id]);
+}
+
+/**
+ * --lane's scope. `now` and `then`: each id's fill record line here and at the base (null: none); `ledger`: the base's
+ * fleet geometry ledger rows; `digests`: the hull/turret/gun digests of lanePending's ids built here. Returns the ids
+ * to measure in fleet order, with the ids a changed record or a moved body added.
+ */
+export function laneScope({ all, selected, now, then, ledger, digests }) {
+  const chosen = new Set(selected);
+  const records = all.filter((id) => !chosen.has(id) && now[id] && now[id] !== then[id]);
+  const bodies = lanePending({ all, selected, now, then })
+    .filter((id) => COMPONENTS.some((group) => ledger[id]?.high?.groups?.[group] !== digests[id]?.[group]));
+  const added = new Set([...records, ...bodies]);
+  return { ids: all.filter((id) => chosen.has(id) || added.has(id)), records, bodies };
+}
+
+const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
+
+/** Each id's fill record line in its group module, in the working tree or (rev) at a commit; null when it has none. */
+function fillRecordLines(ids, rev = null) {
+  const texts = new Map(), lines = {};
+  for (const id of ids) {
+    const group = FLEET_GROUP_BY_ID[id] || 'core';
+    if (!texts.has(group)) {
+      const path = `src/vehicles/interiorFillGroups/${group}.generated.ts`;
+      let text = '';
+      try { text = rev ? git('show', `${rev}:${path}`) : readFileSync(join(ROOT, path), 'utf8'); } catch {}
+      texts.set(group, text.split('\n'));
+    }
+    lines[id] = texts.get(group).find((line) => line.startsWith(`  ${JSON.stringify(id)}: `)) ?? null;
+  }
+  return lines;
+}
+
+/** One fill-free build per id at the fleet geometry ledger's HIGH options: its hull, turret and gun digests. */
+async function digestIds(ids) {
+  const { createTank } = await import('../src/vehicles/tankFactory.ts');
+  const rows = {};
+  for (const id of ids) {
+    const tank = createTank(id, null, ledgerBuildOptions('high'));
+    try { const { groups } = digestTankRoot(tank.root); rows[id] = Object.fromEntries(COMPONENTS.map((group) => [group, groups[group]])); }
+    finally { tank.dispose?.(); }
+  }
+  return rows;
+}
+
 /** Measure ids in this process: one build each, fills never applied. */
 async function measureIds(ids, { fillsFrom = null } = {}) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
@@ -163,39 +227,66 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const args = process.argv.slice(2);
   const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const idsArg = value('ids');
-  const ids = args.includes('--all') || idsArg === 'all' ? Object.keys(FLEET_GROUP_BY_ID).sort()
-    : [...new Set((idsArg ?? '').split(',').filter(Boolean))];
+  const all = Object.keys(FLEET_GROUP_BY_ID).sort();
+  const everyId = args.includes('--all') || idsArg === 'all';
+  const ids = everyId ? all : [...new Set((idsArg ?? '').split(',').filter(Boolean))];
   if (!ids.length) throw new Error('interior-fill-exposure: pass --ids=a,b or --all');
   for (const id of ids) if (!Object.hasOwn(FLEET_GROUP_BY_ID, id)) throw new Error(`interior-fill-exposure: unknown id ${id}`);
   const fillsFrom = value('fills-from') ?? null;
+  const lane = args.includes('--lane'), child = args.includes('--child');
+  if (lane && (everyId || fillsFrom)) throw new Error('interior-fill-exposure: --lane widens --ids=<selected> against the committed fills');
   const jobs = Math.max(1, Number(value('jobs') ?? 1) | 0);
   // A tank build keeps geometry outside the V8 heap: more than a dozen ids run as child processes of at most twelve.
   const CHUNK = 12;
-  let rows;
-  if (args.includes('--child') || ids.length <= CHUNK) rows = await measureIds(ids, { fillsFrom });
-  else {
+  const measure = async (list, extra = []) => {
+    const digest = extra.includes('--digest');
+    if (list.length <= CHUNK) return digest ? digestIds(list) : measureIds(list, { fillsFrom });
     const scratch = mkdtempSync(join(tmpdir(), 'cot-fill-exposure-'));
-    const chunks = []; for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
-    rows = {};
-    const runChunk = (list, k) => new Promise((done, fail) => {
+    const chunks = []; for (let i = 0; i < list.length; i += CHUNK) chunks.push(list.slice(i, i + CHUNK));
+    const rows = {};
+    const runChunk = (part, k) => new Promise((done, fail) => {
       const json = join(scratch, `part${k}.json`);
-      const child = execFile(process.execPath, ['--max-old-space-size=4096', import.meta.filename, `--ids=${list.join(',')}`, '--child', `--json=${json}`,
-        ...(fillsFrom ? [`--fills-from=${fillsFrom}`] : [])], { maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: '' } },
+      const proc = execFile(process.execPath, ['--max-old-space-size=4096', import.meta.filename, `--ids=${part.join(',')}`, '--child', `--json=${json}`,
+        ...extra, ...(fillsFrom ? [`--fills-from=${fillsFrom}`] : [])], { maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: '' } },
       (error, stdout, stderr) => { process.stdout.write(stdout); if (error) { process.stderr.write(stderr); fail(new Error(`part ${k} failed`)); } else done(JSON.parse(readFileSync(json, 'utf8'))); });
-      child.on('spawn', () => console.log(`[fill-exposure] part ${k}: ${list.length} id(s), pid ${child.pid}`));
+      proc.on('spawn', () => console.log(`[fill-exposure] ${digest ? 'digest ' : ''}part ${k}: ${part.length} id(s), pid ${proc.pid}`));
     });
     let next = 0;
     await Promise.all(Array.from({ length: Math.min(jobs, chunks.length) }, async () => {
       while (next < chunks.length) { const k = next++; Object.assign(rows, await runChunk(chunks[k], k)); }
     }));
+    return rows;
+  };
+  let measured = ids, rows;
+  if (child) rows = args.includes('--digest') ? await digestIds(ids) : await measureIds(ids, { fillsFrom });
+  else {
+    if (lane) {
+      const base = value('base') ?? git('merge-base', 'HEAD', 'origin/main').trim();
+      const moved = git('diff', '--name-only', base, '--', ...CHECKER_INPUTS).split('\n').filter(Boolean);
+      if (moved.length) {
+        measured = all;
+        console.log(`[fill-exposure] lane: this checker's inputs moved against ${base.slice(0, 10)} (${moved.join(', ')}): every id`);
+      } else {
+        const now = fillRecordLines(all), then = fillRecordLines(all, base);
+        let ledger = {};
+        try { ledger = JSON.parse(git('show', `${base}:docs/references/fleet-geometry-ledger.json`)).tanks ?? {}; } catch {}
+        const digests = await measure(lanePending({ all, selected: ids, now, then }), ['--digest']);
+        const scope = laneScope({ all, selected: ids, now, then, ledger, digests });
+        measured = scope.ids;
+        console.log(`[fill-exposure] lane against ${base.slice(0, 10)}: ${ids.length} selected + ${scope.bodies.length} moved bod${scope.bodies.length === 1 ? 'y' : 'ies'}`
+          + `${scope.bodies.length ? ` (${scope.bodies.join(',')})` : ''} + ${scope.records.length} changed fill record(s)`
+          + `${scope.records.length ? ` (${scope.records.join(',')})` : ''} = ${measured.length} id(s)`);
+      }
+    }
+    rows = await measure(measured);
   }
   if (value('json')) writeFileSync(resolve(value('json')), `${JSON.stringify(rows, null, 1)}\n`);
-  if (!args.includes('--child')) {
-    const stale = ids.filter((id) => rows[id]?.onShell || rows[id]?.exposed);
+  if (!child) {
+    const stale = measured.filter((id) => rows[id]?.onShell || rows[id]?.exposed);
     if (stale.length) {
-      console.error(`[fill-exposure] ${stale.length} of ${ids.length} id(s) have fills outside the current body (regenerate their fills and the chain after them):\n  `
+      console.error(`[fill-exposure] ${stale.length} of ${measured.length} id(s) have fills outside the current body (regenerate their fills and the chain after them):\n  `
         + stale.map((id) => `${id} (on shell ${rows[id].onShell}, exposed ${rows[id].exposed}, ${rows[id].litres} L)`).join('\n  '));
       if (args.includes('--check')) process.exitCode = 1;
-    } else console.log(`[fill-exposure] PASS: ${ids.length} id(s), every committed fill voxel inside its body`);
+    } else console.log(`[fill-exposure] PASS: ${measured.length} id(s), every committed fill voxel inside its body`);
   }
 }
