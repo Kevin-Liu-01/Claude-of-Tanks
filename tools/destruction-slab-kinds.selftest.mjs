@@ -197,7 +197,7 @@ if (!isMainThread) {
   }
 
   // ---- the pool
-  const slots = new Set(), everySlot = [];
+  const slots = new Set();
   const idle = new Set();
   let builds = 0, steals = 0;
   let control = null;
@@ -297,7 +297,6 @@ if (!isMainThread) {
       workerData: { salt, passed: store.fingerprints } });
     const slot = { worker, job: null, map: null, cpuNow: 0, gone: false };
     slots.add(slot);
-    everySlot.push(slot);
     worker.on('message', (m) => onMessage(slot, m));
     worker.on('error', (e) => { if (slot.job) { fail(slot, String(e?.stack ?? e).slice(0, 1200)); slot.job = null; } });
     worker.on('exit', () => {
@@ -326,13 +325,12 @@ if (!isMainThread) {
     }
   }, 5000);
   if (toBuild.length) {
-    for (let i = 0; i < Math.min(workers, toBuild.length); i++) spawn();
+    // (every worker, though fewer maps are left to build: the rest share the heaviest maps' runs)
+    for (let i = 0; i < workers; i++) spawn();
     await finished;
     for (const slot of slots) slot.worker.postMessage(null);
   }
   clearInterval(guard);
-  // (each worker's thread clock as it last reported: its imports, builds and runs)
-  const workerCpuMs = everySlot.reduce((n, s) => n + s.cpuNow, 0);
 
   for (const [mapId, st] of state) {
     const errors = [...st.errors];
@@ -397,7 +395,8 @@ if (!isMainThread) {
     assert.ok(!control.row.pass && planted.length, `the control's planted slab (${control.mapId} #${control.id} ${control.face}) flagged nothing: the receipt misses a stray slab`);
   }
   const wallMin = (performance.now() - t0) / 60000;
-  const cpuMin = (workerCpuMs + (process.threadCpuUsage().user + process.threadCpuUsage().system) / 1000) / 60000;
+  // (the process's clock: every worker thread and V8's own helpers)
+  const cpuMin = (process.cpuUsage().user + process.cpuUsage().system) / 6e7;
   const rssGb = process.resourceUsage().maxRSS / 1048576;
   const built = results.filter((r) => r.built).length;
   console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, a face each by name; ${cachedRuns} passed before at the same fingerprint), ${snaps} snapshots, `
