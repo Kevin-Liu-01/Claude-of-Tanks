@@ -2580,6 +2580,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
     // guard heals the owner's signature (a camera without layer 0) within half a second
     'tools/black-world.browser.selftest.mjs',
+    // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
+    'tools/garage-roster-settle.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
