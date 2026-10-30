@@ -21,7 +21,8 @@
 //     behind them, caged twin headlights and plain mudguards at the front corners, the raised octagonal driver's hatch,
 //     the commander's oval raised station with its sight head and remote gun, four-pane boxes lying on the turret's
 //     shoulders, three-tube smoke columns on its rear sides and two mesh vents on its rear roof, each where the model has
-//     it (263). Track: chevron single-pin.
+//     it (263), and (265, the owner's, not the model's) two 200 L fuel drums on a shelf across the stern. Track: chevron
+//     single-pin.
 // Program frame (BUILD-STANDARD §A): +x is the vehicle's right, +z its front, metres; the turret frame's origin is the
 // ring datum at (0, 1.60, 0.50). The STB-1's handed kit stands on the side the owner's model shows it (Main's 262 ruling,
 // a per-tank placement, not a fleet flip): the model is in glTF chirality, so the commander's station, the gunner's
@@ -35,6 +36,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { addSTB1Mantlet, addType74Mantlet } from './japaneseMantlets.ts';
 import { cagedLampBox, guardedSilencer, mufflerCover, ribbedMudguard, tailLamp, towShackle, uTowEye } from './japaneseHullKit.ts';
+import { addSternShelfFuelDrums } from './rearSlopeFuelDrums.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -272,14 +274,18 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
     guardedSilencer(P, m.x, m.y - 0.03, -2.62, -3.36, 0.09, s);
   }
   // STERN: the vertical plate's large door, the extinguisher handle, the tail lamps (two at -x, one at +x), the tow
-  // hooks on the raked lower plate and the rail along the vertical plate's foot
+  // hooks on the raked lower plate and the rail along the vertical plate's foot. 265 (owner: "make the stb 1 have two
+  // big fuel barrels and back"): the fleet's 200 L pair across the plate on a welded shelf (rearSlopeFuelDrums.ts), 11 cm
+  // off it, clear of the door's ring and handle; their tops (1.53 m) stay under the gun's -4.5 degree line over the
+  // stern, and the tail lamps move out onto the sponsons' rear faces beside them
   const rz = -3.41, rake = 0.41 / (STERN_FOOT_Y - BELLY);
+  addSternShelfFuelDrums(P, { plateZ: rz, footY: STERN_FOOT_Y, rake, shelfY: 0.90, halfWidth: 0.97, standoff: 0.11, gussets: [-0.80, 0, 0.80] });
   P.add('hull', box(0.72, 0.50, 0.02), -0.22, 1.22, rz - 0.01);
   P.add('hullDark', box(0.75, 0.53, 0.010), -0.22, 1.22, rz - 0.003);
   for (const dx of [-0.30, 0.30]) P.add('hullDetail', box(0.05, 0.10, 0.04), -0.22 + dx, 1.47, rz - 0.02);
   P.add('hullDetail', box(0.10, 0.16, 0.06), -0.62, 1.19, rz - 0.03);
   P.add('hullGlass', box(0.05, 0.12, 0.05), 0.40, 1.19, rz - 0.025);
-  for (const [x, y] of [[-0.80, 1.38], [-0.93, 1.38], [0.86, 1.33]] as const) {
+  for (const [x, y] of [[-1.08, 1.40], [-1.21, 1.40], [1.14, 1.37]] as const) {
     P.add('hullDetail', cylZ(0.045, 0.04, 12), x, y, rz - 0.02);
     P.add('hullGlass', cylZ(0.036, 0.012, 12), x, y, rz - 0.042);
   }

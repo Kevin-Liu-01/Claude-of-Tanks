@@ -6,6 +6,9 @@
 // where the surface tilts aft, to the slope's foot); each drum sits on that chord with a saddle gap, its saddles stand on
 // their own chords (their feet 2 cm into the plate: welded), so nothing floats and nothing enters the plate. The drums,
 // saddles and hoops take the hull's camouflage (equipment); the straps and bung are dark steel. Hull-owned, visual only.
+// 265 (owner, 2026-10-30: "make the stb 1 have two big fuel barrels and back"): the same pair across a VERTICAL stern
+// plate (addSternShelfFuelDrums), which has no slope to seat them: a welded shelf under them on gussets, the saddles
+// on the shelf, the drums' tops under the line the gun depresses to over the stern.
 // First-party: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -78,6 +81,68 @@ function saddle(frame: Frame, centre: THREE.Vector3, x: number): THREE.BufferGeo
   return geometry.applyMatrix4(basis);
 }
 
+/** One drum lying across the stern at `cx`: its body, end chimes and rolling hoops, the dark straps at `straps` (x) and
+ * the bung on its outer end, 0.17 m from its axis along `bungDir`. The same drum on a slope and on a shelf. */
+function addDrum(P: Port, cx: number, side: number, centre: THREE.Vector3, straps: readonly number[], bungDir: THREE.Vector3): void {
+  const { radius, length } = REAR_SLOPE_DRUM, { cylX } = KIT;
+  P.addEquipment('hullDetail', cylX(radius, length, 32), cx, centre.y, centre.z);
+  for (const end of [-1, 1]) P.addEquipment('hullDetail', band(radius + 0.008, 0.02, 0.02), cx + end * (length / 2 - 0.012), centre.y, centre.z);
+  for (const dx of [-0.15, 0.15]) P.addEquipment('hullDetail', band(radius + 0.012, 0.022, 0.02), cx + dx, centre.y, centre.z);
+  for (const x of straps) P.addEquipment('hullDark', band(radius + 0.006, 0.04, 0.012), x, centre.y, centre.z);
+  // the bung on the outer end, high on the face
+  const bung = centre.clone().addScaledVector(bungDir, 0.17);
+  P.addEquipment('hullDark', cylX(0.028, 0.014, 12), cx + side * (length / 2 + 0.007), bung.y, bung.z);
+}
+
+/** A vertical stern plate's drum shelf (265): the plate's face at `plateZ` (aft is -z), its foot at `footY` over a lower
+ * plate raked forward `rake` m per m of drop, the shelf's top at `shelfY` across `halfWidth` either side, the drums'
+ * faces `standoff` off the plate (clear of its fittings) and the gussets under the shelf at `gussets` (x). */
+export interface SternShelf {
+  readonly plateZ: number; readonly footY: number; readonly rake: number; readonly shelfY: number;
+  readonly halfWidth: number; readonly standoff: number; readonly gussets: readonly number[];
+}
+
+/** A 12 mm gusset under the shelf at `x`: its top 5 mm into the shelf from the plate out to `reach`, its front 2 cm
+ * inside the stern plate and down the raked lower plate to 0.70 m, its hypotenuse back out to the shelf. */
+function gusset(shelf: SternShelf, x: number, reach: number): THREE.BufferGeometry {
+  const { plateZ, footY, rake, shelfY } = shelf, top = shelfY - 0.005, low = 0.70;
+  // u aft of the plate's face, v up
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.03, top);
+  shape.lineTo(reach, top);
+  shape.lineTo(-(footY - low) * rake - 0.02, low);
+  shape.lineTo(-0.03, footY - 0.01);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false, curveSegments: 1 });
+  const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0));
+  basis.setPosition(new THREE.Vector3(x - 0.006, 0, plateZ));
+  return geometry.applyMatrix4(basis);
+}
+
+/** The two drums across a vertical stern plate, on a welded shelf (see SternShelf): the shelf a 10 mm plate 2 cm into
+ * the stern plate and out past the drums' backs, closing the view to the ground under them, on gussets down to the
+ * raked lower plate; each drum in two saddles on it with the slope pair's gap, its straps over them. */
+export function addSternShelfFuelDrums(P: Port, shelf: SternShelf): void {
+  const { radius, length, gap, centreX, saddleX } = REAR_SLOPE_DRUM;
+  const { plateZ, shelfY, halfWidth, standoff, gussets } = shelf;
+  const cu = standoff + radius, depth = cu + radius + 0.03;
+  P.addEquipment('hullDetail', KIT.box(2 * halfWidth, 0.01, depth + 0.02), 0, shelfY - 0.005, plateZ - (depth - 0.02) / 2);
+  for (const x of gussets) P.addEquipment('hullDetail', gusset(shelf, x, cu));
+  const placed: { centre: [number, number, number]; saddles: number[] }[] = [];
+  for (const side of [-1, 1]) {
+    const cx = side * centreX, stations = [cx - saddleX, cx + saddleX];
+    const centre = new THREE.Vector3(cx, shelfY + gap + radius, plateZ - cu);
+    addDrum(P, cx, side, centre, stations, new THREE.Vector3(0, 1, 0));
+    for (const x of stations) {
+      // the chord 12 mm over the shelf's top, so the saddle's 2 cm foot stays inside the 10 mm plate
+      const frame: Frame = { mid: new THREE.Vector3(x, shelfY + 0.012, centre.z), dir: new THREE.Vector3(0, 0, -1), n: new THREE.Vector3(0, 1, 0) };
+      P.addEquipment('hullDetail', saddle(frame, centre.clone().setX(x), x));
+    }
+    placed.push({ centre: [cx, Number(centre.y.toFixed(4)), Number(centre.z.toFixed(4))], saddles: stations });
+  }
+  P.hullG.userData.sternShelfFuelDrums = { radius, length, shelfY, plateZ, depth: Number(depth.toFixed(4)), drums: placed };
+}
+
 /** The two drums on the hull's upper rear slope (see the header). */
 export function addRearSlopeFuelDrums(P: Port): void {
   const { radius, length, gap, minGap, centreX, saddleX } = REAR_SLOPE_DRUM;
@@ -94,14 +159,7 @@ export function addRearSlopeFuelDrums(P: Port): void {
       const clearance = centre.clone().setX(frame.mid.x).sub(frame.mid).dot(frame.n) - radius;
       if (clearance < minGap) centre.addScaledVector(mean.n, minGap - clearance);
     }
-    const { cylX } = KIT;
-    P.addEquipment('hullDetail', cylX(radius, length, 32), cx, centre.y, centre.z);
-    for (const end of [-1, 1]) P.addEquipment('hullDetail', band(radius + 0.008, 0.02, 0.02), cx + end * (length / 2 - 0.012), centre.y, centre.z);
-    for (const dx of [-0.15, 0.15]) P.addEquipment('hullDetail', band(radius + 0.012, 0.022, 0.02), cx + dx, centre.y, centre.z);
-    for (const { x } of frames) P.addEquipment('hullDark', band(radius + 0.006, 0.04, 0.012), x, centre.y, centre.z);
-    // the bung on the outer end, high on the face
-    const bung = centre.clone().addScaledVector(mean.n, 0.17);
-    P.addEquipment('hullDark', cylX(0.028, 0.014, 12), cx + side * (length / 2 + 0.007), bung.y, bung.z);
+    addDrum(P, cx, side, centre, frames.map(({ x }) => x), mean.n);
     for (const { x, frame } of frames) P.addEquipment('hullDetail', saddle(frame, centre.clone().setX(x), x));
     placed.push({ centre: [cx, Number(centre.y.toFixed(4)), Number(centre.z.toFixed(4))],
       saddles: frames.map(({ x, chord }) => ({ x, top: chord.top, foot: chord.foot })) });
