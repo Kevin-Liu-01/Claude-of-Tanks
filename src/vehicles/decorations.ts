@@ -2655,6 +2655,20 @@ const RETIRED_STAND_IN: Readonly<Partial<Record<FleetEquipmentVariant, FleetEqui
 // period-documented loadout replacing the era default. Fleet profile agents
 // may REQUEST changes here (docs/DECORATIONS.md carries the ask process) —
 // this table is decorations-owned.
+// Release 266: the Brazilian prototypes author their own stowage (profiles/osorio.ts, tamoyo.ts, bernardiniX1.ts: the
+// Osório's side and rear grid baskets, the Tamoyos' side bins and rear cans, the X1A2's hull tools) and the photographs
+// show clean turret roofs (blind critics, round 1: the fleet cargo and roof overlay read as clutter on all six; a side
+// cable read as a hull rail no photograph shows). decorManifestFor returns these before the fleet cargo: the crew's
+// small kit off the roof only.
+const brazilSmallKit = (): DecorManifestRow[] => [
+  { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+  { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+];
+const brazilBowKit = (): DecorManifestRow[] => [{ kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] }];
+const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
+  osorio_p2: brazilSmallKit, osorio_p1: brazilSmallKit, tamoyo1: brazilSmallKit, tamoyo3: brazilSmallKit,
+  x1_pioneiro: brazilBowKit, x1a2_carcara: brazilBowKit,
+});
 const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // --- WW2 ---
   kv2: () => [
@@ -2986,6 +3000,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // These concepts own their complete stowage and mounts. Generic aft cargo
   // falls behind the native fuel drums, outside any physical support.
   if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];
+  const brazil = BRAZIL_MANIFESTS[spec.id];
+  if (brazil) return brazil();
   // AMX-10P photo-authored turret/coax configurations own their fittings.
   // Random roof guns and crates would change the real equipment and silhouette.
   if (spec.id === 'm6_linebacker' || spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];

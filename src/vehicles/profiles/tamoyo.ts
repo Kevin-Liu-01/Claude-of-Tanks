@@ -80,7 +80,8 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
 
   // ---------------------------------------------------------------- running gear (torsion bars, six a side) --
   const roadWheelR = 0.315, roadWheelY = 0.40, wheelW = 0.36;
-  const rollers = [1.86, -0.11, -1.70].map((z) => ({ z, y: 0.99, r: 0.10 }));
+  // three return rollers about half the road wheel's diameter (Vesp's Tamoyo 3), the track's upper run kept at its height
+  const rollers = [1.86, -0.11, -1.70].map((z) => ({ z, y: 0.94, r: 0.15 }));
   const buildTamoyoRunningGear = (): void => {
     buildRunningGear(P, {
       style: 'dished', wheelR: roadWheelR, wheelW, wheelY: roadWheelY, xc: H.trackXc, wheelZs: [...ROAD_WHEEL_ZS],
@@ -88,13 +89,35 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       trackW: H.trackW, topY: 1.03, botY: 0.03, contactZF: ROAD_WHEEL_ZS[0], contactZR: ROAD_WHEEL_ZS.at(-1),
       paintedEnds: true, coveredTop: !t3, arms: true, sprocketTeeth: true,
     });
+    // the rear sprocket's bold tooth crown on its outer ring (Vesp's Tamoyo 3: a toothed sprocket in the open)
+    const SPROCKET = Object.freeze({ z: -2.93, y: 0.82, r: 0.31 }), teeth = 12;
+    for (const s of [-1, 1] as const) for (let k = 0; k < teeth; k++) {
+      const a = (k + 0.5) * (2 * Math.PI / teeth);
+      P.add('hullRunningGearDetail', xform(box(0.05, 0.075, 0.07), 0, 0, 0, a, 0, 0), s * (H.trackXc + 0.16),
+        SPROCKET.y + Math.cos(a) * (SPROCKET.r - 0.03), SPROCKET.z + Math.sin(a) * (SPROCKET.r - 0.03));
+    }
     for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
       P.add('hullRunningGearDark', torus(roadWheelR * 0.3, 0.014, P.q ? 16 : 10), s * (H.trackXc + wheelW / 2 + 0.010), roadWheelY, z,
         0, 0, Math.PI / 2);
       P.add('hullRubber', torus(roadWheelR - 0.026, 0.022, P.q ? 28 : 16, 6), s * (H.trackXc + wheelW / 2 - 0.004), roadWheelY, z,
         0, 0, Math.PI / 2);
     }
-    if (!t3) {
+    if (t3) {
+      // the Tamoyo 3's open gear (Vesp's profile): the hull side in shadow under the fender and behind the wheels, each
+      // station's arm rising aft from the hub to its pivot, a bump stop over every wheel
+      for (const s of [-1, 1] as const) {
+        P.add('hullDark', box(0.006, H.fenderY - 0.015 - H.sponsonFloorY, 6.10), s * (H.sponsonX + 0.003),
+          (H.fenderY - 0.015 + H.sponsonFloorY) / 2, 0.02);
+        P.add('hullDark', box(0.006, H.sponsonFloorY - 0.52, 5.70), s * (H.lowerX + 0.003), (H.sponsonFloorY + 0.52) / 2, -0.10);
+        for (const z of ROAD_WHEEL_ZS) {
+          const hub = [s * (H.trackXc - wheelW / 2 - 0.035), roadWheelY, z] as const;
+          const pivot = [s * (H.lowerX + 0.05), 0.80, z - 0.34] as const;
+          bar('hullRunningGearDetail', hub, pivot, 0.045);
+          P.add('hullRunningGearDetail', cylX(0.075, 0.09, P.q ? 14 : 8), s * (H.lowerX + 0.045), pivot[1], pivot[2]);
+          P.add('hullRunningGearDetail', box(0.10, 0.12, 0.10), s * (H.lowerX + 0.05), 0.95, z + 0.10);
+        }
+      }
+    } else {
       // the Tamoyo 1's long side plates over the upper running gear (four a side), hung from the fender's edge
       const t = 0.022, low = 0.76, z0 = 3.02, z1 = -3.05, seg = (z0 - z1) / 4;
       for (const s of [-1, 1] as const) {
@@ -126,9 +149,11 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.add('hullDark', box(0.12, 0.12, 0.08), s * 0.70, 0.86, 3.02);
       P.add('hullDark', torus(0.065, 0.02, 12, 6), s * 0.70, 0.86, 3.08, Math.PI / 2, 0, 0);
       liftEye(P, 'hullDetail', s * 1.28, deckY(2.60) + 0.012, 2.60, s * 0.3);
-      // the rear plate: the exhaust silencers at its upper corners, the tail lights, the tow hooks
-      P.addEquipment('hullDark', cylY(0.12, 0.12, 0.48, P.q ? 16 : 10), s * 1.12, 1.42, H.sternZ - 0.12);
-      P.addEquipment('hullDark', cylZ(0.06, 0.08, 12), s * 1.12, 1.62, H.sternZ - 0.16);
+      // the rear plate: the short exhaust pipes at its upper corners just under the deck line (Vesp's profiles), the tail
+      // lights, the tow hooks
+      P.addEquipment('hullDark', cylZ(0.085, 0.20, P.q ? 16 : 10), s * 1.12, 1.53, H.sternZ - 0.10);
+      P.add('hullDark', torus(0.085, 0.014, P.q ? 16 : 10, 6), s * 1.12, 1.53, H.sternZ - 0.20, Math.PI / 2, 0, 0);
+      P.add('hullDark', box(0.05, 0.12, 0.05), s * 1.12, 1.53, H.sternZ - 0.02);
       P.add('hullDark', box(0.18, 0.12, 0.06), s * 0.72, 1.60, H.sternZ - 0.03);
       P.add('hullGlass', box(0.12, 0.07, 0.012), s * 0.72, 1.60, H.sternZ - 0.065);
       P.add('hullDark', box(0.12, 0.14, 0.10), s * 0.62, 0.98, H.sternZ - 0.05);
@@ -140,9 +165,9 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.add('hullDetail', xform(box(0.11, 0.06, 0.08), 0, 0, 0, glacis, 0, 0), 0.50 + ox, deckY(2.62) + 0.03, 2.62);
       P.add('hullGlass', xform(box(0.09, 0.035, 0.008), 0, 0, 0, glacis, 0, 0), 0.50 + ox, deckY(2.62) + 0.04, 2.665);
     }
-    // the spare links across the glacis between the lamps (both marks: the TI-2's front photograph, the collector's Tamoyo 3)
-    KIT.spareTrackStrip(P, 'hull', -0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
-    KIT.spareTrackStrip(P, 'hull', 0.20, deckY(2.80) + 0.035, 2.80, 3, glacis, 0);
+    // the spare links in one centred row across the lower glacis between the lamps, each link fore-and-aft (the TI-2's
+    // front photograph: four; the collector's Tamoyo 3: five)
+    KIT.spareTrackStrip(P, 'hull', 0, deckY(2.97) + 0.035, 2.97, t3 ? 5 : 4, glacis, Math.PI / 2);
     // the engine deck: grille fields either side, the louvred band at the rear
     for (const s of [-1, 1] as const) {
       const zc = -2.05, y = deckY(zc);
@@ -174,30 +199,47 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
   const roof = t3 ? 0.75 : 0.72;
   const front = t3 ? 1.42 : 1.20, rear = t3 ? -2.11 : -2.05, bustleZ = -0.90, bustleFloor = 0.13;
   const hwBase = t3 ? 1.10 : 1.12, hwRoof = t3 ? 1.00 : 0.94;
+  // the Tamoyo 1's wedge: the roof's front edge, the wedge's foot over the gun shield, the chin's top at the front
+  const T1_WEDGE = Object.freeze({ z0: 0.35, z1: 1.05, y1: 0.40, yTip: 0.32 });
+  const wedgeY = (z: number): number => roof - (z - T1_WEDGE.z0) * (roof - T1_WEDGE.y1) / (T1_WEDGE.z1 - T1_WEDGE.z0);
+  /** The turret's side at height y (the slab sides lean in to the roof; the bustle from its raised floor). */
+  const sideX = (y: number, bustle: boolean): number => {
+    const f = bustle ? bustleFloor : 0.02;
+    return hwBase + (hwRoof - hwBase) * (y - f) / (roof - f);
+  };
   const buildTamoyoTurret = (): void => {
     P.add('turret', cylY(0.92, 0.96, 0.10, P.q ? 28 : 18), 0, -0.04, 0);
     // the body: slab sides leaning in to the roof, the bustle's underside raised over the engine deck
-    const ring = (floor: number, hw0: number, hw1: number): SectionPoint[] => [[-hw0, floor], [hw0, floor], [hw1, roof], [-hw1, roof]];
+    const ring = (floor: number, hw0: number, hw1: number, top = roof): SectionPoint[] => [[-hw0, floor], [hw0, floor], [hw1, top], [-hw1, top]];
     const bodyStations = t3
-      // the Tamoyo 3: the vertical front plate with chamfered corners, a bevel to the roof
+      // the Tamoyo 3: the vertical front plate with chamfered corners, its top edge chamfered to the roof (Vesp's profile)
       ? [{ z: rear, ring: ring(bustleFloor, hwBase - 0.04, hwRoof - 0.04) }, { z: bustleZ, ring: ring(bustleFloor, hwBase, hwRoof) },
         { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: front - 0.24, ring: ring(0.02, hwBase, hwRoof) },
-        { z: front, ring: ring(0.02, hwBase - 0.26, hwRoof - 0.26) }]
-      // the Tamoyo 1: the sloped front plate falls from the roof's edge to the gun shield's top
+        { z: front - 0.13, ring: ring(0.02, hwBase - 0.12, hwRoof - 0.12) },
+        { z: front, ring: ring(0.02, hwBase - 0.26, hwRoof - 0.26, roof - 0.12) }]
+      // the Tamoyo 1: the long wedge over the front quarter, from the roof's edge down to a short chin under the gun
+      // (Vesp's profile: the wedge falls about 0.4 m over 0.7 m; the TI-2's front photograph)
       : [{ z: rear, ring: ring(bustleFloor, hwBase - 0.05, hwRoof - 0.05) }, { z: bustleZ, ring: ring(bustleFloor, hwBase, hwRoof) },
-        { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: 0.72, ring: ring(0.02, hwBase, hwRoof) },
-        { z: front, ring: [[-(hwBase - 0.10), 0.02], [hwBase - 0.10, 0.02], [hwBase - 0.22, 0.46], [-(hwBase - 0.22), 0.46]] as SectionPoint[] }];
+        { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: T1_WEDGE.z0, ring: ring(0.02, hwBase, hwRoof) },
+        { z: T1_WEDGE.z1, ring: ring(0.02, hwBase - 0.06, hwRoof - 0.04, T1_WEDGE.y1) },
+        { z: front, ring: ring(0.16, hwBase - 0.14, hwRoof - 0.10, T1_WEDGE.yTip) }];
     const body = sectionSolid(bodyStations);
     body.userData.primaryStockRole = 'tamoyo-turret';
     P.add('turret', body);
     if (t3) {
-      // the spaced-armour front: an outer plate stood off the vertical face, the concertina boot's frame
-      P.add('turret', box(2 * (hwBase - 0.30), 0.62, 0.06), 0, 0.37, front + 0.08);
-      P.add('turretDetail', box(0.06, 0.62, 0.10), -(hwBase - 0.30), 0.37, front + 0.04);
-      P.add('turretDetail', box(0.06, 0.62, 0.10), hwBase - 0.30, 0.37, front + 0.04);
+      // the spaced-armour front: an outer plate stood off the vertical face below the chamfer, its edge frames
+      P.add('turret', box(2 * (hwBase - 0.30), 0.52, 0.06), 0, 0.34, front + 0.08);
+      P.add('turretDetail', box(0.06, 0.52, 0.10), -(hwBase - 0.30), 0.34, front + 0.04);
+      P.add('turretDetail', box(0.06, 0.52, 0.10), hwBase - 0.30, 0.34, front + 0.04);
     }
     for (const s of [-1, 1] as const) {
-      liftEye(P, 'turretDetail', s * (hwRoof - 0.10), roof + 0.005, front - 0.40, s * 0.4);
+      // the two horizontal ports low on each side's forward third (both of Vesp's profiles)
+      const pz = t3 ? 0.30 : 0.05;
+      for (const py of [0.22, 0.40]) {
+        const lean = Math.atan2(hwBase - hwRoof, roof - 0.02);
+        P.add('turretDark', xform(box(0.02, 0.035, 0.30), 0, 0, 0, 0, 0, s * lean), s * (sideX(py, false) + 0.006), py, pz);
+      }
+      liftEye(P, 'turretDetail', s * (hwRoof - 0.10), roof + 0.005, t3 ? front - 0.40 : T1_WEDGE.z0 - 0.12, s * 0.4);
       liftEye(P, 'turretDetail', s * (hwRoof - 0.10), roof + 0.005, rear + 0.25, s * 2.7);
     }
   };
@@ -214,14 +256,15 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.add('turretGlass', box(0.075, 0.035, 0.012), cx + Math.sin(a) * (cr + 0.026), roof + 0.10, cz + Math.cos(a) * (cr + 0.026), 0, a, 0);
     }
     P.addCupola('turret', cylY(cr * 0.92, cr * 0.96, 0.05, P.q ? 24 : 14), cx, roof + 0.185, cz);
-    P.addEquipment('turretDark', cylY(0.03, 0.04, 0.16, 10), cx, roof + 0.29, cz + cr + 0.02);
+    // the .50 low on the cupola: its mounting foot on the cupola's top ring, ahead of the hatch (both of Vesp's profiles)
     const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.62, elev: 0.03, ring: false,
       shield: false, seed: 6631, working: true });
     mg.name = 'tamoyoCommanderM2';
-    mg.position.set(cx, roof + 0.37, cz + cr + 0.02);
+    mg.position.set(cx, roof + 0.21, cz + 0.12);
     P.turretG.add(mg);
-    // the gunner's sight head ahead of the cupola (the Tamoyo 3's Ferranti FCS with its rangefinder and thermal box)
-    const gz = t3 ? 0.62 : 0.40;
+    // the gunner's sight head ahead of the cupola (the Tamoyo 3's Ferranti FCS with its rangefinder and thermal box; the
+    // Tamoyo 1's on the flat roof behind the wedge)
+    const gz = t3 ? 0.62 : 0.12;
     P.addEquipment('turret', box(t3 ? 0.34 : 0.24, t3 ? 0.26 : 0.18, 0.36), -0.50, roof + (t3 ? 0.13 : 0.09), gz);
     P.add('turretGlass', box(t3 ? 0.24 : 0.16, 0.08, 0.008), -0.50, roof + (t3 ? 0.15 : 0.11), gz + 0.184);
     P.addCupola('turret', cylY(0.28, 0.29, 0.05, P.q ? 22 : 12), 0.50, roof + 0.025, -0.40);
@@ -233,40 +276,53 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.62, roof + 0.04, rear + 0.40);
       P.addEquipment('turret', cylY(0.012, 0.015, 2.0, 8), s * 0.62, roof + 1.04, rear + 0.40, 0, 0, s * 0.03);
     }
-    // the dischargers: the Tamoyo 1's four on each cheek, aimed forward and out; the Tamoyo 3's two by two at the rear corners
+    // the dischargers. The Tamoyo 1: a fan of four large tubes on each front cheek, laid down the wedge and aimed forward,
+    // each splayed a little further out (Vesp's profile, the TI-2's front photograph). The Tamoyo 3: a cluster of six on
+    // a bracket at about 70% of the turret's length, aimed forward, up and out (Vesp's profile).
+    const wedgeTilt = Math.atan2(roof - T1_WEDGE.y1, T1_WEDGE.z1 - T1_WEDGE.z0);
     for (const s of [-1, 1] as const) {
       if (!t3) {
+        const r = 0.052;
         for (let k = 0; k < 4; k++) {
-          P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.45, s * 0.55, 0),
-            s * (hwRoof + 0.02 + k * 0.02), 0.55, 0.62 - k * 0.12);
+          const x = s * (0.60 + k * 0.085), z = 0.90 - k * 0.12, ny = Math.cos(wedgeTilt), nz = Math.sin(wedgeTilt);
+          P.addEquipment('turret', xform(markSmokeTube(cylZ(r, 0.30, P.q ? 14 : 8)), 0, 0, 0, wedgeTilt * 0.85, s * (0.06 + k * 0.07), 0),
+            x, wedgeY(z) + (r + 0.012) * ny, z + (r + 0.012) * nz);
         }
-        P.addEquipment('turret', box(0.08, 0.08, 0.50), s * (hwRoof + 0.06), 0.48, 0.44);
+        // the tubes' cradle on the wedge
+        P.addEquipment('turretDetail', xform(box(0.38, 0.03, 0.30), 0, 0, 0, wedgeTilt, 0, 0), s * 0.73, wedgeY(0.78) + 0.012, 0.78);
       } else {
-        P.addEquipment('turret', box(0.10, 0.28, 0.36), s * (hwBase + 0.02), 0.48, -1.10);
-        for (let row = 0; row < 2; row++) for (let k = 0; k < 2; k++) {
-          P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.40, 0),
-            s * (hwBase + 0.10), 0.42 + row * 0.13, -0.98 - k * 0.16);
+        const bx = sideX(0.48, true) + 0.06;
+        P.addEquipment('turret', box(0.16, 0.30, 0.52), s * bx, 0.48, -1.08);
+        for (let row = 0; row < 2; row++) for (let k = 0; k < 3; k++) {
+          P.addEquipment('turret', xform(markSmokeTube(cylZ(0.036, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.40, 0),
+            s * (bx + 0.10), 0.41 + row * 0.14, -0.90 - k * 0.16);
         }
       }
     }
-    // the bustle's rear stowage: the Tamoyo 1's netted box, the Tamoyo 3's rack with a jerrycan
+    // the bustle: a clean roof; the Tamoyo 1's netted stowage bin on each side of the bustle (Vesp's profile, the CIBld
+    // tank); on both marks a pair of cans upright on a bracket on the rear plate (both profiles)
     if (!t3) {
-      P.addEquipment('turret', box(1.70, 0.36, 0.30), 0, 0.42, rear - 0.12);
-      stowage(P, 'turretCloth', rng, [[-0.40, 0.66, rear - 0.12, 0.70, 0.18, 0.28], [0.42, 0.65, rear - 0.12, 0.62, 0.16, 0.26]]);
-    } else {
-      const z0 = rear, z1 = rear - 0.30, half = 0.80, floorY = 0.20, railY = 0.56;
+      const z0 = -1.02, z1 = -1.86, yLo = 0.28, yHi = 0.58, out = 1.31;
       for (const s of [-1, 1] as const) {
-        P.addEquipment('turretDetail', box(0.03, 0.03, z0 - z1), s * half, railY, (z0 + z1) / 2);
-        P.addEquipment('turretDetail', box(0.03, 0.03, z0 - z1), s * half, floorY, (z0 + z1) / 2);
-        for (const z of [z0 - 0.02, z1 + 0.02]) P.addEquipment('turretDetail', box(0.028, railY - floorY + 0.03, 0.028), s * half, (railY + floorY) / 2, z);
+        const xi0 = sideX(yLo, true) - 0.01, xi1 = sideX(yHi, true) - 0.01;
+        P.addEquipment('turretDetail', slab(
+          [s * xi0, yLo, z0], [s * out, yLo, z0], [s * out, yLo, z1], [s * xi0, yLo, z1],
+          [s * xi1, yHi, z0], [s * out, yHi, z0], [s * out, yHi, z1], [s * xi1, yHi, z1]));
+        stowage(P, 'turretCloth', rng, [[s * (xi1 + out) / 2, yHi + 0.05, (z0 + z1) / 2, out - xi1 - 0.04, 0.12, z0 - z1 - 0.06]]);
+        // the net's cords over the load and down the bin's face
+        for (const z of [z0 - 0.10, (z0 + z1) / 2, z1 + 0.10]) {
+          P.add('turretDark', box(out - xi1 + 0.02, 0.012, 0.012), s * (xi1 + out) / 2, yHi + 0.115, z);
+          P.add('turretDark', box(0.012, yHi - yLo + 0.10, 0.012), s * (out + 0.007), (yHi + yLo) / 2 + 0.05, z);
+        }
+        P.add('turretDark', box(0.012, 0.012, z0 - z1), s * (out + 0.007), yHi - 0.06, (z0 + z1) / 2);
       }
-      P.addEquipment('turretDetail', box(half * 2, 0.03, 0.03), 0, railY, z1 + 0.015);
-      P.addEquipment('turretDetail', box(half * 2, 0.03, 0.03), 0, floorY, z1 + 0.015);
-      stowage(P, 'turretCloth', rng, [[-0.30, floorY + 0.14, rear - 0.15, 0.80, 0.24, 0.24]]);
-      jerryCan(P, 'turretCloth', 0.55, floorY + 0.20, rear - 0.15, 0.16);
     }
+    const canY = roof - 0.28;
+    P.addEquipment('turretDetail', box(0.46, 0.03, 0.30), 0.42, canY - 0.255, rear - 0.15);
+    for (const dx of [-0.17, 0.17]) P.addEquipment('turretDetail', box(0.03, 0.30, 0.03), 0.42 + dx, canY - 0.12, rear - 0.015);
+    jerryCan(P, 'turretCloth', 0.42, canY, rear - 0.16, 0);
     P.turretG.userData.tamoyoTurretReceipt = {
-      revision: 'tamoyo-266-r1', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 8 : 8,
+      revision: 'tamoyo-266-r2', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 12 : 8,
     };
   };
   buildTamoyoTurretFittings();
@@ -278,10 +334,13 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     P.gunG.position.set(0, trunnion.y, trunnion.z);
     const seg = P.q ? 24 : 12;
     if (t3) {
-      // the narrow mantlet in its concertina boot behind the spaced front plate
+      // the narrow mantlet behind the spaced front plate, the black ribbed rubber boot over the gun's opening in front of
+      // it (the collector's photograph; its lowest rib clear of the deck at -8 degrees)
       P.addGunExtra(box(0.46, 0.36, 0.30), 0, 0.02, 0.30);
-      for (let k = 0; k < 4; k++) P.add('gunMountCloth', box(0.42 - k * 0.03, 0.32 - k * 0.03, 0.04), 0, 0.02, 0.48 + k * 0.05);
-      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.20, -0.02, 0.47);
+      for (let k = 0; k < 9; k++) {
+        P.addGunExtraDark(box(0.56 - Math.abs(k - 3) * 0.02, 0.026, 0.09), 0, -0.19 + k * 0.04, 0.535);
+      }
+      P.addGunExtraDark(box(0.50, 0.34, 0.03), 0, -0.03, 0.495);
       // Royal Ordnance 105 mm L7A3 (barrel no. 001): the fume extractor 0.4 of the way out, a plain muzzle; the muzzle
       // on the published 8.9 m
       const len = (H.noseZ + 2.42) - (RING.z + trunnion.z), r0 = 0.085, r1 = 0.072, ez = 1.95, el = 0.62;
@@ -293,17 +352,18 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.muzzleZ = len;
       P.gunG.userData.tamoyoGunReceipt = { mark, caliberMm: 105, muzzleZ: len };
     } else {
-      // the broad gun shield, a wedge from its top to the sloped front plate (its foot clear of the deck at -8 degrees)
+      // the gun shield at the wedge's foot, between the discharger fans (its foot clear of the deck at -8 degrees, its top
+      // under the wedge)
       P.addGunExtra(slab(
-        [-0.62, -0.26, 0.10], [0.62, -0.26, 0.10], [0.58, -0.23, 0.40], [-0.58, -0.23, 0.40],
-        [-0.62, 0.20, 0.10], [0.62, 0.20, 0.10], [0.50, 0.12, 0.40], [-0.50, 0.12, 0.40]));
-      P.addGunExtra(cylZ(0.13, 0.12, seg, 0.15), 0, 0, 0.46);
-      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.24, -0.06, 0.42);
-      P.addGunExtraDark(cylZ(0.045, 0.04, 12), -0.26, 0.04, 0.42);
+        [-0.46, -0.26, 0.10], [0.46, -0.26, 0.10], [0.42, -0.23, 0.30], [-0.42, -0.23, 0.30],
+        [-0.44, 0.12, 0.10], [0.44, 0.12, 0.10], [0.36, 0.07, 0.30], [-0.36, 0.07, 0.30]));
+      P.addGunExtra(cylZ(0.13, 0.12, seg, 0.15), 0, 0, 0.36);
+      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.24, -0.06, 0.32);
+      P.addGunExtraDark(cylZ(0.045, 0.04, 12), -0.26, 0.04, 0.32);
       // the 90 mm BR3 (the CS Super 90 copy, L/52): the bore evacuator, the double-baffle brake; the muzzle on the published
       // 8.77 m
       const len = (H.noseZ + 2.27) - (RING.z + trunnion.z), r0 = 0.072, r1 = 0.062;
-      P.add('gun', cylZ(r1, len - 0.52 - 0.30, seg, r0), 0, 0, (0.52 + len - 0.30) / 2);
+      P.add('gun', cylZ(r1, len - 0.42 - 0.30, seg, r0), 0, 0, (0.42 + len - 0.30) / 2);
       P.add('gun', cylZ(0.095, 0.40, seg), 0, 0, len * 0.62);
       P.add('gun', cylZ(0.095, 0.05, seg, r1 * 1.02), 0, 0, len * 0.62 - 0.225);
       P.add('gun', cylZ(r1 * 1.02, 0.05, seg, 0.095), 0, 0, len * 0.62 + 0.225);

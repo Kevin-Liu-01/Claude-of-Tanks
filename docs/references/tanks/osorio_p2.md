@@ -20,8 +20,8 @@ prototype got its definitive armour). No existing id changes.
 
 | id | configuration | gun | sights | kit | coat |
 |---|---|---|---|---|---|
-| osorio_p2 | the 120 mm P.2 (the 1987 Saudi "Al Fahd", the CIBld tank 2013-21, the 6º RCB's 2022 parades) | GIAT G1 smoothbore, segmented sleeve, no extractor | SFIM VS580-19 panoramic on its pedestal, VS580-10 gunner, Philips UA 9090 thermal head | 2x3 dischargers each side, two left bins, right basket, laser-warning head and tall cylinders at the right rear | the Army two-tone (CIBld 2020) |
-| osorio_p1 | the 105 mm P.1 of the Army's 1986-87 homologation (the Conde de Linhares museum tank, restored at Curitiba 2024) | Royal Ordnance L7A3 with fume extractor and sleeve | two low OIP LRS-5 heads | 2x2 dischargers each side, one left bin, right basket, fender mirrors, glacis travel lock | the 1986 three-tone (green, brown, black) |
+| osorio_p2 | the 120 mm P.2 (the 1987 Saudi "Al Fahd", the CIBld tank 2013-21, the 6º RCB's 2022 parades) | GIAT G1 smoothbore, segmented sleeve, no extractor | SFIM VS580-19 panoramic on its pedestal, VS580-10 gunner, Philips UA 9090 thermal head | 2x3 dischargers each side over grid baskets on both sides wrapping the bustle, laser-warning head and tall cylinders at the right rear | the Army coat: olive with large hard-edged earth-brown and very dark green fields (CIBld 2020) |
+| osorio_p1 | the 105 mm P.1 of the Army's 1986-87 homologation (the Conde de Linhares museum tank, restored at Curitiba 2024) | Royal Ordnance L7A3 with fume extractor and sleeve | two low OIP LRS-5 heads | 2x2 dischargers each side over the same grid baskets, glacis travel lock | earth brown with broad dark-green bands, as photographed (2015, 2024) |
 
 ## Source and comparison contract
 
@@ -39,8 +39,10 @@ prototype got its definitive armour). No existing id changes.
   belly; six wheel stations on a 0.895 m pitch; the skirt bottom 0.64 m; the turret 2.29 m wide (70 % of the hull), its
   cheek noses 1.44 m ahead of the ring and the bustle 2.38 m behind; the plan's cheek chamfer from 0.555 m half-width at the
   front to the 1.145 m slab sides 0.48 m back; the roof heads, cupola, hatch and MG stations; two circular fan grilles on
-  the engine deck (artwork only, flagged in RESEARCH-osorio.md). The road wheels drawn small in the artwork: 0.66 m from the
-  photographs (the P.1 profile, the 2022 parade).
+  the engine deck (artwork only, flagged in RESEARCH-osorio.md). The road wheels drawn small in the artwork: 0.73 m from the
+  photographs, about 0.8 of the pitch (the P.1 profile, the Saudi 1987 and 2022 photographs; blind critics, round 1). The
+  gun's trunnion 0.28 m over the ring plane (the P.1 profile photograph; the three-view's 0.25 m left the mantlet's
+  underside on the deck short of the published -10 degrees).
 - Photographs (viewed, cited, not downloaded): Wikimedia Commons "Osório (CIBld).png" (Jacupiri, CC BY-SA 4.0, P.2 2020),
   "Sem título 0053 (51959476017).jpg" and "13 05 2022 Solenidade ... (52070734282).jpg" (Vice-Presidência da República,
   CC BY 2.0, P.2 2022), "EE-T1 Osório.jpg" and "EE-T2 Osório.jpg" (public domain via Flickr, P.2 1987 and a parade);

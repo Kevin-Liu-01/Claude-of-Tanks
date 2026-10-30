@@ -81,6 +81,7 @@ assert.deepEqual([p1.dischargers, p2.dischargers], [8, 12], 'the Osório P.1 two
 assert.deepEqual([p1.sightHeads, p2.sightHeads, p2.panoramicPedestal], [2, 3, true], 'the P.1\'s two LRS-5 heads; the P.2\'s VS580 heads');
 assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt('tamoyo3', 'tamoyoTurretReceipt').sideSkirts], [true, false],
   'the Tamoyo 1 on its side plates, the Tamoyo 3 on open gear');
-assert.deepEqual([receipt('x1_pioneiro', 'x1TurretReceipt').spareLinks, receipt('x1a2_carcara', 'x1TurretReceipt').spareLinks], [false, true],
-  'the X1A2\'s spare links on its bustle');
+const x1 = receipt('x1_pioneiro', 'x1TurretReceipt'), x1a2 = receipt('x1a2_carcara', 'x1TurretReceipt');
+assert.deepEqual([x1.flankSmokeBoxes, x1a2.flankSmokeBoxes, x1.cupola, x1a2.cupola], [false, true, 'dome', 'vision-block'],
+  'the X1A2\'s six-tube boxes on its rear flanks; the X1\'s own domed cupola');
 console.log(`brazil.selftest: ${Object.keys(IDS).length} Brazilian ids at both qualities in their packets, trees and tiers`);

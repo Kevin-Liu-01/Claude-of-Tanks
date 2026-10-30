@@ -23,9 +23,9 @@ const brazilian = (id: string, donor: string, name: string, era: 'cold-war' | 'm
 // through the ZF LSG 3000, 70 km/h, 45 km/h in reverse, more than 33 degrees a second of traverse, +20/-10 degrees, four
 // crew. Neither prototype got its definitive armour (Bastos): the composite frontal arc "against 105 mm APFSDS" sits at
 // the AMX-40's footing, its 1987 Saudi rival with the same claim and the same G1 gun.
-const osorioArmor = (barrelLenM: number) => modernArmor({
+const osorioArmor = (barrelLenM: number, barrelRadM: number) => modernArmor({
   hl: 3.565, hw: 1.50, inW: 1.00, floor: 0.46, trkTop: 0.92, roofY: 1.60,
-  turretPivot: [0, 1.60, 0.40], gunPivot: [0, 0.28, 0.85], barrelLenM, barrelRadM: 0.088,
+  turretPivot: [0, 1.60, 0.40], gunPivot: [0, 0.28, 0.85], barrelLenM, barrelRadM,
   glacis: [380, 380, 480], lower: [120, 120, 150], side: [60, 60, 70], skirt: [40, 40, 120], rear: 30, roof: 30,
   tw: 1.145, tFrontZ: 1.44, tRearZ: -2.38, tH: 0.77,
   cheek: [430, 430, 620], tSide: [200, 200, 280], tRear: 45, tRoof: 35, mantlet: [340, 340, 430], loader: true,
@@ -47,7 +47,7 @@ osorio_p2.gun = {
   ...osorio_p2.gun, caliberMm: 120, reloadS: 6.3, baseAccuracy: 0.29, aimTimeS: 1.75,
   shells: osorio_p2.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 760, pen1000Mm: 690, pen2000Mm: 622, dmg: 510 } : shell),
 };
-osorio_p2.armor = osorioArmor(5.285);
+osorio_p2.armor = osorioArmor(5.285, 0.104);
 osorio_p2.visual = {
   ...osorio_p2.visual,
   // the Army's coat (the CIBld tank, 2020): olive with large hard-edged fields of a dull earth brown and a very dark
@@ -74,7 +74,7 @@ osorio_p1.gun = {
     { ...l7Rounds[2], name: 'L35 HESH', type: 'HE' },
   ],
 };
-osorio_p1.armor = osorioArmor(4.545);
+osorio_p1.armor = osorioArmor(4.545, 0.088);
 osorio_p1.visual = {
   ...osorio_p1.visual,
   // the surviving P.1 as photographed (museum 2015, Curitiba 2024): earth brown with broad dark-green bands; the
@@ -189,8 +189,8 @@ Object.assign(x1_pioneiro, {
   hullTraverseDegS: 40, turretTraverseDegS: 28, gunPitchDegS: 24, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
 x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 4.9, baseAccuracy: 0.34, aimTimeS: 2.0, shells: x1Rounds(x1_pioneiro, 480) };
-x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 0.98, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
-  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.30, tRearZ: -1.20, tH: 0.62, glacis: 38, lower: 44, side: 25, loader: true });
+x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 1.10, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
+  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.10, tRearZ: -1.43, tH: 0.68, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
   ...x1_pioneiro.visual,
   // the Army's plain grey olive drab of the 1970s and 80s (Gaydos' profile); the white turret ring
@@ -205,8 +205,8 @@ Object.assign(x1a2_carcara, {
   hullTraverseDegS: 42, turretTraverseDegS: 30, gunPitchDegS: 25, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
 x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 470) };
-x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.08, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
-  barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.64, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
+x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.10, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
+  barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.28, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
   ...x1a2_carcara.visual,
   // the 6º RCB's three-tone (Gaydos' camouflaged profile): a sand base with green and dark-brown blotches; the white
