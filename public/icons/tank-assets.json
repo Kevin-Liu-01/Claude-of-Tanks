@@ -130534,7 +130534,7 @@
           "fittingPaint": 5,
           "trackSteel": 1,
           "armorPaint": 16,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 13,
           "opticGlass": 3,
           "wood": 2,
@@ -130594,8 +130594,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10548,
-          "sha256": "beb92fde7115467cc05e6c089a31e094b584385cba3c944b551f5cb4d1cfb6b9"
+          "bytes": 10518,
+          "sha256": "d814de4892f65699826e66919df2d49d5cb47c1a87bf4d6293aaeac3000764d5"
         },
         "topSilhouette": {
           "file": "centurion13_top_silhouette.png",
@@ -130618,24 +130618,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26524,
-          "sha256": "01d1885733492f9a515f74ed55bc8a44eb36e211ec98f7942799d20f253287e6"
+          "bytes": 26520,
+          "sha256": "a2d82859c29e277b007dce16de6bf8d31d4c5c0e383283334788769fdfc8193f"
         },
         "modulesSide": {
           "file": "centurion13_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25626,
-          "sha256": "f3f05aa07f6bfa069616099e6ecdc976bc1465e0b129eee2e5f2bac439d7fc95"
+          "bytes": 25678,
+          "sha256": "a0a8f04281342b95fcc182d179d0e92018fc2a0c986d842f8d4394a8a0dc76d3"
         },
         "crewSide": {
           "file": "centurion13_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21488,
-          "sha256": "e3c8fb4ca10c50d9b30f0ba0c83bc77a1f8747536ae27ce3d686cf5286444ea8"
+          "bytes": 21482,
+          "sha256": "674b39da6cc66b1fa4c52d550613377c3dde63189cfd647f2e7761b79bdd576c"
         },
         "markings": {
           "file": "centurion13_markings.png",
@@ -132230,7 +132230,7 @@
           }
         ]
       },
-      "geometryHash": "fc1e42cc",
+      "geometryHash": "16266559",
       "metadataHash": "1b6d780e",
       "presentationAnchor": {
         "xM": -0.0001,
@@ -132258,7 +132258,7 @@
           "fittingPaint": 3,
           "trackSteel": 2,
           "armorPaint": 13,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 8,
           "opticGlass": 2,
           "wood": 1,
@@ -132293,15 +132293,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22604,
-          "sha256": "8339fdff19ffb08e3efa6b53a506a35c7db055bd56a4c91f7eba38bd34b39ebc",
+          "bytes": 22574,
+          "sha256": "2321a666493c320cfaaefe16437023e46109cc6b4a47f1dcdb878c4ad987e284",
           "thumbnail": {
             "file": "thumbs/centurion3_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9270,
-            "sha256": "ea14b8c26f5b818fcfd2a9b16b578ad994e72ff3c7029a73dd31e7d94399fca5"
+            "bytes": 9258,
+            "sha256": "e96821f7c2848cc2ae177e01bce021711acbdb8863f502a1c7758c976baa0cdc"
           }
         },
         "top": {
@@ -132309,16 +132309,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9442,
-          "sha256": "3308c8b91f28ca8a4177b359c921e7db97170dbf36e6977f239cf5a9007c1827"
+          "bytes": 9468,
+          "sha256": "4f4cd61a4f7c2f47de00a3f102c677a02aa6e9326f6601691a8cdc078929a6a5"
         },
         "side": {
           "file": "centurion3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9238,
-          "sha256": "a23f97bfba2d5fc4f1984ae1b3a13299fd88261567e1201cf6a953e6abb0d0da"
+          "bytes": 9244,
+          "sha256": "0503562bbfac3c7990b949822252c7944a2e49faf1e1515f02b1d82add932d95"
         },
         "topSilhouette": {
           "file": "centurion3_top_silhouette.png",
@@ -132333,32 +132333,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4316,
-          "sha256": "fbd92ecc419b88e941256bf472fe5dbfc4c2ba72b1783a1e30bd1dd5b1ac8eeb"
+          "bytes": 4336,
+          "sha256": "8e5cc0ed98d911e367c98ba05c5e75b0c137be9a6a4249b856bc37cfd72f7107"
         },
         "armorSide": {
           "file": "centurion3_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24846,
-          "sha256": "b49b4ee269b27703abe07e7907759376473a0bb7c923a9132002d3b2c4c83484"
+          "bytes": 24818,
+          "sha256": "eff0c082ce6dbfe2d73d906fdd120ab430876d8119c0636bf5e81cee6cb7af8b"
         },
         "modulesSide": {
           "file": "centurion3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23416,
-          "sha256": "76aa326bd5867e038d8bb75b007ea7ae559b989aed168781543ace9bde7d233c"
+          "bytes": 23460,
+          "sha256": "7a4b3e30a0db5717a5b526cc1a9cf62854b4b5d073fab7bbf7bccb99ed47b93a"
         },
         "crewSide": {
           "file": "centurion3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19048,
-          "sha256": "5afccc7c5d1468c808fa758cb33d77832db95352934fbcc97fe63a5bf7b4dd6e"
+          "bytes": 19074,
+          "sha256": "afb5a9218a4059f10eda36894656ad08cb428309c39059adde386b50cc0bb618"
         },
         "markings": {
           "file": "centurion3_markings.png",
@@ -134050,7 +134050,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 16,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 14,
           "opticGlass": 3,
           "wood": 2,
@@ -134111,8 +134111,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11828,
-          "sha256": "0baffff8659cbc73ee5e4f9cdd166ac107aabf2350552e5155b08882c6074a3d"
+          "bytes": 11812,
+          "sha256": "90f3b9c8531e3a530a28bf74362229ab39f4995f81e3ee8f7ce093fb36c8eb8f"
         },
         "topSilhouette": {
           "file": "centurion5_1_aus_top_silhouette.png",
@@ -134135,24 +134135,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27072,
-          "sha256": "6b4944f5efb6729de0d3bf32836c0eeef7ceac3cb29ee33406b7adf03f806c26"
+          "bytes": 27062,
+          "sha256": "e945440f4c55f6f27f701bb59ffe972febbeb1c8cb6ac77ef8611bfd2dacec2f"
         },
         "modulesSide": {
           "file": "centurion5_1_aus_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25994,
-          "sha256": "2be1fbf9907784cbb053440c0e5e2bf49e92e921450fa006eb9289c8d742eb27"
+          "bytes": 25926,
+          "sha256": "ba951b1b24cbcf00f9af2438a90d2ef46369bb979a8c4394baa13bc52c85a250"
         },
         "crewSide": {
           "file": "centurion5_1_aus_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23482,
-          "sha256": "df35c420d8eef0e0d5fc97a254b587ec4dfa297bb7ae975cdb60918f6acf885d"
+          "bytes": 23414,
+          "sha256": "db2a9ae1a5b13fd7b66dc40483f937625137e92e815e5d290dee56f84a209fe3"
         },
         "markings": {
           "file": "centurion5_1_aus_markings.png",
@@ -135853,7 +135853,7 @@
           "fittingPaint": 2,
           "trackSteel": 1,
           "armorPaint": 15,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 10,
           "opticGlass": 2,
           "wood": 2,
@@ -135913,8 +135913,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9476,
-          "sha256": "99733834cbd05a361da0a88ad202a94274691011d938adc00b6277dfe30cfe2d"
+          "bytes": 9464,
+          "sha256": "69eafa1b6dd52f62dec26c53b160cdba8d5b5590d70c28923384ea24b3460a19"
         },
         "topSilhouette": {
           "file": "centurion5_2_top_silhouette.png",
@@ -135937,24 +135937,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25914,
-          "sha256": "35c4a081f31408c76cca51a187b8bb75bc226e0ea97d1967a4734159da05084d"
+          "bytes": 25856,
+          "sha256": "309265865977f3bc102b8e2bbd10b60328be8eafeeedf84b47c0120ddf6f2e83"
         },
         "modulesSide": {
           "file": "centurion5_2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25582,
-          "sha256": "78e3586298f36ff9d264c32b4d2e3dd6f0674962a66189823e0409c25d512d73"
+          "bytes": 25554,
+          "sha256": "ded11c5fa9d1ad8d7cd118b2d806c260cc59b29bbe372049839928ef8d36669f"
         },
         "crewSide": {
           "file": "centurion5_2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20874,
-          "sha256": "cb281cd3b2ef78b7e193f7c4bf1bb44e00b696cc1d77526b1094544ced915b15"
+          "bytes": 20862,
+          "sha256": "0807dbb83f22fbabdb5500200bde2d8d0bd9fd94dbdaabca82a3983c409986cb"
         },
         "markings": {
           "file": "centurion5_2_markings.png",
@@ -138127,7 +138127,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 17,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 11,
           "opticGlass": 2,
           "wood": 2,
@@ -138188,8 +138188,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13008,
-          "sha256": "edd361574ad05a95f3b4bfe1b1e10c77ca0970c1f26635db3fe40cd70473c6fb"
+          "bytes": 13004,
+          "sha256": "72b2234609d6f23611d9e7579950f36ea17e9c06ccfdb3ea887010081c885ba2"
         },
         "topSilhouette": {
           "file": "centurion5_avre_top_silhouette.png",
@@ -138212,24 +138212,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33446,
-          "sha256": "d1abc6184396bb428f186aef9c069463bae6daa45fe5ca161406002d1b68e751"
+          "bytes": 33430,
+          "sha256": "9d61b542fc8cbb64d727af06fab87f6c54e14ed7a81d555454072c8561668aef"
         },
         "modulesSide": {
           "file": "centurion5_avre_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32060,
-          "sha256": "2575eb748ca94ec7efa870a4a73a5e0cd0237914cebf19d246e2fa9eaf353465"
+          "bytes": 31948,
+          "sha256": "ea772dfc8a68ff0fb914be194614a0d1e7aae181496232fce9987aab90a01b5b"
         },
         "crewSide": {
           "file": "centurion5_avre_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26276,
-          "sha256": "d9b3c7af19c85e718659fcb097dbd1bb6a681bd8d8d6fbdda7360192c790c777"
+          "bytes": 26258,
+          "sha256": "e38e85597e3e08e37250d3980ec724bf92521581dcb12ecdfdc896c8eafbe216"
         },
         "markings": {
           "file": "centurion5_avre_markings.png",
@@ -768718,7 +768718,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 16,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 11,
           "opticGlass": 2,
           "wood": 1,
@@ -768779,8 +768779,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13874,
-          "sha256": "9322ee75e7fbbf56211907f5eeb3ff2601699a7b96644d9433e689334334454d"
+          "bytes": 13864,
+          "sha256": "b4c3f427519bb9b8f0ca99d2b5f80b2e1e13b6d56e05b4407df3d9779628f92a"
         },
         "topSilhouette": {
           "file": "olifant_mk2_top_silhouette.png",
@@ -768803,24 +768803,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31112,
-          "sha256": "6632d003516724a2f1dc670e28448521bff79850e5da15d4854b98013bd5ecac"
+          "bytes": 31144,
+          "sha256": "1c6b9503aa80978b0b45fe5822f5da007977f9b795833145ed3837f24ea92586"
         },
         "modulesSide": {
           "file": "olifant_mk2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30648,
-          "sha256": "819a443c0d9ddbe14de37984d41665a9b8e9d1a9c61238ae5d776bf1f60bc4bb"
+          "bytes": 30658,
+          "sha256": "5752f8e809d2ebf7ea08a72630431a61acfa81739ea33adf0c9dea5ec133704c"
         },
         "crewSide": {
           "file": "olifant_mk2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28874,
-          "sha256": "be41882009eb30da048c9e8dedf79c53ca027d8435438c72ec93751ee6a87430"
+          "bytes": 28894,
+          "sha256": "37ee4ca58aa1b823e3bec759850cd4f9f1ae0fa8019fd4c18b223b721f2f8a68"
         },
         "markings": {
           "file": "olifant_mk2_markings.png",
@@ -807320,7 +807320,7 @@
           "gunmetal": 15,
           "trackSteel": 2,
           "armorPaint": 17,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "wood": 2,
           "unclassified": 22,
           "gearShadow": 2,
@@ -807378,8 +807378,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12434,
-          "sha256": "9f43769299c118e0a272aac04348b214b0b84c1f0295a073e73dcafb09df9630"
+          "bytes": 12406,
+          "sha256": "c1850c977fadd4cd842d828583619679b88c493752b60aa932f700e2d9902f84"
         },
         "topSilhouette": {
           "file": "shot_kal_top_silhouette.png",
@@ -807402,24 +807402,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27404,
-          "sha256": "31463a79c0d0fb5a9e52b74df95bb787db42a7566f5cb6c0c9c293741edf71c2"
+          "bytes": 27500,
+          "sha256": "47a726de3cf3de6fa4ddf40f1217d4d6c95f87386bb5cee65cdc09c82cf0ced6"
         },
         "modulesSide": {
           "file": "shot_kal_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26646,
-          "sha256": "ebd4577dcf1c158f568b9be661a90faa386052fcaebc9abe7a5d6ed1f4848161"
+          "bytes": 26520,
+          "sha256": "a32e51698516be20e5b97bcf938c20a9c82b5264b89656e5196eee16983c59b6"
         },
         "crewSide": {
           "file": "shot_kal_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23596,
-          "sha256": "f7801d43e99ce5e515d32390576e75656712545a35fe8226056a458b77bf15ee"
+          "bytes": 23548,
+          "sha256": "1d8fda33a1ee51b6e483e406ce427b6c366d5263e116fd1518993f7aa23ed2a7"
         },
         "markings": {
           "file": "shot_kal_markings.png",
@@ -815595,7 +815595,7 @@
           "opticGlass": 4,
           "gunmetal": 13,
           "armorPaint": 16,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "wood": 1,
           "trackSteel": 1,
           "unclassified": 18,
@@ -815654,8 +815654,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11890,
-          "sha256": "9d00b23008d79ecfb32cc077459f8534f093b4ddaf48c94a328aaa54e45a47a2"
+          "bytes": 11878,
+          "sha256": "1bab9f463f0fae21264d5b5cd036f6d9f5ac7c4f431d71a95b424e1e0606e077"
         },
         "topSilhouette": {
           "file": "strv105_top_silhouette.png",
@@ -815678,24 +815678,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29172,
-          "sha256": "dcd2fe559aad999626479bcbbeb35ef43b175db1b9547b29a6b245a1bdfbcdc6"
+          "bytes": 29210,
+          "sha256": "9837b1a1aef5ca6a95f455fa5e048b032dad1698285fa6653a68d5054bfa75c8"
         },
         "modulesSide": {
           "file": "strv105_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28140,
-          "sha256": "2c00ff91dd8c1a4f169cefbaac661850de6ae98d3e39d1b6294cc35af0b77403"
+          "bytes": 28086,
+          "sha256": "a67e0873a38527fe1b40ba4d9eb3c8335fc510ad3a9fe76bff169b55a9b4e2fe"
         },
         "crewSide": {
           "file": "strv105_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24796,
-          "sha256": "f097c0f4906ec48ab6b1efcf23a868ea056973b106a39d91d1e865b990494999"
+          "bytes": 24786,
+          "sha256": "d12bf43b2e57478690be918a60f0ba1cb5422c0025dacf938a4ecfd7ff1f2fe1"
         },
         "markings": {
           "file": "strv105_markings.png",
@@ -840467,7 +840467,7 @@
           "gunmetal": 12,
           "trackSteel": 3,
           "armorPaint": 14,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "wood": 1,
           "unclassified": 17,
           "gearShadow": 2,
@@ -840525,8 +840525,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10956,
-          "sha256": "1bfb5e22e98b021c714fc86a089892754e2da32dffe81c89372b08151d9c759d"
+          "bytes": 10984,
+          "sha256": "06305c3ff7e8c4d12bca1e34e8d2dc673c2d598548b5366ae0cc40404e09269c"
         },
         "topSilhouette": {
           "file": "strv81_top_silhouette.png",
@@ -840549,24 +840549,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25992,
-          "sha256": "f6a69a045bc1c1515e04ef3349a3009c04b61274e568d2621d1d5bac2b5a097a"
+          "bytes": 25972,
+          "sha256": "ffcbb9aefd9a56ed27ba7fed7da88491c62ba642a745c35b2d0027cb7fbaeb55"
         },
         "modulesSide": {
           "file": "strv81_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25860,
-          "sha256": "735792a059cb0bca4844c97d5ee5909524a57237183c113696fed1b3876ddba2"
+          "bytes": 25806,
+          "sha256": "0cd6f3fe12a5e8cb3182e67885c0cfcc951a07671e8356112490fbc8399c6b2d"
         },
         "crewSide": {
           "file": "strv81_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22912,
-          "sha256": "7f10c546950752c25fd89fafcce871cc6065feb374535b90863575ce54b36560"
+          "bytes": 22888,
+          "sha256": "335fdfe607c44b4ff128c75654d6862c4dfc407c67ec456cb434b1d122297b9e"
         },
         "markings": {
           "file": "strv81_markings.png",
