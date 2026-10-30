@@ -119,7 +119,7 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   const n = merged.index.count;
   const body = bodyGeometryWithout(merged, [{ start: 6, count: 6, role: 'antenna' }]);
   assert.equal(body.index.count, n - 6);
-  assert.equal(body.getAttribute('position'), merged.getAttribute('position'), 'the cut shares the vertex buffers');
+  assert.equal(body.getAttribute('position') === merged.getAttribute('position'), true, 'the cut shares the vertex buffers');
   assert.deepEqual([...body.index.array.slice(0, 6)], [...merged.index.array.slice(0, 6)]);
   assert.deepEqual([...body.index.array.slice(6, 12)], [...merged.index.array.slice(12, 18)]);
 }
