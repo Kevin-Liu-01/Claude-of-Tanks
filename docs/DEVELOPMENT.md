@@ -24,8 +24,9 @@ Before publishing:
    it: a squash or rebase changes IDs without losing the work.
 3. Commit the integrated result and run the checks appropriate to that exact
    commit — at minimum `npm run typecheck` and the core receipt suite
-   (`npm test`), on every push, however small the change (owner 2026-09-23,
-   after a push that turned `balanceMatchups` red on shared main for a night).
+   (`npm test`, the default tier; a lane runs `npm run test:lane` and the integrator the whole default tier), on
+   every push, however small the change (owner 2026-09-23, after a push that turned `balanceMatchups` red on shared
+   main for a night; since 266 balance is the manual `balance` suite, which `npm run test:recommend` names for the owner).
    `node tools/gate.mjs --baseline=<starting-base>` runs all of it in one
    versioned command (below).
    Record the validated commit. An earlier branch's green result does
@@ -499,10 +500,56 @@ of shell commands.
 
 ### Fast checks
 
-`npm test` runs the pre, core and post receipt groups in one invocation. A receipt whose observable
+`npm test` runs the default tier of the pre, core and post receipt groups in one invocation. A receipt whose observable
 inputs are byte-identical to its last PASS prints a SKIP line (`COT_SELFTEST_CACHE=0 npm test` runs
 everything). Every failure in a group is reported in one run; `COT_SELFTEST_FAIL_FAST=1` stops at the first. Result reuse is specified in
 "Test gate and result reuse" below.
+
+**Receipt tiers (266; owner 2026-10-30: "make super strenuous suites like balance and other testing to be not for every
+deploy annd manually recommended annd triggered by ME").** `tools/selftest-tiers.mjs` splits the registry; the audit of
+every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.md`.
+
+| Tier | What runs it | Size (266 audit) |
+|---|---|---|
+| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,454 receipts, ~114 CPU-min, ~17 min wall on an idle machine (before: 2,122 receipts, ~1,227 CPU-min, ~207 min) |
+| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 667 receipts in 10 suites, ~1,114 CPU-min |
+
+- **Manual suites**: `balance` (round-robin duels and `balance-matchups --check`), `pacing` (the battlePacing shards and
+  judge, placement, deployment), `bots`, `sims` (drone, missile, escort and counter-drone runs), `perf` (host-time
+  budgets), `fleet` (the fleet passes and every other build-the-whole-fleet sweep, then `tank:anatomy:check`'s other
+  steps), `tanks` (per-tank and per-family pins, id-scoped), `world` (every map built: scenery, structure collision,
+  buildings, the wreck bake, the collision shards, civic areas, horizons), `ui` and `browser` (the strenuous real-battle
+  GPU receipts). `npm run test:heavy` alone lists them with their size; `all` names every suite. A new receipt lands
+  in the default tier; one that builds the fleet or every map joins a suite (the tiers selftest fails on a default
+  receipt the snapshot times at a minute or more unless it is a must-keep invariant).
+- **Who runs them**: neither `npm test`, the release gate, a hook nor CI runs a manual suite, and `test:heavy` refuses a
+  CI environment (`tools/selftest-tiers.selftest.mjs` holds every caller). `npm run test:recommend [-- --base=<ref>]`
+  prints which suites a diff warrants, one line each with its idle wall time, and the command under it, for example
+  `balance (~1 min): 2 tanks changed armour/HP/gun in tiers VIII-IX (leo2a4, m1a2)`. A suite is warranted when one of its
+  receipts reads a changed path through the result cache's closure, when one of its stale-output guards fires
+  (`STALE_GUARDS`: `collisionManifestDrift` and `wreckBakePlanDrift` on any map's files, the world core, the fleet core
+  or a moved wreck donor, from the changed-only world partition; the fleet passes and the anatomy check on any moved
+  tank), or, for balance, when an id's spec armour, gun, HP, mobility, size or role moved (the base's and the head's
+  registries). When closure reads alone warrant a suite and reach at most a quarter of it, the command names just those
+  receipts (`--only=`) with their own time. Main relays that report; the owner triggers the run.
+- **Must-keep** (`MUST_KEEP`, never manual): sim determinism and driver parity, the authority and spotting receipts,
+  an armour, ballistics and damage sample on real builds, the vehicle-core build paths, the cheap generated-output guards
+  (the collision shard census and codec, the gun-junction, sealed, spare-track and watertight ledgers, the rounds census),
+  and the i18n, attribution, hygiene and changed-only/cache guards.
+- **Lane mode**: `npm run test:lane [-- --base=<ref>]` (default `origin/main`; `--dry-run` prints the selection) runs
+  the default-tier receipts whose closure (the result cache's own, `selftestReadOf`, a broad-fallback match excluded)
+  holds a changed path, plus the `tanks` pins that name a changed tank id or read a changed file outside the shared
+  fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
+  files, a table's moved rows, a path naming the id). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
+  pin's inputs: lane mode then runs none of them and reports them, and test:recommend names the whole `tanks` suite.
+  Nor does it run a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration
+  names nearly every id: the fingerprints bootstrap moved 218 tanks); test:recommend then names `tanks` for the owner.
+  Every selected receipt prints its reason. A negative control runs every time: a receipt reading a file is selected
+  when that file changes, and every changed receipt file is selected, or the run exits 2 before anything runs. The
+  uncommitted and untracked files count as changed.
+- `node tools/run-selftests.mjs all --heavy=<suite>[,<suite>]` selects manual receipts (`test:heavy` passes it);
+  `--only` matching only another tier's receipts names that tier; `--only-from=<file>` reads one glob per line;
+  `--write-durations` still times every tier.
 
 **Typecheck, lint and the build's post-build steps (2026-10-22).** Timings are before → after, A/B-interleaved on
 one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free cost):
@@ -537,22 +584,21 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
 
 | Mode | Command | Runs | Who runs it |
 |---|---|---|---|
-| Integrator (the default) | `tank:release:check -- --ids=<ids> --gate` | Every step: the per-id probes, the fleet-wide combat-anatomy freshness check (`gen-combat-anatomy --check`), the whole `npm test` and `npm run build:private` | The integrator; anyone certifying a tree on their own |
-| Lane | `tank:release:check -- --ids=<ids> --gate --lane` | The same steps, flags and id scopes, without the embedded `npm test` and `npm run build:private`. The anatomy check stays fleet-wide | A tank lane before READY |
+| Integrator (the default) | `tank:release:check -- --ids=<ids> --gate` | Every step: the per-id probes, the per-id combat-anatomy freshness check (`gen-combat-anatomy --check --ids`), the id-scoped `tanks` receipts of the ids (`test-heavy tanks --ids`), `npm test` (the default tier) and `npm run build:private` | The integrator; anyone certifying a tree on their own |
+| Lane | `tank:release:check -- --ids=<ids> --gate --lane` | The same steps, flags and id scopes, without the embedded `npm test` and `npm run build:private` | A tank lane before READY |
 
 - **What lane mode saves:** the embedded `npm test` and `npm run build:private`. The PLAN estimates
   13-41+ min per tank lane landing for the two together; in 223/224 the embedded `npm test` alone
   was 1.7-5.5 receipt-h. Two logged release checks show the scale: `npm test` took 999 s in one
   (2026-09-26, 8 ids) and `build:private` 278 s in another (2026-09-24).
-- **Why the anatomy check is not scoped:** `gen-combat-anatomy --check --ids=<ids>` re-measures only
+- **Why the anatomy check is scoped since 266:** `gen-combat-anatomy --check --ids=<ids>` re-measures only
   those tanks and compares every other row with itself. A shared builder can stale rows of tanks the
-  lane did not select: in 226 the shared Ukrainian cage staled the spare-track rows of bmp2,
-  m46_patton, bmp3_rok and t72b3m_hetman_ii, and a cage, barrel or kit builder reaches anatomy rows
-  the same way. Nothing proves the other rows' inputs unchanged, so scoping it would break the
-  COVERAGE RULE. It costs about 106 s per run (2026-10-16, load about 85). It can become
-  changed-only once it is an exact-key gate receipt (the PLAN R8d pattern) or the changed-only
-  pipeline's per-id input fingerprints (`tank:regen:changed`, "Changed-only regeneration" below)
-  prove the other rows' inputs unchanged.
+  lane did not select (in 226 the shared Ukrainian cage staled the spare-track rows of bmp2,
+  m46_patton, bmp3_rok and t72b3m_hetman_ii). The whole-fleet form is now the manual `fleet` suite's
+  command, with the rest of `tank:anatomy:check`: a shared-builder edit shows in `npm run test:recommend` as
+  "the shared fleet core changed", Main relays it, and the owner triggers `npm run test:heavy -- fleet`. From
+  release 265 the committed fingerprints (`release/fingerprints.tsv`, `tools/changed-only/fresh.selftest.mjs` in
+  the default tier) catch a row whose inputs moved without its regeneration.
 - **The fill exposure is scoped in both modes** (2026-10-29): `interior-fill-exposure --ids=<ids> --lane`
   measures the selected tanks plus every tank whose body moved against the merge-base with `origin/main`: its
   hull, turret or gun digest at the geometry ledger's HIGH build differs from the base's ledger row, or its fill
@@ -561,7 +607,7 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
   as `decorations.ts` or `camoPolicy.ts`). When the checker's own inputs moved, every tank runs. The whole fleet runs
   once per integration round in the release gate's `fills` step.
 - **Where the dropped work still runs:** the integrator mode runs both. The release gate
-  (`tools/gate.mjs`) runs every receipt (`run-selftests.mjs all`, the same run as `npm test`) and
+  (`tools/gate.mjs`) runs the default receipt tier (`run-selftests.mjs all`, the same run as `npm test`) and
   `npm run build`. `npm run build` runs build:private's commands (`vite build` and the localized
   pages) with the same `prebuild`, then the public asset strip and the provenance file. The two
   builds differ only by `VITE_PUBLIC_BUILD=1`. On 2026-10-16 no source read that key; the only
@@ -583,15 +629,16 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
   status (2 when it has none). An unknown or repeated id prints `[tank-release] FAIL (<mode> mode)
   <ids>: <reason>` and exits 2, with no stack trace.
 - `--dry-run` prints either plan and runs nothing. `tools/tank-release-plan.selftest.mjs` pins the
-  lane plan as the integrator plan minus exactly the two npm steps, the fleet-wide anatomy check in
+  lane plan as the integrator plan minus exactly the two npm steps, the per-id anatomy check in
   both modes, and the claims above (gate steps, `npm test`, the two builds). It drives the whole
   run (`runTankRelease`) with fake children: output order, stage order and concurrency, every
-  failure reported in plan order, and the exit status. `tools/tank-release-check.mjs` is pinned to
+  failure reported in plan order, and the exit status. Since 266 it pins every step per id and the one manual-tier step,
+  `test-heavy tanks --ids`. `tools/tank-release-check.mjs` is pinned to
   the statements that call it.
 
 ### Test gate and result reuse (2026-09-28)
 
-`npm test` considers every registered check in one invocation. `npm run test:all`
+`npm test` considers every default-tier check in one invocation (266: the manual suites only through `npm run test:heavy`). `npm run test:all`
 (or `npm test -- --all`) bypasses result reuse for **every** group. The former
 pretest/test/posttest lifecycle applied extra npm arguments only to the middle
 group. Individual groups remain available as `node tools/run-selftests.mjs pre`
@@ -1150,7 +1197,7 @@ The target check covers generated assets, muzzle bore, geometry standards,
 the fleet geometry ledger and mission-seat receipts for the selected ids,
 tests, and private build. A tank lane adds `--lane`: the same steps without
 the embedded suite and private build, which the integrator mode and the release
-gate (every receipt and `npm run build`) run ("Fast checks" above). See
+gate (the default receipt tier and `npm run build`) run ("Fast checks" above). See
 TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
 the complete vehicle-authoring contract.
 
