@@ -66,11 +66,15 @@ worktree and never stage generated tank work wholesale.
 - `npm run agent-docs` - node scripts/run-agent-docs.ts
 - Keep this block compact. Put full command catalogs in a generated command index, not in AGENTS.md.
 <!-- agent-docs:auto:commands end -->
-`npm test` runs the pre → core → post receipt groups; a receipt whose observable inputs are
-byte-identical to its last PASS is skipped with a SKIP line (`COT_SELFTEST_CACHE=0 npm test` runs
-everything), every failure in a group is reported in one run (`COT_SELFTEST_FAIL_FAST=1` stops at the
-first), and `tank:release:check` runs its fleet probes beside the suite and the build after the serial
-scoring steps. `npm run typecheck` is one TypeScript 7 compile with Oxlint beside it; `npm run lint` is
+`npm test` runs the default receipt tier (`tools/selftest-tiers.mjs`) of the pre → core → post groups; a
+receipt whose observable inputs are byte-identical to its last PASS is skipped with a SKIP line
+(`COT_SELFTEST_CACHE=0 npm test` runs everything), every failure in a group is reported in one run
+(`COT_SELFTEST_FAIL_FAST=1` stops at the first), and `tank:release:check` runs its per-id probes beside the
+suite and the build after the serial scoring steps. Strenuous suites (balance, pacing, bots, the fleet
+passes, world builds, the tank pins) are manual: `npm run test:recommend` says which a diff warrants, Main
+relays it, and only the owner triggers `npm run test:heavy -- <suite>`; never from npm test, the gate, a
+hook or CI. A lane runs `npm run test:lane` (the default-tier receipts its diff reaches plus its tanks'
+pins, each with its reason). `npm run typecheck` is one TypeScript 7 compile with Oxlint beside it; `npm run lint` is
 Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 
 ## Directory index
@@ -159,7 +163,8 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
   `npm run typecheck` runs the unused-locals check on the core owners. Leave
   hash-pinned sources (vehicle profiles, terrain, sky, impact decals, the authority,
   match placement) to their receipts.
-- Add focused `*.selftest.mjs` coverage and include it in `npm test`.
+- Add focused `*.selftest.mjs` coverage and include it in `npm test`. A receipt that builds the whole
+  fleet or every map joins a manual suite in `tools/selftest-tiers.mjs` instead (`docs/TEST-AUDIT.md`).
 - A receipt or tool that lists a tree (readdir, glob, `git ls-files`/`grep`) declares what it lists in
   `tools/selftest-scans.mjs`; `tools/selftest-scans.selftest.mjs` fails until it does (228p shipped a red its
   changed-file selection could not see).
@@ -170,14 +175,16 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
   steps (wreck plan, collision and trench shards) only on the maps whose config,
   world core or wreck donors moved, until the final resolve is empty
   (`npm run tank:changed -- --explain` says why an id or map is marked). Then
-  `npm run tank:anatomy:check` and the targeted
-  `npm run tank:release:check -- --ids=<ids> --gate`. `--all` (and
-  `npm run tank:anatomy:update`) stay the whole-fleet forms; see
-  docs/DEVELOPMENT.md "Changed-only regeneration".
+  the targeted `npm run tank:release:check -- --ids=<ids> --gate`: every step
+  per id, the combat-anatomy check and the ids' `tanks` pins included. The
+  whole-fleet forms (`--all`, `npm run tank:anatomy:update` and
+  `tank:anatomy:check`, the fleet passes) are the manual `fleet` suite:
+  `npm run test:recommend` names it when a shared builder moved, and the owner
+  triggers it; see docs/DEVELOPMENT.md "Changed-only regeneration".
   A tank lane adds `--lane`: the same steps minus the embedded `npm test` and
   `npm run build:private` (its PASS is not a suite or build pass); the
-  integrator's run keeps both and the release gate runs every receipt and
-  `npm run build` (`docs/DEVELOPMENT.md` "Fast checks").
+  integrator's run keeps both and the release gate runs the default receipt
+  tier and `npm run build` (`docs/DEVELOPMENT.md` "Fast checks").
 
 ## Gotchas / never-do-X
 <!-- agent-docs:fill:gotchas -->
