@@ -98,7 +98,7 @@ turretRig.traverse((node) => {
   if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') stowageRacks += 1;
 });
 assert.equal(pintleMgs, 1, 'the loader\'s MG3 is the turret\'s one pintle gun');
-assert.equal(stowageRacks, 2, 'a stowage rack on each flank');
+assert.equal(stowageRacks, 0, 'no flank racks: the kit rides in the closed stowage bin on the casting\'s tail (265)');
 
 // The mantlet (owner: "the correct mantlet ... that ends in a line"): owned by the gun, the 1A5's wide chevron mask whose
 // brow and chin meet in a horizontal line at the gun.

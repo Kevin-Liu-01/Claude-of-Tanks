@@ -96,7 +96,7 @@ for (const x of [-1.25, 1.25]) {
     new THREE.Vector3(-Math.sign(x), 0, 0), 0, 3).intersectObject(mesh('turret'), false)[0]?.point.x * Math.sign(x) > 1.18,
   'a spaced side plate stands outboard of the casting');
 }
-const emesLid = down(mesh('turretEquipment'), -0.48, turretRig.position.z + 0.32); // the hull's right (-x)
+const emesLid = down(mesh('turretEquipment'), -0.47, turretRig.position.z + 0.54); // the hull's right (-x), at the roof's front edge
 assert.ok(emesLid > turretRoof + 0.25 && emesLid <= 2.76, `the EMES 18 lid tops out at the published 2.71 m (${emesLid})`);
 let pintleMgs = 0;
 let stowageRacks = 0;
@@ -105,7 +105,7 @@ turretRig.traverse((node) => {
   if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') stowageRacks += 1;
 });
 assert.equal(pintleMgs, 1, 'one turret-owned pintle machine gun is retained');
-assert.equal(stowageRacks, 2, 'both turret-side stowage racks are retained');
+assert.equal(stowageRacks, 0, 'the flank racks went into the closed stowage bin on the casting\'s tail (265)');
 
 // The ring holds the source station on the lowered deck; the trunnion keeps its 2.00 m height.
 assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.60, 0.50)) < 1e-8,

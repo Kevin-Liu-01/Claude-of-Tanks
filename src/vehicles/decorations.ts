@@ -3208,7 +3208,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
   // The Leopard 1A5 and 1A2A1 carry their own Wegmann banks on the casting's rear quarters (profiles/leopard.ts,
   // leopard1A2A1.ts): a decor pair would double them along the side plates (critics 265: "the smoke dischargers forward").
-  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke');
+  // Their crew's kit rides in the closed bin on the turret's tail, so the fleet cargo, the turret-side crate and the
+  // spare links on the turret's side plate stay off: with the bin full the cargo fell through to crates on the engine
+  // deck, and the Munster vehicles' decks and turret flanks are clear (critics 265, round 4: "a crate and bottles on the
+  // turret's right flank are not in the photos").
+  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke'
+    && row.kit !== 'cargo' && !(row.kit === 'bin' && row.slot[0] === 'turretSide')
+    && !(row.kit === 'tracks' && row.slot[0] === 'turretSidePlate'));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
   // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
