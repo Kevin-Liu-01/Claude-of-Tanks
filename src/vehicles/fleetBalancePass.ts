@@ -475,6 +475,8 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   IV's Soviet-pattern mantlets eased and the Leopard 2A3's trim undone; VI's Soviet-pattern line and the C1's gun
  *   face; 262's VIII levers with the Challenger 1 marks and the K1A1; the new Tier X Oplots and ZTZ-20s. Armour levers
  *   only where a donor holds the gun and hull (sourceXSecondWave).
+ * - 265 (FAIRNESS-265, the next release's new and rebuilt tanks): the CN concepts' box cheeks, the Leopard 2A5's
+ *   wedge read, the Leclerc's magazine cycle, the ZTZ-100's footing and the M1E3's lighter armour.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
@@ -615,6 +617,24 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   mainArmorFrom(registry, 'leo2a6_ua', 'leo2a6');
   spec(registry, 'leo2a6_ua').hp = spec(registry, 'leo2a6').hp;
   cannonReload(registry, 'leo2a6_ua', spec(registry, 'leo2a6').gun.reloadS);
+
+  // 265 (FAIRNESS-265, Main's rulings 2026-10-30): the next release's new and rebuilt tanks. Mantlet raises wait for
+  // 266's per-hit gun-face split; these are reductions, non-armour steps and new concepts' faces.
+  // Tier VII: the CN concepts' flat box cheeks read ~600 mm, which every VII round pierces (the T-72B3M Hetman's sloped
+  // cheeks read ~925); x1.25 holds their rows (Zhuque 0.12 -> 0.56, Xuanwu 0.21 -> 0.55)
+  for (const id of ['t72b3_zhuque', 't72b3m_xuanwu']) turretFront(registry, id, 1.25);
+  // Tier IX: the Leopard 2A5's sloped wedge mantlet reads ~1,300 mm against the 2A5's published 850-930 mm turret front;
+  // x0.7 brings it there (0.84 -> 0.71)
+  mantlet(registry, 'leo2a5', 0.7);
+  // Tier IX and X: the Leclerc's 3-round clip was still refilling when it died (16.5 s; the real loader is rated about
+  // 12 rounds a minute); the Type 90's 9 s magazine cycle (263). Its armour reads true (602 mm against 620-700).
+  for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr']) autoloaderCycle(registry, id, 9);
+  // Tier X: the ZTZ-100, the ZTZ-20's prototype, takes the ZTZ-20 prototype's footing (263: a 430 round needed a hit more)
+  spec(registry, 'ztz100').hp = 2750;
+  primary(registry, 'ztz100', { damage: 480 });
+  // the M1E3 on the 120 mm shut out the AbramsX (nextgen-abrams-peer 0.917): the published "about 25 % lighter" comes out
+  // of passive armour, x0.75 on its 0.88 (the pair 0.75; its row 0.83 -> 0.55)
+  armor(registry, 'm1a3', 0.75);
 }
 
 /** Sets an autoloader's full magazine cycle, which the gun's headline reload repeats (fleetBalance.selftest). */

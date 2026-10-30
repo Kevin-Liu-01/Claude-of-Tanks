@@ -10,14 +10,14 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t90_1992: 'replace the stale Tier IX donor envelope used by the Tier X production tank',
   t90ms_2011: 'give the export demonstrator a distinct Tier X protection/firepower step',
   t90a_burlak_proto: 'price the bustle autoloader as a faster Tier X feed system',
-  leclerc_s2: 'improve the Tier IX ready-rack cycle while retaining burst downtime',
-  leclerc_sxxi: 'add a real Tier X ammunition, protection and ready-rack step',
+  leclerc_s2: 'improve the Tier IX ready-rack cycle while retaining burst downtime; 265: the Type 90\'s 9 s magazine cycle, the clip was still refilling when it died',
+  leclerc_sxxi: 'add a real Tier X ammunition, protection and ready-rack step; 265: a 9 s magazine cycle with the S2',
   leclerc_s1: 'make headline reload match its magazine and establish assault-branch output',
   t72m1_jaguar: 'remove the modern Tier VIII HP/reload trough; 259: a thicker mantlet, pen, hull and cadence for same-tier fairness at IV; 263: the 259 mantlet eased to x1.2 on the fixed gun face',
   pt91a_twardy: 'improve the Tier IX Polish protection and feed-system step',
   pl01: 'price the three-round low-profile autoloader for Tier X sustained combat',
   pl01_105: 'price the four-round 105 mm branch for Tier X sustained combat',
-  m1a3: 'remove the next-generation autoloader, protection and missile ceiling',
+  m1a3: 'remove the next-generation autoloader, protection and missile ceiling; 265: armour x0.75, the published 25 % weight cut from passive armour (it shut out the AbramsX)',
   challenger3_proto: 'restore the base Challenger 3 firepower and mobility envelope',
   challenger3_td: '262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)',
   challenger3_td_rws: '262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)',
@@ -118,6 +118,12 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   ztz85_iii: 'a 460-damage round: its 500 killed every tier-I peer in four hits',
   // 2026-10-29 (264, Main's ruling)
   leo2a6_ua: 'the 2A6\'s main plates, HP and cadence: drawn on the 2A6\'s shell with its 2A6M donor\'s 1.72x plates, it topped IX at 0.86',
+  // 2026-10-30 (265, FAIRNESS-265, Main's rulings)
+  t72b3_zhuque: 'a x1.25 turret front: its flat box cheeks read ~600 mm and every VII round pierced them',
+  t72b3m_xuanwu: 'a x1.25 turret front: its flat box cheeks read ~600 mm and every VII round pierced them',
+  leo2a5: 'a x0.7 mantlet: its sloped wedge mantlet read ~1,300 mm against the published 850-930 at IX',
+  leclerc_xlr: 'the Type 90\'s 9 s magazine cycle with the S2 and SXXI',
+  ztz100: '2,750 HP and a 480-damage round, the ZTZ-20 prototype\'s footing',
 } as const);
 
 interface FleetBalanceOutlier {
