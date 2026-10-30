@@ -109,6 +109,8 @@ const NATION_LANGUAGE: Readonly<Record<string, CrewLanguage>> = Object.freeze({
   germany: 'de', 'west germany': 'de',
   russia: 'ru', ussr: 'ru', 'ussr/russia': 'ru', 'soviet union': 'ru',
   ukraine: 'uk',
+  'south africa': 'en-GB',
+  australia: 'en-GB',
   china: 'zh', prc: 'zh',
   france: 'fr',
   sweden: 'sv',

@@ -61,7 +61,9 @@ function engineRoof(P:TankBuilderPort):void{
       caseBox(P,side*58.9,67.15,z,2.8,.55,2.4);
     });
     seat(()=>{
-      equipment(P,cylZ(m(.6),m(100),12),side*66.2,68.1,-147.0);
+      // the rail ends 2 in past its end posts (release 264, the Mk 1's and Mk 3's critics: it ran 15 in past the rear
+      // post, over the rear plate's corner, and 19 in past the front one)
+      equipment(P,cylZ(m(.6),m(70),12),side*66.2,68.1,-149.0);
       for(const z of [-182,-166,-140,-116])caseBox(P,side*66.2,66.8,z,1.4,2.8,2.4);
     });
     seat(()=>{
@@ -126,6 +128,9 @@ function sideSkirts(P:TankBuilderPort,side:number,granbyKit:boolean):void{
   for(const z of[-171.614174,-113.976383,-103.40551,-39.665354,-30.334646,
     33.444882,40.846456,70.629921]){
     caseBox(P,side*69.212597,50.925196,z,.629921,2.559055,3.188976);
+    // each hanger's arm back to the sponson's 67.9 in wall: without the Granby panels' backer bands the skirt stood
+    // 23 mm off the hull, held by nothing (release 262, the hull-contact census on the Mk 1 and Mk 2)
+    caseBox(P,side*68.3,50.2,z,1.9,1.1,3.188976);
   }
   if(granbyKit)sideApplique(P,side);
 }
@@ -180,11 +185,11 @@ function sideApplique(P:TankBuilderPort,side:number):void{
     caseBox(P,side*73.1,26.18,z,5.2,4.4,1.95);
   }
 }
-function drumsAndRear(P:TankBuilderPort,granbyKit:boolean):void{
+function drumsAndRear(P:TankBuilderPort,drums:boolean):void{
   for(const side of [-1,1]){
     const x=side*32.6;
-    // the Op Granby fit's two jettisonable fuel drums, their bands, struts and cradle stops
-    if(granbyKit){
+    // the two jettisonable fuel drums (the Mk 2's quick-release fit, kept by the Op Granby Mk 3), bands, struts, stops
+    if(drums){
       equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
       for(const dx of [-9.5,9.5]){
         equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
@@ -208,6 +213,17 @@ function bowArmor(P:TankBuilderPort):void{
   for(const rows of[upper,lower])P.addExternalArmor('hull',roofSheet(rows.map(([z,y])=>
     [p(0,0,z)[2],a,b,p(0,y,0)[1],p(0,y,0)[1]] as const),m(.9)));
   caseBox(P,0,49.8,80.25,68.2,1.0,1.4);
+  // Release 262 (the Mk 3's blind critic: "the nose ERA is a hollow, paper-thin shell ... background showing through"):
+  // a cheek plate on each side closes the wedge from the hull to the tip, under both sheets, so the array reads solid.
+  const lowerAt=(z:number)=>z<=88.7402?12.5197:z<=98?12.5197+(z-88.7402)*(22.2-12.5197)/(98-88.7402)
+    :22.2+(z-98)*(33.6220-22.2)/(108.6614-98);
+  const upperAt=(z:number)=>z<=94.7244?56.57+(z-80.63)*(47.7559-56.57)/(94.7244-80.63)
+    :47.7559+(z-94.7244)*(33.6220-47.7559)/(108.6614-94.7244);
+  for(const side of[-1,1])P.addExternalArmor('hull',sectionSolid([80.63,88.7402,94.7244,98,108.3].map((z)=>{
+    const ring=[[33.08,lowerAt(z)],[33.98,lowerAt(z)],[33.98,upperAt(z)],[33.08,upperAt(z)]]
+      .map(([x,y])=>[p(side*x,0,0)[0],p(0,y,0)[1]] as [number,number]);
+    if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
+  })));
   // 2026-10-19 (owner float sweep): the nose array (both sheets, rails and clamps) stood 64 mm clear of the hull, held
   // by nothing; four mounting brackets rise from the nose deck through the rear strip into the upper sheet's back edge
   for(const x of[-25,-5,5,25])caseBox(P,x,51.45,80.7,3.0,10.9,.8);
@@ -218,11 +234,11 @@ function bowArmor(P:TankBuilderPort):void{
   }
 }
 /** Release 262 (owner 2026-10-28: the Mk 3's build "is what it is actually like"): the supplied file is the Op Granby
- *  fit; the plain Challenger 1 (the Mk 1 and Mk 2) leaves its side applique, nose array and rear drums off. */
-export interface Challenger1SuppliedHullOptions{readonly granbyKit?:boolean}
-export function addChallenger1SuppliedHull(P:TankBuilderPort,{granbyKit=true}:Challenger1SuppliedHullOptions={}):void{
+ *  fit. The Mk 1 and Mk 2 leave its side applique and nose array off; the Mk 2 keeps the rear drums, the Mk 1 has none. */
+export interface Challenger1SuppliedHullOptions{readonly granbyKit?:boolean;readonly drums?:boolean}
+export function addChallenger1SuppliedHull(P:TankBuilderPort,{granbyKit=true,drums=granbyKit}:Challenger1SuppliedHullOptions={}):void{
   tub(P);for(const side of [-1,1])sponson(P,side);
   engineRoof(P);foreDeck(P);
   for(const side of [-1,1]){frontGuards(P,side);sideSkirts(P,side,granbyKit);}
-  drumsAndRear(P,granbyKit);if(granbyKit)bowArmor(P);
+  drumsAndRear(P,drums);if(granbyKit)bowArmor(P);
 }

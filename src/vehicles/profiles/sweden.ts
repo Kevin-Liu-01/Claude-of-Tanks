@@ -174,9 +174,14 @@ function buildStrv103B(P: SwedishBuilderPort): void {
 }
 
 function buildStrv81(P: TankBuilderPort): void {
-  // release 263: the Strv 81B (the Centurion Mk 5 in Swedish service, 20-pdr Type B) from the rebuilt Centurion family;
+  // release 262: the Strv 81B (the Centurion Mk 5 in Swedish service, 20-pdr Type B) from the rebuilt Centurion family;
   // its Swedish fittings (lights, glacis link brackets, radios, the cupola Ksp) are that family's 'strv81' mark
   centurionBuild(P, 'strv81');
+}
+
+function buildStrv105(P: TankBuilderPort): void {
+  // release 262: the Strv 105 prototype (a Strv 104 with its FFV cassettes and a thermal sight) from the rebuilt family
+  centurionBuild(P, 'strv105');
 }
 
 function addStrv122Package(P: SwedishBuilderPort): void {
@@ -863,5 +868,6 @@ export const SWEDEN_PROFILES = {
   strv103b: { build: buildStrv103B },
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
+  strv105: { build: buildStrv105 },
   strv121: { build: buildStrv122 },
 } satisfies VehicleProfileRecord;

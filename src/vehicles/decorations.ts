@@ -2679,18 +2679,53 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // exhaust smoke system (the T-55's TDA) to take it over.
   type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
   t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
-  // Release 263: the rebuilt Centurion Mk 3 and Strv 81 carry their own dischargers, whips and roof guns
-  // (profiles/centurionFamily.ts); their decor is soft stowage only. The Mk 3 a tarpaulin and packs, the Strv 81B the
-  // bundled camouflage nets of its 1950s photographs.
+  // Release 262: the rebuilt Centurion family carries its own dischargers, whips and roof guns (profiles/centurionFamily.ts);
+  // its decor is soft stowage only. The British marks a tarpaulin and packs, the Strv 81B the bundled camouflage nets of
+  // its 1950s photographs, the Sho't Kal the IDF's bedrolls and water cans round its own basket and jerrycan cage.
   centurion3: () => [
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
+  centurion5_2: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretRear', { low: true }] },
+  ],
   strv81: () => [
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  centurion13: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  strv105: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  olifant_mk2: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  // the AVRE's rear basket is authored (profiles/centurionFamily.ts): deck stowage only
+  centurion5_avre: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  // the Australian Mk 5/1's baskets are authored (profiles/centurionFamily.ts): the Vietnam deck load only
+  centurion5_1_aus: () => [
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  shot_kal: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
@@ -3032,6 +3067,32 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'challenger_x' || spec.id === 'challenger_x_sleek') return [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
   ];
+  // Release 262 (owner 2026-10-28: "CHALLENGER 1 MK. 1 AND MK2 NEED TO LOOK A LOT DIFERENT FROM MK 3", and "the turrets
+  // and decorations and equipmennt and optics and machine guns all need to be updated for all 3"): each Challenger 1
+  // mark carries its own period load in place of the fleet cargo. The Mk 1 is the clean 1983 delivery fit; the Mk 2 the
+  // BAOR exercise fit, nets rolled on the bustle and the turret side, crew kit and cans; the Mk 3 the Op Granby desert
+  // load of water cans, bedrolls and ration boxes.
+  if (spec.id === 'challenger1_mk1') return [
+    { kit: 'tarp', p: 1, v: { v: 'slim', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: -0.25, along: true }] },
+  ];
+  if (spec.id === 'challenger1_mk2') return [
+    // the packs seat first (release 264: behind the net roll they had found support only on the bustle's stray tie bar,
+    // and fell off the tank when it went)
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretRear', { low: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.2 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.25, along: true }] },
+  ];
+  if (spec.id === 'challenger1_mk3') return [
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', {}] },
+    { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
+  ];
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
@@ -3081,10 +3142,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Challenger 3 already fills the Garage card with its long gun, bustle and
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
-  // out-of-family portrait crop.
+  // out-of-family portrait crop. Release 262: the rebuilt Merkava Mk 2D's two rear racks (a crate and a tarp pack) made
+  // a band at 28-29 % of its widest row, on the presentation census's 28 % body-row line, so the census and its shipped
+  // top icon read 0.72 px apart; slightly more compact cargo keeps that band at 24-26 %, clear of the line.
   const cargoScale = spec.id === 'challenger3_proto' ? 0.85
     : spec.id === 'ztz85_iii' ? 0.94
-      : 1;
+      : spec.id === 'merkava2d' ? 0.88
+        : 1;
   const cargoVariant = (v: FleetEquipmentVariant) => ({
     v,
     scale: cargoScale,

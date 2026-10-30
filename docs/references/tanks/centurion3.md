@@ -1,12 +1,11 @@
 # Centurion Mk.3 (`centurion3`) — reference packet
 
-## Current status (release 263, 2026-10-28): rebuilt from historical references
+## Current status (release 262, 2026-10-27): rebuilt from historical references
 
 Owner, 2026-10-27: "update/redesign the centurions and strv 81 ... turrets and hullls as well based on proper historical
 referrences so they will no longer look so chungus". The Mk 3 is the `mk3` mark of `src/vehicles/profiles/centurionFamily.ts`
-(new geometry; the print-fit history below is superseded). Implementation: DONE. Qualification: the lane's READY report
-(item/centurion-mk3-strv81-263; blind critic PASS 2026-10-28). Publication: release 263. The Mk 5/2 shares this
-packet's gap table but stays on its old build until its own rebuild passes.
+(new geometry; the print-fit history below is superseded). Implementation: DONE. Qualification: see the lane's READY report
+(item/centurion-family-262). Publication: release 262.
 
 Mark identity: Centurion Mk 3 with the QF 20-pounder Type A barrel (no fume extractor, muzzle counterweight; Q20, F81),
 the Besa coaxial gun, the cast turret's welded roof plate (its weld bead drawn), the 2-inch bomb thrower in the roof,

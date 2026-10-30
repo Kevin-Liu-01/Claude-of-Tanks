@@ -38,5 +38,7 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
     }),
     // release 262: the Christian II, a Danish Army concept on the Type 90 X (Nordic special)
     node({ id: 'christian2', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // Special (release 262: the Strv 105 prototype; III by its same-tier duels: 0.28 there, 0.03 at IV)
+    node({ id: 'strv105', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

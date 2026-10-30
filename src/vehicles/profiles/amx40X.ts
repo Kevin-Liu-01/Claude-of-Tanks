@@ -10,6 +10,7 @@ import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {addAmx40CastNose,addAmx40Cupola,addAmx40LauncherGuard,addAmx40SideStowage,
   addAmx40RearInsulator,addAmx40FrontInsulator} from './amx40XTurretEquipment.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import {libraryStationGun} from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {addAmx40RightRoofGrip,addAmx40ObliqueRoofSight,addAmx40WeaponSideMechanism} from './amx40XRoofFixtures.ts';
 import {addAmx40RearStowage} from './amx40XRearStowage.ts';
@@ -176,10 +177,10 @@ function roofWeapon(P:TankBuilderPort):void {
   const mg=sourceMachineGun(P,YAW);
   mg.add('turretDetail',box(.105,.104,.092),-1.112,2.469,-.22);
   mg.add('turretDark',cylY(.039,.050,.12,18),-1.144,2.538,-.20);
-  mg.add('turretDark',box(.145,.110,.347),-1.172,2.606,-.0835);
-  mg.add('turretDark',box(.102,.081,.146),-1.172,2.587,-.330);
-  mg.add('turretDark',cylZ(.019,.522,18),-1.172,2.607,.146);
-  mg.add('turretDark',blindTube(.025,.006,.057,.030,18),-1.172,2.607,.378);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // cupola gun is the fleet's 7.62 mm construction at true length (libraryRoofMg.ts libraryStationGun, remote: fired from
+  // the cupola) on the drawn bore, in place of the drawn receiver, butt block, rod and hider
+  libraryStationGun(mg,{cls:'mag',x:-1.172,boreY:2.607,pivotZ:-.0035});
   mg.add('turretDetail',cylZ(.118,.013,24),-1.070,2.659,.350);
   addAmx40WeaponSideMechanism(mg);
   for(const z of[-.230,-.060])mg.add('turretDark',box(.167,.015,.014),-1.172,2.671,z);

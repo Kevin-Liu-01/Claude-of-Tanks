@@ -6733,5 +6733,225 @@
    "en": "ZTZ-99A2 Qinglong, Copper Mesa Mine",
    "zh": "ZTZ-99A2 Qinglong，铜台地矿场"
   }
+ },
+ {
+  "n": 273,
+  "id": "centurion5-1-aus-copper-mesa",
+  "hero": "centurion5_1_aus",
+  "nation": "Australia",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "golden",
+  "anchor": [
+   -267,
+   318
+  ],
+  "heading": 75,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "centurion5_1_aus"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_centurion5_1_aus",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Centurion Mk 5/1 (Aust) holds its ground at Copper Mesa Mine in the evening light",
+   "zh": "傍晚，一辆 Centurion Mk 5/1 (Aust) 在铜台地矿场坚守阵地"
+  },
+  "short": {
+   "en": "Centurion Mk 5/1 (Aust), Copper Mesa Mine",
+   "zh": "Centurion Mk 5/1 (Aust)，铜台地矿场"
+  }
+ },
+ {
+  "n": 274,
+  "id": "shot-kal-desert",
+  "hero": "shot_kal",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "desert",
+  "time": "morning",
+  "anchor": [
+   183,
+   228
+  ],
+  "heading": 276,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "shot_kal",
+   "merkava2d",
+   "merkava2b",
+   "merkava1b"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "paint_shot_kal",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Sho't Kal leads the assault across Sirocco Wadi in the morning",
+   "zh": "清晨，一辆 Sho't Kal 率队突击西罗科旱谷"
+  },
+  "short": {
+   "en": "Sho't Kal, Sirocco Wadi",
+   "zh": "Sho't Kal，西罗科旱谷"
+  }
+ },
+ {
+  "n": 275,
+  "id": "olifant-mk2-alpine",
+  "hero": "olifant_mk2",
+  "nation": "South Africa",
+  "era": "modern",
+  "map": "alpine",
+  "time": "night",
+  "anchor": [
+   3,
+   183
+  ],
+  "heading": 101,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "olifant_mk2"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "paint_olifant_mk2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An Olifant Mk 2 advances through Glacier Pass at night",
+   "zh": "夜间，一辆 Olifant Mk 2 穿过冰川关推进"
+  },
+  "short": {
+   "en": "Olifant Mk 2, Glacier Pass",
+   "zh": "Olifant Mk 2，冰川关"
+  }
+ },
+ {
+  "n": 276,
+  "id": "strv105-fjord",
+  "hero": "strv105",
+  "nation": "Sweden",
+  "era": "cold-war",
+  "map": "fjord",
+  "time": "golden",
+  "anchor": [
+   48,
+   -222
+  ],
+  "heading": 11,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "strv105",
+   "udes03"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Strv 105 fires on the move at Nordhavn Fjord in the evening light",
+   "zh": "傍晚，一辆 Strv 105 在诺德港峡湾行进间射击"
+  },
+  "short": {
+   "en": "Strv 105, Nordhavn Fjord",
+   "zh": "Strv 105，诺德港峡湾"
+  }
+ },
+ {
+  "n": 277,
+  "id": "centurion13-railyard",
+  "hero": "centurion13",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "railyard",
+  "time": "day",
+  "anchor": [
+   3,
+   183
+  ],
+  "heading": 4,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "centurion13",
+   "fv510_milan"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Centurion Mk 13 knocks out a T-62MV-1 at Cinder Junction",
+   "zh": "一辆 Centurion Mk 13 在灰渣枢纽击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "Centurion Mk 13, Cinder Junction",
+   "zh": "Centurion Mk 13，灰渣枢纽"
+  }
+ },
+ {
+  "n": 278,
+  "id": "centurion5-avre-fjord",
+  "hero": "centurion5_avre",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "fjord",
+  "time": "morning",
+  "anchor": [
+   -132,
+   -267
+  ],
+  "heading": 343,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "centurion5_avre",
+   "challenger_x",
+   "challenger_x_sleek",
+   "centurion5_2"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Centurion Mk 5 AVRE leads the assault across Nordhavn Fjord in the morning",
+   "zh": "清晨，一辆 Centurion Mk 5 AVRE 率队突击诺德港峡湾"
+  },
+  "short": {
+   "en": "Centurion Mk 5 AVRE, Nordhavn Fjord",
+   "zh": "Centurion Mk 5 AVRE，诺德港峡湾"
+  }
  }
 ]

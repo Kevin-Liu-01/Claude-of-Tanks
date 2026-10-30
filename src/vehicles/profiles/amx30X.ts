@@ -8,6 +8,7 @@ import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { blindTube } from './measuredPrimitives.ts';
 import { addAmx30XAftReturn } from './amx30XAftReturn.ts';
@@ -229,10 +230,10 @@ function roof(P: TankBuilderPort): void {
   // The gun body and barrel share this straight axis, supported at the cradle.
   const mg = sourceMachineGun(P, [0, YAW_Y, YAW_Z]);
   mg.add('turretDetail', box(.024, .108, .1437), -1.1258, 2.6484, .0727);
-  mg.add('turretDark', box(.0686, .0772, .3982), -1.1252, 2.7403, .1410);
-  mg.add('turretDark', cylZ(.0255, .512, 16), -1.1255, 2.7551, .5923);
-  mg.add('turretDark', cylZ(.01045, .174, 16), -1.1255, 2.7551, .9345);
-  mg.add('turretDark', box(.09, .027, .15), -1.1252, 2.784, .123);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // cupola gun is the fleet's 7.62 mm construction at true length (libraryRoofMg.ts libraryStationGun, remote: the
+  // commander fires it from under armour) on the drawn bore, in place of the drawn receiver, rods and cover
+  libraryStationGun(mg, { cls: 'mag', x: -1.1255, boreY: 2.7551, pivotZ: .221 });
   mg.add('turretDetail', box(.262, .0201, .448), -.9464, 2.783, .0921);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(mg.finish(), { name: 'amx30XRoofGpmg', caliberMm: 7.62 });

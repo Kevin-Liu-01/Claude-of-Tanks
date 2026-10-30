@@ -216,6 +216,10 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'ussr/russia': 'russia',
   ussr: 'russia',
   ukraine: 'russia',
+  // release 262: South Africa's one hull is the Olifant Mk 2, a Centurion: the UK set its family draws
+  'south africa': 'uk',
+  // and Australia's, the Mk 5/1
+  australia: 'uk',
 });
 
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
@@ -263,6 +267,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
     type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
     t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },
   } : {}),
+  // release 262 (the owner: the new Sho't "with proper equipment geometries"): the IDF kept the Centurion's running gear
+  shot_kal: { donor: 'challenger2e', reason: 'release 262: the Sho\'t Kal is a Centurion hull on its own Horstmann bogies -> the UK wheel the Mk 3 and Mk 5/2 draw, not the Merkava\'s' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

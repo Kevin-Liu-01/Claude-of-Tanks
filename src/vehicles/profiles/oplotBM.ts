@@ -35,6 +35,8 @@ import { loftHull, tubeGun, ruSaddle, ruBoot } from './russia.ts';
 import { eraCassette, glacisEraCassette } from './modernizationFittings.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
+import type { MgClassKey } from '../machineGunGeometry.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { DRUM_ISSUE_PAINTS, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
@@ -441,9 +443,16 @@ function buildRoof(P: TankBuilderPort, variant: OplotBMVariant): void {
     P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, ROOF_Y + 0.008, ez);
     P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, ROOF_Y + 0.016, ez);
   }
-  // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner
-  P.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
-  P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+  // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner. 264:
+  // on the T-84U the tall one stands on the bustle's right corner instead, outside the 1.34 m reach of the commander's
+  // true-scale NSVT, whose barrel swept through it behind the PNK-6 at every aft bearing
+  if (variant === 'u') {
+    P.add('turretDark', box(0.07, 0.06, 0.07), -0.34, 0.68, -1.90);
+    P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.34, 1.55, -1.90);
+  } else {
+    P.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
+    P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+  }
   P.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68, -1.90);
   P.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30, -1.90);
 }
@@ -492,7 +501,9 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
 // twin 200 L drums on the stern and its own lights. Turret stock in the turret frame; hull stock in the hull frame.
 
 /** A roof station: its gun, its ring centre and, for a tower, how far its race stands above the common one. */
-interface Station { name: string; caliber: 12.7 | 7.62; x: number; z: number; rise?: number }
+/** `gun`: the fleet construction the station carries (machineGunGeometry.ts): the KT-12.7 is an NSVT, the KT-7.62 a PKT
+ *  (drawn as the 7.62 mm GPMG), the Thai kit's M2 and M240 (an FN MAG). */
+interface Station { name: string; caliber: 12.7 | 7.62; gun: MgClassKey; x: number; z: number; rise?: number }
 const RACE_Y = ROOF_Y + 0.08;
 
 /** A bolted ring pedestal standing a station's race above the roof; a tower (rise) gets an armoured drum with ribs and
@@ -536,13 +547,11 @@ function cradleStation(P: TankBuilderPort, S: Station): THREE.Group {
     w.add('turretDark', cylX(0.036, 0.03, 16), S.x + side * 0.135, pivotY, pivotZ);
   }
   w.stage('pitch');
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // gun is the fleet's construction of its class (libraryRoofMg.ts libraryStationGun) on the cradle's bore and published
+  // muzzle, in place of the drawn receiver, cover, rods and hider; the cradle tray stays under it
   const recv = heavy ? [0.15, 0.14, 0.58] : [0.10, 0.11, 0.42];
-  w.add('turretDark', box(recv[0], recv[1], recv[2]), S.x, pivotY, pivotZ - 0.02);
-  w.add('turretDark', box(recv[0] - 0.01, 0.025, recv[2] * 0.65), S.x, pivotY + recv[1] / 2 + 0.01, pivotZ - 0.04);
-  w.add('turretDark', cylZ(heavy ? 0.03 : 0.022, 0.09, 16), S.x, pivotY, pivotZ + recv[2] / 2 + 0.04);
-  const barrelL = muzzleZ - (pivotZ + recv[2] / 2 + 0.09) - 0.07;
-  w.add('turretDark', cylZ(heavy ? 0.016 : 0.010, barrelL, P.q ? 14 : 10, heavy ? 0.019 : 0.012), S.x, pivotY, pivotZ + recv[2] / 2 + 0.09 + barrelL / 2);
-  w.add('turretDark', cylZ(heavy ? 0.022 : 0.016, 0.07, P.q ? 14 : 10), S.x, pivotY, muzzleZ - 0.035);
+  libraryStationGun(w, { cls: S.gun, x: S.x, boreY: pivotY, pivotZ, muzzleZ });
   w.add('turretDetail', box(0.18, 0.035, recv[2] + 0.12), S.x, pivotY - recv[1] / 2 - 0.02, pivotZ + 0.02);
   if (heavy) {
     // the KT-12.7's armoured sight-and-ammunition box outboard of the gun (the print's: 0.54 x 0.31 x 0.40 m, its centre
@@ -568,6 +577,8 @@ function cradleStation(P: TankBuilderPort, S: Station): THREE.Group {
 /** An enclosed armoured mini-turret: faceted housing with its sight hood and the gun in a mantlet block. */
 function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false, ownRing = false): THREE.Group {
   const race = RACE_Y + (S.rise ?? 0), heavy = S.caliber > 10, pivotY = race + 0.21, pivotZ = S.z + 0.30;
+  // 264: the heavy station's housing stands 5 cm taller over the true-scale M2, whose feed cover rises 127 mm over its bore
+  const roofRise = heavy ? 0.05 : 0;
   const muzzleZ = pivotZ + (heavy ? 1.12 : 0.80);
   // an owner-kit station carries its ring in its own group (it turns with the mount: the ring is round)
   const ownRingDone = ownRing ? captureAuxiliaryStock(P, S.name, 'yaw') : null;
@@ -580,20 +591,22 @@ function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false, ow
   const ring = (half: number, top: number, roofHalf: number): [number, number][] =>
     [[S.x - half, race + 0.05], [S.x + half, race + 0.05], [S.x + roofHalf, top], [S.x - roofHalf, top]];
   w.add('turretDetail', sectionSolid([
-    { z: S.z - 0.40, ring: ring(0.22, race + 0.25, 0.19) },
-    { z: S.z - 0.20, ring: ring(0.27, race + 0.30, 0.22) },
-    { z: pivotZ - 0.10, ring: ring(0.27, race + 0.30, 0.22) },
+    { z: S.z - 0.40, ring: ring(0.22, race + 0.25 + roofRise, 0.19) },
+    { z: S.z - 0.20, ring: ring(0.27, race + 0.30 + roofRise, 0.22) },
+    { z: pivotZ - 0.10, ring: ring(0.27, race + 0.30 + roofRise, 0.22) },
     { z: pivotZ + 0.03, ring: ring(0.25, race + 0.13, 0.23) },
   ]), 0, 0, 0);
-  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, race + 0.305, S.z - 0.05);
+  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, race + 0.305 + roofRise, S.z - 0.05);
   w.add('turretDetail', box(0.11, 0.16, 0.22), S.x + 0.32, race + 0.20, pivotZ - 0.15);
   w.add('turretGlass', box(0.06, 0.06, 0.012), S.x + 0.32, race + 0.22, pivotZ - 0.035);
   w.add('turretDark', box(0.13, 0.02, 0.26), S.x + 0.32, race + 0.29, pivotZ - 0.14);
   w.stage('pitch');
   w.add('turretDetail', box(0.19, 0.15, 0.13), S.x, pivotY, pivotZ + 0.05);
-  w.add('turretDark', cylZ(heavy ? 0.032 : 0.024, 0.20, P.q ? 16 : 12), S.x, pivotY, pivotZ + 0.21);
-  w.add('turretDark', cylZ(heavy ? 0.016 : 0.010, muzzleZ - pivotZ - 0.38, P.q ? 12 : 8, heavy ? 0.019 : 0.012), S.x, pivotY, (pivotZ + 0.31 + muzzleZ - 0.07) / 2);
-  w.add('turretDark', cylZ(heavy ? 0.022 : 0.016, 0.07, P.q ? 12 : 8), S.x, pivotY, muzzleZ - 0.035);
+  // the gun behind the mantlet is the fleet's construction of its class, its barrel and hider through the mantlet to the
+  // published muzzle (owner 2026-10-28, as the open cradles'); its receiver stands behind the trunnion under the
+  // housing's flat roof, the M2's 0.46 m receiver further back than the 7.62's (at 0.08 m their fronts rose through the
+  // sloped face: blind critic, 264)
+  libraryStationGun(w, { cls: S.gun, x: S.x, boreY: pivotY, pivotZ, muzzleZ, receiverBehind: heavy ? 0.32 : 0.25 });
   if (searchlight) {
     w.add('turretDetail', box(0.07, 0.06, 0.10), S.x - 0.14, pivotY + 0.02, pivotZ + 0.05);
     w.add('turretDark', cylZ(0.10, 0.20, P.q ? 24 : 16), S.x - 0.25, pivotY + 0.04, pivotZ + 0.06);
@@ -654,12 +667,12 @@ function lightBar(P: TankBuilderPort, x: number, y: number, z: number): void {
 }
 
 const M_STATIONS = Object.freeze({
-  kt127: { name: 'oplotMKt127', caliber: 12.7, x: -0.98, z: -0.98 },
-  kt762: { name: 'oplotMKt762', caliber: 7.62, x: 0.82, z: -1.06 },
+  kt127: { name: 'oplotMKt127', caliber: 12.7, gun: 'nsvt', x: -0.98, z: -0.98 },
+  kt762: { name: 'oplotMKt762', caliber: 7.62, gun: 'mag', x: 0.82, z: -1.06 },
 } as const);
 const T_STATIONS = Object.freeze({
-  m2: { name: 'oplotTM2', caliber: 12.7, x: -0.98, z: -0.98, rise: 0.24 },
-  m240: { name: 'oplotTM240', caliber: 7.62, x: 0.82, z: -1.06 },
+  m2: { name: 'oplotTM2', caliber: 12.7, gun: 'm2', x: -0.98, z: -0.98, rise: 0.24 },
+  m240: { name: 'oplotTM240', caliber: 7.62, gun: 'mag', x: 0.82, z: -1.06 },
 } as const);
 
 /** The Ukrainian Oplot-M's wartime kit: two stations, a lower Duplet course on the skirts, LED bars, olive drums. */
@@ -785,28 +798,27 @@ function buildOplotTKit(P: TankBuilderPort): void {
  * cupola's axis, the gun on the cupola's right. */
 function buildT84UCupolaGun(P: TankBuilderPort): THREE.Group {
   // the trunnion stands high enough that the gun and its box pass over the TKN-5 head at every bearing
-  const cx = -0.62, cz = -0.42, pivotY = ROOF_Y + 0.60, gx = -0.86, pivotZ = -0.40, muzzleZ = pivotZ + 1.30;
+  // (264: 7 cm higher for the true-scale NSVT's longer receiver, whose grips swing 0.31 m down at full elevation)
+  const cx = -0.62, cz = -0.42, pivotY = ROOF_Y + 0.67, gx = -0.86, pivotZ = -0.40, muzzleZ = pivotZ + 1.30;
   const w = sourceMachineGun(P, [0, 0, 0], { name: 'oplotUNsvt', caliberMm: 12.7,
     yaw: [cx, ROOF_Y, cz], pivot: [gx, pivotY, pivotZ], muzzle: [gx, pivotY, muzzleZ] });
   // the yoke: a post on the cupola roof, a low cross-bar and two cheeks to the trunnions, all outside the gun's sweep
   // from -0.18 to +0.75 rad (the receiver's rear swings down between the cheeks, over the bar)
   w.stage('yaw');
-  w.add('turretDetail', box(0.08, pivotY - 0.22 - ROOF_Y - 0.12, 0.08), gx, (ROOF_Y + 0.13 + pivotY - 0.21) / 2, pivotZ);
-  w.add('turretDetail', box(0.225, 0.03, 0.06), gx, pivotY - 0.22, pivotZ);
+  // 264: the true-scale NSVT reaches 0.17 m right of its bore at its belt box and 0.38 m behind the trunnion at its grips,
+  // which swing down to 0.30 m under the trunnion at full elevation: the cheeks stand 0.20 m out and the cross-bar 0.33 m
+  // down, the post shortened to it
+  w.add('turretDetail', box(0.08, pivotY - 0.32 - ROOF_Y - 0.13, 0.08), gx, (ROOF_Y + 0.13 + pivotY - 0.32) / 2, pivotZ);
+  w.add('turretDetail', box(0.425, 0.03, 0.06), gx, pivotY - 0.33, pivotZ);
   for (const sx of [-1, 1]) {
-    w.add('turretDetail', box(0.025, 0.26, 0.10), gx + sx * 0.10, pivotY - 0.09, pivotZ);
-    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.125, pivotY, pivotZ);
+    w.add('turretDetail', box(0.025, 0.37, 0.10), gx + sx * 0.20, pivotY - 0.145, pivotZ);
+    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.225, pivotY, pivotZ);
   }
   w.stage('pitch');
-  // the receiver rides forward on its trunnion (0.23 m behind it, 0.27 ahead), so its rear clears the TKN-5 head at full
-  // elevation
-  w.add('turretDark', box(0.12, 0.13, 0.50), gx, pivotY, pivotZ + 0.02);
-  w.add('turretDark', box(0.11, 0.025, 0.32), gx, pivotY + 0.075, pivotZ);
-  const barrelL = muzzleZ - 0.07 - (pivotZ + 0.28);
-  w.add('turretDark', cylZ(0.017, barrelL, P.q ? 14 : 10, 0.02), gx, pivotY, pivotZ + 0.28 + barrelL / 2);
-  w.add('turretDark', cylZ(0.024, 0.10, P.q ? 14 : 10), gx, pivotY, muzzleZ - 0.05);
-  w.add('turretAmmo', box(0.12, 0.20, 0.30), gx - 0.19, pivotY - 0.03, pivotZ + 0.02);
-  w.add('turretDark', box(0.06, 0.03, 0.08), gx - 0.11, pivotY + 0.075, pivotZ + 0.02);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's NSVT is the fleet's NSVT in its crew form (libraryRoofMg.ts libraryStationGun: grips, sight and its
+  // ammunition box on its right) on the yoke's bore and published muzzle, in place of the drawn receiver, rods and box
+  libraryStationGun(w, { cls: 'nsvt', x: gx, boreY: pivotY, pivotZ, muzzleZ, crew: true });
   w.add('turretDetail', box(0.07, 0.08, 0.10), gx + 0.15, pivotY + 0.04, pivotZ + 0.10);
   w.add('turretGlass', box(0.05, 0.04, 0.012), gx + 0.15, pivotY + 0.04, pivotZ + 0.156);
   return w.finish();

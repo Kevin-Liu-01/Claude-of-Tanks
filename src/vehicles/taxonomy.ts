@@ -46,19 +46,21 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't72bu',
     'chieftain5',
     't55a', 't62_1975', 't64bv1', 't64bv', 't72bu_1989', 't80', 't80b', 't80bv',
-    't80uk', 'strv81', 'udes03', 'strv103a', 'strv103b',
+    't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
     'amx40_proto', 'leo1a5', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
     'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'm60a2', 'm60a3',
     'vickers_mk1',
-    'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton',
+    'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.
     'warrior_tes_h',
+    // release 262: the Olifant Mk 2 (2007)
+    'olifant_mk2',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',

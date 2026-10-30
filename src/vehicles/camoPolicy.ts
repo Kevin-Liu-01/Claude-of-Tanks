@@ -127,12 +127,16 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 // it appends after GT too and no saved index moves.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
+/** The Centurion family (262, merged on 264c): the Sho't Kal's 1973 Sinai grey, the Olifant Mk 2's SANDF coat and
+ * the Australian Mk 5/1's olive drab came with those tanks; they append after 264's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -171,6 +175,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_233,
   ...AUTHORED_PAINT_IDS_AFTER_262,
   ...RELEASE_265_SIGNATURE_IDS,
+  ...AUTHORED_PAINT_IDS_AFTER_264,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -833,6 +838,9 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz20_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // Release 262 (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"): the Mk 3 is the Op Granby
+  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87); the Mk 1 and Mk 2 keep the BAOR coat.
+  challenger1_mk3: 'desert',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
@@ -844,6 +852,12 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
+  // release 262: the Sho't Kal wears the IDF's 1973 Sinai grey as it came (shotKalSpecs.ts)
+  shot_kal: 'paint_shot_kal',
+  // the Olifant Mk 2 wears the South African Army's sand, green and brown (olifantMk2Specs.ts)
+  olifant_mk2: 'paint_olifant_mk2',
+  // the Australian Mk 5/1 wears the RAAC's plain olive drab of Vietnam (centurionAusSpecs.ts)
+  centurion5_1_aus: 'paint_centurion5_1_aus',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
