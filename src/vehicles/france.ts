@@ -252,6 +252,23 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hull', convexSlab(                                                     // steep source knee into the jaw lip
     [-0.90, 0.61, 3.12], [0.90, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
     [-0.90, 0.63, 3.12], [0.90, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
+  // 266 (owner: "the amx 40 proto has a big hole behind its lower glacis"): the two sheets above hung in an empty bow;
+  // from a low front three-quarter the eye ran past their ±0.90 edges into the open space under the bow platform and
+  // over the tub (z 2.04..3.43). The bow is now solid behind them, as on the Saumur hull: each fill's underside lies on
+  // the sheet it backs, its top is buried in the glacis, platform or beak, and its walls stand inside the shoe lanes.
+  // The sheets keep their outer faces, so the lower glacis and its silhouette are unchanged.
+  for (const [z0, z1, y0, y1] of [[2.04, 2.48, 1.47, 1.43], [2.48, 2.72, 1.42, 1.42]]) P.add('hull', slab( // over the tub, under the glacis
+    [-0.97, 1.00, z0], [-0.97, 1.00, z1], [-0.97, y1, z1], [-0.97, y0, z0],
+    [0.97, 1.00, z0], [0.97, 1.00, z1], [0.97, y1, z1], [0.97, y0, z0]));
+  P.add('hull', slab(                                                           // behind the reverse plate
+    [-0.90, 0.46, 2.70], [-0.90, 0.63, 3.12], [-0.90, 1.40, 3.12], [-0.90, 1.40, 2.70],
+    [0.90, 0.46, 2.70], [0.90, 0.63, 3.12], [0.90, 1.40, 3.12], [0.90, 1.40, 2.70]));
+  P.add('hull', slab(                                                           // behind the knee, under the platform
+    [-0.90, 0.63, 3.12], [-0.90, 0.801, 3.24], [-0.90, 1.40, 3.24], [-0.90, 1.40, 3.12],
+    [0.90, 0.63, 3.12], [0.90, 0.801, 3.24], [0.90, 1.40, 3.24], [0.90, 1.40, 3.12]));
+  P.add('hull', convexSlab(                                                     // behind the knee, up into the beak
+    [-0.90, 0.801, 3.24], [-0.90, 1.03, 3.40], [-0.90, 1.06, 3.40], [-0.90, 1.28, 3.24],
+    [0.90, 0.801, 3.24], [0.90, 1.03, 3.40], [0.90, 1.06, 3.40], [0.90, 1.28, 3.24]));
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
   // plan rear -3.380/-3.403) + undercut wedge (bellyCorners 0.44 -> 0.599
   // @ -3.31 -> 0.70 lip @ -3.43)
@@ -563,9 +580,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   ]));
   P.add('turretDetail', box(0.025, 0.025, 2.78), -0.82, 0.612, -0.14, 0, 0.045, 0); // roof welds follow the lengthened connected crown
   P.add('turretDetail', box(0.025, 0.025, 2.72), 0.80, 0.607, -0.16, 0, -0.045, 0);
-  P.add('turretDetail', slab(                                                   // source right nose rail peaks inboard and recedes toward x=1.0
-    [0.45, 0.53, 1.65], [0.62, 0.53, 2.35], [1.00, 0.53, 1.65], [0.62, 0.53, 1.58],
-    [0.45, 0.57, 1.65], [0.62, 0.57, 2.35], [1.00, 0.57, 1.65], [0.62, 0.57, 1.58]));
+  // 266 (owner: "goofy parts ... smoothed out"): the 4 cm "right nose rail", a pointed plate jutting 0.7 m ahead of the
+  // right cheek like a tusk, is gone; the Saumur turret's right cheek carries only its grab rail and smoke tubes.
   // Roof hardware below provides the source's isolated height peaks; no
   // generic ridge is allowed to turn the station into a tall cabinet.
   // BUSTLE (r2 re-lay to the ref's STEPPED right rear: plan_96 rear jumps
@@ -580,7 +596,6 @@ function buildAMX40(P: FranceBuilderPort): void {
     [0.55, 0.20, -1.50], [1.10, 0.20, -1.50], [1.10, 0.30, -1.91], [0.55, 0.30, -1.91],
     [0.55, 0.785, -1.50], [1.10, 0.785, -1.50], [1.10, 0.73, -1.91], [0.55, 0.73, -1.91]));
   P.add('turretDark', box(0.56, 0.30, 0.10), 0, 0.45, -1.82);                   // rear center bin stays ahead of the thin terminal rail
-  P.add('turretDetail', box(0.60, 0.035, 0.035), 0, 0.59, -1.97);               // source terminal recovery rail
   return { shellWallXAt, shellCrownXAt, attachmentEmbedM };
   };
   const { shellWallXAt, shellCrownXAt, attachmentEmbedM } = buildTurretShell();
@@ -590,6 +605,11 @@ function buildAMX40(P: FranceBuilderPort): void {
   const buildTurretStowage = (): void => {
   for (const s of [-1, 1]) {
     const innerTop = s > 0 ? 0.70 : 0.64;
+    // 266 (owner: "a lot of goofy parts that just need to be smoothed out"): each bin's outer edge stood at y 0.16 over
+    // its 0.20 floor, so the outer wall folded through the box and rendered inside out (culled: a lid floating over the
+    // turret wall). The bins now carry a 0.30 m outer wall to the lid's outer edge at 0.50, the lid falling to it from
+    // the crown, and the latches, lips and seams sit on that wall instead of inside the box.
+    const outerTop = 0.50;
     const flankModule = (
       zc: number,
       d: number,
@@ -606,21 +626,20 @@ function buildAMX40(P: FranceBuilderPort): void {
       const topRearX = s * (shellCrownXAt(s, zRear) - attachmentEmbedM);
       P.add('turret', slab(
       [bottomFrontX, bottomF, zFront], [s * 1.49, bottomF, zFront], [s * 1.49, bottomR, zRear], [bottomRearX, bottomR, zRear],
-      [topFrontX, topF, zFront], [s * 1.49, 0.16, zFront], [s * 1.49, 0.16, zRear], [topRearX, topR, zRear]));
-      P.add('turretDetail', slab(                                               // individually raised, slope-following compartment lid
-        [topFrontX, topF - 0.010, zFront - 0.025], [s * 1.475, 0.155, zFront - 0.025], [s * 1.475, 0.155, zRear + 0.025], [topRearX, topR - 0.010, zRear + 0.025],
-        [topFrontX, topF + 0.012, zFront - 0.025], [s * 1.475, 0.177, zFront - 0.025], [s * 1.475, 0.177, zRear + 0.025], [topRearX, topR + 0.012, zRear + 0.025]));
+      [topFrontX, topF, zFront], [s * 1.49, outerTop, zFront], [s * 1.49, outerTop, zRear], [topRearX, topR, zRear]));
+      P.add('turretDetail', convexSlab(                                         // individually raised, slope-following compartment lid (a convex plate: outward by construction)
+        [topFrontX, topF - 0.010, zFront - 0.025], [s * 1.50, outerTop - 0.010, zFront - 0.025], [s * 1.50, outerTop - 0.010, zRear + 0.025], [topRearX, topR - 0.010, zRear + 0.025],
+        [topFrontX, topF + 0.012, zFront - 0.025], [s * 1.50, outerTop + 0.012, zFront - 0.025], [s * 1.50, outerTop + 0.012, zRear + 0.025], [topRearX, topR + 0.012, zRear + 0.025]));
       // Individual lid lips and latch pairs preserve three visibly separate
       // Object_8 compartments instead of one two-metre black rectangle.
-      P.add('turretDark', box(0.035, 0.020, d - 0.05), s * 1.465, 0.168, zc);
-      P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc + d * 0.23);
-      P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc - d * 0.23);
+      P.add('turretDark', box(0.016, 0.022, d - 0.05), s * 1.506, outerTop - 0.006, zc);
+      P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.50, outerTop - 0.05, zc + d * 0.23);
+      P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.50, outerTop - 0.05, zc - d * 0.23);
     };
     flankModule(1.02, 0.98);                                                    // forward cassette follows the extended cheek shoulder
     flankModule(0.08, 0.70);                                                    // center service cassette
     flankModule(-0.86, 1.08, innerTop, innerTop - 0.04, 0.12, 0.30);            // long tapered aft lobe follows the connected rear shoulder
-    P.add('turretDetail', box(0.07, 0.20, 2.62), s * 1.42, 0.33, -0.15);       // source-height inner lid rail, seated below the full stowage course
-    for (const dz of [0.45, -0.30, -1.02]) P.add('turretDark', box(0.08, 0.43, 0.016), s * 1.42, 0.35, dz); // narrow vertical compartment seams
+    for (const dz of [1.02, -1.02]) P.add('turretDark', box(0.010, 0.24, 0.016), s * 1.493, 0.36, dz); // compartment seams on the two long bins' outer walls
     // cheek-flank rail panels (print Object_6: x ±1.26-1.29, y 1.93..2.32,
     // z_w 1.07..1.38) — thin applique standing off the cheeks on brackets
     P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.40), s * 1.272, s < 0 ? 0.62 : 0.52, 1.64);
@@ -659,7 +678,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDetail', slab(                                                   // measured faceted right roof shoulder, rooted into the aft step
     [0.93, 0.55, -1.25], [1.29, 0.55, -1.25], [1.24, 0.55, -1.54], [0.93, 0.55, -1.54],
     [0.99, 0.82, -1.27], [1.20, 0.82, -1.27], [1.16, 0.78, -1.50], [0.99, 0.78, -1.50]));
-  P.add('turretDetail', box(0.018, 0.58, 0.10), 1.04, 0.73, -1.40);            // low service blade carries the falling shoulder beside the single tall mast station
+  // 266: the "low service blade" (1.8 cm thick, 0.58 m tall, standing 0.2 m over the crown like a fin) is gone.
   P.add('turretDetail', slab(                                                   // aft service ridge reproduces the source's unequal rear roof peaks
     [-0.40, 0.70, -1.18], [-0.18, 0.70, -1.18], [-0.18, 0.70, -1.70], [-0.40, 0.70, -1.70],
     [-0.36, 0.74, -1.18], [-0.20, 0.74, -1.18], [-0.20, 0.87, -1.55], [-0.36, 0.87, -1.55]));
@@ -759,10 +778,13 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDetail', box(0.60, 0.035, 0.032), 0, 0.59, -1.97);               // terminal recovery rail
   P.add('turretDetail', box(0.60, 0.032, 0.032), 0, 0.30, -1.92);               // inset bottom rail
   for (const vx of [-0.28, 0, 0.28]) P.add('turretDetail', box(0.028, 0.30, 0.028), vx, 0.43, -1.92); // inset posts
-  P.add('turret', slab(                                                         // tapered terminal service panel closes the source rear-side envelope
-    [-0.20, 0.12, -1.91], [0.20, 0.12, -1.91], [0.12, 0.60, -2.16], [-0.12, 0.60, -2.16],
-    [-0.19, 0.82, -1.93], [0.19, 0.82, -1.93], [0.11, 0.61, -2.14], [-0.11, 0.61, -2.14]));
-  for (const vx of [-0.08, 0, 0.08]) P.add('turretDetail', box(0.018, 0.015, 0.030), vx, 0.605, -2.145);
+  // 266 (owner: "goofy parts"): the terminal service panel was a twisted wedge leaning 0.25 m off the bustle face
+  // (its "bottom" ring rose to 0.60 at the tail), read as a tilted fin. It is now a plain rear bin on the bustle face
+  // to the same depth (the source rear-rack band, world -2.32..-2.41), its lid raked, its three latches on the lid.
+  P.add('turret', slab(
+    [-0.20, 0.16, -1.89], [0.20, 0.16, -1.89], [0.20, 0.16, -2.14], [-0.20, 0.16, -2.14],
+    [-0.20, 0.64, -1.89], [0.20, 0.64, -1.89], [0.20, 0.60, -2.14], [-0.20, 0.60, -2.14]));
+  for (const vx of [-0.10, 0, 0.10]) P.add('turretDetail', box(0.030, 0.040, 0.016), vx, 0.58, -2.145);
   P.add('turretCloth', box(0.50, 0.14, 0.10), 0.02, 0.68, -1.78);               // rolled tarp kept ahead of the terminal rail
   P.add('turretDark', box(0.024, 0.15, 0.11), -0.14, 0.68, -1.78);              // cinch straps
   P.add('turretDark', box(0.024, 0.15, 0.11), 0.16, 0.68, -1.78);
