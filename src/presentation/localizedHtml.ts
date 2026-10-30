@@ -3,6 +3,8 @@ import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
 import {
   DEFAULT_LOCALE,
   hrefForLocale,
+  publicRouteForEntry,
+  resolveLocalePath,
   type PublicRouteRecord,
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
@@ -364,4 +366,22 @@ export function localizeHtmlDocument(
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);
+}
+
+/**
+ * The document an HTML entry becomes (vite.config.ts cot-locale-documents, on the dev server and in `vite build`). On
+ * the dev server the request names the route (/studio serves index.html, /cn/gallery serves gallery.html in Chinese);
+ * a build has no request, so the entry file names its own route, and an entry no public route owns (the manual's topic
+ * fallback, the HUD preview) stays as written. Until 265 the build read its missing request as `/`, the game's route,
+ * and shipped /home, /gallery, /docs and every chapter with the site root as canonical, og:url and hreflang links.
+ */
+export function localizeEntryDocument(html: string, entryFile: string, requestUrl?: string): string {
+  const request = requestUrl ? new URL(requestUrl, SITE_ORIGIN) : null;
+  const localePath = request ? resolveLocalePath(request.pathname) : null;
+  const route = localePath?.route ?? publicRouteForEntry(entryFile.split('/').at(-1) || '');
+  if (!route) return html;
+  const locale = request?.searchParams.get('_cot_locale') === 'zh-CN' || localePath?.locale === 'zh-CN'
+    ? 'zh-CN'
+    : DEFAULT_LOCALE;
+  return localizeHtmlDocument(html, route, locale);
 }

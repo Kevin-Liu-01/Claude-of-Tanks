@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
@@ -265,4 +267,74 @@ for (const [file, canonical] of [...indexedPages].filter(([file]) => file.starts
   }
 }
 
-console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages)`);
+// og:url (265): every public page shares its own canonical URL, in both languages, as a visitor gets it. The heads above
+// are sources; production serves the build's. The English pages here are the Vite entry transform run as `vite build`
+// runs it (vite.config.ts cot-locale-documents, with no request URL: read as `/`, that once gave /home, /gallery, /docs
+// and every chapter the site root as canonical, og:url and hreflang links); the /cn pages are
+// tools/generate-localized-pages.mjs's over those; /studio, /cn/studio and an unknown /cn path's 404 are middleware.ts's
+// over the built shells. The build's other HTML transforms never touch these tags.
+const viteConfig = (await import('../../vite.config.ts')).default;
+const localeDocuments = viteConfig.plugins.flat(Infinity).find((plugin) => plugin?.name === 'cot-locale-documents');
+assert.ok(localeDocuments, 'vite.config.ts names its locale-document transform cot-locale-documents');
+const transformEntry = typeof localeDocuments.transformIndexHtml === 'function'
+  ? localeDocuments.transformIndexHtml : localeDocuments.transformIndexHtml.handler;
+/** One entry as the build emits it: Vite's build context names the entry file and carries no request URL. */
+const buildEntry = (file) => transformEntry(renderProductStats(readFileSync(join(ROOT, file), 'utf8')),
+  { path: `/${file}`, filename: join(ROOT, file) });
+const built = mkdtempSync(join(tmpdir(), 'cot-og-url-'));
+const originalFetch = globalThis.fetch;
+const pageUrls = [];
+try {
+  for (const sourceHtml of new Set(PUBLIC_ROUTE_RECORDS.map((route) => route.sourceHtml))) {
+    // the build's output names (cot-site-entry-output moves site/<page>.html to the root)
+    writeFileSync(join(built, sourceHtml), buildEntry(existsSync(join(ROOT, sourceHtml)) ? sourceHtml : `site/${sourceHtml}`));
+  }
+  mkdirSync(join(built, 'cn'));
+  const generated = spawnSync(process.execPath, [join(ROOT, 'tools/generate-localized-pages.mjs'), `--dir=${built}`],
+    { encoding: 'utf8' });
+  assert.equal(generated.status, 0, `tools/generate-localized-pages.mjs failed: ${generated.stderr}`);
+  const { default: middleware } = await import('../../middleware.ts');
+  globalThis.fetch = async (url) => new Response(readFileSync(join(built, new URL(String(url)).pathname), 'utf8'),
+    { headers: { 'content-type': 'text/html' } });
+  const served = async (path) => (await middleware(new Request(`${SITE}${path}`, { headers: { accept: 'text/html' } }))).text();
+  const pages = [];
+  for (const route of PUBLIC_ROUTE_RECORDS) {
+    for (const locale of ['en-US', 'zh-CN']) {
+      const path = hrefForLocale(route.pathname, locale);
+      const html = route.id === 'studio'
+        ? await served(path)
+        : readFileSync(join(built, locale === 'en-US' ? route.sourceHtml : `cn/${route.localizedHtml}`), 'utf8');
+      pages.push({ label: path, html, route, canonical: `${SITE}${path}` });
+    }
+  }
+  const notFound = PUBLIC_ROUTE_RECORDS.find((route) => route.id === 'notFound');
+  pages.push({ label: '/cn/no-such-page', html: await served('/cn/no-such-page'), route: notFound,
+    canonical: `${SITE}${hrefForLocale(notFound.pathname, 'zh-CN')}` });
+  const failures = [];
+  for (const { label, html, route, canonical } of pages) {
+    const ogUrl = attribute(html, 'meta', 'property', 'og:url');
+    const link = attribute(html, 'link', 'rel', 'canonical', 'href');
+    pageUrls.push(`${label} ${ogUrl}`);
+    if (ogUrl !== canonical) failures.push(`${label}: og:url ${ogUrl || '(missing)'} is not ${canonical}`);
+    // the 404 is noindex and answers every unknown path: it may name no canonical, never another page's
+    if (route.indexable ? link !== canonical : link && link !== canonical) {
+      failures.push(`${label}: canonical ${link || '(missing)'} is not ${canonical}`);
+    }
+    if (!route.indexable) continue;
+    const english = `${SITE}${route.pathname}`;
+    for (const [hreflang, href] of [['en-US', english], ['zh-CN', `${SITE}${hrefForLocale(route.pathname, 'zh-CN')}`],
+      ['x-default', english]]) {
+      const alternate = attribute(html, 'link', 'hreflang', hreflang, 'href');
+      if (alternate !== href) failures.push(`${label}: hreflang ${hreflang} ${alternate || '(missing)'} is not ${href}`);
+    }
+  }
+  assert.deepEqual(failures, [], 'every public page, as served, shares its own canonical URL');
+  // the manual's noindex topic fallback keeps its own canonical (the index) through the build
+  assert.equal(attribute(buildEntry('site/docs-topic.html'), 'link', 'rel', 'canonical', 'href'), `${SITE}/docs`,
+    'the built topic fallback keeps the manual index as its canonical');
+} finally {
+  globalThis.fetch = originalFetch;
+  rmSync(built, { recursive: true, force: true });
+}
+
+console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages; og:url as served on ${pageUrls.length} pages, en and zh)`);

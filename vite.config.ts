@@ -27,8 +27,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 import { expandTypeMarkers } from './src/ui/typeFaces.ts';
-import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
-import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
+import { localizeEntryDocument } from './src/presentation/localizedHtml.ts';
+import { resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { resolveMatchBuild } from './tools/matchBuild.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
@@ -293,16 +293,9 @@ export default defineConfig({
     {
       name: 'cot-locale-documents',
       enforce: 'post',
+      // the request's route on the dev server, the entry's own in the build (it has no request URL)
       transformIndexHtml(html, ctx) {
-        const original = ctx?.originalUrl || '';
-        const requestUrl = new URL(original || '/', 'http://vite.local');
-        const requestedLocale = requestUrl.searchParams.get('_cot_locale');
-        const localePath = resolveLocalePath(requestUrl.pathname);
-        const sourceHtml = resolve(ctx?.filename || '').split('/').at(-1) || '';
-        const route = localePath.route ?? publicRouteForEntry(sourceHtml);
-        if (!route) return html;
-        const locale = requestedLocale === 'zh-CN' || localePath.locale === 'zh-CN' ? 'zh-CN' : 'en-US';
-        return localizeHtmlDocument(html, route, locale);
+        return localizeEntryDocument(html, ctx?.filename || '', ctx?.originalUrl);
       },
     },
     // FE-P3 + 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document loads its own catalogs. The game keeps the full
