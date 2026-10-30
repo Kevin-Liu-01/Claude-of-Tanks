@@ -109,7 +109,7 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
     // paint every shared gun's can takes (browningMachineGunStandard), never the host camouflage.
     // 263 (integrator): patton-family-262 rebuilt the M46 and M47 to their gate reference models, whose roof M2s carry
     // no can (pattonCast roofM2 ammo: false, the fitting's hasConnectedFeed false); a gun with its can keeps the rule
-    if (gun.userData.hasConnectedFeed === false) assert.equal(ammoBox, undefined, `${id}: a gun without its feed draws no can`);
+    if (gun.userData.hasConnectedFeed === false) assert.ok(ammoBox === undefined, `${id}: a gun without its feed draws no can`);
     else {
       assert.equal(ammoBox?.userData.fittingSlot, 'ammoCan',
         `${id}: ammunition can is the shared construction's fitting-paint can`);
