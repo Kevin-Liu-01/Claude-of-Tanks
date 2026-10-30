@@ -20,13 +20,29 @@ export const CHRISTIAN2_TURRET = Object.freeze({
   stepZ: -1.57,
   rearZ: -2.73,
   coreFrontZ: 1.04,
-  moduleFrontZ: 1.32,
+  /**
+   * The frontal modules' faces at the gun slot's edges. From there they sweep back in plan to meet the side walls at the
+   * shell's front, 33.8 degrees (the supplied model's faces measure 33.5 on the left and 35.4 on the right; sliced in the
+   * christian2 lane, 2026-10-30). The owner, 2026-10-30: "christain 2 missinng thhe angled ness".
+   */
+  moduleFrontZ: 1.66,
+  /** The modules' tops: at the shell's front, and at the faces' tips (falling 6 degrees forward, the model's roof). */
+  moduleTopY: 0.725,
+  moduleNoseTopY: 0.655,
+  /** The box mantlet's face, gun metres ahead of the trunnion: flush with the modules' tips, as on the supplied model. */
+  mantletFaceZ: 0.60,
   slotHalfWidthM: 0.355,
   roofRearY: 0.83,
   roofFrontY: 0.74,
   bustleFloorY: 0.21,
   floorY: 0.03,
 });
+
+/** The frontal modules' vertical face at |x| off the bore: moduleFrontZ at the slot, swept back to the shell's front. */
+export function christian2ModuleFaceZ(x: number): number {
+  const T = CHRISTIAN2_TURRET, run = (T.moduleFrontZ - T.coreFrontZ) / (T.halfWidthM - T.slotHalfWidthM);
+  return T.moduleFrontZ - Math.max(0, Math.abs(x) - T.slotHalfWidthM) * run;
+}
 
 /**
  * Protection (RHAe mm). The frontal turret modules and the composite mantlet insert are the concept's 2020s package, with
@@ -44,11 +60,13 @@ export function christian2Armor(): ArmorEnvelope {
   const Td = CHRISTIAN2_TURRET, A = CHRISTIAN2_PROTECTION;
   const hull = leopard2HullArmor(A);
   const tf = Td.moduleFrontZ, hwT = Td.halfWidthM, gy = Td.gunLocal[1];
+  // the modules' swept vertical faces; the mantlet's plate 4 cm inside its face
+  const fo = christian2ModuleFaceZ(hwT), mz = Td.gunLocal[2] + Td.mantletFaceZ - 0.04;
   const turretPlates = [
-    chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, Td.coreFrontZ, 0.04, 0.72, 0.06, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
-    chL('turret_cheek_L', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, Td.coreFrontZ, 0.04, 0.72, 0.06, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
-    plate('mantlet', A.mantlet.ke, [-0.30, gy - 0.23, Td.gunLocal[2] + 0.30], [0.30, gy - 0.23, Td.gunLocal[2] + 0.30],
-      [-0.30, gy + 0.20, Td.gunLocal[2] + 0.30], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
+    chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
+    chL('turret_cheek_L', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
+    plate('mantlet', A.mantlet.ke, [-0.30, gy - 0.23, mz], [0.30, gy - 0.23, mz],
+      [-0.30, gy + 0.20, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
     sR('turret_side_R', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sL('turret_side_L', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sR('turret_bustle_side_R', A.bustleSide.ke, Td.bustleHalfWidthM, Td.bustleFloorY, Td.bustleHalfWidthM, 0.76, Td.rearZ + 0.30, Td.stepZ, { ceMm: A.bustleSide.ce }),

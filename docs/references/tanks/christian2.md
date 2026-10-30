@@ -4,7 +4,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 
 ## Current status
 
-- Updated: 2026-10-27.
+- Updated: 2026-10-30 (R7, the swept frontal modules).
 - Owner request / latest superseding instruction (verbatim, 2026-10-27): "add these new tanks using our rigoorous tank
   generation workflow"; through Main: "the christian 2 is based off the leopard, take innnspo from japanese type 90. but
   dress it in a ton of netting and ghillie, which our strv 121 should also get a ton of btw to distinguishh it as
@@ -83,7 +83,9 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
   three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
-  frontal modules to z 1.32 either side of a 0.71 m gun slot; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+  frontal modules swept back 33.8 degrees in plan from z 1.66 at a 0.71 m gun slot to the walls at the shell's front
+  (z 1.04), their tops falling 7 cm to the tips; the box mantlet's face flush with the tips (gun z 0.60); trunnion
+  (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
@@ -131,3 +133,14 @@ See the round log; filled as each gate runs.
 - R6 (the Leopard 2A3's blind critics on the shared hull): the last skirt panel a fender strip so the sprocket shows whole;
   one continuous exhaust band across the upper rear plate and a deck-level tubular stern rack to the oracle's 4.155 m
   instead of the stern box. Fairness re-run on the final build: mantlet 850/1000 and the 2.1/17 s cycle, 0.499 (9/29).
+- R7 (2026-10-30, the owner on the lane's five-tank sheet: "christain 2 missinng thhe angled ness"): the supplied model
+  sliced at heights (game frame, ~/cot-lanes/christian2-262-evidence/front-27/slice.mjs): its cheek faces vertical from
+  the floor to 2.27 m, straight in plan from a 0.475 m slot to the walls and swept back 33.5 degrees (left) and 35.4
+  (right), its roof rising 6 degrees back from their top edge, the box mantlet flush with their tips. R1-R6 had read
+  the turret front at the roof's edge (z 1.66 world, 1.29 turret) and built square modules there. Now: each module one
+  convex piece swept 33.8 degrees from turret z 1.66 at the slot to the wall at the shell's front, the seams and bolts
+  square to the face; the mantlet's face brought forward to the tips (gun z 0.60), its underside rising 11 cm over its
+  front 0.30 m (traversed astern, a square box would stand 1-3 cm into the engine deck's net at the +0.6 degree stop);
+  the cheek plates on the swept face, the mantlet's plate 4 cm inside its face; the roof net to the tips. The
+  Leopards' 27 degrees (leopard2CheekFrontDatums.ts) is the owner's fit to a real 2A4; this concept keeps its own
+  model's angle.

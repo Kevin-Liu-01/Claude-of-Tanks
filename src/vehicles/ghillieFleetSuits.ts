@@ -415,9 +415,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({
-        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.30, nx: 36, nz: 56, y: 0.84,
+        // to the frontal modules' swept tips (z 1.66; the net ends at the faces)
+        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.68, nx: 36, nz: 61, y: 0.84,
         // the gun slot (the sights, lids and posts open the net round their own shapes)
-        holes: [rect(-0.50, 0.50, 0.80, 1.34)],
+        holes: [rect(-0.50, 0.50, 0.80, 1.72)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // the walls' shoulders stand at 0.76-0.77 under the roof's bevel: the drapes hang from over them, behind the smoke
