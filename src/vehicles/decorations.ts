@@ -3693,6 +3693,13 @@ function footPlate(x: number, y: number, faceZ: number, w: number, h: number, de
   return merged.translate(x, y, faceZ);
 }
 
+/** A ledge arm's foot plate whose face would lie this far or more behind the turret surface at its height is buried
+ * in it, and stands on that surface instead (m: accessoryContact's touch distance, 265)... */
+const FOOT_BURIED_M = 0.015;
+/** ...where that surface is a wall, its normal at most 32 degrees off the horizontal (a shelf's is not), and stands at
+ * most this far out (m: a face further out is a fitting, a Centurion's side bin; 265). */
+const FOOT_WALL_NZ = 0.85;
+const FOOT_SWELL_MAX_M = 0.15;
 /** How far a rear rack's diagonal struts reach down the plate below its rails (m). */
 function rearRackBrace(bb: THREE.Box3): number {
   return Math.min(0.24, Math.max(0.12, (bb.max.y - bb.min.y) * 0.55));
@@ -3743,12 +3750,19 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     const steel = (geo: THREE.BufferGeometry) => own.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
     // round 5: the wall foot lies on the wall where the slot finds it behind the arm (a leaning or curved turret side
     // tilts and moves it, a bin or a cloth cover stands it out), not on a plane at wallZ, below the arm's flange (the
-    // load rests against the wall above it); the arm runs from that foot out under the load. 265 (accessoryContact on
-    // pt91a_twardy): the foot finds the wall where it stands out past the load's back too (a turret's swell or lower row
-    // of blocks under the load), which the cleat's probe refuses; on the plane at wallZ the plate lay buried in that
-    // swell, the strut through it its only contact (5 such plates on the 24 tanks this moves: clipping 28 -> 23)
-    const wall = wallAt?.(x, -0.045, true) ?? null;
+    // load rests against the wall above it); the arm runs from that foot out under the load
+    const wall = wallAt?.(x, -0.045) ?? null;
     const z0 = wall ? wall.p.z : wallZ;
+    // 265 (accessoryContact on pt91a_twardy): where the wall stands out past the load's back at the foot's height (a
+    // turret's swell or a lower row of blocks under the load) the probe above refuses it, and the plate on the plane at
+    // wallZ lay buried in it, the strut through it its only contact. The plate and the strut's foot now stand on that
+    // swell where it is a wall (a shelf under the load, or a bin's face standing well out, keeps the plate where it
+    // was: the arm's root meets it there); the arm, the strap and the station stand as they were (the whole ledge moved
+    // onto the swell, the straps lost their wall cleats and a Leopard 2 Improved's side load stood across its rail)
+    const swell = wall ? null : wallAt?.(x, -0.045, true) ?? null;
+    const rise = swell ? swell.p.z - z0 : 0;
+    const foot = swell && rise > FOOT_BURIED_M && rise <= FOOT_SWELL_MAX_M && swell.n.z >= FOOT_WALL_NZ ? swell : null;
+    const footZ = foot ? foot.p.z : z0;
     const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
     // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over. Where
     // the wall is not there at that height (the roof edge falls away above a tall load, a fitting stands out of it) the
@@ -3768,8 +3782,11 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
     steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
     steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
-    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
-    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
+    steel(footPlate(x, -0.045, footZ, 0.06, 0.08, detail, (foot ?? wall)?.n ?? null)); // wall foot plate, bolted
+    // gusset strut; from a foot on the swell it starts at the plate's middle, in front of a swell that slopes out below
+    // it (a Merkava's shelf under the load: from the plate's foot the strut began inside it), while that leaves a length
+    const strutY = foot ? -0.045 : -0.075;
+    if (detail && z0 + reach * 0.7 - footZ > 0.04) steel(roundBar([x, strutY, footZ + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6));
     const band = (geo: THREE.BufferGeometry) => own.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
     const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
     const lowered = cleatY < strapY;
@@ -6302,8 +6319,8 @@ function* decorationSteps(
             const hit = turP.side(f.y, f.z, side, W / 2 + 1);
             if (!hit || Math.abs(hit.n.x) < 0.3) return null;
             const p = hit.p.clone().sub(pos).applyQuaternion(qi);
-            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it); an arm's
-            // foot, under the load, as far out as leaves its arm 10 cm of reach (265, sideLedgeParts)
+            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it); with
+            // `under`, as far out under the load as leaves an arm 10 cm (a buried foot's swell, 265, sideLedgeParts)
             const outer = under ? bb.max.z - 0.08 : bb.min.z + 0.01;
             return p.z > wallZ - 0.12 && p.z < outer ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
           };
