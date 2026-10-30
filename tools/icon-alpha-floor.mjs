@@ -8,7 +8,8 @@
 // black. This tool gives the icons rendered before that change the same background without a fleet re-render: it
 // decodes each published WebP (the angle portrait and its Garage thumbnail, the side and top views), floors its
 // transparent pixels, re-encodes it at the generator's quality and rewrites that asset's bytes and sha256 in its
-// tank's manifest row (public/icons/tank-assets/tanks/<id>.json). A file with no fully transparent pixel left is already floored and is not touched.
+// tank's manifest row (public/icons/tank-assets/tanks/<id>.json). A file with no fully transparent pixel left is
+// already floored and is not touched.
 //
 //   node tools/icon-alpha-floor.mjs --ids=<id,...>   the named tanks' icons
 //   node tools/icon-alpha-floor.mjs --all            every tank in the manifest (one commit, in a quiet window: every
