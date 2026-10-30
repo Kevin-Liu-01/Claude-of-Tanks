@@ -49,6 +49,10 @@ if (json) {
     errors: [...state.errors, ...(state.world?.globalReasons ?? [])] }, null, 1)}\n`);
 } else {
   console.log(`[changed-ids] ${manifest ? 'manifest present' : 'no manifest'}; ${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files${state.world ? `; ${state.world.ids.length} maps` : ''} (${seconds} s)`);
+  // A toolchain mismatch marks every id on every step: say so once, with this run's parts (the table keeps only a hash).
+  if (manifest && manifest.toolchain !== state.toolchain) {
+    console.log(`[changed-ids] toolchain differs: the table was recorded on ${manifest.toolchain}, this run is ${state.toolchain} (${state.toolchainParts.join(', ')}); every id reads "toolchain"`);
+  }
   for (const name of names) {
     const entry = result[name];
     const head = entry.ids.slice(0, 12).join(',');
