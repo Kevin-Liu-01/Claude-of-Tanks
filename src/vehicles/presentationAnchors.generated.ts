@@ -213,7 +213,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   t90a: Object.freeze({ xM: 0.0011, zM: -0.1228 }),
   t90a_2004: Object.freeze({ xM: -0.0035, zM: -0.0005 }),
   t90a_2006: Object.freeze({ xM: -0.0001, zM: -1.255 }),
-  t90a_burlak: Object.freeze({ xM: 0.003, zM: 0.1235 }),
+  t90a_burlak: Object.freeze({ xM: 0.0029, zM: 0.1235 }),
   t90a_burlak_proto: Object.freeze({ xM: 0.0011, zM: 0.0599 }),
   t90a_vladimir: Object.freeze({ xM: -0.0002, zM: -0.0886 }),
   t90am: Object.freeze({ xM: 0.0054, zM: -0.1623 }),

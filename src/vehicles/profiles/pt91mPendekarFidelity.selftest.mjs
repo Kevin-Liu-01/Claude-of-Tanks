@@ -93,7 +93,7 @@ for(const quality of['high','low']){
   const gun=tank.root.getObjectByName('gun'),moving=triangles(gun),one=moving[20].t,mid=one.getMidpoint(new T.Vector3());
   const blocked=new T.Mesh(new T.BoxGeometry(.03,.03,.03));blocked.position.copy(mid);blocked.updateMatrixWorld(true);
   assert.ok(stockCrosses(moving,triangles(blocked)),'inserted armor through actual barrel is rejected');blocked.geometry.dispose();blocked.material.dispose();
-  assert.ok(tank.root.getObjectByName('turretCupola'));assert.ok(tank.root.getObjectByName('pt91mCommandMG'));
+  assert.ok(tank.root.getObjectByName('turretCupola'));assert.ok(tank.root.getObjectByName('pt91mCommandMgStation'));  // 264: the command NSVT is the library NSVT on its station (libraryRoofMg.ts)
   const dome=tank.root.getObjectByName('turret').geometry;
   for(const seat of turret.userData.pt91mCupolaSeats)for(let i=0;i<56;i++){
    const a=i*Math.PI/28,x=seat.center[0]+seat.radius*Math.cos(a),z=seat.center[1]+seat.radius*Math.sin(a);
@@ -107,12 +107,15 @@ for(const quality of['high','low']){
   const crossbar=selectComponent(darkParts,[.27,.018,.018],'weather crossbar');
   assert.ok(stockCrosses(componentTriangles(head),componentTriangles(crossbar)),'weather crossbar enters its real sensor head');
   assert.equal(stockCrosses(componentTriangles(head),componentTriangles(crossbar,new T.Vector3(0,.045,0))),false,'historical 31 mm detached crossbar fails native contact');
-  const mg=tank.root.getObjectByName('pt91mCommandMG'),mgDark=components(mg.getObjectByName('sourceMachineGun_turretDark')),mgDetail=components(mg.getObjectByName('sourceMachineGun_turretDetail'));
-  const receiver=selectComponent(mgDark,[.13,.115,.42],'actual MG receiver'),feed=selectComponent(mgDark,[.065,.055,.12],'finite MG feed bracket'),ammo=selectComponent(mgDetail,[.22,.20,.25],'actual MG ammunition box');
-  assert.ok(stockCrosses(componentTriangles(receiver),componentTriangles(feed))&&stockCrosses(componentTriangles(ammo),componentTriangles(feed)),'feed bracket physically joins receiver and ammunition box');
-  assert.equal(stockCrosses(componentTriangles(receiver),componentTriangles(ammo)),false,'original 25 mm gap needs the actual joining bracket');checks+=4;
-  const mgSight=selectComponent(mgDark,[.12,.03,.08],'MG sight block');
-  assert.ok(stockCrosses(componentTriangles(receiver),componentTriangles(mgSight)),'MG sight block seats on receiver');checks++;
+  // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the command NSVT is the
+  // library NSVT on its own working station, its pintle foot 5 mm into the commander's cupola race (its top 25 mm over the
+  // cupola's own seated top)
+  const station=tank.root.getObjectByName('pt91mCommandMgStation');
+  let fit=null;station?.traverse(o=>{if(!fit&&o.userData?.fittingRoot&&o.userData.fitting==='pintleMG')fit=o;});
+  assert.ok(fit&&/browningDerived/.test(fit.name)&&fit.userData.fittingExact!==true,`the command gun is the fleet's NSVT (${fit?.name})`);checks++;
+  const commander=turret.userData.pt91mCupolaSeats[0];
+  assert.ok(Math.abs(station.position.y-(commander.top+.020))<.0005&&Math.hypot(station.position.x-commander.center[0],station.position.z-commander.center[1])<commander.radius,
+    'the pintle foot sits 5 mm into the commander\'s cupola race, within its rim');checks++;
   const smoke=darkParts.filter(p=>{const c=p.bounds.getCenter(new T.Vector3()).add(new T.Vector3(...DATUMS.turretPivot));return Math.abs(c.x)>1.1&&Math.abs(c.x)<1.45&&c.y>1.7&&c.y<2.1&&c.z>-.3&&c.z<.1;});
   assert.equal(smoke.length,12,'both complete smoke banks');
   const detailStock=detailParts.flatMap(p=>componentTriangles(p));

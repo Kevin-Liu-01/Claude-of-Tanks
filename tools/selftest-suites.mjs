@@ -286,6 +286,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-sealed-check.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
+    // release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured
+    'tools/roof-pocket-census.selftest.mjs',
     // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
     'tools/hull-contact-census.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
@@ -738,6 +740,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
     // release 262: the Leclerc turret's false roofs (owner-marked) stay closed on the S1, S2 and SXXI
     'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
+    // release 264: the T-72B 1987's and T-62MV1's open commander's hatch opens into its cupola
+    'src/vehicles/profiles/t72b1987HatchWell.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
