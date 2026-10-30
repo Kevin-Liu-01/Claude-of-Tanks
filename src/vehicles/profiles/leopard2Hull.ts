@@ -115,11 +115,12 @@ function skirtRuns(P: TankBuilderPort, o: Leopard2HullOptions, side: number): vo
       P.add('hull', sectionSolid(lead
         ? [ring(z0, bottom), ring(z1 - 0.18, bottom), ring(z1, top - 0.24)]
         : [ring(z0, bottom), ring(z1, bottom)]));
-      // the heavy block's bolts: two rows of three on its face, the middle one midway between its neighbours (on the
-      // chamfered leader the last stands 0.26 m in, so the block's midpoint put the middle bolt 1 cm from it, two discs
-      // overlapping on the face: the circular-cap lint, release 265)
+      // the heavy block's bolts: two rows of three on its face, the middle one at the block's midpoint; the chamfered
+      // leader, its last bolt 0.26 m in, keeps two a row (release 265: a midpoint bolt stood 1 cm from that last one, two
+      // discs overlapping on the face, the circular-cap lint; one midway between them closed the 2A4 OTCO's ISAF cage slot
+      // above and below into a pocket the watertight gate measured as leaking interior)
       const first = z0 + 0.10, last = z1 - (lead ? 0.26 : 0.10);
-      for (const z of [first, (first + last) / 2, last]) {
+      for (const z of lead ? [first, last] : [first, (z0 + z1) / 2, last]) {
         for (const y of [top - 0.08, bottom + 0.08]) P.add('hullDetail', KIT.cylX(0.022, 0.018, 8), side * 1.827, y, z);
       }
     }
