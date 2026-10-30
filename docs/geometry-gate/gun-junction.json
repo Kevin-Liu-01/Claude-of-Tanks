@@ -63,7 +63,7 @@
   "chieftain5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1ccf4a1a3169c934","gun":"b1535e564074f8e3"}},
   "chieftain_mk10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"80662e6dd7d61590","gun":"3f68eb9128176147"}},
   "chieftain_mk9": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"89f2edad5b49d348","gun":"8d1e597a90e0fe9d"}},
-  "christian2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"74905f447e33b1a3","gun":"9b15730e67afb16e"}},
+  "christian2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3d30b4db45f84580","gun":"d5cd59b10cc8f051"}},
   "cv90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c9c817fc9197dbfa","gun":"0fc9fd77fe8cc681"}},
   "cv90105_tml": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fe4c377b96959ba9","gun":"c78e4ddc90605565"}},
   "cv9040c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"faf1e6cf729adb42","gun":"194289542e0810c0"}},
