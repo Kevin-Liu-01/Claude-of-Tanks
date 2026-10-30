@@ -371,10 +371,25 @@ function turret(P: TankBuilderPort, v: EarlyLeopard2): void {
   for (const side of [-1, 1]) P.decal('turret', 'number', null, 0.24, [side * sideX, 0.42, 0.40], side * Math.PI / 2);
 }
 
+/**
+ * A floor in the hull's stern rack (leopard2Hull.ts: its rails across at z -4.14, its sides at x ±0.55), as the 2A4
+ * family's kits floor theirs: a ledger on the louvre band's face, a dark sheet run into the low rail (its back edge 5 mm
+ * inside the rail's back face, so the hull's rear extent stays the rail's), four slats along it. Left empty the rack read
+ * through to the ground from above (the standard check's contiguity: 54 cells at x 0, z -3.99, release 262's gate).
+ */
+function sternRackFloor(P: TankBuilderPort): void {
+  const { box } = KIT;
+  const front = -3.835, back = -4.15, zc = (front + back) / 2, depth = front - back;
+  P.addEquipment('hullDetail', box(1.10, 0.04, 0.03), 0, 1.68, -3.839);
+  P.addEquipment('hullDark', box(1.10, 0.012, depth), 0, 1.706, zc);
+  for (let k = 0; k < 4; k++) P.addEquipment('hullDetail', box(0.035, 0.018, depth), -0.4125 + k * 0.275, 1.721, zc);
+}
+
 function earlyLeopard2(v: EarlyLeopard2): (P: TankBuilderPort) => void {
   return (P) => {
     buildLeopard2Hull(P, { flapName: v.flapName, exhaust: v.batch === '2A2' ? 'louvre' : 'rods',
       foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, fuelFillers: true, forwardLiftEyeZ: EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z });
+    sternRackFloor(P);
     turret(P, v);
     P.topY = 1.24;
   };
