@@ -1,43 +1,14 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
+// 2026-10-30 (lane t90-family-266): the earlier T-90 marks build from their source-X twins, whose own receipts hold
+// their roof weapons (t90XTwins.selftest.mjs holds the wiring); the Burlak prototype keeps its own turret and station.
 const CASES = Object.freeze({
-  t90_1992: Object.freeze({
-    weaponName: 't90Ru417AutomatedKord',
-    stationReceipt: 't90Ru417AutomatedStationReceipt',
-  }),
-  t90a_2004: Object.freeze({
-    weaponName: 't90aRemoteNsvt',
-    stationReceipt: 't90aAutomatedStationReceipt',
-  }),
-  // 2026-10-30 (lane t90-family-266): obr. 2006 is the shared T-90A build; the MS, AM and AM II carry the AM-type
-  // turret's station (the recovered T-90SM roof).
-  t90a_2006: Object.freeze({
-    weaponName: 't90aRemoteNsvt',
-    stationReceipt: 't90aAutomatedStationReceipt',
-  }),
   t90a_burlak_proto: Object.freeze({
     weaponName: 't90aBurlakCommanderNsvt',
     stationReceipt: 't90aBurlakAutomatedStationReceipt',
   }),
-  t90sm_2013: Object.freeze({
-    weaponName: 't90smRemoteNsvt',
-    stationReceipt: 't90smAutomatedStationReceipt',
-  }),
-  t90ms_2011: Object.freeze({
-    weaponName: 't90smRemoteNsvt',
-    stationReceipt: 't90smAutomatedStationReceipt',
-  }),
-  t90am: Object.freeze({
-    weaponName: 't90smRemoteNsvt',
-    stationReceipt: 't90smAutomatedStationReceipt',
-  }),
-  t90m_proryv: Object.freeze({
-    weaponName: 't90smRemoteNsvt',
-    stationReceipt: 't90smAutomatedStationReceipt',
-  }),
 });
-
 for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
@@ -77,4 +48,4 @@ for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
   }
 }
 
-console.log('t90MachineGunForward.selftest: every T-90-family roof weapon and armored station faces forward');
+console.log('t90MachineGunForward.selftest: the Burlak prototype roof weapon and armored station face forward');

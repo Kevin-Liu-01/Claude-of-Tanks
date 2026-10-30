@@ -11,17 +11,29 @@ from other packs and are not touched.
 
 ## Outcome
 
-| Before | After |
-|---|---|
-| Six `loftHull` calls in `profiles/t90.ts`, each fitted to a different community print (the T-90 family hull, the T-90A loft, the Vladimir loft built in a shifted frame, the old Proryv loft, the SM loft, a copy inside the MS) | **One hull**, `addT90FamilyChassis(P, 'kontakt5' \| 'relikt')`, for all nine |
-| obr. 1992 on the Burlak prototype's welded core with its autoloader bustle, tall slab skirts and a slat cage | The production cast turret; K-5 horseshoe and Shtora; full-length skirt with three K-5 panels; no cage, no bustle |
-| obr. 2006 on a private hull and an open "tub" turret with a long bustle | The shared T-90A build; sources give no external 2004/2006 difference, so the identical look is intended |
-| T-90AM / AM II built a hull, cleared it, rebuilt it 200 mm low, lifted the hull buckets 160 mm and squashed the turret to 65 % of its height | Family chassis (Relikt) and the AM-type turret at full scale; the owner's 1.10 hull length and the AM's ghillie suit stay |
-| T-90MS wore the old Shtora turret with a rail basket | The AM-type turret (no Shtora) on the family chassis |
-| T-90SM on its own loft | The family chassis (no hull difference in the photographs) with the AM-type turret |
-| T-90A, Burlak proto and BMPT on the T-90A loft (deck 1.365 m, 16 cm skirt band) | The family chassis; the Burlak's own turret is untouched; the BMPT takes the Relikt fit and its station seats on the family deck |
+Two steps, both in the lane's history:
 
-`profiles/t90.ts`: 8,386 lines to about 3,200.
+1. **One family chassis** (Main's rulings below): the six print-fitted lofts in `profiles/t90.ts` collapsed onto one
+   T-90 family chassis with Kontakt-5 or Relikt fits, the obr. 1992 on a cast turret, the AM-type marks on one turret.
+   The first blind-critic round still scored 4-5/10 (turrets low and flat, no mantlets, reduced weapon stations).
+2. **The source-X twins** (the owner, 2026-10-30: "for all of these we can just take inspirration annd update from the
+   later t90s we added that have far more accurate models"). Each earlier mark now builds from its matching source-X
+   build, whose builders are called unchanged:
+
+| Mark | Builds from | Own deltas kept |
+|---|---|---|
+| T-90 obr. 1992 (`t90_1992`) | T-90 (`t90`, `profiles/t90AwX.ts`, cast turret, Shtora, K-5) | kit, camouflage, markings, 1.05 installed size |
+| T-90A obr. 2004 (`t90a_2004`) | T-90A (`t90a`, `profiles/t90X.ts`) | as above |
+| T-90A obr. 2006 (`t90a_2006`) | T-90A Vladimir (`t90a_vladimir`, the obr. 2006 production name) | as above |
+| T-90MS obr. 2011 (`t90ms_2011`) | T-90MS Tagil (`t90ms_tagil`, `profiles/t90msX.ts`) | as above |
+| T-90SM obr. 2013 (`t90sm_2013`) | T-90SM (`t90sm`) | as above |
+| T-90AM (`t90am`) | T-90SM (`t90sm`; AM, MS and SM are one design) | the owner's field net and garnish (refitted) |
+| T-90AM II (`t90m_proryv`) | T-90M (`t90m`, the T-90M Proryv-3) | as above |
+| T-90A Burlak prototype (`t90a_burlak_proto`) | the T-90A X hull and running gear | its own Burlak turret, unchanged (light touch) |
+| BMPT T-90 (`bmpt_t90`) | the T-90M X hull (Relikt skirts, rear slat) | its Terminator station, AG-17 pods |
+
+`profiles/t90.ts`: 8,386 lines to 768 (the Burlak turret and the X wiring). The AM and AM II 1.10 chassis length
+retired with the move (Main: the X proportions are measured; owner commit 245aa4e4e recorded no reason for it).
 
 ## Measured datums (builder frame, before the 1.05 installed scale)
 
@@ -36,15 +48,15 @@ turret crown 2.23 m. Hull 6.86 m construction length (btvt 6,917 mm; Wikipedia 6
 
 | Mark | Turret | Turret front | Shtora | Commander's weapon | Bustle | Hull sides | Build |
 |---|---|---|---|---|---|---|---|
-| T-90 obr. 1992 | Cast (T-72B base) [btvt-T90] | Kontakt-5 V blocks, 7 containers + 1 block; 21 roof containers [btvt-T90] | Yes, two TShU-1-7 [btvt-T90] | 12.7 mm NSVT on the hatch, remotely fired [btvt-T90] | No | Full-length skirt, K-5 front panels [btvt-T90; AR-T90; photos]; no slat | family chassis `kontakt5` + cast turret steps |
-| T-90A obr. 2004 | Welded, 950 mm frontal elements [Kubinka] | K-5 as the T-90 [btvt-T90A] | Yes [btvt-T90A] | NSVT or Kord, remote [Kubinka] | No | As the T-90 [btvt-T90A] | family chassis `kontakt5` + T-90A welded turret |
-| T-90A obr. 2006 | As 2004 | As 2004 (4S23 inserts, internal) | Yes | As 2004 | No | As 2004 | same build as 2004 (Buran-M to ESSA is internal [Kubinka; AW-T90A]) |
-| T-90AM | New welded module [btvt-T90SM] | Relikt, modular [btvt-T90SM; btvt-REA2011] | No | UDP T05BV-1 with 7.62 mm PKTM [btvt-REA2011] | Yes, blow-out plates [btvt-T90SM] | Split full-length screens; slat at hull and turret rear [btvt-REA2011] | family chassis `relikt` + AM-type turret |
-| T-90AM II (T-90M Proryv-3) | New all-welded [AR-T90M] | Relikt front module; net screens round the lower turret (photos) | No (laser warning kept) | Remote 12.7 mm Kord [WM-2020] | Yes | ERA over the front half, slat over the rear half (photos; AR-T90M) | family chassis `relikt` (modules to z 0.20) + AM-type turret + net screens |
-| T-90MS obr. 2011 | Same as T-90AM [UVZ-T90MS; AT-T90MS] | Relikt | No | PKTM station | Yes | As T-90AM | as T-90AM |
-| T-90SM obr. 2013 | Same as T-90MS in the photographs | Relikt | No | Station | Yes | As T-90AM | as T-90AM |
-| T-90A Burlak prototype | Game construct: the Burlak module on a T-90A [AW-Burlak]; the real prototype was on a T-72B [btvt-Burlak] | Wedge ERA | — | — | Large removable autoloader container | T-72B skirts on the real prototype | family chassis `kontakt5`; its own turret unchanged |
-| BMPT T-90 | Unmanned weapons module, 2 x 2A42, 4 Ataka-T [wiki-en-BMPT] | Relikt on hull and module | No | — | — | Full-length ERA box skirts plus slat [btvt-BMPT; photos] | family chassis `relikt` + the Terminator station |
+| T-90 obr. 1992 | Cast (T-72B base) [btvt-T90] | Kontakt-5 V blocks, 7 containers + 1 block; 21 roof containers [btvt-T90] | Yes, two TShU-1-7 [btvt-T90] | 12.7 mm NSVT on the hatch, remotely fired [btvt-T90] | No | Full-length skirt, K-5 front panels [btvt-T90; AR-T90; photos]; no slat | `t90` (source-X) |
+| T-90A obr. 2004 | Welded, 950 mm frontal elements [Kubinka] | K-5 as the T-90 [btvt-T90A] | Yes [btvt-T90A] | NSVT or Kord, remote [Kubinka] | No | As the T-90 [btvt-T90A] | `t90a` (source-X) |
+| T-90A obr. 2006 | As 2004 | As 2004 (4S23 inserts, internal) | Yes | As 2004 | No | As 2004 | `t90a_vladimir` (source-X); Buran-M to ESSA is internal [Kubinka; AW-T90A] |
+| T-90AM | New welded module [btvt-T90SM] | Relikt, modular [btvt-T90SM; btvt-REA2011] | No | UDP T05BV-1 with 7.62 mm PKTM [btvt-REA2011] | Yes, blow-out plates [btvt-T90SM] | Split full-length screens; slat at hull and turret rear [btvt-REA2011] | `t90sm` (source-X) |
+| T-90AM II (T-90M Proryv-3) | New all-welded [AR-T90M] | Relikt front module; net screens round the lower turret (photos) | No (laser warning kept) | Remote 12.7 mm Kord [WM-2020] | Yes | ERA over the front half, slat over the rear half (photos; AR-T90M) | `t90m` (source-X) |
+| T-90MS obr. 2011 | Same as T-90AM [UVZ-T90MS; AT-T90MS] | Relikt | No | PKTM station | Yes | As T-90AM | `t90ms_tagil` (source-X) |
+| T-90SM obr. 2013 | Same as T-90MS in the photographs | Relikt | No | Station | Yes | As T-90AM | `t90sm` (source-X) |
+| T-90A Burlak prototype | Game construct: the Burlak module on a T-90A [AW-Burlak]; the real prototype was on a T-72B [btvt-Burlak] | Wedge ERA | — | — | Large removable autoloader container | T-72B skirts on the real prototype | T-90A X hull; its own turret unchanged |
+| BMPT T-90 | Unmanned weapons module, 2 x 2A42, 4 Ataka-T [wiki-en-BMPT] | Relikt on hull and module | No | — | — | Full-length ERA box skirts plus slat [btvt-BMPT; photos] | T-90M X hull + the Terminator station |
 
 Chassis of the 2018 BMPT batch: Interfax (2017) and BFM (2018) say T-90A units; the archived Uralvagonzavod page and
 English Wikipedia say a modernised T-72. The game keeps it on the T-90 family chassis.
@@ -58,6 +70,8 @@ English Wikipedia say a modernised T-72. The game keeps it on the T-90 family ch
 4. Fix the AM's 160 mm ride lift and the 65 % turret scale in the shared steps, not as per-id offsets.
 5. Option 1: the T-90A build goes onto the family chassis, one hull for all nine. The Burlak proto's hull rising with it is
    a correctness fix; its own turret stays untouched.
+6. After the owner's message: each mark builds from its source-X twin by the mapping above; the X ids stay
+   byte-identical; the family chassis, cast and AM-type turret code retire; the AM / AM II drop the 1.10 length.
 
 ## Open questions and unknowns
 
