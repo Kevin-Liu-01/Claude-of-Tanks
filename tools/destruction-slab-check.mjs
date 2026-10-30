@@ -1097,7 +1097,12 @@ export async function createSlabCheck({
         const arr = span.position.array;
         h.update(Buffer.from(arr.buffer, arr.byteOffset + span.first * 12, span.count * 12));
       }
-      h.update(JSON.stringify(a, (k, v) => (k === 'enclosure' || k === 'intact' ? undefined : ArrayBuffer.isView(v) ? Array.from(v.slice(0, 4096)) : v)));
+      // (perf 265: a set piece's kit copies the anatomy's mound onto its plan's body at its first stage — `synced`, as it does
+      // the intact form and the enclosure — so a run's fingerprint moved with the runs before it in the same build) the
+      // anatomy's own mound is read; a copy of it under the kit's plan is not
+      h.update(JSON.stringify(a, function (k, v) {
+        return k === 'enclosure' || k === 'intact' || (k === 'mound' && this !== a) ? undefined : ArrayBuffer.isView(v) ? Array.from(v.slice(0, 4096)) : v;
+      }));
       const e = a.enclosure;
       if (e) { h.update(Buffer.from(e.top.buffer)); for (const b of e.bands) h.update(Buffer.from(b.cells.buffer)); }
       fp = h.digest('hex');

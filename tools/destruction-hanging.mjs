@@ -217,6 +217,12 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
       for (let j = vl.length - 1; j >= 0 && mine < 6; j -= 4) if (vl[j] === sp[i]) mine++;
       if (mine < 6) vl.push(sx[i], sy[i], sz[i], sp[i]);
     }
+    // (destruction-slab-kinds-perf 265: a tall building's plan cell holds every storey's samples, and a held share scanned
+    // them all for the few in its band — ~80 % of the receipt's CPU on Ruinspires) each cell's samples by height
+    for (const [ck, list] of column) {
+      list.sort((a, b) => sy[a] - sy[b] || a - b);
+      column.set(ck, { y: Float64Array.from(list, (i) => sy[i]), i: Int32Array.from(list) });
+    }
     return { sx, sy, sz, sp, N, column, voxels, shape };
   }
   const intact = indexOf(spans);
@@ -241,14 +247,20 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
       let ok = false;
       for (let di = -1; di <= 1 && (!ok || holders); di++) for (let dk = -1; dk <= 1 && (!ok || holders); dk++) {
         const key = cellKey(i0 + di, k0 + dk);
-        const list = column.get(key);
-        if (list) for (const i of list) {
-          const q = sp[i];
-          if (q === self || sy[i] < lo || sy[i] > hi || !sup[q]) continue;
-          if (near && near.has(voxKey(Math.floor(sx[i] / HANG.twinM), Math.floor(sy[i] / HANG.twinM), Math.floor(sz[i] / HANG.twinM)))) continue;
-          ok = true;
-          if (!holders) break;
-          holders.add(q);
+        const col = column.get(key);
+        if (col) {
+          // (the cell's samples in the band lo..hi: the first at lo or over, by halves)
+          const ys = col.y;
+          let t = 0;
+          for (let b = ys.length; t < b;) { const m = (t + b) >> 1; if (ys[m] < lo) t = m + 1; else b = m; }
+          for (; t < ys.length && ys[t] <= hi; t++) {
+            const i = col.i[t], q = sp[i];
+            if (q === self || !sup[q]) continue;
+            if (near && near.has(voxKey(Math.floor(sx[i] / HANG.twinM), Math.floor(sy[i] / HANG.twinM), Math.floor(sz[i] / HANG.twinM)))) continue;
+            ok = true;
+            if (!holders) break;
+            holders.add(q);
+          }
         }
         if (!ok && xcol) {
           const e = xcol.get(key);

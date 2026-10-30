@@ -356,8 +356,11 @@ if (!isMainThread) {
     return why >= 0;
   };
   const judgedRuns = new Set();
-  for (const r of results.sort((a, b) => a.mapId.localeCompare(b.mapId))) {
-    assert.ok(!r.error, `${r.mapId}: the detector reported: ${r.error}`);
+  // (every map's errors at once: a build or run the guards stopped, a fingerprint that moved, a run never reported)
+  results.sort((a, b) => a.mapId.localeCompare(b.mapId));
+  const errors = results.filter((r) => r.error).map((r) => `${r.mapId}: the detector reported: ${r.error}`);
+  assert.deepEqual(errors, [], errors.join('\n'));
+  for (const r of results) {
     for (const row of r.rows) {
       runs++;
       if (row.cached) cachedRuns++;
