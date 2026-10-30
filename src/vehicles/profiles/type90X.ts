@@ -263,8 +263,9 @@ function roofWeapon(P:TankBuilderPort):void {
   w.add('turretDetail',box(.063154,.073564,.126212),.084077,2.727552,.535954);
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
   // M2 is the fleet's M2 in its crew form at true length (libraryRoofMg.ts libraryStationGun: spade grips, sight and its
-  // ammunition box on its left) on the drawn bore, in place of the drawn receiver, rod, box, chute, grips and sights
-  libraryStationGun(w,{cls:'m2',x:.084077,boreY:2.91146,pivotZ:.358595,crew:true,feed:'left'});
+  // ammunition box on its left), in place of the drawn receiver, rod, box, chute, grips and sights. Its receiver's
+  // underside (51.5 mm under the bore) sits 5 mm into the post's top (2.8173), so the bore runs 48 mm under the drawn one
+  libraryStationGun(w,{cls:'m2',x:.084077,boreY:2.8638,pivotZ:.358595,crew:true,feed:'left'});
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(w.finish(),{name:'type90XRoofM2',caliberMm:12.7});
 }

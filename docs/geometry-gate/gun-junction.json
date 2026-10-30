@@ -228,7 +228,7 @@
   "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9fd5dc739d5b3abc","gun":"6dcb6418c64dfa00"}},
   "type74": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f0e338b740aa06f0","gun":"ec5111a6d75f72a1"}},
   "type89": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"828ecfea4c058f33","gun":"c8e169b36147e0b9"}},
-  "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"10703ac3450f6c61","gun":"778ed0dfb5f808c7"}},
+  "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8bebbbe5fd3bb4ef","gun":"778ed0dfb5f808c7"}},
   "type90_kyumaru": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"980123879145d272","gun":"71df81b598921509"}},
   "type90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f2bb7e8aad725a6f","gun":"20e0417f294862af"}},
   "type96_72_long": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"66519eb7e3a6da90","gun":"0ac1d891b4eb844a"}},

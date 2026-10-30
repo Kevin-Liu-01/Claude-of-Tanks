@@ -210,7 +210,7 @@
   "type59": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"d16c63fc4710ac7e","turret":"a3f525228420b7e8","gun":"3d4fb55600a68223"}},
   "type74": {"turretRaisedCm2":76,"turretBaseCm2":0,"hullCm2":520,"pockets":3,"geometry":{"hull":"4263a9505b05d6fe","turret":"34a88fda2b708a12","gun":"ec5111a6d75f72a1"}},
   "type89": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"b3bd21af652d9f98","turret":"4408e1e8e088f243","gun":"c8e169b36147e0b9"}},
-  "type90": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":388,"pockets":2,"geometry":{"hull":"b8a62da2d06f80c2","turret":"10703ac3450f6c61","gun":"778ed0dfb5f808c7"}},
+  "type90": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":388,"pockets":2,"geometry":{"hull":"b8a62da2d06f80c2","turret":"8bebbbe5fd3bb4ef","gun":"778ed0dfb5f808c7"}},
   "type90_kyumaru": {"turretRaisedCm2":2844,"turretBaseCm2":2236,"hullCm2":1356,"pockets":11,"geometry":{"hull":"cdadc57e25e59f08","turret":"882bead915dc39ce","gun":"71df81b598921509"}},
   "type90a": {"turretRaisedCm2":7820,"turretBaseCm2":2228,"hullCm2":1348,"pockets":19,"geometry":{"hull":"e8b8a4cc33761900","turret":"4e3e2d820de1d6ca","gun":"20e0417f294862af"}},
   "type96_72_long": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":5416,"pockets":5,"geometry":{"hull":"ccee4f6d1e8f12c6","turret":"c02a6b43029ef1f1","gun":"0ac1d891b4eb844a"}},
