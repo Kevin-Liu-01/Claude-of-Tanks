@@ -162,6 +162,22 @@ multiplayer client (`MatchClient` over an in-page loopback; `main.ts` counted it
 RUST-ENGINE-DECISION §7 step 5 (the solo sim Worker) is retired. Any future off-thread local simulation must be a local
 driver, with no prediction or interpolation, and needs the owner's OK after they have played it.
 
+**The local Worker driver** (`?localDriver=worker`, Main 2026-10-29, for the owner to play against the page; the
+default stays the page until the owner says yes). This is the same local driver, with the step moved off the page's main
+thread. `src/game/localSimCore.ts` (the Worker: `localSimWorker.ts`) runs the page's own `simStep` at 60 Hz on the
+battlefield's collision world (`src/world/collisionWorldLoad.ts`, the served manifests) and the world kernels
+(`src/world/soloWorldKernels.ts`). It seats the page's battle from the setup's own inputs (`setupBattle`, the same roster,
+or the page keeps its own step). The page (`src/game/localSimDriver.ts`, through `battleFrameRuntime`'s `localSim`
+port) posts the player's input the moment it samples it; the Worker applies it on its next tick. Every tick the Worker
+posts the whole state in a transferable pooled buffer (`src/game/localSimMirror.ts`): each hull's leaves, with a schema
+only on a shape change, plus the shells, the verdict and the mode's state. It also posts the tick's events and calls in
+order: a death, a recoil, the camera's shake, a crushed prop, and a building's stage through the destruction mirror
+(`src/world/destructionMirror.ts`, shared with the online driver). The page draws the newest tick, smoothed by at most one
+tick. When the Worker falls behind, game time slows (two steps a wake at most); it never jumps. There is no prediction,
+no reconciliation, no snapshot and nothing from `src/mp`. It runs versus battles only: the campaign, Watch, the Proving
+Ground and Jev's orders keep the page's step. `src/game/localSimDriver.selftest.mjs` holds the Worker-driven page to the
+page that steps its own battle, bit for bit.
+
 Guards, in `npm test`, each with seeded violations it must catch:
 - `tools/driver-boundaries.selftest.mjs` (`tools/driver-boundaries.mjs`), over every runtime edge (static imports, lazy
   `import()` and Worker entries):

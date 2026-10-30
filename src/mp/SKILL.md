@@ -18,7 +18,9 @@ map and layer contracts are in [README.md](README.md); the design and its histor
 - **Online (this directory).** The authority, `server/match/matchActor.ts` in the room host's Worker
   (`host/matchHostCore.ts`) or in Node, runs the core's step (`src/sim/authoritativeMatch.ts`). The client (`match/`)
   predicts the own hull, interpolates the rest and reconciles, because the network is real. `session/` owns a room's
-  session. `presentation/` draws the frames.
+  session. `presentation/` draws the frames. The collision world's loader (`src/world/collisionWorldLoad.ts`; `host/worldCollision.ts`
+  re-exports it) and the destruction mirror (`src/world/destructionMirror.ts`) are shared with the local Worker driver:
+  keep them free of `src/mp` imports.
 - **Local (`src/game/state.ts` and the `solo*` owners).** A solo battle, the campaign, the Proving Ground, Watch,
   replays and the Jev opponent step the core on the page. They never reach this directory.
 

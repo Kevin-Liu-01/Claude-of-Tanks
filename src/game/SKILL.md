@@ -218,6 +218,15 @@ lazy imports and Worker entries. It also fails when main.ts's local entries (`be
 name the online composition. An off-thread local simulation is still a local driver, and it needs the owner's OK after
 they have played it.
 
+The **local Worker driver** (`?localDriver=worker`, behind a flag until the owner says yes) is that local driver with
+the step on a Worker. `localSimCore.ts` and `localSimWorker.ts` step `simStep` on the collision world and the kernels.
+`localSimDriver.ts` is the page end: it posts input on sampling, applies every tick and replays its events and calls.
+`localSimMirror.ts` carries each hull's leaves, and `localSimProtocol.ts` is the channel. A new sim field on a hull
+travels on its own: the mirror walks `state`, `combat`, `consumables`, `aerial` and `specialAction`. A new call the
+step makes on a hull's model, on the camera rig or on the drawn world must be logged by the Worker's stand-in
+(`localSimCore.ts` `headlessVisual`, `rig`, the wrapped `crushObstacle`) and replayed in `localSimDriver.ts` `replay`.
+`localSimDriver.selftest.mjs` fails when the Worker-driven page parts from the stepped page.
+
 Keep authoritative rules deterministic and Node-runnable. Inject world, bus,
 RNG, and presentation dependencies. Keep garage-safe session data in
 `stateCore.ts`, visual/roster policy in `rosterState.ts`, and combat integration
