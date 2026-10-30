@@ -295,7 +295,9 @@ if (!isMainThread) {
     wake();
   };
   const spawn = () => {
-    const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 4096 },
+    // (perf 265: the heaviest map, Ruinspires, builds and runs its arcology in a 1 GB heap; past that a worker's footprint
+    // was heap slack, six of them 11 GB at peak) a worker's heap at 2 GB: one that needs more fails, named
+    const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 2048 },
       workerData: { salt, passed: store.fingerprints } });
     const slot = { worker, job: null, map: null, cpuNow: 0, gone: false };
     slots.add(slot);
