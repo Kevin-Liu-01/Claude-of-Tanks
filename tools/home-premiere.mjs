@@ -55,7 +55,8 @@ const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.round(seco
 // after the page has loaded) gives them one at a time, each decoded before its turn, and crossfades from one to the next.
 const REEL = json('public/media/home-r2/manifest.json');
 const TRAILER = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.mp4');
-const TRAILER_THUMB = '/media/site50-r14/stills/s16-street-duel-thumb.webp';
+// the owner's pick in the media election (2026-10-30): the Steinburg crossroads key art, an Abrams firing low at the lens
+const TRAILER_THUMB = '/media/home-r2/trailer-thumb.webp';
 const reelPoster = () => REEL.hero[0].poster.rungs;
 /** The hero still covers the viewport: a phone shows 640 px of height (1138 css px wide), a desktop its width. */
 const HERO_SIZES = '(width < 768px) 1138px, 100vw';
