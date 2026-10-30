@@ -2753,27 +2753,25 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
       kit: 'cargo', p: 1, v: { v, scale: 1, nation: spec.nation || '' }, slot: ['fleetCargo', { routes }],
     });
     // (the rear deck under the bustle holds nothing: the bustle's floor rides 2 cm over it, inside the turret's sweep,
-    // so the load keeps to the rear plate, the rear rack, the fenders and the turret; the turret carries its own tow
-    // cable on its flank)
+    // so the load keeps to the rear plate, the rear rack, the fenders' rear corners and the turret; the turret carries
+    // its own tow cable on its flank, and the fender bins' lids seat no tool set inside the width guard and the sweep)
     return [
-      // the fuel: a 200 L drum on the rear plate, a pair of cans either side of it on the rear rack, the water-can cradle
+      // the fuel: a 200 L drum on the rear plate and a pair of fuel cans beside it on the rear rack (its other half
+      // seats no second pair)
       { kit: 'drums', p: 1, v: { v: 'single' }, slot: ['hullRear', {}] },
-      { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: 0.70 }] },
-      { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.70 }] },
-      cargo('twin-can-cradle', [['fender', { side: -1, zFrac: -0.10, small: true }], ['fender', { side: -1, zFrac: -0.40, small: true }],
-        ['fender', { side: -1, zFrac: 0.30, small: true }]]),
+      cargo('nato-fuel-can', [['hullRearRack', { x: -0.20 }], ['fender', { side: -1, zFrac: -0.45, small: true }]]),
       // the crew's bags on the turret's rear flanks
       cargo('large-rucksack', [['turretSide', { side: 1, rear: true }], ['turretRear', { side: 1 }]]),
       cargo('crew-backpack', [['turretSide', { side: -1, rear: true }], ['turretRear', { side: -1 }]]),
-      // the tech on the left fender: the M85's ammunition and the spare optics' case; two radio whips
+      // the tech: the M85's ammunition and the spare optics' case on the fenders, two radio whips
       cargo('fifty-cal-ammo-can', [['fender', { side: 1, zFrac: -0.30, small: true }], ['fender', { side: 1, zFrac: -0.45, small: true }]]),
-      cargo('spare-optics-case', [['fender', { side: 1, zFrac: 0.10, small: true }], ['fender', { side: 1, zFrac: 0.25, small: true }]]),
+      cargo('spare-optics-case', [['turretRoof', { rear: true, side: -1 }], ['fender', { side: -1, zFrac: -0.30, small: true }],
+        ['fender', { side: 1, zFrac: 0.10, small: true }], ['fender', { side: -1, zFrac: 0.10, small: true }]]),
       { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
       { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
       // the rest of the field load
       cargo('ration-case', [['fender', { side: 1, zFrac: 0.30, small: true }], ['fender', { side: -1, zFrac: 0.30, small: true }],
         ['fender', { side: -1, zFrac: -0.40, small: true }]]),
-      { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: -0.25, along: true }] },
       { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     ];
   },

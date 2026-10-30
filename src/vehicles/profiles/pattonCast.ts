@@ -2765,8 +2765,8 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     }
     if (a3) {
       // the A3's lived-in rack (the owner, 2026-10-30: "more decorations like wheels and bags ..."): three packs along
-      // it under a bedroll, and a spare road wheel tipped up on each of its rear corners as the M48A5's (on its back
-      // they grew the turret's sweep over the rear deck, which then held no drum; the rest of its load: decorations.ts)
+      // it under a bedroll, and a spare road wheel tipped up on each of its rear corners (the rest of its load:
+      // decorations.ts)
       KIT.stowage(P, 'turretCloth', mulberry(617), [
         [0.52, L.y(yf + 0.16), L.z(-1.94), 0.52, 0.30, 0.20], [0, L.y(yf + 0.14), L.z(-1.94), 0.46, 0.26, 0.20],
         [-0.50, L.y(yf + 0.18), L.z(-1.94), 0.50, 0.34, 0.20],
@@ -2960,18 +2960,20 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   yield 'm60Gun';
 }
 
-/** The M60A3's spare road wheels, one on each rear corner of its bustle rack, tipped up (axis 25 degrees up and back,
- * as the M48A5's spare): the running gear's own cast-spoke wheel (the nation construction and request the hull's wheels
- * use), each on a stub axle from the rack's flank rail; its inner face (against the rack) is not drawn. */
+/** The M60A3's spare road wheels, one on each rear corner of its bustle rack at z, tipped up (axis 25 degrees up and
+ * back, as the spare on the owner's M48A5 model): the running gear's own cast-spoke wheel (the nation construction and
+ * request the hull's wheels use), each on a stub axle from the rack's flank rail; its inner face (against the rack) is not
+ * drawn. Hung on the rack's back instead they reached 0.9 m further aft, which carried the turret's measured sweep
+ * (decorations.ts, bounding boxes) over the rear plate and lost the drum there. */
 function m60SpareWheels(P: CastPort, T: TurretFrame, y: number, z: number): void {
   const L = tl(T);
   const { wheelR } = M60_HULL_SPEC.gear, trackW = M60_HULL_SPEC.trackW;
   const wheelW = Math.min(0.26, trackW * 0.42);
+  const rail = castSideAt(M60_TURRET, 2.42, z) + 0.06;
   for (const side of [-1, 1]) {
     const axis = new THREE.Vector3(side * 0.80, 0.42, -0.42).normalize();
     const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), axis));
-    const rail = castSideAt(M60_TURRET, 2.42, z) + 0.06;
-    const c = [side * (rail + 0.03 + wheelW / 2 / axis.x * side + 0.05), y, z];
+    const c = [side * (rail + 0.08 + wheelW / 2 / Math.abs(axis.x)), y, z];
     const spare = buildNationWheel('m60a3-cast-spoke', {
       radiusM: wheelR, tireWidthM: wheelW, high: Boolean(P.q), segments: P.q ? 28 : 12,
       maxWidthM: Math.max(wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE, trackW * TRACK_WIDTH_WHEEL_CAP),
