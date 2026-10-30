@@ -17,6 +17,7 @@ import { join, resolve } from 'node:path';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { MANUAL_SUITES, MANUAL_SUITE_NAMES, manualSuiteFiles, namedIds, parseSuiteNames } from './selftest-tiers.mjs';
 import { fleetPartition, receiptRunTimes, TOOLS_ROOT } from './test-diff.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 /** Receipts of an id-scoped suite for `ids`: those naming an id, or whose closure holds a file of an id's own group. */
 export function idScopedSelection(files, ids, { textOf, groupFilesOf, readsAny }) {
@@ -49,7 +50,9 @@ async function main(argv) {
   if (process.env.CI) { console.error('[test:heavy] refused: manual suites are owner-triggered; CI never runs them'); return 2; }
   let names;
   try { names = parseSuiteNames(suites.join(',')); } catch (error) { console.error(`[test:heavy] ${error.message}`); return 2; }
-  const ids = value('ids')?.split(',').filter(Boolean) ?? null;
+  let ids;
+  try { ids = uniqueIds(value('ids')?.split(',').filter(Boolean) ?? null, 'test:heavy --ids'); }
+  catch (error) { console.error(`[test:heavy] ${error.message}`); return 2; }
   if (ids && names.some((name) => !MANUAL_SUITES[name].idScoped)) {
     console.error(`[test:heavy] --ids narrows an id-scoped suite (${MANUAL_SUITE_NAMES.filter((name) => MANUAL_SUITES[name].idScoped).join(', ')}) only`);
     return 2;
