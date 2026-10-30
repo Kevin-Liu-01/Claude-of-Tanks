@@ -656423,7 +656423,7 @@
           }
         ]
       },
-      "geometryHash": "6c871db2",
+      "geometryHash": "225b2eff",
       "metadataHash": "23c03c93",
       "presentationAnchor": {
         "xM": 0.0006,
@@ -656485,15 +656485,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26216,
-          "sha256": "2450cc3ec8c800776b99eebeaaa3ff88f44af0eec3893389deb4693618716f5e",
+          "bytes": 26224,
+          "sha256": "13c5293d0473f04a89196b9ab277d089453d8e3b714e667b44b0878f2086404e",
           "thumbnail": {
             "file": "thumbs/m46_patton_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 10658,
-            "sha256": "320d7503e8f63c16a6687d88ce90a6be1eb40661aa8307a4285d6549c1f28d87"
+            "sha256": "8c67cb6b7dc2755011501d4a01e2f443606a782931f3149435dd4b8d4c77eb93"
           }
         },
         "top": {
@@ -656509,8 +656509,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12110,
-          "sha256": "2aba4dc0e7718d434a75d32325d510546631deb5ca8742e456e1b0117d1a5a9c"
+          "bytes": 12130,
+          "sha256": "4950e61bc287c52abc11ee7a9245bc3c162ae7880c761ed2f013196cebf5b2c7"
         },
         "topSilhouette": {
           "file": "m46_patton_top_silhouette.png",
@@ -656533,24 +656533,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25662,
-          "sha256": "bbbba785600c82f7c6695ebac952889216099a93c11209d836a43546af8ad953"
+          "bytes": 25692,
+          "sha256": "f312490b3bbab64504651cfbd7b51143b2be56b6d6922c38abda9c2f78a58a4c"
         },
         "modulesSide": {
           "file": "m46_patton_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28548,
-          "sha256": "0fc54992966ab3fc97b97068702ce2adde4eef293f885bf0d4d6b26c89ad4dfd"
+          "bytes": 28644,
+          "sha256": "94e0339db8ea3665f1c4ae06b621f9fca4b5fdefabc9c6c42ed746d1168b34b2"
         },
         "crewSide": {
           "file": "m46_patton_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25726,
-          "sha256": "eeb54e573e3916eca6a87fc06a2773caa7a59e9a89f692ca70c57585b10616e2"
+          "bytes": 25722,
+          "sha256": "c80631183538e57ce2caee009364b8a56aeb4bf705cd60388d5abeea90fabe30"
         },
         "markings": {
           "file": "m46_patton_markings.png",
