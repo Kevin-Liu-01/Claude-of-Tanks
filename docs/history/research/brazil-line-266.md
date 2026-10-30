@@ -27,7 +27,8 @@ RFI); the Centauro II, EE-9 Cascavel, EE-11 Urutu and Guarani are wheeled; "EE-T
 Brazil joins as a team country (src/sim/countries.ts: the west bloc, its allies the US, Germany and Italy first), with the BR
 flag, en/zh names, the Garage's nation order and the Army's vehicle emblems by era (vehicleMarkings.ts, both plates printed
 in Bastos 2022): the 1983-98 green plaque with the Southern Cross oval ('br-cruzeiro', the 1980s ids) and the coat of arms
-from 1998 ('br-eb-arms', the country default). Wheel set (nationWheelSets.ts): the Bernardini and US-lineage hulls the
+from 1998 ('br-eb-arms', the country default); the surviving Osório P.1's own ring-and-oval emblem ('br-osorio', the 2015
+and 2024 photographs). Wheel set (nationWheelSets.ts): the Bernardini and US-lineage hulls the
 M60A3's cast spoke, the MBT hulls the Leopard 2 paired dish. Paints: the Army's two-tone bands and the 1980s three-tones.
 
 ## Ids (head A)

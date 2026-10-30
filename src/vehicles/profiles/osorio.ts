@@ -281,10 +281,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // sight head under its rounded hood (the 2015 museum photograph; blind critic, round 3)
       sightBox(-0.62, 0.60, 0.30, 0.24, 0.40);
       sightBox(-0.62, 0.05, 0.30, 0.24, 0.40);
+      // (the head round, a drum under a domed cap: blind critic, round 5)
       P.addEquipment('turret', cylY(0.09, 0.10, 0.22, P.q ? 16 : 10), -0.62, roof + 0.11, -1.30);
-      P.addEquipment('turret', box(0.24, 0.22, 0.26), -0.62, roof + 0.22 + 0.11, -1.30);
-      P.addEquipment('turret', xform(cylZ(0.12, 0.26, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.7, 1]), -0.62, roof + 0.44, -1.30);
-      P.add('turretGlass', box(0.16, 0.08, 0.008), -0.62, roof + 0.36, -1.164);
+      P.addEquipment('turret', cylY(0.155, 0.15, 0.17, P.q ? 20 : 14), -0.62, roof + 0.22 + 0.085, -1.30);
+      P.addEquipment('turret', xform(sph(0.155, P.q ? 18 : 12, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), -0.62, roof + 0.39, -1.30);
+      P.add('turretGlass', box(0.15, 0.07, 0.008), -0.62, roof + 0.31, -1.30 + 0.152);
     }
     const cx = -0.66, cz = -0.76, cr = 0.34;
     P.addCupola('turret', cylY(cr, cr * 1.06, 0.14, P.q ? 26 : 16), cx, roof + 0.07, cz);
@@ -309,7 +310,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addEquipment('turret', cylY(0.15, 0.17, 0.05, P.q ? 18 : 12), 0, roof + 0.025, -1.40);
     P.addEquipment('turret', xform(sph(0.15, P.q ? 16 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), 0, roof + 0.05, -1.40);
     P.addEquipment('turret', box(0.38, 0.18, 0.40), 0.58, roof + 0.09, -1.80);
-    P.addEquipment('turretDark', box(0.40, 0.02, 0.42), 0.58, roof + 0.19, -1.80);
+    // (its lid painted on the P.1, the P.2's dark as judged; blind critic, round 5)
+    P.addEquipment(p2 ? 'turretDark' : 'turret', box(0.40, 0.02, 0.42), 0.58, roof + 0.19, -1.80);
     if (p2) {
       P.addEquipment('turret', cylY(0.06, 0.06, 0.12, 12), -0.40, roof + 0.06, -2.05);
       P.add('turretGlass', xform(sph(0.05, 12, Math.PI / 2), 0, 0, 0), -0.40, roof + 0.12, -2.05);
@@ -376,7 +378,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.addEquipment('turret', box(0.20, 0.64, z1 - z0), T.hw + 0.10, 0.38, (z0 + z1) / 2);
       P.addEquipment('turretDark', box(0.012, 0.02, z1 - z0 - 0.04), T.hw + 0.205, 0.66, (z0 + z1) / 2);
     }
-    if (!p2) P.decal('turret', 'stencil', 'Ø', 0.24, [T.hw + 0.2035, 0.40, 0.33], Math.PI / 2);
+    if (!p2) P.decal('turret', 'insignia', null, 0.30, [T.hw + 0.2035, 0.40, 0.33], Math.PI / 2);
     // the dischargers high on the walls, aimed forward, out and up: the P.2 two rows of three on each rear corner, behind
     // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall's plate two-thirds back (2024) and on
     // the right behind its grid
@@ -390,7 +392,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r5', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r6', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
       sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
     };

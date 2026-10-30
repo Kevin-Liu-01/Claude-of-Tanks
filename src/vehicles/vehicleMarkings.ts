@@ -135,7 +135,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
   // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
-  osorio_p1: anchor('turret', 'left', .22, .45, .22, 1),
+  osorio_p1: anchor('turret', 'left', .22, .45, .30, 1),
   osorio_p2: anchor('turret', 'left', .22, .45, .22, 1),
   // 266: the Army plaque on the Tamoyos' turret flanks (Vesp's profiles: amidships, behind the cheek)
   tamoyo1: anchor('turret', 'right', .50, .40, .22, 1), // the tank's left (+x), as Vesp's profiles
@@ -754,6 +754,26 @@ function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterA
   }
 }
 
+/** Release 266: the emblem the surviving Osório P.1 carries on its turret (the 2015 museum and 2024 Curitiba
+ *  photographs): a white ring with an upright oval inside it, a short stencil block under it. */
+function drawOsorioEmblem({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const ey = cy - radius * 0.14;
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.11;
+  ctx.beginPath();
+  ctx.arc(cx, ey, radius * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.09;
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.20, y = ey + Math.sin(a) * radius * 0.40;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillRect(cx - radius * 0.46, cy + radius * 0.66, radius * 0.92, radius * 0.14);
+}
+
 // The white ring the Bernardini X1 and X1A2 carry on the turret's left side (Gaydos' profiles after the 1970s-80s
 // photographs): a ring, four short ticks inward and a centre dot, on the bare paint.
 function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
@@ -819,6 +839,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'br-eb-arms': drawBrazilArmyArms,
   'br-cruzeiro': drawBrazilSouthernCross,
   'br-ring': drawBrazilTurretRing,
+  'br-osorio': drawOsorioEmblem,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

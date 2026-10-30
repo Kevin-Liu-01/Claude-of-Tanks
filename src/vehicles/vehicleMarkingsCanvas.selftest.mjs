@@ -21,7 +21,7 @@ function createRecordingContext() {
 const insignias = [
   'us-star', 'de-cross', 'ru-star', 'cn-star', 'gb-roundel', 'fr-roundel',
   'il-star', 'it-shield', 'jp-roundel', 'pl-checker', 'kr-taeguk',
-  'se-crowns', 'ua-trident', 'br-eb-arms', 'br-cruzeiro', 'br-ring', 'unknown-shield',
+  'se-crowns', 'ua-trident', 'br-eb-arms', 'br-cruzeiro', 'br-ring', 'br-osorio', 'unknown-shield',
 ];
 // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of the recorded insignia operation stream is
 // gone (texture canvases sit outside the fleet geometry ledger). Live contracts: every insignia, including

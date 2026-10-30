@@ -190,15 +190,17 @@ const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
     ring: { y: 1.68, z: 0.10 },
     turret: {
       front: 1.28, slopeTop: 0.30, rear: -1.86, roof: 0.77,
-      // on a visible ring collar (the body's floor at 0.07); undercut flanks (the floor 0.86 out to the crease's 1.00 at
-      // 0.22); the wedge nose: one long shallow front rising from the mantlet (1.28, 0.48) to the cupola's front (0.30,
-      // the roof), 31% of the turret's length, the cheeks angled in; the bustle overhanging the ring from -0.70 to its
-      // back at -1.86 on near-vertical sides, daylight under its floor (0.27)
+      // on a visible ring collar and the inset plinth it carries (the body's floor at 0.07); undercut flanks (the floor
+      // 0.86 out to the crease's 1.00 at 0.22); the wedge nose: one long shallow front rising from the mantlet (1.28,
+      // 0.48) to the cupola's front (0.30, the roof), 31% of the turret's length, the cheeks angled in, and under it the
+      // chin undercut from the mantlet's foot (1.28, 0.28) back down to the ring (0.92); the bustle overhanging the ring
+      // from -0.70 to its back at -1.86 on near-vertical sides, daylight under its floor (0.27)
       sections: Object.freeze([
         sec(-1.86, 0.29, 0.31, 0.72, 0.90, 0.92, 0.78), sec(-1.70, 0.27, 0.29, 0.77, 0.96, 0.98, 0.86),
         sec(-0.86, 0.27, 0.29, 0.77, 0.98, 1.00, 0.86), sec(-0.70, 0.07, 0.22, 0.77, 0.86, 1.00, 0.80),
         sec(0.30, 0.07, 0.22, 0.77, 0.86, 1.00, 0.80), sec(0.70, 0.07, 0.22, 0.652, 0.86, 1.00, 0.84),
-        sec(1.00, 0.06, 0.15, 0.565, 0.74, 0.86, 0.62), sec(1.28, 0.05, 0.08, 0.48, 0.56, 0.62, 0.42),
+        sec(0.92, 0.07, 0.19, 0.588, 0.77, 0.90, 0.68), sec(1.00, 0.12, 0.21, 0.565, 0.73, 0.86, 0.62),
+        sec(1.28, 0.28, 0.30, 0.48, 0.52, 0.60, 0.42),
       ]),
     },
     trunnion: { y: 0.43, z: 1.30 }, muzzleHullZ: 3.89,
@@ -407,9 +409,10 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       P.addCupola('hull', xform(cylY(0.22, 0.23, 0.04, P.q ? 20 : 12), 0, 0, 0, glacis, 0, 0), hx, deckY(hz) + 0.02, hz);
       P.add('hullDetail', xform(box(0.12, 0.06, 0.08), 0, 0, 0, glacis, 0, 0), hx, deckY(hz + 0.32) + 0.03, hz + 0.32);
       P.add('hullGlass', xform(box(0.10, 0.035, 0.008), 0, 0, 0, glacis, 0, 0), hx, deckY(hz + 0.32) + 0.04, hz + 0.365);
-      // the transmission access hatch let into the bow plate (the CD-500), and the Army registration on its right
+      // the transmission access hatch let into the bow plate (the CD-500), and the Army registration on the lower front
+      // plate's left half (the parade photograph)
       P.add('hullDetail', xform(box(0.90, 0.012, 0.40), 0, 0, 0, glacis, 0, 0), 0, deckY(D.bowZ - 0.30) + 0.002, D.bowZ - 0.30);
-      P.decal('hull', 'stencil', 'EB11-327', 0.28, [-0.46, D.noseY - 0.22, D.noseZ + 0.004], 0);
+      P.decal('hull', 'stencil', 'EB11-327', 0.28, [0.46, D.noseY - 0.22, D.noseZ + 0.004], 0);
     } else {
       // the Stuart's two half-round hatches on the deck behind the front plate, their periscopes in the plate's top
       const halfDisc = (r: number, h: number): THREE.BufferGeometry => {
@@ -471,7 +474,15 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   };
   const buildX1Turret = (): void => {
     // the ring collar (the X1A2's standing visibly proud of the deck under its body)
-    if (a2) P.add('turret', cylY(0.92, 0.93, 0.075, P.q ? 28 : 18), 0, 0.0325, 0);
+    if (a2) {
+      P.add('turret', cylY(0.92, 0.93, 0.075, P.q ? 28 : 18), 0, 0.0325, 0);
+      // the plinth under the body from the bustle's step to the chin, set 4 cm inside its base: no open slit between
+      // the body's floor and the deck anywhere the turret turns
+      P.add('turret', sectionSolid([-0.70, 0.30, 0.70, 0.92].map((z) => {
+        const w = sectionAt(z).hwb - 0.04;
+        return { z, ring: [[-w, -0.005], [w, -0.005], [w, 0.072], [-w, 0.072]] as SectionPoint[] };
+      })));
+    }
     else P.add('turret', cylY(0.82, 0.86, 0.10, P.q ? 26 : 16), 0, -0.04, 0);
     // undercut lower flanks out to the crease, upper flanks leaning in to the roof; the X1's front one slope from the
     // ring to the roof, the X1A2's cheeks angled in to a pointed nose; each bustle overhanging the ring on a sloped floor

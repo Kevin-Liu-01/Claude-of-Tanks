@@ -90,11 +90,12 @@ osorio_p1.gunPitchByYawDeg = [[0, -10], [13, -10], [17, -9.5], [18, -9.4], [21, 
   [159, -1.4], [160, -1], [162, -1], [163, -1.2], [164, -2.2], [169, -2.4], [173, -2.4], [176, -2.5], [180, -2.9]];
 osorio_p1.visual = {
   ...osorio_p1.visual,
-  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a greyish chocolate brown and a near-black olive in
-  // large irregular bands running down the full side height (the merdc painter, as the P.2: one dark field about 0.9 m
-  // wide in every 2 m tile, 45 % dark); the 1983-98 plaque
-  scheme: 'merdc', base: '#4a3b32', weather: '#524338', patches: ['#20251c', '#52433a', '#1c2019'], marking: 'number',
-  number: '01', camoScale: 0.48, patchK: 1.9, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a milk-chocolate brown with large rounded,
+  // smooth-edged blobs of a dark olive grey, a metre or more across, three or four along each side and on the turret and
+  // deck; no stripes, no black (the blotch painter: this recipe's seed lays them about 42 % of the area, even down the
+  // hull's height; blind critic, round 5); the white ring-and-oval emblem it carries on the turret
+  scheme: 'blotch', base: '#6a5644', weather: '#72634c', patches: ['#3c3f33'], marking: 'number', number: '01',
+  camoScale: 0.48, patchK: 2.0, trackWidthM: 0.57, insignia: 'br-osorio',
 };
 
 // ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
@@ -234,12 +235,12 @@ x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.68, trkTo
   barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.28, tRearZ: -1.86, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
   ...x1a2_carcara.visual,
-  // the 6º RCB's three-tone (Gaydos' camouflaged profile): a green base, flowing khaki bands over about 40 % of it and
-  // narrow brown bands at their edges, one scale on hull and turret (the merdc painter: patches[0] the khaki fields,
-  // [1] and [2] the brown accents; blind critic, round 4: the nato recipe's sand fields swamped the hull); the white
-  // turret ring
-  scheme: 'merdc', base: '#55603f', weather: '#5e6b4a', patches: ['#8c7f56', '#5a4630', '#3a3226'], marking: 'number',
-  number: '21', camoScale: 0.5, patchK: 1.6, trackWidthM: 0.42, insignia: 'br-ring',
+  // the 6º RCB's three-tone (Gaydos' camouflaged profile): a dark olive base dominant, flowing khaki streaks over about
+  // 31 % of it and narrow brown bands at their edges, one scale on hull and turret (the merdc painter: patches[0] the
+  // khaki fields, [1] and [2] the brown accents; blind critics, rounds 4 and 5: sand swamped the hull, then a light sage
+  // and sand read too pale); the white turret ring
+  scheme: 'merdc', base: '#4b5436', weather: '#505e3f', patches: ['#857a54', '#5a4630', '#3a3226'], marking: 'number',
+  number: '21', camoScale: 0.5, patchK: 1.4, trackWidthM: 0.42, insignia: 'br-ring',
 };
 
 registerFleetSpecs(registries, ['x1_pioneiro', 'x1a2_carcara', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3'],
