@@ -31,6 +31,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, columnSpans, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
+import { uniqueIds } from './id-list.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from '../src/vehicles/interiorFillLoaders.generated.ts';
 import { interiorFillSpans } from '../src/vehicles/interiorFills.ts';
@@ -218,7 +219,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const idsArg = value('ids');
   const all = Object.keys(FLEET_GROUP_BY_ID).sort();
   const everyId = args.includes('--all') || idsArg === 'all';
-  const ids = everyId ? all : [...new Set((idsArg ?? '').split(',').filter(Boolean))];
+  const ids = everyId ? all : uniqueIds((idsArg ?? '').split(',').filter(Boolean), 'interior-fill-exposure --ids');
   if (!ids.length) throw new Error('interior-fill-exposure: pass --ids=a,b or --all');
   for (const id of ids) if (!Object.hasOwn(FLEET_GROUP_BY_ID, id)) throw new Error(`interior-fill-exposure: unknown id ${id}`);
   const fillsFrom = value('fills-from') ?? null;
