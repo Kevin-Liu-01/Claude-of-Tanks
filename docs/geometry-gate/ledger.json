@@ -1,8 +1,8 @@
 {
  "generatedAt": "2026-10-13T19:34:22.037Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 65,
- "total": 170,
+ "passed": 69,
+ "total": 172,
  "rows": [
   {
    "id": "challenger1",
@@ -821,29 +821,29 @@
   },
   {
    "id": "merkava2d",
-   "geoMin": 34.9,
-   "gatePassed": false,
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
    "components": {
-    "hullCurves": 75.1,
-    "wholeCurves": 57.3,
-    "turretCurves": 34.9,
-    "stations": 72.6,
-    "dims": 96.2,
+    "wholeCurves": 94.7,
+    "dims": 93,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "merkava2b",
-   "geoMin": 39.6,
-   "gatePassed": false,
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
    "components": {
-    "hullCurves": 78.3,
-    "wholeCurves": 56.7,
-    "turretCurves": 39.6,
-    "stations": 80,
-    "dims": 95.3,
+    "wholeCurves": 94.8,
+    "dims": 93,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t80bv",
@@ -1287,16 +1287,16 @@
   },
   {
    "id": "merkava1b",
-   "geoMin": 90,
+   "geoMin": 93.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "hullCurves": 91.2,
-    "wholeCurves": 90,
-    "turretCurves": 91,
-    "stations": 91.4,
-    "dims": 100,
+    "wholeCurves": 94.3,
+    "dims": 93.3,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t90sm",
@@ -1401,16 +1401,16 @@
   },
   {
    "id": "merkava3c",
-   "geoMin": 90.5,
+   "geoMin": 92.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "hullCurves": 91.9,
-    "wholeCurves": 90.5,
-    "turretCurves": 90.8,
-    "stations": 92.3,
-    "dims": 100,
+    "wholeCurves": 95.2,
+    "dims": 92.4,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "centurion5",
@@ -1696,6 +1696,32 @@
    "components": {
     "wholeCurves": 92.7,
     "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "merkava3_baz",
+   "geoMin": 92.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.8,
+    "dims": 92.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "merkava4b",
+   "geoMin": 94,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.6,
+    "dims": 94,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

@@ -9,7 +9,7 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 
 ## Current status
 
-- Updated: 2026-10-29.
+- Updated: 2026-10-30.
 - Owner request: "we'll also need to redesign and clean up the merkava mk 1b, 2b, 2d, baz, mk 3c, and mk 4b, completely
   new with all oldness removed and we will need their gun assemblies back and beautiful" (2026-10-27). Superseding
   instruction, the same day, with the supplied Mk 1B, 2B, 2D, 3B, 3C, 3D and 4B models: "these look bad and need much
@@ -22,15 +22,16 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 - IDs: `merkava1b` (Merkava Mk 1B), `merkava2b` (Mk 2B), `merkava2d` (Mk 2D), `merkava3c` (Mk 3C), `merkava3_baz`
   (Mk 3D Baz; seed id `merkava3d`), `merkava4b` (Mk 4B).
 - Implementation status: implemented (family builder over the supplied sources' measured records), iterating.
-- Qualification status: Main's bar met (critics r19 6-7, A/B r6 new on all six); the release check in progress — see
-  the evidence matrix.
+- Qualification status: Main's bar met (critics r19 6-7, A/B r6 new on all six). The gated release check (lane mode,
+  `b57e4f80bf`) passes every step except `module-visual-align-probe --gate`. That probe's `volume-out` red is the
+  fleet class: the turret crew seats sit in the basket below the turret plates. Untouched ids read it the same
+  (round log r22).
 - Publication status: not published. Lane branch `item/merkava-family-262`; the integrator ("Claude of Tanks Main")
   owns shared main and the release.
 - Worktree / branch / baseline: `.claude/worktrees/sharp-montalcini-d9c09e`, `item/merkava-family-262`, base
   `b93941ce9d` (origin/main at lane start).
 - Candidate: the latest `item/merkava-family-262` commit; gate runs record their own commit.
-- Next action: for the next release, merge origin/main, then the ids-scoped regeneration chain, gun-depression
-  sweeps, assets and hero cards (the gallery still shows main's hero art), build and the gated release check; no more
+- Next action: the integrator's run (npm test, build:private, the fleet-wide anatomy update) and the release; no more
   geometry.
 - Blocking choices / known failures: see "Owner decisions" and the evidence matrix.
 
@@ -143,21 +144,21 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 | Gate | Status | Revision | Command / artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | 8da2eb3e18 | `source-x-oracle --inspect/--prepare`; `.qa-dev/merkava-262/intake/` | identity frame, hashes pinned, photo side check |
-| Registered silhouettes | PASS (rev 7) | 4e6cc8a00a | `procedural-fidelity --ids=<six> --check --board --neutral-board`; boards `shots/procedural-fidelity/boards/<id>-neutral.png` | 94.7 (3C) to 95.7 (3D Baz), every registered view at least 95 (rev 4: 94.1-95.2); re-run owed on 2b7b1d3875 |
-| Geometry components / dimensions | FAIL (rev 7) | 4e6cc8a00a | `geometry-gate --ids=<six> --check` | whole curves 93.2-94.1 PASS; dims on the source ruler 1B 97.6 and 3D 93.1 PASS, 2D 89.2, 2B 82.5, 4B 67.2, 3C 46.5 (every axis within 0.4-2.7 % but the 4B's height, -5 %; the 3C's length carried its old suit, re-seated since); floaters PASS but the 4B's (its suit drapes, re-seated at 2b7b1d3875); re-run owed |
+| Registered silhouettes | PASS | b57e4f80bf | `procedural-fidelity --ids=<six> --check --board --neutral-board` (the gate's step); boards `shots/procedural-fidelity/boards/<id>-neutral.png` | median 96.3: 1B 96.0, 2B 95.9, 2D 96.3, 3C 96.7, Baz 97.0, 4B 95.9 |
+| Geometry components / dimensions | PASS | b57e4f80bf | `geometry-gate` within `tank-standard-check --gate --stages` | gate minimum 92.3 (Baz) to 94.0 (4B); whole curves 94.3-95.8; floaters 100. Dims count the whip antennas' tips (Main's ruling: a fleet tool fix is queued). With the whips excluded, physical height is within 0.3-1.0 % of the source |
 | Lane overlays against the supplied OBJs | DIAGNOSTIC | rev 3 | `overlay.py` (lane tool), side / top / front IoU | side 0.885-0.898, top 0.965-0.977, front 0.817-0.909 |
 | Independent critic / Gallery | PASS (r19) | 8c71fa5e34 | blind critic subagents (two models, the lower counts) on front/rear 3/4 and turret sheets against the source renders; blind A/B r6 against main's build, mirrored | 1B 7, 2B 6, 2D 6, 3C 7, Baz 6, 4B 7; A/B: new on all six both orders. Open (geometry closed by the owner): fender box noses, headlamp guards, rear bin gap |
-| Winding, closure, negative space | NOT RUN | | | |
+| Winding, closure, negative space | PASS | b57e4f80bf | `tank-standard-check --gate --stages` (B2 contiguity at every hull-anchored phase), `tank-sealed-check --gate` | contiguity 0 on all six; all six SEALED, 0 open views. Open pixels: 1B, 2B and 2D 14 single pixels each on the track pad joints (12 and 30 degree chase rings); 4B 1 px on its turret armour. Netting: 3C 3407, 4B 2463 |
 | Seats and yaw/pitch/recoil ownership | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` HIGH and LOW | |
 | Gun clearance and depression curves | PASS | r25 sweep on 8c71fa5e34 | `gun-depression-sweep --no-suit`; `merkavaFamilyGunClearance` (suits on), `nationalGunClearance` | 1B/2B full depression all round; 3C/Baz to +-5 degrees, 4B -7.6 ahead; nearest 26.0-60.3 mm; 2D skip window 139-145 (source rear marker poles; owner decision) |
 | Gear motion / band and shoe | PASS | 8c71fa5e34 | `track-clip-audit --exact --strict` (lane harness `.qa-dev/merkava-262/cliprun.mjs`) | 0 voxels front, rear, sweep band and shoe on all six |
 | Triangles / build cost | MEASURED | rev 3 | `.qa-dev/merkava-262/cost.mjs` | weak HIGH-LOW reduction (13 %) |
 | Live/spent/reset packages | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` | |
 | Original-model preservation | PASS | rev 3 | CPU fingerprints, four protected ids | identical |
-| Anatomy update / freshness | PASS (ids-scoped) | f1e3b1bde7 | `gen-combat-anatomy --ids=<six>` to its fixpoint, `--check` | sim floors accepted for the rebuild (sim-floors.json); the fleet-wide `tank:anatomy:update` NOT RUN |
-| Assets / centering | NOT RUN | | centering --update, genIcons, genDrawings, genHeroCards (queued in the capture lock) | |
-| Composed release / tests / typecheck | NOT RUN | | `tank:release:check -- --ids=<six> --gate` | typecheck PASS at rev 3 and on the final tree (see the lane report) |
-| Builds / attribution | NOT RUN | | | |
+| Anatomy update / freshness | PASS | b57e4f80bf | `gen-combat-anatomy --ids=<six>` to its fixpoint; the gate's fleet-wide `gen-combat-anatomy --check` | 236 receipts across 83 demand groups current; 236 measured sim floors within 5 cm of their ledger rows. `tank:anatomy:update` is left to the integrator |
+| Assets / centering | PASS | 7757a2497a; tank-assets-check on 44efeee8ff | `presentation-centering --update`/`--check`, genIcons, genDrawings, genHeroCards + compose, `hero-cards-check`, `tank-assets-check` | centring max exported top residual 0.28 px (2B); the 2D's cargo at 0.88 (round log r20); 6 tanks / 60 files current after the second main merge |
+| Composed release / tests / typecheck | PASS but one inherited red (lane mode) | b57e4f80bf | `tank:release:check -- --ids=<six> --gate --lane` | standard check, sealed, fidelity, fleet anatomy, fleet-geometry ledger, mission seats (4B exempt), centring 0.18 px, module-hit 0 FAIL, spare track, materials, gun junction, assets, track duplicates, muzzle bores, barrel circularity: PASS. `module-visual-align-probe --gate`: volume-out 1.21-1.33, the fleet class (round log r22). npm test and build:private are left to the integrator |
+| Builds / attribution | PASS | 44efeee8ff | `npm run build` (public), `npm run attribution:check` | build:private left to the integrator (lane mode) |
 
 ## Round log
 
@@ -295,6 +296,59 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   square fender boxes (the references chamfer back to the track), raised headlamps (the references' sit in guards),
   the dark gap between the rear bins. Blind A/B r6 and its mirror: the new build on all six marks in both orders,
   confidence 5 (one 4).
+- r20, assets and the release (2026-10-29/30): the chain over the r25 curves found the 2D's and the Baz's mission seat
+  signatures stale (`missionAttachmentSignature` hashes `gunPitchByYawDeg`; `307ebbcef3`). Presentation centring
+  (`presentation-centering --update`, icons, drawings, hero cards) passed five marks and failed the 2D at 0.72 px against
+  0.5: its two rear racks (a crate and a tarp pack) made a band of top-view rows at 28-29 % of the widest row, on the
+  census's 28 % body-row cut, so the rendered census (framed on the visible bounds) and the shipped top icon (framed on
+  the anchor) cut it differently. The 2D's fleet cargo now draws at 0.88 (`cargoScale`, `decorations.ts`; 0.94 and 0.9
+  left the band on the line), which in the Node top raster moves the band to 24-26 %; the decor receipts
+  (decorDrawBudget, decorationsEquipment, decorationsStaging, decorDockKeepOut, decorPlanWire) pass. The 2D re-rendered
+  in one capture hold; centring PASS on all six (largest exported top residual 0.28 px, the 2B), hero-cards check ok
+  (`7757a2497a`). origin/main merged again (`ccb2041c41`, 269 commits, `6a9aef5fd5`): the three one-line auxiliary
+  tables took main's side and the controls step put the six rows back (`44efeee8ff`); the rest of the chain leaves no
+  diff, tank-assets-check PASS (the merge moved none of the six), Orchard's base and assault-trench shards current,
+  collisionManifestDrift 33/33 byte-identical, typecheck clean, `npm run build` PASS.
+- r21, the gate round (2026-10-30): the gated release check on `44efeee8ff` passed fidelity (95.7-96.7), the strict clip
+  and the decor census, and failed the geometry gate on all six, contiguity on the 1B, 2B, 3C and Baz, and the sealed
+  ledger (every row framed for the retired builds). Each red was replicated in Node with no capture lock, to the gate's
+  own numbers: the source-ruler side mask (96 columns, the 12 % body band, the p95 roof; `.qa-dev/dims-probe.mjs`), the
+  hull-anchored plan lattice at every phase (`contig-node.mjs`, `contig-src.mjs` on the sources) and the floater view
+  (`floater-probe.mjs`); the gate builds without decor. Each traced to a source piece the fit dropped
+  (`MEASURED_ADDENDA`, `ROOF_GUN_TOP`, `merkavaFamilyMarks.ts`; `aaa8582a25`): the rear racks' lowest slats down to
+  their feet (the stern's last ruler column; hull length -1.3 % on five marks); the Mk 1-3's right roof gun, which hangs
+  beside its mount (top 0.18 m over the foot against the fleet MAG's 0.28), and the Mk 4B's on its 0.4 m post (height
+  +2.7-2.9 % on the 2B, 3C and Baz, -5 % on the 4B); the 2B's right rear mast as a 0.080 stem under a 0.107 collar and
+  head (the fit's one 0.105 cylinder put its head in the ruler's next column); the 4B's lamp pedestal (its head floated
+  at turret yaw 90); the 1B's skirt panels' sloped end tops, the 2B/3C/Baz front skirt hangers and the 3C/Baz left rear
+  rack plate (plan holes). The hangers are hull detail, not hull: in the plain hull bucket they widened the sim's hull
+  floor to 1.938. After: hull length and height within 1 % of the source on all six, 0 plan holes, one island at every
+  pose, strict clip 0, the combat anatomy and sim floors unchanged. Main's rulings (10-30): the whip antennas stand as
+  measured (their tips 11.5 cm over the sources' read in the physical-height row; dims pass with the whip tips
+  excluded, a fleet tool fix queued); the sealed rows re-recorded as new vehicles (`a271f5457a`: all six SEALED, 0 open
+  views; the 1B, 2B and 2D 14 single pixels each on the track's pad joints in the 12 and 30 degree chase rings, the 4B
+  1 px on its turret armour; netting 3C 3409, 4B 2463). The second gate (`a271f5457a`): geometry 6/6 (dims 92.3-94.0
+  with the whips counted; whips excluded, physical height within 0.3-1.0 %), clip, decor, sealed and fidelity (median
+  96.3) PASS; contiguity one cell at (1.59, -3.99) on the 3C and Baz: the source draws the rack plate on both sides
+  (x 1.149-1.719); both drawn (`2c5f2f6e9f`). The receipt sweep found `roofStations.selftest` §8 ("no MBT is engaged
+  head-on by a 12.7 mm station at 100 m") failing on the 1B (share 0.338): the hatch buckets' clusters become anatomy
+  structure boxes whose faces take the roof plate's KE, and the 1B's roof carries the tier-I lever (KE 16); main's 1B
+  had no structures. Main's ruling, both in `2c5f2f6e9f`: the receipt reads the share over exposed faces (a structure
+  face whose line to the station meets main armour is dropped; a negative control keeps a face standing proud), and
+  the 1B's glacis engine hatches carry an authoring hint (`structureFrontPlate`, the structure row's `frontPlate`,
+  `combatAnatomy.applyStructureFrontPlates`) so that structure's front face takes the upper glacis's armour; every other
+  vehicle's anatomy is byte-identical. The 1B head-on: the sim's share 0.256, exposed 0.094 (the turret hatch boxes'
+  fronts, the roof lever's to revisit: the balance lane); the other marks 0.
+- r22, the final gate (2026-10-30): `tank:release:check -- --ids=<six> --gate --lane` on `b57e4f80bf` (the 3C/Baz rack
+  plates, the roofStations ruling, the assets and hero cards after them). PASS: the standard check (geometry gate
+  minimum 92.3-94.0, B2 contiguity 0 at every phase, clip 0, decor), sealed (all six SEALED), fidelity (median 96.3),
+  the fleet-wide `gen-combat-anatomy --check` (236 receipts across 83 demand groups), the fleet-geometry ledger, mission
+  seats, centring, module-hit, spare track, materials, gun junction, assets, track duplicates, muzzle bores and barrel
+  circularity. One red: `module-visual-align-probe --gate`, `volume-out` 1.21-1.33. That is the fleet class: the turret
+  crew seats sit in the basket below the turret plates' envelope. The untouched merkava3d (1.15), merkava4 (1.05) and
+  merkava4_barak (0.85) read the same, as do t90a (0.63) and t72b3 (0.89)
+  (`~/cot-lanes/merkava-family-262/modalign-controls.log`). It is the probe's rule, not these builds. The standard
+  check's stale hidden-gap rows were pruned (2B 1, 2D 3, 4B 5: closed since the gate round).
 - The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
   sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
   DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS
