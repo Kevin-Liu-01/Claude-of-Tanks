@@ -475,11 +475,11 @@ function pintleSocket(P: TankBuilderPort, x: number, roof: number, z: number, to
 }
 
 /** The 12.7 mm M2 on its socket (the fleet's classic emplacement: pintle column, riding cradle, the class's receiver,
- * feed and ammunition can, the true crew barrel), its flange 2 mm into the collar; a working station the auxiliary
- * roof-gun control turns and fires. */
-function roofM2(P: TankBuilderPort, name: string, x: number, seat: number, z: number, seed: number): void {
+ * feed and ammunition can, the true crew barrel), its flange 2 mm into the collar, a `riser` lifting it on the fleet's
+ * sleeve and clamp collar; a working station the auxiliary roof-gun control turns and fires. */
+function roofM2(P: TankBuilderPort, name: string, x: number, seat: number, z: number, seed: number, riser = 0): void {
   const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1, tone: 'two-tone', elev: 0.08, shield: false, ammo: true,
-    ring: false, working: true, datumBarrel: false, ridingCradle: true, seed });
+    ring: false, riser, working: true, datumBarrel: false, ridingCradle: true, seed });
   m2.name = name;
   m2.userData.auxiliaryMuzzle = [0, m2.userData.barrelAxisLocalY, m2.userData.muzzleLocalZ];
   m2.position.set(x, seat - 0.002, z);
@@ -501,8 +501,8 @@ function addPrototypeTurretKit(P: TankBuilderPort, at: ShellProbe): void {
   // 263 (Main: the STB-1's turret kit where the owner's model has it): every station below is measured on the model in
   // the turret frame (docs/references/tanks/stb1.md "Turret kit"); the shell, mask and hull were already its own.
   // The commander's raised station at -x: an oval two-tier station 0.76 by 0.97 m at its foot, its crown 0.23 m over the
-  // roof, its sight head at the front of the crown, vision blocks round the foot, and the remote AA gun (sourced: STB-1
-  // and STB-2; the model leaves it off) on a bracket on the station's inboard flank (VH.14: every drawn gun works).
+  // roof, its sight head at the front of the crown, vision blocks round the foot, and the AA gun (sourced: STB-1 and
+  // STB-2; the model leaves it off) on a socket at the station's inboard rim (VH.14: every drawn gun works).
   {
     const x = -0.39, z = -0.45, y = at.top(x, z) - 0.02;
     P.addCupola('turret', ovalTier(0.36, 0.38, 0.12, 1.28), x, y + 0.06, z);
@@ -517,9 +517,11 @@ function addPrototypeTurretKit(P: TankBuilderPort, at: ShellProbe): void {
     P.add('turretDark', box(0.23, 0.055, 0.022), -0.435, hy + 0.005, hz + 0.08);
     P.add('turretGlass', box(0.17, 0.035, 0.016), -0.435, hy + 0.005, hz + 0.093);
     // the commander's 12.7 mm M2 (the sourced anti-aircraft gun) on a socket at the upper tier's right rim, standing on
-    // the lower tier, its flange 3 cm over the station's top
-    const sx = x + 0.335, sz = z - 0.08;
-    roofM2(P, 'stb1RoofM2', sx, pintleSocket(P, sx, y + 0.12, sz, y + 0.27, 0.025, [x, sz], 0.24), sz, 1110);
+    // the lower tier (1 cm into the upper tier's foot, flush with the lower tier's edge), its flange 4 cm over the crown
+    // and its pintle in the fleet's 5 cm riser sleeve. Wave 5 (blind critics): with the gun close over the crown the
+    // station hid the post, and the gun read as floating on its cradle's arm; the sleeve carries the column into view.
+    const sx = x + 0.33, sz = z - 0.08;
+    roofM2(P, 'stb1RoofM2', sx, pintleSocket(P, sx, y + 0.12, sz, y + 0.28, 0.03, [x, sz], 0.24), sz, 1110, 0.05);
   }
   // the loader's round hatch at +x, its ring, lid and hinge, a periscope at its inboard front corner
   {

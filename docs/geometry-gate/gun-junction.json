@@ -150,7 +150,7 @@
   "sabra_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c8bb0b24c0945482","gun":"1ed4c507882a338a"}},
   "spz_puma": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"984f031f9253ad71","gun":"de2a10962cee378f"}},
   "spz_wotan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"536a1776320e7bdc","gun":"8de4428541cef19c"}},
-  "stb1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"60c27d3e6cb85d53","gun":"32b6f1c7c93ee088"}},
+  "stb1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6cea812562b61750","gun":"32b6f1c7c93ee088"}},
   "strv103a": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"5f760ec7cfe00a07","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
   "strv103b": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"f33cdcde2dd64bd8","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
   "strv121": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21357be7b2259e66","gun":"ea38084aa08dbda9"}},
