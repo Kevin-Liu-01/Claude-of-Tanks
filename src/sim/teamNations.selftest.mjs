@@ -15,9 +15,10 @@ const rows = NATION_INDEX.map(([id, country, era, tier]) => ({ id, country, era,
 assert.ok(rows.length >= 200, 'the index lists the production fleet');
 assert.ok(rows.every((row) => row.country), 'every production vehicle maps to a country');
 
-// the country table: fourteen countries, their aliases, flags and blocs; a vehicle fights for its operator (round 2:
-// the Leopard 2A4M CAN is Canada's, not its German design's)
-assert.equal(COUNTRIES.length, 14);
+// the country table: fifteen countries (266: Brazil), their aliases, flags and blocs; a vehicle fights for its operator
+// (round 2: the Leopard 2A4M CAN is Canada's, not its German design's)
+assert.equal(COUNTRIES.length, 15);
+assert.equal(countryOfNation('Brazil'), 'brazil'); assert.equal(countryFlag('brazil'), 'br'); assert.equal(countryBloc('brazil'), 'west');
 assert.equal(countryOfVehicle('leo2a4m_can', 'Germany'), 'canada'); assert.equal(countryOfVehicle('leo2a4m', 'Germany'), 'germany');
 assert.equal(rows.find((row) => row.id === 'leo2a4m_can')?.country, 'canada', 'the index seats it for Canada');
 assert.equal(countryFlag('canada'), 'ca');
@@ -25,18 +26,19 @@ assert.equal(countryOfNation('USSR/Russia'), 'russia'); assert.equal(countryOfNa
 assert.equal(countryFlag('uk'), 'gb'); assert.equal(countryFlag('nope'), 'xx');
 assert.equal(countryBloc('china'), 'east'); assert.equal(countryBloc('poland'), 'west');
 assert.deepEqual(Object.fromEntries(Object.entries(COUNTRY_ALLIES).map(([c, list]) => [c, list.join(' ')])), {
-  usa: 'uk germany france italy poland israel japan south_korea sweden ukraine canada',
-  uk: 'usa germany france italy poland sweden israel japan south_korea ukraine canada',
-  germany: 'france italy poland uk usa sweden ukraine israel japan south_korea canada',
-  france: 'germany italy uk usa poland sweden ukraine israel japan south_korea canada',
-  italy: 'germany france uk usa poland sweden ukraine israel japan south_korea canada',
-  poland: 'ukraine germany usa uk sweden france italy israel japan south_korea canada',
-  ukraine: 'poland uk usa germany sweden france italy israel japan south_korea canada',
-  sweden: 'germany uk poland france usa italy ukraine israel japan south_korea canada',
-  israel: 'usa uk germany france italy poland sweden ukraine japan south_korea canada',
-  japan: 'usa south_korea uk france germany italy poland sweden israel ukraine canada',
-  south_korea: 'usa japan uk germany france italy poland sweden israel ukraine canada',
-  canada: 'usa uk france germany italy poland sweden ukraine israel japan south_korea',
+  usa: 'uk germany france italy poland israel japan south_korea sweden ukraine canada brazil',
+  uk: 'usa germany france italy poland sweden israel japan south_korea ukraine canada brazil',
+  germany: 'france italy poland uk usa sweden ukraine israel japan south_korea canada brazil',
+  france: 'germany italy uk usa poland sweden ukraine israel japan south_korea canada brazil',
+  italy: 'germany france uk usa poland sweden ukraine israel japan south_korea canada brazil',
+  poland: 'ukraine germany usa uk sweden france italy israel japan south_korea canada brazil',
+  ukraine: 'poland uk usa germany sweden france italy israel japan south_korea canada brazil',
+  sweden: 'germany uk poland france usa italy ukraine israel japan south_korea canada brazil',
+  israel: 'usa uk germany france italy poland sweden ukraine japan south_korea canada brazil',
+  japan: 'usa south_korea uk france germany italy poland sweden israel ukraine canada brazil',
+  south_korea: 'usa japan uk germany france italy poland sweden israel ukraine canada brazil',
+  canada: 'usa uk france germany italy poland sweden ukraine israel japan south_korea brazil',
+  brazil: 'usa germany italy france uk israel sweden poland ukraine canada japan south_korea',
   russia: 'china', china: 'russia',
 }, 'the closest-ally order (study-country 3.2)');
 for (const [c, list] of Object.entries(COUNTRY_ALLIES)) for (const ally of list) assert.equal(countryBloc(ally), countryBloc(c), `${c}: fills stay in its bloc`);

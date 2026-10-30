@@ -80,6 +80,8 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
   dk: Object.freeze({ countryLabel: 'Denmark', filterLabel: 'DK', insignia: 'dk-dannebrog', designation: 'DK' }),
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
+  // release 266: the Brazilian Army (Exército Brasileiro) line
+  br: Object.freeze({ countryLabel: 'Brazil', filterLabel: 'BR', insignia: 'br-auriverde', designation: 'EB' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -691,6 +693,26 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.stroke();
 }
 
+/** Release 266 (the Brazilian Army line): the small national flag Brazilian armour carries on its flanks, at game scale:
+ *  the green field, the gold rhombus and the blue globe with its white band. */
+function drawBrazilAuriverde({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const w = size * 0.92, h = size * 0.64, x0 = cx - w / 2, y0 = cy - h / 2;
+  ctx.fillStyle = '#2f7a43';
+  ctx.fillRect(x0, y0, w, h);
+  const ix = w * 0.085, iy = h * 0.12;
+  ctx.fillStyle = '#e3c043';
+  ctx.beginPath();
+  ctx.moveTo(cx, y0 + iy); ctx.lineTo(x0 + w - ix, cy); ctx.lineTo(cx, y0 + h - iy); ctx.lineTo(x0 + ix, cy);
+  ctx.closePath();
+  ctx.fill();
+  const r = h * 0.25;
+  ctx.fillStyle = '#2b3f7c';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ece8dc';
+  ctx.lineWidth = Math.max(1, r * 0.2);
+  ctx.beginPath(); ctx.arc(cx + r * 0.35, cy + r * 1.55, r * 1.75, Math.PI * 1.27, Math.PI * 1.73); ctx.stroke();
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -732,6 +754,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'dk-dannebrog': drawDenmarkDannebrog,
   'ua-trident': drawUkraineTrident,
   'th-flag': drawThaiFlag,
+  'br-auriverde': drawBrazilAuriverde,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

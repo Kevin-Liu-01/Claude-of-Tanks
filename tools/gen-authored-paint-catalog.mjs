@@ -84,7 +84,7 @@ const leadOf = (ids) => ids.find((id) => !/_x$/.test(tankSeedId(id)) && !/legacy
 const NATION_WORD = {
   USA: 'US Army', Germany: 'Bundeswehr', Russia: 'Russian', USSR: 'Soviet', 'USSR/Russia': 'Soviet', UK: 'British', France: 'French',
   China: 'PLA', Italy: 'Italian', Japan: 'JGSDF', Poland: 'Polish', 'South Korea': 'ROK', Sweden: 'Swedish', Israel: 'IDF',
-  Ukraine: 'Ukrainian', Atlantis: 'Atlantean', Denmark: 'Danish',
+  Ukraine: 'Ukrainian', Atlantis: 'Atlantean', Denmark: 'Danish', Brazil: 'Brazilian',
 };
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',

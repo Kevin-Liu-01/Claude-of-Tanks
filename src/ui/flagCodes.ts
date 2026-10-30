@@ -24,6 +24,8 @@ export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object
   Denmark: 'dk',
   Ukraine: 'ua',
   Canada: 'ca',
+  // release 266: the Brazilian Army line
+  Brazil: 'br',
   Community: 'xx',
 });
 

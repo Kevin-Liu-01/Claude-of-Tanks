@@ -7,7 +7,7 @@
 
 export type CountryId =
   | 'russia' | 'germany' | 'usa' | 'uk' | 'france' | 'china' | 'japan' | 'sweden' | 'israel' | 'poland' | 'italy'
-  | 'south_korea' | 'ukraine' | 'canada';
+  | 'south_korea' | 'ukraine' | 'canada' | 'brazil';
 
 interface Country {
   readonly id: CountryId;
@@ -38,6 +38,8 @@ export const COUNTRIES: readonly Country[] = Object.freeze([
   country('south_korea', 'kr', 'west', 'South Korea'),
   country('ukraine', 'ua', 'west', 'Ukraine'),
   country('canada', 'ca', 'west', 'Canada'),
+  // release 266: the Brazilian Army line (techTree/nations/brazil.ts)
+  country('brazil', 'br', 'west', 'Brazil'),
 ]);
 
 const COUNTRY_BY_ID: ReadonlyMap<string, Country> = new Map(COUNTRIES.map((entry) => [entry.id, entry]));
@@ -106,19 +108,22 @@ export function sideFlags(vehicles: readonly { readonly id: string | null | unde
  */
 const allies = (...ids: CountryId[]): readonly CountryId[] => Object.freeze(ids);
 export const COUNTRY_ALLIES: Readonly<Record<CountryId, readonly CountryId[]>> = Object.freeze({
-  usa: allies('uk', 'germany', 'france', 'italy', 'poland', 'israel', 'japan', 'south_korea', 'sweden', 'ukraine', 'canada'),
-  uk: allies('usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'japan', 'south_korea', 'ukraine', 'canada'),
-  germany: allies('france', 'italy', 'poland', 'uk', 'usa', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada'),
-  france: allies('germany', 'italy', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada'),
-  italy: allies('germany', 'france', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada'),
-  poland: allies('ukraine', 'germany', 'usa', 'uk', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada'),
-  ukraine: allies('poland', 'uk', 'usa', 'germany', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada'),
-  sweden: allies('germany', 'uk', 'poland', 'france', 'usa', 'italy', 'ukraine', 'israel', 'japan', 'south_korea', 'canada'),
-  israel: allies('usa', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'ukraine', 'japan', 'south_korea', 'canada'),
-  japan: allies('usa', 'south_korea', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'israel', 'ukraine', 'canada'),
-  south_korea: allies('usa', 'japan', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'ukraine', 'canada'),
+  usa: allies('uk', 'germany', 'france', 'italy', 'poland', 'israel', 'japan', 'south_korea', 'sweden', 'ukraine', 'canada', 'brazil'),
+  uk: allies('usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'japan', 'south_korea', 'ukraine', 'canada', 'brazil'),
+  germany: allies('france', 'italy', 'poland', 'uk', 'usa', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  france: allies('germany', 'italy', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  italy: allies('germany', 'france', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  poland: allies('ukraine', 'germany', 'usa', 'uk', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  ukraine: allies('poland', 'uk', 'usa', 'germany', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  sweden: allies('germany', 'uk', 'poland', 'france', 'usa', 'italy', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'brazil'),
+  israel: allies('usa', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'ukraine', 'japan', 'south_korea', 'canada', 'brazil'),
+  japan: allies('usa', 'south_korea', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'israel', 'ukraine', 'canada', 'brazil'),
+  south_korea: allies('usa', 'japan', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'ukraine', 'canada', 'brazil'),
   // one Canadian hull in the fleet: a Canadian side is its allies' first (the US and the UK), named in the notes
-  canada: allies('usa', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea'),
+  canada: allies('usa', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea', 'brazil'),
+  // release 266: Brazil fills first from the countries whose armour it fields (the US's M41s and M60s, Germany's Leopards,
+  // Italy's Centauro and Iveco hulls), then the rest of the west
+  brazil: allies('usa', 'germany', 'italy', 'france', 'uk', 'israel', 'sweden', 'poland', 'ukraine', 'canada', 'japan', 'south_korea'),
   russia: allies('china'),
   china: allies('russia'),
 });
