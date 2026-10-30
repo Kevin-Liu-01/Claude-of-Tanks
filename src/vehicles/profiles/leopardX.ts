@@ -90,6 +90,16 @@ function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
   addTurretSections(P,d,stations.map((station) => shellSection(d, station,bevelWidth,upperDepth)));
 }
 
+/** A frontal wedge whose root section is the given outline (world x, y at world z), so its back lies inside the cheeks
+ *  it meets and neither its back cap nor their front caps show; the rest are shell stations (the owner 2026-10-30, faces
+ *  marked on the 2A5M and 2A7V: the wedge's back stood proud of the forward cheeks, their caps showed past it, and the
+ *  interior fill showed through the gap under it). */
+function wedge(P:TankBuilderPort,d:Datum,root:readonly (readonly [number,number])[],rootZ:number,stations:readonly ShellStation[]):void {
+  const x=d.turretPivot[0],y=d.turretPivot[1];
+  addTurretSections(P,d,[{z:rootZ-d.turretPivot[2],ring:root.map(([px,py])=>[px-x,py-y] as [number,number])},
+    ...stations.map((station)=>shellSection(d,station))]);
+}
+
 function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
   if(d===LEOPARD_X_DATUMS.leo2a5) P.add('turret',sectionSolid(sections));
   else addLeopardTurretWithGunOpening(P,sections,
@@ -1213,8 +1223,10 @@ export function buildLeopard2A7VX(P: TankBuilderPort, kit: LeopardXKit = {}): vo
   P.add('turret',cylY(1.02,1.02,.11,40),0,.023,0);
   opticPocket(P,d,{back:1.65,mouth:2.51,x0:-1.025,x1:-.60,
     floor:2.352,roof:2.61,outerLeft:-1.56,outerRight:1.48,bottom:1.75,sourceA7Cheek:true});
-  shell(P,d,[[2.505,-1.13,1.16,1.91,2.340],[2.82,-.72,.77,2.016,2.286],
-    [3.11,-.22,.29,2.146,2.181]]);
+  // its root inside the mouth of the forward cheeks: the left cheek, the optic pocket's floor (top 2.34) and the right
+  // cheek's ridge, its underside rising and its top falling outboard (a7ForwardCheek's z 2.51 row)
+  wedge(P,d,[[-1.18,1.935],[.10,1.935],[1.15,2.165],[1.15,2.20],[.10,2.335],[-1.02,2.335],[-1.235,2.30],[-1.235,1.96]],2.50,
+    [[2.82,-.72,.77,2.016,2.286],[3.11,-.22,.29,2.146,2.181]]);
   roofHatch(P,d,-.61,2.675,-.35);
   roofHatch(P,d,.66,2.670,-.35);
   equip(P,d,'turretDetail',cylY(.20,.22,.16,24),-.301,2.74,-.433);
@@ -1274,7 +1286,9 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
   P.add('turret',cylY(1.027,1.027,.16,40),0,.015,0);
   opticPocket(P,d,{back:1.64,mouth:2.43,x0:-1.04,x1:-.56,floor:2.15,
     roof:2.46,frontRoof:2.302,outerLeft:-1.27,outerRight:1.283,bottom:1.738});
-  shell(P,d,[[2.42,-1.12,1.14,1.895,2.302],[2.95,-.60,.64,2.038,2.219],
+  // (the owner 2026-10-30: the wedge's root inside the cheeks' mouths, x -1.105 to 0.973 from 1.898; it stood 17 cm past
+  // the right cheek)
+  shell(P,d,[[2.42,-1.10,.965,1.902,2.298],[2.95,-.60,.64,2.038,2.219],
     [3.28,-.20,.29,2.104,2.126]]);
   // Turret cage extends around the bustle but never closes its stand-off air.
   for(const side of [-1,1]) {
@@ -1335,14 +1349,18 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   driver(P,1.5619,-.58,2.20,.03,Math.atan2(1.684-1.45,2.75-1.60));
   bowFittings(P,1.33,3.56,false);
   sternFittings(P,1.47,-3.79,1.65);
-  shell(P,d,[[-2.82,-1.02,-.64,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
+  // (the owner 2026-10-30: the bustle's rear square across its width; its last station covered the left half only, so the
+  // rear plate ran skewed)
+  shell(P,d,[[-2.82,-1.02,.98,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
     [-2.24,-1.405,1.33,1.842,2.437],[-1.36,-1.50,1.412,1.846,2.444],
     [-.78,-1.512,1.417,1.671,2.446],[.39,-1.519,1.408,1.674,2.448],
     [1.36,-1.496,1.374,1.675,2.374]]);
   P.add('turret',cylY(1.015,1.015,.11,40),0,.018,0);
   opticPocket(P,d,{back:1.355,mouth:2.28,x0:-1.10,x1:-.65,floor:2.12,
     roof:2.38,outerLeft:-1.497,outerRight:1.375,bottom:1.675});
-  shell(P,d,[[2.27,-1.27,1.15,1.742,2.129],[2.70,-.76,.63,1.813,2.139],
+  // (the owner 2026-10-30: the wedge's root inside the cheeks' mouths, x -1.187 to 1.065 from their raised 1.835, under
+  // the optic floor's 2.108; it hung 9 cm under them and past both, the interior fill showing through the gap)
+  shell(P,d,[[2.27,-1.18,1.06,1.845,2.10],[2.70,-.76,.63,1.813,2.139],
     [3.02,.10,.16,1.978,1.997]]);
   roofHatch(P,d,-.62,2.448,-.24);
   roofHatch(P,d,.62,2.448,-.24);
