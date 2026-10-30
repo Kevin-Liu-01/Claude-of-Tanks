@@ -36,7 +36,7 @@ import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { button, segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import {
   CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_SHOULDERS, type ChaseNumericSetting, type ChaseShoulder,
 } from '../engine/chaseFraming.ts';
@@ -945,8 +945,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     if (padCard) { padCard.renderPadCard(host, padPorts()); return; }
     const row = el('div', 'cot-set-row', host);
     settingLabel(row, t('settings.phone.label'), { id: 'phone', tone: 'cyan' });
-    row.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.connect'), variant: 'secondary', size: 36, icon: 'phone', className: 'cot-pad-action' }));
-    const connect = row.lastElementChild as HTMLButtonElement;
+    // the kit's button as markup (as the footer's are): the builder would pull itself into the chunk the Gallery shares
+    const connect = el('button', 'cot-c-btn cot-c-btn--secondary cot-c-btn--36 cot-pad-action', row);
+    connect.type = 'button';
+    connect.dataset.uiSound = 'press';
+    connect.innerHTML = `${uiIconSVG('phone', 18)}<span class="cot-c-btn__label"></span>`;
+    (connect.lastElementChild as HTMLElement).textContent = t('settings.phone.connect');
     connect.addEventListener('click', () => {
       if (pressFailed(connect)) return;
       void import('../pad/padConnectCard.ts').then((module) => {

@@ -14,7 +14,6 @@ import { t } from '../ui/i18n.ts';
 import { markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { button } from '../ui/components/components.ts';
 
 const CARD_CSS = `
 .cot-pad-card .cot-pad-row{display:flex;align-items:center;gap:var(--s3);}
@@ -34,6 +33,17 @@ const CARD_CSS = `
 .cot-pad-exp{margin:var(--s2) 0 var(--s3);font-size:var(--fs-12);color:var(--ink-3);}
 @media (max-width:640px){.cot-pad-pair{grid-template-columns:1fr;justify-items:start;}}
 `;
+
+/** The kit's button as markup (components.css classes), as Settings writes its own: its builder would join the chunk the
+ *  Gallery shares. */
+function kitButton(parent: HTMLElement, variant: 'secondary' | 'quiet', className: string, glyph?: 'phone'): HTMLButtonElement {
+  const control = parent.appendChild(document.createElement('button'));
+  control.type = 'button';
+  control.className = `cot-c-btn cot-c-btn--${variant} cot-c-btn--36 ${className}`;
+  control.dataset.uiSound = 'press';
+  control.innerHTML = `${glyph ? uiIconSVG(glyph, 18) : ''}<span class="cot-c-btn__label"></span>`;
+  return control;
+}
 
 let receiver: PadReceiver | null = null;
 let detach: (() => void) | null = null;
@@ -58,8 +68,7 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
   state.className = 'cot-pad-state num';
   state.setAttribute('role', 'status');
   state.setAttribute('aria-live', 'polite');
-  row.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.connect'), variant: 'secondary', size: 36, icon: 'phone', className: 'cot-pad-action' }));
-  const action = row.lastElementChild as HTMLButtonElement;
+  const action = kitButton(row, 'secondary', 'cot-pad-action', 'phone');
 
   const pair = host.appendChild(document.createElement('div'));
   pair.className = 'cot-pad-pair';
@@ -75,8 +84,8 @@ export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connec
   how.className = 'cot-pad-how';
   const expires = text.appendChild(document.createElement('p'));
   expires.className = 'cot-pad-exp num';
-  text.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.newCode'), variant: 'quiet', size: 36, className: 'cot-pad-new' }));
-  const fresh = text.lastElementChild as HTMLButtonElement;
+  const fresh = kitButton(text, 'quiet', 'cot-pad-new');
+  (fresh.lastElementChild as HTMLElement).textContent = t('settings.phone.newCode');
 
   const note = host.appendChild(document.createElement('div'));
   note.className = 'cot-set-note';
