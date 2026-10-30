@@ -12,6 +12,11 @@ const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 
 /** The shared core: the simulation, plus the bot brains and the kernels' loader that live beside their callers. */
 const CORE_EXTRA_ROOTS = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/world/wasmWorldKernels.ts']);
+/**
+ * Core modules a lane landing beside this one adds, checked as core once present: the page's kernel provider, split from
+ * world/soloWorldKernels.ts so Node runs it (item/local-fps-265 90189a90f7).
+ */
+const CORE_PENDING_ROOTS = Object.freeze(['src/world/soloWorldKernelProvider.ts']);
 /** The core's modules outside src/sim that are core (the bots): nothing else under src/game is. */
 const CORE_GAME_MODULES = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts']);
 /** Code the core never reaches: either driver's, the composition root, and the presentation around them. */
@@ -169,7 +174,7 @@ function closureChain(closure, file) {
 function coreRoots(root = process.cwd()) {
   const listed = execFileSync('git', ['ls-files', 'src/sim'], { cwd: root, encoding: 'utf8' }).split('\n')
     .filter((file) => file.endsWith('.ts') && !/\.(?:selftest|test-support)\./.test(file));
-  return [...listed, ...CORE_EXTRA_ROOTS];
+  return [...listed, ...CORE_EXTRA_ROOTS, ...CORE_PENDING_ROOTS.filter((file) => existsSync(resolve(root, file)))];
 }
 
 /** What a module names that the core may not: three.js beyond its math, browser globals. */

@@ -78,4 +78,4 @@ assert.ok(local.closure.has('src/game/state.ts') && local.closure.has('src/sim/m
 
 console.log(`driver-boundaries.selftest: the core (${core.closure.size} modules) imports no driver code (${CORE_RENDER_PIN.length} pinned `
   + `render-side modules, shrink-only); the local driver (${local.closure.size} modules) never reaches src/mp or the room host; `
-  + 'main.ts names the online driver only where it composes it; 8 seeded violations caught');
+  + 'main.ts names the online driver only where it composes it; 9 seeded violations caught');
