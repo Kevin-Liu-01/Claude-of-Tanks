@@ -190,6 +190,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   lrmv_lynx: { build: buildLrmvLynx },
   borsuk: { build: buildBorsuk },
   cv9040c: { build: buildCv9040CX },
+  ua_cv9040c: { build: (P: Parameters<typeof buildCv9040CX>[0]) => buildCv9040CX(P, { ukrainian: true }) },
   type89: { build: buildType89X },
 
   ...SINO_SOVIET_CONCEPT_PROFILES,

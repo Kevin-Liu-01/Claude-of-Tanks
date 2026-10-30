@@ -169,5 +169,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Leopard line on through the 1A5 DK (I, the DK-1 its twin) to the 2A5 DK (IX), the 2A7 DK held (2026-10-30, Main: its
 // Barracuda lands later); the Christian II moves out of the Sweden tree into Denmark's special lane, and Sweden's nations
 // are Sweden's alone again.
-assert.equal(digest, '55930523db85a4b3', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
+assert.equal(digest, '380ed9180b2ec1f9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

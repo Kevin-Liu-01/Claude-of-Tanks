@@ -97,8 +97,12 @@ const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
   challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
   challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100' };
+// Release 265: the Ukrainian CV9040C wears Ukraine's Factory coat (the national rule for a plain coat).
+const ADDED_IN_NATION_COAT = { ua_cv9040c: 'service_ua_m2a3_bradley' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
-  + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_IN_SPEC_COAT.length, 'the same fleet, plus the tanks added since');
+  + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,
+  'the same fleet, plus the tanks added since');
+for (const [id, coat] of Object.entries(ADDED_IN_NATION_COAT)) assert.equal(now.tanks[id]?.stock, coat, `${id} wears ${coat}`);
 for (const id of ADDED_IN_SPEC_COAT) assert.equal(now.tanks[id]?.stock, null, `${id} paints its spec's coat`);
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
 for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);

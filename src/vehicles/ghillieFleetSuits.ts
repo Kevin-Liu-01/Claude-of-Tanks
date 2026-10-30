@@ -173,6 +173,21 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
     },
   },
+  // 265: the Ukrainian CV9040C (the owner's photograph, 21st Mechanized Brigade, 2024): the net bundled over the turret
+  // only (its troop roof carries the tarpaulin load, profiles/cv9040CSourceX.ts)
+  ua_cv9040c: {
+    id: 'ua_cv9040c', seed: 9042, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
+    turret: {
+      top: [laid({
+        x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,
+        holes: [rect(-0.72, -0.18, 0.50, 1.02), rect(0.20, 0.72, 0.20, 0.72), ...pair(0.48, 0.74, -1.18, -0.92)],
+        garnishRiseM: 0.12, seed: 11,
+      })],
+      side: flanks(-1.30, 0.06, 0.82, 0.38, 1.22, 17),
+      face: [face({ z: -1.42, x0: -0.92, x1: 0.92, y0: 0.38, y1: 0.75, nx: 18, ny: 6, seed: 23 })],
+    },
+  },
   // Merkava Mk 4B: the roof behind the wedge mantlet and over the cheeks netted round the commander's cupola, the
   // loader's ring, the mortar and every sight head; the bustle basket's load under its own net; drapes down the flared
   // turret walls (behind the cheek smoke dischargers) and down the basket's sides, and over its rear. The hull's rear

@@ -35,6 +35,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv103b: { doctrine: 'precision', viewM: 425, still: 0.260, moving: 0.170 },
   cv90: { doctrine: 'support', viewM: 445, still: 0.263, moving: 0.203 },
   cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
+  ua_cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv90105_tml: { doctrine: 'scout', viewM: 465, still: 0.338, moving: 0.338 },
   strv121: { doctrine: 'precision', viewM: 410, still: 0.238, moving: 0.148 },
   cv90_mk4_concept: { doctrine: 'support', viewM: 460, still: 0.260, moving: 0.200 },

@@ -141,8 +141,29 @@ function gun(P: TankBuilderPort): void {
   P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.701); // 2026-10-19 (owner float sweep): 8 mm off the tube end
 }
 
-export function buildCv9040CX(P: TankBuilderPort): void {
+/** The Ukrainian CV9040C's service kit (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): the
+ *  white tactical triangle forward on each flank's upper wall, and rust-brown tarpaulins lashed over a load on the troop
+ *  roof behind the turret, down to its edges, over the aft roof hatches; the net over its turret is its ghillie suit. */
+function addUkrainianKit(P: TankBuilderPort): void {
+  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.56,[side*1.648,1.45,1.70],side*Math.PI/2);
+  const roof=1.94;
+  const mound=(z: number, k: number): {z: number; ring: [number, number][]}=>({z,ring:[
+    [-1.30,roof-.005],[1.30,roof-.005],[1.28,roof+.10+.04*k],[.95,roof+.30+.05*k],[.40,roof+.36-.04*k],
+    [-.10,roof+.30+.06*k],[-.62,roof+.40-.03*k],[-1.08,roof+.27+.04*k],[-1.28,roof+.12],
+  ]});
+  P.addEquipment('hullCanvasPale',sectionSolid([mound(-3.27,0),mound(-3.05,1),mound(-2.80,-1),mound(-2.56,.5),mound(-2.50,-.5)]));
+  // its lashings, over the mound and down to the roof's edge
+  for(const z of [-3.12,-2.68])for(const side of [-1,1]) {
+    P.addEquipment('hullDark',box(1.24,.018,.035),side*.64,roof+.36,z,0,0,side*-.30);
+    P.addEquipment('hullDark',box(.018,.16,.035),side*1.29,roof+.07,z);
+  }
+  P.mats.canvasPale.color.setHex(0x6a4c38);
+}
+
+/** The CV9040C (release 265: `ukrainian` builds the Ukrainian one, ukraineCv90Specs.ts). */
+export function buildCv9040CX(P: TankBuilderPort, kit: { readonly ukrainian?: boolean } = {}): void {
   hull(P);gear(P);turret(P);gun(P);P.topY=1.03;
+  if(kit.ukrainian)addUkrainianKit(P);
   P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretExternalArmor','turretHatch']};
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts)
   addVehicleGhillieSuit(P);

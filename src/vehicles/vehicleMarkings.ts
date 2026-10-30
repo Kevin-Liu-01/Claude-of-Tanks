@@ -191,6 +191,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   lrmv_lynx: anchor('hull', 'left', .42, .64, .22, 1),
   borsuk: anchor('hull', 'left', .45, .60, .22, 1),
   cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
+  ua_cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
   type89: anchor('hull', 'left', .45, .38, .20, 1),
   type96_72_long: anchor('turret','left',.33,.42,.23,1),
   type96_80_feng: anchor('turret','left',.36,.42,.23,1),
@@ -737,6 +738,21 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.stroke();
 }
 
+// Ukraine's white tactical triangle (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): an
+// upright open outline in white on the vehicle's flanks.
+function drawUkraineTriangle({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const r = Math.min(size, 256) * 0.40;
+  ctx.strokeStyle = '#ecebe4';
+  ctx.lineWidth = r * 0.17;
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.95, cy + r * 0.66);
+  ctx.lineTo(cx - r * 0.95, cy + r * 0.66);
+  ctx.closePath();
+  ctx.stroke();
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -779,6 +795,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'dk-dannebrog-reverse': drawDenmarkDannebrogReverse,
   'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
+  'ua-triangle': drawUkraineTriangle,
   'th-flag': drawThaiFlag,
 });
 
