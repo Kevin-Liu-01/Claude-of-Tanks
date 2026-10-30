@@ -479,16 +479,17 @@ function buildDozer(P: TankBuilderPort): void {
   }
   // a cross beam along the back at mid height, carrying the arms' lugs
   P.add('hullDetail', box(2 * W - 0.10, 0.12, 0.10), 0, 0.90, faceZ(0.90) - th - 0.10);
-  // inner push arms from their pins on the nose plate's sides, rising to the cross beam
+  // inner push arms from their pins on the nose plate's sides, rising to the cross beam, 2.6 cm inboard of the track
+  // belts' inner edge (x 0.986) where they cross its front wrap
   for (const s of [-1, 1]) {
     const a: [number, number] = [0.75, 3.20], b: [number, number] = [0.88, faceZ(0.88) - th - 0.15];
     const len = Math.hypot(b[1] - a[1], b[0] - a[0]), ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
-    P.add('hullDetail', xform(box(0.08, 0.12, len), 0, 0, 0, -ang, 0, 0), s * 0.95, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
-    P.add('hullDark', box(0.12, 0.20, 0.18), s * 0.94, 0.74, 3.20);
-    P.add('hullDark', cylX(0.045, 0.16, 12), s * 0.95, 0.75, 3.20);
+    P.add('hullDetail', xform(box(0.08, 0.12, len), 0, 0, 0, -ang, 0, 0), s * 0.92, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    P.add('hullDark', box(0.12, 0.20, 0.18), s * 0.90, 0.74, 3.20);
+    P.add('hullDark', cylX(0.045, 0.14, 12), s * 0.91, 0.75, 3.20);
   }
   // the push frame's cross tube tying the inner arms together just behind the blade, over the nose
-  P.add('hullDetail', box(1.90, 0.10, 0.14), 0, 0.80, 3.67);
+  P.add('hullDetail', box(1.84, 0.10, 0.14), 0, 0.80, 3.67);
   // outer push arms from the end plates' lower backs to pivots on the front idlers' hubs, in the 8 cm between the track
   // belt's outer edge (x 1.60) and the skirt line (the Tankfest Mk 5 AVRE '02 BA 33')
   for (const s of [-1, 1]) {
