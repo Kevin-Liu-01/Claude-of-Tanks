@@ -76,8 +76,11 @@ try {
 }
 
 // ------------------------------------------------------------------------------------- two short seeded battles ---
-const run = (mode, capS, seed = 1) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+// Each battle pins the seat's tank to the one its seed drew from the 236-vehicle fleet (265: the Leopard 1A2A1 joining
+// the pool re-dealt seed 1's seat from the M60A2 to the M48A5 Patton, and the sortie read 3/6); the seed still deals the
+// roster, the map and every draw after the seat, so a fleet addition no longer moves these receipts.
+const run = (mode, capS, seed, player) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`, `--player=${player}`], { stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '', err = '';
   child.stdout.on('data', (d) => { out += d; });
   child.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
@@ -88,8 +91,9 @@ const run = (mode, capS, seed = 1) => new Promise((resolve, reject) => {
 });
 // round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
 // chased hard), all at once
-const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45), run('infected', 60),
-  run('frontline_assault', 90, 4), run('capture_the_flag', 120, 5), run('turbo_ball', 120, 7)]);
+const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45, 1, 'm60a2'),
+  run('infected', 60, 1, 'm60a2'), run('frontline_assault', 90, 4, 'm1a3'), run('capture_the_flag', 120, 5, 'kf51_evo'),
+  run('turbo_ball', 120, 7, 'm1a3')]);
 
 // Endless Horde, seed 1 (Verdant), the fight seat with its four allies, 45 s: the first wave
 const rules = matchRulesetFor('endless_horde');
