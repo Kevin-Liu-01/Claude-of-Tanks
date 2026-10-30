@@ -224,17 +224,22 @@ export function straightAlphaTexture(image: MipImage, cutoff: number, name: stri
   return texture;
 }
 
-const cutDepths = new WeakMap<THREE.Material, THREE.MeshDepthMaterial>();
+const cutDepths = new WeakMap<THREE.Material | THREE.Texture, THREE.MeshDepthMaterial>();
 /**
  * The shadow depth material of an alpha-cut draw (a suit's net, cover or garnish): three copies the draw's map and alpha
  * test onto it at every shadow draw, and it reads the map's full-resolution level. (265; the 264b preview, the owner:
  * box-shaped shadows beside netted tanks.) At a cascade's texel size the shadow draw took a coarse level of the
  * coverage-preserving chain, whose texels still pass the cut in level 0's share but stand a strand or more wide, so a
- * laid net or drape cast a near-solid box beside the hull while the camera, close up, saw through it. One per material:
- * three uploads a depth material's map only when the material changes between draws.
+ * laid net or drape cast a near-solid box beside the hull while the camera, close up, saw through it. One per cut
+ * texture (the draw's map, else its alpha map; a material with neither has its own): three uploads a depth material's
+ * map only when the map changes between draws, and a seat's builds, which share their net textures but not their
+ * materials, share their depth draws as every other depth hook of the fleet does (264c: tankVisualClone's "two builds
+ * of one seat" read leo2a7v's hull net through a second depth material).
  */
 export function alphaCutDepthMaterial(material: THREE.Material): THREE.MeshDepthMaterial {
-  const known = cutDepths.get(material);
+  const cut = material as THREE.Material & { map?: THREE.Texture | null; alphaMap?: THREE.Texture | null };
+  const texture = cut.map ?? cut.alphaMap ?? null;
+  const known = cutDepths.get(texture ?? material);
   if (known) return known;
   const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   depth.name = 'cot:alpha-cut-depth';
@@ -243,8 +248,13 @@ export function alphaCutDepthMaterial(material: THREE.Material): THREE.MeshDepth
       '#ifdef USE_MAP\n\tdiffuseColor *= textureLod( map, vMapUv, 0.0 );\n#endif');
   };
   depth.customProgramCacheKey = () => 'cot:alpha-cut-depth-lod0';
-  material.addEventListener('dispose', () => depth.dispose());
-  cutDepths.set(material, depth);
+  if (texture) {
+    texture.addEventListener('dispose', () => { cutDepths.delete(texture); depth.dispose(); });
+    cutDepths.set(texture, depth);
+  } else {
+    material.addEventListener('dispose', () => depth.dispose());
+    cutDepths.set(material, depth);
+  }
   return depth;
 }
 
