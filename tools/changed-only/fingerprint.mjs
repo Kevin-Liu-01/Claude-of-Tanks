@@ -26,7 +26,10 @@ import { expandGlobs } from './globs.mjs';
 import { computeWorldState } from './world.mjs';
 
 export const SCHEMA = 1;
-const MENTION_ONLY_DATA = /(?:\.(?:md|txt|pdf|glb|gltf|obj|fbx|blend|png|jpe?g|webp|svg)$)|^public\/models\//;
+// A receipt a fleet record only names (docs/references/concepts/*.json lists its receipts) is no build input either: no
+// fleet module runs a receipt or reads a file (266: five such receipts sat in the core key, so an edit to one marked
+// every id). One a fleet module imports is still executed, and keyed.
+const MENTION_ONLY_DATA = /(?:\.(?:md|txt|pdf|glb|gltf|obj|fbx|blend|png|jpe?g|webp|svg)$)|^public\/models\/|\.selftest\.mjs$/;
 export const MANIFEST_PATH = 'release/fingerprints.tsv';
 const H = (...parts) => h16(parts.join('\n'));
 
