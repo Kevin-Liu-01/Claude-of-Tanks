@@ -76,8 +76,8 @@ try {
 }
 
 // ------------------------------------------------------------------------------------- two short seeded battles ---
-const run = (mode, capS, seed = 1) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const run = (mode, capS, seed = 1, extra = []) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`, ...extra], { stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '', err = '';
   child.stdout.on('data', (d) => { out += d; });
   child.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
@@ -87,8 +87,10 @@ const run = (mode, capS, seed = 1) => new Promise((resolve, reject) => {
   });
 });
 // round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
-// chased hard), all at once
-const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45), run('infected', 60),
+// chased hard), all at once. (Release 265: the horde's fight seat pinned to the M60A2, the tank seed 1 drew from the
+// 236-vehicle fleet; the seeded pick indexes the production list, so each vehicle added moves it. The integrator's final
+// count may drop this pin with the 237 pins.)
+const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45, 1, ['--player=m60a2']), run('infected', 60),
   run('frontline_assault', 90, 4), run('capture_the_flag', 120, 5), run('turbo_ball', 120, 7)]);
 
 // Endless Horde, seed 1 (Verdant), the fight seat with its four allies, 45 s: the first wave
