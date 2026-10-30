@@ -1224,8 +1224,26 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "leo1a3dk": {
+   "inputHash": "2188c290cbda70cb",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "leo1a5": {
    "inputHash": "0fc804044212d1c6",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo1a5dk": {
+   "inputHash": "30bd789154eacd9e",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo1a5dk1": {
+   "inputHash": "939a72ac3f0521b0",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1688,6 +1706,12 @@
   },
   "leo2a5": {
    "inputHash": "2a747b5f425c8a6c",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo2a5dk": {
+   "inputHash": "785a2b6e587347ae",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

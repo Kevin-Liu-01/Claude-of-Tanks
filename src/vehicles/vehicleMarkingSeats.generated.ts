@@ -23,6 +23,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_CV90105TMLSOURCEX } from './vehicleMarki
 import { VEHICLE_MARKING_SEATS as SEATS_CV9040CSOURCEX } from './vehicleMarkingSeatGroups/cv9040CSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV90MKIVSOURCEX } from './vehicleMarkingSeatGroups/cv90MkivSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_DARDO } from './vehicleMarkingSeatGroups/dardo.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_DENMARK } from './vehicleMarkingSeatGroups/denmark.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_FRANCECORE } from './vehicleMarkingSeatGroups/franceCore.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_FV510MILANX } from './vehicleMarkingSeatGroups/fv510MilanX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_GERMANY } from './vehicleMarkingSeatGroups/germany.generated.ts';
@@ -110,6 +111,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_CV9040CSOURCEX,
   SEATS_CV90MKIVSOURCEX,
   SEATS_DARDO,
+  SEATS_DENMARK,
   SEATS_FRANCECORE,
   SEATS_FV510MILANX,
   SEATS_GERMANY,

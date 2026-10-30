@@ -27,6 +27,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "cv9040CSourceX": () => import('./interiorFillGroups/cv9040CSourceX.generated.ts'),
   "cv90MkivSourceX": () => import('./interiorFillGroups/cv90MkivSourceX.generated.ts'),
   "dardo": () => import('./interiorFillGroups/dardo.generated.ts'),
+  "denmark": () => import('./interiorFillGroups/denmark.generated.ts'),
   "franceCore": () => import('./interiorFillGroups/franceCore.generated.ts'),
   "fv510MilanX": () => import('./interiorFillGroups/fv510MilanX.generated.ts'),
   "germany": () => import('./interiorFillGroups/germany.generated.ts'),
