@@ -161,9 +161,23 @@ function fender(spec: MerkavaHullSpec, side: 1 | -1, z0: number, z1: number): TH
 /** A front fender box over the sprocket: its sloped top plate, front plate, outboard side plate (raked up to the top
  *  plate's back edge) and the inboard plate's upper band; 2 cm steel. The outboard front corner is bent round in plan,
  *  as the sources' boxes are (a quarter turn of up to 22 cm): the top plate's edge follows the bend, which is five
- *  plates along its chords between the side plate and the front plate. */
-function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
-  const t = 0.02, topAt = (z: number): number => f.top0 + (f.top1 - f.top0) * ((z - f.z0) / Math.max(1e-6, f.z1 - f.z0));
+ *  plates along its chords between the side plate and the front plate.
+ *  The box keeps clear of the track (the strict clip, tools/track-clip-audit.mjs --exact --strict: the belt's 2 cm
+ *  cells dilated one cell, which over the sprocket reach 0.41 m from its centre and out to 2 cm past the track's outer
+ *  edge): the side plate's inner face stands 2.2 cm past that edge, the top plate's nose rises until its underside
+ *  clears the sprocket's radius and 6 cm, and a corner chord over the belt stops short of it. The Mk 1-3 sources' boxes
+ *  sit flush on their 0.64 m track (their side plates 0.5 cm off its edge, their noses 3-4 cm into the wrap); the Mk 4B's
+ *  narrower track leaves its box as measured. */
+function fenderBox(f0: MerkavaFender, side: 1 | -1, gear: MerkavaGearSpec): THREE.BufferGeometry[] {
+  const t = 0.02, { z: sz, y: sy } = gear.sprocket, clear = gear.sprocket.r + 0.06, edgeX = gear.trackX + gear.trackW / 2;
+  const wrap = (z: number): number => sy + Math.sqrt(Math.max(0, clear * clear - (z - sz) ** 2));
+  let top1 = f0.top1;
+  for (let k = 1; k <= 40; k++) {
+    const z = f0.z0 + (f0.z1 - f0.z0) * (k / 40);
+    if (Math.abs(z - sz) < clear) top1 = Math.max(top1, f0.top0 + (wrap(z) + t - f0.top0) / (k / 40));
+  }
+  const f: MerkavaFender = { ...f0, xo: Math.max(f0.xo, edgeX + 0.022 + t), top1 };
+  const topAt = (z: number): number => f.top0 + (f.top1 - f.top0) * ((z - f.z0) / Math.max(1e-6, f.z1 - f.z0));
   const plate = (stations: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[]): THREE.BufferGeometry =>
     sectionSolid(stations.map(([z, x0, x1, y0, y1]) => {
       const ring: SectionPoint[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
@@ -184,8 +198,10 @@ function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
     const a0 = (k / 5) * Math.PI / 2, a1 = ((k + 1) / 5) * Math.PI / 2, am = (a0 + a1) / 2;
     const x0 = cx + r * Math.cos(a0), z0 = cz + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), z1 = cz + r * Math.sin(a1);
     const xm = (x0 + x1) / 2 - (t / 2) * Math.cos(am), zm = (z0 + z1) / 2 - (t / 2) * Math.sin(am);
-    const h = topAt(zm) - t - f.bottom, ry = Math.atan2(x1 - x0, z1 - z0);
-    parts.push(KIT.xform(KIT.box(t, h, Math.hypot(x1 - x0, z1 - z0) + 0.006), side * xm, f.bottom + h / 2, zm, 0, side * ry, 0));
+    // over the belt (inboard of its edge's clearance, short of the wrap's front) the chord stops above the wrap
+    const bottom = Math.min(x0, x1) - t < edgeX + 0.022 && Math.min(z0, z1) < sz + clear ? Math.max(f.bottom, wrap(Math.min(z0, z1))) : f.bottom;
+    const h = topAt(zm) - t - bottom, ry = Math.atan2(x1 - x0, z1 - z0);
+    parts.push(KIT.xform(KIT.box(t, h, Math.hypot(x1 - x0, z1 - z0) + 0.006), side * xm, bottom + h / 2, zm, 0, side * ry, 0));
   }
   return parts;
 }
@@ -203,7 +219,7 @@ export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, 
     if (!box && z1 < nose - 0.05) P.add('hull', fender(spec, side, z1 - 0.02, nose));
     if (z0 > tail + 0.05) P.add('hull', fender(spec, side, tail, z0 + 0.02));
     // the fender boxes are sheet steel over the sprockets, not armour
-    if (box) for (const g of fenderBox(box, side)) P.add('hullDetail', g);
+    if (box) for (const g of fenderBox(box, side, gear)) P.add('hullDetail', g);
     // the front mudflap hung under the fender's nose
     const flapZ = box ? box.z1 - 0.03 : nose - 0.05, flapY = box ? box.bottom - 0.10 : lineAt(line, flapZ) - 0.15;
     P.hangMudguard(`merkavaBowFlap${side > 0 ? 'L' : 'R'}`, 'hullRubber', KIT.box(gear.trackW * 0.95, 0.20, 0.012),
