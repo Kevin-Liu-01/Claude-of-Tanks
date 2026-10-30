@@ -63,6 +63,19 @@ interface X1Datums {
 const sec = (z: number, yb: number, yc: number, top: number, hwb: number, hwc: number, hwt: number): TurretSection =>
   Object.freeze({ z, yb, yc, top, hwb, hwc, hwt });
 
+// The X1A2's turret (round 7): every face planar. Each flank keeps one lower-facet direction (out 0.14 per 0.15 up) and
+// one upper-facet direction (in 0.364 per 1 up) from the bustle to the nose, so every quad between two sections is flat;
+// each cheek is one plate from the full flank at 0.30 to the nose at 1.28. The nose: a tall blunt face (0.10 to 0.56,
+// 0.66 of the turret's height) with the sleeve entering at its middle, the upper plate rising 12 degrees from it to the
+// cupola box's front.
+const X1A2_LOWER = 0.14 / 0.15, X1A2_UPPER = 0.20 / 0.55;
+const x1a2Sec = (z: number, yb: number, yc: number, top: number, hwc: number): TurretSection =>
+  sec(z, yb, yc, top, hwc - (yc - yb) * X1A2_LOWER, hwc, hwc - (top - yc) * X1A2_UPPER);
+const X1A2_SECTIONS: readonly TurretSection[] = [
+  x1a2Sec(-1.86, 0.29, 0.31, 0.72, 0.92), x1a2Sec(-1.70, 0.27, 0.29, 0.77, 0.98), x1a2Sec(-0.86, 0.27, 0.29, 0.77, 1.00),
+  x1a2Sec(-0.70, 0.07, 0.22, 0.77, 1.00), x1a2Sec(0.30, 0.07, 0.22, 0.77, 1.00), x1a2Sec(1.28, 0.10, 0.23, 0.56, 0.72),
+];
+
 type Polar = [number, number];
 const polar = (rho: number, a: number): Polar => [rho * Math.cos(a), rho * Math.sin(a)];
 /** A plate in a wheel's plane (axis +X), `depth` thick and centred on `x`: an outline and holes in polar-plotted (u, v). */
@@ -197,11 +210,7 @@ const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
       // chin undercut from the mantlet's foot (1.28, 0.28) back down to the ring (0.92); the bustle overhanging the ring
       // from -0.70 to its back at -1.86 on near-vertical sides, daylight under its floor (0.27)
       sections: Object.freeze([
-        sec(-1.86, 0.29, 0.31, 0.72, 0.90, 0.92, 0.78), sec(-1.70, 0.27, 0.29, 0.77, 0.96, 0.98, 0.86),
-        sec(-0.86, 0.27, 0.29, 0.77, 0.98, 1.00, 0.86), sec(-0.70, 0.07, 0.22, 0.77, 0.86, 1.00, 0.80),
-        sec(0.30, 0.07, 0.22, 0.77, 0.86, 1.00, 0.80), sec(0.70, 0.07, 0.22, 0.652, 0.86, 1.00, 0.84),
-        sec(0.92, 0.07, 0.19, 0.588, 0.77, 0.90, 0.68), sec(1.00, 0.12, 0.21, 0.565, 0.73, 0.86, 0.62),
-        sec(1.28, 0.28, 0.30, 0.48, 0.52, 0.60, 0.42),
+        ...X1A2_SECTIONS,
       ]),
     },
     trunnion: { y: 0.43, z: 1.30 }, muzzleHullZ: 3.89,
@@ -477,11 +486,11 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
     // the ring collar (the X1A2's standing visibly proud of the deck under its body)
     if (a2) {
       P.add('turret', cylY(0.92, 0.93, 0.075, P.q ? 28 : 18), 0, 0.0325, 0);
-      // the plinth under the body from the bustle's step to the chin, set 4 cm inside its base: no open slit between
-      // the body's floor and the deck anywhere the turret turns
-      P.add('turret', sectionSolid([-0.70, 0.30, 0.70, 0.92].map((z) => {
-        const w = sectionAt(z).hwb - 0.04;
-        return { z, ring: [[-w, -0.005], [w, -0.005], [w, 0.072], [-w, 0.072]] as SectionPoint[] };
+      // the plinth under the body from the bustle's step to the nose, set 4 cm inside its base and up to its floor: no open
+      // slit between the body's floor and the deck anywhere the turret turns
+      P.add('turret', sectionSolid([-0.70, 0.30, 1.24].map((z) => {
+        const c = sectionAt(z), w = c.hwb - 0.04, h = c.yb + 0.002;
+        return { z, ring: [[-w, -0.005], [w, -0.005], [w, h], [-w, h]] as SectionPoint[] };
       })));
     }
     else P.add('turret', cylY(0.82, 0.86, 0.10, P.q ? 26 : 16), 0, -0.04, 0);
@@ -563,25 +572,25 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
           P.addEquipment('turret', xform(markSmokeTube(cylZ(0.036, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.45, s * 0.42, 0),
             s * (x + 0.08), y + 0.05, z + 0.06);
         }
-        // the six-tube box on each rear flank: a frame standing off the crease, braced to the flank top and bottom, its
-        // six tubes upright in front of it
-        const z0 = -0.46, z1 = -1.15, y0 = 0.28, y1 = 0.67, xb = sectionAt(-0.8).hwc;
-        P.addEquipment('turret', box(0.05, y1 - y0, z0 - z1), s * (xb + 0.025), (y0 + y1) / 2, (z0 + z1) / 2);
-        for (const yy of [y0 + 0.015, y1 - 0.015]) {
-          const fx = flankX(-0.8, yy) - 0.01;
-          P.addEquipment('turret', box(xb + 0.05 - fx, 0.03, z0 - z1), s * (fx + xb + 0.05) / 2, yy, (z0 + z1) / 2);
-        }
+        // the six-tube rack on each rear flank, laid flush on the upper flank (leaning in with it): its back plate on the
+        // wall, the six tubes upright along the wall in front of it, the rectangular frame round their faces
+        const z0 = -0.46, z1 = -1.15, zc = (z0 + z1) / 2, len = 0.39, yc0 = 0.475, lean = Math.atan(X1A2_UPPER);
+        const th = s * lean, wx = flankX(zc, yc0);
+        // a point (lx out from the wall, ly up along it) about the rack's footprint centre, in turret x, y
+        const at = (lx: number, ly: number): [number, number] =>
+          [s * (wx + lx * Math.cos(lean) - ly * Math.sin(lean)), yc0 + lx * Math.sin(lean) + ly * Math.cos(lean)];
+        const part = (bucket: string, geo: THREE.BufferGeometry, lx: number, ly: number, z: number): void => {
+          const [x, y] = at(lx, ly);
+          P.addEquipment(bucket, xform(geo, 0, 0, 0, 0, 0, th), x, y, z);
+        };
+        part('turret', box(0.04, len, z0 - z1), 0.016, 0, zc);
         for (let k = 0; k < 6; k++) {
           const z = z0 - 0.06 - k * ((z0 - z1 - 0.12) / 5);
-          P.addEquipment('turretDark', xform(markSmokeTube(cylZ(0.044, y1 - y0 - 0.06, P.q ? 12 : 8)), 0, 0, 0, -Math.PI / 2, 0, 0),
-            s * (xb + 0.095), (y0 + y1) / 2, z);
-          P.addEquipment('turretDark', cylY(0.05, 0.05, 0.025, P.q ? 12 : 8), s * (xb + 0.095), y1 - 0.025, z);
-          P.addEquipment('turretDark', cylY(0.05, 0.05, 0.025, P.q ? 12 : 8), s * (xb + 0.095), y0 + 0.025, z);
+          part('turretDark', xform(markSmokeTube(cylZ(0.044, len - 0.06, P.q ? 12 : 8)), 0, 0, 0, -Math.PI / 2, 0, 0), 0.08, 0, z);
+          for (const ly of [len / 2 - 0.025, -len / 2 + 0.025]) part('turretDark', cylY(0.05, 0.05, 0.025, P.q ? 12 : 8), 0.08, ly, z);
         }
-        // the rectangular frame round the tubes' faces
-        const xf = s * (xb + 0.152);
-        for (const yy of [y0 + 0.012, y1 - 0.012]) P.addEquipment('turret', box(0.03, 0.03, z0 - z1 + 0.03), xf, yy, (z0 + z1) / 2);
-        for (const zz of [z0, z1]) P.addEquipment('turret', box(0.03, y1 - y0, 0.03), xf, (y0 + y1) / 2, zz);
+        for (const ly of [len / 2 - 0.012, -len / 2 + 0.012]) part('turret', box(0.03, 0.03, z0 - z1 + 0.03), 0.137, ly, zc);
+        for (const zz of [z0, z1]) part('turret', box(0.03, len, 0.03), 0.137, 0, zz);
       } else {
         // the X1's three dischargers each side on a bracket on the rear flanks, below the rear plate (Gaydos' X1)
         const y = 0.36, fx = flankX(-1.10, y);
@@ -605,7 +614,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       P.addEquipment('turret', cylY(0.035, 0.045, 0.08, 10), -0.50, wy + 0.035, wz);
       P.addEquipment('turret', whip, -0.50, wy + 0.075, wz);
     }
-    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r6', mark, roofY: roof, front: T.front, rear: T.rear,
+    P.turretG.userData.x1TurretReceipt = { revision: a2 ? 'x1-266-r7' : 'x1-266-r6', mark, roofY: roof, front: T.front, rear: T.rear,
       spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'rect-periscope' : 'tall-slit', cupolaTopY: +cupolaTop.toFixed(3),
       ringCollar: a2, smokeTubesPerSide: a2 ? 9 : 3 };
   };
@@ -622,7 +631,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
     const sleeve1 = a2 ? 1.10 : 0.50;
     if (a2) {
       const nose = T.front - D.trunnion.z;
-      P.addGunExtra(box(0.58, 0.30, 0.24), 0, 0, nose + 0.08);
+      P.addGunExtra(box(0.58, 0.26, 0.24), 0, -0.002, nose + 0.08);
       sleeve0 = nose + 0.20;
       P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.17, 0.10, sleeve0 + 0.01);
       P.addGunExtraDark(cylZ(0.018, 0.26, 10), 0.17, 0.10, sleeve0 + 0.13);

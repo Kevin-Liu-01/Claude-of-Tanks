@@ -327,7 +327,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the right wall's grid, the left wall bare (the 1987 and 2024 left-side photographs; blind critic, round 3): the P.2's
     // deep basket from the cheeks' root to two-thirds back, its rails, uprights and fine wire mesh on a mesh floor and the
     // crew's kit inside (the 2022 parade and CIBld photographs); the P.1's flat bar grid close on the wall (the 2015 museum
-    // photograph)
+    // photograph: nearly the wall's full height, from a third of the way back to just ahead of the emblem; blind critic,
+    // round 6)
     const rail = (a: readonly [number, number, number], b: readonly [number, number, number]): void => bar('turretOpenLattice', a, b, 0.013);
     const bLow = 0.08, bTop = 0.46;
     if (p2) {
@@ -344,7 +345,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         [-(T.hw + 0.10), bLow + 0.15, -0.10, 0.17, 0.28, 0.44], [-(T.hw + 0.10), bLow + 0.13, -0.66, 0.16, 0.24, 0.52],
         [-(T.hw + 0.10), bLow + 0.16, -1.16, 0.17, 0.30, 0.40]]);
     } else {
-      const xo = -(T.hw + 0.05), xi = -(T.hw + 0.004), zf = 0.04, zr = -1.62, low = 0.10, top = 0.62;
+      const xo = -(T.hw + 0.05), xi = -(T.hw + 0.004), zf = 0.14, zr = -1.58, low = 0.06, top = 0.64;
       for (const z of [zf, zr]) rail([xo, low, z], [xo, top, z]);
       for (const y of [low, top]) rail([xo, y, zf], [xo, y, zr]);
       for (const z of [zf, (zf + zr) / 2, zr]) for (const y of [low + 0.04, top - 0.04]) rail([xi, y, z], [xo, y, z]);
@@ -371,20 +372,20 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.addEquipment('turretDark', box(w + 0.01, 0.014, 0.02), x, bLow + 0.30, zb + 0.09);
     }
     // the raised boxes on the left wall directly behind the cheek, nearly the wall's full height, their tops about level
-    // with the roof's bevel (blind critic, round 4): the P.2's two (the 1987 photograph), the P.1's one marked with a
-    // struck circle (2024)
+    // with the roof's bevel (blind critic, round 4): the P.2's two (the 1987 photograph), the P.1's one (2024; its emblem
+    // there is not painted: a vehicle carries one insignia, seated on armour, the anchor's at the right wall's rear, where
+    // the 2015 photograph has it)
     const boxes: ReadonlyArray<readonly [number, number]> = p2 ? [[0.34, 0.82], [-0.20, 0.30]] : [[-0.16, 0.82]];
     for (const [z0, z1] of boxes) {
       P.addEquipment('turret', box(0.20, 0.64, z1 - z0), T.hw + 0.10, 0.38, (z0 + z1) / 2);
       P.addEquipment('turretDark', box(0.012, 0.02, z1 - z0 - 0.04), T.hw + 0.205, 0.66, (z0 + z1) / 2);
     }
-    if (!p2) P.decal('turret', 'insignia', null, 0.30, [T.hw + 0.2035, 0.40, 0.33], Math.PI / 2);
     // the dischargers high on the walls, aimed forward, out and up: the P.2 two rows of three on each rear corner, behind
-    // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall's plate two-thirds back (2024) and on
-    // the right behind its grid
+    // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall at 60-76% of its length (2024) and
+    // on the right aft of its grid, clear of the grid's frame (blind critic, round 6)
     const cols = p2 ? 3 : 2;
     for (const s of [-1, 1] as const) {
-      const wallX = T.hw + 0.06, z0 = p2 ? -1.84 : s > 0 ? -0.98 : -1.86;
+      const wallX = T.hw + 0.06, z0 = p2 ? -1.84 : s > 0 ? -1.28 : -2.02;
       P.addEquipment('turret', box(0.10, 0.20, 0.16 * cols + 0.08), s * wallX, 0.575, z0 - 0.08 * (cols - 1));
       for (let row = 0; row < 2; row++) for (let k = 0; k < cols; k++) {
         P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.40, 0),
@@ -392,7 +393,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r6', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r7', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
       sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
     };
@@ -404,12 +405,13 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
   const buildOsorioMarkings = (): void => {
     for (const s of [-1, 1] as const) {
       const x = s * (H.skirtX + 0.0135);
-      // the "OSÓRIO / EE-T1" stencil on the front skirt panel and the Engesa oval on the rearmost (every photograph since 2003)
+      // the "OSÓRIO / EE-T1" stencil on the front skirt panel and the Engesa oval on the rearmost (every photograph since 2003;
+      // the P.1's lower-case badge on the fifth panel, about three-quarters back: the 2024 photograph, blind critic, round 6)
       // (a stencil is a square quad: each sits inside the 0.69 m skirt panel)
       // (about half the round-3 size: blind critic, round 4)
       P.decal('hull', 'stencil', 'OSÓRIO', 0.26, [x, 1.10, 2.02], s * Math.PI / 2);
       P.decal('hull', 'stencil', 'EE-T1', 0.17, [x, 1.01, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'ENGESA', 0.20, [x, 1.08, -2.95], s * Math.PI / 2);
+      P.decal('hull', 'stencil', p2 ? 'ENGESA' : 'engesa', 0.20, [x, 1.08, p2 ? -2.95 : -1.97], s * Math.PI / 2);
     }
   };
   buildOsorioMarkings();
