@@ -76,24 +76,27 @@ function frontalModules(P: TankBuilderPort): void {
 }
 
 /**
- * The pitching box mantlet in the slot, its face flush with the modules' tips (the supplied model's), its underside rising
- * 11 cm over its front 0.30 m so that, traversed over the engine deck, it keeps clear of the deck's net at the published
- * stops; the coax port beside the bore and the 120 mm L/44-class tube.
+ * The pitching box mantlet filling the slot, as the supplied model's: its face 6 cm proud of the modules' tips, its top
+ * level with them, its underside rising 6 cm over its front 0.30 m so that, traversed over the engine deck, it keeps clear
+ * of the deck's net at the published stops; the coax port and the gun's framed sight port either side of the bore, and
+ * the 120 mm L/44-class tube.
  */
 function gunAssembly(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
-  const m = T.mantletFaceZ, w = T.mantletHalfWidthM;
-  const rect = (hw: number, lo: number, hi: number): SectionPoint[] => [[-hw, lo], [hw, lo], [hw, hi], [-hw, hi]];
+  const m = T.mantletFaceZ, w = T.mantletHalfWidthM, top = T.mantletTopM, lo = T.mantletBottomM;
+  const rect = (hw: number, b: number, t: number): SectionPoint[] => [[-hw, b], [hw, b], [hw, t], [-hw, t]];
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
   P.addGunExtra(sectionSolid([
-    { z: -0.10, ring: rect(w, -0.23, 0.23) },
-    { z: m - 0.30, ring: rect(w, -0.23, 0.23) },
-    { z: m - 0.10, ring: rect(w, -0.157, 0.23) },
-    { z: m, ring: rect(w - 0.03, -0.12, 0.16) },
+    { z: -0.10, ring: rect(w, lo, top) },
+    { z: m - 0.30, ring: rect(w, lo, top) },
+    { z: m - 0.10, ring: rect(w, lo + 0.04, top) },
+    { z: m, ring: rect(w - 0.025, lo + 0.06, top - 0.02) },
   ]), 0, 0, 0);
   P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, m + 0.05);
   P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.27, 0.07, m + 0.025);              // coaxial MG port
-  P.addGunExtraDark(box(0.13, 0.08, 0.015), -0.26, 0.11, m + 0.003);           // the gun's own sight aperture plate
+  // the gun's own sight port: an armoured frame standing 3 cm off the face, its aperture dark in it
+  P.addGunExtra(box(0.18, 0.12, 0.03), -0.27, 0.15, m + 0.012);
+  P.addGunExtraDark(box(0.12, 0.065, 0.012), -0.27, 0.15, m + 0.03);
   KIT.buildGun(P, { len: T.barrelLengthM, r: T.barrelRadiusM, sleeve: true, evac: 0.56, evacR: 1.78, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }

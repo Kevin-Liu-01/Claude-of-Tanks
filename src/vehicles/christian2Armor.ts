@@ -28,11 +28,14 @@ export const CHRISTIAN2_TURRET = Object.freeze({
   moduleFrontZ: 1.58,
   /** The modules' tops: the shell's front roof edge (roofFrontY) at its front, falling to the faces' tips. */
   moduleNoseTopY: 0.66,
-  /** The gun slot between the modules, and the box mantlet in it, as wide as the supplied model's (0.95 m, 0.88 m). */
+  /** The gun slot between the modules, and the box mantlet filling it to 2 cm a side, as the supplied model's (0.95 m). */
   slotHalfWidthM: 0.475,
-  mantletHalfWidthM: 0.44,
+  mantletHalfWidthM: 0.455,
   /** The mantlet's face, gun metres ahead of the trunnion: 6 cm proud of the modules' tips, as on the supplied model. */
   mantletFaceZ: 0.60,
+  /** The mantlet's top (level with the modules' tips) and underside, gun metres off the bore. */
+  mantletTopM: 0.30,
+  mantletBottomM: -0.26,
   roofRearY: 0.83,
   roofFrontY: 0.74,
   bustleFloorY: 0.21,
@@ -66,8 +69,8 @@ export function christian2Armor(): ArmorEnvelope {
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
     chL('turret_cheek_L', A.cheek.phys, Td.slotHalfWidthM, tf, hwT, fo, 0.04, 0.69, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
-    plate('mantlet', A.mantlet.ke, [-Td.mantletHalfWidthM, gy - 0.23, mz], [Td.mantletHalfWidthM, gy - 0.23, mz],
-      [-Td.mantletHalfWidthM, gy + 0.20, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
+    plate('mantlet', A.mantlet.ke, [-Td.mantletHalfWidthM, gy + Td.mantletBottomM, mz], [Td.mantletHalfWidthM, gy + Td.mantletBottomM, mz],
+      [-Td.mantletHalfWidthM, gy + Td.mantletTopM, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
     sR('turret_side_R', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sL('turret_side_L', A.turretSide.ke, hwT, 0.03, hwT, 0.77, Td.stepZ, Td.coreFrontZ, { ceMm: A.turretSide.ce }),
     sR('turret_bustle_side_R', A.bustleSide.ke, Td.bustleHalfWidthM, Td.bustleFloorY, Td.bustleHalfWidthM, 0.76, Td.rearZ + 0.30, Td.stepZ, { ceMm: A.bustleSide.ce }),

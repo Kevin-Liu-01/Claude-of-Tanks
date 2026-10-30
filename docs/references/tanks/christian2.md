@@ -85,7 +85,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
   frontal modules swept back 33.8 degrees in plan from z 1.58 at a 0.95 m gun slot to the walls at the shell's front
   (z 1.04), their tops running on from the shell's front roof edge and falling 8 cm to the tips; the 0.88 m box
-  mantlet's face 6 cm proud of the tips (gun z 0.60); trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+  mantlet's face 6 cm proud of the tips (gun z 0.60), its top level with them (gun +0.30) and its underside at -0.26;
+  trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
@@ -149,3 +150,7 @@ See the round log; filled as each gate runs.
   and mantlet at the model's widths (0.95 and 0.88 m; the face line unchanged, so the tips stand at turret z 1.58 and
   the mantlet 6 cm proud, as the model's), the modules' tops from the shell's front roof edge (0.74), the seam bars
   gone, and no splash board under the glacis net (the Strv 121's ruling in leopard2Hull.ts).
+  R7b's blind critic (FAIL; plan and the mantlet's width and position now matched): the mantlet stood only 45% of the
+  cheek's height (the model's 95%), a notch over it showing the shell's wall; its sight port read as a hole. R7c: the
+  mantlet from gun -0.26 to +0.30 (the model's face spans 1.70-2.30 m; ours 1.80-2.28, its underside still rising
+  6 cm over its front for the engine deck's net), filling the slot to 2 cm a side; the sight port framed.
