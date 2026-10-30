@@ -92,7 +92,7 @@ cavity in the front armour in previous models").
 - The slope (the owner, 2026-10-28: "i dont think its that they need to lean back is that if you look top down, the
   chheeks are at a slight slope, like \ / but not extreme"; shown the two readings, the owner chose the outer ends set
   back: "A built now is correct"; 2026-10-29, on the 6 degrees first built: "i think it nneeds to be a lot mroe than 6
-  degrees"): the faces vertical, swept back 27 degrees toward their outer ends in plan, running nearly the turret's
+  degrees"; shown the 27 degrees built: "yes 27 degrees is correct"): the faces vertical, swept back 27 degrees toward their outer ends in plan, running nearly the turret's
   width (about 2.5 m), a short chamfer to the walls; the notch's back, the sight head and the housing's front parallel
   to the face, the shell's front (cheekRootZ) back 15 cm to z 0.88 behind the outer ends' bevelled tops. No source
   publishes the plan angle (en.wikipedia: "vertically faced" is the faces' rake, not their plan). Fitted to the owner's
@@ -178,6 +178,8 @@ cavity in the front armour in previous models").
   sweep fitted to the owner's photo, 27 degrees ("The slope" above); the notch's back, the sight head, its lip and the
   housing's front run parallel to the face (the flat back would have stood proud of the outer wall's bevel), the shell's
   front back to z 0.88. The 2A4 lane's square fronts carry the same 6 degrees; the owner's words and the fit went to it.
+  The owner, shown the 27-degree build from above: "yes 27 degrees is correct"; the 2A4 lane's square fronts take it
+  through the shared cheek front (profiles/leopard2CheekFront.ts on its branch, byte-identical for these ids).
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.

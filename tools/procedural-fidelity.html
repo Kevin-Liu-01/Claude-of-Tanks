@@ -126,15 +126,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
   // (orchestrator owns corrections).
-  // Owner-authoritative 2026-08-10 source rebuild. The nested OBJ preserves
-  // 102 semantic names while the convenient loose GLB merges them by
-  // material. The bake therefore emits this deterministic, locally ignored
-  // articulation oracle without altering any source triangle.
-  // The repaired oracle's Turret mesh descends to y=.789 while its visible
-  // deck is ~1.70 m: it includes the hidden internal basket. A direct mask
-  // therefore compares exposed source internals against our exterior-only
-  // authored turret. Keep every exterior, gun, track and yaw gate instead.
-  leo2a2: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
+  // 262 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a2 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a4_otco_repaired.glb shows a Leopard 2A4 OTCO (fleet id leo2a4_otco): re-register it there later.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2_improved is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a7v_repaired.glb shows a Leopard 2A7V (fleet id leo2a7v): re-register it there later.
   // Object_29 fuses fixed glacis/service pieces and rotating cheek/flank
   // armour in one mesh.  It cannot supply an honest independent hull/turret
