@@ -72,7 +72,9 @@ function sourceUpperWitnesses(all, frame) {
   near(localY([-1.56, 3, -.09]), 2.29662014945, .000002, 'local left housing latch, not widened housing');
   assert.equal(hit([-.114809429, 2.70, -.049434754], [0, -1, 0], .03), undefined,
     'real channel air above its inclined floor survives yaw');
-  near(localY([-.35805, 4, .70]), 2.80820, .0002, 'unchanged complete roof weapon retains its actual barrel');
+  // 264 (owner 2026-10-28: "... actual machine guns of current dimensions"): the cupola's L37 is the fleet's 7.62 mm
+  // construction on the source barrel's axis (y 2.7961); its true barrel's crown at z .70
+  near(localY([-.35805, 4, .70]), 2.81010, .0002, 'the true-scale roof weapon keeps the source barrel axis');
 }
 
 function capture(helper, ...args) {

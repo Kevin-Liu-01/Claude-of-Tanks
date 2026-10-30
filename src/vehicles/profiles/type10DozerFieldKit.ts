@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { mount } from './fittingMount.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { beamBetween } from './measuredPrimitives.ts';
@@ -85,16 +86,10 @@ function turretA(P: TankBuilderPort): THREE.Group {
   w.add('turretDetail', box(.22, .05, .10), A.x, A.race + .27, A.z - .17);
   w.add('turretDark', box(.10, .08, .14), A.x - .20, A.race + .14, A.z + .22);                       // elevation drive
   w.stage('pitch');
-  // the M2-pattern gun: receiver with its top cover and spade grips' stub, the carrying handle, the barrel and its
-  // flash hider; the cradle cover under it
-  w.add('turretDark', box(.16, .15, .62), A.x, A.pivotY, A.pivotZ - .02);
-  w.add('turretDark', box(.15, .03, .40), A.x, A.pivotY + .09, A.pivotZ - .04);                      // top cover
-  w.add('turretDark', box(.07, .07, .05), A.x, A.pivotY - .01, A.pivotZ - .355);                     // backplate
-  w.add('turretDark', cylZ(.032, .10, P.q ? 18 : 12), A.x, A.pivotY, A.pivotZ + .34);              // barrel support
-  w.add('turretDark', cylZ(.016, 1.04, P.q ? 14 : 10, .019), A.x, A.pivotY, A.pivotZ + .91);       // barrel
-  w.add('turretDark', cylZ(.022, .07, P.q ? 14 : 10), A.x, A.pivotY, muzzleZ - .035);               // flash hider
-  w.add('turretDark', box(.02, .06, .02), A.x, A.pivotY + .05, A.pivotZ + .52);                      // carrying handle
-  w.add('turretDark', box(.02, .02, .12), A.x, A.pivotY + .08, A.pivotZ + .52);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the M2
+  // is the fleet's M2 construction (libraryRoofMg.ts libraryStationGun) on the cradle's bore and published muzzle, in
+  // place of the drawn receiver, cover, rods and handle; the cradle tray stays under it
+  libraryStationGun(w, { cls: 'm2', x: A.x, boreY: A.pivotY, pivotZ: A.pivotZ, muzzleZ });
   w.add('turretDetail', box(.20, .04, .74), A.x, A.pivotY - .095, A.pivotZ + .02);                   // cradle tray
   // the ready box on the gun's left and its feed chute; the sight head on its right
   w.add('turretAmmo', box(.15, .24, .38), A.x - .20, A.pivotY - .02, A.pivotZ - .04);
@@ -120,12 +115,13 @@ function turretB(P: TankBuilderPort): THREE.Group {
   const ring = (half: number, top: number, roofHalf: number): [number, number][] =>
     [[B.x - half, B.race + .05], [B.x + half, B.race + .05], [B.x + roofHalf, top], [B.x - roofHalf, top]];
   w.add('turretDetail', sectionSolid([
-    { z: B.z - .44, ring: ring(.25, B.race + .27, .21) },
-    { z: B.z - .24, ring: ring(.30, B.race + .32, .24) },
-    { z: B.pivotZ - .10, ring: ring(.30, B.race + .32, .24) },
+    // 264: the roof stands 3 cm higher over the true-scale 7.62 mm receiver, whose top rises 73 mm over its bore
+    { z: B.z - .44, ring: ring(.25, B.race + .30, .21) },
+    { z: B.z - .24, ring: ring(.30, B.race + .35, .24) },
+    { z: B.pivotZ - .10, ring: ring(.30, B.race + .35, .24) },
     { z: B.pivotZ + .03, ring: ring(.28, B.race + .14, .26) },
   ]), 0, 0, 0);
-  w.add('turretDark', box(.36, .02, .24), B.x, B.race + .325, B.z - .06);                          // roof hatch
+  w.add('turretDark', box(.36, .02, .24), B.x, B.race + .355, B.z - .06);                          // roof hatch
   w.add('turretDetail', box(.52, .04, .05), B.x, B.race + .25, B.z - .46);                          // bustle lip
   // the sight on its left wall, under its armoured hood
   w.add('turretDetail', box(.12, .17, .24), B.x - .35, B.race + .22, B.pivotZ - .16);
@@ -134,9 +130,17 @@ function turretB(P: TankBuilderPort): THREE.Group {
   w.stage('pitch');
   // the mantlet block, the gun's barrel with its cooling sleeve and flash hider
   w.add('turretDetail', box(.20, .16, .14), B.x, B.pivotY, B.pivotZ + .05);
-  w.add('turretDark', cylZ(.026, .20, P.q ? 16 : 12), B.x, B.pivotY, B.pivotZ + .22);              // cooling sleeve
-  w.add('turretDark', cylZ(.010, .58, P.q ? 12 : 8, .012), B.x, B.pivotY, B.pivotZ + .55);         // barrel
-  w.add('turretDark', cylZ(.016, .07, P.q ? 12 : 8), B.x, B.pivotY, muzzleZ - .035);               // flash hider
+  // its neck back into the housing round the barrel nut, which otherwise stood out of the sloped face behind the block
+  // (blind critic, 264); the neck's corners stay under the flat roof to 15 deg of pitch either way
+  w.add('turretDetail', box(.16, .10, .11), B.x, B.pivotY, B.pivotZ - .065);
+  // the gun behind the mantlet is the fleet's 7.62 mm construction (libraryStationGun), its barrel and hider through
+  // the mantlet to the published muzzle (owner 2026-10-28, as turret A's M2); its receiver stands 0.25 m behind the
+  // trunnion, under the housing's flat roof (at 0.08 m its front rose through the sloped face: blind critic, 264)
+  libraryStationGun(w, { cls: 'mag', x: B.x, boreY: B.pivotY, pivotZ: B.pivotZ, muzzleZ, receiverBehind: .25 });
+  // the armoured barrel sleeve out of the mantlet and its front collar: the barrel's carrying handle (to 4.2 cm over the
+  // bore) and the gas cylinder's root run inside it (blind critic, 264: the handle half out of the mantlet read as a cable)
+  w.add('turretDark', cylZ(.045, .20, P.q ? 20 : 14), B.x, B.pivotY, B.pivotZ + .22);
+  w.add('turretDark', cylZ(.049, .02, P.q ? 20 : 14), B.x, B.pivotY, B.pivotZ + .31);
   // searchlight housing on the mantlet's left (its lens rides the gun's pitch below)
   w.add('turretDetail', box(.05, .05, .08), B.x - .14, B.pivotY + .02, B.pivotZ + .05);
   w.add('turretDark', cylZ(.065, .14, P.q ? 20 : 14), B.x - .20, B.pivotY + .03, B.pivotZ + .08);

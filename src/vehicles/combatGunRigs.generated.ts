@@ -17,7 +17,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "amx30": {"turretPivot":[0,1.6,-0.05],"gunPivot":[0,0.33,1.3],"lengthM":4.95,"radiusM":0.1115},
   "amx30b": {"turretPivot":[0,1.584,0.285],"gunPivot":[-0.011,0.2916,1.315],"lengthM":4.3944,"radiusM":0.1145},
   "amx30b2": {"turretPivot":[0,1.6,-0.05],"gunPivot":[0,0.33,1.3],"lengthM":4.95,"radiusM":0.1148},
-  "amx40": {"turretPivot":[-0.039,1.5629,0.1682],"gunPivot":[0.039,0.3854,1.1731],"lengthM":5.2615,"radiusM":0.1065},
+  "amx40": {"turretPivot":[-0.03904,1.56289,0.16819],"gunPivot":[0.039,0.3854,1.1731],"lengthM":5.2615,"radiusM":0.1065},
   "amx40_proto": {"turretPivot":[-0.001,1.545,-0.421],"gunPivot":[0.001,0.395,1.721],"lengthM":5.34,"radiusM":0.11},
   "amx56": {"turretPivot":[-0.01628424,1.476980784,0.561125179],"gunPivot":[0.0224,0.4798,1.889],"lengthM":3.8644,"radiusM":0.14},
   "bmp2": {"turretPivot":[0,1.66,0.03],"gunPivot":[0,0.285,0.55],"lengthM":2.785},

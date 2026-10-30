@@ -5,11 +5,12 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
-const { box, cylX, cylY, cylZ } = KIT;
+const { box, cylX, cylY } = KIT;
 const X = -.4880325, Z = -.2796505;
 
 function turned(rows: readonly (readonly [number, number])[]): THREE.BufferGeometry {
@@ -78,14 +79,10 @@ function machineGun(P: TankBuilderPort, pivot: Point): void {
   const mg = sourceMachineGun(P, pivot);
   // Independent source barrel sections fix X−.35805/Y2.7961. The earlier
   // generic MG was 102 mm left and 54 mm high, detached from this mount.
-  mg.add('turretDark', box(.0487, .1427, .310), -.35805, 2.75675, .104);
-  mg.add('turretDetail', box(.070, .040, .195), -.35805, 2.828, .149);
-  mg.add('turretDark', cylZ(.0139, .139, 24), -.35805, 2.78025, -.13215);
-  mg.add('turretDark', cylZ(.018, .300, 24), -.35805, 2.795, .425);
-  mg.add('turretDark', cylZ(.0121, .30443, 24), -.35805, 2.7961, .722215);
-  mg.add('turretDetail', cylZ(.0105, .283, 20), -.35805, 2.7553, .4165);
-  mg.add('turretDetail', box(.089, .052, .070), -.418, 2.805, .209);
-  mg.add('turretDetail', box(.034, .047, .070), -.320, 2.791, .210);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // cupola's L37 is the fleet's 7.62 mm construction at true length (libraryRoofMg.ts libraryStationGun, remote: the
+  // commander fires it from inside the No. 15 cupola) on the source barrel's axis, in place of the drawn sections
+  libraryStationGun(mg, { cls: 'mag', x: -.35805, boreY: 2.7961, pivotZ: .184 });
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(mg.finish(), { name: 'chieftain10XCupolaGpmg', caliberMm: 7.62 });
 }
