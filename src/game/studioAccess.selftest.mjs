@@ -53,7 +53,9 @@ const access = createStudioAccess({
   createContext: (fx) => ({ fx }),
   getPhase: () => phase,
   keyTarget: keys,
+  onPending: (pending) => pendings.push(pending),
 });
+const pendings = [];
 
 access.preloadIntent();
 access.preloadIntent();
@@ -71,7 +73,9 @@ assert.deepEqual(keys.press('F8'), { prevented: false, stopped: false });
 phase = 'garage';
 assert.deepEqual(keys.press('F8', { repeat: true }), { prevented: false, stopped: false });
 assert.deepEqual(keys.press('F8'), { prevented: true, stopped: true });
+assert.deepEqual(pendings, [true], 'the press answers at once, before the Studio\'s code arrives');
 await new Promise((resolve) => setTimeout(resolve, 0));
+assert.deepEqual(pendings, [true, false], 'the wait ends when the runtime is in, before the entry\'s cover');
 assert.equal(prepares, 1);
 assert.equal(fxCreates, 1);
 assert.equal(enters, 1);
@@ -135,4 +139,10 @@ frameCalls.length = 0;
 makeTick(true)(.1, .5);
 assert.deepEqual(frameCalls, [['camera', .1], ['panel', .1]]);
 
-console.log('studioAccess.selftest: intent, retry, F8 ownership, and runtime proxy passed');
+// F8 is the Studio's exit while it is open. The input layer's diagnostics action (also F8) hears the key first,
+// so it stands aside while the Studio is active: one press never exits the Studio and opens Battle Diagnostics.
+const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const perfHudAction = /input\.onAction\('perfHud', \(\) => \{([\s\S]*?)\n\}\);/.exec(mainSource)?.[1] ?? '';
+assert.match(perfHudAction, /^\s*(\/\/[^\n]*\n\s*)*if \(studio\.active\) return;/, 'the diagnostics toggle yields F8 to the open Studio');
+
+console.log('studioAccess.selftest: intent, retry, F8 ownership (the Studio\'s exit never toggles diagnostics), and runtime proxy passed');

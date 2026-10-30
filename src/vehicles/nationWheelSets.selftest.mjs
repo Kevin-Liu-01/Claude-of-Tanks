@@ -108,7 +108,7 @@ expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');
 // 262: the new true T-64s (t64Foundation.ts) draw the T-64 dual wheel natively
 for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) expect(id, 't64bm1m', 'donor');
 expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
-expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
+expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4', 'donor');
 expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');
 // tiger1, t95 and m26_pershing retired 2026-09-23 (owner: "no hidden tanks"); the two period hulls left keep their wheels.
 for (const id of ['kv2', 'jpz_e100']) {

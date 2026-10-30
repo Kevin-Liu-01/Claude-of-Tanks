@@ -79,6 +79,13 @@ export interface PredictionWorldOptions {
   others: () => Iterable<CollidableTank>;
   /** The room's game mode: its ruleset's impact physics (landing rebound) rides the prediction. */
   mode?: string | null;
+  /**
+   * Whether the structure `record` belongs to yields to the viewer's ram at `closingMps` (destructionMirror.ts
+   * yieldsToRam: the authority's rule, structureDamage.ts yieldTo). Absent: every structure holds. The authority lets a hull
+   * it yields to drive on through the building while it falls; a prediction that held there shoved the drawn hull out of
+   * the building at every reconciliation and snapped it back (the 263+264 preview's "slingshot", 2026-10-29: up to 9.9 m).
+   */
+  structureYields?: ((record: PredictionObstacle, massTons: number, closingMps: number) => boolean) | null;
 }
 
 interface ContactFrame {
@@ -112,9 +119,20 @@ function contactFrame(spec: Parameters<typeof tankContactRect>[0], x: number, z:
 }
 
 /** Build the prediction world; returns null when the map has no height field yet. */
-export function createPredictionWorld({ worldCollision, ownSpec, ownState, others, mode = null }: PredictionWorldOptions): PredictionWorld | null {
+export function createPredictionWorld({
+  worldCollision, ownSpec, ownState, others, mode = null, structureYields = null,
+}: PredictionWorldOptions): PredictionWorld | null {
   const heightField = worldCollision.heightField;
   if (!heightField || typeof heightField.getHeightAt !== 'function') return null;
+  const massTons = (ownSpec as { weightTons?: number }).weightTons ?? 0;
+  /** The authority's closing speed along the contact (sim/authoritativeMatch.ts structureYield), asked of the world. */
+  const yieldsTo = (record: PredictionObstacle, state: TankState, pushX: number, pushZ: number): boolean => {
+    if (!structureYields) return false;
+    const length = Math.hypot(pushX, pushZ);
+    if (length <= 1e-9) return false;
+    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    return structureYields(record, massTons, closing);
+  };
   // impact physics: the mode's rebound law is a pure function of the mode, so the prediction bounces like the authority
   const physics = matchRulesetFor(normalizeGameMode(mode || 'standard')).physics;
   const frame: ContactFrame = { centerX: 0, centerZ: 0, halfLength: 0, halfWidth: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, broadRadius: 0 };
@@ -221,6 +239,9 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
         // (the authority crushes a crushable a hull comes onto from above: world/collision.ts crushableLoadedFromAbove)
         if (crushableLoadedFromAbove(obstacle, spanBottom, state ? (state._ride.groundV ?? 0) - state._ride.v : 0, obstacleContactTop(),
           obstacleContactBottom())) {
+          outPush.x = beforeX; outPush.z = beforeZ;
+        } else if (state && obstacle.structureIdx !== undefined && yieldsTo(obstacle, state, outPush.x - beforeX, outPush.z - beforeZ)) {
+          // (the authority's structureYield: a building this ram brings down, or one already going down, lets it through)
           outPush.x = beforeX; outPush.z = beforeZ;
         } else hardObstacles[hardCount++] = obstacle;
       }

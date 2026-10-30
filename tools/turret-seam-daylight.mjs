@@ -20,6 +20,7 @@
 // daylight to .qa-dev/out/seam-daylight/<id>__<view>.png (turret red, hull grey, gun brown, ring daylight yellow,
 // overhang cyan).
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -36,7 +37,7 @@ const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, getSpec } = await import('../src/vehicles/specs.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { turretRingRadius } = await import('../src/vehicles/turretRingWell.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', '').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', '').split(',').filter(Boolean), 'turret-seam-daylight --ids');
 if (!ids.length) { console.error('pass --ids=<a,b> or --all'); process.exit(2); }
 
 const VIEWS = [];

@@ -48,7 +48,7 @@ assert.deepEqual(fades.at(-1), [0, false, 37, 260]);
 assert.deepEqual(updates.at(-1).cameraPosition, camera.position);
 assert.deepEqual(updates.at(-1).focus, [2, 6, 4], 'focus lifts to turret height');
 assert.ok(updates.at(-1).forward[2] > 0.999, 'world direction follows the camera');
-assert.equal(updates.at(-1).viewCamera, camera, 'the near tree pools cull to the rendering camera (trees perf)');
+assert.ok(updates.at(-1).viewCamera === camera, 'the near tree pools cull to the rendering camera (trees perf)');
 
 rig.mode = 'SNIPER';
 runtime.update(1 / 60, true, false);

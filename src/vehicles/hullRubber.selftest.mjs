@@ -44,7 +44,7 @@ try {
     const tyre = gear.find((draw) => draw.material.name === 'cot:tire-rubber').material;
     const skirt = hull[0].material;
     for (const key of ['type', 'roughness', 'metalness', 'envMapIntensity', 'map', 'roughnessMap', 'normalMap', 'transparent', 'side']) {
-      assert.equal(skirt[key], tyre[key], `${id}: the hull rubber's ${key} is the tyres'`);
+      assert.ok(skirt[key] === tyre[key], `${id}: the hull rubber's ${key} is the tyres'`);
     }
     assert.equal(skirt.color.getHex(), tyre.color.getHex(), `${id}: the tyres' colour`);
     assert.equal(skirt.emissive.getHex(), tyre.emissive.getHex(), `${id}: the tyres' emissive`);

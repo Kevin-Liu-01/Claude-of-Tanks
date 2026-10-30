@@ -9,6 +9,8 @@ import {symmetricSlab} from './facetedSlab.ts';
 import {shellPart,mirroredSurfaceError,slabWarps} from '../../../tools/base-shell-audit-math.mjs';
 import {shellEdgeTopology,properSurfaceCrossings,weldedPanelConcavity} from '../../../tools/base-shell-integrity.mjs';
 import {nativeStructuralStock,mapCapturedStock} from '../../../tools/base-shell-live-stock.mjs';
+import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
+import {turretSeatPlane} from '../turretSeatPlane.ts';
 
 const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 const key=p=>p.map(n=>Math.round(n*1e5)).join(',');
@@ -30,6 +32,22 @@ const oldBustle=symmetricSlab(
 const oldBustlePart=shellPart(oldBustle);
 assert(mirroredSurfaceError(oldBustlePart,oldBustlePart).maxM<2e-6);
 assert(weldedPanelConcavity(oldBustlePart.triangles[2],oldBustlePart.triangles[3])>.06,'original mirrored inward bustle fold is detected');
+
+// 264: since 247's ring receipts (6e540cd73e) the turret seat (turretSeatRace.ts seatTurretOverDeck) lays every corner
+// of a triangle reaching past its keep radius that lies under its plane onto the plane, so two bustle-bottom stations'
+// low corners come up. A captured turret part is matched as the seat leaves it (the same plane, turretSeatPlane.ts).
+function seatedPart(part,root,id){
+ const turret=root.getObjectByName('rig_turret'),hull=root.getObjectByName('rig_hull');
+ const seat=turretSeatPlane(combatAnatomyCalibration(id)?.turretRing,turret.userData);
+ if(!seat)return part;
+ const toHull=hull.matrixWorld.clone().invert().multiply(turret.matrixWorld),toTurret=toHull.clone().invert();
+ const radius=p=>Math.hypot(p.x-seat.cx,p.z-seat.cz);
+ return {...part,triangles:part.triangles.map(t=>{
+  const corners=t.points.map(p=>new Vector3(...p).applyMatrix4(toHull));
+  if(!corners.some(p=>radius(p)>seat.keepR))return t;
+  return {...t,points:corners.map(p=>{p.y=Math.max(p.y,seat.planeAt(Math.max(seat.keepR,radius(p))));return p.applyMatrix4(toTurret).toArray();})};
+ })};
+}
 
 function movingTrackClearance(tank,id,parts){
  const root=tank.root,hull=root.getObjectByName('rig_hull'),shoes=[];
@@ -79,7 +97,8 @@ for(const id of ids)for(const quality of ['high','low']){
   const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,5,'five original bustle bottom stations remain separate');
   const native=nativeStructuralStock(tank.root,['hull','turret']);assert.deepEqual(native.unsupported,[]);
   for(const p of parts){
-   assert.equal(mapCapturedStock(p,native.buckets.get(p.bucket)).status,'all-native-triangles','tested stock exists in the actual drawable mesh');
+   const drawn=p.bucket==='turret'?seatedPart(p,tank.root,id):p;
+   assert.equal(mapCapturedStock(drawn,native.buckets.get(p.bucket)).status,'all-native-triangles','tested stock exists in the actual drawable mesh');
    assert.deepEqual(shellEdgeTopology(p),{boundary:0,nonmanifold:0,inconsistent:0});
    assert(p.volume>0,'finite outward stock');assert.equal(properSurfaceCrossings(p).length,0);
    for(const i of [2,6])assert(weldedPanelConcavity(p.triangles[i],p.triangles[i+1])<2e-6,'both physical side panels fold outward');

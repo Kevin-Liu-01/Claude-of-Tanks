@@ -60,6 +60,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, presetLightWorld, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+import { lensCullProjection, readCameraLens } from '../engine/cameraLens.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
@@ -9461,7 +9462,8 @@ function* vegetationBuildSteps(
   const _cullFwd = new THREE.Vector3();
   const _cullUp = new THREE.Vector3();
   const _cullSun = new THREE.Vector3();
-  let nearCullTanV = 0, nearCullTanH = 0, nearCullFrames = 0, nearCullPasses = 0, nearCullMoved = 0;
+  const _cullLensTan = new THREE.Vector2(), _cullLensShift = new THREE.Vector2();
+  let nearCullTanV = 0, nearCullTanH = 0, nearCullShiftX = 0, nearCullShiftY = 0, nearCullFrames = 0, nearCullPasses = 0, nearCullMoved = 0;
   function updateNearViewCull(viewCamera: THREE.Camera | null): void {
     const cam = nearViewCullOn() && viewCamera && (viewCamera as THREE.PerspectiveCamera).isPerspectiveCamera
       ? viewCamera as THREE.PerspectiveCamera : null;
@@ -9475,7 +9477,9 @@ function* vegetationBuildSteps(
     const e = cam.matrixWorld.elements;
     const fl = Math.hypot(e[8], e[9], e[10]) || 1, ul = Math.hypot(e[4], e[5], e[6]) || 1;
     const fx = -e[8] / fl, fy = -e[9] / fl, fz = -e[10] / fl, ux = e[4] / ul, uy = e[5] / ul, uz = e[6] / ul;
-    const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov) * 0.5) / (cam.zoom || 1), tanH = tanV * cam.aspect;
+    // (battle-camera-264) the lens from the projection: the chase framing's shift moves the frustum off the axis
+    readCameraLens(cam, _cullLensTan, _cullLensShift);
+    const tanV = _cullLensTan.y, tanH = _cullLensTan.x;
     // the light's direction (toward it): the sky's sun, which the cascades cast from (main.ts setSun)
     const sun = engineCtx.scene?.userData.sunDirWorld as THREE.Vector3 | undefined;
     const sl = sun ? Math.hypot(sun.x, sun.y, sun.z) || 1 : 1;
@@ -9488,6 +9492,7 @@ function* vegetationBuildSteps(
       && fx * _cullFwd.x + fy * _cullFwd.y + fz * _cullFwd.z >= turn
       && ux * _cullUp.x + uy * _cullUp.y + uz * _cullUp.z >= turn
       && Math.abs(tanV - nearCullTanV) <= nearCullTanV * 0.004 && Math.abs(tanH - nearCullTanH) <= nearCullTanH * 0.004
+      && Math.abs(_cullLensShift.x - nearCullShiftX) <= nearCullTanH * 0.004 && Math.abs(_cullLensShift.y - nearCullShiftY) <= nearCullTanV * 0.004
       && lx * _cullSun.x + ly * _cullSun.y + lz * _cullSun.z >= 0.99996) return;
     nearCullOn = true;
     nearCullCamera = cam;
@@ -9499,10 +9504,10 @@ function* vegetationBuildSteps(
     _cullSun.set(lx, ly, lz);
     nearCullTanV = tanV;
     nearCullTanH = tanH;
+    nearCullShiftX = _cullLensShift.x;
+    nearCullShiftY = _cullLensShift.y;
     const near = Math.max(0.05, cam.near), far = Math.max(near * 2, cam.far);
-    const wv = Math.tan(Math.min(1.5, Math.atan(tanV) + NEAR_CULL_TURN_RAD));
-    const wh = Math.tan(Math.min(1.5, Math.atan(tanH) + NEAR_CULL_TURN_RAD));
-    _cullProj.makePerspective(-near * wh, near * wh, near * wv, -near * wv, near, far);
+    lensCullProjection(_cullProj, _cullLensTan, _cullLensShift, NEAR_CULL_TURN_RAD, near, far);
     _cullView.copy(cam.matrixWorld).invert();
     _cullFrustum.setFromProjectionMatrix(_cullProj.multiply(_cullView));
     for (let k = 0; k < 6; k++) {

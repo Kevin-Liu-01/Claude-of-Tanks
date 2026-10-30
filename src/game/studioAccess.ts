@@ -30,6 +30,11 @@ interface StudioAccessOptions {
   getPhase(): string;
   keyTarget?: KeyboardEventTarget | null;
   onEntryError?: (error: RuntimeValue) => void;
+  /** While F8's (or the Studio link's) press waits for the Studio's code, before the entry's own cover takes over. */
+  onPending?: (pending: boolean) => void;
+  /** (264) Whether the Studio's code did not arrive: a chunk is not asked for again in this document, so the press reloads
+   *  the page once online instead of asking again (main.ts: the kit's pressFailed on the Studio links). */
+  pressFailed?: () => boolean;
 }
 
 interface StudioAccess {
@@ -37,6 +42,8 @@ interface StudioAccess {
   preloadModule(): Promise<StudioModule>;
   preloadIntent(): void;
   loadRuntime(): Promise<StudioRuntime>;
+  /** Enter the Studio from the Garage (the Garage's Studio button; F8 there takes the same way). */
+  open(): void;
   installKeyboard(): void;
   uninstallKeyboard(): void;
 }
@@ -47,7 +54,8 @@ const INACTIVE_STUDIO: StudioRuntime = Object.freeze({
   enter() { return Promise.resolve(); },
 });
 
-/** Retryable lazy boundary for Studio code, FX acquisition, and F8 ownership. */
+/** Lazy boundary for Studio code, FX acquisition, and F8 ownership. A load that threw is forgotten; a chunk that did not
+ *  arrive is not asked for again in this document, and the press reloads the page instead (`pressFailed`). */
 export function createStudioAccess({
   loadModule,
   preloadFxModule,
@@ -57,6 +65,8 @@ export function createStudioAccess({
   getPhase,
   keyTarget = typeof window !== 'undefined' ? window : null,
   onEntryError = (error) => console.error('[studio] lazy entry failed', error),
+  onPending = () => {},
+  pressFailed = () => false,
 }: StudioAccessOptions): StudioAccess {
   let runtime: StudioRuntime = INACTIVE_STUDIO;
   let modulePromise: Promise<StudioModule> | null = null;
@@ -98,14 +108,23 @@ export function createStudioAccess({
     return request;
   };
 
+  const open = (): void => {
+    if (getPhase() !== 'garage') return;
+    if (pressFailed()) return;
+    // the press answers at once (the loading census 262: F8 gave no sign until the entry's cover, seconds later on a slow
+    // network)
+    onPending(true);
+    loadRuntime()
+      .then((loaded) => { onPending(false); return loaded.enter(); })
+      .catch((error: RuntimeValue) => { onPending(false); onEntryError(error); });
+  };
+
   const onKeyDown: EventListener = (rawEvent): void => {
     const event = rawEvent as KeyboardEvent;
     if (event.code !== 'F8' || event.repeat || getPhase() !== 'garage') return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    loadRuntime()
-      .then((loaded) => loaded.enter())
-      .catch(onEntryError);
+    open();
   };
 
   const installKeyboard = (): void => {
@@ -127,6 +146,7 @@ export function createStudioAccess({
       preloadFxModule().catch(() => null);
     },
     loadRuntime,
+    open,
     installKeyboard,
     uninstallKeyboard,
   };

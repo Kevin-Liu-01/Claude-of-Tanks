@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
+import { Vector3 } from 'three';
 import { normalizeStudioFx, studioFxState } from './studioFxSettings.ts';
 import { createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import { normalizeFilm } from './studioFilmPlan.ts';
@@ -35,7 +36,9 @@ const create = new Function('ports', `
   const actors=[], effectLog=[], sceneMeta={seed:5000};
   const {isStudioTime, normalizeStudioLight, studioTimeFor} = ports;
   let studioLight=null;
-  const hfProxy={getHeightAt:()=>0}, getWorld=()=>({mapId:map});
+  // an open world: directProduction's sight test (its module scratch vectors) finds every rig clear
+  const hfProxy={getHeightAt:()=>0}, getWorld=()=>({mapId:map,raycast:()=>null});
+  const _v1=new ports.Vector3(), _v2=new ports.Vector3(), _v3=new ports.Vector3();
   const getCamera=()=>structuredClone(camera), getStoryboard=()=>structuredClone(storyboard);
   const applyCamera=next=>{camera={...camera,...structuredClone(next)};};
   const setStoryboard=next=>{storyboard=structuredClone(next);};
@@ -59,7 +62,7 @@ const create = new Function('ports', `
 `);
 const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
   NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, isStudioTime, normalizeStudioLight, studioTimeFor,
-  normalizeStudioFx, studioFxState, sceneInCurrentTankIds, TANK_IDS });
+  normalizeStudioFx, studioFxState, sceneInCurrentTankIds, TANK_IDS, Vector3 });
 for (const format of ['portrait', 'square', 'landscape']) {
   const recipe = createProductionScene({ presetId:'steel-pursuit', format }, () => 0);
   assert.equal(recipe.productionFormat, format, 'CLI recipes carry their actual framing');

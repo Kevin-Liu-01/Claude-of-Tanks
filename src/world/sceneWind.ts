@@ -29,7 +29,7 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   autumn: { dirDeg: 100, speed: 2.6 }, // ocean
   steppe: { dirDeg: 22, speed: 5.4 }, // ground
   railyard: { dirDeg: 45, speed: 3.6 }, // ground (2026-10-16: Cinder Junction's cumulus aloft at 6 m/s; was the industrial deck's 5)
-  frontier: { dirDeg: 53, speed: 5.4 }, // ground
+  frontier: { dirDeg: 53, speed: 2.2 }, // ocean (the mill ponds' breath of the westerly, 241; was the ground's at 5.4)
   fjord: { dirDeg: 250, speed: 3.2 }, // ocean
   delta: { dirDeg: 110, speed: 2.4 }, // ocean
   badlands: { dirDeg: 181, speed: 3 }, // legacy

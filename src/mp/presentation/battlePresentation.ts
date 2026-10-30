@@ -111,6 +111,8 @@ export interface MatchActor {
   modeGravityScale: number;
   eraNames: string[];
   _networkPoseReady: boolean;
+  /** The round the authority last reported this actor on (updateCombat: the own tank's pick follows it only when it moves). */
+  _authoritySlot: number;
   _networkDestroyed: boolean;
   _networkDestroyPop: boolean;
   _networkEraSpent: Set<string>;
@@ -654,7 +656,7 @@ export function createBattlePresentation({
       // Authority uses the spec-derived contact footprint; the visual's measured one stays presentation-only.
       contactGeom: null, rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
       eraNames: eraPlateNames(spec.armor),
-      _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
+      _networkPoseReady: false, _authoritySlot: -1, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
     if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
@@ -772,7 +774,7 @@ export function createBattlePresentation({
     actor.team = actor.networkTeam === reference ? 'player' : 'enemy';
   }
 
-  function updateCombat(actor: MatchActor, sample: EntitySample): boolean {
+  function updateCombat(actor: MatchActor, sample: EntitySample, own = false): boolean {
     const { combat } = actor;
     combat.hp = sample.hp;
     combat.maxHp = sample.maxHp;
@@ -814,7 +816,13 @@ export function createBattlePresentation({
     const destroyed = (sample.flags & ENTITY_FLAGS.DESTROYED) !== 0;
     combat.destroyed = destroyed;
     actor.input.fire = (sample.flags & ENTITY_FLAGS.FIRING) !== 0;
-    actor.input.shellSlot = sample.shellSlot;
+    // The own tank's requested round is the player's: a row writes it only when the authority's own slot moves (an empty
+    // round switched for it, a respawn). Written from every row, it undid a pick still on its way to the authority, and
+    // Q's ATGM or the 2 key flapped back (the solo sim Worker, 261; owner 2026-10-28: "why is atgm labeled Q? E does it
+    // for me")
+    const authorityMoved = actor._authoritySlot !== sample.shellSlot;
+    actor._authoritySlot = sample.shellSlot;
+    if (!own || authorityMoved) actor.input.shellSlot = sample.shellSlot;
     actor.specialAction.active = (sample.flags & ENTITY_FLAGS.SPECIAL_ACTIVE) !== 0;
     actor.state.suspensionAim = actor.specialAction.kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM && actor.specialAction.active;
     return destroyed;
@@ -956,7 +964,7 @@ export function createBattlePresentation({
     }
     if (viewer.row) {
       const sample = decodeRow(viewer.row, scratchSample);
-      const destroyed = updateCombat(actor, sample);
+      const destroyed = updateCombat(actor, sample, true);
       updateEra(actor, viewer.row.eraSpent);
       updateDestruction(actor, destroyed);
       if (!viewer.state) applySamplePose(actor, sample, false);
@@ -1529,6 +1537,9 @@ export function createBattlePresentation({
       ownState: () => own.state,
       others: () => collidableActors(own),
       mode: typeof game.gameMode === 'string' ? game.gameMode : null,
+      // a building the own ram brings down yields to the drawn hull as the authority's yields (destructionMirror.ts)
+      structureYields: (record, massTons, closingMps) => game.ruleset?.destruction?.structures === true
+        && destruction.yieldsToRam(record, massTons, closingMps),
     });
     return predictionWorldCache;
   }

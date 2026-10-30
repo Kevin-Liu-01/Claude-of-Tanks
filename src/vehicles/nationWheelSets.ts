@@ -118,7 +118,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),
   kf51_evo: Object.freeze({ donor: 'kf51_evo', self: ['kf51_evo', 'kf51_u', 'kf51_panther'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
     note: 'Fleet plain dish under the Panther forged face stack (leopard.ts); the KF51 family is the only German next-generation MBT hull.' }),
-  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
+  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6', 'leo2a6_ua'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
   kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),
@@ -255,7 +255,6 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
   griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
-  leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
   // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type
