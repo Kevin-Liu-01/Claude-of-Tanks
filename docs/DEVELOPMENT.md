@@ -1121,6 +1121,10 @@ holds that `--ids` then a plain run equals a whole-fleet regen byte for byte), w
 records nothing. An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
 names (`docs/references/concepts/*.json` list their receipts) is no build input: five sat in the core key until 266, so
 an edit to one marked every id; `fleet-partition.selftest` now fails on any test-only tooling in a build's or step's key.
+The public pages are no step input either: `src/ui/localeRouting.ts` only names them as route strings (declared
+`namesOnly: ['*.html']` in `tools/changed-only/steps.mjs`). Before that a document-head edit marked centering and icons
+on every id and the wreck plan, collision and trench steps on every map; now it marks none, and `fleet-partition.selftest`
+fails if a page enters a step key (a step that really reads one is listed in its PAGE_READERS).
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
