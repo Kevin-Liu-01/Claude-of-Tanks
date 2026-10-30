@@ -42,8 +42,8 @@ leo1a3dk.gun = {
 };
 leo1a3dk.visual = {
   ...leo1a3dk.visual,
-  // the 1970s Danish Army's plain olive drab
-  scheme: 'solid', base: '#4f5538', weather: '#5c6245', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive)
+  scheme: 'solid', base: '#474b37', weather: '#545747', patches: [], marking: 'number', number: '43', camoScale: 0.5,
 };
 
 // The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
@@ -56,9 +56,10 @@ leo1a5dk.gun = {
 };
 leo1a5dk.visual = {
   ...leo1a5dk.visual,
-  // the Danish Army's three-tone of the 1990s (the Aalborg museum's 1A5 DK turret): olive, black and earth brown
-  scheme: 'nato', base: '#4b5236', weather: '#565d42', patches: ['#1f221b', '#5a4a33'], marking: 'number', number: '24',
-  camoScale: 0.5,
+  // the Danish Army's three-tone of the 1990s (the Aalborg museum's 1A5 DK turret): a greyer olive, black and earth brown
+  // in large fields
+  scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#4e4130'], marking: 'number', number: '24',
+  camoScale: 0.72,
 };
 
 // The Leopard 1A5 DK-1: the Bosnia fit (air conditioning and a generator on the turret rear, the M41 DK-1's searchlight,
@@ -93,9 +94,10 @@ leo2a5dk.gun = {
 };
 leo2a5dk.visual = {
   ...leo2a5dk.visual,
-  // the Danish Army's three-tone of the 2010s (the Grafenwöhr photographs): olive, khaki sand and black
-  scheme: 'nato', base: '#4e5a3b', weather: '#5b6646', patches: ['#8d8662', '#1e211b'], marking: 'number', number: '31',
-  camoScale: 0.55,
+  // the Danish Army's three-tone of the 2010s (the Grafenwöhr photographs): a dark olive, drab khaki and black in large
+  // bands
+  scheme: 'nato', base: '#434b34', weather: '#4f5640', patches: ['#746d4e', '#1c1e19'], marking: 'number', number: '31',
+  camoScale: 0.78,
 };
 // its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
 // (the stern cage and quarter cages stay under the barrel's path over the rear deck)
@@ -120,9 +122,10 @@ leo2a7dk.gun = {
 };
 leo2a7dk.visual = {
   ...leo2a7dk.visual,
-  // Danish olive under the Barracuda cover
-  scheme: 'nato', base: '#4b5639', weather: '#586345', patches: ['#2a3124', '#6c7550'], marking: 'number', number: '11',
-  camoScale: 0.55,
+  // the Barracuda cover's grey-green mottle with tan and rust flecks (the Latvia photograph), fine enough that the
+  // painted faces read as the same cover
+  scheme: 'nato', base: '#4f5544', weather: '#5a604e', patches: ['#363d30', '#776d4f', '#664a36'], marking: 'number',
+  number: '11', camoScale: 0.30,
 };
 
 // ------------------------------------------------------------------------------------------------- Centurion DK --
