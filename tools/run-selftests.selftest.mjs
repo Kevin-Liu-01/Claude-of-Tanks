@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
+import { defaultTierFiles } from './selftest-tiers.mjs';
 import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
@@ -12,9 +13,10 @@ import { collectSelftestInputs } from './selftest-inputs.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
-assert.deepEqual(selftestCommand(['all', '--all']).files, Object.values(SELFTEST_SUITES).flat(),
-  'one cache-bypass command runs every group, including former npm lifecycle hooks');
-assert.deepEqual(selftestCommand([]).files, Object.values(SELFTEST_SUITES).flat());
+// 266: a selection is the default tier (tools/selftest-tiers.mjs); manual suites only by name (--heavy, npm run test:heavy)
+assert.deepEqual(selftestCommand(['all', '--all']).files, defaultTierFiles(Object.values(SELFTEST_SUITES).flat()),
+  'one cache-bypass command runs every group of the default tier, including former npm lifecycle hooks');
+assert.deepEqual(selftestCommand([]).files, defaultTierFiles(Object.values(SELFTEST_SUITES).flat()));
 assert.equal(selftestCommand(['core', '--plan']).plan, true);
 assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
 assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
@@ -24,11 +26,11 @@ assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-te
 // Gate P8 (2026-10-01): --only selects registry entries by glob; --shard=i/n runs one of n
 // deterministic shards that together cover the selection exactly once, each in registry order.
 {
-  const registry = Object.values(SELFTEST_SUITES).flat();
+  const registry = defaultTierFiles(Object.values(SELFTEST_SUITES).flat()); // what a selection draws from (266)
   assert.deepEqual(selftestCommand(['all', '--only=tools/run-selftests*.mjs']).files, ['tools/run-selftests.selftest.mjs']);
   const vehicles = selftestCommand(['--only=src/vehicles/**']).files;
   assert.deepEqual(vehicles, registry.filter(file => file.startsWith('src/vehicles/')), 'a tree glob keeps registry order');
-  assert.ok(vehicles.length > 400);
+  assert.ok(vehicles.length > 100);
   assert.deepEqual(selftestCommand(['core', '--only=tools/{capture-lock,selftest-cpu-pool}.selftest.mjs']).files,
     SELFTEST_SUITES.core.filter(file => ['tools/capture-lock.selftest.mjs', 'tools/selftest-cpu-pool.selftest.mjs'].includes(file)),
     'a group narrows first');
@@ -37,7 +39,7 @@ assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-te
   assert.throws(() => selftestCommand(['--only=nowhere/**']), /matched no registered receipt/);
   for (const durations of [undefined, new Map()]) {
     const shards = [1, 2, 3, 4, 5, 6].map(index => selftestCommand(['all', `--shard=${index}/6`], durations ? { durations } : undefined));
-    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the registry exactly once');
+    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the default tier exactly once');
     for (const shard of shards) assert.deepEqual(shard.files, registry.filter(file => shard.files.includes(file)), 'registry order inside a shard');
     assert.equal(new Set(shards.map(shard => shard.shard.partition)).size, 1, 'every shard job derives the same partition');
     assert.equal(shards[0].shard.selected, registry.length);

@@ -15,6 +15,14 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+Receipt tiers (266): `selftest-tiers.mjs` splits `selftest-suites.mjs` into the default tier (`npm test`, the
+release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser) that only
+`npm run test:heavy -- <suite>` runs, when the owner triggers it. `test-recommend.mjs` says which suites a diff
+warrants, one plain line each for Main to relay; `test-lane.mjs` runs a lane's share of the default tier plus its
+tanks' pins, each with its reason and a negative control; `test-diff.mjs` holds what both read (the diff, the
+changed-only fleet and world partitions in reverse, the balance inputs per id); `test-audit.mjs --write` regenerates
+`docs/TEST-AUDIT.md`. `selftest-tiers.selftest.mjs` holds the callers: nothing but test:heavy (and tank:release:check's
+`tanks --ids` step) runs a manual suite.
 `deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
 every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
 cases:
