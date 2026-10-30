@@ -50,18 +50,18 @@ osorio_p2.gun = {
 osorio_p2.armor = osorioArmor(5.285, 0.104);
 // the measured depression by yaw (tools/gun-depression-sweep.mjs, the whole gun 26 mm off its hull): the published -10
 // over the front, the fender line at the front corners, the engine deck astern
-osorio_p2.gunPitchByYawDeg = [[0, -10], [15, -10], [28, -8.8], [30, -8.8], [35, -8.9], [36, -8.6], [42, -7.5],
-  [45, -7.5], [54, -9], [56, -9], [57, -9.1], [60, -10], [113, -10], [115, -9.6], [121, -9.1], [123, -8.5],
-  [124, -8.3], [130, -7.8], [146, -4.3], [156, -2.6], [157, -2.6], [159, -0.8], [160, -0.5], [162, -0.5],
-  [163, -0.7], [165, -2], [177, -2], [180, -2.5]];
+osorio_p2.gunPitchByYawDeg = [[0, -10], [9, -10], [11, -9.4], [20, -8.8], [22, -8.8], [24, -9.1], [28, -8.8],
+  [30, -8.8], [35, -8.9], [36, -8.6], [42, -7.5], [45, -7.5], [54, -9], [56, -9], [57, -9.1], [60, -10], [113, -10],
+  [115, -9.6], [121, -9.1], [123, -8.5], [124, -8.3], [130, -7.8], [146, -4.3], [156, -2.6], [157, -2.6], [159, -0.8],
+  [160, -0.5], [162, -0.5], [163, -0.7], [165, -2], [177, -2], [180, -2.5]];
 osorio_p2.visual = {
   ...osorio_p2.visual,
-  // the Army's two-tone (the CIBld tank, 2020): a muted earth brown and a very dark green in large hard-edged fields of
-  // about equal area over every face, narrow olive bands at some boundaries (the merdc painter: the base and patches[0]
-  // the two fields, patches[1] and [2] the narrow accents; the nato painter's fields left whole 2 m bands bare, blind
-  // critic round 3); the 1983-98 plaque
-  scheme: 'merdc', base: '#5e4a36', weather: '#665240', patches: ['#262e22', '#4f5338', '#1c1f1a'], marking: 'number',
-  number: '02', camoScale: 0.45, patchK: 1.4, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the Army's two-tone (the CIBld tank, 2020): a mid chocolate brown and a very dark green, each field large enough to
+  // take a whole turret cheek or half the glacis, running near vertical (the merdc painter: the base and patches[0] the
+  // two fields, its accents a shade off them; this recipe's seed lays one dark field about a metre wide in every 2 m
+  // tile, 46-51 % dark in every hull-height band; blind critics, rounds 3 and 4); the 1983-98 plaque
+  scheme: 'merdc', base: '#5a4231', weather: '#624939', patches: ['#232b20', '#5a4231', '#1e241b'], marking: 'number',
+  number: '02', camoScale: 0.48, patchK: 1.9, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // The 105 mm P.1 (the Army's 1986-87 homologation tank): the Royal Ordnance L7A3 and the OIP LRS-5 sights, mechanically
@@ -85,16 +85,16 @@ osorio_p1.gun = {
 osorio_p1.armor = osorioArmor(4.545, 0.088);
 // the measured depression by yaw (tools/gun-depression-sweep.mjs, the whole gun 26 mm off its hull): the published -10
 // over the front, the fender line at the front corners, the engine deck astern
-osorio_p1.gunPitchByYawDeg = [[0, -10], [11, -10], [24, -8.9], [27, -9], [32, -9.3], [35, -10], [36, -10],
-  [41, -8.6], [42, -8.4], [45, -8.4], [51, -10], [126, -10], [139, -6.7], [142, -6], [143, -5.1], [144, -4.7], [152, -3.2],
-  [157, -3], [158, -2.6], [159, -1.4], [160, -1], [162, -1], [163, -1.2], [164, -2.2], [169, -2.4], [176, -2.4], [180, -2.7]];
+osorio_p1.gunPitchByYawDeg = [[0, -10], [13, -10], [17, -9.5], [18, -9.4], [21, -9.4], [22, -9.5], [24, -9.8],
+  [35, -8.5], [42, -7.1], [45, -7.2], [59, -10], [118, -10], [142, -5], [145, -4.5], [150, -4], [158, -2.6],
+  [159, -1.4], [160, -1], [162, -1], [163, -1.2], [164, -2.2], [169, -2.4], [173, -2.4], [176, -2.5], [180, -2.9]];
 osorio_p1.visual = {
   ...osorio_p1.visual,
-  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a reddish chocolate brown and a near-black green in
-  // large hard-edged bands of about equal area down the full side height (the merdc painter, as the P.2; its accents a
-  // shade off the two fields); the 1983-98 plaque
-  scheme: 'merdc', base: '#523626', weather: '#5a3e2e', patches: ['#222a20', '#5a3e2e', '#1b1e19'], marking: 'number',
-  number: '01', camoScale: 0.48, patchK: 1.5, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a greyish chocolate brown and a near-black olive in
+  // large irregular bands running down the full side height (the merdc painter, as the P.2: one dark field about 0.9 m
+  // wide in every 2 m tile, 45 % dark); the 1983-98 plaque
+  scheme: 'merdc', base: '#4a3b32', weather: '#524338', patches: ['#20251c', '#52433a', '#1c2019'], marking: 'number',
+  number: '01', camoScale: 0.48, patchK: 1.9, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
@@ -230,14 +230,16 @@ Object.assign(x1a2_carcara, {
   hullTraverseDegS: 42, turretTraverseDegS: 30, gunPitchDegS: 25, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
 x1a2_carcara.gun = { ...x1a2_carcara.gun, caliberMm: 90, reloadS: 5.0, baseAccuracy: 0.33, aimTimeS: 2.0, shells: x1Rounds(x1a2_carcara, 470) };
-x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTop: 1.10, pivot: [0, 1.74, 0.10], gun: [0, 0.43, 1.30],
+x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.68, trkTop: 1.12, pivot: [0, 1.68, 0.10], gun: [0, 0.43, 1.30],
   barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.28, tRearZ: -1.86, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
   ...x1a2_carcara.visual,
-  // the 6º RCB's three-tone (Gaydos' camouflaged profile): an olive base with sand fields edged in a narrow dark brown;
-  // the white turret ring
-  scheme: 'nato', base: '#55603f', weather: '#606b4a', patches: ['#463727', '#9a8a60'], marking: 'number', number: '21',
-  camoScale: 0.5, patchK: 1.2, trackWidthM: 0.42, insignia: 'br-ring',
+  // the 6º RCB's three-tone (Gaydos' camouflaged profile): a green base, flowing khaki bands over about 40 % of it and
+  // narrow brown bands at their edges, one scale on hull and turret (the merdc painter: patches[0] the khaki fields,
+  // [1] and [2] the brown accents; blind critic, round 4: the nato recipe's sand fields swamped the hull); the white
+  // turret ring
+  scheme: 'merdc', base: '#55603f', weather: '#5e6b4a', patches: ['#8c7f56', '#5a4630', '#3a3226'], marking: 'number',
+  number: '21', camoScale: 0.5, patchK: 1.6, trackWidthM: 0.42, insignia: 'br-ring',
 };
 
 registerFleetSpecs(registries, ['x1_pioneiro', 'x1a2_carcara', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3'],

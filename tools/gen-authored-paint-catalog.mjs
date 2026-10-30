@@ -89,7 +89,7 @@ const NATION_WORD = {
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',
   desert: 'Desert', ambush: 'Ambush', fleck: 'Flecktarn', woodland: 'Woodland', blotch: 'Blotch', amoeba: 'Amoeba', chip6: 'Chip',
-  caunter: 'Caunter', hexfield: 'Hex', merdc: 'Two-Tone',
+  caunter: 'Caunter', hexfield: 'Hex', merdc: 'Disruptive',
 };
 const ENV_WORD = { woodland: 'Woodland', desert: 'Desert', winter: 'Winter', urban: 'Urban' };
 // the tone word of a plain coat, from its base colour
@@ -132,7 +132,7 @@ const NATION_ZH = {
 const PATTERN_ZH = {
   Plain: '单色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
   Woodland: '林地', Blotch: '斑块', Amoeba: '变形虫', Chip: '碎块', Caunter: '考恩特', Hex: '六角', Livery: '涂装',
-  'Two-Tone': '双色',
+  Disruptive: '分裂',
 };
 const ENV_ZH = { Woodland: '林地', Desert: '沙漠', Winter: '冬季', Urban: '城市' };
 const TONE_ZH = {

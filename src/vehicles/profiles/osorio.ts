@@ -106,8 +106,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
 
   // ---------------------------------------------------------------- skirts and mudguards --
   const buildOsorioSkirts = (): void => {
-    // the multi-segment steel skirts (seven a side): a tapered front panel, then six; a bolt strip at every joint
-    const front = 3.28, taperEnd = 2.48, rear = -3.45, seg = (taperEnd - rear) / 6, t = 0.024;
+    // the multi-segment steel skirts (seven a side): a tapered front panel, then six; a bolt strip at every joint; each
+    // panel's lower edge falls 10 cm toward its rear and steps back up at the next joint (the 1987, 2022 and 2024
+    // photographs' saw-tooth line; blind critic, round 4)
+    const front = 3.28, taperEnd = 2.48, rear = -3.45, seg = (taperEnd - rear) / 6, t = 0.024, tooth = 0.10;
     for (const s of [-1, 1] as const) {
       const bucket = s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', x = s * H.skirtX;
       // the front panel narrows and slopes up toward the front, clear of the idler
@@ -116,8 +118,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         [x - t / 2, H.skirtTop, taperEnd], [x + t / 2, H.skirtTop, taperEnd], [x + t / 2, H.skirtTop, front], [x - t / 2, H.skirtTop, front]));
       for (let k = 0; k < 6; k++) {
         const z0 = taperEnd - k * seg, z1 = z0 - seg;
-        P.addEquipment(bucket, box(t, H.skirtTop - H.skirtLow, seg - 0.012), x, (H.skirtTop + H.skirtLow) / 2, (z0 + z1) / 2);
-        P.add('hullDetail', box(t + 0.008, H.skirtTop - H.skirtLow - 0.02, 0.05), x + s * 0.003, (H.skirtTop + H.skirtLow) / 2, z0);
+        const zf = z0 - 0.006, zr = z1 + 0.006, yf = H.skirtLow + tooth, yr = H.skirtLow;
+        P.addEquipment(bucket, slab(
+          [x - t / 2, yr, zr], [x + t / 2, yr, zr], [x + t / 2, yf, zf], [x - t / 2, yf, zf],
+          [x - t / 2, H.skirtTop, zr], [x + t / 2, H.skirtTop, zr], [x + t / 2, H.skirtTop, zf], [x - t / 2, H.skirtTop, zf]));
+        P.add('hullDetail', box(t + 0.008, H.skirtTop - H.skirtLow - tooth - 0.02, 0.05), x + s * 0.003, (H.skirtTop + H.skirtLow + tooth) / 2, z0);
       }
       P.add('hullDetail', box(t + 0.008, H.skirtTop - 0.94, 0.05), x + s * 0.003, (H.skirtTop + 0.94) / 2, front - 0.02);
       // the hinged front mudguard over the idler, leaning forward and down to the hub (the CIBld and 2022 photographs)
@@ -136,13 +141,14 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
 
   // ---------------------------------------------------------------- hull fittings --
   const buildOsorioHullFittings = (): void => {
-    // the twin-lamp clusters on the glacis against the front mudguards' inner edges, in their U-shaped guards (one
-    // white, one amber; the CIBld 2020 and 2022 photographs)
+    // the paired round lamps on the glacis against the front mudguards' inner edges, in their housing under a U-shaped
+    // guard (one white, one amber; the CIBld 2020 and 2022 photographs; blind critic, round 4: large, not strips)
     for (const s of [-1, 1] as const) {
       const z = 3.12, y = deckY(z) + 0.05, lx = 0.84;
-      for (const dx of [-0.075, 0.075]) headlight(P, s * lx + dx, y + 0.02, z + 0.03, -glacis * 0.5, 0.05);
-      const g = [[s * (lx + 0.17), y - 0.04, z - 0.10], [s * (lx + 0.17), y + 0.07, z + 0.08], [s * (lx - 0.17), y + 0.07, z + 0.08],
-        [s * (lx - 0.17), y - 0.04, z - 0.10]];
+      P.add('hullDark', xform(box(0.40, 0.17, 0.10), 0, 0, 0, -glacis * 0.5, 0, 0), s * lx, y + 0.01, z - 0.02);
+      for (const dx of [-0.10, 0.10]) headlight(P, s * lx + dx, y + 0.02, z + 0.04, -glacis * 0.5, 0.075);
+      const g = [[s * (lx + 0.23), y - 0.04, z - 0.10], [s * (lx + 0.23), y + 0.10, z + 0.09], [s * (lx - 0.23), y + 0.10, z + 0.09],
+        [s * (lx - 0.23), y - 0.04, z - 0.10]];
       for (let i = 0; i + 1 < g.length; i++) bar('hullDark', g[i], g[i + 1], 0.011);
       // the tow eyes on the lower glacis
       P.add('hullDark', box(0.12, 0.12, 0.08), s * 0.72, 0.86, 3.27);
@@ -362,10 +368,15 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         [x - w / 2, bLow + 0.26, zb], [x + w / 2, bLow + 0.26, zb], [x + w / 2, bLow + 0.34, zf], [x - w / 2, bLow + 0.34, zf]));
       P.addEquipment('turretDark', box(w + 0.01, 0.014, 0.02), x, bLow + 0.30, zb + 0.09);
     }
-    // the raised box on the left wall behind the cheek (the 1987 photograph; the P.1's marked with a struck circle, 2024)
-    P.addEquipment('turret', box(0.20, 0.40, 0.88), T.hw + 0.10, 0.36, 0.28);
-    P.addEquipment('turretDark', box(0.012, 0.02, 0.84), T.hw + 0.205, 0.52, 0.28);
-    if (!p2) P.decal('turret', 'stencil', 'Ø', 0.22, [T.hw + 0.2035, 0.34, 0.30], Math.PI / 2);
+    // the raised boxes on the left wall directly behind the cheek, nearly the wall's full height, their tops about level
+    // with the roof's bevel (blind critic, round 4): the P.2's two (the 1987 photograph), the P.1's one marked with a
+    // struck circle (2024)
+    const boxes: ReadonlyArray<readonly [number, number]> = p2 ? [[0.34, 0.82], [-0.20, 0.30]] : [[-0.16, 0.82]];
+    for (const [z0, z1] of boxes) {
+      P.addEquipment('turret', box(0.20, 0.64, z1 - z0), T.hw + 0.10, 0.38, (z0 + z1) / 2);
+      P.addEquipment('turretDark', box(0.012, 0.02, z1 - z0 - 0.04), T.hw + 0.205, 0.66, (z0 + z1) / 2);
+    }
+    if (!p2) P.decal('turret', 'stencil', 'Ø', 0.24, [T.hw + 0.2035, 0.40, 0.33], Math.PI / 2);
     // the dischargers high on the walls, aimed forward, out and up: the P.2 two rows of three on each rear corner, behind
     // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall's plate two-thirds back (2024) and on
     // the right behind its grid
@@ -379,7 +390,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r4', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-266-r5', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
       sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
     };
@@ -393,9 +404,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       const x = s * (H.skirtX + 0.0135);
       // the "OSÓRIO / EE-T1" stencil on the front skirt panel and the Engesa oval on the rearmost (every photograph since 2003)
       // (a stencil is a square quad: each sits inside the 0.69 m skirt panel)
-      P.decal('hull', 'stencil', 'OSÓRIO', 0.46, [x, 1.09, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'EE-T1', 0.30, [x, 0.95, 2.02], s * Math.PI / 2);
-      P.decal('hull', 'stencil', 'ENGESA', 0.36, [x, 1.02, -2.95], s * Math.PI / 2);
+      // (about half the round-3 size: blind critic, round 4)
+      P.decal('hull', 'stencil', 'OSÓRIO', 0.26, [x, 1.10, 2.02], s * Math.PI / 2);
+      P.decal('hull', 'stencil', 'EE-T1', 0.17, [x, 1.01, 2.02], s * Math.PI / 2);
+      P.decal('hull', 'stencil', 'ENGESA', 0.20, [x, 1.08, -2.95], s * Math.PI / 2);
     }
   };
   buildOsorioMarkings();
@@ -445,11 +457,12 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.muzzleZ = len;
       P.gunG.userData.osorioGunReceipt = { mark, caliberMm: 120, muzzleZ: len, fumeExtractor: false, sleeveJoints: 3 };
     } else {
-      // Royal Ordnance 105 mm L7A3: the thermal sleeve with its clamp bands, the fume extractor two-fifths of the way out,
-      // a plain muzzle; the muzzle 5.395 m from the ring (9.36 m over the gun)
-      const len = 5.795 - (RING.z + TRUNNION.z), r0 = 0.090, r1 = 0.080, ez = 2.15, el = 0.62, sleeveEnd = len - 0.16;
+      // Royal Ordnance 105 mm L7A3: the thermal sleeve with its clamp bands, the fume extractor's thick section from the
+      // boot out to about a third of the barrel (the 2015 and 2024 photographs; blind critic, round 4), a plain muzzle;
+      // the muzzle 5.395 m from the ring (9.36 m over the gun)
+      const len = 5.795 - (RING.z + TRUNNION.z), r0 = 0.090, r1 = 0.080, ez = 1.40, el = 0.90, sleeveEnd = len - 0.16;
       P.add('gun', cylZ(r1, sleeveEnd - 0.86, seg, r0), 0, 0, (0.86 + sleeveEnd) / 2);
-      for (const z of [1.45, 3.05, 3.85]) P.add('gunDark', cylZ(0.094, 0.03, seg), 0, 0, z);
+      for (const z of [2.30, 3.05, 3.85]) P.add('gunDark', cylZ(0.094, 0.03, seg), 0, 0, z);
       P.add('gun', cylZ(0.122, el - 0.12, seg), 0, 0, ez);
       P.add('gun', cylZ(0.122, 0.06, seg, 0.088), 0, 0, ez - el / 2 + 0.03);
       P.add('gun', cylZ(0.084, 0.06, seg, 0.122), 0, 0, ez + el / 2 - 0.03);
