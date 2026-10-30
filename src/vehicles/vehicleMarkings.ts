@@ -342,7 +342,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // add-on side armour; 2026-10-23 ("Paint it on the drape"): painted on its ULCANS drape (vehicleMarkingPaintsOnSuit),
   // no window cut in the cloth; the designation keeps the left flank's drape
   m1a1_abrams_fep: anchor('turret', 'right', 0.48, 0.44, 0.27, 1),
-  m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
+  // 2026-10-28 (m1e3-264): the demonstrator's star on its left star skirt panel, behind the flag panel
+  m1a3: anchor('hull', 'left', 0.66, 0.54, 0.50, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),

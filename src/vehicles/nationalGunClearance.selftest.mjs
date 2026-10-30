@@ -36,6 +36,7 @@ const CURVES = {
   m1a1_abrams_sa: [],
   m1a1_abrams_aim: [], // release 230: the glacis wind-sensor mast in the barrel's path at yaw 0-8 is gone (profiles/abrams.ts)
   m1a1_abrams_fep: [],
+  m1a3: [], // 2026-10-28: the M1E3 rebuilt on the M1 hull (m1e3-264), its measured curve (m1a1GunLimits.ts)
   ua_m1a1: [],
   c1_ariete: [],
   c2_ariete: [],

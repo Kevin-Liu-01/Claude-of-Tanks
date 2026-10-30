@@ -25,7 +25,7 @@ const fixture = createTankIdResolver({
 });
 const NAME = {
   leo2a4_otco: 'Leopard 2A4 OTCO', leo2a6m: 'Leopard 2A6M', leo2a3: 'Leopard 2A3',
-  t90am: 'T-90AM', t90m: 'T-90M', t14_armata: 'T-14 Armata', m1a2_sepv2: 'M1A2 Abrams SEPv2', m1a3: 'M1A3 Abrams',
+  t90am: 'T-90AM', t90m: 'T-90M', t14_armata: 'T-14 Armata', m1a2_sepv2: 'M1A2 Abrams SEPv2', m1a3: 'M1E3 Abrams',
 };
 const shown = (id) => NAME[id] ?? `unknown:${id}`;
 
@@ -71,7 +71,7 @@ assert.equal(get('cot.equip.t90m'), null);
 assert.equal(get('cot.equip.m1a3'), '["smoke"]', 'an unrenamed key stays');
 assert.equal(shown(JSON.parse(get('cot.profile.v2')).lastBattle.vehicleId), 'T-90AM');
 const service = JSON.parse(get('cot.service.v1'));
-assert.deepEqual(service.vehicles.map(shown), ['Leopard 2A4 OTCO', 'T-90AM', 'M1A3 Abrams']);
+assert.deepEqual(service.vehicles.map(shown), ['Leopard 2A4 OTCO', 'T-90AM', 'M1E3 Abrams']);
 assert.equal(shown(service.history[0].vehicleId), 'Leopard 2A4 OTCO');
 assert.equal(shown(service.history[0].trace[0].specId), 'T-90AM');
 assert.equal(get('cot.settings.v1'), '{"volume":0.5}', 'other keys are untouched');

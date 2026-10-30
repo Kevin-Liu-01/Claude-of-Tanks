@@ -1584,13 +1584,65 @@
    "openViews": 0,
    "insideOutPx": 56,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4179,
+   "netSeeThroughPx": 4382,
    "tris": 121819,
    "frame": [
     0,
     1.9,
     1.2,
     6.3
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "M1E3 rebuild (owner 2026-10-28) re-lays the Group C field net over its own new turret, bustle, cages and basket, more declared netting, see-through 0, openings 0",
+     "by": "m1e3-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4179
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "M1E3 revision after blind critics (the turret flank cage rails lowered to the roof, the station raised on its pedestal), less declared netting, see-through 0, openings 0",
+     "by": "m1e3-264",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 5128
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "M1E3 second critic revision (the taller blunter cheek faces, the mantlet set back, the stern rack without its log, the net cut to the re-measured gun stops), see-through 0, openings 0",
+     "by": "m1e3-264",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4629
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "M1E3 third critic revision (the turret front set 0.40 m back toward the demonstrator's station, the cage and net following it, the net cut to the re-measured gun stops), see-through 0, openings 0",
+     "by": "m1e3-264",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4739
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "M1E3 fifth critic revision (a taller turret, the cheeks forward past the mantlet, the bustle closer to the deck), more declared netting, see-through 0, openings 0",
+     "by": "m1e3-264",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4256
+     }
+    }
    ]
   },
   "m2a2_bradley": {

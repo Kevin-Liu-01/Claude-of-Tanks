@@ -300,8 +300,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a1_abrams_fep: { displayName: 'M1A1 Abrams FEP' },
   m1a3: {
-    displayName: 'M1A3 Abrams', shortName: 'M1A3 Abrams',
-    searchAliases: ['M1A3 Abrams concept', 'Next-generation Abrams'],
+    displayName: 'M1E3 Abrams', shortName: 'M1E3 Abrams',
+    searchAliases: ['M1E3', 'M1A3 Abrams', 'M1A3 Abrams concept', 'Next-generation Abrams'],
   },
   kf51_u: { displayName: 'KF51-U', shortName: 'KF51-U', searchAliases: ['KF51B Panther'] },
   merkava1b: { displayName: 'Merkava Mk 1B' },
