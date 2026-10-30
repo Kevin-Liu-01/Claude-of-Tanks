@@ -2763,11 +2763,23 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     for (const [x, z] of [...outline.filter((_, i) => i % 2 === 0), [0.30, rz], [-0.30, rz], [0, rz]]) {
       bar(P, 'turretDetail', [x, L.y(yf), L.z(z)], [x, L.y(rails[rails.length - 1]), L.z(z)], 0.015);
     }
-    for (const [x, z, w, h, d] of [[0.50, -1.88, 0.50, 0.30, 0.30], [-0.05, -1.92, 0.50, 0.30, 0.30]] as const) {
-      P.add('turretDetail', moldedBox(w, h, d, 0.02, P.q ? 2 : 1, 0.01), x, L.y(yf + h / 2 + 0.01), L.z(z));
-      P.add('turretDark', box(w * 0.5, 0.02, 0.03), x, L.y(yf + h * 0.75), L.z(z - d / 2 - 0.005));
+    if (a3) {
+      // the A3's lived-in rack (the owner, 2026-10-30: "more decorations like wheels and bags ..."): three packs along
+      // it under a bedroll, and a spare road wheel tipped up on each of its rear corners as the M48A5's (on its back
+      // they grew the turret's sweep over the rear deck, which then held no drum; the rest of its load: decorations.ts)
+      KIT.stowage(P, 'turretCloth', mulberry(617), [
+        [0.52, L.y(yf + 0.16), L.z(-1.94), 0.52, 0.30, 0.20], [0, L.y(yf + 0.14), L.z(-1.94), 0.46, 0.26, 0.20],
+        [-0.50, L.y(yf + 0.18), L.z(-1.94), 0.50, 0.34, 0.20],
+      ]);
+      KIT.tarpRoll(P, 'turretCloth', 0.05, L.y(yf + 0.41), L.z(-1.95), 1.25, 0.10, true, P.q ? 12 : 8);
+      m60SpareWheels(P, T, yf + 0.21, -1.55);
+    } else {
+      for (const [x, z, w, h, d] of [[0.50, -1.88, 0.50, 0.30, 0.30], [-0.05, -1.92, 0.50, 0.30, 0.30]] as const) {
+        P.add('turretDetail', moldedBox(w, h, d, 0.02, P.q ? 2 : 1, 0.01), x, L.y(yf + h / 2 + 0.01), L.z(z));
+        P.add('turretDark', box(w * 0.5, 0.02, 0.03), x, L.y(yf + h * 0.75), L.z(z - d / 2 - 0.005));
+      }
+      KIT.tarpRoll(P, 'turretCloth', -0.55, L.y(yf + 0.14), L.z(-1.85), 0.55, 0.11, true, P.q ? 12 : 8);
     }
-    KIT.tarpRoll(P, 'turretCloth', -0.55, L.y(yf + 0.14), L.z(-1.85), 0.55, 0.11, true, P.q ? 12 : 8);
     if (mark === 'magach7c') {
       // the spare road wheel standing on edge in the basket's left half
       P.add('turretDetail', KIT.cylZ(0.33, 0.20, P.q ? 24 : 14), 0.55, L.y(1.99 + 0.34), L.z(-1.55));
@@ -2946,6 +2958,35 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   }
   P.topY = L.y(3.12) + 0.12;
   yield 'm60Gun';
+}
+
+/** The M60A3's spare road wheels, one on each rear corner of its bustle rack, tipped up (axis 25 degrees up and back,
+ * as the M48A5's spare): the running gear's own cast-spoke wheel (the nation construction and request the hull's wheels
+ * use), each on a stub axle from the rack's flank rail; its inner face (against the rack) is not drawn. */
+function m60SpareWheels(P: CastPort, T: TurretFrame, y: number, z: number): void {
+  const L = tl(T);
+  const { wheelR } = M60_HULL_SPEC.gear, trackW = M60_HULL_SPEC.trackW;
+  const wheelW = Math.min(0.26, trackW * 0.42);
+  for (const side of [-1, 1]) {
+    const axis = new THREE.Vector3(side * 0.80, 0.42, -0.42).normalize();
+    const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), axis));
+    const rail = castSideAt(M60_TURRET, 2.42, z) + 0.06;
+    const c = [side * (rail + 0.03 + wheelW / 2 / axis.x * side + 0.05), y, z];
+    const spare = buildNationWheel('m60a3-cast-spoke', {
+      radiusM: wheelR, tireWidthM: wheelW, high: Boolean(P.q), segments: P.q ? 28 : 12,
+      maxWidthM: Math.max(wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE, trackW * TRACK_WIDTH_WHEEL_CAP),
+    });
+    const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, c[0], L.y(c[1]), L.z(c[2]), e.x, e.y, e.z); };
+    const axle = (d: number): number[] => [c[0] - axis.x * d, L.y(c[1] - axis.y * d), L.z(c[2] - axis.z * d)];
+    bar(P, 'turretDark', axle(0), axle(wheelW / 2 + 0.10), 0.04);
+    at('turretDark', spare.tire);
+    at('turretDetail', spare.disc);
+    at('turretDark', spare.dark);
+    for (const layer of spare.layers) {
+      if (layer.side === -1) { layer.geometry.dispose(); continue; }
+      at(layer.paint === 'dish' ? 'turretDetail' : 'turretDark', KIT.xform(layer.geometry, layer.outset ?? 0, 0, 0));
+    }
+  }
 }
 
 /** The M60's cast mantlet (gun frame), read off the owner's M60A1 model in stations of height over the bore: the block
