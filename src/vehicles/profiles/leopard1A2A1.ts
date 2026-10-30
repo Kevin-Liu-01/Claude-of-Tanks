@@ -293,8 +293,15 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.addEquipment('hullDark', cylY(0.011, 0.011, 0.30, 7), s * 0.86, 1.28, 3.46);
       P.addEquipment('hullDark', cylY(0.011, 0.011, 0.24, 7), s * 1.04, 1.31, 3.46);
       P.addEquipment('hullDark', cylX(0.011, 0.19, 7), s * 0.95, 1.43, 3.46);
-      P.addEquipment('hull', cylY(0.012, 0.012, 0.30, 7), s * 1.12, frontGuardTopY(3.10) + 0.15, 3.10);
-      P.addEquipment('hullDark', box(0.15, 0.11, 0.03), s * 1.12, frontGuardTopY(3.10) + 0.33, 3.10, 0, s * 0.30, 0);
+      // the driver's mirror: an oval head on its stalk, the glass facing back (critics 265, round 5: the photos' "large
+      // oval mirror housings", where the renders had "small flag-like plates on stalks")
+      // (low enough that the barrel laid over it at full depression keeps its 25 mm: at 0.37 m it touched at yaw 22)
+      const mirrorY = frontGuardTopY(3.10) + 0.30, mirrorYaw = s * 0.30;
+      P.addEquipment('hull', cylY(0.012, 0.012, 0.26, 7), s * 1.12, frontGuardTopY(3.10) + 0.13, 3.10);
+      P.addEquipment('hull', xform(cylZ(0.085, 0.05, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12, mirrorY, 3.10, 0, mirrorYaw, 0);
+      P.addEquipment('hullDark', xform(cylZ(0.072, 0.006, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12 - Math.sin(mirrorYaw) * 0.027, mirrorY, 3.10 - Math.cos(mirrorYaw) * 0.027, 0, mirrorYaw, 0);
       P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
       liftEye(P, 'hullDetail', s * 1.17, centerDeckTopY(1.65) + 0.015, 1.65, s * 0.45);
       P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, frontGuardTopY(3.36) + 0.17, 3.36, 0, 0, s * 0.08);
@@ -306,14 +313,30 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       [0, upperGlacisY(3.44) + 0.075, 3.44],
       [0.70, upperGlacisY(3.42) + 0.075, 3.42],
     ], 0.024);
-    // The grouser (Schneegreifer) rack across the upper glacis, the Munster 1A2A1's: three staggered rows of spiked
-    // cleats on a bar frame (critics 265).
+    // The grouser (Schneegreifer) rack across the upper glacis, the Munster 1A2A1's dense lattice of interlocking links,
+    // drawn as two crossing runs of diagonal bars inside a bar frame (critics 265, round 5: "the spare-link lattice is replaced by separate blocks").
     const glacisTilt = THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg);
-    for (const [row, z] of [2.86, 3.06, 3.26].entries()) {
-      P.addEquipment('hullDark', box(1.30, 0.03, 0.04), 0, upperGlacisY(z) + 0.075, z, glacisTilt, 0, 0);
-      for (let k = 0; k < 9 - (row % 2); k++) {
-        P.addEquipment('hullDark', box(0.10, 0.07, 0.14), -0.56 + (row % 2) * 0.07 + k * 0.14, upperGlacisY(z) + 0.095, z,
-          glacisTilt, 0, 0);
+    const rack = { halfWidth: 0.66, z0: 2.82, z1: 3.30, pitch: 0.15 };
+    const rackSlope = (rack.z1 - rack.z0) / Math.cos(glacisTilt);
+    const onRack = (u: number, v: number, lift: number): [number, number, number] => {
+      const z = rack.z0 + v * Math.cos(glacisTilt);
+      return [u, upperGlacisY(z) + lift, z];
+    };
+    for (const v of [0, rackSlope]) {
+      P.addEquipment('hullDark', box(rack.halfWidth * 2 + 0.03, 0.025, 0.03), ...onRack(0, v, 0.072), glacisTilt, 0, 0);
+    }
+    for (const s of [-1, 1] as const) {
+      P.addEquipment('hullDark', box(0.03, 0.025, rackSlope), ...onRack(s * rack.halfWidth, rackSlope / 2, 0.072), glacisTilt, 0, 0);
+    }
+    // dir -1 runs along u - v = c, dir 1 along u + v = c (u across the plate, v down its slope), each clipped to the frame
+    for (const dir of [-1, 1] as const) {
+      for (let c = -rack.halfWidth - rackSlope + rack.pitch / 2; c < rack.halfWidth + rackSlope; c += rack.pitch) {
+        const va = dir < 0 ? Math.max(0, -rack.halfWidth - c) : Math.max(0, c - rack.halfWidth);
+        const vb = dir < 0 ? Math.min(rackSlope, rack.halfWidth - c) : Math.min(rackSlope, c + rack.halfWidth);
+        if (vb - va < 0.03) continue;
+        const vm = (va + vb) / 2, um = dir < 0 ? vm + c : c - vm;
+        P.addEquipment('hullDark', box((vb - va) * Math.SQRT2, 0.035, 0.03), ...onRack(um, vm, 0.08),
+          glacisTilt, dir * Math.PI / 4, 0);
       }
     }
     // The shovel and crowbar lie on the fender lockers' lids (1.50 m), out of the cast mantlet's sweep: on the deck
@@ -427,21 +450,21 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
   // The side plates' run ([z, inner, outer base, foot, ridge, top edge, top]): the 1A5's, from a short tail tapering into
   // the core back to the wedges.
   const sideRows: readonly (readonly [number, number, number, number, number, number, number])[] = [
-    [-1.34, 0.78, 1.02, 0.10, 1.10, 0.86, 0.70],
-    [-1.20, 0.92, 1.18, 0.08, 1.28, 0.98, 0.74],
-    [-0.40, 0.96, 1.22, 0.07, 1.34, 1.02, 0.75],
-    [0.40, 0.98, 1.22, 0.07, 1.34, 1.02, 0.75],
+    [-1.34, 0.78, 1.04, 0.10, 1.10, 0.96, 0.70],
+    [-1.20, 0.92, 1.20, 0.08, 1.28, 1.11, 0.74],
+    [-0.40, 0.96, 1.25, 0.07, 1.34, 1.16, 0.75],
+    [0.40, 0.98, 1.25, 0.07, 1.34, 1.16, 0.75],
   ];
   // The wedges either side of the mask: the ridge runs from the side plates (±1.34 at z 0.40) to the tip beside the mask
   // (±0.76 at z 1.36); ahead of z 1.12 the upper and lower faces close on the ridge, so each wedge ends in its line.
   const wedgeRows: readonly (readonly [number, number, number, number, number, number, number])[] = [
-    [0.40, 0.98, 1.22, 0.07, 1.34, 1.02, 0.75],
-    [0.70, 0.86, 1.05, 0.08, 1.16, 0.89, 0.74],
-    [1.00, 0.74, 0.88, 0.08, 0.98, 0.75, 0.74],
-    [1.12, 0.69, 0.82, 0.08, 0.91, 0.71, 0.72],
-    [1.22, 0.66, 0.76, 0.11, 0.85, 0.69, 0.56],
-    [1.30, 0.65, 0.73, 0.19, 0.80, 0.68, 0.41],
-    [1.36, 0.66, 0.71, 0.27, 0.76, 0.67, 0.33],
+    [0.40, 0.98, 1.25, 0.07, 1.34, 1.16, 0.75],
+    [0.70, 0.86, 1.08, 0.08, 1.16, 1.01, 0.74],
+    [1.00, 0.74, 0.90, 0.08, 0.98, 0.85, 0.74],
+    [1.12, 0.69, 0.84, 0.08, 0.91, 0.80, 0.72],
+    [1.22, 0.66, 0.78, 0.11, 0.85, 0.76, 0.56],
+    [1.30, 0.65, 0.75, 0.19, 0.80, 0.73, 0.41],
+    [1.36, 0.66, 0.72, 0.27, 0.76, 0.71, 0.33],
   ];
   const plateSections = (rows: typeof sideRows, s: -1 | 1): SolidSection[] => rows.map(([z, xi, xb, yb, xr, xt, yt]) => {
     const ring = plateChevronRing(xi, xb, yb, xr, xt, yt);
@@ -615,8 +638,10 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
   const trunnionZ = 1.15;
   const mantletReceiver = { width: 1.32, height: 0.62, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
   const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
+  // (its line 0.58 m ahead of the trunnion, so the wedge stands clear of the cheeks: critics 265, round 5, "barely stands
+  // forward of the cheeks")
   const mantletMask = { halfWidth: 0.62, low: -0.30, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
-    ridgeHalfWidth: 0.58, ridgeLow: -0.012, ridgeHigh: 0.012, ridgeZ: 0.50 };
+    ridgeHalfWidth: 0.58, ridgeLow: -0.012, ridgeHigh: 0.012, ridgeZ: 0.58 };
   const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
     [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
   ];
@@ -633,20 +658,21 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       { z: k.bodyZ, ring: maskRing(k.halfWidth, k.low, k.high, 0.06) },
       { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.008) },
     ], { smoothSideEdges: [1, 3, 5, 7] }));
-    // The brow and chin faces' outward normals (y, z), for seating the bolts and the sight / coax ports square to them.
+    // The brow face's outward normal (y, z), for seating the sight port square to it.
     const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHigh).normalize();
-    const chin = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.ridgeLow - k.low).normalize();
     const onBrow = (t: number, out: number): [number, number] => [
       k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
-    const onChin = (t: number, out: number): [number, number] => [
-      k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
-    // the gunner's telescope port on the right of the brow (-x), the coaxial MG's on the left of the chin (+x)
-    P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
-    P.addGunExtraDark(xform(cylZ(0.045, 0.06, 12), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.34, ...onChin(0.80, 0.014));
-    // the gun's boot where it leaves the line: a dark cone set into the brow and chin, 0.31 m across where it meets
-    // the faces 0.17 m back, narrowing to the tube (critics 265, round 4: "a protruding round collar", where the Munster
-    // 1A5's mask holds the gun "in a recess"; round 3's tapered root sleeve and clamp band are gone)
-    P.addGunExtraDark(cylZ(0.085, 0.18, P.q ? 20 : 14, 0.155), 0, 0, k.ridgeZ - 0.08);
+    // the gunner's small telescope port on the right of the brow (-x); the coaxial MG's on the left (+x) at the line,
+    // where the 1A5 photographs show it (critics 265, round 5 read the larger brow port as the coax on the wrong side)
+    P.addGunExtraDark(xform(cylZ(0.035, 0.05, 12), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.010));
+    P.addGunExtraDark(cylZ(0.06, 0.08, 14), 0.30, 0, k.ridgeZ - 0.035);
+    // The gun's root where it leaves the line: the sleeve's root section from inside the mask out to the thermal sleeve,
+    // 0.21 m across at the line and narrowing to it, seated in a short dark boot (critics 265, round 5: "a thin pipe
+    // with a small elbow collar" where the Munster 1A5's gun leaves its mask fat; round 5's dark cone stood out of the
+    // brow as a crescent, round 4's collar and round 3's clamp band are gone).
+    const sleeveStartZ = 0.16 * 4.35, rootZ = k.ridgeZ - 0.10;
+    P.addGunExtra(cylZ(0.080, sleeveStartZ - rootZ, P.q ? 20 : 14, 0.105), 0, 0, (rootZ + sleeveStartZ) / 2);
+    P.addGunExtraDark(cylZ(0.116, 0.05, P.q ? 20 : 14), 0, 0, k.ridgeZ - 0.01);
     // (the mantlet root at the sleeve's size, inside the mask: at 0.14 m it stood out through the wedge as a collar)
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.08 });
     muzzleBore(P, { len: 4.35, r: 0.064 });

@@ -12571,6 +12571,15 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       // width-indicator rods on the front mudguards
       P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, frontGuardTopY(3.36) + 0.17, 3.36, 0, 0, s * 0.08);
       P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), frontGuardTopY(3.36) + 0.17 + Math.cos(0.08) * 0.17, 3.36);
+      // the driver's mirror: an oval head on its stalk behind the lamp, the glass facing back (critics 265, round 5: "no
+      // mirror heads"; the Munster 1A5's front photo)
+      // (low enough that the barrel laid over it at full depression keeps its 25 mm: at 0.37 m it touched at yaw 22)
+      const mirrorY = frontGuardTopY(3.10) + 0.30, mirrorYaw = s * 0.30;
+      P.addEquipment('hull', cylY(0.012, 0.012, 0.26, 7), s * 1.12, frontGuardTopY(3.10) + 0.13, 3.10);
+      P.addEquipment('hull', xform(cylZ(0.085, 0.05, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12, mirrorY, 3.10, 0, mirrorYaw, 0);
+      P.addEquipment('hullDark', xform(cylZ(0.072, 0.006, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12 - Math.sin(mirrorYaw) * 0.027, mirrorY, 3.10 - Math.cos(mirrorYaw) * 0.027, 0, mirrorYaw, 0);
     }
     // tow cable run across the bow edge, below the grouser rack
     towCable(P, [
@@ -12578,14 +12587,30 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       [0, upperGlacisY(3.44) + 0.075, 3.44],
       [0.70, upperGlacisY(3.42) + 0.075, 3.42],
     ], 0.024);
-    // The A5's grouser (Schneegreifer) rack across the upper glacis: four staggered rows of low diamond cleats on bars,
-    // the photos' lattice (critics 265: "a flush lattice grille", not proud blocks).
+    // The A5's grouser (Schneegreifer) rack across the upper glacis: the photos' dense lattice of interlocking links,
+    // drawn as two crossing runs of diagonal bars inside a bar frame (critics 265, round 5: "sparse, separated cubes instead of the tightly interlocking chevrons").
     const glacisTilt = THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg);
-    for (const [row, z] of [2.82, 2.98, 3.14, 3.30].entries()) {
-      P.addEquipment('hullDark', box(1.44, 0.025, 0.03), 0, upperGlacisY(z) + 0.072, z, glacisTilt, 0, 0);
-      for (let k = 0; k < 11 - (row % 2); k++) {
-        P.addEquipment('hullDark', box(0.10, 0.04, 0.10), -0.70 + (row % 2) * 0.07 + k * 0.14, upperGlacisY(z) + 0.082, z,
-          glacisTilt, Math.PI / 4, 0);
+    const rack = { halfWidth: 0.72, z0: 2.80, z1: 3.32, pitch: 0.15 };
+    const rackSlope = (rack.z1 - rack.z0) / Math.cos(glacisTilt);
+    const onRack = (u: number, v: number, lift: number): [number, number, number] => {
+      const z = rack.z0 + v * Math.cos(glacisTilt);
+      return [u, upperGlacisY(z) + lift, z];
+    };
+    for (const v of [0, rackSlope]) {
+      P.addEquipment('hullDark', box(rack.halfWidth * 2 + 0.03, 0.025, 0.03), ...onRack(0, v, 0.072), glacisTilt, 0, 0);
+    }
+    for (const s of [-1, 1] as const) {
+      P.addEquipment('hullDark', box(0.03, 0.025, rackSlope), ...onRack(s * rack.halfWidth, rackSlope / 2, 0.072), glacisTilt, 0, 0);
+    }
+    // dir -1 runs along u - v = c, dir 1 along u + v = c (u across the plate, v down its slope), each clipped to the frame
+    for (const dir of [-1, 1] as const) {
+      for (let c = -rack.halfWidth - rackSlope + rack.pitch / 2; c < rack.halfWidth + rackSlope; c += rack.pitch) {
+        const va = dir < 0 ? Math.max(0, -rack.halfWidth - c) : Math.max(0, c - rack.halfWidth);
+        const vb = dir < 0 ? Math.min(rackSlope, rack.halfWidth - c) : Math.min(rackSlope, c + rack.halfWidth);
+        if (vb - va < 0.03) continue;
+        const vm = (va + vb) / 2, um = dir < 0 ? vm + c : c - vm;
+        P.addEquipment('hullDark', box((vb - va) * Math.SQRT2, 0.035, 0.03), ...onRack(um, vm, 0.08),
+          glacisTilt, dir * Math.PI / 4, 0);
       }
     }
     shovelTool(P, -1.05, deckTopY(-0.25) + 0.015, -0.25);
@@ -12899,7 +12924,8 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   const mantletReceiver = { width: 1.32, height: 0.62, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
   // (the rear pad stays inside the receiver and clears the deck at +20 degrees of elevation over the side bearings)
   const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
-  // (its rear top stays under the turret's front roof at every legal pitch)
+  // (its rear top stays under the turret's front roof at every legal pitch; its line 0.50 m ahead of the trunnion: at
+  // 0.58 m the 265 critics read "a pointed chevron at the bore", round 6)
   const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
     ridgeHalfWidth: 0.42, ridgeLow: -0.012, ridgeHigh: 0.012, ridgeZ: 0.50 };
   const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
@@ -12931,12 +12957,15 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     }
     // the gunner's telescope port on the right of the brow (-x); the coaxial MG's port on the left (+x) at the line,
     // where the 1A5 photographs show it
-    P.addGunExtraDark(xform(cylZ(0.045, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
-    P.addGunExtraDark(cylZ(0.05, 0.07, 14), 0.30, 0, k.ridgeZ - 0.028);
-    // the gun's boot where it leaves the line: a dark cone set into the brow and chin, 0.31 m across where it meets
-    // the faces 0.17 m back, narrowing to the tube (critics 265, round 4: "a protruding round collar", where the Munster
-    // 1A5's mask holds the gun "in a recess"; round 3's tapered root sleeve and clamp band are gone)
-    P.addGunExtraDark(cylZ(0.085, 0.18, P.q ? 20 : 14, 0.155), 0, 0, k.ridgeZ - 0.08);
+    P.addGunExtraDark(xform(cylZ(0.035, 0.05, 12), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.010));
+    P.addGunExtraDark(cylZ(0.06, 0.08, 14), 0.30, 0, k.ridgeZ - 0.035);
+    // The gun's root where it leaves the line: the sleeve's root section from inside the mask out to the thermal sleeve,
+    // 0.22 m across at the line and narrowing to it, seated in a heavy dark boot 0.26 m across (critics 265, round 5:
+    // "a thin pipe with a small elbow collar" where the Munster 1A5's gun leaves its mask fat; round 6: still "a thin
+    // black collar"; round 5's dark cone stood out of the brow as a crescent, round 3's clamp band is gone).
+    const sleeveStartZ = 0.16 * 4.35, rootZ = k.ridgeZ - 0.10;
+    P.addGunExtra(cylZ(0.082, sleeveStartZ - rootZ, P.q ? 20 : 14, 0.112), 0, 0, (rootZ + sleeveStartZ) / 2);
+    P.addGunExtraDark(cylZ(0.13, 0.08, P.q ? 20 : 14), 0, 0, k.ridgeZ + 0.005);
     // The XSW-30-U infrared / white-light searchlight (owner 2026-10-27: "the big IR/white-light searchlight on the
     // mantlet; add it"): a chamfered box over the gun on a U-yoke whose arms root in the mask's brow, so it pitches with
     // the gun and stays put when the barrel recoils. Its lens throws the runtime's searchlight beam at night. At full
@@ -12964,6 +12993,10 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     // (the mantlet root at the sleeve's size, inside the mask: at 0.14 m it stood out through the wedge as a collar)
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.08 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
+    // The thermal sleeve's strap bands along its first section (critics 265, round 6: "no thermal sleeve or straps";
+    // the Munster 1A5's sleeve is banded every few hand-widths), short of the bore evacuator, whose underside sets the
+    // gun's stern clearance.
+    for (let s = 1; s < 5; s++) P.add('gunDark', cylZ(0.064 * 1.28, 0.035, P.q ? 28 : 12), 0, 0, 4.35 * (0.16 + 0.30 * s / 5));
     P.gunG.userData.leopard1A5MantletReceipt = {
       seated: true,
       blohmVossMask: true,

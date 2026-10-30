@@ -58,8 +58,9 @@ near(tBox.max.y - turretRig.position.y, 0.79, 0.01, 'the casting\'s roof over th
 assert.ok(tBox.max.x - tBox.min.x <= 2.72, `no wider than its ridges (${tBox.max.x - tBox.min.x})`);
 const sideAt = (y, z = -0.40) => new THREE.Raycaster(new THREE.Vector3(3, turretRig.position.y + y, turretRig.position.z + z),
   new THREE.Vector3(-1, 0, 0), 0, 3).intersectObject(turret, false)[0]?.point.x;
-// The 1A5's chevron along the side: the plate bends outward at its ridge 0.30 m up, the faces leaning in above and below.
-assert.ok(sideAt(0.30) > sideAt(0.10) + 0.05 && sideAt(0.30) > sideAt(0.60) + 0.10,
+// The 1A5's chevron along the side: the plate bends outward at its ridge 0.30 m up, the faces leaning in above and below
+// (since round 6 of the 265 critics only gently: "large upper and lower bevels" had narrowed the roof to half the width).
+assert.ok(sideAt(0.30) > sideAt(0.10) + 0.04 && sideAt(0.30) > sideAt(0.60) + 0.07,
   `the side bends outward at its ridge (${sideAt(0.10)}, ${sideAt(0.30)}, ${sideAt(0.60)})`);
 // Slightly rounded, not knife-edged: the ridge's very corner is cut back a little from the two faces' meeting point.
 const ridgeHalf = turretFinish.ridgeHalfWidth;
