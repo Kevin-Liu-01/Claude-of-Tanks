@@ -2520,7 +2520,8 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
-    'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
+    'src/vehicles/profiles/centurionFamily.selftest.mjs',
+    'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
     'src/vehicles/profiles/leclercRoofRig.selftest.mjs',
     'src/vehicles/profiles/leclercGunHousingRig.selftest.mjs',

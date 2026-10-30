@@ -1,4 +1,5 @@
-import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
+import { centurionFamilySteps, type CenturionMark } from './centurionFamily.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // British family procedural profiles — FROM-SCRATCH rebuild (2026-07-31).
 // Authored against the measured silhouette curves in
@@ -3049,8 +3050,22 @@ function* centurionBuildSteps(P: UKCenturionPort, mk: 3 | 5): TankProfileBuild {
   };
   centurionBuildMarkingsStage1();
 }
-export function centurionBuild(...args: Parameters<typeof centurionBuildSteps>): void {
-  drainTankBuild(centurionBuildSteps(...args));
+// Centurion Mk 3 (release 263): rebuilt from the historical references in profiles/centurionFamily.ts
+// (docs/references/tanks/centurion3.md); the Mk 5/2 keeps the bergman build above until its own rebuild lands. The
+// Strv 81 (profiles/sweden.ts) builds through the same family; each takes the UK running-gear and cloth tones.
+function* centurionUkSteps(P: TankBuilderPort, mark: CenturionMark): TankProfileBuild {
+  yield* centurionFamilySteps(P, mark);
+  const mk5 = mark !== 'mk3';
+  ukToneKit(P, {
+    cloth: mk5 ? 0x353c2b : 0x3e4532,
+    glassHex: mk5 ? 0x353c35 : undefined,
+    dark: mk5 ? 0x32352c : undefined,
+    padHex: 0x272b20, padEnv: 0.18, chainHex: 0x2f3427, chainEnv: 0.22,
+    bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
+  });
+}
+export function centurionBuild(P: TankBuilderPort, mark: CenturionMark): void {
+  drainTankBuild(centurionUkSteps(P, mark));
 }
 
 // ---------------------------------------------------------------------------
@@ -4877,7 +4892,7 @@ export const UK_PROFILES = {
       applyCompleteVehicleScale(P, 0.95, 'cot-vickers-mk1-compact-r1');
     },
   },
-  centurion3: { build: steppedBuilder((P: UKBuilderPort) => centurionBuildSteps(P, 3)) },
+  centurion3: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'mk3')) },
   centurion5_2: { build: steppedBuilder((P: UKBuilderPort) => centurionBuildSteps(P, 5)) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
