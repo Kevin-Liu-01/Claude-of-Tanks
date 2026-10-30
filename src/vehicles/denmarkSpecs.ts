@@ -116,46 +116,8 @@ leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -
   [145, -2.5], [146, -2.1], [149, -1.4], [155, -0.6], [156, -0.3], [163, 0.6], [176, 0.6], [177, 6.6], [178, 7.1],
   [180, 7.1]] as const);
 
-// The Leopard 2A7 DK: the 2A5 DKs rebuilt in 2019-22 (Forsvaret's fact sheet: 44 tanks for Jydske Dragonregiment in
-// Holstebro; about 68 t, up to 60 km/h, 1,500 hp, four crew; the 120 mm L55A1; new thermal sights, an auxiliary
-// generator, air conditioning for turret and hull, new CBRN protection, a driver's camera system, new stowage modules,
-// the mobile camouflage system and new protection against anti-tank rounds and IEDs; MLC 77). Rounds at the 2A7V's
-// fleet footing (the L55A1's programmable HE and its newer sabot).
-const leo2a7dk = danishVariant('leo2a7dk', 'leo2a7v', 'Leopard 2A7 DK', 'modern');
-Object.assign(leo2a7dk.dims, { hullLengthM: 7.72, overallLengthM: 11.00, widthM: 3.80, heightM: 3.05 });
-Object.assign(leo2a7dk, { weightTons: 68.0, topSpeedKmh: 60 });
-// the DM73 the Danish DM53A1s are being rebuilt to (esut.de, May 2022: the same penetrator, a stronger propellant), from
-// the L55A1 at the 2A7V's footing
-leo2a7dk.gun = {
-  ...leo2a7dk.gun,
-  shells: leo2a7dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, name: 'DM73 APFSDS' } : shell),
-};
-// its measured gun stops (tools/gun-depression-sweep.mjs --no-suit at 26 mm; the Barracuda cover is cut to them): the
-// full 9 degrees forward and to the sides, then the rear deck's louvres and the stern stowage over the rear quarters
-leo2a7dk.gunPitchByYawDeg = Object.freeze([[0, -9], [31, -9], [32, -8.5], [33, -8.4], [35, -8.4], [36, -8.6], [37, -9],
-  [46, -9], [48, -8.6], [52, -8.3], [62, -8.2], [68, -8.5], [71, -9], [100, -9], [110, -6.1], [121, -3.5], [129, -2],
-  [138, -0.7], [141, -0.5], [142, 0.4], [143, 2.1], [144, 3], [145, 3.5], [146, 3.9], [152, 4.5], [154, 4.5], [158, 4.3],
-  [159, 5.8], [160, 6.6], [161, 6.8], [169, 7.3], [174, 7.3], [180, 6.7]] as const);
-leo2a7dk.visual = {
-  ...leo2a7dk.visual,
-  // the Barracuda cover's dull grey-green mottle (the Latvia photograph; r2 critics: no terracotta; r3: the grey-green
-  // read pale sage; r4: the brown base showed between the cover's panels): small grey-green patches in the cover's own
-  // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
-  // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
-  // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
-  // r7 (critics: the r6 olive read bright lime): a duller olive; r8 (critics, both models: the cover's fabric read as
-  // patches pasted over painted tan blobs; the photograph's is one darker grey-green mottle, tan only on the gun's wrap):
-  // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
-  // r9 (r8 critics, both: grey and flat; the photograph's cover a deeper, saturated olive in dark blocks): a greener olive
-  // with near-black green blocks
-  // r10 (r9 critics: a flat saturated yellow-green; the photograph's a matte, warmer sage-olive with darker patches): the
-  // greens warmed toward khaki
-  // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
-  // low-contrast grey-green mottle): no near-black, the tones close together
-  // r12 (r11 Opus: green on green; the photograph's khaki-tan areas in the green): a muted tan for the light patch
-  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#5b5741', '#42473a'], marking: 'number',
-  number: '11', camoScale: 1.6,
-};
+// The Leopard 2A7 DK is held from release 265 (the coordinator, 2026-10-30): its Barracuda cover is rebuilt as a reusable
+// fit on wip/denmark-2a7dk-265 and lands with its own critics.
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
 // armyvehicles.dk/cv9035.htm: 45 ordered (2007, DALO, BAE Systems Hägglunds), 6.87 m long, 3.19 m wide, 2.80 m, 31,750 kg,
@@ -196,5 +158,5 @@ cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [21, -8], [24, -7.7], [26, -
   [36, -5.3], [39, -5.4], [40, -6], [41, -7.2], [42, -7.3], [43, -8], [142, -8], [143, -7.1], [144, -6.5], [145, -6.1],
   [151, -4.7], [152, -4.5], [159, -4.6], [168, -6.6], [170, -6.6], [171, -6.9], [172, -7.9], [174, -8], [180, -8]] as const);
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'cv9035dk'],
-  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, cv9035dk });
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, cv9035dk });

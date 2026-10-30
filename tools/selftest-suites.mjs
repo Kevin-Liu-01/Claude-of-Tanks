@@ -918,6 +918,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
+    'src/engine/chaseFraming.selftest.mjs',
+    // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
+    'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
@@ -940,6 +944,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
+    // 263: the armour paint by panel (a cluster's one zone; gear bare; the pose's parts live) and a battle build's draws
+    'src/game/armorPaintPanels.selftest.mjs',
+    // 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake
+    // while the overlay is off, staging or frames; every primed vehicle baked once it is on; its control bakes
+    'src/game/armorPanelsOnDemand.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
@@ -960,6 +969,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
     'src/ui/loadingSurfaceRegistry.selftest.mjs',
     'src/ui/components/reveal.selftest.mjs',
+    'src/ui/components/loadFailure.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -1136,7 +1146,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
-    'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    'src/vehicles/profiles/ztz85iii.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
@@ -1200,6 +1210,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/selectedVehicleSelection.selftest.mjs',
     'src/game/sniperFillRuntime.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
+    // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
+    'src/game/soloKernelObstacleQuery.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
@@ -1280,6 +1292,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',
+    // owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnostics' F8)
+    'src/game/keybindingCensus.selftest.mjs',
+    // owner 2026-10-28: every battle key cap is its action's live binding, keyboard and pad
+    'src/game/battleKeyCaps.selftest.mjs',
     'src/dev/mainDiagnosticsRuntime.selftest.mjs',
     'src/dev/debugBattleEntryRuntime.selftest.mjs',
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
@@ -1633,6 +1649,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureDamage.selftest.mjs',
     'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
+    // 2026-10-29 (ram-yield-prediction-264): a building the own ram brings down yields to the drawn hull as to the authority's
+    'src/mp/presentation/predictionStructureYield.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
@@ -1669,6 +1687,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-28 (bot-wedge-264): no route starts from a grid cell the hull cannot drive out of (the Badlands mesa flank)
+    'src/sim/botRouteStartCell.selftest.mjs',
     // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
     'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
@@ -1842,6 +1862,15 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
+    // 263 (the GPU-still critic: "black specks and dark fringes", "the net reads flat"): the suits' cut textures keep
+    // straight alpha flooded with their cloth's colour, coverage mips, and the gaps under thick garnish shaded
+    'src/vehicles/alphaCutTexture.selftest.mjs',
+    // 265 (the 264b preview, the owner: box-shaped shadows beside netted tanks): every alpha-cut caster casts through
+    // its map's level 0, never the coverage mips' near-solid texels; its control finds a suit draw without it
+    'src/vehicles/alphaCutShadow.selftest.mjs',
+    // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
+    // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
+    'src/vehicles/suitOcclusion.selftest.mjs',
     // 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that still
     // reads its recorded count, and searches one that does not within 0.5 m of where it stood
     'src/vehicles/markingSeatStability.selftest.mjs',
@@ -1871,6 +1900,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger3HullClosure.selftest.mjs',
     'src/vehicles/profiles/challenger3RearTurret.selftest.mjs',
     'src/vehicles/profiles/challenger3RunningGear.selftest.mjs',
+    // 264: the Challenger 3 TD's Hydrogas units on the oracle's casting, the arms in the track lane's shadow
+    'src/vehicles/profiles/challenger3TdSuspension.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
     'src/vehicles/combatVisibility.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
@@ -2418,12 +2449,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
+    // a portrait phone's systems row follow it; the scope stays centred
+    'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
     // real weights only, the 11 px floor, tabular figures only through .num, metric-matched fallbacks, zh-CN resets
     'src/ui/typeSystem.selftest.mjs',
+    // 264: each Chakra Petch fallback (a capitals rule and a rule for the rest) sets a caps title within 1 % of the face
+    'src/ui/typeFallbackMetrics.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
     'src/ui/mapLqip.selftest.mjs',

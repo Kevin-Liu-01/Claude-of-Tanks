@@ -178,7 +178,6 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   leo1a3dk: { displayName: 'Leopard 1A3 DK', searchAliases: ['Leopard 1A3', 'Danish Leopard 1', 'Leopard 1 DK', 'Kampvogn Leopard 1'] },
   leo1a5dk: { displayName: 'Leopard 1A5 DK', searchAliases: ['Leopard 1A5DK', 'Danish Leopard 1A5', 'Leopard 1 A5 DK'] },
   leo2a5dk: { displayName: 'Leopard 2A5 DK', searchAliases: ['Leopard 2A5DK', 'Danish Leopard 2A5', 'Leopard 2 A5 DK'] },
-  leo2a7dk: { displayName: 'Leopard 2A7 DK', searchAliases: ['Leopard 2A7DK', 'Danish Leopard 2A7', 'Leopard 2 A7 DK', 'Leopard 2A7 Denmark'] },
   m41a3: { displayName: 'M41A3 Walker Bulldog', shortName: 'M41A3', searchAliases: ['M41', 'Walker Bulldog', 'M41A3', 'Little Bulldog'] },
   m41_bw: { displayName: 'M41 (Bundeswehr)', shortName: 'M41 BW', searchAliases: ['M41 Germany', 'Bundeswehr M41', 'M41A1 BW', 'Walker Bulldog Germany'] },
   m41_jgsdf: { displayName: 'M41 (JGSDF)', shortName: 'M41 JGSDF', searchAliases: ['M41 Japan', 'JGSDF M41', 'Walker Bulldog Japan'] },

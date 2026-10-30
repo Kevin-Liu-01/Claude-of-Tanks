@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
   FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
@@ -48,7 +49,7 @@ import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorl
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, removeBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
-  LIVE_TURRET_DENTS,
+  LIVE_TURRET_DENTS, ARMOR_PAINT_ZONE_ATTRIBUTE, armorPaintMode,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
@@ -1176,6 +1177,21 @@ function separateHullRubber(root: THREE.Object3D, disposables: Array<{ dispose()
       clones.set(material, clone);
     }
     object.material = clone;
+  });
+}
+
+/**
+ * (263) Every painted draw of a battle build carries the armour paint's panel attribute from its birth, zeros (the
+ * per-point score), so the draws a far LOD merges keep one vertex layout whenever the overlay bakes the panels into it
+ * (game/armorPaintPanels.ts), and byte-identical sharing compares builds that all carry it.
+ */
+function seedArmorPaintPanels(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || isVehicleBatchedMesh(object)) return;
+    const material = object.material, geometry = object.geometry, position = geometry?.getAttribute('position');
+    if (Array.isArray(material) || !material || !position || geometry.getAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE)) return;
+    if (armorPaintMode(material) < 1) return;
+    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(position.count), 1, false));
   });
 }
 
@@ -12053,7 +12069,20 @@ export function* createTankRuntimeSteps(
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
+    // (264) a suit's shade on the armour under it, on every build that wears one (suitOcclusion.ts): after the shadow
+    // batch took its sources and every merge, before byte-identical sharing compares the draws that carry it
+    // (264 integrator) the bake's wall-clock time rides apart from its structural stats (suitOcclusionMs, a measured time
+    // the identity receipts leave out: battleEraReceipt ROOT_EXCLUSIONS, deferred-assembly-receipt TIMING)
+    if (!geometryOnly) {
+      const baked = yield* bakeSuitOcclusionSteps(root, [turretG, gunG, recoilG]);
+      if (baked) {
+        const { bakeMs, ...suitOcclusion } = baked;
+        root.userData.suitOcclusion = suitOcclusion;
+        root.userData.suitOcclusionMs = bakeMs;
+      } else root.userData.suitOcclusion = null;
+    }
     const tailShadowBatchFinishedAt = performance.now() - tailWait.ms;
+    if (batchStatic && !geometryOnly) seedArmorPaintPanels(root);
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
     // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
     // looks, so the sniper sight (a narrower field of view, cameraRig fov = 60 / zoom) draws a magnified enemy's near

@@ -75,7 +75,7 @@ assert.equal(chips().length, 0, 'a mode without zones drops the chips');
 const plate = document.createElement('div');
 const plated = createTeamPips(document.createElement('div'), plate);
 const platedRow = created.filter((node) => node.classes.has('cot-pips-row')).at(-1);
-assert.equal(platedRow.parentNode, plate, 'the pips\' row goes into the score plate');
+assert.ok(platedRow.parentNode === plate, 'the pips\' row goes into the score plate');
 plated.updateTeams(roster, 'alpha', 'p');
 assert.equal(platedRow.hidden, false, 'two small teams show their pips in the plate');
 assert.equal(plated.root.classes.has('show'), false, 'without zones the strip under the plate stays hidden');

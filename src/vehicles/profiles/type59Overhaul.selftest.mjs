@@ -91,7 +91,7 @@ for (const id of ['type59', 't55a']) {
       turret.rotation.y = 0;
       tank.root.updateMatrixWorld(true);
     } else {
-      assert.equal(loaderMG, undefined, 't55a: the 1963 T-55A (the oracle) carries no roof gun');
+      assert.ok(loaderMG === undefined, 't55a: the 1963 T-55A (the oracle) carries no roof gun');
       assert.deepEqual([...turretReceipt.roofMachineGuns], []);
     }
 

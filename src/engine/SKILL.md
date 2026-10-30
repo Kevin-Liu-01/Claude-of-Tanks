@@ -52,7 +52,13 @@ saturated HDR is light, never a fault; `guard.timing` measures its own cost; `po
 chain's demand-loaded half (SMAA and the first-frame warm). Inactive retained phases may
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;
-`cameraRig.ts` owns player/cinematic poses; `watchCamera.ts` owns Watch mode's two cameras (the spectator drone, eased and terrain-following, with its orbit lock, and the ride-along on the player's chase and sight poses); settled showroom framing is pumped
+`cameraRig.ts` owns player/cinematic poses; `chaseFraming.ts` (battle-camera-264) solves the
+chase's framing from the HUD's bands (`ui/battleSight.ts`): the pivot over the roof, the default
+step's distance and a lens shift that raises the picture and the sight together, so the hull and
+tracks clear the bottom band at every layout, with the player's camera settings (height, distance,
+shoulder, framing, field of view) over it; the rig writes the shift into `camera.view` (never
+`setViewOffset`, which also resets the aspect) and takes it off in sniper, isometric, aerial,
+death, spectate, external poses and whenever another owner drives the camera (`suspendFraming`); `watchCamera.ts` owns Watch mode's two cameras (the spectator drone, eased and terrain-following, with its orbit lock, and the ride-along on the player's chase and sight poses); settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.ts` and `deviceDiag.ts`
 own tiering and rescue behavior. `adaptiveQualityPolicy.ts` owns the typed,
 side-effect-free decision ladder for measured shading trim, resolution relief,

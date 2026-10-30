@@ -128,9 +128,9 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
 /** Release 265: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white, the 2A5 DK's
- * three-tone of the 2010s, the 2A7 DK's olive under its Barracuda cover, the M41 DK-1's late-1980s three-tone and the CV9035
+ * three-tone of the 2010s, the M41 DK-1's late-1980s three-tone and the CV9035
  * DK's lighter three-tone. */
-const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1', 'paint_cv9035dk',
+const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_263[number];
@@ -829,7 +829,6 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // Bundeswehr and JGSDF M41s' plain coats are near a named preset, so they paint their spec's coat as Factory)
   leo1a5dk1: 'paint_leo1a5dk1',
   leo2a5dk: 'paint_leo2a5dk',
-  leo2a7dk: 'paint_leo2a7dk',
   m41dk1: 'paint_m41dk1',
   cv9035dk: 'paint_cv9035dk',
   // the Bundeswehr and JGSDF M41s in their own period coats (265 r2, the blind critics: the national presets read as a

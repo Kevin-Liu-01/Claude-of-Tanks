@@ -3036,12 +3036,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'm41dk1') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
-  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage); the 2A7 DK's Barracuda cover leaves
-  // nothing outside it (r3 critics: the fleet's wooden crate read as a stray part) and the CV9035 DK's roof stays as the
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk'
-    || spec.id === 'cv9035dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3119,7 +3117,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // fittings already define its silhouette. Keep only one paired fuel-can
   // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
   // tools and duplicate roof equipment would clutter or snag on the cage.
-  if (spec.id === 'ua_m1a1') {
+  // 264: the Leopard 2A6 UA's turret screens, roof cage and hull mesh boxes (profiles/leopardA6Ua.ts) likewise.
+  if (spec.id === 'ua_m1a1' || spec.id === 'leo2a6_ua') {
     return [{
       kit: 'cargo', p: 1,
       v: cargoVariant('twin-can-cradle'),
@@ -3220,6 +3219,17 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
+  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
+  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
+  if (spec.id === 'ztz85_iii') return manifest
+    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+      && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
+      && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
+    .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+      ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+      : row));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

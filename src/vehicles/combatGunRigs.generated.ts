@@ -58,7 +58,10 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "leclerc_s2": {"turretPivot":[0,1.6,-0.1],"gunPivot":[0,0.2684,0.5],"lengthM":5.89,"radiusM":0.138},
   "leclerc_sxxi": {"turretPivot":[0,1.6,-0.1],"gunPivot":[0,0.2684,0.5],"lengthM":5.89,"radiusM":0.138},
   "leclerc_xlr": {"turretPivot":[-0.00215336,1.40294995,0.72122934],"gunPivot":[0.021,0.4762,1.2777],"lengthM":4.2401,"radiusM":0.14},
+  "leo1a3dk": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.32,1.22],"lengthM":4.35},
   "leo1a5": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.4,1.15],"lengthM":4.35},
+  "leo1a5dk": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.32,1.22],"lengthM":4.35},
+  "leo1a5dk1": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.32,1.22],"lengthM":4.35},
   "leo2_improved": {"turretPivot":[0,1.72,0.35],"gunPivot":[0,0.24,1.2],"lengthM":5.53},
   "leo2_revolution": {"turretPivot":[0,1.537,0.4774],"gunPivot":[0.012,0.319,1.1226],"lengthM":4.51},
   "leo2a2": {"turretPivot":[0,1.62,0.3],"gunPivot":[0,0.36,1.13],"lengthM":4.95,"radiusM":0.1025},
@@ -128,6 +131,6 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "ua_m2a3_bradley": {"turretPivot":[0,1.895,-0.45],"gunPivot":[-0.075,0.375,0.6],"lengthM":2.23},
   "ua_t80bv": {"turretPivot":[0,1.44,-0.05],"gunPivot":[0,0.25,1.02],"lengthM":5.3},
   "vickers_mk1": {"turretPivot":[0,1.463,0.4399],"gunPivot":[0,0.4612,0.57],"lengthM":4.4555,"radiusM":0.1254},
-  "ztz85_iii": {"turretPivot":[0,1.44,-0.1],"gunPivot":[0,0.26,1.1],"lengthM":4.03,"radiusM":0.098},
+  "ztz85_iii": {"turretPivot":[0,1.45,0.05],"gunPivot":[0,0.32,0.96],"lengthM":6.195,"radiusM":0.0974},
   "ztz99_longwei": {"turretPivot":[0,1.57,0.64],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
 });

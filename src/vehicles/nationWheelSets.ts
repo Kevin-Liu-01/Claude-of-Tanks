@@ -118,7 +118,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),
   kf51_evo: Object.freeze({ donor: 'kf51_evo', self: ['kf51_evo', 'kf51_u', 'kf51_panther'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
     note: 'Fleet plain dish under the Panther forged face stack (leopard.ts); the KF51 family is the only German next-generation MBT hull.' }),
-  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
+  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6', 'leo2a6_ua'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
   kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),

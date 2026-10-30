@@ -187,12 +187,36 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - orphan-reds-264's painted collar +147 B; the integration's fixes (the KV-2 bead, the ZTZ-20 barrel, the T-54
   //   cradle, the M46 collar, the balance levers) under 100 B together.
   // Over 262's release build: game +12,463 B (entry -65 B), cn +12,525 B, Gallery +12,615 B, home +40 B, docs +3 B, 404 0.
-  game: { brotliBytes: 1119357, requests: 128, entryBrotliBytes: 247336 },
-  cn: { brotliBytes: 1162481, requests: 129, entryBrotliBytes: 247336 },
-  gallery: { brotliBytes: 694508, requests: 75 },
-  home: { brotliBytes: 28300, requests: 8 },
-  docs: { brotliBytes: 36576, requests: 12 },
-  notFound: { brotliBytes: 18067, requests: 7 },
+  // 2026-10-29 (integrator 264, the combined 263+264 release, re-pinned at the release builds of e93c4a67dc and 89b62a1454,
+  // the larger of the two (the entry carries the commit stamp: 123 B between them); requests
+  // unchanged on every page: leopardA6UaLayout rides in the fleetLayouts chunk, vite.config.ts). By lane, game brotli over
+  // 263's release build (each chunk's delta, 263's and this release's builds):
+  // - ghillie-render-264 c053e825af (the suit's shade baked on the armour under it, the Strv 121's cover boughs):
+  //   decorations +4,326 B, tankFactoryCore +1,041 B (the suit-occlusion bake), materials +111 B;
+  // - battle-camera-264 8736e9555e (chase framing, the sight datum, Settings > Gameplay > Camera): the chunk holding
+  //   vehicleActions +1,815 B, the entry and the en-US catalog about +1.2 KB with premiere-battle's b8e8050af7 phone
+  //   markers (entry +1,018 B over A in all);
+  // - premiere-battle 87827bc352 (boot-loading, diagnostics on F9, one action one key, live key caps), load-failure-264
+  //   1328554575 (the loadFailure kit, gallery-studio 87a2c42d93), nav-reds-264 and fallback-metrics-264: the entry
+  //   +1,154 B, i18n +221 B and the en-US catalog +428 B, main.css +159 B, components.css +62 B; Gallery's gallery.js
+  //   +205 B and gallery.css +117 B; on home, docs and 404 i18n.js +220 B and each page's stylesheet +46-72 B;
+  // - leo2a6-ua-264 4a05165a7a/128e35403e and ztz85-iii a4f7986470: fleetFactory +1,069 B, fleetLayouts +570 B;
+  // - armor-zone-panels-263 39cd535a02: materials -518 B, tankFactoryCore +173 B; balance-263, orphan-reds-264,
+  //   ground-stripes-264 and the integration's fixes under 300 B together (rosterState, turretSeatPlane, markings, specs).
+  // Over 263's release build (at e93c4a67dc): game +12,278 B (entry +2,172 B), cn +12,981 B, Gallery +7,516 B, home +317 B,
+  // docs +335 B, 404 +288 B.
+  // 2026-10-29 (integrator 264c: B 8f37dee995 plus the owner's preview fixes; requests unchanged): game, cn and Gallery
+  // re-pinned at 264c's build of 490b3e0c60 (Node 24.22.1), game and cn at the release (preview) build of afcffcd358, the
+  // larger (the entry's commit stamp: +170 B brotli). Over B's local build: game and cn +565 B (entry +100 B), Gallery
+  // +281 B, by lane: battle-camera-264-lens 067f28f029 (engine/cameraLens.ts in the vehicleActions boot group, the aerial
+  // and contact rays' lens shift, the cascade refit on a lens change, ?chaseFraming=0), shadow-bake-fixes-264 5f8189f900
+  // (the armour panels' on-demand bake) and solo-local-feel-264 ab5efb500d (the page sim by default, SOLO_WORKER_MODES gone).
+  game: { brotliBytes: 1132486, requests: 128, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1176313, requests: 129, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 702305, requests: 75 },
+  home: { brotliBytes: 28617, requests: 8 },
+  docs: { brotliBytes: 36911, requests: 12 },
+  notFound: { brotliBytes: 18355, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

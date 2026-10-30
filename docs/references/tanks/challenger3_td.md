@@ -7,7 +7,7 @@
   the second ruling the same day, verbatim: "challenger 3 td should get a tonn of ghillie as well".
 - IDs and display names: `challenger3_td`, "Challenger 3 TD" (aliases: Challenger 3 Technology Demonstrator,
   Challenger 3 ATD, CR3 TD, RBSL demonstrator).
-- Implementation status: BUILT (r0-r11); both ids registered, anatomy, assets and drawings generated. Tier VIII
+- Implementation status: BUILT (r0-r12); both ids registered, anatomy, assets and drawings generated. Tier VIII
   (owner, 2026-10-28).
 - Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9 and r11; procedural
   fidelity 96.6 PASS under Main's track-shoe exemption (r11; 96.1 with tracks 89.2 unexempted); every other lane
@@ -15,8 +15,9 @@
 - Publication status: lane branch only; integration through Main (release 262).
 - Worktree / branch / baseline commit: `.claude/worktrees/dazzling-engelbart-21c8ce`, `item/cr3td-262`, from
   `origin/main` `7d045a7588`.
-- Current next action: Main's ruling on the gate after r11 (the arms stay compared, since the oracle draws trailing-arm
-  units; the muzzle box kept out holds the turret plan view at 89.2), then the integrator's bundle re-pin.
+- Current next action: r12 (264 head `item/cr3td-arms-264`): the oracle's Hydrogas units and the arms in the track
+  lane's shadow (hull 94.3); release 263 ships `e3fb68df94` with the gate red at 89.2/92 as recorded (Main's ruling
+  (a)); the muzzle box kept out still holds the turret plan view at 89.2.
 - Blocking choices / known failures: none blocking; the dimension conflicts below are recorded, not resolved.
 
 ## Scope and preservation
@@ -224,6 +225,20 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   compared; the measured fix is geometry (this tank's units from 0.61 m at |x| 1.02-1.21 along each arm, and the arm's
   boss no lower), a new geometry hash and asset round. The gate is unchanged at 89.2/92: the turret plan view 89.2 and
   the plan whole view 90.7 are the muzzle box kept out (with it, 93.3 and 95.7), the hull 91.2 the arms.
+- r12 (2026-10-28, a 264 head after Main's ruling (a): 263 ships `e3fb68df94` with the gate red as recorded). The
+  oracle's unit is one casting at all six stations (`.qa-dev/cr3td/unit-profile.mjs`: identical columns about each
+  wheel): a web from 0.764-0.900 at 0.273 behind the wheel centre slanting to the 0.555 sill 0.273 ahead, and the
+  pivot block from 0.273 to 0.582 ahead at 0.555-0.927 with chamfered ends, |x| 0.924-1.105. Built as two plane-bounded
+  solids per station a side (`UNIT_WEB`, `UNIT_BLOCK`; |x| from the tub wall 0.915 to 1.090, inside the track lane's
+  1.094 edge), in place of the 0.15 x 0.35 x 0.34 boxes over the stations. The fleet arm takes measured dimensions
+  (`suspensionDimensions`, installed metres): arm and axle boss at |x| 1.206-1.257, behind the track lane in the front
+  view and 27.9 mm from the wheels' inner faces (the fleet wheel audit's spatial clearance), the pivot boss from the
+  tub wall through the unit's block at the pattern's own lift and trail (0.858 m, 0.462 m ahead), so nothing moving
+  inboard of the track lane reaches under the sill (the lowest is the pivot boss, 0.783 m; before, the axle bosses at
+  0.379 oracle). `challenger3TdSuspension.selftest.mjs` holds it on both ids at both qualities, with a moved-arm
+  negative. Node silhouette (`silhouette.mjs`): the units' columns at |x| 0.91-1.06 read the oracle's 0.552 floor
+  (0.379 before); front IoU 0.964 to 0.967. Geometry gate 89.2/92: hull 94.3 (front hull 94.26, was 91.19; front whole
+  95.37, was 92.20), stations 96.2, whole 90.7, turret 89.2 (the muzzle box kept out, unchanged).
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),

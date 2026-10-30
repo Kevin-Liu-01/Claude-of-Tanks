@@ -109,7 +109,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 265: the Danish Leopards
-  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
   // 265: the M41s (the Danish rebuild at II over the originals at I)
   m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
   // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
@@ -170,10 +170,11 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
 // 2026-10-29 re-pin (265, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
-// Leopard line on through the 1A5 DK (I, the DK-1 its twin), the 2A5 DK (IX) and the 2A7 DK (X); the Christian II moves
-// out of the Sweden tree into Denmark's special lane, and Sweden's nations are Sweden's alone again.
+// Leopard line on through the 1A5 DK (I, the DK-1 its twin) to the 2A5 DK (IX), the 2A7 DK held (2026-10-30, Main: its
+// Barracuda lands later); the Christian II moves out of the Sweden tree into Denmark's special lane, and Sweden's nations
+// are Sweden's alone again.
 // 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
 // Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
 // off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
-assert.equal(digest, '4a26df895af11cbc', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, 'd21040c684f6cdb0', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

@@ -694,39 +694,6 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
     },
   },
-  // Release 265, the Leopard 2A7 DK: the Danish Army's Barracuda mobile camouflage system (the Forsvaret fact sheet's
-  // "mobilt sløringssystem"; the Latvian live-fire photograph shows the tank under it from the glacis to the bustle,
-  // the gun's sleeve wrapped): a cut multispectral cover on the 2A7V's panels, without the boughs of the fleet's leafy
-  // suits, in the Danish greens.
-  leo2a7dk: {
-    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 1.0, leafScale: 0.94, boughShare: 0,
-    // r3 (critics: the Latvia photograph's cover is olive and green, no terracotta or sand); r4 (critics: the grey-green
-    // read pale sage, the boughs as a leafy suit's leftovers): no boughs; r5 (the r4 critics: its cards a bright yellow-green,
-    // the photograph's cover a dull grey-green): grey-green cards on a grey-green net; r6 (critics: its cards read as a
-    // leafy suit's leaves, tufts past the outline; the cover one mid-olive fabric): fewer, flatter cards close in tone
-    // r7 (critics: bright lime cards over the paint read as a patchwork): the cards and the net in the paint's own dull olive;
-    // r8 (critics: still patches over paint, spikes past the hem): darker grey-greens matching the paint, fewer cards
-    // r9 (r8 critics: the skirt drapes read as stickers with paint between them; the cover grey): one drape the length
-    // of each skirt, the greens deeper and more saturated; r12 (r11 critics, both: printed on hard edges, no bulk): the
-    // turret roof's and engine deck's garnish standing higher
-    light: 0x51573f, dark: 0x3a3f2e, netColor: 'rgba(68,73,56,0.92)', netTextureSeed: 2765,
-    fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
-    // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
-    // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
-    clothClearsGunStops: true, cardsClearGunStops: true,
-    turret: {
-      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.10, seed: 11 })],
-      side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.80, 19)],
-      face: [face({ z: -3.36, x0: -1.30, x1: 1.30, y0: 0.45, y1: 0.86, nx: 26, ny: 6, seed: 23 })],
-    },
-    hull: {
-      top: [
-        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.08, seed: 31 }),
-        laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.04, garnishDensity: 0.8, seed: 37 }),
-      ],
-      side: flanks(-3.50, 3.40, 1.62, 0.52, 1.95, 41, {}, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
-    },
-  },
   // Leopard 2A5: the wedge roof netted round the PERI, the EMES head, the hatches and the roof gun, drapes down the walls
   // ahead of and behind the rear smoke banks, a rear drape; the engine deck netted short of the rear louvres, the front
   // deck, four drapes a side.
@@ -746,6 +713,36 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.70, x1: 1.70, z0: 0.66, z1: 3.60, nx: 34, nz: 30, y: 1.70, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.40, 3.50, 1.68, 0.52, 1.76, 41),
+    },
+  },
+  // 264: the Leopard 2A6 UA (profiles/leopardA6Ua.ts; the owner, 2026-10-28: "lets add a ton of extra era and cages and
+  // ghillie on the actual tank parts themselves"). Turret: the roof and the bustle netted on the armour under the cage
+  // (they pass under its raised roof), round the PERI, the EMES head, the hatches, the loader's gun and the whips; the
+  // net the 21st Mechanized Brigade's 2A6s throw over their cages (2025 photos) laid on the cage roof's mesh sheet (no
+  // lid openings up there: the lids are 0.8 m under it); drapes down the bustle walls behind the smoke banks and over
+  // the bustle's rear. The wedges and their Kontakt-1 stay bare. Hull: the front deck netted round the driver's hatch
+  // and periscopes; four drapes a side down the rear hull walls above the skirt cassettes, cut round the trident and
+  // the tactical number; the engine deck under the bustle's and the gun's sweep carries none.
+  leo2a6_ua: {
+    id: 'leo2a6_ua', seed: 2606, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.20, hemFloorM: 0.97,
+    turret: {
+      top: [
+        laid({ x0: -1.52, x1: 1.42, z0: -3.78, z1: 0.10, nx: 37, nz: 49, y: 0.28,
+          holes: [rect(-0.95, -0.81, -2.99, -2.85), rect(0.845, 0.985, -2.99, -2.85)], garnishRiseM: 0.14, seed: 11 }),
+        { x0: -1.62, x1: 1.62, z0: -4.00, z1: 0.15, nx: 33, nz: 42, yAt: () => 1.07, yFromArmour: true, clipToArmour: true,
+          // open round the whips and round the roof dock on its rail (leopardA6UaLayout.ts dock seat, turret-local)
+          riseLimitM: 0.06, rimScale: 0.5,
+          holes: [rect(-0.95, -0.81, -3.09, -2.94), rect(0.845, 0.985, -3.09, -2.94), rect(-1.30, -0.86, -2.45, -2.05)],
+          garnishRiseM: 0.08, garnishDensity: 0.7, seed: 13 },
+      ],
+      side: flanks(-3.55, -2.95, 0.22, 0.38, 1.00, 17),
+      face: [face({ z: -3.80, x0: -0.36, x1: 0.60, y0: -0.26, y1: 0.18, nx: 12, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [laid({ x0: -1.62, x1: 1.62, z0: 2.05, z1: 2.85, nx: 33, nz: 9, y: 1.58, garnishRiseM: 0.05, garnishDensity: 0.8, seed: 37 })],
+      // the marking seats' stretch of the left wall (vehicleMarkings.ts: the 2A6's hull anchor) stays bare
+      side: skirts(-3.60, 0.20, 1.80, 0.42, 1.72, 41, (side) => (side < 0 ? [cut(-3.05, -1.15, 1.25, 1.90)] : [])),
     },
   },
   // KF51-U: the roof netted round the commander's and gunner's sights, the hatches and the roof station (the builder),

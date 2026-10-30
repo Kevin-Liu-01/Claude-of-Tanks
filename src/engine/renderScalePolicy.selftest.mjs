@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   baseDynamicScale,
   cappedPixelRatio,
+  carriedDynamicScale,
   dynamicScaleFloor,
   dynamicScaleHold,
   internalPixelRatio,
@@ -125,5 +126,27 @@ assert.equal(dynamicScaleHold(2, { ...autoHigh, dynHold: 0.5 }), 0.667, 'a hold 
 assert.equal(dynamicScaleHold(2, { ...autoHigh, dynHold: 1.4 }), 1);
 assert.equal(reconstructionMode(2), 'native-rcas');
 assert.equal(reconstructionMode(Number.NaN), 'linear');
+
+// (local-fps-265) the governor's tier change carries its raster: a cut never raises it, a restore keeps it
+{
+  const autoMedium = { maxPixelRatio: 1.0, dynMin: 1.0, nativeDynMin: 0.67 };
+  const explicitMedium = { maxPixelRatio: 1.0, dynMin: 1.0 };
+  // DPR 1: Auto High at its 0.67 floor cut to Medium lands on the same 0.67 raster (it used to restart at 1.0)
+  const atFloor = internalPixelRatio(1, autoHigh, 0.67);
+  assert.equal(carriedDynamicScale(1, autoMedium, atFloor), 0.67);
+  assert.ok(internalPixelRatio(1, autoMedium, carriedDynamicScale(1, autoMedium, atFloor)) <= atFloor + 1e-12, 'never more pixels');
+  // a preset without a native floor keeps one sample per CSS pixel (its own fence)
+  assert.equal(carriedDynamicScale(1, explicitMedium, atFloor), 1);
+  // DPR 2: Auto High held at 1.25 cut to Medium (cap 1.0) starts at its full 1.0 raster, still fewer pixels
+  assert.equal(carriedDynamicScale(2, autoMedium, internalPixelRatio(2, autoHigh, 0.8334)), 1);
+  // a failed trial's restore: High back at the raster Medium had (DPR 1: 0.67; DPR 2: Medium's 1.0, High's floor)
+  assert.equal(carriedDynamicScale(1, autoHigh, 0.67), 0.67);
+  assert.equal(carriedDynamicScale(2, autoHigh, 1), 0.667, 'DPR 2: Medium\'s 1.0 raster is Auto High at its floor');
+  // never above the next preset's base, never below its floor; no carried raster is the base
+  assert.equal(carriedDynamicScale(1, autoHigh, 3), baseDynamicScale(1, autoHigh));
+  assert.equal(carriedDynamicScale(1, autoHigh, 0.1), dynamicScaleFloor(1, autoHigh));
+  assert.equal(carriedDynamicScale(1, autoHigh, Number.NaN), baseDynamicScale(1, autoHigh));
+  assert.equal(carriedDynamicScale(1, autoHigh, 0), baseDynamicScale(1, autoHigh));
+}
 
 console.log('renderScalePolicy self-test passed');

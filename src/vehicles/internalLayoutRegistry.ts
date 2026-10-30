@@ -526,11 +526,11 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'],
+  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'],
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
   merkava: [
@@ -542,7 +542,9 @@ const IDS_BY_LAYOUT = Object.freeze({
   nationalSmTurbine: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model===0).map(c=>c.id),
   conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1','t64bv_donbas'],
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
-  sovietAz: ['type96b', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
+  // release 263: the rebuilt ZTZ-85-III carries the 85-IIM's T-72-derived carousel autoloader and a crew of three
+  // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader
+  sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
   sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t'],
   bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],

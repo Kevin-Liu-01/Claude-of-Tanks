@@ -27,6 +27,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "cv9040CSourceX": () => import('./combatAnatomyGroups/cv9040CSourceX.generated.ts'),
   "cv90MkivSourceX": () => import('./combatAnatomyGroups/cv90MkivSourceX.generated.ts'),
   "dardo": () => import('./combatAnatomyGroups/dardo.generated.ts'),
+  "denmark": () => import('./combatAnatomyGroups/denmark.generated.ts'),
   "franceCore": () => import('./combatAnatomyGroups/franceCore.generated.ts'),
   "fv510MilanX": () => import('./combatAnatomyGroups/fv510MilanX.generated.ts'),
   "germany": () => import('./combatAnatomyGroups/germany.generated.ts'),

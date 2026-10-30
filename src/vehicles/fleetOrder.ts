@@ -73,7 +73,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 265: the Danish Army line
   denmark: Object.freeze([
-    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'leo2a7dk', 'christian2',
+    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'christian2',
   ]),
   // 265: the M41 Walker Bulldog family
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1']),

@@ -11,7 +11,7 @@ assert.deepEqual({ ...CLASSIC_BOT_DOCTRINE }, {
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
   missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, settleShots: true, jockeyS: 0,
-  rush: false, rollingTurns: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
+  rush: false, rollingTurns: false, rollingEscapes: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
   routeRefreshS: null, routeMoveM: null, claimRangeM: null, packFire: 0,
 }, 'CLASSIC is the controller as it stood on integ/228: every multiplier 1, every gate as it was, each builder\'s own route push');
 assert.ok(Object.isFrozen(CLASSIC_BOT_DOCTRINE));
