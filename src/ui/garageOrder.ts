@@ -324,13 +324,6 @@ export function horizontalRailEndPad(maxScroll: number, stops: readonly number[]
   return Number.isFinite(next) ? Math.max(0, Math.round((next - maxScroll) * 10) / 10) : 0;
 }
 
-/** The end padding a rail keeps: `next` differing from the `current` pad by under a pixel is the rail's own rounding (its
- * scrollWidth is whole pixels, the pad is not), and written back it flips the pad on every layout, each flip a resize
- * that measures the rail again (15 to 27 a second, all through a battle's entry, in the release-259 Garage). */
-export function settledRailEndPad(current: number, next: number): number {
-  return Math.abs(next - current) < 1 ? current : next;
-}
-
 /** Convert either a mouse wheel or a two-axis trackpad gesture into one
  * horizontal rail delta. DOM_DELTA_LINE/PAGE values are normalized to pixels. */
 export function horizontalRailWheelDelta(

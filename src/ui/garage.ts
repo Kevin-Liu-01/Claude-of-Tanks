@@ -60,7 +60,7 @@ import { datumAttr } from './dom.ts';
 import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta, settledRailEndPad,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
@@ -1710,14 +1710,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const railEndKeys = new WeakMap<HTMLElement, string>();
   // The cards take the width that fits a whole number of them in the strip (within a fifth of their own), so a strip at
   // rest never shows part of a card at either edge (the gauntlet 10-25: a cut card's clipped name under the arrows).
+  // The strip measures its room with both of its own writes off, the fit and the end pad, so nothing it writes feeds
+  // what it reads (265: a strip that fit cards to a width its own pad had moved re-fit and re-padded every frame).
   const fitCards = (): void => {
     cardsEl.removeAttribute('data-fit');
+    const end = cardsEl.style.getPropertyValue('--rail-end');
+    cardsEl.style.removeProperty('--rail-end');
     const card = [...cardsEl.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetWidth > 0);
-    if (!card) return;
     const cs = getComputedStyle(cardsEl);
     const gap = parseFloat(cs.columnGap) || 0;
     const room = cardsEl.clientWidth - 2 * (parseFloat(cs.paddingLeft) || 0); // the right pad's base is the left's
-    const base = card.offsetWidth;
+    const base = card?.offsetWidth ?? 0;
+    if (end) cardsEl.style.setProperty('--rail-end', end);
+    if (!base) return;
     // the whole count either side of the natural fit, whichever keeps the cards nearest their own width
     const exact = (room + gap) / (base + gap);
     let width = 0;
@@ -1735,16 +1740,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const extra = parseFloat(rail.style.getPropertyValue('--rail-end')) || 0;
     if (railEndKeys.get(rail) === `${rail.clientWidth}|${rail.scrollWidth - extra}`) return;
     if (rail === cardsEl) fitCards();
-    const natural = rail.scrollWidth - extra;
-    railEndKeys.set(rail, `${rail.clientWidth}|${natural}`);
-    const line = rail.getBoundingClientRect().left + rail.clientLeft - rail.scrollLeft +
-      (parseFloat(getComputedStyle(rail).scrollPaddingLeft) || 0);
+    railEndKeys.set(rail, `${rail.clientWidth}|${rail.scrollWidth - extra}`);
+    const cs = getComputedStyle(rail);
+    const origin = rail.getBoundingClientRect().left + rail.clientLeft - rail.scrollLeft;
+    const line = origin + (parseFloat(cs.scrollPaddingLeft) || 0);
     const stops: number[] = [];
+    let reach = 0;
     for (const item of rail.children) {
       const box = item.getBoundingClientRect();
-      if (box.width > 0) stops.push(box.left - line);
+      if (box.width > 0) { stops.push(box.left - line); reach = Math.max(reach, box.right - origin); }
     }
-    const pad = settledRailEndPad(extra, horizontalRailEndPad(natural - rail.clientWidth, stops));
+    // the reach without the pad is the items' far edge and the end padding's base, both exact: read as the scrollWidth
+    // less the pad (whole pixels less a tenth), it moved with the pad it set and flipped it on every layout (259)
+    reach += (parseFloat(cs.paddingRight) || 0) - extra;
+    const pad = horizontalRailEndPad(reach - rail.clientWidth, stops);
     if (pad !== extra) rail.style.setProperty('--rail-end', pad ? `${pad}px` : '');
   };
   // A rail moved by script (a wheel's vertical pan, a flick's coast) runs free of its snap stops, which would pull each
