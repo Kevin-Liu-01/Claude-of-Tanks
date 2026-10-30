@@ -31,7 +31,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "centurion13": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.74},
   "centurion3": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.95,"radiusM":0.0743},
   "centurion5_1_aus": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.97},
-  "centurion5_2": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.74,"radiusM":0.0804},
+  "centurion5_2": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.74,"radiusM":0.0903},
   "centurion5_avre": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":2.15,"radiusM":0.145},
   "challenger1_mk1": {"turretPivot":[-0.000985982,1.536117882,0.67784395],"gunPivot":[-0.0153,0.2983,1.1896],"lengthM":4.8953},
   "challenger1_mk2": {"turretPivot":[-0.000985982,1.536117882,0.67784395],"gunPivot":[-0.0153,0.2983,1.1896],"lengthM":4.8953},
