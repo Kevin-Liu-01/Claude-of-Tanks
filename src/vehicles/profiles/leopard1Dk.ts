@@ -252,12 +252,17 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const buildLeo1DkTurretRear = (): void => {
     if (mark === 'a5dk1') {
       // The DK-1's air conditioning and Honda generator housing over the rear bin (Pansermuseet: "a generator and an air
-      // conditioning system mounted on the rear of the turret"), standing over the roof with its louvred rear face.
-      const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.20;
+      // conditioning system mounted on the rear of the turret"), standing well over the roof (the RAMTA front photograph)
+      // with a plain rear plate (the Air Show rear photograph) and its louvres along the sides; nothing stowed on it.
+      const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.42;
       P.addEquipment('turret', box(1.80, top - W.binLowY, z0 - z1), 0, (top + W.binLowY) / 2, (z0 + z1) / 2);
-      P.addEquipment('turret', box(1.82, 0.03, z0 - z1 + 0.02), 0, top + 0.015, (z0 + z1) / 2);
-      for (let k = 0; k < 7; k++) P.addEquipment('turretDark', box(1.30, 0.022, 0.02), 0, W.binLowY + 0.16 + k * 0.08, z1 - 0.01);
+      P.addEquipment('turret', box(1.84, 0.035, z0 - z1 + 0.03), 0, top + 0.0175, (z0 + z1) / 2);
+      P.addEquipment('turretDark', box(1.40, top - W.binLowY - 0.16, 0.012), 0, (top + W.binLowY) / 2 + 0.02, z1 - 0.006);
+      for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
+        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.16), s * 0.905, roof + 0.08 + k * 0.08, (z0 + z1) / 2);
+      }
       for (const x of [-0.84, 0.84]) P.addEquipment('turretDark', box(0.05, top - W.binLowY, 0.05), x, (top + W.binLowY) / 2, z1);
+      P.decal('turret', 'stencil', 'UN', 0.62, [0, (top + W.binLowY) / 2 + 0.02, z1 - 0.014], Math.PI);
     } else {
       stowage(P, 'turretCloth', rng, [
         [-0.56, roof + 0.13, -1.86, 0.52, 0.24, 0.44], [0.10, roof + 0.12, -1.88, 0.56, 0.22, 0.44],
