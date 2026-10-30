@@ -104,13 +104,16 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
     // the DK-1's GPS antenna on the hull roof at the glacis break, past the turret's footprint and the breech's swing at
     // full elevation (gun-depression sweep, 265)
     P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), 0.95, hull.deckTopY(2.55) + 0.018, 2.55);
+    // r3 critics: UN service also lettered the hull, here the middle bins' outer faces under their latches
+    for (const s of [-1, 1] as const) P.decal('hull', 'stencil', 'UN', 0.30, [s * 1.682, 1.15, -0.56], s * Math.PI / 2);
   }
 }
 
 function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
-  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull' });
+  const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
+    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -254,10 +257,11 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // The DK-1's air conditioning and Honda generator housing over the rear bin (Pansermuseet: "a generator and an air
       // conditioning system mounted on the rear of the turret"), standing well over the roof (the RAMTA front photograph)
       // with a plain rear plate (the Air Show rear photograph) and its louvres along the sides; nothing stowed on it.
+      // r3 critics: the plate is painted with the housing (UN white, black lettering), not a dark panel
       const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.42;
       P.addEquipment('turret', box(1.80, top - W.binLowY, z0 - z1), 0, (top + W.binLowY) / 2, (z0 + z1) / 2);
       P.addEquipment('turret', box(1.84, 0.035, z0 - z1 + 0.03), 0, top + 0.0175, (z0 + z1) / 2);
-      P.addEquipment('turretDark', box(1.40, top - W.binLowY - 0.16, 0.012), 0, (top + W.binLowY) / 2 + 0.02, z1 - 0.006);
+      P.addEquipment('turret', box(1.40, top - W.binLowY - 0.16, 0.012), 0, (top + W.binLowY) / 2 + 0.02, z1 - 0.006);
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
         P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.16), s * 0.905, roof + 0.08 + k * 0.08, (z0 + z1) / 2);
       }

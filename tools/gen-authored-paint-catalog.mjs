@@ -27,6 +27,7 @@ const recipeOf = (v) => {
     scheme, base: v.base, weather: v.weather, patches: solid ? [] : [...(v.patches || [])],
     ...(!solid && v.camoScale != null ? { camoScale: v.camoScale } : {}), ...(!solid && v.patchK != null ? { patchK: v.patchK } : {}),
     ...(!solid && v.digitalCellK != null ? { digitalCellK: v.digitalCellK } : {}),
+    ...(!solid && v.rainK != null ? { rainK: v.rainK } : {}),
     ...(v.solidWeatheringIntensity != null ? { solidWeatheringIntensity: v.solidWeatheringIntensity } : {}),
   };
 };

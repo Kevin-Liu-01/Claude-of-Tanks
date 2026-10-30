@@ -17,6 +17,8 @@ export interface Leo1HullOptions {
   readonly deckTools?: boolean;
   /** The side skirts' hem: the German A5's black rubber, or the coat (the Danish tanks' skirts are painted over). */
   readonly skirtBucket?: 'hullRubber' | 'hull';
+  /** The two fuel cans in their rear carriers: drab cloth, or the coat (the DK-1's UN white painted them over). */
+  readonly rearCanBucket?: 'hullCloth' | 'hull';
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -36,7 +38,7 @@ export interface Leo1HullDatums {
 }
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
-  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber' } = options;
+  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber', rearCanBucket = 'hullCloth' } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -251,8 +253,8 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     }
     for (const s of [-1, 1] as const) {
       const canX = s * 0.72;
-      P.addEquipment('hullCloth', box(0.56, 0.66, 0.24), canX, 1.32, -3.45);
-      P.addEquipment('hullCloth', box(0.48, 0.09, 0.22), canX, 1.685, -3.45);
+      P.addEquipment(rearCanBucket, box(0.56, 0.66, 0.24), canX, 1.32, -3.45);
+      P.addEquipment(rearCanBucket, box(0.48, 0.09, 0.22), canX, 1.685, -3.45);
       P.addEquipment('hullDark', box(0.23, 0.075, 0.07), canX, 1.75, -3.45);
       P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.7525, -3.45);
       P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.32, -3.582, 0, 0, 0.66);
