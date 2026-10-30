@@ -166,6 +166,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 265: the Longwei family joins China's special lane (Zhuque, Xuanwu and Baihu at VII, Qinglong at IX; tiers
 // for Main's ruling), out of release 264 into 265.
 // 265 (integration): the Pattons' four new M48s (the M48A3, Magach 3, M48A2GA2 and M48 Super; pattons-m48-266) join
-// the tree with the Longwei family.
-assert.equal(digest, '3539d930dd5850e6', `tree content changed: re-pin to ${digest} if deliberate`);
+// the tree with the Longwei family (re-pinned 2026-10-30 at integ/265 791de05f98: every other tree check passes; the
+// M48 line, the Magach 3 special and the M48A3 between the M47 and the A5 are pattons-m48-266's nodes).
+assert.equal(digest, '808a7174120ac73c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
