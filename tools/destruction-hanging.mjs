@@ -180,30 +180,15 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
    * triangle draws nothing): their samples by plan cell (support) and by voxel (touch), each piece's box, surface and
    * lower envelope (null for a piece drawing nothing).
    */
-  // (destruction-slab-kinds-perf 265) each piece as sampled in the intact building: a piece drawn now exactly as built (each
-  // of its triangles' coordinates the same) is the same piece, its samples, box and envelope reused
-  const intactPieces = new Array(W).fill(null);
-  const unmoved = (p, tris) => {
-    const was = spans[p.span];
-    if (tris === was) return true;
-    for (const t of p.list) {
-      const o = t * 9;
-      if (o + 8 >= tris.length) return false;
-      for (let c = 0; c < 9; c++) if (tris[o + c] !== was[o + c]) return false;
-    }
-    return true;
-  };
   function indexOf(src) {
     const sx = [], sy = [], sz = [], sp = [];
     const shape = new Array(W).fill(null);
     for (const p of pieces) {
       const tris = src[p.span];
-      const same = src !== spans && intactPieces[p.id] && unmoved(p, tris);
-      const live = same ? p.list : p.list.filter((t) => t * 9 + 8 < tris.length && drawsAt(tris, t * 9));
+      const live = p.list.filter((t) => t * 9 + 8 < tris.length && drawsAt(tris, t * 9));
       if (!live.length) continue;
-      const q = same ? intactPieces[p.id] : pieceOf(tris, live);
+      const q = pieceOf(tris, live);
       if (!q) continue;
-      if (src === spans) intactPieces[p.id] = q;
       for (let i = 0; i < q.own.length; i++) { sx.push(q.xyz[i * 3]); sy.push(q.xyz[i * 3 + 1]); sz.push(q.xyz[i * 3 + 2]); sp.push(p.id); }
       shape[p.id] = { lo: q.lo, hi: q.hi, area: q.area, env: q.env, tris, list: live, whole: live.length === p.list.length };
     }
@@ -218,12 +203,18 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
       if (mine < 6) vl.push(sx[i], sy[i], sz[i], sp[i]);
     }
     // (destruction-slab-kinds-perf 265: a tall building's plan cell holds every storey's samples, and a held share scanned
-    // them all for the few in its band — ~80 % of the receipt's CPU on Ruinspires) each cell's samples by height
+    // them all for the few in its band — ~80 % of the receipt's CPU on Ruinspires) each cell's samples by height, packed:
+    // `column` gives a cell's slot, its samples colI[from[slot]..to[slot]) at heights colY
+    const from = new Int32Array(column.size), to = new Int32Array(column.size), colI = new Int32Array(N), colY = new Float64Array(N);
+    let slot = 0, o = 0;
     for (const [ck, list] of column) {
       list.sort((a, b) => sy[a] - sy[b] || a - b);
-      column.set(ck, { y: Float64Array.from(list, (i) => sy[i]), i: Int32Array.from(list) });
+      from[slot] = o;
+      for (const i of list) { colI[o] = i; colY[o] = sy[i]; o++; }
+      to[slot] = o;
+      column.set(ck, slot++);
     }
-    return { sx, sy, sz, sp, N, column, voxels, shape };
+    return { sx, sy, sz, sp, N, column, from, to, colI, colY, voxels, shape };
   }
   const intact = indexOf(spans);
 
@@ -237,7 +228,7 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
   function heldOf(ix, env, { self = -1, xself = -1, near = null, sup, xcol = null, ground = groundAt, holders = null }) {
     let held = 0, cells = 0;
     heldPts.length = 0;
-    const { sx, sy, sz, sp, column } = ix;
+    const { sx, sy, sz, sp, column, from, to, colI, colY } = ix;
     for (const [ck, y] of env) {
       cells++;
       const i0 = Math.floor(ck / CELL_BITS) - 1048576, k0 = (ck % CELL_BITS) - 1048576;
@@ -247,14 +238,14 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
       let ok = false;
       for (let di = -1; di <= 1 && (!ok || holders); di++) for (let dk = -1; dk <= 1 && (!ok || holders); dk++) {
         const key = cellKey(i0 + di, k0 + dk);
-        const col = column.get(key);
-        if (col) {
+        const slot = column.get(key);
+        if (slot !== undefined) {
           // (the cell's samples in the band lo..hi: the first at lo or over, by halves)
-          const ys = col.y;
-          let t = 0;
-          for (let b = ys.length; t < b;) { const m = (t + b) >> 1; if (ys[m] < lo) t = m + 1; else b = m; }
-          for (; t < ys.length && ys[t] <= hi; t++) {
-            const i = col.i[t], q = sp[i];
+          const end = to[slot];
+          let t = from[slot];
+          for (let b = end; t < b;) { const m = (t + b) >> 1; if (colY[m] < lo) t = m + 1; else b = m; }
+          for (; t < end && colY[t] <= hi; t++) {
+            const i = colI[t], q = sp[i];
             if (q === self || !sup[q]) continue;
             if (near && near.has(voxKey(Math.floor(sx[i] / HANG.twinM), Math.floor(sy[i] / HANG.twinM), Math.floor(sz[i] / HANG.twinM)))) continue;
             ok = true;
@@ -294,17 +285,73 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
     const open = [];
     for (const p of pieces) if (ix.shape[p.id]) open.push(p.id);
     xp.forEach((e, k) => { if (e.standing) open.push(W + k); else sup[W + k] = 1; });
+    // (perf 265) what a piece's share reads that no round changes — each envelope cell's ground and floor, and the owners of
+    // the samples in its band round it — read once a call: a round reads only who of them has come to bear
+    const prepared = new Array(W + xp.length);
+    if (ownerMark.length < W + xp.length) ownerMark = new Float64Array(W + xp.length);
     for (let round = 0; round < 64 && open.length; round++) {
       let changed = false;
       for (let j = open.length - 1; j >= 0; j--) {
         const id = open[j];
         const env = id < W ? ix.shape[id].env : xp[id - W].env;
-        const share = id < W ? heldOf(ix, env, { self: id, sup, xcol, ground }) : heldOf(ix, env, { xself: id - W, sup, xcol, ground });
-        if (bears(env, share)) { sup[id] = 1; open[j] = open[open.length - 1]; open.pop(); changed = true; }
+        const share = heldPrepared(prepared[id] ??= prepare(ix, env, xcol, ground), id, sup);
+        if (bears(env, share)) { sup[id] = 1; prepared[id] = null; open[j] = open[open.length - 1]; open.pop(); changed = true; }
       }
       if (!changed) break;
     }
     return sup;
+  }
+  /** A piece's envelope as heldOf reads it with no `near` (propagate), packed: per cell i0, k0, held on the ground or a floor
+   *  (1/0), the count of owners, then the owners — a world piece, or W + a presentation piece — of the samples in the band
+   *  round it, each once. */
+  let ownerMark = new Float64Array(0), ownerStamp = 0;
+  const packed = [];
+  function prepare(ix, env, xcol, ground) {
+    const { sp, column, from, to, colI, colY } = ix;
+    packed.length = 0;
+    for (const [ck, y] of env) {
+      const i0 = Math.floor(ck / CELL_BITS) - 1048576, k0 = (ck % CELL_BITS) - 1048576;
+      const lo = y - HANG.bandM, hi = y + 0.1;
+      const gx = (i0 + 0.5) * C, gz = (k0 + 0.5) * C;
+      const base = ground(gx, gz) >= lo || (floorUnder && floorUnder(gx, gz, hi) >= lo) ? 1 : 0;
+      packed.push(i0, k0, base, 0);
+      if (base) continue;
+      const count = packed.length - 1, stamp = ++ownerStamp;
+      for (let di = -1; di <= 1; di++) for (let dk = -1; dk <= 1; dk++) {
+        const key = cellKey(i0 + di, k0 + dk);
+        const slot = column.get(key);
+        if (slot !== undefined) {
+          const end = to[slot];
+          let t = from[slot];
+          for (let b = end; t < b;) { const m = (t + b) >> 1; if (colY[m] < lo) t = m + 1; else b = m; }
+          for (; t < end && colY[t] <= hi; t++) {
+            const q = sp[colI[t]];
+            if (ownerMark[q] !== stamp) { ownerMark[q] = stamp; packed.push(q); }
+          }
+        }
+        const e = xcol?.get(key);
+        if (e) for (let j = 0; j < e.length; j += 2) {
+          const q = W + e[j + 1];
+          if (e[j] >= lo && e[j] <= hi && ownerMark[q] !== stamp) { ownerMark[q] = stamp; packed.push(q); }
+        }
+      }
+      packed[count] = packed.length - count - 1;
+    }
+    return Int32Array.from(packed);
+  }
+  /** heldOf over a prepared envelope: a cell is held on the ground or a floor, or by an owner other than the piece that bears
+   *  (the held cells left in heldPts). */
+  function heldPrepared(cells, self, sup) {
+    let held = 0, n = 0;
+    heldPts.length = 0;
+    for (let o = 0; o < cells.length; n++) {
+      const i0 = cells[o], k0 = cells[o + 1], end = o + 4 + cells[o + 3];
+      let ok = cells[o + 2] === 1;
+      for (let e = o + 4; !ok && e < end; e++) { const q = cells[e]; if (q !== self && sup[q]) ok = true; }
+      if (ok) { held++; heldPts.push(i0, k0); }
+      o = end;
+    }
+    return n ? held / n : 1;
   }
   /** The voxels (HANG.twinM) within one of a presentation piece's samples: its twin in the intact building is left out. */
   function nearSet(xyz) {
@@ -327,56 +374,64 @@ export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
     const onFloor = (x, y, z) => y - ground(x, z) <= HANG.groundTouchM || (floorUnder && y - floorUnder(x, z, y + 0.05) <= HANG.groundTouchM);
     // (perf 265: an owner on the ground once is on it; the floor's reading is the same every time)
     for (let i = 0; i < N; i++) if (!grounded[sp[i]] && onFloor(sx[i], sy[i], sz[i])) grounded[sp[i]] = 1;
-    // the presentation's samples into their own voxels beside the world's ([x, y, z, owner] each): a world voxel they join is
-    // copied first (the index's own lists are the judge's to keep)
-    const extra = new Map();
+    // the presentation's samples in voxels of their own ([x, y, z, owner] each; at most six of an owner a voxel, as before)
+    const xvox = new Map();
     xp.forEach((e, k) => {
       const id = W + k;
       for (let i = 0; i < e.xyz.length; i += 3) {
         const x = e.xyz[i], y = e.xyz[i + 1], z = e.xyz[i + 2];
         if (!grounded[id] && onFloor(x, y, z)) grounded[id] = 1;
         const vk = voxKey(Math.floor(x / V), Math.floor(y / V), Math.floor(z / V));
-        let vl = extra.get(vk); if (!vl) extra.set(vk, vl = (voxels.get(vk) ?? []).slice());
+        let vl = xvox.get(vk); if (!vl) xvox.set(vk, vl = []);
         let mine = 0;
         for (let j = vl.length - 1; j >= 0 && mine < 6; j -= 4) if (vl[j] === id) mine++;
         if (mine < 6) vl.push(x, y, z, id);
       }
     });
-    const listAt = (vk) => extra.get(vk) ?? voxels.get(vk);
-    // (perf 265) a voxel's one owner, or -1 when it holds two or more: samples of one owner touch nothing of another
-    const soleMemo = new Map();
-    const soleOf = (list) => {
-      let o = soleMemo.get(list);
-      if (o === undefined) {
-        o = list[3];
-        for (let a = 7; a < list.length; a += 4) if (list[a] !== o) { o = -1; break; }
-        soleMemo.set(list, o);
-      }
-      return o;
-    };
-    // touching: two owners' samples within a voxel's size of each other
+    // touching: two owners' samples within a voxel's size of each other (a pair read twice joins once)
     const D2 = V * V;
-    const touchIn = (vk, list) => {
+    const within = (L) => {
+      for (let a = 0; a < L.length; a += 4) for (let b = a + 4; b < L.length; b += 4) {
+        if (L[a + 3] === L[b + 3]) continue;
+        const dx = L[a] - L[b], dy = L[a + 1] - L[b + 1], dz = L[a + 2] - L[b + 2];
+        if (dx * dx + dy * dy + dz * dz <= D2) join(L[a + 3], L[b + 3]);
+      }
+    };
+    const across = (A, B) => {
+      for (let a = 0; a < A.length; a += 4) for (let b = 0; b < B.length; b += 4) {
+        if (A[a + 3] === B[b + 3]) continue;
+        const dx = A[a] - B[b], dy = A[a + 1] - B[b + 1], dz = A[a + 2] - B[b + 2];
+        if (dx * dx + dy * dy + dz * dz <= D2) join(A[a + 3], B[b + 3]);
+      }
+    };
+    // (perf 265) a voxel's one owner, or -1 when it holds two or more: samples of one owner touch nothing of another
+    const soleOf = (L) => {
+      if (L.sole === undefined) { let o = L[3]; for (let a = 7; a < L.length; a += 4) if (L[a] !== o) { o = -1; break; } L.sole = o; }
+      return L.sole;
+    };
+    // the world's: each voxel, and each of its 13 neighbours ahead of it
+    for (const [vk, list] of voxels) {
       const vi = Math.floor(vk / VOX_X) - 65536, vj = Math.floor((vk % VOX_X) / VOX_Y) - 65536, vz = (vk % VOX_Y) - 65536;
       const sole = soleOf(list);
-      if (sole < 0) for (let a = 0; a < list.length; a += 4) for (let b = a + 4; b < list.length; b += 4) {
-        if (list[a + 3] === list[b + 3]) continue;
-        const dx = list[a] - list[b], dy = list[a + 1] - list[b + 1], dz = list[a + 2] - list[b + 2];
-        if (dx * dx + dy * dy + dz * dz <= D2) join(list[a + 3], list[b + 3]);
-      }
+      if (sole < 0) within(list);
       for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (let dc = -1; dc <= 1; dc++) {
         if (da < 0 || (da === 0 && (db < 0 || (db === 0 && dc <= 0)))) continue;
-        const other = listAt(voxKey(vi + da, vj + db, vz + dc));
-        if (!other || (sole >= 0 && soleOf(other) === sole)) continue;
-        for (let a = 0; a < list.length; a += 4) for (let b = 0; b < other.length; b += 4) {
-          if (list[a + 3] === other[b + 3]) continue;
-          const dx = list[a] - other[b], dy = list[a + 1] - other[b + 1], dz = list[a + 2] - other[b + 2];
-          if (dx * dx + dy * dy + dz * dz <= D2) join(list[a + 3], other[b + 3]);
-        }
+        const other = voxels.get(voxKey(vi + da, vj + db, vz + dc));
+        if (other && !(sole >= 0 && soleOf(other) === sole)) across(list, other);
       }
-    };
-    for (const [vk, list] of voxels) touchIn(vk, extra.get(vk) ?? list);
-    for (const [vk, list] of extra) if (!voxels.has(vk)) touchIn(vk, list);
+    }
+    // the presentation's: each voxel against both kinds in it and in its 26 neighbours
+    for (const [vk, list] of xvox) {
+      const vi = Math.floor(vk / VOX_X) - 65536, vj = Math.floor((vk % VOX_X) / VOX_Y) - 65536, vz = (vk % VOX_Y) - 65536;
+      within(list);
+      for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (let dc = -1; dc <= 1; dc++) {
+        const key = voxKey(vi + da, vj + db, vz + dc);
+        const w = voxels.get(key);
+        if (w) across(list, w);
+        const x = da || db || dc ? xvox.get(key) : null;
+        if (x) across(list, x);
+      }
+    }
     const stands = new Uint8Array(M);
     for (let i = 0; i < M; i++) if (grounded[i]) stands[find(i)] = 1;
     return { find, stands };

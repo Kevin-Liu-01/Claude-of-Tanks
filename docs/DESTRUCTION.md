@@ -1149,8 +1149,8 @@ room, floor and ruin writers place through it, never off the anatomy's w x d); `
 stray-slab detector on the battle's own path: every damaged building's drawn meshes split into pieces and judged — a slab
 past the walls of its height band, floating, untextured or degenerate; a standing run off the walls; a remnant taller than
 the building as drawn at its spot; a fallen roof slab drawn off the body it rides in) and its selftest;
-`tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map, one props build a
-map in a worker pool; its judged exceptions listed with their reasons, a kind that stops flagging leaving the list).
+`tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map, its builds and runs
+in a worker pool (265, below); its judged exceptions listed with their reasons, a kind that stops flagging leaving the list).
 
 **Round 2 (2026-10-17, the round-1 critics).** A tower mill's upper tower comes off as two courses of four ragged
 quarter-rings of its brick wall (each with its window, along one shared break line: whole, the shaft shows no seam), each
@@ -1528,3 +1528,32 @@ too large to keep is now `plan.standing` (its top, its floor, its plan outline i
 
 At the builders' defaults the tower mill is the only set piece with a piece too large to keep that the rule reaches
 (the house row's houses slump; the troposcatter is an open frame, through which what falls goes).
+
+**265 (the kinds receipt's run time; 2026-10-30: Ruinspires past the suite's 25-min map limit, over 45 min alone on main,
+about 3.3 GB).** Not a regression: a bisect on first-parent main from the receipt's landing (`d10335307e`, 10-21) to
+`ccb2041c41` reads the same CPU on a fixed sample (Verdant's chapel, church and station hall 13.7 s then, 11.8 s now;
+Ruinspires' megatower 15.6 s and 14.6 s; its arcology 105 s and 106 s), and the work has not grown since round 4 (406
+kinds and 682 runs then, 407 and 681 now). Two things made it long. The hanging judge's held share scanned every sample
+of the plan cells round each cell of a piece's envelope for the few in its 0.9 m band, and a tall building's plan cell
+holds every storey's samples: on the arcology and the megatower that was nine tenths of their runs, which never cache
+(each carries a judged finding), and Ruinspires ran in one worker, 17th of 33, so on a machine at load 250-500 (a run's
+wall time 10-15 times its CPU) the map passed its 25 min of wall. And every change to the closures the destruction code's
+hash reads, most releases, ran all 681 runs again, with every map built every time.
+
+What changed (each judged against the base on the same input, call for call: the same findings). The judge reads each
+plan cell's samples by height, packed, a held share reading its band alone; a propagation reads each open piece's
+envelope once (its cells' ground and floor, and the owners in band round them) and each round only who of them has
+come to bear; clusters keep the presentation's samples in voxels of their own and skip voxel pairs of one owner. The
+arcology's two runs: 106 s of CPU to TBD. The detector builds the vegetation as the battle does (far grass deferred: on
+all 33 maps the same spans, anatomy, enclosure and collision records, byte for byte, for 30 % less vegetation CPU). The
+receipt's pool takes builds and runs, not maps: a worker with no map left shares the heaviest map's runs, maps and runs
+go costliest first by last time, and every run's fingerprint as it starts must be its listing's (a set piece's kit
+copied the anatomy's mound onto its plan at its first stage, so a run's fingerprint moved with the runs before it in a
+build: the copy is no longer read; a map's runs in reverse on a fresh build match them run for run on Copper Mesa and
+Polders). A run whose findings are all judged exceptions keeps them with its fingerprint (judged again against KNOWN
+each time), and a map listed from the same inputs (the detector's whole import closure, the receipt, the staging) with
+every run passed is not built. Guards on each worker's own clock: a build or run over 240 s of CPU, or whose clock stands
+still for 10 min, is stopped and named; the receipt fails over its CPU budget; a stray slab planted in a building of the
+first map built must fail the verdict. A real defect fails it too: `ANCHORED_M` back at 0.4 m (landmarks/damage.ts)
+fails it on Whiteout #32 from its narrow back, its guy's 21.6 x 2.7 m debris plate on end with its top 19.9 m up, as
+world-reds 264 found it. Measured TBD.
