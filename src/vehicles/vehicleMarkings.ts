@@ -698,12 +698,24 @@ function drawBundeswehrFlaredCross({ ctx, cx, cy, size, radius }: InsigniaPainte
 function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   const r = radius * 0.84;
   ctx.fillStyle = '#ebe7db';
+  // (r5, critics: round petals read as a generic flower): each petal drawn with the cherry blossom's notch in its tip
   for (let k = 0; k < 5; k++) {
-    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5;
+    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5, ux = Math.cos(t), uy = Math.sin(t), vx = -uy, vy = ux;
+    const at = (u: number, v: number): [number, number] => [cx + (ux * u + vx * v) * r, cy + (uy * u + vy * v) * r];
     ctx.beginPath();
-    ctx.ellipse(cx + Math.cos(t) * r * 0.5, cy + Math.sin(t) * r * 0.5, r * 0.5, r * 0.34, t, 0, Math.PI * 2);
+    ctx.moveTo(...at(0.10, 0));
+    ctx.quadraticCurveTo(...at(0.30, 0.44), ...at(0.74, 0.33));
+    ctx.quadraticCurveTo(...at(1.03, 0.25), ...at(0.98, 0.10));
+    ctx.lineTo(...at(0.80, 0));
+    ctx.lineTo(...at(0.98, -0.10));
+    ctx.quadraticCurveTo(...at(1.03, -0.25), ...at(0.74, -0.33));
+    ctx.quadraticCurveTo(...at(0.30, -0.44), ...at(0.10, 0));
+    ctx.closePath();
     ctx.fill();
   }
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
   // (r4, critics: a red star read Soviet or Chinese; the blossom keeps a plain dark heart)
   ctx.fillStyle = '#3a3f2c';
   ctx.beginPath();

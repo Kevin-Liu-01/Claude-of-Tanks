@@ -55,8 +55,10 @@ const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
 // r3 (critics: too light and sandy for Gelboliv; the cross straight-armed): darker, and the early Bundeswehr's flared cross
 // r4 (critics: it read chocolate brown): Gelboliv's dark, greyed olive-brown, the wash lighter (kept more than 14 a channel
 // from the German, Japanese and KV-2 coats and the JGSDF's, so it stays its own paint)
-m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#463c2e', weather: '#524236', patches: [], marking: 'number', number: '231', camoScale: 0.5,
-  insignia: 'de-cross-1956', solidWeatheringIntensity: 0.55 };
+// r5 (critics: still warm, a reddish chocolate; Gelboliv leans yellow; the mottle heavy): a yellower olive-brown, the
+// wash lighter (its blue kept 15 under the German national olive's, so it stays its own paint)
+m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#474028', weather: '#544b34', patches: [], marking: 'number', number: '231', camoScale: 0.5,
+  insignia: 'de-cross-1956', solidWeatheringIntensity: 0.35 };
 
 // The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
 // came after it), warmer and greener than the Bundeswehr's Gelboliv.
@@ -65,8 +67,10 @@ const m41_jgsdf = m41('m41_jgsdf', 'M41 (JGSDF)', 'Japan');
 // JGSDF's cherry-blossom badge in place of a national roundel its tanks never wore
 // r4 (critics: it read lime): a darker, browner olive drab, still greener than the Bundeswehr's (its wash kept clear of the
 // KV-2's and the national colours, so it stays its own paint)
-m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#3e4224', weather: '#50522e', patches: [], marking: 'number', number: '12', camoScale: 0.5,
-  insignia: 'jp-jgsdf-sakura', solidWeatheringIntensity: 0.55 };
+// r5 (critics: lighter and yellower than the period's dull olive drab, the mottle blotchy): darker and duller, the wash a
+// browner drab (its red 16 over the KV-2's, the base's 15 under the Bundeswehr's, so both stay their own paints)
+m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#383b28', weather: '#504b36', patches: [], marking: 'number', number: '12', camoScale: 0.5,
+  insignia: 'jp-jgsdf-sakura', solidWeatheringIntensity: 0.35 };
 
 // The Danish M41 DK-1 of the late 1980s: the Cummins diesel, skirts, the thermal sight and laser rangefinder, the AAI
 // APFSDS at the tier II footing.
@@ -84,8 +88,10 @@ m41dk1.armor = { ...m41dk1.armor };
 m41dk1.visual = {
   ...m41dk1.visual,
   // the late-1980s Danish Army coat (the Aalborg DK-1): a medium olive with large irregular fields of black-green and slate
-  // blue-grey (r3: the sage base read pale, the patches small; r4: the green too yellow, the grey too blue)
-  scheme: 'nato', base: '#4d5340', weather: '#575d49', patches: ['#262b22', '#4e5250'], marking: 'number', number: '26', camoScale: 0.42,
+  // blue-grey (r3: the sage base read pale, the patches small; r4: the green too yellow, the grey too blue; r5: the green
+  // still yellow, the grey pale, the black heavy): a greyer sage, a darker blue-grey, the black-green lighter in weight
+  scheme: 'nato', base: '#4c5143', weather: '#565b4d', patches: ['#262c24', '#474b4f'], blackK: 0.75, marking: 'number', number: '26',
+  camoScale: 0.42,
 };
 
 // The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun): the

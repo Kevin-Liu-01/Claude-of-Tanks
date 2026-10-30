@@ -282,10 +282,11 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
       [side * 0.91, 0.57, -0.22], [side * 0.96, 0.58, -1.20],
       [side * 0.79, 0.55, -1.43], [side * 0.76, 0.55, -0.32],
     ));
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 4, r: 0.040, len: 0.25, spacing: 0.09,
-      splay: side * 0.50, pitch: -0.39, seed: 920 + side,
-    }), side * 1.03, 0.46, 0.05, [0, side * 0.94, 0]);
+    // (the CV9035 DK's: six larger tubes, r4 critics on the Holstebro photograph: three tiny cups read as rivets)
+    mount(P, 'turret', FITTINGS.smokeBank(danish
+      ? { mats: P.mats, count: 6, r: 0.048, len: 0.30, spacing: 0.105, splay: side * 0.50, pitch: -0.39, seed: 920 + side }
+      : { mats: P.mats, count: 4, r: 0.040, len: 0.25, spacing: 0.09, splay: side * 0.50, pitch: -0.39, seed: 920 + side },
+    ), side * 1.03, 0.46, 0.05, [0, side * 0.94, 0]);
     P.addEquipment('turret', box(0.18, 0.13, 0.17), side * 0.86, 0.66, 0.28,
       0, side * 0.18, 0);
     // (the CV9035 DK's cheek boxes carry no window: its corner heads are the laser warners)
@@ -407,9 +408,22 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
     P.add('hullDetail', box(0.48, 0.03, 0.03), side * 1.50, 0.92, 3.315);
     P.add('hullDark', torus(0.075, 0.022, 14, 8), side * 0.62, 0.90, 3.18, 0, 0, 0); // on the raked lower glacis
   }
-  // the Danish Army's registration plate on the right mudguard's face (the Holstebro photograph's "75.177"; r4 critics)
-  P.add('hullDark', box(0.36, 0.10, 0.012), -1.50, 1.10, 3.316);
-  P.decal('hull', 'stencilWhite', '75.145', 0.34, [-1.50, 1.10, 3.324], 0);
+  // the Danish Army's registration plate, black with white figures (the Holstebro photograph's "75.177"), on the glacis's
+  // front lip left of centre (r4 critics: not on the mudguard)
+  const slope = Math.atan2(1.79 - 1.12, 3.28 - 1.82), glacisY = (z: number): number => 1.79 - Math.tan(slope) * (z - 1.82);
+  const nY = Math.cos(slope), nZ = Math.sin(slope);
+  P.add('hullDark', box(0.40, 0.008, 0.11), 0.35, glacisY(3.15) + 0.004 * nY, 3.15 + 0.004 * nZ, slope, 0, 0);
+  P.decal('hull', 'stencilWhite', '75.145', 0.34, [0.35, glacisY(3.15) + 0.010 * nY, 3.15 + 0.010 * nZ], 0, -(Math.PI / 2 - slope));
+  // the engine's air louvres on the front right of the roof, in a frame on the upper glacis's plane (r4 critics on the
+  // Holstebro photograph: the front deck read bare)
+  const gx = -0.59, gz = 2.18;
+  P.add('hullDark', box(0.62, 0.010, 0.60), gx, glacisY(gz) + 0.005 * nY, gz + 0.005 * nZ, slope, 0, 0);
+  for (let k = 0; k < 9; k++) {
+    const z = gz - 0.26 + k * 0.065;
+    P.add('hullDetail', box(0.56, 0.012, 0.036), gx, glacisY(z) + 0.011 * nY, z + 0.011 * nZ, slope, 0, 0);
+  }
+  for (const dz of [-0.31, 0.31]) P.add('hull', box(0.66, 0.016, 0.03), gx, glacisY(gz + dz) + 0.008 * nY, gz + dz + 0.008 * nZ, slope, 0, 0);
+  for (const dx of [-0.32, 0.32]) P.add('hull', box(0.03, 0.016, 0.62), gx + dx, glacisY(gz) + 0.008 * nY, gz + 0.008 * nZ, slope, 0, 0);
 }
 
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */
