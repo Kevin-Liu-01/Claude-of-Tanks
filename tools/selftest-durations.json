@@ -805,6 +805,7 @@
     "src/vehicles/ifvReplicas.selftest.mjs": 12000,
     "src/vehicles/internalLayoutRegistry.selftest.mjs": 5000,
     "src/vehicles/jagdpanzerE100XArmor.selftest.mjs": 36000,
+    "src/vehicles/launcherDecorKeepOut.selftest.mjs": 115000,
     "src/vehicles/launcherOrigins.selftest.mjs": 41000,
     "src/vehicles/leopard2A5Family.selftest.mjs": 135000,
     "src/vehicles/leopardRevolutionRegistry.selftest.mjs": 6000,

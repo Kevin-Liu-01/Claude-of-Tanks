@@ -268,6 +268,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/interiorFillWreck.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     'src/vehicles/markingSeatStability.selftest.mjs',
     'src/vehicles/missionAttachmentReceiver.selftest.mjs',
     'src/vehicles/mudguardHangers.selftest.mjs',

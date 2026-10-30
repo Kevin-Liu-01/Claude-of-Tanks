@@ -1131,6 +1131,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
