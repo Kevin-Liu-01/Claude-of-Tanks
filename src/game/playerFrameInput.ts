@@ -82,6 +82,8 @@ interface PlayerFrameInputOptions {
 export interface PlayerFrameInput {
   readonly camera: CameraFrameInput;
   poll(sample: PlayerFrameSample): CameraFrameInput;
+  /** The tank's controls alone, from the input's state now (the local Worker driver samples them on a key's change). */
+  sampleTank(sample: PlayerFrameSample): void;
   dispose(): void;
 }
 
@@ -210,6 +212,9 @@ export function createPlayerFrameInput({
       updateAimActions(sample, cursorAim);
       wheelStep = 0;
       return camera;
+    },
+    sampleTank(sample) {
+      updateTankInput(sample);
     },
     dispose() {
       disposeZoomIn();

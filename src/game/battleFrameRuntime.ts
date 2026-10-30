@@ -90,6 +90,11 @@ export interface BattleFrameRuntime {
     cameraLocked: boolean,
   ): BattleFrameReceipt;
   resetSimulationAccumulator(): void;
+  /**
+   * The local Worker driver: a key or a button changed between frames, so the tank's controls are sampled and posted
+   * now (with the last frame's battle flags), not at the next frame.
+   */
+  postInputNow(): void;
 }
 
 /**
@@ -373,10 +378,18 @@ export function createBattleFrameRuntime({
     );
   };
 
+  const postInputNow = (): void => {
+    if (!localSim?.isActive() || !inputSample.inBattle || inputSample.paused || inputSample.killcamActive) return;
+    inputSample.player = game.player as PlayerFrameSample['player'];
+    input.sampleTank?.(inputSample);
+    localSim.postInput();
+  };
+
   return {
     pauseInfo,
     receipt,
     advance,
     resetSimulationAccumulator,
+    postInputNow,
   };
 }

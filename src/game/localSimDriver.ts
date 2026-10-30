@@ -112,8 +112,9 @@ export function createLocalSimDriver({
   const queue: LocalSimTick[] = [];
   let running = false;
   let lastAppliedAt = 0;
-  // when the newest tick arrived (the draw is smoothed from it, by at most one tick)
-  let newestArrivedAt = 0;
+  // when the newest tick was stepped, on the page's clock (the draw is smoothed from it, by at most one tick)
+  let newestSteppedAt = 0;
+  const epoch = Number.isFinite(performance.timeOrigin) ? performance.timeOrigin : 0;
   let readers: (MirrorReader | null)[] = [];
   const strings: string[] = [];
   const specs = new Map<number, unknown>();
@@ -377,7 +378,13 @@ export function createLocalSimDriver({
 
   // ---- the channel ----
   function onMessage(message: LocalSimToPage): void {
-    if (message.type === 'tick') { if (phase === 'ready') { queue.push(message); stats.ticks++; newestArrivedAt = now(); } return; }
+    if (message.type === 'tick') {
+      if (phase !== 'ready') return;
+      queue.push(message);
+      stats.ticks++;
+      newestSteppedAt = Number.isFinite(message.at) && message.at > 0 ? Math.min(message.at - epoch, now()) : now();
+      return;
+    }
     if (message.type === 'ready') {
       stats.bootMs = Math.round(now() - bootedAt);
       stats.kernels = message.kernels;
@@ -498,7 +505,7 @@ export function createLocalSimDriver({
         onTick();
       }
       queue.length = 0;
-      if (arrived > 0) lastAppliedAt = newestArrivedAt;
+      if (arrived > 0) lastAppliedAt = newestSteppedAt;
       return Math.max(0, Math.min(1, (now() - lastAppliedAt) / LOCAL_SIM_TICK_MS));
     },
     hold() {

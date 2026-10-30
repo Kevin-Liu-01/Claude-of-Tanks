@@ -24,7 +24,7 @@ import { spawnTanks } from './rosterState.ts';
 import { useSoloConsumable } from './soloConsumables.ts';
 import { createMirrorWriter, createStringTable, type MirrorWriter } from './localSimMirror.ts';
 import {
-  BLOCK, CONCEALMENT_FIELDS, HULL, LOCAL_INPUT, LOCAL_SIM_MAX_STEPS_PER_WAKE, LOCAL_SIM_TICK_MS, SHELL,
+  BLOCK, CONCEALMENT_FIELDS, HULL, LOCAL_INPUT, LOCAL_SIM_MAX_IN_FLIGHT, LOCAL_SIM_MAX_STEPS_PER_WAKE, LOCAL_SIM_TICK_MS, SHELL,
   type LocalSimAction, type LocalSimBodies, type LocalSimBoot, type LocalSimTick, type LocalSimToPage, type PageToLocalSim,
 } from './localSimProtocol.ts';
 
@@ -174,6 +174,9 @@ export function createLocalSimCore({
   // the player's reload progress, as the step emitted it this tick
   const reload = { present: false, t: 0, total: 0, progress: 0, kind: 'ready', caliberMm: 0, magazineRounds: 0, magazineCapacity: 0, done: false };
   const freeBuffers: ArrayBuffer[] = [];
+  // ticks posted and not yet drawn (their buffers not back): the page's pace bounds the Worker's
+  let inFlight = 0;
+  const epoch = typeof performance === 'object' && Number.isFinite(performance.timeOrigin) ? performance.timeOrigin : 0;
   let scratch = new Float64Array(1024);
   const pose = new Float64Array(7);
   const obstacleIndex = new Map<object, number>();
@@ -506,6 +509,7 @@ export function createLocalSimCore({
     }
     const message = _tick;
     message.tick = tick;
+    message.at = epoch + now();
     message.buffer = block.buffer as ArrayBuffer;
     message.strings = strings.drainAdded();
     message.schemas = schemas;
@@ -517,22 +521,27 @@ export function createLocalSimCore({
     specsAdded = null;
     log = null;
     transfer[0] = block.buffer as ArrayBuffer;
+    inFlight++;
     post(message, transfer);
     message.log = null; message.schemas = null; message.sets = null; message.specs = null; message.strings = null;
   }
   const _counts: number[] = [];
-  const _tick: LocalSimTick = { type: 'tick', tick: 0, buffer: new ArrayBuffer(0), strings: null, schemas: null, sets: null,
+  const _tick: LocalSimTick = { type: 'tick', tick: 0, at: 0, buffer: new ArrayBuffer(0), strings: null, schemas: null, sets: null,
     specs: null, log: null, result: null, mode: null };
 
-  // hot-path: the Worker's clock (two steps a wake at most; a longer debt is dropped: game time slows, never jumps)
+  // hot-path: the Worker's clock (two steps a wake at most; a longer debt is dropped, and a page that has not drawn
+  // LOCAL_SIM_MAX_IN_FLIGHT ticks holds the next: game time slows, it never jumps)
   function pump(): void {
     timer = null;
     if (!running || disposed || !game) return;
     const at = now();
     let steps = 0;
-    while (at >= nextAt && steps < LOCAL_SIM_MAX_STEPS_PER_WAKE) { stepAndPost(); nextAt += LOCAL_SIM_TICK_MS; steps++; }
+    while (at >= nextAt && steps < LOCAL_SIM_MAX_STEPS_PER_WAKE && inFlight < LOCAL_SIM_MAX_IN_FLIGHT) {
+      stepAndPost(); nextAt += LOCAL_SIM_TICK_MS; steps++;
+    }
     if (at - nextAt > LOCAL_SIM_TICK_MS) nextAt = at;
-    timer = schedule(pump, Math.max(0, nextAt - now()));
+    // waiting on the page: woken by the next buffer back (or this timer)
+    timer = schedule(pump, inFlight >= LOCAL_SIM_MAX_IN_FLIGHT ? LOCAL_SIM_TICK_MS : Math.max(0, nextAt - now()));
   }
 
   function setRunning(next: boolean): void {
@@ -540,6 +549,7 @@ export function createLocalSimCore({
     running = next;
     if (timer !== null) { cancel(timer); timer = null; }
     if (running) { nextAt = now(); pump(); }
+    else inFlight = 0;
   }
 
   const unsubscribe = port.onMessage((message) => {
@@ -559,7 +569,14 @@ export function createLocalSimCore({
       case 'consumable': consume(message.slot); return;
       case 'action': act(message.action); return;
       case 'run': setRunning(message.running); return;
-      case 'return': if (freeBuffers.length < 8) freeBuffers.push(message.buffer); return;
+      case 'return': {
+        if (freeBuffers.length < 8) freeBuffers.push(message.buffer);
+        const waiting = inFlight >= LOCAL_SIM_MAX_IN_FLIGHT;
+        inFlight = Math.max(0, inFlight - 1);
+        // the page drew one: a Worker held on it steps now
+        if (waiting && running && timer !== null) { cancel(timer); timer = null; pump(); }
+        return;
+      }
       case 'stop': setRunning(false); game = null; world = null; return;
       default: return;
     }

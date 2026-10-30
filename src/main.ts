@@ -3799,6 +3799,11 @@ const battleFrame = createBattleFrameRuntime({
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
   simulationDt: SIM_DT,
 });
+// the local Worker driver: a key or a mouse button that changes the tank's controls is posted at once (after the input
+// layer's own window listeners, registered at boot, have read it), not at the next frame's sample
+if (/[?&]localDriver=worker\b/.test(location.search)) {
+  for (const type of ['keydown', 'keyup', 'mousedown', 'mouseup'] as const) addEventListener(type, () => battleFrame.postInputNow());
+}
 const pauseInfo = battleFrame.pauseInfo;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each

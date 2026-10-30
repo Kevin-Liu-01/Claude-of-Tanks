@@ -68,6 +68,8 @@ export interface LocalSimReady {
 export interface LocalSimTick {
   type: 'tick';
   tick: number;
+  /** When the Worker stepped it (performance.timeOrigin + now: the page's and the Worker's clocks agree on it). */
+  at: number;
   buffer: ArrayBuffer;
   strings: string[] | null;
   schemas: (number | MirrorSchema)[] | null;
@@ -108,3 +110,9 @@ export const CONCEALMENT_FIELDS = Object.freeze(['camo', 'base', 'paint', 'equip
 /** A tick rate's step and how far the Worker lets its debt run before it lets game time slow instead. */
 export const LOCAL_SIM_TICK_MS = 1000 / 60;
 export const LOCAL_SIM_MAX_STEPS_PER_WAKE = 2;
+/**
+ * The ticks the Worker may have posted that the page has not drawn yet (a drawn tick's buffer comes back). Past it the
+ * Worker waits and game time slows, as the page's own step slows past four steps a frame: a page that stalls never
+ * draws a burst of ticks at once (the first band run: 16 ticks in one frame after a stall, a 2.8 m jump).
+ */
+export const LOCAL_SIM_MAX_IN_FLIGHT = 5;
