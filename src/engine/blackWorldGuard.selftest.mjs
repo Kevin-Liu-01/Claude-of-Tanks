@@ -94,7 +94,7 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
         if (!modelLoss) return;
         // a restored context drops the GL-level fault with every GL object
         gpu.lost = false; gpu.glMasked = false; gpu.restores = (gpu.restores ?? 0) + 1;
-        setTimeout(() => canvasFire('webglcontextrestored'), 0);
+        setTimeout(() => { canvasFire('webglcontextrestored'); gpu.restoredEvents = (gpu.restoredEvents ?? 0) + 1; }, 0);
       },
     } : null),
     getParameter: () => null,
@@ -687,8 +687,12 @@ for (const [expected, healedBy, inject] of proofs) {
   for (; lostFrames < 30; lostFrames++) h.frames(1);
   assert.equal(receipt.closed, false, 'the context away is no battle left: the incident stays open');
   assert.equal(h.reports.length, 0, 'nothing reported while the restore is in flight');
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // wait for the restored event itself: a fixed 200 ms sleep raced it under load (an event loop stalled past both the
+  // guard's 120 ms restore timer and the sleep ran them in one timers phase, so the test went on between the restore
+  // and its event, a task later, and judged frames the guard still counted as the context away; 2-3 in 10 at load 350)
+  for (let waited = 0; !h.gpu.restoredEvents && waited < 10_000; waited += 20) await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(h.gpu.lost, false, 'the browser restored the context');
+  assert.equal(h.gpu.restoredEvents, 1, 'the restored event reached the guard');
   h.frames(60);
   assert.equal(receipt.closed, true);
   assert.equal(receipt.endedBy, 'healthy');

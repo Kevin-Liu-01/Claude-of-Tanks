@@ -6843,15 +6843,15 @@
   },
   {
    "path": "media/site50-r14/home/mechanics/armor-640.webp",
-   "bytes": 57556,
-   "sha256": "b4a7966ec57a33166306f3e7d839406c731466db8f61037bcd4c863cdcc2e120",
+   "bytes": 66646,
+   "sha256": "5557d5b16edb52e851526c26040d3afa824d83d970d540786732ffa17feec688",
    "source": "shots/media-r5/home-r2/deliver/mechanics/armor.png",
    "home": "mechanics/armor"
   },
   {
    "path": "media/site50-r14/home/mechanics/armor.webp",
-   "bytes": 275136,
-   "sha256": "7444bfbdbc33be07efba6e17cca383763af9d0c53c005a079d38f7f194822589",
+   "bytes": 293174,
+   "sha256": "537b1ae775dbb833c872b27887694b237c888ed60c1023f9a5506a1857b0a347",
    "source": "shots/media-r5/home-r2/deliver/mechanics/armor.png",
    "home": "mechanics/armor"
   },

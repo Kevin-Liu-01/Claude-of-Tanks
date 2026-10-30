@@ -65,6 +65,8 @@ export interface FleetVisualSpec extends Record<string, RuntimeValue> {
   /** Optional authoring override; painters retain their established family
    * default when omitted. */
   camoScale?: number;
+  /** An export livery's own insignia (vehicleMarkings.ts painters), drawn in place of its nation's. */
+  insignia?: string;
 }
 
 /** Combat-authoritative fields shared by every registered fleet row. Family

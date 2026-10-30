@@ -174,12 +174,16 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
 
 - Scoped armor flashlight (`game/armorAimOverlay.ts`): default-off, enabled in
   Gameplay → Interface, and visible only in the gunner scope on an already
-  spotted live target. It renders the same closed collision faces used by
-  combat and colors them continuously red → amber → green by the selected
+  spotted live target. Since 262 it is paint, as camo is: the vehicle's own
+  armour, fitting and dark-part paint takes, per fragment, the colour of the
+  armour zone it lies in (`vehicles/materials.ts` ARMOR_PAINT on the burn
+  hook: the authored plate it lies nearest, inside whose outline and facing its
+  way, in the hull or turret frame), red → amber → green by the selected
   shell's real layered penetration estimate (distance, angle, normalization,
-  ricochet, ERA, tracks and spaced armor included). Sampling is spread across
-  48-face frame batches to avoid periodic render stalls; battle exit disposes
-  every generated buffer.
+  ricochet, ERA, tracks and spaced armor included), blended from up to three
+  samples on the collision faces the authority gives each plate. Sampling is
+  spread across 48-query frame batches to avoid periodic render stalls; battle
+  exit releases every zone table.
 - Damage panel (`ui/damagePanel.ts`): reads CombatState directly per frame;
   exact module and crew volume centers project through their authored hull or
   turret frame before a tightly source-bounded screen-space collision pass.

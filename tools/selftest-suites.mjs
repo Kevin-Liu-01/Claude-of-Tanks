@@ -135,6 +135,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
     // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
     'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-28 (release 262 CN, the Type 59 / T-55A and Longwei rebuilds): each gun stays inside its mantlet at every
+    // degree from full depression to full elevation
+    'src/vehicles/cnGunMantlet.selftest.mjs',
     // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
     // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
     'src/vehicles/qilinRearFill.selftest.mjs',
@@ -179,6 +182,17 @@ export const SELFTEST_SUITES = Object.freeze({
     // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
     // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
     'src/vehicles/strv103GunPort.selftest.mjs',
+    'src/vehicles/challengerXGunPort.selftest.mjs',
+    // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
+    // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
+    'src/vehicles/profiles/christian2.selftest.mjs',
+    'src/vehicles/ztz20GunClearance.selftest.mjs',
+    // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
+    // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis
+    'src/vehicles/oplotBMGun.selftest.mjs',
+    // 262: the Challenger 3 TD's deep mantlet and tube clear its two cheeks and every turret fitting through the gun's
+    // whole travel, in battery and at full recoil (a rod across the slot fails)
+    'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -279,8 +293,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
     'src/vehicles/fittingSnap.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
+    // 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig
+    'tools/owner-kit-targets.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
+    // 262 (Main's ruling on the Challenger 3 TD): each oracle-blind fleet part is named, ruled and carried once
+    'tools/oracle-blind-parts.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',
@@ -358,6 +376,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90BurlakXRear.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXSkirtMounts.selftest.mjs',
     'src/vehicles/burlakFixedSidePaint.selftest.mjs',
+    // 262: the hull's rubber (skirts, flaps, mats) its own material, painted by place; the tyres bare
+    'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/fixedPaintedPanel.selftest.mjs',
     'src/vehicles/broadFixedStockPaint.selftest.mjs',
     'src/vehicles/registeredGuardPaint.selftest.mjs',
@@ -458,6 +478,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
     'src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs',
+    'src/vehicles/profiles/t64Foundation.selftest.mjs',
+    'src/vehicles/profiles/t64GunClearance.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
@@ -501,11 +523,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/modern3PrimaryStock.selftest.mjs',
     'src/vehicles/profiles/type100.selftest.mjs',
     'src/vehicles/profiles/type100RunningGear.selftest.mjs',
-    'src/vehicles/profiles/ztz100X.selftest.mjs',
+    'src/vehicles/profiles/ztz20Family.selftest.mjs',
     'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/profiles/aresApcX.selftest.mjs',
     'tools/ares-apc-x-reference.selftest.mjs',
+    // 262: the T-84BM Oplot-M's registered comparison oracle
+    'tools/oplot-bm-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
@@ -696,6 +720,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
     'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
+    // release 262: the Longwei concept's native profile fixture (its first-party concept route's test)
+    'src/vehicles/profiles/longwei.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
@@ -706,8 +732,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
+    // release 262: the Leclerc turret's false roofs (owner-marked) stay closed on the S1, S2 and SXXI
+    'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
-    'src/vehicles/profiles/oplotFenderBridge.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',
@@ -886,6 +913,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
+    'src/engine/chaseFraming.selftest.mjs',
+    // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
+    'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
@@ -903,11 +934,20 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-20: the Gallery anatomy layers draw the combat data exactly, all vehicles (traceTank rays, module parts,
     // crew head shapes, hit volumes, armor model untouched)
     'src/gallery/anatomyFidelity.selftest.mjs',
+    // 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate)
+    'src/vehicles/gunFacePlates.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
+    // 263: the armour paint by panel (a cluster's one zone; gear bare; the pose's parts live) and a battle build's draws
+    'src/game/armorPaintPanels.selftest.mjs',
+    // 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake
+    // while the overlay is off, staging or frames; every primed vehicle baked once it is on; its control bakes
+    'src/game/armorPanelsOnDemand.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
+    // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
+    'src/sim/armorZonePlates.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
@@ -924,6 +964,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
     'src/ui/loadingSurfaceRegistry.selftest.mjs',
     'src/ui/components/reveal.selftest.mjs',
+    'src/ui/components/loadFailure.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -1100,7 +1141,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
-    'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    'src/vehicles/profiles/ztz85iii.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
@@ -1164,6 +1205,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/selectedVehicleSelection.selftest.mjs',
     'src/game/sniperFillRuntime.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
+    // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
+    'src/game/soloKernelObstacleQuery.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
@@ -1244,6 +1287,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',
+    // owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnostics' F8)
+    'src/game/keybindingCensus.selftest.mjs',
+    // owner 2026-10-28: every battle key cap is its action's live binding, keyboard and pad
+    'src/game/battleKeyCaps.selftest.mjs',
     'src/dev/mainDiagnosticsRuntime.selftest.mjs',
     'src/dev/debugBattleEntryRuntime.selftest.mjs',
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
@@ -1597,6 +1644,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureDamage.selftest.mjs',
     'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
+    // 2026-10-29 (ram-yield-prediction-264): a building the own ram brings down yields to the drawn hull as to the authority's
+    'src/mp/presentation/predictionStructureYield.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
@@ -1633,6 +1682,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-28 (bot-wedge-264): no route starts from a grid cell the hull cannot drive out of (the Badlands mesa flank)
+    'src/sim/botRouteStartCell.selftest.mjs',
     // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
     'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
@@ -1806,6 +1857,15 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
+    // 263 (the GPU-still critic: "black specks and dark fringes", "the net reads flat"): the suits' cut textures keep
+    // straight alpha flooded with their cloth's colour, coverage mips, and the gaps under thick garnish shaded
+    'src/vehicles/alphaCutTexture.selftest.mjs',
+    // 265 (the 264b preview, the owner: box-shaped shadows beside netted tanks): every alpha-cut caster casts through
+    // its map's level 0, never the coverage mips' near-solid texels; its control finds a suit draw without it
+    'src/vehicles/alphaCutShadow.selftest.mjs',
+    // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
+    // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
+    'src/vehicles/suitOcclusion.selftest.mjs',
     // 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that still
     // reads its recorded count, and searches one that does not within 0.5 m of where it stood
     'src/vehicles/markingSeatStability.selftest.mjs',
@@ -1835,6 +1895,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger3HullClosure.selftest.mjs',
     'src/vehicles/profiles/challenger3RearTurret.selftest.mjs',
     'src/vehicles/profiles/challenger3RunningGear.selftest.mjs',
+    // 264: the Challenger 3 TD's Hydrogas units on the oracle's casting, the arms in the track lane's shadow
+    'src/vehicles/profiles/challenger3TdSuspension.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
     'src/vehicles/combatVisibility.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
@@ -2382,12 +2444,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
+    // a portrait phone's systems row follow it; the scope stays centred
+    'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
     // real weights only, the 11 px floor, tabular figures only through .num, metric-matched fallbacks, zh-CN resets
     'src/ui/typeSystem.selftest.mjs',
+    // 264: each Chakra Petch fallback (a capitals rule and a rule for the rest) sets a caps title within 1 % of the face
+    'src/ui/typeFallbackMetrics.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
     'src/ui/mapLqip.selftest.mjs',
@@ -2458,14 +2525,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercRoofRig.selftest.mjs',
     'src/vehicles/profiles/leclercGunHousingRig.selftest.mjs',
     'src/vehicles/profiles/carro45tRoof.selftest.mjs',
-    'src/vehicles/profiles/pattonGeometryContinuity.selftest.mjs',
-    'src/vehicles/profiles/pattonLowTurrets.selftest.mjs',
-    'src/vehicles/profiles/m48RoofSeating.selftest.mjs',
+    // release 262: the M46, M47 and M48A5 rebuilt as measured castings (profiles/pattonCast.ts) replace the old
+    // Patton continuity, low-turret and M48 roof-seating receipts
+    'src/vehicles/profiles/pattonCastProportions.selftest.mjs',
+    'src/vehicles/profiles/pattonGunClearance.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
     'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
-    'src/vehicles/profiles/kv2FrontChamferClosure.selftest.mjs',
+    'src/vehicles/profiles/kv2Dimensions.selftest.mjs',
+    'src/vehicles/profiles/kv2GunClearance.selftest.mjs',
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',

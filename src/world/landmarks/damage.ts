@@ -789,6 +789,11 @@ function frameFallAxis(plan: LandmarkPlan, hinge: number, dx: number, dz: number
 }
 /** A slack guy's height over the ground it lies on (its wire's own girth). */
 const SLACK_M = 0.03;
+/** (2026-10-28, the world-reds lane; whiteout #32's north-east mast since the 241 lee drifts) a frame's piece with a point
+ *  out past the frame's plan this near its ground is anchored there (a mast's guys): a guy's foot stands 0.35 m up on its
+ *  anchor block, and on a drift's slope the ground under the wire's end lay 0.12 m under the block's, so the 0.4 m test
+ *  missed one anchor's guys and they stood to the hinge, 20 m up, as the frame went over. */
+const ANCHORED_M = 0.8;
 /** The frame's turn as it goes over along (dx, dz): the normals of what it laid down. */
 function pose0(dx: number, dz: number): Pose {
   return { r: rotation(dz, 0, -dx, TOPPLE_LIE), px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0 };
@@ -827,7 +832,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
     let reach = false;
     for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
       const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
-      if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && Math.hypot(x, z) > far) reach = true;
+      if (y - pieceGroundAt(p.ground, x, z) <= ANCHORED_M && Math.hypot(x, z) > far) reach = true;
     }
     const cut: KeptPiece = reach ? p : { ...p, runs: p.runs.map((r) => splitRunAt(r, hinge)) };
     const standing = reach ? cut.runs.map((r) => new Float32Array(r.pos.length / 3))
@@ -855,7 +860,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
       let ax = 0, az = 0, na = 0, minR = Infinity;
       for (const run of cut.runs) for (let i = 0; i < run.pos.length; i += 3) {
         const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2], r = Math.hypot(x, z);
-        if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && r > far) { ax += x; az += z; na++; }
+        if (y - pieceGroundAt(p.ground, x, z) <= ANCHORED_M && r > far) { ax += x; az += z; na++; }
         minR = Math.min(minR, r);
       }
       let mx = 0, mz = 0, nm = 0;

@@ -178,9 +178,10 @@ function arieteSkirts(add: Sink): void {
   }
 }
 
-function challengerSkirts(add: Sink): void {
+function challengerSkirts(add: Sink, applique: boolean): void {
   // challenger1XSuppliedHull.ts installedSkirt()/sideApplique(), in its fixed
   // authoring ruler. Recessed panel fields and their raised rims remain distinct.
+  // Release 262: the plain Challenger 1 (the Mk 1 and Mk 2) has the skirts alone, without the Op Granby applique.
   const low = (z: number) => 21.377953 + (z - 58.503937) * (41.220470 - 21.377953) / (95.590553 - 58.503937);
   const rows = [[-173.346451, 45.118111, 49.685040], [-121.653542, 21.338583, 49.685040],
     [37.992126, 21.338583, 49.685040], [58.503937, 21.377953, 49.685040],
@@ -198,7 +199,7 @@ function challengerSkirts(add: Sink): void {
       if (normal(face)[0] * side < 0) face.reverse();
       return face;
     });
-    panels.forEach(([a, b, outer, bottom, top], index) => {
+    if (applique) panels.forEach(([a, b, outer, bottom, top], index) => {
       const cover = sideFace(side * outer, bottom, top, a, b);
       inner = expose(inner, cover);
       const group = `applique-${side}-${index}`;
@@ -209,7 +210,7 @@ function challengerSkirts(add: Sink): void {
       }
     });
     const tip = [[42.677166, 23.464567], [62.755905, 23.464567], [95.433067, 41.181103]];
-    for (let i = 0; i < tip.length - 1; i++) {
+    for (let i = 0; applique && i < tip.length - 1; i++) {
       const [z, lo] = tip[i], [nz, nlo] = tip[i + 1];
       const face: Face = [[side * 73.700790, lo, z], [side * 73.700790, nlo, nz],
         [side * 73.700790, 49.685040, nz], [side * 73.700790, 49.685040, z]];
@@ -232,7 +233,7 @@ function appendSurface(template: ArmorPlate, face: Face, group: string, target: 
 }
 
 export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): void {
-  if (!['leo2a6', 'strv122', 'c1_ariete', 'challenger1_mk3'].includes(id)) return;
+  if (!['leo2a6', 'leo2a6_ua', 'strv122', 'c1_ariete', 'challenger1_mk3', 'challenger1_mk2', 'challenger1_mk1'].includes(id)) return;
   const templates = new Map([...spec.armor.hullPlates, ...spec.armor.turretPlates]
     .filter(p => p.kind === 'spaced' && !p.gunFollow).map(p => [p.name, p]));
   spec.armor.hullPlates = spec.armor.hullPlates.filter(p => !templates.has(p.name));
@@ -243,9 +244,10 @@ export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): vo
     // Surface groups keep the schema-1 spelling (tankIdAliases.ts): seat signatures hash the plates.
     appendSurface(template, face, `${tankSeedId(id)}:${group}`, owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates);
   };
-  if (id === 'leo2a6') leopardSkirts(add); // actual main cells already own both structural cheeks
+  // actual main cells already own both structural cheeks; the UA is drawn on the 2A6's shell (germany.ts, 264b)
+  if (id === 'leo2a6' || id === 'leo2a6_ua') leopardSkirts(add);
   else if (id === 'strv122') { strvSkirts(add); strvCheeks(add); }
   else if (id === 'c1_ariete') arieteSkirts((name, face, group, owner) =>
     add(name, face.map(p => p.map(v => v * ARIETE_X_FAMILY_SCALE) as Point), group, owner));
-  else challengerSkirts(add);
+  else challengerSkirts(add, id === 'challenger1_mk3');
 }

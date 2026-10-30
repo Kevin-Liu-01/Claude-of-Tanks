@@ -16,8 +16,11 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   merkava4b: { merkavaRoofMag1: [-3.4034, 1.9897] },
   t62_1975: { fitting_browningDerived_dshk: [-2.618, 1.0472] },
   t72bu_1989: { t72buXRoofNsvt: [-3.5256, 0.384] },
-  type59: { type59RoofDShK: [-1.4835, 3.0543] },
-  ztz85_iii: { fitting_browningDerived_qjc88: [-0.8029, 2.7925] },
+  // 262: the rebuilt Type 59 seats its loader (and DShK) on the vehicle's right, as the real one does (the old build had
+  // it mirrored). The drone dock stands on the dome's left rear (the only dome patch its stand and airframe clear), so
+  // the DShK turns from 175 degrees right to 25 degrees left of ahead: past 25 degrees left its sweep (the authority's
+  // 20-degree chunks) crosses the dock, and from 85 degrees the commander's cupola (.qa-dev arc and dock probes, 262)
+  type59: { type59RoofDShK: [-3.0543, 0.4363] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
 });

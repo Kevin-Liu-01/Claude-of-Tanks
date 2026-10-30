@@ -6,6 +6,7 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 import type { PendingBattlefield } from '../ui/battleLoad.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { soloRosterSeats } from './soloRosterPlan.ts';
 
 interface EntryLoadScreen {
@@ -61,6 +62,19 @@ interface SoloBattleEntryRuntime {
 }
 
 /**
+ * The pending cover as the entry chose it: its battlefield as described (or its id alone, where the description found
+ * nothing) and the chosen mode, a campaign operation's with it. Its chip names the mode from the first frame: the
+ * cover's placeholder read "Random Battle · Standard" over the Proving Ground and a campaign operation (the 262
+ * production check).
+ */
+function withChosenMode(pending: PendingBattlefield | string | null, options: SoloBattleLoadingStartOptions | undefined): PendingBattlefield {
+  const described: PendingBattlefield = typeof pending === 'string' || pending === null ? { mapId: pending ?? '' } : pending;
+  const campaignOperationId = options?.campaignOperationId ?? null;
+  return { ...described, modeId: normalizeGameMode(options?.gameMode ?? 'standard'),
+    ...(campaignOperationId ? { campaign: true, campaignOperationId } : {}) };
+}
+
+/**
  * Owns the player-facing solo entry transaction and its fail-safe return. A
  * failed cold import or world build paints the restored Garage while coverage
  * is still opaque, then dismisses the loader so a first visit cannot strand a
@@ -98,8 +112,9 @@ export function createSoloBattleEntryRuntime({
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
       try { pending = describePendingMap(specId, mapId, options) ?? mapId; } catch { /* the cover never waits on a name */ }
-      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same)
-      battleLoad.showPending(pending, soloRosterSeats(options?.gameMode, options?.campaignOperationId));
+      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same; and its
+      // rules row the chosen mode, whatever the description found)
+      battleLoad.showPending(withChosenMode(pending, options), soloRosterSeats(options?.gameMode, options?.campaignOperationId));
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {

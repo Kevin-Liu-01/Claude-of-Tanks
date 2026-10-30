@@ -260,8 +260,10 @@ assert.ok(game.keys.length > fullKeys.length * 0.4 && game.keys.length < fullKey
   `the game shows ${game.keys.length} of ${fullKeys.length} keys`);
 assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chunk');
 // (246) the shared shell's bar, menu and footer carry seventeen keys of their own; the page adds its title, its sentence,
-// its search's three and its report link
-assert.ok(real.catalogs.notFound.keys.length <= 24 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
+// its search's three and its report link; (264) every page's boot runtime adds the kit's load failure, two
+// (components/loadFailure.ts: a trigger whose chunk did not arrive says so with no chunk of its own)
+assert.ok(real.catalogs.notFound.keys.length <= 26 && real.catalogs.notFound.keys.includes('notFound.metaTitle')
+  && real.catalogs.notFound.keys.includes('loadFailed.reload'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
 // gallery.damage.* names)

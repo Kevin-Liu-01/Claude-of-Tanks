@@ -12,6 +12,7 @@ import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const panel = readFileSync(join(ROOT, 'src/ui/studioProductionPanel.ts'), 'utf8');
+const templates = readFileSync(join(ROOT, 'src/ui/studioTemplates.ts'), 'utf8');
 const indexPath = panel.match(/const SITE_TAKES_INDEX = '([^']+)';/)?.[1];
 assert.ok(indexPath, 'the Director panel names the takes index');
 assert.equal(sceneLinkPath(indexPath), indexPath, 'the index is a path on this site');
@@ -64,6 +65,9 @@ for (const take of siteTakes) {
 }
 assert.match(panel, /sceneLinkPath\(take\.scene\)/, 'a preset loads only this site\'s own files, as a scene link does');
 assert.match(panel, /\.then\(\(json\) => S\.load\(json\)\)/, 'a preset stages through the Studio\'s own load, as Load JSON does');
-assert.match(panel, /if \(take\.group !== 'fleet'\) takesLibrary\.append\(takeCard\(take\)\)/, 'the default list leaves the fleet\'s takes out');
+// (261, the template browser) a fleet take is a tank template and the shelf lists the scenes: the fleet's takes stay in
+// the browser, out of the default list
+assert.match(templates, /if \(take\.group === 'fleet' && take\.vehicle\) \{[\s\S]{0,120}?kind: 'tank'/, 'a fleet take is a tank template');
+assert.match(panel, /if \(template\.kind === 'scene'\) takesLibrary\.append\(shelfCard\(template\)\)/, 'the default list leaves the fleet\'s takes out');
 console.log(`studioSiteTakes.selftest: ${siteTakes.length} takes and ${fleetTakes.length} tanks' own takes, each its filmed scene, `
   + 'loadable from the Director workspace');

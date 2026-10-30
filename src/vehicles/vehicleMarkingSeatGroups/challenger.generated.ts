@@ -6,6 +6,55 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "challenger1_mk1": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.381768,
+          0.4386156,
+          0.3962271
+        ],
+        "quaternion": [
+          -0.1975414,
+          -0.6737803,
+          -0.2003256,
+          0.6832768
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger1_mk1",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.0539443,
+          0.3932654,
+          1.1347685
+        ],
+        "quaternion": [
+          -0.3575642,
+          -0.4780988,
+          -0.4804677,
+          0.642433
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger1_mk1",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0178339
+      }
+    ]
+  },
   "challenger1_mk2": {
     "schemaVersion": 1,
     "seats": [
@@ -14,31 +63,58 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          -1.656,
-          0.403105,
-          -0.5615
+          -1.3725346,
+          0.4252296,
+          0.6805196
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          -0.217086,
+          -0.6133849,
+          -0.2533511,
+          0.7158533
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "challenger1_mk2",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.00072
+        "maximumSurfaceErrorM": 0.0072579
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          -1.656,
-          0.403105,
-          -0.017
+          -0.9424537,
+          0.4270131,
+          1.1318823
+        ],
+        "quaternion": [
+          -0.3575642,
+          -0.4780988,
+          -0.4804677,
+          0.642433
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger1_mk2",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0091458
+      }
+    ]
+  },
+  "challenger_x": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.486,
+          0.2964,
+          0.1
         ],
         "quaternion": [
           0,
@@ -47,11 +123,82 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger1_mk2",
+        "anchorProfile": "challenger_x",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.1799999
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.386,
+          0.8847,
+          0.772
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger_x",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.00072
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "challenger_x_sleek": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.206,
+          0.3498,
+          0.265
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger_x_sleek",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0049575
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.1456972,
+          0.5736404,
+          -0.0499624
+        ],
+        "quaternion": [
+          -0.1465551,
+          -0.6894874,
+          -0.1474751,
+          0.6938154
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger_x_sleek",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -292,6 +439,104 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0.0006
+      }
+    ]
+  },
+  "challenger3_td": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5584097,
+          0.1352745,
+          -1.827057
+        ],
+        "quaternion": [
+          -0.0301407,
+          0.7064641,
+          0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5489273,
+          0.246201,
+          -2.7654449
+        ],
+        "quaternion": [
+          -0.0301407,
+          0.7064641,
+          0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "challenger3_td_rws": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.5127216,
+          0.6697387,
+          -1.827057
+        ],
+        "quaternion": [
+          -0.0301407,
+          -0.7064641,
+          -0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td_rws",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.5196179,
+          0.5890648,
+          -1.1819153
+        ],
+        "quaternion": [
+          -0.0301407,
+          -0.7064641,
+          -0.0301407,
+          0.7064641
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger3_td_rws",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },

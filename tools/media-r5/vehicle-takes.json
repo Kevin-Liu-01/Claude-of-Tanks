@@ -219,5 +219,20 @@
  "ru_t80u_modern": "s144-ru-t80u-modern-steppe",
  "ru_t72b3m_modern": "s143-ru-t72b3m-modern-mars",
  "ru_t72b3_modern": "s142-ru-t72b3-modern-whiteout",
- "type10_dozer": "s253-type10-dozer-mangrove"
+ "type10_dozer": "s253-type10-dozer-mangrove",
+ "ztz20": "s254-ztz20-delta",
+ "ztz20_prototype": "s255-ztz20-prototype-skybridge",
+ "christian2": "s256-christian2-verdant",
+ "pt64_tur": "s257-pt64-tur-ruinspires",
+ "challenger_x": "s258-challenger-x-coastal",
+ "challenger_x_sleek": "s259-challenger-x-sleek-railyard",
+ "challenger1_mk1": "s260-challenger1-mk1-railyard",
+ "challenger3_td": "s261-challenger3-td-fjord",
+ "challenger3_td_rws": "s262-challenger3-td-rws-railyard",
+ "bm_oplot_m": "s263-bm-oplot-m-caldera",
+ "bm_oplot_t": "s264-bm-oplot-t-titan-gorge",
+ "t64b1v_2022": "s265-t64b1v-2022-cliffbridge",
+ "t64bm1m": "s266-t64bm1m-delta",
+ "t55a": "s267-t55a-caldera",
+ "t64bv": "s268-t64bv-badlands"
 }

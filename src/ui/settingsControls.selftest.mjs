@@ -42,12 +42,42 @@ for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entr
 }
 // sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab; the time of day
 // is a row of its own (gauntlet 250)
+// (battle-camera-264) the chase camera's five settings join the gameplay tab
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
-  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes', 'crewVoice',
+  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes',
+  'cameraDistance', 'cameraFov', 'cameraFraming', 'cameraHeight', 'cameraShoulder', 'crewVoice',
   'foliageSeeThrough', 'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
+
+// battle-camera-264 (owner 2026-10-28: "be able to change and alter this camera angle as u like in settins"): the
+// Gameplay tab's Camera card, the panel's own slider (its range and number field, both named) for height, distance,
+// framing and field of view at their ranges, the kit's segmented control for the shoulder, and a named reset on each row
+{
+  const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
+  assert.match(source, /cameraCard\(body\);/, 'the Gameplay tab carries the Camera card');
+  for (const key of ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov']) {
+    assert.match(source, new RegExp(String.raw`slider\(t\('settings\.camera\.[a-z]+'\), '${key}'`), `${key} is a slider row`);
+  }
+  assert.match(source, /const \[min, max\] = CHASE_CAMERA_RANGES\[key\];/, 'each slider spans its setting\'s range (chaseFraming.ts)');
+  assert.match(source, /segmented\(\{ label: shoulderLabel, className: 'cot-set-shoulder'/, 'the shoulder is the kit\'s segmented control');
+  assert.match(source, /el\('button', 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--quiet cot-set-reset', host\);/,
+    'each row\'s reset is the kit\'s quiet icon button (by its classes: the factory stays off the Gallery\'s boot chunk)');
+  assert.match(source, /reset\.setAttribute\('aria-label', t\('settings\.camera\.reset', \{ label \}\)\);/, 'named for its row');
+  assert.match(source, /input\.setSetting\(key, CHASE_CAMERA_DEFAULTS\[key\]\);/, 'a reset returns the setting to its default');
+  assert.match(source, /range\.setAttribute\('aria-label', label\);/, 'a slider\'s range is named');
+  for (const [key, en] of [['title', 'Camera'], ['height', 'Camera height'], ['distance', 'Camera distance'], ['shoulder', 'Camera shoulder'],
+    ['framing', 'Vertical framing'], ['fov', 'Field of view'], ['shoulderLeft', 'Left'], ['shoulderCentre', 'Center'],
+    ['shoulderRight', 'Right']]) assert.equal(t(`settings.camera.${key}`), en);
+  assert.equal(t('settings.camera.reset', { label: 'Field of view' }), 'Reset Field of view to default');
+  const zh = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
+  for (const key of ['title', 'height', 'distance', 'shoulder', 'shoulderLeft', 'shoulderCentre', 'shoulderRight', 'framing', 'fov',
+    'reset', 'unitMetres', 'note']) {
+    assert.ok(zh[`settings.camera.${key}`] && zh[`settings.camera.${key}`] !== t(`settings.camera.${key}`), `zh-CN translates settings.camera.${key}`);
+  }
+  assert.match(zh['settings.camera.reset'], /\{label\}/, 'the zh reset keeps its placeholder');
+}
 
 for (const [key, spec] of Object.entries({ ...SETTINGS_ACTION_ICONS, ...SETTINGS_OPTION_ICONS })) {
   assert.ok(iconIds.has(spec.id), `${key} references a shared UI icon`);
