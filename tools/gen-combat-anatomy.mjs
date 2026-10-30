@@ -358,6 +358,17 @@ const HULL_LATERAL_CUTS = Object.freeze({
   t72b3_zubr_ii: [-1.104, 1.104],
 });
 
+// 266 (FAIRNESS-265 §8, Main: the KF51 EVO's turret front read 2,455 mm effective at the balance range, no round
+// passing, a modelling error routed since 263): its turret carries two forward wedge cheeks either side of a gun slot whose
+// front is a vertical face at z 1.10 (measured on the build: the cheeks' inner walls stand at |x| 0.430, the slot face
+// runs y 0.05-0.75). A slice's one convex cell bridged the cheeks' 74-degree noses across the slot, so a level round in
+// front of the gun met a 74-degree face 1.2 m ahead of the armour it should meet. Its turret slices are cut 1 mm inside
+// the walls, so each wall stays with its cheek and the slot's band follows the vertical face; every other turret keeps
+// one cell a slice.
+const TURRET_LATERAL_CUTS = Object.freeze({
+  kf51_evo: [-0.429, 0.429],
+});
+
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
   seatedUnderside = false) {
   if (!envelope) return [];
@@ -691,7 +702,8 @@ function receiptFor(id) {
         PLATE_FIT_IDS.has(id),
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
-        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, null, PLATE_FIT_IDS.has(id),
+        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, TURRET_LATERAL_CUTS[id] ?? null,
+        PLATE_FIT_IDS.has(id),
         seatedTurret,
       ) : []),
       hullStructures,

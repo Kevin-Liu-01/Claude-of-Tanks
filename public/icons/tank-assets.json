@@ -200528,28 +200528,28 @@
             "physicalMm": 500,
             "keMm": 500,
             "ceMm": 500,
-            "kind": "spaced",
+            "kind": "main",
             "turretLocal": true,
             "verts": [
               [
-                -0.28,
-                -0.05,
-                1.156
+                -0.43,
+                0.01,
+                1.088
               ],
               [
-                0.28,
-                -0.05,
-                1.156
+                0.43,
+                0.01,
+                1.088
               ],
               [
-                0.28,
-                0.51,
-                1.116
+                0.43,
+                0.79,
+                1.1
               ],
               [
-                -0.28,
-                0.51,
-                1.116
+                -0.43,
+                0.79,
+                1.1
               ]
             ]
           }
@@ -200880,14 +200880,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              -0.96,
-              -0.78,
-              -0.5449
+              -0.9797,
+              0.0071,
+              -0.5958
             ],
             "max": [
               -0.5203,
-              0.5721,
-              0.2324
+              0.8049,
+              0.1392
             ],
             "turretLocal": true
           },
@@ -200895,21 +200895,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5203,
-              0.0897,
-              -2.6521
+              0.5357,
+              0.1624,
+              -2.8999
             ],
             "max": [
-              0.9797,
-              0.7297,
-              -1.8489
+              0.9642,
+              0.9824,
+              -2.4109
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "294f2a06",
-      "metadataHash": "942aa971",
+      "metadataHash": "4f4f9b27",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0036
@@ -201017,24 +201017,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25024,
-          "sha256": "d35d8f186f693904e7605d03bc45361dc0c13e77ced1331132882ac56a5c45a8"
+          "bytes": 25958,
+          "sha256": "9094a8057f4d62e19ee84f66d78396596ccc2878b2b112cfdbfdf20450786bc1"
         },
         "modulesSide": {
           "file": "kf51_evo_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26396,
-          "sha256": "24fc7d6f2dd49ef5475e242faa41a26d410663fed5282b1417b3a0c7fbf3b5e0"
+          "bytes": 26070,
+          "sha256": "5fc58d474bbac6a21476384e857220c597b84355752be08fc88854af7f034bb1"
         },
         "crewSide": {
           "file": "kf51_evo_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23216,
-          "sha256": "7d00cb9e027085aa028a1872926bafc6706f3027f0fa3934dde798ec8a9b6d73"
+          "bytes": 22112,
+          "sha256": "123b153695d42a08ba8449920c1d8f8cc5d6361bfb171d89204e83c76e04b27e"
         },
         "markings": {
           "file": "kf51_evo_markings.png",
@@ -201047,8 +201047,8 @@
         "technicalLabels": {
           "file": "kf51_evo_technical.json",
           "mime": "application/json",
-          "bytes": 5218,
-          "sha256": "6d3a36e6727754e97895b2076f59e8ff626c22402e62772a08136856884f35d6"
+          "bytes": 5213,
+          "sha256": "ac94667cf8692a5b84e45e98f3ebb6812f812bb0a32ad9a8f04f8022591700de"
         }
       }
     },

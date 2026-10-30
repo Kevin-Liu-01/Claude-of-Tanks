@@ -42,6 +42,10 @@ export interface ArmorPlate {
   openEdges?: readonly number[];
   /** Precomputed conservative envelope; the exact polygon remains authoritative. */
   traceBounds?: { min: Vec3Tuple; max: Vec3Tuple };
+  /** A main plate measured on the drawn build, in its frame: the envelope calibration leaves it where it is (266). */
+  drawn?: boolean;
+  /** The plate a drawn one replaced, which a variant on its own build (a source-X study) takes back. */
+  template?: ArmorPlate;
 }
 
 export interface ModuleBox {
