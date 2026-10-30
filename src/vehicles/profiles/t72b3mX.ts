@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent first-party T-72B3M (2022) construction from scalar source
 // measurements. No source topology, source loading, or donor builder calls.
 import * as THREE from 'three';
@@ -259,7 +260,7 @@ function roofEquipment(P:TankBuilderPort,antennaMasts=true):void {
   topPart(P,'turretDetail',box(.32,.152,.286),-.001,2.239,-.689);
   for(const z of [-.785,-.610])topPart(P,'turretDetail',box(.238,.012,.069),.134,2.332,z);
   if(antennaMasts)for(const [x,z,top]of [[.225,-.791,2.904],[.077,-.534,2.627]]){
-    topPart(P,'turretDetail',cylY(.025,top-2.327,16),x,(top+2.327)/2,z);
+    topPart(P,'turretDetail',antennaPart(cylY(.025,top-2.327,16)),x,(top+2.327)/2,z);
     topPart(P,'turretDark',cylY(.037,.075,16),x,2.382,z);
   }
 }

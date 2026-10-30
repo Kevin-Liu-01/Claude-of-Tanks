@@ -1,4 +1,5 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
+import { antennaPart } from './profiles/antennaPart.ts';
 import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { spareLinkBlock } from './spareLinkGeometry.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
@@ -960,8 +961,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     for (const [s, z, lowerH] of [[-1, -1.72, 1.47], [1, -1.72, 1.22]]) {
       const upperH = 2.22 - lowerH;
       P.add('turretDark', cylY(0.025, 0.030, 0.10, 10), s * 0.79, 0.74, z);
-      P.add('turretDetail', box(0.014, lowerH, 0.012), s * 0.79, 0.74 + lowerH / 2, z);
-      P.add('turretDetail', box(0.014, upperH, 0.012), s * 0.79, 0.74 + lowerH + upperH / 2, z);
+      P.add('turretDetail', antennaPart(box(0.014, lowerH, 0.012)), s * 0.79, 0.74 + lowerH / 2, z);
+      P.add('turretDetail', antennaPart(box(0.014, upperH, 0.012)), s * 0.79, 0.74 + lowerH + upperH / 2, z);
     }
   }
   };

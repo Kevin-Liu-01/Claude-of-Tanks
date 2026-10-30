@@ -8,6 +8,7 @@
 // donor's own steel (or on a housing laid earlier), never on removable ERA, and every tall fitting stands outside the
 // remote station's barrel sweep.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import {KIT} from './kit.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -319,7 +320,7 @@ function antenna(P:TankBuilderPort,S:TurretStock,x:number,z:number,height:number
   footPlate(P,new THREE.Vector3(...p),n,[.15,.02,.15]);
   const base=p[1]+.014+rise;
   P.addEquipment('turretDetail',cylY(.055,.070,.060,12),p[0],base+.026,p[2]);
-  P.addEquipment('turretDark',cylY(.007,.014,height,10),p[0],base+.05+height/2,p[2]);
+  P.addEquipment('turretDark',antennaPart(cylY(.007,.014,height,10)),p[0],base+.05+height/2,p[2]);
 }
 
 function utilityCase(P:TankBuilderPort,S:TurretStock,x:number,z:number,w:number,h:number,d:number,yaw=0):number {
@@ -700,7 +701,7 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
     if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     P.addEquipment('turretDetail',box(.10,.05,.10),x,.685,z);
     P.addEquipment('turretDetail',cylY(.050,.062,.055,12),x,.737,z);
-    P.addEquipment('turretDark',cylY(.007,.014,h,10),x,.765+h/2,z);
+    P.addEquipment('turretDark',antennaPart(cylY(.007,.014,h,10)),x,.765+h/2,z);
   }
   // Release 230 (UA/PL round 11): the Duplet-T roof slabs last, clear of every roof and lid fitting laid above.
   hetmanIIRoofSlabs(P);
@@ -828,7 +829,7 @@ function sich(P:TankBuilderPort,S:TurretStock):void {
     if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     P.addEquipment('turretDetail',box(.10,.05,.10),x,.745,z);
     P.addEquipment('turretDetail',cylY(.048,.060,.05,12),x,.795,z);
-    P.addEquipment('turretDark',cylY(.007,.013,h,10),x,.82+h/2,z);
+    P.addEquipment('turretDark',antennaPart(cylY(.007,.013,h,10)),x,.82+h/2,z);
   }
 }
 

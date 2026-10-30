@@ -13,6 +13,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // challenger1_mk2 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -4806,7 +4807,7 @@ function* buildChieftainUpper2026Steps(
       P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
       P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
       // 2026-10-19 (owner float sweep): the whip started 60 mm over its collar's 0.16 top; its foot is now 5 mm in it
-      P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.155 + h * 0.5, z);
+      P.add('turretDark', antennaPart(cylY(0.018, 0.012, h, 10)), x, radioShoeY + 0.155 + h * 0.5, z);
       P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07,
         radioShoeY + 0.16, z + 0.05, 0.35, 0, -0.25);
     }, { reachM: 0.35, mode: 'down' });

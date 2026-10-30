@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent T-72B obr.1987 source study. The supplied two-object model is
 // fused; only geometric scalar measurements inform these original solids.
 import * as THREE from 'three';
@@ -177,7 +178,7 @@ function roofEquipment(P:TankBuilderPort):void {
   }
   onTurret(P,'turretDetail',box(.854,.377,.504),.013,1.738,-1.57);
   onTurret(P,'turretDetail',box(.706,.025,.296),.016,1.951,-1.618);
-  onTurret(P,'turretDetail',cylY(.028,.954,14),-.233,2.403,-1.115);
+  onTurret(P,'turretDetail',antennaPart(cylY(.028,.954,14)),-.233,2.403,-1.115);
   onTurret(P,'turretDetail',cylZ(.155,.121,24),.947,2.200,-.14);
   onTurret(P,'turretDetail',box(.055,.089,.045),.938,1.995,-.167);
   sight(P,'turretDetail',box(.263,.167,.453),.444,2.036,.557,.15);

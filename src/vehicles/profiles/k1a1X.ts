@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Original metre-space K1A1 X solids. The owner-supplied OBJ is a local-only
 // scalar/ray oracle: no source vertices, indices, textures or rig are shipped.
 import * as THREE from 'three';
@@ -488,7 +489,7 @@ function antennaWhip(P:TankBuilderPort):void {
     [.0126,2.874],[.0085,2.884],[.0058,4.07025],[0,4.07025]]
     .map(([r,y])=>new THREE.Vector2(r,y)),6);
   g.rotateY(Math.PI/6);
-  turretPart(P,'turretDark',g,.41674,0,-1.22533);
+  turretPart(P,'turretDark',antennaPart(g),.41674,0,-1.22533);
 }
 
 function gunBoot(P: TankBuilderPort): void {

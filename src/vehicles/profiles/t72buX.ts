@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // First-party T-72BU X: independent scalar construction, never a donor build
 // or an imported reference mesh. Source units and joint inference are recorded
 // in the accompanying measurement packet.
@@ -203,10 +204,10 @@ function roofFittings(P:TankBuilderPort):void{
   // Fused source mesh_324 island9012 identifies this separate sight hood.
   P.addModuleVisual('optics','turretDetail',boxSections([[.837,.0996,2.105,1.85],[1.08,.0996,2.14,1.85],[1.257,.0996,1.98,1.85]]).translate(.5025,0,0),-YAW[0],-YAW[1],-YAW[2]);
   P.addModuleVisual('optics','turretDark',box(.176,.085,.009),.5025-YAW[0],1.983-YAW[1],1.26-YAW[2]);
-  equipment(P,'turretDetail',cylY(.0284,.7654,16),.32841,2.43068,-.83118);
-  equipment(P,'turretDetail',box(.0731,.2721,.0742),.32814,2.51682,-.83181);
+  equipment(P,'turretDetail',antennaPart(cylY(.0284,.7654,16)),.32841,2.43068,-.83118);
+  equipment(P,'turretDetail',antennaPart(box(.0731,.2721,.0742)),.32814,2.51682,-.83181);
   equipment(P,'turretDetail',cylY(.022,.095,16),-.24975,2.1005,-.81318);   // the whip's foot on the roof (it stood 29 mm over it; 2026-10-19 owner float sweep)
-  equipment(P,'turretDark',cylY(.0053,1.291,10),-.24975,2.75206,-.81318);
+  equipment(P,'turretDark',antennaPart(cylY(.0053,1.291,10)),-.24975,2.75206,-.81318);
 }
 function smoke(P:TankBuilderPort):void{
   for(const side of [-1,1]){

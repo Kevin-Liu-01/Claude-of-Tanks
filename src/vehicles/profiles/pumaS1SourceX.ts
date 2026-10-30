@@ -1,4 +1,5 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source-measured Puma S1 replica. The separate upgraded Puma S1 is preserved.
 // Coordinates are metres; no source mesh is loaded by the playable builder.
@@ -91,7 +92,7 @@ function hull(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.96,.028,.028),s*.71,2.066,-3.60);
     P.addEquipment('hullGlass',box(.19,.09,.018),s*1.29,1.75,-3.687); // 2026-10-19 (owner float sweep): was 46 mm behind the -3.68 tail
   }
-  P.addEquipment('hullDark',cylY(.010,.020,2.24,P.q?10:6),-1.31,3.26,-3.49);
+  P.addEquipment('hullDark',antennaPart(cylY(.010,.020,2.24,P.q?10:6)),-1.31,3.26,-3.49);
   P.addEquipment('hullDetail',cylY(.055,.07,.30,12),-1.31,2.066,-3.49);
   for(const z of [-3.22,-2.18,.37,2.79])for(const x of [-1.46,1.46])KIT.liftEye(P,'hullDetail',x,z>2?1.47:z>0?1.86:1.94,z);
 }

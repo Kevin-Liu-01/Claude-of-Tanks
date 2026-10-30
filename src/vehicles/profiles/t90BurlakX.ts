@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent Burlak first-party scalar construction. Its welded bustle,
 // asymmetric front curtain and separate supports are not a donor T-90 mesh.
 import * as THREE from 'three';
@@ -185,7 +186,7 @@ function roofEquipment(P:TankBuilderPort):void{
 function antenna(P:TankBuilderPort):void{
   const rows=[[0,0],[.0129,0],[.0185,.0694],[.0115,.1385],[.012,.5989],[.0094,.6042],[.0093,.7922],
     [.0064,.7986],[.0086,.8041],[.0082,1.0165],[.0078,1.2289],[.0074,1.4414],[.007,1.6538],[.0066,1.8662],[.0062,2.0786],[.0058,2.291],[0,2.291]];
-  top(P,'turretDetail',new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6),-.1912,2.33669,-.8695);
+  top(P,'turretDetail',antennaPart(new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6)),-.1912,2.33669,-.8695);
 }
 function machineGun(P:TankBuilderPort):void{
   // Original Object17 is a complete forward-firing MG. Object16 is the remote

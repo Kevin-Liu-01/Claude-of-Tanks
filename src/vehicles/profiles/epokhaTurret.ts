@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { reserveDecorVolume } from './fieldChest.ts';
 // First-party source-measured Kurganets-25 Epokha turret. Coordinates are
@@ -280,7 +281,7 @@ function addKurganetsRoofMasts(P: TankBuilderPort): void {
         number
     ])[]): void => {
         const points = sections.map(([y, r]) => new THREE.Vector2(r, y));
-        localTurret(P, 'turretDetail', new THREE.LatheGeometry(points, P.q ? 20 : 12), x, 0, z);
+        localTurret(P, 'turretDetail', antennaPart(new THREE.LatheGeometry(points, P.q ? 20 : 12)), x, 0, z);
     };
     // The rear middle fitting sits on the source's raised central roof step.
     localTurret(P, 'turret', box(.5846, .14385, 1.1062), .0506, 3.071925, -2.21733);

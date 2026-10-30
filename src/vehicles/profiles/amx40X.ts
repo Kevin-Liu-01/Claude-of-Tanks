@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Original AMX-40 X authoring. The private GLB supplies scalar measurements,
 // never playable vertex/index buffers, materials or a donor visual builder.
 import * as THREE from 'three';
@@ -213,10 +214,10 @@ function turretRoof(P:TankBuilderPort):void {
   for(const x of[-1.007,1.024]) {
     put(P,'turretDetail',box(.112,.095,.126),x,2.194,-1.693);
     addAmx40RearInsulator(P,x);
-    put(P,'turretDark',cylY(.004,.008,4.15041-2.64721,10),x,(4.15041+2.64721)/2,-1.693);
+    put(P,'turretDark',antennaPart(cylY(.004,.008,4.15041-2.64721,10)),x,(4.15041+2.64721)/2,-1.693);
   }
   addAmx40FrontInsulator(P);
-  put(P,'turretDark',cylY(.004,.009,5.11445-2.82345,10),.7195,(5.11445+2.82345)/2,.7057);
+  put(P,'turretDark',antennaPart(cylY(.004,.009,5.11445-2.82345,10)),.7195,(5.11445+2.82345)/2,.7057);
 }
 
 function cannon(P:TankBuilderPort):void {

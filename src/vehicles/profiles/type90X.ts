@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Original parametric Type90 X; local source supplies scalar landmarks only.
 // Visual X follows the supplied uniformly registered source. Published
 // 9.80×3.40×2.30m dimensions remain separately documented, never oracle warps.
@@ -298,7 +299,7 @@ function antennas(P:TankBuilderPort):void {
     const a=new THREE.Vector3(x,2.435,-1.91),b=new THREE.Vector3(x,4.657996,-2.516);
     const d=b.clone().sub(a),g=KIT.cylY(.0024,.011,d.length(),8);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()));
-    const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',g,c.x,c.y,c.z);
+    const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',antennaPart(g),c.x,c.y,c.z);
   }
   turret(P,'turretDetail',box(.126199,.262846,.157615),-.010489,2.443769,-2.086540);
   turret(P,'turretDetail',cylinder(.0578,.10511,20),-.010489,2.627747,-2.102242);

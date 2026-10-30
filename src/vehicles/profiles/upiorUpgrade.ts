@@ -1,6 +1,7 @@
 // Original Polish IFV modernization: raised angular turret, supported Spike
 // pod, roof optics and connected armor carriers. Hull ancestry is retained.
 import {KIT,muzzleBore} from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {weaponAssembly} from './weaponStock.ts';
 import {supportedSensor,strappedPack,attachedCage} from './modernizationFittings.ts';
@@ -30,7 +31,7 @@ export function buildUpiorUpgrade(P:TankBuilderPort):void {
     P.addModuleVisual('optics','turretGlass',box(.15,.07,.014),side*.61,.50,.422);
     for(let i=0;i<3;i++)P.addEquipment('turretDark',cylZ(.04,.16,12),side*(.74+i*.09),.27,.31,-.40,side*.36,0);
     P.addEquipment('turretDetail',cylY(.055,.065,.11,12),side*.62,.64,-.80);
-    P.addEquipment('turretDark',cylY(.009,.009,.67,8),side*.62,1.00,-.80);
+    P.addEquipment('turretDark',antennaPart(cylY(.009,.009,.67,8)),side*.62,1.00,-.80);
   }
   P.add('gunMount',cylX(.205,.54,28),0,0,-.06);
   P.add('gunMount',sectionSolid([

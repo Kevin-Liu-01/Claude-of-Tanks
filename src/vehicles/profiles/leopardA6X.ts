@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent plain Leopard 2A6 source-study build. Scalar dimensions describe
 // authored solids; no donor builder, source topology, or source asset is loaded.
 import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
@@ -379,7 +380,7 @@ function cupolasAndSight(P: TankBuilderPort): void {
   for (const x of [-.88017, .91495]) {
     equipment(P, 'turretDetail', cylY(.0335, .0335, .10156, 16), x, 2.46655, -1.8698);
     const path = new THREE.LineCurve3(new THREE.Vector3(x, 2.5116, -1.873), new THREE.Vector3(x, 4.1563, -2.1022));
-    P.addEquipment('turretDetail', local(new THREE.TubeGeometry(path, 2, .0086, 6, false), D.turretPivot));
+    P.addEquipment('turretDetail', antennaPart(local(new THREE.TubeGeometry(path, 2, .0086, 6, false), D.turretPivot)));
   }
 }
 

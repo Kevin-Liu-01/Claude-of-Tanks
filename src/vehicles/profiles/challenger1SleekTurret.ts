@@ -8,6 +8,7 @@
 // undercut 25 cm and the bustle narrowed to 1.1 m. It shares the historical hull, the gun slot, its drum shield and boot
 // and the L11A5 (challenger1HistoricTurret.ts), with its own lower nose plates.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
@@ -122,7 +123,7 @@ function roof(P: TankBuilderPort): void {
   eq(P, cylY(.08, .09, .05, 14), .20, ly + .02, -1.25);
   for (const [x, z, y] of [[-.74, -1.50, 2.34], [.76, -1.15, 2.31]] as const) {
     eq(P, cylY(.045, .055, .08, 12), x, y + .04, z);
-    eq(P, cylY(.009, .012, 1.9, 6), x, y + 1.03, z, 'turretDark');
+    eq(P, antennaPart(cylY(.009, .012, 1.9, 6)), x, y + 1.03, z, 'turretDark');
   }
   for (const [x, z, y] of [[-.80, .70, 2.36], [.80, .70, 2.32], [-.62, -1.40, 2.35], [.62, -1.40, 2.31]] as const) {
     eq(P, torus(.04, .013, 10, 6), x, y + .03, z, 'turretDark');
