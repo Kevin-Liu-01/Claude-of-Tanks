@@ -7,7 +7,7 @@ import { pushConvexQuad } from '../factoryGeometry.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
 import { T90_X_PROFILES } from './t90X.ts';
 import { T90_AW_X_PROFILES } from './t90AwX.ts';
-import { T90MS_X_PROFILES, buildT90MSXWithoutShtora } from './t90msX.ts';
+import { buildT90MSXWithoutShtora } from './t90msX.ts';
 import { addT90Mark1992Kit } from './t90Mark1992.ts';
 import { addT90MarkA2004Kit } from './t90MarkA2004.ts';
 import { addT90MarkA2006Kit } from './t90MarkA2006.ts';
@@ -135,10 +135,6 @@ function requireT90Builder(value: RuntimeValue): T90BuilderPort {
     throw new TypeError('T-90 profile requires the complete procedural builder contract');
   }
   return value;
-}
-
-function t90Profile(build: (builder: T90BuilderPort) => void) {
-  return { build: (builder: RuntimeValue): void => build(requireT90Builder(builder)) };
 }
 
 function weldedStationLoft(stations: readonly WeldedStation[], convexPanels=false): THREE.BufferGeometry {
@@ -734,12 +730,11 @@ const T90_TURRET_BUCKETS = Object.freeze([
   'turretWeaponSteel',
 ] as const);
 
-function buildT90BurlakProto(P: T90BuilderPort): void {
+function buildT90BurlakTurret(P: T90BuilderPort): void {
   // Lane t90-family-266 (the owner 2026-10-30: "take inspiration and update from the later t90s we added that have far
   // more accurate models"): the Burlak prototype rides the source-X T-90A hull and running gear; its own Burlak turret
   // (core, shoulders, autoloader bustle and roof suite) is unchanged and seats on that ring. The X turret is cleared
-  // whole; its gun stays.
-  T90_X_PROFILES.t90a.build(P);
+  // whole; its gun stays (the X build runs first, in the profile below).
   P.clear(...T90_TURRET_BUCKETS);
   replaceT90BurlakCoreNative2026(P);
   finishT90BurlakNative2026(P);
@@ -766,7 +761,7 @@ export const T90_PROFILES = {
   t90a_2004: withKit(T90_X_PROFILES.t90a.build, addT90MarkA2004Kit),
   t90_1992: withKit(T90_AW_X_PROFILES.t90.build, addT90Mark1992Kit),
   t90ms_2011: withKit(buildT90MSXWithoutShtora, addT90MarkMS2011Kit),
-  t90a_burlak_proto: t90Profile(buildT90BurlakProto),
+  t90a_burlak_proto: withKit(T90_X_PROFILES.t90a.build, (builder) => buildT90BurlakTurret(requireT90Builder(builder))),
   pt91m: {build:buildPT91MPendekar},
   t90sm_2013: withKit(T90_X_PROFILES.t90sm.build, addT90MarkSM2013Kit),
   t90a_2006: withKit(T90_X_PROFILES.t90a_vladimir.build, addT90MarkA2006Kit),
