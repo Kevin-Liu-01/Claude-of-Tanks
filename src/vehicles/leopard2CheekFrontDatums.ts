@@ -10,7 +10,7 @@
  * than 6 degrees". No source publishes the angle; a camera and sweep fitted to the owner's photo of the Austrian 2A4 "322"
  * (its two cheek rails, slopes +0.02 and -0.37; the turret side's rail, +0.52; the faces' widths, 150 and 80 px) gives
  * 30.8 degrees orthographic and 25.8 / 27.5 / 29.0 at the focal lengths its vertical edges allow (2000 / 3000 / 5000 px):
- * 24 to 31, 6 the worst fit (the christian2 lane, 63c90394f4).
+ * 24 to 31, 6 the worst fit (the christian2 lane, 63c90394f4). The owner confirmed it: "yes 27 degrees is correct".
  */
 export const LEOPARD2_CHEEK_SWEEP_DEG = 27;
 
