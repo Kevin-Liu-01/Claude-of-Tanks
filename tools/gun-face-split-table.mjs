@@ -8,6 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { uniqueIds } from './id-list.mjs';
 
 const imp = (path) => import(pathToFileURL(resolve(path)).href);
 await imp('src/vehicles/tankFactory.ts');
@@ -16,7 +17,7 @@ const { getSpec, PRODUCTION_TANK_IDS } = await imp('src/vehicles/specs.ts');
 const { tankPoseFromState, traceTank } = await imp('src/sim/armor.ts');
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const ids = arg('ids') ? arg('ids').split(',') : PRODUCTION_TANK_IDS;
+const ids = arg('ids') ? uniqueIds(arg('ids').split(',').filter(Boolean), 'gun-face-split-table --ids') : PRODUCTION_TANK_IDS;
 const GUN_FACE_PLATE = /mantlet|gun_notch/i;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const pose = tankPoseFromState({ pos: V(0, 0, 0), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
