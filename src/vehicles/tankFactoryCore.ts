@@ -9128,6 +9128,19 @@ function* buildTankCoreSteps(
     }
     return ranges;
   };
+  // 2026-10-30 (owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): the merged mesh
+  // keeps the vertex spans of its missile-rack stock (weaponAssembly's parts), so the decor keeps its pieces off every
+  // launcher (decorations.ts launcherKeepOut). A smoke bank shares the 'launcher' seat role, so the role cannot say it.
+  const missileRackRangesFor = (list: THREE.BufferGeometry[]): Array<{ start: number; count: number }> => {
+    const ranges: Array<{ start: number; count: number }> = [];
+    let vertexOffset = 0;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      if (part.userData.weaponStock?.module === 'missileRack' && count) ranges.push({ start: vertexOffset, count });
+      vertexOffset += count;
+    }
+    return ranges;
+  };
   const combatHitboxRoleForBucket = (bucket: string): string => {
     if (bucket === 'hull' || bucket === 'turret' || bucket === 'hullGun'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
@@ -9209,6 +9222,7 @@ function* buildTankCoreSteps(
     if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
+    const rackRanges = missileRackRangesFor(list);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -9229,6 +9243,7 @@ function* buildTankCoreSteps(
       : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
+    if (rackRanges.length) mesh.userData.missileRackRanges = rackRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>
