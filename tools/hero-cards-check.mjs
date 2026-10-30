@@ -139,7 +139,7 @@ const staleLine = `${stale.length} stale cards${stale.length ? ` (${stale.slice(
 if (stale.length || staleFlags.length) (strict ? failures : warnings).push(`${staleLine}: node tools/genHeroCards.mjs --plan, then hero-cards-compose.mjs ship --plan`);
 for (const id of plan.extra) warnings.push(`row ${id} is no longer in the fleet`);
 const audit = ids.filter((id) => fleet.get(id) && manifest.tanks[id].audit?.[0] && manifest.tanks[id].audit[0] !== fleet.get(id).geometryHash);
-if (audit.length) warnings.push(`${audit.length} rows whose rendered geometry fingerprint differs from tank-assets.json (${audit.slice(0, 6).join(', ')}${audit.length > 6 ? ', ...' : ''}): the tank-asset render is the planner's key`);
+if (audit.length) warnings.push(`${audit.length} rows whose rendered geometry fingerprint differs from its tank-asset row (${audit.slice(0, 6).join(', ')}${audit.length > 6 ? ', ...' : ''}): the tank-asset render is the planner's key`);
 
 for (const warning of warnings) console.warn(`hero-cards check: WARN ${warning}`);
 if (failures.length) {

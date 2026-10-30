@@ -4,6 +4,7 @@
 // factory's default build; fleetPassDefault.selftest runs it. Its fixed-casemate pose probe restores what it moves.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { readTankAssets } from '../../tools/tank-assets-store.mjs';
 import {
   ALL_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
@@ -109,7 +110,7 @@ export function createTankAssetsAudit() {
       && Number.isFinite(projection?.sideHalfM) && projection.sideHalfM > 0,
     `${id}: generated asset projection carries finite top/side fit envelopes`);
   }
-  const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
+  const assetManifest = readTankAssets(fileURLToPath(new URL('../../public/icons', import.meta.url)));
   assert.equal(assetManifest.schemaVersion, TANK_ASSET_SCHEMA_VERSION,
     'generated manifest uses the current public taxonomy schema');
   for (const id of DEVELOPMENT_TANK_IDS) {

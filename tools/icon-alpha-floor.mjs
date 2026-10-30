@@ -7,27 +7,28 @@
 // leaves every background pixel at alpha 1/255 in black before it encodes (encodeWebp), which the encoder keeps as
 // black. This tool gives the icons rendered before that change the same background without a fleet re-render: it
 // decodes each published WebP (the angle portrait and its Garage thumbnail, the side and top views), floors its
-// transparent pixels, re-encodes it at the generator's quality and rewrites that asset's bytes and sha256 in
-// public/icons/tank-assets.json. A file with no fully transparent pixel left is already floored and is not touched.
+// transparent pixels, re-encodes it at the generator's quality and rewrites that asset's bytes and sha256 in its
+// tank's manifest row (public/icons/tank-assets/tanks/<id>.json). A file with no fully transparent pixel left is already floored and is not touched.
 //
 //   node tools/icon-alpha-floor.mjs --ids=<id,...>   the named tanks' icons
-//   node tools/icon-alpha-floor.mjs --all            every tank in the manifest (one commit, in a quiet window: the
-//                                                    manifest rows of every tank move)
+//   node tools/icon-alpha-floor.mjs --all            every tank in the manifest (one commit, in a quiet window: every
+//                                                    tank's row file moves)
 //   --check                                          report the files still carrying transparent pixels; write nothing
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback = '') => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const flag = (name) => args.includes(`--${name}`);
 const outDir = resolve(opt('out', 'public/icons'));
-const manifestPath = resolve(outDir, 'tank-assets.json');
 const WEBP_QUALITY = 90;
 
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const manifest = readTankAssets(outDir);
+if (!manifest) { console.error(`icon-alpha-floor: no manifest under ${tankAssetsDir(outDir)}`); process.exit(2); }
 const ids = flag('all') ? Object.keys(manifest.tanks) : uniqueIds(opt('ids').split(',').filter(Boolean), 'icon-alpha-floor --ids');
 if (!ids.length) { console.error('icon-alpha-floor: name --ids=<id,...> or --all'); process.exit(2); }
 
@@ -44,7 +45,7 @@ function webpRecords(tank) {
 let rewritten = 0, floored = 0, pending = 0;
 for (const id of ids) {
   const tank = manifest.tanks[id];
-  if (!tank) { console.error(`icon-alpha-floor: ${id} is not in ${manifestPath}`); process.exitCode = 1; continue; }
+  if (!tank) { console.error(`icon-alpha-floor: ${id} is not in ${tankAssetsDir(outDir)}`); process.exitCode = 1; continue; }
   for (const record of webpRecords(tank)) {
     const file = resolve(outDir, record.file);
     const image = await loadImage(readFileSync(file));
@@ -69,6 +70,6 @@ for (const id of ids) {
     rewritten++;
   }
 }
-if (!flag('check') && rewritten) writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+if (!flag('check') && rewritten) writeTankAssets(outDir, manifest);
 console.log(`icon-alpha-floor: ${ids.length} tanks; ${rewritten} files re-encoded, ${floored} already floored${flag('check') ? `, ${pending} pending` : ''}`);
 if (flag('check') && pending) process.exitCode = 1;

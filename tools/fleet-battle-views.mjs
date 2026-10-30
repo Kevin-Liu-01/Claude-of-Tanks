@@ -6,8 +6,9 @@
 //   node tools/fleet-battle-views.mjs --out=/tmp/fleet-before
 //   node tools/fleet-battle-views.mjs --ids=m1a1_abrams_hc,t90am --distances=40,60,90
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -48,7 +49,7 @@ if (!['high', 'low'].includes(renderOptions.geometryQuality)
 const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(6, requestedWorkers)) : 4;
-const sourceManifest = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const sourceManifest = readTankAssets(resolve(root, 'public/icons'));
 const ids = selectedIds.length ? selectedIds : Object.keys(sourceManifest.tanks || {});
 const cacheDir = resolve('/tmp', `cot-fleet-battle-views-vite-${process.pid}`);
 

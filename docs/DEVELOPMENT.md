@@ -1118,6 +1118,24 @@ by hand, and never take one side of it whole as the merge result.
   the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in
   the two checkouts.
 
+The tank asset manifest (266). It was one file, `public/icons/tank-assets.json` (51.5 MB at 236 tanks, past GitHub's
+50 MB warning, and a conflict in every tank lane). It is now `public/icons/tank-assets/`: `index.json` (schema, partial
+flag, generator, required views; no id list, so a new tank never touches it) and one `tanks/<id>.json` row per tank,
+two-space JSON with each array of plain values on one line. `tools/tank-assets-store.mjs` is the only writer
+(genIcons, `tank-id-rekey-assets`, `icon-alpha-floor`) and gives readers the old single file's shape in its pinned id
+order (`compareTankIds`, not the locale). The changed-only `tankAssets` table keys each row on its own file.
+- Two lanes conflict only on a tank both regenerated: take either side's `tanks/<id>.json` and run
+  `npm run tank:regen:changed`, never a hand merge.
+- `tools/tank-assets-layout.selftest.mjs` (and `tank-assets-check`) fails on a file over 5 MB, a file not in its
+  canonical text, a row in another id's file, a stray file, or the old single file back. It also joins the rows into
+  the old file's text and splits that again, byte for byte.
+- A branch cut before 266 that edited `public/icons/tank-assets.json` meets a modify/delete conflict on it when it
+  merges main. Re-home its own rows without a render:
+  `node tools/tank-assets-split.mjs --from-ref=<its side> --changed-since=$(git merge-base HEAD MERGE_HEAD)` (its side
+  is `HEAD` when the lane merges main, `MERGE_HEAD` when the integrator merges the lane), then
+  `git rm public/icons/tank-assets.json` and `npm run tank:regen:changed`.
+- `node tools/tank-assets-split.mjs --join=<file>` writes the old single file from the split (diffing, old tools).
+
 The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
 `fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still
 turns the gate red.

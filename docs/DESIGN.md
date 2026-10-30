@@ -136,7 +136,7 @@ wrap them (§F.1).
 | tools/tmp-hashgeo.mjs (:1-3) + tmp-hashgeo.html | Deterministic geometry hash (FNV-1a over position buffers + world matrices, camoSeed 4242 pinned, mesh-order independent) — the graduate freeze instrument |
 | tools/tmp-modelsource-dump.mjs (:1) | Dumps runtime MODEL_SOURCE (full import chain) — the load-prove + HELPER-EXPANDED mirror source |
 | tools/tmp-lod-envelope-probe.mjs | Measures geometry outside the visible hull envelope at rest (invisible-LOD law's instrument) |
-| tools/genIcons.mjs + tools/tank-assets-check.mjs | 9 outputs per tank from the shipped model: hero/top/side, two silhouettes, KE-armor/module/crew diagrams, and markings; manifest binds file hashes + dimensions to live geometry, tiers and combat volumes |
+| tools/genIcons.mjs + tools/tank-assets-check.mjs | 9 outputs per tank from the shipped model: hero/top/side, two silhouettes, KE-armor/module/crew diagrams, and markings; manifest (a row file per tank, tools/tank-assets-store.mjs) binds file hashes + dimensions to live geometry, tiers and combat volumes |
 | tools/muzzle-bore-probe.mjs | Visual fleet gate: straight-on render + center ray proves the machine-tagged cannon mouth is dark and exposed; emits per-tank PNGs and `report.json` |
 | tools/quietcert.mjs | Perf certification that REFUSES contended machines by design (docs/cert-r6-*) |
 | (retired 2026-09-23) | The GLB-era oracle instruments — vertex-extract, vertex-workorder, vertex-normalize and repair_oracles.py — left the repository with the hidden fleet; their measurement records remain under docs/references/vertex/ and the process history in Git |
