@@ -73,10 +73,10 @@ const cohorts = opening.indexOf('createDeploymentForwardWarmBatches({');
 assert.ok(staged > 0 && cohorts > staged, 'the opening warm stages the textures before the cohorts draw');
 // (core-two-drivers-265: the covered pacing went with the solo sim Worker that asked for it; the warm is GPU-paced)
 assert.ok(opening.includes('return { ...timing, textureStaging, deploymentForward };'), 'the opening warm reports the stage');
-// (262) the solo sim Worker's sortie paces by frames: no staging (the page's solo deployment warm stages none either)
-assert.ok(/const textureStaging = gpuPaced\n\s+\? await stageTextureUploads\(/.test(opening), 'only a GPU-paced warm stages the textures');
+// (a room's opening warm, the only caller since the solo sim Worker's sortie went: every room stages, and paces by the GPU)
+assert.ok(/const textureStaging = await stageTextureUploads\(/.test(opening), 'the room\'s warm stages the textures');
 const loop = opening.slice(cohorts, opening.indexOf('const deploymentForward', cohorts));
-assert.ok(loop.includes('if (gpuPaced) catchUpFrames += await waitForGpuCatchUp(catchUp);'), 'each cohort draw lets the GPU catch up before the next (a room)');
+assert.ok(loop.includes('catchUpFrames += await waitForGpuCatchUp(catchUp);'), 'each cohort draw lets the GPU catch up before the next (a room)');
 
 // (the room A/B) a large upload waits for the GPU to finish what was issued before it; a small one does not wait
 {
