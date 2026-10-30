@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type TankArmorPose } from '../sim/armor.ts';
 import { zoneAt, type ZonePlate } from '../sim/armorZones.ts';
+import { gunFaceSplitPlate } from '../sim/gunFaceSplit.ts';
 import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
 
 /** The share of a cluster's area its zone must hold to be baked; under it the cluster keeps the per-point score. */
@@ -582,7 +583,12 @@ export function* bakePaintPanelSteps(
           const d = _dir.set(x - nx * STANDOFF_REACH_M, y - ny * STANDOFF_REACH_M, z - nz * STANDOFF_REACH_M).applyMatrix4(inv).sub(o);
           for (const cell of cells) {
             const t = enterCell(cell, o, d);
-            if (t >= 0 && t < bestT && _entryFace) { bestT = t; bestPlate = _entryFace.plate as { name?: string }; }
+            if (t >= 0 && t < bestT && _entryFace) {
+              bestT = t;
+              // (265) a face only partly over the gun: the piece the entry lies in, as the authority reads it
+              const split = _entryFace.gunSplit;
+              bestPlate = (split ? gunFaceSplitPlate(split, o.x + d.x * t, o.y + d.y * t, o.z + d.z * t) : _entryFace.plate) as { name?: string };
+            }
           }
         }
         // the part stands at the segment's middle: the plate must lie behind it, never in front of it

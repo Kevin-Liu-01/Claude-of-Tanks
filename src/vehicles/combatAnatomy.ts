@@ -35,6 +35,8 @@ import type {
   InternalLayoutRecord,
   InternalSystemPlacement,
 } from './internalLayoutRegistry.ts';
+import { convexCellFacets } from '../sim/convexCellFacets.ts';
+import { splitGunFace, type GunFaceSplit, type GunFaceWindow } from '../sim/gunFaceSplit.ts';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
@@ -123,6 +125,8 @@ interface CollisionFace {
   center: Vec3;
   plate: ArmorPlate;
   internal?: boolean;
+  /** 265: a forward turret face only partly over a mantlet or gun-notch plate, cut into the pieces a point reads. */
+  gunSplit?: GunFaceSplit<ArmorPlate>;
 }
 
 interface CollisionCell extends Bounds {
@@ -377,14 +381,40 @@ const DEGENERATE_FACE_CROSS = 1e-10;
  * their thin roof (the T-90AM). Forward: outward normal z >= 0.2 (turret local). Over: the face centre inside the plate's
  * x range, within its height +-0.1 m and within 0.35 m of its depth. The nearest such plate wins
  * (gunFacePlates.selftest.mjs holds the fleet to it).
+ *
+ * 265 (FAIRNESS-265 §3, Main's ruling: fleet-wide, release 266): that is the face's `plate`, its centre's read. A face
+ * only partly over a gun plate (on 221 vehicles a slice's convex cell lays one triangle across a cheek and the gun: the
+ * M1A2's runs x -1.52..0.22, 53% of it in front of the mantlet, its centre 13 mm outside) is also cut at the windows
+ * into pieces (sim/gunFaceSplit.ts): inside one, the nearest gun plate; off them, the nearest other plate. A round reads
+ * the piece it enters (sim/armor.ts), as the panels and overlays draw them (gunFaceSplit.selftest.mjs).
  */
 const GUN_FACE_PLATE = /mantlet|gun_notch/i;
 const GUN_FACE_MIN_NORMAL_Z = 0.2;
 const GUN_FACE_HEIGHT_PAD_M = 0.1;
 const GUN_FACE_DEPTH_PAD_M = 0.35;
 
-function gunFaceDescriptors(descriptors: readonly PlateDescriptor[]): PlateDescriptor[] {
-  return descriptors.filter((descriptor) => GUN_FACE_PLATE.test(descriptor.plate.name));
+/** A turret's gun plates, their windows, and the plates a split face reads off them. */
+interface GunFaceContext {
+  plates: PlateDescriptor[];
+  windows: GunFaceWindow<ArmorPlate>[];
+  others: PlateDescriptor[];
+}
+
+function gunFaceContext(descriptors: readonly PlateDescriptor[]): GunFaceContext | null {
+  const plates = descriptors.filter((descriptor) => GUN_FACE_PLATE.test(descriptor.plate.name));
+  if (!plates.length) return null;
+  const others = descriptors.filter((descriptor) => !plates.includes(descriptor));
+  return {
+    plates,
+    windows: plates.map(({ plate, min, max }) => ({
+      plate,
+      lo: [min[0], min[1] - GUN_FACE_HEIGHT_PAD_M, min[2] - GUN_FACE_DEPTH_PAD_M],
+      hi: [max[0], max[1] + GUN_FACE_HEIGHT_PAD_M, max[2] + GUN_FACE_DEPTH_PAD_M],
+      min,
+      max,
+    })),
+    others: others.length ? others : descriptors.slice(),
+  };
 }
 
 function gunFacePlate(
@@ -413,7 +443,7 @@ function collisionFaceFromTriangle(
   vertices: Vec3[],
   cellCenter: readonly number[],
   descriptors: readonly PlateDescriptor[],
-  gunPlates: readonly PlateDescriptor[] = [],
+  gun: GunFaceContext | null = null,
 ): CollisionFace | null {
   if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
   const indices = sourceIndices.slice();
@@ -435,7 +465,7 @@ function collisionFaceFromTriangle(
     [indices[1], indices[2]] = [indices[2], indices[1]];
     normal = [-normal[0], -normal[1], -normal[2]];
   }
-  const plate = gunFacePlate(faceCenter, normal, gunPlates) ?? nearestPlate(faceCenter, normal, descriptors);
+  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates)) ?? nearestPlate(faceCenter, normal, descriptors);
   if (!plate) return null;
   return {
     indices,
@@ -446,17 +476,45 @@ function collisionFaceFromTriangle(
   };
 }
 
+/** Whether a cell's bounds reach a gun window (the facets' 1 mm growth included). */
+function cellReachesWindow(cell: CollisionCell, window: GunFaceWindow<ArmorPlate>): boolean {
+  for (let axis = 0; axis < 3; axis++) {
+    if (cell.max[axis] + 1e-3 < window.lo[axis] || cell.min[axis] - 1e-3 > window.hi[axis]) return false;
+  }
+  return true;
+}
+
+/**
+ * 265: a cell's forward facets cut at the gun windows. A round enters a convex cell through the plane it crosses last,
+ * anywhere on that plane's facet (sim/convexCellFacets.ts: the bounds cut by the planes, which on a stock cell can run
+ * past the plane's triangles), and is given the first face listed there; so the split is the facet's, and every face on
+ * the plane carries it. Off the windows a point reads that face's plate, or, where that is a gun plate (its centre lay
+ * over the gun), the nearest other plate.
+ */
+function splitCellGunFaces(cell: CollisionCell, gun: GunFaceContext): void {
+  if (!gun.windows.some((window) => cellReachesWindow(cell, window))) return;
+  for (const facet of convexCellFacets(cell).facets) {
+    const face = facet.faces[0];
+    if (face.normal[2] < GUN_FACE_MIN_NORMAL_Z || facet.faces.every((member) => member.internal)) continue;
+    const offGun = gun.plates.some((descriptor) => descriptor.plate === face.plate)
+      ? (point: readonly number[]) => nearestPlate(point, face.normal, gun.others) ?? face.plate
+      : () => face.plate;
+    const split = splitGunFace([{ points: facet.points, offGun }], face.normal, gun.windows);
+    if (split) for (const member of facet.faces) member.gunSplit = split;
+  }
+}
+
 function collisionCellFromCalibration(
   source: AnatomyCalibrationCell,
   descriptors: readonly PlateDescriptor[],
-  gunPlates: readonly PlateDescriptor[] = [],
+  gun: GunFaceContext | null = null,
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
   const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
-    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gunPlates);
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun);
     if (face) faces.push(face);
   }
   if (faces.length < 4) return null;
@@ -511,14 +569,15 @@ function prepareCollisionCells(
   if (!Array.isArray(sourceCells) || !sourceCells.length) return [];
   const descriptors = mainPlateDescriptors(plates);
   if (!descriptors.length) return [];
-  // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate)
-  const gunPlates = gunFaces ? gunFaceDescriptors(descriptors) : [];
+  // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate, gunSplit)
+  const gun = gunFaces ? gunFaceContext(descriptors) : null;
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, descriptors, gunPlates);
+    const cell = collisionCellFromCalibration(source, descriptors, gun);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);
+  if (gun) for (const cell of cells) splitCellGunFaces(cell, gun);
   return cells;
 }
 

@@ -25,6 +25,7 @@ import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import type { ModuleId } from './moduleCatalog.ts';
 
 import * as detMath from './detMath.ts';
+import { gunFaceSplitPlate, type GunFaceSplit } from './gunFaceSplit.ts';
 type FrameIndex = 0 | 1 | 2 | 3 | 4;
 type Vec3Tuple = readonly [number, number, number];
 type TrackModuleId = 'trackL' | 'trackR';
@@ -102,6 +103,8 @@ interface ArmorCollisionFace {
   internal?: boolean;
   constant: number;
   plate: ArmorPlate;
+  /** 265: a forward turret face only partly over the gun, its pieces' plates (sim/gunFaceSplit.ts) */
+  gunSplit?: GunFaceSplit<ArmorPlate>;
 }
 
 export interface ArmorCollisionCell {
@@ -573,9 +576,11 @@ function traceCollisionShell(
     if (!face || !face.plate) continue;
     let plate = face.plate;
     let nx = face.normal[0], ny = face.normal[1], nz = face.normal[2];
+    const f = _fromL[frame], d = _dirL[frame];
+    // (265) a face only partly over the gun: the plate of the piece the entry lies in
+    if (face.gunSplit) plate = gunFaceSplitPlate(face.gunSplit, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t);
     // zone plates (262, flag off by default): the plate (and with plate angles, the normal) of the zone the entry is in
     if (panelPlateResolver) {
-      const f = _fromL[frame], d = _dirL[frame];
       if (panelPlateResolver(cells, plates, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, nx, ny, nz, _panelHit)) {
         plate = _panelHit.plate as ArmorPlate;
         if (_panelHit.nx === _panelHit.nx) { nx = _panelHit.nx; ny = _panelHit.ny; nz = _panelHit.nz; }

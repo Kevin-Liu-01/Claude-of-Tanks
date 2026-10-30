@@ -938,6 +938,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/anatomyFidelity.selftest.mjs',
     // 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate)
     'src/vehicles/gunFacePlates.selftest.mjs',
+    // 265 (FAIRNESS-265 §3, release 266): a forward turret face only partly over the gun reads, point by point, the plate
+    // it lies over (sim/gunFaceSplit.ts); the M1A2 reads its SEPv2 twin across the gun face; the control without splits
+    'src/vehicles/gunFaceSplit.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
