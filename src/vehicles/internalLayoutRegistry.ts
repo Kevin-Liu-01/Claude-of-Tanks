@@ -526,7 +526,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'],
+  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'],
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],

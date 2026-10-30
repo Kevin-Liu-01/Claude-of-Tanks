@@ -113,7 +113,7 @@ const FAMILY_UPGRADES = Object.freeze({
   // 265: the M41s (the Danish rebuild at II over the originals at I)
   m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
   // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
-  denmarkB: [['centurion5_2', 'centurion5_2dk'], ['cv90', 'cv9035dk']],
+  denmarkB: [['cv90', 'cv9035dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -175,5 +175,5 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
 // Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
 // off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
-assert.equal(digest, '6baeb7db192fc444', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, '4a26df895af11cbc', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

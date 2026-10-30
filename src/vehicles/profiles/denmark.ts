@@ -3,7 +3,6 @@
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { buildLeo1A3DK, buildLeo1A5DK, buildLeo1A5DK1 } from './leopard1Dk.ts';
 import { buildLeopard2A5DK, buildLeopard2A7DK } from './leopard2Dk.ts';
-import { buildCenturion52DK } from './centurionDk.ts';
 import { buildCv90, type CvBuilderPort } from './cv90.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -13,6 +12,5 @@ export const DENMARK_PROFILES = {
   leo1a5dk1: { build: buildLeo1A5DK1 },
   leo2a5dk: { build: buildLeopard2A5DK },
   leo2a7dk: { build: buildLeopard2A7DK },
-  centurion5_2dk: { build: buildCenturion52DK },
   cv9035dk: { build: (P: TankBuilderPort) => buildCv90(P as unknown as CvBuilderPort, { danish: true }) },
 } satisfies VehicleProfileRecord;

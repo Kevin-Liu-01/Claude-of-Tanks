@@ -92,7 +92,7 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // Release 265: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the Centurion DK's 1980s three-tone sit
 // within a shade of a named preset, so
 // no authored paint of their own: Denmark has no national Factory coat, and they paint their spec's coat.
-const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'centurion5_2dk'];
+const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
 // Release 265: the US M41A3 wears the US Factory coat (the owner's 2026-10-22 rule for plain coats).
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert' };
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62

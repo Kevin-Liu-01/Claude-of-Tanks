@@ -3,7 +3,7 @@
 // (widthM the X extent, overallLengthM the Z extent, tallestM the highest point, within 3%); the Leopard 1 DKs' welded
 // 1A3 turret with each mark's kit; the 2A5 DK's Elop sight and bar armour; the
 // 2A7 DK's ribbed modules and Barracuda cover; neither Leopard 2 carries the German builds' remote 30 mm station; the
-// Centurion Mk 5/2 DK's 1985 fire control (rangefinder box on the mantlet's right); the CV9035 DK's 35 mm and no roof
+// CV9035 DK's 35 mm and no roof
 // weapon station (the M41 DK-1 is m41.selftest.mjs's). Then the tree and the team country: one Denmark tree rooted on the
 // 1A3 DK, the Christian II in its special lane, Denmark a country that fills first from Sweden.
 import assert from 'node:assert/strict';
@@ -22,10 +22,9 @@ const PACKETS = {
   'leo1a5dk1': 'leopard-1a5-dk-1-20261029.json',
   'leo2a5dk': 'leopard-2a5-dk-20261029.json',
   'leo2a7dk': 'leopard-2a7-dk-20261029.json',
-  'centurion5_2dk': 'centurion-mk5-2-dk-20261029.json',
   'cv9035dk': 'cv9035-dk-20261029.json',
 };
-const TIERS = { 'leo1a3dk': 1, 'leo1a5dk': 1, 'leo1a5dk1': 1, 'leo2a5dk': 9, 'leo2a7dk': 10, 'centurion5_2dk': 3, 'cv9035dk': 5 };
+const TIERS = { 'leo1a3dk': 1, 'leo1a5dk': 1, 'leo1a5dk1': 1, 'leo2a5dk': 9, 'leo2a7dk': 10, 'cv9035dk': 5 };
 await ensureInteriorFills(Object.keys(PACKETS));
 
 const within = (actual, target, label) =>
@@ -59,10 +58,6 @@ for (const [id, file] of Object.entries(PACKETS)) {
         assert.equal(r.rangefinderPortsOpen, id === 'leo1a3dk', `${id} ${quality}: the TEM 2A ports open on the 1A3 DK only`);
         assert.equal(r.airConditioningHousing, id === 'leo1a5dk1', `${id} ${quality}: the DK-1's air conditioning housing`);
         assert.ok(r.cheekRoot[0] < r.halfWidth, `${id}: the pointed plan front`);
-      } else if (id === 'centurion5_2dk') {
-        const r = turret.userData.centurionDkReceipt;
-        assert.equal(r?.laserRangefinderBox, 'right', `${id} ${quality}: the rangefinder box on the mantlet's right`);
-        assert.equal(r.thermalSightBox, 'right-front', `${id} ${quality}: the thermal sight box on the roof's right front`);
       } else if (id === 'cv9035dk') {
         assert.equal(spec.role, 'ifv', `${id}: an IFV`);
         const gun = tank.root.getObjectByName('rig_gun').userData.cv90GunAssemblyReceipt;

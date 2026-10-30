@@ -229,7 +229,7 @@ function applyCompleteVehicleScale(
   P.turretG.userData.ukCompleteVehicleScaleReceipt = receipt;
 }
 
-export interface UKCenturionPort extends UKMaterialPort {
+interface UKCenturionPort extends UKMaterialPort {
   readonly rng: () => number;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
@@ -1974,7 +1974,7 @@ const CENTURION_HULL = {
  * already built without it, 2026-10-08); the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish commander's
  * cupola.
  */
-export function* centurionBuildSteps(P: UKCenturionPort, mk: 3 | 5): TankProfileBuild {
+function* centurionBuildSteps(P: UKCenturionPort, mk: 3 | 5): TankProfileBuild {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
