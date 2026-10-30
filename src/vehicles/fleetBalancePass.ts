@@ -627,8 +627,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // x0.7 brings it there (0.84 -> 0.71)
   mantlet(registry, 'leo2a5', 0.7);
   // Tier IX and X: the Leclerc's 3-round clip was still refilling when it died (16.5 s; the real loader is rated about
-  // 12 rounds a minute); the Type 90's 9 s magazine cycle (263). Its armour reads true (602 mm against 620-700).
-  for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr']) autoloaderCycle(registry, id, 9);
+  // 12 rounds a minute); the Type 90's 9 s magazine cycle (263). Its armour reads true (602 mm against 620-700). The
+  // AMX 56 keeps its S2 donor's gun (sourceXSecondWave), so it moves with it.
+  for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'amx56']) autoloaderCycle(registry, id, 9);
   // Tier X: the ZTZ-100, the ZTZ-20's prototype, takes the ZTZ-20 prototype's footing (263: a 430 round needed a hit more)
   spec(registry, 'ztz100').hp = 2750;
   primary(registry, 'ztz100', { damage: 480 });

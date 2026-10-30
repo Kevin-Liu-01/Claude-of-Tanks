@@ -123,6 +123,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t72b3m_xuanwu: 'a x1.25 turret front: its flat box cheeks read ~600 mm and every VII round pierced them',
   leo2a5: 'a x0.7 mantlet: its sloped wedge mantlet read ~1,300 mm against the published 850-930 at IX',
   leclerc_xlr: 'the Type 90\'s 9 s magazine cycle with the S2 and SXXI',
+  amx56: 'the Type 90\'s 9 s magazine cycle with its Leclerc S2 donor (sourceXSecondWave)',
   ztz100: '2,750 HP and a 480-damage round, the ZTZ-20 prototype\'s footing',
 } as const);
 
