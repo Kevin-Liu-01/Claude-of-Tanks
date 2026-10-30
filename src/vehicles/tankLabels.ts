@@ -329,6 +329,14 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5_2: { displayName: 'Centurion Mk 5/2' },
+  // release 266: the M48s drawn on the M48A5's castings
+  m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
+  magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },
+  m48a2ga2: {
+    displayName: 'Kpz M48A2GA2', shortName: 'M48A2GA2',
+    searchAliases: ['M48A2GA2', 'Kampfpanzer M48A2GA2', 'M48A2G A2', 'Bundeswehr M48'],
+  },
+  m48_super: { displayName: 'M48 Super', searchAliases: ['Rheinmetall M48 Super', 'M48A2 Super', 'German M48 upgrade'] },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
   c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
   c1_ariete_proto_serie1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },

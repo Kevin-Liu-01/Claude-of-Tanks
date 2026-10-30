@@ -195,8 +195,10 @@ try {
         `${side < 0 ? 'left' : 'right'} ${label} shoulder reaches the marked outer hull edge`);
     }
 
+    // (the 240 gun-hull pass lowered the deck under the turret and moved the shoulder's rise aft: it now climbs from
+    // z -1.28 to -1.56, so the probe starts at -1.35 instead of -1.10)
     const transitionRay = new THREE.Raycaster(
-      new THREE.Vector3(side * 1.47 * vehicleScale, 1.72 * vehicleScale, -1.10 * vehicleScale),
+      new THREE.Vector3(side * 1.47 * vehicleScale, 1.72 * vehicleScale, -1.35 * vehicleScale),
       new THREE.Vector3(0, 0, 1),
       0,
       0.7 * vehicleScale,

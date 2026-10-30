@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m48a2ga2": {
+      "name": "Kpz M48A2GA2",
+      "authority": "Main ruled on 2026-10-29 (~11:00, owner's blanket approval; DECISIONS) that a photo-built id with no oracle qualifies stage A through a per-id photo packet plus a shaded blind photo-critic PASS. Kpz M48A2GA2 is a release-266 build on the M48A5's measured castings from photographs (the owner, 2026-10-28: \"also add the m48 super to germany as well as the kpfz m48 a2 g a2\"); its blind photo critic passed at 8.5/10. Numerical 3D comparison remains unverified: no owner model exists for this mark.",
+      "sources": [
+        "https://tanks-encyclopedia.com/west-germany/coldwar/m48a2ga2/",
+        "https://tanknutdave.com/the-german-m48a2ga2-tank-a-super-m48-tank-upgrades/",
+        "https://wiki.warthunder.com/unit/germ_mkpz_m48a2ga2"
+      ],
+      "widthM": 3.748,
+      "overallLengthM": 9.241,
+      "tallestM": 3.727,
+      "envelopeBasis": "As built. Width over the fender lips and the fender bins (the Munster placard's 3.63 m is over the tracks). Length from the stern plate to the L7A3's muzzle (the placard's 9.30 m). Tallest is the tips of the two whip antennas on the bustle, as built rather than published; the placard's 3.16 m height is to the cupola's MG3. docs/references/tanks/m48a2ga2.md records the sources and the Munster, Dresden and 1983 photographs.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/pattonCastProportions.selftest.mjs"
+    }
+  }
+}

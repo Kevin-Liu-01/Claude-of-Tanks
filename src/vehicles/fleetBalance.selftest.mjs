@@ -141,7 +141,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 81 -> 106 (263, FAIRNESS-263 merged by the 264 integrator): same-tier fairness on the merged 263 fleet at I, VI, VIII
 // and X (applySameTierFairness; fourteen more extend their entries), commit B's 263-build CR1 entries dropped for C1 + C2.
 // 106 -> 107 (264, Main's ruling): the Leopard 2A6 UA on the 2A6's main plates, HP and cadence.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 107,
+// 107 -> 111 (265 integration, pattons-m48-266): the new M48A3, Magach 3, M48A2GA2 and M48 Super take the M48A5's
+// package (fleetBalancePass).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 111,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

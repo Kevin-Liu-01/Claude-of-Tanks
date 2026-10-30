@@ -31,6 +31,10 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   borsuk: 'bring the 30 mm round to the modern 30 mm penetration',
   chieftain_mk9: 'restore the late Chieftain as a competitive protected Tier VIII MBT; 259: at IV the armour bonus trimmed to 1.32, a slower cycle and less hull',
   centurion5_2: 'remove the Tier VIII Centurion survivability and mobility trough; 258: an engine over its shown-tier floor',
+  m48a3_patton: '266: the new M48A3 shares the M48A5 package with the M47\'s 90 mm round and cadence',
+  magach3: '266: the new Magach 3 shares the M48A5 package with its Blazer boxes',
+  m48a2ga2: '266: the new M48A2GA2 shares the M48A5 package (the L7A3 is the M68\'s twin)',
+  m48_super: '266: the new M48 Super: the M48A5 package with its spaced armour, a stabilised fire control and the added weight',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',

@@ -3912,6 +3912,66 @@
     }
    ]
   },
+  "m48a3_patton": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 368,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 109793,
+   "frame": [
+    0,
+    1.85,
+    0.95,
+    5.2
+   ]
+  },
+  "magach3": {
+   "sealed": true,
+   "openPx": 22,
+   "openViews": 0,
+   "insideOutPx": 636,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116555,
+   "frame": [
+    0,
+    1.85,
+    1.2,
+    5.5
+   ]
+  },
+  "m48a2ga2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 404,
+   "seeThroughPx": 2,
+   "netSeeThroughPx": 0,
+   "tris": 106951,
+   "frame": [
+    0,
+    1.85,
+    1.2,
+    5.5
+   ]
+  },
+  "m48_super": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 167,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 105530,
+   "frame": [
+    0,
+    1.85,
+    1.2,
+    5.5
+   ]
+  },
   "t64bm1m": {
    "sealed": true,
    "openPx": 0,

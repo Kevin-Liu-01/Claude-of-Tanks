@@ -1986,13 +1986,31 @@
    "hostSweep": []
   },
   "m46_patton": {
-   "inputHash": "54080049860bd656",
+   "inputHash": "390a577e6cdaff61",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m47_patton": {
-   "inputHash": "19937e5a56bf1dec",
+   "inputHash": "e800cf3b0efdb1bf",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m48_super": {
+   "inputHash": "1d69d9dcad4d9ddd",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m48a2ga2": {
+   "inputHash": "3a7d76283f8619de",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m48a3_patton": {
+   "inputHash": "49869b0d76eec2f5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2028,7 +2046,7 @@
    "hostSweep": []
   },
   "m60a3": {
-   "inputHash": "0380597d78cc43f5",
+   "inputHash": "07553441c7eb9c23",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2059,6 +2077,12 @@
      }
     }
    ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "magach3": {
+   "inputHash": "5b29fe05b53c644e",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

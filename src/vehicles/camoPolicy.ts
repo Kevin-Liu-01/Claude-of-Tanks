@@ -824,6 +824,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48a5_patton: 'summer',
+  // release 266: the M48A3 in the A5's US coat; the Magach 3 and the German M48s take their nations' Factory coats
+  m48a3_patton: 'summer',
   m2a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
   // 262: the production ZTZ-20 wears its family's PLA digital woodland

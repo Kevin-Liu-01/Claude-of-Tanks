@@ -23,10 +23,12 @@ export const USA_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // Patton
-    node({ id: 'm46_patton', tier: 1, line: 'patton', lane: 4, parents: [], slot: 'line' }),
-    node({ id: 'm47_patton', tier: 1, line: 'patton', lane: 3, parents: ['m46_patton'], slot: 'line' }),
+    node({ id: 'm46_patton', tier: 1, line: 'patton', lane: 5, parents: [], slot: 'line' }),
+    node({ id: 'm47_patton', tier: 1, line: 'patton', lane: 4, parents: ['m46_patton'], slot: 'line' }),
+    // release 266: the M48A3 between the M47 and the A5 it was rebuilt into
+    node({ id: 'm48a3_patton', tier: 1, line: 'patton', lane: 3, parents: ['m47_patton'], slot: 'line' }),
     node({ id: 'm60a1', tier: 1, line: 'patton', lane: 1, parents: ['m48a5_patton'], slot: 'line' }),
-    node({ id: 'm48a5_patton', tier: 1, line: 'patton', lane: 2, parents: ['m47_patton'], slot: 'line' }),
+    node({ id: 'm48a5_patton', tier: 1, line: 'patton', lane: 2, parents: ['m48a3_patton'], slot: 'line' }),
     node({ id: 'm60a3', tier: 1, line: 'patton', lane: 0, parents: ['m60a1'], slot: 'line' }),
     // Abrams M1A1
     node({ id: 'm1a1', tier: 8, line: 'm1a1', lane: 5, parents: ['m60a3'], slot: 'line' }),
