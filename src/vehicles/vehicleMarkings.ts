@@ -143,7 +143,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // markings move to the turret cheek like the T-72B 1987 X; the right cheek is the clear one (the
   // left carries the smoke launchers).
   t72b3m_2016: anchor('turret', 'right', .34, .34, .24, 1),
-  challenger1_mk3: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger1_mk3: anchor('turret', 'left', .60, .40, .24, -1),
   t72bu: anchor('turret', 'right', .31, .32, .24, -1),
   chieftain5: anchor('turret', 'left', .33, .40, .24, -1),
   t90: anchor('turret', 'right', .40, .26, .24, 1),
@@ -250,8 +250,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   vickers_mk1: anchor('hull', 'right', 0.58, 0.58, 0.23, -1),
   // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build take its anchor; the fictional X tanks keep the
   // rebuilt turret's
-  challenger1_mk1: anchor('turret', 'left', .60, .40, .24, 1),
-  challenger1_mk2: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger1_mk1: anchor('turret', 'left', .60, .40, .24, -1),
+  challenger1_mk2: anchor('turret', 'left', .60, .40, .24, -1),
   challenger_x: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
   challenger_x_sleek: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
   fv4034: anchor('turret', 'left', 0.39, 0.45, 0.25, 1),

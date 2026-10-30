@@ -193,7 +193,10 @@ function drumsAndRear(P:TankBuilderPort,drums:boolean):void{
       equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
       for(const dx of [-9.5,9.5]){
         equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
-        P.addEquipment('hullDetail',beamBetween(p(x+dx,45,-190),p(x+dx,42.2,-208),m(1.1)));
+        // each strut ends in a saddle under the drum's lowest point (release 265, the minors pass: it ran on 6 in past
+        // it and 2 in under the skin, and its ends read as pegs)
+        P.addEquipment('hullDetail',beamBetween(p(x+dx,45,-190),p(x+dx,42.6,-202.1),m(1.1)));
+        caseBox(P,x+dx,43.0,-202.1,2.0,1.2,6.0);
         caseBox(P,x+dx,55.3,-214.2,2.0,10.1,3.0);
       }
     }
