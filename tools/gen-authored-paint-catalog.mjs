@@ -84,7 +84,7 @@ const leadOf = (ids) => ids.find((id) => !/_x$/.test(tankSeedId(id)) && !/legacy
 const NATION_WORD = {
   USA: 'US Army', Germany: 'Bundeswehr', Russia: 'Russian', USSR: 'Soviet', 'USSR/Russia': 'Soviet', UK: 'British', France: 'French',
   China: 'PLA', Italy: 'Italian', Japan: 'JGSDF', Poland: 'Polish', 'South Korea': 'ROK', Sweden: 'Swedish', Israel: 'IDF',
-  Ukraine: 'Ukrainian', Atlantis: 'Atlantean', Denmark: 'Danish',
+  Ukraine: 'Ukrainian', Atlantis: 'Atlantean', 'South Africa': 'SANDF', Australia: 'RAAC', Denmark: 'Danish',
 };
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',
@@ -127,7 +127,7 @@ const labelEn = ({ who, word, envWord, tone }) => (tone
 const NATION_ZH = {
   'US Army': '美国陆军', Bundeswehr: '联邦国防军', Russian: '俄罗斯', Soviet: '苏联', British: '英国', French: '法国', PLA: '解放军',
   Italian: '意大利', JGSDF: '陆上自卫队', Polish: '波兰', ROK: '韩国', Swedish: '瑞典', IDF: '以色列国防军', Ukrainian: '乌克兰',
-  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', Danish: '丹麦',
+  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', SANDF: '南非国防军', RAAC: '澳大利亚皇家装甲兵', Danish: '丹麦',
 };
 const PATTERN_ZH = {
   Plain: '单色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',

@@ -1,6 +1,6 @@
 # Strv 81 — reference packet (§5.248 ground-up rebuild, sweden lane)
 
-## Current status (release 263, 2026-10-28): the Strv 81B rebuilt from historical references
+## Current status (release 262, 2026-10-27): the Strv 81B rebuilt from historical references
 
 Owner, 2026-10-27 (as for the Centurions). `strv81` is the `strv81` mark of `src/vehicles/profiles/centurionFamily.ts`:
 the Strv 81B (Centurion Mk 5, "C V", bought 1955) with the 20-pdr Type B barrel (SV, F81). The 0.82 turret squash of the

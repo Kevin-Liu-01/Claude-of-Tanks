@@ -168,5 +168,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 265 (integration): the Pattons' four new M48s (the M48A3, Magach 3, M48A2GA2 and M48 Super; pattons-m48-266) join
 // the tree with the Longwei family (re-pinned 2026-10-30 at integ/265 791de05f98: every other tree check passes; the
 // M48 line, the Magach 3 special and the M48A3 between the M47 and the A5 are pattons-m48-266's nodes).
+// 2026-10-30 re-pin (the Centurion family 262 merged on 264c): the Sho't Kal (Israel's special lane at III), the Centurion Mk 13 (III, after the Mk 5/2),
+// the Strv 105 (Sweden's new special lane at III), the Olifant Mk 2 (III) and the Mk 5 AVRE (II) in the UK's special lane,
+// each at the tier its same-tier duels hold; the UK tree drawing South Africa's and Australia's one hull each (the Olifant
+// and the Australian Mk 5/1, at II beside the Strv 81 it shares a package with, fly their own flags).
 assert.equal(digest, '808a7174120ac73c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

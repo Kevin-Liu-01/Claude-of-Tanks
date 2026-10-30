@@ -171,6 +171,18 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   vickers_mk1: { doctrine: 'flanker', viewM: 410, still: 0.241, moving: 0.181 },
   centurion3: { doctrine: 'flexible', viewM: 385, still: 0.189, moving: 0.129 },
   centurion5_2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
+  // the Sho't Kal: the Mk 5/2's flexible gun tank with the diesel's quicker pace and the IDF's taller whips
+  shot_kal: { doctrine: 'flexible', viewM: 410, still: 0.190, moving: 0.130 },
+  // the Mk 13: the Mk 5/2's flexible gun tank; its searchlight drum makes it the easier one to spot
+  centurion13: { doctrine: 'flexible', viewM: 410, still: 0.195, moving: 0.135 },
+  // the Strv 105: the Mk 5/2's flexible gun tank with a thermal sight; its cassettes bulk it out
+  strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
+  // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
+  olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
+  centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
+  // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
+  centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },

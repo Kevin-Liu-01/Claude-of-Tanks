@@ -27,10 +27,9 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "bwp1": {
     "fitting@hull(1.38,1.27,-2.60)": [1.18, 1.272, -2.4, 0, 0, 0, 1, 1],
   },
-  "centurion5_2": {
-    "strip@hull(-0.55,1.41,3.05)": 0,
-    "strip@hull(-1.26,1.38,-3.58)": [0.7005, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
-    "strip@hull(1.26,1.38,-3.58)": [-0.6195, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
+  "centurion13": {
+    "fitting@hull(-0.30,1.43,3.14)": [0.188, 1.27868, 3.46747, 0.18979, -0.68116, -0.18979, 0.68116, 1],
+    "fitting@hull(0.36,1.43,3.14)": -1,
   },
   "chieftain_mk9": {
     "fitting@hull(-0.62,1.43,2.79)": -1,
@@ -104,6 +103,10 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "strv103a": {
     "fitting@hull(0.98,1.61,2.30)": 45,
+  },
+  "strv105": {
+    "strip@hull(-0.86,1.26,-3.76)": 45,
+    "strip@hull(0.86,1.26,-3.76)": 46,
   },
   "strv121": {
     "fitting@hull(-1.68,1.68,-1.72)": [-1.03098, 0.5487, -1.612, 0, 0, 0.89442, 0.44723, 1],

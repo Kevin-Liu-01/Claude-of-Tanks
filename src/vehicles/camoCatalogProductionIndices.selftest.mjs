@@ -58,12 +58,14 @@ assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every pro
 const RELEASE_265_SIGNATURES = ['sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu'];
 assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
-  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', ...RELEASE_265_SIGNATURES],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints and the T-84U 2000 three-tone, then the release-265 Signatures append, after GT');
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', ...RELEASE_265_SIGNATURES,
+  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints and the T-84U 2000 three-tone, then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1) append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
-  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', ...RELEASE_265_SIGNATURES]);
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', ...RELEASE_265_SIGNATURES,
+  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -86,7 +88,11 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // its stock Signature selection, AUTO and every other row are unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 // Release 262: the Christian II and its Danish tri-tone.
-const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws'];
+// The Centurion family (262, merged on 264c): the Sho't Kal and its 1973 Sinai grey, the Olifant Mk 2 and its SANDF
+// coat, the Australian Mk 5/1 and its olive drab; the Centurion Mk 13 and the Mk 5 AVRE wear the Mk 5/2's British
+// stock, the Strv 105 the Strv 81's Swedish stock.
+const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
+  'centurion5_1_aus'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
@@ -94,7 +100,8 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here).
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
   challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
-  challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100' };
+  challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100',
+  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
 // Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's

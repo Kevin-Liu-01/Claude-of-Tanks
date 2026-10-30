@@ -217,6 +217,8 @@ const laterChannelCounts = {
   ztz99a2_qinglong: 3, vt4a1_baihu: 3, t72b3_zhuque: 3, t72b3m_xuanwu: 3,
   // 265 (integration, pattons-m48-266): the four new M48s, three rounds each
   m48a3_patton: 3, magach3: 3, m48a2ga2: 3, m48_super: 3,
+  // the Centurion family (262, merged on 264c): the L7 marks' and the Olifant's three rounds, the AVRE's one 165 mm HESH
+  shot_kal: 3, centurion13: 3, strv105: 3, olifant_mk2: 3, centurion5_avre: 1, centurion5_1_aus: 3,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -225,6 +227,8 @@ for (const m of LONGWEI_FAMILY) {
   assert.deepEqual(TANK_SPECS[m.id].gun.shells, TANK_SPECS[m.host].gun.shells,
     `${m.id}: the concept keeps its host's (${m.host}) ammunition, no invented rounds`);
 }
+const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']
+  .reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
@@ -275,9 +279,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three,
 // the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265), and the
-// four new M48s' three each (265 integration).
+// four new M48s' three each (265 integration), and the Centurion family's six marks (262, merged in 265).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
-  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels, 560,
+  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

@@ -35,6 +35,12 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   magach3: '266: the new Magach 3 shares the M48A5 package with its Blazer boxes',
   m48a2ga2: '266: the new M48A2GA2 shares the M48A5 package (the L7A3 is the M68\'s twin)',
   m48_super: '266: the new M48 Super: the M48A5 package with its spaced armour, a stabilised fire control and the added weight',
+  shot_kal: '262: the new Sho\'t Kal shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel\'s power',
+  centurion13: '262: the new Mk 13 shares the Mk 5/2 package (hull, armour factor, round, cadence, engine)',
+  strv105: '262: the new Strv 105 shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel\'s power and its FFV cassettes',
+  olifant_mk2: '262: the new Olifant Mk 2 package: the 1,040 hp diesel, the composite turret and glacis, a stabilised fire control and the GT-3B\'s APFSDS',
+  centurion5_1_aus: '262: the new Australian Mk 5/1: the Strv 81\'s Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand',
+  centurion5_avre: '262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',

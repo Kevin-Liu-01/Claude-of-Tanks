@@ -149,15 +149,17 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'chieftain_mk9', { damage: 510, pen100: 700, pen1000: 640, pen2000: 580 });
     armor(registry, 'chieftain_mk9', 1.5);
   }
-  {
-    const tank = spec(registry, 'centurion5_2');
+  // release 262: the Sho't Kal (shotKalSpecs.ts), the Mk 13 (centurion13Specs.ts) and the Strv 105 (strv105Specs.ts) are the
+  // Mk 5/2's hull, turret and L7 and share its package
+  for (const id of ['centurion5_2', 'shot_kal', 'centurion13', 'strv105']) {
+    const tank = spec(registry, id);
     Object.assign(tank, {
       hp: 1900, enginePowerHp: 850, topSpeedKmh: 48, reverseSpeedKmh: 15,
       hullTraverseDegS: 32, turretTraverseDegS: 30,
     });
     Object.assign(tank.gun, { reloadS: 6.6, baseAccuracy: 0.3, aimTimeS: 2 });
-    primary(registry, 'centurion5_2', { pen100: 570, pen1000: 525, pen2000: 480 });
-    armor(registry, 'centurion5_2', 1.12);
+    primary(registry, id, { pen100: 570, pen1000: 525, pen2000: 480 });
+    armor(registry, id, 1.12);
   }
   {
     const tank = spec(registry, 'fv4034');
@@ -451,6 +453,13 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
   primary(registry, 'bmpt_terminator2', { pen100: 125, pen1000: 112, pen2000: 100 });
   primary(registry, 'marder1a3', { pen100: 76, pen1000: 68, pen2000: 60 });
   spec(registry, 'centurion5_2').enginePowerHp = 880;
+  // the Sho't Kal's AVDS-1790-2A diesel (750 hp against the Meteor's 650): the same shown-tier step over the Mk 5/2
+  spec(registry, 'shot_kal').enginePowerHp = 960;
+  spec(registry, 'shot_kal').reverseSpeedKmh = 17;
+  // the Mk 13 keeps the Mk 5/2's Meteor and its shown-tier engine
+  spec(registry, 'centurion13').enginePowerHp = 880;
+  // the Strv 105's AVDS-1790-2DC (the Strv 104's 750 hp diesel): the Sho't Kal's step
+  spec(registry, 'strv105').enginePowerHp = 960;
   spec(registry, 'merkava2b').enginePowerHp = 1060;
   const t80bv = spec(registry, 't80bv');
   t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;

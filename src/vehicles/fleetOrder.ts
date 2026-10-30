@@ -48,7 +48,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 258: in shown-tier order (matchmaking reads it): the Sabra at II and the Namer at IV come before the Merkava 2 and 3
   israel: Object.freeze([
-    'magach3', 'merkava1b', 'sabra_mk2', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
+    'magach3', 'merkava1b', 'sabra_mk2', 'shot_kal', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
     'merkava4', 'merkava4b', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
@@ -69,7 +69,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1', 'vt4a1_baihu', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
   ]),
   sweden: Object.freeze([
-    'strv81', 'udes03', 'strv103a', 'strv103b', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',
+    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',
   ]),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),

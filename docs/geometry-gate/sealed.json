@@ -524,15 +524,101 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 96,
-   "seeThroughPx": 5,
+   "insideOutPx": 320,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 94156,
+   "tris": 98631,
    "frame": [
     0,
-    1.45,
-    1.2,
+    1.6,
+    1,
     5.5
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 262 rebuilt Centurion family hulls and turrets with their tall wireless whips",
+     "by": "centurion-family-262",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 5,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.2,
+       5.5
+      ]
+     },
+     "to": [
+      0,
+      2.45,
+      1,
+      5.8
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "reframe",
+     "reason": "the Mk 5/2 lost its 2 m whip aerials so its census frame drops 1 m",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       1,
+       5.8
+      ]
+     },
+     "to": [
+      0,
+      1.6,
+      1,
+      5.5
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 1,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "one pixel at the turret roof by the cupola in one low ring view, read before this change and on the Strv 105",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       1,
+       5.8
+      ]
+     }
+    }
    ]
   },
   "challenger1_mk3": {
@@ -3898,6 +3984,96 @@
       "netSeeThroughPx": 2790
      }
     }
+   ]
+  },
+  "shot_kal": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 294,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 104021,
+   "frame": [
+    0,
+    2.85,
+    1,
+    6
+   ]
+  },
+  "centurion13": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 318,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 98153,
+   "frame": [
+    0,
+    2.45,
+    1,
+    5.8
+   ]
+  },
+  "strv105": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 324,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 91455,
+   "frame": [
+    0,
+    2.45,
+    1,
+    5.8
+   ]
+  },
+  "olifant_mk2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 244,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94166,
+   "frame": [
+    0,
+    2.6,
+    1,
+    5.9
+   ]
+  },
+  "centurion5_avre": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 404,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 102347,
+   "frame": [
+    0,
+    2.45,
+    0.15,
+    5.1
+   ]
+  },
+  "centurion5_1_aus": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 364,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 102964,
+   "frame": [
+    0.05,
+    2.45,
+    0.9,
+    6.1
    ]
   },
   "m48a3_patton": {
