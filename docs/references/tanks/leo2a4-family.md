@@ -83,7 +83,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   roof (0.79, falling to 0.74 over the front block), floor (0.058, rising to 0.214 over the bustle); the bustle's
   chamfered rear to the rear plate at -2.64; the front block from the 2A6 X's seam (z 1.0977) to the faces at 1.65:
   level top to 1.45, bevel to the faces' top at 0.61, outer corners cut back from 1.38, the EMES 15 pocket in the right
-  cheek (x -0.86..-0.58, y 0.38..0.74, glass at 1.42); the wide mantlet (slot ±0.50) 3 cm behind the faces; the
+  cheek (x -0.94..-0.50, y 0.42..0.74, the head 0.35 m behind the face); the wide mantlet (slot ±0.50) 3 cm behind the faces; the
   commander's ring with eight periscopes and the PERI R17 ahead of it, the loader's ring with its periscope and machine
   gun; the 2A6 X's two rows of four smoke tubes a side; grab rails; the ammunition hatch welded shut on the left wall; bins
   on the bustle's sides; two whips; the 2A6 X's aft lifting arch. Trunnion (0, 0.33, 1.42); L/44 4.10 m and L/55 5.34 m
@@ -166,3 +166,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 - Strv 121, R5 (2026-10-29): the stern rack floored (54 contiguity cells); its suit's skirt drapes split around the 2A4
   skirts' two open seams (the strict track clip: 28 voxels of the hull net in the sweep -> 0); the netting row
   re-baselined (2,139 px; main's row 2,806); its photo packet; a shaded side critic PASS (stills4).
+- 2026-10-30 (the christian2 lane; the owner: "make the otehr 2a4s have that correct window"): the EMES 15 window
+  deepened to the Christian II's 0.35 m to the sight head (it was 0.22, the head at the bevel's edge, the window
+  reading flush with the face in right-front renders), its width and sill unchanged; the housing shortened 0.62 ->
+  0.49 m so its rear stays at z 0.685, clear of the PERI R17's drum; the window's plate and the optics module follow
+  the datums (shared cheek front, leopard2CheekFrontDatums.ts).
