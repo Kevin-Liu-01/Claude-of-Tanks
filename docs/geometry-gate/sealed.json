@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-30T00:44:38.759Z",
+ "generatedAt": "2026-10-30T08:45:44.624Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1082,21 +1082,6 @@
     5.7
    ]
   },
-  "leo2_improved": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 246,
-   "seeThroughPx": 68,
-   "netSeeThroughPx": 0,
-   "tris": 126562,
-   "frame": [
-    0,
-    2.4,
-    1.6,
-    6.4
-   ]
-  },
   "leo2_revolution": {
    "sealed": true,
    "openPx": 0,
@@ -1177,21 +1162,6 @@
     1.9,
     1.25,
     5.9
-   ]
-  },
-  "leo2a4_otco": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 223,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 140784,
-   "frame": [
-    0,
-    1.7,
-    1.75,
-    6.3
    ]
   },
   "leo2a4m": {
@@ -3663,6 +3633,36 @@
     2.1,
     0.85,
     5.9
+   ]
+  },
+  "leo2a4_otco": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 448,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 120204,
+   "frame": [
+    0,
+    1.75,
+    0.85,
+    5.8
+   ]
+  },
+  "leo2_improved": {
+   "sealed": true,
+   "openPx": 17,
+   "openViews": 0,
+   "insideOutPx": 322,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 114382,
+   "frame": [
+    0,
+    2.5,
+    0.85,
+    6.1
    ]
   }
  }
