@@ -120,6 +120,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const turretY = hull.deckTopY(0.50) + 0.02;
   P.turretG.position.set(0, turretY, 0.50);
   const roof = W.roofY;
+  // (the UN-white DK-1's small fittings painted grey: r9-r11 critics, black dots and slivers on the white)
+  const tFit = mark === 'a5dk1' ? 'turretFittingPaint' : 'turretDark';
   // ---------------------------------------------------------------- welded body --
   const buildLeo1DkTurretBody = (): void => {
     P.add('turret', cylY(0.98, 1.04, 0.11, P.q ? 28 : 18), 0, -0.055, 0);
@@ -135,8 +137,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     // the rear bin, a separate stowage box hung on the rear plate
     P.addEquipment('turret', box(2.10, roof - W.binLowY - 0.02, W.rearZ - W.binRearZ), 0, (roof + W.binLowY) / 2 - 0.01,
       (W.rearZ + W.binRearZ) / 2);
-    P.addEquipment('turretDark', box(2.12, 0.022, 0.03), 0, roof - 0.06, W.binRearZ - 0.005);
-    for (const x of [-0.70, 0, 0.70]) P.addEquipment('turretDark', box(0.06, 0.07, 0.025), x, roof - 0.11, W.binRearZ - 0.012);
+    P.addEquipment(tFit, box(2.12, 0.022, 0.03), 0, roof - 0.06, W.binRearZ - 0.005);
+    for (const x of [-0.70, 0, 0.70]) P.addEquipment(tFit, box(0.06, 0.07, 0.025), x, roof - 0.11, W.binRearZ - 0.012);
     // weld seams on the sides and the brow edge
     for (const s of [-1, 1] as const) {
       for (const z of [-1.02, 0.02]) {
@@ -147,8 +149,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // side grab rails (Krigsmuseet: one ahead of the rangefinder port and one behind)
       for (const z of [0.55, -0.62]) {
         const x = sideX(W.halfWidth, roof, 0.30) + 0.05;
-        P.addEquipment('turretDark', box(0.022, 0.022, 0.30), s * x, 0.30, z);
-        for (const dz of [-0.14, 0.14]) P.addEquipment('turretDark', box(0.05, 0.022, 0.022), s * (x - 0.02), 0.30, z + dz);
+        P.addEquipment(tFit, box(0.022, 0.022, 0.30), s * x, 0.30, z);
+        for (const dz of [-0.14, 0.14]) P.addEquipment(tFit, box(0.05, 0.022, 0.022), s * (x - 0.02), 0.30, z + dz);
       }
     }
   };
@@ -225,8 +227,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       }
       // the 1A5 DK's roof fast fittings for two rifles, behind the loader's hatch
       for (const x of [0.30, 0.12]) {
-        P.addEquipment('turretDark', box(0.05, 0.03, 0.06), x, roof + 0.015, -0.78);
-        P.addEquipment('turretDark', box(0.05, 0.03, 0.06), x, roof + 0.015, -1.38);
+        P.addEquipment(tFit, box(0.05, 0.03, 0.06), x, roof + 0.015, -0.78);
+        P.addEquipment(tFit, box(0.05, 0.03, 0.06), x, roof + 0.015, -1.38);
         // (r7 critics: the DK-1's black rails read as a slot across its white roof: painted with it)
         P.addEquipment(mark === 'a5dk1' ? 'turret' : 'turretDark', box(0.045, 0.06, 0.92), x, roof + 0.05, -1.08);
       }
@@ -284,7 +286,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // stack over the middle, the GPS dome on its lid, the UN on its rear face
       const z0 = W.rearZ, z1 = W.binRearZ, zc = (z0 + z1) / 2, lid = roof - 0.02;
       for (const s of [-1, 1] as const) for (let k = 0; k < 5; k++) {
-        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.14), s * 1.056, lid - 0.10 - k * 0.07, zc);
+        P.addEquipment('turretFittingPaint', box(0.025, 0.03, z0 - z1 - 0.14), s * 1.056, lid - 0.10 - k * 0.07, zc);
       }
       // (r9 critics, both: the raised part short and narrow; the RAMTA front photograph's stands about 0.45 of the turret's
       // height)
@@ -292,7 +294,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.addEquipment('turret', box(sw * 2, sh, sd * 2), 0, lid + sh / 2, zc);
       P.addEquipment('turret', box(sw * 2 + 0.04, 0.03, sd * 2 + 0.04), 0, lid + sh + 0.015, zc);
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
-        P.addEquipment('turretDark', box(0.02, 0.02, sd * 2 - 0.10), s * (sw + 0.006), lid + 0.10 + k * 0.08, zc);
+        P.addEquipment('turretFittingPaint', box(0.025, 0.03, sd * 2 - 0.10), s * (sw + 0.008), lid + 0.10 + k * 0.08, zc);
       }
       P.decal('turret', 'stencil', 'UN', 0.50, [0, (roof + W.binLowY) / 2 + 0.02, z1 - 0.012], Math.PI);
       P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.62, lid + 0.025, zc);
@@ -336,8 +338,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.decal('turret', 'number', P.spec.visual.number || '21', 0.20,
         [s * (sideX(W.halfWidth, roof, 0.30) + 0.004), 0.30, -1.10], s * Math.PI / 2);
       // the United Nations' black "UN" on the DK-1's white turret sides (UNPROFOR, 1994-95)
-      // (between the port cover's boss and the rear dischargers: r11 at z -0.20 the cover hid the U)
-      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.42, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.45],
+      // (between the insignia seat ahead and the rear dischargers: r11 at z -0.45 it ran into the insignia and read garbled)
+      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.34, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.53],
         s * Math.PI / 2);
     }
   };

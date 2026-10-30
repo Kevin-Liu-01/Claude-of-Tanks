@@ -707,20 +707,21 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // r7 (critics: bright lime cards over the paint read as a patchwork): the cards and the net in the paint's own dull olive;
     // r8 (critics: still patches over paint, spikes past the hem): darker grey-greens matching the paint, fewer cards
     // r9 (r8 critics: the skirt drapes read as stickers with paint between them; the cover grey): one drape the length
-    // of each skirt, the greens deeper and more saturated
+    // of each skirt, the greens deeper and more saturated; r12 (r11 critics, both: printed on hard edges, no bulk): the
+    // turret roof's and engine deck's garnish standing higher
     light: 0x51573f, dark: 0x3a3f2e, netColor: 'rgba(68,73,56,0.92)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
-      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.07, seed: 11 })],
+      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.10, seed: 11 })],
       side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.80, 19)],
       face: [face({ z: -3.36, x0: -1.30, x1: 1.30, y0: 0.45, y1: 0.86, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.06, seed: 31 }),
+        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.08, seed: 31 }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.04, garnishDensity: 0.8, seed: 37 }),
       ],
       side: flanks(-3.50, 3.40, 1.62, 0.52, 1.95, 41, {}, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),

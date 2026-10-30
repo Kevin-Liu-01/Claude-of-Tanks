@@ -170,6 +170,13 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sl
     // in the coat between two sand sleeves; the photograph's one wrap to the muzzle): the whole tube in the wrap, its
     // shape unchanged
     tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
+  if (sleeved) {
+    // r12 (r11 critics, both: a flat smooth sand tube; the photograph's wrap mottled): patches of the coat over the wrap,
+    // on the thermal sleeves only (1.4 mm proud of them, so the gun keeps its clearances)
+    for (const [a, b] of [[0.19, 0.25], [0.33, 0.37], [0.41, 0.45], [0.55, 0.62], [0.70, 0.74], [0.77, 0.81]] as const) {
+      P.add('gun', cylZ(radius * 1.235, (b - a) * length, 24), 0, 0, (a + b) / 2 * length);
+    }
+  }
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}

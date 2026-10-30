@@ -139,7 +139,8 @@ leo2a7dk.visual = {
   // greens warmed toward khaki
   // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
   // low-contrast grey-green mottle): no near-black, the tones close together
-  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#545a44', '#42473a'], marking: 'number',
+  // r12 (r11 Opus: green on green; the photograph's khaki-tan areas in the green): a muted tan for the light patch
+  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#5b5741', '#42473a'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 
