@@ -53,7 +53,7 @@ m41a3.visual = { ...m41a3.visual, scheme: 'solid', base: '#4b4e32', weather: '#5
 // The Bundeswehr's M41 (1956-66, the armoured reconnaissance battalions), in RAL 6014 Gelboliv (the German national coat).
 const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
 // r3 (critics: too light and sandy for Gelboliv; the cross straight-armed): darker, and the early Bundeswehr's flared cross
-m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#4a4230', weather: '#544b39', patches: [], marking: 'number', number: '231', camoScale: 0.5,
+m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#4e3f2a', weather: '#58492f', patches: [], marking: 'number', number: '231', camoScale: 0.5,
   insignia: 'de-cross-1956' };
 
 // The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
@@ -61,7 +61,7 @@ m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#4a4230', weather: '
 const m41_jgsdf = m41('m41_jgsdf', 'M41 (JGSDF)', 'Japan');
 // r3 (critics: too light and yellow; nothing said Japan): a darker brown-green, greener than the Bundeswehr's, and the
 // JGSDF's cherry-blossom badge in place of a national roundel its tanks never wore
-m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#474c30', weather: '#51563a', patches: [], marking: 'number', number: '12', camoScale: 0.5,
+m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#4b4f28', weather: '#55592f', patches: [], marking: 'number', number: '12', camoScale: 0.5,
   insignia: 'jp-jgsdf-sakura' };
 
 // The Danish M41 DK-1 of the late 1980s: the Cummins diesel, skirts, the thermal sight and laser rangefinder, the AAI
