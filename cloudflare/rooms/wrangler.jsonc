@@ -12,6 +12,11 @@
     "name": "ROOM_CONNECT_LIMITER",
     "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
+  }, {
+    // the phone controller's pairing (docs/PHONE-CONTROLLER.md): its own window per client IP, apart from the rooms'
+    "name": "PAD_CONNECT_LIMITER",
+    "namespace_id": "2610300266",
+    "simple": { "limit": 30, "period": 60 }
   }],
   // COT_STUN_URLS (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): what a seat's `room_relay` grant carries when no TURN
   // credential can be minted (the relay secrets unset, the provider down) — pinned to OFFICIAL_STUN_URLS in
@@ -25,7 +30,9 @@
   // signaling and host migration only. The container backend left the tree with the cutover of 2026-09-29.
   "durable_objects": {
     "bindings": [
-      { "name": "ROOMS", "class_name": "Room" }
+      { "name": "ROOMS", "class_name": "Room" },
+      // the phone controller (2026-10-30, docs/PHONE-CONTROLLER.md): one object per pairing code, its own channel
+      { "name": "PADS", "class_name": "PadPair" }
     ]
   },
   // v1 is the deployed history (Room and the container class of the first design); v2 deleted that class — a Worker
@@ -33,6 +40,7 @@
   // deletes (2026-09-28). Never edit an applied tag; a class change is always a new tag.
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainer"] },
-    { "tag": "v2", "deleted_classes": ["MatchContainer"] }
+    { "tag": "v2", "deleted_classes": ["MatchContainer"] },
+    { "tag": "v3", "new_sqlite_classes": ["PadPair"] }
   ]
 }
