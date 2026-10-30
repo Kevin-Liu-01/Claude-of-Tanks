@@ -135,9 +135,9 @@ tamoyo1.armor = tamoyoArmor({
   skirt: true,
   glacis: 40, lower: 40, cheek: [40, 40, 40], mantlet: [50, 50, 50], tSide: [25, 25, 25],
 });
-// the measured depression by yaw (tools/gun-depression-sweep.mjs): the full -8 to 137 degrees, the raised engine deck astern
-tamoyo1.gunPitchByYawDeg = [[0, -8], [137, -8], [144, -4.8], [146, -3.2], [151, -2.1], [153, -0.7], [155, -0.1],
-  [163, -0.2], [166, -1.1], [180, -1.2]];
+// the measured depression by yaw (tools/gun-depression-sweep.mjs): the full -8 to 141 degrees, the raised engine deck astern
+tamoyo1.gunPitchByYawDeg = [[0, -8], [141, -8], [142, -6.3], [143, -5.8], [146, -4.9], [147, -4.1], [148, -3.5],
+  [149, -3], [155, -0.7], [163, -0.8], [165, -1.2], [166, -0.7], [170, -0.7], [174, -1.2], [180, -1.2]];
 tamoyo1.visual = {
   ...tamoyo1.visual,
   // the Army's two-tone of the trials (Vesp's profile, the CIBld tank): a dark olive and an orange earth brown in large
@@ -166,6 +166,9 @@ tamoyo3.armor = tamoyoArmor({
   skirt: false,
   glacis: 260, lower: 60, cheek: [400, 400, 520], mantlet: [300, 300, 380], tSide: [60, 60, 80],
 });
+// the measured depression by yaw (tools/gun-depression-sweep.mjs): the full -8 to 139 degrees, the raised engine deck astern
+tamoyo3.gunPitchByYawDeg = [[0, -8], [139, -8], [142, -6.4], [144, -4.1], [145, -3.5], [148, -2.3], [152, -0.9],
+  [154, -0.6], [162, -0.3], [177, -0.3], [180, -0.4]];
 tamoyo3.visual = {
   ...tamoyo3.visual,
   // the 1987 coat (Vesp's profile, the collector's photograph): olive and earth brown in large fields; the 1983-98
