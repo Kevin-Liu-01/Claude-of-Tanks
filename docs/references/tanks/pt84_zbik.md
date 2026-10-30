@@ -8,12 +8,16 @@ The assault tank of the PT-84 family: a first-party Polish game concept on the T
 
 ## What makes it its own tank
 
-- Krata-2 everywhere: the Zubr II's language, two-layer bevelled ERAWA-2 pillows flush with 10 cm dark frames, on the
-  glacis, the cheek boxes, the turret flanks and every skirt panel.
-- A full-width dozer blade across the nose: a four-facet moldboard from 0.16 m to 1.00 m over the ground, its cutting edge
-  in dark steel, two push arms and two rams back to the lower plate (in place of the stowed self-entrenching blade).
+- Krata-2 everywhere: the Zubr II's language, two-layer bevelled ERAWA-2 pillows flush with 10 cm painted frames (the
+  262 visual bar's critics read dark frames as rows of windows), on the glacis, the cheek boxes, the turret flanks and
+  every skirt panel.
+- A track-wide dozer blade across the nose in its travel position: a four-facet moldboard from 0.36 m to 1.20 m over the
+  ground, its cutting edge in dark steel, two push arms and a web plate back to the lower plate, push-frame side plates
+  under the track fronts, and a lift ram each side from a clevis on the fender ledge to a lug on the moldboard's top (in
+  place of the stowed self-entrenching blade).
 - Both ZSMU-1276 stations on towers: the 12.7 mm WKM-B and a 7.62 mm UKM-2000 on a 16 cm tower over the cage.
-- A searchlight on each cheek box and the stand-off slat cage round the turret's rear half (the Oplot-T's pattern).
+- A guarded 20 cm searchlight on each cheek box and the stand-off slat cage round the turret's rear half (the Oplot-T's
+  pattern).
 - Shared with the family: Tellur banks, the PCO panoramic head, Obra-3 heads, the rear stowage box and field basket, dark
   green drums on the stern.
 - Finish: the Urban Block grey (`urbanblock`, camoPolicy.ts), number 311.

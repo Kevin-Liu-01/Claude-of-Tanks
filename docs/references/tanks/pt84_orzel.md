@@ -24,16 +24,21 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
 - Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of dark steel rails
   and mullions (5 cm wide, so the grid reads through the camouflage: the 262 blind critic) standing 9 cm proud: two
   3 x 3 glacis fields either side of the gun's slot; welded cheek boxes on the Duplet stacks' plan (set back 10 cm), each
-  column's face a framed field of two; a 4 x 2 field on each turret flank; and every one of
-  the nine skirt panels its own framed field of two (one where the box falls to the bow): the owner's extra side armour.
+  column's face a framed field of two; a 4 x 2 field on each turret flank; and the five forward skirt panels each its own
+  framed field of two (one where the box falls to the bow): the owner's extra side armour. Over the engine bay behind
+  them, stand-off slat armour 14 cm off the skirt box with a cap plate to it.
+- Its own silhouette (the 262 visual bar's blind critics, rounds 1-4: its framed skirt and turret wrap were the Żbik's,
+  its side view the Oplot-M's): the PT-17's long welded ammunition bustle, the turret's full width back to 2.64 m behind
+  the ring, three blow-off panels on its roof; and a spaced-armour wedge on each cheek, its edge 0.54 m ahead of the
+  cheek.
 - Tellur 81 mm smoke: the PT-91's two by twelve, a six by two bank low on each smoke housing, its number above it.
 - PCO's round panoramic commander's head on a mast in place of the PNK-6 tower.
 - Obra-3: four laser-warning heads (the cheek boxes' outer tops, the bustle corners) in place of the Varta jammers.
 - Two ZM Tarnów ZSMU-1276 remote stations (two gun towers, as the Oplot-M and Oplot-T): a 12.7 mm WKM-B on a tower over
   the commander's side, a 7.62 mm UKM-2000 on the gunner's; each with its ZMO optronic head over its arm and its ammunition
   box on the left, working auxiliary weapons (auxiliaryWeapons.ts `wkmb`).
-- The Polish rear stowage box across the bustle with a strapped tarpaulin roll; the basket's field stores (two jerrycans,
-  a canvas roll lengthwise, a wrapped bundle); twin guarded work lamps on each cheek box; olive drums on the stern.
+- The Polish rear stowage box and two jerrycans in a rack on the bustle's rear face, a tarpaulin roll on its roof (no
+  field basket); twin guarded work lamps on each cheek box; olive drums on the stern.
 - Finish: the Polish three-tone woodland, the Zubr family's authored paint (`paint_pl_t80u_modern`), as its own stock
   coat (camoPolicy.ts), number 184, the Polish checker (0.34 m) on the right bin's face.
 
@@ -45,7 +50,7 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
 - The KBM2 120 mm in the carousel loader: 6.3 s, K279 APFSDS (700 mm at 2 km on the fleet scale), K280 HEAT-MP, K281 HE
   (the Falarick 120 is owed: a gun-fired guided round fits neither a gun channel nor the auxiliary-missile cadence, the
   integrator's 263 ruling on the Oplots' Kombat); -5 / +14 with its own measured depression curve (held up from 137 degrees,
-  where the barrel crosses the framed skirts' rear fields).
+  where the barrel crosses the rear skirt; its slats stand 10 cm under the deck edge to clear it: oplotBMGun).
 - 52.0 t (the grids), 1,200 hp, 70 km/h, hp 2,750, traverse 44 deg/s, flanker.
 
 ## The family

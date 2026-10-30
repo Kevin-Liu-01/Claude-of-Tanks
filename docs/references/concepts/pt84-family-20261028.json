@@ -36,14 +36,14 @@
       "hullWidthM": 4.264,
       "widthM": 4.421,
       "overallLengthM": 10.498,
-      "tallestM": 4.389,
+      "tallestM": 3.987,
       "specDimensions": {
         "hullLengthM": 7.17,
         "overallLengthM": 10.28,
         "widthM": 4.42,
         "heightM": 2.97
       },
-      "silhouette": "Polish game concept, the light hunter on the T-84BM Oplot-M's hull, running gear and welded turret: framed ERAWA-2 Krata grids on the glacis (two 3 x 3 fields), the welded cheek boxes and the three forward skirt panels only, plain welded flank boxes; one low ZSMU-1276 with a 12.7 mm WKM-B; a telescopic sensor mast raised 1.9 m over the bustle with its optronic head; Tellur banks, the round PCO panoramic head, Obra-3 heads, the rear stowage box and field basket, drums; the 120 mm KBM2 without the gun-launched missile"
+      "silhouette": "Polish game concept, the light hunter on the T-84BM Oplot-M's hull, running gear and welded turret: ERAWA-2 under bolted cover plates on the glacis (two courses), the welded cheek boxes and the three forward skirt panels only, the running gear in the open behind them, plain welded flank boxes; one low ZSMU-1276 with a 12.7 mm WKM-B; a telescopic sensor mast stowed on its armoured housing, its optronic head 0.8 m over the bustle; Tellur banks, the round PCO panoramic head, Obra-3 heads, the rear stowage box and field basket, drums; the 120 mm KBM2 without the gun-launched missile"
     },
     "pt84_zbik": {
       "id": "pt84_zbik",
@@ -78,7 +78,7 @@
         "widthM": 4.44,
         "heightM": 2.97
       },
-      "silhouette": "Polish game concept, the assault tank on the T-84BM Oplot-M's hull, running gear and welded turret: Krata-2 grids of two-layer bevelled ERAWA-2 pillows flush with 10 cm frames on the glacis, the cheek boxes, the turret flanks and every skirt panel; a full-width dozer blade across the nose; two ZSMU-1276 stations on towers (12.7 mm WKM-B, 7.62 mm UKM-2000); a searchlight on each cheek box; the bustle slat cage; Tellur banks, the PCO panoramic head, Obra-3 heads, the rear stowage box and basket, drums; the 120 mm KBM2"
+      "silhouette": "Polish game concept, the assault tank on the T-84BM Oplot-M's hull, running gear and welded turret: Krata-2 grids of two-layer bevelled ERAWA-2 pillows flush with 10 cm frames on the glacis, the cheek boxes, the turret flanks and every skirt panel; a track-wide dozer blade in its travel position on a push frame with lift rams across the nose; two ZSMU-1276 stations on towers (12.7 mm WKM-B, 7.62 mm UKM-2000); a guarded searchlight on each cheek box; the bustle slat cage; Tellur banks, the PCO panoramic head, Obra-3 heads, the rear stowage box and basket, drums; the 120 mm KBM2"
     }
   }
 }

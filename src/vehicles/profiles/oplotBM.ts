@@ -83,8 +83,9 @@ const glacisY = (z: number): number => DECK_Y - (z - GLACIS_TOP_Z) * Math.tan(GL
 // ---------------------------------------------------------------------------------------------------------------
 // Krata (the PT-84 family): a grid of ERAWA-2 cassettes seated inside a welded frame of rails and mullions standing proud of
 // the plate they are on. One layout for every field: `grid` cuts a [u0, u1] x [v0, v1] rectangle into cells with rails
-// `bar` wide between and around them; each surface maps (u, v, out) to its own frame. The frame is dark steel so the grid
-// reads through the camouflage (the 262 blind critic: the skirt grid was lost in the Orzeł's three-tone).
+// `bar` wide between and around them; each surface maps (u, v, out) to its own frame. The level-1 frame is dark steel so
+// the grid reads through the camouflage (the 262 blind critic: the skirt grid was lost in the Orzeł's three-tone); the
+// Krata-2 frame is painted (frameBucket).
 
 const KRATA_BAR = 0.05, KRATA_CASSETTE = 0.06;
 
@@ -97,14 +98,32 @@ interface PolishFit {
   skirtFrom: number;
   /** a framed field on the turret flanks (else a plain welded flank box) */
   flankGrid: boolean;
+  /** stand-off slat armour over the skirt panels behind the framed run, and the PT-17's full-width bustle (the Orzeł) */
+  rearSlats?: boolean;
+  /** the cassettes under bolted cover plates, one smooth slab language: the glacis in two courses, the cheeks and the
+   * forward skirt fields closed over their frames (the Sokół) */
+  slabArmour?: boolean;
+  /** an add-on armour wedge on each cheek's front (the Orzeł) */
+  turretWedges?: boolean;
+  /** no hinged rubber skirt behind the framed panels: the road wheels and return rollers in the open (the Sokół) */
+  openRunningGear?: boolean;
 }
+// The Orzeł's own silhouette (the 262 blind critics: its framed skirt and turret wrap were the Żbik's, its side view the
+// Oplot-M's): Krata on the five forward skirt panels, slats over the engine bay behind them, the PT-17's long bustle and
+// an armour wedge on each cheek (round 3: the turret front was still the family's five-cell band). The Sokół's: slab
+// armour (all three had worn one framed glacis field, and its few framed patches read as token windows) and its running
+// gear in the open behind them (round 4: without its mast it was the Oplot-M's side).
 const POLISH_FIT: Readonly<Partial<Record<OplotBMVariant, PolishFit>>> = Object.freeze({
-  pl: Object.freeze({ level: 1, skirtFrom: 0, flankGrid: true }),
-  pls: Object.freeze({ level: 1, skirtFrom: 6, flankGrid: false }),
+  pl: Object.freeze({ level: 1, skirtFrom: 4, flankGrid: true, rearSlats: true, turretWedges: true }),
+  pls: Object.freeze({ level: 1, skirtFrom: 6, flankGrid: false, slabArmour: true, openRunningGear: true }),
   plz: Object.freeze({ level: 2, skirtFrom: 0, flankGrid: true }),
 });
 const polishFit = (variant: OplotBMVariant): PolishFit | null => POLISH_FIT[variant] ?? null;
 const krataFrame = (fit: PolishFit): number => (fit.level === 2 ? 0.10 : 0.09);
+/** The frame's bucket: dark steel for level 1, whose cassettes sit down in their frames (the grid has to read through the
+ * camouflage); the paint for Krata-2, whose pillows stand flush with theirs (the 262 blind critics read the Żbik's dark
+ * frames as rows of windows, and as the Orzeł's armour). */
+const frameBucket = (fit: PolishFit, owner: 'hull' | 'turret'): string => `${owner}${fit.level === 2 ? 'Detail' : 'Dark'}`;
 /** Krata-2's pillow: the base layer over the whole cell, the face bevelled in by this much on every side. */
 const PILLOW_T = 0.09, PILLOW_BEVEL = 0.025;
 type Rect = [number, number, number, number];
@@ -177,8 +196,9 @@ function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
   for (const x of [-0.17, 0, 0.17]) KIT.periscope(P, 'hullDetail', x, 1.47, Z(2.20));
 
   // Duplet on the glacis: three courses of four modules a side, nearly flush, seated by downward rays. The T-84U carries
-  // the earlier Kontakt-5 panel: two courses of three thicker boxes a side.
-  if (variant === 'u') {
+  // the earlier Kontakt-5 panel: two courses of three thicker boxes a side; the Sokół its ERAWA-2 in the same two
+  // courses under cover plates.
+  if (variant === 'u' || fit?.slabArmour) {
     // each course under one bolted cover plate across the glacis, so it reads as the Kontakt-5 slab, not as tiles
     for (const z of [2.66, 3.12]) {
       for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
@@ -205,7 +225,7 @@ function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
         // cassettes 3.5 cm down inside the frames as empty cells)
         else glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, (ua + ub) / 2), (va + vb) / 2, [ub - ua, KRATA_CASSETTE + 0.04, vb - va]);
       }
-      for (const r of bars) P.addEquipment('hullDark', krataSlab(at(s), r, -0.01, krataFrame(fit)));
+      for (const r of bars) P.addEquipment(frameBucket(fit, 'hull'), krataSlab(at(s), r, -0.01, krataFrame(fit)));
     }
   } else {
     for (const z of [2.48, 2.88, 3.26]) for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
@@ -308,7 +328,10 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
     // Hinged rubber skirt under the box: down to 0.22 along the wheels, raked up toward the sprocket and the idler.
     const rubberZ = [-2.96, -2.34, -1.72, -1.10, -0.48, 0.14, 0.76, 1.38, 2.00, 2.62, 3.24];
     const bottomAt = (z: number): number => (z < -1.55 ? 0.22 + (-1.55 - z) * 0.40 : z > 2.60 ? 0.22 + (z - 2.60) * 0.45 : 0.22);
+    const fit = polishFit(variant), framedFrom = fit ? -2.92 + fit.skirtFrom * (6.20 / 9) : -Infinity;
     for (let i = 0; i < rubberZ.length - 1; i++) {
+      // (the Sokół: only under its framed panels; its road wheels and return rollers open behind them)
+      if (fit?.openRunningGear && rubberZ[i + 1] <= framedFrom + 0.2) continue;
       const pa = rubberZ[i] + 0.008, pb = rubberZ[i + 1] - 0.008, a = Z(pa), b = Z(pb);
       P.hangMudguard(`oplot-bm-skirt-${s}-${i}`, 'hullEquipment', orientedSlab(
         [side(s, 2.052), bottomAt(pa), a], [side(s, 2.070), bottomAt(pa), a], [side(s, 2.070), bottomAt(pb), b], [side(s, 2.052), bottomAt(pb), b],
@@ -319,7 +342,6 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
     const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
     const face = new THREE.Vector2(innerX + 0.06 - outerX, DECK_Y - (bottomY + 0.05));
     const tilt = Math.atan2(-face.x, face.y);
-    const fit = polishFit(variant);
     if (fit) {
       // Krata skirts: each framed panel its own field of two ERAWA-2 cassettes, one over the other (one where the box
       // falls toward the bow): the full run, or the Sokół's three forward panels; u along the hull, v the height on the
@@ -341,8 +363,10 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
           eraCassette(P, 'hull', sector, [side(s, faceX(yc) + out * nx), yc + out * ny, (ua + ub) / 2],
             [KRATA_CASSETTE, (vb - va) / Math.cos(tilt), ub - ua], [0, 0, side(s, tilt)]);
         }
-        for (const r of bars) P.add('hullDark', krataSlab(at, r, -0.01, krataFrame(fit)));
+        for (const r of bars) P.add(frameBucket(fit, 'hull'), krataSlab(at, r, -0.01, krataFrame(fit)));
+        if (fit.slabArmour) coverPlate(P, 'hull', at, [Z(z0), Z(z1), v0, v1], krataFrame(fit), 0.08);
       }
+      if (fit.rearSlats) skirtSlats(P, s, faceX, Z(-2.92), Z(-2.92 + fit.skirtFrom * (6.20 / 9)) - 0.02);
       continue;
     }
     for (let i = 0; i < 9; i++) {
@@ -355,6 +379,38 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
       eraCassette(P, 'hull', sector, [side(s, xc), yc, z], [k5 ? 0.055 : 0.026, h, Z(z1 - z0)], [0, 0, side(s, tilt)]);
     }
   }
+}
+
+/** A bolted cover plate closing a framed field (the Sokół's slab armour): 16 mm over the frame's face, a bolt at each
+ * corner `inset` in from it (in the surface's u units) and at mid-height. Equipment: the cassettes under it stay the
+ * gameplay sector's hit faces. */
+function coverPlate(P: TankBuilderPort, owner: 'hull' | 'turret', at: SurfaceAt, [ua, ub, va, vb]: Rect, frame: number, inset: number): void {
+  P.addEquipment(owner, krataSlab(at, [ua, ub, va, vb], frame, frame + 0.016));
+  for (const u of [ua + inset, ub - inset]) for (const v of [va + 0.04, (va + vb) / 2, vb - 0.04]) {
+    P.addEquipment(`${owner}Dark`, krataSlab(at, [u - inset * 0.25, u + inset * 0.25, v - 0.01, v + 0.01], frame + 0.016, frame + 0.026));
+  }
+}
+
+/** Stand-off slat armour over the engine bay on one side, z from `za` (aft) to `zb`: a vertical plane 0.14 m outboard of
+ * the skirt box's lower edge from 0.90 to 0.10 under the deck edge (the gun's measured depression over the rear quarters
+ * clears it: oplotBMGun), horizontal slats at 9 cm between top and bottom rails, posts at the panel seams braced back to
+ * the skirt face, and a cap plate from the face to the top rail that closes the plan view (B2 contiguity: no open ground
+ * between skirt and slats seen from above). */
+function skirtSlats(P: TankBuilderPort, s: number, faceX: (y: number) => number, za: number, zb: number): void {
+  const x = SKIRT_FACE.outerX + 0.14, y0 = 0.90, y1 = DECK_Y - 0.10, posts = 5;
+  for (let i = 0; i < posts; i++) {
+    const z = za + (zb - za) * i / (posts - 1);
+    P.addEquipment('hullDetail', box(0.05, y1 - y0 + 0.04, 0.05), side(s, x), (y0 + y1) / 2, z);
+    for (const y of [y0 + 0.08, y1 - 0.08]) P.addEquipment('hullDark', beamBetween([side(s, faceX(y) - 0.01), y, z], [side(s, x - 0.02), y, z], 0.018, 8));
+  }
+  for (const y of [y0, y1]) P.addEquipment('hullDetail', beamBetween([side(s, x), y, za], [side(s, x), y, zb], 0.022, 8));
+  for (let y = y0 + 0.09; y < y1 - 0.04; y += 0.09) {
+    P.addEquipment('hullOpenLatticeDark', beamBetween([side(s, x + 0.03), y, za], [side(s, x + 0.03), y, zb], 0.011, 6));
+  }
+  const xa = faceX(y1) - 0.02, xb = x + 0.03;
+  P.addEquipment('hullDetail', orientedSlab(
+    [side(s, xa), y1 - 0.012, za], [side(s, xb), y1 - 0.012, za], [side(s, xb), y1 - 0.012, zb], [side(s, xa), y1 - 0.012, zb],
+    [side(s, xa), y1 + 0.012, za], [side(s, xb), y1 + 0.012, za], [side(s, xb), y1 + 0.012, zb], [side(s, xa), y1 + 0.012, zb]));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -394,6 +450,7 @@ function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
     const fit = polishFit(variant);
     if (fit) buildKrataTurretSide(P, s, fit);
     else buildDupletTurretSide(P, s);
+    if (fit?.turretWedges) cheekWedge(P, s);
     // Smoke-launcher housing on the rear flank: the Oplot's four tube mouths a side canted forward and out; the Orzeł's
     // Tellur 81 mm bank (the PT-91's two by twelve, six by two a side) low on the same face, its number above it.
     P.add('turret', planPrism(sidedPlan([[0.86, -1.04], [1.58, -1.04], [1.64, -0.39], [1.09, -0.39]], s), 0.13, ROOF_Y - 0.01));
@@ -431,6 +488,19 @@ function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
   ]));
   P.add('turretDark', box(0.012, 0.28, 1.10), -1.436, 0.47, -1.60);
   for (const z of [-2.00, -1.62, -1.24]) P.add('turretDark', box(0.016, 0.06, 0.05), -1.44, 0.58, z);
+}
+
+/** The Orzeł's add-on wedge on one cheek: a welded spaced-armour arrowhead standing on the cheek's front from beside the
+ * gun throat (|x| 0.46, clear of the 0.42 throat and the 0.30 shield) to the flank, its edge 0.54 m ahead of the cheek at
+ * |x| 1.00, from 0.14 to 0.48 (under the gunner's sight line, over the deck's periscopes at every bearing), two convex
+ * prisms meeting at the edge (wound as the flank housings' plans) in the turret's paint (round 4: a dark cap read as a
+ * void from above), a dark strip down the edge. External armour: the hit model reads it. */
+function cheekWedge(P: TankBuilderPort, s: number): void {
+  const back = (x: number): number => eraFront(x) - 0.02;
+  const a: [number, number] = [0.46, back(0.46)], b: [number, number] = [1.00, 2.36], c: [number, number] = [1.64, back(1.64)];
+  const d: [number, number] = [1.00, back(1.00)];
+  for (const tri of [[a, d, b], [d, c, b]] as const) P.addExternalArmor('turret', planPrism(sidedPlan([...tri], s), 0.14, 0.48));
+  P.add('turretDark', box(0.03, 0.34, 0.03), side(s, b[0]), 0.31, b[1] - 0.005);
 }
 
 /** The stacks' undersides rise toward the nose (the print: 0.09 at z 0.95, 0.24 at the front). */
@@ -488,11 +558,12 @@ function buildKrataTurretSide(P: TankBuilderPort, s: number, fit: PolishFit): vo
     };
     const yb = Math.max(eraUnder(f0), eraUnder(f1));
     const { cells, bars } = krataGrid(0, 1, yb, ERA_Y1, 1, 2, KRATA_BAR / len, KRATA_BAR);
-    for (const r of bars) P.add('turretDark', krataSlab(face, r, -0.01, krataFrame(fit)));
+    for (const r of bars) P.add(frameBucket(fit, 'turret'), krataSlab(face, r, -0.01, krataFrame(fit)));
     const outward: [number, number, number] = [side(s, nx), 0, nz];
     for (const r of cells) {
       eraBlock(P, front, fit.level === 2 ? krataPillow(face, r, PILLOW_BEVEL / len, PILLOW_BEVEL) : krataSlab(face, r, 0, KRATA_CASSETTE), outward);
     }
+    if (fit.slabArmour) coverPlate(P, 'turret', face, [0, 1, yb, ERA_Y1], krataFrame(fit), 0.08 / len);
   }
   // The flank: the fill against the body side and the outer box to x 1.63, then a framed field of four by two cassettes
   // on its face from the smoke housing to the arrowhead (u along the turret, v the height, out to the left or right).
@@ -506,7 +577,7 @@ function buildKrataTurretSide(P: TankBuilderPort, s: number, fit: PolishFit): vo
   P.add('turret', planPrism(sidedPlan([[1.575, -0.39], [1.63, -0.39], [1.63, eraFront(1.63)], [1.575, eraFront(1.575)]], s), ERA_Y0, 0.56));
   const flankFace: SurfaceAt = (u, v, out) => at3(1.63 + out, v, u);
   const { cells, bars } = krataGrid(-0.39, eraFront(1.72) - 0.02, ERA_Y0, 0.56, 4, 2);
-  for (const r of bars) P.add('turretDark', krataSlab(flankFace, r, -0.01, krataFrame(fit)));
+  for (const r of bars) P.add(frameBucket(fit, 'turret'), krataSlab(flankFace, r, -0.01, krataFrame(fit)));
   for (const r of cells) {
     eraBlock(P, flank, fit.level === 2 ? krataPillow(flankFace, r, PILLOW_BEVEL, PILLOW_BEVEL) : krataSlab(flankFace, r, 0, KRATA_CASSETTE),
       [side(s, 1), 0, 0]);
@@ -683,6 +754,10 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
     P.addEquipment('turretEquipment', box(0.68, 0.018, 0.64), 0.78, 0.518, -1.62);
     return;
   }
+  if (polishFit(variant)?.rearSlats) {
+    orzelBustle(P);
+    return;
+  }
   // Left rear: the open rail basket beside the bustle, its rails at the bustle's roof height.
   const bx0 = 0.42, bx1 = 1.34, bz0 = -2.28, bz1 = -1.30, by = 0.66;
   for (const [x, z] of [[bx0, bz0], [bx1, bz0], [bx1, bz1]] as const) P.addEquipment('turretDetail', box(0.03, 0.30, 0.03), x, by - 0.14, z);
@@ -727,6 +802,35 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
     P.add('turretDark', box(0.84, 0.02, 0.28), -0.20, 0.58, -2.11);
     P.addEquipment('turretCloth', box(0.44, 0.20, 0.40), 0.66, 0.485, -1.62);
     P.addEquipment('turretCloth', box(0.40, 0.18, 0.36), 1.06, 0.475, -2.00);
+  }
+}
+
+/** The Orzeł's PT-17 bustle (the 2017 Bumar-Łabędy / KMDB demonstrator's long welded ammunition bustle): one box the
+ * turret's full width from the flank housings back to z -2.64, its floor rising astern, chamfered top edges, three
+ * blow-off panels on its roof; the Polish rear stowage box and two jerrycans on its rear face, a tarpaulin roll on its
+ * roof. It takes the place of the field basket. */
+function orzelBustle(P: TankBuilderPort): void {
+  const xr = -1.45, xl = 1.36;
+  const ring = (y0: number, top: number, inset = 0): Ring => [[xr + inset, y0], [xl - inset, y0], [xl - inset, top - 0.05],
+    [xl - inset - 0.05, top], [xr + inset + 0.05, top], [xr + inset, top - 0.05]];
+  P.add('turret', sectionSolid([
+    { z: -2.64, ring: ring(0.34, 0.62, 0.05) }, { z: -2.50, ring: ring(0.26, 0.66) }, { z: -0.98, ring: ring(0.14, 0.66) },
+  ]));
+  for (const x of [-0.95, -0.20, 0.55]) P.add('turretDark', box(0.62, 0.008, 0.38), x, 0.664, -2.12);
+  P.add('turretDark', box(xl - xr - 0.06, 0.012, 0.016), (xl + xr) / 2, 0.30, -2.574);
+  // the Polish rear stowage box across the rear face (lid, hasps, end handles), two jerrycans in a rack beside it
+  P.addEquipment('turretEquipment', box(1.06, 0.30, 0.30), -0.30, 0.48, -2.79);
+  P.addEquipment('turretDark', box(1.08, 0.018, 0.32), -0.30, 0.639, -2.79);
+  for (const x of [-0.65, 0.05]) P.addEquipment('turretDark', box(0.06, 0.08, 0.016), x, 0.58, -2.948);
+  for (const x of [-0.83, 0.23]) P.addEquipment('turretDark', box(0.016, 0.03, 0.16), x + (x < 0 ? -0.012 : 0.012), 0.50, -2.79);
+  for (const x of [0.58, 0.96]) P.addEquipment('turretEquipment', box(0.34, 0.44, 0.165), x, 0.45, -2.73);
+  for (const y of [0.30, 0.58]) P.addEquipment('turretDark', box(0.80, 0.03, 0.03), 0.77, y, -2.82);
+  for (const x of [0.38, 1.16]) P.addEquipment('turretDark', box(0.03, 0.31, 0.10), x, 0.44, -2.69);
+  if (P.q === false) P.add('turretCloth', cylX(0.09, 1.10, 12), -0.20, 0.75, -2.44);
+  else {
+    const parts = fabricRollParts(1.10, 0.09, [-0.38, 0.38], 18, 26250);
+    P.add('turretCloth', parts.body, -0.20, 0.75, -2.44);
+    for (const end of parts.ends) P.add('turretDark', end, -0.20, 0.75, -2.44);
   }
 }
 
@@ -1023,14 +1127,16 @@ function bustleSlatCage(P: TankBuilderPort): void {
   }
 }
 
-/** A searchlight on its swivel post on a flat top at `base` (turret frame), its glass forward. */
+/** A searchlight on its swivel post on a flat top at `base` (turret frame), its glass forward behind a three-bar guard:
+ * a 20 cm lamp, the work lamps' family scale (the 262 blind critics read the earlier 30 cm lenses as eyes). */
 function searchlight(P: TankBuilderPort, x: number, base: number, z: number): void {
-  const y = base + 0.17;
-  P.addEquipment('turretDark', box(0.12, 0.05, 0.12), x, base + 0.025, z);
-  P.addEquipment('turretDetail', cylY(0.03, 0.035, 0.10, 12), x, base + 0.08, z);
-  P.addEquipment('turretDetail', cylZ(0.15, 0.22, P.q ? 28 : 18), x, y, z + 0.02);
-  P.addEquipment('turretDark', cylZ(0.162, 0.03, P.q ? 28 : 18), x, y, z + 0.14);
-  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.13, 0.012, P.q ? 28 : 18), 'headlight', { tint: 'warm' }), x, y, z + 0.157);
+  const y = base + 0.14;
+  P.addEquipment('turretDark', box(0.10, 0.04, 0.10), x, base + 0.02, z);
+  P.addEquipment('turretDetail', cylY(0.025, 0.03, 0.08, 12), x, base + 0.07, z);
+  P.addEquipment('turretDetail', cylZ(0.10, 0.17, P.q ? 24 : 16), x, y, z + 0.02);
+  P.addEquipment('turretDark', cylZ(0.11, 0.025, P.q ? 24 : 16), x, y, z + 0.11);
+  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.088, 0.012, P.q ? 24 : 16), 'headlight', { tint: 'warm' }), x, y, z + 0.124);
+  for (const dy of [-0.05, 0, 0.05]) P.addEquipment('turretDark', box(0.20, 0.012, 0.012), x, y + dy, z + 0.15);
 }
 
 /** A ZM Tarnów ZSMU-1276 remote station: a low square slewing base, the upright arm on its right carrying the cradle's
@@ -1101,33 +1207,33 @@ const ZBIK_STATIONS = Object.freeze({
   ukm: { name: 'zbikUkm2000', caliber: 7.62, x: 0.82, z: -1.06, rise: 0.16 },
 } as const);
 
-/** The Sokół's telescopic sensor mast on the bustle roof, raised: an armoured base box, three telescoping tubes and the
- * optronic head (day and thermal windows, the rangefinder's port, a visor) on a short yoke, 1.9 m over the roof. */
+/** The Sokół's telescopic sensor mast on the bustle roof, stowed: a tapered armoured housing for the lift, the collapsed
+ * tube's collar and the optronic head (day and thermal windows, the rangefinder's port, a visor, side cheeks) sitting on
+ * it, 0.8 m over the roof. (The 262 blind critics read the mast raised, 1.3 to 1.9 m, as a flagpole or a radar tower on
+ * an MBT, "no stowed form shown".) */
 function sensorMast(P: TankBuilderPort): void {
   const x = 0.05, z = -1.55, base = 0.672;
-  P.addEquipment('turretDetail', box(0.30, 0.20, 0.30), x, base + 0.10, z);
-  P.addEquipment('turretDark', box(0.32, 0.02, 0.32), x, base + 0.205, z);
-  const sections: readonly [number, number, number][] = [[0.075, 0.21, 0.80], [0.060, 0.95, 0.62], [0.046, 1.52, 0.46]];
-  for (const [r, y0, h] of sections) {
-    P.addEquipment('turretDetail', cylY(r, r, h, P.q ? 16 : 10), x, base + y0 + h / 2, z);
-    P.addEquipment('turretDark', cylY(r + 0.012, r + 0.012, 0.03, P.q ? 16 : 10), x, base + y0 + h - 0.015, z);
-  }
-  const hy = base + 2.02;
-  P.addEquipment('turretDark', box(0.10, 0.06, 0.10), x, hy - 0.10, z);
-  P.addEquipment('turretDetail', box(0.38, 0.22, 0.30), x, hy, z + 0.02);
-  P.addEquipment('turretDark', box(0.40, 0.02, 0.36), x, hy + 0.12, z + 0.04);
-  for (const [dx, dy, w] of [[-0.10, 0.02, 0.11], [0.05, 0.02, 0.09], [0.14, -0.05, 0.05]] as const) {
-    P.addEquipment('turretGlass', box(w, w * 0.75, 0.012), x + dx, hy + dy, z + 0.176);
+  const housing: Ring = [[x - 0.23, base], [x + 0.23, base], [x + 0.16, base + 0.36], [x - 0.16, base + 0.36]];
+  P.addEquipment('turretDetail', sectionSolid([{ z: z - 0.22, ring: housing }, { z: z + 0.22, ring: housing }]));
+  P.addEquipment('turretDark', box(0.34, 0.025, 0.46), x, base + 0.36, z);
+  P.addEquipment('turretDetail', cylY(0.11, 0.11, 0.10, P.q ? 18 : 12), x, base + 0.42, z);
+  P.addEquipment('turretDark', cylY(0.125, 0.125, 0.03, P.q ? 18 : 12), x, base + 0.455, z);
+  const hy = base + 0.66;
+  P.addEquipment('turretDark', box(0.18, 0.08, 0.18), x, hy - 0.14, z);
+  P.addEquipment('turretDetail', box(0.42, 0.24, 0.32), x, hy, z + 0.02);
+  P.addEquipment('turretDark', box(0.46, 0.025, 0.38), x, hy + 0.132, z + 0.04);
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(0.03, 0.20, 0.28), x + s * 0.225, hy, z + 0.02);
+  for (const [dx, dy, w] of [[-0.12, 0.025, 0.11], [0.04, 0.025, 0.09], [0.14, -0.055, 0.055]] as const) {
+    P.addEquipment('turretGlass', box(w, w * 0.75, 0.012), x + dx, hy + dy, z + 0.186);
   }
 }
 
 /** The PT-84 Sokół's kit: one low ZSMU-1276 with its WKM-B, the telescopic sensor mast, a work lamp on each cheek box,
  * green-grey drums. */
 function buildSokolKit(P: TankBuilderPort): void {
-  // the low WKM-B clears -235..5 degrees (blocked toward the mast astern and the panoramic head ahead): -233..3, its
-  // depression held up a little at the far end (tools/roof-station-arcs.mjs, 2 degrees and 0.01 rad of margin)
-  stationLimits(zsmuStation(P, SOKOL_STATION), [-4.0666, 0.0524],
-    [[-4.0666, 0.161], [-4.0143, 0.161], [-3.927, 0.17], [0.0524, 0.17]]);
+  // the low WKM-B clears -223..5 degrees (blocked toward the working-height mast astern and the panoramic head ahead):
+  // -221..3, full depression over it (tools/roof-station-arcs.mjs, 2 degrees of margin)
+  stationLimits(zsmuStation(P, SOKOL_STATION), [-3.8572, 0.0524], [[-3.8572, 0.17], [0.0524, 0.17]]);
   sensorMast(P);
   for (const s of [-1, 1]) workLamp(P, side(s, 0.80), ERA_Y1, eraFront(0.80) - KRATA_FACE_BACK - 0.16);
   sternDrums(P, DRUM_ISSUE_PAINTS[2], 26253);
@@ -1144,32 +1250,53 @@ function buildZbikKit(P: TankBuilderPort): void {
   sternDrums(P, DRUM_ISSUE_PAINTS[1], 26254);
 }
 
-/** The Żbik's full-width dozer blade across the nose: a moldboard curved in four facets from its cutting edge (0.16 above
- * the ground) up and forward to its top (1.00), two push arms back to the lower plate, a hydraulic ram each side and
- * the cutting edge in dark steel. Equipment: the combat hull floor stays at the belly. */
+/** The Żbik's dozer blade across the nose, as wide as the tracks: a moldboard curved in four facets from its cutting
+ * edge (0.36 above the ground) up and forward to its top (1.20), two push arms back to the lower plate, the cutting edge
+ * in dark steel, and a lift ram each side from a clevis on the glacis outboard of the Krata grid down to a lug on the
+ * moldboard's top (the 262 blind critics read the blade as an unmounted slab: its arms sat hidden behind it). Equipment:
+ * the combat hull floor stays at the belly. */
 function buildDozerBlade(P: TankBuilderPort): void {
-  const half = 1.92, t = 0.05;
-  const profile: readonly [number, number][] = [[0.16, 3.78], [0.40, 3.70], [0.64, 3.70], [0.84, 3.76], [1.00, 3.86]];
+  // carried in its travel position, the cutting edge 0.36 over the ground (the 262 blind critics: at 0.16 it would drag)
+  const half = 1.70, t = 0.05;
+  const profile: readonly [number, number][] = [[0.36, 3.78], [0.60, 3.70], [0.84, 3.70], [1.04, 3.76], [1.20, 3.86]];
   for (let i = 0; i < profile.length - 1; i++) {
     const [y0, z0] = profile[i], [y1, z1] = profile[i + 1];
     P.addEquipment('hullEquipment', orientedSlab(
       [-half, y0, z0], [half, y0, z0], [half, y0, z0 + t], [-half, y0, z0 + t],
       [-half, y1, z1], [half, y1, z1], [half, y1, z1 + t], [-half, y1, z1 + t]));
   }
-  P.addEquipment('hullDark', box(2 * half, 0.05, 0.08), 0, 0.16, 3.80);
+  P.addEquipment('hullDark', box(2 * half, 0.05, 0.08), 0, 0.36, 3.80);
   for (const s of [-1, 1]) {
-    P.addEquipment('hullEquipment', box(0.05, 0.86, 0.06), side(s, half - 0.025), 0.58, 3.80);
+    P.addEquipment('hullEquipment', box(0.05, 0.86, 0.06), side(s, half - 0.025), 0.78, 3.80);
     // push arms from the lower plate to the moldboard's back, and the rams above them
-    P.addEquipment('hullDark', beamBetween([side(s, 0.70), 0.64, 3.16], [side(s, 0.80), 0.42, 3.76], 0.045, 10));
-    P.addEquipment('hullDark', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.55), 0.80, 3.70], 0.035, 10));
-    P.addEquipment('hullDetail', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.50), 0.79, 3.48], 0.05, 10));
+    P.addEquipment('hullDark', beamBetween([side(s, 0.70), 0.64, 3.16], [side(s, 0.80), 0.62, 3.72], 0.045, 10));
+    P.addEquipment('hullDark', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.55), 1.00, 3.70], 0.035, 10));
+    P.addEquipment('hullDetail', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.50), 0.89, 3.50], 0.05, 10));
+    // the lift ram: its barrel from the glacis clevis, the chromed rod down to the moldboard's lug
+    // its clevis bracket on the fender ledge's top behind the bow (top 1.25 at z 3.20): the ram clears the ledge's front
+    // edge (1.22 at z 3.30) by 3 cm and the track's wrap below it
+    const clevis: [number, number, number] = [side(s, 1.30), 1.33, 3.20], lug: [number, number, number] = [side(s, 1.30), 1.25, 3.90];
+    const mid: [number, number, number] = [clevis[0], clevis[1] + (lug[1] - clevis[1]) * 0.55, clevis[2] + (lug[2] - clevis[2]) * 0.55];
+    P.addEquipment('hullDetail', box(0.12, 0.11, 0.14), clevis[0], 1.295, 3.20);
+    P.addEquipment('hullDetail', beamBetween(clevis, mid, 0.055, 12));
+    P.addEquipment('hullDark', beamBetween(mid, lug, 0.03, 10));
+    P.addEquipment('hullDark', box(0.12, 0.08, 0.10), lug[0], 1.23, 3.90);
   }
   // the push frame's web plate between the arms, in their plane from the lower plate into the moldboard's back, its edges
   // inside the arm tubes and under the rams: from above it closes the 33 cm of open ground between the nose and the
   // blade (B2 contiguity, 262)
   P.addEquipment('hullEquipment', orientedSlab(
     [-0.70, 0.64, 3.14], [0.70, 0.64, 3.14], [0.70, 0.67, 3.14], [-0.70, 0.67, 3.14],
-    [-0.80, 0.42, 3.74], [0.80, 0.42, 3.74], [0.80, 0.45, 3.74], [-0.80, 0.45, 3.74]));
+    [-0.80, 0.62, 3.74], [0.80, 0.62, 3.74], [0.80, 0.65, 3.74], [-0.80, 0.65, 3.74]));
+  // the push frame's side plates, out to the blade's ends under the track's front wrap (7 cm below it where it rounds
+  // the idler): with the web plate they close the ground between the nose, the track fronts and the blade seen from
+  // above, so the lift rams over it enclose nothing (B2)
+  for (const s of [-1, 1]) {
+    const xa = side(s, 0.78), xb = side(s, half - 0.02);
+    P.addEquipment('hullEquipment', orientedSlab(
+      [xa, 0.40, 3.30], [xb, 0.40, 3.30], [xb, 0.40, 3.78], [xa, 0.40, 3.78],
+      [xa, 0.43, 3.30], [xb, 0.43, 3.30], [xb, 0.43, 3.78], [xa, 0.43, 3.78]));
+  }
 }
 
 /** The T-84U's commander's NSVT on its cupola (the standard mount: no remote stations at this stage), turning about the
