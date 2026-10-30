@@ -128,6 +128,18 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly turretRing?: AnatomyTurretRingReceipt;
   /** Where each crew member sits (235 crew fit), in the internal layout's crew order. */
   readonly crewSeats?: readonly AnatomyCrewSeatReceipt[];
+  /** Where each sketched module sits (266), placed around the seated crew in one priority order, inside its armour. */
+  readonly moduleSeats?: readonly AnatomyModuleSeatReceipt[];
+}
+
+/**
+ * 266 module placement (tools/crew-seat-fit.mjs placeModules): a sketched module's parts in its frame (hull, or turret
+ * at rest), each the largest box inside its armour clear of the crew and of the modules placed before it.
+ */
+export interface AnatomyModuleSeatReceipt extends Record<string, RuntimeValue> {
+  readonly module: string;
+  readonly turretLocal: boolean;
+  readonly parts: readonly AnatomyCalibrationBounds[];
 }
 
 export interface AnatomyWeaponReceipt extends AnatomyCalibrationCell {

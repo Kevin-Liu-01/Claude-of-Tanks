@@ -25,6 +25,8 @@
 // (`trimmed`, with the outside share it started from).
 // Pure numbers, no three.js; deterministic (fixed grids, fixed order).
 
+import { stationSideSign } from '../src/vehicles/vehicleSide.ts';
+
 const H = 1.75;
 const SEG = Object.freeze({
   hipHalfWidth: 0.052 * H, spine: 0.296 * H, neck: 0.05 * H, headRadius: 0.061 * H,
@@ -336,8 +338,11 @@ const RING_DEPTH_M = 0.12;
  * `ring`: false (the armour proper), 'axis' (the opening over the turret axis: the hull's roof to the turret's floor,
  * as wide as both hold 5 cm in) or 'full' (also the whole ring: out to the radius both hold RING_DEPTH_M in, between
  * the hull's top at each radius and the turret's bottom over it).
+ * `limit` (266, seats only): the turret ring as built ({ ringR, deckY }, the calibration's turretRing). Turret crew keep
+ * whatever lies under the turret within the ring's radius (the basket turns inside the race, never past it); hull crew
+ * keep out of that cylinder under the deck where a basket turns (`basket`).
  */
-function makeShell(armor, frame, ring) {
+function makeShell(armor, frame, ring, limit = null) {
   const pivot = armor.turretPivot || [0, 0, 0];
   const hull = armor.collisionShells?.hull || [];
   const turret = armor.collisionShells?.turret || [];
@@ -387,7 +392,7 @@ function makeShell(armor, frame, ring) {
         const range = cellColumn(own[index], x, z, margin);
         if (range) { list.push(range); turretBottom = Math.min(turretBottom, range[0]); }
       }
-      if (swept.length) {
+      if (swept.length && (!limit || Math.hypot(x, z) <= limit.ringR - margin)) {
         const radii = basket(margin);
         const r = Math.hypot(x, z);
         let hullTop = -Infinity;
@@ -401,6 +406,10 @@ function makeShell(armor, frame, ring) {
         if (ring === 'full' && ringBand && r <= ringBand.full - margin && turretBottom > hullTop && turretBottom - hullTop < 0.25) {
           list.push([hullTop, turretBottom]);
         }
+      }
+      if (limit?.basket && frame === 'hull' && Math.hypot(x - pivot[0], z - pivot[2]) < limit.ringR + margin) {
+        const above = list.map(([lo, hi]) => [Math.max(lo, limit.deckY), hi]).filter(([lo, hi]) => hi > lo);
+        return unionIntervals(above);
       }
       return unionIntervals(list);
     },
@@ -436,7 +445,7 @@ function obstacleBoxes(armor, frame, names) {
 }
 
 // --- shape containment and overlap --------------------------------------------------------------------------------
-function pointInShape(shape, p, pad = 0) {
+export function pointInShape(shape, p, pad = 0) {
   if (shape.kind === 'ellipsoid') {
     let sum = 0;
     for (let axis = 0; axis < 3; axis++) sum += ((p[axis] - shape.center[axis]) / (shape.radii[axis] + pad)) ** 2;
@@ -599,22 +608,16 @@ const roundShape = (shape) => shape.kind === 'ellipsoid'
   ? { kind: 'ellipsoid', center: shape.center.map(ROUND), radii: shape.radii.map(ROUND) }
   : { kind: 'capsule', a: shape.a.map(ROUND), b: shape.b.map(ROUND), radius: ROUND(shape.radius) };
 
-function stationSide(station) {
-  if (/Left$/.test(station || '')) return -1;
-  if (/Right$/.test(station || '')) return 1;
-  return 0;
-}
-
 /**
  * Seat one station. `anchor` is the station's legacy combat box (frame-local); `frame` 'hull' | 'turret'.
  * Returns the seat record (rounded) or null when the frame has no shell.
  */
-function seatStation({ armor, anchor, frame, station, ladders, fallback, placed }) {
-  const shell = makeShell(armor, frame, 'axis');
+function seatStation({ armor, anchor, frame, station, ladders, fallback, placed, limit }) {
+  const shell = makeShell(armor, frame, 'axis', limit);
   if (!shell.cells.length) return null;
   const armour = makeShell(armor, frame, false);
   const center = anchor.min.map((value, axis) => (value + anchor.max[axis]) / 2);
-  const side = stationSide(station);
+  const side = stationSideSign(station);
   const obstacleSets = [
     { relaxed: null, boxes: obstacleBoxes(armor, frame, new Set([...HARD_OBSTACLES, ...SOFT_OBSTACLES])), crew: true, limbs: true },
     { relaxed: 'stowage', boxes: obstacleBoxes(armor, frame, HARD_OBSTACLES), crew: true, limbs: true },
@@ -716,7 +719,7 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed 
   // ring; then the best effort, trimmed.
   let result = attempt(ladders, shell);
   if (result?.found) return finishSeat({ ...result.found, shell, armour, trimmed: null });
-  const wide = frame === 'turret' ? makeShell(armor, frame, 'full') : shell;
+  const wide = frame === 'turret' ? makeShell(armor, frame, 'full', limit) : shell;
   if (result && (fallback.length > ladders.length || wide !== shell)) {
     const second = attempt(fallback, wide);
     if (second?.found) return finishSeat({ ...second.found, shell: wide, armour, trimmed: null });
@@ -818,13 +821,18 @@ function finishSeat({ candidate, py, shell, armour, relaxed, trimmed }) {
 
 /**
  * Seats for every crew station of a finalized probe spec (its crew boxes are the legacy stations; its collision shells
- * and modules come from the calibration being written). `layoutKey` picks the drivers' posture family.
+ * and modules come from the calibration being written). `layoutKey` picks the drivers' posture family; `ring` is the
+ * calibration's turretRing (266: the ring/basket limit, which outranks the crew).
  */
-export function fitCrewSeats(spec, layoutKey) {
+export function fitCrewSeats(spec, layoutKey, ring = null) {
   const armor = spec.armor;
   const pivot = armor.turretPivot || [0, 0, 0];
   const placed = [];
   const seats = [];
+  const basket = (armor.crew || []).some((anchor) => anchor.turretLocal);
+  const limits = ring && Number.isFinite(ring.rimR) && Number.isFinite(ring.deckY) && (armor.collisionShells?.turret || []).length
+    ? { turret: { ringR: ring.rimR }, hull: { ringR: ring.rimR, deckY: ring.deckY, basket } }
+    : { turret: null, hull: null };
   for (const anchor of armor.crew || []) {
     const frame = anchor.turretLocal ? 'turret' : 'hull';
     const ladders = crewPostureLadders(spec.id, layoutKey, anchor.crew, frame);
@@ -836,10 +844,167 @@ export function fitCrewSeats(spec, layoutKey) {
       const shapes = entry.shapes.map((shape) => translate(shape, shift));
       return { frame, shapes, ...boundsOf(shapes) };
     });
-    const seat = seatStation({ armor, anchor, frame, station: anchor.station, ladders, fallback, placed: others });
+    const seat = seatStation({ armor, anchor, frame, station: anchor.station, ladders, fallback, placed: others, limit: limits[frame] });
     if (!seat) continue;
     seats.push({ crew: anchor.crew, frame, ...seat });
     placed.push({ frame, shapes: seat.shapes, ...boundsOf(seat.shapes) });
   }
   return seats;
+}
+
+// --- module placement (266) ----------------------------------------------------------------------------------------
+// One placement pass resolves the internal volumes against each other in a fixed order: the shell, then the turret
+// ring and basket (fitCrewSeats' limits), then the crew (seated first, above), then the sketched modules from hard to
+// soft. A module part is judged by the hit shape its box carries (combatAnatomy fits the shape inscribed in the box,
+// and the Gallery draws the module over its shapes), not by the box's corners: each part keeps the largest box grown
+// from its centre whose inscribed ellipsoid lies inside its frame's armour and clear of the crew's hit shapes and of the
+// shapes of the modules placed before it. Measured volumes (the tracks, the ring, the gun, drawn receipts) never move. A
+// transmission is carved out of the engine sketch it was derived from (one powerpack bay holds both, side by side); a
+// carousel autoloader stays inside the ammunition it carries.
+const MODULE_ORDER = Object.freeze(['transmission', 'engine', 'autoloader', 'feedSystem', 'missileRack', 'ammoRack',
+  'fuelTank', 'radio', 'optics']);
+const FIXED_MODULES = new Set(['trackL', 'trackR', 'turretRing', 'gun', 'gunMount', 'roofGun']);
+/** Pairs placed through each other on purpose (later|earlier): the carousel's rounds are ammunition. */
+const NESTED = new Set(['ammoRack|autoloader']);
+const VOXEL_M = 0.03;
+const CREW_PAD_M = 0.01;
+
+const moduleKey = (box) => `${box.module}|${!!box.turretLocal}`;
+
+/** Whether a module's place comes from the sketch (and so from this pass). */
+function placeable(box, drawn) {
+  return !FIXED_MODULES.has(box.module) && box.external !== true && !box.gunFollow && !box.roofGunFollow
+    && !drawn.has(moduleKey(box));
+}
+
+/** The ellipsoid inscribed in a box. */
+const inscribed = (box) => ({
+  kind: 'ellipsoid',
+  center: box.min.map((value, axis) => (value + box.max[axis]) / 2),
+  radii: box.min.map((value, axis) => (box.max[axis] - value) / 2),
+});
+
+/**
+ * The largest box grown from the free voxel nearest `part`'s centre, on a grid spanning `part` exactly, whose inscribed
+ * ellipsoid holds no blocked voxel. `blocked(p)` names what holds a point inside the armour: 0 (nothing), 1 (crew) or 2
+ * (a module); a column outside `column`'s intervals is outside the armour. Also returns the sketch's blocked shares.
+ */
+function growFreeBox(part, column, blocked) {
+  const n = [0, 1, 2].map((axis) => Math.max(1, Math.ceil((part.max[axis] - part.min[axis]) / VOXEL_M - 1e-9)));
+  const step = [0, 1, 2].map((axis) => (part.max[axis] - part.min[axis]) / n[axis]);
+  const free = new Uint8Array(n[0] * n[1] * n[2]);
+  const at = (i, j, k) => (i * n[1] + j) * n[2] + k;
+  const walls = [];
+  let outside = 0, crew = 0, modules = 0;
+  for (let i = 0; i < n[0]; i++) for (let k = 0; k < n[2]; k++) {
+    const x = part.min[0] + (i + 0.5) * step[0], z = part.min[2] + (k + 0.5) * step[2];
+    const intervals = column(x, z);
+    for (let j = 0; j < n[1]; j++) {
+      const y = part.min[1] + (j + 0.5) * step[1];
+      const by = intervals.some(([lo, hi]) => y >= lo && y <= hi) ? blocked([x, y, z]) : 3;
+      if (by === 0) { free[at(i, j, k)] = 1; continue; }
+      walls.push(i, j, k);
+      if (by === 1) crew++; else if (by === 2) modules++; else outside++;
+    }
+  }
+  const total = n[0] * n[1] * n[2];
+  const shares = { outside: outside / total, crew: crew / total, modules: modules / total };
+  let seed = null, best = Infinity;
+  for (let i = 0; i < n[0]; i++) for (let j = 0; j < n[1]; j++) for (let k = 0; k < n[2]; k++) {
+    if (!free[at(i, j, k)]) continue;
+    const d = ((i + 0.5 - n[0] / 2) * step[0]) ** 2 + ((j + 0.5 - n[1] / 2) * step[1]) ** 2 + ((k + 0.5 - n[2] / 2) * step[2]) ** 2;
+    if (d < best - 1e-12) { best = d; seed = [i, j, k]; }
+  }
+  if (!seed) return { box: null, shares };
+  // a box (voxel index range [lo, hi)) is clear when no blocked voxel centre lies in its inscribed ellipsoid
+  const clear = (lo, hi) => {
+    const c = [0, 1, 2].map((axis) => (lo[axis] + hi[axis]) / 2);
+    const h = [0, 1, 2].map((axis) => (hi[axis] - lo[axis]) / 2);
+    for (let w = 0; w < walls.length; w += 3) {
+      const di = (walls[w] + 0.5 - c[0]) / h[0];
+      if (di * di > 1) continue;
+      const dj = (walls[w + 1] + 0.5 - c[1]) / h[1];
+      if (di * di + dj * dj > 1) continue;
+      const dk = (walls[w + 2] + 0.5 - c[2]) / h[2];
+      if (di * di + dj * dj + dk * dk <= 1) return false;
+    }
+    return true;
+  };
+  const grow = (phases) => {
+    const lo = seed.slice(), hi = seed.map((value) => value + 1);
+    for (const faces of phases) {
+      const open = new Set(faces);
+      while (open.size) {
+        for (const face of faces) {
+          if (!open.has(face)) continue;
+          const axis = face >> 1, up = face & 1;
+          if (up ? hi[axis] >= n[axis] : lo[axis] <= 0) { open.delete(face); continue; }
+          if (up) hi[axis]++; else lo[axis]--;
+          if (!clear(lo, hi)) { if (up) hi[axis]--; else lo[axis]++; open.delete(face); }
+        }
+      }
+    }
+    return { lo, hi };
+  };
+  const all = [0, 1, 2, 3, 4, 5], across = [0, 1, 4, 5], vertical = [2, 3];
+  const volume = ({ lo, hi }) => (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+  let grown = null;
+  for (const phases of [[all], [across, vertical, all], [vertical, across, all]]) {
+    const candidate = grow(phases);
+    if (!grown || volume(candidate) > volume(grown)) grown = candidate;
+  }
+  const edge = (axis, index) => (index === n[axis] ? part.max[axis] : part.min[axis] + index * step[axis]);
+  return {
+    box: { min: [0, 1, 2].map((axis) => ROUND(edge(axis, grown.lo[axis]))), max: [0, 1, 2].map((axis) => ROUND(edge(axis, grown.hi[axis]))) },
+    shares,
+  };
+}
+
+/**
+ * The module seats of a finalized probe spec whose crew `seats` are fitted (fitCrewSeats): every sketched module's
+ * parts, placed in MODULE_ORDER. `drawn` holds the keys (`module|turretLocal`) of drawn module receipts, which stay.
+ * Returns { seats, report }: the published records and, per module, the share of its sketch's box that lay outside its
+ * armour, under crew or under modules placed before it, and the share of the box it kept (a sketch that loses much of
+ * itself is listed as a data fix, not only shrunk).
+ */
+export function placeModules(spec, seats, { drawn = new Set(), ring = null } = {}) {
+  const armor = spec.armor;
+  const pivot = armor.turretPivot || [0, 0, 0];
+  const turretLimit = ring && Number.isFinite(ring.rimR) && (armor.collisionShells?.turret || []).length ? { ringR: ring.rimR } : null;
+  const shells = { hull: makeShell(armor, 'hull', false), turret: makeShell(armor, 'turret', false, turretLimit) };
+  const toFrame = (frame, from) => (frame === from ? [0, 0, 0] : frame === 'turret' ? pivot.map((value) => -value) : pivot);
+  const order = (box) => { const rank = MODULE_ORDER.indexOf(box.module); return rank < 0 ? MODULE_ORDER.length : rank; };
+  const modules = (armor.modules || []).filter((box) => placeable(box, drawn))
+    .map((box, index) => ({ box, index })).sort((a, b) => order(a.box) - order(b.box) || a.index - b.index).map(({ box }) => box);
+  const placed = [];
+  const out = [];
+  const report = [];
+  for (const box of modules) {
+    const frame = box.turretLocal ? 'turret' : 'hull';
+    const crewShapes = seats.flatMap((seat) => seat.shapes.map((shape) => translate(shape, toFrame(frame, seat.frame))));
+    const earlier = placed.filter((entry) => !NESTED.has(`${box.module}|${entry.module}`))
+      .flatMap((entry) => entry.parts.map((part) => translate(inscribed(part), toFrame(frame, entry.frame))));
+    const blocked = (p) => (crewShapes.some((shape) => pointInShape(shape, p, CREW_PAD_M)) ? 1
+      : earlier.some((shape) => pointInShape(shape, p)) ? 2 : 0);
+    const column = (x, z) => shells[frame].column(x, z, 0);
+    const parts = [];
+    let sketched = 0, kept = 0, outside = 0, crew = 0, moduleShare = 0;
+    for (const part of box.parts?.length ? box.parts : [box]) {
+      const size = part.min.reduce((product, value, axis) => product * (part.max[axis] - value), 1);
+      const { box: grown, shares } = growFreeBox(part, column, blocked);
+      sketched += size;
+      outside += shares.outside * size;
+      crew += shares.crew * size;
+      moduleShare += shares.modules * size;
+      if (!grown) continue;
+      parts.push(grown);
+      kept += grown.min.reduce((product, value, axis) => product * (grown.max[axis] - value), 1);
+    }
+    const share = (value) => ROUND3(sketched > 0 ? value / sketched : 0);
+    report.push({ module: box.module, frame, sketchedL: ROUND3(sketched * 1000), kept: share(kept), outside: share(outside), crew: share(crew), modules: share(moduleShare), unplaced: !parts.length });
+    if (!parts.length) continue;
+    placed.push({ module: box.module, frame, parts });
+    out.push({ module: box.module, turretLocal: !!box.turretLocal, parts });
+  }
+  return { seats: out, report };
 }

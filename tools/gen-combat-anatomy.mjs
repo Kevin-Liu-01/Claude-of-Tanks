@@ -7,7 +7,8 @@
 //   node tools/gen-combat-anatomy.mjs --crew-only [--ids=a,b]  # re-seat the crew in the committed calibrations
 //
 // Every row carries its crew seats (235, tools/crew-seat-fit.mjs): a P50 body per crew station, seated in its role's
-// posture inside the shell this row measures. --crew-only refits them against the committed rows without rebuilding a
+// posture inside the shell this row measures, and (266) its module seats: the sketched modules placed around the crew
+// in one priority order, inside their armour. --crew-only refits both against the committed rows without rebuilding a
 // tank (the full regen writes the same seats for an unchanged tank).
 //
 // Both modes also hold every measured tank's belly pan, track bottom and combat hull box to
@@ -49,7 +50,7 @@ const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
 const { authoredCombatAnatomy, finalizeCombatAnatomy } = await import('../src/vehicles/combatAnatomy.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
-const { fitCrewSeats } = await import('./crew-seat-fit.mjs');
+const { fitCrewSeats, placeModules } = await import('./crew-seat-fit.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -718,12 +719,29 @@ function receiptFor(id) {
   }
 }
 
-/** The crew seats of one measured row: the authored spec finalized against that row, then seated in its shell. */
-function crewSeatsFor(id, calibration) {
+/** A module sketch with this share of its box outside its armour is reported as a data fix. */
+const DATA_FIX_OUTSIDE_SHARE = 0.3;
+
+/**
+ * The internal placement of one measured row (266, tools/crew-seat-fit.mjs): the authored spec finalized against that
+ * row, its crew seated in its shell inside the turret ring's limits, then its sketched modules placed around them.
+ */
+function seatsFor(id, calibration) {
   const probe = authoredCombatAnatomy(id);
   if (!probe) throw new Error(`[combat-anatomy] ${id}: no authored combat anatomy to seat the crew in`);
   finalizeCombatAnatomy(probe, calibration);
-  return fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null);
+  const ring = calibration.turretRing ?? null;
+  const crewSeats = fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null, ring);
+  const drawn = new Set((calibration.moduleShapes || []).map((receipt) => `${receipt.module}|${!!receipt.turretLocal}`));
+  const { seats: moduleSeats, report } = placeModules(probe, crewSeats, { drawn, ring });
+  // a sketch that lies largely outside its armour is wrong data: the pass keeps the part inside, and says so
+  for (const entry of report) {
+    if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.unplaced) {
+      console.log(`[combat-anatomy] data fix: ${id} ${entry.module} (${entry.frame}) sketch ${entry.sketchedL} L, `
+        + `${Math.round(entry.outside * 100)}% outside its armour, ${Math.round(entry.kept * 100)}% kept${entry.unplaced ? ', UNPLACED' : ''}`);
+    }
+  }
+  return { crewSeats, moduleSeats };
 }
 
 const rows = {};
@@ -732,13 +750,13 @@ for (const id of ALL_TANK_IDS) {
   if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
   if (crewOnly) {
     if (!COMBAT_ANATOMY_CALIBRATIONS[id]) throw new Error(`[combat-anatomy] ${id}: --crew-only needs a committed calibration`);
-    const { crewSeats: _previous, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
-    rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
+    const { crewSeats: _previous, moduleSeats: _previousModules, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
+    rows[id] = { ...measured, ...seatsFor(id, measured) };
     console.log(`[combat-anatomy] seated ${id}`);
     continue;
   }
   const measured = receiptFor(id);
-  rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
+  rows[id] = { ...measured, ...seatsFor(id, measured) };
   console.log(`[combat-anatomy] measured ${id}`);
 }
 
