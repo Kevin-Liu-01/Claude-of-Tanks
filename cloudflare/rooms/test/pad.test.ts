@@ -9,6 +9,7 @@ import { env, exports } from 'cloudflare:workers';
 import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PAD_KEEPALIVE_REQUEST, PAD_KEEPALIVE_RESPONSE } from '../../../src/pad/padProtocol.ts';
+import { allowedOrigin } from '../src/util.ts';
 import { origin } from './client.ts';
 
 interface PadMessage { t: string; [key: string]: unknown }
@@ -106,6 +107,23 @@ describe('phone controller pairing', () => {
     expect((await phone.next('end')).reason).toBe('replaced');
     back.send({ t: 'end' });
     expect((await desktop.next('end')).reason).toBe('ended');
+  });
+
+  it('matches the preview Worker\'s origin pattern to one alphanumeric label', () => {
+    const list = 'https://claude-of-tanks-*-kl01s-projects.vercel.app';
+    const admits = (value: string) => allowedOrigin(new Request('https://rooms.test/pad/new', { headers: { Origin: value } }), list);
+    expect(admits('https://claude-of-tanks-a1b2c3d4e-kl01s-projects.vercel.app')).toBe(true);
+    for (const refused of [
+      'https://claude-of-tanks-kl01s-projects.vercel.app', // the protected production domain: no label
+      'https://claude-of-tanks-git-item-pad-kl01s-projects.vercel.app', // a branch alias: hyphens
+      'https://claude-of-tanks-abc-x-kl01s-projects.vercel.app', // another team's slug ending the same way
+      'https://claude-of-tanks-ABC-kl01s-projects.vercel.app',
+      'https://claude-of-tanks-a.b-kl01s-projects.vercel.app',
+      'http://claude-of-tanks-abc-kl01s-projects.vercel.app',
+      'https://claude-of-tanks-abc-kl01s-projects.vercel.app.evil.test',
+    ]) expect(admits(refused)).toBe(false);
+    expect(allowedOrigin(new Request('https://rooms.test/', { headers: { Origin: origin } }), origin)).toBe(true);
+    expect(allowedOrigin(new Request('https://rooms.test/', { headers: { Origin: `${origin}.evil.test` } }), origin)).toBe(false);
   });
 
   it('answers junk without an object', async () => {

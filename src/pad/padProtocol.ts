@@ -195,8 +195,9 @@ export interface PadStatus {
 }
 
 export type PadCtlMessage =
-  | { k: 'down'; a: PadHoldAction }
-  | { k: 'up'; a: PadHoldAction }
+  /** `s`: the seq of the first axes frame that carries the new state (the two channels are not ordered together). */
+  | { k: 'down'; a: PadHoldAction; s: number }
+  | { k: 'up'; a: PadHoldAction; s: number }
   | { k: 'tap'; a: PadTapAction }
   | { k: 'pause' }
   | { k: 'ping'; t: number }
@@ -214,7 +215,8 @@ export function readPadCtl(text: string): PadCtlMessage | null {
   const record = value as Record<string, unknown>;
   switch (record.k) {
     case 'down': case 'up':
-      return typeof record.a === 'string' && HOLDS.has(record.a) ? { k: record.k, a: record.a as PadHoldAction } : null;
+      return typeof record.a === 'string' && HOLDS.has(record.a) && Number.isInteger(record.s)
+        ? { k: record.k, a: record.a as PadHoldAction, s: Number(record.s) & 0xffff } : null;
     case 'tap': return typeof record.a === 'string' && TAPS.has(record.a) ? { k: 'tap', a: record.a as PadTapAction } : null;
     case 'pause': return { k: 'pause' };
     case 'ping': return Number.isFinite(record.t) ? { k: 'ping', t: Number(record.t) } : null;
