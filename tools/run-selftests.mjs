@@ -1,10 +1,11 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { closeSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, getPriority, setPriority, tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
+import { defaultTierFiles, manualSuiteFiles, manualSuiteOf, parseSuiteNames } from './selftest-tiers.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 import { createSelftestCache, REPO_ROOT, SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
@@ -92,7 +93,7 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
 export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/changed-only/chain.selftest.mjs', 'tools/changed-only/resolver.selftest.mjs', 'tools/changed-only/world.selftest.mjs',
 ].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
-  'tools/selftest-inputs.mjs'])])));
+  'tools/selftest-inputs.mjs', 'tools/id-list.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
@@ -379,12 +380,14 @@ const SELFTEST_BARRIER_FILES = Object.freeze([...new Set([...SELFTEST_EXCLUSIVE_
 // matching nothing is an error) and `--shard=i/n` runs one of n deterministic shards balanced by the
 // committed run-time snapshot (tools/selftest-durations.json). Both keep registry order and only
 // narrow what this invocation runs; every receipt of the selection still runs in a fresh process.
+// Tiers (266, tools/selftest-tiers.mjs): a selection is the default tier unless `--heavy=<suite>[,<suite>]` (or all)
+// names manual suites, which only `npm run test:heavy` passes; `--only-from=<file>` reads one glob per line.
 export function selftestCommand(args, { durations = loadDurationSnapshot() } = {}) {
   const name = args[0] && !args[0].startsWith('--') ? args.shift() : 'all';
   const registered = name === 'all' ? Object.values(SELFTEST_SUITES).flat() : SELFTEST_SUITES[name];
   if (!registered) throw new Error(`Unknown self-test suite "${name}". Expected: all, ${Object.keys(SELFTEST_SUITES).join(', ')}`);
   const options = { name, files: registered, plan: false, report: null, changed: null, order: 'longest',
-    only: [], shard: null, writeDurations: false, logs: null };
+    only: [], shard: null, writeDurations: false, logs: null, heavy: null, registered: registered.length };
   for (const arg of args) {
     if (arg === '--plan') options.plan = true;
     else if (arg === '--all') continue; // handled by the cache; applies to every selected group
@@ -392,6 +395,9 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
     else if (arg.startsWith('--changed=')) options.changed = arg.slice(10).split(',').filter(Boolean);
     else if (arg === '--order=registry' || arg === '--order=longest') options.order = arg.slice(8);
     else if (arg.startsWith('--only=')) options.only.push(...splitGlobs(arg.slice(7)));
+    else if (arg.startsWith('--only-from=') && arg.length > 12) options.only.push(...readFileSync(resolve(arg.slice(12)), 'utf8')
+      .split('\n').map((line) => line.trim()).filter(Boolean));
+    else if (arg.startsWith('--heavy=') && !options.heavy) options.heavy = parseSuiteNames(arg.slice(8));
     else if (arg.startsWith('--shard=') && !options.shard) options.shard = parseShard(arg.slice(8));
     else if (arg === '--write-durations') options.writeDurations = true;
     else if (arg.startsWith('--logs=') && arg.length > 7) options.logs = resolve(arg.slice(7));
@@ -399,7 +405,10 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
   }
   if (options.changed && !options.plan) throw new Error('--changed explains impact with --plan; it never skips required checks');
   if (writeDurationsConflict(options)) throw new Error('--write-durations records the whole registry: `node tools/run-selftests.mjs --write-durations`, no other option');
-  const selected = selectReceipts(registered, options.only);
+  if (options.writeDurations) { options.files = registered; return options; } // every tier keeps a scheduling time
+  const tiered = options.heavy ? manualSuiteFiles(registered, options.heavy) : defaultTierFiles(registered);
+  options.tier = options.heavy ? options.heavy.join(',') : 'default';
+  const selected = selectTier(tiered, registered, options);
   options.files = selected;
   if (options.shard) {
     const shards = partitionShards(selected, options.shard.count, {
@@ -414,7 +423,18 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
 }
 function writeDurationsConflict(options) {
   return options.writeDurations && (options.name !== 'all' || options.plan || options.only.length || options.shard
-    || options.changed || options.report || options.logs || options.order !== 'longest');
+    || options.changed || options.report || options.logs || options.order !== 'longest' || options.heavy);
+}
+/** --only within the selected tier; a selection that matches only another tier's receipts says which suite holds them. */
+function selectTier(tiered, registered, options) {
+  try { return selectReceipts(tiered, options.only); }
+  catch (error) {
+    let elsewhere = [];
+    try { elsewhere = selectReceipts(registered, options.only); } catch { throw error; }
+    const suites = [...new Set(elsewhere.map((file) => manualSuiteOf(file) ?? 'default'))];
+    throw new Error(`--only=${options.only.join(',')} matched no ${options.tier}-tier receipt; it matches ${elsewhere.length} in `
+      + `${suites.join(', ')} (${suites.includes('default') ? 'drop --heavy' : `npm run test:heavy -- ${suites.join(' ')}`})`);
+  }
 }
 
 /**
@@ -465,7 +485,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });
     const runtimes = createRuntimeIndex(cacheLocation.dir);
     if (command.shard) console.log(`[selftests] shard ${command.shard.index}/${command.shard.count}: ${command.shard.receipts} of ${command.shard.selected} selected receipts (~${(command.shard.loadMs / 60_000).toFixed(1)} min weighted; partition ${command.shard.partition})`);
-    else if (command.only.length) console.log(`[selftests] --only=${command.only.join(',')}: ${suite.length} receipts`);
+    else if (command.only.length) console.log(`[selftests] --only=${command.only.length > 8 ? `<${command.only.length} entries>` : command.only.join(',')}: ${suite.length} receipts`);
+    if (!command.writeDurations) console.log(command.heavy
+      ? `[selftests] manual tier: ${command.heavy.join(', ')} (${suite.length} receipts; the owner triggers these runs)`
+      : `[selftests] default tier: ${suite.length} of ${command.registered} registered receipts; manual suites run only through npm run test:heavy`);
     if (command.writeDurations) {
       writeFileSync(DURATION_SNAPSHOT_URL, durationSnapshotText(suite, file => runtimes.runMsOf(file)));
       runtimes.persist();
