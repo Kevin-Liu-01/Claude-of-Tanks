@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-29T21:41:46.559Z",
+ "generatedAt": "2026-10-29T09:44:14.074Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1118,7 +1118,7 @@
    "openViews": 0,
    "insideOutPx": 190,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 6389,
+   "netSeeThroughPx": 5584,
    "tris": 114498,
    "frame": [
     0,
@@ -1145,6 +1145,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 6616
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 6389
      }
     }
    ]
@@ -1303,11 +1313,11 @@
   },
   "leo2a6_ua": {
    "sealed": true,
-   "openPx": 18,
+   "openPx": 51,
    "openViews": 0,
    "insideOutPx": 63,
-   "seeThroughPx": 8,
-   "netSeeThroughPx": 6329,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4463,
    "tris": 156544,
    "frame": [
     0,
@@ -1323,6 +1333,25 @@
      "date": "2026-10-20",
      "from": {
       "openPx": 2
+     }
+    },
+    {
+     "kind": "rebaseline",
+     "reason": "Main ruling 2026-10-28 (release 264): builds the source-measured 2A6 (hull/turret/gun/gunMount byte-identical to leo2a6); bare leo2a6 in the same frame reads 146 open px, sealed; the 51 are that stock's sub-min-area seam aliasing (leo2a6-ua-264 evidence gate/sealed-ua2.json, gate/sealed-a6-uaframe.json)",
+     "by": "leo2a6-ua-264",
+     "date": "2026-10-28",
+     "from": {
+      "openPx": 18
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "release 264 rebuilt on the source-measured 2A6 with the photo-sourced field net laid on the turret roof, the cage roof, the bustle, the front deck and the rear hull walls (ghillieFleetSuits.ts), replacing the 2A6M-rig suit",
+     "by": "leo2a6-ua-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 8,
+      "netSeeThroughPx": 6329
      }
     }
    ]
@@ -1423,13 +1452,25 @@
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3128,
+   "netSeeThroughPx": 2661,
    "tris": 130668,
    "frame": [
     0,
     1.7,
     0.9,
     5.7
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3128
+     }
+    }
    ]
   },
   "m1a1_abrams_hc": {
@@ -2197,7 +2238,7 @@
    "openViews": 0,
    "insideOutPx": 47,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2806,
+   "netSeeThroughPx": 4240,
    "tris": 128604,
    "frame": [
     0,
@@ -2214,6 +2255,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2806
      }
     }
    ]
@@ -2540,7 +2591,7 @@
    "openViews": 0,
    "insideOutPx": 65,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 5217,
+   "netSeeThroughPx": 5068,
    "tris": 146669,
    "frame": [
     0,
@@ -2557,6 +2608,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 6419
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "inherited from main 262 - the field net reads 5068 px with the screen slats closed or open (orphan-reds-264 A-B), so the drift predates this lane",
+     "by": "orphan-reds-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 5217
      }
     }
    ]
@@ -3589,15 +3650,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 266,
+   "insideOutPx": 342,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 94326,
+   "tris": 99510,
    "frame": [
     0,
-    2.45,
-    0.5,
-    5.6
+    1.65,
+    1.75,
+    6.1
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 263 ground-up rebuild, the 125 mm reaches 1.5 m further forward and the turret is a compact welded hexagon",
+     "by": "kevinliu",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       0.5,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      1.65,
+      1.75,
+      6.1
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "ztz99_longwei": {
@@ -3910,66 +4007,6 @@
     2,
     1.45,
     6.1
-   ]
-  },
-  "ztz99a2_qinglong": {
-   "sealed": true,
-   "openPx": 7,
-   "openViews": 0,
-   "insideOutPx": 173,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 110814,
-   "frame": [
-    0,
-    1.9,
-    1.35,
-    6.9
-   ]
-  },
-  "vt4a1_baihu": {
-   "sealed": true,
-   "openPx": 6,
-   "openViews": 0,
-   "insideOutPx": 160,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 114452,
-   "frame": [
-    0,
-    1.9,
-    1.35,
-    6.9
-   ]
-  },
-  "t72b3_zhuque": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 158,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 112124,
-   "frame": [
-    0,
-    1.8,
-    1.85,
-    6.3
-   ]
-  },
-  "t72b3m_xuanwu": {
-   "sealed": true,
-   "openPx": 2,
-   "openViews": 0,
-   "insideOutPx": 68,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 115426,
-   "frame": [
-    0,
-    1.8,
-    1.75,
-    6.4
    ]
   }
  }

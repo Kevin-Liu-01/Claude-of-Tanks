@@ -685,8 +685,9 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   const launchCode = stripTypeScriptTypes(launches[0].getText(garageTree));
   const bus = createBus();
   bus.on('ui:battleStart', h.invalidate);
+  // (264) launchBattle asks the load-failure kit whether the Battle button's chunk failed (pressFailed(battleBtn)): stubbed false
   const launch = new Function('emit', 'onBattle', `
-    const battleGameMode = 'standard'; ${launchCode}; return launchBattle;
+    const battleGameMode = 'standard'; const pressFailed = () => false, battleBtn = null; ${launchCode}; return launchBattle;
   `)(bus.emit, () => h.arm(true));
   launch('m1a1', 'urban');
   assert.equal(typeof h.pending(), 'function', 'actual Garage launch invalidates BEFORE onBattle arms the new request');

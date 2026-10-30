@@ -189,9 +189,10 @@ export interface SoloBattleLoadingStartOptions {
   watch?: boolean;
 }
 
-/** The load screen's mode chip: the mode alone (battleLoad.ts battleLoadModeLabel); the screen names the battlefield. */
-export function soloBattleLoadingModeLabel(gameMode: string): string {
-  return battleLoadModeLabel(normalizeGameMode(gameMode));
+/** The load screen's mode chip: the mode alone, or the campaign operation's title (battleLoad.ts battleLoadModeLabel);
+ *  the screen names the battlefield. */
+export function soloBattleLoadingModeLabel(gameMode: string, campaignOperationId?: string | null): string {
+  return battleLoadModeLabel(normalizeGameMode(gameMode), campaignOperationId);
 }
 
 function plannedWorldVehicleIds(mapConfig: BattlefieldMapConfig): string[] {
@@ -406,7 +407,7 @@ export function createSoloBattleLoadingRuntime(
         mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
-        mode: soloBattleLoadingModeLabel(normalizedGameMode),
+        mode: soloBattleLoadingModeLabel(normalizedGameMode, campaignOperationId),
         modeId: normalizedGameMode,
         ...(campaignOperationId ? { campaign: true } : {}),
         allies: seats && planned ? planned.allies : [],

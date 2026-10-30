@@ -353,6 +353,8 @@ export interface StructureDebrisOptions {
 
 export interface StructureDebris {
   readonly group: THREE.Group;
+  /** The undeformed ground its collapse's pile and stubs are seated on (StructureDebrisOptions.baseGroundY), if any. */
+  readonly baseGroundY: ((x: number, z: number) => number) | null;
   /**
    * Writers for one stage of one structure; `materialFor` resolves a bucket's material (the seam's spans) for a run of
    * that role (a pieces pool asks without one). `delayS` delays the pieces and the static runs (a collapse shows its
@@ -744,6 +746,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
 
   return {
     group,
+    baseGroundY: o.baseGroundY ?? null,
     begin(placement, materialFor, delayS = 0, settled = false, options = {}) {
       place = placement;
       stageSettled = settled;

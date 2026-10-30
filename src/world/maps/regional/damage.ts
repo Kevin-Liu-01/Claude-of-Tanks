@@ -368,7 +368,9 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
       }
     }
   }
-  const roof: DamageRoof = {
+  // (2026-10-28, the world-reds lane; skybridge #20's switchyard) a body recorded open to the sky (a works yard) has no
+  // roof: its recorded deck was read as a flat roof over the whole yard, whose fall laid the roof's plates in the yard
+  const roof: DamageRoof | null = house.open ? null : {
     kind: seamRoofKind(R.kind), section: storeys.length * 4, pitchDeg: R.pitchDeg, eaveY: frame.eaveY + (house.place?.y ?? 0),
     ridgeY: rg.ridgeTopY + (house.place?.y ?? 0), thicknessM: R.thickness, covering: roofCover,
     structure: R.kind === 'flat'
@@ -401,9 +403,11 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
     for (const l of f.layers) add(l, area * l.thicknessM * (l.material === 'timber' ? 0.35 : 1));
     if (st.floor) add(st.floor.structure, f.width * 0.05);
   }
-  const roofArea = slabs.reduce((a, s) => a + quadArea(s.corners), 0);
-  add(roof.covering, roofArea * Math.max(0.04, roof.covering.thicknessM));
-  add(roof.structure, roofArea * 0.03);
+  if (roof) {
+    const roofArea = slabs.reduce((a, s) => a + quadArea(s.corners), 0);
+    add(roof.covering, roofArea * Math.max(0.04, roof.covering.thicknessM));
+    add(roof.structure, roofArea * 0.03);
+  }
   for (const c of chimneys) add({ material: 'brick', bucket: c.bucket, tint: c.bucket === 'regionalStone' ? tints.stone : WHITE, thicknessM: 0.24, share: 0 },
     c.sx * c.sz * (c.y1 - c.y0) * 0.6);
   const total = [...pile.values()].reduce((a, s) => a + s.share, 0) || 1;
@@ -414,7 +418,7 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
     structureIdx: input.structureIdx, kit: style.id, seed: input.seed, massClass: input.massClass, placement: input.placement,
     w: w + 2 * Math.max(0, ...spec.storeys.map((s) => Math.max(s.jetty?.[1] ?? 0, s.jetty?.[3] ?? 0))),
     d: d + 2 * Math.max(0, ...spec.storeys.map((s) => Math.max(s.jetty?.[0] ?? 0, s.jetty?.[2] ?? 0))),
-    h: Math.max(roof.ridgeY, ...chimneys.map((c) => c.y1)),
+    h: Math.max(roof?.ridgeY ?? frame.eaveY + (house.place?.y ?? 0), ...chimneys.map((c) => c.y1)),
     plinth, storeys, roof, chimneys,
     interior: { color: ROOM, open: OPEN_SHELLS.has(plan.builder) },
     rubble,

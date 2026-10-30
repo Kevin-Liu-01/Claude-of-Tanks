@@ -59,6 +59,21 @@ function turretFront(registry: TankSpecRegistry, id: string, factor: number): vo
   }
 }
 
+/** Gives a vehicle drawn on another's shell that shell's main plates (KE and CE, by plate name); add-on plates stay. */
+function mainArmorFrom(registry: TankSpecRegistry, id: string, shellId: string): void {
+  const shell = spec(registry, shellId).armor;
+  const own = spec(registry, id).armor;
+  for (const [plates, shellPlates] of [[own.hullPlates, shell.hullPlates], [own.turretPlates, shell.turretPlates]]) {
+    for (const plate of plates) {
+      if (plate.kind !== 'main') continue;
+      const match = shellPlates.find((candidate) => candidate.kind === 'main' && candidate.name === plate.name);
+      if (!match) throw new Error(`${id}: ${shellId} has no main plate ${plate.name}`);
+      plate.keMm = match.keMm;
+      plate.ceMm = match.ceMm;
+    }
+  }
+}
+
 /** Apply the reviewed 2026-09 full-fleet balance revision exactly once. */
 export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   if (appliedRegistries.has(registry)) return;
@@ -434,12 +449,19 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   its cadence over the C1 (arieteModernSpecs) and fires its prototype's rounds, so the Hetmans' Relikt cheeks no
  *   longer shut it out; the prototype cycles slower and (261) carries 2,200 HP. The T-72B3 Sich's weaker donor hull takes hull and a quicker
  *   autoloader; the Husarz and the Wilk take hull.
+ * - 263 (FAIRNESS-263, the round robin on the merged 263 fleet, after the gun-face fix): tier I's hits-to-kill race;
+ *   IV's Soviet-pattern mantlets eased and the Leopard 2A3's trim undone; VI's Soviet-pattern line and the C1's gun
+ *   face; 262's VIII levers with the Challenger 1 marks and the K1A1; the new Tier X Oplots and ZTZ-20s. Armour levers
+ *   only where a donor holds the gun and hull (sourceXSecondWave).
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
   // 262: the T-64BM1M and the T-64B1V mod. 2022 join the Soviet-pattern line at IV with the mod. 2017's footing
-  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['pt91m', 't80b']) mantlet(registry, id, 1.45);
+  // 263 (FAIRNESS-263): since the gun-face fix (combatAnatomy.ts gunFacePlate) the range's rounds meet the mantlet, so
+  // the T-64 line's and the T-72M1's x1.45 stacked on it and topped IV; x1.2 holds their row (IV 73 -> 74/91 fair)
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) mantlet(registry, id, 1.2);
   for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;
@@ -464,8 +486,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   cannonReload(registry, 't80bv', 7.4);
   spec(registry, 't80bv').hp = 2100;
   cannonReload(registry, 'leo2a3', 6.4);
-  // 260 (a balance trim, not fidelity): IV fairness; no sourced period round defeats the basic package's turret front
-  turretFront(registry, 'leo2a3', 0.9);
+  // 263: 260's turret-front trim (x0.9) is undone, the 2A3's package reads true again; on the fixed gun face it was IV's
+  // weakest (0.22). 2,400 HP, the Leopard 2's weight class at IV, lifts it to 0.37
+  spec(registry, 'leo2a3').hp = 2400;
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
@@ -489,17 +512,94 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   spec(registry, 't72b3_sich').gun.reloadS = 6.0;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
 
-  // 263 (Main's ruling, the balance lane's minimal levers for 263's new balanceMatchups reds; FAIRNESS-263's other
-  // levers go to the owner): the C1 Ariete's ~730 mm gun face topped VI at 0.92 and shut out the XK2 on the move
-  // (k2-tier9-mobile-peer 0); its gun and hull stay its serie-1 donor's (sourceXSecondWave), so its mantlet and turret
-  // front take the trim.
+  // Tier I (263, measured with the 264 STB-1 and Type 74 rebuilds): every round pierces every gun face at I, so hits to
+  // kill and the cycle decide. The Leopard 1A5 (390 damage, 1,550 HP), the AMX-30s (400, 1,650) and the Type 59/T-55A
+  // package died a hit early and needed a hit more; the ZTZ-85-III's 500-damage round killed every peer in four; the
+  // M60A3's 2,200 HP took a sixth 430-damage hit; the Type 74 cycled quickest. The STB-1, the Type 74's prototype, takes
+  // a hit more and a cycle a step over its production tank's. The AMX-30B keeps its donor's gun and hull (sourceXSecondWave).
+  spec(registry, 'leo1a5').hp = 1750;
+  primary(registry, 'leo1a5', { damage: 430 });
+  for (const id of ['amx30', 'amx30b']) {
+    spec(registry, id).hp = 1800;
+    primary(registry, id, { damage: 420 });
+  }
+  for (const id of ['type59', 't55a']) {
+    spec(registry, id).hp = 1850;
+    primary(registry, id, { damage: 430 });
+  }
+  spec(registry, 'stb1').hp = 1850;
+  cannonReload(registry, 'stb1', 6.6);
+  cannonReload(registry, 'type74', 6.2);
+  primary(registry, 'ztz85_iii', { damage: 460 });
+  spec(registry, 'm60a3').hp = 2100;
+  cannonReload(registry, 'm60a3', 6.8);
+
+  // Tier VI (263): the Soviet-pattern 125 mm line's gun face read ~390 mm and its rounds 611-696 mm, so every VI peer
+  // pierced it and it bounced off them (0.13-0.24). It takes IV's footing: the x1.45 mantlet and the 760 mm round. The
+  // T-80U keeps its T-80UK donor's gun and the T-72B3 its template's gun and hull (sourceXSecondWave), so the T-72B3
+  // takes the mantlet alone.
+  for (const id of ['t72b3', 't80u', 't80uk', 't84', 't84bm_oplot_m']) mantlet(registry, id, 1.45);
+  for (const id of ['t80u', 't80uk', 't84', 't84bm_oplot_m']) primary(registry, id, { pen100: 760, pen1000: 691, pen2000: 622 });
+  // the C1 Ariete topped VI (0.92) and shut out the XK2 on the move: its gun face read ~730 mm against the XK2's ~470.
+  // Its gun and hull stay its serie-1 donor's (sourceXSecondWave), so its mantlet and turret front take the trim.
   mantlet(registry, 'c1_ariete', 0.6);
   turretFront(registry, 'c1_ariete', 0.85);
+
+  // Tier VIII (263, 262's VIII v2 on the merged fleet): the gun face decides the range, and its slope sets how strong
+  // it reads. The steep faces read 1,200-1,700 mm and are trimmed; the upright ones read 350-470 mm and are raised.
+  for (const id of ['vt4a1', 'leo2_improved']) mantlet(registry, id, 0.7);
+  for (const id of ['leo2a4m', 'leo2a4_otco']) mantlet(registry, id, 0.55);
+  for (const id of ['leo2_revolution', 'leo2_revolution_proto']) mantlet(registry, id, 1.7);
+  mantlet(registry, 'm1a1', 1.5);
+  mantlet(registry, 'm1a1ha', 2.0);
+  spec(registry, 'm1a1ha').hp = 2500;
+  // the M1A2 and M1A2 SEPv2 studies keep their HC and AIM donors' combat (abramsSourceX: the study's hp is its donor's),
+  // so the four change together
+  for (const id of ['m1a1_abrams_aim', 'm1a1_abrams_hc', 'm1a2_abrams_sepv2', 'm1a2_abrams']) spec(registry, id).hp = 2450;
+  // the Type 90 family's 3-round clip (1,500 damage) was still reloading when it died; the STC-2 rebuild keeps its
+  // Kyū-maru donor's gun and hull (sourceXSecondWave), so the two change together
+  for (const id of ['type90', 'type90_kyumaru']) {
+    autoloaderCycle(registry, id, 9);
+    spec(registry, id).hp = 2450;
+  }
+  autoloaderCycle(registry, 'type90a', 8.5);
+  // the K1A1 keeps its K1E1 donor's gun and hull (sourceXSecondWave): its turret front takes the VIII step instead
+  turretFront(registry, 'k1a1', 1.6);
+  // (263, Main 10-29: the Vickers READY's Challenger 1 builds) C1 and C2 of FAIRNESS-263 §3 replace commit B's 263-build
+  // CR1 lines (the slot x1.2 on Mk 1/Mk 2/Granby, the Mk 3's x0.7, the 790 mm round)
   // the FV4030/6's sleek turret read its gun face under every VIII round (tier9-rifled-peers' FV row 0.105): x1.4
   // holds it (0.538). The Challenger 1 marks on the Mk 3's build sit in band unlevered (the Mk 2 v 2A4M CAN 0.625).
   mantlet(registry, 'challenger_x_sleek', 1.4);
   // the Challenger 1 Mk 1, Mk 2 and Mk 3 share the Mk 3's turret, whose sloped gun-face cells read the 624 mm slot and
   // the 682 mm cheeks at ~1,020 mm effective (0.87-0.88, 8-9 of 34 in band); x0.7 brings the three to 0.55 (16 of 34)
   for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) turretFront(registry, id, 0.7);
+
+  // Tier X (263): the release-262 tanks sat under the band. The Oplot-M and Oplot-T's Soviet-pattern gun face read
+  // 400 mm against X gun faces of ~1,000-1,100 mm (0.17); they take the X round (880 mm) and a x2 mantlet. The ZTZ-20's
+  // fast 440-damage round needed a hit more than its peers to kill; the prototype stays a step under the production tank.
+  for (const id of ['bm_oplot_m', 'bm_oplot_t']) {
+    mantlet(registry, id, 2.0);
+    primary(registry, id, { pen100: 880, pen1000: 815, pen2000: 740 });
+  }
+  spec(registry, 'ztz20').hp = 2800;
+  primary(registry, 'ztz20', { damage: 480 });
+  spec(registry, 'ztz20_prototype').hp = 2750;
+  primary(registry, 'ztz20_prototype', { damage: 480 });
+
+  // 264 (Main's ruling): the Leopard 2A6 UA is drawn on the source-measured 2A6's shell, but kept its Leopard 2A6M
+  // donor's plates (x1.06), HP and cadence: about 1.72x the 2A6's KE on the same cells, so it topped IX at 0.86 (6 of 35
+  // in band). It takes the 2A6's main plates, HP and loader cadence (same gun and rounds); its Kontakt-1 kit stays its
+  // own. 0.60, 22 of 35 in band, as the 2A6 (0.60).
+  mainArmorFrom(registry, 'leo2a6_ua', 'leo2a6');
+  spec(registry, 'leo2a6_ua').hp = spec(registry, 'leo2a6').hp;
+  cannonReload(registry, 'leo2a6_ua', spec(registry, 'leo2a6').gun.reloadS);
+}
+
+/** Sets an autoloader's full magazine cycle, which the gun's headline reload repeats (fleetBalance.selftest). */
+function autoloaderCycle(registry: TankSpecRegistry, id: string, fullReloadS: number): void {
+  const gun = spec(registry, id).gun;
+  if (!gun.autoloader) throw new Error(`${id}: no autoloader`);
+  gun.autoloader.fullReloadS = fullReloadS;
+  gun.reloadS = fullReloadS;
 }
 

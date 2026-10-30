@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LOADING_LANES, LOADING_PAGES, LOADING_SURFACES } from './loadingSurfaceRegistry.ts';
+import { LOADING_LANES, LOADING_PAGES, LOADING_RULES, LOADING_SURFACES } from './loadingSurfaceRegistry.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const rows = Object.entries(LOADING_SURFACES);
@@ -24,7 +24,7 @@ const walk = (dir) => {
 };
 walk(join(ROOT, 'src'));
 const PAGE_HTML = { game: ['index.html'], studio: ['index.html'], home: ['site/home.html'], docs: ['site/docs.html'],
-  'docs-topic': ['site/docs-tanks.html', 'site/docs-filming.html'], gallery: ['site/gallery.html'], '404': ['404.html'] };
+  'docs-topic': ['site/docs-tanks.html', 'site/docs-filming.html'], 'docs-fleet': ['site/docs-fleet.html'], gallery: ['site/gallery.html'], '404': ['404.html'] };
 const corpus = new Map();
 const corpusFor = (row) => {
   const key = `${row.page}|${row.owner}`;
@@ -61,7 +61,14 @@ for (const [id, row] of rows) {
     }
   }
   assert.ok(!(row.scroll && row.open), `${id}: a row scrolls to its box or presses its way in, not both`);
+  for (const [rule, reason] of Object.entries(row.allow ?? {})) {
+    assert.ok(LOADING_RULES.includes(rule), `${id}: it allows ${rule}, one of ${LOADING_RULES.join(', ')}`);
+    assert.ok(typeof reason === 'string' && reason.trim().length > 10, `${id}: its ${rule} allowance names the ruling`);
+  }
 }
+// the census holds exactly the rules the registry names (an allowance for a rule it never finds hides nothing)
+const censusRules = new Set([...read('tools/loading-census.mjs').matchAll(/rule: '([a-z-]+)'/g)].map((m) => m[1]));
+assert.deepEqual([...censusRules].sort(), [...LOADING_RULES].sort(), 'the registry names the census\'s rules');
 for (const page of LOADING_PAGES) assert.ok(paths.has(page), `the census loads ${page}: a row names it`);
 
 // 2. No fire-and-forget import that a dropped network leaves unhandled: every `void import(...)` chain carries a .catch()

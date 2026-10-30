@@ -21,7 +21,6 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   // the DShK turns from 175 degrees right to 25 degrees left of ahead: past 25 degrees left its sweep (the authority's
   // 20-degree chunks) crosses the dock, and from 85 degrees the commander's cupola (.qa-dev arc and dock probes, 262)
   type59: { type59RoofDShK: [-3.0543, 0.4363] },
-  ztz85_iii: { fitting_browningDerived_qjc88: [-0.8029, 2.7925] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
 });

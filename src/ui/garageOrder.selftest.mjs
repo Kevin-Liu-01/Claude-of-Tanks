@@ -98,9 +98,9 @@ assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) \{
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
-for (const density of ['roomy', '1', '2', '3', 'bars', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
+for (const density of ['roomy', '1', '2', '3', 'bars', '4', '5']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4'\]\);/,
+assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4', '1 2 3 bars 4 5'\]\);/,
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
@@ -464,5 +464,37 @@ assert.match(garageSource,
 assert.match(garageSource,
   /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
+// the loading census 262: the drawing's box is 2:1 from the first paint (an auto width collapsed it, CLS 0.35), its tone
+// stands under it, it fades in through the kit's reveal and loads again once the network is back
+assert.match(garageSource, /\.cot-technical-viewer-figure img\{[^}]*width:min\(100%,calc\(var\(--tv-max-h\) \* 2\)\)/,
+  'the expanded drawing holds its 2:1 box before its file arrives');
+assert.match(garageSource, /\.cot-technical-viewer-figure::before\{[^}]*aspect-ratio:2\/1;[^}]*background:var\(--fill-quiet\)/,
+  'a tone stands where the drawing will be');
+assert.match(garageSource, /technicalModalImage\.src = iconUrl\([^;]+;[^]{0,120}?revealWhenReady\(technicalModalPanel, technicalModalImage\)/,
+  'the drawing fades in through the kit\'s reveal');
+assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?data-failed[^]{0,80}?technicalModalImage\.src = src/,
+  'a drawing the network dropped loads again once it is back');
+// the loading census 264: a failed chunk is not asked for again in this document (Chrome 151 keeps a failed import and
+// a failed modulepreload, 156 does not, and a failed chunk stylesheet never applies in either: components/loadFailure.ts),
+// so the failure offers Reload page and its triggers keep a quiet error state that needs no chunk, their next press
+// reloading the page once it is online
+assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\(triggers, text\);[^]{0,400}?actions: \[\{ label: t\('loadFailed\.reload'\), primary: true, keep: true, run: \(\) => \{ if \(navigator\.onLine !== false\) location\.reload\(\); \} \}\]/,
+  'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
+assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,
+  'a marked trigger\'s press reloads the page once it is online (the kit\'s pressFailed)');
+assert.match(garageSource, /if \(recordOpening \|\| reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(techTreeOpening \|\| reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
+assert.match(garageSource, /reportLoadFailure\('cot-techtree-load', t\('garage\.techTree\.loadError'\),\s*\[techTreeTrigger, root\.querySelector<HTMLElement>\('\[data-mobile-nav="techTree"\]'\)\]\)/,
+  'the tech tree\'s failure marks the bar\'s trigger and the phone menu\'s');
+assert.match(await readFile(new URL('./components/components.css', import.meta.url), 'utf8'),
+  /\[data-load-state='error'\]::after\{[^}]*background:var\(--danger\)/, 'a failed trigger shows the kit\'s danger dot');
+// the labels' overlay lays itself out only once its stylesheet stands (unstyled, it grew the dialog and snapped back), and
+// a phone's drawing sheet stands at its full height (the key arriving in flow raised a content-sized sheet)
+const labelsSource = await readFile(new URL('./technicalDiagramLabels.ts', import.meta.url), 'utf8');
+assert.match(labelsSource, /const render = \(\): void => \{\s*if \(!styled\) return;/, 'the overlay does not lay out before its sheet');
+assert.match(labelsSource, /void sheetReady\.then\(\(\) => \{ if \(disposed\) return; styled = true; render\(\); \}/,
+  'the overlay lays out once its sheet stands, unless it was disposed');
+assert.match(garageSource, /body\[data-cot-width='phone'\] \.cot-modal\.cot-technical-viewer\{height:calc\(var\(--cot-viewport-height,100dvh\) - 16px\)\}/,
+  'a phone\'s drawing sheet stands at its full height from the press');
 
 console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');
