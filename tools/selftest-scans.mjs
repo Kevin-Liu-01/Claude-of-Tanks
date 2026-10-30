@@ -286,6 +286,13 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/gate.selftest.mjs': none('REPO_ROOT from selftest-cache.mjs; its gate runs list through tools/gate.mjs (above)'),
   'tools/selftest-cache-dir.mjs': none("defaultSelftestCacheDir and sha1: the proof store's name"),
   'tools/selftest-schedule.selftest.mjs': none('sha1 from selftest-cache.mjs'),
+  // 266 tiers: the tiers receipt reads the workflow files (no CI runs a receipt suite) and its own closure; the lane,
+  // recommend and heavy commands list the diff and the closures only when they run as commands
+  'tools/selftest-tiers.selftest.mjs': lists('.github/workflows/*'),
+  'tools/test-audit.mjs': none('MAX_SELFTEST_WORKERS and the barrier lists from run-selftests.mjs, for the schedule replay'),
+  'tools/test-diff.mjs': cli('changedPaths lists the diff and fleetPartition runs computeState only when test:lane or test:recommend run as commands; the tiers receipt imports its pure helpers'),
+  'tools/test-heavy.mjs': cli('npm run test:heavy reads the id-scoped closures; the tiers receipt imports idScopedSelection'),
+  'tools/test-lane.mjs': cli('npm run test:lane reads the closures of every receipt; the tiers receipt imports selectLane and laneControl'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
   'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) from selftest-cache.mjs: ' +
     'the closures of fixed files, for its pass fingerprint'),
