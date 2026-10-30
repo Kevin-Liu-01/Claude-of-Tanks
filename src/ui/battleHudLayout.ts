@@ -1116,6 +1116,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const systems = read('.cot-vehicle-controls');
     let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
+    // (a touch rack opens leftward over its rail, each further round 56 px past the last (hudAmmunitionPresentation.ts
+    // layout): a row seated beside the rail stands left of that reach, so the open drawer covers none of it and nothing
+    // moves when it opens; seated beside the closed rail, the open HE and HEAT stood over two tiles at 744x1001, the
+    // layout receipt's ammo-expanded)
+    let ammoReachLeft = ammo?.left ?? 0;
+    if (touch && ammo) {
+      for (const node of document.querySelectorAll<HTMLElement>('.cot-shells>.cot-shell')) {
+        if (node.checkVisibility()) ammoReachLeft = Math.min(ammoReachLeft, ammo.left + (parseFloat(node.style.getPropertyValue('--touch-ammo-x')) || 0));
+      }
+    }
     let systemsWidth = Math.min(440, width - 24);
     let systemsTop = (ammo?.top ?? height - 80) - systemsHeight - 8;
     const systemsElement = document.querySelector<HTMLElement>('.cot-vehicle-controls');
@@ -1247,7 +1257,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         // window's centre line with the score, the sight and the hull plate (gauntlet r5: centred on the tray, it was
         // pressed to the right edge)
         if (ammo && systemsTop + systemsHeight > ammo.top && systemsTop < ammo.bottom) {
-          systemsLeft = Math.max(12, ammo.left - 8 - dockWidth);
+          systemsLeft = Math.max(12, ammoReachLeft - 8 - dockWidth);
         } else {
           systemsLeft = Math.max(12, Math.floor((width - Math.min(dockWidth, Math.max(0, naturalWidth - 2))) / 2));
         }
@@ -1309,7 +1319,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
-      systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
+      systemsWidth = Math.max(52, ammoReachLeft - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
       // (the top slot's rows in the width the ammo column leaves it)
       if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }

@@ -513,6 +513,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-
 /* Short landscape is a height budget, not a miniature desktop. Leave the
    center notices clear of the second fire button and the bottom system strip. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape'][data-cot-width='compact'] .cot-touch .fire.alt{left:12px}
+/* (over the stick there, its FIRE label 20 px over the stick's 118 px from its 24 px seat: the compact 136 px left the
+   button 6 px into the stick at 702x601, the layout receipt's resized-combined; a short window keeps its own place) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape'][data-cot-width='compact']:not([data-cot-height='short']) .cot-touch .fire.alt{bottom:calc(env(safe-area-inset-bottom) + 162px)}
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{font-size:var(--battle-fs-11);padding-block:5px;min-height:28px}
 }
