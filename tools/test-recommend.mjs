@@ -18,7 +18,7 @@ import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { MANUAL_SUITES, STALE_GUARDS, manualSuiteFiles } from './selftest-tiers.mjs';
-import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankIds, fleetPartition, receiptRunTimes, roman,
+import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankIds, fleetPartition, laneReadOf, receiptRunTimes, roman,
   TOOLS_ROOT, withBaseSources } from './test-diff.mjs';
 import { simulateWall } from './test-audit.mjs';
 
@@ -123,7 +123,7 @@ async function main(argv) {
   console.log(`[test:recommend] ${root === TOOLS_ROOT ? '' : `${root}: `}base ${base} (merge base ${diff.mergeBase.slice(0, 10)}), ${diff.paths.length} changed paths`);
   const cache = createSelftestCache({ root, alwaysRun: runner.SELFTEST_FRESH_FILES, fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES,
     declaredInputs: runner.SELFTEST_DECLARED_INPUTS });
-  const readOf = (file, path) => runner.selftestReadOf(cache, file, path, root);
+  const readOf = laneReadOf(cache, runner.selftestReadOf, root);
   const readers = new Map();
   for (const [name, entry] of Object.entries(MANUAL_SUITES)) {
     const reading = new Map();

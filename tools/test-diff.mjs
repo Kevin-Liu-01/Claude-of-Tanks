@@ -200,6 +200,38 @@ export function receiptsNaming(root, files, ids) {
 
 export const rel = (root, path) => relative(root, path);
 
+/**
+ * A receipt's read of a changed path for selection: the cache's own read (selftestReadOf), and when that is none or only
+ * the broad fallback, the reads of the tools it spawns. A child-process user names a tool as a file, so the tool's own
+ * imports and reads stay outside the receipt's closure (tank-id-rekey-assets.selftest runs tank-id-rekey-assets.mjs
+ * --check, which reads public/icons/tank-assets.json: the centurion-family-262 proof's red lane mode first missed). The
+ * cache's run set (runSetOf: imports plus the modules a spawning file names) supplies the tools; no second resolver.
+ */
+export function laneReadOf(cache, selftestReadOf, root) {
+  const tools = new Map();
+  const spawnedTools = (file) => {
+    if (!tools.has(file)) {
+      const absolute = resolve(root, file), found = [];
+      cache.closureOf(absolute);
+      for (const module of cache.runSetOf(absolute)) {
+        if (!cache.metadataOf(module)?.spawns) continue; // the receipt itself, or a helper it imports, runs the child
+        for (const target of cache.runEdgesOf(module)) if (target !== absolute && !found.includes(target)) found.push(target);
+      }
+      tools.set(file, found.map((path) => relative(root, path)).filter((path) => !path.startsWith('..')));
+    }
+    return tools.get(file);
+  };
+  return (file, path) => {
+    const read = selftestReadOf(cache, file, path, root);
+    if (read === 'named' || read === 'scan') return read;
+    for (const tool of spawnedTools(file)) {
+      const through = selftestReadOf(cache, tool, path, root);
+      if (through === 'named' || through === 'scan') return through;
+    }
+    return read;
+  };
+}
+
 /** Each receipt's run time: the committed snapshot, else this machine's latest observation (the runner's runtime index). */
 export async function receiptRunTimes(root = TOOLS_ROOT) {
   const snapshot = JSON.parse(readFileSync(join(root, 'tools/selftest-durations.json'), 'utf8')).runMs;

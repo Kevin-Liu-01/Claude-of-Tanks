@@ -11,7 +11,7 @@ import { selftestCommand, selftestReadOf, SELFTEST_DECLARED_INPUTS, SELFTEST_FIX
 import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
 import { laneControl, selectLane } from './test-lane.mjs';
 import { recommend, reportLines, tierList } from './test-recommend.mjs';
-import { balanceChanges, changedMaps, changedTankIds } from './test-diff.mjs';
+import { balanceChanges, changedMaps, changedTankIds, laneReadOf } from './test-diff.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
 import { simulateWall } from './test-audit.mjs';
 import { WORLD_STEPS } from './changed-only/steps.mjs';
@@ -135,6 +135,10 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const cheap = selectLane({ defaults: [], tanks: ['r/pin-own', 'r/pin-core', 'r/pin-named', 'r/a', 'r/b', 'r/c', 'r/d', 'r/e'],
     changed: ['src/vehicles/profiles/leo.ts'], readOf, core: new Set(['src/vehicles/tankFactoryCore.ts']), pinCostOf: () => 60_000 });
   assert.deepEqual([[...cheap.selected.keys()], cheap.deferred.size], [['r/pin-own'], 0], 'one pin of eight runs');
+  const edited = selectLane({ defaults: [], tanks: ['r/pin-own', 'r/pin-core', 'r/pin-named'], changed: ['src/vehicles/profiles/leo.ts', 'r/pin-named'],
+    readOf: (file, path) => (file === path ? 'named' : readOf(file, path)), core: new Set(), pinCostOf: () => 60_000 });
+  assert.deepEqual([[...edited.selected.keys()], [...edited.deferred.keys()]], [['r/pin-named'], ['r/pin-own']],
+    'past the share, a pin the lane edited itself still runs (the centurion-family-262 proof caught it)');
   // negative control: a receipt that reads a file must be selected when it changes, and a changed receipt must be selected
   const closures = { 'r/default-reader': ['src/a.ts'], 'r/default-lister': [], 'r/default-broad': [] };
   const control = (select, changed = []) => laneControl({ defaults: ['r/default-reader', 'r/default-lister', 'r/default-broad'], tanks: [],
@@ -147,6 +151,19 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const blind = laneControl({ defaults: ['r/default-reader'], tanks: [], changed: [], selected: new Map(), readOf: () => null, root: '/x',
     closureOf: () => new Set(['/x/src/a.ts']) });
   assert.deepEqual(blind.failures, ['no probe receipt with a named source input'], 'a selector that reads nothing fails the control');
+}
+
+// ---- a spawned tool's reads count: a receipt that runs a tool as a child sees only the tool's file in its closure
+{
+  const root = '/r', abs = (path) => `/r/${path}`;
+  const fake = { closureOf() {}, runSetOf: (file) => (file === abs('t/spawner.selftest.mjs') ? [abs('t/spawner.selftest.mjs')] : [file]),
+    metadataOf: (file) => ({ spawns: file === abs('t/spawner.selftest.mjs') }), runEdgesOf: () => [abs('t/tool.mjs')] };
+  const reads = { 't/tool.mjs': { 'src/vehicles/specs.ts': 'named' }, 't/spawner.selftest.mjs': { 'src/vehicles/specs.ts': 'broad' } };
+  const read = laneReadOf(fake, (cache, file, path) => reads[file]?.[path] ?? null, root);
+  assert.equal(read('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'named', 'a read of the tool it spawns selects the spawner');
+  assert.equal(read('t/spawner.selftest.mjs', 'docs/x.md'), null);
+  assert.equal(laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }) }, (cache, file, path) => reads[file]?.[path] ?? null, root)
+    ('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'broad', 'without a spawn, a broad match stays broad (negative control)');
 }
 
 // ---- the real closure: this receipt reads tools/test-diff.mjs through its imports, so a change to it selects it

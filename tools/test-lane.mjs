@@ -5,7 +5,8 @@
 //
 // Selection (every selected receipt prints its reason):
 //   - a default-tier receipt whose input closure holds a changed path: the result cache's own closure and listing
-//     declarations (run-selftests.mjs selftestReadOf; a match through the broad fallback alone is not a read);
+//     declarations (run-selftests.mjs selftestReadOf; a match through the broad fallback alone is not a read), and the
+//     closures of the tools it spawns (tools/test-diff.mjs laneReadOf, from the cache's run set);
 //   - a default-tier or `tanks` receipt that names a changed tank id (the changed-only fleet partition: a group's files,
 //     a table's moved rows, a path naming the id: tools/test-diff.mjs changedTankIds);
 //   - a `tanks` receipt whose closure holds a changed path outside the shared fleet core. One that reads only core
@@ -21,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
-import { changedPaths, changedTankIds, fleetPartition, receiptRunTimes, receiptsNaming, TOOLS_ROOT } from './test-diff.mjs';
+import { changedPaths, changedTankIds, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming, TOOLS_ROOT } from './test-diff.mjs';
 
 const READS = new Set(['named', 'scan']);
 const say = (read, path) => `${read === 'scan' ? 'lists' : 'reads'} ${path}`;
@@ -29,7 +30,8 @@ const say = (read, path) => `${read === 'scan' ? 'lists' : 'reads'} ${path}`;
 /**
  * The lane selection as data. `readOf(file, path)` is the cache's read ('scan', 'named', 'broad' or null), `core` the
  * shared fleet core's paths, `naming` the receipts that name changed ids (file -> ids). With `pinCostOf` (ms per
- * receipt), pins costing more than `pinShare` of the whole tanks suite are all moved to `deferred`. Returns
+ * receipt), pins costing more than `pinShare` of the whole tanks suite are all moved to `deferred`, except the pins the
+ * diff edits itself. Returns
  * { selected: Map(file -> { tier, reasons }), coreOnly: Map(file -> paths), deferred: Map(file -> { tier, reasons }) }.
  */
 export const LANE_PIN_SHARE = 0.25;
@@ -60,7 +62,12 @@ export function selectLane({ defaults, tanks, changed, readOf, core = new Set(),
   if (pinCostOf) {
     const cost = (files) => files.reduce((sum, file) => sum + (pinCostOf(file) ?? 0), 0);
     const pins = [...selected].filter(([, entry]) => entry.tier === 'tanks').map(([file]) => file);
-    if (pins.length && cost(pins) > pinShare * cost(tanks)) for (const file of pins) { deferred.set(file, selected.get(file)); selected.delete(file); }
+    // a pin the lane edited itself always runs
+    const edited = new Set(changed);
+    if (pins.length && cost(pins) > pinShare * cost(tanks)) for (const file of pins) {
+      if (edited.has(file)) continue;
+      deferred.set(file, selected.get(file)); selected.delete(file);
+    }
   }
   return { selected, coreOnly, deferred };
 }
@@ -103,7 +110,7 @@ async function main(argv) {
   console.log(`[test:lane] ${root === TOOLS_ROOT ? '' : `${root}: `}base ${base} (merge base ${diff.mergeBase.slice(0, 10)}), ${diff.paths.length} changed paths`);
   const cache = createSelftestCache({ root, alwaysRun: runner.SELFTEST_FRESH_FILES, fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES,
     declaredInputs: runner.SELFTEST_DECLARED_INPUTS });
-  const readOf = (file, path) => runner.selftestReadOf(cache, file, path, root);
+  const readOf = laneReadOf(cache, runner.selftestReadOf, root);
   const partition = await fleetPartition(root);
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase, head: value('head') ?? 'HEAD' });
   const naming = receiptsNaming(root, [...defaults, ...tanks], new Set(idChanges.ids.keys()));
