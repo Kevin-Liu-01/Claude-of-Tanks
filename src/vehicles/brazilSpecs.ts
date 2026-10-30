@@ -25,7 +25,7 @@ const brazilian = (id: string, donor: string, name: string, era: 'cold-war' | 'm
 // the AMX-40's footing, its 1987 Saudi rival with the same claim and the same G1 gun.
 const osorioArmor = (barrelLenM: number) => modernArmor({
   hl: 3.565, hw: 1.50, inW: 1.00, floor: 0.46, trkTop: 0.92, roofY: 1.60,
-  turretPivot: [0, 1.60, 0.40], gunPivot: [0, 0.25, 0.85], barrelLenM, barrelRadM: 0.088,
+  turretPivot: [0, 1.60, 0.40], gunPivot: [0, 0.28, 0.85], barrelLenM, barrelRadM: 0.088,
   glacis: [380, 380, 480], lower: [120, 120, 150], side: [60, 60, 70], skirt: [40, 40, 120], rear: 30, roof: 30,
   tw: 1.145, tFrontZ: 1.44, tRearZ: -2.38, tH: 0.77,
   cheek: [430, 430, 620], tSide: [200, 200, 280], tRear: 45, tRoof: 35, mantlet: [340, 340, 430], loader: true,
@@ -50,9 +50,10 @@ osorio_p2.gun = {
 osorio_p2.armor = osorioArmor(5.285);
 osorio_p2.visual = {
   ...osorio_p2.visual,
-  // the Army's two-tone (the CIBld tank, 2020): dark olive with broad red-brown bands; the 1983-98 Southern Cross plaque
-  scheme: 'stripes', base: '#3d4532', weather: '#4b5340', patches: ['#6a4630', '#5c3e2c'], marking: 'number', number: '02',
-  camoScale: 0.55, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the Army's coat (the CIBld tank, 2020): olive with large hard-edged fields of a dull earth brown and a very dark
+  // green; the 1983-98 Southern Cross plaque
+  scheme: 'nato', base: '#444b31', weather: '#50573c', patches: ['#56402c', '#2a3320'], marking: 'number', number: '02',
+  camoScale: 0.45, patchK: 1.5, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // The 105 mm P.1 (the Army's 1986-87 homologation tank): the Royal Ordnance L7A3 and the OIP LRS-5 sights, mechanically
@@ -76,9 +77,10 @@ osorio_p1.gun = {
 osorio_p1.armor = osorioArmor(4.545);
 osorio_p1.visual = {
   ...osorio_p1.visual,
-  // the 1986 homologation three-tone, "the scheme that should have been the Army's new one" (Bastos): green, brown, black
-  scheme: 'nato', base: '#4a5136', weather: '#565d42', patches: ['#5b432f', '#1f201b'], marking: 'number', number: '01',
-  camoScale: 0.55, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): earth brown with broad dark-green bands; the
+  // 1983-98 plaque
+  scheme: 'stripes', base: '#6a5942', weather: '#76654d', patches: ['#3a4230', '#363e2d'], marking: 'number', number: '01',
+  camoScale: 0.45, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
@@ -122,9 +124,10 @@ tamoyo1.armor = tamoyoArmor({
 });
 tamoyo1.visual = {
   ...tamoyo1.visual,
-  // the Army's three-tone of the trials (the CIBld tank today): green, brown and a dark green; the 1983-98 plaque
-  scheme: 'nato', base: '#4a5236', weather: '#565d42', patches: ['#6a4630', '#2b3324'], marking: 'number', number: '11',
-  camoScale: 0.55, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+  // the Army's two-tone of the trials (Vesp's profile, the CIBld tank): olive and earth brown in broad diagonal bands
+  // of about equal area; the 1983-98 plaque
+  scheme: 'stripes', base: '#4a5236', weather: '#565d42', patches: ['#5e4632', '#5a4330'], marking: 'number', number: '11',
+  camoScale: 0.45, trackWidthM: 0.53, insignia: 'br-cruzeiro',
 };
 
 const tamoyo3 = brazilian('tamoyo3', 'leo1a5', 'MB-3 Tamoyo 3', 'cold-war');
@@ -148,9 +151,10 @@ tamoyo3.armor = tamoyoArmor({
 });
 tamoyo3.visual = {
   ...tamoyo3.visual,
-  // the May 1987 show coat (Bastos' photograph): green, brown and ochre bands; the 1983-98 plaque
-  scheme: 'nato', base: '#4c5537', weather: '#585f43', patches: ['#6e4a31', '#a08a5a'], marking: 'number', number: '13',
-  camoScale: 0.55, trackWidthM: 0.53, insignia: 'br-cruzeiro',
+  // the 1987 coat (Vesp's profile, the collector's photograph): olive and earth brown in large fields; the 1983-98
+  // plaque
+  scheme: 'nato', base: '#4c5537', weather: '#585f43', patches: ['#5c4530', '#553f2c'], marking: 'number', number: '13',
+  camoScale: 0.45, patchK: 1.4, trackWidthM: 0.53, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- the X1 family --
@@ -189,9 +193,9 @@ x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop
   barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.30, tRearZ: -1.20, tH: 0.62, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
   ...x1_pioneiro.visual,
-  // the Army's plain olive drab of the 1970s and 80s (Gaydos' profiles); the 1983-98 plaque
-  scheme: 'solid', base: '#4d5434', weather: '#596040', patches: [], marking: 'number', number: '31', camoScale: 0.5,
-  trackWidthM: 0.40, insignia: 'br-cruzeiro',
+  // the Army's plain grey olive drab of the 1970s and 80s (Gaydos' profile); the white turret ring
+  scheme: 'solid', base: '#4c5038', weather: '#575b43', patches: [], marking: 'number', number: '31', camoScale: 0.5,
+  trackWidthM: 0.40, insignia: 'br-ring',
 };
 
 const x1a2_carcara = brazilian('x1a2_carcara', 'leo1a5', 'CCL X1A2 Carcará', 'cold-war');
@@ -205,9 +209,10 @@ x1a2_carcara.armor = x1Armor({ hl: 3.03, hw: 1.25, inW: 0.84, roofY: 1.74, trkTo
   barrelLenM: 2.49, tw: 0.98, tFrontZ: 1.64, tRearZ: -1.71, tH: 0.77, glacis: 30, lower: 63, side: 28, loader: false });
 x1a2_carcara.visual = {
   ...x1a2_carcara.visual,
-  // the 6º RCB's three-tone (Gaydos' camouflaged profile): green, sand and a dark green; the 1983-98 plaque
-  scheme: 'nato', base: '#4f5a3a', weather: '#5b6545', patches: ['#9c8758', '#2b3324'], marking: 'number', number: '21',
-  camoScale: 0.5, trackWidthM: 0.42, insignia: 'br-cruzeiro',
+  // the 6º RCB's three-tone (Gaydos' camouflaged profile): a sand base with green and dark-brown blotches; the white
+  // turret ring
+  scheme: 'nato', base: '#867c5c', weather: '#918767', patches: ['#55623f', '#4a3a2a'], marking: 'number', number: '21',
+  camoScale: 0.5, patchK: 1.2, trackWidthM: 0.42, insignia: 'br-ring',
 };
 
 registerFleetSpecs(registries, ['x1_pioneiro', 'x1a2_carcara', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3'],

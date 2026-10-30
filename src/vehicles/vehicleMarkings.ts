@@ -754,6 +754,27 @@ function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterA
   }
 }
 
+// The white ring the Bernardini X1 and X1A2 carry on the turret's left side (Gaydos' profiles after the 1970s-80s
+// photographs): a ring, four short ticks inward and a centre dot, on the bare paint.
+function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.13;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.10;
+  ctx.beginPath();
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    ctx.moveTo(cx + dx * radius * 0.56, cy + dy * radius * 0.56);
+    ctx.lineTo(cx + dx * radius * 0.30, cy + dy * radius * 0.30);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -797,6 +818,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'th-flag': drawThaiFlag,
   'br-eb-arms': drawBrazilArmyArms,
   'br-cruzeiro': drawBrazilSouthernCross,
+  'br-ring': drawBrazilTurretRing,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

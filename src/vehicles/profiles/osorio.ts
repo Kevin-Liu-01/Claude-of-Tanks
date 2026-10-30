@@ -35,7 +35,7 @@ const RING = Object.freeze({ y: 1.60, z: 0.40 });
 /** The turret (turret metres, from the ring at the deck): slab sides, a bevelled roof edge, the bustle's rear plate. */
 const T = Object.freeze({ hw: 1.145, roofY: 0.77, bevelY: 0.66, bevelX: 1.05, floorY: 0.02, frontZ: 1.00, rearZ: -2.38,
   recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.40, cheekNoseX: 0.56, cheekFootZ: 1.38, roofEdgeZ: 1.14 });
-const TRUNNION = Object.freeze({ y: 0.25, z: 0.85 });
+const TRUNNION = Object.freeze({ y: 0.28, z: 0.85 });
 
 /** Hull deck height at z: the 15-degree upper glacis from the nose to its knee, then the flat deck. */
 function deckY(z: number): number {
@@ -137,8 +137,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the twin-lamp clusters on the glacis corners in their U-shaped guards (one white, one amber)
     for (const s of [-1, 1] as const) {
       const z = 3.18, y = deckY(z) + 0.05;
-      for (const dx of [-0.075, 0.075]) headlight(P, s * 1.20 + dx, y + 0.03, z + 0.03, -glacis * 0.5, 0.05);
-      const g = [[s * 1.38, y - 0.04, z - 0.10], [s * 1.38, y + 0.10, z + 0.08], [s * 1.02, y + 0.10, z + 0.08], [s * 1.02, y - 0.04, z - 0.10]];
+      for (const dx of [-0.075, 0.075]) headlight(P, s * 1.20 + dx, y + 0.02, z + 0.03, -glacis * 0.5, 0.05);
+      const g = [[s * 1.38, y - 0.04, z - 0.10], [s * 1.38, y + 0.07, z + 0.08], [s * 1.02, y + 0.07, z + 0.08], [s * 1.02, y - 0.04, z - 0.10]];
       for (let i = 0; i + 1 < g.length; i++) bar('hullDark', g[i], g[i + 1], 0.011);
       // the tow eyes on the lower glacis
       P.add('hullDark', box(0.12, 0.12, 0.08), s * 0.72, 0.86, 3.27);
@@ -161,10 +161,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.add('hullGlass', xform(box(0.10, 0.035, 0.008), 0, 0, 0, a, 0, 0), dx + ox, deckY(2.70) + 0.04, 2.745);
     }
     if (!p2) {
-      // the P.1's mirrors on stalks at the fender corners and its hinged gun travel lock on the glacis
+      // the P.1's mirrors on the fenders abreast of the driver, folded flat on short stalks (under the gun's sweep), and
+      // its hinged gun travel lock on the glacis
       for (const s of [-1, 1] as const) {
-        P.addEquipment('hullDark', cylY(0.012, 0.012, 0.40, 8), s * 1.55, H.fenderY + 0.20, 3.26);
-        P.addEquipment('hullDark', box(0.02, 0.16, 0.12), s * 1.56, H.fenderY + 0.44, 3.26);
+        P.addEquipment('hullDark', cylY(0.012, 0.012, 0.06, 8), s * 1.55, H.fenderY + 0.03, 2.70);
+        P.addEquipment('hullDark', box(0.14, 0.02, 0.10), s * 1.50, H.fenderY + 0.07, 2.70);
       }
       P.addEquipment('hullDark', box(0.30, 0.06, 0.12), 0, deckY(2.95) + 0.03, 2.95);
       bar('hullDark', [-0.11, deckY(2.95) + 0.05, 2.95], [-0.11, deckY(2.62) + 0.06, 2.62], 0.018);
@@ -360,14 +361,16 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.gunG.position.set(0, TRUNNION.y, TRUNNION.z);
     // the flat mantlet plate recessed between the cheeks, its bolted collar where the gun enters, the canvas dust cover;
     // the coaxial MG's port on the left of the gun, the auxiliary sight's on the right
-    P.addGunExtra(box(0.86, 0.38, 0.22), 0, 0.04, 0.35);
-    P.addGunExtra(cylZ(0.21, 0.08, P.q ? 24 : 14), 0, 0, 0.50);
+    // (every part below the bore is held inside the -10 degree depression over the flat deck ahead of the turret: the
+    // collar, the cover and its rings narrow forward to the deck's edge at z 0.70)
+    P.addGunExtra(box(0.86, 0.36, 0.22), 0, 0.03, 0.35);
+    P.addGunExtra(cylZ(0.155, 0.08, P.q ? 24 : 14), 0, 0, 0.50);
     P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.25, -0.01, 0.475);
     P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475);
     P.add('gunMountGlass', cylZ(0.035, 0.008, 12), -0.27, 0.06, 0.498);
-    P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.175), 0, 0, 0.71);
-    for (const z of [0.60, 0.70, 0.80]) {
-      P.add('gunMountCloth', torus(0.155 - (z - 0.6) * 0.15, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
+    P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.145), 0, 0, 0.71);
+    for (const z of [0.58, 0.74, 0.82]) {
+      P.add('gunMountCloth', torus(0.145 - ((z - 0.54) / 0.34) * 0.025, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
     }
     const seg = P.q ? 24 : 12;
     if (p2) {

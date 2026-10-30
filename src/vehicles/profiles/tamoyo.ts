@@ -114,17 +114,18 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
   // ---------------------------------------------------------------- hull fittings --
   const buildTamoyoHullFittings = (): void => {
     for (const s of [-1, 1] as const) {
-      // the twin lamps in their guards on the glacis corners, the mirrors on stalks behind them
+      // the twin lamps in their guards on the glacis corners, the mirrors behind them folded flat on short stalks (under
+      // the gun's sweep)
       const z = 2.92, y = deckY(z) + 0.05;
       for (const dx of [-0.07, 0.07]) headlight(P, s * 1.18 + dx, y + 0.03, z + 0.03, -glacis * 0.5, 0.05);
       const g = [[s * 1.34, y - 0.04, z - 0.08], [s * 1.34, y + 0.10, z + 0.08], [s * 1.02, y + 0.10, z + 0.08], [s * 1.02, y - 0.04, z - 0.08]];
       for (let i = 0; i + 1 < g.length; i++) bar('hullDark', g[i], g[i + 1], 0.011);
-      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.40, 8), s * 1.50, H.fenderY + 0.20, 2.95);
-      P.addEquipment('hullDark', box(0.02, 0.16, 0.13), s * 1.51, H.fenderY + 0.44, 2.95);
+      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.10, 8), s * 1.50, H.fenderY + 0.05, 2.95);
+      P.addEquipment('hullDark', box(0.14, 0.02, 0.11), s * 1.45, H.fenderY + 0.11, 2.95);
       // the tow eyes on the nose plate, the lifting eyes
       P.add('hullDark', box(0.12, 0.12, 0.08), s * 0.70, 0.86, 3.02);
       P.add('hullDark', torus(0.065, 0.02, 12, 6), s * 0.70, 0.86, 3.08, Math.PI / 2, 0, 0);
-      liftEye(P, 'hullDetail', s * 1.28, deckY(2.40) + 0.012, 2.40, s * 0.3);
+      liftEye(P, 'hullDetail', s * 1.28, deckY(2.60) + 0.012, 2.60, s * 0.3);
       // the rear plate: the exhaust silencers at its upper corners, the tail lights, the tow hooks
       P.addEquipment('hullDark', cylY(0.12, 0.12, 0.48, P.q ? 16 : 10), s * 1.12, 1.42, H.sternZ - 0.12);
       P.addEquipment('hullDark', cylZ(0.06, 0.08, 12), s * 1.12, 1.62, H.sternZ - 0.16);
@@ -292,9 +293,9 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.muzzleZ = len;
       P.gunG.userData.tamoyoGunReceipt = { mark, caliberMm: 105, muzzleZ: len };
     } else {
-      // the broad gun shield, a wedge from its top to the sloped front plate
+      // the broad gun shield, a wedge from its top to the sloped front plate (its foot clear of the deck at -8 degrees)
       P.addGunExtra(slab(
-        [-0.62, -0.30, 0.10], [0.62, -0.30, 0.10], [0.58, -0.28, 0.40], [-0.58, -0.28, 0.40],
+        [-0.62, -0.26, 0.10], [0.62, -0.26, 0.10], [0.58, -0.23, 0.40], [-0.58, -0.23, 0.40],
         [-0.62, 0.20, 0.10], [0.62, 0.20, 0.10], [0.50, 0.12, 0.40], [-0.50, 0.12, 0.40]));
       P.addGunExtra(cylZ(0.13, 0.12, seg, 0.15), 0, 0, 0.46);
       P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.24, -0.06, 0.42);

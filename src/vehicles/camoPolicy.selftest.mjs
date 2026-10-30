@@ -307,7 +307,8 @@ assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored
 // rebuilt T-84U's 2000 three-tone (263)
 assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep',
   'sig_m60a3', 'paint_type10_dozer', 'paint_christian2', 'paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td',
-  'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara'],
+  'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara',
+  'paint_osorio_p1'],
   'GT, then later paints (266: the Brazilian coats), append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
