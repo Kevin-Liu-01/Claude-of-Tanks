@@ -647,22 +647,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
   },
   // T-90AM: the roof netted round the remote weapon station, the commander's panorama, the gunner's sight and the
-  // hatches, drapes down the walls ahead of the bustle and a rear drape down the bustle basket; the engine deck netted
-  // (the stern drums bare) and the front deck, four drapes a side over the Relikt skirts.
-  // 2026-10-30 (lane t90-family-266): refitted to the family chassis and the AM-type turret (no 65 % turret scale): the
-  // roof lies at 0.62-0.79 in the turret frame, the station stands at x 0.05..0.75, z -1.50..-0.45, the bustle ends at
-  // z -2.66, the fenders at 1.44 m.
+  // hatches, drapes down the walls ahead of the bustle basket and a rear drape down the bustle box; the engine deck
+  // netted (the stern drums bare) and the front deck, four drapes a side over the Relikt skirts.
+  // 2026-10-30 (lane t90-family-266): refitted to the source-X T-90SM build the AM now uses (turret frame: roof 0.62-0.83,
+  // the station at x 0.10..0.90, z -2.10..-0.95, the panorama at x -0.55..-0.05, z -1.75..-1.05, the bustle box to z -2.95).
   t90am: {
     id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     // 245: under its measured curve (turretScaleGunPitch.ts) the front deck's net lay 10.9 mm under the barrel at yaw 37
     clothClearsGunStops: true,
     turret: {
-      top: [laid({ x0: -1.80, x1: 1.80, z0: -2.62, z1: 1.90, nx: 43, nz: 54, y: 0.66,
-        holes: [rect(0.05, 0.75, -1.50, -0.45), rect(0.10, 0.55, 0.15, 0.90), rect(-0.95, -0.35, -0.95, -0.45)],
+      top: [laid({ x0: -1.85, x1: 1.85, z0: -2.90, z1: 1.85, nx: 44, nz: 57, y: 0.68,
+        holes: [rect(0.10, 0.90, -2.10, -0.95), rect(-0.55, -0.05, -1.75, -1.05), rect(-0.95, -0.45, -0.15, 0.35),
+          rect(-1.15, -0.85, -0.75, -0.45)],
         garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-2.55, -0.25, 0.60, 0.40, 1.80, 17),
-      face: [face({ z: -2.66, x0: -1.20, x1: 1.20, y0: 0.22, y1: 0.60, nx: 24, ny: 6, seed: 23 })],
+      side: flanks(-2.80, -0.20, 0.62, 0.40, 1.85, 17),
+      face: [face({ z: -2.95, x0: -1.10, x1: 1.10, y0: 0.25, y1: 0.65, nx: 22, ny: 6, seed: 23 })],
     },
     hull: {
       top: [

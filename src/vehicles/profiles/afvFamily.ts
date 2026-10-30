@@ -21,7 +21,7 @@ import {
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
-import { T90_FAMILY_RING_Y, T90_RELIKT_CHASSIS } from './t90.ts';
+import { T90_X_PROFILES } from './t90X.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
 import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
@@ -1537,8 +1537,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // own armor anchors (§5.361 rig-anchor law: the ring rides turretPivot).
   P.turretG.scale.set(1, 1, 1);
   P.gunG.scale.set(1, 1, 1);
-  // The turntable's base (local -0.08) stays 45 mm into the family chassis deck (1.495 m), as on the former T-90A hull.
-  P.turretG.position.set(0, T90_FAMILY_RING_Y + 0.07, 0.15);
+  // The turntable's base (local -0.08) stays 45 mm into the source-X T-90M deck (1.339 m), as on the former T-90A hull.
+  P.turretG.position.set(0, 1.374, 0.15);
   P.gunG.position.set(0, 0.68, 0.55);
 
   // Broad armored turntable + base skirt: both a size up from the
@@ -1696,10 +1696,14 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
 }
 
 function buildBMPTT90(P: AfvBuilderPort): void {
-  // Lane t90-family-266 (the owner 2026-10-30, "including updating the bmpt t90"): the BMPT rides the T-90 family
-  // chassis with its Relikt fit (Uralvagonzavod / Army photographs: Relikt on the hull, full-length ERA box skirts and
-  // slat over the final drive), so the former flank course added over the T-90A's thin skirt band retires with it.
-  T90_RELIKT_CHASSIS.build(P);
+  // Lane t90-family-266 (the owner 2026-10-30: "including updating the bmpt t90"; "take inspiration and update from the
+  // later t90s we added that have far more accurate models"): the BMPT rides the source-X T-90M hull, running gear and
+  // Relikt side protection (the 2018 BMPT's photographs: full-length ERA box skirts with slat over the rear). The X turret
+  // is cleared whole, every turret- and gun-owned bucket, before the station.
+  T90_X_PROFILES.t90m.build(P);
+  P.clear('turretBark', 'turretCanvasPale', 'turretEquipment', 'turretFittingPaint', 'turretOpenLattice',
+    'turretOpenLatticeDark', 'turretPaintedDetail', 'turretPermanentMarkingSurface', 'turretTrackLinks', 'turretWeaponSteel',
+    'gunMountCanvasSkin', 'gunMountCloth', 'gunMountGlass', 'gunMountLamp');
   addTerminatorT90Station(P);
   // Twin AG-17 bow pods (hull-fixed, the real vehicle's corner stations):
   // seat buried into the bow deck, armored pod, stub tube with an explicit

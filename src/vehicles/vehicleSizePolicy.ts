@@ -15,9 +15,9 @@ export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.fre
 });
 /** Additional longitudinal chassis change, before the uniform installed scale.
  * Turret-local armor, weapon stations and ring position retain their dimensions. */
-export const VEHICLE_HULL_LENGTH_FACTORS: Readonly<Record<string, number>> = Object.freeze({
-  t90am: 1.10, t90m_proryv: 1.10,
-});
+// 2026-10-30 (lane t90-family-266; Main's ruling under the owner's delegation): the T-90AM and AM II's 1.10 chassis
+// length retired when both moved onto the source-X T-90SM and T-90M builds, whose hull proportions are measured.
+export const VEHICLE_HULL_LENGTH_FACTORS: Readonly<Record<string, number>> = Object.freeze({});
 function extendHullMetadata(spec: FleetTankSpec, factor: number): void {
   const oldLength = spec.dims.hullLengthM;
   spec.dims.hullLengthM *= factor;
