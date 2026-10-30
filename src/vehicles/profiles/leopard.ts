@@ -40,7 +40,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { remapCamoUv, type CamoUvRemap } from '../factoryGeometry.ts';
 import { chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
