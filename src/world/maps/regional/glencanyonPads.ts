@@ -16,7 +16,9 @@ const KERB_W = 0.25, KERB_RISE = 0.08;
  * (the looks lane's r2 sweep, polar, 2026-10-16: the yards' damage reading was their control house alone, so a yard's
  * collapse laid its ruin over a fifth of the yard) the yard recorded as a body of its own, the whole pad by the fence's
  * height (the kerb wall's 0.9 m and the chain-link's 2.1 m) in the kerb's concrete: the largest body, so the reading is
- * the yard's and the control house falls as its own body beside it. Drawn nothing (house.ts recordBody).
+ * the yard's and the control house falls as its own body beside it. Drawn nothing (house.ts recordBody). Open to the sky
+ * (2026-10-28, the world-reds lane: read with a flat roof over the whole yard, skybridge #20's roof pass laid that roof's
+ * plates in the yard between the transformers).
  */
 const YARD_H = 3.0, YARD_WALL: RegionalBucket = 'plaster2';
 
@@ -36,5 +38,5 @@ export function yardPad(sink: PartSink, bucket: RegionalBucket, W: number, D: nu
   // the bed inside the kerb, the footing's underside closing it
   sink.polygon(bucket, rings[rings.length - 1], opts);
   sink.polygon(bucket, [...rings[0]].reverse(), opts);
-  recordBody(sink, 0, 0, W, D, YARD_H, YARD_WALL);
+  recordBody(sink, 0, 0, W, D, YARD_H, YARD_WALL, false, false, true);
 }

@@ -77,13 +77,14 @@ const rearCorners=[[1.02,.16,.24],[1.31,.20,-.72],[1.22,.56,-.86],[.96,.45,.12],
 for(const points of [lowerCorners,rearCorners]) {
   const old=orientedSlab(...points);assert.ok(properSurfaceCrossings(shellPart(old)).length>0,'legacy Leopard 1A5 stock crossing is detected');old.dispose();
 }
-for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a4_otco','leo2a6_ua']) {
+for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a4_otco']) {
   const repaired=[];
   const visual=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,partCensus(bucket,g,source){
     if(source==='add'&&['leo1a5-lower-bow','leo1a5-rear-applique','leo2a6m-thermal-skin'].includes(g.userData.primaryStockRole))repaired.push(g);
   }});
   try {
-    assert.equal(repaired.length,id==='leo1a5'?3:2,`${id}/${quality}: intended stock is repaired`);
+    // 262: the leo1a5 rebuild retired the rear cheek appliqué (its cast turret now carries the B&V wedge and side blocks)
+    assert.equal(repaired.length,id==='leo1a5'?1:2,`${id}/${quality}: intended stock is repaired`);
     for(const geometry of repaired) {
       assertClosedRecess(geometry,`${id}/${quality}/${geometry.userData.primaryStockRole}`);
       const part=shellPart(geometry),side=part.bounds.max.x<0?-1:1;

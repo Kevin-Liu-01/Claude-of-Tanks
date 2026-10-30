@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, TANK_SPECS } from './specs.ts';
 import {
-  NATION_WHEEL_SETS, PERIOD_WHEEL_HULLS, WHEEL_DONORS, WHEEL_DONOR_IDS, WHEEL_STANDARD_EXCEPTIONS, resolveNationWheel,
+  NATION_WHEEL_SETS, PERIOD_WHEEL_HULLS, T54_STARFISH_WHEELS, WHEEL_DONORS, WHEEL_DONOR_IDS, WHEEL_STANDARD_EXCEPTIONS, resolveNationWheel,
 } from './nationWheelSets.ts';
 import { BUILDABLE_WHEEL_CONSTRUCTIONS, NATION_WHEEL_AXIAL_FIT, buildNationWheel } from './nationWheelConstructions.ts';
 import { WHEEL_PATTERN_DEFINITIONS, wheelPatternFor } from './wheelPatterns.ts';
@@ -81,7 +81,7 @@ expect('m1a3', 'm1a1_abrams_hc'); expect('abramsx', 'm1a1_abrams_hc'); // m1a2_l
 expect('m1a1_abrams_hc', 'm1a1_abrams_hc', 'donor'); expect('ua_m1a1', 'm1a1_abrams_hc', 'donor');
 expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
 expect('griffin_viper', 'm1a1_abrams_hc'); expect('griffin50mm', 'm1a1_abrams_hc'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
-expect('type59', 'ztz100'); expect('ztz100_prototype', 'ztz100'); expect('aft10', 'type100');
+expect('type59', T54_STARFISH_WHEELS ? 'type59' : 'ztz100'); expect('ztz100_prototype', 'ztz100', 'donor'); expect('ztz20', 'ztz100', 'donor'); expect('ztz20_prototype', 'ztz100', 'donor'); expect('aft10', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv121'); expect('strv103b', 'strv121'); expect('strv121', 'strv121'); expect('cv90', 'cv90_mk4');
 expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther', 'donor'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
@@ -99,14 +99,16 @@ expect('amx30', 'amx40_proto'); expect('amx40_proto', 'amx40_proto'); expect('am
 expect('chieftain3', 'challenger2e'); expect('challenger1_mk3', 'challenger2e'); expect('centurion3', 'challenger2e');
 expect('challenger3', 'challenger3_proto', 'donor'); expect('ua_challenger2', 'challenger2e', 'donor');
 expect('fv510', 'warrior_tes_h'); expect('ajax', 'warrior_tes_h'); expect('ares_apc', 'warrior_tes_h');
-expect('t62_1975', 't90_1992'); expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
+expect('t62_1975', 't90_1992'); expect('t55a', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); // 262: the T-54/T-55 starfish exception while the switch holds expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
 expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
 expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_tagil', 't90am');
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');
+// 262: the new true T-64s (t64Foundation.ts) draw the T-64 dual wheel natively
+for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) expect(id, 't64bm1m', 'donor');
 expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
-expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
+expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4', 'donor');
 expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');
 // tiger1, t95 and m26_pershing retired 2026-09-23 (owner: "no hidden tanks"); the two period hulls left keep their wheels.
 for (const id of ['kv2', 'jpz_e100']) {

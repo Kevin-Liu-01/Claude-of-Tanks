@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { TIMBER_SPECIES, buildFallenLog, buildStump, logForm, stumpForm, timberOf } from './timberForms.ts';
 
-const LOG_MAPS = ['winter', 'verdant', 'whiteout', 'saltwind', 'steppe', 'reservoir', 'skybridge', 'orchard', 'monsoon',
+// (2026-10-28, the world-reds lane: Whiteout left at 241 — maps-stalled-240's Lane B, 10-17: "no fallen logs on the ice")
+const LOG_MAPS = ['winter', 'verdant', 'saltwind', 'steppe', 'reservoir', 'skybridge', 'orchard', 'monsoon',
   'railyard', 'longleaf', 'polders', 'mangrove', 'fjord', 'delta', 'frontier', 'cliffbridge', 'caldera', 'autumn', 'alpine', 'coastal'];
 // the maps that lay logs are these (props: logs: true)
 for (const id of LOG_MAPS) {

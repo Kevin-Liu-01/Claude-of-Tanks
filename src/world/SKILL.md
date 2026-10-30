@@ -41,6 +41,12 @@ needles, chaff, snow, spindrift, dust, sand, ash, embers, fireflies, mist, insec
 and `mapAmbience.ts` draws it lazily (`mapAmbienceAccess.ts`): one instanced late-FX draw per layer wrapping round the
 camera, animated in the vertex shader on the raw fx clock, density from `QualityPreset.ambience`, seeded in its own
 hash domain; never in the simulation (`tools/map-ambience-shots.mjs` films it off and on).
+`landUse.ts` lays the fields and `terrain.ts`'s land-use block draws each crop's rows (2026-10-28, the owner on
+Steinburg: "weird parallel lines on ground … on all maps"): a ruled period is a shade at battle range, never a painted
+band — a row crop's canopy closes over its furrows seen from a tank (no grass in its rows), the plough's lands are a
+soft swell, every field its own widths, each term filtered by the pixel's footprint (stripeAA).
+`tools/ground-banding-shots.mjs` stills every map at the battle's chase rig and over its nearest worked fields, desktop
+or phone, with the land use zeroed as the A/B.
 `civic/` (the maps lane, 228) is the shared civic-area and pathway kit a map adopts through a plan file (`civic/plans/`): a square's green, monument, furniture, parked cars and lamps, and its streets' fronted kerbs and pavements; no kit file names a map (docs/MAP-LAYOUT-BRIEF.md "Civic areas and pathways").
 `maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same

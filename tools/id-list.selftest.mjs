@@ -81,10 +81,11 @@ for (const [tool, ...flags] of refusals) {
   assert.match(output, /leo2a7v 2 times|repeated: leo2a7v/, `${tool}: the refusal names the repeated id\n${output}`);
   assert.doesNotMatch(output, /\[tank-release\] stage|icons-page|scanning/, `${tool}: nothing starts before the refusal`);
 }
-// the tools that take the capture lock at startup refuse before it (hold 246 in 226 failed inside its hold)
-for (const tool of ['tools/track-clip-audit.mjs', 'tools/turret-parent-audit.mjs']) {
+// the tools that take the capture lock refuse before it (hold 246 in 226 failed inside its hold); track-clip-audit queues
+// through withIsolatedCaptureBrowser's `capture: { lock }` since 293c6c2dc5 (the helper warms while the ticket waits)
+for (const [tool, take] of [['tools/track-clip-audit.mjs', 'capture: { lock: captureLock'], ['tools/turret-parent-audit.mjs', 'await acquireLock(']]) {
   const source = readFileSync(tool, 'utf8');
-  const guard = source.indexOf("uniqueIds(process.argv.find((a) => a.startsWith('--ids='))"), lock = source.indexOf('await acquireLock(');
+  const guard = source.indexOf("uniqueIds(process.argv.find((a) => a.startsWith('--ids='))"), lock = source.indexOf(take);
   assert.ok(guard > 0 && lock > guard, `${tool}: the id guard runs before the capture lock`);
 }
 console.log(`id-list: duplicate ids fail loudly in ${readers.length - 1} of ${readers.length} fleet tools (${Object.keys(DELEGATES).length} through a delegated check; circular-cap-audit carried); ${refusals.length} real tools refuse before any server, browser or step`);

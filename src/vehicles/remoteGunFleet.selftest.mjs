@@ -7,8 +7,8 @@ import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {requestAuxiliary,stepRoofGun,auxiliaryShot,auxiliaryState} from '../sim/auxiliarySystems.ts';
 const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_armata:7.62,t90a_vladimir:12.7,t90a:12.7,t90ms_2011:12.7,
- t90m_proryv:12.7,t90_1992:12.7,object148_proto:30,challenger3:12.7,challenger3_proto:12.7,
- challenger2e:7.62,ztz100:12.7,type10:12.7,k2_black_panther:12.7,k1a1:12.7,
+ t90m_proryv:12.7,t90_1992:12.7,object148_proto:30,challenger3:12.7,challenger3_proto:12.7,challenger3_td_rws:12.7,
+ challenger2e:7.62,ztz100:12.7,ztz20:12.7,type10:12.7,k2_black_panther:12.7,k1a1:12.7,
  strv122:7.62,merkava4_trophy:7.62,merkava4:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
 const vector=a=>new THREE.Vector3(...a);
 for(const [id,caliber] of Object.entries(requested)){

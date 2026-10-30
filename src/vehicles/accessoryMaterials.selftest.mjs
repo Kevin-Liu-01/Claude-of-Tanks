@@ -99,7 +99,10 @@ try {
       if (!object.isMesh || !/_ghillie_/.test(object.name)) return;
       suitMeshes++;
       assertRegistered(object.material, `${id}/${object.name}`);
-      assert.equal(object.material.customProgramCacheKey(), 'veh-ambient-floor-v5', `${id}/${object.name}: the fleet's program key`);
+      // (264) the garnish cards are lit as a volume from both faces under their own key (vehicleFoliage.ts volumeLitFoliage,
+      // ghillie-render 85c889aafe: the critic's near-black card backs); the cloth keeps the fleet's
+      assert.equal(object.material.customProgramCacheKey(), /_leaves$/.test(object.name) ? 'veh-ambient-floor-v5|foliage-volume' : 'veh-ambient-floor-v5',
+        `${id}/${object.name}: the fleet's program key`);
       assert.equal(object.material.side, THREE.DoubleSide, `${id}/${object.name}: cloth and garnish are seen from both sides`);
       if (/_leaves$/.test(object.name)) {
         leafMeshes++;
