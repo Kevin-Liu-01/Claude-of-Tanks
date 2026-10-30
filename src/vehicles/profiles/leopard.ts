@@ -12467,9 +12467,11 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
         [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07], [s * 1.69, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07],
         [s * 1.69, fenderY, frontGuard.rearZ], [s * 1.712, fenderY, frontGuard.rearZ],
         [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.69, frontGuard.frontY, frontGuard.frontZ]));
+      // (the inner wall 4 cm deep over the idler, 8 cm at the nose: at 12 cm its foot stood in the strict track band over
+      // the idler's wrap, track-clip-audit --exact --strict)
       P.add('hullDetail', slab(
-        [s * 1.05, fenderY - 0.12, frontGuard.rearZ], [s * 1.072, fenderY - 0.12, frontGuard.rearZ],
-        [s * 1.072, frontGuard.frontY - 0.12, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.12, frontGuard.frontZ],
+        [s * 1.05, fenderY - 0.04, frontGuard.rearZ], [s * 1.072, fenderY - 0.04, frontGuard.rearZ],
+        [s * 1.072, frontGuard.frontY - 0.08, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.08, frontGuard.frontZ],
         [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.072, fenderY, frontGuard.rearZ],
         [s * 1.072, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
       P.add('hullDetail', slab(
