@@ -65,6 +65,10 @@ try {
   vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/pad-e2e-vite-cache'), logLevel: 'error',
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
   await vite.listen();
+  // the first transform of each document is slow under load (page catalogs, the module graph): warm both before the ticket
+  for (const path of ['/pad', '/']) {
+    await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
+  }
   await lock.acquire(4 * 60 * 60 * 1000, { lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
@@ -94,17 +98,33 @@ try {
   await desktop.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
   deadline();
 
-  // Settings › Controls: the card is there; nothing of the phone controller has loaded or connected yet
+  // Unpaired. The dev server preloads every module its static scan reaches (a dev-only plugin that also follows type
+  // imports), so the boot's own module list is the production build's to judge (dist below). What is judged here: no
+  // socket or request reaches the pairing service before Connect, and opening Settings › Controls requests nothing of it.
+  const bootRequests = desktopRequests.length;
+  desktopRequests.length = 0;
   await desktop.evaluate(() => document.querySelector('.cot-gear')?.click());
   await desktop.waitForSelector('.cot-settings.open .cot-pad-action', { timeout: 30_000 });
   await sleep(1500);
-  const padTraffic = (urls) => urls.filter((url) => url.startsWith(padService) || url.includes('/src/pad/'));
-  const before = padTraffic(desktopRequests);
-  report.network.desktopRequestsBeforeConnect = desktopRequests.length;
-  report.network.padRequestsBeforeConnect = before;
-  check('unpaired: no request to the pad service and no pad module (Garage + Settings › Controls open)', before.length === 0,
-    `${desktopRequests.length} requests, ${before.length} pad`);
+  const serviceTraffic = desktopRequests.filter((url) => url.startsWith(padService) || url.startsWith(padService.replace('ws:', 'http:')));
+  const controlsTab = desktopRequests.filter((url) => url.includes('/src/pad/') || /\/assets\/pad/.test(url));
+  report.network.desktopBootRequests = bootRequests;
+  report.network.padServiceBeforeConnect = serviceTraffic;
+  report.network.padModulesOpeningControls = controlsTab;
+  check('unpaired: no socket or request to the pairing service (boot, Garage, Settings › Controls)',
+    serviceTraffic.length === 0 && ![...sockets.values()].some((url) => String(url).startsWith(padService)));
+  check('unpaired: opening Settings › Controls loads no phone-controller code', controlsTab.length === 0, `${controlsTab.length} pad modules`);
   check('unpaired: no receiver on the page', await desktop.evaluate(() => window.__COT_PAD === undefined));
+  // the production build (when this checkout has one): no boot request of the game, cn or Gallery pages is a pad chunk
+  try {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const pages = ['index.html', 'cn/index.html', 'gallery.html'].map((page) => [page, readFileSync(resolve(root, 'dist', page), 'utf8')]);
+    const padChunks = new Set(readdirSync(resolve(root, 'dist/assets')).filter((name) => /^(pad|padConnectCard|padEndpoint|qr)-/.test(name)));
+    const hits = pages.flatMap(([page, text]) => [...text.matchAll(/(?:src|href)="\/assets\/([^"]+)"/g)].map((m) => m[1])
+      .filter((name) => padChunks.has(name)).map((name) => `${page}: ${name}`));
+    report.network.distPadChunksAtBoot = hits;
+    check('production build: no pad chunk among the game, cn and Gallery boot requests', hits.length === 0, `${padChunks.size} pad chunks in dist`);
+  } catch (error) { report.network.distPadChunksAtBoot = `no dist: ${String(error).slice(0, 80)}`; }
 
   // Connect Phone: the receiver loads, a code and its QR show
   await desktop.evaluate(() => document.querySelector('.cot-settings.open .cot-pad-action')?.click());
@@ -136,8 +156,8 @@ try {
   }
   let { phone, phoneRequests } = await openPhone();
   const code = pairing.url.slice(-6);
-  await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${code}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
-  await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 60_000 });
+  await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${code}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+  await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
   const startLabel = await phone.$eval('.pad-form .cot-c-btn__label', (el) => el.textContent);
   await phone.tap('.pad-form button[type="submit"]');
   // the first reading centres the wheel: hold the phone level, then wait for the data channel
@@ -323,8 +343,8 @@ try {
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-qr')?.dataset.url, { timeout: 30_000 });
   const relayCode = (await desktop.$eval('.cot-pad-qr', (el) => el.dataset.url)).slice(-6);
   await desktop.keyboard.press('Escape');
-  await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${relayCode}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
-  await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 60_000 });
+  await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${relayCode}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+  await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
   await phone.tap('.pad-form button[type="submit"]');
   await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
   await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 });
