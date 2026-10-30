@@ -2812,11 +2812,14 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       const wall = castSideAt(M60_TURRET, by, bz), bx = side * 1.33;
       P.add('turretDetail', box(Math.max(0.05, 1.33 - wall - 0.08), 0.10, 0.18), side * (wall + (1.33 - wall - 0.08) / 2), L.y(by - 0.13), L.z(bz));
       P.add('turret', box(0.22, 0.03, 0.33), bx, L.y(by - 0.10), L.z(bz));
+      // (round 16: raised 17 and splayed 20 degrees, the mouths 0.13 m along each tube's axis)
+      const [pitch, yaw] = [-0.30, side * 0.35];
+      const mouth = [Math.sin(0.35) * 0.13, Math.sin(0.30) * Math.cos(0.35) * 0.13, Math.cos(0.30) * Math.cos(0.35) * 0.13];
       for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
-        P.add('turret', KIT.xform(cylZ(0.04, 0.25, 12), 0, 0, 0, -0.20, side * 0.26, 0), bx + side * (c - 1) * 0.09,
+        P.add('turret', KIT.xform(cylZ(0.04, 0.25, 12), 0, 0, 0, pitch, yaw, 0), bx + side * (c - 1) * 0.09,
           L.y(by - 0.02 + r * 0.09), L.z(bz + 0.02));
-        P.add('turretDark', KIT.xform(cylZ(0.03, 0.02, 10), 0, 0, 0, -0.20, side * 0.26, 0), bx + side * ((c - 1) * 0.09 + 0.03),
-          L.y(by + r * 0.09), L.z(bz + 0.14));
+        P.add('turretDark', KIT.xform(cylZ(0.03, 0.02, 10), 0, 0, 0, pitch, yaw, 0), bx + side * ((c - 1) * 0.09 + mouth[0]),
+          L.y(by - 0.02 + r * 0.09 + mouth[1]), L.z(bz + 0.02 + mouth[2]));
       }
     }
     // the box on the left flank, 2.2-2.7 m behind the shield's face, its top at the roof edge
@@ -2853,8 +2856,9 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       P.addGunExtra(KIT.lathe([[0.15, 0], [0.17, 0.045], [0.145, 0.09], [0.001, 0.09], [0.001, 0]], P.q ? 24 : 12)
         .rotateX(-Math.PI / 2), 0, 0, 0.68);
     } else {
-      P.addGunExtra(moldedBox(0.32, 0.30, 0.10, 0.04, 1, 0.01), 0, 0, 0.635);
-      P.addGunExtra(KIT.xform(cylZ(0.15, 0.04, 8), 0, 0, 0, 0, 0, Math.PI / 8), 0, 0, 0.68);
+      // (round 16: the A1's round collar in two steps, 0.38 m across on the boss and 0.32 m at its front)
+      P.addGunExtra(KIT.lathe([[0.16, 0], [0.16, 0.05], [0.19, 0.05], [0.19, 0.10], [0.001, 0.10], [0.001, 0]], P.q ? 24 : 12)
+        .rotateX(-Math.PI / 2), 0, 0, 0.69);
     }
     // the coax's stub in its port (near flush); the A1's bent rod on the barrel's left down into the shield
     P.addGunExtraDark(cylZ(0.03, a3 ? 0.04 : 0.10, 10), 0.33, 0.12, a3 ? 0.52 : 0.55);
@@ -2894,7 +2898,11 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     // the light's mounting studs on the face under its top edge, the two smaller ones below them
     // (along the boss's top edge, standing 0.10 m out of its sloped face)
     // (three lifting posts 0.11 m tall just under the face's top edge, two studs below them)
-    for (const x of [-0.23, 0, 0.23]) P.addGunExtraDark(box(0.035, 0.11, 0.04), x, 0.245, 0.425);
+    // (round 16: the lifting eyes upright plates on the raked top's upper edge, each with its dark eye)
+    for (const x of [-0.23, 0, 0.23]) {
+      P.addGunExtra(KIT.xform(box(0.03, 0.05, 0.07), 0, 0, 0, 0.75, 0, 0), x, 0.39, 0.28);
+      P.addGunExtraDark(KIT.xform(KIT.torus(0.03, 0.01, P.q ? 12 : 8), 0, 0, 0, 0, Math.PI / 2, 0), x, 0.43, 0.27);
+    }
     for (const x of [-0.12, 0.12]) P.addGunExtraDark(box(0.035, 0.06, 0.04), x, 0.14, 0.495);
   }
   if (mark === 'magach6b') {
@@ -2941,8 +2949,9 @@ function m60Mantlet(q: boolean | undefined): Geo {
   // h, half-width, face, back
   const rows: readonly (readonly [number, number, number, number?])[] = [
     [-0.36, 0.50, 0.28], [-0.33, 0.51, 0.33], [-0.30, 0.51, 0.40], [-0.255, 0.51, 0.46], [-0.20, 0.51, 0.48],
-    [-0.10, 0.51, 0.49], [0.05, 0.51, 0.49], [0.15, 0.51, 0.48], [0.20, 0.51, 0.45], [0.26, 0.51, 0.40],
-    [0.32, 0.48, 0.345], [0.37, 0.43, 0.29, -0.20], [0.40, 0.40, 0.255, -0.02], [0.415, 0.385, 0.235, 0.12],
+    // (round 16: the raked top one straight plane from the face's crease to the crest, as the casting's)
+    [-0.10, 0.51, 0.49], [0.05, 0.51, 0.49], [0.15, 0.51, 0.48], [0.20, 0.51, 0.434], [0.26, 0.51, 0.378],
+    [0.32, 0.48, 0.323], [0.37, 0.43, 0.277, -0.20], [0.40, 0.40, 0.249, -0.02], [0.415, 0.385, 0.235, 0.12],
   ];
   const bow = 0.08;
   const n = q ? 10 : 5;
