@@ -61,6 +61,7 @@ const CURVES = {
   m41a3: [],
   m41_bw: [],
   m41_jgsdf: [],
+  m41dk1: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

@@ -83,5 +83,10 @@ m41dk1.visual = {
 const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [128, -9.7], [129, -9], [130, -5.5], [131, -4.6], [140, -3.2],
   [142, -3], [146, -3], [150, -3.3], [151, -3.8], [152, -9.7], [167, -9.7], [168, -9], [169, -8.5], [180, -8.8]] as const);
 for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
+// the DK-1's: the driver's mirror on the left mudguard ahead, the deck's grilles and its closed rear box astern
+m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [28, -9.7], [29, -8.3], [30, -8], [32, -8], [34, -5.1], [35, -4.9],
+  [37, -4.9], [38, -5.1], [39, -5.6], [40, -9.7], [128, -9.7], [129, -9], [130, -5.5], [131, -4.6], [133, -4.3], [134, -3.5],
+  [137, -2], [139, -2], [142, -3], [146, -3], [150, -3.3], [151, -3.8], [152, -9.7], [164, -9.7], [165, -8.9], [166, -8.4],
+  [171, -8.5], [180, -8.8]] as const);
 
 registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1'], { m41a3, m41_bw, m41_jgsdf, m41dk1 });
