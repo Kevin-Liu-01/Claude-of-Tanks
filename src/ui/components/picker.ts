@@ -383,6 +383,10 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       if (thumbs) thumbs.observe(img.parentElement!);
       else { img.src = img.dataset.src!; delete img.dataset.src; }
     }
+    // a card's picture already decoded (a re-render, a filter) stands at once; a late one fades in on its load (onThumb)
+    for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__media img')) {
+      if (img.complete && img.naturalWidth > 0) img.setAttribute('data-ready', '');
+    }
     empty.hidden = shown.length > 0;
     grid.hidden = shown.length === 0;
     rove(options$().find((element) => element.getAttribute('aria-selected') === 'true') ?? options$()[0], false);
@@ -480,8 +484,16 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     rove(list[to], true);
   };
   const onInput = (): void => { query = { ...query, text: search.value }; render(); };
-  // a list row's thumbnail shows once decoded (a cached one at once, in render): load events reach the grid in capture
-  const onThumb = (event: Event): void => { if ((event.target as Element).parentElement?.classList.contains('cot-c-picker__thumb')) (event.target as Element).setAttribute('data-ready', ''); };
+  // a list row's thumbnail and a card's picture show once decoded (a cached card's at once, in render): load events reach
+  // the grid in capture; one that never loads leaves its box's tone (pickers.css), never a broken frame
+  const onThumb = (event: Event): void => { if ((event.target as Element).parentElement?.closest('.cot-c-picker__thumb,.cot-c-picker__media')) (event.target as Element).setAttribute('data-ready', ''); };
+  // a card's picture that could not load (the network dropped) asks again once it is back: its tone stood in meanwhile
+  const onOnline = (): void => {
+    for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__media img:not([data-ready])')) {
+      const src = img.getAttribute('src');
+      if (src && img.complete && img.naturalWidth === 0) img.src = src;
+    }
+  };
   // (it watches the thumbnail's box: an image with no source yet has no height, and a box of none never intersects)
   const thumbs = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => {
     for (const entry of entries) {
@@ -501,6 +513,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   search.addEventListener('input', onInput);
   grid.addEventListener('scroll', markRowsBelow, { passive: true });
   grid.addEventListener('load', onThumb, true);
+  globalThis.addEventListener?.('online', onOnline);
   render();
   requestAnimationFrame(revealChosen);
 
@@ -533,6 +546,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       search.removeEventListener('input', onInput);
       grid.removeEventListener('scroll', markRowsBelow);
       grid.removeEventListener('load', onThumb, true);
+      globalThis.removeEventListener?.('online', onOnline);
       chipsResize.disconnect();
       gridResize.disconnect();
       thumbs?.disconnect();

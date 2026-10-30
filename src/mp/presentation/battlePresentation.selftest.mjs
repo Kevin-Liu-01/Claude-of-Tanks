@@ -124,6 +124,23 @@ assert.equal(game.spotting.isSpotted('foe'), true);
 assert.equal(game.timeS, 12.5);
 assert.equal(game.preBattleS, 0);
 assert.equal(game.gameMode, 'standard');
+// the own tank's requested round is the player's (owner 2026-10-28: "why is atgm labeled Q? E does it for me"): a row
+// holding the authority's old round leaves a pick still on its way; the pick follows the authority when its slot moves
+{
+  const own = presentation.ownActor;
+  assert.equal(own.input.shellSlot, 0, 'the first row seats the authority\'s round');
+  own.input.shellSlot = 1; // Q or the 2 key: the ATGM's slot, sent with the next control sample
+  presentation.applyFrame(frame({ tick: 121 }));
+  assert.equal(own.input.shellSlot, 1, 'a row on the old round does not undo the pick on its way');
+  assert.equal(own.combat.shellSlot, 0, 'the tray shows the authority\'s round until it takes the pick');
+  presentation.applyFrame(frame({ tick: 122, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 1 }) } }));
+  assert.equal(own.input.shellSlot, 1);
+  assert.equal(own.combat.shellSlot, 1, 'the authority took it');
+  presentation.applyFrame(frame({ tick: 123, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 2 }) } }));
+  assert.equal(own.input.shellSlot, 2, 'the authority\'s own switch (an empty round) becomes the pick');
+  presentation.applyFrame(frame({ tick: 124 }));
+  assert.equal(own.input.shellSlot, 0, 'and back');
+}
 const foe = presentation.actors.get('foe');
 assert.equal(foe.combat.hp, 1500);
 assert.equal(foe.combat.reload.t, 1.5);
@@ -319,17 +336,19 @@ assert.equal(game.player, null, 'dispose restores the game state');
 assert.deepEqual(game.tanks, []);
 assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fallback');
 
-// A room battle's killcam takes the step capture as state.ts gives a page battle's: once a step of presented time from the
-// mount on, each hull's pose the last before the frame and its hits (the replay's pre-hit pose and the shell's trace).
+// A free sortie on the solo sim Worker (solo): a hit names its attacker's vehicle as state.ts enrichHitEvent does (the
+// report's final blow, the hit toasts), and the end is a solo battle's — network false, the allies lost counted.
 {
   const killcamLog = [];
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null };
+  // the killcam's two capture hooks, as state.ts calls them in a page battle: the step capture, then the hits
   state.killcam = {
     recordSimStep(game) { killcamLog.push(['step', game.tanks.find((actor) => actor.id === 'foe')?.state.pos.x ?? null]); },
     onShellHit(ev) { killcamLog.push(['hit', ev.shellId]); },
   };
+  const events = [];
   const p = createBattlePresentation({
-    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} },
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit(type, payload) { events.push({ type, payload }); } }, solo: true,
     createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
   });
   await p.applyRoster(roster, context);
@@ -342,6 +361,34 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
     pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } }, { own: false, feedbackPredicted: false });
   assert.deepEqual(killcamLog, [['step', -91], ['step', -89], ['hit', 11]],
     'the killcam captures once a step of presented time, each pose the last before the frame and its hits');
+  const hit = events.find((e) => e.type === 'shell:hit');
+  assert.equal(hit?.payload.attackerName, spec.name, "a solo hit names its attacker's vehicle");
+  assert.equal(hit?.payload.attackerSpecId, 'm1a1_abrams_hc');
+  p.applyFrame(frame({ tick: 130, entities: [sample(2, -91, 64), sample(3, 10, 10, { hp: 0, flags: ENTITY_FLAGS.DESTROYED })] }));
+  p.applyEvent({ kind: 'match_ended', payload: { result: 'bravo', reason: 'elimination' } }, { own: false, feedbackPredicted: false });
+  const end = events.find((e) => e.type === 'battle:ended');
+  assert.equal(state.result, 'defeat');
+  assert.equal(end?.payload.network, false, "a solo sortie's end is a solo battle's");
+  assert.equal(end?.payload.alliesLost, 1, 'the allies lost, as state.ts counts them');
+  p.dispose();
+}
+{
+  const before = busEvents.length;
+  const networkLog = [];
+  const networkGame = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null,
+    killcam: { recordSimStep() { networkLog.push('step'); }, onShellHit() { networkLog.push('hit'); } } };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: networkGame, bus: { emit(type, payload) { busEvents.push({ type, payload }); } },
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  p.applyFrame(frame());
+  p.applyEvent({ kind: 'shell_hit', payload: { shellId: 12, shooterId: 'foe', targetId: 'me', kind: 'pen', damage: 300,
+    pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } }, { own: false, feedbackPredicted: false });
+  const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
+  assert.equal('attackerName' in (hit?.payload ?? {}), false, 'a room battle keeps the wire hit as it came');
+  p.applyFrame(frame({ tick: 122, renderTimeMs: 2033.4 }));
+  assert.deepEqual(networkLog, ['hit', 'step'], "a room battle's killcam gets its hits and the step capture (traces, poses, the warm-up rig retired)");
   p.dispose();
 }
 
@@ -680,7 +727,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, the killcam step capture, settled destroyed lists vs live prop falls, verdicts (the session verdict after its kill), disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts (the session verdict after its kill), a solo sortie\'s hit names, killcam step capture and end, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};

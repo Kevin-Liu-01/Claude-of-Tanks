@@ -142,6 +142,11 @@ interface FractureStagesOptions {
   hangingSlice?: number;
 }
 
+/** A world structure surface material and a geometry its meshes draw (fx/effects.ts attachWorld): the warm's input. */
+export interface FractureWarmSurface { material: THREE.Material; geometry: THREE.BufferGeometry | null }
+/** The layout the warm draws a surface with no geometry in (the warm's before fx-first-use-261). */
+const WARM_DEFAULT_LAYOUT: Readonly<Record<string, { itemSize: number }>> = { uv: { itemSize: 2 }, color: { itemSize: 3 } };
+
 export interface FractureStages {
   /** The structure stages' hook (StructureStagesOptions.fracture). */
   attach(host: FractureHost): StageFracture;
@@ -150,11 +155,14 @@ export interface FractureStages {
   /** A breach event after the stages laid it (sections on: a storey's drop lets go of its floor). */
   breach(e: StructureBreachEvent): void;
   /**
-   * The combat warm (the stages' warm beside it): one triangle in a bucket's material, unculled, casting through the
-   * default depth program as the fracture's faces, bodies and heaps do, so the warm's render compiles what the first
-   * broken wall would; the reset after it takes it away. The meshes laid.
+   * The combat warm (the stages' warm beside it): for each of the world's structure surface materials, one triangle in it
+   * with the attributes its own meshes carry (a face's layout: theirs less aDamage and batchId), unculled, casting through
+   * the default depth program as the fracture's faces, bodies and heaps do, and one in the room behind a hole in its
+   * texture; so the warm's render compiles what any building's first broken wall would. (fx-first-use-261: it laid the
+   * first bucket's alone, and a room census's guest linked another bucket's face program at its first break.) The reset
+   * after it takes them away. The meshes laid.
    */
-  warm(at: { x: number; y: number; z: number }, material: THREE.Material | null): number;
+  warm(at: { x: number; y: number; z: number }, surfaces: Iterable<FractureWarmSurface>): number;
   /** Per render frame: the walls' drawing, the pool's steps, the pieces' poses, the cuts laid ahead. */
   update(): void;
   /** Whether a hanging sweep is due or under way (a late joiner's page settling: receipts wait for it). */
@@ -700,22 +708,41 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         break;
       }
     },
-    warm(at, material) {
+    warm(at, surfaces) {
       // (the phone draws no fracture face: nothing to compile)
-      if (!material || sweepOnly) return 0;
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute([at.x, at.y + 0.5, at.z, at.x + 0.3, at.y + 0.5, at.z, at.x, at.y + 0.8, at.z], 3));
-      g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
-      g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
-      g.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
-      const mesh = new THREE.Mesh(g, material);
-      mesh.name = 'fx-fracture-warm';
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.frustumCulled = false;
-      o.group.add(mesh);
-      warmed.push(mesh);
-      return 1;
+      if (sweepOnly) return 0;
+      const laid = new Set<string>();
+      const lay = (material: THREE.Material, source: THREE.BufferGeometry | null): void => {
+        // the face's layout (structureFracture layoutOf): the source's attributes but position, normal, aDamage, batchId
+        const names: string[] = [], sizes: number[] = [];
+        for (const [name, attr] of Object.entries(source?.attributes ?? WARM_DEFAULT_LAYOUT)) {
+          if (name === 'position' || name === 'normal' || name === 'aDamage' || name === 'batchId') continue;
+          names.push(name);
+          sizes.push(attr.itemSize);
+        }
+        const key = `${material.uuid}|${names.map((name, i) => `${name}:${sizes[i]}`).join(',')}`;
+        if (laid.has(key)) return;
+        const k = laid.size;
+        laid.add(key);
+        const x = at.x + (k % 8) * 0.4, y = at.y + 0.5 + Math.floor(k / 8) * 0.4;
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute([x, y, at.z, x + 0.3, y, at.z, x, y + 0.3, at.z], 3));
+        g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+        names.forEach((name, i) => g.setAttribute(name, new THREE.Float32BufferAttribute(new Float32Array(3 * sizes[i]).fill(1), sizes[i])));
+        const mesh = new THREE.Mesh(g, material);
+        mesh.name = 'fx-fracture-warm';
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
+        o.group.add(mesh);
+        warmed.push(mesh);
+      };
+      for (const { material, geometry } of surfaces) {
+        lay(material, geometry);
+        // the room behind a hole: one material per source texture, drawn in the face's layout
+        if (host) lay(host.roomMaterialFor(material, false), geometry);
+      }
+      return laid.size;
     },
     shiftTime(delta) { last += delta; },
     reset() {

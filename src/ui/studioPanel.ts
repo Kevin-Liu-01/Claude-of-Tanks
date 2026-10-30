@@ -431,18 +431,22 @@ const MAP_POP_MIN = 200;
 const MAP_POP_MAX = 560;
 const MAP_POP_GAP = 12;
 /** Under this much room below the card the picker cannot show its bar and two rows of cards: it opens as a sheet over
- * the inspector instead, grown to MAP_SHEET px where the screen has it (the s16 critic: on a phone, at 844 x 390, 1024 x
- * 600 and 1280 x 720 the popover cut its cards and the card above scrolled under the tab bar). */
+ * the Studio instead (the s16 critic: on a phone, at 844 x 390, 1024 x 600 and 1280 x 720 the popover cut its cards and
+ * the card above scrolled under the tab bar). */
 const MAP_POP_SHEET_BELOW = Number.POSITIVE_INFINITY; // the sheet at every size: one form (the s17 critic: a nested box at 1440 and up)
-const MAP_SHEET = 520;
-/** From 1440 px the sheet stands wider: four maps to a row and more of the biome chips beside the search (the s19 critic: a
- *  three-column strip at 1920 and 2560 with the filters past Winter behind the arrow). */
-const MAP_SHEET_WIDE = 760;
+/** The sheet stands centred over the Studio under its bar, this wide and tall where the screen has the room, with a
+ *  gutter on every side (the s20 critic: flush to the screen's right edge and foot, its top across the inspector's Map
+ *  section). From 1440 px it is wider and taller: the preview beside three maps to a row (the s19 and s20 critics: one
+ *  narrow column of maps beside a mostly empty preview at 1440 to 2560). */
+const MAP_SHEET = 760;
+const MAP_SHEET_HEIGHT = 560;
+const MAP_SHEET_WIDE = 1040;
+const MAP_SHEET_WIDE_HEIGHT = 640;
 const MAP_SHEET_WIDE_FROM = 1440;
 const MAP_SHEET_TOP = 56;
-/** A sheet taller than its inspector runs over the timeline to the screen's foot, less this (the s19 critic: at 1024 x 600
- *  the sheet ended at the timeline and held a row and a half of maps). */
-const MAP_SHEET_FOOT = 8;
+const MAP_SHEET_GUTTER = 16;
+/** A phone's gutter. */
+const MAP_SHEET_GUTTER_NARROW = 8;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
 const CONTROLS_MODE_KEY = 'cot.studio.controls';
 function readControlsMode(): 'quick' | 'pro' {
@@ -613,6 +617,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const exitBtn = chipButton(t('studio.ws.exit'), 'close');
   exitBtn.appendChild(studioKeycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
+  // the pointer or the focus on Exit is the sign the Garage is next: a direct /studio visit builds its hero then (main.ts)
+  const exitIntent = (): void => { window.dispatchEvent(new Event('cot:studio-exit-intent')); };
+  exitBtn.addEventListener('pointerenter', exitIntent, { once: true });
+  exitBtn.addEventListener('focus', exitIntent, { once: true });
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
   const queueBtn = chipButton(t('studio.ws.queue'), 'clock');
   queueBtn.classList.add('que');
@@ -811,30 +819,27 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
-  // the times of day: a segmented row (09-studio .seg), the times this map has enabled
-  const timeSeg = el('div', 'cot-c-seg times');
-  timeSeg.setAttribute('role', 'radiogroup');
-  wireRovingKeys(timeSeg);
-  timeSeg.setAttribute('aria-label', t('studioPanel.timeOfDay'));
-  const timeOptions = new Map<StudioTimeOfDay, HTMLButtonElement>();
+  // the times of day: the kit's picker menu (261 census: seven times, some a battlefield lacks), the battlefield's own
+  // times choosable; the change lights the scene before the menu takes another
+  const timeHost = el('div', 'timeMenu');
   let timeBusy = false;
-  for (const time of STUDIO_TIMES) {
-    const option = el('button', 'cot-c-seg__opt', t(`atmosphere.${time}`));
-    option.type = 'button';
-    option.setAttribute('role', 'radio');
-    option.dataset.value = time;
-    option.addEventListener('click', () => {
-      if (timeBusy || time === S.timeOfDay) return;
-      timeBusy = true;
-      for (const other of timeOptions.values()) other.disabled = true;
-      S.setTimeOfDay(time)
-        .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
-        .finally(() => { timeBusy = false; api.refreshMap(); });
-    });
-    timeOptions.set(time, option);
-    timeSeg.appendChild(option);
+  /** The times the scene's battlefield has (all seven until its light is read). */
+  let timesOpen: readonly StudioTimeOfDay[] = STUDIO_TIMES;
+  const timeItems = (): PickerItem[] => STUDIO_TIMES.map((time) => ({ id: time, name: t(`atmosphere.${time}`),
+    ...(timesOpen.includes(time) ? {} : { disabled: t('studioPanel.light.timeUnavailable') }) }));
+  function chooseTime(time: StudioTimeOfDay): void {
+    if (timeBusy || time === S.timeOfDay || !timesOpen.includes(time)) return;
+    timeBusy = true;
+    timeMenu.setDisabled(true);
+    S.setTimeOfDay(time)
+      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
+      .finally(() => { timeBusy = false; timeMenu.setDisabled(S.recordingStatus().active); api.refreshMap(); });
   }
-  secScene.appendChild(timeSeg);
+  const timeMenu = createPickerMenu(timeHost, {
+    id: 'studio-hour', label: t('studioPanel.timeOfDay'), items: timeItems(), value: S.timeOfDay ?? 'day', layout: 'list', text: pickerText(),
+    onChoose: (item) => chooseTime(item.id as StudioTimeOfDay),
+  });
+  secScene.appendChild(timeHost);
 
   // --- the sun (media r5): bearing on a north-up compass (world +Z up, -X right, as the tactical map), lighting
   // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
@@ -971,11 +976,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     press(presetButtons[4], light.override?.sunAzimuthDeg === undefined);
     sunNote.textContent = light.space ? t('studioPanel.light.spaceNote') : '';
     press(lampBtn, light.headlights);
-    for (const [time, option] of timeOptions) {
-      option.disabled = timeBusy || !light.times.includes(time);
-      option.setAttribute('aria-checked', String(time === light.time));
-      option.tabIndex = time === light.time ? 0 : -1;
-    }
+    if (light.times.join() !== timesOpen.join()) {
+      timesOpen = light.times;
+      timeMenu.setItems(timeItems(), light.time);
+    } else timeMenu.setValue(light.time);
   }
   battlefieldGroup.body.append(secScene, secLight);
 
@@ -1026,16 +1030,36 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       mapPop.style.maxHeight = `${Math.round(Math.max(MAP_POP_MIN, Math.min(MAP_POP_MAX, innerHeight * 0.65, room)))}px`;
       return;
     }
-    // the inspector contains its paint: the sheet stands in the Studio's root, over the inspector's corner and grown up
-    // and left to MAP_SHEET where the screen has the room
+    // the inspector contains its paint: the sheet stands in the Studio's root, centred under the bar
     const host = mapPick.closest<HTMLElement>('.cot-studio');
     if (host && mapPop.parentElement !== host) host.append(mapPop);
-    const width = Math.min(innerWidth, Math.max(box.width, innerWidth >= MAP_SHEET_WIDE_FROM ? MAP_SHEET_WIDE : MAP_SHEET));
-    const height = Math.min(innerHeight - MAP_SHEET_TOP, Math.max(box.height, MAP_SHEET));
-    const right = Math.min(innerWidth, box.right);
-    const bottom = box.height < height ? innerHeight - MAP_SHEET_FOOT : Math.min(innerHeight, box.bottom);
-    mapPop.style.cssText = `left:${Math.round(Math.max(0, right - width))}px;width:${Math.round(width)}px;`
-      + `top:${Math.round(Math.max(MAP_SHEET_TOP, bottom - height))}px;height:${Math.round(Math.min(height, bottom - MAP_SHEET_TOP))}px`;
+    const wide = innerWidth >= MAP_SHEET_WIDE_FROM;
+    const gutter = innerWidth < 600 ? MAP_SHEET_GUTTER_NARROW : MAP_SHEET_GUTTER;
+    const width = Math.min(innerWidth - 2 * gutter, wide ? MAP_SHEET_WIDE : MAP_SHEET);
+    const tall = innerHeight - MAP_SHEET_TOP - gutter;
+    const height = Math.min(tall, wide ? MAP_SHEET_WIDE_HEIGHT : MAP_SHEET_HEIGHT);
+    mapPop.style.cssText = `left:${Math.round((innerWidth - width) / 2)}px;width:${Math.round(width)}px;`
+      + `top:${Math.round(MAP_SHEET_TOP + (tall - height) / 2)}px;height:${Math.round(height)}px`;
+    requestAnimationFrame(trimMapSheet);
+  }
+  /** The sheet ends on its maps' last whole row: it gives up the cut row's height, half above and half below (the s20
+   *  critic: its foot sliced the third and fourth rows of maps). */
+  function trimMapSheet(): void {
+    if (!mapPop.classList.contains('sheet') || !mapPop.classList.contains('open')) return;
+    const grid = mapPop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return;
+    const top = grid.getBoundingClientRect().top + grid.clientTop;
+    const bottom = top + grid.clientHeight - (parseFloat(getComputedStyle(grid).paddingBottom) || 0);
+    let foot = -Infinity;
+    for (const cell of grid.children) {
+      const cellBox = cell.getBoundingClientRect();
+      if (cellBox.height > 0 && cellBox.top >= top - 0.5 && cellBox.bottom <= bottom + 0.5) foot = Math.max(foot, cellBox.bottom);
+    }
+    const cut = Number.isFinite(foot) ? Math.floor(bottom - foot) : 0;
+    if (cut < 2) return;
+    const sheetBox = mapPop.getBoundingClientRect();
+    mapPop.style.height = `${Math.round(sheetBox.height - cut)}px`;
+    mapPop.style.top = `${Math.round(sheetBox.top + cut / 2)}px`;
   }
   // the battlefield popover and the render queue are transient surfaces (components/surfaceStack.ts): one opens as the other
   // closes, and Escape and a press outside are the stack's
@@ -1199,24 +1223,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     onChoose: (patternId) => patchSel({ camo: patternId }),
     onMakeOwn: () => {},
   });
-  const stateSeg = el('div', 'cot-c-seg');
-  stateSeg.setAttribute('role', 'radiogroup');
-  wireRovingKeys(stateSeg);
-  stateSeg.setAttribute('aria-label', t('studioPanel.selected.stateLabel'));
-  const stateButtons = new Map<string, HTMLButtonElement>();
-  for (const sid of S.ACTOR_STATES) {
-    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.state.${sid}`));
-    option.type = 'button';
-    option.setAttribute('role', 'radio');
-    option.dataset.value = sid;
-    option.addEventListener('click', () => {
-      const a = S._internal.selected;
-      if (a) S.setActorState(a, sid);
-    });
-    stateButtons.set(sid, option);
-    stateSeg.appendChild(option);
-  }
-  paint.append(camoHost, inheritBtn, stateSeg);
+  // the selected tank's state: the kit's picker menu (261 census: six states)
+  const stateHost = el('div', 'stateMenu');
+  const stateMenu = createPickerMenu(stateHost, {
+    id: 'studio-state', label: t('studioPanel.selected.stateLabel'), value: S.ACTOR_STATES[0] ?? null, layout: 'list', text: pickerText(),
+    items: S.ACTOR_STATES.map((sid) => ({ id: sid, name: t(`studio.ws.state.${sid}`) })),
+    onChoose: (item) => { const a = S._internal.selected; if (a) S.setActorState(a, item.id); },
+  });
+  paint.append(camoHost, inheritBtn, stateHost);
   const delBtn = kitButton(t('studio.remove'), 'danger', 'trash');
   delBtn.classList.add('cot-c-btn--wide');
   delBtn.addEventListener('click', () => { const a = S._internal.selected; if (a) S.removeActor(a); });
@@ -1707,12 +1721,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     try {
       const format = S.productionFormat;
       const { width, height } = filmOutputSize(format, Number(filmSize.seg.value));
-      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value) }), 0, S.durationMs);
-      const summary = t('studio.film.summary', {
-        ratio: formatRatio(format),
-        width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
-      });
-      filmSummary.replaceChildren(...summary.split(' · ').map((part) => el('span', null, part)));
+      // the plan still checks the film (its error shows here); the summary names only the output's size, which nothing
+      // else on the screen says (the s20 critic: its ratio, length and frames repeated the top bar, the timeline and the
+      // viewport's frame count)
+      createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value) }), 0, S.durationMs);
+      filmSummary.textContent = t('studio.film.summary', { width, height });
     } catch (error) {
       filmSummary.textContent = errorMessage(error);
     }
@@ -1818,6 +1831,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       createdDialog.addEventListener('click', (event) => {
         if (event.target === createdDialog) createdDialog.close();
       });
+      // its keys and pointer stay in it: an Esc closing it never also exits the Studio (the runtime listens on the window)
+      for (const name of ['keydown', 'pointerdown', 'pointermove', 'pointerup', 'wheel']) {
+        createdDialog.addEventListener(name, (event) => event.stopPropagation());
+      }
       document.body.appendChild(dialog);
     }
     dialog.showModal();
@@ -1829,13 +1846,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   }
 
-  // --- the shelf (09-studio .shelf): the scenes made with the Studio, each staged as filmed ---------------------------
+  // --- the shelf (09-studio .shelf): the templates, the sequences then the filmed scenes, each staged by a press; the
+  // browser (studioTemplateSheet.ts) holds every one, the tanks' own takes too (owner 2026-10-27) ---------------------
   const shelfHead = el('div', 'h');
-  const shelfTitle = el('b');
-  shelfTitle.append(el('span', 't-accent', t('studio.ws.shelfLead')), t('studio.ws.shelfRest'));
+  const shelfTitle = el('b', null, t('studio.director.ui.templates'));
+  const shelfActs = el('div', 'acts');
   const archiveBtn = chipButton(t('studio.ws.allScenes'), 'media');
   archiveBtn.addEventListener('click', openArchive);
-  shelfHead.append(shelfTitle, archiveBtn);
+  shelfActs.append(archiveBtn);
+  shelfHead.append(shelfTitle, shelfActs);
   shelf.appendChild(shelfHead);
 
   // --- the timeline (09-studio .tl): transport, then a lane per camera, tank and effect under one playhead ---------
@@ -1968,6 +1987,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       row?.prepend(button);
     },
     takes: shelf,
+    browse: shelfActs,
     toggle: headRight,
     guides: vp,
     notice: (text, tone, detail) => api.notice(text, tone, detail),
@@ -2229,16 +2249,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     for (const option of snapButtons) {
       add(`snap-${option.dataset.value}`, t('studio.ws.cmd.snap', { name: text(option) }), via(option), { keywords: `snap ${option.dataset.value}` });
     }
-    for (const [time, button] of timeOptions) {
-      if (!button.disabled) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), via(button), { keywords: `light time ${time}` });
+    if (!timeBusy && !S.recordingStatus().active) {
+      for (const time of timesOpen) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), () => chooseTime(time), { keywords: `light time ${time}` });
     }
     for (const preset of PRODUCTION_PRESETS) {
       add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => {
         S.directProduction({ presetId: preset.id, format: S.productionFormat })
           .then(() => api.refreshAll())
           .catch((error: RuntimeValue) => api.notice(errorMessage(error), 'error'));
-      }, { keywords: `stage sequence director ${preset.id}` });
+      }, { searchOnly: true, keywords: `stage sequence template director ${preset.id}` });
     }
+    add('templates', t('studio.director.ui.templates'), () => productionPanel.openTemplates(),
+      { keywords: 'templates presets sequences takes scenes browse library' });
     add('export', t('studio.ws.exportFilm'), via(exportBtn), { keywords: 'export film render video' });
     add('link', t('studio.sceneLink.copyButton'), via(linkBtn), { keywords: 'copy scene link share' });
     add('queue', t('studio.ws.queueTitle'), () => toggleQueue(true), { keywords: 'render queue deliveries stills' });
@@ -2745,6 +2767,32 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     soundWave.classList.remove('stale');
   }
 
+  // --- the playhead, every frame (261): the scrub, the lanes' playhead and the frame readout follow the clock as it
+  // moves (they stepped four times a second while a take played), and an unchanged clock writes nothing ------------
+  let playheadMs = NaN, playheadDuration = NaN, readout = '';
+  function syncPlayhead(): void {
+    const ms = S.fxTimeMs, duration = S.durationMs;
+    if (ms !== playheadMs || duration !== playheadDuration) {
+      playheadMs = ms;
+      playheadDuration = duration;
+      const at = Math.max(0, Math.min(1, ms / Math.max(1, duration)));
+      scrub.max = String(duration);
+      if (document.activeElement !== scrub) scrub.value = String(ms);
+      scrub.style.setProperty('--fill', `${at * 100}%`);
+      playhead.style.setProperty('--t', String(at));
+    }
+    // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
+    // coordinates, which read as a debug overlay)
+    const frames = Math.round(duration / 1000 * 30);
+    const frame = Math.min(frames, Math.round(ms / 1000 * 30));
+    const camera = proControls ? S.getCamera() : null;
+    const place = camera ? `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°` : '';
+    const text = `${frame}/${frames}/${place}`;
+    if (text === readout) return;
+    readout = text;
+    frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })), ...(place ? [el('span', 'co', place)] : []));
+  }
+
   // --- public panel API -------------------------------------------------------
   let refreshAcc = 0, planAcc = 0;
   const api: StudioPanelRuntime = {
@@ -2763,8 +2811,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (text) busy.textContent = text;
     },
     setStage(stage) {
-      app.inert = !!stage;
-      app.toggleAttribute('aria-busy', !!stage);
+      // everything waits but the way out: Exit stays live through the build, and its press abandons the entry (studio.ts
+      // doExit; the loading census 262: the whole app went inert, Exit included)
+      const waiting = !!stage;
+      for (const part of app.children) if (part !== head) (part as HTMLElement).inert = waiting;
+      for (const part of head.children) if (part !== headRight) (part as HTMLElement).inert = waiting;
+      for (const part of headRight.children) if (part !== exitBtn) (part as HTMLElement).inert = waiting;
+      app.toggleAttribute('aria-busy', waiting);
       if (!stage) {
         stagePlate.hidden = true;
         return;
@@ -2853,10 +2906,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (document.activeElement !== heading.input) heading.input.value = String(Math.round(a.pose.facingDeg));
       camoPicker.setTank(a.spec.id, specInfo(a.spec.id).nation ?? null, a.camo || '');
       inheritBtn.hidden = !a.camo;
-      for (const [sid, option] of stateButtons) {
-        option.setAttribute('aria-checked', String(sid === a.stateName));
-        option.tabIndex = sid === a.stateName ? 0 : -1;
-      }
+      stateMenu.setValue(a.stateName);
     },
     refreshEffects() {
       rebuildEffectList();
@@ -2894,16 +2944,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }
       const seconds = S.durationMs / 1000;
       if (Number(duration.input.value) !== seconds) duration.set(seconds);
-      scrub.max = String(S.durationMs);
-      if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
-      scrub.style.setProperty('--fill', `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`);
-      playhead.style.setProperty('--t', String(Math.max(0, Math.min(1, S.fxTimeMs / Math.max(1, S.durationMs)))));
+      syncPlayhead();
       if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();
       setLabel(recordBtn, rec.active ? t('studio.stopRecording') : t('studio.recordVideo'));
       press(recordBtn, rec.active);
       recStatus.classList.toggle('on', rec.active);
-      recStatus.textContent = rec.active
+      const recText = rec.active
         ? t('studio.recordingStatus', {
           elapsed: (rec.elapsedMs / 1000).toFixed(1),
           total: (rec.durationMs / 1000).toFixed(1),
@@ -2912,13 +2959,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         : (rec.supported
           ? t('studio.recordReady')
           : t('studio.recordUnsupported'));
-      // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
-      // coordinates, which read as a debug overlay)
-      const frames = Math.round(S.durationMs / 1000 * 30);
-      const frame = Math.min(frames, Math.round(S.fxTimeMs / 1000 * 30));
-      const camera = S.getCamera();
-      frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })),
-        ...(proControls ? [el('span', 'co', `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`)] : []));
+      if (recStatus.textContent !== recText) recStatus.textContent = recText;
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
@@ -2936,7 +2977,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clearTrackBtn.disabled = isRecording || !S._internal.selected;
       duelBtn.disabled = isRecording || S._internal.actors.length < 2;
       railBtn.disabled = isRecording;
-      for (const option of timeOptions.values()) if (isRecording) option.disabled = true;
+      timeMenu.setDisabled(isRecording || timeBusy);
       rebuildStoryboard();
       updateFilmSummary();
       const board = S.getStoryboard();
@@ -2977,6 +3018,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       outlineCount('output', null);
     },
     tick(dt) {
+      syncPlayhead();
       refreshAcc += dt;
       planAcc += dt;
       // the plan follows the playhead at ~15 fps while the take plays

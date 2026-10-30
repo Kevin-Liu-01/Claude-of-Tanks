@@ -250,9 +250,12 @@ export function createBattleResultPresentationRuntime({
       endShown = true;
       exitPointerLock();
       if (pending) {
-        // A player-death beat was already armed. Preserve its original
-        // deadline but redirect its completion into the final verdict flow.
-        pending.fire = () => armEnding(result, false, true);
+        // The verdict landed inside the player's death beat (a network battle shows its own tank's death a
+        // moment before the verdict's event; a last ally falling within the beat): the ending starts now, and
+        // its replay opens on the killcam's live wreck hold, which carries the beat on. The report waits only
+        // for a running replay or camera beat, so a beat left to its deadline let the report in first.
+        pending = null;
+        armEnding(result, true, true);
       } else {
         const freshKill = !deathCamShown && destroyed;
         // owner 2026-09-21 ("if u die before end it shows a kill cam of that end"): a reviving mode never ran a

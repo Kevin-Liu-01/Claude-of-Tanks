@@ -659,6 +659,8 @@ export interface OpeningEffectsWarmOptions {
   timing?: ForwardProgramCompileTiming;
   fx: BattleFxPort & {
     warmProjectilePresentation(position: Vector3, direction: Vector3): void;
+    /** A building's first damage's programs (StudioFxPort warmStructures), laid for the covered render. */
+    warmStructures?(position: Vector3): number;
     composeFiringMoment(options: {
       muzzlePos: Vector3;
       dir: Vector3;
@@ -1055,6 +1057,10 @@ function stageAndRenderNetworkEffects({ fx, post, camera, warmRender }: OpeningE
   fx.exhaust(position, 1, true);
   fx.destruction(position, null, 'shot');
   fx.destruction(position, null, 'ammorack');
+  // (fx-first-use-261; the Frontier lane's room census: a guest's first broken building linked the pieces' program in a
+  // 977 ms task and its fracture face and room in a 680 ms one) a building's stage and fracture programs, staged here as
+  // the solo deployment stages them (stageCombatFxProgramSubmission); resetAll after the render takes them away
+  try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
   // No yield/update time may expire these exact pooled instances before the
   // actual compositor draw, including its separate late-FX/depth-copy pass.
   fx.composeFiringMoment({

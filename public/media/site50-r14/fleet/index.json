@@ -2777,6 +2777,36 @@
    "loop": "/media/site50-r14/fleet/ru_t72b3_modern.webm",
    "poster": "/media/site50-r14/fleet/ru_t72b3_modern.jpg",
    "scene": "/media/site50-r14/scenes/s142-ru-t72b3-modern-whiteout.scene.json"
+  },
+  "type10_dozer": {
+   "take": "s253-type10-dozer-mangrove",
+   "map": "mangrove",
+   "title": {
+    "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+    "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+   },
+   "short": {
+    "en": "Type 10 Kaitaku, Mangrove Reach",
+    "zh": "Type 10 Kaitaku，红树林水道"
+   },
+   "loop": "/media/site50-r14/fleet/type10_dozer.webm",
+   "poster": "/media/site50-r14/fleet/type10_dozer.jpg",
+   "scene": "/media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json"
+  },
+  "m60a3": {
+   "take": "s208-m60a3-copper-mesa",
+   "map": "copper_mesa",
+   "title": {
+    "en": "An M60A3 knocks out a T-64BV1 at Copper Mesa Mine",
+    "zh": "一辆 M60A3 在铜台地矿场击毁一辆 T-64BV1"
+   },
+   "short": {
+    "en": "M60A3, Copper Mesa Mine",
+    "zh": "M60A3，铜台地矿场"
+   },
+   "loop": "/media/site50-r14/fleet/m60a3.webm",
+   "poster": "/media/site50-r14/fleet/m60a3.jpg",
+   "scene": "/media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json"
   }
  }
 }

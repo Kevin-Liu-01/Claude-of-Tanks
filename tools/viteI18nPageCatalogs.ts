@@ -53,8 +53,13 @@ import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
 
 /** The modules every document runs at boot, bundled as one chunk. (261) The kit's surface stack (components/surfaceStack.ts,
  *  a leaf of 1.6 KB) rides here: every document opens a menu, a sheet or a dialog through it (the public nav's menu sheet,
- *  the shared modal, the game's and the Gallery's pickers), and on its own it was one more boot request on every page. */
-export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|i18nChunkImport\.browser|localeRouting|responsiveLayout|components[\\/]surfaceStack)\.ts|[\\/]src[\\/]presentation[\\/]staticI18n\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
+ *  the shared modal, the game's and the Gallery's pickers), and on its own it was one more boot request on every page.
+ *  (262) So does the kit's reveal (components/reveal.ts, the loading states' fade once decoded) with the public pages'
+ *  stills over it (presentation/revealStills.ts), 1 KB together: the manual, its chapters, the 404 and the archive's wall
+ *  import them, and on their own they were one more boot request on each of those pages. (264) So does the kit's load
+ *  failure (components/loadFailure.ts, about 0.5 KB): an opener whose chunk did not arrive says so on its trigger with no
+ *  chunk of its own, on every page. */
+export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|i18nChunkImport\.browser|localeRouting|responsiveLayout|components[\\/]surfaceStack|components[\\/]reveal|components[\\/]loadFailure)\.ts|[\\/]src[\\/]presentation[\\/](?:staticI18n|revealStills)\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
 /**
  * The registry's import of its chunk importer (src/ui/i18nDictionaries.ts), aliased for a document to the module that
  * imports the URL; Node resolves it to src/ui/i18nChunkImport.ts.

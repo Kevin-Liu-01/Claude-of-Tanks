@@ -23,9 +23,9 @@
     { "source": "/docs/performance{/}?", "destination": "/docs/rendering", "permanent": true },
     { "source": "/cn/docs/performance{/}?", "destination": "/cn/docs/rendering", "permanent": true },
     { "source": "/:page(home|docs|gallery|studio)/", "destination": "/:page", "permanent": true },
-    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)/", "destination": "/docs/:topic", "permanent": true },
+    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)/", "destination": "/docs/:topic", "permanent": true },
     { "source": "/cn/:page(home|docs|gallery|studio)/", "destination": "/cn/:page", "permanent": true },
-    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)/", "destination": "/cn/docs/:topic", "permanent": true }
+    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)/", "destination": "/cn/docs/:topic", "permanent": true }
   ],
   "headers": [
     {
@@ -36,7 +36,7 @@
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Content-Security-Policy-Report-Only", "value": "script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com 'sha256-6zfTrAqLkbi6tvQUwgS/FLSWSfC70U5KtA+PGnHRaak=' 'sha256-9hp0bsvVx2INaIyIWRuGIUbWZHRwkEhBWDxec8mH+XY=' 'sha256-MEQ5aQ5RPRYEJF5sCaZ0keCRBviUo4YfQfvGA0o1re0=' 'sha256-T9tpAzxtJFbelvZ/7pBBG4jhkT9DOHdLz+ty/qq4vQU=' 'sha256-fInKe7RAsgeUneh2dwkUhPQZVCB23HlTdVpDBuJw0/E=' 'sha256-fobahHUzJRogwLusmO4xbhrWsUDIFOf12tKyK75sipM=' 'sha256-kmEsAlzgflC8xE27syBwl1XrDXNJUKPAgTHUndjMolc=' 'sha256-uKeSmjabZJuNSSMUAFpiMOs+l6ztcBtqSYepmmG5phI=' 'sha256-ycAInyfvipaaR/Vv/OAYwo0ipoJ5Lk/wammuOx/SL8c='; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" }
+        { "key": "Content-Security-Policy-Report-Only", "value": "script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com 'sha256-3UMTODFNNvpFYQyqr8L1khlN/XDQmkiuulWiqLJ0wSI=' 'sha256-6zfTrAqLkbi6tvQUwgS/FLSWSfC70U5KtA+PGnHRaak=' 'sha256-9hp0bsvVx2INaIyIWRuGIUbWZHRwkEhBWDxec8mH+XY=' 'sha256-MEQ5aQ5RPRYEJF5sCaZ0keCRBviUo4YfQfvGA0o1re0=' 'sha256-brj5f31vZGoNx+0oBMTf0O905uAZr2IicUyHqyRD62w=' 'sha256-fInKe7RAsgeUneh2dwkUhPQZVCB23HlTdVpDBuJw0/E=' 'sha256-fobahHUzJRogwLusmO4xbhrWsUDIFOf12tKyK75sipM=' 'sha256-kmEsAlzgflC8xE27syBwl1XrDXNJUKPAgTHUndjMolc=' 'sha256-ycAInyfvipaaR/Vv/OAYwo0ipoJ5Lk/wammuOx/SL8c='; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" }
       ]
     },
     { "source": "/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
@@ -46,10 +46,10 @@
   ],
   "rewrites": [
     { "source": "/:page(home|docs|gallery)", "destination": "/:page.html" },
-    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)", "destination": "/docs-:topic.html" },
+    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/cn", "destination": "/cn/index.html" },
     { "source": "/cn/:page(home|docs|gallery|studio|404)", "destination": "/cn/:page.html" },
-    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)", "destination": "/cn/docs-:topic.html" }
+    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/cn/docs-:topic.html" }
   ]
 }

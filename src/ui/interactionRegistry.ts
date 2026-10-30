@@ -92,31 +92,26 @@ const BATTLEFIELDS = 34;
 /** The rows. A new choose-one gets one here, built on the picker, before it renders anywhere. */
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
-  'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
-  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
-  'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   // the consumable catalog (2026-10-26): each slot opens the kit picker over the thirteen items (garageConsumables.ts)
   'garage-consumables': { chooses: 'consumable', options: 13, screen: 'garage', owner: 'src/ui/garageConsumables.ts', build: 'picker', marks: ['picker:garage-consumables'], lane: 'premiere-gallery-studio' },
-  'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
+  'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-paint-band'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
   // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
   'garage-camo': { chooses: 'camo', options: 175, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-camo'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], lane: 'premiere-gallery-studio' },
+  // (261) the lab's brushes, tones and stencils: three segmented controls of at most five
+  'camo-lab-tools': { chooses: 'setting', options: 5, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'segmented', marks: ['segmented:.cot-custom-brushes', 'segmented:.cot-custom-tones', 'segmented:.cot-custom-assets'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN C: the staging area is the kit's picker menu over its ten picture cards (the hand-rolled listbox went)
   // the battle card's corner control (owner 10-26): the mode, then the battlefield, on the kit's picker menus
   'garage-quick-mode': { chooses: 'mode', options: 13, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-quick-mode'], lane: 'premiere-gallery-studio' },
   'garage-quick-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-quick-battlefield'], lane: 'premiere-gallery-studio' },
   'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-staging'], lane: 'premiere-gallery-studio' },
-  'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
   // drawings-overhaul-259: the guide's view switch is the technical drawing viewer's tabs now (technicalDrawing.ts), still
   // bespoke and in the ratchet baseline; the segmented control is its owed build
-  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['src/ui/technicalDrawing.ts bespoke:value===current', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
-  'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },
-  'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'bespoke', marks: ["bespoke:id==='hero'", 'bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
-  'tech-tree-node': { chooses: 'tank', options: 40, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:node.id'], lane: 'premiere-gallery-studio' },
-  'tech-tree-nation': { chooses: 'nation', options: 13, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:dataset.tree'], lane: 'premiere-gallery-studio' },
+  // (261) the technical drawing's views and kinds (the guides' steps are the kit's tabs, navigation, no mark)
+  'guide-drawing': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/technicalDrawing.ts', build: 'segmented', marks: ['segmented:.cot-td__views', 'segmented:.cot-td__kinds'], lane: 'premiere-gallery-studio' },
+  'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'segmented', marks: ['segmented:.cot-photo-views'], lane: 'premiere-gallery-studio' },
   'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], lane: 'premiere-gallery-studio' },
 
   // ---- Deploy (premiere-site)
@@ -142,6 +137,8 @@ export const INTERACTION_SITES = Object.freeze({
   // every On/Off setting (the alarms, the HUD, the allies' brain, the telemetry)
   'settings-on-off': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-onoff'], lane: 'premiere-site' },
   'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-lang'], lane: 'premiere-site' },
+  // battle-camera-264: the chase camera's shoulder (left, centre, right) beside its sliders
+  'settings-camera-shoulder': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-shoulder'], lane: 'premiere-site' },
   // the parts on the picker's list; the preview's own parts select by a press or a drag (direct manipulation)
   'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'picker', marks: ['picker:hud-editor-part', 'bespoke:key===id'], lane: 'premiere-site' },
   'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'segmented', marks: ['segmented:.hud-edit-profiles'], lane: 'premiere-site' },
@@ -164,7 +161,7 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-arrangement', 'select:[data-arrange]'], lane: 'lead' },
 
   // ---- the battle (premiere-battle)
-  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
+  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'segmented', marks: ['segmented:.cot-scope-vision-seg'], lane: 'premiere-battle' },
   /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
   'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
@@ -172,50 +169,47 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], lane: 'premiere-gallery-studio' },
   'studio-controls': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:modeSeg', 'bespoke:dataset.value'], lane: 'premiere-gallery-studio' },
   'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-battlefield'], lane: 'premiere-gallery-studio' },
-  'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], lane: 'premiere-gallery-studio' },
+  'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-hour'], lane: 'premiere-gallery-studio' },
   'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], lane: 'premiere-gallery-studio' },
-  'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], lane: 'premiere-gallery-studio' },
+  'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-state'], lane: 'premiere-gallery-studio' },
   'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-camo'], lane: 'premiere-gallery-studio' },
-  'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], lane: 'premiere-gallery-studio' },
   'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
   'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:group'], lane: 'premiere-gallery-studio' },
   'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:transition', 'bespoke:id===shot.transition'], lane: 'premiere-gallery-studio' },
   // the look and the aperture on the picker menu, the matte and the sensor (four each) on the segmented control (261)
   'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'picker', marks: ['picker:studio-picture', 'segmented:.studio-picture-seg'], lane: 'premiere-gallery-studio' },
-  'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
-  'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
   // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
   'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
   'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'picker', marks: ['picker:studio-featured-tank'], lane: 'premiere-gallery-studio' },
   // (261) the tanks to add to a scene: the kit's picker menu, each tank's portrait (a hand-made list until then)
   'studio-actor': { chooses: 'tank', options: FLEET, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-actor'], lane: 'premiere-gallery-studio' },
-  'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
-  'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
+  /** The template browser (owner 2026-10-27): every sequence, scene and tank's take, with a preview beside the cards. */
+  'studio-templates': { chooses: 'take', options: 214, screen: 'studio', owner: 'src/ui/studioTemplateSheet.ts', build: 'picker', marks: ['picker:studio-templates'], lane: 'premiere-gallery-studio' },
 
   // ---- the Tank Gallery (premiere-gallery-studio)
-  'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], lane: 'premiere-gallery-studio' },
-  'gallery-facets': { chooses: 'filter', options: 23, screen: 'gallery', owner: 'src/gallery/galleryFacets.ts', build: 'bespoke', marks: ['bespoke:selected===code', 'bespoke:selected===id', `${GALLERY} bespoke:browse.era`, `${GALLERY} bespoke:browse.role`], lane: 'premiere-gallery-studio' },
   'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-sort'], lane: 'premiere-gallery-studio' },
   'gallery-layout': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.layout-switch', `${GALLERY} bespoke:dataset.value`], lane: 'premiere-gallery-studio' },
   'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-rival'], lane: 'premiere-gallery-studio' },
   'gallery-peer-scale': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.peer-switch'], lane: 'premiere-gallery-studio' },
   'gallery-drawing': { chooses: 'view', options: 3, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#diagramSwitch', `${GALLERY} bespoke:view===diagram`], lane: 'premiere-gallery-studio' },
-  'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-gallery-studio' },
-  'gallery-camera-view': { chooses: 'view', options: 8, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
+  'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'segmented', marks: ['segmented:.layers'], lane: 'premiere-gallery-studio' },
+  'gallery-camera-view': { chooses: 'view', options: 8, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-camera-view'], lane: 'premiere-gallery-studio' },
   'gallery-armor-metric': { chooses: 'view', options: 3, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'segmented', marks: ['segmented:seg', 'bespoke:metric===value'], lane: 'premiere-gallery-studio' },
-  'gallery-part': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'bespoke', marks: ['bespoke:dataset.anatomyPart'], lane: 'premiere-gallery-studio' },
-  'damage-lab-kind': { chooses: 'filter', options: 4, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:kind===value'], lane: 'premiere-gallery-studio' },
-  'damage-lab-target': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:lab!.selected'], lane: 'premiere-gallery-studio' },
+  'damage-lab-target': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'picker', marks: ['picker:damage-lab-target'], lane: 'premiere-gallery-studio' },
   'markup-operation': { chooses: 'setting', options: 4, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.markup-operation-grid', 'src/gallery/surfaceMarkup.ts bespoke:dataset.markupOperation'], lane: 'premiere-gallery-studio' },
   // (261, the dropdown audit) the scope's two values on the segmented control, the primitive's six on the picker menu over its <select>
   'markup-scope': { chooses: 'setting', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#markupScope'], lane: 'premiere-gallery-studio' },
   'markup-primitive': { chooses: 'setting', options: 6, screen: 'gallery', owner: GALLERY_PAGE, build: 'picker', marks: ['select:#markupPrimitive', 'src/gallery/surfaceMarkup.ts picker:markup-primitive'], lane: 'premiere-gallery-studio' },
-  'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
   'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'picker', marks: ['picker:docs-battle-reel'], lane: 'premiere-site' },
   'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-stage'], lane: 'premiere-site' },
   'docs-filming-take': { chooses: 'take', options: 8, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-take'], lane: 'premiere-site' },
+  // (262) the fleet chapter's grid: its five filters (nation, tier, era, class, role, each with its every-value choice) are
+  // one site on the kit's picker menu, its three presentations the segmented control (src/docs/chapters/fleetGrid.ts draws
+  // them, fleetGrid.ts wires them)
+  'docs-fleet-filter': { chooses: 'filter', options: 14, screen: 'site', owner: 'src/docs/fleetGrid.ts', build: 'picker', marks: ['picker:docs-fleet-filter'], lane: 'premiere-site' },
+  'docs-fleet-view': { chooses: 'view', options: 3, screen: 'site', owner: 'src/docs/chapters/fleetGrid.ts', build: 'segmented', marks: ['segmented:.dm-fleet__views', 'site/docs-fleet.html segmented:.dm-fleet__views'], lane: 'premiere-site' },
   // (2026-10-26) the archive's feature filter and the library's collections are the kit's tabs: each switches the view
   // under it (the archive's grid, the library's panel), navigation the census does not count as a choice
 } as const satisfies Readonly<Record<string, InteractionSite>>);
@@ -234,4 +228,27 @@ export const INTERACTION_EXEMPT: readonly InteractionExempt[] = Object.freeze([
   { owner: STUDIO, mark: 'bespoke:light.override?.sunElevationDeg', reason: "the sun elevation's Auto chip shows whether the map's own elevation holds: a toggle" },
   { owner: 'src/presentation/heroReel.ts', mark: 'bespoke:dataset.reelShot', reason: "the hero reel's caption follows the playing shot: a readout, nothing to choose" },
   { owner: 'src/presentation/homePage.ts', mark: 'bespoke:other===option', reason: "the landing's rail switch: tabs over its panels (role=tab, tabpanel): navigation, not a choice" },
+  { owner: 'src/ui/infoGuides.ts', mark: 'bespoke:dataset.part', reason: "the guide figure lights the part its chosen step (the kit's tabs) names: a readout of the tab, nothing to choose" },
+  // 261: the lead's ruling on the census rows (navigation, direct manipulation, readouts, filter sets, launch cards)
+  { owner: GARAGE, mark: 'listbox:.cot-cards', reason: "the Garage's roster carousel (owner-ratified): a press stages and warms a tank; navigation through the fleet, not a set's choice" },
+  { owner: GARAGE, mark: 'bespoke:chipById', reason: "the roster's nation flags: navigation within the ratified carousel, flag-only tabs the kit's tabs cannot draw" },
+  { owner: GARAGE, mark: 'bespoke:id===countryId', reason: "the roster's nation flags: navigation within the ratified carousel, flag-only tabs the kit's tabs cannot draw" },
+  { owner: 'src/ui/garageFacetPanel.ts', mark: 'bespoke:state[group]', reason: "the roster's Filter panel: class, role and era filters any number of which may be on, not a choose-one" },
+  { owner: GARAGE, mark: 'bespoke:k===i', reason: "the featured still's dots show which picture of the slideshow is up: a readout, nothing to choose" },
+  { owner: GALLERY_PAGE, mark: 'listbox:#vehicleList', reason: "the Gallery's roster: master-detail navigation, a row opens its tank's dossier (and its ?id=)" },
+  { owner: GALLERY, mark: 'bespoke:dataset.id', reason: "the Gallery's roster: master-detail navigation, a row opens its tank's dossier (and its ?id=)" },
+  { owner: 'src/gallery/galleryFacets.ts', mark: 'bespoke:selected===code', reason: "the archive's filter rows: filters a reader stacks, not a choose-one (their chips are the kit's)" },
+  { owner: 'src/gallery/galleryFacets.ts', mark: 'bespoke:selected===id', reason: "the archive's filter rows: filters a reader stacks, not a choose-one (their chips are the kit's)" },
+  { owner: GALLERY, mark: 'bespoke:browse.era', reason: "the archive's era filter: a filter a reader stacks with the others, not a choose-one" },
+  { owner: GALLERY, mark: 'bespoke:browse.role', reason: "the archive's role filter: a filter a reader stacks with the others, not a choose-one" },
+  { owner: 'src/gallery/anatomyView.ts', mark: 'bespoke:dataset.anatomyPart', reason: "the callouts pinned to the model's parts: pressing one is pressing the part on the model, direct manipulation" },
+  { owner: 'src/gallery/surfaceMarkup.ts', mark: 'bespoke:annotation.id', reason: "the reader's own annotations: an editor's list of what they made (select, delete), not a set to choose from" },
+  { owner: 'src/ui/infoGuidePhoto.ts', mark: 'bespoke:i===index', reason: "the guide photo's numbered pins: hotspots on the picture that mirror the guide's steps" },
+  { owner: 'src/ui/techTree.ts', mark: 'bespoke:dataset.tree', reason: "the tech tree's nation rail (a nav, aria-current): navigation between trees" },
+  { owner: 'src/ui/techTree.ts', mark: 'bespoke:node.id', reason: "the tech tree's nodes on a board one pans and zooms: navigation of a laid-out diagram" },
+  { owner: 'src/ui/studioCommands.ts', mark: 'listbox:list', reason: "the Studio's command palette: a press runs an action and nothing stays chosen" },
+  { owner: 'src/ui/studioCommands.ts', mark: 'bespoke:index===current', reason: "the Studio's command palette: a press runs an action and nothing stays chosen" },
+  { owner: STUDIO, mark: 'listbox:fxStack', reason: "the scene's placed effects: an editor's layer list of what the scene holds, not a set to choose from" },
+  { owner: PRODUCTION, mark: 'bespoke:template.id', reason: "the Studio shelf's launch cards (sequences and scenes): a press stages one; the whole choice is the studio-templates picker" },
+  { owner: PRODUCTION, mark: 'bespoke:cardId===id', reason: "the Studio shelf's launch cards (sequences and scenes): a press stages one; the whole choice is the studio-templates picker" },
 ]);

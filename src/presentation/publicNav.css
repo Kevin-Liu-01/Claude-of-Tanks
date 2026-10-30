@@ -82,7 +82,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-footer__links a{display:inline-flex;align-items:center;gap:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-ui);color:var(--ink-2);text-decoration:none}
 .public-footer__links a:hover{color:var(--ink-1)}
 .public-footer__stars{min-width:3ch;font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3)}
-.public-footer__stars[data-github-stars-state='failed']{display:none}
+.public-footer__stars[data-github-stars-state='unavailable']{display:none}
 .public-footer__credit{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3);margin:0;padding-top:var(--s4);border-top:1px solid var(--line-1);
   font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-ui);color:var(--ink-3)}
 .public-footer__credit a{display:inline-flex;align-items:center;gap:var(--s2);color:var(--ink-3);text-decoration:none}

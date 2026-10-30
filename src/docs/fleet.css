@@ -1,0 +1,127 @@
+/* The Field Manual's fleet chapter (src/docs/chapters/fleetGrid.ts prerenders it; topics.ts wireFleetGrid and
+   src/docs/fleetGrid.ts drive it): the chapter sheet, the kit's pickers (its filters are the kit's picker menu from the
+   first paint), the kit's figures (its empty state), then the grid's own rules. The page's one stylesheet.
+   Copyright © 2026 Kevin B. Liu. */
+@import url('./chapters.css');
+@import url('./docsPickers.css');
+@import url('../ui/components/figures.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+/* one section that takes the body's whole width: no "on this page" rail */
+.dm-body--full{grid-template-columns:minmax(0,1fr)}
+/* The grid is its own container: the bar and the columns follow its width (the shelf beside it or not), and a tile's
+   reserved size is computed from it. A tile is its picture at the presentation's aspect over a words block of fixed
+   height (two lines of name, the flag and class line), so a tile the browser has not laid out yet (content-visibility)
+   reserves exactly the size it will take, and nothing below it moves when it comes into view. */
+.dm-fleet{container:fleet/inline-size;--dm-fleet-gap:var(--s3);--dm-fleet-ar:1.6;--dm-fleet-name:calc(var(--fs-15) * 1.25);
+  --dm-fleet-meta:20px;--dm-fleet-words:calc(var(--s2) + 2 * var(--dm-fleet-name) + var(--s1) + var(--dm-fleet-meta) + var(--s3))}
+/* the angle render keeps the fleet's shared portrait framing (pickers.css .is-tank); the side render stands in the hero
+   card's 16:10 under the tier chip's band (below), so the chip never sits on a mast or a launcher */
+.dm-fleet[data-view=angle]{--dm-fleet-ar:calc(216 / 184)}
+
+/* ---- the bar: search, the five filters, the presentation and the count. A phone stacks it two across, the nation across
+   both; a tablet three across with the presentation beside the search; a wide grid sets the five filters in one row under
+   them. Its columns are the tiles' (equal, the tiles' gap), so where the two counts match their edges meet; each holds its
+   longest choice on one line (the kit's trigger never wraps: a shared flag reads Russia / USSR). */
+.dm-fleet__bar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2) var(--s3);align-items:center;margin-top:var(--s4);
+  grid-template-areas:"search search" "views views" "nation nation" "tier era" "class role" "count count"}
+.dm-fleet__menus{display:contents}
+.dm-fleet__search{grid-area:search;min-width:0}
+.dm-fleet__search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
+.dm-fleet__search input::placeholder{color:var(--ink-3)}
+.dm-fleet__search input::-webkit-search-cancel-button{display:none}
+.dm-fleet__search .cot-i{flex:none;width:16px;height:16px;margin-inline-start:-2px}
+.dm-fleet__menu{min-width:0}
+.dm-fleet__menu[data-fleet-facet=nation]{grid-area:nation}
+.dm-fleet__menu[data-fleet-facet=tier]{grid-area:tier}
+.dm-fleet__menu[data-fleet-facet=era]{grid-area:era}
+.dm-fleet__menu[data-fleet-facet=class]{grid-area:class}
+.dm-fleet__menu[data-fleet-facet=role]{grid-area:role}
+.dm-fleet__views{grid-area:views;display:flex}
+.dm-fleet__views .cot-c-seg__opt{flex:1 1 0;padding-inline:var(--s2)}
+.dm-fleet__count{grid-area:count;justify-self:start;margin:0;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);white-space:nowrap}
+@container fleet (width >= 640px){
+  .dm-fleet__bar{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"search search views" "nation tier era" "class role count"}
+}
+@container fleet (width >= 900px){
+  /* the count reads as the search's result, beside its field */
+  .dm-fleet__bar{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"search search count views views" "nation tier era class role"}
+  .dm-fleet__views{justify-self:end}
+  .dm-fleet__views .cot-c-seg__opt{flex:none}
+}
+/* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate, its
+   foot a hairline as the site bar's is, so a row passing under it meets an edge; the plate reaches past the grid by its
+   padding, the hairline keeps the grid's own edges */
+@media (width >= 768px) and (height >= 700px){
+  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);
+    background:linear-gradient(var(--line-2),var(--line-2)) 50% 100%/calc(100% - 2 * var(--s2)) 1px no-repeat,var(--surface-page)}
+}
+/* the segmented track stands as tall as the search and the triggers (36 px; 44 on touch, below) */
+.dm-fleet__views .cot-c-seg__opt{height:30px}
+/* a glyph and a flag share one 24 px slot, so a menu's rows and a trigger's label keep one edge whichever leads them */
+:is(.dm-fleet__menu .cot-c-menu__glyph,.cot-c-menu__pop:has(>.cot-c-menu__picker[data-picker='docs-fleet-filter']) .cot-c-picker__glyph){width:24px;justify-content:center}
+/* on touch each option is a whole target across as well (the fleet r3 zh critic: 斜视 and 侧视 were 42 px wide on an iPad) */
+@media (pointer:coarse){
+  .dm-fleet__search{height:var(--cot-control-floor,44px)}
+  .dm-fleet__views .cot-c-seg__opt{min-width:var(--cot-control-floor,44px);height:38px}
+}
+
+/* ---- the tiles: two across on a phone, up to seven on a 2560 screen, each about 190 px or wider */
+.dm-fleet__grid{margin-top:var(--s4)}
+.dm-fleet__list{--dm-fleet-cols:2;display:grid;grid-template-columns:repeat(var(--dm-fleet-cols),minmax(0,1fr));gap:var(--dm-fleet-gap);margin:0;padding:0;list-style:none}
+@container fleet (width >= 594px){.dm-fleet__list{--dm-fleet-cols:3}}
+@container fleet (width >= 796px){.dm-fleet__list{--dm-fleet-cols:4}}
+@container fleet (width >= 998px){.dm-fleet__list{--dm-fleet-cols:5}}
+@container fleet (width >= 1200px){.dm-fleet__list{--dm-fleet-cols:6}}
+@container fleet (width >= 1402px){.dm-fleet__list{--dm-fleet-cols:7}}
+.dm-fleet__tile{min-width:0;content-visibility:auto;
+  contain-intrinsic-size:0 calc((100cqi - (var(--dm-fleet-cols) - 1) * var(--dm-fleet-gap)) / var(--dm-fleet-cols) / var(--dm-fleet-ar) + var(--dm-fleet-words))}
+.dm-fleet__tile[hidden]{display:none}
+/* the card fills its row, and its words stand on the card's foot: every tile of a row puts its name on one baseline,
+   whatever fraction of a pixel its picture's height rounds to (the 1 px steps of r1) */
+.dm-fleet__card{position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);
+  color:inherit;text-decoration:none}
+/* the hover ring is a step, not a fade: a ring's shadow is a repaint (tools/motion-lint.mjs colour) */
+.dm-fleet__card:hover{box-shadow:var(--ring-3)}
+.dm-fleet__card:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* the picture's box holds the presentation's aspect and the scene's tone, the tile's placeholder until its picture has
+   decoded (data-ready, set by topics.ts), which then fades in over it */
+.dm-fleet__media{position:relative;display:block;flex:none;aspect-ratio:var(--dm-fleet-ar);overflow:hidden;background:var(--surface-scene);
+  --hc-pad:var(--s3)}
+.dm-fleet__layer{position:absolute;inset:0;display:block}
+.dm-fleet__media>.dm-hc{width:auto;aspect-ratio:auto}
+.dm-fleet:not([data-view=hero]) [data-layer=hero],.dm-fleet:not([data-view=angle]) [data-layer=angle],.dm-fleet:not([data-view=side]) [data-layer=side]{display:none}
+/* a tile's pictures stand transparent over its tone from the first paint (each layer is the kit's reveal box, data-reveal
+   in the served markup: chapters/fleet.ts heroCardMarkup, docs.css) and fade in once they decode (topics.ts wireFleetGrid
+   marks it data-ready), so a picture that arrives before the scripts never pops in */
+.dm-fleet__media img[data-failed]{visibility:hidden}
+.dm-fleet__angle img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
+/* the side render under the chip's band: the chip's inset, its height and a step */
+.dm-fleet__side{top:calc(var(--hc-pad) + 20px + var(--s2))}
+.dm-fleet__side img{display:block;width:100%;height:100%;object-fit:contain}
+/* the tier chip every hero card wears (heroCardChips.ts, heroCard.css .cot-hc .hc-tier) stays in the picture's corner on
+   every presentation: the picture's box is a hero card host of its own */
+.dm-fleet__words{display:grid;grid-template-rows:1fr auto;gap:var(--s1);height:var(--dm-fleet-words);margin-top:auto;padding:var(--s2) var(--s3) var(--s3);box-sizing:border-box}
+.dm-fleet__name{align-self:start;font:600 var(--fs-15)/1.25 var(--font-display);color:var(--ink-1);overflow-wrap:break-word;text-wrap:pretty}
+.dm-fleet__meta{display:flex;align-items:center;gap:var(--s2);height:var(--dm-fleet-meta);min-width:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3);white-space:nowrap}
+.dm-fleet__meta .cot-c-flag{margin-inline:1px}
+.dm-fleet__empty{margin-top:var(--s4)}
+@media (pointer:coarse){.dm-fleet__empty .cot-c-btn{height:var(--cot-control-floor,44px)}}
+/* a filter's menu over the grid stands on the kit's scrim, as its sheet does: its edge never cuts a tile's name in view */
+.cot-c-menu__pop:has(>.cot-c-menu__picker[data-picker='docs-fleet-filter'])::backdrop{background:var(--scrim)}
+/* the empty state's line is the kit's (figures.css), not the chapter's prose (docs.css .dm-section p) */
+.dm-section .dm-fleet__empty p{margin:0;max-width:44ch;font:inherit;color:inherit}
+@media (prefers-reduced-motion:reduce){.dm-fleet__layer[data-reveal]>:is(img,picture){transition:none}}
+}
+/* printed (the manual's print sheet turns the kit's tokens to paper and hides the chrome): the grid without its bar, four
+   tiles across the A4 column, each tile whole and drawn (no skipped layout, no fade), in the presentation on screen.
+   topics.ts wireFleetGrid warms that presentation's pictures while the reader stays, so a print has them. */
+@layer overrides{
+@media print{
+.dm-fleet__bar,.dm-fleet__empty{display:none}
+.dm-fleet__grid{margin-top:4mm}
+.dm-fleet__list{--dm-fleet-cols:4}
+.dm-fleet__tile{content-visibility:visible;break-inside:avoid}
+.dm-fleet__layer[data-reveal]>:is(img,picture){opacity:1;transition:none}
+}
+}

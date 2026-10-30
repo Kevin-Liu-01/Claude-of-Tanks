@@ -124,7 +124,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-op.is-briefed{box-shadow:var(--ring-accent);}
 .cot-garage .cot-deploy-op-stars .on{color:var(--accent);}
 .cot-garage .cot-deploy-op.locked .cot-deploy-op-map{filter:grayscale(1);}
-.cot-garage .cot-deploy-op.locked .cot-deploy-op-index{color:var(--ink-4);}
+/* a locked operation's numeral steps down from the open ones' ink but keeps 4.5:1 on its row (ink-4 measured 3.06:1) */
+.cot-garage .cot-deploy-op.locked .cot-deploy-op-index{color:var(--ink-3);}
 .cot-garage .cot-deploy-op-map{display:block;height:66px;border-radius:var(--control-radius);background:var(--surface-raised) center/cover no-repeat;}
 /* beside the screen the six operations share their column's height (a tall window's list ended half way down it, r41-r44);
    a short column keeps each row's own height and scrolls. A taller row's map grows with it, a wider strip on a wider

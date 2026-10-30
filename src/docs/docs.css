@@ -5,6 +5,8 @@
 @import url('../ui/tokens/surface-docs.css');
 /* the manual-start block rides in this sheet: no extra stylesheet on the path to first paint */
 @import url('../presentation/manualStart.css');
+/* the manual printed (Cmd+P, Save as PDF): paper tokens, one column, the chrome off, page breaks; docsPrint.css */
+@import url('./docsPrint.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit}button{font:inherit;color:inherit}}
@@ -15,7 +17,7 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:90px}
 body{margin:0;background:radial-gradient(circle at 75% 3%,var(--fill-faint),transparent 24%),var(--bg);color:var(--ink);font:500 var(--fs-14)/1.68 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(--focus-ink);outline-offset:3px}
 .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto}
 .brand{display:flex;align-items:center;gap:11px;text-decoration:none;text-transform:uppercase;letter-spacing:var(--track-label);font-size:max(var(--fs-floor-11),var(--fs-11))}.brand [lang=en]{letter-spacing:var(--track-label)}.brand :is(img,svg){width:31px;height:38px}.brand b{color:var(--amber)}
 .docs-hero{border-bottom:1px solid var(--line);position:relative;overflow:hidden}.docs-hero::after{content:"";position:absolute;right:-12vw;top:-25vw;width:55vw;height:55vw;border:1px solid var(--accent-wash);border-radius:50%;box-shadow:var(--e1);pointer-events:none}.docs-hero .shell{position:relative;z-index:var(--z-lift);padding:64px 0 50px;display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,.82fr);gap:54px;align-items:center}
@@ -31,8 +33,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .sequence{margin:25px 0;display:grid;gap:0;counter-reset:step}pre{margin:0;padding:17px 18px;overflow:auto;color:var(--ink-2);font:max(var(--fs-floor-11),var(--fs-11))/1.65 var(--mono);tab-size:2}code .comment{color:var(--ink-4)}
 .invariants{display:grid;gap:7px;margin:20px 0}.invariant{display:grid;grid-template-columns:31px 1fr;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface-raised)}.invariant span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--fill-faint);color:var(--ink-2);font-weight:700}.invariant strong{display:block;font-size:max(var(--fs-floor-11),var(--fs-11))}.invariant p{margin:3px 0 0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}.aside-card{padding:16px;border:1px solid var(--line);background:var(--panel)}.aside-card+.aside-card{margin-top:10px}.aside-card p:first-child{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card strong{display:block;margin:9px 0 6px;font-size:max(var(--fs-floor-12),var(--fs-12))}.aside-card p:last-child{margin:0;color:var(--ink-4);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.55}.aside-card a{color:var(--ink-1)}
 .aside-card--library{text-decoration:none}
-.aside-card--archive{width:100%;display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;padding:15px;text-align:left;color:inherit;cursor:pointer;transition:border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-fast) ease}.aside-card--archive:hover{border-color:var(--line-3);background:var(--surface-hover);transform:translateY(-1px)}.aside-card--archive:focus-visible{outline:2px solid var(--amber);outline-offset:3px}/* the boxed icon tile, one size wherever it stands (the media cards, the stat strip) */
-.aside-card-icon,.docs-evidence dt .doc-icon{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--line-3);background:var(--fill-soft)}.aside-card-icon :is(img,svg),.docs-evidence dt .doc-icon svg{display:block;width:27px;height:27px}.aside-card-content{min-width:0}.aside-card-kicker{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card--archive strong{margin:7px 0 5px;color:var(--ink)}.aside-card-action{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);text-transform:uppercase}.aside-card-action .cot-i{flex:none}
+.aside-card--archive{width:100%;display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;padding:15px;text-align:left;color:inherit;cursor:pointer;transition:border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-fast) ease}.aside-card--archive:hover{border-color:var(--line-3);background:var(--surface-hover);transform:translateY(-1px)}.aside-card--archive:focus-visible{outline:2px solid var(--focus-ink);outline-offset:3px}/* the boxed icon tile, one size wherever it stands (the media cards, the stat strip) */
+.aside-card-icon,.docs-evidence dt [data-doc-icon]{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--line-3);background:var(--fill-soft)}.aside-card-icon :is(img,svg),.docs-evidence dt .doc-icon svg{display:block;width:27px;height:27px}.aside-card-content{min-width:0}.aside-card-kicker{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card--archive strong{margin:7px 0 5px;color:var(--ink)}.aside-card-action{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);text-transform:uppercase}.aside-card-action .cot-i{flex:none}
 .docs-archive-dialog{width:min(94vw,1500px);max-width:none;max-height:92dvh;padding:0;overflow:auto;border:1px solid var(--line2);background:var(--surface-page);color:var(--ink);box-shadow:var(--e2)}.docs-archive-dialog::backdrop{background:var(--surface-scene);backdrop-filter:blur(10px)}.docs-archive-dialog>header{position:sticky;z-index:var(--z-shell);top:0;display:flex;align-items:end;justify-content:space-between;gap:28px;padding:25px 28px 20px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,var(--surface-raised),var(--surface-page) 54%,var(--surface-page))}.docs-archive-dialog>header h2{margin:7px 0 4px;font-size:var(--docs-h2);line-height:.95;text-transform:uppercase}.docs-archive-dialog>header p:last-child{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}.docs-archive-dialog>header>button{flex:none;display:inline-grid;place-items:center;width:42px;height:42px;border:1px solid var(--line);background:transparent;color:var(--ink-1)}.docs-archive-dialog>header>button:hover{border-color:var(--line-3);background:var(--accent-wash)}.docs-motion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;padding:18px 18px 0;background:var(--surface-page)}.docs-motion-grid video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}.docs-motion-item{position:relative;min-width:0;background:var(--surface-scene)}.docs-motion-item video{height:100%}.docs-motion-item>.cot-info-trigger{position:absolute;z-index:var(--z-lift);right:10px;top:10px;background:var(--surface-scene)}.docs-archive-body{padding:18px 18px 24px}
 .docs-footer{border-top:1px solid var(--line);background:var(--surface-page)}.docs-footer .inner{min-height:110px;display:flex;align-items:center;justify-content:space-between}.footer-links{display:flex;align-items:center;gap:18px}.footer-links a{display:inline-flex;align-items:center;color:var(--ink-3);text-decoration:none;font-size:max(var(--fs-floor-11),var(--fs-11));text-transform:uppercase;letter-spacing:var(--track-label)}.footer-stars{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.footer-stars:not(:has([data-github-stars-state='ready'])){display:none}.footer-links a:hover{color:var(--ink-1)}
 /* the row's visible right edge is the content edge: the last label gives back its trailing letter-space (an empty star
@@ -75,6 +77,11 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero--visual::after{display:none}
 .docs-hero--visual>img,.docs-hero-shade{position:absolute;inset:0;width:100%;height:100%}
 .docs-hero--visual>img{object-fit:cover;object-position:center 50%;filter:saturate(.88) contrast(1.08)}
+/* the LCP banners' inline previews (docs-prerender, tools/hero-lqip.mjs) on their boxes, cropped as their pictures are:
+   the picture fades in over its preview once decoded (docs.ts, topics.ts revealStills), so a slow link never paints it
+   in bands; a chapter card's the same way, under its card (a chapter banner's is in its own .dm-banner rule below) */
+.docs-hero--visual{background-image:var(--docs-hero-lqip,none);background-position:center 50%;background-size:cover;background-repeat:no-repeat}
+.docs-chapter-grid .docs-chapter-media{background-image:var(--card-lqip,none);background-position:center;background-size:cover;background-repeat:no-repeat}
 .docs-hero-shade{background:linear-gradient(90deg,var(--scrim),var(--scrim) 30%,transparent 62%),linear-gradient(0deg,var(--surface-scene),transparent 42%)}
 .docs-hero--visual .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto;padding:76px 0 54px;grid-template-columns:minmax(0,1fr) minmax(420px,.82fr)}
 .docs-hero--visual h1{font-size:var(--docs-h1);text-shadow:var(--hollow-shadow)}
@@ -95,6 +102,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero--visual{min-height:0}
 .docs-hero--visual .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));padding:66px 0 36px}
 .docs-hero--visual>img{object-position:62% center}
+.docs-hero--visual{background-position:62% center}
 .docs-hero-shade{background:linear-gradient(0deg,var(--surface-scene),var(--scrim) 55%,transparent)}
 .docs-hero--visual h1{font-size:var(--docs-h1)}
 .process-sheet-group>header{align-items:flex-start;gap:5px;flex-direction:column}
@@ -106,8 +114,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* Field manual landing v7 — icon-led system wayfinding. */
 .doc-icon{display:inline-grid;place-items:center;color:var(--ink-3)}.doc-icon svg{display:block;width:100%;height:100%}.doc-icon.tone-accent{color:var(--ink-3)}.docs-hero--visual{min-height:610px}.docs-hero-copy{max-width:680px}
 .docs-hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}.docs-hero-actions a:not(.cot-c-btn){display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:42px;padding:0 15px;border:1px solid var(--line2);background:var(--surface-page);color:var(--ink-2);text-decoration:none;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;transition:transform var(--dur-fast) ease-out,border-color var(--dur-fast) ease-out,background-color var(--dur-fast) ease-out}.docs-hero-actions a:not(.cot-c-btn).primary{border-color:var(--accent);background:var(--amber);color:var(--ink-on-accent)}.docs-hero-actions .doc-icon{width:16px;height:16px}.docs-hero-actions .primary .doc-icon{color:var(--ink-on-accent)}.docs-hero-actions a:not(.cot-c-btn):active{transform:scale(.97)}
-.docs-evidence dl>div{align-items:center;padding:var(--s3) var(--s4)}.docs-evidence dt{display:flex;align-items:center;gap:10px}.docs-evidence dt .doc-icon{flex:none}
-.docs-chapters{padding:72px 0 82px;background:linear-gradient(180deg,var(--surface-page),var(--surface-page))}.docs-chapters-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,.58fr);gap:40px;align-items:end;margin-bottom:30px}.docs-chapters-heading h2{margin:0}.docs-chapters-heading>p{max-width:560px;margin:0 0 2px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.6}.docs-chapter-grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:9px;background:none}.docs-chapter-grid a{position:relative;grid-column:span 4;grid-template-rows:178px auto auto;padding-bottom:18px;border:1px solid var(--line);overflow:hidden;transition:transform var(--dur-fast) ease-out,border-color var(--dur-fast) ease-out,background-color var(--dur-fast) ease-out}.docs-chapter-grid a:first-child{grid-column:span 8;grid-template-rows:230px auto auto}.docs-chapter-grid a:nth-child(2){grid-template-rows:230px auto auto}.docs-chapter-grid a:nth-child(n+9){grid-column:span 3;grid-template-rows:164px auto auto}.docs-chapter-grid .docs-chapter-media{position:relative;display:block;min-width:0;padding:0;color:inherit;font-size:inherit;letter-spacing:normal;overflow:hidden}.docs-chapter-grid .docs-chapter-media::after{content:"";position:absolute;inset:42% 0 0;background:linear-gradient(0deg,var(--surface-scene),transparent)}.docs-chapter-grid .docs-chapter-media img{display:block;transition:transform var(--dur-base) ease-out}.docs-chapter-grid .docs-chapter-media .doc-icon{display:none}.docs-chapter-grid .docs-chapter-media b{position:absolute;z-index:var(--z-lift);right:13px;top:12px;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);letter-spacing:var(--track-label-s);text-shadow:var(--hollow-shadow);padding:4px 6px;border-radius:var(--r1);background:var(--glyph-plate)}.docs-chapter-grid a>span:not(.docs-chapter-media){padding:15px 12px 0;font:600 var(--fs-16)/1.2 var(--font-display);letter-spacing:normal;
+.docs-evidence dl>div{align-items:center;padding:var(--s3) var(--s4)}.docs-evidence dt{display:flex;align-items:center;gap:10px}.docs-evidence dt [data-doc-icon]{flex:none}
+.docs-chapters{padding:72px 0 82px;background:linear-gradient(180deg,var(--surface-page),var(--surface-page))}.docs-chapters-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,.58fr);gap:40px;align-items:end;margin-bottom:30px}.docs-chapters-heading h2{margin:0}.docs-chapters-heading>p{max-width:560px;margin:0 0 2px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.6}.docs-chapter-grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:9px;background:none}.docs-chapter-grid a{position:relative;grid-column:span 4;grid-template-rows:178px auto auto;padding-bottom:18px;border:1px solid var(--line);overflow:hidden;transition:transform var(--dur-fast) ease-out,border-color var(--dur-fast) ease-out,background-color var(--dur-fast) ease-out}.docs-chapter-grid a:first-child{grid-column:span 8;grid-template-rows:230px auto auto}.docs-chapter-grid a:nth-child(2){grid-template-rows:230px auto auto}.docs-chapter-grid a:nth-child(n+9){grid-column:span 3;grid-template-rows:164px auto auto}.docs-chapter-grid .docs-chapter-media{position:relative;display:block;min-width:0;padding:0;color:inherit;font-size:inherit;letter-spacing:normal;overflow:hidden}.docs-chapter-grid .docs-chapter-media::after{content:"";position:absolute;inset:42% 0 0;background:linear-gradient(0deg,var(--surface-scene),transparent)}.docs-chapter-grid .docs-chapter-media img{display:block;transition:transform var(--dur-base) ease-out,opacity var(--dur-base) var(--ease-enter)}.docs-chapter-grid .docs-chapter-media .doc-icon{display:none}.docs-chapter-grid .docs-chapter-media b{position:absolute;z-index:var(--z-lift);right:13px;top:12px;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);letter-spacing:var(--track-label-s);text-shadow:var(--hollow-shadow);padding:4px 6px;border-radius:var(--r1);background:var(--glyph-plate)}.docs-chapter-grid a>span:not(.docs-chapter-media){padding:15px 12px 0;font:600 var(--fs-16)/1.2 var(--font-display);letter-spacing:normal;
   text-transform:none;color:var(--ink-1)}.docs-chapter-grid a>strong{padding-top:7px;color:var(--ink-2)}.docs-chapter-grid a:active{transform:scale(.985)}
 .docs-toc a{grid-template-columns:20px 19px minmax(0,1fr);gap:7px;align-items:center;padding:8px 11px}.docs-toc a .toc-icon{width:16px;height:16px;padding:0;color:var(--ink-4)}.docs-toc a.active .toc-icon{color:var(--amber)}
 .doc-section h2{display:flex;align-items:center;gap:13px}.doc-section-icon{width:39px;height:39px;flex:0 0 39px;padding:8px;border:1px solid currentColor;background:var(--fill-quiet)}
@@ -153,14 +161,18 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   font:400 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);text-decoration:none}
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
+/* a touch screen wide enough for the shelf (an iPad held wide) keeps its chapters and its search at the touch floor */
+@media (pointer:coarse){.dm-side a:not(.dm-home),.dm-home{min-height:var(--cot-control-floor,44px)}}
 /* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
    take the shelf's place in the column */
 .dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 /* both fields (the shelf's and the index's) keep one inline inset on both sides: the magnifier gives back its 2 px side
    bearing, so its ink starts on the inset as the last key cap's edge ends on it */
 .dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
-.dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.dm-search__field:has(input:focus-visible){outline:2px solid var(--amber);outline-offset:2px}.dm-main:focus{outline:none}
+.dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.dm-search__field:has(input:focus-visible){outline:2px solid var(--focus-ink);outline-offset:2px}.dm-main:focus{outline:none}
 .dm-search__field .doc-icon{width:16px;height:16px;margin-inline-start:-2px}
+/* the touch target after the field's own 36 px (the fleet r3 critic: the iPads' shelf search stayed 36 px) */
+@media (pointer:coarse){.dm-search__field{height:var(--cot-control-floor,44px)}}
 .dm-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
 .dm-search input::placeholder{color:var(--ink-3)}
 .dm-search input::-webkit-search-cancel-button{display:none}
@@ -178,7 +190,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-side a.dm-hit:hover,.dm-side a.dm-hit:focus-visible{color:var(--ink-2);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
 .dm-side.is-searching>.dm-grp,.dm-side.is-searching>a:not(.dm-home){display:none}
 .dm-main{min-width:0}
-.dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
+/* the banner's preview (topics.ts bannerLqip, the LQIPs' rule above) over its tone, cropped as its picture is */
+.dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--dm-banner-lqip,none) 50% 62%/cover no-repeat var(--surface-scene)}
 /* a short landscape phone keeps the chapter's first lines in its first view: the banner is as tall as its trail and title,
    which stand on the pause control's 16 px top inset in every locale, and the title steps down */
 @media (height < 520px){
@@ -255,7 +268,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-toc a:hover{color:var(--ink-1)}
 .dm-toc a[aria-current=location]{color:var(--ink-1);font-weight:600;box-shadow:var(--docs-toc-on)}
 .dm-pager{display:flex;justify-content:space-between;gap:var(--s4);padding:0 var(--docs-gutter) var(--s8)}
-.dm-pager .doc-icon{width:18px;height:18px}
+.dm-pager .doc-icon{flex:none;width:18px;height:18px}
 .dm-pager__next{margin-left:auto}
 /* a long neighbour's name wraps inside its button on a phone instead of pushing the page sideways */
 .dm-pager .cot-c-btn{min-width:0;max-width:100%;height:auto;min-height:var(--btn-h-m);white-space:normal;text-align:start}
@@ -268,7 +281,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
      each end fades, at least 24 px, only while the strip scrolls on past it, the start's fade ending where the leading
      item's label begins, so no cut label shows at the edge */
   .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--docs-gutter) 10px calc(var(--docs-gutter) - var(--s3));scroll-padding-inline:var(--docs-gutter) var(--dm-fade);box-shadow:var(--docs-side-edge);
-    --dm-fade:max(var(--s5),var(--docs-gutter));--dm-fade-clear:0px;--dm-fade-start:0px;--dm-fade-end:var(--dm-fade);
+    --dm-fade:max(var(--s5),var(--docs-gutter));--dm-fade-clear:0px;--dm-fade-start:0px;--dm-fade-end:max(var(--s7),var(--dm-fade));
     mask-image:linear-gradient(90deg,transparent var(--dm-fade-clear),var(--ink-1) calc(var(--dm-fade-clear) + var(--dm-fade-start)),var(--ink-1) calc(100% - var(--dm-fade-end)),transparent)}
   .dm-side[data-scrolled]{--dm-fade-start:var(--dm-fade);--dm-fade-clear:max(0px,calc(var(--docs-gutter) + var(--s3) - var(--dm-fade)))}
   .dm-side[data-at-end]{--dm-fade-end:0px}
@@ -311,6 +324,25 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .battle-reels-head h3{margin:11px 0 13px}
 .battle-reel-grid .cot-c-picker__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* the takes' box holds the picker's height before its cards come (they mount near the screen or once the page is idle: on
+   a slow link that was seconds after a reader reached them, and the growth moved what follows, the loading census: CLS
+   0.113 on a phone): two dozen cards in rows of its columns, each row a 16:9 picture and its words, under a skeleton of
+   their tiles. Measured 320-1024 px, it is within a row of the mounted height; a wide index's column holds its own. */
+@media (scripting:enabled) and (width < 1100px){
+  .battle-reels{container-type:inline-size}
+  .battle-reel-grid:empty{--reel-cols:4;--reel-rows:6;--reel-bar:calc(var(--s6) + var(--s2));
+    --reel-col:calc((100cqw - (var(--reel-cols) - 1) * var(--s3)) / var(--reel-cols));
+    --reel-row:calc((var(--reel-col) - var(--s4)) * 9 / 16 + var(--s8));
+    min-height:calc(var(--reel-bar) + var(--reel-rows) * (var(--reel-row) + var(--s3)));background:var(--fill-soft);
+    -webkit-mask-image:repeating-linear-gradient(180deg,var(--ink-1) 0 var(--reel-row),transparent 0 calc(var(--reel-row) + var(--s3))),
+      repeating-linear-gradient(90deg,var(--ink-1) 0 var(--reel-col),transparent 0 calc(var(--reel-col) + var(--s3)));
+    mask-image:repeating-linear-gradient(180deg,var(--ink-1) 0 var(--reel-row),transparent 0 calc(var(--reel-row) + var(--s3))),
+      repeating-linear-gradient(90deg,var(--ink-1) 0 var(--reel-col),transparent 0 calc(var(--reel-col) + var(--s3)));
+    -webkit-mask-composite:source-in;mask-composite:intersect;
+    mask-position:0 calc(var(--reel-bar) + var(--s3)),0 0;mask-size:100% calc(100% - var(--reel-bar) - var(--s3)),100% 100%;
+    mask-repeat:no-repeat}
+}
+@media (scripting:enabled) and (width < 768px){.battle-reel-grid:empty{--reel-cols:2;--reel-rows:12;--reel-bar:var(--s7)}}
 
 /* Readable, collapsible references keep the complete fleet useful on phones. */
 .manual-search{display:grid;gap:8px;color:var(--ink-2);font-weight:700;margin:24px 0 8px}
@@ -445,6 +477,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-shelf h2{display:flex;align-items:center;gap:10px;margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
 .docs-shelf h2 .doc-icon{width:24px;height:24px;color:var(--ink-3)}
 @media (width >= 1100px){.docs-shelf .docs-chapter-grid a:nth-child(n+6):not(.docs-chapter-wide){grid-column:span 3;grid-template-rows:164px auto auto}}
+/* a shelf of ten (Play, since the fleet chapter): the cards after the lead pair go four across, two whole rows, where
+   three then four across left the tenth alone on a row */
+@media (width >= 1100px){.docs-shelf .docs-chapter-grid:has(>a:nth-child(10)) a:nth-child(n+3):not(.docs-chapter-wide){grid-column:span 3;grid-template-rows:164px auto auto}}
 .docs-reels .battle-reels{margin:0;padding-top:0;border-top:0}
 .docs-reels .battle-reels-head h2{margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
 /* a wide index sets the takes beside the player, as tall as it and scrolling within (stacked, the player alone filled a
@@ -467,6 +502,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* a key cap holds Latin legends only, never Chinese: in a Chinese document, where the label tokens step up to 13 px
    (tokens.css, src/ui/zhTypeFloor.ts), it keeps the Latin scale on the figure token, which holds in every locale */
 :lang(zh-CN) .cot-c-kbd{--fs-floor-11:var(--battle-fs-fig-11);--fs-11:calc(var(--battle-fs-fig-11) * var(--cot-type-scale))}
+/* a Chinese key cap (空格, 左键) is a word, not a figure: it keeps the zh floor its page sets */
+:lang(zh-CN) .cot-c-kbd[data-cjk]{--fs-floor-11:inherit;--fs-11:inherit}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
 }

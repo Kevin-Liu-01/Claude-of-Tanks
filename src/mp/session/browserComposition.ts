@@ -38,11 +38,12 @@ import type {
 } from '../presentation/battlePresentation.ts';
 import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
-import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
 import type { RtcIceConfig } from '../transport/webRtcTransport.ts';
-import { ACTION_BITS, VERDICT } from '../wire/index.ts';
+import { VERDICT } from '../wire/index.ts';
+import { createControlSampler } from '../presentation/controlSampler.ts';
+import type { ControlSampler } from '../presentation/controlSampler.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
@@ -252,7 +253,13 @@ export interface BrowserWarmPorts {
   /** (battle-spikes-253) Start linking the player panel's programs at the warm's start (no wait): the panel stage below. */
   playerPanelPrograms?(view: BrowserWarmView, viewerId: string): void;
   compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
-  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * The battlefield's offscreen first draws, a cohort at a time, and the opening effects. A room's entry paces them on the
+   * GPU: textures staged one at a time and every batch waiting for the GPU to catch up. (262) The solo sim Worker's sortie
+   * passes `pacing: 'covered'`, the page's solo deployment warm's covered yield between batches (a task, and a painted
+   * frame at most every 32 ms), and no wait on the GPU.
+   */
+  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'covered' }): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
@@ -534,73 +541,9 @@ export interface BrowserComposition {
 
 // ------------------------------------------------------------ controls
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal', number>> = Object.freeze({
-  reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
-  specialAction: ACTION_BITS.SPECIAL_ACTION,
-  selfRight: ACTION_BITS.SELF_RIGHT,
-  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE, supplyAmmo: ACTION_BITS.SUPPLY_AMMO, supplyHeal: ACTION_BITS.SUPPLY_HEAL,
-});
-const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
-const DEFAULT_AIM_DISTANCE_M = 1000;
-const MIN_AIM_DISTANCE_M = 0.01;
-const MAX_AIM_DISTANCE_M = 2000;
-
-function clampAimDistance(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_AIM_DISTANCE_M;
-  return Math.max(MIN_AIM_DISTANCE_M, Math.min(MAX_AIM_DISTANCE_M, value));
-}
-
-export interface ControlSampler {
-  /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
-  sample(tick: number): Readonly<ControlSample> | null;
-  queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
-  reset(): void;
-}
-
-/** v1's browser input frame over the own actor: throttle/steer/brake/fire/aim from the input record, action edges queued by the HUD. */
-export function createControlSampler(getOwn: () => MatchActor | null): ControlSampler {
-  let pendingBits = 0;
-  const scratch: ControlSample = {
-    throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false,
-    aimYaw: 0, aimPitch: 0, aimDistance: DEFAULT_AIM_DISTANCE_M, shellSlot: 0, actionPresses: 0,
-  };
-  return {
-    sample() {
-      const own = getOwn();
-      if (!own || own.combat.destroyed) return null;
-      const { input, state } = own;
-      const pos = own.aerial?.active ? own.aerial : state.pos;
-      const target = input.aimPoint;
-      const dx = target ? target.x - pos.x : Math.sin(state.yaw) * DEFAULT_AIM_DISTANCE_M;
-      const dy = target ? target.y - pos.y : 0;
-      const dz = target ? target.z - pos.z : Math.cos(state.yaw) * DEFAULT_AIM_DISTANCE_M;
-      const horizontal = Math.hypot(dx, dz);
-      scratch.throttle = input.throttle || 0;
-      scratch.steer = input.steer || 0;
-      scratch.brake = !!input.brake;
-      scratch.fire = !!input.fire;
-      scratch.aimLocked = !!input.aimLocked;
-      scratch.aimYaw = Math.atan2(dx, dz);
-      scratch.aimPitch = Math.atan2(dy, Math.max(1e-6, horizontal));
-      scratch.aimDistance = clampAimDistance(Math.hypot(horizontal, dy));
-      scratch.shellSlot = input.shellSlot | 0;
-      scratch.actionPresses = pendingBits;
-      pendingBits = 0;
-      return scratch;
-    },
-    queueConsumable(slot) {
-      if (!Number.isInteger(slot) || slot < 0 || slot > 2) return;
-      pendingBits |= (1 << slot) & CONSUMABLE_BITS;
-    },
-    queueAction(action) {
-      const bit = NAMED_ACTION_BITS[action];
-      if (action==='lights'||action==='lightsOff')pendingBits &= ~(ACTION_BITS.LIGHTS|ACTION_BITS.LIGHTS_OFF);
-      if (bit) pendingBits = action==='roofGun' ? pendingBits^bit : pendingBits|bit;
-    },
-    reset() { pendingBits = 0; },
-  };
-}
+// (the viewer's control sampler, shared with the solo sim Worker's battle: src/mp/presentation/controlSampler.ts)
+export { createControlSampler };
+export type { ControlSampler };
 
 // ------------------------------------------------------------ composition
 

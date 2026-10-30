@@ -84,6 +84,11 @@ spot = placeMenu(trigger(1200, 200, 300), view, 300, false, false, { top: 100, b
 assert.equal(spot.span, false);
 assert.equal(spot.width, 300);
 assert.equal(spot.left + spot.width, 1360 - 8, "its right edge inside the panel's");
+// a panel that asks to be spanned is spanned at any width (the Gallery dossier at 2560), its ring kept on the window
+spot = placeMenu(trigger(1820, 760, 700, 36), { width: 2560, height: 1440 }, 4000, false, false, { top: 65, bottom: 1440, left: 1793, right: 2560, span: true });
+assert.equal(spot.span, true, 'a 767 px dossier that asks is spanned');
+assert.equal(spot.left, 1793);
+assert.equal(spot.left + spot.width, 2559, "its ring on the window's last column");
 
 // a fine pointer on a narrow window keeps the popover; a coarse one on a wide window too
 assert.equal(placeMenu(trigger(20, 300, 200), { width: 390, height: 844 }, 400, false).sheet, false);

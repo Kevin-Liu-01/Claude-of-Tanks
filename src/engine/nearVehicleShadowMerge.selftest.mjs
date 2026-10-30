@@ -104,10 +104,10 @@ for (const { id, root } of hulls) {
   for (const caster of set.casters) {
     assert.equal(caster.layers.mask, 1 << SHADOW_ONLY_LAYER, `${id}: a caster on the shadow-only layer`);
     assert.equal(caster.material.colorWrite, false);
-    assert.equal(caster.parent, null, `${id}: built detached`);
+    assert.ok(caster.parent === null, `${id}: built detached`);
   }
   attachMergedHullCasters(set);
-  set.casters.forEach((caster, k) => assert.equal(caster.parent, set.owners[k]));
+  set.casters.forEach((caster, k) => assert.ok(caster.parent === set.owners[k], `${id}: caster ${k} under its owner`));
   const before = depthSoup(covered);
   const after = depthSoup(set.casters);
   assert.deepEqual([...after.keys()].sort(), [...before.keys()].sort(), `${id}: the same shadow sides`);

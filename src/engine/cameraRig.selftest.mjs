@@ -360,3 +360,152 @@ console.log('cameraRig.selftest: isometric framing, input, terrain, rotation, zo
   assert.equal(actor.input.aimPoint.z, 1, 'close cover ahead of the gun still stops the aiming ray');
 }
 console.log('cameraRig.selftest: close-wall and rear-obstruction aim stability passed');
+
+// battle-camera-264: the chase framing from the HUD's bands and the camera settings (chaseFraming.ts). The rig takes the
+// framed pivot, distance and lens; its lens shift raises the picture without touching the aspect; the aim ray is still the
+// camera's axis, so the aim point projects onto the risen sight (where hud.ts paints the reticle) and the gun is laid on
+// it; sniper, an external pose, an isometric view and another owner (suspendFraming) take the shift off; a setting
+// changed behind the pause menu glides in (previewFraming); the published sight rise is the framing's.
+{
+  const { readFileSync } = await import('node:fs');
+  const { solveChaseFraming, NOMINAL_CHASE_TANK } = await import('./chaseFraming.ts');
+  const recorded = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-chase-bands.json', import.meta.url), 'utf8'));
+  const bands = recorded.sizes['1280x720'].idle;
+  const camera = new PerspectiveCamera(60, bands.width / bands.height, 0.1, 2000);
+  const root = new Object3D();
+  root.updateMatrixWorld(true);
+  const actor = {
+    state: { pos: new Vector3(), yaw: 0, turretYaw: 0 },
+    spec: { dims: { heightM: NOMINAL_CHASE_TANK.heightM, widthM: NOMINAL_CHASE_TANK.widthM, hullLengthM: 8.2 } },
+    input: { aimPoint: new Vector3() },
+    visual: {
+      root,
+      turretTopWorld: (out) => out.set(0, NOMINAL_CHASE_TANK.heightM, 0).applyMatrix4(root.matrixWorld),
+      gunPivotWorld: (out) => out.set(0, 2.1, 0.4).applyMatrix4(root.matrixWorld),
+    },
+  };
+  const settings = { cameraHeight: 0, cameraDistance: 1, cameraShoulder: 'centre', cameraFraming: 0, cameraFov: 60 };
+  let iso = false;
+  const published = [];
+  // the ground plane far ahead: the aim ray lands somewhere the reticle can mark
+  const ground = (origin, dir, max) => {
+    if (dir.y >= -1e-6) return null;
+    const t = -origin.y / dir.y;
+    return t <= max ? { point: origin.clone().addScaledVector(dir, t), dist: t, normal: new Vector3(0, 1, 0) } : null;
+  };
+  const rig = createCameraRig(camera, {
+    heightField: { getHeightAt: () => -50 }, raycast: () => null, aimRaycast: ground, getPlayer: () => actor,
+    getIsometricView: () => iso, getChaseBands: () => bands, getCameraSettings: () => settings,
+    publishSightShift: (px) => published.push(px),
+  });
+  const expected = solveChaseFraming(bands.width, bands.height, bands, settings, NOMINAL_CHASE_TANK);
+  rig.snapArcade(2, 0, -10 * Math.PI / 180);
+  const f = rig.framing;
+  assert.ok(Math.abs(f.distanceM - expected.distanceM) < 1e-9 && Math.abs(f.pivotAboveM - expected.pivotAboveM) < 1e-9,
+    'the rig takes the framing solved from the bands');
+  assert.ok(f.shift > 0, 'the 1280x720 layout raises the sight');
+  assert.equal(published.at(-1), f.sightShiftPx, 'the rise is published for the HUD');
+  assert.equal(camera.aspect, bands.width / bands.height, 'the lens shift keeps the aspect');
+  assert.ok(camera.view?.enabled && Math.abs(camera.view.offsetY - f.shift) < 1e-9, 'the lens shift is on the camera');
+  assert.ok(Math.abs(camera.position.distanceTo(new Vector3(0, NOMINAL_CHASE_TANK.heightM + f.pivotAboveM, 0)) - f.distanceM) < 1e-6,
+    'the default step is the framed distance from the framed pivot');
+  camera.updateMatrixWorld(true);
+  // the reticle: hud.ts projects the aim point; it lands on the risen sight, and that is where the gun is laid
+  const reticle = rig.aimPoint.clone().project(camera);
+  const reticleY = (1 - reticle.y) / 2 * bands.height;
+  assert.ok(Math.abs(reticle.x) < 1e-6 && Math.abs(reticleY - (bands.height / 2 - f.sightShiftPx)) < 1e-3,
+    `the reticle sits on the published sight (${reticleY.toFixed(2)} vs ${bands.height / 2 - f.sightShiftPx})`);
+  assert.ok(actor.input.aimPoint.distanceTo(rig.aimPoint) < 1e-9, 'the gun is laid on the reticle\'s point');
+  const origin = new Vector3(), dir = new Vector3();
+  rig.getAimRay(origin, dir);
+  assert.ok(dir.angleTo(camera.getWorldDirection(new Vector3())) < 1e-9, 'the aim ray is the camera axis');
+  // the framed tank box: hull and tracks over the band
+  const box = { y1: -Infinity, x0: Infinity, x1: -Infinity };
+  for (let i = 0; i < 8; i++) {
+    const t = NOMINAL_CHASE_TANK;
+    const p = new Vector3(i & 1 ? t.widthM / 2 : -t.widthM / 2, i & 2 ? t.heightM : 0, i & 4 ? 4.1 : -4.1).project(camera);
+    box.y1 = Math.max(box.y1, (1 - p.y) / 2 * bands.height);
+    box.x0 = Math.min(box.x0, (p.x + 1) / 2 * bands.width); box.x1 = Math.max(box.x1, (p.x + 1) / 2 * bands.width);
+  }
+  const floor = Math.min(...bands.floor.filter((b) => b.x0 < box.x1 + 8 && b.x1 > box.x0 - 8 && b.y0 > bands.height * 0.35).map((b) => b.y0));
+  assert.ok(box.y1 < floor, `the rig's tracks clear the band (${box.y1.toFixed(0)} < ${floor})`);
+  // sniper: the lens comes off (the scope is the centre's), and the scope's FOV is unchanged
+  rig.enterSniper();
+  rig.update(1 / 60, idle);
+  assert.ok(!camera.view?.enabled, 'sniper takes the lens shift off');
+  assert.equal(camera.fov, 60 / rig.zoom, 'the scope keeps its own field of view');
+  rig.exitSniper(true);
+  rig.update(1 / 60, idle);
+  assert.ok(camera.view?.enabled, 'back in the chase, the shift returns');
+  // another owner this frame (Watch, the Garage): off
+  rig.suspendFraming();
+  assert.ok(!camera.view?.enabled && camera.aspect === bands.width / bands.height, 'suspendFraming clears it, the aspect intact');
+  rig.update(1 / 60, idle);
+  // an external pose (killcam, captures): off
+  rig.setExternalPose(new Vector3(5, 5, 5), new Vector3(), 50);
+  assert.ok(!camera.view?.enabled, 'an external pose never carries the chase shift');
+  rig.release();
+  rig.snapArcade(2, 0, -10 * Math.PI / 180);
+  // a settings preview behind the pause menu: the camera glides toward the new framing, no input
+  settings.cameraFov = 72; settings.cameraFraming = 0.05;
+  const fovBefore = camera.fov;
+  rig.previewFraming(1 / 60);
+  assert.ok(camera.fov > fovBefore && camera.fov < 72, 'the preview glides toward the new lens');
+  for (let i = 0; i < 120; i++) rig.previewFraming(1 / 60);
+  assert.ok(Math.abs(camera.fov - 72) < 1e-2 && Math.abs(camera.view.offsetY - rig.framing.shift) < 1e-4, `and lands on it (${camera.fov} ${camera.view.offsetY} ${rig.framing.shift} ${rig.framing.fovDeg})`);
+  assert.equal(published.at(-1), rig.framing.sightShiftPx, 'the new rise is published');
+  camera.updateMatrixWorld(true);
+  const moved = rig.aimPoint.clone().project(camera);
+  assert.ok(Math.abs((1 - moved.y) / 2 * bands.height - (bands.height / 2 - rig.framing.sightShiftPx)) < 1e-3,
+    'the preview keeps the reticle on its point');
+  // the shoulder: the tank to the side, the sight centred, the aim still the axis
+  settings.cameraShoulder = 'right'; settings.cameraFov = 60; settings.cameraFraming = 0;
+  rig.snapArcade(2, 0, -10 * Math.PI / 180);
+  camera.updateMatrixWorld(true);
+  const hull = new Vector3(0, 1, 0).project(camera);
+  assert.ok(hull.x < -0.2, `over the right shoulder the hull sits left of the sight (${hull.x.toFixed(3)})`);
+  const shoulderAim = rig.aimPoint.clone().project(camera);
+  assert.ok(Math.abs(shoulderAim.x) < 1e-6, 'the shoulder leaves the reticle on the centre line');
+  // isometric: no arcade sight, nothing raised
+  iso = true;
+  rig.update(1 / 60, idle);
+  assert.ok(!camera.view?.enabled && published.at(-1) === 0, 'the isometric view neither shifts nor publishes a rise');
+  iso = false;
+  rig.update(1 / 60, idle);
+  assert.equal(published.at(-1), rig.framing.sightShiftPx, 'leaving it publishes the chase rise again');
+}
+// the tracks the band must clear are the model's own: stowage past the spec's hull length is measured in the hull's frame
+{
+  const { readFileSync } = await import('node:fs');
+  const { BoxGeometry, Mesh, MeshBasicMaterial } = await import('three');
+  const { chaseFloorMarginPx } = await import('./chaseFraming.ts');
+  const bands = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-chase-bands.json', import.meta.url), 'utf8')).sizes['1920x1080'].idle;
+  const camera = new PerspectiveCamera(60, bands.width / bands.height, 0.1, 2000);
+  const root = new Object3D();
+  // a hull 3.6 m wide and 2.4 m tall reaching 5.6 m behind its origin (the spec says 7.8 m long: 3.9 m behind)
+  const hull = new Mesh(new BoxGeometry(3.6, 2.4, 9.5), new MeshBasicMaterial());
+  hull.position.set(0, 1.2, -0.85);
+  root.add(hull);
+  root.rotation.y = 0.7;
+  root.position.set(30, 0, -12);
+  const actor = {
+    state: { pos: root.position.clone(), yaw: 0.7, turretYaw: 0 },
+    spec: { dims: { heightM: 2.4, widthM: 3.6, hullLengthM: 7.8 } }, input: { aimPoint: new Vector3() },
+    visual: { root, turretTopWorld: (out) => out.set(0, 2.4, 0).applyMatrix4(root.matrixWorld),
+      gunPivotWorld: (out) => out.set(0, 2.0, 0.5).applyMatrix4(root.matrixWorld) },
+  };
+  const rig = createCameraRig(camera, { heightField: { getHeightAt: () => -50 }, raycast: () => null, getPlayer: () => actor,
+    getChaseBands: () => bands, getCameraSettings: () => null });
+  rig.snapArcade(2, 0.7, -10 * Math.PI / 180);
+  camera.updateMatrixWorld(true);
+  hull.updateMatrixWorld(true);
+  let y1 = -Infinity, x0 = Infinity, x1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const p = new Vector3(i & 1 ? 1.8 : -1.8, i & 2 ? 1.2 : -1.2, i & 4 ? 4.75 : -4.75).applyMatrix4(hull.matrixWorld).project(camera);
+    y1 = Math.max(y1, (1 - p.y) / 2 * bands.height);
+    x0 = Math.min(x0, (p.x + 1) / 2 * bands.width); x1 = Math.max(x1, (p.x + 1) / 2 * bands.width);
+  }
+  const floor = Math.min(...bands.floor.filter((b) => b.x0 < x1 + 8 && b.x1 > x0 - 8 && b.y0 > bands.height * 0.35).map((b) => b.y0));
+  assert.ok(y1 <= floor - chaseFloorMarginPx(bands.height) + 0.5, `the model's own rear clears the band (${y1.toFixed(0)} vs ${floor})`);
+}
+console.log('cameraRig.selftest: chase framing from the HUD bands, lens shift, reticle on the aim, sniper/external/suspend and preview passed');

@@ -285,6 +285,7 @@
     "src/game/ammoSelectionPresentation.selftest.mjs": 1000,
     "src/game/armorAimOverlay.selftest.mjs": 1000,
     "src/game/armorAimOverlayAccess.selftest.mjs": 1000,
+    "src/game/armorPaintPanels.selftest.mjs": 12000,
     "src/game/battleAgainAction.selftest.mjs": 1000,
     "src/game/battleClientAccess.selftest.mjs": 1000,
     "src/game/battleEnding.selftest.mjs": 1000,
@@ -803,6 +804,7 @@
     "src/vehicles/ghillieSuit.selftest.mjs": 227000,
     "src/vehicles/guidedLauncherTubes.selftest.mjs": 30000,
     "src/vehicles/historicalT90MLamps.selftest.mjs": 13000,
+    "src/vehicles/hullRubber.selftest.mjs": 5000,
     "src/vehicles/ifvReplicas.selftest.mjs": 12000,
     "src/vehicles/internalLayoutRegistry.selftest.mjs": 5000,
     "src/vehicles/jagdpanzerE100XArmor.selftest.mjs": 36000,
@@ -1155,7 +1157,8 @@
     "src/vehicles/profiles/westXGeometry.selftest.mjs": 14000,
     "src/vehicles/profiles/xk2.selftest.mjs": 13000,
     "src/vehicles/profiles/ztz100Prototype.selftest.mjs": 77000,
-    "src/vehicles/profiles/ztz100X.selftest.mjs": 13000,
+    "src/vehicles/profiles/ztz20Family.selftest.mjs": 60000,
+    "src/vehicles/ztz20GunClearance.selftest.mjs": 600000,
     "src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs": 11000,
     "src/vehicles/profiles/ztz99a2RearService.selftest.mjs": 16000,
     "src/vehicles/recoilRig.selftest.mjs": 12000,
@@ -1859,6 +1862,7 @@
     "tools/worldBuildIndependence.selftest.mjs": 270000,
     "tools/worldColliderAudit.selftest.mjs": 1000,
     "tools/wreck-build-profile.selftest.mjs": 3000,
-    "tools/wreck-paint-bench.selftest.mjs": 1000
+    "tools/wreck-paint-bench.selftest.mjs": 1000,
+    "src/vehicles/profiles/ztz85iii.selftest.mjs": 11000
   }
 }

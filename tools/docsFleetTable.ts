@@ -17,17 +17,33 @@ export interface DocsFleetRow {
   readonly tier: number;
   readonly tierNumeral: string;
   readonly shells: ReadonlyArray<{ readonly name: string; readonly type: string; readonly pen100Mm: number; readonly pen1000Mm: number; readonly pen2000Mm: number | null }>;
+  /** The name players read (the label's displayName, never the id), the era and the search aliases. */
+  readonly displayName: string;
+  readonly era: string;
+  readonly aliases: readonly string[];
+  /** The first 8 hex of each view render's sha256 (the files' cache keys): the angle render, its 256 px thumb and the
+   *  side render (public/icons/<id>_angle.webp, thumbs/<id>_angle.webp, <id>_side.webp). */
+  readonly views: { readonly angle: string; readonly angleThumb: string; readonly side: string };
 }
 
-type ManifestRow = Omit<DocsFleetRow, 'shells'> & { readonly gun?: { readonly shells?: DocsFleetRow['shells'] } };
+interface ManifestFile { readonly sha256?: string; readonly thumbnail?: ManifestFile }
+type ManifestRow = Pick<DocsFleetRow, 'id' | 'name' | 'countryCode' | 'nation' | 'era'> & {
+  readonly gun?: { readonly shells?: DocsFleetRow['shells'] };
+  readonly label?: { readonly displayName?: string; readonly searchAliases?: readonly string[] };
+  readonly assets?: { readonly angle?: ManifestFile; readonly side?: ManifestFile };
+};
+const sha8 = (file: ManifestFile | undefined): string => (file?.sha256 ?? '').slice(0, 8);
 
 let rows: readonly DocsFleetRow[] | null = null;
-/** Every playable tank's name, nation, shown tier (src/techTree/tiers.ts, not the manifest's) and shells, in manifest order. */
+/** Every playable tank's name, nation, shown tier (src/techTree/tiers.ts, not the manifest's), shells, era and view
+ *  renders, in manifest order. */
 export function docsFleetRows(): readonly DocsFleetRow[] {
   if (rows) return rows;
   const table = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks as Record<string, ManifestRow>;
-  rows = Object.values(table).map(({ id, name, countryCode, nation, gun }) => ({
+  rows = Object.values(table).map(({ id, name, countryCode, nation, era, gun, label, assets }) => ({
     id, name, countryCode, nation, tier: displayTier(id), tierNumeral: tierNumeral(id), shells: gun?.shells ?? [],
+    displayName: label?.displayName || name, era, aliases: label?.searchAliases ?? [],
+    views: { angle: sha8(assets?.angle), angleThumb: sha8(assets?.angle?.thumbnail), side: sha8(assets?.side) },
   }));
   return rows;
 }

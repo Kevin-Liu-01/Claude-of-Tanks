@@ -4,10 +4,12 @@ import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 import {MISSION_RECEIVER_SEATS} from './missionAttachmentReceiver.ts';
+import {leopardA6UaDockSeat} from './leopardA6UaLayout.ts';
 import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesClear} from '../sim/missionAttachment.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
 const ids=['pt91a_twardy','leo2a6_ua','ua_m1a1','t80u_zoria'];
+const UA_DOCK=leopardA6UaDockSeat();
 const counts={pt91a_twardy:24,leo2a6_ua:22,ua_m1a1:47,t80u_zoria:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
@@ -30,7 +32,8 @@ function anchorStock(id,row){
  if(id==='pt91a_twardy')return row.name==='turret';
  // Zoria's bearers rest on the top lattice of the left roof-cage wing (rails, ties and cross rows at y 1.04).
  if(id==='t80u_zoria')return row.name==='turretOpenLattice'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-1.645&&v.x<=-.955&&v.y>=1.015&&v.y<=1.065&&v.z>=-1.235&&v.z<=.345);
- if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+1.55)<.0161&&v.y>=.8939&&v.y<=.9261&&v.z>=-2.901&&v.z<=.801);
+ // 264: the Leopard 2A6 UA's sockets stand on the cage roof's dock rail (leopardA6UaLayout.ts), its length of the roof
+ if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x-UA_DOCK.x)<.0161&&Math.abs(v.y-UA_DOCK.railY)<.0161&&v.z>=-4.0&&v.z<=.16);
  return (row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161))||sideRail(row);
 }
 // 252: the Twardy's welded feet embed (2-35 mm) through its thin roof; the interior fill under that roof (the 248 refresh's

@@ -1,5 +1,6 @@
 import { onLocaleChange, t } from '../ui/i18n.ts';
 import { designationHtml, holdNameText } from './designations.ts';
+import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
@@ -84,8 +85,11 @@ export function mountBattleReels(scope: Document = document): void {
   // its title and its battlefield; one press plays it
   let reels: { setItems(items: readonly PickerItem[], value?: string | null): void; setValue(id: string | null): void } | null = null;
   const reelItems = (): PickerItem[] => BATTLE_REELS.map((reel) => ({ id: reel.id, name: holdNameText(reel.title), facts: [reel.map], media: { poster: reel.poster } }));
+  let picked = false;
+  // (asked once, never while offline: a module that did not arrive is not asked for again in this document, so the
+  // player keeps its opening take, the grid keeps the kit's error state and its next press reloads the page once online)
   const mountPicker = (): void => {
-    void Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
+    importWhenOnline(() => Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
       .then(([{ createPicker }, { pickerText }]) => {
         reels = createPicker(grid, {
           id: 'docs-battle-reel', label: t('docs.studio.reelsGridAria'), items: reelItems(), value: BATTLE_REELS[activeIndex].id,
@@ -96,16 +100,33 @@ export function mountBattleReels(scope: Document = document): void {
           },
           onChoose: (item) => selectReel(BATTLE_REELS.findIndex((reel) => reel.id === item.id)),
         });
-      }).catch(() => { /* the player keeps its opening take */ });
+      }), () => {
+      markLoadFailed([grid]);
+      grid.addEventListener('click', () => pressFailed(grid));
+    });
   };
-  if (typeof IntersectionObserver !== 'function') mountPicker();
+  // ... or once the page has loaded and gone idle, whichever comes first: the grid grows from its search bar to two dozen
+  // cards as it mounts, and a mount at the near margin moved what follows it on screen after a fast scroll (the loading
+  // census: CLS 0.113 on a phone). Its cards' pictures still wait for the screen (the picker's own lazy loading).
+  const mountOnce = (): void => {
+    if (picked) return;
+    picked = true;
+    mountPicker();
+  };
+  if (typeof IntersectionObserver !== 'function') mountOnce();
   else {
     const near = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting)) return;
       near.disconnect();
-      mountPicker();
+      mountOnce();
     }, { rootMargin: '600px 0px' });
     near.observe(grid);
+    const idle = (): void => {
+      if ('requestIdleCallback' in window) requestIdleCallback(() => { near.disconnect(); mountOnce(); }, { timeout: 3000 });
+      else setTimeout(() => { near.disconnect(); mountOnce(); }, 1500);
+    };
+    if (document.readyState === 'complete') idle();
+    else addEventListener('load', idle, { once: true });
   }
 
   const caption = (index: number): void => {

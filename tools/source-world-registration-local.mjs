@@ -9,12 +9,13 @@ import { LEOPARD_X_REFERENCE_OVERRIDES } from './leopard-x-reference-overrides.t
 import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 if (!globalThis.ProgressEvent) globalThis.ProgressEvent=class {
   constructor(type, values) { this.type=type;Object.assign(this,values); }
 };
 const configs={...LEOPARD_X_REFERENCE_OVERRIDES,...T90_X_REFERENCE_OVERRIDES,...WEST_X_REFERENCE_OVERRIDES,
-  ...ARES_APC_X_REFERENCE_OVERRIDES};
+  ...ARES_APC_X_REFERENCE_OVERRIDES,...OPLOT_BM_X_REFERENCE_OVERRIDES};
 const frame=visual=>{
   visual.root.updateMatrixWorld(true);
   const datum=name=>visual.root.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).toArray();

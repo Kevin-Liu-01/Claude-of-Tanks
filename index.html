@@ -390,7 +390,15 @@
     .cot-boot-tip.fade { opacity: 0; }
     /* Credits and GitHub: the kit's quiet buttons in the foot row, the version at its other end; the Credits glyph's ink
        starts 1 px into its box, so the row stands 1 px out and that ink takes the version's 16 px gutter (boot r25) */
-    .cot-boot-links { position: absolute; left: 3px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
+    /* the site's pages (src/presentation/publicShell.ts bootNavHtml; owner 2026-10-27): the foot's quiet buttons at the
+       head, their glyphs the sprite's with the kit's caps and joins (publicNav.css .cot-si): 1.8 of a 24 grid at 15 px draws the site bar's weight */
+    :is(.cot-boot-links, .cot-boot-nav) { position: absolute; left: 3px; z-index: 2; display: flex; gap: 4px; }
+    .cot-boot-links { bottom: 12px; }
+    .cot-boot-nav { top: 12px; }
+    .cot-boot-link-icon.cot-boot-glyph { stroke-linecap: square; stroke-linejoin: miter; }
+    .cot-boot-link-icon.cot-boot-glyph--s { stroke-width: 1.25; }
+    /* the home glyph's wall stands 3.5 of its 24 in: half a pixel back, its ink takes the 16 px gutter as Credits' does */
+    .cot-boot-nav > .cot-boot-link:first-child > .cot-boot-glyph { margin-inline-start: -.5px; }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
@@ -399,16 +407,16 @@
       letter-spacing: var(--track-label-s); text-transform: uppercase; text-decoration: none;
       transition: transform var(--dur-fast) var(--ease-camera), background-color var(--dur-fast) ease;
     }
-    .cot-boot-links > .cot-boot-link { width: auto; min-width: 0; height: 36px; padding: 0 12px; }
+    :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link { width: auto; min-width: 0; height: 36px; padding: 0 12px; }
     /* the kit's quiet button (components.css .cot-c-btn--quiet), one look for the foot's buttons and the credits' last action */
-    .cot-boot-links > .cot-boot-link, .cot-credits-actions .cot-boot-link:last-child {
+    :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link, .cot-credits-actions .cot-boot-link:last-child {
       background: transparent; box-shadow: none; color: var(--ink-3);
       font: 500 13px/1 var(--font-ui); letter-spacing: normal; text-transform: none;
     }
-    #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
+    #cot-boot.cot-boot-enter :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link {
       animation: cot-boot-rise var(--dur-base) var(--ease-camera) backwards;
     }
-    #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link { animation-delay: .18s; }
+    #cot-boot.cot-boot-enter :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link { animation-delay: .18s; }
     .cot-boot-link-icon {
       width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor;
       stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
@@ -432,10 +440,12 @@
     .cot-boot-link:hover { color: var(--ink-1); background: var(--surface-hover); }
     .cot-boot-link:active { transform: translateY(var(--btn-press-drop)); transition-duration: var(--dur-instant); }
     .cot-boot-link:focus-visible { outline: 2px solid var(--focus-ink); outline-offset: 3px; }
+    /* the head and foot rows stand on the window's edge: their ring sits inside the button, never cut by the edge */
+    :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link:focus-visible { outline-offset: -2px; }
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
-    @media (pointer: coarse) { .cot-boot-links > .cot-boot-link { height: 44px; } }
-    @media (width <= 380px) { :root body .cot-boot-links { left: 7px; } :root body .cot-boot-links > .cot-boot-link { padding-inline: 8px; } }
+    @media (pointer: coarse) { :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link { height: 44px; } }
+    @media (width <= 380px) { :root body :is(.cot-boot-links, .cot-boot-nav) { left: 7px; } :root body :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link { padding-inline: 8px; } }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
       .cot-boot-gate.on { animation: none; }
@@ -443,7 +453,7 @@
       #cot-boot.cot-boot-enter .cot-boot-invite,
       #cot-boot.cot-boot-enter .cot-boot-load,
       #cot-boot.cot-boot-enter .cot-boot-tip,
-      #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link,
+      #cot-boot.cot-boot-enter :is(.cot-boot-links, .cot-boot-nav) > .cot-boot-link,
       #cot-boot.cot-boot-enter .cot-boot-foot { animation: none; }
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
       .cot-boot-link:active { transform: none; }
@@ -456,7 +466,7 @@
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
-    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot, .cot-boot-links) { visibility: hidden; }
+    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot, .cot-boot-links, .cot-boot-nav) { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
@@ -598,7 +608,7 @@
     /* a narrow phone: the version stands over the foot row's right end */
     @media (width < 480px) { .cot-boot-foot { bottom: 64px; } }
     @media (width >= 2200px) and (height >= 1200px) {
-      .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; }
+      .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links, .cot-boot-nav { zoom: 1.3; }
       /* zoomed, the labels' baseline lands 0.24 px under the whole pixel: the version keeps its whole bottom */
       .cot-boot-foot { bottom: 22px; }
       /* zoomed, the row's 4 px gaps are 5.2 and snap to 5 and 6: a whole 5 px keeps one rhythm (boot r27) */
@@ -688,6 +698,13 @@
       let terminalBeaconSent = false;
       let surfaceOwned = false;
       let failedByStatus = '';
+      // a hashed file this deployment no longer serves (404): a newer deploy replaced the files under this document
+      let goneFile = '';
+      // A link out of the splash (its site pages, owner 2026-10-27) leaves the document: the requests its navigation
+      // cancels are no failure, so nothing reloads over it, reports or counts against the next boot. A navigation that
+      // never commits hands recovery back after LEAVE_MS; a page restored from the back-forward cache takes it back.
+      const LEAVE_MS = 10000;
+      let leaving = 0;
       const network = { entries: 0, scripts: 0, bytes: 0, expected: 0, lastProgressAt: loadedAt };
 
       // One anonymous session id per page load, shared with src/entry/telemetry.ts.
@@ -852,13 +869,13 @@
       }
 
       function showNotice(reason) {
-        if (halted || navigating || window.__GAME_READY) return;
+        if (halted || navigating || leaving || window.__GAME_READY) return;
         surfaceOwned = true;
         const stage = document.getElementById('cot-boot-stage');
         if (stage) stage.textContent = describe(reason).text;
       }
       function showRetry(reason) {
-        if (halted || navigating) return;
+        if (halted || navigating || leaving) return;
         surfaceOwned = true;
         const verdict = describe(reason);
         const stage = document.getElementById('cot-boot-stage');
@@ -882,8 +899,9 @@
         if (retry) {
           retry.classList.add('on');
           retry.onclick = () => reload(`manual:${reason}`);
-          // the one way forward takes the focus, unless the player is already somewhere
-          if (!document.activeElement || document.activeElement === document.body) retry.focus({ preventScroll: true });
+          // the one way forward takes the focus, unless the player is already somewhere; never in the running game, where
+          // a key meant for the Garage or a battle would press it
+          if (!window.__GAME_READY && (!document.activeElement || document.activeElement === document.body)) retry.focus({ preventScroll: true });
         }
         if (!terminalBeaconSent) {
           terminalBeaconSent = true;
@@ -913,8 +931,24 @@
         } catch (_) { finish(false); }
       }
 
+      // After the reveal a failed chunk is its opener's to report, never to retry: a browser may keep the failure (Chrome
+      // 151 does) and a chunk's failed stylesheet never applies again (src/ui/components/loadFailure.ts), so the opener's
+      // trigger keeps the kit's error state and its next press reloads the page once online (the Tech Tree, the Record, Settings and a battle's entry among them). This page never
+      // reloads by itself: that would throw away the Garage, a room or a battle. Only a chunk this deployment no longer
+      // serves (a newer deploy replaced the files; src/app/lazyImportRetry.ts 'missing') needs a fresh document, and the
+      // player takes it from the reload action.
+      function recoverAfterReady(reason) {
+        if (goneFile) { showRetry(reason); return; }
+        if (!lastFailedFile || typeof fetch !== 'function') return;
+        try {
+          fetch('/assets/' + lastFailedFile, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin' })
+            .then((response) => { if (response && response.status === 404) { goneFile = lastFailedFile; showRetry(reason); } }, () => {});
+        } catch (_) { /* no probe, no reload */ }
+      }
+
       function recover(reason) {
-        if (halted || navigating || recoveryScheduled) return;
+        if (halted || navigating || leaving || recoveryScheduled) return;
+        if (window.__GAME_READY) { recoverAfterReady(reason); return; }
         if (!canAutoRecover()) {
           deferredRecoveryReason = reason;
           showRetry(reason);
@@ -926,7 +960,7 @@
           return;
         }
         const commit = () => {
-          if (halted || navigating || recoveryScheduled) return;
+          if (halted || navigating || leaving || recoveryScheduled) return;
           recoveryScheduled = true;
           window.__CHUNK_RECOVERY_PENDING = true;
           beacon({ stage: bounded(lastStage), reason: bounded(reason), code: 'reload:' + classify(reason),
@@ -1021,6 +1055,7 @@
           bytes += Number(entry.transferSize || entry.encodedBodySize || 0) || 0;
           if (/\/assets\/[^/?#]+\.js(?:[?#]|$)/.test(name)) network.scripts += 1;
           if (Number(entry.responseStatus) >= 400 && /\/assets\//.test(name)) failedByStatus = name.split('/').pop().split('?')[0];
+          if (Number(entry.responseStatus) === 404 && /\/assets\//.test(name)) goneFile = failedByStatus;
         }
         network.bytes += bytes;
         network.lastProgressAt = Date.now();
@@ -1123,6 +1158,19 @@
       };
       addEventListener('visibilitychange', resumeDeferredRecovery);
       addEventListener('online', resumeDeferredRecovery);
+      addEventListener('click', (event) => {
+        const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link || window.__GAME_READY || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey
+          || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
+        clearTimeout(leaving);
+        leaving = setTimeout(() => { leaving = 0; }, LEAVE_MS);
+      });
+      addEventListener('pageshow', (event) => {
+        if (!event.persisted || !leaving) return;
+        clearTimeout(leaving);
+        leaving = 0;
+        if (!window.__GAME_READY && !halted && !navigating) progress(lastStage, false);
+      });
 
       const health = setInterval(() => {
         if (!window.__GAME_READY) return;
@@ -1180,6 +1228,9 @@
       <img class="hly" alt="" decoding="async" fetchpriority="low">
       <img class="hly" alt="" decoding="async" fetchpriority="low">
     </div>
+    <!-- The site's pages (owner 2026-10-27): a long first load can step out to a page that loads at once. Plain anchors,
+         written by node tools/public-shell.mjs --write from src/presentation/publicShell.ts bootNavHtml. -->
+    <!--cot:bootnav--><nav class="cot-boot-nav" data-cot-boot-control aria-label="Site pages" data-i18n-aria-label="publicNav.menuAria"><a class="cot-boot-link" href="/home"><svg class="cot-boot-link-icon cot-boot-glyph" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false"><path d="M3.5 10.5 12 3.5l8.5 7v10h-6v-6h-5v6h-6Z"/></svg><span data-i18n="publicNav.home">Home</span></a><a class="cot-boot-link" href="/gallery"><svg class="cot-boot-link-icon cot-boot-glyph cot-boot-glyph--s" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false"><path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3M4.5 9.5h7l1 1.25-1 1.25h-7l-1-1.25ZM5.75 9.5V8l1-1H9l1 1v1.5ZM10 8h2.5"/></svg><span data-i18n="publicNav.tankGallery">Tank Gallery</span></a><a class="cot-boot-link" href="/docs"><svg class="cot-boot-link-icon cot-boot-glyph cot-boot-glyph--s" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false"><path d="M1.5 3H6l1.25 1.25v9.25L6 12.25H1.5ZM14.5 3H10L8.75 4.25v9.25L10 12.25h4.5Z"/></svg><span data-i18n="publicNav.fieldManual">Field Manual</span></a></nav><!--/cot:bootnav-->
     <div class="cot-boot-inner">
       <!-- The lockup (owner, 2026-10-26): the living commander mark over the one-line wordmark; generated by
            tools/sync-brand-marks.mjs from src/ui/brandMarkMotion.ts and src/ui/brandMark.ts. -->

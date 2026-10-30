@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { heroLqip } from './hero-lqip.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SELF = fileURLToPath(import.meta.url);
@@ -30,7 +31,10 @@ if (emit) {
   await import('../src/ui/i18nCatalog.ts');
   const { setLocale } = await import('../src/ui/i18n.ts');
   await setLocale(emit);
-  const { TOPIC_GROUPS, TOPIC_ORDER, topicPageMarkup } = await import('../src/docs/topics.ts');
+  const { TOPIC_GROUPS, TOPIC_ORDER, topicHeroLadder, topicPageMarkup, topics, setTopicHeroLqips } = await import('../src/docs/topics.ts');
+  // each banner's inline preview (tools/hero-lqip.mjs: throws on a missing or stale one)
+  setTopicHeroLqips(Object.fromEntries(Object.values(topics).map(({ hero }) => topicHeroLadder(hero)?.poster ?? hero)
+    .map((path) => [path, heroLqip(path)])));
   const { t } = await import('../src/ui/i18n.ts');
   const { richSections } = await import('../src/docs/chapters/index.ts');
   const { manualRecords } = await import('../src/docs/searchIndex.ts');
@@ -44,6 +48,17 @@ if (emit) {
 
 const render = (locale) => JSON.parse(execFileSync(process.execPath, ['--max-old-space-size=2048', SELF, `--emit=${locale}`],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+
+// The index's banner (its LCP picture) and its chapter cards carry their inline previews on their boxes
+// (tools/hero-lqip.mjs, docs.css), as each chapter's banner does: a picture fades in over its preview once decoded.
+const INDEX_BANNER = /<header class="docs-hero docs-hero--visual"(?: style="[^"]*")?>(\s*<img src="([^"]+)")/;
+const CARD_MEDIA = /<span class="docs-chapter-media" data-reveal(?: style="[^"]*")?><img src="([^"]+)"/g;
+function indexPreviews(html) {
+  const banner = INDEX_BANNER.exec(html);
+  if (!banner) throw new Error('docs-prerender: site/docs.html has no banner picture');
+  return html.replace(INDEX_BANNER, (_, img, src) => `<header class="docs-hero docs-hero--visual" style="--docs-hero-lqip:url(&quot;${heroLqip(src)}&quot;)">${img}`)
+    .replace(CARD_MEDIA, (_, src) => `<span class="docs-chapter-media" data-reveal style="--card-lqip:url(&quot;${heroLqip(src)}&quot;)"><img src="${src}"`);
+}
 
 // The manual's index is the chapter map: site/docs.html's <!--docs:map--> region holds one card per chapter (its picture,
 // title and lede; tools/add-chapter writes a new chapter's card there) and this step shelves them as TOPIC_GROUPS does.
@@ -86,7 +101,7 @@ function prerender(write) {
     if (next === html) continue;
     if (write) writeFileSync(path, next); else stale.push(`site/docs-${slug}.html`);
   }
-  keep('site/docs.html', chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups));
+  keep('site/docs.html', indexPreviews(chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups)));
   keep(ZH_FRAGMENTS, `${JSON.stringify(zh, null, 1)}\n`);
   // the search index per locale (src/docs/docsSearch.ts loads the reader's with the field's first use)
   keep('src/docs/searchIndex.en-US.json', `${JSON.stringify(enIndex, null, 1)}\n`);

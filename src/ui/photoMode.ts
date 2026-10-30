@@ -28,6 +28,9 @@ interface PhotoModeHost {
   /** The saved file's name (the selected tank's). */
   fileName(): string;
   keycap(label: string): string;
+  /** The kit's segmented control and its roving keys (components.ts), through the host as the keycap is. */
+  segmented: typeof import('./components/components.ts').segmented;
+  wireRoving: typeof import('./components/components.ts').wireRoving;
   click(): void;
   /** Called once photo mode has closed. */
   onClose(): void;
@@ -87,30 +90,30 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
   bar.className = 'cot-photo-bar';
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('garage.photo.toolbar'));
+  // the framings are the kit's segmented control: one is checked, the arrows move it (a drag or a dolly leaves them all)
   bar.innerHTML =
-    `<div class="cot-photo-views" role="group" aria-label="${t('garage.photo.views')}">` +
-    VIEWS.map(([id]) => `<button type="button" data-view="${id}" aria-pressed="${id === 'hero'}">${t(`garage.photo.view.${id}`)}</button>`).join('') +
-    `</div><button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--primary" data-photo-save>${uiIconSVG('toolPhoto', 16)}` +
+    host.segmented({ label: t('garage.photo.views'), className: 'cot-photo-views', value: 'hero',
+      options: VIEWS.map(([id]) => ({ value: id, label: t(`garage.photo.view.${id}`) })) }) +
+    `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--primary" data-photo-save>${uiIconSVG('toolPhoto', 16)}` +
     `<span>${t('garage.photo.save')}</span></button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--36" data-photo-exit><span>${t('garage.photo.exit')}</span>${host.keycap('Esc')}</button>`;
   document.body.append(bar);
 
-  const views = [...bar.querySelectorAll<HTMLButtonElement>('[data-view]')];
+  const views = [...bar.querySelectorAll<HTMLButtonElement>('.cot-photo-views [data-value]')];
   const choose = (id: string): void => {
     const view = VIEWS.find(([viewId]) => viewId === id);
     if (!view) return;
-    for (const button of views) button.setAttribute('aria-pressed', String(button.dataset.view === id));
     if (view.length === 1) host.showroom.reset();
     else host.showroom.aim(view[1], view[2], view[3]);
   };
-  bar.querySelector('.cot-photo-views')?.addEventListener('click', (event) => {
-    const id = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-view]')?.dataset.view;
-    if (!id) return;
-    host.click();
-    choose(id);
-  });
-  // a drag or a dolly leaves every framing
-  const leaveViews = (): void => { for (const button of views) button.setAttribute('aria-pressed', 'false'); };
+  const unwireViews = host.wireRoving(bar.querySelector<HTMLElement>('.cot-photo-views')!, (id) => { host.click(); choose(id); });
+  // a drag or a dolly leaves every framing; the first keeps the group's tab stop
+  const leaveViews = (): void => {
+    for (const [index, button] of views.entries()) {
+      button.setAttribute('aria-checked', 'false');
+      button.tabIndex = index === 0 ? 0 : -1;
+    }
+  };
   host.stage.addEventListener('pointerdown', leaveViews);
   host.stage.addEventListener('wheel', leaveViews, { passive: true });
 
@@ -146,6 +149,7 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
     window.removeEventListener('keydown', onKey, true);
     host.stage.removeEventListener('pointerdown', leaveViews);
     host.stage.removeEventListener('wheel', leaveViews);
+    unwireViews();
     bar.remove();
     document.body.classList.remove('cot-photo-on');
     host.showroom.hold(false);

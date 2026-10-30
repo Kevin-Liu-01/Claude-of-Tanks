@@ -38,13 +38,14 @@ import { flagIconCode } from '../ui/flagCodes.ts';
 import { iconUrl, tankThumbUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
-import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
-import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { emptyState, esc, scale20, scaleCells, segmented, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { createPickerMenu, panelRoom, type PickerMenu } from '../ui/components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
-import { cameraViewGlyphSVG } from './viewGlyphs.ts';
+import { revealWhenReady } from '../ui/components/reveal.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
@@ -106,8 +107,16 @@ const vehicleList = $<HTMLElement>('#vehicleList');
 const loadingState = $<HTMLElement>('#loadingState');
 const loadingSilhouette = $<HTMLElement>('#loadingSil');
 const takeMedia = $<HTMLElement>('#takeMedia');
-const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-mode]')];
-const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+// the layers are the kit's segmented control, each with its key (1 to 5) and its glyph (the 261 census: a hand-built dock)
+const LAYER_GLYPHS: Readonly<Record<GalleryMode, IconId>> = { appearance: 'vehicle', armor: 'layerArmor', modules: 'layerXray', crew: 'team', markup: 'layerMarkup' };
+{
+  const dock = document.createElement('template');
+  dock.innerHTML = segmented({ label: t('gallery.view.modeDockAria'), className: 'layers', value: 'appearance',
+    options: GALLERY_MODES.map((mode, index) => ({ value: mode, label: t(`gallery.view.mode.${mode}`), icon: LAYER_GLYPHS[mode], key: String(index + 1) })) });
+  $('#layerDock').replaceWith(dock.content);
+}
+const layerDock = $<HTMLElement>('.layers');
+const modeButtons = [...layerDock.querySelectorAll<HTMLButtonElement>('[data-value]')];
 const viewLabelKey: Record<string, string> = {
   hero: 'gallery.view.view.hero',
   front: 'gallery.view.view.front',
@@ -118,14 +127,12 @@ const viewLabelKey: Record<string, string> = {
   'elevated-left': 'gallery.view.view.elevatedLeft',
   'elevated-right': 'gallery.view.view.elevatedRight',
 };
-for (const button of viewButtons) {
-  const key = viewLabelKey[button.dataset.view || 'hero'];
-  const label = key ? t(key) : button.dataset.view || '';
-  button.replaceChildren();
-  button.insertAdjacentHTML('beforeend',
-    `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${esc(label)}</span>`);
-  button.setAttribute('aria-pressed', String(button.classList.contains('active')));
-}
+// the camera's eight framings are the kit's picker menu (261 census: a hand-built column of eight)
+const viewMenu = createPickerMenu($<HTMLElement>('.views'), {
+  id: 'gallery-camera-view', label: t('gallery.viewer.viewControlsAria'), value: 'hero', layout: 'list', text: pickerText(),
+  items: Object.keys(viewLabelKey).map((name) => ({ id: name, name: t(viewLabelKey[name]) })),
+  onChoose: (item) => frameView(item.id),
+});
 
 const records = buildGalleryRecords(
   VISIBLE_TANK_IDS.map((id) => getSpec(id) as GalleryVehicleSpec),
@@ -302,7 +309,7 @@ let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts').catch((error: unknown) => { anatomyModule = null; throw error; });
+  anatomyModule ??= import('./anatomyView.ts');
   return anatomyModule;
 }
 const anatomyHost = (): AnatomyHost => ({
@@ -363,7 +370,10 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     colorDamageOverlay();
     if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
+    // a module that did not arrive is not asked for again in this document: the anatomy layers keep the kit's error state,
+    // and their next press reloads the page once online
     settle();
+    markLoadFailed(modeButtons.filter((button) => isAnatomyMode(button.dataset.value as GalleryMode)), t('gallery.anatomy.loadFailed'));
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
@@ -441,11 +451,7 @@ function frameView(requestedName = 'hero'): void {
   controls.target.copy(currentCenter);
   applyGalleryCameraRange(camera, controls, galleryFog, bounds, distance);
   controls.update();
-  viewButtons.forEach((button) => {
-    const on = button.dataset.view === name;
-    button.classList.toggle('active', on);
-    button.setAttribute('aria-pressed', String(on));
-  });
+  viewMenu.setValue(name);
 }
 
 // the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
@@ -727,6 +733,16 @@ function renderFacets(): void {
   if (disclosure && more && !moreFacetsShown && !matchMedia(MORE_FACETS_OVER).matches) disclosure.open = true;
   moreFacetsShown = true;
 }
+/** The plate over the list stands within the window under its summary and scrolls past that (the g18 critic at 1024 x 600:
+ *  its last row cut by the screen's foot, Sniper, Scout and Support out of reach). */
+function fitMoreFacets(this: HTMLDetailsElement): void {
+  const plate = this.querySelector<HTMLElement>(':scope>.toggles--glyphs');
+  if (!plate) return;
+  plate.style.removeProperty('max-height');
+  if (!this.open || !matchMedia(MORE_FACETS_OVER).matches) return;
+  const room = innerHeight - this.getBoundingClientRect().bottom - 12;
+  if (plate.getBoundingClientRect().height > room) plate.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
+}
 let moreFacetsShown = false;
 /** Where the open More filters lay a plate over the list (gallery.css); there they close as a menu does. */
 const MORE_FACETS_OVER = '(width >= 768px) and (height >= 520px)';
@@ -858,6 +874,7 @@ function renderRoster(): void {
   const layout = effectiveLayout();
   const focusedId = (document.activeElement as HTMLElement | null)?.closest?.<HTMLElement>('.it')?.dataset.id;
   vehicleList.dataset.layout = layout;
+  vehicleList.removeAttribute('aria-busy');
   const groups = groupRecords(filteredRecords);
   vehicleList.innerHTML = groups.map((group) => (group.label
     ? `<div class="fam__group" role="group" aria-label="${esc(group.label)}"><div class="gh" aria-hidden="true">${group.lead}`
@@ -1118,10 +1135,19 @@ function decorateTake(id: string): void {
   const still = $<HTMLImageElement>('#takeStill');
   const record = recordById.get(id);
   still.src = record?.image || '';
+  revealWhenReady(still.parentElement!, still);
   for (const layer of takeMedia.querySelectorAll(':scope > picture')) layer.remove();
   takeMedia.classList.remove('cot-hc', 'hc-loaded');
   if (heroCards) heroCards.module.decorateHeroCard(takeMedia, id, heroCards.manifest, { tankSizes: '480px', flagSizes: '480px', priority: true });
 }
+// a still the network dropped loads again, quietly, once it is back
+window.addEventListener('online', () => {
+  const still = $<HTMLImageElement>('#takeStill');
+  const src = still.getAttribute('src');
+  if (!src || !still.parentElement?.hasAttribute('data-failed')) return;
+  still.src = src;
+  revealWhenReady(still.parentElement, still);
+});
 
 function delta(stat: StatDef | null, own: number, rival: number, digits = 0): { delta?: string; better?: boolean } {
   const diff = own - rival;
@@ -1238,20 +1264,20 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number; span?: boolean } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  // (under the bar's rule, which hangs 1 px below it: publicNav's .public-nav::after; the 261 critic's 1 px step)
+  // on the bar's rule, which hangs 1 px below it (publicNav.css .public-nav::after): the menu's ring lies on that rule,
+  // opaque over the dossier's picture, which runs under it
   const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (!panel) return { top, bottom: innerHeight };
   // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
   // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
-  // (its inner box: inside its rule and its scrollbar)
-  const box = panel.getBoundingClientRect();
-  const left = box.left + panel.clientLeft, inTop = box.top + panel.clientTop;
+  const room = panelRoom(panel);
   const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
-  return { top: scrolls ? Math.max(top, inTop) : top, bottom: scrolls ? Math.min(innerHeight, inTop + panel.clientHeight) : innerHeight,
-    left, right: left + panel.clientWidth };
+  // spanned at every width: at 2560 the dossier widens past a column (the 261 critic: a trigger-wide menu cut its text)
+  return { top: scrolls ? Math.max(top, room.top) : top, bottom: scrolls ? room.bottom : innerHeight, left: room.left, right: room.right,
+    span: true };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
@@ -1394,10 +1420,10 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   else anatomyView?.hide();
   surfaceMarkup.setActive(activeMode === 'markup');
   modeButtons.forEach((button) => {
-    const on = button.dataset.mode === activeMode;
-    button.classList.toggle('active', on);
-    button.setAttribute('aria-pressed', String(on));
-    button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance';
+    const on = button.dataset.value === activeMode;
+    button.setAttribute('aria-checked', String(on));
+    button.tabIndex = on ? 0 : -1;
+    button.disabled = !!damageLab?.combat.destroyed && button.dataset.value !== 'appearance';
   });
   if (previousMode !== activeMode || !isAnatomyMode(activeMode)) $('#inspectionReadout').hidden = true;
   markupTab.hidden = activeMode !== 'markup';
@@ -1486,6 +1512,7 @@ async function loadTank(
   renderDossier(record);
   markSelectedRow();
   loadingSilhouette.style.setProperty('--sil', `url(${iconUrl(id, 'side_silhouette')})`);
+  loadingSilhouette.removeAttribute('data-skeleton');
   loadingState.classList.remove('hidden');
   await nextFrame();
   if (version !== loadVersion) return;
@@ -1641,8 +1668,8 @@ vehicleList.addEventListener('pointerover', (event) => {
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
-modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
-viewButtons.forEach((button) => button.addEventListener('click', () => frameView(button.dataset.view)));
+// (a layer whose module did not arrive keeps the kit's error state: its press reloads the page once online)
+wireRoving(layerDock, (mode) => { if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode); });
 $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;

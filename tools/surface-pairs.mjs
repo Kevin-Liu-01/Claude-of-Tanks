@@ -156,7 +156,7 @@ async function runPage(browser, run, lang, pageName) {
     await page.waitForSelector(PAGE_READY[pageName], { timeout: 300_000 });
     await settle(2500);
     // the Compare readout on (the rival's control in view from rest)
-    if (pageName === 'game') await page.evaluate(() => { const chip = document.querySelector('[data-compare][aria-pressed="false"]'); if (chip?.getClientRects().length) chip.click(); });
+    if (pageName === 'game') await page.evaluate(() => { const chip = document.querySelector('[data-compare="off"]'); if (chip?.getClientRects().length) chip.click(); });
     await settle(600);
   };
   const state = () => page.evaluate(readState, boxes, []);

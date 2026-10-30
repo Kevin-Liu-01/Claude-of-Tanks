@@ -31,6 +31,7 @@ for (const [id, count] of counts) assert.ok(count > 0, `${id}: exercised by play
 assert.equal(suspensionPatternFor(getSpec('m1a1_abrams_hc')).id, 'abrams-torsion-arm');
 assert.equal(suspensionPatternFor(getSpec('t64bv1')).id, 't64-torsion-arm');
 assert.equal(suspensionPatternFor(getSpec('t64bv_donbas')).id, 't64-torsion-arm');
+for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) assert.equal(suspensionPatternFor(getSpec(id)).id, 't64-torsion-arm');
 assert.equal(suspensionPatternFor(getSpec('centurion5_2')).id, 'paired-bogie');
 assert.equal(suspensionPatternFor(getSpec('strv103a')).id, 'hydropneumatic-link');
 assert.equal(suspensionPatternFor(getSpec('xk2_black_panther')).id, 'hydropneumatic-link');

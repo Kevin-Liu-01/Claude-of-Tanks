@@ -405,6 +405,7 @@ export default defineConfig({
         docsTanks: resolve(process.cwd(), 'site/docs-tanks.html'),
         docsStart: resolve(process.cwd(), 'site/docs-start.html'),
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
+        docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
@@ -466,7 +467,12 @@ export default defineConfig({
             // 2026-10-26 (consumables-260): the DOM-free consumable rules and the Garage's loadout helpers (sim/consumableRules.ts,
             // game/consumableLoadout.ts) load at boot on exactly the game and cn (the Garage, the room selection) and in the lazy
             // HUD and battle; on their own they were one more boot request on both.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-28 (battle-camera-264): the chase framing (engine/chaseFraming.ts: the camera rig and the input settings at
+            // boot, the lazy Settings card) and the battle sight's datum (ui/battleSight.ts: the aim composition at boot, the lazy
+            // HUD) are DOM-free leaves the game and cn load at boot; on its own the framing was one more boot request on both,
+            // and the sight datum rode in a chunk the game and cn share with the Gallery's preload maps. The lens reader
+            // (engine/cameraLens.ts: post at boot, the lazy clouds and vegetation) likewise: on its own one more request.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -481,7 +487,12 @@ export default defineConfig({
             // supplied frames, skirt and hull layouts, upgrade datums and the national donor designs — are pure tables
             // (no import but other tables) that the builders, the gallery and main all reach, so each split into a chunk of
             // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-28 (integrator 263): the Christian II's turret datums and envelope (christian2Armor.ts, christian2-262) and the
+            // Leopard 2-pattern hull datums it reads are tables the specs (boot) and the lazy builder both import; on their own
+            // they were one more game, cn and Gallery boot request.
+            // 2026-10-29 (integrator 264): the 2A6 UA's shell dimensions and dock seat (leopardA6UaLayout.ts, leo2a6-ua-264b), a
+            // table germany.ts (boot) and the mission receiver read; alone it was one more game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more
@@ -544,7 +555,7 @@ export default defineConfig({
       'site/docs-simulation.html', 'site/docs-rendering.html',
       'site/docs-ai.html',
       'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-studio.html',
-      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
+      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-fleet.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
     ],
     include: [
       'three',

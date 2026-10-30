@@ -31,6 +31,7 @@ type PublicRouteId =
   | 'docsTanks'
   | 'docsStart'
   | 'docsControls'
+  | 'docsFleet'
   | 'notFound';
 
 export interface PublicRouteRecord {
@@ -43,7 +44,7 @@ export interface PublicRouteRecord {
 
 const DOCS_TOPICS = [
   'build', 'models', 'simulation', 'rendering', 'ai', 'multiplayer', 'audio',
-  'studio', 'filming', 'modes', 'battlefields', 'combat', 'tanks', 'start', 'controls',
+  'studio', 'filming', 'modes', 'battlefields', 'combat', 'tanks', 'start', 'controls', 'fleet',
 ] as const;
 
 const route = (id: PublicRouteId, pathname: string, sourceHtml: string, localizedHtml = sourceHtml, indexable = true):

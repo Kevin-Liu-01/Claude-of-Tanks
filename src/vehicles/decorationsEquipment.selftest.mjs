@@ -333,23 +333,18 @@ const strvCanBase = strvCanPosition.clone()
 assert.ok(Math.abs(strvCanBase.sub(annotatedRoofHit.p).dot(annotatedRoofHit.n) + 0.004) < 1e-7,
   'Strv 103B can cradle embeds 4 mm into the roof carrier instead of floating');
 
+// Release 262: the M48A5 is rebuilt from the owner's model with its complete equipment (pattonCast.ts); the era field
+// load (a second roof M2, a third whip, a roof lamp, a turret-side tarp, cargo) gives way to the functional smoke pair.
 const m48a5_patton = {
   id: 'm48a5_patton', nation: 'USA', era: 'cold-war',
   dims: { widthM: 3.63, heightM: 3.09, hullLengthM: 6.95, overallLengthM: 9.30 },
   armor: { turretless: false },
 };
-const m48Cargo = decorManifestFor(m48a5_patton, () => 0.5)
-  .filter((row) => row.kit === 'cargo');
-const hardCaseIds = new Set([
-  'beer-cooler-blue', 'cooler-red', 'insulated-chest-olive',
-  'fifty-cal-ammo-can', 'wood-ammo-crate', 'ration-case', 'medical-case',
-  'mechanics-tool-chest', 'spare-optics-case', 'thermos-crate',
-]);
-const m48HardCases = m48Cargo.filter((row) => hardCaseIds.has(row.v?.v));
-assert.equal(m48HardCases.length, 2, 'M48 keeps two useful hard cases');
-assert.ok(m48HardCases.every((row) => row.slot[1].routes.every(([station]) =>
-  station !== 'turretRoof' && station !== 'turretRear')),
-'M48 hard cases stay off the commander cupola and turret crown');
+for (const randomValue of [.13, .5, .87]) {
+  assert.deepEqual(decorManifestFor(m48a5_patton, () => randomValue),
+    [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }],
+    'the model-authored M48A5 keeps only its smoke pair over its own racks, guns and whips');
+}
 
 const uaM1A1 = {
   id: 'ua_m1a1', nation: 'Ukraine', era: 'modern',

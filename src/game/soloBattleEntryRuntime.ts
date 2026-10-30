@@ -6,6 +6,7 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 import type { PendingBattlefield } from '../ui/battleLoad.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { soloRosterSeats } from './soloRosterPlan.ts';
 
 interface EntryLoadScreen {
@@ -44,9 +45,9 @@ interface SoloBattleEntryRuntimeOptions {
    * Entry resilience (2026-09-25): show the player why the battle did not
    * start, after the recovered Garage is painted and the loader has faded.
    * Demand-loaded by the composition root; a failed notice never masks the
-   * original failure.
+   * original failure. `retry` runs the same entry again: the notice's one action (loading states, 2026-10-27).
    */
-  presentFailure?(error: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
+  presentFailure?(error: RuntimeValue, retry: () => void): Promise<RuntimeValue> | RuntimeValue;
   /** Beacon port: the bounded outcome of a failed solo entry. */
   onFailure?(error: RuntimeValue): void;
 }
@@ -58,6 +59,19 @@ interface SoloBattleEntryRuntime {
     options?: SoloBattleLoadingStartOptions,
   ): Promise<void>;
   beginSelected(request?: SoloBattleEntryRequest): Promise<void>;
+}
+
+/**
+ * The pending cover as the entry chose it: its battlefield as described (or its id alone, where the description found
+ * nothing) and the chosen mode, a campaign operation's with it. Its chip names the mode from the first frame: the
+ * cover's placeholder read "Random Battle · Standard" over the Proving Ground and a campaign operation (the 262
+ * production check).
+ */
+function withChosenMode(pending: PendingBattlefield | string | null, options: SoloBattleLoadingStartOptions | undefined): PendingBattlefield {
+  const described: PendingBattlefield = typeof pending === 'string' || pending === null ? { mapId: pending ?? '' } : pending;
+  const campaignOperationId = options?.campaignOperationId ?? null;
+  return { ...described, modeId: normalizeGameMode(options?.gameMode ?? 'standard'),
+    ...(campaignOperationId ? { campaign: true, campaignOperationId } : {}) };
 }
 
 /**
@@ -98,8 +112,9 @@ export function createSoloBattleEntryRuntime({
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
       try { pending = describePendingMap(specId, mapId, options) ?? mapId; } catch { /* the cover never waits on a name */ }
-      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same)
-      battleLoad.showPending(pending, soloRosterSeats(options?.gameMode, options?.campaignOperationId));
+      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same; and its
+      // rules row the chosen mode, whatever the description found)
+      battleLoad.showPending(withChosenMode(pending, options), soloRosterSeats(options?.gameMode, options?.campaignOperationId));
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {
@@ -114,7 +129,7 @@ export function createSoloBattleEntryRuntime({
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
       try {
-        await presentFailure(error);
+        await presentFailure(error, () => { void begin(specId, mapId, options); });
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
       }

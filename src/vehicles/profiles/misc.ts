@@ -1399,12 +1399,25 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // "not good" front: the print's front half tops at 2.0-2.23.
     P.add('turret', box(2.04, 0.05, 0.88), 0, 0.585, 0.50);                      // mid roof deck x +-1.02, top 0.61 (2.21w), z_l 0.06..0.94
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                      // field->mid riser (raked step at the print's z_w 1.0 line; inboard run hidden inside the center pad)
-        [s * 0.115, 0.44, 1.10], [s * 1.02, 0.44, 1.10], [s * 1.02, 0.44, 1.06], [s * 0.115, 0.44, 1.06],
+      // field->mid riser (raked step at the print's z_w 1.0 line; inboard run hidden inside the center pad). 261 (owner
+      // 2026-10-27, "fill in the annoying gaps under all of these ... they create "roofs" that imply solid areas but
+      // have no side plating or anything under"): the riser was a 4 cm plate whose back face roofed an open wedge down to
+      // the bulkhead, open at its outer end; it is the solid step it reads as, its rear run back to z 0.90 inside the
+      // bulkhead and the mid-roof cores (front face and top unchanged).
+      P.add('turret', slab(
+        [s * 0.115, 0.44, 1.10], [s * 1.02, 0.44, 1.10], [s * 1.02, 0.44, 0.90], [s * 0.115, 0.44, 0.90],
         [s * 0.115, 0.61, 0.98], [s * 1.02, 0.61, 0.98], [s * 1.02, 0.61, 0.94], [s * 0.115, 0.61, 0.94]));
       P.add('turret', slab(                                                      // mid->high riser (the print's 2.21 -> 2.36 step: ref reads 2.30-2.36 at z_w -0.08..-0.14; crest at z_w -0.12 keeps the col-0.072 window fed)
         [s * 0.34, 0.61, 0.06], [s * 1.00, 0.61, 0.06], [s * 1.00, 0.61, 0.02], [s * 0.34, 0.61, 0.02],
         [s * 0.34, LH, -0.02], [s * 1.00, LH, -0.02], [s * 1.00, LH, -0.06], [s * 0.34, LH, -0.06]));
+      // 261 (the same owner ask): under and behind that riser a 13 cm slot ran from the riser down to the turret base,
+      // between the mid-roof cores (z 0.07) and the high-roof cores (z -0.06), open at its outer end; the riser's back
+      // face and underside roofed it. A body block fills the slot to the riser's underside, and a wedge fills the step
+      // behind its back face up to the high roof (both inside every exterior datum).
+      P.add('turret', box(0.66, 0.61, 0.125), s * 0.67, 0.305, -0.0025);
+      P.add('turret', slab(
+        [s * 0.34, 0.61, 0.02], [s * 1.00, 0.61, 0.02], [s * 1.00, 0.61, -0.065], [s * 0.34, 0.61, -0.065],
+        [s * 0.34, 0.75, -0.0589], [s * 1.00, 0.75, -0.0589], [s * 1.00, 0.75, -0.065], [s * 0.34, 0.75, -0.065]));
       P.add('turret', slab(                                                      // mid chamfer: mid roof edge -> the side-box top line (planar t-ring)
         [s * 1.00, 0.56, 0.98], [s * 1.40, 0.30, 0.94], [s * 1.40, 0.30, 0.02], [s * 1.00, 0.56, 0.06],
         [s * 1.02, 0.61, 0.98], [s * 1.42, 0.335, 0.94], [s * 1.42, 0.335, 0.02], [s * 1.02, 0.61, 0.06]));
@@ -1435,6 +1448,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // hatch well's z 0.42..0.76 footprint) and under the forward high-roof caps
     // make the turret a closed body without touching any exterior datum.
     P.add('turret', box(0.69, 0.145, 0.86), 0.655, 0.5125, 0.50);                // right core under the mid roof
+    // 261: below those cores the body was hollow down to the turret base between the cheek cores' diagonal rears, the
+    // high-roof cores and the bulkhead, and both risers' slots opened into it. Lower cores close it (left: under the
+    // hatch well's floor, x 0.31..1.00, z 0.055..0.93).
+    P.add('turret', box(0.69, 0.44, 0.875), 0.655, 0.22, 0.4925);
+    P.add('turret', box(0.69, 0.466, 0.875), -0.655, 0.233, 0.4925);
     P.add('turret', box(0.69, 0.145, 0.33), -0.655, 0.5125, 0.245);              // left core, ahead of the hatch well
     P.add('turret', box(0.69, 0.145, 0.15), -0.655, 0.5125, 0.855);              // left core, behind the hatch well
     for (const s of [-1, 1]) P.add('turret', box(0.66, 0.30, 0.54), s * 0.67, 0.55, -0.33); // cores under the forward high-roof caps
@@ -1569,8 +1587,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       }
       // corner field: planar quad (outer rear corner solved onto the plane —
       // 2.004w, the print's own outboard drop)
+      // 261 (the same owner ask): this was a 1 mm plate climbing from the rake top to the field line, roofing an open
+      // wedge to its rear and outer side; it is the solid wedge the inboard fields are, its floor flat on the rake top
+      // (the visible surface is unchanged: the top ring is the old plate's top).
       P.add('turret', slab(
-        [m(FR.kink), FR.rkT, fZin], [m(1.36), FR.rkT, czAt(1.36) - FR.rkD], [m(1.36), 0.404, FR.fZ], [m(FR.kink), FR.fT, FR.fZ],
+        [m(FR.kink), FR.rkT, fZin], [m(1.36), FR.rkT, czAt(1.36) - FR.rkD], [m(1.36), FR.rkT, FR.fZ], [m(FR.kink), FR.rkT, FR.fZ],
         [m(FR.kink), FR.rkT + 0.001, fZin], [m(1.36), FR.rkT + 0.001, czAt(1.36) - FR.rkD], [m(1.36), 0.405, FR.fZ], [m(FR.kink), FR.fT + 0.001, FR.fZ]));
       // outer skirt x 1.36..1.44: rake continuation to the box-top line, then
       // a near-flat shoulder strip aft (ref x1.45 reads 1.92-2.0) — planar
@@ -1700,6 +1721,9 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // 3/4; big dark window + glass + wiper + right aux scope (aux top 2.42w
     // owns front col 0.795 — ref 2.42, was undershot 2.389).
     P.add('turret', cylY(0.15, 0.165, 0.03, 16), 0.55, 0.625, 0.985);            // pedestal ring on the MID roof (the tower now shows its real base run)
+    // 261 (the same owner ask): the ring's front half overhung the field->mid riser with open air under it down to the
+    // low field; a plinth carries it there (behind the window apron, on the field and the bulkhead).
+    P.add('turret', box(0.30, 0.19, 0.185), 0.55, 0.515, 1.0625);
     P.add('turret', box(0.30, 0.155, 0.32), 0.55, 0.7325, 0.99);                 // pedestal column mid roof -> shaft (real ~0.6 m tower prominence restored from BELOW; tops unchanged)
     P.add('turret', box(0.32, 0.075, 0.34), 0.55, 0.8195, 0.995);                // shaft
     P.add('turret', box(0.40, 0.049, 0.32), 0.55, 0.8615, 1.04);                 // compact head block, front edge retained on the apron

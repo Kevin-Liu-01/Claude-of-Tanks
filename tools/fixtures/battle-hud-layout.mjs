@@ -15,6 +15,8 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
+// the tablet layer (main.ts loads it at boot): the touch HUD's tablet sizes, item 262
+import '../../src/ui/tablet.css';
 import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
@@ -88,6 +90,20 @@ const homes = tanks.map((tank) => tank.state.pos.clone());
 // (the other enemies wide of the plate over the one under the gun: the bars decluttered, a bar crossing it waits hidden)
 const MARKER_SEATS = [[8, 0, 150], [9, -95, 200], [10, 110, 240], [2, -26, 80], [3, 30, 104]];
 const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
+// (the two enemies wide of the plate stand whole on the window, and beside the plate where the window leaves the room: a
+// phone's narrow view put the desktop's seats out of view, and a short window's put their bars across the plate, which
+// the declutter holds back, so no bar showed; a desktop keeps its seats)
+const MARKER_BAR_EDGE = 96, MARKER_PLATE_ROOM = 196;
+function markerSeats() {
+  const spread = Math.tan(markerCamera.fov * Math.PI / 360) * innerWidth / innerHeight, cx = innerWidth / 2;
+  return MARKER_SEATS.map(([i, x, z]) => {
+    if (tanks[i].team !== 'enemy' || x === 0) return [i, x, z];
+    const column = cx * (1 - x / (z * spread));
+    const seat = x > 0 ? Math.max(MARKER_BAR_EDGE, Math.min(column, cx - MARKER_PLATE_ROOM))
+      : Math.min(innerWidth - MARKER_BAR_EDGE, Math.max(column, cx + MARKER_PLATE_ROOM));
+    return [i, (1 - seat / cx) * z * spread, z];
+  });
+}
 const flightCamera = new PerspectiveCamera(55, 1, 0.5, 6000);
 flightCamera.userData.thermalFlight = true;
 hud.setDamagePanel(panel);
@@ -345,15 +361,31 @@ function state(name) {
 // The markers staged over the state on screen (the receipts check them in every state: spectate, Watch, the aerial
 // views, a networked battle's host and client): the camera, the seats in view and the enemy under the gun.
 function markers() {
-  for(const [i,x,z] of MARKER_SEATS)tanks[i].state.pos.set(x,0,z);
-  markerCamera.aspect=innerWidth/innerHeight;markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
+  markerCamera.aspect=innerWidth/innerHeight;
+  for(const [i,x,z] of markerSeats())tanks[i].state.pos.set(x,0,z);
+  markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
   markerCamera.updateProjectionMatrix();markerCamera.updateMatrixWorld();
   const target=tanks[8].state.pos, at=new Vector3(target.x,1.6,target.z);
   frame.camera=markerCamera;
   frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
   tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
   for(let i=0;i<4;i++)hud.update(frame);
+  nearAlly();
   settle();
+}
+// (a phone's window leaves the plate over the enemy under the gun no room beside it for a bar, and a tank at its depth
+// stands under it, held back: an ally near, its top under the plate, carries the window's bar. Its callsign is a short
+// one, as a lobby mixes them: at 320x568 the one band of world left between the panels holds the plate over the sight's
+// ring, and a 21-character name's bar fits neither run beside the ring, markers r20)
+function nearAlly() {
+  const plate=document.querySelector('.cot-tgt')?.getBoundingClientRect();
+  if((innerWidth>=720&&innerHeight>=520)||!plate?.width)return;
+  const tank=tanks[2], eye=markerCamera.position;
+  if(tank.displayName)tank.displayName='Wren';
+  const ray=new Vector3((plate.left+plate.width/4)/innerWidth*2-1,1-(plate.bottom+68)/innerHeight*2,.5).unproject(markerCamera).sub(eye);
+  const along=((tank.spec.dims?.heightM??2.5)-eye.y)/ray.y;
+  tank.state.pos.set(eye.x+ray.x*along,0,eye.z+ray.z*along);
+  for(let i=0;i<2;i++)hud.update(frame);
 }
 // (and frames for a moment more, as a battle runs them: the bars and the plate keep clear of what the layout measures each
 // pass, and a still whose last frame ran before a pass, or before Watch's bar mounted, kept a bar under the touch
@@ -369,7 +401,7 @@ function settle() {
 function proving(moving) {
   // (each lane's range from the player's seat, as the plate reads it)
   const seat=player.state.pos;
-  const lanes=MARKER_SEATS.filter(([i])=>tanks[i].team==='enemy').map(([i,x,z],index)=>({index,rangeM:Math.round(Math.hypot(x-seat.x,z-seat.z)),
+  const lanes=markerSeats().filter(([i])=>tanks[i].team==='enemy').map(([i,x,z],index)=>({index,rangeM:Math.round(Math.hypot(x-seat.x,z-seat.z)),
     presentDeg:0,x,z,targetId:tanks[i].id,targetSpecId:tanks[i].spec.id,targetName:tanks[i].spec.name,
     shells:[{penMm:560,ratio:1.4,outcome:'pen'},{penMm:470,ratio:1.1,outcome:'marginal'},{penMm:300,ratio:.7,outcome:'nopen'}]}));
   frame.matchModeState={id:'proving_ground',score:{alpha:0,bravo:0},target:0,

@@ -192,7 +192,8 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-feed>span:first-child{flex:1}
 .cot-flight-hud[data-kind=drone] .flight-cycle-icon{display:none}
 .cot-flight-hud[data-kind=drone] .flight-view-track{grid-column:2;grid-row:2;display:flex;gap:var(--s1);height:3px}
-.flight-view-track .scope-vision-step.active{background:var(--flight-accent);box-shadow:none}
+/* (the lit step is the track's own view: the track shows the view, the identity's press switches it) */
+:is(.flight-view-track[data-view=daylight] [data-view=daylight],.flight-view-track[data-view=infrared] [data-view=infrared],.flight-view-track[data-view=thermal] [data-view=thermal],.flight-view-track[data-view=night] [data-view=night]){background:var(--flight-accent);box-shadow:none}
 .cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:3;justify-content:center}
 .cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
 /* (open, on the primary fill: its glyph in the button's ink and its key the kit's cap on the accent, as the Watch bar's
@@ -236,7 +237,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 @media(forced-colors:active){
  .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return){outline:1px solid ButtonText}
  .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:3px solid Highlight}
- .flight-view-track .scope-vision-step.active{background:Highlight}
+ :is(.flight-view-track[data-view=daylight] [data-view=daylight],.flight-view-track[data-view=infrared] [data-view=infrared],.flight-view-track[data-view=thermal] [data-view=thermal],.flight-view-track[data-view=night] [data-view=night]){background:Highlight}
 }
 
 /* Gunship: open fire-control rack, independent weapon channels and ground support. */
@@ -398,9 +399,9 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
     plate, gauntlet r4) */
  --scope-accent:var(--accent-hi);--scope-cut:inset(0 round var(--r1));
  position:absolute;left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%);isolation:isolate;
- display:flex;gap:9px;align-items:center;justify-content:center;min-width:156px;min-height:48px;
- padding:7px 19px;pointer-events:auto;border:0;border-radius:0;background:none;color:var(--ink-1);
- font:inherit;font-size:var(--battle-fs-11);line-height:1.15;letter-spacing:var(--track-label-s);text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;
+ display:flex;gap:8px;align-items:center;justify-content:center;min-width:156px;min-height:48px;
+ padding:7px 10px;pointer-events:auto;border:0;border-radius:0;background:none;color:var(--ink-1);
+ font:inherit;font-size:var(--battle-fs-11);line-height:1.15;letter-spacing:var(--track-label-s);text-transform:uppercase;-webkit-tap-highlight-color:transparent;
 }
 .cot-scope-vision::before,.cot-scope-vision::after{content:'';position:absolute;pointer-events:none;clip-path:var(--scope-cut);z-index:-1}
 .cot-scope-vision::before{inset:0;background:var(--line-2)}
@@ -409,36 +410,54 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-scope-vision[data-view=infrared]{--scope-accent:var(--ink-1)}
 .cot-scope-vision[data-view=thermal]{--scope-accent:var(--accent)}
 .cot-scope-vision[data-view=night]{--scope-accent:var(--battle-nv)}
-.cot-scope-vision:hover::before,.cot-scope-vision:focus-visible::before{background:var(--scope-accent)}
-.cot-scope-vision:hover::after{background:linear-gradient(165deg,oklch(from var(--surface-hover) .39 c h / .961),var(--hud-plate-strong))}
-.cot-scope-vision:focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--scope-accent))}
-.cot-scope-vision:focus-visible::after{inset:2px}
-.cot-scope-vision:active::after{background:oklch(from var(--surface-hover) .38 c h)}
-.cot-scope-vision .scope-vision-emblem{display:flex;flex-shrink:0;color:var(--scope-accent)}
-.scope-vision-emblem svg{width:22px;height:22px}
-/* (the view's name centred over its steps: a two-character zh name left a hole before the key, gauntlet r3) */
-.cot-scope-vision .scope-vision-copy{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
-.scope-vision-label{font-weight:700;letter-spacing:.04em;white-space:nowrap}
-.cot-scope-vision .scope-vision-track{display:flex;gap:var(--s1);width:100%;height:3px}
+.cot-scope-vision:hover::before,.cot-scope-vision:focus-within::before{background:var(--scope-accent)}
+/* The kit's segmented control on the plate (the owner's audit, 2026-10-27: one kit for every choose-one): a glyph a view,
+   flush on the plate, the kit's selected state on the lit view with its tag beside its glyph (critic 236: the view is
+   never a bare symbol), the glyph in its view's accent. The control replaced a plate that cycled on a press and folded
+   to its glyph: four glyphs fit where the folded plate stood. */
+.cot-scope-vision .cot-scope-vision-seg{padding:0;gap:2px;background:none;box-shadow:none}
+.cot-scope-vision .cot-c-seg__opt{min-width:28px;height:30px;padding:0 5px;gap:5px;color:var(--ink-3);
+  font:700 var(--battle-fs-11)/1 var(--font-ui);letter-spacing:var(--battle-track-status);text-transform:uppercase}
+.cot-scope-vision .cot-c-seg__opt svg{width:18px;height:18px}
+.cot-scope-vision .cot-c-seg__opt[aria-checked=true]{color:var(--ink-1)}
+.cot-scope-vision .cot-c-seg__opt[aria-checked=true] svg{color:var(--scope-accent)}
+/* (the lit view's tag where the seat has room for it, a window 900 px wide and up: under that the seat's clamp keeps the
+   plate to 180 px, the glyphs and the key) */
+.cot-scope-vision .scope-vision-tag{display:none}
+@media(min-width:900px) and (pointer:fine){.cot-scope-vision .cot-c-seg__opt[aria-checked=true] .scope-vision-tag{display:inline}}
 .scope-vision-step{flex:1;min-width:9px;background:var(--ink-4);transform:skewX(-22deg)}
-.scope-vision-step.active{background:var(--scope-accent);box-shadow:0 0 5px color-mix(in srgb,var(--scope-accent) 55%,transparent)}
 .cot-scope-vision .flight-key{min-width:18px;height:19px}
-.scope-vision-cycle{display:flex;color:var(--scope-accent)}.scope-vision-cycle svg{width:13px;height:13px}
 @media(pointer:coarse),(max-width:539px){
- .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}
+ .cot-scope-vision .flight-key{display:none}
  .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;min-height:46px;padding:6px var(--s3);gap:6px;font-size:var(--battle-fs-11)}
- .scope-vision-emblem svg{width:16px;height:16px}.scope-vision-label{letter-spacing:0}
- .cot-scope-vision .scope-vision-copy{gap:5px}.scope-vision-step{min-width:7px}
+ /* (the compact plate on a narrow mouse window: the four glyphs share its width, 24 px each, a desktop pointer's target) */
+ .cot-scope-vision .cot-scope-vision-seg{width:100%;gap:0}
+ .cot-scope-vision .cot-c-seg__opt{flex:1;min-width:24px;height:24px;padding:0}
+ .cot-scope-vision .cot-c-seg__opt svg{width:16px;height:16px}
 }
 @media(pointer:coarse){
  /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px wide narrows it to fit, on the
     screen's 12 px gutter: at 8 px it stood off the plates beside it at 320x568, gauntlet r8) */
- .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}
+ .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:92px}
+ /* (touch: the four views two by two, each a finger's 44 px, UI-GAUNTLET line 12; a row of four 44 px views met the
+    left FIRE at 844x390) */
+ .cot-hud .cot-scope-vision{min-height:0;padding:2px}
+ .cot-scope-vision .cot-scope-vision-seg{display:grid;grid-template-columns:repeat(2,44px);gap:2px;width:auto}
+ .cot-scope-vision .cot-c-seg__opt{flex:none;width:44px;min-width:44px;height:44px}
+ .cot-scope-vision .cot-c-seg__opt svg{width:20px;height:20px}
 }
-/* (a portrait phone's switch reaches the screen's 12 px gutter, its left edge on the column the plates under it keep: at
-   its 104 px it started at 25 px at 390x844, gauntlet r19) */
+/* (a touch window under 300 px tall or 340 px wide: the lit view alone, a tap steps on, aerialHud.ts; the four two by two
+   met the speedometer at 568x256 and took the scope readouts' seats at 320x568) */
+@media(pointer:coarse) and (max-height:300px),(pointer:coarse) and (max-width:340px){
+ .cot-hud .cot-scope-vision{width:auto;min-width:0}
+ .cot-scope-vision .cot-scope-vision-seg{grid-template-columns:44px}
+ .cot-scope-vision .cot-c-seg__opt:not([aria-checked=true]){display:none}
+}
+/* (a portrait phone's switch on the screen's 12 px gutter, its left edge on the column the plates under it keep: at its
+   104 px it started at 25 px at 390x844, gauntlet r19; at its views' own width, two by two, so the scope's plain stack
+   keeps the column under the sight: stretched to the sight's side it stood 2 px from the zoom plate at 360x640) */
 @media(pointer:coarse) and (orientation:portrait){
- .cot-hud .cot-scope-vision{width:max(88px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)))}
+ .cot-hud .cot-scope-vision{left:max(12px,env(safe-area-inset-left));right:auto;width:auto;min-width:0}
 }
 /* A shot report or the open combat log over the mouse seat (critic r9: under about 1200 px wide): the mirror seat left of
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
@@ -448,12 +467,5 @@ body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(ca
 body[data-scope-vision='left'] .cot-hud .cot-scope-vision{transform:translate(calc(0px - var(--hud-vision-shift,0px)),calc(-50% - var(--hud-vision-rise,0px)))}
 @media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}
 body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
-/* Folded (owner backlog 2026-10-21: the Daylight plate sat over the scope picture): a moment after the sight opens or the
-   view changes, the plate keeps its glyph and a 2-3 letter tag, on its seat's sight-side edge; hover, focus and a touch
-   long-press unfold it. */
-.cot-hud .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible){width:auto;min-width:0;padding:6px 14px;gap:5px}
-.cot-scope-vision .scope-vision-tag{display:none;font-weight:700;font-size:var(--battle-fs-11);line-height:1;letter-spacing:var(--battle-track-status);color:var(--scope-accent)}
-.cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) .scope-vision-tag{display:block}
-.cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) :is(.scope-vision-copy,.flight-key,.scope-vision-cycle){display:none}
-@media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}
+@media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}}
 }

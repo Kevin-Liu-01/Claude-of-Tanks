@@ -10,7 +10,7 @@
 // (no Garage shortcut sees it); Escape clears a non-empty search, then closes and returns focus to the toggle.
 
 import { t } from './i18n.ts';
-import { emptyState } from './components/components.ts';
+import { chip, emptyState } from './components/components.ts';
 import { wholeChips } from './components/picker.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -181,20 +181,12 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       if (value === 'all' || !counts.get(value)) continue;
       const view = optionView(group, value);
       if (!view) continue;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cot-facet-option';
-      button.dataset.facet = group;
-      button.dataset.value = value;
-      if (view.title !== view.label) button.dataset.tip = view.title;
-      // constant glyph markup (vehicleFacetIcons.ts / uiIcons.ts); the label and count are text nodes
-      button.innerHTML = view.glyph;
-      const name = document.createElement('span');
-      name.className = 'nm';
-      name.textContent = view.label;
-      const count = document.createElement('span');
-      count.className = 'ct num';
-      button.append(name, count);
+      // the kit's chip (261, the lead's component audit): its glyph (constant markup, vehicleFacetIcons.ts / uiIcons.ts),
+      // its name and its count, pressed while its value filters the roster
+      const markup = document.createElement('template');
+      markup.innerHTML = chip({ label: view.label, glyph: view.glyph, count: '', pressed: false, className: 'cot-facet-option',
+        attrs: { 'data-facet': group, 'data-value': value, ...(view.title !== view.label ? { 'data-tip': view.title } : {}) } });
+      const button = markup.content.firstElementChild as HTMLButtonElement;
       button.addEventListener('click', () => {
         host.click?.();
         // A second press on the current choice releases the row.
@@ -250,7 +242,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
         const n = counts.get(value) ?? 0;
         button.setAttribute('aria-pressed', String(selected));
         button.disabled = !selected && n === 0;
-        const ct = button.querySelector<HTMLElement>('.ct');
+        const ct = button.querySelector<HTMLElement>('.cot-c-chip__count');
         if (ct) ct.textContent = String(n);
       }
     }

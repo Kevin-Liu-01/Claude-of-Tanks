@@ -8,7 +8,7 @@
 import { createHeadlessCollisionWorld } from '../../world/headlessCollisionWorld.ts';
 import { getMapConfig } from '../../world/maps/index.ts';
 import { createHeightField } from '../../world/terrain.ts';
-import type { WorldKernelModule } from '../../world/wasmWorldKernels.ts';
+import { compileWorldKernels, type WorldKernelModule } from '../../world/wasmWorldKernels.ts';
 import { collisionManifestEntry, readCollisionManifestIndex, validateCollisionManifestCounts } from '../../../server/collisionManifestFormat.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import type { ActorWorldCollision } from '../../../server/match/matchActor.ts';
@@ -96,4 +96,22 @@ export async function loadObstacleIdentities(mapId: string, base: string, option
     const bounds = record.b;
     return { x: (bounds[0] + bounds[3]) * 0.5, z: (bounds[2] + bounds[5]) * 0.5, kind: record.k ?? null };
   };
+}
+
+/**
+ * The world kernels' module, fetched and compiled once per thread and URL (a failed fetch is retried by the next world):
+ * the browser host's and the solo sim's authority worlds step on it (docs/RUST-KERNELS.md).
+ */
+const kernelModules = new Map<string, Promise<WorldKernelModule>>();
+export function loadWorldKernels(url: string): Promise<WorldKernelModule> {
+  let module = kernelModules.get(url);
+  if (!module) {
+    module = fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`world kernels: HTTP ${response.status}`);
+      return response.arrayBuffer();
+    }).then(compileWorldKernels);
+    module.catch(() => kernelModules.delete(url));
+    kernelModules.set(url, module);
+  }
+  return module;
 }

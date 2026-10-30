@@ -1,11 +1,14 @@
 import { t } from '../ui/i18n.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { tabs as kitTabs, wireRoving } from '../ui/components/components.ts';
+import { createPicker } from '../ui/components/picker.ts';
+import { pickerText } from '../ui/pickerText.ts';
 import { technicalLabel } from './catalog.ts';
 import type { DamageAction, DamageLab, DamageTarget } from './damageLab.ts';
 import type { ArmorIntersection } from '../sim/armor.ts';
 
 const kinds = ['era', 'equipment', 'module', 'crew'] as const;
-const icons = { era: 'armorFlashlight', equipment: 'shield', module: 'engine', crew: 'crew' };
+const icons = { era: 'armorFlashlight', equipment: 'shield', module: 'engine', crew: 'crew' } as const;
 /** A plate's name in the page's language, word by word (glacis_era_l: "Glacis ERA L", zh "首上反应装甲左"); a word with
  *  no entry keeps its title case. */
 function plateLabel(name: string): string {
@@ -41,25 +44,27 @@ export function createDamageWorkbench(host: HTMLElement, callbacks: {
   host.append(panel);
   const find = <T extends HTMLElement>(selector: string) => panel.querySelector<T>(selector)!;
   const tabs = find('.damage-kinds'), targets = find('.damage-targets');
+  // the kinds are the kit's tabs over the parts of that kind, and the parts the kit's picker (the 261 census): a press on a
+  // kind chooses its first part, a press on a part chooses it and frames it on the model
+  wireRoving(tabs, (value) => act(`kind:${value}`));
+  const targetPicker = createPicker(targets, {
+    id: 'damage-lab-target', label: t('gallery.damage.targets'), items: [], value: null, layout: 'list', text: pickerText(),
+    onPreview: () => {}, onChoose: (item) => select(item.id),
+  });
   const status = find('.damage-condition'), actions = find('.damage-actions'), tools = find('.damage-tools'), ray = find('.damage-ray');
   function refresh(): void {
     if (!lab) { panel.hidden = true; return; }
     panel.hidden = false;
     const activeKey = (document.activeElement as HTMLElement | null)?.dataset.damageAction;
-    const activeTarget = (document.activeElement as HTMLElement | null)?.dataset.damageTarget;
+    const activeTarget = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.damage-targets .cot-c-picker__opt')?.dataset.id;
     const selected = lab.targets.find(target => target.key === lab!.selected);
-    tabs.replaceChildren(...kinds.map(value => {
-      const count = lab!.targets.filter(target => target.kind === value).length;
-      const item = button(`${t(`gallery.damage.kind.${value}`)} · ${count}`, icons[value], `kind:${value}`);
-      item.setAttribute('aria-pressed', String(kind === value)); item.disabled = !count; return item;
-    }));
-    targets.replaceChildren(...lab.targets.filter(target => target.kind === kind).map(target => {
-      const item = document.createElement('button'); item.type = 'button'; item.dataset.damageTarget = target.key;
-      item.setAttribute('aria-pressed', String(lab!.selected === target.key)); item.dataset.condition = lab!.condition(target);
-      const label = document.createElement('span'); label.textContent = targetLabel(target);
-      const state = document.createElement('small'); state.textContent = t(`gallery.damage.state.${lab!.condition(target)}`);
-      item.append(label, state); return item;
-    }));
+    tabs.innerHTML = kitTabs({ label: t('gallery.damage.kinds'), selected: kind,
+      tabs: kinds.map((value) => ({ id: value, label: t(`gallery.damage.kind.${value}`), icon: icons[value],
+        count: lab!.targets.filter((target) => target.kind === value).length })) });
+    for (const tab of tabs.querySelectorAll<HTMLButtonElement>('[role=tab]')) tab.disabled = tab.querySelector('.cot-c-tabs__count')?.textContent === '0';
+    targetPicker.setItems(lab.targets.filter((target) => target.kind === kind).map((target) => ({
+      id: target.key, name: targetLabel(target), facts: [t(`gallery.damage.state.${lab!.condition(target)}`)], tags: [lab!.condition(target)],
+    })), lab.selected);
     status.textContent = lab.combat.destroyed ? t('gallery.damage.wreckNotice') : selected ? `${targetLabel(selected)} · ${t(`gallery.damage.state.${lab.condition(selected)}`)}` : t('gallery.damage.empty');
     const choices: Array<[DamageAction, string]> = selected?.plate
       ? [['detonate', 'damage'], ['remove', 'trash'], ['repair', 'repair']]
@@ -82,9 +87,9 @@ export function createDamageWorkbench(host: HTMLElement, callbacks: {
     restoreFocus(activeKey, activeTarget);
   }
   function restoreFocus(activeKey: string | undefined, activeTarget: string | undefined): void {
-    const focus = activeTarget ? panel.querySelector<HTMLButtonElement>(`[data-damage-target="${CSS.escape(activeTarget)}"]`)
+    const focus = activeTarget ? targets.querySelector<HTMLElement>(`.cot-c-picker__opt[data-id="${CSS.escape(activeTarget)}"]`)
       : activeKey ? panel.querySelector<HTMLButtonElement>(`[data-damage-action="${CSS.escape(activeKey)}"]`) : null;
-    if (focus && !focus.disabled) focus.focus({ preventScroll: true });
+    if (focus && !focus.matches(':disabled,[aria-disabled=true]')) focus.focus({ preventScroll: true });
   }
   function select(key: string, navigate = true): void {
     const target = lab?.targets.find(part => part.key === key); if (!target || !lab) return;
@@ -105,8 +110,7 @@ export function createDamageWorkbench(host: HTMLElement, callbacks: {
   }
   panel.addEventListener('click', event => {
     const element = (event.target as Element).closest<HTMLButtonElement>('button');
-    if (element?.dataset.damageTarget) select(element.dataset.damageTarget);
-    else if (element?.dataset.damageAction) act(element.dataset.damageAction);
+    if (element?.dataset.damageAction) act(element.dataset.damageAction);
   });
   return {
     get hitboxes() { return hitboxes; }, get probe() { return probe; },

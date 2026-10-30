@@ -2,6 +2,10 @@ import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import type { ManualRecord } from '../docs/searchIndex.ts';
 import { localeRouteChanged } from './publicNav.ts';
+import { revealStills } from './revealStills.ts';
+
+// the page's still and its four ways out fade in once decoded over their boxes' tone (a failed one keeps the tone)
+revealStills(document.querySelectorAll<HTMLImageElement>('.not-found__still, .nf-go > img'));
 
 // The missing page carries the public shell (its bar, menu sheet and footer are static markup written by
 // tools/public-shell.mjs); publicNav.ts localizes it, its links and the page's static copy, so this module sets the tab
@@ -109,8 +113,9 @@ document.querySelectorAll<HTMLFormElement>('form[data-nf-search]').forEach(mount
 // src/analytics.ts's after-idle schedule; this page carries no Vercel Analytics. Self-hosted builds compile it out.
 if (import.meta.env.VITE_SELF_HOSTED !== '1' && !localeRouteChanged) {
   window.setTimeout(() => {
+    // (analytics that did not arrive are skipped: nothing on the page waits for them)
     const mountGoogleAnalytics = (): void => void import('../googleAnalytics.ts')
-      .then((analytics) => analytics.mountGoogleAnalytics());
+      .then((analytics) => analytics.mountGoogleAnalytics()).catch(() => undefined);
     if ('requestIdleCallback' in window) requestIdleCallback(mountGoogleAnalytics, { timeout: 4000 });
     else mountGoogleAnalytics();
   }, 3800);

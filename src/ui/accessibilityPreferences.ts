@@ -88,7 +88,8 @@ export function installAccessibility(): void {
   writeHudFit(root);
   globalThis.addEventListener?.('cot:layoutchange', () => writeHudFit(root));
   globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').addEventListener?.('change', () => readAccessibilityRoot(root));
-  if (root.dataset.motion) void import('./accessibilityMotion.ts').then((m) => m.syncMotionRules(globalThis.document));
+  if (root.dataset.motion) void import('./accessibilityMotion.ts').then((m) => m.syncMotionRules(globalThis.document)).catch(() => {});
   // A stored Custom pair is checked again (the head seed applied it unchecked); a refused one returns to the defaults.
-  if (root.dataset.cvd === 'custom') void import('./accessibilitySettings.ts').then((m) => m.recheckCustomTeamColours());
+  // (both are refinements of the head seed's state: a chunk the network dropped leaves that state, never an unhandled rejection)
+  if (root.dataset.cvd === 'custom') void import('./accessibilitySettings.ts').then((m) => m.recheckCustomTeamColours()).catch(() => {});
 }

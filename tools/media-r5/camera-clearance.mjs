@@ -6,11 +6,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHOTS } from './paths.mjs';
 
+// MEDIA_R5_FEATURES: another dump folder, as take-bars, site50 and near-records read it (one take checked on one dump)
+const dumpOf = (map) => join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS, 'features'), `features-${map}.json`);
 const footprints = new Map();
 /** Rotated building rectangles of `map` ([] when its features were never dumped). */
 export function buildingsOf(map) {
   if (!footprints.has(map)) {
-    const f = join(SHOTS, 'features', `features-${map}.json`);
+    const f = dumpOf(map);
     const list = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')).buildings ?? [] : [];
     footprints.set(map, list.map(b => ({ x: b.x, z: b.z, hw: b.w / 2, hd: b.d / 2, c: Math.cos(b.rot ?? 0), s: Math.sin(b.rot ?? 0) })));
   }
@@ -20,7 +22,7 @@ const woods = new Map();
 /** Tree clusters of `map` as dense cores (0.75 of the dumped radius: the trees thin toward a cluster's edge). */
 export function woodsOf(map) {
   if (!woods.has(map)) {
-    const f = join(SHOTS, 'features', `features-${map}.json`);
+    const f = dumpOf(map);
     const list = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')).treeClusters ?? [] : [];
     woods.set(map, list.map(t => ({ x: t.x, z: t.z, r: t.r * 0.75 })));
   }

@@ -111,7 +111,7 @@ for (const id of IDS) {
     const cloneMs = performance.now() - t0;
     if (options.batchStatic) assert.ok(battleGeometrySharingStats().leases > leases, `${label}: the copy leases the pooled stock`);
     same(drawn(clone), pristine, `${label}: the copy at rest`);
-    assert.notEqual(clone.root, source.root);
+    assert.ok(clone.root !== source.root);
     // the energy skin's unwrap re-seats a battle build's twins (juggernautVisual): the copy is split as its build was
     if (options.batchStatic) {
       assert.ok(clone.root.userData.programVariants?.twins > 0, `${label}: the build split its program variants`);

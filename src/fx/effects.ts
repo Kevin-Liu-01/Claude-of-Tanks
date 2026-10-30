@@ -77,7 +77,7 @@ import { bucketAliases, createStructureStages, structureTopple, type StructureSt
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { createRubbleBodies, RUBBLE_BODY_CAPACITY, type RubbleBodies } from './rubbleBodies.ts';
-import { createFractureStages, type FractureStages } from './fractureStages.ts';
+import { createFractureStages, type FractureStages, type FractureWarmSurface } from './fractureStages.ts';
 import type { RigidEnvironment } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
@@ -1278,6 +1278,9 @@ function* createFxSteps(
   // a structure's stages laid into the world's own geometry (structureStages.ts): builders, cuts, hides, shadow touches
   // every bucket material the world draws, by bucket (a plain mesh's over a batch's clone): what the builders write in
   const bucketMaterials = new Map<string, { material: THREE.Material; batched: boolean }>();
+  // (fx-first-use-261) every surface material the world's structures draw, with a geometry of a mesh drawing it: the
+  // fracture's warm lays each in its own layout (a face redraws whichever its building's spans carry)
+  const warmSurfaces: FractureWarmSurface[] = [];
   // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
   const scars: StructureScars | null = mediaTier ? null : createStructureScars();
   if (scars) group.add(scars.mesh);
@@ -1334,10 +1337,12 @@ function* createFxSteps(
     if (!w || w === patchedWorld || typeof w.patchStructureMaterials !== 'function') return;
     patchedWorld = w;
     bucketMaterials.clear();
+    warmSurfaces.length = 0;
     // every bucket material once, its shadow depth materials among them (role 'depth')
     w.patchStructureMaterials((material, info) => {
       structMask.patch(material);
       if (!info || info.role !== 'surface' || !info.bucket) return;
+      warmSurfaces.push({ material, geometry: (info.mesh as THREE.Mesh | undefined)?.geometry ?? null });
       const known = bucketMaterials.get(info.bucket);
       if (!known || (known.batched && !info.batched)) bucketMaterials.set(info.bucket, { material, batched: info.batched });
     });
@@ -7427,8 +7432,9 @@ function* createFxSteps(
         ? rubble.throw(first.value, 'block', pos.x, pos.y + 0.6, pos.z, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0) ? 1 : 0
         : 0;
       // (2026-10-15) the fracture's own draw (a bucket's material casting through the default depth program: its faces,
-      // its bodies, its heaps) compiles with the warm too, not at the first broken wall
-      const fractured = fractureStages && !first.done ? fractureStages.warm(pos, bucketMaterials.get(first.value)?.material ?? null) : 0;
+      // its bodies, its heaps) compiles with the warm too, not at the first broken wall; (fx-first-use-261) every surface
+      // material's, each in its own layout, and its room's: the first bucket's alone left the rest to a first break
+      const fractured = fractureStages ? fractureStages.warm(pos, warmSurfaces) : 0;
       return laid + bodies + fractured;
     },
     propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {

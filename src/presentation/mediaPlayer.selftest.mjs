@@ -1,8 +1,9 @@
 // mediaPlayer.selftest.mjs — the site's one playback policy (src/presentation/mediaPlayer.ts; brand-ui SPEC 8.3,
 // SHOWCASE §5.4-5.5, BUI-F7). Proves, on the fake DOM the fleet-take receipts use: no source before the near margin;
 // play at half visible, pause below a tenth; release after ten seconds; one transfer at a time with the waiting frame
-// nearest the viewport centre next; two playing on a desktop and one on a phone; hover play after 150 ms; the pause
-// control on loops over five seconds; the AV1 → VP9 → H.264 ladder by canPlayType and MediaCapabilities; zero video
+// nearest the viewport centre next; two playing on a desktop and one on a phone, the least-shown frame standing down and
+// a stood-down frame scrolled to taking its slot back; hover play after 150 ms; the pause
+// control on every loop that plays by itself (and a film over five seconds); the AV1 → VP9 → H.264 ladder by canPlayType and MediaCapabilities; zero video
 // sources under reduced motion and data saving; the Play hand-off; and that neither this module nor
 // responsivePicture.ts enters the game entry's boot graph.
 import assert from 'node:assert/strict';
@@ -93,7 +94,7 @@ function frameWith(rect = { top: 0, height: 360 }) {
 }
 
 // 3. One page loop: no source until near, the transfer starts in the near margin (warm), play at half visible, keep
-// playing down to a tenth, pause below it, release ten seconds later; the control pauses a loop over five seconds.
+// playing down to a tenth, pause below it, release ten seconds later; the control pauses a playing loop.
 const page = await freshModule();
 {
   const { frame, video } = frameWith();
@@ -139,13 +140,13 @@ const page = await freshModule();
   assert.equal(video.loads, loads + 1, 'and load() cancels the transfer');
   player.dispose();
   assert.equal(frame.children.length, 1, 'dispose removes the control');
-  // a short loop autoplays without a control (WCAG 2.2.2 covers motion over five seconds)
+  // a short loop shows its pause control too: it plays on past its file's end (WCAG 2.2.2 counts the motion, not the file)
   const short = frameWith();
   const brief = page.createMediaPlayer(short.video, { label, warm: true });
   brief.show({ sources: [{ src: LOOP, type: 'video/webm' }], seconds: 4 });
   dom.intersect(short.video, 0.9, true);
   assert.equal(short.video.paused, false);
-  assert.equal(short.frame.children[1].hidden, true, 'a four-second loop plays with no control');
+  assert.equal(short.frame.children[1].hidden, false, 'a four-second loop shows its pause control while it plays');
   brief.dispose();
 }
 
@@ -196,7 +197,11 @@ const page = await freshModule();
     dom.intersect(video, 0.9, true);
     video.dispatchEvent({ type: 'canplaythrough' });
   }
-  assert.deepEqual(frames.map(({ video }) => video.paused), [true, false, false], 'a desktop plays two');
+  assert.deepEqual(frames.map(({ video }) => video.paused), [false, false, true], 'a desktop plays two: the first two on, a third of their size waits');
+  players[2].toggle(); // the viewer plays the waiting frame
+  assert.deepEqual(frames.map(({ video }) => video.paused), [true, false, false], "the viewer's play never waits: the frame playing longest stands down");
+  players[2].toggle(); // and pauses it
+  assert.deepEqual(frames.map(({ video }) => video.paused), [false, false, true], 'its pause hands the slot back');
   dom.setQuery(page.MEDIA_POLICY.phoneQuery, true);
   assert.equal(page.maxPlaying(), 1);
   frames[0].video.dispatchEvent({ type: 'canplaythrough' });
@@ -206,6 +211,96 @@ const page = await freshModule();
   assert.ok(frames.some(({ video }) => !video.paused && video.src.startsWith(PHONE)), 'its phone rung');
   dom.setQuery(page.MEDIA_POLICY.phoneQuery, false);
   for (const player of players) player.dispose();
+}
+
+// 5b. When the slots are full a newcomer waits unless it shows a quarter more than the least-shown frame that has played
+// a second; a frame that just came on keeps its slot through the page's settling (no film comes on and stands down within
+// a second); a stood-down frame that comes clearly further on screen takes a slot back on the next scroll.
+{
+  globalThis.innerWidth = 1280;
+  const realNow = performance.now;
+  let clock = 0;
+  performance.now = () => clock;
+  const rects = [{ top: 0, height: 360 }, { top: 380, height: 360 }, { top: 700, height: 360 }];
+  const frames = rects.map((rect) => frameWith(rect));
+  const players = frames.map(({ video }, index) => {
+    const player = page.createMediaPlayer(video, { label });
+    player.show({ sources: [{ src: `${LOOP}?slot${index}`, type: 'video/webm' }] });
+    return player;
+  });
+  for (const { video } of frames) {
+    dom.intersect(video, 0.9, true);
+    video.dispatchEvent({ type: 'canplaythrough' });
+  }
+  assert.deepEqual(frames.map(({ video }) => video.paused), [false, false, true],
+    'the third frame, 100 px on screen, waits: the first two, fully on screen, play');
+  assert.equal(frames[2].frame.children[1].dataset.state, 'paused', 'the waiting frame offers play');
+  // a scroll a while later: the first frame leaves by the top (40 px left), the third comes fully on
+  clock = 2000;
+  rects[0].top = -320;
+  rects[1].top = 60;
+  rects[2].top = 420;
+  dom.intersect(frames[2].video, 1);
+  frames[2].video.dispatchEvent({ type: 'canplaythrough' });
+  assert.deepEqual(frames.map(({ video }) => video.paused), [true, false, false],
+    'the frame scrolled to takes the slot of the one leaving');
+  // a near tie trades nothing: the first comes back to 300 px against the third's 360
+  clock = 4000;
+  rects[0].top = -60;
+  dom.intersect(frames[0].video, 0.8);
+  assert.deepEqual(frames.map(({ video }) => video.paused), [true, false, false], 'within a quarter, the playing frame keeps its slot');
+  for (const player of players) player.dispose();
+
+  // a phone's one slot: the lead comes on; a larger frame below claims 70 ms later and waits (the lead just came on)
+  dom.setQuery(page.MEDIA_POLICY.phoneQuery, true);
+  clock = 10_000;
+  const lead = { top: 240, height: 170 }, below = { top: 480, height: 300 };
+  const pair = [lead, below].map((rect) => frameWith(rect));
+  const pairPlayers = pair.map(({ video }, index) => {
+    const player = page.createMediaPlayer(video, { label });
+    player.show({ sources: [{ src: `${PHONE}?pair${index}`, type: 'video/mp4', rung: 'phone' }] });
+    return player;
+  });
+  dom.intersect(pair[0].video, 1, true);
+  pair[0].video.dispatchEvent({ type: 'canplaythrough' });
+  clock += 70;
+  dom.intersect(pair[1].video, 1, true);
+  pair[1].video.dispatchEvent({ type: 'canplaythrough' });
+  assert.deepEqual(pair.map(({ video }) => video.paused), [false, true], 'the frame just on keeps the phone\'s one slot');
+  // nothing moves until the viewer scrolls: then the larger frame takes the slot
+  clock += 2000;
+  dom.intersect(pair[1].video, 0.95);
+  pair[1].video.dispatchEvent({ type: 'canplaythrough' });
+  assert.deepEqual(pair.map(({ video }) => video.paused), [true, false], 'on the next scroll the frame further on screen plays');
+  for (const player of pairPlayers) player.dispose();
+  // a frame under the page's fixed bar (the root's scroll padding) counts as off screen: the lead keeps the slot from a
+  // wider frame whose foot the phone's Play bar covers
+  dom.document.documentElement ??= {};
+  globalThis.getComputedStyle = () => ({ scrollPaddingTop: '72px', scrollPaddingBottom: '82px' });
+  clock += 5000;
+  const top = { top: 200, height: 340 }, under = { top: 600, height: 400 };
+  const covered = [top, under].map((rect) => frameWith(rect));
+  covered[0].video.getBoundingClientRect = () => ({ left: 24, right: 624, width: 600, bottom: top.top + top.height, ...top });
+  covered[1].video.getBoundingClientRect = () => ({ left: 24, right: 720, width: 696, bottom: under.top + under.height, ...under });
+  globalThis.innerHeight = 1000;
+  const coveredPlayers = covered.map(({ video }, index) => {
+    const player = page.createMediaPlayer(video, { label });
+    player.show({ sources: [{ src: `${PHONE}?covered${index}`, type: 'video/mp4', rung: 'phone' }] });
+    return player;
+  });
+  dom.intersect(covered[0].video, 1, true);
+  covered[0].video.dispatchEvent({ type: 'canplaythrough' });
+  clock += 2000;
+  dom.intersect(covered[1].video, 1, true);
+  covered[1].video.dispatchEvent({ type: 'canplaythrough' });
+  // on screen 696 x 400 = 278,400 px², clear of the bar 696 x 318 = 221,328: under a quarter more than the lead's 204,000
+  assert.deepEqual(covered.map(({ video }) => video.paused), [false, true], 'the part under the fixed bar does not count');
+  for (const player of coveredPlayers) player.dispose();
+  delete globalThis.getComputedStyle;
+  globalThis.innerHeight = 800;
+  dom.setQuery(page.MEDIA_POLICY.phoneQuery, false);
+  performance.now = realNow;
+  delete globalThis.innerWidth;
 }
 
 // 6. Hover players start 150 ms after a pointer or focus arrives; a sweep or a touch starts nothing.

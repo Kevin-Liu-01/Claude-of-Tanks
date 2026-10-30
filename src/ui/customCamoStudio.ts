@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createModal } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import type { IconId } from './icons/icon.ts';
 import {
   CUSTOM_CAMO_ASSETS,
   customCamoPatternId,
@@ -13,6 +14,7 @@ import type {
 } from '../vehicles/camoPolicy.ts';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 import { notify } from './components/notice.ts';
+import { segmented, setRoving, wireRoving } from './components/components.ts';
 import { t } from './i18n.ts';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
 import { createUiCanvas } from './uiCanvas.ts';
@@ -106,21 +108,18 @@ export function createCustomCamoStudio({
   };
 
   const syncControls = () => {
-    root.querySelectorAll<HTMLElement>('[data-custom-tone]').forEach((control) => {
-      const on = Number(control.dataset.customTone) === customTone;
-      control.classList.toggle('on', on);
-      control.setAttribute('aria-pressed', String(on));
-    });
-    root.querySelectorAll<HTMLElement>('[data-custom-brush-type]').forEach((control) => {
-      const on = control.dataset.customBrushType === customBrush;
-      control.classList.toggle('on', on);
-      control.setAttribute('aria-pressed', String(on));
-    });
-    root.querySelectorAll<HTMLElement>('[data-custom-asset]').forEach((control) => {
-      const on = control.dataset.customAsset === customAsset && customBrush === 'stamp';
-      control.classList.toggle('on', on);
-      control.setAttribute('aria-pressed', String(on));
-    });
+    // the brushes, the tones and the stencils are the kit's segmented controls: one checked in each (none of the brushes
+    // while a stencil stamps, none of the stencils while a brush paints), and a group with none checked keeps its first
+    // option as its tab stop
+    const check = (group: HTMLElement | null, value: string | null): void => {
+      if (!group) return;
+      setRoving(group, value ?? '');
+      const first = group.querySelector<HTMLElement>('[role=radio]');
+      if (first && !group.querySelector('[aria-checked=true]')) first.tabIndex = 0;
+    };
+    check(root.querySelector('.cot-custom-brushes'), customBrush === 'stamp' ? null : customBrush);
+    check(root.querySelector('.cot-custom-tones'), String(customTone));
+    check(root.querySelector('.cot-custom-assets'), customBrush === 'stamp' ? customAsset : null);
     for (const key of ['base', 'colorA', 'colorB'] as const) {
       const input = root.querySelector<HTMLInputElement>(`[data-custom-color="${key}"]`);
       if (input) input.value = draft[key];
@@ -145,28 +144,16 @@ export function createCustomCamoStudio({
     ['pixel', 'pixels', t('customCamo.brush.pixel')],
     ['eraser', 'eraser', t('customCamo.brush.eraser')],
   ];
-  for (const [id, icon, label] of brushDefs) {
-    const control = document.createElement('button');
-    control.type = 'button';
-    control.className = 'cot-custom-tool';
-    control.dataset.customBrushType = id;
-    control.innerHTML = `${uiIconSVG(icon, 17)}<span>${label}</span>`;
-    control.addEventListener('click', () => { customBrush = id; syncControls(); });
-    tools.appendChild(control);
-  }
-  for (const [tone, label] of [[0, t('customCamo.color.tone1')], [1, t('customCamo.color.tone2')]] as const) {
-    const control = document.createElement('button');
-    control.type = 'button';
-    control.className = 'cot-custom-tool';
-    control.dataset.customTone = String(tone);
-    control.innerHTML = `${uiIconSVG('camouflage', 17)}<span>${label}</span>`;
-    control.addEventListener('click', () => {
-      customTone = tone;
-      if (customBrush === 'eraser') customBrush = 'round';
-      syncControls();
-    });
-    tools.appendChild(control);
-  }
+  tools.insertAdjacentHTML('beforeend', segmented({ label: t('customCamo.brushes'), className: 'cot-custom-brushes', value: customBrush,
+    options: brushDefs.map(([id, icon, label]) => ({ value: id, label, icon: icon as IconId })) })
+    + segmented({ label: t('customCamo.tones'), className: 'cot-custom-tones', value: String(customTone),
+      options: [{ value: '0', label: t('customCamo.color.tone1'), icon: 'camouflage' }, { value: '1', label: t('customCamo.color.tone2'), icon: 'camouflage' }] }));
+  wireRoving(tools.querySelector<HTMLElement>('.cot-custom-brushes')!, (id) => { customBrush = id as CustomCamoBrush; syncControls(); });
+  wireRoving(tools.querySelector<HTMLElement>('.cot-custom-tones')!, (tone) => {
+    customTone = Number(tone) as typeof customTone;
+    if (customBrush === 'eraser') customBrush = 'round';
+    syncControls();
+  });
   const undoDraft = () => {
     draft = normalized({ ...draft, style: 'drawn', strokes: draft.strokes.slice(0, -1) });
     syncControls();
@@ -191,20 +178,14 @@ export function createCustomCamoStudio({
   const assetHeading = document.createElement('div');
   assetHeading.className = 'cot-camo-lab__heading';
   assetHeading.innerHTML = `<span>${t('customCamo.assetsHeading')}</span><small>${t('customCamo.assetsSubheading')}</small>`;
-  const assets = document.createElement('div');
-  assets.className = 'cot-custom-assets';
-  const assetIcons: Record<string, string> = {
+  const assetIcons: Record<string, IconId> = {
     star: 'star', chevron: 'chevronRight', leaf: 'camouflage', hex: 'pixels', cross: 'repair',
   };
-  for (const asset of CUSTOM_CAMO_ASSETS) {
-    const control = document.createElement('button');
-    control.type = 'button';
-    control.className = 'cot-custom-tool';
-    control.dataset.customAsset = asset;
-    control.innerHTML = `${uiIconSVG(assetIcons[asset], 18)}<span>${t(`customCamo.asset.${asset}`)}</span>`;
-    control.addEventListener('click', () => { customAsset = asset; customBrush = 'stamp'; syncControls(); });
-    assets.appendChild(control);
-  }
+  const assetsHost = document.createElement('template');
+  assetsHost.innerHTML = segmented({ label: t('customCamo.assetsHeading'), className: 'cot-custom-assets', value: '',
+    options: CUSTOM_CAMO_ASSETS.map((asset) => ({ value: asset, label: t(`customCamo.asset.${asset}`), icon: assetIcons[asset] })) });
+  const assets = assetsHost.content.firstElementChild as HTMLElement;
+  wireRoving(assets, (asset) => { customAsset = asset as typeof customAsset; customBrush = 'stamp'; syncControls(); });
   assetPanel.append(assetHeading, assets);
   canvasColumn.append(canvasHeading, tools, drawWrap, assetPanel);
 

@@ -317,7 +317,7 @@ const f = (x: number): string => x.toFixed(4);
 
 /**
  * The block the aerial fragment includes. Expects the pass's own declarations (tDepth, uNear, uFar, uCamPos,
- * uCamRight, uCamUp, uCamFwd, uTan, uInvSize, uSunDir) and provides `cotContactShade(uv, P, ray, viewZ, alpha)`
+ * uCamRight, uCamUp, uCamFwd, uTan, uTanShift, uInvSize, uSunDir) and provides `cotContactShade(uv, P, ray, viewZ, alpha)`
  * → the multiplier for the pixel's colour (1 = untouched).
  */
 export const CONTACT_SHADOW_GLSL = /* glsl */ `
@@ -335,8 +335,8 @@ ${CLOUD_SHADE_PARS_GLSL}
     }
     vec3 cotWorldAtDepth( vec2 uv, float dist ) {
       vec3 r = normalize( uCamFwd
-        + uCamRight * ( uv.x * 2.0 - 1.0 ) * uTan.x
-        + uCamUp * ( uv.y * 2.0 - 1.0 ) * uTan.y );
+        + uCamRight * ( ( uv.x * 2.0 - 1.0 ) * uTan.x + uTanShift.x )
+        + uCamUp * ( ( uv.y * 2.0 - 1.0 ) * uTan.y + uTanShift.y ) );
       return uCamPos + r * ( dist / max( dot( r, uCamFwd ), 0.05 ) );
     }
     vec3 cotWorldAt( vec2 uv ) {

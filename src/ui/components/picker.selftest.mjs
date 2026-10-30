@@ -81,5 +81,15 @@ assert.match(sheet, /\.cot-c-picker__opt\[aria-selected=true\]\{background:var\(
 assert.match(sheet, /@media \(pointer:coarse\)\{\n  \.cot-c-picker__fav\{width:44px;height:44px\}/, 'the star is a 44 px target on touch');
 assert.match(sheet, /\.cot-c-picker__fav\{[^}]*border-radius:var\(--control-radius\)/, 'the star is the kit\'s square icon button, not a media disc');
 assert.match(sheet, /\.cot-c-picker--list \.cot-c-picker__opt\{[^}]*min-height:44px/, 'list rows are touch targets');
+// (262, the loading census) a card's picture fades in once decoded over its box's tone, never popping in or, offline,
+// drawing a broken frame; one already decoded stands at once on a re-render
+assert.match(sheet, /:is\(\.cot-c-picker__media,\.cot-bf__hero\) img\{opacity:0;transition:opacity/, "a card's picture waits on its tone");
+assert.match(sheet, /:is\(\.cot-c-picker__media,\.cot-bf__hero\) img\[data-ready\]\{opacity:1\}/, 'and shows once decoded');
+assert.match(source, /closest\('\.cot-c-picker__thumb,\.cot-c-picker__media'\)\) \(event\.target as Element\)\.setAttribute\('data-ready', ''\)/,
+  "a card picture's load marks it ready");
+assert.match(source, /\.cot-c-picker__media img'\)\) \{\n\s+if \(img\.complete && img\.naturalWidth > 0\) img\.setAttribute\('data-ready', ''\);/,
+  'a decoded one stands at once in render');
+assert.match(source, /globalThis\.addEventListener\?\.\('online', onOnline\)/, 'a picture the network dropped asks again once it is back');
+assert.match(source, /globalThis\.removeEventListener\?\.\('online', onOnline\)/, 'and the picker lets go of the page on dispose');
 
 console.log('picker.selftest: the filter (Random first, chips, search, favourites, recents), the memory, the grid step and the controller contract pass');

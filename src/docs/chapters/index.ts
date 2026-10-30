@@ -9,6 +9,7 @@ import { multiplayerSections } from './multiplayer.ts';
 import { battlefieldsSections } from './battlefields.ts';
 import { combatSections } from './combat.ts';
 import { tanksSections } from './tanks.ts';
+import { fleetGridSections } from './fleetGrid.ts';
 import { startSections } from './start.ts';
 import { controlsSections } from './controls.ts';
 import type { RichSection } from './types.ts';
@@ -22,6 +23,7 @@ const BUILDERS: Readonly<Record<string, () => RichSection[]>> = {
   battlefields: battlefieldsSections,
   combat: combatSections,
   tanks: tanksSections,
+  fleet: fleetGridSections,
   start: startSections,
   controls: controlsSections,
 };

@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-28T19:12:05.435Z",
+ "generatedAt": "2026-10-13T19:34:22.037Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 66,
+ "passed": 65,
  "total": 171,
  "rows": [
   {
@@ -984,17 +984,20 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "m48",
-   "geoMin": 59.6,
-   "gatePassed": false,
+   "id": "m48a5_patton",
+   "geoMin": 92.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
    "components": {
-    "hullCurves": 71.1,
-    "wholeCurves": 59.6,
-    "turretCurves": 59.6,
-    "stations": 80.1,
-    "dims": 100,
+    "hullCurves": 92.7,
+    "stations": 97.7,
+    "turretCurves": 92.4,
+    "wholeCurves": 92.9,
+    "dims": 95.3,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t14",
@@ -1502,16 +1505,19 @@
   },
   {
    "id": "m47_patton",
-   "geoMin": 91,
-   "gatePassed": true,
+   "geoMin": 84.9,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
    "components": {
-    "hullCurves": 92.5,
-    "wholeCurves": 91,
-    "turretCurves": 91.6,
-    "stations": 93.6,
+    "hullCurves": 89.1,
+    "stations": 89.9,
+    "turretCurves": 85.1,
+    "wholeCurves": 84.9,
     "dims": 100,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "centurion3",
@@ -1538,16 +1544,19 @@
   },
   {
    "id": "m46_patton",
-   "geoMin": 91.2,
-   "gatePassed": true,
+   "geoMin": 88.3,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
    "components": {
-    "hullCurves": 91.9,
-    "wholeCurves": 91.8,
-    "turretCurves": 91.2,
-    "stations": 92.5,
-    "dims": 100,
+    "hullCurves": 88.7,
+    "stations": 90.1,
+    "turretCurves": 88.3,
+    "wholeCurves": 88.9,
+    "dims": 97,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "pt91m",

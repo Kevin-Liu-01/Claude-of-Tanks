@@ -13,7 +13,7 @@
  * - Source ladder: AV1 (first, only where MediaCapabilities calls it smooth), then VP9, then H.264, as the markup lists
  *   them; a phone plays its phone rung, a wide screen its wide rung.
  * - Reduced motion and data saving (Save-Data, 2g/3g) never name a source by themselves: the poster stays, with a play
- *   button. Decorative loops are aria-hidden; the control names the video; a loop longer than five seconds shows its
+ *   button. Decorative loops are aria-hidden; the control names the video; a loop that plays (it runs on past its end) shows its
  *   pause control (WCAG 2.2.2).
  * - abortPageMedia() is the landing's Play hand-off: every transfer stops before the game document is requested.
  *
@@ -81,7 +81,7 @@ export interface MediaPlayerOptions {
   readonly controlParent?: HTMLElement | null;
   /** The control's classes (default: the kit's square icon button over media, MEDIA_TOGGLE_CLASS). */
   readonly controlClass?: string;
-  /** auto: shown when motion waits for the viewer or the loop runs longer than five seconds; always; none. */
+  /** auto: shown when motion waits for the viewer or a loop plays (or a film runs longer than five seconds); always; none. */
   readonly control?: 'auto' | 'always' | 'none';
   /** The element whose hover or focus plays a hover player (default: the frame). */
   readonly hoverTarget?: HTMLElement;
@@ -205,15 +205,79 @@ let downloader: Core | null = null;
 let handedOff = false;
 let lifecycleInstalled = false;
 
-function claimSlot(core: Core): void {
-  if (!playingNow.includes(core)) playingNow.push(core);
-  while (playingNow.length > maxPlaying()) { // (the cap shrinks when a desktop window narrows to a phone layout)
-    const oldest = playingNow.shift();
-    if (!oldest) break;
-    oldest.crowded = true;
-    crowdedOut.add(oldest);
-    oldest.sync();
+/** The rows of the screen a page's content shows in: the viewport less its fixed bars, as the page declares them for
+ * scrolling (the root's scroll padding: the site bar above, a phone's Play bar below). */
+const contentRows = (): [number, number] => {
+  const root = typeof document !== 'undefined' ? document.documentElement : null;
+  const style = root && typeof getComputedStyle === 'function' ? getComputedStyle(root) : null;
+  return [parseFloat(style?.scrollPaddingTop ?? '') || 0, innerHeight - (parseFloat(style?.scrollPaddingBottom ?? '') || 0)];
+};
+
+/** How much of a frame is on screen, clear of the page's fixed bars (its visible area, CSS px²; 0 without a layout). */
+const shownArea = (core: Core): number => {
+  const rect = core.frame.getBoundingClientRect?.();
+  if (!rect || typeof innerWidth !== 'number' || typeof innerHeight !== 'number') return 0;
+  const [top, bottom] = contentRows();
+  const across = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
+  const down = Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top));
+  return across * down;
+};
+
+/** A frame displaces one playing only when it shows a quarter more of itself, so a near tie never trades. */
+const DISPLACE_MARGIN = 1.25;
+/** A frame that took its slot less than this long ago keeps it: a film never comes on and stands down again within a
+ * second (the /home r3 en critic: on a phone the lead duel came on, then a tile below took the one slot 70 ms later). */
+const SLOT_SETTLE_MS = 1000;
+const claimedAt = new WeakMap<Core, number>();
+const settled = (core: Core): boolean => performance.now() - (claimedAt.get(core) ?? -Infinity) >= SLOT_SETTLE_MS;
+
+/** Of the frames playing (but `except`), the least on screen that has held its slot a second (none when all are new);
+ * with `anyAge`, the least on screen of them all (a tie goes to the one playing longest). */
+function leastSettled(except: Core, anyAge = false): Core | null {
+  let least: Core | null = null;
+  for (const other of playingNow) {
+    if (other !== except && (anyAge || settled(other)) && (!least || shownArea(other) < shownArea(least))) least = other;
   }
+  return least;
+}
+
+function claimSlot(core: Core, byViewer: boolean): void {
+  if (!playingNow.includes(core)) {
+    playingNow.push(core);
+    claimedAt.set(core, performance.now());
+  }
+  while (playingNow.length > maxPlaying()) { // (the cap shrinks when a desktop window narrows to a phone layout)
+    // the newcomer waits, unless it shows a quarter more than the least-shown frame that has played a second: a
+    // section's lead picture takes its slot from a tile half below the fold (the /home r2 zh critic), and a frame just on
+    // keeps it while the page settles
+    let out = playingNow.includes(core) ? core : playingNow[playingNow.length - 1];
+    if (out === core && byViewer) out = leastSettled(core, true) ?? core; // the viewer's own play never waits
+    else {
+      const least = leastSettled(out);
+      if (least && shownArea(out) > shownArea(least) * DISPLACE_MARGIN) out = least;
+    }
+    playingNow.splice(playingNow.indexOf(out), 1);
+    out.crowded = true;
+    crowdedOut.add(out);
+    out.sync();
+  }
+}
+
+/** A frame stood down for want of a slot takes one back, on the next scroll, once it shows a quarter more than the
+ * least-shown frame that has played a second, so the picture scrolled to plays, not one the page's edge or its fixed bar
+ * half hides (the /home r3 critics: the Head to head lead stayed parked, fully on screen, while two lower tiles played). */
+let reclaiming = false;
+function reclaimSlot(): void {
+  if (reclaiming || !crowdedOut.size || playingNow.length < maxPlaying()) return;
+  reclaiming = true;
+  for (const queued of [...crowdedOut]) {
+    const least = leastSettled(queued);
+    if (!least || shownArea(queued) <= shownArea(least) * DISPLACE_MARGIN) continue;
+    crowdedOut.delete(queued);
+    queued.crowded = false;
+    queued.sync(); // its claim stands the least-shown frame down
+  }
+  reclaiming = false;
 }
 
 function vacateSlot(core: Core): void {
@@ -437,8 +501,10 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   const render = (playing: boolean): void => {
     if (!control || !glyph) return;
     const reachable = !!item && !!pick(true);
-    const seconds = item?.seconds ?? (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity);
-    // auto: a pause button on a playing loop over five seconds; a play button whenever the loop waits for the viewer
+    // a loop plays on past its file's end, so its motion lasts as long as it plays: WCAG 2.2.2 counts the motion, and a
+    // four-second loop gets its pause control as a six-second one does (the /home r1 critic: a duel with none on a tablet)
+    const seconds = video.loop ? Infinity : item?.seconds ?? (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity);
+    // auto: a pause button on a playing loop or a playing film over five seconds; a play button whenever it waits for the viewer
     // (reduced motion, data saving, their own pause, a slot another loop took); nothing while it is about to start
     // by itself (off screen, or its transfer queued), so no play button flashes ahead of every loop
     const waitsForViewer = manual() || held || wanted || core.crowded || mode !== 'loop';
@@ -465,7 +531,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
     }
     if (near && item.poster && video.getAttribute('poster') !== item.poster) video.poster = item.poster;
     const play = shouldPlay();
-    if (play) claimSlot(core);
+    if (play) claimSlot(core, wanted);
     else vacateSlot(core);
     const playingNowToo = play && !core.crowded;
     const warmNow = !playingNowToo && !!options.warm && near && !handedOff && !held && !manual() && mode === 'loop' && gate();
@@ -579,6 +645,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
         else if (share < MEDIA_POLICY.pauseRatio) visible = false;
       }
       sync();
+      reclaimSlot();
     }, { threshold: [0, MEDIA_POLICY.pauseRatio, 0.25, MEDIA_POLICY.playRatio, 0.75, 1] });
     nearObserver.observe(frame);
     viewObserver.observe(frame);
@@ -609,6 +676,16 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   motion?.addEventListener?.('change', sync);
   // The in-game Reduce motion choice (src/ui/accessibilitySettings.ts applyAccessibility announces it).
   if (typeof window !== 'undefined') window.addEventListener?.('cot:accessibility', sync);
+  // Files that failed while the link was down are asked for again once the browser is back online, and a poster that never
+  // drew is named afresh: a frame left on its tone comes back by itself (the loading census, round 6: the docs archive's
+  // films stayed on, frameless, after the network returned).
+  const onOnline = (): void => {
+    if (!item) return;
+    if (failed.size) failed.clear();
+    if (video.readyState === 0 && item.poster && video.getAttribute('poster') === item.poster) video.removeAttribute('poster'); // sync names it again
+    sync();
+  };
+  if (typeof window !== 'undefined') window.addEventListener?.('online', onOnline);
   players.add(core);
   installLifecycle();
 
@@ -637,6 +714,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', sync);
       motion?.removeEventListener?.('change', sync);
       if (typeof window !== 'undefined') window.removeEventListener?.('cot:accessibility', sync);
+      if (typeof window !== 'undefined') window.removeEventListener?.('online', onOnline);
       hoverTarget.removeEventListener('pointerenter', hoverOn);
       hoverTarget.removeEventListener('focusin', hoverOn);
       hoverTarget.removeEventListener('pointerleave', hoverOff);
@@ -702,11 +780,37 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
       ...(seconds > 0 ? { seconds } : {}),
     });
     video.addEventListener('play', () => video.classList.add('is-playing'));
-    video.addEventListener('pause', () => video.classList.remove('is-playing'));
-    // A frame is on screen from its first played frame until its source is released (a page poster shows through
-    // until then: the topic headers draw their own).
-    video.addEventListener('playing', () => video.classList.add('has-frame'));
-    video.addEventListener('emptied', () => video.classList.remove('has-frame'));
+    // (a file that fails fires no pause: the film is not playing)
+    for (const type of ['pause', 'error']) video.addEventListener(type, () => video.classList.remove('is-playing'));
+    // A frame is on screen until its source is released (a page poster shows through until then: the topic headers draw
+    // their own). A loop comes on once it plays and can play through to its end, from its own first frame, which its
+    // poster is (owner 2026-10-27: "make em load fast and transition in"): a slow link keeps the still instead of a film
+    // that stalls, and the fade from the still never jumps. A viewer's own play shows its first frame. The film carries
+    // data-ready once on screen (the loading census's mark).
+    // (a loop already past its first frame rewinds first, once: the seek drops what it can play, so it comes on when it can
+    // play through again from there, never mid-seek: the /home r2 harness caught a clip on at HAVE_METADATA)
+    let revealed = false;
+    let rewound = false;
+    const reveal = (): void => {
+      if (revealed || video.paused || video.seeking || (mode === 'loop' && video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA)) return;
+      if (mode === 'loop' && !rewound && video.currentTime > 0.05) {
+        rewound = true;
+        video.currentTime = 0;
+        return;
+      }
+      revealed = true;
+      video.classList.add('has-frame');
+      video.setAttribute('data-ready', '');
+    };
+    video.addEventListener('playing', reveal);
+    video.addEventListener('canplaythrough', reveal);
+    video.addEventListener('seeked', reveal);
+    video.addEventListener('emptied', () => {
+      revealed = false;
+      rewound = false;
+      video.classList.remove('has-frame');
+      video.removeAttribute('data-ready');
+    });
     mounted.push(player);
   }
   return mounted;
