@@ -38,7 +38,11 @@ markers come from `tools/home-premiere.mjs` (run the shell writer after it); the
 the data-i18n hosts in Chinese, the manual's prerendered chapters
 (`src/docs/topicPrerender.zh-CN.json`), body links kept under `/cn`
 (`localizeLinks`; hreflang links untouched), the zh-CN type floor
-(`src/ui/zhTypeFloor.ts`) and the localized structured data.
+(`src/ui/zhTypeFloor.ts`) and the localized structured data. It also writes every
+public page's share clip (`og:video`, its family's from `shareVideoForRoute` in
+`siteMetadata.ts`) with `og:type` `video.other`, in both languages; heads name none.
+`node tools/share-tags.mjs [--dist=dist] [--json]` lists every page's og:* and
+twitter:* tags as a build serves them (diff two builds' lists to review a change).
 Adjacent selftests also cover root public HTML, SEO metadata, copy, analytics,
 and loading policy; those contracts extend beyond this directory.
 
