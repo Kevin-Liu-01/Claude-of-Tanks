@@ -5,6 +5,7 @@
  */
 import { t } from '../ui/i18n.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
+import { importWhenOnline } from '../ui/components/loadFailure.ts';
 
 // The landing's stills under the hero (the bentos, the features, the modes rail's cards) fade in once decoded: publicPages.ts,
 // the page's first module, marks their boxes (home.css).
@@ -37,12 +38,9 @@ addEventListener('online', () => {
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');
 if (reelHero) {
-  // (a reel whose module did not arrive leaves the poster, and starts once the browser is back online)
-  const start = (): void => {
-    void import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
-      () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') })))
-      .catch(() => addEventListener('online', start, { once: true }));
-  };
+  // (a reel whose module did not arrive leaves the poster: its chunk is not asked for again in this document)
+  const start = (): void => importWhenOnline(() => import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
+    () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') }))));
   const idle = (): void => {
     if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
     else setTimeout(start, 200);

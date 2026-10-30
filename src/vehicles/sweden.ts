@@ -327,6 +327,15 @@ const SWEDEN_SPECS = {
   }),
 } satisfies Record<string, FleetTankSpec>;
 
+// Release 262 (the Swedish field suit, ghillieFleetSuits.ts strv121): the gun's depression by turret yaw, measured with
+// tools/gun-depression-sweep.mjs --no-suit at 26 mm (lane christian2-262), so the deck nets lie under the gun's real stops.
+// Over the engine deck's front quarters (yaw 140-162) the mount stands in a known conflict with the hull
+// (nationalGunClearance.selftest.mjs); the curve follows the barrel there.
+SWEDEN_SPECS.strv121.gunPitchByYawDeg = [[0, -7.8], [14, -7.4], [18, -6.2], [19, -4.7], [20, -4.3], [26, -3.8], [36, -3.2],
+  [45, -3.2], [51, -3.9], [52, -4.1], [53, -4.4], [54, -5.7], [55, -9], [126, -9], [127, -5.9], [128, -4], [129, -3.7],
+  [130, -0.7], [131, 0.2], [135, 1], [140, 1.1], [141, -1.8], [142, -1.5], [143, -0.3], [144, 0.2], [161, 0.4], [162, 2.6],
+  [173, 2.8], [174, 3.9], [175, 4.2], [180, 4.2]];
+
 SWEDEN_SPECS.udes03.armor = siegeArmor(SWEDEN_SPECS.udes03.dims, {
   frontPhysicalMm: 45, frontKeMm: 90, frontCeMm: 125,
   lowerPhysicalMm: 35, lowerKeMm: 65, lowerCeMm: 85,

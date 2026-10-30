@@ -1,6 +1,10 @@
 @import './battleHudLayout.css';
 
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
+/* zh-CN sets no tracking on Chinese (src/ui/typeFaces.ts), so no indent either. Every game indent balances a centred
+   label's trailing tracking; with the tracking gone it pushed the label half an indent right of its axis (the
+   transition overlay's kicker and title, 264). An important declaration in the base layer outranks every surface's. */
+@layer base{:lang(zh-CN){text-indent:0!important}}
 @layer surfaces{
 :root{
   --cot-edge:clamp(10px,1.7vw,28px);
@@ -856,7 +860,7 @@ body[data-cot-width='phone'] #cot-perfhud{
   z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
-body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:48px!important;overflow:hidden!important}
+body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:52px!important;overflow:hidden!important}
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded) [data-grid],
 body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded) [data-grid]{display:none!important}
 body[data-cot-width='compact'] #cot-perfhud .ph-mobile-toggle,

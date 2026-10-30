@@ -137,6 +137,8 @@ export const INTERACTION_SITES = Object.freeze({
   // every On/Off setting (the alarms, the HUD, the allies' brain, the telemetry)
   'settings-on-off': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-onoff'], lane: 'premiere-site' },
   'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-lang'], lane: 'premiere-site' },
+  // battle-camera-264: the chase camera's shoulder (left, centre, right) beside its sliders
+  'settings-camera-shoulder': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-shoulder'], lane: 'premiere-site' },
   // the parts on the picker's list; the preview's own parts select by a press or a drag (direct manipulation)
   'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'picker', marks: ['picker:hud-editor-part', 'bespoke:key===id'], lane: 'premiere-site' },
   'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'segmented', marks: ['segmented:.hud-edit-profiles'], lane: 'premiere-site' },

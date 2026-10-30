@@ -34,10 +34,17 @@ import { resolveTankId } from './tankIdAliases.ts';
 // 09903e47298549e7 -> f2e5b458815e4d65. The same 253 rename paints the prototypes' designations ("STC-1", "STC-2" for
 // "73", "90-A") on schema-1 type90 / type90a's Factory coats; with the old numbers each equals production's digest
 // (type90 49f13f4a7611302c -> cc5999a15cec54d1, type90a 4b4a154b8dbb9e0d -> ee30ce99e88984dd).
+// Re-pinned 2026-10-27 (release 262, the Type 59 on the T-54/T-55 family construction): the Type 59's resolved Factory
+// visual carries its measured 0.60 m track (spec.visual.trackWidthM, read by the track contact and track marks) for the
+// retired 0.55; scheme, colours, pattern and seed are unchanged. type59 306893e0db54f6ad -> c3e94da916bc0b93. Its
+// ZTZ-85-III variant keeps its own 0.55 m track (china.ts), so its row is production's.
 // Re-pinned 2026-10-27 (owner: the T-90 names, display only): one selection moved by its label alone, the tier X
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
 // b46847ff7755abb9.
+// Re-pinned 2026-10-28 (release 262): one row moved. The Challenger 1 Mk 2 (schema-1 challenger1) rides the Mk 3's
+// build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 -> 24af537fcedf03bc.
+// Selections and every other row are unchanged.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -46,10 +53,15 @@ const now = camoBaselineRows({ specs, policy, materials });
 // joined after GT may follow them (camoPolicy.ts AUTHORED_PAINT_IDS_AFTER_GT).
 assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 pattern ids');
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
-assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer',
-  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'], 'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku, Sho\'t Kal, Olifant and Australian Centurion paints append, after GT');
+assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
+  'paint_bm_oplot_m', 'paint_bm_oplot_t',
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m',
+  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the Centurion family\'s three (Sho\'t Kal, Olifant Mk 2, Mk 5/1) and the T-84U 2000 three-tone append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
-assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer',
+assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
+  'paint_bm_oplot_m', 'paint_bm_oplot_t',
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m',
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
@@ -61,12 +73,32 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // The baseline names tanks by their tank id schema 1 spelling (2026-10-13, SSOT 2.19): each row is read through the
 // alias layer, so a renamed tank is held to its own production row.
 // Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
-// 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT; release 262: the Sho't Kal
-// and its 1973 Sinai grey, the Olifant Mk 2 and its SANDF coat).
-const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'shot_kal', 'olifant_mk2', 'centurion5_1_aus'];
-// Added since production in a donor's coat: the tank's stock is its donor's (release 262: the Centurion Mk 13 wears the
-// Mk 5/2's British stock, as does the Mk 5 AVRE; the Strv 105 the Strv 81's Swedish stock).
-const ADDED_IN_DONOR_COAT = { centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81' };
+// 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT; release 262: the
+// Challenger 3 TD and its demonstrator three-tone, its field fit and that fit's coat).
+// Re-pinned 2026-10-27 (release 262, the owner's approved Oplot rename): two Signature selections moved by their labels
+// alone, as the 259 re-pin above: "T-84 Oplot" -> "Object 478DU2" (sig_t84 63f139a8fdd43aa6 -> e6795baf4ad95644) and
+// "T-84BM Oplot-M" -> "T-84U Oplot" (sig_ua_t84_oplot_m bc4eee8139a5254c -> c1c0216eb08254c8); presets, visuals and
+// every tank row are unchanged.
+// Re-pinned 2026-10-27 (release 262, owner via Main: "make the now t84 u oploot look a lot more like a prototype for the
+// oplot M and T"): the T-84U is rebuilt as the M/T's 2000 stage in the 2000 Ukrainian service finish (olive with brown
+// and black bands, nato). Exactly one row moved: ua_t84_oplot_m's Factory visual (04509d4067f37bf6 -> 6e0c6270ea20f696);
+// its stock Signature selection, AUTO and every other row are unchanged.
+// release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
+// Release 262: the Christian II and its Danish tri-tone.
+// The Centurion family (262, merged on 264c): the Sho't Kal and its 1973 Sinai grey, the Olifant Mk 2 and its SANDF
+// coat, the Australian Mk 5/1 and its olive drab; the Centurion Mk 13 and the Mk 5 AVRE wear the Mk 5/2's British
+// stock, the Strv 105 the Strv 81's Swedish stock.
+const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
+  'centurion5_1_aus'];
+// Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
+// obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
+// 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
+// 263 (integrator): the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 wear the Mk 2's British service coat, the ZTZ-20 and its prototype
+// the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here).
+const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
+  challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
+  challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100',
+  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

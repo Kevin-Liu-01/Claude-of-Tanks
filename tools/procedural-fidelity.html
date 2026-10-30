@@ -30,8 +30,10 @@
 <script type="module">
 import * as THREE from 'three';
 import { K1_PHOTO_TARGET } from '/tools/k1-photo-target.mjs';
-import { verifySupplement } from '/tools/reference-supplement.mjs';
+import { supplementDigest, supplementSnapshot, verifySupplement } from '/tools/reference-supplement.mjs';
 import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
+import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
+import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
@@ -47,8 +49,10 @@ import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts
 import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
 import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
+import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -70,6 +74,7 @@ import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-refe
 const LOCAL_REFERENCE_OVERRIDES = {
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...ARES_APC_X_REFERENCE_OVERRIDES,
+  ...OPLOT_BM_X_REFERENCE_OVERRIDES,
   ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ...ABRAMS_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,
@@ -93,18 +98,23 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
   // The recovered Centurion oracles' Turret trees (centurion3.glb, centurion5.glb) carry a 36-vertex basket drum down
-  // to 23 % of the model's height inside the hull (the Type 10 class above). The tree stays mandatory for yaw and
+  // to 23 % of the model's height inside the hull (the Type 10 class, below). The tree stays mandatory for yaw and
   // ownership; only its isolated turret mask is suppressed. Hull, cannon, tracks and every whole view stay mandatory.
   centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
-  // m48a5_patton §5.45 build flip (patton lane 2026-08-08): playable renders the
-  // buildM48 procedural; the CC-BY ATModeler print stays the measurement
-  // oracle here (userdrops7 glb() helper expansion, verbatim).
-  m48a5_patton: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262 (owner: "make the type 59 be based on a type 55"): the Type 59 is built on the T-54/T-55 family construction
+  // measured from the owner's T-55A model (profiles/t54Family.ts), so it is scored against that oracle like the T-55A
+  // (fused export: whole views, dims and floaters); the LastTriarius Type 69 print, the 261 oracle, is retired.
+  type59: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
+  // 262 (owner 2026-10-27): the owner-supplied T-55A (Alex.Ka., CC BY-NC-ND 4.0, LOCAL-ONLY), prepared to its vehicle
+  // meshes at one uniform scale by tools/source-x-oracle.mjs (docs/references/tanks/t55a.md). Its export fuses hull,
+  // turret and gun by material, so the whole nine-view silhouette, dims and floaters are the honest comparison.
+  t55a: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/t55a_x_source.glb',
+    fixedMount:true, componentMasks:false } },
   // RE-ONBOARD (§5.36, 2026-08-08): ahab bakes re-baked with the hull
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
   // These exports parent large fixed-hull regions under `Turret`; whole and
@@ -148,21 +158,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   leo2_improved: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb',
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false,
     trackComponentMasks:true } },
-  // Object_29 fuses fixed glacis/service pieces and rotating cheek/flank
-  // armour in one mesh.  It cannot supply an honest independent hull/turret
-  // mask without rewriting source vertices, so component scoring is disabled
-  // while whole-view, gun, track and yaw evidence remain mandatory.
-  ztz99_longwei: { source:'glb', qualityBar:'exemplar', glb:{
-    path:'/models/community-candidates/type_99a2_armored_warfare.glb',
-    turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true,
-    componentMasks:false,
-    // Object_17 is only the exposed tube; our articulated gun tree also
-    // owns the mechanically correct mantlet/tunnel.  An isolated comparison
-    // therefore penalizes the authored model for containing the missing
-    // source part.  Cannon length/root remain mandatory in all whole views.
-    gunComponentMasks:false,
-    turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
-  } },
+  // ZTZ-99 Longwei: the game's own ZTZ-99-lineage design (owner, 2026-10-28), docs/references/concepts/ztz99-longwei-20261028.json.
   // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull but uses
   // an independent low integrated-chevron turret. Keep the A2 print as the
   // registered shared-chassis oracle; VT-specific turret construction is
@@ -230,13 +226,39 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
   pt91a_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
+  // release 262: "Challenger 3 TD MBT" by Jeyhun1985 (CC-BY-4.0; sha256 3a4b3fbbe52aad3e…), the TD's measurement oracle
+  // (docs/references/tanks/challenger3_td.md). An OBJ conversion: unnamed material-merged nodes. The turret is
+  // Object_24 and 25 (the turret's material groups) and the gun's Object_20 also carry the turret basket and breech
+  // internals down to 1.05 m inside the ring (every island under 1.72 lies within the ring's 1.15 m radius), so they are
+  // split by island: those standing at 1.892 (the source's 1.72) or above articulate, the basket is left out of every
+  // mask. The articulation nodes are the all-turret roof furniture (26) and the muzzle device (6) on the measured ring
+  // and trunnion; 19, 22, 23 (whips, sights) follow the turret, 3 (coax) the gun. The file is the source-x-oracle
+  // canonical export (the family's installed 1.10, +0.2145 z; certificate in source-world-registration.mjs), so no
+  // width normalization applies. Its field fit (challenger3_td_rws) is a derivative: not registered here.
+  challenger3_td: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/challenger3_td_x_source.glb',
+    turretNode:'^Object_26$', turretFollowers:'^Object_(?:19|22|23)$', gunNode:'^Object_6$', gunFollowers:'^Object_3$',
+    autoPivot:true, pivot:[0, 1.98, 0.7106], gunPivot:[0, 2.2341, 1.9195],
+    componentSubsets:[
+      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
+      { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
+    ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
-  t84bm_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },
+  // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
+  // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
+  // 262: the new true T-64s compare against the T-64 prints their siblings use (the 42manako T-64BV1 and T-64BV Donbas
+  // kitbash, local-only, CC-BY-NC); their builds follow published T-64 dimensions (docs/references/tanks/t64bm1m.md).
+  t64bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  t64b1v_2022: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
+  // 262: the 42manako T-64BM1M print (CC-BY-NC, local-only; sha256 c62063d8507a993c; docs/references/tanks/t64bm1m.md),
+  // +X forward in its own frame. Its horseshoe, searchlight, smoke banks, rack and bustle stores are root-level nodes that
+  // ride the turret; two stray two-triangle planes float 5.7 m up (gear1-optione002/003, recorded in the packet).
+  t64bm1m: { source:'glb', glb:{ path:'/models/community-candidates/t64bm1m_42manako.glb', turretNode:'^turret001$', gunNode:'^mount001$', autoPivot:true, yawOffset:-1.5707963267948966,
+    turretFollowers:'^(?:era(?:[2-9]|10)?|object0200[45]|object22\\d{3}|smoke-model[ef]\\d{3}|slat3002|suporte|gear|gear001|gear222|object01|weapon3)$' } },
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
   c1_ariete_proto_serie1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
@@ -665,6 +687,8 @@ window.__REFERENCE_QUALITY_BARS = Object.fromEntries(referenceIds.map((tankId) =
   (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.qualityBar || 'fleet',
 ]));
 window.__REFERENCE_IDS = referenceIds;
+// the fidelity driver keeps a raw-source comparison beside each oracle-blind exemption (tools/oracle-blind-parts.mjs)
+window.__ORACLE_BLIND_IDS = Object.keys(ORACLE_BLIND_PARTS);
 
 if (params.has('registry')) {
   // Geometry tooling needs the eligible-ID census before it opens a source.
@@ -717,7 +741,31 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
   photoGroup.visible=false;
 }
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
-const comparisonScope=photoSupplement?{
+// Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
+// receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
+const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
+const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
+let ownerKit=null;const ownerKitGroups=[];
+if(ownerKitTarget){
+  const receipts=OWNER_KIT_RECEIPTS[id]?.parts??{},missing=[];
+  for(const part of ownerKitTarget.parts){
+    const digest=await supplementDigest(supplementSnapshot(procedural.root,part));
+    if(receipts[part.group]?.geometryPoseSha256!==digest)missing.push(`${part.group} ${digest}`);
+  }
+  if(missing.length)failFidelity(`owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): ${missing.join('; ')}`);
+  ownerKit=[];
+  try{for(const part of ownerKitTarget.parts){
+    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group]),part:part.part,ownerWords:part.ownerWords});
+  }}catch(error){failFidelity(String(error.message));}
+  for(const part of ownerKitTarget.parts){const group=procedural.root.getObjectByName(part.group);group.visible=false;ownerKitGroups.push(group);}
+  document.querySelector('#summary').textContent += ' · owner kit set aside (authenticated)';
+}
+const comparisonScope=ownerKit?{
+  numericScope:'Registered print against the build without the owner-directed kit parts named in ownerKit',
+  ownerDecision:ownerKitTarget.ownerDecision,decisionDate:ownerKitTarget.decisionDate,
+  ownerKit,retained:ownerKitTarget.retained,rawSourceComparison:'?comparison=raw-source',
+  fullVehicleQualification:false,
+}:photoSupplement?{
   numericScope:'Supplied-model body excluding the separately reviewed photo weapon',
   ownerDecision:K1_PHOTO_TARGET.ownerDecision,decisionDate:K1_PHOTO_TARGET.decisionDate,
   photoSupplement,rawSourceComparison:'?comparison=raw-source',
@@ -780,6 +828,36 @@ const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
   root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o) && !isCamouflageSuit(o)); });
 }
+// Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
+// named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
+// before the part leaves the track profile (every other mask keeps it); ?comparison=raw-source compares it unexempted.
+const oracleBlindTarget=params.get('comparison')!=='raw-source'?ORACLE_BLIND_PARTS[id]??null:null;
+const oracleBlindTrackNodes=new Map();
+let oracleBlindParts=null;
+if(oracleBlindTarget){
+  oracleBlindParts=[];
+  for(const part of oracleBlindTarget.parts){
+    if(part.masks!=='trackProfile')failFidelity(`oracle-blind ${part.key}: unknown mask scope ${part.masks}`);
+    for(const {name,appearanceRole} of part.procedural){
+      const found=[];procedural.root.traverse(o=>{if(o.name===name)found.push(o);});
+      if(found.length!==1||!isRenderNode(found[0])||found[0].userData.appearanceRole!==appearanceRole)
+        failFidelity(`oracle-blind ${part.key}: ${name} must be the one ${appearanceRole} mesh (found ${found.length})`);
+      oracleBlindTrackNodes.set(found[0],baseVisible.get(found[0]));
+    }
+    if(part.reference){
+      const pattern=new RegExp(part.reference.node),found=[];
+      reference.root.traverse(o=>{if(isRenderNode(o)&&pattern.test(o.name||''))found.push(o);});
+      if(found.length!==part.reference.count)
+        failFidelity(`oracle-blind ${part.key}: ${part.reference.node} matched ${found.length} reference meshes, not ${part.reference.count}`);
+      for(const o of found)oracleBlindTrackNodes.set(o,baseVisible.get(o));
+    }
+    oracleBlindParts.push({key:part.key,masks:part.masks,part:part.part,rulingWords:part.rulingWords,reason:part.reason,
+      procedural:part.procedural.map(p=>p.name),reference:part.reference?.node??null});
+  }
+  document.querySelector('#summary').textContent += ' · track profile without the oracle-blind track parts (Main\'s ruling)';
+}
+const oracleBlindScope=oracleBlindParts?{decision:oracleBlindTarget.decision,decisionDate:oracleBlindTarget.decisionDate,
+  packet:oracleBlindTarget.packet,parts:oracleBlindParts,rawSourceComparison:'?comparison=raw-source'}:null;
 
 function forEachBoxCorner(box, fn) {
   for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
@@ -1234,10 +1312,18 @@ const gunComponentMasksAvailable=source?.glb?.gunComponentMasks !== false && com
 // hull mask perfectly usable.  Such references may opt into that narrower,
 // explicit track-only measurement without re-enabling component scores.
 const trackComponentMasksAvailable = componentMasksAvailable || source?.glb?.trackComponentMasks === true;
-const [refTrack,procTrack]=lowerBand(
-  trackComponentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole,
-  trackComponentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole,
-);
+let trackRefMask=trackComponentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole;
+let trackProcMask=trackComponentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole;
+if(oracleBlindTrackNodes.size){
+  // an oracle-blind track part (tools/oracle-blind-parts.mjs) leaves the track profile alone: the same right view is
+  // drawn again without it on both sides, and every other mask keeps it
+  const camera=cameraFor(ANGLES.right),part=trackComponentMasksAvailable?'hull':'whole';
+  for(const o of oracleBlindTrackNodes.keys())baseVisible.set(o,false);
+  trackRefMask=renderMask(reference,procedural,camera,part);
+  trackProcMask=renderMask(procedural,reference,camera,part);
+  for(const [o,base] of oracleBlindTrackNodes)baseVisible.set(o,base);
+}
+const [refTrack,procTrack]=lowerBand(trackRefMask,trackProcMask);
 const trackMetric=compare(refTrack,procTrack);
 if (params.get('components')) overlayCanvas('track profile',refTrack,procTrack,trackMetric);
 const hullSideBounds=bounds(rawMasks.right.refHull);
@@ -1335,13 +1421,14 @@ for (const [name,value] of Object.entries(scores)) {
 window.__FIDELITY_REPORT={
   interiorFillRecordLoaded: hasInteriorFills(id),
   id,name:spec.name,sourcePath:source.glb.path,
-  comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+  comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : ownerKit ? 'source-without-owner-kit' : preservation ? 'preservation' : 'source-fidelity',
   ...(comparisonScope ? {comparisonScope} : {}),
   ...(preservation ? { preservationBaseline:preservation } : {}),
   // variantOf is combat lineage, not evidence of visual-builder delegation.
   fallback:spec.publicVisualFallback || spec.visualBase || id,
   score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),requiredMinimum:requiredFidelity,qualityBar:source?.qualityBar||'fleet',gatePassed,
   gateFailures:fidelityGate.failures,
+  ...(oracleBlindScope ? {oracleBlindParts:oracleBlindScope} : {}),
   rawScore:totalScore,rawScores,rawMinView:minView,
   registration:sourceWorldRegistration || {mode:useHullLengthAnchor ? 'legacy-hull-length-normalization' : 'legacy-width-normalization'},
   normalizationAnchors:{applied:!preservation && !sourceWorldCertificate,
@@ -1422,7 +1509,7 @@ if (params.get('board')) {
   // Shaded evidence always shows the complete armed playable. Restore the
   // measurement scope afterwards so board mode cannot change geometry scores.
   const photoNodes=[];
-  if(photoGroup){photoGroup.visible=true;photoGroup.traverse(o=>{if(isRenderNode(o)){photoNodes.push(o);baseVisible.set(o,true);o.visible=true;}});}
+  for(const group of [photoGroup,...ownerKitGroups].filter(Boolean)){group.visible=true;group.traverse(o=>{if(isRenderNode(o)){photoNodes.push(o);baseVisible.set(o,true);o.visible=true;}});}
 
   // This equal-clay diagnostic is deliberately applied only after masks and
   // scores are finalized. Albedo, texture detail and instanced tread tints
@@ -1528,7 +1615,8 @@ if (params.get('board')) {
     procedural.root.updateMatrixWorld(true);
     addBoard('procedural turntable — 24 × 15°', cv);
   }
-  if(photoGroup){photoGroup.visible=false;for(const o of photoNodes){baseVisible.set(o,false);o.visible=false;}}
+  for(const group of [photoGroup,...ownerKitGroups].filter(Boolean))group.visible=false;
+  for(const o of photoNodes){baseVisible.set(o,false);o.visible=false;}
 }
 
 // ---- &profiles=1: measure the REFERENCE model into authoring data --------
@@ -2122,7 +2210,7 @@ if (params.get('geo')) {
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
     registration:sourceWorldRegistration || {mode:'legacy-hull-translation'},
-    comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+    comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : ownerKit ? 'source-without-owner-kit' : preservation ? 'preservation' : 'source-fidelity',
   ...(comparisonScope ? {comparisonScope} : {}),
     dimensionTarget:dimensionFrame ? 'hash-pinned source: fixed ruler plus full physical envelope'
       : preservation ? 'hash-pinned historical first-party baseline' : 'published specification',

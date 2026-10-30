@@ -42,6 +42,8 @@ import { closeSurface, openSurface, type TransientSurface } from './components/s
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
+import { revealWhenReady } from './components/reveal.ts';
+import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -206,6 +208,8 @@ interface GarageOptions {
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
   readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
   readonly onStudioIntent?: () => void;
+  /** Open the Studio (main.ts: its lazy access boundary's own open, the one F8 takes in the Garage). */
+  readonly onStudio?: () => void;
   readonly onTankIntent?: (specId: string) => void;
   readonly maps?: readonly GarageMap[];
   readonly garageVariants?: readonly GarageVariantView[];
@@ -249,6 +253,9 @@ export interface GarageRuntime {
   attachPhoto(control: GaragePhotoControl): void;
   getSelectedMap(): string;
   startSolo(): void;
+  /** The battle did not start because part of the game did not arrive (main.ts presentFailure): the Battle button keeps
+   *  the kit's error state, and its next press (any launch) reloads the page once online. */
+  noteBattleLoadFailed(): void;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
@@ -440,7 +447,7 @@ const NATION_FULL_LABEL: Readonly<Record<string, string>> = {
   USA: 'United States', Germany: 'Germany', USSR: 'Soviet Union', Russia: 'Russia',
   'USSR/Russia': 'Russia', Sweden: 'Sweden', Community: 'Community', UK: 'United Kingdom',
   France: 'France', Israel: 'Israel', China: 'China', 'South Korea': 'South Korea',
-  Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine', 'South Africa': 'South Africa',
+  Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine', Denmark: 'Denmark', 'South Africa': 'South Africa',
   Australia: 'Australia',
 };
 function nationFullLabel(nation: string): string {
@@ -459,7 +466,7 @@ const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
   ['UK', 3], ['France', 4], ['China', 5], ['Italy', 6], ['Japan', 7],
-  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Community', 11],
+  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Denmark', 10], ['Community', 11],
   ['Israel', 12], ['Ukraine', 13], ['South Africa', 14], ['Australia', 15],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
@@ -1098,8 +1105,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
   // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the denser steps; 'bars'
   // drops the scale bars before '4' drops a station's later plates (the r25 critic: Firepower at 1280 lost its Ammunition
-  // and Armament over 170 px of empty column, the step before overflowing by a few rows)
-  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4']);
+  // and Armament over 170 px of empty column, the step before overflowing by a few rows); '5' sets the actions as glyphs
+  // and keys when even '4' overflows a short docked window (v261 e: 1024 x 600 cut its last action row by 17 px)
+  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4', '1 2 3 bars 4 5']);
   const readoutDensities = new Map<string, number>();
   function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
@@ -1434,11 +1442,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
   const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
-  const openServiceRecord = async () => {
-    if (recordOpening) return;
+  const openServiceRecord = async (opener?: HTMLElement) => {
+    if (recordOpening || reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
     closeGarageVariantMenu(); setGaragePanel('');
     const revision = ++recordOpenRevision;
-    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger;
+    const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
     recordOpening = true;
     try {
       const [{ createServiceRecordDialog }] = await Promise.all([
@@ -1450,8 +1458,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
-      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only); the next press retries
-      notifyLater({ id: 'cot-record-load', severity: 'error', text: t('garage.record.loadError') });
+      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only): the trigger's error state
+      // and Reload page (the loading census 262: the toast had none)
+      reportLoadFailure('cot-record-load', t('garage.record.loadError'), [recordTrigger]);
     }
     finally { recordOpening = false; }
   };
@@ -1582,6 +1591,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
   const technicalModalTabs = [...technicalModal.body.querySelectorAll<HTMLButtonElement>('[data-technical-modal-view]')];
+  // the drawing fades in over its box's tone (the loading census 262: it popped in 19-23 s on Fast 3G, its dialog jumping
+  // as it arrived, and offline it was a broken frame); one the network dropped loads again, quietly, once it is back
+  window.addEventListener('online', () => {
+    const src = technicalModalImage.getAttribute('src');
+    if (!src || !technicalModalPanel.hasAttribute('data-failed')) return;
+    technicalModalImage.src = src;
+    revealWhenReady(technicalModalPanel, technicalModalImage);
+  });
 
   const selectTechnicalModalView = (viewId: GarageTechnicalViewId): void => {
     const view = technicalViewById.get(viewId);
@@ -1594,6 +1611,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     technicalModal.setTitle(name);
     technicalModalImage.src = iconUrl(spec.id, view.assetView);
     technicalModalImage.alt = `${name} ${translated.caption.toLowerCase()}`;
+    revealWhenReady(technicalModalPanel, technicalModalImage);
     technicalModalPanel.setAttribute('aria-labelledby', `cot-technical-viewer-tab-${view.id}`);
     for (const tab of technicalModalTabs) {
       const active = tab.dataset.technicalModalView === view.id;
@@ -1991,14 +2009,35 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const notifyLater = (options: ToastOptions): void => {
     void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
   };
+  /** A surface whose chunks did not arrive does not ask for them again in this document (components/loadFailure.ts: probed
+   *  on Chrome 151, which keeps the failure, and 156, which does not; a failed chunk stylesheet never applies in either).
+   *  So the failure says so with Reload page, and its triggers keep the kit's error state, which needs no
+   *  chunk (the notice is one, and offline it cannot arrive either: the loading census 264); their next press reloads the
+   *  page once it is online. */
+  const reportLoadFailure = (id: string, text: string, triggers: readonly (HTMLElement | null)[]): void => {
+    markLoadFailed(triggers, text);
+    notifyLater({ id, severity: 'error', text,
+      // (offline, a reload is the browser's error page: the press waits, and the notice keeps standing)
+      actions: [{ label: t('loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
+  };
+  /** A trigger whose surface failed to load: its press reloads the page (online), else says so again. */
+  const reloadsForFailure = (trigger: HTMLElement | null, id: string, text: string): boolean => {
+    if (!pressFailed(trigger)) return false;
+    if (navigator.onLine === false) reportLoadFailure(id, text, [trigger]);
+    return true;
+  };
+  // (the picker draws its swatches again, so the studio's failure is the Garage's, marked on the swatch drawn now)
+  let customCamoStudioFailed = false;
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
+    if (customCamoStudioFailed) markLoadFailed([option], t('garage.camo.customStudioRetryTitle'));
+    if (reloadsForFailure(option, 'cot-custom-camo', t('garage.camo.customStudioRetryTitle'))) return;
     option?.setAttribute('aria-busy', 'true');
     try {
       await customCamoStudioAccess?.open();
     } catch (error) {
-      notifyLater({ id: 'cot-custom-camo', severity: 'error', text: t('garage.camo.customStudioRetryTitle'),
-        retry: () => customCamoStudioAccess?.open() ?? Promise.resolve() });
+      customCamoStudioFailed = true;
+      reportLoadFailure('cot-custom-camo', t('garage.camo.customStudioRetryTitle'), [option]);
       console.warn('[garage] custom camouflage studio failed to load', error);
     } finally {
       option?.removeAttribute('aria-busy');
@@ -2103,7 +2142,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch
       const preloadStudio = (event: Event): void => {
         if (!eventElement(event)?.closest(`[data-id="${CUSTOM_CAMO_ID}"]`)) return;
-        customCamoStudioAccess?.preload().catch(() => { /* the press retries */ });
+        customCamoStudioAccess?.preload().catch(() => { /* the press says so */ });
       };
       host.addEventListener('pointerover', preloadStudio);
       host.addEventListener('focusin', preloadStudio);
@@ -3645,6 +3684,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // and any one of them throwing in an exotic environment would silently
     // block onBattle — a BATTLE button that does nothing is the worst failure
     // mode. Contain their failures; the phase flip always runs.
+    // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
+    // reloads the page once online, noteBattleLoadFailed)
+    if (pressFailed(battleBtn)) return;
     try {
       if (emitClick) emit('ui:click', {});
       emit('ui:battleStart', { specId, mapId });
@@ -4245,6 +4287,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else tank.addEventListener('load', () => copy.classList.add('hc-loaded'), { once: true });
       tank.loading = 'eager';
     }
+    const flagImg = copy.querySelector<HTMLImageElement>('img.hc-flag[data-pending]');
+    if (flagImg) {
+      if (flagImg.complete) flagImg.removeAttribute('data-pending');
+      else flagImg.addEventListener('load', () => flagImg.removeAttribute('data-pending'), { once: true });
+    }
     const feather = cardsEl.style.getPropertyValue('--hc-flag-mask');
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
@@ -4531,9 +4578,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
 
-  // r9.1 header nav — Studio rides the exact F8 production path (studio.ts
-  // listens on window keydown and gates on game.phase === 'garage'); Home and
-  // Docs use their public pretty routes. Garage is the current screen.
+  // r9.1 header nav — Studio opens through its access boundary's own open (main.ts onStudio), the one F8 takes in the
+  // Garage: a synthetic F8 here was heard by the input layer's diagnostics key too, so a press on Studio toggled the
+  // battle diagnostics (owner 2026-10-28: "sometimes battle diagnostics randomly appears when u click stuff"). Home
+  // and Docs use their public pretty routes. Garage is the current screen.
   recordTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isRecordOpen()) closeServiceRecord();
@@ -4541,7 +4589,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const openStudio = () => {
     emit('ui:click', {});
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
+    opts.onStudio?.();
   };
   const openDocs = () => {
     emit('ui:click', {});
@@ -4608,7 +4656,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
   let techTreeOpening = false;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
-    if (techTreeOpening) return;
+    if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
     techTreeOpening = true;
     closeMobileNavigation();
@@ -4630,9 +4678,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       screen.open(opener);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
-      // a failed chunk fetch says so (it reached the console only); the next press retries
+      // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
+      // retries too
       console.error('[garage] tech tree failed to open:', err);
-      notifyLater({ id: 'cot-techtree-load', severity: 'error', text: t('garage.techTree.loadError') });
+      reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'),
+        [techTreeTrigger, root.querySelector<HTMLElement>('[data-mobile-nav="techTree"]')]);
     } finally {
       techTreeOpening = false;
     }
@@ -4940,6 +4990,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Enter the currently selected solo battle without reopening the play menu. */
     startSolo() {
       if (selectedId) launchBattle(selectedId, fieldMapId());
+    },
+    noteBattleLoadFailed() {
+      markLoadFailed([battleBtn], t('battle.entryFailed.reload'));
     },
 
     testDrive(specId?: string | null) {

@@ -18,6 +18,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_CHALLENGER } from './vehicleMarkingSeatG
 import { VEHICLE_MARKING_SEATS as SEATS_CHALLENGER1X } from './vehicleMarkingSeatGroups/challenger1X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHIEFTAIN10X } from './vehicleMarkingSeatGroups/chieftain10X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHIEFTAIN5X } from './vehicleMarkingSeatGroups/chieftain5X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_CHRISTIAN2 } from './vehicleMarkingSeatGroups/christian2.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV90105TMLSOURCEX } from './vehicleMarkingSeatGroups/cv90105TmlSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV9040CSOURCEX } from './vehicleMarkingSeatGroups/cv9040CSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV90MKIVSOURCEX } from './vehicleMarkingSeatGroups/cv90MkivSourceX.generated.ts';
@@ -104,6 +105,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_CHALLENGER1X,
   SEATS_CHIEFTAIN10X,
   SEATS_CHIEFTAIN5X,
+  SEATS_CHRISTIAN2,
   SEATS_CV90105TMLSOURCEX,
   SEATS_CV9040CSOURCEX,
   SEATS_CV90MKIVSOURCEX,

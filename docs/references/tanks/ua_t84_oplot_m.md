@@ -1,5 +1,35 @@
 # ua_t84_oplot_m — BM Oplot / Oplot-M (Ukraine) — §5.248 ground-up round packet
 
+## Release 262 rebuild: the Oplot-M/T's predecessor (owner 2026-10-27)
+Owner (via Main): "make the now t84 u oploot look a lot more like a prototype for the oplot M and T, rrn its kind of
+just arbittrarily slapped together". The T-84U is now built by `src/vehicles/profiles/oplotBM.ts` (`buildOplotBM(P, 'u')`)
+on the family's measured hull, running gear, welded turret and KBA-3, at its 2000 stage:
+- Kontakt-5, not Duplet: a glacis panel of two courses of three boxes a side, one course of sloping-topped boxes round
+  the turret front (lower than the Oplot-M's two-course stacks), thicker boxes on the four forward skirt panels;
+- the commander's flat cupola with its TKN-5 sight head and the cupola NSVT (`oplotUNsvt`, clear -175..178 deg), no
+  PNK-6 tower and no remote stations; 902B smoke-grenade tubes on the turret's front flanks;
+- the earlier stowage: side boxes on the turret, the OPVT snorkel across the bustle and a closed box beside it; no
+  rail basket, no stern drums, no LED bars;
+- the 2000 Ukrainian service finish: olive with brown and black disruptive bands (`nato`, `#4b5636`).
+Combat data kept (tier VI, period 3BM42/3BK29/3OF26, hp 2800, reload 6.3): the family's installed frame at this row's
+period protection (glacis 538/616, cheeks 616/672, mantlet 392/448), Kontakt-5 sectors (glacis 0.24/500, turret and
+forward skirts 0.20/400); gunPitchByYawDeg measured on the build (the Oplot-M's curve); dims are the build's extents
+(7.11 / 10.28 / 4.38 / 2.91 m). The retired builder `buildUAOplotM` and its print registration (`oplot_m_manako.glb`, an
+Oplot-M print that `bm_oplot_m` now certifies) are gone: the T-84U is a declared derivative of that certified base, as
+the Oplot-T is. Receipts retargeted: eraSeating (ERA clusters per plate, finish), fieldEquipment (no field weapon);
+oplotFenderBridge retired with the builder whose bridge it tested.
+Receipts on the rebuild (2026-10-28): ids-scoped anatomy chain PASS (fixpoint, rigs gate; its sim-floor move accepted with a reason); oplotBMGun (the full -5..+14 at every yaw), eraSeating, fieldEquipment PASS; strict track clip 0/0, sweep 0/0; contiguity 0 (its one closed hidden gap pruned); sealed (ledger holds); icons, drawings, hero card, centering PASS. Blind critic "does this read as the Oplot-M/T's predecessor?": PASS. Lineage sheet: `~/cot-launch-state/streams/owner-shots/oplot-262-lineage.png`. No registered comparison of its own (a declared derivative of the certified `bm_oplot_m` base), so the gated A stage reads N/A-as-FAIL.
+
+## Release 262 rename (owner 2026-10-27, approved tier table)
+This build (id `t84bm_oplot_m`, unchanged) is now **"T-84U Oplot"**, the 2000 serial tank, Object 478DU9 (adopted
+8 February 2000; renamed BM Oplot in 2004): the welded Duplet turret in its wartime field kit, before the BM Oplot-M's
+armoured bustle compartment. Its ammunition is the period Soviet stock, 3BM42 Mango APFSDS, 3BK29 HEAT and 3OF26
+HE-Frag (src/vehicles/ukraine.ts; the 3BM60U and Kombat-M were later than the T-84U), which puts its capability score at
+0.772 and its shown tier at VI (was VII). Geometry unchanged. The real T-84BM Oplot-M is now `bm_oplot_m`
+([bm_oplot_m.md](bm_oplot_m.md)). Known anachronism kept from the build: its tall roof tower (the T-84U's commander's
+sight was the PNK-5/TKN-5 per GlobalSecurity; the panoramic PNK-6 came with the 478DU9-1).
+
+
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition (`T80_PROFILES.t84.build`
 + additive kit). New builder `buildUAOplotM` in `src/vehicles/profiles/ukraine.ts`

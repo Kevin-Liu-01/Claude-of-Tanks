@@ -84,6 +84,13 @@ const build = (id, mode) => createTank(id, null, { camoSeed: 7, quality: 'ai', g
 const settle = async (visual, state, dist, frames = 2) => {
   for (let i = 0; i < frames; i++) { visual.syncFromState(state, 1 / 30, dist); await new Promise((r) => setTimeout(r, 20)); }
 };
+/** Frames at `dist` until the far LOD is built, as a battle's frames ask: a build waits as long as the last one took
+ * (claimFarLodBuild), so on a loaded machine one slow build holds the next past any fixed number of frames. */
+const settleFar = async (visual, state, dist = 200) => {
+  const until = performance.now() + 30_000;
+  do await settle(visual, state, dist, 1); while (!visual.root.userData.farLod && performance.now() < until);
+  return visual.root.userData.farLod;
+};
 const rows = [];
 for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   await ensureTankBuilder(id);
@@ -91,9 +98,8 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   const identity = build(id, 'identity'), dual = build(id, 'dual');
   await settle(identity, state, 200);
   const before = drawn(identity, 200);
-  await settle(dual, state, 200);
+  const info = await settleFar(dual, state);
   const far = drawn(dual, 200);
-  const info = dual.root.userData.farLod;
   assert.ok(info, `${id}: the far LOD was built at 200 m`);
   assert.equal(identity.root.userData.farLod, undefined, `${id}: an identity build has none`);
   assert.ok(far.triangles <= before.triangles * 0.5, `${id}: half the triangles or fewer at 200 m (${before.triangles} -> ${far.triangles})`);
@@ -154,7 +160,7 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   assert.equal(build(id, 'identity').prepareFarLod(), false, 'an identity build has none to prepare');
   await settle(lazy, state, 10);
   assert.deepEqual(drawn(prepared).draws, drawn(lazy).draws, 'preparing changes nothing near');
-  await settle(lazy, state, 200); await settle(prepared, state, 200);
+  await settleFar(lazy, state); await settle(prepared, state, 200);
   const key = (d) => d.split('|').slice(0, 2).join('|');
   assert.deepEqual(drawn(prepared, 200).draws.map(key), drawn(lazy, 200).draws.map(key), 'the prepared far LOD is the one the range builds');
   // (250) prepared hidden, as an unspotted enemy is in the countdown warm (setVisible(false) hides its root): the same
@@ -213,8 +219,8 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   const source = createTank(id, null, options);
   const clone = cloneTankVisual(source, null, options);
   const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
-  await settle(clone, state, 200);
-  await settle(source, state, 200);
+  await settleFar(clone, state);
+  await settleFar(source, state);
   assert.ok(clone.root.userData.farLod && source.root.userData.farLod, 'both build their own far LOD');
   assert.equal(clone.root.userData.farLod.wheels, source.root.userData.farLod.wheels, 'the copy stands in the same wheels');
   let foreign = 0;

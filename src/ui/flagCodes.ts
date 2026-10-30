@@ -20,6 +20,8 @@ export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object
   Poland: 'pl',
   'South Korea': 'kr',
   Sweden: 'se',
+  // release 262: the Christian II, a Danish Army concept (drawn in the Sweden tree)
+  Denmark: 'dk',
   Ukraine: 'ua',
   Canada: 'ca',
   'South Africa': 'za',

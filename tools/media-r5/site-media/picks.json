@@ -1223,8 +1223,8 @@
       {
         "id": "armor",
         "alt": {
-          "en": "Armor flashlight on Verdant Fields by day: through a Leopard 2A7V's sight at x16, a VT-4A1 356 m away stands in its own smoke screen, the APFSDS round loaded.",
-          "zh": "白天的翠野原，装甲手电：透过 Leopard 2A7V 的 16 倍瞄准镜，356 米外的一辆 VT-4A1 隐没在自己的烟幕中，已装填 APFSDS 弹。"
+          "en": "Armor flashlight on Kestrel Airfield in the morning: through a Leopard 2A7V's sight at x16, a ZTZ-99A2 under a camouflage net 159 m away is painted green where the loaded APFSDS round penetrates and red on its turret top and hull front, where it does not.",
+          "zh": "清晨的红隼机场，装甲手电：透过 Leopard 2A7V 的 16 倍瞄准镜，159 米外一辆披着伪装网的 ZTZ-99A2 被染上颜色，已装填的 APFSDS 弹能击穿处为绿色，炮塔顶部与车体前部不能击穿处为红色。"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"

@@ -18,6 +18,7 @@ import {createT90MSXArmorZones,T90MS_X_SOURCE_DATUMS} from './t90msXArmor.ts';
 import { LECLERC_CLASSIC_X_DATUMS } from './profiles/leclercClassicXFrame.ts';
 import { ARIETE_C1_X_DATUMS, ARIETE_X_FAMILY_SCALE, ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG } from './profiles/arieteXFamilyFrame.ts';
 import { CHALLENGER1_SUPPLIED_DATUMS } from './profiles/challenger1XSuppliedFrame.ts';
+import { rateChallenger1Armor } from './challenger1Armor.ts';
 import { STRV122_SUPPLIED_DATUMS } from './profiles/strv122XSuppliedFrame.ts';
 import { applySourceXAuxArmor } from './sourceXAuxArmor.ts';
 import { applyLeclercClassicXFieldKitArmor } from './leclercClassicXKitArmor.ts';
@@ -171,6 +172,10 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
     spec.visual.trackWidthM = ARIETE_C1_X_DATUMS.trackWidthM;
     // Widest real recoiling sleeve; the independent open bore stays 120 mm.
     spec.armor.gunBarrel.radiusM = .12248 * ARIETE_X_FAMILY_SCALE;
+    // 264: the donor prototype's cheek and skirt ERA zones (modern3Specs.ts, its own add-on kit) stay on the prototype:
+    // the production C1, and the C2 cloned from it (arieteModernSpecs.ts, which adds its own), draw none of its cassettes
+    spec.armor.hullPlates = spec.armor.hullPlates.filter(p => p.kind !== 'era');
+    spec.armor.turretPlates = spec.armor.turretPlates.filter(p => p.kind !== 'era');
   }
   if (id === 'jpz_e100') applyJagdpanzerFixedArmor(spec);
   applySourceXAuxArmor(spec, id);
@@ -238,6 +243,8 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
     fitArmorToDims(target.armor, donor.dims, armorFitDimensions(id, target.dims));
+    // 262: the Mk 3 is the late Challenger 1, whose hull front the public estimates raise over the Mk 2's
+    if (id === 'challenger1_mk3') rateChallenger1Armor(target.armor, 'late');
     applyAuthoredFrame(target, id);
     restoreInstalledVehicleFrame(target);
   }

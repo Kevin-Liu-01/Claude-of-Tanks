@@ -15,8 +15,12 @@
 export const LOADING_LANES = Object.freeze(['boot-loading', 'lead', 'premiere-site', 'premiere-gallery-studio', 'premiere-battle', 'canvas-ui'] as const);
 type Lane = (typeof LOADING_LANES)[number];
 
+/** The rules the census holds a row to (tools/loading-census.mjs). */
+export const LOADING_RULES = Object.freeze(['bare', 'spinner', 'shift', 'pop', 'silent', 'blocked', 'late', 'no-retry', 'broken'] as const);
+type Rule = (typeof LOADING_RULES)[number];
+
 /** The documents the census loads, each in a fresh browser context. */
-export const LOADING_PAGES = Object.freeze(['game', 'studio', 'home', 'docs', 'docs-topic', 'gallery', '404'] as const);
+export const LOADING_PAGES = Object.freeze(['game', 'studio', 'home', 'docs', 'docs-topic', 'docs-fleet', 'gallery', '404'] as const);
 type Page = (typeof LOADING_PAGES)[number];
 
 /** The census's way in: selectors pressed in turn from the page at rest; a leading `?` presses one only when it shows. */
@@ -55,6 +59,8 @@ interface LoadingSurfaceRow {
   readonly leave?: Recipes;
   /** The next row starts from this one's state: no Escape after it (a battle the next row ends). */
   readonly stays?: true;
+  /** A finding the row keeps by a ruling the census cannot see, with the ruling as its reason. */
+  readonly allow?: Readonly<Partial<Record<Rule, string>>>;
 }
 
 const GARAGE = 'src/ui/garage.ts';
@@ -71,8 +77,10 @@ const SHEET_CLOSE = ['?.cot-garage[data-garage-panel="equipment"] .stats .cot-do
 /** The rows, document rows first within each page. */
 export const LOADING_SURFACES = Object.freeze({
   // the game document: its boot, then the Garage at rest, then each surface a press opens
+  // (the turning wheels are the owner's living mark, 2026-10-24: "an animated version where hes rolling along with each
+  // bit chugging"; the card's progress line, its stage segments and its stage status carry the wait)
   'boot': { page: 'game', path: '/', lane: 'lead', owner: 'src/ui/bootScreen.ts', box: '#cot-boot', ready: 'gone:#cot-boot', offline: false,
-    rest: GARAGE_REST },
+    rest: GARAGE_REST, allow: { spinner: "the owner's living mark (2026-10-24) beside the progress line" } },
   'garage-roster': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage .cot-cards', ready: 'loaded:.cot-garage .cot-cards',
     offline: false },
   // (a desktop's dossier stands in the docked Garage at rest: an empty recipe; a phone opens it as a sheet over the stage,
@@ -125,6 +133,12 @@ export const LOADING_SURFACES = Object.freeze({
   'docs-topic-tanks': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: TOPICS, box: '.dm-banner', ready: 'loaded:.dm-banner', offline: false },
   'docs-tanks-reference': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: 'src/docs/reference.ts', box: '#reference',
     ready: '#reference .manual-record', scroll: true },
+
+  // the fleet grid (every playable tank's hero card, prerendered): its first view, then its middle scrolled into view
+  'docs-fleet': { page: 'docs-fleet', path: '/docs/fleet', lane: 'premiere-site', owner: 'src/docs/chapters/fleetGrid.ts',
+    box: '.dm-fleet__grid', ready: 'loaded:.dm-fleet__grid', offline: false },
+  'docs-fleet-lower': { page: 'docs-fleet', path: '/docs/fleet', lane: 'premiere-site', owner: 'src/docs/chapters/fleetGrid.ts',
+    box: '.dm-fleet__grid', ready: 'loaded:.dm-fleet__grid', scroll: true },
 
   // the Gallery: its list, its viewer and its dossier, from the document's start (a phone stacks the list and the dossier
   // under the viewer)

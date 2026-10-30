@@ -116,7 +116,9 @@ const GROUP_LOADERS = Object.freeze({
   sinoSovietConcepts: () => import('./profiles/sinoSovietConcepts.ts').then(mod => registerProfiles(mod.SINO_SOVIET_CONCEPT_PROFILES)),
   t72Rys: () => import('./profiles/t72Rys.ts').then(mod => registerProfiles({t72_rys:{build:mod.buildT72Rys}})),
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
-  leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
+  // 264: the group's Leopard 2A6 UA builds the 2A6 and adds its field kit
+  leopardA6X: () => Promise.all([import('./profiles/leopardA6X.ts'), import('./profiles/leopardA6Ua.ts')])
+    .then(([a6, ua]) => registerProfiles({ ...a6.LEOPARD_A6_X_PROFILES, ...ua.LEOPARD_A6_UA_PROFILES })),
   xk2: () => import('./profiles/xk2.ts').then((mod) => registerProfiles(mod.XK2_PROFILES)),
   k1a1X: () => import('./profiles/k1a1X.ts').then((mod) => registerProfiles(mod.K1A1_X_PROFILES)),
   amx30X: () => import('./profiles/amx30X.ts').then((mod) => registerProfiles(mod.AMX30_X_PROFILES)),
@@ -127,6 +129,7 @@ const GROUP_LOADERS = Object.freeze({
   jagdpanzerE100X: () => import('./profiles/jagdpanzerE100X.ts').then((mod) => registerProfiles(mod.JPZE100_X_PROFILES)),
   type10X: () => import('./profiles/type10X.ts').then((mod) => registerProfiles(mod.TYPE10_X_PROFILES)),
   type90X: () => import('./profiles/type90X.ts').then((mod) => registerProfiles(mod.TYPE90_X_PROFILES)),
+  christian2: () => import('./profiles/christian2.ts').then((mod) => registerProfiles(mod.CHRISTIAN2_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),

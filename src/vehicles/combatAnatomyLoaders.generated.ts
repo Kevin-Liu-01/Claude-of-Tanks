@@ -22,6 +22,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "challenger1X": () => import('./combatAnatomyGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./combatAnatomyGroups/chieftain10X.generated.ts'),
   "chieftain5X": () => import('./combatAnatomyGroups/chieftain5X.generated.ts'),
+  "christian2": () => import('./combatAnatomyGroups/christian2.generated.ts'),
   "cv90105TmlSourceX": () => import('./combatAnatomyGroups/cv90105TmlSourceX.generated.ts'),
   "cv9040CSourceX": () => import('./combatAnatomyGroups/cv9040CSourceX.generated.ts'),
   "cv90MkivSourceX": () => import('./combatAnatomyGroups/cv90MkivSourceX.generated.ts'),
