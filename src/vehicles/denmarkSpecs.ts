@@ -88,9 +88,10 @@ Object.assign(leo2a5dk, { weightTons: 62.0 });
 leo2a5dk.visual = {
   ...leo2a5dk.visual,
   // the Danish Army's three-tone of the 2010s (the Grafenwöhr side photograph): dark olive, a yellow-olive khaki and
-  // black in large hard-edged angular fields, about a third each (r2 critics: round blobs read as woodland; r3: thin
-  // sprayed bands read as tiger stripes): the splinter painter's wedges at twice their size, without its rain strokes
-  scheme: 'splinter', base: '#434b34', weather: '#4f5640', patches: ['#6c6844', '#1c1e19'], patchK: 2.2, rainK: 0,
+  // black (r2 critics: round blobs read as woodland; r3: thin sprayed bands read as tiger stripes; r4: the splinter
+  // wedges tiled into a small checker): the NATO painter's long khaki bands through the olive at one and a half times
+  // their size, black shadowing them, the khaki warmed toward yellow-brown (previewed on the CPU, .qa-dev camoprev)
+  scheme: 'nato', base: '#434b34', weather: '#4f5640', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.5,
   marking: 'number', number: '31', camoScale: 0.5,
 };
 // its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
@@ -116,10 +117,11 @@ leo2a7dk.gunPitchByYawDeg = Object.freeze([[0, -9], [31, -9], [32, -8.5], [33, -
   [159, 5.8], [160, 6.6], [161, 6.8], [169, 7.3], [174, 7.3], [180, 6.7]] as const);
 leo2a7dk.visual = {
   ...leo2a7dk.visual,
-  // the Barracuda cover's olive mottle with drab tan pads (the Latvia photograph; r2 critics: no terracotta; r3: the
-  // grey-green read pale sage), fine enough that the painted faces under it read as the same cover
-  scheme: 'nato', base: '#4a5338', weather: '#555d43', patches: ['#2b3124', '#6a6347', '#3b4630'], marking: 'number',
-  number: '11', camoScale: 0.30,
+  // the Barracuda cover's dull grey-green mottle (the Latvia photograph; r2 critics: no terracotta; r3: the grey-green
+  // read pale sage; r4: the brown base showed between the cover's panels): small grey-green patches in the cover's own
+  // tones, so the painted faces under it read as the same cover
+  scheme: 'nato', base: '#4d5545', weather: '#575f4e', patches: ['#353c30', '#5d6353', '#434a3b'], marking: 'number',
+  number: '11', camoScale: 0.9,
 };
 
 registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk'],
