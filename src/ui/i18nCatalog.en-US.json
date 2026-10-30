@@ -5718,8 +5718,6 @@
   "pad.throttle": "Throttle",
   "pad.stick": "Drive stick",
   "pad.aimPad": "Drag to aim",
-  "pad.reloading": "Reloading",
-  "pad.ready": "Ready",
   "pad.consumable": "Consumable {n}",
   "pad.shell": "Ammunition {n}: {type}, {count} left",
   "pad.opt.tilt": "Tilt steering",
@@ -5738,5 +5736,8 @@
   "pad.paused": "Paused",
   "pad.destroyed": "Destroyed",
   "pad.opt.lower": "Lower",
-  "pad.opt.raise": "Raise"
+  "pad.opt.raise": "Raise",
+  "pad.opt.hand": "Fire hand",
+  "pad.opt.right": "Right",
+  "pad.opt.left": "Left"
 }

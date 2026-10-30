@@ -23,51 +23,82 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-hint,.pad-end-msg{max-width:46ch;margin:0;font-size:var(--fs-14);line-height:var(--lh-body);color:var(--ink-2);}
 .pad-error{min-height:1.4em;margin:0;font-size:var(--fs-13);color:var(--text-danger);}
 
-/* the controller */
-.pad-ctl{height:100%;display:grid;grid-template-columns:minmax(112px,22%) 1fr minmax(176px,38%);
-  grid-template-rows:auto 1fr;gap:var(--s3);}
-.pad-top{grid-column:1/-1;display:flex;align-items:center;gap:var(--s2);min-width:0;}
-.pad-link{flex:none;font-size:var(--fs-12);color:var(--ink-3);white-space:nowrap;}
+/* the controller: the tank in the hand. Three zones across the full width (drive, the tank, the gun), no boxes; the
+   left-handed layout mirrors them. */
+.pad-ctl{height:100%;display:grid;grid-template-columns:minmax(104px,20%) 1fr minmax(184px,38%);grid-template-rows:auto 1fr;
+  grid-template-areas:'top top top' 'drive tank gun';column-gap:var(--s4);row-gap:var(--s2);}
+.pad-ctl[data-hand='left']{grid-template-columns:minmax(184px,38%) 1fr minmax(104px,20%);grid-template-areas:'top top top' 'gun tank drive';}
+.pad-top{grid-area:top;display:flex;align-items:center;gap:var(--s2);min-width:0;}
+.pad-link{flex:none;display:inline-flex;align-items:center;gap:var(--s1);font-size:var(--fs-12);color:var(--ink-3);white-space:nowrap;}
+.pad-link::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--ink-4);}
 .pad-link[data-tone='ok']{color:var(--text-ok);}
+.pad-link[data-tone='ok']::before{background:var(--ok);}
 .pad-link[data-tone='warn']{color:var(--text-warn);}
+.pad-link[data-tone='warn']::before{background:var(--warn);}
 .pad-ammo,.pad-cons{display:flex;gap:var(--s1);}
 .pad-ammo{margin-left:auto;}
+.pad-cons{margin-left:var(--s3);}
 .pad-tool{display:inline-flex;align-items:center;justify-content:center;gap:var(--s1);min-width:var(--target-min);min-height:var(--target-min);
-  padding:0 var(--s2);border:1px solid var(--line-control);border-radius:var(--control-radius);background:var(--surface-raised);
-  font-size:var(--fs-12);font-weight:var(--fw-medium);}
+  padding:0 var(--s2);border:1px solid transparent;border-radius:var(--control-radius);background:var(--fill-soft);font-size:var(--fs-13);
+  font-weight:var(--fw-medium);}
 .pad-tool b{font-weight:var(--fw-semibold);}
-.pad-tool[aria-pressed='true']{border-color:var(--accent);color:var(--text-accent);background:var(--accent-wash);}
-.pad-tool:active,.pad-hold.is-down,.pad-fire.is-down{background:var(--surface-hover);}
+.pad-tool[aria-pressed='true']{color:var(--text-accent);background:var(--accent-wash);border-color:var(--accent);}
+.pad-tool:active,.pad-hold.is-down{background:var(--surface-hover);}
 .pad-tool[data-empty]{color:var(--ink-4);}
+.pad-shell{padding:0 var(--s3);}
+.pad-shell[aria-pressed='true']{transform:translateY(-2px);}
 
-.pad-left{display:flex;flex-direction:column;align-items:stretch;gap:var(--s3);min-height:0;}
-.pad-lever{position:relative;flex:1 1 auto;min-height:120px;border:1px solid var(--line-control);border-radius:var(--plate-radius);
-  background:var(--surface-plate);touch-action:none;}
-.pad-lever::before{content:'';position:absolute;left:var(--s3);right:var(--s3);top:50%;border-top:1px solid var(--line-2);}
-.pad-lever.is-stick::after{content:'';position:absolute;top:var(--s3);bottom:var(--s3);left:50%;border-left:1px solid var(--line-2);}
-.pad-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
+/* drive: the throttle is a track tread; the grip rides it with the thumb and springs back to neutral */
+.pad-drive{grid-area:drive;display:flex;flex-direction:column;gap:var(--s3);min-height:0;}
+.pad-lever{position:relative;flex:1 1 auto;min-height:120px;border-radius:var(--plate-radius);overflow:hidden;touch-action:none;
+  background:var(--surface-plate);}
+.pad-tread{position:absolute;inset:0 var(--s3);overflow:hidden;opacity:.55;}
+.pad-tread-strip{position:absolute;left:0;right:0;top:-18px;bottom:-18px;
+  background:repeating-linear-gradient(to bottom,var(--line-3) 0 7px,transparent 7px 18px);}
+.pad-lever::after{content:'';position:absolute;left:0;right:0;top:50%;border-top:2px solid var(--line-2);}
+.pad-knob{position:absolute;left:var(--s2);right:var(--s2);top:50%;height:44px;margin-top:-22px;border-radius:var(--control-radius);
   background:var(--accent);box-shadow:var(--e2);transform:translate(0,0);}
-.pad-hold{min-height:56px;border:1px solid var(--line-control);border-radius:var(--control-radius);background:var(--surface-raised);
-  font-size:var(--fs-14);font-weight:var(--fw-semibold);}
+.pad-lever.is-stick .pad-knob{left:50%;right:auto;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;}
+.pad-lever.is-stick::before{content:'';position:absolute;top:var(--s3);bottom:var(--s3);left:50%;border-left:2px solid var(--line-2);}
+.pad-hold{display:flex;align-items:center;justify-content:center;min-height:60px;border:0;border-radius:var(--control-radius);
+  background:var(--fill-soft);color:var(--ink-1);}
 
-.pad-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s3);min-width:0;}
-.pad-wheel{width:min(34vh,140px);height:min(34vh,140px);color:var(--ink-2);transform:rotate(0deg);}
-.pad-wheel svg{display:block;width:100%;height:100%;}
-.pad-wheel.is-off{color:var(--ink-4);}
-.pad-centre{min-height:var(--target-min);}
+/* the tank: its plan view turns with the wheel; the ring carries the gun's bearing */
+.pad-mid{grid-area:tank;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);min-width:0;}
+.pad-tank{position:relative;width:min(62vh,100%,300px);aspect-ratio:1;padding:0;border:0;border-radius:50%;background:transparent;
+  color:var(--ink-3);}
+.pad-tank:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+.pad-bearing,.pad-hull{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.pad-bearing{transition:transform var(--dur-fast) linear;}
+.pad-bearing svg{width:100%;height:100%;}
+.pad-bearing path{color:var(--accent);}
+.pad-hull{inset:12%;transform:rotate(0deg);}
+.pad-plan{width:100%;height:100%;object-fit:contain;}
+.pad-plan-glyph{color:var(--ink-4);}
+.pad-hull.is-stick{opacity:.75;}
+.pad-ctl[data-state='down'] .pad-hull,.pad-ctl[data-state='idle'] .pad-hull{opacity:.35;}
 .pad-msg{min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
-.pad-reload{width:min(60%,200px);height:6px;border-radius:var(--r-pill);background:var(--fill-faint);overflow:hidden;}
-.pad-reload-fill{width:100%;height:100%;background:var(--accent);transform-origin:left center;transform:scaleX(1);}
 
-.pad-right{position:relative;min-height:0;}
-.pad-aim{position:absolute;inset:0;border:1px dashed var(--line-2);border-radius:var(--plate-radius);background:var(--fill-faint);touch-action:none;}
-.pad-aim span{position:absolute;left:var(--s3);top:var(--s2);font-size:var(--fs-12);color:var(--ink-4);}
-.pad-fire{position:absolute;right:var(--s3);bottom:var(--s3);width:104px;height:104px;border:0;border-radius:50%;
-  background:var(--btn-danger-edge);color:var(--ink-on-accent);font-size:var(--fs-16);font-weight:var(--fw-bold);box-shadow:var(--e3);}
+/* the gun: the sight pad, the trigger that fills as the gun loads, scope and zoom beside it */
+.pad-right{grid-area:gun;position:relative;min-height:0;}
+.pad-aim{position:absolute;inset:0;border-radius:var(--plate-radius);background:var(--fill-faint);touch-action:none;display:flex;
+  align-items:center;justify-content:center;}
+.pad-reticle{width:96px;height:96px;color:var(--ink-3);transform:translate(0,0);}
+.pad-reticle svg{width:100%;height:100%;}
+.pad-fire{position:absolute;right:var(--s3);bottom:var(--s3);width:108px;height:108px;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;border:0;border-radius:50%;background:var(--fill-soft);color:var(--ink-on-accent);box-shadow:var(--e3);}
+/* the fill sits under the glyph by paint order (the glyph is positioned after it) */
+.pad-reload-fill{position:absolute;inset:0;background:var(--btn-danger-edge);transform-origin:center bottom;transform:scaleY(1);}
+.pad-fire .cot-i{position:relative;}
+.pad-ctl[data-state='loading'] .pad-fire{color:var(--ink-2);}
 .pad-fire.is-down{transform:scale(.94);}
-.pad-scope{position:absolute;right:calc(var(--s3) + 112px);bottom:var(--s3);}
-.pad-zoom{position:absolute;right:var(--s3);bottom:calc(var(--s3) + 112px);display:flex;gap:var(--s1);}
-.pad-look{position:absolute;left:var(--s3);bottom:var(--s3);min-width:72px;}
+.pad-scope{position:absolute;right:calc(var(--s3) + 116px);bottom:var(--s3);min-width:56px;min-height:56px;border-radius:50%;}
+.pad-zoom{position:absolute;right:var(--s3);bottom:calc(var(--s3) + 116px);display:flex;gap:var(--s1);}
+.pad-look{position:absolute;left:var(--s3);bottom:var(--s3);min-width:60px;}
+.pad-ctl[data-hand='left'] .pad-fire{right:auto;left:var(--s3);}
+.pad-ctl[data-hand='left'] .pad-scope{right:auto;left:calc(var(--s3) + 116px);}
+.pad-ctl[data-hand='left'] .pad-zoom{right:auto;left:var(--s3);}
+.pad-ctl[data-hand='left'] .pad-look{left:auto;right:var(--s3);}
 
 .pad-rotate{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:var(--s6);background:var(--surface-page);
   font-size:var(--fs-18);color:var(--ink-2);text-align:center;}
@@ -81,5 +112,5 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-step b{min-width:4ch;text-align:center;font-weight:var(--fw-semibold);}
 .pad-opts .end{display:flex;justify-content:space-between;gap:var(--s3);margin-top:var(--s3);}
 
-@media (max-height:360px){.pad-fire{width:88px;height:88px;}.pad-scope{right:calc(var(--s3) + 96px);}.pad-zoom{bottom:calc(var(--s3) + 96px);}}
+@media (max-height:360px){.pad-fire{width:92px;height:92px;}.pad-scope{right:calc(var(--s3) + 100px);}.pad-zoom{bottom:calc(var(--s3) + 100px);}}
 }

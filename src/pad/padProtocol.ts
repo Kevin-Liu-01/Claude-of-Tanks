@@ -195,6 +195,10 @@ export interface PadStatus {
   /** Seconds of reload left and the reload's length (0, 0 when ready). */
   reloadS: number;
   reloadTotalS: number;
+  /** The vehicle's spec id (its plan view, `/icons/<id>_top.webp`) and the turret's bearing off the hull, radians
+   *  (+ is the gun to the hull's left, the sim's turretYaw). */
+  spec?: string;
+  turret?: number;
 }
 
 export type PadCtlMessage =
@@ -238,7 +242,9 @@ function isStatus(value: unknown): value is PadStatus {
     s.shells.length <= 4 && s.shells.every((shell) => !!shell && typeof (shell as PadShell).type === 'string' &&
       typeof (shell as PadShell).icon === 'string' && /^[A-Za-z0-9]{1,32}$/.test((shell as PadShell).icon) &&
       Number.isFinite((shell as PadShell).count)) &&
-    Number.isFinite(s.reloadS) && Number.isFinite(s.reloadTotalS);
+    Number.isFinite(s.reloadS) && Number.isFinite(s.reloadTotalS) &&
+    (s.spec === undefined || (typeof s.spec === 'string' && /^[a-z0-9_]{1,48}$/.test(s.spec))) &&
+    (s.turret === undefined || Number.isFinite(s.turret));
 }
 
 // ---- The `axes` frame (binary, 24 bytes) -------------------------------------------------------------------------

@@ -37,6 +37,8 @@ assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: status })), { k: 's
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: 'AP' } })), null);
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: [{ type: 'AP', icon: '"><img>', count: 1 }] } })), null,
   'a glyph id is a sprite id, never markup');
+assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, spec: 'm1a1_abrams_hc', turret: 0.4 } })).s.spec, 'm1a1_abrams_hc');
+assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, spec: '../x' } })), null, 'a spec id is an id, never a path');
 
 // --- the axes frame ---------------------------------------------------------------------------------------------
 const frame = { flags: 1, seq: 65535, t: 2 ** 32 + 17, steer: -0.5, throttle: 1.7, aimX: 12.375, aimY: -40, held: 0b101 };

@@ -26,7 +26,7 @@ const RESUME_KEY = 'cot.pad.resume';
 const NO_TILT_MS = 1500;
 const HEARTBEAT_MS = 100;
 
-interface PadSettings { tilt: boolean; lockDeg: number; aim: number }
+interface PadSettings { tilt: boolean; lockDeg: number; aim: number; hand: 'right' | 'left' }
 const LOCKS = [25, 35, 45, 60];
 const AIMS = [0.5, 1, 1.5, 2];
 
@@ -34,8 +34,8 @@ function loadSettings(): PadSettings {
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as Partial<PadSettings>;
     return { tilt: raw.tilt !== false, lockDeg: LOCKS.includes(Number(raw.lockDeg)) ? Number(raw.lockDeg) : DEFAULT_STEERING.maxAngleDeg,
-      aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1 };
-  } catch { return { tilt: true, lockDeg: DEFAULT_STEERING.maxAngleDeg, aim: 1 }; }
+      aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1, hand: raw.hand === 'left' ? 'left' : 'right' };
+  } catch { return { tilt: true, lockDeg: DEFAULT_STEERING.maxAngleDeg, aim: 1, hand: 'right' }; }
 }
 const settings = loadSettings();
 const saveSettings = (): void => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* private mode */ } };
@@ -72,38 +72,48 @@ const error = join.querySelector('.pad-error') as HTMLElement;
 const shellButtons = [0, 1, 2].map((slot) => `<button class="pad-tool pad-shell" type="button" data-slot="${slot}" aria-pressed="false"></button>`).join('');
 const consumableGlyphs = ['repair', 'medkit', 'extinguisher'] as const;
 const consumableButtons = consumableGlyphs.map((glyph, i) =>
-  `<button class="pad-tool" type="button" data-tap="consumable${i + 1}" aria-label="${esc(t('pad.consumable', { n: i + 1 }))}">${icon(glyph, { size: 18 })}</button>`).join('');
+  `<button class="pad-tool" type="button" data-tap="consumable${i + 1}" aria-label="${esc(t('pad.consumable', { n: i + 1 }))}">${icon(glyph, { size: 20 })}</button>`).join('');
+// The controller is the tank in the hand: its plan view turns as the phone turns (tapping it re-centres the wheel), a
+// ring around it carries the gun's bearing, the throttle is a track tread that rolls at the speed it is pushed, and the
+// trigger fills as the gun loads. Every glyph is the game's own; every control is named for assistive tech.
 const ctl = html(`<section class="pad-ctl" hidden>
   <header class="pad-top">
     <span class="pad-link num" ${datumAttr('phone-link')} role="status" aria-live="polite"></span>
     <div class="pad-ammo" role="group">${shellButtons}</div>
     <div class="pad-cons" role="group">${consumableButtons}</div>
-    <button class="pad-tool" type="button" data-pause aria-label="${esc(t('pad.pause'))}">${icon('pause', { size: 18 })}</button>
-    <button class="pad-tool" type="button" data-menu aria-label="${esc(t('pad.menu'))}">${icon('settings', { size: 18 })}</button>
+    <button class="pad-tool" type="button" data-pause aria-label="${esc(t('pad.pause'))}">${icon('pause', { size: 20 })}</button>
+    <button class="pad-tool" type="button" data-menu aria-label="${esc(t('pad.menu'))}">${icon('settings', { size: 20 })}</button>
   </header>
-  <div class="pad-left">
-    <div class="pad-lever" role="slider" aria-label="${esc(t('pad.throttle'))}" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0"><div class="pad-knob"></div></div>
-    <button class="pad-hold" type="button" data-hold="handbrake">${esc(t('pad.brake'))}</button>
+  <div class="pad-drive">
+    <div class="pad-lever" role="slider" aria-label="${esc(t('pad.throttle'))}" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0">
+      <div class="pad-tread" aria-hidden="true"><div class="pad-tread-strip"></div></div>
+      <div class="pad-knob" aria-hidden="true"></div>
+    </div>
+    <button class="pad-hold pad-brake" type="button" data-hold="handbrake" aria-label="${esc(t('pad.brake'))}">${icon('handbrake', { size: 26 })}</button>
   </div>
   <div class="pad-mid">
-    <div class="pad-wheel" aria-hidden="true"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"><circle r="40"/><path d="M-40 0H-12M12 0H40M0 12V40"/><circle r="12" stroke-width="5"/></svg></div>
-    <button class="pad-tool pad-centre" type="button" data-centre>${esc(t('pad.centre'))}</button>
-    <div class="pad-reload" aria-hidden="true"><div class="pad-reload-fill"></div></div>
+    <button class="pad-tank" type="button" data-centre aria-label="${esc(t('pad.centre'))}">
+      <span class="pad-bearing" aria-hidden="true"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor"><circle r="47" stroke-width="1"/><path d="M0 -49V-37" stroke-width="4" stroke-linecap="round"/></svg></span>
+      <span class="pad-hull" aria-hidden="true"><img class="pad-plan" alt="" decoding="async" hidden><span class="pad-plan-glyph">${icon('vehicle', { size: 96 })}</span></span>
+    </button>
     <p class="pad-msg" role="status"></p>
   </div>
   <div class="pad-right">
-    <div class="pad-aim" aria-label="${esc(t('pad.aimPad'))}"><span>${esc(t('pad.aimPad'))}</span></div>
-    <button class="pad-hold pad-look" type="button" data-hold="freeLook">${esc(t('pad.look'))}</button>
-    <div class="pad-zoom" hidden>
-      <button class="pad-tool" type="button" data-tap="zoomOut" aria-label="${esc(t('pad.zoomOut'))}">${icon('zoomOut', { size: 18 })}</button>
-      <button class="pad-tool" type="button" data-tap="zoomIn" aria-label="${esc(t('pad.zoomIn'))}">${icon('zoomIn', { size: 18 })}</button>
+    <div class="pad-aim" aria-label="${esc(t('pad.aimPad'))}">
+      <span class="pad-reticle" aria-hidden="true"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle r="26"/><path d="M-46 0H-34M34 0H46M0 34V46M0-46V-34M-7 9 0 1 7 9"/></svg></span>
     </div>
-    <button class="pad-tool pad-scope" type="button" data-tap="sniperToggle" aria-pressed="false">${icon('scope', { size: 18 })}<span>${esc(t('pad.scope'))}</span></button>
-    <button class="pad-fire" type="button" data-hold="fire">${esc(t('pad.fire'))}</button>
+    <button class="pad-hold pad-look" type="button" data-hold="freeLook" aria-label="${esc(t('pad.look'))}">${icon('freeLook', { size: 24 })}</button>
+    <div class="pad-zoom" hidden>
+      <button class="pad-tool" type="button" data-tap="zoomOut" aria-label="${esc(t('pad.zoomOut'))}">${icon('zoomOut', { size: 20 })}</button>
+      <button class="pad-tool" type="button" data-tap="zoomIn" aria-label="${esc(t('pad.zoomIn'))}">${icon('zoomIn', { size: 20 })}</button>
+    </div>
+    <button class="pad-tool pad-scope" type="button" data-tap="sniperToggle" aria-pressed="false" aria-label="${esc(t('pad.scope'))}">${icon('scope', { size: 24 })}</button>
+    <button class="pad-fire" type="button" data-hold="fire" aria-label="${esc(t('pad.fire'))}"><span class="pad-reload-fill" aria-hidden="true"></span>${icon('fireGun', { size: 40 })}</button>
   </div>
   <div class="pad-rotate">${esc(t('pad.rotate'))}</div>
   <dialog class="pad-opts">
     <div class="row"><span>${esc(t('pad.opt.tilt'))}</span><button class="pad-tool" type="button" data-tilt aria-pressed="true"></button></div>
+    <div class="row"><span>${esc(t('pad.opt.hand'))}</span><button class="pad-tool" type="button" data-hand></button></div>
     ${['lockDeg', 'aim'].map((name) => `<div class="row"><span id="pad-opt-${name}">${esc(t(name === 'aim' ? 'pad.opt.aim' : 'pad.opt.lock'))}</span>`
       + `<span class="pad-step" role="group" aria-labelledby="pad-opt-${name}">`
       + `<button class="pad-tool" type="button" data-step="${name}" data-dir="-1" aria-label="${esc(t('pad.opt.lower'))}">${icon('chevronLeft', { size: 18 })}</button>`
@@ -127,13 +137,19 @@ const $ = <T extends Element>(selector: string, host: ParentNode = ctl): T => ho
 const linkChip = $<HTMLElement>('.pad-link');
 const lever = $<HTMLElement>('.pad-lever');
 const knob = $<HTMLElement>('.pad-knob');
-const wheel = $<HTMLElement>('.pad-wheel');
+const treadStrip = $<HTMLElement>('.pad-tread-strip');
+const hull = $<HTMLElement>('.pad-hull');
+const plan = $<HTMLImageElement>('.pad-plan');
+const planGlyph = $<HTMLElement>('.pad-plan-glyph');
+const bearing = $<HTMLElement>('.pad-bearing');
+const reticle = $<HTMLElement>('.pad-reticle');
 const message = $<HTMLElement>('.pad-msg');
 const reloadFill = $<HTMLElement>('.pad-reload-fill');
 const zoom = $<HTMLElement>('.pad-zoom');
 const scope = $<HTMLButtonElement>('.pad-scope');
 const aimPad = $<HTMLElement>('.pad-aim');
 const options = $<HTMLDialogElement>('.pad-opts');
+ctl.dataset.hand = settings.hand;
 
 function show(screen: 'join' | 'controller' | 'ended'): void {
   root.dataset.screen = screen;
@@ -195,9 +211,23 @@ function queueSend(): void {
 }
 setInterval(() => send(), HEARTBEAT_MS);
 
+/** The hull turns with the wheel: the tank is the steering's readout (written on input events, transform only). */
 function paintWheel(): void {
-  const turn = Math.round(steering() * settings.lockDeg * 2) / 2;
-  wheel.style.transform = `rotate(${turn}deg)`;
+  const turn = Math.round(steering() * 30 * 2) / 2;
+  hull.style.transform = `rotate(${turn}deg)`;
+}
+
+/** The tread rolls at the throttle's speed and direction (one compositor animation, its rate set on input; still under
+ *  reduced motion). A link is 18 px, so one cycle moves the strip one link. */
+const TREAD_LINK_PX = 18;
+let tread: Animation | null = null;
+function paintTread(): void {
+  if (prefersReducedMotion()) return;
+  tread ??= treadStrip.animate([{ transform: `translateY(-${TREAD_LINK_PX}px)` }, { transform: 'translateY(0)' }],
+    { duration: TREAD_LINK_PX * 14, iterations: Infinity });
+  if (Math.abs(axes.throttle) < 0.05) { tread.pause(); return; }
+  tread.playbackRate = axes.throttle;
+  tread.play();
 }
 
 // ---- tilt ------------------------------------------------------------------------------------------------------
@@ -230,8 +260,7 @@ function applyMode(): void {
   const tilt = settings.tilt && tiltSeen;
   lever.classList.toggle('is-stick', !tilt);
   lever.setAttribute('aria-label', tilt ? t('pad.throttle') : t('pad.stick'));
-  wheel.classList.toggle('is-off', !tilt);
-  $<HTMLElement>('.pad-centre').hidden = !tilt;
+  hull.classList.toggle('is-stick', !tilt);
 }
 
 // ---- the lever / stick --------------------------------------------------------------------------------------
@@ -250,6 +279,7 @@ function leverMove(event: PointerEvent): void {
   knob.style.transform = `translate(${dx}px,${dy}px)`;
   lever.setAttribute('aria-valuenow', String(Math.round(axes.throttle * 100)));
   paintWheel();
+  paintTread();
   queueSend();
 }
 function leverEnd(event: PointerEvent): void {
@@ -259,6 +289,7 @@ function leverEnd(event: PointerEvent): void {
   knob.style.transform = 'translate(0px,0px)';
   lever.setAttribute('aria-valuenow', '0');
   paintWheel();
+  paintTread();
   send(true);
 }
 lever.addEventListener('pointerdown', (event) => {
@@ -282,18 +313,27 @@ lever.addEventListener('keydown', (event) => {
   event.preventDefault();
   axes.throttle = Math.max(-1, Math.min(1, axes.throttle + step));
   lever.setAttribute('aria-valuenow', String(Math.round(axes.throttle * 100)));
+  paintTread();
   send(true);
 });
 
 // ---- the aim pad -----------------------------------------------------------------------------------------------
 let aimPointer: number | null = null;
 let aimLast = { x: 0, y: 0 };
+let aimOrigin = { x: 0, y: 0 };
+/** The reticle leans toward the drag (a third of it, at most 40 px) and settles back on release. */
+const leanReticle = (dx: number, dy: number): void => {
+  const reach = Math.hypot(dx, dy) / 3;
+  const scale = reach > 40 ? 40 / reach : 1;
+  reticle.style.transform = `translate(${(dx / 3) * scale}px,${(dy / 3) * scale}px)`;
+};
 aimPad.addEventListener('pointerdown', (event) => {
   if (aimPointer !== null) return;
   event.preventDefault();
   aimPointer = event.pointerId;
   aimPad.setPointerCapture(event.pointerId);
   aimLast = { x: event.clientX, y: event.clientY };
+  aimOrigin = { x: event.clientX, y: event.clientY };
 });
 aimPad.addEventListener('pointermove', (event) => {
   if (event.pointerId !== aimPointer) return;
@@ -301,9 +341,10 @@ aimPad.addEventListener('pointermove', (event) => {
   axes.aimX += (event.clientX - aimLast.x) * settings.aim;
   axes.aimY += (event.clientY - aimLast.y) * settings.aim;
   aimLast = { x: event.clientX, y: event.clientY };
+  leanReticle(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
   queueSend();
 });
-const aimEnd = (event: PointerEvent): void => { if (event.pointerId === aimPointer) aimPointer = null; };
+const aimEnd = (event: PointerEvent): void => { if (event.pointerId !== aimPointer) return; aimPointer = null; leanReticle(0, 0); };
 aimPad.addEventListener('pointerup', aimEnd);
 aimPad.addEventListener('pointercancel', aimEnd);
 
@@ -362,9 +403,12 @@ $<HTMLButtonElement>('[data-centre]').addEventListener('click', () => {
 // tilt on or off (a toggle), the steering lock and the aim speed (steppers over their few values), in a native modal on
 // the surface stack
 const tiltToggle = options.querySelector('[data-tilt]') as HTMLButtonElement;
+const handToggle = options.querySelector('[data-hand]') as HTMLButtonElement;
 function paintOptions(): void {
   tiltToggle.setAttribute('aria-pressed', String(settings.tilt));
   tiltToggle.textContent = t(settings.tilt ? 'pad.opt.on' : 'pad.opt.off');
+  handToggle.textContent = t(settings.hand === 'left' ? 'pad.opt.left' : 'pad.opt.right');
+  ctl.dataset.hand = settings.hand;
   (options.querySelector('[data-value="lockDeg"]') as HTMLElement).textContent = t('pad.opt.lockValue', { deg: settings.lockDeg });
   (options.querySelector('[data-value="aim"]') as HTMLElement).textContent = t('pad.opt.aimValue', { n: settings.aim });
 }
@@ -375,6 +419,7 @@ function changed(): void {
   send(true);
 }
 tiltToggle.addEventListener('click', () => { settings.tilt = !settings.tilt; changed(); });
+handToggle.addEventListener('click', () => { settings.hand = settings.hand === 'left' ? 'right' : 'left'; changed(); });
 for (const button of options.querySelectorAll<HTMLButtonElement>('[data-step]')) {
   button.addEventListener('click', () => {
     const name = button.dataset.step as 'lockDeg' | 'aim';
@@ -411,6 +456,17 @@ function paintStatus(next: PadStatus): void {
   });
   zoom.hidden = !next.sniper;
   scope.setAttribute('aria-pressed', String(next.sniper));
+  // the tank in the hand is the one on the field: its plan view, and the gun's bearing on the ring (+ is to the left)
+  if (next.spec && plan.dataset.spec !== next.spec) {
+    plan.dataset.spec = next.spec;
+    plan.hidden = true;
+    planGlyph.hidden = false;
+    plan.onload = () => { plan.hidden = false; planGlyph.hidden = true; };
+    plan.onerror = () => { plan.hidden = true; planGlyph.hidden = false; };
+    plan.src = `/icons/${next.spec}_top.webp`;
+  }
+  if (next.turret !== undefined) bearing.style.transform = `rotate(${Math.round(-next.turret * 573) / 10}deg)`;
+  ctl.dataset.state = !next.battle ? 'idle' : !next.alive ? 'down' : next.reloadS > 0 ? 'loading' : 'ready';
   message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
     : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';
   // the reload: one linear fill over the time left (WAAPI, transform only); reduced motion steps with each status
@@ -421,10 +477,10 @@ function paintStatus(next: PadStatus): void {
   reloadAnimation = null;
   const done = next.reloadTotalS > 0 ? 1 - next.reloadS / next.reloadTotalS : 1;
   if (next.reloadS > 0 && !prefersReducedMotion()) {
-    reloadAnimation = reloadFill.animate([{ transform: `scaleX(${done})` }, { transform: 'scaleX(1)' }],
+    reloadAnimation = reloadFill.animate([{ transform: `scaleY(${done})` }, { transform: 'scaleY(1)' }],
       { duration: next.reloadS * 1000, easing: 'linear', fill: 'forwards' });
   } else {
-    reloadFill.style.transform = `scaleX(${done})`;
+    reloadFill.style.transform = `scaleY(${done})`;
   }
 }
 

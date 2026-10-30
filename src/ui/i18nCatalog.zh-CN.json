@@ -5718,8 +5718,6 @@
   "pad.throttle": "油门",
   "pad.stick": "驾驶摇杆",
   "pad.aimPad": "拖动瞄准",
-  "pad.reloading": "装填中",
-  "pad.ready": "就绪",
   "pad.consumable": "消耗品 {n}",
   "pad.shell": "弹药 {n}：{type}，剩余 {count}",
   "pad.opt.tilt": "倾斜转向",
@@ -5738,5 +5736,8 @@
   "pad.paused": "已暂停",
   "pad.destroyed": "已被击毁",
   "pad.opt.lower": "降低",
-  "pad.opt.raise": "提高"
+  "pad.opt.raise": "提高",
+  "pad.opt.hand": "开火手",
+  "pad.opt.right": "右手",
+  "pad.opt.left": "左手"
 }

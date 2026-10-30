@@ -10,21 +10,24 @@ import { createPadInputMapper } from './padInput.ts';
 import type { PadInputPort } from './padInput.ts';
 import { PAD_STALE_MS, decodePadAxes } from './padProtocol.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
-import { shellTypeCode } from '../ui/shellLabels.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
 interface PadPlayer {
   combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
-  spec: { gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
+  spec: { id?: string; gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
+  state?: { turretYaw: number } | null;
 }
 
-/** What the composition root hands over (main.ts): the raw facts, so the mapping rides in this lazy chunk. */
+/** What the composition root hands over (main.ts): the raw facts, so the mapping rides in this lazy chunk. The shell
+ *  codes come through it too (src/ui/shellLabels.ts shellTypeCode, which the game's boot already holds): imported here,
+ *  this lazy chunk would split that module out of its boot chunk into a request of its own. */
 export interface PadStatusSource {
   battle: boolean;
   paused: boolean;
   sniper: boolean;
   player: PadPlayer | null;
+  shellCode(type: string): string;
 }
 
 /** The phone's readout of the local player: ammunition (code, glyph, rounds), the slot, reload, scope, pause. */
@@ -40,10 +43,13 @@ export function padStatusOf(source: PadStatusSource | null): PadStatus | null {
     slot: combat.shellSlot | 0,
     shells: player.spec.gun.shells.slice(0, 3).map((shell, slot) => {
       const type = shell.guided ? 'ATGM' : shell.type;
-      return { type: shellTypeCode(type), icon: shellIconId(type), count: Math.max(0, Math.floor(combat.ammo[slot] || 0)) };
+      return { type: source.shellCode(type), icon: shellIconId(type), count: Math.max(0, Math.floor(combat.ammo[slot] || 0)) };
     }),
     reloadS: Math.max(0, combat.reload.t),
     reloadTotalS: combat.reload.totalS,
+    ...(player.spec.id && /^[a-z0-9_]{1,48}$/.test(player.spec.id) ? { spec: player.spec.id } : {}),
+    // a tenth of a degree is the bearing's grain: the readout changes (and is sent) only when the gun moves
+    ...(player.state ? { turret: Math.round(player.state.turretYaw * 573) / 573 } : {}),
   };
 }
 
