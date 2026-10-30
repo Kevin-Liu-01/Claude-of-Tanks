@@ -1,155 +1,56 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.ts';
-import { VEHICLE_HULL_LENGTH_FACTORS, VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { VEHICLE_HULL_LENGTH_FACTORS } from '../vehicleSizePolicy.ts';
 
+// 2026-10-30 (lane t90-family-266; the owner: "cleaned up and updated significantly"; Main's ruling: fix the AM's
+// 160 mm ride lift and its 65 % turret scale in the shared steps, not per id). The T-90AM and the T-90AM II (the
+// later T-90M Proryv-3) ride the T-90 family chassis with the AM-type turret at full scale. This receipt keeps that
+// construction: the family hull at its own datum (no construction offset, no installed lift), the shared six-station
+// course stretched by the owner's long-chassis factor, the turret unscaled with one remote roof weapon, and the
+// T-90M's own fit (Relikt over the front half, slat over the rear half).
 const near = (value, target, epsilon = 1e-6) => Math.abs(value - target) <= epsilon;
-// Owner-directed sizes (2026-10-02, main 245aa4e4e): both long-hull T-90Ms take an additional chassis length `h`
-// (wheel stations and terminal wheels respaced, wheels kept round) before the uniform 1.05 family size `f` the
-// factory bakes into the installed frame. The builder's track receipt records the authored (pre-`f`) stations, so its
-// longitudinal stations carry `h`; installed bounds and the published dimensions carry `f`.
-const h = VEHICLE_HULL_LENGTH_FACTORS.t90am ?? 1, f = VEHICLE_SIZE_FACTORS.t90am ?? 1;
-const longHull = (track, id) => {
-  const hullLength = VEHICLE_HULL_LENGTH_FACTORS[id] ?? 1;
-  assert.ok(near(track.roadWheelSpanM, 3.60 * hullLength), `${id}: six road-wheel stations use the corrected long T-90 wheelbase`);
-  assert.ok(near(track.sprocketZ, -2.46 * hullLength) && near(track.idlerZ, 2.54 * hullLength),
-    `${id}: terminal wheels occupy the corrected long-hull stations`);
-  assert.ok(near(track.structuralHullLengthM, 6.86 * hullLength), `${id}: structural hull spans the shared RU-417/Burlak length`);
-};
-const tank = createTank('t90am', null, {
-  proceduralOnly: true,
-  quality: 'high',
-  camoSeed: 4242,
-  geometryReceipt: true,
-});
+const options = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true };
 
-try {
-  const hullRig = tank.root.getObjectByName('rig_hull');
-  const turretRig = tank.root.getObjectByName('rig_turret');
-  assert.ok(hullRig && turretRig, 'T-90M retains articulated hull and turret rigs');
+for (const id of ['t90am', 't90m_proryv']) {
+  const h = VEHICLE_HULL_LENGTH_FACTORS[id] ?? 1;
+  const tank = createTank(id, null, options);
+  try {
+    const hullRig = tank.root.getObjectByName('rig_hull');
+    const turretRig = tank.root.getObjectByName('rig_turret');
+    assert.ok(hullRig && turretRig, `${id}: articulated hull and turret rigs`);
 
-  const track = hullRig.userData.t90mProryvTrackReceipt;
-  assert.ok(track, 'T-90M exposes its installed running-gear receipt');
-  assert.ok(near(track.roadWheelRadiusM, 0.31), 'road wheels use the non-overlapping 310-mm radius');
-  longHull(track, 't90am');
-  // Seeded defect: the former unstretched stations must fail the owner's long chassis.
-  if (h !== 1) assert.throws(() => longHull({ ...track, roadWheelSpanM: 3.60, sprocketZ: -2.46, idlerZ: 2.54,
-    structuralHullLengthM: 6.86 }, 't90am'), assert.AssertionError, 'the unstretched T-90M wheelbase is rejected');
-  assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
-  assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
-  assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
-  assert.ok(near(getSpec('t90am').dims.heightM, 2.39 * f), 'published vehicle height follows the raised ride datum');
-  const finalGear = hullRig.userData.runningGearReceipts.at(-1);
-  assert.ok(near(finalGear.wheelR, 0.31), 'canonical gear receipt records the smaller wheels');
-  assert.ok(near(Math.max(...finalGear.wheelZs) - Math.min(...finalGear.wheelZs), 3.60 * h),
-    'the built six-station course spans the stretched wheelbase the track receipt records');
-  assert.ok(near(finalGear.wheelY - finalGear.wheelR, finalGear.botY + finalGear.trackTh / 2), 'loaded tire foot rests on the band face (ground-datum seat, 2026-09-17)');
+    const family = hullRig.userData.t90FamilyHullFormReceipt;
+    assert.equal(family?.family, 't90-burlak-pressure-hull-r1', `${id}: builds the shared T-90 family hull`);
+    assert.ok(near(family.yOffset, 0), `${id}: no construction offset (the former -200 mm)`);
+    assert.equal(family.sponsonMode, 'family-profile', `${id}: the family sponson profile, not a flat lift datum`);
+    assert.equal(hullRig.userData.t90mProryvTrackReceipt, undefined, `${id}: the retired Proryv ride-lift receipt is gone`);
 
-  tank.root.updateMatrixWorld(true);
-  const trackPads = hullRig.getObjectByName('gearTrackPads');
-  assert.ok(trackPads, 'linked instanced shoe course remains present');
-  const trackBounds = new THREE.Box3().setFromObject(trackPads);
-  // The closed course is sampled at one shoe per pitch, so the closest shoe can
-  // sit a few millimetres above the analytical nadir without producing a
-  // visible hover. Keep the installed contact surface within 15 mm of ground.
-  assert.ok(trackBounds.min.y <= 0.015,
-    `linked shoe course remains planted on the ground datum (${trackBounds.min.y.toFixed(3)} m)`);
-  const bounds = new THREE.Box3().setFromObject(tank.root);
-  assert.ok(bounds.max.y >= 2.36 * f, `installed silhouette is taller (${bounds.max.y.toFixed(3)} m)`);
+    const gear = hullRig.userData.runningGearReceipts.at(-1);
+    assert.equal(gear.wheelZs.length, 6, `${id}: six road-wheel stations`);
+    assert.ok(near(gear.wheelR, 0.375), `${id}: 750 mm road wheels`);
+    assert.ok(near(Math.max(...gear.wheelZs) - Math.min(...gear.wheelZs), 4.00 * h, 1e-4),
+      `${id}: the course spans the family wheelbase stretched by the owner's ${h} chassis factor`);
+    assert.ok(near(gear.wheelY - gear.wheelR, gear.botY + gear.trackTh / 2), `${id}: the loaded tire foot rests on the band`);
 
-  const equipment = turretRig.userData.t90mProryvEquipmentReceipt;
-  assert.ok(equipment, 'T-90M exposes its remote station receipt');
-  assert.equal(equipment.remoteWeapon, 'kord', 'right tower carries a Kord-class weapon');
-  assert.equal(equipment.remoteControlled, true, 'Kord station is remotely controlled');
-  assert.equal(equipment.remoteWeaponSide, 'left', 'station occupies the Tagil-style offset turret side');
-  assert.equal(equipment.armoredTower, true, 'station uses an armored tower mount');
-  assert.equal(equipment.panoramicIntegrated, true,
-    'panoramic sight and Kord are consolidated into one automated station');
-  assert.equal(equipment.separateManualWeaponStations, 0,
-    'no second hand-served roof weapon remains');
-  const remoteKord = turretRig.getObjectByName('t90mProryvRemoteKord');
-  assert.ok(remoteKord, 'named remote Kord assembly is present');
-  const automatedStation = turretRig.userData.t90mProryvAutomatedStationReceipt;
-  assert.equal(automatedStation?.family, 'tagil-integrated-automated-station-r1',
-    'Proryv uses the shared Tagil-derived station grammar');
-  assert.equal(automatedStation?.panoramicIntegrated, true,
-    'station receipt binds the panoramic head to the remote weapon');
-  assert.equal(automatedStation?.separateManualWeaponStations, 0,
-    'station receipt rejects additional manual pintles');
-  let weaponStationCount = 0;
-  turretRig.traverse((node) => {
-    if (node.userData?.fitting === 'pintleMG' && node.userData?.fittingRoot) weaponStationCount++;
-  });
-  assert.equal(weaponStationCount, 1, 'Proryv has exactly one external roof weapon station');
+    assert.deepEqual(turretRig.scale.toArray(), [1, 1, 1], `${id}: the turret keeps its built scale (no 65 % squash)`);
+    let stations = 0;
+    turretRig.traverse((node) => { if (node.userData?.fitting === 'pintleMG' && node.userData?.fittingRoot) stations++; });
+    assert.equal(stations, 1, `${id}: exactly one roof weapon station`);
+    assert.ok(turretRig.getObjectByName('t90smRemoteNsvt'), `${id}: the AM-type remote station carries the 12.7 mm gun`);
 
-  const roof = turretRig.userData.t90mProryvRoofSeatingReceipt;
-  assert.ok(roof, 'T-90M exposes its roof seating receipt');
-  assert.equal(roof.maxRoofGapM, 0, 'roof fittings permit no visible underside gap');
-  assert.equal(roof.seatedCircularStations, 3,
-    'crew rings and RWS race remain structural');
-  assert.equal(roof.structuralFoundations, 1,
-    'panoramic housing retains a structural roof foundation');
-  assert.equal(roof.equipmentHousings, 2, 'Sosna and panoramic housings remain equipment');
-  assert.ok(roof.sosnaCarrierTopY - roof.sosnaHousingBottomY >= roof.contactEmbedM,
-    'Sosna housing overlaps its buried roof carrier');
-  assert.ok(roof.panoCarrierTopY - roof.panoHousingBottomY >= roof.contactEmbedM,
-    'panoramic housing overlaps its buried roof carrier');
-  assert.ok(roof.commanderBottomY <= 0.70 && roof.gunnerBottomY <= 0.70
-    && roof.rwsBottomY <= 0.70, 'all three circular roof stations enter the crown');
-
-  const familyHull = hullRig.userData.t90mProryvHullFamilyReceipt;
-  assert.equal(familyHull?.family, 't90-burlak-pressure-hull-r1',
-    'Proryv uses the canonical T-90/Burlak pressure-hull section');
-  assert.ok(near(familyHull.yOffset, -0.20),
-    'construction offset compensates the later 160-mm installed ride lift');
-  assert.equal(familyHull.sponsonMode, 'flat-return-clearance',
-    'concealed Proryv sponson uses a continuous return-run clearance plane');
-  assert.ok(near(familyHull.sponsonFloorY, 1.19),
-    'concealed sponson floor clears the animated return run without crossing the deck');
-  assert.deepEqual(familyHull.sectionStations,
-    { deck: 10, belly: 9, upperWidth: 6, lowerWidth: 6 },
-    'Proryv keeps every canonical family section station');
-
-  const searchlight = turretRig.userData.t90mProryvSearchlightReceipt;
-  assert.ok(searchlight, 'T-90M exposes its searchlight material receipt');
-  assert.equal(searchlight.housingBucket, 'turretEquipment',
-    'searchlight housing follows camouflage without expanding armor');
-  assert.equal(searchlight.housingCamouflaged, true, 'searchlight housing uses camouflage paint');
-  assert.equal(searchlight.lensBucket, 'turretGlass', 'searchlight retains a distinct lens');
-  assert.equal(searchlight.armorHitboxExpanded, false, 'searchlight is excluded from armor receipts');
-
-  const rear = turretRig.userData.t90mProryvRearAssemblyReceipt;
-  assert.ok(rear?.attached, 'rear external assembly is explicitly attached');
-  assert.equal(rear.daylightGapM, 0, 'rear drum has no daylight to the bustle face');
-  assert.ok(rear.forwardOverlapM >= 0.03,
-    `rear drum enters the bustle by at least 30 mm (${rear.forwardOverlapM.toFixed(3)} m)`);
-  assert.ok(rear.centerZ > rear.terminalFrameZ,
-    'rear drum is attached to the bustle rather than hanging on the terminal frame');
-
-  for (const yaw of [0, Math.PI / 2]) {
-    turretRig.rotation.y = yaw;
     tank.root.updateMatrixWorld(true);
-    assert.ok(remoteKord.parent === turretRig, `remote Kord remains turret-owned through yaw ${yaw}`);
+    const pads = hullRig.getObjectByName('gearTrackPads');
+    assert.ok(pads, `${id}: the linked shoe course is present`);
+    assert.ok(new THREE.Box3().setFromObject(pads).min.y <= 0.015, `${id}: the shoe course is planted on the ground datum`);
+
+    const cage = hullRig.userData.t90RearQuarterCageReceipt;
+    assert.ok(cage?.attached, `${id}: the slat cage over the final drive is attached`);
+    if (id === 't90m_proryv') assert.ok(cage.cageZRange[1] > 0, 't90m_proryv: the T-90M slat runs over the rear half of the hull side');
+    else assert.ok(cage.cageZRange[1] < -1, 't90am: the AM slat covers only the final-drive quarter');
+  } finally {
+    tank.dispose();
   }
-} finally {
-  tank.dispose();
 }
 
-const tierXTank = createTank('t90m_proryv', null, {
-  proceduralOnly: true,
-  quality: 'high',
-  camoSeed: 4242,
-  geometryReceipt: true,
-});
-try {
-  const tierXTrack = tierXTank.root.getObjectByName('rig_hull')?.userData.t90mProryvTrackReceipt;
-  assert.ok(tierXTrack, 'tier-X T-90M Proryv publishes the shared long-chassis receipt');
-  longHull(tierXTrack, 't90m_proryv');
-  assert.ok(near(tierXTrack.roadWheelSpanM, 3.60 * h) && near(tierXTrack.structuralHullLengthM, 6.86 * h),
-    'tier-IX T-90M and tier-X Proryv use the same corrected long hull');
-} finally {
-  tierXTank.dispose();
-}
-
-console.log('t90MProryvTrackRwsBustle.selftest: tracks, seated roof fittings, camouflaged light, remote Kord, and attached rear assembly verified');
+console.log('t90MProryvTrackRwsBustle.selftest: the T-90AM and AM II ride the family chassis at full turret scale');

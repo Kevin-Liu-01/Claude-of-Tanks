@@ -17,10 +17,12 @@ assert.ok(BURLAK_ROAD_WHEEL_RADIUS > 0, 'Burlak publishes its road-wheel radius'
 // stands its shoe soles on hull y = 0 — so the loaded foot is botY + trackTh/2 and the axle sits one
 // tire radius above it. The old per-tank centerY/footY pins (t90_1992 0.480/0.095, t90ms_2011 0.35/0.01 — wheels
 // nine centimetres inside the band —, t90am 0.395/0.085) recorded the mis-seats the law removed.
+// 2026-10-30 (lane t90-family-266): every mark rides the T-90 family chassis's course (six 750 mm wheels on the
+// 0.80 m pitch); the T-90AM's stations stretch with its owner-directed 1.10 chassis.
 const CASES = Object.freeze({
   t90_1992: Object.freeze({ radius: BURLAK_ROAD_WHEEL_RADIUS, minGap: 0.01 }),
-  t90ms_2011: Object.freeze({ radius: 0.34, minGap: 0.108 }),
-  t90am: Object.freeze({ radius: 0.31, minGap: 0.04 }),
+  t90ms_2011: Object.freeze({ radius: BURLAK_ROAD_WHEEL_RADIUS, minGap: 0.01 }),
+  t90am: Object.freeze({ radius: BURLAK_ROAD_WHEEL_RADIUS, minGap: 0.01 }),
 });
 
 for (const [id, expected] of Object.entries(CASES)) {
@@ -67,19 +69,21 @@ for (const [id, expected] of Object.entries(CASES)) {
       assert.ok(attachment.skirt.yTop >= 1.43,
         't90_1992: skirt meets the upper fender course');
       assert.ok(attachment.skirt.height >= 0.60,
-        't90_1992: remaining solid skirt retains the front ERA apron depth');
-      assert.equal(attachment.skirt.panels, 5,
-        't90_1992: each side keeps a five-panel straight skirt before the tapered bow closure');
+        't90_1992: the full-length skirt keeps the front ERA apron depth');
+      // 2026-10-30 (lane t90-family-266, the Patriot Park side photographs): one full-length skirt to the road-wheel
+      // tops, seven panels a side, with the three K-5 panels standing proud of its front portion; no cage.
+      assert.equal(attachment.skirt.panels, 7,
+        't90_1992: each side keeps a seven-panel straight skirt before the tapered bow closure');
       assert.equal(attachment.skirt.sides, 2,
         't90_1992: solid skirts are authored on both sides');
-      assert.equal(attachment.skirt.rearQuarterReplacedByCage, true,
-        't90_1992: rear quarter is explicitly replaced by the stand-off cage');
+      assert.equal(attachment.skirt.rearQuarterReplacedByCage, false,
+        't90_1992: the 1992 tank carries no stand-off cage');
       assert.equal(attachment.skirt.burlakStyleTaperedFront, true,
         't90_1992: forward skirt ends in the Burlak-style tapered bow closure');
       assert.ok(attachment.skirt.straightZ1 < attachment.skirt.z1,
         't90_1992: tapered closure carries protection beyond the straight side curtain');
-      assert.ok(attachment.skirt.frontClosureCoverageM >= 0.70,
-        't90_1992: forward closure provides deeper coverage than Burlak prototype skirts');
+      assert.ok(attachment.skirt.frontClosureCoverageM >= 0.60,
+        't90_1992: forward closure covers the skirt depth');
       assert.ok(Math.abs((receipt.wheelY - receipt.wheelR)
         - (receipt.botY + receipt.trackTh * 0.5)) <= EPSILON,
       't90_1992: road-wheel feet meet the lower-track upper face without clipping');
@@ -109,46 +113,10 @@ for (const [id, expected] of Object.entries(CASES)) {
         't90_1992: every terminal mudguard physically meets its fender structure');
     }
 
-    if (id === 't90ms_2011') {
-      const attachment = hull.userData.t90MSFrontMudguardReceipt;
-      assert.ok(attachment, 't90ms_2011: exposes its mirrored front mudguard receipt');
-      assert.equal(attachment.sides, 2,
-        't90ms_2011: authors the guard assembly on both track courses');
-      assert.equal(attachment.partsPerSide, 3,
-        't90ms_2011: each guard has two closed armor volumes and one rubber drop');
-      assert.equal(attachment.labels.length,
-        attachment.sides * attachment.partsPerSide,
-        't90ms_2011: every authored guard piece has a seating label');
-      assert.equal(attachment.architecture,
-        'continuous-sloped-shoulder-and-closed-outer-shell',
-        't90ms_2011: the bow guard uses the continuous sloped shoulder architecture');
-      assert.equal(attachment.steppedShelves, false,
-        't90ms_2011: the old staircase of thin shelf plates does not return');
-      assert.equal(attachment.closedSideVolume, true,
-        't90ms_2011: shoulder and outer guard are closed armor volumes');
-      assert.ok(attachment.bridgeInnerX < 1.06
-        && attachment.bridgeOuterX >= 1.64,
-      't90ms_2011: the shoulder overlaps the centre glacis and reaches the outer shell');
-      assert.ok(attachment.shellInnerX <= attachment.bridgeOuterX
-        && attachment.shellOuterX >= 1.78,
-      't90ms_2011: the outer shell overlaps the shoulder and reaches the terminal guard');
-      assert.ok(attachment.bridgeUndersideY > attachment.trackTopY,
-        't90ms_2011: connected shoulder remains above the return track course');
-      assert.ok(attachment.flapTopY >= attachment.shellFrontTopY - 0.03,
-        't90ms_2011: rubber drop meets the sloped outer shell at the terminal lip');
-
-      const guardSeats = tank.root.userData.mudguardFenderSeats || [];
-      const guardLabels = new Set(attachment.labels);
-      const registeredGuards = guardSeats.filter(({ label }) =>
-        guardLabels.has(label));
-      assert.equal(registeredGuards.length, attachment.labels.length,
-        't90ms_2011: every metal and rubber piece participates in the physical seating audit');
-      assert.ok(registeredGuards.every(({ supported }) => supported),
-        't90ms_2011: both complete front mudguards form supported hull-connected chains');
-    }
+    // The T-90MS's private front guards retired with its loft (the family chassis's guards are checked on t90_1992).
   } finally {
     tank.dispose();
   }
 }
 
-console.log('t90RoadWheelSpacing.selftest: RU-417 matches Burlak wheel size and keeps tapered skirts, cage, and automated station');
+console.log('t90RoadWheelSpacing.selftest: the family course matches the Burlak wheel size; the 1992 keeps its full-length skirt and automated station');

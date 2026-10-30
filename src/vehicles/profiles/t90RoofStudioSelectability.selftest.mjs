@@ -8,11 +8,13 @@ const ROOF_WEAPONS = Object.freeze({
   t90_1992: 't90Ru417AutomatedKord',
   t90a_2004: 't90aRemoteNsvt',
   t90sm_2013: 't90smRemoteNsvt',
-  t90a_2006: 't90aVladimirRemoteKord',
+  // 2026-10-30 (lane t90-family-266): obr. 2006 is the shared T-90A build; the MS, AM and AM II carry the AM-type
+  // turret's station.
+  t90a_2006: 't90aRemoteNsvt',
   t90a_burlak_proto: 't90aBurlakCommanderNsvt',
-  t90ms_2011: 't90msTagilRemoteKord',
-  t90am: 't90mProryvRemoteKord',
-  t90m_proryv: 't90mProryvRemoteKord',
+  t90ms_2011: 't90smRemoteNsvt',
+  t90am: 't90smRemoteNsvt',
+  t90m_proryv: 't90smRemoteNsvt',
 });
 
 for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
@@ -85,41 +87,7 @@ for (const id of ['t90_1992', 't90a_2004', 't90a_burlak_proto', 't90sm_2013', 't
   }
 }
 
-{
-  const tank = createTank('t90ms_2011', null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
-  try {
-    const turret = tank.root.getObjectByName('rig_turret');
-    const tower = turret?.getObjectByName('t90msTagilWeaponTower');
-    assert.ok(tower, 't90ms_2011: exposes one coherent named Tagil weapon-tower assembly');
-    const pickTargets = new Set(collectSurfacePickTargets(tank.root));
-    const names = new Set();
-    tower?.traverse((node) => {
-      if (!node.isMesh) return;
-      names.add(node.name);
-      assert.equal(node.userData.combatHitboxRole, 'equipment',
-        `t90ms_2011: ${node.name} remains external equipment rather than turret armor`);
-      assert.ok(pickTargets.has(node), `t90ms_2011: ${node.name} is Studio-selectable`);
-    });
-    assert.ok(names.has('t90msTagilTowerAlignedArmoredHead'),
-      't90ms_2011: selected armored head rises from the exact marked support interface');
-    assert.ok(names.has('t90msTagilTowerThermalWindow'),
-      't90ms_2011: tower includes its thermal optic');
-    assert.ok(names.has('t90msTagilTowerDayWindow'),
-      't90ms_2011: tower includes its day optic');
-    assert.ok(names.has('t90msTagilTowerWorkLight'),
-      't90ms_2011: tower includes a protected work light');
-    assert.ok(names.has('t90msTagilTowerAmmoBox'),
-      't90ms_2011: tower includes its ammunition box');
-    assert.equal([...names].filter((name) => name.startsWith('t90msTagilTowerFeedLink')).length, 7,
-      't90ms_2011: tower exposes seven selectable ammunition-feed links');
-  } finally {
-    tank.dispose();
-  }
-}
+// 2026-10-30 (lane t90-family-266): the T-90MS's private Tagil tower retired with its Shtora-turret rebuild; the MS
+// carries the AM-type turret's station, checked with the other roof weapons above.
 
-console.log('t90RoofStudioSelectability.selftest: roof weapons, spare tracks, and Tagil tower are seated and Gallery-selectable');
+console.log('t90RoofStudioSelectability.selftest: roof weapons and spare tracks are seated and Gallery-selectable');

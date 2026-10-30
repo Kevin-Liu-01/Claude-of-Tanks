@@ -13,11 +13,12 @@ const CONFIGS = Object.freeze({
     idler: { z: 2.70, y: 0.71, r: 0.27 },
     rearContactZ: -1.95, // 2026-09-14: the flat run ends under the rear axle (tangent wrap)
   }),
+  // 2026-10-30 (lane t90-family-266): the T-90MS rides the T-90 family chassis, so it runs the obr. 1992 course.
   t90ms_2011: Object.freeze({
-    wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
-    sprocket: { z: -2.58, y: 0.95, r: 0.20 },
-    idler: { z: 2.76, y: 0.69, r: 0.25 },
-    rearContactZ: -1.78, // 2026-09-14: under the rear axle
+    wheelZs: [-1.95, -1.15, -0.35, 0.45, 1.25, 2.05],
+    sprocket: { z: -2.52, y: 0.90, r: 0.299 },
+    idler: { z: 2.70, y: 0.71, r: 0.27 },
+    rearContactZ: -1.95,
   }),
 });
 

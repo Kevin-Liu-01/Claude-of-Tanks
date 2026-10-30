@@ -10,9 +10,11 @@ const CASES = Object.freeze({
     weaponName: 't90aRemoteNsvt',
     stationReceipt: 't90aAutomatedStationReceipt',
   }),
+  // 2026-10-30 (lane t90-family-266): obr. 2006 is the shared T-90A build; the MS, AM and AM II carry the AM-type
+  // turret's station (the recovered T-90SM roof).
   t90a_2006: Object.freeze({
-    weaponName: 't90aVladimirRemoteKord',
-    stationReceipt: 't90aVladimirAutomatedStationReceipt',
+    weaponName: 't90aRemoteNsvt',
+    stationReceipt: 't90aAutomatedStationReceipt',
   }),
   t90a_burlak_proto: Object.freeze({
     weaponName: 't90aBurlakCommanderNsvt',
@@ -23,16 +25,16 @@ const CASES = Object.freeze({
     stationReceipt: 't90smAutomatedStationReceipt',
   }),
   t90ms_2011: Object.freeze({
-    weaponName: 't90msTagilRemoteKord',
-    stationReceipt: 't90msTagilWeaponTowerReceipt',
+    weaponName: 't90smRemoteNsvt',
+    stationReceipt: 't90smAutomatedStationReceipt',
   }),
   t90am: Object.freeze({
-    weaponName: 't90mProryvRemoteKord',
-    stationReceipt: 't90mProryvAutomatedStationReceipt',
+    weaponName: 't90smRemoteNsvt',
+    stationReceipt: 't90smAutomatedStationReceipt',
   }),
   t90m_proryv: Object.freeze({
-    weaponName: 't90mProryvRemoteKord',
-    stationReceipt: 't90mProryvAutomatedStationReceipt',
+    weaponName: 't90smRemoteNsvt',
+    stationReceipt: 't90smAutomatedStationReceipt',
   }),
 });
 

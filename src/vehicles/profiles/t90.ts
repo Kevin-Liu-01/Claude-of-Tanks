@@ -2152,7 +2152,7 @@ function addT90FenderShelves(P: T90BuilderPort): void {
 function addT90FamilyChassis(
   P: T90BuilderPort,
   protection: T90FamilyProtection,
-  { reliktRearZ = -1.25 }: { reliktRearZ?: number } = {},
+  { reliktRearZ = -1.25, gearLengthFactor = 1 }: { reliktRearZ?: number; gearLengthFactor?: number } = {},
 ): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   addT90FamilyHull(P);
@@ -2276,9 +2276,11 @@ function addT90FamilyChassis(
   KIT.towCable(P, [[-1.25, 1.46, 2.30], [0, 1.38, 1.90], [1.25, 1.46, 2.30]]);
   stowage(P, 'hull', P.rng, [[-0.85, 1.42, -2.86, 1.19, 0.09, 0.30]]);
   {
-    // spare track links flat on the forward deck (flush-recess law)
+    // Spare track links flat on the right engine-deck shoulder (flush-recess law), aft of every family turret's sweep:
+    // the forward-deck seat under the turret overhang fell inside the cast cheeks and the AM-type nose on the family
+    // ring (lane t90-family-266).
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.55, 0, 0.55);
+    links.position.set(-1.42, 0, -1.95);
     seatFittingOnHorizontalPlate(links, 1.545);
     P.hullG.add(links);
   }
@@ -2314,6 +2316,16 @@ function addT90FamilyChassis(
     rearArcSteps: 18, smoothRearTopTangent: true, tautRearSpan: true,
     contactZF: 2.26, contactZR: -2.16,
   };
+  // A mark whose chassis the builder later stretches (P.extendHullLength scales the hull buckets, never the running
+  // gear) authors its stations on the stretched wheelbase here, so hull and course stay one length.
+  if (gearLengthFactor !== 1) {
+    t90Gear.wheelZs = t90Gear.wheelZs.map((z) => z * gearLengthFactor);
+    t90Gear.sprocket = { ...t90Gear.sprocket, z: t90Gear.sprocket.z * gearLengthFactor };
+    t90Gear.idler = { ...t90Gear.idler, z: t90Gear.idler.z * gearLengthFactor };
+    t90Gear.rollers = t90Gear.rollers.map((roller) => ({ ...roller, z: roller.z * gearLengthFactor }));
+    t90Gear.contactZF *= gearLengthFactor;
+    t90Gear.contactZR *= gearLengthFactor;
+  }
   const frontRoad = Math.max(...t90Gear.wheelZs);
   const rearRoad = Math.min(...t90Gear.wheelZs);
   if (!(t90Gear.idler.z > frontRoad && t90Gear.sprocket.z < rearRoad)) {
@@ -2325,7 +2337,7 @@ function addT90FamilyChassis(
     supportRollerPairs: t90Gear.rollers.length, suspension: 'torsion-arm', rear: 'final-drive-sprocket',
   };
   const t90SkirtCourse = Object.freeze({
-    x: 1.7675, th: 0.036, z0: -2.42, z1: 2.35,
+    x: 1.7675, th: 0.036, z0: -2.20, z1: 2.35,
     yTop: 1.44, yBot: 0.80, panels: 7, lipX: 1.755,
   });
   const frontSkirtZ1 = 3.43;
@@ -2656,7 +2668,7 @@ function prepareT90CastTurret(P: T90BuilderPort): T90CastTurretBuildContext {
 }
 
 // Shtora-1 OTShU emitter seat (turret frame): beside the mantlet, at the gun axis, in front of the inner K-5 boxes.
-const T90_CAST_SHTORA = Object.freeze({ x: 0.66, y: 0.27, z: 1.60, scale: 1.48 });
+const T90_CAST_SHTORA = Object.freeze({ x: 0.66, y: 0.27, z: 1.67, scale: 1.48 });
 
 function addT90CastTurretProtection(P: T90BuilderPort, { rings }: T90CastTurretBuildContext): void {
   const { box } = KIT;
@@ -2675,7 +2687,7 @@ function addT90CastTurretProtection(P: T90BuilderPort, { rings }: T90CastTurretB
   // The K-5 horseshoe: two sloped container courses per cheek whose fronts meet in a forward ridge at the gun-axis
   // band and sweep back round the cast front arc. Each carrier's back edge is buried in the casting (front face at
   // z 1.38 to x 0.84, then (1.27, 1.10), (1.47, 0.70) at the ridge height), its front stands 0.20-0.30 m proud.
-  addSovietChevronEra(P, {
+  const chevronEra = addSovietChevronEra(P, {
     sector: 't90-k5-turret-era',
     receiptKey: 't90ChevronEraReceipt',
     family: 't90-cast-kontakt5-horseshoe-r2',
@@ -2700,6 +2712,23 @@ function addT90CastTurretProtection(P: T90BuilderPort, { rings }: T90CastTurretB
     if (P._shtoraRed.emissive) P._shtoraRed.emissive.setHex(0x43120d);
   }
   const es = T90_CAST_SHTORA.scale;
+  // The emitter housing's inner edge against the 2A46M boot (half width 0.28 m at the mantlet), and its lens face
+  // against the K-5 tile faces (frontmost tile reported by the chevron helper).
+  const mantletHalfWidthM = 0.28;
+  const shtoraInnerEdgeX = T90_CAST_SHTORA.x - 0.12 * es;
+  const shtoraLensFrontZ = T90_CAST_SHTORA.z + 0.130 * es;
+  P.turretG.userData.t90TurretProtectionFitReceipt = Object.freeze({
+    canonicalEraSector: 't90-k5-turret-era',
+    chevronEra,
+    shtoraEyeX: T90_CAST_SHTORA.x,
+    shtoraEyeScale: es,
+    shtoraInnerEdgeX,
+    mantletHalfWidthM,
+    mantletClearanceM: shtoraInnerEdgeX - mantletHalfWidthM,
+    shtoraClearsMantlet: shtoraInnerEdgeX > mantletHalfWidthM,
+    shtoraLensFrontZ,
+    shtoraChevronDepthClearanceM: shtoraLensFrontZ - chevronEra.frontmostTileZM,
+  });
   for (const s of [-1, 1]) {
     const x = s * T90_CAST_SHTORA.x, y = T90_CAST_SHTORA.y, z = T90_CAST_SHTORA.z;
     P.add('turret', box(0.30 * es, 0.24 * es, 0.34), x, y - 0.02, z - 0.26);
@@ -2865,11 +2894,12 @@ function buildT90AM(P: T90BuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const t90m = P.spec.id === 't90m_proryv';
-  addT90FamilyChassis(P, 'relikt', { reliktRearZ: t90m ? 0.20 : -1.25 });
+  // Owner-directed longer chassis (vehicleSizePolicy.ts): the hull stretches, the turret keeps its size and ring, and
+  // the course is authored on the stretched wheelbase.
+  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
+  addT90FamilyChassis(P, 'relikt', { reliktRearZ: t90m ? 0.20 : -1.25, gearLengthFactor: hullLengthFactor });
   addT90AMTypeTurret(P);
   if (t90m) addT90MNetScreens(P);
-  // Owner-directed longer chassis (vehicleSizePolicy.ts): the hull stretches, the turret keeps its size and ring.
-  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
   if (hullLengthFactor !== 1) P.extendHullLength(hullLengthFactor);
   P.topY = 0.80;
 }

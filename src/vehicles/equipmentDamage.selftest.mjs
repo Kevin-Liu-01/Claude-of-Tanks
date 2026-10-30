@@ -276,7 +276,7 @@ function restHash(visual) {
 
 // 2026-10-01 (owner: retire frozen pins): the pinned intact-rest and authoritative-armor digests and
 // the T-90M lamp-seat revision rows are gone; the fleet geometry ledger owns whole-tank change detection
-// and historicalT90MLamps.selftest.mjs owns the reseated T-90M lamps. Damage, wreck, rematch and Garage
+// (the T-90AM's custom lamps retired with its Proryv build, 2026-10-30, lane t90-family-266). Damage, wreck, rematch and Garage
 // reuse are compared with each vehicle's own intact rest captured in this run.
 for (const id of ['leo2a4', 't90am', 'm1a1_abrams_hc']) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
