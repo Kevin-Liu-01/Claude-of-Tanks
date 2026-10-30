@@ -3027,6 +3027,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
   // two of them crossing beside the flank racks. Only the functional smoke pair stays (the control inventory's apertures).
   if (spec.id === 'm48a5_patton') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
+  // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). Both build their own dischargers.
+  if (spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

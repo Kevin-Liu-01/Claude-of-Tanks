@@ -372,6 +372,9 @@ function paintDecal(
   else if (kind === 'soot') paintSootDecal(ctx);
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
   else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
+  // a flag on its pole (the text names the insignia painter, e.g. 'dk-dannebrog'): drawn as itself, never re-seated as
+  // the vehicle's national insignia
+  else if (kind === 'flag') drawNationalInsignia(ctx, text ?? '', 128, 128, 250);
   else paintTextDecal(ctx, text ?? '');
   return canvas;
 }

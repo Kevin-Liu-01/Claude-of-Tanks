@@ -700,8 +700,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // suits, in the Danish greens.
   leo2a7dk: {
     id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0.12,
-    // r2 (critics: the Latvia photograph's cover is a darker grey-green mottle with tan and rust flecks)
-    light: 0x77714f, dark: 0x384031, netColor: 'rgba(64,70,54,0.86)', netTextureSeed: 2765,
+    // r3 (critics: the Latvia photograph's cover is an even grey-green and olive, no terracotta or sand)
+    light: 0x6d7158, dark: 0x353c2f, netColor: 'rgba(60,66,51,0.86)', netTextureSeed: 2765,
     fieldClearanceM: 0.06, maxHalfWidth: 2.13, hemFloorM: 1.01,
     // under its measured curve the rear-deck leaves lay 17.4 mm under the gun at yaw 140 and the hull net, cut at 3 and
     // 4 cm, 21.5 and 23.6 mm at yaw 158 (nationalGunClearance)
