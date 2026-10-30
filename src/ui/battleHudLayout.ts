@@ -1,4 +1,5 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
+import { ensureStyle } from './styleLayers.ts';
 import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
   type PlanRect,
@@ -259,6 +260,24 @@ const touchChipParked = (width: number, height: number) => (width > height && he
 const OBJECTIVE_COMPACT_H = 340;
 /** The layout variables that place an element on the centre line, written unrounded. */
 const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
+/**
+ * (local-fps-265) The layout variables only a side panel reads (the proving range card, the room chat), written on one
+ * rule over those panels (PANEL_VAR_SCOPE) instead of the body. A custom property written on the body restyles every
+ * element under it (1,310 in a 1280x720 battle, ~10 ms a write on a loaded machine), and the left lane's height steps
+ * 3 px each time the vehicle status strip comes or goes (the player concealed in a bush, then spotted: in a solo battle
+ * about twice a second, with neither panel in the document).
+ */
+const PANEL_VARS = new Set(['left-height', 'chat-height']);
+const PANEL_VAR_SCOPE = '.cot-range-card,.cot-room-chat';
+const PANEL_VAR_STYLE_ID = 'cot-hud-panel-vars';
+/** The declaration of the panels' rule (its style element made once a document), or null where the document has no
+ *  style sheets (the Node receipts' stand-ins): the body then carries them, as before. */
+function panelVarDeclaration(): CSSStyleDeclaration | null {
+  if (typeof document.getElementById !== 'function' || !document.head) return null;
+  const sheet = ensureStyle(PANEL_VAR_STYLE_ID, `${PANEL_VAR_SCOPE}{}`, 'surfaces').sheet;
+  const layer = sheet?.cssRules[sheet.cssRules.length - 1] as CSSLayerBlockRule | undefined;
+  return (layer?.cssRules?.[0] as CSSStyleRule | undefined)?.style ?? null;
+}
 /** A portrait phone's signal tile keeps this far from the touch chrome beside it (properties' network-left). */
 const NETWORK_TILE_GAP = 6;
 /** The rosters' row pitch steps where they have room (snapRosterHeight). */
@@ -1907,12 +1926,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,
       'chat-height': stack.chatHeight,
     };
+    const panelVars = panelVarDeclaration() ?? document.body.style;
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
       // (a centre and a centred left are written exact: a floored one sets its element up to 1 px off the centre line)
       const pixels = `${CENTRING_VARS.has(name) ? value : Math.floor(value)}px`;
-      if (document.body.style.getPropertyValue(property) !== pixels) {
-        document.body.style.setProperty(property, pixels);
+      const target = PANEL_VARS.has(name) ? panelVars : document.body.style;
+      if (target.getPropertyValue(property) !== pixels) {
+        target.setProperty(property, pixels);
         // an instrument the mouse plan keeps off moves with this write: the next relayout measures its inputs again
         if (movesPlanInputs.has(name)) planInputs = true;
       }
