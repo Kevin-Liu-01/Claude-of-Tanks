@@ -72,19 +72,22 @@ function addA5DkHullSlats(P: TankBuilderPort): void {
 function addDanishFlag(P: TankBuilderPort, pivot: Vec3, base: Vec3): void {
   const [bx, by, bz] = base, x = bx - pivot[0], y = by - pivot[1], z = bz - pivot[2];
   P.addEquipment('turretDark', cylY(0.03, 0.035, 0.06, 10), x, y + 0.03, z);
-  P.addEquipment('turretDark', cylY(0.011, 0.013, 0.95, 8), x, y + 0.475, z);
-  P.addEquipment('turretCloth', box(0.012, 0.21, 0.30), x, y + 0.82, z - 0.165);
-  // the Dannebrog on both faces, its cross toward the pole on each (the far face turned end over end); a 'cross' decal is
-  // the national insignia and was re-seated off the cloth
+  // (r4 critics: the Grafenwoehr rear photograph's pole is short, about 0.6 m to the cloth's top)
+  P.addEquipment('turretDark', cylY(0.011, 0.013, 0.70, 8), x, y + 0.35, z);
+  P.addEquipment('turretCloth', box(0.012, 0.21, 0.30), x, y + 0.58, z - 0.165);
+  // the Dannebrog on both faces, its cross toward the pole on each (a plain quarter turn each way: the decal turns about
+  // world Z last, so the old half turn swung the far face back to face +x, and the flag vanished from the right); a
+  // 'cross' decal is the national insignia and was re-seated off the cloth
   for (const s of [-1, 1] as const) {
-    P.decal('turret', 'flag', 'dk-dannebrog', 0.36, [x + s * 0.008, y + 0.82, z - 0.165], s * Math.PI / 2, 0, s > 0 ? 0 : Math.PI);
+    P.decal('turret', 'flag', 'dk-dannebrog', 0.36, [x + s * 0.008, y + 0.58, z - 0.165], s * Math.PI / 2, 0, 0);
   }
 }
 
 /** The bustle cage round the 2A5 DK's rear turret bins (turret frame from the build's datum). */
 function addA5DkTurretSlats(P: TankBuilderPort): void {
   const pivot = LEOPARD_X_DATUMS.leo2a5.turretPivot;
-  const rearZ = -3.00, low = 1.96, high = 2.50, sideFront = -1.55;
+  // (r4 critics: the cage's top rail stood over the bustle like a railing; the photograph's is level with the bin lids)
+  const rearZ = -3.00, low = 1.96, high = 2.46, sideFront = -1.55;
   slatPanel(P, 'turretOpenLattice', { along: 'x', at: rearZ, from: -1.42, to: 1.42, low, high, posts: [-1.42, -0.71, 0, 0.71, 1.42] }, pivot);
   // r2 critics (the Grafenwoehr rear): drab kit packed in the cage between the bins and the slats, under the cage's top
   const bz = (rearZ + 0.025 - 2.78) / 2;
@@ -110,8 +113,9 @@ function addA5DkCommanderSight(P: TankBuilderPort): void {
   P.addEquipment('turretDark', cylY(0.20, 0.205, 0.20, P.q ? 32 : 18), x, 2.90 - py, z);
   P.addEquipment('turretDark', cylY(0.215, 0.215, 0.028, P.q ? 32 : 18), x, 3.014 - py, z);
   P.addEquipment('turretDetail', cylY(0.07, 0.09, 0.04, 14), x, 3.048 - py, z);
-  P.addEquipment('turretDark', cylZ(0.085, 0.03, P.q ? 20 : 12), x, 2.90 - py, z + 0.19);
-  P.addEquipment('turretGlass', cylZ(0.065, 0.012, P.q ? 20 : 12), x, 2.90 - py, z + 0.207);
+  // (r4 critics: the Poland photograph's drum shows a large round aperture forward)
+  P.addEquipment('turretDark', cylZ(0.13, 0.03, P.q ? 24 : 14), x, 2.90 - py, z + 0.19);
+  P.addEquipment('turretGlass', cylZ(0.105, 0.012, P.q ? 24 : 14), x, 2.90 - py, z + 0.207);
   // the washer tank and the sight's cable conduit down its back
   P.addEquipment('turretDetail', box(0.08, 0.12, 0.08), x + 0.17, 2.86 - py, z - 0.10);
   P.addEquipment('turretDark', box(0.035, 0.16, 0.035), x, 2.87 - py, z - 0.205);

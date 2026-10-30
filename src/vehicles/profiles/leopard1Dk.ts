@@ -101,9 +101,6 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   P.addEquipment('hullDark', box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
   for (const x of [-0.66, -0.45, -0.24]) P.addEquipment('hullDark', box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
   if (mark === 'a5dk1') {
-    // the DK-1's GPS antenna on the hull roof at the glacis break, past the turret's footprint and the breech's swing at
-    // full elevation (gun-depression sweep, 265)
-    P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), 0.95, hull.deckTopY(2.55) + 0.018, 2.55);
     // r3 critics: UN service also lettered the hull, here the middle bins' outer faces under their latches
     for (const s of [-1, 1] as const) P.decal('hull', 'stencil', 'UN', 0.30, [s * 1.682, 1.15, -0.56], s * Math.PI / 2);
   }
@@ -257,16 +254,19 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // The DK-1's air conditioning and Honda generator housing over the rear bin (Pansermuseet: "a generator and an air
       // conditioning system mounted on the rear of the turret"), standing well over the roof (the RAMTA front photograph)
       // with a plain rear plate (the Air Show rear photograph) and its louvres along the sides; nothing stowed on it.
-      // r3 critics: the plate is painted with the housing (UN white, black lettering), not a dark panel
-      const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.42;
-      P.addEquipment('turret', box(1.80, top - W.binLowY, z0 - z1), 0, (top + W.binLowY) / 2, (z0 + z1) / 2);
-      P.addEquipment('turret', box(1.84, 0.035, z0 - z1 + 0.03), 0, top + 0.0175, (z0 + z1) / 2);
-      P.addEquipment('turret', box(1.40, top - W.binLowY - 0.16, 0.012), 0, (top + W.binLowY) / 2 + 0.02, z1 - 0.006);
+      // r3 critics: the plate is painted with the housing (UN white, black lettering), not a dark panel; r4: 1.4 m wide
+      // and standing on the rear bin (it hung to the bin's foot as a turret-wide wall), the GPS antenna on its top
+      const z0 = W.rearZ + 0.02, z1 = W.binRearZ - 0.06, top = roof + 0.42, low = roof - 0.04, hw = 0.70, ym = (top + low) / 2;
+      P.addEquipment('turret', box(hw * 2, top - low, z0 - z1), 0, ym, (z0 + z1) / 2);
+      P.addEquipment('turret', box(hw * 2 + 0.04, 0.035, z0 - z1 + 0.03), 0, top + 0.0175, (z0 + z1) / 2);
+      P.addEquipment('turret', box(hw * 2 - 0.30, top - low - 0.10, 0.012), 0, ym, z1 - 0.006);
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
-        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.16), s * 0.905, roof + 0.08 + k * 0.08, (z0 + z1) / 2);
+        P.addEquipment('turretDark', box(0.02, 0.022, z0 - z1 - 0.16), s * (hw + 0.005), roof + 0.06 + k * 0.08, (z0 + z1) / 2);
       }
-      for (const x of [-0.84, 0.84]) P.addEquipment('turretDark', box(0.05, top - W.binLowY, 0.05), x, (top + W.binLowY) / 2, z1);
-      P.decal('turret', 'stencil', 'UN', 0.62, [0, (top + W.binLowY) / 2 + 0.02, z1 - 0.014], Math.PI);
+      for (const x of [-(hw - 0.06), hw - 0.06]) P.addEquipment('turretDark', box(0.05, top - low, 0.05), x, ym, z1);
+      P.decal('turret', 'stencil', 'UN', 0.50, [0, ym, z1 - 0.014], Math.PI);
+      P.addEquipment('turretDark', cylY(0.085, 0.095, 0.045, 14), 0.38, top + 0.057, (z0 + z1) / 2);
+      P.addEquipment('turretDark', cylY(0.012, 0.012, 0.14, 8), -0.40, top + 0.105, (z0 + z1) / 2);
     } else {
       stowage(P, 'turretCloth', rng, [
         [-0.56, roof + 0.13, -1.86, 0.52, 0.24, 0.44], [0.10, roof + 0.12, -1.88, 0.56, 0.22, 0.44],
@@ -374,6 +374,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.add('gunMountDark', cylZ(0.175, 0.025, P.q ? 24 : 16), 0, lampY, lamp.frontZ + 0.01);
       P.add('gunMountGlass', markVehicleNightLens(cylZ(0.13, 0.008, P.q ? 24 : 16), 'headlight', { searchlight: true }),
         0, lampY, lamp.frontZ + 0.026);
+      // r4 (critics: a bare lens in a ring read as a camera): the lamp's rain hood over the lens and its guard bars
+      P.add('gunMountDark', box(0.36, 0.02, 0.11), 0, lampY + 0.165, lamp.frontZ + 0.04, -0.12, 0, 0);
+      for (const dy of [-0.06, 0, 0.06]) P.add('gunMountDark', box(0.25, 0.012, 0.012), 0, lampY + dy, lamp.frontZ + 0.036);
       yoke(lamp);
     }
     // L7A3 105 mm with its thermal sleeve and evacuator; the 1A5 DK added the muzzle reference collimator
