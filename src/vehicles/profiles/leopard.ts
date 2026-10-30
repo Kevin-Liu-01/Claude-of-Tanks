@@ -12960,12 +12960,12 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.addGunExtraDark(xform(cylZ(0.035, 0.05, 12), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.010));
     P.addGunExtraDark(cylZ(0.06, 0.08, 14), 0.30, 0, k.ridgeZ - 0.035);
     // The gun's root where it leaves the line: the sleeve's root section from inside the mask out to the thermal sleeve,
-    // 0.22 m across at the line and narrowing to it, seated in a heavy dark boot 0.26 m across (critics 265, round 5:
-    // "a thin pipe with a small elbow collar" where the Munster 1A5's gun leaves its mask fat; round 6: still "a thin
-    // black collar"; round 5's dark cone stood out of the brow as a crescent, round 3's clamp band is gone).
-    const sleeveStartZ = 0.16 * 4.35, rootZ = k.ridgeZ - 0.10;
-    P.addGunExtra(cylZ(0.082, sleeveStartZ - rootZ, P.q ? 20 : 14, 0.112), 0, 0, (rootZ + sleeveStartZ) / 2);
-    P.addGunExtraDark(cylZ(0.13, 0.08, P.q ? 20 : 14), 0, 0, k.ridgeZ + 0.005);
+    // 0.24 m across, seated in a heavy dark boot 0.28 m across (critics 265, round 5: "a thin pipe with a small elbow
+    // collar" where the Munster 1A5's gun leaves its mask fat; round 6: still "a thin black collar"; round 5's dark cone
+    // stood out of the brow as a crescent, round 3's clamp band is gone).
+    const sleeveStartZ = 0.70, rootZ = k.ridgeZ - 0.10;
+    P.addGunExtra(cylZ(0.112, sleeveStartZ - rootZ, P.q ? 20 : 14, 0.118), 0, 0, (rootZ + sleeveStartZ) / 2);
+    P.addGunExtraDark(cylZ(0.14, 0.08, P.q ? 20 : 14), 0, 0, k.ridgeZ + 0.005);
     // The XSW-30-U infrared / white-light searchlight (owner 2026-10-27: "the big IR/white-light searchlight on the
     // mantlet; add it"): a chamfered box over the gun on a U-yoke whose arms root in the mask's brow, so it pitches with
     // the gun and stays put when the barrel recoils. Its lens throws the runtime's searchlight beam at night. At full
@@ -12991,12 +12991,21 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.add('gunMount', box(lamp.halfWidth * 2 + 0.14, 0.04, 0.10), 0, yokeFoot + 0.01, lampZ);
     P.add('gunMountDark', box(0.26, 0.02, 0.02), 0, lamp.high + 0.045, lampZ);
     // (the mantlet root at the sleeve's size, inside the mask: at 0.14 m it stood out through the wedge as a collar)
-    buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.08 });
+    buildGun(P, { len: 4.35, r: 0.064, sleeve: false, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.08 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
-    // The thermal sleeve's strap bands along its first section (critics 265, round 6: "no thermal sleeve or straps";
-    // the Munster 1A5's sleeve is banded every few hand-widths), short of the bore evacuator, whose underside sets the
-    // gun's stern clearance.
-    for (let s = 1; s < 5; s++) P.add('gunDark', cylZ(0.064 * 1.28, 0.035, P.q ? 28 : 12), 0, 0, 4.35 * (0.16 + 0.30 * s / 5));
+    // The L7A3's thermal sleeve, drawn here rather than by buildGun: two sections tapering from 0.22 m across at the
+    // mask to 0.17 m, banded at their ends and strapped along them clear of the bore evacuator (critics 265, rounds 5-7:
+    // "a thin pipe", "no thermal sleeve or straps", "about a third too thin ... lacks the thick sleeved barrel"). The
+    // combat barrel follows the drawn one (combatGunRigs.generated.ts, gun-barrel-align-census --rigs).
+    const sleeveSeg = P.q ? 28 : 12;
+    // (the outer section's straps are left off: at 3.18 m one came 24.7 mm from the stern in recoil at yaw 165)
+    const sleeves = [[sleeveStartZ, 2.00, 0.110, 0.098, [0.96, 1.22, 1.48, 1.74]], [2.26, 3.57, 0.094, 0.086, []]] as const;
+    for (const [z0, z1, r0, r1, straps] of sleeves) {
+      const radiusAt = (z: number): number => r0 + (r1 - r0) * (z - z0) / (z1 - z0);
+      P.add('gun', cylZ(r1, z1 - z0, sleeveSeg, r0), 0, 0, (z0 + z1) / 2);
+      for (const z of [z0 + 0.02, z1 - 0.02]) P.add('gunDark', cylZ(radiusAt(z) + 0.006, 0.045, sleeveSeg), 0, 0, z);
+      for (const z of straps) P.add('gunDark', cylZ(radiusAt(z) + 0.004, 0.035, sleeveSeg), 0, 0, z);
+    }
     P.gunG.userData.leopard1A5MantletReceipt = {
       seated: true,
       blohmVossMask: true,
