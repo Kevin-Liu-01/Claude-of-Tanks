@@ -300,9 +300,9 @@ ee_t4_osorio.armor = osorioArmor(6.20, 0.140, {
   glacis: [550, 550, 650], lower: [190, 190, 220], side: [80, 80, 90], skirt: [100, 100, 240], rear: 40, roof: 45,
   cheek: [660, 660, 800], tSide: [320, 320, 400], tRear: 60, tRoof: 50, mantlet: [440, 440, 520],
 });
-// (measured 2026-10-30 on the c2 build: the 130 mm's thicker barrel holds the gun level over the engine deck at 160)
+// (measured 2026-10-30 on the c3 build: the 130 mm's thicker barrel holds the gun level over the engine deck at 160)
 ee_t4_osorio.gunPitchByYawDeg = [[0, -8.9], [13, -8.2], [27, -7.2], [30, -6.6], [40, -6.3], [42, -6], [45, -6],
-  [55, -6.5], [70, -8.4], [72, -8.4], [77, -9.3], [106, -8.6], [107, -8.2], [108, -8], [116, -7.2], [118, -6.8],
+  [55, -6.5], [70, -8.4], [72, -8.4], [78, -9.7], [103, -9.4], [107, -8.2], [108, -8], [116, -7.2], [118, -6.8],
   [125, -5.8], [134, -5.4], [148, -3.1], [157, -2], [158, -0.9], [159, -0.1], [160, 0.1], [162, 0.1], [163, -0.1],
   [164, -0.7], [165, -1.5], [173, -1.4], [178, -1.6], [180, -1.8]];
 ee_t4_osorio.visual = {
