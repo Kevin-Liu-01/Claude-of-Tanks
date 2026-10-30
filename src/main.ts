@@ -2297,6 +2297,23 @@ const settings = createSettingsAccess({
   // livePaused from (kill-cam replays close the panel themselves; the end
   // overlay keeps the old non-paused Esc behavior).
   isGamePaused: battlePhase.isPauseEligible,
+  // a paired phone's readout (docs/PHONE-CONTROLLER.md): read only when the phone controller is connected
+  phoneStatus: () => {
+    const player = game.player;
+    const combat = player?.combat;
+    if (!battlePhase.isBattle() || !player || !combat) return null;
+    return {
+      battle: true,
+      alive: !combat.destroyed,
+      paused: settings.isOpen(),
+      sniper: rig.mode === 'SNIPER',
+      slot: combat.shellSlot | 0,
+      shells: player.spec.gun.shells.slice(0, 3).map((shell, slot) => ({
+        type: shell.guided ? 'ATGM' : shell.type, count: Math.max(0, Math.floor(combat.ammo[slot] || 0)),
+      })),
+      reloadS: Math.max(0, combat.reload.t), reloadTotalS: combat.reload.totalS,
+    };
+  },
 });
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value

@@ -323,8 +323,8 @@ export function padAxesFromRelay(data: string): Uint8Array | null {
   } catch { return null; }
 }
 
-/** The phone page's address for a code, in the desktop's locale (`/cn/pad` for Chinese). The code rides in the
- *  fragment, which a browser never sends to a server. */
-export function padPageUrl(origin: string, code: string, chinese: boolean): string {
-  return `${origin.replace(/\/+$/, '')}${chinese ? '/cn' : ''}/pad#${code}`;
+/** The phone page's address for a code. The code rides in the fragment, which a browser never sends to a server; the
+ *  page speaks the phone's own language (its stored choice, else the device's), whatever the desktop's. */
+export function padPageUrl(origin: string, code: string): string {
+  return `${origin.replace(/\/+$/, '')}/pad#${code}`;
 }

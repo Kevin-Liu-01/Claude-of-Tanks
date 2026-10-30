@@ -197,6 +197,15 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'settings', owner: 'src/ui/settings.ts', surface: '#cot-set-rmb-mode' },
     ],
   },
+  /** (phone-controller-266, docs/PHONE-CONTROLLER.md) The phone controller's link: its state and round trip on the Controls
+   *  tab's Phone controller card, and on the phone's own page (/pad, another device's screen). */
+  'phone-link': {
+    labels: ['settings.phone.state.live'],
+    places: [
+      { screen: 'settings', owner: 'src/pad/padConnectCard.ts', surface: '.cot-pad-state' },
+      { screen: 'site', owner: 'src/pad/padPage.ts', surface: '.pad-link' },
+    ],
+  },
   /** The battle stands paused: the veil after a focus loss, the tag on Settings opened in a battle. */
   paused: {
     places: [

@@ -48,6 +48,7 @@
     { "source": "/:page(home|docs|gallery)", "destination": "/:page.html" },
     { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
+    { "source": "/pad", "destination": "/pad.html" },
     { "source": "/cn", "destination": "/cn/index.html" },
     { "source": "/cn/:page(home|docs|gallery|studio|404)", "destination": "/cn/:page.html" },
     { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/cn/docs-:topic.html" }

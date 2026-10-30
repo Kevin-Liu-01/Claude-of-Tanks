@@ -65,9 +65,8 @@ assert.deepEqual([...padAxesFromRelay(relay)], [...bytes], 'the relay text round
 assert.equal(padAxesFromRelay('!!!'), null);
 
 // --- the phone page's address and the pad service -----------------------------------------------------------------
-assert.equal(padPageUrl('https://cot.kevinliu.studio/', 'K7Q4MZ', false), 'https://cot.kevinliu.studio/pad#K7Q4MZ',
+assert.equal(padPageUrl('https://cot.kevinliu.studio/', 'K7Q4MZ'), 'https://cot.kevinliu.studio/pad#K7Q4MZ',
   'the code rides in the fragment, never sent to a server');
-assert.equal(padPageUrl('https://cot.kevinliu.studio', 'K7Q4MZ', true), 'https://cot.kevinliu.studio/cn/pad#K7Q4MZ');
 assert.equal(resolvePadServiceUrl('', 'https:', OFFICIAL_SITE_HOST), OFFICIAL_ROOMS_URL, 'the site pairs through its rooms Worker');
 assert.equal(resolvePadServiceUrl('[SENSITIVE]', 'https:', OFFICIAL_SITE_HOST), OFFICIAL_ROOMS_URL);
 assert.equal(resolvePadServiceUrl('', 'http:', '192.168.1.20'), 'ws://192.168.1.20:8792', 'a LAN page pairs through the LAN helper');

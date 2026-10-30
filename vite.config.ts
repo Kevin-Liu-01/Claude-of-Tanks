@@ -127,6 +127,10 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
     && existsSync(resolve(documentRoot, `site${path}`))) {
     req.url = `/site${path}${query}`;
   }
+  // the phone controller (docs/PHONE-CONTROLLER.md): /pad serves its page in dev and preview (vercel.json in production)
+  else if (path === '/pad' || path === '/pad.html') {
+    req.url = `/${existsSync(resolve(documentRoot, 'pad.html')) ? '' : 'site/'}pad.html${query}`;
+  }
   else if (path !== '/' && !path.startsWith('/api/') &&
     req.headers.accept?.includes('text/html') && !isExistingProjectDocument(path,documentRoot)) {
     forceNotFoundStatus(res);
@@ -407,6 +411,8 @@ export default defineConfig({
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
         docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
+        // the phone controller's page (docs/PHONE-CONTROLLER.md): its own small entry, /pad
+        pad: resolve(process.cwd(), 'site/pad.html'),
       },
       output: {
         // 2026-09-25: hashes encode as base36 — every /assets URL changed once so no edge node keeps serving

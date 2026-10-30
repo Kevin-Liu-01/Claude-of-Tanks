@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { PadStatus } from '../pad/padProtocol.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -35,7 +36,7 @@ import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import { button, segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import {
   CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_SHOULDERS, type ChaseNumericSetting, type ChaseShoulder,
 } from '../engine/chaseFraming.ts';
@@ -185,6 +186,8 @@ export interface SettingsOptions {
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
   readonly registerMenuAction?: boolean;
+  /** The local player's battle state for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
+  readonly phoneStatus?: () => PadStatus | null;
 }
 
 export interface SettingsRuntime {
@@ -927,10 +930,41 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     el('div', 'cot-set-note', parent).textContent = t('settings.aim.note');
   }
 
+  // --- PHONE CONTROLLER (phone-controller-266, docs/PHONE-CONTROLLER.md) ------------------------------------------
+  // The card's button loads the pairing card and its receiver (src/pad/padConnectCard.ts): nothing of it, and no request,
+  // until the player asks. Once loaded the card re-renders with the tab and shows the live pairing.
+  let padCard: typeof import('../pad/padConnectCard.ts') | null = null;
+  const padPorts = () => ({
+    input,
+    status: () => opts.phoneStatus?.() ?? null,
+    // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture
+    togglePause: () => { if (!isBattleActive()) return; if (open) closePanel({ noRelock: true }); else openPanel(); },
+  });
+  function phoneCard(parent: HTMLElement): void {
+    const host = el('div', '', groupCard(parent, t('settings.phone.title')));
+    if (padCard) { padCard.renderPadCard(host, padPorts()); return; }
+    const row = el('div', 'cot-set-row', host);
+    settingLabel(row, t('settings.phone.label'), { id: 'phone', tone: 'cyan' });
+    row.insertAdjacentHTML('beforeend', button({ label: t('settings.phone.connect'), variant: 'secondary', size: 36, icon: 'phone', className: 'cot-pad-action' }));
+    const connect = row.lastElementChild as HTMLButtonElement;
+    connect.addEventListener('click', () => {
+      if (pressFailed(connect)) return;
+      void import('../pad/padConnectCard.ts').then((module) => {
+        padCard = module;
+        if (host.isConnected) module.renderPadCard(host, padPorts(), true);
+      }).catch((error: RuntimeValue) => {
+        console.error('[settings] phone controller failed to load', error);
+        markLoadFailed([connect]);
+      });
+    });
+    el('div', 'cot-set-note', host).textContent = t('settings.phone.note');
+  }
+
   function renderControls() {
     body.textContent = '';
     rowByAction.clear();
     consumableLabels.clear();
+    phoneCard(body);
     const colhdr = el('div', 'cot-set-colhdr', body);
     colhdr.innerHTML =
       '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';

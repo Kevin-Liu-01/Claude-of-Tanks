@@ -55,8 +55,8 @@ Pass rule:
    code already in use answers 409 and the Worker draws again (three tries).
 2. Codes are 6 characters from a 31-symbol alphabet without look-alikes (`ABCDEFGHJKMNPQRSTUVWXYZ23456789`, ~30 bits),
    shown as `K7Q 4MZ`. A code lives 120 s; the desktop shows its countdown and draws a fresh one on request.
-3. The desktop shows the code, a QR of `https://cot.kevinliu.studio/pad#K7Q4MZ` (`/cn/pad` in Chinese) and the short
-   address. The phone's camera app opens the link (no camera permission on the page), or the player types the code.
+3. The desktop shows the code, a QR of `https://cot.kevinliu.studio/pad#K7Q4MZ` and the short address. The phone page
+   speaks the phone's own language (its stored choice, else the device's). The phone's camera app opens the link (no camera permission on the page), or the player types the code.
 4. The phone opens `/pad/join/<CODE>`. A waiting, unexpired, unused code pairs; anything else (unknown, expired, used,
    a second phone) is the same refusal, `pad_unknown`, so a guess learns nothing. Single use: the code joins once.
 5. Both sides receive a resume token (128 random bits, stored as a SHA-256 hash). A phone that locks its screen or
