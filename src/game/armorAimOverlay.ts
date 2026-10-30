@@ -339,6 +339,11 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   let sampleCursor = 0;
   /** Bakes under way, oldest first. */
   const bakes: Array<{ root: THREE.Object3D; work: Generator<void, PanelBakeStats, void> }> = [];
+  /**
+   * (265; the world-reds lane, Main) Primed vehicles whose panels wait: a battle with the overlay off never pays for them.
+   * They bake when asked (bakePanels: the streamer's staging, the overlay on) or in the frames' share once it is on.
+   */
+  const unbaked = new Set<ArmorOverlayEntry>();
 
   function prime(target: ArmorOverlayTarget | null | undefined): ArmorOverlayEntry | null {
     if (!target?.id || !target.visual?.root) return null;
@@ -368,21 +373,27 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       lastShellSpec: null,
     };
     entries.set(target.id, entry);
-    // (263) its panels, once a vehicle, in slices (bakePanels or the frames' share): copies of a spec share the geometry's
-    const root = target.visual.root;
-    if (!panelBakes.has(root)) {
-      const stats = panelBakeStats();
-      panelBakes.set(root, stats);
-      root.userData.armorPaintPanels = stats;
-      // the authority's pose for the spaced parts' inward rays (the streamer has synced the visual to the same state)
-      const authority = target.state ? { pose: tankPoseFromState(target.state) } : null;
-      bakes.push({ root, work: bakePaintPanelSteps(root, template, paint, armor, stats, authority) });
-    }
+    unbaked.add(entry);
     return entry;
   }
 
+  /** (263) An entry's panels, once a vehicle, in slices (bakePanels or the frames' share): copies of a spec share the geometry's. */
+  function queueBake(entry: ArmorOverlayEntry): void {
+    unbaked.delete(entry);
+    const root = entry.target.visual?.root, armor = entry.target.spec?.armor;
+    if (!root || !armor || panelBakes.has(root)) return;
+    const stats = panelBakeStats();
+    panelBakes.set(root, stats);
+    root.userData.armorPaintPanels = stats;
+    // the authority's pose for the spaced parts' inward rays (the streamer has synced the visual to the same state)
+    const authority = entry.target.state ? { pose: tankPoseFromState(entry.target.state) } : null;
+    bakes.push({ root, work: bakePaintPanelSteps(root, entry.template, entry.paint, armor, stats, authority) });
+  }
+
   async function bakePanels(target: ArmorOverlayTarget | null | undefined, pause: () => Promise<void>): Promise<void> {
-    if (!prime(target) || !target?.visual) return;
+    const entry = prime(target);
+    if (!entry || !target?.visual) return;
+    queueBake(entry);
     const root = target.visual.root;
     for (;;) {
       const at = bakes.findIndex((bake) => bake.root === root);
@@ -591,7 +602,10 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     muzzle,
     nowMs,
   }: ArmorAimOverlayUpdateOptions): void {
-    advanceBakes();
+    if (enabled) {
+      for (const entry of unbaked) queueBake(entry);
+      advanceBakes();
+    }
     if (!enabled || !scoped) {
       hide();
       return;
@@ -615,6 +629,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     visibleEntries.length = 0;
     sampleCursor = 0;
     bakes.length = 0;
+    unbaked.clear();
   }
 
   function dispose(): void {

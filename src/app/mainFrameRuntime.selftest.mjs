@@ -5,6 +5,7 @@ import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { createMainFrameRuntime } from './mainFrameRuntime.ts';
 import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 import { createLighting } from '../engine/lighting.ts';
+import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 
 function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
@@ -12,7 +13,7 @@ function createFixture({
 } = {}) {
   const calls = [];
   const frameRequests = [];
-  const postFrames = [], simulationFrames = [], fxFrames = [], studioFrames = [], shadowMerges = [];
+  const postFrames = [], simulationFrames = [], fxFrames = [], studioFrames = [], shadowMerges = [], framing = [];
   const replay = { active: false };
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 1000);
@@ -107,8 +108,8 @@ function createFixture({
       cinematicActive: false,
       update: () => calls.push('rig'),
       // battle-camera-264: the chase's lens shift comes off in the Garage and under Watch; a paused battle previews it
-      suspendFraming: () => {},
-      previewFraming: () => {},
+      suspendFraming: () => framing.push('suspend'),
+      previewFraming: () => framing.push('preview'),
     },
     killcam: {
       fxTimeScale: 1,
@@ -133,6 +134,7 @@ function createFixture({
     fxFrames,
     studioFrames,
     shadowMerges,
+    framing,
     replay,
     camera,
     game,
@@ -238,6 +240,78 @@ assert.ok(battle.calls.indexOf('night-lights') < battle.calls.indexOf('post'));
 assert.equal(battle.calls.filter((entry) => entry === 'night-lights').length, 2,
   'retained lamps follow final visual/camera transforms once before each live draw');
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
+
+// (battle-camera-264) the chase framing's lens shift (cameraRig.ts applyLens: camera.view) moves the projection without
+// the fov. CSM's cascade slices are the projection's unprojection at their last fit, so every change of the lens refits
+// them (lighting.updateFov), as a fov change does; a held lens and a primed fit refit nothing.
+{
+  const garage = createFixture();
+  garage.runtime.tick(1000);
+  assert.ok(garage.framing.includes('suspend'), 'a Garage frame takes the chase framing\'s lens off the camera');
+  const live = createFixture({ phase: 'battle' });
+  live.runtime.tick(1000);
+  assert.deepEqual(live.framing, [], 'a live battle frame leaves the framing to the rig\'s own update');
+}
+const lensView = (shift) => ({ enabled: true, fullWidth: 1, fullHeight: 1, width: 1, height: 1, offsetX: 0, offsetY: shift });
+{
+  const lens = createFixture({ phase: 'battle' });
+  const refits = () => lens.calls.filter((entry) => entry === 'lighting:fov').length;
+  lens.runtime.noteFovPrimed(lens.camera.fov);
+  lens.runtime.tick(1000);
+  assert.equal(refits(), 0);
+  lens.camera.view = lensView(0.115);
+  lens.camera.updateProjectionMatrix();
+  lens.runtime.tick(1016);
+  assert.equal(refits(), 1, 'a lens shift with the fov unchanged refits the cascades');
+  lens.runtime.tick(1032);
+  assert.equal(refits(), 1, 'a held lens refits nothing more');
+  lens.camera.view.offsetY = 0.12;
+  lens.camera.updateProjectionMatrix();
+  lens.runtime.tick(1048);
+  assert.equal(refits(), 2, 'each step of the lens\'s ease refits');
+  lens.camera.clearViewOffset();
+  lens.runtime.tick(1064);
+  assert.equal(refits(), 3, 'clearing the shift (the scope, the Garage) refits them back');
+  lens.camera.view = lensView(0.05);
+  lens.camera.updateProjectionMatrix();
+  lens.runtime.noteFovPrimed(lens.camera.fov); // the battle entry's final shadows fit the lens it reveals
+  lens.runtime.tick(1080);
+  assert.equal(refits(), 3, 'a primed fit is not refitted again');
+}
+// The real lighting: after a lens change the cascades' slices are the shifted projection's own; without the refit they
+// keep the centred one (the negative control)
+{
+  const sameFrustum = (a, b) => ['near', 'far'].every((plane) => a.vertices[plane].every((v, i) => v.distanceTo(b.vertices[plane][i]) < 1e-6));
+  let real = null;
+  const port = {
+    updateFov: () => real.updateFov(),
+    setStaticPresentationDormant: (on) => real.setStaticPresentationDormant(on),
+    setVehicleShadowMerge: (on) => real.setVehicleShadowMerge(on),
+    update: () => real.update(false, 1 / 60),
+  };
+  const lens = createFixture({ phase: 'battle', lighting: port });
+  lens.camera.fov = 60;
+  lens.camera.aspect = 16 / 9;
+  lens.camera.updateProjectionMatrix();
+  real = createLighting(new Scene(), lens.camera, new Vector3(0.4, 0.8, -0.3).normalize());
+  try {
+    const csm = real.csm;
+    const fitted = () => new CSMFrustum({ webGL: true, projectionMatrix: lens.camera.projectionMatrix, maxFar: csm.maxFar });
+    real.updateFov();
+    lens.runtime.noteFovPrimed(lens.camera.fov);
+    lens.runtime.tick(1000);
+    assert.ok(sameFrustum(csm.mainFrustum, fitted()), 'centred: the slices are the projection\'s');
+    lens.camera.view = lensView(0.115);
+    lens.camera.updateProjectionMatrix();
+    assert.ok(!sameFrustum(csm.mainFrustum, fitted()), 'negative: before the frame the slices still hold the centred lens');
+    lens.runtime.tick(1016);
+    assert.ok(sameFrustum(csm.mainFrustum, fitted()), 'the frame refits them to the shifted lens');
+    assert.ok(csm.frustums[0].vertices.near[2].distanceTo(fitted().vertices.near[2]) < 1e-6, 'cascade 0 reaches the picture\'s bottom edge');
+  } finally {
+    real.csm.remove();
+    real.csm.dispose();
+  }
+}
 
 const replaying = createFixture({ phase: 'battle' });
 replaying.runtime.tick(1000);

@@ -163,5 +163,18 @@ assert.equal(clampChaseSetting('cameraDistance', 'x'), 1, 'NaN: the default');
 assert.deepEqual(normalizeChaseSettings({ cameraShoulder: 'up', cameraFraming: 0.5 }),
   { ...CHASE_CAMERA_DEFAULTS, cameraFraming: 0.2 }, 'an unknown shoulder falls back, a framing clamps');
 
+// The A/B switch (`?chaseFraming=0`, combatAimComposition.ts): without bands the solve is the chase camera as it stood
+// before the framing (262: 13 m back, 1.0 m over the turret, 60 degrees, no lens), at every window shape (32:9 included)
+for (const [w, h] of [[3840, 1080], [1728, 1117], [1920, 1080], [390, 844]]) {
+  const base = solveChaseFraming(1000 * w / h, 1000, null, null);
+  assert.deepEqual([base.pivotAboveM, base.distanceM, base.fovDeg, base.shift, base.sightShiftPx, base.shoulderM], [1, 13, 60, 0, 0, 0],
+    `${w}x${h}: no bands, 262's chase camera`);
+}
+{
+  const source = readFileSync(new URL('../app/combatAimComposition.ts', import.meta.url), 'utf8');
+  assert.match(source, /!\/\[\?&\]chaseFraming=0\(&\|\$\)\/\.test\(location\.search \?\? ''\)/, 'the URL switch');
+  assert.match(source, /getChaseBands: CHASE_FRAMING \? battleBands : \(\) => null,/, 'off, the rig sees no bands');
+}
+
 console.log(`chaseFraming.selftest: defaults pinned; ${SUPPORTED.length} layouts x ${Object.keys(TANKS).length} tanks clear the band under the sight; `
   + `the strip moves no sight; three agrees; settings act as labelled (${summary.join('; ')})`);
