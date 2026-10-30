@@ -3036,8 +3036,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'm41dk1') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
-  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). Both build their own dischargers.
-  if (spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage); the CV9035 DK's roof stays as the
+  // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
+  if (spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

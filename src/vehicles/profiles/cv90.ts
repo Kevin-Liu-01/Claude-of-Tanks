@@ -308,8 +308,9 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
     ));
   }
   // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III: a heavier barrel than the 40 mm's and its long slotted
-  // muzzle brake, about twice the barrel's diameter, the muzzle just ahead of the bow)
-  const gunLen = danish ? 3.20 : 3.12, gunR = danish ? 0.070 : 0.064;
+  // muzzle brake, about twice the barrel's diameter; r4 (critics on the Latvia side photograph: the brake ends at the bow,
+  // the barrel 29% of the hull's length): 0.40 m shorter)
+  const gunLen = danish ? 2.80 : 3.12, gunR = danish ? 0.070 : 0.064;
   KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13 });
   if (danish) {
     // the brake in plain steel, stepped (r3: camouflage over slots read as hazard stripes)
@@ -405,8 +406,10 @@ function addCv9035DkBowKit(P: CvBuilderPort): void {
     for (const x of [1.28, 1.72]) P.add('hullDetail', box(0.04, 0.30, 0.03), side * x, 1.05, 3.315);
     P.add('hullDetail', box(0.48, 0.03, 0.03), side * 1.50, 0.92, 3.315);
     P.add('hullDark', torus(0.075, 0.022, 14, 8), side * 0.62, 0.90, 3.18, 0, 0, 0); // on the raked lower glacis
-    P.add('hull', box(0.10, 0.06, 5.96), side * 1.68, 1.655, -0.74);
   }
+  // the Danish Army's registration plate on the right mudguard's face (the Holstebro photograph's "75.177"; r4 critics)
+  P.add('hullDark', box(0.36, 0.10, 0.012), -1.50, 1.10, 3.316);
+  P.decal('hull', 'stencilWhite', '75.145', 0.34, [-1.50, 1.10, 3.324], 0);
 }
 
 /** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */

@@ -704,8 +704,10 @@ function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
     ctx.ellipse(cx + Math.cos(t) * r * 0.5, cy + Math.sin(t) * r * 0.5, r * 0.5, r * 0.34, t, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = '#b8343a';
-  starPath(ctx, cx, cy, r * 0.30);
+  // (r4, critics: a red star read Soviet or Chinese; the blossom keeps a plain dark heart)
+  ctx.fillStyle = '#3a3f2c';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.16, 0, Math.PI * 2);
   ctx.fill();
 }
 

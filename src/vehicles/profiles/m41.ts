@@ -111,18 +111,20 @@ const H = Object.freeze({
 });
 const ROAD_WHEEL_ZS = [1.572, 0.764, -0.045, -0.854, -1.662];
 const RING = Object.freeze({ y: 1.44, z: 0.20 });
-/** The turret (turret metres), the print's stations: the long cast nose narrowing to the gun shield, the flanks widest
- * low and leaning in to a 0.74 m roof, the underside rising behind the ring and the long bustle to its rear plate.
+/** The turret (turret metres): the cast front narrowing to the gun shield, the flanks widest low and leaning in to a
+ * 0.74 m roof, the underside rising behind the ring and the long bustle to its rear plate.
  * Round 3 (blind critics against the 1961 and Aalborg photographs): from the cheeks aft the flanks are near-flat plates
  * widest at their foot (nUp 1.3, waist 0.08) meeting the roof at a hard edge (castSolid crispRoof), and the bustle runs
- * nearly as wide as the turret to a square rear plate (it tapered to 58% of the width and read as a pebble). */
+ * nearly as wide as the turret to a square rear plate (it tapered to 58% of the width and read as a pebble).
+ * Round 4 (the critics again: the print's nose ran a bullet-shaped metre past the cheeks over the driver's hatch, and
+ * every photograph shows the hatch on the deck ahead of a blunt shield): the face stands 0.55 m further back behind a
+ * short, broad front, the flanks flat plates from the shield aft, and the gun's trunnion goes back with it. */
 const TURRET: readonly CastStation[] = Object.freeze([
-  { z: 1.50, bot: 0.07, top: 0.54, hw: 0.62, roof: 0.56, foot: 0.84, waist: 0.30, nUp: 2.6, nLo: 3.5 },
-  { z: 1.30, bot: 0.04, top: 0.60, hw: 0.70, roof: 0.62, foot: 0.86, waist: 0.20, nUp: 2.4, nLo: 4 },
-  { z: 1.10, bot: 0.04, top: 0.64, hw: 0.81, roof: 0.68, foot: 0.90, waist: 0.15, nUp: 2.0, nLo: 4 },
-  { z: 0.90, bot: 0.04, top: 0.67, hw: 0.97, roof: 0.72, foot: 0.93, waist: 0.10, nUp: 1.6, nLo: 4 },
-  { z: 0.70, bot: 0.04, top: 0.71, hw: 1.08, roof: 0.75, foot: 0.95, waist: 0.08, nUp: 1.3, nLo: 4 },
-  { z: 0.50, bot: 0.03, top: 0.74, hw: 1.13, roof: 0.76, foot: 0.96, waist: 0.08, nUp: 1.3, nLo: 4 },
+  { z: 0.95, bot: 0.07, top: 0.58, hw: 0.76, roof: 0.62, foot: 0.86, waist: 0.20, nUp: 1.8, nLo: 3.5 },
+  { z: 0.80, bot: 0.05, top: 0.63, hw: 0.88, roof: 0.67, foot: 0.90, waist: 0.14, nUp: 1.6, nLo: 4 },
+  { z: 0.62, bot: 0.04, top: 0.68, hw: 1.00, roof: 0.72, foot: 0.93, waist: 0.10, nUp: 1.4, nLo: 4 },
+  { z: 0.45, bot: 0.03, top: 0.72, hw: 1.09, roof: 0.75, foot: 0.95, waist: 0.08, nUp: 1.3, nLo: 4 },
+  { z: 0.28, bot: 0.02, top: 0.74, hw: 1.13, roof: 0.76, foot: 0.96, waist: 0.08, nUp: 1.3, nLo: 4 },
   { z: 0.00, bot: 0.0, top: 0.74, hw: 1.12, roof: 0.77, foot: 0.96, waist: 0.08, nUp: 1.3, nLo: 4 },
   { z: -0.60, bot: 0.0, top: 0.74, hw: 1.08, roof: 0.79, foot: 0.62, waist: 0.30, nUp: 1.3, nLo: 3 },
   { z: -1.10, bot: 0.0, top: 0.74, hw: 1.01, roof: 0.82, foot: 0.40, waist: 0.40, nUp: 1.3, nLo: 2.5 },
@@ -133,7 +135,7 @@ const TURRET: readonly CastStation[] = Object.freeze([
   { z: -2.25, bot: 0.30, top: 0.70, hw: 0.87, roof: 0.86, foot: 0.93, waist: 0.30, nUp: 1.3, nLo: 4 },
 ]);
 const ROOF_Y = 0.74;
-const TRUNNION = Object.freeze({ y: 0.315, z: 1.30 });
+const TRUNNION = Object.freeze({ y: 0.315, z: 0.75 });
 
 function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, towCable, stowage, jerryCan, tarpRoll,
@@ -146,8 +148,11 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
   };
   // the deck: level at 1.44-1.45 (a step down onto the glacis ahead of the driver), sloping from 2.0 m aft to the
   // rear plate; the glacis 37 degrees to the nose
+  // (r4: the glacis plate falls straight from 1.34 at 1.95 to the nose; the old points ran up to 9 cm over it ahead of
+  // the raised strip, so the spare track, lamps and plates set on deckY stood off the plate)
+  const glacisY = (z: number): number => 1.34 - (1.34 - 0.88) * (z - 1.95) / (H.noseZ - 1.95);
   const DECK: readonly (readonly [number, number])[] = [[H.sternZ, 1.17], [-2.40, 1.29], [-2.00, 1.41], [1.85, 1.45],
-    [1.95, 1.34], [2.15, 1.33], [H.noseZ, 0.88]];
+    [1.95, 1.34], [2.17, 1.34], [2.18, glacisY(2.18)], [H.noseZ, 0.88]];
   const deckY = (z: number): number => {
     if (z <= DECK[0][0]) return DECK[0][1];
     for (let i = 0; i + 1 < DECK.length; i++) {
@@ -212,7 +217,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       style: 'dished', wheelR: roadWheelR, wheelW, wheelY: roadWheelY, xc: H.trackXc, wheelZs: [...ROAD_WHEEL_ZS],
       sprocket: { z: -2.321, y: 0.820, r: 0.358 }, idler: { z: 2.277, y: 0.797, r: 0.329 }, rollers,
       trackW: H.trackW, topY: 0.993 + 0.04, botY: 0.03, contactZF: ROAD_WHEEL_ZS[0], contactZR: ROAD_WHEEL_ZS.at(-1),
-      paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: false,
+      paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: true,
     });
     for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
       P.add('hullRunningGearDark', torus(roadWheelR * 0.3, 0.015, P.q ? 16 : 10), s * (H.trackXc + wheelW / 2 + 0.012), roadWheelY, z,
@@ -244,9 +249,9 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
 
   // ---------------------------------------------------------------- hull fittings --
   const buildM41HullFittings = (): void => {
-    // the driver's hatch (front left, +x), near flush under the turret nose's 1.48 underside, and his periscope on the
-    // step down ahead of it, below the gun shield's sweep at full depression
-    P.addCupola('hull', cylY(0.25, 0.26, 0.012, P.q ? 20 : 14), 0.55, deckY(1.55) + 0.006, 1.55);
+    // the driver's hatch (front left, +x) on the deck ahead of the gun shield (r4: the Aalborg photographs), and his
+    // periscope on the step down ahead of it
+    P.addCupola('hull', cylY(0.22, 0.23, 0.012, P.q ? 20 : 14), 0.55, deckY(1.62) + 0.006, 1.62);
     P.addEquipment('hull', box(0.16, 0.08, 0.10), 0.55, deckY(1.98) + 0.04, 1.98);
     P.add('hullGlass', box(0.12, 0.04, 0.012), 0.55, deckY(1.98) + 0.05, 2.032);
     // two headlights a side high on the glacis, in a brush guard of bent rod (the M47's pattern)
@@ -265,60 +270,72 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     }
     if (dk) {
       // the DK-1's spare track: two columns of four links standing off the glacis (the Aalborg photographs)
-      const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), zc = 2.42;
+      // (r4: forward of the raised strip's 2.17 m edge, where the old start sat inside it, with the plate moved off the
+      // glacis to the lower nose; the seat pass dropped both runs)
+      const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), zc = 2.50;
       for (const x of [-0.29, 0.29]) KIT.spareTrackStrip(P, 'hullTrack', x, deckY(zc) + 0.035, zc, 4, glacis, 0);
       // the Leopard-pattern front mudguards: curved over the front of each track down toward the idler's hub, a lamp
       // unit on each, the driver's mirror on the left one
+      // (r4, critics: thin hoops read as a brush guard; the photographs' guards are broad curved shells out to the skirts)
       for (const s of [-1, 1] as const) {
-        P.hangMudguard('m41dk1-front-guard-top', 'hull', box(0.62, 0.02, 0.12), s * H.trackXc, H.fenderY + 0.002, 2.51);
-        const n = 6, r = 0.40, cz = 2.57, cy = 0.93;
+        const gx0 = s * 1.10, gx1 = s * 1.78, gxc = (gx0 + gx1) / 2, gw = Math.abs(gx1 - gx0);
+        P.hangMudguard('m41dk1-front-guard-top', 'hull', box(gw, 0.02, 0.14), gxc, H.fenderY + 0.002, 2.51);
+        const n = 8, r = 0.40, t = 0.022, cz = 2.57, cy = 0.93, arc = 1.92;
+        const at = (a: number, rr: number, x: number): [number, number, number] => [x, cy + rr * Math.cos(a), cz + rr * Math.sin(a)];
         for (let k = 0; k < n; k++) {
-          const a0 = (k / n) * 1.92, a1 = ((k + 1) / n) * 1.92, a = (a0 + a1) / 2, len = r * (a1 - a0) + 0.03;
-          P.hangMudguard('m41dk1-front-guard', 'hull', box(0.62, 0.02, len), s * H.trackXc, cy + r * Math.cos(a), cz + r * Math.sin(a), a);
+          const a0 = (k / n) * arc, a1 = ((k + 1) / n) * arc;
+          P.hangMudguard('m41dk1-front-guard', 'hull', slab(
+            at(a0, r, gx0), at(a0, r, gx1), at(a1, r, gx1), at(a1, r, gx0),
+            at(a0, r + t, gx0), at(a0, r + t, gx1), at(a1, r + t, gx1), at(a1, r + t, gx0)), 0, 0, 0);
         }
         P.addEquipment('hullDark', box(0.18, 0.10, 0.12), s * H.trackXc, H.fenderY + 0.06, 2.50);
         headlight(P, s * H.trackXc, H.fenderY + 0.07, 2.57, 0, 0.045);
       }
       // the mirror's head kept under the barrel's pass at the front stop (on a 0.36 m stalk it held the gun at +5.5 deg)
-      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.12, 8), 1.66, H.fenderY + 0.06, 2.47);
-      P.addEquipment('hullDark', box(0.02, 0.10, 0.11), 1.67, H.fenderY + 0.15, 2.47);
+      P.addEquipment('hullDark', cylY(0.012, 0.012, 0.14, 8), 1.66, H.fenderY + 0.07, 2.47);
+      P.addEquipment('hullDark', box(0.025, 0.13, 0.15), 1.67, H.fenderY + 0.19, 2.47);
       // the low fender bins beside the turret, under the nose's sweep (tops at the deck's 1.44)
+      // (r4, critics: thin lids; the photographs' bins stand a third of the skirt's depth, the front left one domed)
+      const binH = 0.18;
       for (const s of [-1, 1] as const) for (const [z0, z1] of [[1.85, 0.80], [0.74, -0.24], [-0.30, -1.24]] as const) {
-        P.addEquipment('hull', box(0.29, 0.11, z0 - z1), s * 1.49, H.fenderY + 0.055, (z0 + z1) / 2);
-        P.addEquipment('hull', box(0.30, 0.016, z0 - z1 + 0.01), s * 1.49, H.fenderY + 0.118, (z0 + z1) / 2);
-        P.addEquipment('hullDark', box(0.012, 0.012, z0 - z1 - 0.02), s * 1.638, H.fenderY + 0.10, (z0 + z1) / 2);
-        for (const f of [0.25, 0.75]) P.addEquipment('hullDark', box(0.014, 0.04, 0.04), s * 1.640, H.fenderY + 0.06, z1 + (z0 - z1) * f);
+        P.addEquipment('hull', box(0.29, binH, z0 - z1), s * 1.49, H.fenderY + binH / 2, (z0 + z1) / 2);
+        P.addEquipment('hull', box(0.30, 0.016, z0 - z1 + 0.01), s * 1.49, H.fenderY + binH + 0.008, (z0 + z1) / 2);
+        P.addEquipment('hullDark', box(0.012, 0.012, z0 - z1 - 0.02), s * 1.638, H.fenderY + binH - 0.01, (z0 + z1) / 2);
+        for (const f of [0.25, 0.75]) P.addEquipment('hullDark', box(0.014, 0.04, 0.04), s * 1.640, H.fenderY + binH / 2, z1 + (z0 - z1) * f);
+        if (s > 0 && z0 > 1) P.addEquipment('hull', cylZ(0.14, z0 - z1 - 0.06, P.q ? 16 : 10), s * 1.49, H.fenderY + binH - 0.04, (z0 + z1) / 2);
       }
-      // the registration plate between the lamp clusters
-      P.add('hullCanvasPale', box(0.42, 0.11, 0.012), 0, deckY(2.62) + 0.01, 2.62, glacis, 0, 0);
-      P.decal('hull', 'stencil', '26 3-0', 0.40, [0, deckY(2.62) + 0.022, 2.625], 0, -(Math.PI / 2 - glacis));
-      // the yellow bridge-class disc beside it (the Aalborg front photograph's "26")
-      P.decal('hull', 'mlc', '26', 0.17, [0.50, deckY(2.68) + 0.006, 2.68], 0, -(Math.PI / 2 - glacis));
+      // the registration plate and the yellow bridge-class disc on the lower nose plate (the Aalborg front photograph's
+      // "26 3-0" and "26"; r4: off the glacis the spare track covers): the belly's rise from 0.50 m at 2.30 to 0.76 at 2.84
+      const lowRise = Math.atan2(0.76 - 0.50, (H.noseZ - 0.02) - 2.30), lowY = (z: number): number => 0.50 + (z - 2.30) * Math.tan(lowRise);
+      const nY = -Math.cos(lowRise) * 0.004, nZ = Math.sin(lowRise) * 0.004, lowRx = Math.PI / 2 - lowRise;
+      P.decal('hull', 'plate', '26 3-0', 0.42, [-0.12, lowY(2.66) + nY, 2.66 + nZ], 0, lowRx);
+      P.decal('hull', 'mlc', '26', 0.17, [0.36, lowY(2.66) + nY, 2.66 + nZ], 0, lowRx);
     } else {
       // the gun's travel lock folded on the engine deck
       P.addEquipment('hullDark', box(0.10, 0.10, 0.10), 0, deckY(-2.30) + 0.05, -2.30);
       bar('hullDark', [-0.08, deckY(-2.30) + 0.06, -2.30], [-0.08, deckY(-2.0) + 0.06, -2.0], 0.02);
       bar('hullDark', [0.08, deckY(-2.30) + 0.06, -2.30], [0.08, deckY(-2.0) + 0.06, -2.0], 0.02);
     }
-    if (!dk) towCable(P, [[-0.95, deckY(2.68) + 0.05, 2.68], [0, deckY(2.72) + 0.05, 2.72], [0.95, deckY(2.68) + 0.05, 2.68]], 0.022);
     const glacisRx = -(Math.PI / 2 - Math.atan2(1.34 - 0.88, H.noseZ - 1.95));
     if (mark === 'bw') {
       // the Bundeswehr's white "Y" registration plates front and rear, the yellow bridge-class disc on the glacis
-      const glacis = Math.atan2(1.34 - 0.88, H.noseZ - 1.95), text = 'Y-231 456';
-      P.add('hullCanvasPale', box(0.52, 0.12, 0.012), 0, deckY(2.36) + 0.012, 2.36, glacis, 0, 0);
-      P.decal('hull', 'stencil', text, 0.46, [0, deckY(2.36) + 0.024, 2.365], 0, glacisRx);
-      P.add('hullCanvasPale', box(0.52, 0.12, 0.012), 0.55, 1.12, H.sternZ - 0.045);
-      P.decal('hull', 'stencil', text, 0.46, [0.55, 1.12, H.sternZ - 0.053], Math.PI);
+      // (r4: white plates with black lettering, the brightest thing on the 1957 photograph's bow; the rear plate and
+      // cross above the exhaust deflectors)
+      const text = 'Y-231 456';
+      P.decal('hull', 'plate', text, 0.56, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
+      P.decal('hull', 'plate', text, 0.50, [0.32, 1.12, H.sternZ - 0.008], Math.PI);
       P.decal('hull', 'mlc', '24', 0.17, [0.52, deckY(2.50) + 0.006, 2.50], 0, glacisRx);
     } else if (mark === 'jgsdf') {
       // the JGSDF's registration numbers painted white straight onto the glacis and the rear plate (no plates)
-      P.decal('hull', 'stencilWhite', '12-3456', 0.46, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
-      P.decal('hull', 'stencilWhite', '12-3456', 0.46, [0.55, 1.12, H.sternZ - 0.008], Math.PI);
+      // (r4: a service number, not a placeholder; the rear's above the exhaust deflectors)
+      P.decal('hull', 'stencilWhite', '21-4087', 0.46, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
+      P.decal('hull', 'stencilWhite', '21-4087', 0.46, [0.32, 1.12, H.sternZ - 0.008], Math.PI);
     } else if (mark === 'us') {
       // the US Army's bumper codes front and rear (unit left, vehicle right)
-      for (const [x, text] of [[-0.42, '3-66AR'], [0.42, 'B-24']] as const) {
-        P.decal('hull', 'stencil', text, 0.30, [x, deckY(2.40) + 0.006, 2.40], 0, glacisRx);
-        P.decal('hull', 'stencil', text, 0.30, [-x, 1.12, H.sternZ - 0.008], Math.PI);
+      // (r4: sized by their length so the letters match)
+      for (const [x, text, size] of [[-0.42, '3-66AR', 0.30], [0.42, 'B-24', 0.20]] as const) {
+        P.decal('hull', 'stencil', text, size, [x, deckY(2.40) + 0.006, 2.40], 0, glacisRx);
+        P.decal('hull', 'stencil', text, size, [-x, 1.12, H.sternZ - 0.008], Math.PI);
       }
     }
     // fender stowage boxes over the sprocket's run, from z -1.30 aft: the turret nose and the gun shield reach 1.9 m from
@@ -361,7 +378,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     body.userData.primaryStockRole = 'm41-turret';
     P.add('turret', body);
     for (const s of [-1, 1] as const) {
-      liftEye(P, 'turretDetail', s * 0.80, ROOF_Y + 0.005, 0.50, s * 0.4);
+      liftEye(P, 'turretDetail', s * 0.80, ROOF_Y + 0.005, 0.22, s * 0.4);
       liftEye(P, 'turretDetail', s * 0.56, ROOF_Y + 0.005, -1.80, s * 2.7);
     }
   };
@@ -378,8 +395,9 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.add('turretDetail', box(0.10, 0.07, 0.05), cx + Math.sin(a) * cr, ROOF_Y + 0.10, cz + Math.cos(a) * cr, 0, a, 0);
       P.add('turretGlass', box(0.075, 0.035, 0.012), cx + Math.sin(a) * (cr + 0.026), ROOF_Y + 0.10, cz + Math.cos(a) * (cr + 0.026), 0, a, 0);
     }
-    P.addEquipment('turretDark', cylY(0.03, 0.04, 0.15, 10), cx, ROOF_Y + 0.285, cz - cr - 0.04);
-    const mgY = ROOF_Y + 0.37;
+    // (r4: the gun low on its pintle at the ring, not on a tall stem)
+    P.addEquipment('turretDark', cylY(0.03, 0.04, 0.09, 10), cx, ROOF_Y + 0.255, cz - cr - 0.04);
+    const mgY = ROOF_Y + 0.29;
     if (dk) {
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.04, scale: 0.96, seed: 4161, shield: false,
         ammo: true, working: true, ridingCradle: true });
@@ -396,14 +414,14 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     // the loader's hatch (left, +x), the gunner's periscope ahead of the commander, the roof ventilator
     P.addCupola('turret', cylY(0.25, 0.26, 0.06, P.q ? 22 : 12), 0.44, ROOF_Y + 0.03, -0.42);
     P.add('turretDetail', cylY(0.22, 0.23, 0.03, P.q ? 22 : 12), 0.44, ROOF_Y + 0.075, -0.42);
-    P.addEquipment('turret', box(0.20, 0.13, 0.22), -0.30, ROOF_Y + 0.065, 0.48);
-    P.add('turretGlass', box(0.14, 0.07, 0.012), -0.30, ROOF_Y + 0.07, 0.597);
+    P.addEquipment('turret', box(0.20, 0.13, 0.22), -0.42, ROOF_Y + 0.065, 0.24);
+    P.add('turretGlass', box(0.14, 0.07, 0.012), -0.42, ROOF_Y + 0.07, 0.357);
     P.add('turret', cylY(0.17, 0.20, 0.05, P.q ? 18 : 10), 0.0, ROOF_Y + 0.015, -1.30);
     P.add('turret', xform(sph(0.17, P.q ? 16 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), 0.0, ROOF_Y + 0.04, -1.30);
     if (dk) {
       // the Texas Instruments night periscope's armoured head on the left of the roof front
-      P.addEquipment('turret', box(0.26, 0.20, 0.28), 0.40, ROOF_Y + 0.10, 0.55);
-      P.add('turretGlass', box(0.18, 0.10, 0.012), 0.40, ROOF_Y + 0.12, 0.695);
+      P.addEquipment('turret', box(0.26, 0.20, 0.28), 0.40, ROOF_Y + 0.10, 0.22);
+      P.add('turretGlass', box(0.18, 0.10, 0.012), 0.40, ROOF_Y + 0.12, 0.365);
       // Wegmann dischargers: four large-bore tubes on each basket's rear top (the Aalborg photographs)
       for (const s of [-1, 1] as const) {
         P.addEquipment('turret', box(0.16, 0.06, 0.72), s * 1.20, 0.63, -1.42);
@@ -416,12 +434,12 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // flush with the turret's front, one either side of the gun, back to the bustle, standing well out from the walls,
       // so the turret reads square and wide from ahead (r3: an open rail fence to the deck read as a balcony). The mesh is
       // a painted face under a fine dark grid.
-      const bx = 1.33, bLow = 0.24, bTop = 0.60, bz0 = -1.95, bz1 = 1.40, segs = 5;
+      const bx = 1.33, bLow = 0.24, bTop = 0.60, bz0 = -1.95, bz1 = 0.90, segs = 5;
       for (const s of [-1, 1] as const) {
-        P.addEquipment('turretOpenLattice', box(0.012, bTop - bLow, bz1 - bz0), s * bx, (bLow + bTop) / 2, (bz0 + bz1) / 2);
+        // (r4, critics: the painted face read as a wall; the photographs' mesh shows the kit inside): open wire mesh only
         for (const y of [bLow, bTop]) P.addEquipment('turretOpenLattice', box(0.03, 0.03, bz1 - bz0 + 0.02), s * bx, y, (bz0 + bz1) / 2);
         for (let k = 0; k <= 30; k++) P.addEquipment('turretOpenLatticeDark', box(0.008, bTop - bLow - 0.03, 0.008), s * (bx + 0.009), (bLow + bTop) / 2, bz0 + (bz1 - bz0) * k / 30);
-        for (let k = 1; k < 4; k++) P.addEquipment('turretOpenLatticeDark', box(0.008, 0.008, bz1 - bz0), s * (bx + 0.009), bLow + (bTop - bLow) * k / 4, (bz0 + bz1) / 2);
+        for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLatticeDark', box(0.008, 0.008, bz1 - bz0), s * (bx + 0.009), bLow + (bTop - bLow) * k / 6, (bz0 + bz1) / 2);
         for (let k = 0; k < segs; k++) {
           const z0 = bz0 + (bz1 - bz0) * k / segs, z1 = bz0 + (bz1 - bz0) * (k + 1) / segs, zc = (z0 + z1) / 2, wall = sideAt(bLow + 0.04, zc);
           // the floor and the top rail's cross bars back to the wall, a bracket into it
@@ -431,7 +449,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
         }
         // the front end's mesh face, beside the gun
         const fw = sideAt((bLow + bTop) / 2, bz1);
-        P.addEquipment('turretOpenLattice', box(bx - fw, bTop - bLow, 0.012), s * (bx + fw) / 2, (bLow + bTop) / 2, bz1);
+        for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLatticeDark', box(bx - fw, 0.008, 0.008), s * (bx + fw) / 2, bLow + (bTop - bLow) * k / 6, bz1 + 0.009);
         for (let k = 1; k < 5; k++) P.addEquipment('turretOpenLatticeDark', box(0.008, bTop - bLow - 0.03, 0.008), s * (fw + (bx - fw) * k / 5), (bLow + bTop) / 2, bz1 + 0.009);
         // the crew's kit inside
         stowage(P, 'turretCloth', rng, [[s * 1.12, bLow + 0.16, -1.30, 0.34, 0.28, 0.80], [s * 1.10, bLow + 0.14, 0.10, 0.30, 0.24, 0.70]]);
@@ -474,13 +492,13 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     };
     for (const s of [-1, 1] as const) {
       // (the DK-1's number rides its rear box: its flanks are behind the baskets)
-      if (!dk) P.decal('turret', 'number', P.spec.visual.number || '26', 0.20, [s * (sideAt(0.42, -0.30) + 0.004), 0.42, -0.30], s * Math.PI / 2);
+      if (!dk) P.decal('turret', 'number', P.spec.visual.number || '26', 0.28, [s * (sideAt(0.42, -0.30) + 0.004), 0.42, -0.30], s * Math.PI / 2);
       // the national mark on both flanks, sized to read at range: the US star, the Bundeswehr's cross, the JGSDF's badge
       if (!dk) P.decal('turret', mark === 'us' ? 'star' : mark === 'bw' ? 'cross' : 'emblem', null, 0.40,
         [s * (sideAt(0.40, -1.05) + 0.004), 0.40, -1.05], s * Math.PI / 2);
     }
     if (dk) P.decal('turret', 'number', P.spec.visual.number || '26', 0.26, [0, 0.47, -2.805], Math.PI);
-    if (mark === 'bw') P.decal('hull', 'cross', null, 0.34, [-0.55, 1.12, H.sternZ - 0.045], Math.PI);
+    if (mark === 'bw') P.decal('hull', 'cross', null, 0.18, [-0.20, 1.09, H.sternZ - 0.008], Math.PI);
   };
   buildM41TurretFittings();
   yield 'buildM41TurretFittings';
@@ -489,18 +507,19 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
   const buildM41Gun = (): void => {
     P.gunG.position.set(0, TRUNNION.y, TRUNNION.z);
     // 265 r2 (owner: "the mantelt should be part of and built into the turrets shaping, like with the stb 1"): the gun
-    // shield is the casting's own nose. The turret's front section runs on past the trunnion to the print's tip (0.46 m
-    // half-wide at the 1.75 m station), lofted in the gun's frame, so at rest its skin is the turret's and it turns round
-    // the trunnion with the gun; its rear stations stand inside the casting, so the travel opens no gap, and its floor
-    // sits 1.5 cm over the casting's (the mask's seam) to keep the driver's hatch clear at full depression.
-    const n0 = stationAt(TURRET, 1.50), inner = stationAt(TURRET, 1.38);
+    // shield is the casting's own nose. The turret's front section runs on past the trunnion to the shield's face, lofted
+    // in the gun's frame, so at rest its skin is the turret's and it turns round the trunnion with the gun; its rear
+    // stations stand inside the casting, so the travel opens no gap, and its floor sits 1.5 cm over the casting's (the
+    // mask's seam). r4 (critics: a bullet nose; the photographs' shield is broad, blunt and nearly upright): the face is a
+    // metre wide, about 45% of the turret's width, and stands tall.
+    const n0 = stationAt(TURRET, 0.95), inner = stationAt(TURRET, 0.83);
     const NOSE: readonly CastStation[] = [
       { ...inner, hw: inner.hw * 0.96, bot: inner.bot + 0.03, top: inner.top - 0.015 },
       { ...n0, bot: n0.bot + 0.015 },
-      { ...n0, z: 1.62, hw: 0.56, bot: 0.10, top: 0.50 },
-      { ...n0, z: 1.72, hw: 0.52, bot: 0.12, top: 0.47 },
-      { ...n0, z: 1.78, hw: 0.45, bot: 0.15, top: 0.44 },
-      { ...n0, z: 1.81, hw: 0.36, bot: 0.18, top: 0.41 },
+      { ...n0, z: 1.07, hw: 0.68, bot: 0.09, top: 0.55, nUp: 1.6 },
+      { ...n0, z: 1.17, hw: 0.64, bot: 0.10, top: 0.53, nUp: 1.6 },
+      { ...n0, z: 1.23, hw: 0.59, bot: 0.13, top: 0.51, nUp: 1.8 },
+      { ...n0, z: 1.26, hw: 0.51, bot: 0.16, top: 0.48, nUp: 2.0 },
     ].map((st) => ({ ...st, z: st.z - TRUNNION.z, bot: st.bot - TRUNNION.y, top: st.top - TRUNNION.y }));
     P.addGunExtra(castSolid(NOSE, P.q));
     // the telescope's port on the right of the gun, the coaxial MG's on its left, standing out of the nose's face
@@ -512,29 +531,36 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // r3 (the Aalborg photographs; critics: a small pale pillow): a large drab canvas over nearly the whole turret face,
       // sagging in folds, bellows at its sides where it meets the casting; its underside kept at the nose's own -0.21 m
       // (a fold lower held the gun at -4.3 deg over the driver's hatch)
-      P.add('gunMountCloth', xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.70, 0.58, 0.70]), 0, 0.055, 0.28);
-      for (const [y, z, len] of [[0.24, 0.30, 1.30], [0.04, 0.56, 1.24], [-0.15, 0.40, 1.08]] as const) {
-        P.add('gunMountCloth', xform(cylX(0.038, len, 10), 0, 0, 0, 0, 0, 0), 0, y, z);
+      // r4 (critics: an olive pod with pointed ends; the photographs' cover is pale khaki canvas, a lumpy bag as tall as
+      // the shield): the pale canvas, up to the roof line, its ends rounded by lumps and its top bunched
+      const cloth = 'gunMountCanvasPale';
+      P.add(cloth, xform(sph(0.46, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1.52, 0.70, 0.68]), 0, 0.11, 0.28);
+      for (const s of [-1, 1] as const) {
+        P.add(cloth, xform(sph(0.24, P.q ? 14 : 9), 0, 0, 0, 0, 0, 0, [0.85, 1.05, 1.0]), s * 0.60, 0.07, 0.24);
+        P.add(cloth, xform(sph(0.17, P.q ? 12 : 8), 0, 0, 0, 0, 0, 0, [1.7, 0.75, 1.1]), s * 0.24, 0.34, 0.24);
+      }
+      for (const [y, z, len] of [[0.27, 0.36, 1.24], [0.06, 0.58, 1.18], [-0.13, 0.42, 1.06]] as const) {
+        P.add(cloth, xform(cylX(0.042, len, 10), 0, 0, 0, 0, 0, 0), 0, y, z);
       }
       for (const s of [-1, 1] as const) for (const [x, z] of [[0.74, 0.20], [0.66, 0.10]] as const) {
-        P.add('gunMountCloth', cylY(0.045, 0.045, 0.40, 8), s * x, 0.05, z);
+        P.add(cloth, cylY(0.045, 0.045, 0.40, 8), s * x, 0.05, z);
       }
-      P.add('gunMountCloth', cylZ(0.10, 0.22, P.q ? 16 : 10, 0.15), 0, 0, 0.66);
+      P.add(cloth, cylZ(0.10, 0.22, P.q ? 16 : 10, 0.15), 0, 0, 0.66);
       // the Jahn Anderson thermal sight and the Ericsson laser rangefinder: a tall armoured housing on the shield's right,
       // its hood projecting over the window, the rangefinder's block on top
       // (r3: a third of the turret's face, down onto the nose: it stood on an open frame)
-      P.add('gunMount', box(0.50, 0.44, 0.66), -0.50, 0.36, 0.26);
-      P.add('gunMount', box(0.54, 0.035, 0.24), -0.50, 0.595, 0.62);
-      for (const x of [-0.71, -0.25]) P.add('gunMount', box(0.025, 0.20, 0.18), x, 0.46, 0.64);
-      P.add('gunMountDark', box(0.40, 0.24, 0.02), -0.50, 0.38, 0.595);
-      P.add('gunMountGlass', box(0.30, 0.16, 0.008), -0.50, 0.38, 0.607);
-      P.add('gunMount', box(0.26, 0.12, 0.36), -0.50, 0.64, 0.22);
+      // (r4: longer fore and aft, the hood an open frame standing out over a recessed window, a round lens beside it)
+      P.add('gunMount', box(0.46, 0.40, 0.84), -0.50, 0.36, 0.20);
+      P.add('gunMount', box(0.54, 0.035, 0.32), -0.50, 0.575, 0.70);
+      for (const x of [-0.75, -0.25]) P.add('gunMount', box(0.025, 0.22, 0.30), x, 0.46, 0.70);
+      P.add('gunMountDark', box(0.40, 0.26, 0.02), -0.50, 0.37, 0.615);
+      P.add('gunMountGlass', box(0.20, 0.14, 0.008), -0.56, 0.38, 0.627);
+      P.add('gunMountDark', cylZ(0.065, 0.03, 14), -0.36, 0.38, 0.632);
+      P.add('gunMountGlass', cylZ(0.05, 0.008, 14), -0.36, 0.38, 0.648);
+      P.add('gunMount', box(0.26, 0.12, 0.36), -0.50, 0.62, 0.20);
       P.add('gunMountDark', cylZ(0.05, 0.03, 14), -0.50, 0.64, 0.415);
       P.add('gunMountGlass', cylZ(0.038, 0.008, 14), -0.50, 0.64, 0.432);
       P.add('gunMount', box(0.08, 0.20, 0.32), -0.48, 0.15, 0.14);
-    } else {
-      // the halogen searchlight's bracket on the shield's top (the lamp rides in the fender box in transit)
-      P.add('gunMountDark', box(0.30, 0.04, 0.12), 0, 0.24, 0.20);
     }
     // 76 mm M32: a slight taper, the bore evacuator 0.5 m short of the muzzle, the T-shaped blast deflector (pattonCast's
     // M36 at the 76 mm gun's size); the muzzle on the print's 5.21 m

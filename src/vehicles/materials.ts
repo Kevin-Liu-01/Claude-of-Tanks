@@ -376,6 +376,26 @@ function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = 
   redrawWhenMarkingFontReady(draw);
 }
 
+// A registration plate: black lettering on a white plate with a thin black border, the plate a strip across the square
+// canvas (the Bundeswehr's "Y" plates)
+function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
+  const length = Math.max(1, text.length);
+  const draw = (): void => {
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = 'rgba(18,18,18,0.96)';
+    ctx.fillRect(2, 98, 252, 60);
+    ctx.fillStyle = 'rgba(238,236,228,0.98)';
+    ctx.fillRect(6, 102, 244, 52);
+    ctx.font = `bold ${Math.min(46, Math.floor(330 / length))}px 'Cot UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(18,18,18,0.96)';
+    ctx.fillText(text, 128, 129);
+  };
+  draw();
+  redrawWhenMarkingFontReady(draw);
+}
+
 // Transparent marking decal canvases.
 function paintDecal(
   kind: string,
@@ -393,6 +413,7 @@ function paintDecal(
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
   else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
   else if (kind === 'stencilWhite') paintStencilDecal(ctx, text ?? '', true);
+  else if (kind === 'plate') paintPlateDecal(ctx, text ?? '');
   // a NATO bridge-classification disc: black number on a yellow disc
   else if (kind === 'mlc') paintMlcDecal(ctx, text ?? '');
   // a flag on its pole (the text names the insignia painter, e.g. 'dk-dannebrog'): drawn as itself, never re-seated as
