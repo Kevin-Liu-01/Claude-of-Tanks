@@ -97,12 +97,14 @@ m41dk1.visual = {
   camoScale: 0.42,
 };
 
-// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun; r5:
-// one envelope over the three stock marks' sweeps after r4 set the turret face and the trunnion back): the full 9.7
-// degrees but over the left lift eye on the step ahead, and astern over the fender boxes, the engine deck's grilles and its stern
-const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [29, -9.7], [30, -9.6], [31, -8.7], [32, -8.3], [35, -8.4],
-  [38, -9.1], [39, -9.1], [41, -9.7], [128, -9.7], [129, -5.9], [130, -3.5], [131, -2.9], [143, -2.1], [150, -2.3],
-  [151, -2.7], [152, -8.2], [156, -7.4], [158, -7.4], [166, -8], [167, -7.3], [168, -6.7], [170, -6.6], [180, -6.7]] as const);
+// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its gun shield and the gun; the three
+// stock marks sweep alike): the full 9.7 degrees but dead ahead, where the broad proud shield (the owner 2026-10-30) meets
+// the driver's hatch at 9, and over the left lift eye on the step ahead; astern over the fender boxes, the engine deck's
+// grilles and its stern
+const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [4, -9.1], [7, -9.5], [8, -9.7], [29, -9.7], [30, -9.6], [31, -8.7],
+  [32, -8.3], [35, -8.4], [38, -9.1], [45, -9], [49, -9.5], [50, -9.7], [128, -9.7], [129, -5.9], [130, -3.5], [131, -2.9],
+  [143, -2.1], [150, -2.3], [151, -2.7], [152, -8.2], [156, -7.4], [158, -7.4], [166, -8], [167, -7.3], [168, -6.7],
+  [170, -6.6], [180, -6.7]] as const);
 for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
 // the DK-1's (r8 sweep, its fender stowage of the Aalborg top photograph): the mirrors on the mudguards and the box beside
 // the turret's front ahead, the full depression over the grid trays, the rear bins, the deck's grilles and its closed rear
@@ -117,10 +119,9 @@ m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [11, -9.7], [12, -9.5], [25,
 // The T49 (the owner 2026-10-30: "now that we have the m41 hull we can put the m551 turret on it and call it a t49"):
 // the M41A3's hull, running gear and Continental under the M551 Sheridan's turret and its 152 mm M81 gun-launcher with
 // the Shillelagh (profiles/m41.ts builds it); the 1950s light-tank programme tried bigger guns on the M41 under that
-// name, and the games know it in this form. The turret's plates, gun, traverse and crew seats are the M551's, its
-// pivot on the M41's ring at the M551's own seat: its shell rests 0.136-0.16 m over the pivot on a raised ring collar
-// (profiles/m41.ts), as on the M551's raised roof (seated on the M41's deck the gun-launcher's shroud met the driver's
-// hatch: 4.1 degrees over the bow); no ERA (the build carries none).
+// name, and the games know it in this form. The turret's plates, gun, traverse and crew seats are the M551's; its pivot
+// 0.30 m aft of the M41's ring, the turret centred on the hull, its shell on a low cast ring boss about 6 cm over the
+// deck (the owner 2026-10-30, profiles/m41.ts); no ERA (the build carries none).
 // Its hit points at the M41 DK-1's tier II footing.
 const t49 = m41('t49', 'T49', 'USA');
 {
@@ -133,19 +134,21 @@ const t49 = m41('t49', 'T49', 'USA');
   const inTurret = (entry: { turretLocal?: boolean }): boolean => entry.turretLocal === true;
   t49.armor = {
     ...t49.armor,
-    turretPivot: [0, 1.48, 0.20],
+    turretPivot: [0, 1.37, -0.10],
     gunPivot: [...sheridan.armor.gunPivot],
     gunBarrel: { ...sheridan.armor.gunBarrel },
     turretPlates: sheridan.armor.turretPlates.filter((plate) => plate.kind !== 'era').map((plate) => structuredClone(plate)),
     modules: [...t49.armor.modules.filter((m) => !inTurret(m)), ...sheridan.armor.modules.filter(inTurret).map((m) => structuredClone(m))],
     crew: [...t49.armor.crew.filter((c) => !inTurret(c)), ...sheridan.armor.crew.filter(inTurret).map((c) => structuredClone(c))],
   };
-  Object.assign(t49.dims, { overallLengthM: 6.30, heightM: 2.31 });
+  Object.assign(t49.dims, { overallLengthM: 6.04, heightM: 2.20 });
   t49.visual = { ...t49.visual, scheme: 'solid', base: '#4b4e32', weather: '#575a3e', patches: [], marking: 'star', number: '49', camoScale: 0.5 };
 }
-// the T49's measured gun stops (tools/gun-depression-sweep.mjs at 26 mm, the turret on its ring collar): the M551's full
-// 8 degrees but over the M41's rear quarters, where the gun-launcher crosses the deck's fittings
-t49.gunPitchByYawDeg = Object.freeze([[0, -8], [135, -8], [140, -6.8], [142, -5.7], [145, -5.7], [148, -6.7], [150, -6.9],
-  [151, -7.2], [152, -8], [180, -8]] as const);
+// the T49's measured gun stops (tools/gun-depression-sweep.mjs at 26 mm, the turret centred on its low ring boss): the
+// M551's full 8 degrees over the bow and flanks, less over the rear quarters where the gun-launcher crosses the M41's
+// rear deck fittings
+t49.gunPitchByYawDeg = Object.freeze([[0, -8], [110, -8], [111, -7.1], [114, -5], [115, -4.7], [117, -4.7], [123, -5],
+  [124, -4.2], [125, -3.9], [128, -3.6], [129, -3], [130, -2.8], [143, -2.8], [144, -2.9], [147, -3.5], [153, -6.6],
+  [155, -8], [180, -8]] as const);
 
 registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'], { m41a3, m41_bw, m41_jgsdf, m41dk1, t49 });

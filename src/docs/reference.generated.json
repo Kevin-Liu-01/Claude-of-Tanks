@@ -4789,6 +4789,27 @@
       "suspension": false
     },
     {
+      "id": "t49",
+      "name": "T49",
+      "nation": "USA",
+      "role": "light",
+      "tier": 2,
+      "hp": 1300,
+      "speed": 72,
+      "reverse": 20,
+      "hull": 55.7,
+      "turret": 51.5,
+      "dispersion": 0.302,
+      "reload": 8.6,
+      "aim": 1.38,
+      "view": 470,
+      "smoke": 8,
+      "lights": true,
+      "roofGun": true,
+      "missile": true,
+      "suspension": false
+    },
+    {
       "id": "griffin_viper",
       "name": "Griffin Viper",
       "nation": "USA",

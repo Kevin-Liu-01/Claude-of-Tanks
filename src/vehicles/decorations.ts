@@ -3033,8 +3033,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // the functional smoke pair (it carries the smoke consumable; the fleet has no exhaust smoke system); the DK-1's own
   // Wegmann banks carry it there, so it takes no decor pair beside them.
   if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
-  // the T49's M551 turret carries its own smoke banks
-  if (spec.id === 'm41dk1' || spec.id === 't49') return [];
+  if (spec.id === 'm41dk1') return [];
+  // the T49's M551 turret carries its own smoke banks and searchlight (profiles/m41.ts)
+  if (spec.id === 't49') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the

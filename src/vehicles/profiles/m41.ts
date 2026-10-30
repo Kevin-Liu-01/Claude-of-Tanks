@@ -430,12 +430,25 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
 
   if (mark === 't49') {
     // the T49 (the owner 2026-10-30: "now that we have the m41 hull we can put the m551 turret on it and call it a
-    // t49"): the M551's turret and M81 gun-launcher on the M41's ring at the M551's own seat (m41Specs.ts), its shell on a
-    // raised ring collar from the deck to 5 mm under it, as the M551's raised roof carries it (the shell reaches 0.78 m
-    // from the axis astern, so the collar stays inside that); the white star on its sides at the M551's number seats
-    const collarTop = 1.48 + 0.131, collarFoot = 1.38;
-    P.add('hull', cylY(0.92, 0.97, collarTop - collarFoot, P.q ? 40 : 24), 0, (collarTop + collarFoot) / 2, RING.z);
+    // t49"): the M551's turret and M81 gun-launcher on the M41's hull (its pivot in m41Specs.ts), its shell on a low sloped
+    // cast ring boss from the deck to 5 mm under it (the owner 2026-10-30: "the t49 turret should be more centered and that
+    // turret mound should be decreased a lot": the turret 0.30 m aft of the M41's ring, the boss about 6 cm over the
+    // deck); the white star on its sides at the M551's number seats
+    const [, ringY, ringZ] = P.spec.armor.turretPivot;
+    const collarTop = ringY + 0.131, collarFoot = deckY(ringZ) - 0.05;
+    P.add('hull', cylY(0.95, 1.03, collarTop - collarFoot, P.q ? 40 : 24), 0, (collarTop + collarFoot) / 2, ringZ);
     buildSheridanTurret(P as unknown as Parameters<typeof buildSheridanTurret>[0]);
+    // the M551's searchlight low on the turret's front left over the gun-launcher and the left smoke bank, in the coat, its
+    // round lens behind a visor (c5 critics on the Lewis Army Museum photograph: the decor light was a white drum high
+    // on the roof)
+    P.addEquipment('turret', box(0.36, 0.34, 0.30), 0.74, 0.66, 1.41);
+    P.add('turretDark', cylZ(0.145, 0.03, P.q ? 24 : 14), 0.74, 0.66, 1.571);
+    P.addModuleVisual('optics', 'turretGlass', cylZ(0.12, 0.022, P.q ? 24 : 14), 0.74, 0.66, 1.591);
+    P.add('turretDark', box(0.38, 0.02, 0.10), 0.74, 0.838, 1.55);
+    P.add('turretDetail', box(0.19, 0.04, 0.12), 0.685, 0.47, 1.30);
+    // its ring closed by the cast boss: no generated seat collar (stepped bin by bin up under the high rear bustle it read
+    // as saw-tooth shards on the flanks: c5 critics)
+    P.turretG.userData.turretSeatCollar = false;
     for (const s of [-1, 1] as const) P.decal('turret', 'star', null, 0.30, [s * 1.20, 0.43, -0.36], s * Math.PI / 2);
     P.topY = 0.96;
     yield 'buildT49Turret';
@@ -606,25 +619,53 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     // stations stand inside the casting, so the travel opens no gap, and its floor sits 1.5 cm over the casting's (the
     // mask's seam). r4 (critics: a bullet nose; the photographs' shield is broad, blunt and nearly upright): the face is a
     // metre wide, about 45% of the turret's width, and stands tall.
-    const n0 = stationAt(TURRET, 0.95), inner = stationAt(TURRET, 0.83);
-    const NOSE: readonly CastStation[] = [
-      { ...inner, hw: inner.hw * 0.96, bot: inner.bot + 0.03, top: inner.top - 0.015 },
-      { ...n0, bot: n0.bot + 0.015 },
-      { ...n0, z: 1.07, hw: 0.68, bot: 0.09, top: 0.55, nUp: 1.6 },
-      { ...n0, z: 1.17, hw: 0.64, bot: 0.10, top: 0.53, nUp: 1.6 },
-      { ...n0, z: 1.23, hw: 0.59, bot: 0.13, top: 0.51, nUp: 1.8 },
-      { ...n0, z: 1.26, hw: 0.51, bot: 0.16, top: 0.48, nUp: 2.0 },
-    ].map((st) => ({ ...st, z: st.z - TRUNNION.z, bot: st.bot - TRUNNION.y, top: st.top - TRUNNION.y }));
-    P.addGunExtra(castSolid(NOSE, P.q));
-    // the telescope's port on the right of the gun, the coaxial MG's on its left, standing out of the nose's face
-    // (r6, critics: both sat behind the face, so the shield read as a bare recess): cast bosses proud of it, their dark
-    // apertures and the coaxial's muzzle
-    P.addGunExtra(box(0.15, 0.13, 0.09), -0.28, 0.07, 0.505);
-    P.addGunExtraDark(box(0.08, 0.065, 0.02), -0.28, 0.07, 0.55);
-    P.addGunExtra(box(0.12, 0.11, 0.09), 0.30, 0.02, 0.505);
-    P.addGunExtraDark(cylZ(0.024, 0.02, 12), 0.30, 0.02, 0.55);
-    P.addGunExtraDark(cylZ(0.012, 0.08, 10), 0.30, 0.02, 0.59);
-    P.addGunExtra(cylZ(0.12, 0.08, P.q ? 20 : 12, 0.13), 0, 0, 0.53);
+    if (dk) {
+      // the DK-1 keeps the casting's own nose, under its canvas cover
+      const n0 = stationAt(TURRET, 0.95), inner = stationAt(TURRET, 0.83);
+      const NOSE: readonly CastStation[] = [
+        { ...inner, hw: inner.hw * 0.96, bot: inner.bot + 0.03, top: inner.top - 0.015 },
+        { ...n0, bot: n0.bot + 0.015 },
+        { ...n0, z: 1.07, hw: 0.68, bot: 0.09, top: 0.55, nUp: 1.6 },
+        { ...n0, z: 1.17, hw: 0.64, bot: 0.10, top: 0.53, nUp: 1.6 },
+        { ...n0, z: 1.23, hw: 0.59, bot: 0.13, top: 0.51, nUp: 1.8 },
+        { ...n0, z: 1.26, hw: 0.51, bot: 0.16, top: 0.48, nUp: 2.0 },
+      ].map((st) => ({ ...st, z: st.z - TRUNNION.z, bot: st.bot - TRUNNION.y, top: st.top - TRUNNION.y }));
+      P.addGunExtra(castSolid(NOSE, P.q));
+      // the telescope's port on the right of the gun, the coaxial MG's on its left, standing out of the nose's face
+      // (r6, critics: both sat behind the face, so the shield read as a bare recess): cast bosses proud of it, their dark
+      // apertures and the coaxial's muzzle
+      P.addGunExtra(box(0.15, 0.13, 0.09), -0.28, 0.07, 0.505);
+      P.addGunExtraDark(box(0.08, 0.065, 0.02), -0.28, 0.07, 0.55);
+      P.addGunExtra(box(0.12, 0.11, 0.09), 0.30, 0.02, 0.505);
+      P.addGunExtraDark(cylZ(0.024, 0.02, 12), 0.30, 0.02, 0.55);
+      P.addGunExtraDark(cylZ(0.012, 0.08, 10), 0.30, 0.02, 0.59);
+      P.addGunExtra(cylZ(0.12, 0.08, P.q ? 20 : 12, 0.13), 0, 0, 0.53);
+    } else {
+      // the owner 2026-10-30 (a photograph of an M41's turret front: "make m41 mantlets a lot more evident"): the gun
+      // shield a broad, blunt casting standing 0.35 m proud of the turret's face, 1.28 m across, its sides and face near
+      // flat with rounded edges, its top a ledge under the face's upper slope, ringed at its root by the mask's dark gap;
+      // its underside where the gun's 9.7 degrees of depression keep it clear of the deck. On its face the square gun
+      // port, the coaxial MG's round port on the left and the telescope's teardrop port on the right.
+      // (the teardrop sight port high in its outer corner on the gunner's side: c4 critics, both, on the scale model; c5's
+      // taller, rounder crown read as a pillow blended into the roof: back to c4's square block)
+      const shield = (z: number, hw: number, bot: number, top: number): CastStation => ({ z: z - TRUNNION.z, hw,
+        bot: bot - TRUNNION.y, top: top - TRUNNION.y, roof: 0.80, foot: 0.82, waist: 0.45, nUp: 3.4, nLo: 3.4 });
+      P.addGunExtra(castSolid([
+        shield(0.83, 0.62, 0.08, 0.49), shield(0.97, 0.64, 0.07, 0.50), shield(1.12, 0.64, 0.095, 0.50),
+        shield(1.22, 0.62, 0.115, 0.48), shield(1.28, 0.56, 0.13, 0.44), shield(1.30, 0.48, 0.15, 0.41),
+      ], P.q));
+      P.addGunExtraDark(castSolid([shield(0.94, 0.655, 0.065, 0.515), shield(0.962, 0.655, 0.065, 0.515)], P.q));
+      const face = 1.30 - TRUNNION.z;
+      P.addGunExtra(box(0.21, 0.19, 0.04), 0, 0, face + 0.01);
+      P.addGunExtraDark(box(0.155, 0.145, 0.012), 0, 0, face + 0.031);
+      P.addGunExtra(cylZ(0.05, 0.04, 14), 0.30, -0.04, face + 0.005);
+      P.addGunExtraDark(cylZ(0.024, 0.012, 12), 0.30, -0.04, face + 0.026);
+      P.addGunExtraDark(cylZ(0.012, 0.08, 10), 0.30, -0.04, face + 0.06);
+      P.addGunExtra(cylZ(0.07, 0.04, 16), -0.36, 0.035, face - 0.012);
+      P.addGunExtra(box(0.085, 0.085, 0.04).rotateZ(Math.PI / 4), -0.36, 0.085, face - 0.012);
+      P.addGunExtraDark(cylZ(0.040, 0.012, 14), -0.36, 0.035, face + 0.010);
+      P.addGunExtraDark(box(0.045, 0.045, 0.012).rotateZ(Math.PI / 4), -0.36, 0.068, face + 0.010);
+    }
     if (dk) {
       // the DK-1's weathered canvas cover gathered round the nose and the tube's root, in folds
       // r3 (the Aalborg photographs; critics: a small pale pillow): a large drab canvas over nearly the whole turret face,
@@ -679,7 +720,8 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     P.add('gun', cylZ(r1 * 1.3, 0.06, seg), 0, 0, z0 + 0.03);
     muzzleBore(P, { z: len + 0.004, r: r1 * 0.78 });
     P.muzzleZ = len;
-    P.gunG.userData.m41MantletReceipt = { thermalSightBox: dk ? 'right' : null, canvasCover: dk, barrelRadius: r1, device: 'T-deflector' };
+    P.gunG.userData.m41MantletReceipt = { thermalSightBox: dk ? 'right' : null, canvasCover: dk, barrelRadius: r1, device: 'T-deflector',
+      proudShield: dk ? null : { widthM: 1.28, standsProudM: 0.35 } };
     P.mats.glass.color.setHex(0x3e493b);
     // r5: the DK-1's cover a weathered grey-khaki (critics: the pale canvas was the brightest thing on it; r6: it read
     // sage, the photographs' a dirty khaki-tan) and its spare links rust-brown (the wood tone: critics, black slats read as

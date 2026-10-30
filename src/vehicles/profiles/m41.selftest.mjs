@@ -48,6 +48,8 @@ for (const [id, mark] of Object.entries(MARKS)) {
       assert.equal(r.bustleRack, !dk, `${id} ${quality}: the bustle rack on the originals`);
       assert.equal(r.dischargers, dk ? 8 : 0, `${id} ${quality}: Wegmann dischargers on the DK-1`);
       assert.equal(g.thermalSightBox, dk ? 'right' : null, `${id} ${quality}: the DK-1's thermal sight box on the shield's right`);
+      // the owner 2026-10-30: the gun shield a broad casting proud of the turret's face; the DK-1's under its canvas
+      assert.equal(g.proudShield?.widthM ?? null, dk ? null : 1.28, `${id} ${quality}: the proud gun shield`);
       if (target) {
         const box = new THREE.Box3().setFromObject(tank.root);
         for (const [label, actual, want] of [['width', box.max.x - box.min.x, target.widthM],
@@ -75,9 +77,9 @@ for (const [id, mark] of Object.entries(MARKS)) {
       tank.root.updateMatrixWorld(true);
       const turret = tank.root.getObjectByName('rig_turret');
       assert.equal(turret.userData.m41TurretReceipt, undefined, `${id} ${quality}: not the M41's turret`);
-      near(turret.getWorldPosition(new THREE.Vector3()).y, 1.48, `${id} ${quality} the M551 turret's seat on its ring collar`);
-      // the M551's tube to 3.19 m ahead of its pivot, the pivot on the M41's ring at 0.20
-      near(new THREE.Box3().setFromObject(tank.root.getObjectByName('rig_gun')).max.z, 3.39, `${id} ${quality} muzzle`, 0.05);
+      near(turret.getWorldPosition(new THREE.Vector3()).y, 1.37, `${id} ${quality} the M551 turret on its low ring boss`);
+      // the M551's tube to 3.19 m ahead of its pivot, the pivot 0.30 m aft of the M41's ring
+      near(new THREE.Box3().setFromObject(tank.root.getObjectByName('rig_gun')).max.z, 3.09, `${id} ${quality} muzzle`, 0.05);
     } finally {
       tank.dispose?.();
     }

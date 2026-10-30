@@ -149,7 +149,9 @@ cv9035dk.visual = {
   // black and a pale grey-green on a darker ground, its wash light so it stays its own paint
   // r9 (r8 critics, both: the pale sage bright, small even blobs; the Holstebro coat darker, lower in contrast, fewer and
   // larger fields): the light tone darker and warmer, the fields larger
-  scheme: 'nato', base: '#4a4f40', weather: '#5a5e50', patches: ['#353b2e', '#202319', '#555a4a'], marking: 'number', number: '45',
+  // c4 (critics, both: too pale and cool, the Holstebro coat darker): the ground a darker olive, the third tone a dark
+  // grey-olive for the pale sage
+  scheme: 'nato', base: '#454a37', weather: '#50543f', patches: ['#2e3527', '#1b1d17', '#3d4234'], marking: 'number', number: '45',
   camoScale: 0.45,
 };
 // the CV90 Mk IV under it (the owner 2026-10-30: "the cv9035 should be based on the cv90 mk 4"; profiles/denmark.ts

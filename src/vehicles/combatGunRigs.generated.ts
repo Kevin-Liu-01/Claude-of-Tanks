@@ -44,7 +44,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "chieftain_mk9": {"turretPivot":[0,1.72,0.08],"gunPivot":[-0.02,0.0915,0.66],"lengthM":6.35,"radiusM":0.1403},
   "christian2": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.36,1.04],"lengthM":4.29,"radiusM":0.1025},
   "cv90105_tml": {"turretPivot":[0.016,1.595,-0.62],"gunPivot":[0,0.283,1.32],"lengthM":4.0429},
-  "cv9035dk": {"turretPivot":[0,1.521,-0.432],"gunPivot":[0,0.351,1.035],"lengthM":2.2158},
+  "cv9035dk": {"turretPivot":[-0.035,1.55,-0.6],"gunPivot":[0.207,0.294,1.3],"lengthM":2.42},
   "cv9040c": {"turretPivot":[0,1.78,-0.76],"gunPivot":[0,0.405,1.56],"lengthM":2.75},
   "cv90_mk4": {"turretPivot":[-0.035,1.55,-0.6],"gunPivot":[0.2065,0.2972,1.3],"lengthM":2.8062,"radiusM":0.0442},
   "cv90_mk4_concept": {"turretPivot":[0,1.62,-0.396],"gunPivot":[0,0.405,1.044],"lengthM":3.384},

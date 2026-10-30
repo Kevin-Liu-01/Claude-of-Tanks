@@ -22,5 +22,7 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   // 20-degree chunks) crosses the dock, and from 85 degrees the commander's cupola (.qa-dev arc and dock probes, 262)
   type59: { type59RoofDShK: [-3.0543, 0.4363] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
+  // 265: the T49 carries the M551's turret and its two roof stations (profiles/m41.ts), so their arcs
+  t49: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
 });
