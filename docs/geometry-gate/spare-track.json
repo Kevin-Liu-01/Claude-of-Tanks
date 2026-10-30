@@ -2477,6 +2477,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "osorio_p1": {
+   "inputHash": "4f02b9f239db5399",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "osorio_p2": {
+   "inputHash": "3624887ce023a725",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "pl01": {
    "inputHash": "af9c4ac9753fbe77",
    "runs": [],
@@ -3528,6 +3540,64 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "tamoyo1": {
+   "inputHash": "ca331cbb1a19f942",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@buildTamoyoHullFittings@profiles/tamoyo.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.978,
+      "gap": 0.022,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.007,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.944,
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "tamoyo3": {
+   "inputHash": "5bc2a7c9055ff440",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@buildTamoyoHullFittings@profiles/tamoyo.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.008,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.922,
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "tos1a_tagil": {
    "inputHash": "51295c121e61a827",
    "runs": [],
@@ -4093,6 +4163,18 @@
   },
   "warrior_tes_h": {
    "inputHash": "9873adf8550017e6",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "x1_pioneiro": {
+   "inputHash": "fec6382d892a5171",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "x1a2_carcara": {
+   "inputHash": "040c50d76dc7b4b2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -341,17 +341,22 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.62, roof + 0.04, rear + 0.40);
       P.addEquipment('turret', cylY(0.012, 0.015, 2.0, 8), s * 0.62, roof + 1.04, rear + 0.40, 0, 0, s * 0.03);
     }
-    // the dischargers. The Tamoyo 1: a fan of four large tubes on each front cheek, laid down the wedge and aimed forward,
-    // each splayed a little further out (Vesp's profile, the TI-2's front photograph). The Tamoyo 3: a cluster of six on
-    // a bracket at about 70% of the turret's length, aimed forward, up and out (Vesp's profile).
+    // the dischargers. The Tamoyo 1: a fan of four large tubes on each front cheek, aimed forward and a little up off the
+    // wedge, each splayed a little further out, the rear of each on the wedge and its muzzle on a post (Vesp's profile,
+    // the TI-2's front photograph; a launcher never fires into the ground, tools/vehicle-controls-inventory.mjs). The
+    // Tamoyo 3: a cluster of six on a bracket at about 70% of the turret's length, aimed forward, up and out (Vesp's
+    // profile).
     const wedgeTilt = Math.atan2(roof - T1_WEDGE.y1, T1_WEDGE.z1 - T1_WEDGE.z0);
     for (const s of [-1, 1] as const) {
       if (!t3) {
-        const r = 0.052;
+        const r = 0.052, half = 0.15, lift = 0.04;
         for (let k = 0; k < 4; k++) {
-          const x = s * (0.60 + k * 0.085), z = T1_WEDGE.z1 - 0.15 - k * 0.12, ny = Math.cos(wedgeTilt), nz = Math.sin(wedgeTilt);
-          P.addEquipment('turret', xform(markSmokeTube(cylZ(r, 0.30, P.q ? 14 : 8)), 0, 0, 0, wedgeTilt * 0.85, s * (0.06 + k * 0.07), 0),
-            x, wedgeY(z) + (r + 0.012) * ny, z + (r + 0.012) * nz);
+          const x = s * (0.60 + k * 0.085), z = T1_WEDGE.z1 - 0.15 - k * 0.12;
+          const y = wedgeY(z - half) + 0.012 + r * Math.cos(lift) + half * Math.sin(lift);
+          P.addEquipment('turret', xform(markSmokeTube(cylZ(r, 2 * half, P.q ? 14 : 8)), 0, 0, 0, -lift, s * (0.06 + k * 0.07), 0),
+            x, y, z);
+          const pz = z + 0.10, py0 = wedgeY(pz) - 0.01, py1 = y + 0.10 * Math.sin(lift) - r * 0.9;
+          P.addEquipment('turretDetail', box(0.03, py1 - py0, 0.04), x + s * 0.10 * Math.sin(0.06 + k * 0.07), (py0 + py1) / 2, pz);
         }
         // the tubes' cradle on the wedge
         const cz = T1_WEDGE.z1 - 0.27;
@@ -388,7 +393,7 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     for (const dx of [-0.17, 0.17]) P.addEquipment('turretDetail', box(0.03, 0.30, 0.03), 0.42 + dx, canY - 0.12, rear - 0.015);
     jerryCan(P, 'turretCloth', 0.42, canY, rear - 0.16, 0);
     P.turretG.userData.tamoyoTurretReceipt = {
-      revision: 'tamoyo-266-r2', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 12 : 8,
+      revision: 'tamoyo-266-r3', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 12 : 8,
     };
   };
   buildTamoyoTurretFittings();

@@ -28,6 +28,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
@@ -340,7 +341,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         const lz = D.glacisZ + 0.22, ly = deckY(lz), lx = D.sponsonX - 0.30;
         P.add('hullDetail', xform(box(0.30, 0.12, 0.12), 0, 0, 0, glacis, 0, 0), s * lx, ly + 0.05, lz);
         for (const dx of [-0.075, 0.075]) {
-          P.add('hullGlass', xform(cylZ(0.042, 0.012, 12), 0, 0, 0, glacis, 0, 0), s * (lx + dx), ly + 0.07, lz + 0.065);
+          P.add('hullGlass', xform(markVehicleNightLens(cylZ(0.042, 0.012, 12), 'headlight'), 0, 0, 0, glacis, 0, 0), s * (lx + dx), ly + 0.07, lz + 0.065);
         }
         for (const gx of [lx - 0.18, lx + 0.18]) bar('hullDark', [s * gx, ly + 0.005, lz - 0.05], [s * gx, ly + 0.15, lz + 0.06], 0.012);
         bar('hullDark', [s * (lx - 0.18), ly + 0.15, lz + 0.06], [s * (lx + 0.18), ly + 0.15, lz + 0.06], 0.012);
@@ -604,7 +605,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       P.addEquipment('turret', cylY(0.035, 0.045, 0.08, 10), -0.50, wy + 0.035, wz);
       P.addEquipment('turret', whip, -0.50, wy + 0.075, wz);
     }
-    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r5', mark, roofY: roof, front: T.front, rear: T.rear,
+    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r6', mark, roofY: roof, front: T.front, rear: T.rear,
       spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'rect-periscope' : 'tall-slit', cupolaTopY: +cupolaTop.toFixed(3),
       ringCollar: a2, smokeTubesPerSide: a2 ? 9 : 3 };
   };

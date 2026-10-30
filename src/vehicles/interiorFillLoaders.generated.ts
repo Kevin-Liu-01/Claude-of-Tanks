@@ -18,6 +18,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "arieteX": () => import('./interiorFillGroups/arieteX.generated.ts'),
   "bmp3mDragun125X": () => import('./interiorFillGroups/bmp3mDragun125X.generated.ts'),
   "borsuk": () => import('./interiorFillGroups/borsuk.generated.ts'),
+  "brazil": () => import('./interiorFillGroups/brazil.generated.ts'),
   "challenger": () => import('./interiorFillGroups/challenger.generated.ts'),
   "challenger1X": () => import('./interiorFillGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./interiorFillGroups/chieftain10X.generated.ts'),
