@@ -79,6 +79,9 @@ export interface LibraryStationGunOptions {
   /** A gun a crewman fires at the mount (a loader's or commander's pintle): its grips, sight and ammunition box, in place
    *  of a remote station's solenoid housing. */
   crew?: boolean;
+  /** How far the receiver's centre stands behind the pivot (default 0.08 m). An enclosed mini-turret sets it so the whole
+   *  receiver stays under its flat roof, behind the sloped face; the barrel still runs to the published muzzle. */
+  receiverBehind?: number;
 }
 
 /**
@@ -95,7 +98,7 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   const scale = o.cls === 'kord' ? 1.02 : 1;
   const base = { cls: o.cls, scale, remote: !o.crew, ammo: Boolean(o.crew), mount: 'external-cradle', feed } as const;
   const probe = createPintleLayout(base, { add() {} });
-  const dz = o.pivotZ - 0.08 - probe.recZ, dy = o.boreY - probe.trunY;
+  const dz = o.pivotZ - (o.receiverBehind ?? 0.08) - probe.recZ, dy = o.boreY - probe.trunY;
   const barrelLength = o.muzzleZ === undefined ? undefined : o.muzzleZ - dz - probe.trunZ - 0.10 * probe.s - def.flashL * probe.s;
   const layout = createPintleLayout({ ...base, ...(barrelLength === undefined ? {} : { barrelLength }), muzzleBoreDepth: 0.07 }, {
     add(slot: string, geometry: THREE.BufferGeometry, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): void {

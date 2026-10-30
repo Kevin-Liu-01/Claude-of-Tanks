@@ -577,6 +577,8 @@ function cradleStation(P: TankBuilderPort, S: Station): THREE.Group {
 /** An enclosed armoured mini-turret: faceted housing with its sight hood and the gun in a mantlet block. */
 function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false, ownRing = false): THREE.Group {
   const race = RACE_Y + (S.rise ?? 0), heavy = S.caliber > 10, pivotY = race + 0.21, pivotZ = S.z + 0.30;
+  // 264: the heavy station's housing stands 5 cm taller over the true-scale M2, whose feed cover rises 127 mm over its bore
+  const roofRise = heavy ? 0.05 : 0;
   const muzzleZ = pivotZ + (heavy ? 1.12 : 0.80);
   // an owner-kit station carries its ring in its own group (it turns with the mount: the ring is round)
   const ownRingDone = ownRing ? captureAuxiliaryStock(P, S.name, 'yaw') : null;
@@ -589,20 +591,22 @@ function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false, ow
   const ring = (half: number, top: number, roofHalf: number): [number, number][] =>
     [[S.x - half, race + 0.05], [S.x + half, race + 0.05], [S.x + roofHalf, top], [S.x - roofHalf, top]];
   w.add('turretDetail', sectionSolid([
-    { z: S.z - 0.40, ring: ring(0.22, race + 0.25, 0.19) },
-    { z: S.z - 0.20, ring: ring(0.27, race + 0.30, 0.22) },
-    { z: pivotZ - 0.10, ring: ring(0.27, race + 0.30, 0.22) },
+    { z: S.z - 0.40, ring: ring(0.22, race + 0.25 + roofRise, 0.19) },
+    { z: S.z - 0.20, ring: ring(0.27, race + 0.30 + roofRise, 0.22) },
+    { z: pivotZ - 0.10, ring: ring(0.27, race + 0.30 + roofRise, 0.22) },
     { z: pivotZ + 0.03, ring: ring(0.25, race + 0.13, 0.23) },
   ]), 0, 0, 0);
-  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, race + 0.305, S.z - 0.05);
+  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, race + 0.305 + roofRise, S.z - 0.05);
   w.add('turretDetail', box(0.11, 0.16, 0.22), S.x + 0.32, race + 0.20, pivotZ - 0.15);
   w.add('turretGlass', box(0.06, 0.06, 0.012), S.x + 0.32, race + 0.22, pivotZ - 0.035);
   w.add('turretDark', box(0.13, 0.02, 0.26), S.x + 0.32, race + 0.29, pivotZ - 0.14);
   w.stage('pitch');
   w.add('turretDetail', box(0.19, 0.15, 0.13), S.x, pivotY, pivotZ + 0.05);
   // the gun behind the mantlet is the fleet's construction of its class, its barrel and hider through the mantlet to the
-  // published muzzle (owner 2026-10-28, as the open cradles')
-  libraryStationGun(w, { cls: S.gun, x: S.x, boreY: pivotY, pivotZ, muzzleZ });
+  // published muzzle (owner 2026-10-28, as the open cradles'); its receiver stands behind the trunnion under the
+  // housing's flat roof, the M2's 0.46 m receiver further back than the 7.62's (at 0.08 m their fronts rose through the
+  // sloped face: blind critic, 264)
+  libraryStationGun(w, { cls: S.gun, x: S.x, boreY: pivotY, pivotZ, muzzleZ, receiverBehind: heavy ? 0.32 : 0.25 });
   if (searchlight) {
     w.add('turretDetail', box(0.07, 0.06, 0.10), S.x - 0.14, pivotY + 0.02, pivotZ + 0.05);
     w.add('turretDark', cylZ(0.10, 0.20, P.q ? 24 : 16), S.x - 0.25, pivotY + 0.04, pivotZ + 0.06);

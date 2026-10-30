@@ -130,8 +130,9 @@ function turretB(P: TankBuilderPort): THREE.Group {
   // the mantlet block, the gun's barrel with its cooling sleeve and flash hider
   w.add('turretDetail', box(.20, .16, .14), B.x, B.pivotY, B.pivotZ + .05);
   // the gun behind the mantlet is the fleet's 7.62 mm construction (libraryStationGun), its barrel and hider through
-  // the mantlet to the published muzzle (owner 2026-10-28, as turret A's M2)
-  libraryStationGun(w, { cls: 'mag', x: B.x, boreY: B.pivotY, pivotZ: B.pivotZ, muzzleZ });
+  // the mantlet to the published muzzle (owner 2026-10-28, as turret A's M2); its receiver stands 0.25 m behind the
+  // trunnion, under the housing's flat roof (at 0.08 m its front rose through the sloped face: blind critic, 264)
+  libraryStationGun(w, { cls: 'mag', x: B.x, boreY: B.pivotY, pivotZ: B.pivotZ, muzzleZ, receiverBehind: .25 });
   // searchlight housing on the mantlet's left (its lens rides the gun's pitch below)
   w.add('turretDetail', box(.05, .05, .08), B.x - .14, B.pivotY + .02, B.pivotZ + .05);
   w.add('turretDark', cylZ(.065, .14, P.q ? 20 : 14), B.x - .20, B.pivotY + .03, B.pivotZ + .08);
