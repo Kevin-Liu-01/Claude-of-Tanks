@@ -8,7 +8,8 @@
  *
  * No prediction, no reconciliation, no snapshots, no rooms: nothing from src/mp. When the thread falls behind, game
  * time slows (at most two steps a wake, the rest of the debt dropped); it never jumps. No DOM: a Worker in the browser,
- * in-process in the receipts.
+ * in-process in the receipts. A control the player changes is stepped at once (the cadence then runs on from that tick):
+ * the input waits for no tick, and game time keeps its 60 ticks a second.
  */
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import * as detMath from '../sim/detMath.ts';
@@ -308,6 +309,13 @@ export function createLocalSimCore({
     });
   }
 
+  /** Whether a posted input changes a control (drive, steer, brake, fire, the round, an action), not only the aim. */
+  function controlsChanged(next: Float64Array): boolean {
+    return next[LOCAL_INPUT.throttle] !== input[LOCAL_INPUT.throttle] || next[LOCAL_INPUT.steer] !== input[LOCAL_INPUT.steer]
+      || next[LOCAL_INPUT.brake] !== input[LOCAL_INPUT.brake] || next[LOCAL_INPUT.fire] !== input[LOCAL_INPUT.fire]
+      || next[LOCAL_INPUT.shellSlot] !== input[LOCAL_INPUT.shellSlot] || next[LOCAL_INPUT.actionBits] !== input[LOCAL_INPUT.actionBits];
+  }
+
   // ---- input and actions ----
   function applyInput(): void {
     if (!player || !inputSeen) return;
@@ -559,10 +567,20 @@ export function createLocalSimCore({
         void boot(message.boot).catch((error: unknown) => post({ type: 'failed', error: error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error) }));
         return;
       case 'input': {
+        const moved = controlsChanged(message.v);
         input.set(message.v.subarray(0, LOCAL_INPUT.length));
         if (input[LOCAL_INPUT.fire] !== 0) fireLatched = true;
         actionBitsLatched |= input[LOCAL_INPUT.actionBits]! | 0;
         inputSeen = true;
+        // a control the player changed is stepped now, not at the cadence's next tick (which then follows a tick on);
+        // the aim alone, posted every frame, keeps the cadence
+        if (moved && running && timer !== null && inFlight < LOCAL_SIM_MAX_IN_FLIGHT) {
+          cancel(timer);
+          timer = null;
+          stepAndPost();
+          nextAt = now() + LOCAL_SIM_TICK_MS;
+          timer = schedule(pump, LOCAL_SIM_TICK_MS);
+        }
         return;
       }
       case 'bodies': applyBodies(message.bodies); return;
