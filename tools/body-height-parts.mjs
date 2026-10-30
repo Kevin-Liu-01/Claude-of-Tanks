@@ -3,7 +3,8 @@
 // or other thin roof fittings. The sim's dims.heightM (bots aim at 0.85 of it) does not change. Main's rulings later that
 // day: a published height is an interval target, since sources measure to the cupola or to the roof gun: it passes when it
 // lies between the body top and the roof-fittings top (whips always out, heightIntervalPct). An oracle comparison stays
-// body against body. Hull length comes from the hull curve, so a barrel column can never count as hull (bodyExtent).
+// body against body. Hull length is the hull curve's own side span (the gun's rig left out, even on a casemate), never a
+// band threshold that barrel columns can cross (bodyExtent).
 //
 // The parts are named by tags the builders already set, never by shape:
 //   - fitting roots (profiles/kit.ts FITTINGS): antennaWhip, and the roof-gun set ghillieSuit.ts's ROOF_GUN_FITTINGS names;
@@ -15,7 +16,8 @@
 // A supplied oracle names its own: the War Thunder exports' antenna* nodes and their roof guns' bones, mounts and guns
 // (bone_mg_aa_*, mg_aa*, bone_mg_h_/bone_mg_v_*, mg_NN, mg_mount_*; never mg_twin or bone_mg_twin, the coaxial and
 // over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, or the registration's
-// own roofFittingNodes pattern, so a gun-less oracle compares like for like.
+// own roofFittingNodes pattern, so a gun-less oracle compares like for like. An oracle that names none (a fused export)
+// cannot drop its whips, so an oracle comparison is whole against whole there.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
 
 /** Fitting types that are roof fittings; the antenna ones never count toward any height. */
@@ -25,12 +27,12 @@ export const ANTENNA_FITTING_TYPES = Object.freeze(['antennaWhip']);
 /** Seat roles cut from merged buckets (all antennas). */
 export const BODY_EXCLUDED_SEAT_ROLES = Object.freeze(['antenna']);
 /** Oracle node names: whips, masts and aerials, and the roof guns with their mounts (never the coaxial mg_twin). */
-export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/])(?:antenna|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan)/i;
+export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan)/i;
 
 const roofTypes = new Set(ROOF_FITTING_TYPES);
 const antennaTypes = new Set(ANTENNA_FITTING_TYPES);
 const cutRoles = new Set(BODY_EXCLUDED_SEAT_ROLES);
-const oracleAntenna = /(?:^|[#/])(?:antenna|aerial)/i;
+const oracleAntenna = /(?:^|[#/-])(?:antenna|aerial)/i;
 
 /** Whether a roof-fitting tag (roofFittingParts) names an antenna, which leaves every height, or a roof weapon, which only
  * the body leaves. */
@@ -60,7 +62,8 @@ export function oracleRoofFittingTag(object, root, pattern = ORACLE_ROOF_FITTING
 }
 
 /** `geometry` without the triangles in `ranges` (corner slots: index entries, or vertex numbers when non-indexed),
- * sharing its attributes. */
+ * sharing its attributes. Its bounding box covers the kept triangles only (three's computeBoundingBox reads every vertex
+ * of the shared buffer, the cut whip's included). */
 export function bodyGeometryWithout(geometry, ranges) {
   const index = geometry.index;
   const n = index ? index.count : geometry.getAttribute('position').count;
@@ -74,7 +77,15 @@ export function bodyGeometryWithout(geometry, ranges) {
   const body = new geometry.constructor();
   for (const [name, attribute] of Object.entries(geometry.attributes)) body.setAttribute(name, attribute);
   body.setIndex(kept);
-  body.computeBoundingBox();
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const position = geometry.getAttribute('position'), lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const i of kept) for (let a = 0; a < 3; a++) {
+    const v = position.getComponent(i, a);
+    if (v < lo[a]) lo[a] = v;
+    if (v > hi[a]) hi[a] = v;
+  }
+  body.boundingBox = geometry.boundingBox.clone();
+  if (kept.length) { body.boundingBox.min.set(...lo); body.boundingBox.max.set(...hi); } else body.boundingBox.makeEmpty();
   return body;
 }
 
@@ -116,8 +127,9 @@ export function columnTrace(mask, size, half, N = 96) {
 /**
  * The dims rows' body extent of a side trace: columns whose band exceeds 12 % of the rough height; `h` is the p95 of their
  * tops (a 2-column mast must not define the roof) over their lowest bottom and `hMax` their highest top over it. `len` is
- * the first-to-last span of those columns, or, given the hull's own trace in the same frame, of the hull's columns over the
- * same 12 % band (Main's ruling 2026-10-30: a thick barrel column crosses the band once the whips no longer raise it).
+ * the first-to-last span of those columns, or, given the hull's own trace in the same frame (the gun's rig left out), that
+ * trace's full span: Main's ruling 2026-10-30, since a thick barrel column crosses the band once the whips stop raising it,
+ * and a hull's fenders and mudguards are part of its published length.
  */
 export function bodyExtent(curve, hullCurve = null) {
   const cols = curve.filter(Boolean);
@@ -128,7 +140,7 @@ export function bodyExtent(curve, hullCurve = null) {
   const tops = body.map((c) => c[1]).sort((a, b) => a - b);
   const top = tops[Math.min(tops.length - 1, Math.floor(tops.length * 0.95))];
   const bot = Math.min(...body.map((c) => c[2]));
-  const hull = hullCurve?.filter((c) => c && c[1] - c[2] > rough * 0.12) ?? [];
+  const hull = hullCurve?.filter(Boolean) ?? [];
   const span = hull.length ? hull : body;
   return { h: top - bot, hMax: tops[tops.length - 1] - bot, len: Math.abs(span[span.length - 1][0] - span[0][0]) };
 }

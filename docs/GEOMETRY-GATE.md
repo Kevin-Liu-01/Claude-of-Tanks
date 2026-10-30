@@ -141,12 +141,14 @@ needs `antennaPart()`, or it counts as body.
   nearer end. An oracle comparison (the source ruler, the preservation
   baseline) stays body against body. `spec.dims.heightM` itself is the sim's
   and is not changed by the gate.
-- `hullLengthM` comes from the hull's own side trace over the same 12 % band,
-  so a thick barrel column can never count as hull once the whips no longer
-  raise the band; a fused oracle has no hull trace, so both sides use the
-  whole body there.
+- `hullLengthM` is the full side span of the hull's own trace (no turret, no
+  gun, even where a casemate hangs the gun on the hull's rig), never a band
+  threshold that barrel columns can cross once the whips stop raising it;
+  fenders and mudguards count, as in published hull lengths. A fused oracle
+  has no hull trace, so both sides use the whole-body extent there.
 - The source ruler keeps its whole-source frame; its physical envelopes are
-  the bodies'. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
+  the bodies'. An oracle that names no roof fittings (a fused export) cannot
+  drop its whips, so an oracle comparison is whole against whole there. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
   leaves the height unchanged, a raised hull moves it).
 
 This is the anti-gaming anchor: a build that "matches" a defective oracle

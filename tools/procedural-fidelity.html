@@ -838,6 +838,7 @@ const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.k
 const antennaNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes].filter(([, tag]) => isAntennaTag(tag)).map(([node]) => node)));
 let hiddenRoofFittings = null;
 function withBodyOnly(measure, mode = 'body') {
+  if (mode === 'none') return measure();
   const swapped = [];
   for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
   hiddenRoofFittings = mode === 'roof' ? antennaNodes : roofFittingNodes;
@@ -846,6 +847,9 @@ function withBodyOnly(measure, mode = 'body') {
     for (const [node, geometry] of swapped) node.geometry = geometry;
   }
 }
+// An oracle comparison drops what both models name; an oracle that names no roof fittings (a fused export) keeps its
+// whips, so the build keeps its own there too: whole against whole.
+const oracleBodyMode = roofFittings[1].nodes.size || roofFittings[1].trimmed.size ? 'body' : 'none';
 const roofFittingsExcluded = (() => {
   const [built, oracle] = roofFittings.map(({ nodes, trimmed }) => [...new Set([
     ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
@@ -1028,7 +1032,9 @@ function setPart(root, part) {
     const allowed = part === 'whole'
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
       || (part === 'turret' && isBelow(o, turret))
-      || (part === 'gun' && isBelow(o, gun));
+      || (part === 'gun' && isBelow(o, gun))
+      // the dims rows' hull: no turret and no gun, even where a casemate hangs the gun on the hull's rig
+      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !isBelow(o, gun));
     o.visible = base && allowed && !hiddenRoofFittings?.has(o);
   });
 }
@@ -2031,16 +2037,17 @@ if (params.get('geo')) {
   // roof weapons on either model; Main's rulings 2026-10-30). A published
   // height is met anywhere from the body top to the roof-fittings top
   // (sources measure to the cupola or the roof gun; whips stay out), an
-  // oracle is body against body, and hull length comes from the hull's own
-  // trace wherever both sides have one (a fused oracle has none: whole
-  // against whole there), so no barrel column can count as hull.
+  // oracle is body against body, and hull length is the hull's own side
+  // span, gun left out, wherever both sides have one (a fused oracle has
+  // none: the whole-body extent on both sides there).
   const sideTraces = (visual, other, mode = 'body', cam = camsG.side) => withBodyOnly(() => ({
-    whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hull'), cam),
+    whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hullBody'), cam),
   }), mode);
   const procSide = sideTraces(procedural, reference);
-  const refSide = sideTraces(reference, procedural);
+  const procPairedSide = oracleBodyMode === 'body' ? procSide : sideTraces(procedural, reference, 'none');
+  const refSide = sideTraces(reference, procedural, oracleBodyMode);
   const procExt = bodyExtent(procSide.whole, procSide.hull);
-  const procPairedExt = geometryComponentMasksAvailable ? procExt : bodyExtent(procSide.whole);
+  const procPairedExt = bodyExtent(procPairedSide.whole, geometryComponentMasksAvailable ? procPairedSide.hull : null);
   const refExt = bodyExtent(refSide.whole, geometryComponentMasksAvailable ? refSide.hull : null);
   const procRoofTop = bodyExtent(sideTraces(procedural, reference, 'roof').whole)?.hMax;
   // columns are CENTERS: a span between first/last centers is one pitch
@@ -2105,7 +2112,7 @@ if (params.get('geo')) {
     heightM:refExt?.h, hullLengthM:refExt?.len,
     overallLengthM:pixelSpanZ('whole', reference, procedural),
     widthM:measurePixelWidth(reference, procedural),
-  }));
+  }), oracleBodyMode);
   let dimensionFrame = null;
   if (usesSourceDimensionFrame(id,sourceWorldRegistration)) {
     // A candidate-dependent union frame moves96-column percentile bins.
@@ -2116,16 +2123,16 @@ if (params.get('geo')) {
     const plan=sourceDimensionCamera(referenceBox,TRUE_AXES.plan);
     const measure=(visual,other)=>withBodyOnly(()=>{
       const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side),
-        geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hull'),side):null);
+        geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hullBody'),side):null);
       return {heightM:body?.h,hullLengthM:body?.len,
         overallLengthM:pixelSpanZ('whole',visual,other,side),
         widthM:measurePixelWidth(visual,other,plan)};
-    });
+    },oracleBodyMode);
     referenceDimensions=measure(reference,procedural);
     const actual=measure(procedural,reference);
     // the ruler stays framed by the whole source; the physical envelopes are the bodies'
     dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
-      withBodyOnly(()=>visibleBox(reference.root)),withBodyOnly(()=>visibleBox(procedural.root))));
+      withBodyOnly(()=>visibleBox(reference.root),oracleBodyMode),withBodyOnly(()=>visibleBox(procedural.root),oracleBodyMode)));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
@@ -2244,6 +2251,7 @@ if (params.get('geo')) {
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
+    ...(roofFittingsExcluded && oracleBodyMode === 'none' ? { oracleComparison:'whole against whole: the oracle names no roof fittings' } : {}),
     floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');

@@ -103,11 +103,12 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.6, 2.0) - 10) < 1e-9, 'below the bod
 assert.ok(Math.abs(heightIntervalPct(2.2, 2.6, 2.86) - 9.0909090909) < 1e-6, 'above the roof-fittings top');
 assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a roof top under the body top is the body top');
 {
-  // 20 hull columns 1.6 m tall, then a 0.4 m barrel column run past the bow: over 12 % of the 2.5 m rough height
-  const hull = Array.from({ length: 30 }, (_, i) => (i < 20 ? [i * 0.1, 1.6, 0] : null));
-  const whole = hull.map((c, i) => (i < 20 ? [i * 0.1, i > 5 && i < 15 ? 2.5 : 1.6, 0] : [i * 0.1, 2.2, 1.8]));
+  // 20 hull columns 1.6 m tall and a 0.1 m mudguard lip at the bow, then a 0.4 m barrel column run past it: over 12 % of
+  // the 2.5 m rough height
+  const hull = Array.from({ length: 30 }, (_, i) => (i < 20 ? [i * 0.1, 1.6, 0] : i === 20 ? [2.0, 1.0, 0.9] : null));
+  const whole = hull.map((c, i) => (i < 20 ? [i * 0.1, i > 5 && i < 15 ? 2.5 : 1.6, 0] : [i * 0.1, 2.2, i === 20 ? 0.9 : 1.8]));
   assert.ok(Math.abs(bodyExtent(whole).len - 2.9) < 1e-9, 'on the whole trace the barrel columns cross the 12 % band');
-  assert.ok(Math.abs(bodyExtent(whole, hull).len - 1.9) < 1e-9, 'the hull trace gives the hull length');
+  assert.ok(Math.abs(bodyExtent(whole, hull).len - 2.0) < 1e-9, 'the hull trace\'s full span, mudguard lip included, is the hull length');
   assert.equal(bodyExtent(whole, hull).h, bodyExtent(whole).h, 'the hull trace does not touch the height');
   assert.equal(bodyExtent(whole, Array(30).fill(null)).len, bodyExtent(whole).len, 'no hull trace: the whole-body span');
   assert.equal(bodyExtent(whole).hMax, 2.5);
@@ -122,6 +123,14 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   assert.equal(body.getAttribute('position') === merged.getAttribute('position'), true, 'the cut shares the vertex buffers');
   assert.deepEqual([...body.index.array.slice(0, 6)], [...merged.index.array.slice(0, 6)]);
   assert.deepEqual([...body.index.array.slice(6, 12)], [...merged.index.array.slice(12, 18)]);
+  // a 1 m whip triangle over a hull triangle: the cut body's box (the gate's physical envelope) is the hull's alone
+  const pair = new THREE.BufferGeometry();
+  pair.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 2, 0, 0, 0, 1.5, 0, 0, 1.5, 0, 0.02, 1.5, 0, 0, 2.5, 0], 3));
+  pair.setIndex([0, 1, 2, 3, 4, 5]);
+  const cut = bodyGeometryWithout(pair, [{ start: 3, count: 3, role: 'antenna' }]);
+  assert.equal(cut.boundingBox.max.y, 1.5, 'the cut whip leaves the bounding box');
+  pair.computeBoundingBox();
+  assert.equal(pair.boundingBox.max.y, 2.5, 'the uncut geometry keeps it');
 }
 
 // --- the gate's height on a real build ---------------------------------------------------------------------------
@@ -190,6 +199,6 @@ const raised = heightOf(root, frame, { body: true });
 assert.ok(raised.ext.h > withSpan.ext.h + 0.08, `raising the hull raises the gate height (${withSpan.ext.h.toFixed(3)} -> ${raised.ext.h.toFixed(3)})`);
 for (const whip of added) turret.remove(whip);
 tank.dispose?.();
-console.log(`body-height-parts: tags, interval and hull-trace length pass; type74 gate height ${before.ext.h.toFixed(3)} m `
+console.log(`body-height-parts: tags, interval and hull-span length pass; type74 gate height ${before.ext.h.toFixed(3)} m `
   + `(roof-fittings top ${roofBefore.ext.hMax.toFixed(3)}, whole ${whole.ext.h.toFixed(3)}), unchanged by four 1 m whips and a 1 m `
   + `tagged bucket rod, ${raised.ext.h.toFixed(3)} m with the hull raised`);
