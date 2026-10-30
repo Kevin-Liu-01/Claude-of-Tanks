@@ -13,7 +13,7 @@ import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { missionAirframeVolumes } from './missionAttachment.ts';
 import '../vehicles/tankFactory.ts';
 import { MISSION_ATTACHMENT_SEATS } from './missionAttachmentSeats.generated.ts';
-import { DRONE_DOCK_EXEMPT } from './droneDockRules.ts';
+import { DRONE_DOCK_EXEMPT } from './droneDockExempt.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 // A renderer may add running-gear bookkeeping after authority registration;
 // it must never move the drone's shared launch point. Real roof/datum changes

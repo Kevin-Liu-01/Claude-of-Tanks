@@ -6,7 +6,7 @@ import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.t
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { missionAttachmentFor, type MissionCarrierSpec } from './missionAttachment.ts';
 import {droneLaunchHeight} from './droneLaunch.ts';
-import { DRONE_DOCK_EXEMPT } from './droneDockRules.ts';
+import { DRONE_DOCK_EXEMPT } from './droneDockExempt.ts';
 import {droneDockS,droneRecallOpen,DRONE_RECALL_OPENS_S} from './droneRecall.ts';
 import {missionAttachmentPose,type MissionCarrierPose} from './missionAttachmentPose.ts';
 import type { ShellSpec } from './shellSpec.ts';
@@ -164,7 +164,7 @@ export function strikeDrone(carrier: AerialEntity, chance: number): boolean {
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
-  // a vehicle without a dock (droneDockRules.ts DRONE_DOCK_EXEMPT) carries no drone: no flight, no dock drawn
+  // a vehicle without a dock (droneDockExempt.ts DRONE_DOCK_EXEMPT) carries no drone: no flight, no dock drawn
   if (!ruleset.aerial || (ruleset.aerial === 'gunship' && (entity.bot || entity.team === 'enemy' || entity.team === 'bravo'))
     || (ruleset.aerial === 'drone' && !!entity.spec?.id && Object.hasOwn(DRONE_DOCK_EXEMPT, entity.spec.id))) {
     delete entity.aerial; flights.delete(entity); return;
