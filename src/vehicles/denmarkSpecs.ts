@@ -95,8 +95,9 @@ leo2a5dk.visual = {
   // black (r2 critics: round blobs read as woodland; r3: thin sprayed bands read as tiger stripes; r4: the splinter
   // wedges tiled into a small checker): the NATO painter's long khaki bands through the olive at one and a half times
   // their size, black shadowing them, the khaki warmed toward yellow-brown (previewed on the CPU, .qa-dev camoprev)
-  // r9 (r8 critics, both: the olive a light minty sage, the black blotches oversized): a warmer, darker olive, less black
-  scheme: 'nato', base: '#454a30', weather: '#4f5238', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.2,
+  // (r9 tried a warmer olive with less black on the r8 critics' "minty sage, oversized black": the khaki took over the
+  // olive and the black stood as isolated blots; the r7 coat, which passed both, kept)
+  scheme: 'nato', base: '#434b34', weather: '#4f5640', patches: ['#1c1e19', '#6f6440'], patchK: 1.5, blackK: 1.5,
   marking: 'number', number: '31', camoScale: 0.5,
 };
 // its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the 2A5's own curve, the bar armour clear of the gun
@@ -132,7 +133,7 @@ leo2a7dk.visual = {
   // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
   // r9 (r8 critics, both: grey and flat; the photograph's cover a deeper, saturated olive in dark blocks): a greener olive
   // with near-black green blocks
-  scheme: 'nato', base: '#4a5134', weather: '#3f4530', patches: ['#23281a', '#5a6142', '#333a22'], marking: 'number',
+  scheme: 'nato', base: '#464d31', weather: '#3f4530', patches: ['#23281a', '#525a3b', '#333a22'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 
