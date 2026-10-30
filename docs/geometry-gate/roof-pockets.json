@@ -188,7 +188,7 @@
   "t90_1992": {"turretRaisedCm2":992,"turretBaseCm2":2044,"hullCm2":844,"pockets":14,"geometry":{"hull":"26ad62bde54f446d","turret":"2f4f70cbd9ee6bb7","gun":"64267ec5c9a386c2"}},
   "t90a": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"84c341a1ea2e747f","turret":"6463a223c657e900","gun":"edc55e67606ef60e"}},
   "t90a_2004": {"turretRaisedCm2":5436,"turretBaseCm2":0,"hullCm2":408,"pockets":13,"geometry":{"hull":"f9609811c266de1f","turret":"2244e6f1ef561be2","gun":"6c516d8892d71f18"}},
-  "t90a_2006": {"turretRaisedCm2":4188,"turretBaseCm2":5120,"hullCm2":952,"pockets":15,"geometry":{"hull":"24b5c17076180377","turret":"c1aeba2d3ebf45d2","gun":"958e34e7ea67700a"}},
+  "t90a_2006": {"turretRaisedCm2":4188,"turretBaseCm2":5120,"hullCm2":952,"pockets":15,"geometry":{"hull":"24b5c17076180377","turret":"3afcdf91709dacc1","gun":"958e34e7ea67700a"}},
   "t90a_burlak": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":1108,"pockets":2,"geometry":{"hull":"6f27158ac5e2f238","turret":"af7cdcc92787f1aa","gun":"114b0e61a3e938c8"}},
   "t90a_burlak_proto": {"turretRaisedCm2":2356,"turretBaseCm2":660,"hullCm2":2052,"pockets":13,"geometry":{"hull":"1d842b541a371d92","turret":"c2521336ea133fb5","gun":"2d2c00b04abb7d41"}},
   "t90a_vladimir": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":584,"pockets":2,"geometry":{"hull":"deef81ae4a92c8d3","turret":"7c8f0dd85a099f5d","gun":"1406cdf892729d9a"}},
