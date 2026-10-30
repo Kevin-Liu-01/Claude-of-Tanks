@@ -121,8 +121,8 @@ const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as con
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21), the Christian II's Danish tri-tone with it (release 262). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_christian2'] as const);
-/** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
- * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
+/** Release 262: the T-84BM Oplot-M's Ukrainian MM-14 digital and the Oplot-T's Thai three-tone desert came with those
+ * tanks, the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
 // 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
 // it appends after GT too and no saved index moves. So do the PT-84 Sokół's digital and the Żbik's three-tone urban, their
 // Factory coats (their stock stays the PL-01's digital and the urban block).
@@ -813,7 +813,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
   t64bm1m: 'sig_ua_t64bv',
   t64b1v_2022: 'sig_ua_t64bv',
-  // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
+  // release 262: the new Oplots' own stock coats: the Ukrainian MM-14 digital (owner 2026-10-30: "oplot-m doesnt hav ea
+  // camo", no flat coat), the Thai desert
   bm_oplot_m: 'paint_bm_oplot_m',
   bm_oplot_t: 'paint_bm_oplot_t',
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)

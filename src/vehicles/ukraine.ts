@@ -104,9 +104,11 @@ const UKRAINE_SPECS = {
     stats: { hp: 2700, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70,
       reverseSpeedKmh: 35, turretTraverseDegS: 44 },
   }),
+  // its coat: the Ukrainian Army's MM-14 digital (khaki-olive with dark green, brown and light khaki), not a flat olive
+  // (owner 2026-10-22: no flat single-colour stock coats; owner 2026-10-30: "oplot-m doesnt hav ea camo. why, fix")
   bm_oplot_m: variant('bm_oplot_m', 't84', {
-    name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#66704c', weather: '#77805a', patches: [],
-    camoScale: 0.50,
+    name: 'T-84BM Oplot-M', number: '121', scheme: 'digital', base: '#68693f', weather: '#7a7b52',
+    patches: ['#39442c', '#6f563a', '#9a9268'], camoScale: 0.50,
     // the build's measured extents (geometry-gate) without external stowage, as published dimensions are given: the
     // stern drums excluded; the skirt Duplet course and the roof stations included (the published 9.72 m / 3.78 m /
     // 2.2 m are the bare tank's: bm_oplot_m.md). The silhouette hull length is the hash-pinned oracle's own P95 body
