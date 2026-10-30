@@ -493,18 +493,21 @@ function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
   for (const z of [-2.00, -1.62, -1.24]) P.add('turretDark', box(0.016, 0.06, 0.05), -1.44, 0.58, z);
 }
 
-/** The Orzeł's add-on wedge on one cheek: a welded spaced-armour arrowhead standing on the cheek's front from beside the
- * gun throat (|x| 0.46, clear of the 0.42 throat and the 0.30 shield) to the flank, its edge 0.54 m ahead of the cheek at
- * |x| 1.00, from 0.14 to 0.48 (under the gunner's sight line, over the deck's periscopes at every bearing), two convex
- * prisms meeting at the edge (wound as the flank housings' plans) in the turret's paint (round 4: a dark cap read as a
- * void from above), a dark strip down the edge. External armour: the hit model reads it. */
+/** The Orzeł's add-on arrowhead on one cheek: a welded spaced-armour wedge standing on the cheek's front from beside the
+ * gun throat (|x| 0.46, clear of the 0.42 throat and the 0.30 shield) to the flank, its edge 0.82 m ahead of the cheek
+ * at |x| 1.00, from 0.16 to 0.60 (a hand over the cheek boxes, under the gunner's sight line, over the deck's periscopes
+ * at every bearing), two convex prisms meeting at the edge (wound as the flank housings' plans) in the turret's paint, a
+ * dark strip down the edge (round 8: the smaller wedge left the turret's outline the Oplot-M's). External armour: the
+ * hit model reads it. */
 function cheekWedge(P: TankBuilderPort, s: number): void {
   const back = (x: number): number => eraFront(x) - 0.02;
-  const a: [number, number] = [0.46, back(0.46)], b: [number, number] = [1.00, 2.36], c: [number, number] = [1.64, back(1.64)];
+  const a: [number, number] = [0.46, back(0.46)], b: [number, number] = [1.00, 2.62], c: [number, number] = [1.66, back(1.66)];
   const d: [number, number] = [1.00, back(1.00)];
-  for (const tri of [[a, d, b], [d, c, b]] as const) P.addExternalArmor('turret', planPrism(sidedPlan([...tri], s), 0.14, 0.48));
-  P.add('turretDark', box(0.03, 0.34, 0.03), side(s, b[0]), 0.31, b[1] - 0.005);
+  for (const tri of [[a, d, b], [d, c, b]] as const) P.addExternalArmor('turret', planPrism(sidedPlan([...tri], s), CHEEK_WEDGE_Y[0], CHEEK_WEDGE_Y[1]));
+  P.add('turretDark', box(0.03, CHEEK_WEDGE_Y[1] - CHEEK_WEDGE_Y[0], 0.03), side(s, b[0]), (CHEEK_WEDGE_Y[0] + CHEEK_WEDGE_Y[1]) / 2, b[1] - 0.005);
 }
+/** The arrowheads' floor and top (turret frame). */
+const CHEEK_WEDGE_Y = [0.16, 0.60] as const;
 
 /** The stacks' undersides rise toward the nose (the print: 0.09 at z 0.95, 0.24 at the front). */
 const eraUnder = (z: number): number => ERA_Y0 + Math.max(0, z - 0.95) * 0.17;
@@ -1206,8 +1209,9 @@ function buildOrzelKit(P: TankBuilderPort): void {
     [[-4.2935, 0.136], [-4.1539, 0.143], [-4.0666, 0.17], [-0.0873, 0.17]]);
   stationLimits(zsmuStation(P, PL_STATIONS.ukm), [-1.6232, 2.81],
     [[-1.6232, 0.17], [2.5482, 0.17], [2.6354, 0.096], [2.7227, 0.026], [2.81, 0.02]]);
+  // twin guarded work lamps a side, on the arrowhead's top (it stands over the cheek box where they were)
   for (const s of [-1, 1]) for (const x of [0.66, 0.88]) {
-    workLamp(P, side(s, x), ERA_Y1, eraFront(x) - KRATA_FACE_BACK - 0.16);
+    workLamp(P, side(s, x), CHEEK_WEDGE_Y[1], 1.95);
   }
   sternDrums(P, DRUM_ISSUE_PAINTS[0], 26252);
 }
@@ -1305,6 +1309,14 @@ function buildDozerBlade(P: TankBuilderPort): void {
   P.addEquipment('hullEquipment', orientedSlab(
     [-0.70, 0.64, 3.14], [0.70, 0.64, 3.14], [0.70, 0.67, 3.14], [-0.70, 0.67, 3.14],
     [-0.80, 0.62, 3.74], [0.80, 0.62, 3.74], [0.80, 0.65, 3.74], [-0.80, 0.65, 3.74]));
+  // the push struts: an A-frame from the moldboard's top edge back to brackets on the nose under the glacis field (round
+  // 8: "no visible support arms"), inboard of the tracks and under the barrel at full depression
+  for (const s of [-1, 1]) {
+    const top: [number, number, number] = [side(s, 0.45), 1.12, 3.86], foot: [number, number, number] = [side(s, 0.45), 0.92, 3.30];
+    P.addEquipment('hullDark', beamBetween(top, foot, 0.06, 12));
+    P.addEquipment('hullDetail', box(0.16, 0.10, 0.10), foot[0], foot[1], foot[2]);
+    P.addEquipment('hullDetail', box(0.16, 0.10, 0.10), top[0], top[1], top[2] + 0.03);
+  }
   // the push frame's side plates, out to the blade's ends under the track's front wrap (7 cm below it where it rounds
   // the idler): with the web plate they close the ground between the nose, the track fronts and the blade seen from
   // above, so the lift rams over it enclose nothing (B2)

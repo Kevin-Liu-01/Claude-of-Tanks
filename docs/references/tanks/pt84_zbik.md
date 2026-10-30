@@ -13,7 +13,8 @@ The assault tank of the PT-84 family: a first-party Polish game concept on the T
   every skirt panel.
 - A track-wide dozer blade across the nose in its travel position: a moldboard dished 14 cm in six facets from 0.36 m to
   its forward lip at 1.24 m over the ground (round 6: a flat slab read as a box bolted to the nose), its cutting edge in
-  dark steel, hinge bosses where its frame meets it, two push arms and a web plate back to the lower plate, push-frame side plates
+  dark steel, hinge bosses where its frame meets it, an A-frame of push struts from its top edge back to the nose (round
+  8), two push arms and a web plate back to the lower plate, push-frame side plates
   under the track fronts, and a lift ram each side from a clevis on the fender ledge to a lug on the moldboard's top (in
   place of the stowed self-entrenching blade).
 - Both ZSMU-1276 stations on towers: the 12.7 mm WKM-B and a 7.62 mm UKM-2000 on a 16 cm tower over the cage.
