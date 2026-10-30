@@ -107,7 +107,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.combat.title'),
     pageTitle: t('metadata.docsCombat.title'),
     lede: t('docs.topic.combat.lede'),
-    hero: '/media/site50-r14/loops/s24-ice-duel.webm',
+    hero: '/media/site50-r14/loops/s29-fjord-road-kill.webm',
     icon: 'combat',
     sectionIcons: [],
     sections: [],
@@ -197,7 +197,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.audio.title'),
     pageTitle: t('metadata.docsAudio.title'),
     lede: t('docs.topic.audio.lede'),
-    hero: '/media/site50-r14/loops/s34-furnace-salvo.webm',
+    hero: '/media/site50-r14/loops/s01-main-street-push.webm',
     icon: 'audio',
     sectionIcons: [],
     sections: [],
@@ -348,12 +348,14 @@ function mediaFigure([src, caption]: TopicMedia): string {
  * fallback for a browser without VP9. tools/media-fallback.selftest.mjs holds this table to the files on disk.
  */
 export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; readonly phone?: true }>> = {
+  's01-main-street-push': { r960: true, phone: true },
   's05-barn-advance': { r960: true, phone: true },
   's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
   's226-church-duel': { r960: true, phone: true },
   's227-oasis-duel': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
+  's29-fjord-road-kill': { r960: true, phone: true },
 };
 
 /** A loop hero's files and its caption's catalog key, by its collection: a site50-r14 take spreads over the loops, the
