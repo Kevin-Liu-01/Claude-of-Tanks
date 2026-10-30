@@ -94,10 +94,12 @@ m41dk1.visual = {
   camoScale: 0.42,
 };
 
-// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun): the
-// full 9.7 degrees to yaw 128, then the engine deck's grilles and the stern stowage over the rear quarters
-const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [128, -9.7], [129, -9], [130, -5.5], [131, -4.6], [140, -3.2],
-  [142, -3], [146, -3], [150, -3.3], [151, -3.8], [152, -9.7], [167, -9.7], [168, -9], [169, -8.5], [180, -8.8]] as const);
+// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its conformal nose and the gun; r5:
+// one envelope over the three stock marks' sweeps after r4 set the turret face and the trunnion back): the full 9.7
+// degrees but over the left lift eye on the step ahead, and astern over the fender boxes, the engine deck's grilles and its stern
+const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9.7], [29, -9.7], [30, -9.6], [31, -8.7], [32, -8.3], [35, -8.4],
+  [38, -9.1], [39, -9.1], [41, -9.7], [128, -9.7], [129, -5.9], [130, -3.5], [131, -2.9], [143, -2.1], [150, -2.3],
+  [151, -2.7], [152, -8.2], [156, -7.4], [158, -7.4], [166, -8], [167, -7.3], [168, -6.7], [170, -6.6], [180, -6.7]] as const);
 for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
 // the DK-1's: the driver's mirror on the left mudguard ahead, the deck's grilles and its closed rear box astern
 m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [28, -9.7], [29, -8.3], [30, -8], [32, -8], [34, -5.1], [35, -4.9],
