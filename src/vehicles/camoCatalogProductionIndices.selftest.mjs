@@ -45,6 +45,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // Re-pinned 2026-10-28 (release 262): one row moved. The Challenger 1 Mk 2 (schema-1 challenger1) rides the Mk 3's
 // build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 -> 24af537fcedf03bc.
 // Selections and every other row are unchanged.
+// Re-pinned 2026-10-30 (release 265, the owner's 2A4-era Leopards rebuilt): one row moved. The 2A4 OTCO (schema-1
+// leo2a6m) wears its own 'OTCO' number for the old build's 'A6M'; scheme, colours, pattern and seed are unchanged.
+// 9372f3913461afc9 -> 53cc9f3ea41f25d5. The 2A6M (schema-1 leo2a6m_x), cloned from it, keeps 'A6M'
+// (sourceXFleetSpecs.ts PRODUCTION_NUMBERS), so its row is production's.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
