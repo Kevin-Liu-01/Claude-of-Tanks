@@ -7,7 +7,9 @@ import {
   materialTextureDimensions,
   normalizeMaterialTextureQuality,
   prebakeSharedTextures,
+  STORED_CAMO_SELECTION,
 } from './materials.ts';
+import { networkCamoId } from './camoPolicy.ts';
 
 function referencePatchPixels(pixels, size, classes, classSize, offsets) {
   let state = 0x51ab7 ^ size;
@@ -114,4 +116,11 @@ assert.match(factorySource,
   );
 }
 
-console.log('materialQuality.selftest: low, AI, preview, and hero texture tiers passed');
+// a solo sim seat's stored paint (custom paint included) takes the stored selection's textures, as a null selection does,
+// and never names a paint a network peer would draw
+assert.equal(networkCamoId(STORED_CAMO_SELECTION), 'factory', 'the stored paint marker is no built-in paint');
+assert.match(materialsSource,
+  /function sharedTextureIdentity\(specId: string, selection: string \| null = null\): SharedTextureIdentity \{\n  if \(selection == null \|\| selection === STORED_CAMO_SELECTION\) return \{ key: specId, patternId: resolveCamoPattern\(specId\), fixed: false \};/,
+  'the stored paint marker resolves to the stored selection\'s textures');
+
+console.log('materialQuality.selftest: low, AI, preview, and hero texture tiers passed; the stored paint marker takes the stored selection');
