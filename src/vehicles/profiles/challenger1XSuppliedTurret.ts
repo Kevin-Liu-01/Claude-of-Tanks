@@ -140,7 +140,8 @@ function cupola(P:TankBuilderPort):void{
   // the hatch is a low dome on a rim, not a flat disc (release 265, the minors pass: the cupola read as one flat drum)
   equipment(P,new THREE.LatheGeometry(([[0,0],[9.92,0],[9.92,1.75],[9.3,2.55],[7.3,3.6],[4.2,4.35],[0,4.6]] as const)
     .map(([r,y])=>new THREE.Vector2(m(r),m(y))),32),-20.04,103.66,-57.01);
-  equipment(P,KIT.torus(m(10.15),m(.55),32,8).rotateX(Math.PI/2),-20.04,104.0,-57.01,'turretDark');
+  // its seal ring lies flat round the hatch (KIT.torus lies flat; turned upright it stood over the dome as a hoop)
+  equipment(P,KIT.torus(m(10.15),m(.55),32,8),-20.04,104.0,-57.01,'turretDark');
   caseBox(P,-20.32,105.1,-68.0,11.81,3.9,2.68);
   for(const [x,z,yaw]of [[-8,-49,-.64],[-12,-43,-.64],[-30,-44,.60],[-25,-35,0]]){
     equipment(P,box(m(6.4),m(1.3),m(9.2)).rotateY(yaw),x,103.5,z);
@@ -172,7 +173,7 @@ function cupola(P:TankBuilderPort):void{
  *  sur le flanc droit de la tourelle"), its top 0.2 m over the roof, its foot buried in the cheek's fall and its front's
  *  top edge chamfered; the right smoke bank stands inboard of and below it. The Mk 1s were
  *  delivered with it mostly empty, its port blanked (en Wikipedia, Haynes 2015 p. 110); the Mk 2 and Mk 3 carry the
- *  sight behind an armoured door hinged on the port's top edge, propped open.
+ *  sight behind an armoured door hinged on the port's top edge, closed as every reference photo shows it.
  *  The box is turret equipment, not the turret shell (release 264c): in the shell bucket each of its slices' convex
  *  hit cell bridged from its top to the far cheek, so the turret front over both cheeks read as sloped 50 mm roof and
  *  the barbette as main armour (the Mk 1's tier-8 strength with C2 0.349, against 0.509 without the box in the shell).
@@ -192,19 +193,12 @@ function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
     at(P,box(.26,.19,.02),dx,dy,front+.01);
     for(const ox of[-.10,0,.10])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
   }else{
-    at(P,box(.26,.19,.03),dx,dy,front+.005,'turretDark');
-    lens(P,box(.19,.11,.006),dx,dy,front+.024);
-    // the door is armour plate, 60 mm, propped open as an awning over the window on two stays from the port's foot
-    // (release 265, the minors pass: at 55 degrees and 45 mm it stood over the barbette's top as a fin)
-    const a=22*Math.PI/180,h=.24,hy=dy+.10,t=.06;
-    const tip=(along:number):[number,number]=>[hy+Math.sin(a)*along,front+.02+Math.cos(a)*along];
-    const [my,mz]=tip(h/2);
-    at(P,box(.27,t,h),dx,my+t/2*Math.cos(a),mz-t/2*Math.sin(a),'turretDetail',-a);
-    for(const ox of[-.115,.115])at(P,cylX(.026,.05,10),dx+ox,hy,front+.02,'turretDark');
-    for(const ox of[-.11,.11]){
-      const [sy,sz]=tip(h*.7);
-      P.addEquipment('turretDark',local(beamBetween([dx+ox,dy-.07,front+.004],[dx+ox,sy,sz],.008,6)));
-    }
+    // the door is 50 mm armour plate, closed over the port and hung from two knuckles on its top edge (release 265, the
+    // minors pass: propped open on stays, both blind critics read a see-through frame on struts; the Bovington and
+    // drawing references show it shut and flush)
+    const h=.24,hy=dy+.10,t=.05;
+    at(P,box(.27,h,t),dx,hy-h/2,front+t/2,'turretDetail');
+    for(const ox of[-.115,.115])at(P,cylX(.022,.05,10),dx+ox,hy+.004,front+t,'turretDark');
   }
 }
 function roof(P:TankBuilderPort):void{

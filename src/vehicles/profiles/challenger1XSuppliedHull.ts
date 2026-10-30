@@ -66,19 +66,26 @@ function engineRoof(P:TankBuilderPort):void{
       equipment(P,cylZ(m(.6),m(70),12),side*66.2,68.1,-149.0);
       for(const z of [-182,-166,-140,-116])caseBox(P,side*66.2,66.8,z,1.4,2.8,2.4);
     });
-    seat(()=>{
-      caseBox(P,side*29.2,68.85,-145.1,33.4,.25,40.8);
-      for(let i=0;i<12;i++)caseBox(P,side*29.2,69.0,-162.5+i*3.1,31,.15,.6);
-    });
+    // the deck is two rows of louvred grilles, three panels a side (release 265, the minors pass: both blind critics
+    // against the Bovington deck photo: "a flat plate with faint scribe lines"; it was one 6 mm plate a side)
+    for(const [z0,z1] of [[-187.6,-171.0],[-164.6,-145.6],[-144.6,-125.6]])seat(()=>grille(P,side*30.0,z0,z1,31.6));
     for(const x of [17.5,26.5,35.5,44.5]){
       seat(()=>caseBox(P,side*x,70.0,-190.7,6.9,1.35,4.1));
       seat(()=>caseBox(P,side*x,70.0,-168.4,3.3,2.1,4.2));
     }
   }
   seat(()=>caseBox(P,0,70.0,-182.5,27.8,2.0,3.0));
-  caseBox(P,0,67.9,-199.7,12.6,3.4,9.7);
-  caseBox(P,0,65.8,-198.2,28.8,.9,11.1);
-  for(const x of [-6.2,6.2])P.addEquipment('hullDetail',beamBetween(p(x,58.8,-208),p(x,69.2,-193),m(.9)));
+}
+/** An engine-deck louvre panel: a dark throat under raised slats across the panel, in a frame (the fleet's deckGrille
+ *  pattern, in this frame's units); low quality keeps every other slat. */
+function grille(P:TankBuilderPort,x:number,z0:number,z1:number,w:number):void{
+  const z=(z0+z1)/2,d=z1-z0,y=69.2,n=Math.round(d/(P.q?2.2:4.4));
+  equipment(P,box(m(w),m(.4),m(d)),x,y,z,'hullDark');
+  for(let i=0;i<n;i++)caseBox(P,x,y+.55,z0+1.4+(i+.5)*(d-2.8)/n,w-2.0,.7,.55);
+  for(const s of [-1,1]){
+    caseBox(P,x,y+.6,z+s*(d/2-.5),w,.8,1.0);
+    caseBox(P,x+s*(w/2-.5),y+.6,z,1.0,.8,d-2.0);
+  }
 }
 function foreDeck(P:TankBuilderPort):void{
   // Lower central driver channel is preserved between the two shoulders.
@@ -186,13 +193,21 @@ function sideApplique(P:TankBuilderPort,side:number):void{
   }
 }
 function drumsAndRear(P:TankBuilderPort,drums:boolean):void{
+  // the rack's centre support and its two stays carry the drums (release 265, the minors pass: the Mk 1's blind critic,
+  // "an empty bracket juts out of the rear like a stray bar")
+  if(drums){
+    caseBox(P,0,67.9,-199.7,12.6,3.4,9.7);
+    caseBox(P,0,65.8,-198.2,28.8,.9,11.1);
+    for(const x of [-6.2,6.2])P.addEquipment('hullDetail',beamBetween(p(x,58.8,-208),p(x,69.2,-193),m(.9)));
+  }
   for(const side of [-1,1]){
     const x=side*32.6;
     // the two jettisonable fuel drums (the Mk 2's quick-release fit, kept by the Op Granby Mk 3), bands, struts, stops
     if(drums){
       equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
       for(const dx of [-9.5,9.5]){
-        equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
+        // two dark webbing straps a drum (release 265, the Mk 3's blind critic against the Bovington rear photo)
+        equipment(P,cylX(m(12.2),m(1.7),36),x+dx,55.02,-202.1,'hullDark');
         // each strut ends in a saddle under the drum's lowest point (release 265, the minors pass: it ran on 6 in past
         // it and 2 in under the skin, and its ends read as pegs)
         P.addEquipment('hullDetail',beamBetween(p(x+dx,45,-190),p(x+dx,42.6,-202.1),m(1.1)));
