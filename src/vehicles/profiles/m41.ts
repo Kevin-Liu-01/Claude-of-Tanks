@@ -138,7 +138,7 @@ const ROOF_Y = 0.74;
 const TRUNNION = Object.freeze({ y: 0.315, z: 0.75 });
 
 function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
-  const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, towCable, stowage, jerryCan, tarpRoll,
+  const { box, cylX, cylY, cylZ, sph, xform, buildRunningGear, headlight, liftEye, stowage, jerryCan, tarpRoll,
     torus } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
