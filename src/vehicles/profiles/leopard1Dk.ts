@@ -168,9 +168,10 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       } else {
         // the blanking cover: a bolted flange ring and a flat plate (r7 critics: the bulging cap read as a dome; the Aalborg
         // turret's cover is flush, white and perforated round a dark centre)
-        P.addEquipment('turretDetail', cylX(0.21, 0.03, P.q ? 24 : 16), s * (x + 0.11), W.rangefinderY, W.rangefinderZ);
-        P.addEquipment('turret', cylX(0.17, 0.02, P.q ? 24 : 16), s * (x + 0.125), W.rangefinderY, W.rangefinderZ);
-        P.decal('turret', 'flag', 'leo1-rangefinder-blank', 0.34, [s * (x + 0.138), W.rangefinderY, W.rangefinderZ], s * Math.PI / 2, 0, 0);
+        // (r10 Opus: the covers about an eighth of the turret's length; the Aalborg and RAMTA discs nearer a sixth)
+        P.addEquipment('turretDetail', cylX(0.245, 0.03, P.q ? 24 : 16), s * (x + 0.11), W.rangefinderY, W.rangefinderZ);
+        P.addEquipment('turret', cylX(0.20, 0.02, P.q ? 24 : 16), s * (x + 0.125), W.rangefinderY, W.rangefinderZ);
+        P.decal('turret', 'flag', 'leo1-rangefinder-blank', 0.40, [s * (x + 0.138), W.rangefinderY, W.rangefinderZ], s * Math.PI / 2, 0, 0);
       }
     }
     // Commander's cupola (right, -x: a +Z hull's right) with its PERI R12 ahead of it, raised on the 1A5 DK to see over
@@ -182,10 +183,18 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     }
     P.addCupola('turret', cylY(0.22, 0.23, 0.05, P.q ? 20 : 14), -0.52, roof + 0.145, -0.32);
     P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, roof + 0.19, -0.32);
-    const periH = mark === 'a3' ? 0.20 : 0.46;
-    P.addEquipment('turret', cylY(0.115, 0.13, periH, P.q ? 18 : 12), -0.50, roof + periH / 2, 0.12);
-    P.addEquipment('turret', box(0.24, 0.17, 0.20), -0.50, roof + periH + 0.085, 0.12);
-    P.add('turretGlass', box(0.15, 0.085, 0.014), -0.50, roof + periH + 0.09, 0.225);
+    // (the 1A5s' raised PERI R12 a slim tube under a small head: r9 Opus, r10 Sonnet: the thick column read as a chimney)
+    const periH = mark === 'a3' ? 0.20 : 0.46, peri = mark === 'a5' ? 'turretDark' : 'turret';
+    if (mark === 'a3') {
+      P.addEquipment('turret', cylY(0.115, 0.13, periH, P.q ? 18 : 12), -0.50, roof + periH / 2, 0.12);
+      P.addEquipment('turret', box(0.24, 0.17, 0.20), -0.50, roof + periH + 0.085, 0.12);
+      P.add('turretGlass', box(0.15, 0.085, 0.014), -0.50, roof + periH + 0.09, 0.225);
+    } else {
+      P.addEquipment('turret', cylY(0.13, 0.14, 0.06, P.q ? 18 : 12), -0.50, roof + 0.03, 0.12);
+      P.addEquipment(peri, cylY(0.068, 0.075, periH, P.q ? 16 : 10), -0.50, roof + periH / 2, 0.12);
+      P.addEquipment(peri, box(0.18, 0.14, 0.17), -0.50, roof + periH + 0.07, 0.12);
+      P.add('turretGlass', box(0.12, 0.07, 0.014), -0.50, roof + periH + 0.075, 0.212);
+    }
     // loader's hatch (left, +x) and its periscope
     P.addCupola('turret', cylY(0.24, 0.25, 0.055, P.q ? 20 : 14), 0.52, roof + 0.0275, -0.30);
     P.addCupola('turret', xform(sph(0.21, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.22, 1]), 0.52, roof + 0.095, -0.30);
@@ -196,13 +205,15 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     if (mark !== 'a3') {
       // EMES 18: the armoured thermal sight box on the right (-x) front roof, its two windows behind armoured doors (one
       // door hinged open on the Aalborg turret)
-      P.addEquipment('turret', box(0.48, 0.10, 0.46), -0.66, roof + 0.05, 0.56);
-      P.addEquipment('turret', box(0.52, 0.25, 0.36), -0.66, roof + 0.22, 0.50);
-      P.addEquipment('turret', box(0.56, 0.035, 0.40), -0.66, roof + 0.36, 0.50);
+      // (r9, r10 critics: the Aalborg box is a dark grey armoured block, not in the coat; the DK-1's in its UN white)
+      const emes = mark === 'a5' ? 'turretFittingPaint' : 'turret';
+      P.addEquipment(emes, box(0.48, 0.10, 0.46), -0.66, roof + 0.05, 0.56);
+      P.addEquipment(emes, box(0.52, 0.25, 0.36), -0.66, roof + 0.22, 0.50);
+      P.addEquipment(emes, box(0.56, 0.035, 0.40), -0.66, roof + 0.36, 0.50);
       // the armoured hood's sloped front, 42 degrees back from the vertical
       const hood = (w: number): readonly SectionPoint[] => [[-w, 0.095], [w, 0.095], [w, 0.345], [-w, 0.345]];
       const hoodLow = (w: number): readonly SectionPoint[] => [[-w, 0.095], [w, 0.095], [w, 0.20], [-w, 0.20]];
-      P.addEquipment('turret', sectionSolid([{ z: 0.68, ring: hood(0.26) }, { z: 0.84, ring: hoodLow(0.26) }]), -0.66, roof, 0);
+      P.addEquipment(emes, sectionSolid([{ z: 0.68, ring: hood(0.26) }, { z: 0.84, ring: hoodLow(0.26) }]), -0.66, roof, 0);
       const n = new THREE.Vector2(0.16, 0.145).normalize(), slope = -Math.atan2(n.x, n.y);
       const on = (t: number, out: number): [number, number] => [roof + 0.345 - 0.145 * t + n.x * out, 0.68 + 0.16 * t + n.y * out];
       P.add('turretDark', box(0.44, 0.15, 0.02), -0.66, ...on(0.5, 0.004), slope, 0, 0);
@@ -231,8 +242,18 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     mg.position.set(0.52, roof + 0.115, -0.62);
     mg.rotation.y = -0.30;
     P.turretG.add(mg);
-    // Wegmann 76 mm dischargers: two rows of four on a bracket high on each side, with a guard loop (Krigsmuseet).
-    for (const s of [-1, 1] as const) {
+    // Wegmann 76 mm dischargers: two rows of four on a bracket high on each side, with a guard loop (Krigsmuseet); the
+    // 1A5s' four in two rows at the side's rear (the Aalborg turret, the RAMTA front and the Air Show rear: r10 critics)
+    if (mark !== 'a3') for (const s of [-1, 1] as const) {
+      const zc = -0.98, x = sideX(W.halfWidth - 0.015, roof, 0.68);
+      P.addEquipment('turret', box(0.08, 0.30, 0.52), s * (x + 0.03), 0.68, zc);
+      for (let k = 0; k < 4; k++) {
+        const row = Math.floor(k / 2), col = k % 2;
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.62, s * 0.30, 0),
+          s * (x + 0.11), 0.60 + row * 0.16, zc + 0.12 - col * 0.24);
+      }
+    }
+    if (mark === 'a3') for (const s of [-1, 1] as const) {
       const x = sideX(W.halfWidth, roof, 0.68);
       P.addEquipment('turret', box(0.08, 0.30, 0.98), s * (x + 0.03), 0.68, 0.06);
       // (the guard's arms run back into the side plate under the roof edge)
@@ -315,7 +336,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       P.decal('turret', 'number', P.spec.visual.number || '21', 0.20,
         [s * (sideX(W.halfWidth, roof, 0.30) + 0.004), 0.30, -1.10], s * Math.PI / 2);
       // the United Nations' black "UN" on the DK-1's white turret sides (UNPROFOR, 1994-95)
-      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.46, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.92],
+      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.46, [s * (sideX(W.halfWidth, roof, 0.62) + 0.004), 0.62, -0.20],
         s * Math.PI / 2);
     }
   };

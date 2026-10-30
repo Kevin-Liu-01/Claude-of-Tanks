@@ -166,15 +166,10 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sl
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true,
     // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve); r9 (r8
     // critics, both: a flat bare tan tube on a green tank; the photograph's is the cover's texture, lighter, banded): the
-    // tube in the coat, the wrap's lighter bands over the sleeves
-  });
-  if (sleeved) {
-    // r10 (r9 critics, both: the photograph's tube is sleeved in a khaki wrap most of its length): the wrap over both
-    // sleeves and between them, the coat's tube showing at the root and the muzzle
-    for (const [a, b] of [[0.14, 0.47], [0.47, 0.84]] as const) {
-      P.add('gunCanvasPale', cylZ(radius * 1.235, (b - a) * length - 0.02, 24), 0, 0, (a + b) / 2 * length);
-    }
-  }
+    // tube in the coat, the wrap's lighter bands over the sleeves; r11 (r10 critics, both: the evacuator and the muzzle
+    // in the coat between two sand sleeves; the photograph's one wrap to the muzzle): the whole tube in the wrap, its
+    // shape unchanged
+    tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
@@ -183,7 +178,7 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sl
       : {crown:.445,noseZ:1.04,noseRoof:.120,drumR:.16,keel:-.11,collarR:.12};
   addLeopardMovingMantlet(P,fit);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
-  P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
+  P.add(sleeved ? 'gunCanvasPale' : 'gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
   P.addEquipment('gun', box(.066, .055, .15), 0, radius + .025, length - .41);
 }
 

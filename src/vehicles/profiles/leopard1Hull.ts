@@ -244,7 +244,8 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, engineDeckY + 0.012, -2.24);
       if (denseGrilles) for (let k = 0; k < 11; k++) P.addEquipment('hull', box(0.78, 0.014, 0.075), s * 0.52, engineDeckY + 0.012, -1.265 - k * 0.091);
       else for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, engineDeckY + 0.012, -1.29 - k * 0.17);
-      P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.006, -2.50);
+      // (the UN-white DK-1's deck covers painted over: r10 critics, dark discs on white read as unpainted)
+      P.add(rearCanBucket === 'hull' ? 'hull' : 'hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.006, -2.50);
       P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.015, -2.50);
       P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, deckTopY(-2.50) + 0.018, -2.50);
       P.addEquipment('hull', cylY(0.085, 0.085, 0.025, 12), s * 1.08, deckTopY(-2.08) + 0.0105, -2.08);

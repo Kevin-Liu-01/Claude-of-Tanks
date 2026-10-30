@@ -61,8 +61,9 @@ leo1a5dk.visual = {
   // (r8 tried a black and a black-green field on the r7 critics' "black-dominant, the brown little"; the r8 critics, both
   // models, then found the brown missing and scored it 0.7 lower: the r7 olive, black and brown, which passed both, again)
   scheme: 'nato', base: '#494e3a', weather: '#555a47', patches: ['#1c1e1a', '#4e4130'], marking: 'number', number: '24',
-  // (r9 critics, both: soft round blobs; the Aalborg turret's black and brown are large hard-edged fields): larger fields
-  camoScale: 0.55,
+  // (r10 tried larger fields on the r9 critics' "soft round blobs": the black ran down the centreline as one band, both
+  // critics; the r7-r9 field size kept)
+  camoScale: 0.72,
 };
 
 // The Leopard 1A5 DK-1: the Bosnia fit (air conditioning and a generator on the turret rear, the M41 DK-1's searchlight,
@@ -136,7 +137,9 @@ leo2a7dk.visual = {
   // with near-black green blocks
   // r10 (r9 critics: a flat saturated yellow-green; the photograph's a matte, warmer sage-olive with darker patches): the
   // greens warmed toward khaki
-  scheme: 'nato', base: '#4b4c35', weather: '#434430', patches: ['#26281b', '#5a5a41', '#383a27'], marking: 'number',
+  // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
+  // low-contrast grey-green mottle): no near-black, the tones close together
+  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#545a44', '#42473a'], marking: 'number',
   number: '11', camoScale: 1.6,
 };
 
