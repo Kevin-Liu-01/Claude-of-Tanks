@@ -172,5 +172,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the Strv 105 (Sweden's new special lane at III), the Olifant Mk 2 (III) and the Mk 5 AVRE (II) in the UK's special lane,
 // each at the tier its same-tier duels hold; the UK tree drawing South Africa's and Australia's one hull each (the Olifant
 // and the Australian Mk 5/1, at II beside the Strv 81 it shares a package with, fly their own flags).
-assert.equal(digest, '808a7174120ac73c', `tree content changed: re-pin to ${digest} if deliberate`);
+// Re-pinned 2026-10-30 at integ/265 4e349bd6bc (every other tree check passes): the Pattons' M48 nodes and the Centurion
+// family's six beside the Longwei family.
+assert.equal(digest, '5c5d8a86e94c23c4', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
