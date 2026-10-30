@@ -98,7 +98,8 @@ interface PolishFit {
   skirtFrom: number;
   /** a framed field on the turret flanks (else a plain welded flank box) */
   flankGrid: boolean;
-  /** stand-off slat armour over the skirt panels behind the framed run, and the PT-17's full-width bustle (the Orzeł) */
+  /** stand-off slat armour along the skirt (over the framed run's rear panels too), and the PT-17's full-width bustle (the
+   * Orzeł) */
   rearSlats?: boolean;
   /** the cassettes under bolted cover plates, one smooth slab language: the glacis in two courses, the cheeks and the
    * forward skirt fields closed over their frames (the Sokół) */
@@ -366,7 +367,9 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
         for (const r of bars) P.add(frameBucket(fit, 'hull'), krataSlab(at, r, -0.01, krataFrame(fit)));
         if (fit.slabArmour) coverPlate(P, 'hull', at, [Z(z0), Z(z1), v0, v1], krataFrame(fit), 0.08);
       }
-      if (fit.rearSlats) skirtSlats(P, s, faceX, Z(-2.92), Z(-2.92 + fit.skirtFrom * (6.20 / 9)) - 0.02);
+      // (the Orzeł: over seven of the nine panels, as far forward as the skirt's top runs level; round 7: rear-only slats
+      // left its side view the Oplot-M's)
+      if (fit.rearSlats) skirtSlats(P, s, faceX, Z(-2.92), Z(-2.92 + 7 * (6.20 / 9)) - 0.02, 7);
       continue;
     }
     for (let i = 0; i < 9; i++) {
@@ -391,17 +394,17 @@ function coverPlate(P: TankBuilderPort, owner: 'hull' | 'turret', at: SurfaceAt,
   }
 }
 
-/** Stand-off slat armour over the engine bay on one side, z from `za` (aft) to `zb`: a vertical plane 0.14 m outboard of
- * the skirt box's lower edge from 0.90 to 0.10 under the deck edge (the gun's measured depression over the rear quarters
- * clears it: oplotBMGun), horizontal slats at 9 cm between top and bottom rails, posts at the panel seams braced back to
- * the skirt face, and a cap plate from the face to the top rail that closes the plan view (B2 contiguity: no open ground
- * between skirt and slats seen from above). */
-function skirtSlats(P: TankBuilderPort, s: number, faceX: (y: number) => number, za: number, zb: number): void {
-  const x = SKIRT_FACE.outerX + 0.14, y0 = 0.90, y1 = DECK_Y - 0.10, posts = 5;
-  for (let i = 0; i < posts; i++) {
-    const z = za + (zb - za) * i / (posts - 1);
+/** Stand-off slat armour along one side over `panels` skirt panels from the stern (z from `za` aft to `zb`): a vertical
+ * plane 0.14 m outboard of the skirt box's lower edge from 0.80 to 0.10 under the deck edge (the gun's measured depression
+ * clears it: oplotBMGun), horizontal slats at 9 cm between top and bottom rails, a post at every panel seam braced back to
+ * the skirt face through the seam (the framed fields' bars), and a cap plate from the face to the top rail that closes the
+ * plan view (B2 contiguity: no open ground between skirt and slats seen from above). */
+function skirtSlats(P: TankBuilderPort, s: number, faceX: (y: number) => number, za: number, zb: number, panels: number): void {
+  const x = SKIRT_FACE.outerX + 0.14, y0 = 0.80, y1 = DECK_Y - 0.10;
+  for (let i = 0; i <= panels; i++) {
+    const z = za + (zb - za) * i / panels;
     P.addEquipment('hullDetail', box(0.05, y1 - y0 + 0.04, 0.05), side(s, x), (y0 + y1) / 2, z);
-    for (const y of [y0 + 0.08, y1 - 0.08]) P.addEquipment('hullDark', beamBetween([side(s, faceX(y) - 0.01), y, z], [side(s, x - 0.02), y, z], 0.018, 8));
+    for (const y of [1.00, y1 - 0.08]) P.addEquipment('hullDark', beamBetween([side(s, faceX(y) - 0.01), y, z], [side(s, x - 0.02), y, z], 0.018, 8));
   }
   for (const y of [y0, y1]) P.addEquipment('hullDetail', beamBetween([side(s, x), y, za], [side(s, x), y, zb], 0.022, 8));
   for (let y = y0 + 0.09; y < y1 - 0.04; y += 0.09) {
