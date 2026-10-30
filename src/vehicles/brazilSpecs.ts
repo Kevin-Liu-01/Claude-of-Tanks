@@ -56,10 +56,12 @@ osorio_p2.gunPitchByYawDeg = [[0, -10], [15, -10], [28, -8.8], [30, -8.8], [35, 
   [163, -0.7], [165, -2], [177, -2], [180, -2.5]];
 osorio_p2.visual = {
   ...osorio_p2.visual,
-  // the Army's coat (the CIBld tank, 2020): a dull olive with large fields of a reddish earth brown (about 35-40 %) edged
-  // in a very dark green (the nato painter: patches[0] the boundary bars, patches[1] the fields); the 1983-98 plaque
-  scheme: 'nato', base: '#4a5034', weather: '#555b3e', patches: ['#262c20', '#6f4026'], marking: 'number', number: '02',
-  camoScale: 0.45, patchK: 1.7, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the Army's two-tone (the CIBld tank, 2020): a muted earth brown and a very dark green in large hard-edged fields of
+  // about equal area over every face, narrow olive bands at some boundaries (the merdc painter: the base and patches[0]
+  // the two fields, patches[1] and [2] the narrow accents; the nato painter's fields left whole 2 m bands bare, blind
+  // critic round 3); the 1983-98 plaque
+  scheme: 'merdc', base: '#5e4a36', weather: '#665240', patches: ['#262e22', '#4f5338', '#1c1f1a'], marking: 'number',
+  number: '02', camoScale: 0.45, patchK: 1.4, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // The 105 mm P.1 (the Army's 1986-87 homologation tank): the Royal Ordnance L7A3 and the OIP LRS-5 sights, mechanically
@@ -84,15 +86,15 @@ osorio_p1.armor = osorioArmor(4.545, 0.088);
 // the measured depression by yaw (tools/gun-depression-sweep.mjs, the whole gun 26 mm off its hull): the published -10
 // over the front, the fender line at the front corners, the engine deck astern
 osorio_p1.gunPitchByYawDeg = [[0, -10], [11, -10], [24, -8.9], [27, -9], [32, -9.3], [35, -10], [36, -10],
-  [41, -8.6], [42, -8.4], [45, -8.4], [51, -10], [113, -10], [115, -9.6], [130, -9.1], [135, -7.7], [142, -6],
-  [143, -5.1], [144, -4.7], [152, -3.2], [157, -3], [158, -2.6], [159, -1.4], [160, -1], [162, -1], [163, -1.2],
-  [164, -2.2], [169, -2.4], [176, -2.4], [180, -2.7]];
+  [41, -8.6], [42, -8.4], [45, -8.4], [51, -10], [126, -10], [139, -6.7], [142, -6], [143, -5.1], [144, -4.7], [152, -3.2],
+  [157, -3], [158, -2.6], [159, -1.4], [160, -1], [162, -1], [163, -1.2], [164, -2.2], [169, -2.4], [176, -2.4], [180, -2.7]];
 osorio_p1.visual = {
   ...osorio_p1.visual,
-  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a darker, greyer earth brown with large irregular
-  // near-black green fields across the full side height; the 1983-98 plaque
-  scheme: 'nato', base: '#5c4f3e', weather: '#675a48', patches: ['#1c2119', '#283022'], marking: 'number', number: '01',
-  camoScale: 0.45, patchK: 1.8, trackWidthM: 0.57, insignia: 'br-cruzeiro',
+  // the surviving P.1 as photographed (museum 2015, Curitiba 2024): a reddish chocolate brown and a near-black green in
+  // large hard-edged bands of about equal area down the full side height (the merdc painter, as the P.2; its accents a
+  // shade off the two fields); the 1983-98 plaque
+  scheme: 'merdc', base: '#523626', weather: '#5a3e2e', patches: ['#222a20', '#5a3e2e', '#1b1e19'], marking: 'number',
+  number: '01', camoScale: 0.48, patchK: 1.5, trackWidthM: 0.57, insignia: 'br-cruzeiro',
 };
 
 // ------------------------------------------------------------------------------------------------- MB-3 Tamoyo --
@@ -123,7 +125,9 @@ Object.assign(tamoyo1, {
 const [heat90, he90] = [tamoyo1.gun.shells[1], tamoyo1.gun.shells[2]];
 tamoyo1.gun = {
   ...tamoyo1.gun,
-  caliberMm: 90, reloadS: 5.6, baseAccuracy: 0.31, aimTimeS: 1.9,
+  // (the lane's balance footing, re-duelled on the round-3 turret: the 0.31 / 1.9 s / 5.6 s footing fell to 0.34 against
+  // the tier-II MBTs, 3 of 8 in band; this one 0.49, 5 of 8)
+  caliberMm: 90, reloadS: 5.4, baseAccuracy: 0.28, aimTimeS: 1.75,
   shells: [
     { ...tamoyo1.gun.shells[0], name: 'OFL 90 F1 APFSDS', caliberMm: 90, pen100Mm: 500, pen1000Mm: 455, pen2000Mm: 410, dmg: 400, velocityMps: 1350 },
     { ...heat90, name: 'OCC 90 HEAT', caliberMm: 90, pen100Mm: 320, pen1000Mm: 320, dmg: 330, velocityMps: 950 },
@@ -203,14 +207,15 @@ const x1Armor = (o: { hl: number; hw: number; inW: number; roofY: number; trkTop
 });
 
 const x1_pioneiro = brazilian('x1_pioneiro', 'leo1a5', 'CCL X1 Pioneiro', 'cold-war');
-Object.assign(x1_pioneiro.dims, { hullLengthM: 5.04, overallLengthM: 6.04, widthM: 2.40, heightM: 2.45 });
+// (over the gun: the 5.04 m hull and the D-921's muzzle 1.28 m past the bow as Gaydos draws it, against TE's 6.04)
+Object.assign(x1_pioneiro.dims, { hullLengthM: 5.04, overallLengthM: 6.32, widthM: 2.40, heightM: 2.45 });
 Object.assign(x1_pioneiro, {
   role: 'light', hp: 1550, enginePowerHp: 256, weightTons: 17.0, topSpeedKmh: 55, reverseSpeedKmh: 12,
   hullTraverseDegS: 40, turretTraverseDegS: 28, gunPitchDegS: 24, gunElevationDeg: 15, gunDepressionDeg: 8,
 });
 x1_pioneiro.gun = { ...x1_pioneiro.gun, caliberMm: 90, reloadS: 4.9, baseAccuracy: 0.34, aimTimeS: 2.0, shells: x1Rounds(x1_pioneiro, 480) };
 x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop: 1.10, pivot: [0, 1.62, 0.08], gun: [0, 0.33, 1.02],
-  barrelLenM: 2.42, tw: 0.92, tFrontZ: 1.02, tRearZ: -1.46, tH: 0.66, glacis: 38, lower: 44, side: 25, loader: true });
+  barrelLenM: 2.70, tw: 0.92, tFrontZ: 1.02, tRearZ: -1.54, tH: 0.66, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
   ...x1_pioneiro.visual,
   // the Army's plain grey olive drab of the 1970s and 80s (Gaydos' profile); the white turret ring

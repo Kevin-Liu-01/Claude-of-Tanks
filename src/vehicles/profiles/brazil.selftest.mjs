@@ -32,7 +32,8 @@ within(OSORIO_DATUMS.muzzleHullZ.p2 + OSORIO_DATUMS.hull.noseZ, 10.10, 'Osório 
 within(OSORIO_DATUMS.muzzleHullZ.p1 + OSORIO_DATUMS.hull.noseZ, 9.36, 'Osório P.1 over the gun', 0.005);
 within(TAMOYO_DATUMS.muzzleHullZ.t1 + TAMOYO_DATUMS.hull.noseZ, 8.77, 'Tamoyo 1 over the gun', 0.005);
 within(TAMOYO_DATUMS.muzzleHullZ.t3 + TAMOYO_DATUMS.hull.noseZ, 8.90, 'Tamoyo 3 over the gun', 0.005);
-within(BERNARDINI_X1_DATUMS.x1.muzzleHullZ - BERNARDINI_X1_DATUMS.x1.sternZ, 6.04, 'X1 over the gun', 0.005);
+// (the X1's muzzle as Gaydos draws it, 1.28 m past the bow, the 33-calibre D-921; TE's 6.04 m reads the gun 0.28 m short)
+within(BERNARDINI_X1_DATUMS.x1.muzzleHullZ - BERNARDINI_X1_DATUMS.x1.sternZ, 6.32, 'X1 over the gun', 0.005);
 assert.equal(OSORIO_DATUMS.roadWheelZs.length, 6, 'the Osório: six road wheels a side');
 assert.equal(TAMOYO_DATUMS.roadWheelZs.length, 6, 'the Tamoyo: six road wheels a side');
 assert.equal(BERNARDINI_X1_DATUMS.x1.wheelZs.length, 4, 'the X1: two bogies, four wheels a side');
@@ -78,10 +79,13 @@ const receipt = (id, key) => {
 };
 const p1 = receipt('osorio_p1', 'osorioTurretReceipt'), p2 = receipt('osorio_p2', 'osorioTurretReceipt');
 assert.deepEqual([p1.dischargers, p2.dischargers], [8, 12], 'the Osório P.1 two by two dischargers a side, the P.2 two by three');
-assert.deepEqual([p1.sightHeads, p2.sightHeads, p2.panoramicPedestal], [2, 3, true], 'the P.1\'s two LRS-5 heads; the P.2\'s VS580 heads');
+assert.deepEqual([p1.sightHeads, p2.sightHeads, p2.panoramicPedestal], [3, 3, true],
+  'the P.1\'s two LRS-5 heads and the commander\'s hooded head; the P.2\'s VS580 heads');
+assert.deepEqual([p1.rightGrid, p2.rightGrid, p1.leftBasket, p2.leftBasket, p1.gunBoot, p2.gunBoot],
+  ['flat', 'basket', false, false, 'black', 'canvas'], 'the P.1\'s flat grid and black boot, the P.2\'s basket; no left basket');
 assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt('tamoyo3', 'tamoyoTurretReceipt').sideSkirts], [true, false],
   'the Tamoyo 1 on its side plates, the Tamoyo 3 on open gear');
 const x1 = receipt('x1_pioneiro', 'x1TurretReceipt'), x1a2 = receipt('x1a2_carcara', 'x1TurretReceipt');
-assert.deepEqual([x1.flankSmokeBoxes, x1a2.flankSmokeBoxes, x1.cupola, x1a2.cupola], [false, true, 'flat-slit', 'low-periscope'],
-  'the X1A2\'s six-tube boxes on its rear flanks; the X1\'s flat slit cupola, the X1A2\'s low periscope drum');
+assert.deepEqual([x1.flankSmokeBoxes, x1a2.flankSmokeBoxes, x1.cupola, x1a2.cupola], [false, true, 'dome-slit', 'rect-periscope'],
+  'the X1A2\'s six-tube boxes on its rear flanks; the X1\'s domed slit cupola, the X1A2\'s raised rectangular periscope cupola');
 console.log(`brazil.selftest: ${Object.keys(IDS).length} Brazilian ids at both qualities in their packets, trees and tiers`);

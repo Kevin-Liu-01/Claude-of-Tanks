@@ -143,7 +143,8 @@ function mergeGeometries(parts: readonly THREE.BufferGeometry[]): THREE.BufferGe
 const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
   x1: Object.freeze({
     noseZ: 2.52, sternZ: -2.52, bellyY: 0.40, lowerX: 0.74, sponsonX: 1.12, sponsonFloorY: 1.14, deckY: 1.62, noseY: 1.12,
-    glacisZ: 1.55, bowZ: 2.30, rearTopZ: -1.85, rearY: 1.22, rearBellyZ: -2.30, fenderX: 1.20, fenderY: 1.14,
+    // (the rear deck a convex overhang falling from -1.85 to the stern's lip at 1.18, the hull's lower rear set back under it)
+    glacisZ: 1.55, bowZ: 2.30, rearTopZ: -1.85, rearY: 1.18, rearBellyZ: -2.10, fenderX: 1.20, fenderY: 1.14,
     sponsonFrontZ: 2.16, sponsonRearZ: -2.47,
     // the Stuart's bogies: each pair spread 0.84 m, the two bogies' inner wheels nearly touching (Gaydos' X1 profile)
     trackXc: 0.98, trackW: 0.40, wheelR: 0.28, wheelY: 0.34, wheelZs: [1.47, 0.63, 0.02, -0.82], bogieZs: [1.05, -0.40],
@@ -151,38 +152,47 @@ const DATUMS: Readonly<Record<BernardiniX1Mark, X1Datums>> = Object.freeze({
     rollerR: 0.10,
     ring: { y: 1.62, z: 0.08 },
     turret: {
-      // a lozenge in profile (Gaydos' X1): the front a point at the mantlet, one long slope from it to the roof, its
-      // floor undercut back to the ring; the flanks leaning in from the ring; the bustle sloping down to a point astern
-      // over its own rising floor
-      front: 1.02, slopeTop: 0.15, rear: -1.46, roof: 0.66,
+      // Gaydos' X1: the front a point at the mantlet, one long slope from it to the roof, its floor undercut back to the
+      // ring; the roof at full height to -1.37, then the tall rear plate (0.40 of the 0.66) down to the bustle's
+      // rearmost edge over its undercut floor; the flanks leaning in from a V-shaped lower facet (deep fore and aft,
+      // shallow amidships)
+      front: 1.02, slopeTop: 0.15, rear: -1.54, roof: 0.66,
       sections: Object.freeze([
-        sec(-1.46, 0.30, 0.35, 0.40, 0.54, 0.64, 0.48), sec(-1.20, 0.20, 0.29, 0.47, 0.70, 0.82, 0.56),
-        sec(-0.80, 0.04, 0.10, 0.58, 0.84, 0.90, 0.60), sec(-0.66, 0.02, 0.05, 0.62, 0.88, 0.90, 0.62),
-        sec(0.15, 0.02, 0.05, 0.66, 0.88, 0.90, 0.64), sec(0.62, 0.02, 0.16, 0.54, 0.82, 0.88, 0.60),
-        sec(0.80, 0.03, 0.20, 0.49, 0.72, 0.82, 0.56), sec(1.02, 0.14, 0.27, 0.40, 0.44, 0.54, 0.42),
+        sec(-1.54, 0.22, 0.23, 0.24, 0.66, 0.72, 0.58), sec(-1.46, 0.20, 0.25, 0.44, 0.70, 0.80, 0.58),
+        sec(-1.37, 0.18, 0.26, 0.64, 0.74, 0.86, 0.60), sec(-1.05, 0.10, 0.20, 0.65, 0.78, 0.90, 0.62),
+        sec(-0.80, 0.04, 0.14, 0.655, 0.82, 0.92, 0.62), sec(-0.66, 0.02, 0.10, 0.66, 0.84, 0.92, 0.62),
+        sec(-0.20, 0.02, 0.07, 0.66, 0.84, 0.92, 0.64), sec(0.15, 0.02, 0.10, 0.66, 0.84, 0.92, 0.64),
+        sec(0.62, 0.02, 0.17, 0.54, 0.80, 0.88, 0.60), sec(0.80, 0.03, 0.21, 0.49, 0.72, 0.82, 0.56),
+        sec(1.02, 0.14, 0.27, 0.40, 0.44, 0.54, 0.42),
       ]),
     },
-    trunnion: { y: 0.33, z: 1.02 }, muzzleHullZ: 3.52,
+    // the muzzle 1.28 m past the bow, as Gaydos draws it (25.4% of the 5.04 m hull, 55.6 px/m); the D-921 (CN-90 F1) is a
+    // 33-calibre tube (Military Periscope, "90-mm CN-90-F1 tank gun"), about 3.0 m with the brake ahead of a breech
+    // 0.5 m behind the trunnion: 2.70 m trunnion to muzzle. TE's 6.04 m overall reads the gun 0.28 m shorter.
+    trunnion: { y: 0.33, z: 1.02 }, muzzleHullZ: 3.80,
   }),
   x1a2: Object.freeze({
     // (the upper hull side from 1.34: the drawing's dark band between the track and the side panel)
     noseZ: 3.03, sternZ: -3.03, bellyY: 0.42, lowerX: 0.84, sponsonX: 1.25, sponsonFloorY: 1.34, deckY: 1.74, noseY: 1.24,
-    glacisZ: 1.67, bowZ: 2.80, rearTopZ: -2.30, rearY: 1.32, rearBellyZ: -2.75, fenderX: 1.30, fenderY: 1.34,
-    sponsonFrontZ: 2.40, sponsonRearZ: -2.85,
-    trackXc: 1.09, trackW: 0.42, wheelR: 0.245, wheelY: 0.305, wheelZs: [1.79, 1.02, 0.38, -0.38, -1.00, -1.73],
-    bogieZs: [1.405, 0, -1.365],
-    sprocket: { z: 2.52, y: 0.74, r: 0.36 }, idler: { z: -2.46, y: 0.62, r: 0.29 }, rollerZs: [1.405, 0, -1.365], rollerY: 0.96,
+    // (the rear deck falling gently to the stern's top at 1.52, the rear plate overhanging, its top rearmost)
+    glacisZ: 1.67, bowZ: 2.80, rearTopZ: -2.30, rearY: 1.52, rearBellyZ: -2.75, fenderX: 1.30, fenderY: 1.34,
+    sponsonFrontZ: 2.40, sponsonRearZ: -2.98,
+    // the drawing's wheels (113 px/m): 0.553 m across, 0.741 m apart in a bogie, 0.664 m bogie to bogie
+    trackXc: 1.09, trackW: 0.42, wheelR: 0.275, wheelY: 0.335, wheelZs: [1.78, 1.04, 0.37, -0.37, -0.995, -1.735],
+    bogieZs: [1.41, 0, -1.365],
+    sprocket: { z: 2.52, y: 0.74, r: 0.36 }, idler: { z: -2.46, y: 0.62, r: 0.29 }, rollerZs: [1.41, 0, -1.365], rollerY: 0.96,
     rollerR: 0.085,
     ring: { y: 1.74, z: 0.10 },
     turret: {
-      front: 1.28, slopeTop: 0.70, rear: -1.86, roof: 0.77,
-      // undercut flanks (the floor 0.88 out to the crease's 1.00 at 0.18), the angled cheeks to a pointed nose, the bustle
-      // overhanging the ring from -0.70 to its back at -1.86
+      front: 1.28, slopeTop: 0.30, rear: -1.86, roof: 0.77,
+      // undercut flanks (the floor 0.86 out to the crease's 1.00 at 0.18); the wedge nose: one long shallow front rising
+      // from the mantlet (1.28, 0.48) to the cupola's front (0.30, the roof), 31% of the turret's length, the cheeks
+      // angled in; the bustle overhanging the ring from -0.70 to its back at -1.86
       sections: Object.freeze([
-        sec(-1.86, 0.22, 0.30, 0.72, 0.78, 0.88, 0.68), sec(-1.70, 0.17, 0.25, 0.77, 0.86, 0.98, 0.80),
-        sec(-0.86, 0.17, 0.25, 0.77, 0.88, 1.00, 0.80), sec(-0.70, 0.02, 0.18, 0.77, 0.88, 1.00, 0.80),
-        sec(0.70, 0.02, 0.18, 0.77, 0.88, 1.00, 0.80), sec(1.00, 0.02, 0.14, 0.62, 0.74, 0.86, 0.56),
-        sec(1.28, 0.02, 0.05, 0.48, 0.56, 0.62, 0.42),
+        sec(-1.86, 0.22, 0.30, 0.72, 0.76, 0.88, 0.68), sec(-1.70, 0.17, 0.25, 0.77, 0.84, 0.98, 0.80),
+        sec(-0.86, 0.17, 0.25, 0.77, 0.86, 1.00, 0.80), sec(-0.70, 0.02, 0.18, 0.77, 0.86, 1.00, 0.80),
+        sec(0.30, 0.02, 0.18, 0.77, 0.86, 1.00, 0.80), sec(0.70, 0.02, 0.18, 0.652, 0.86, 1.00, 0.84),
+        sec(1.00, 0.02, 0.14, 0.565, 0.74, 0.86, 0.62), sec(1.28, 0.02, 0.05, 0.48, 0.56, 0.62, 0.42),
       ]),
     },
     trunnion: { y: 0.43, z: 1.30 }, muzzleHullZ: 3.89,
@@ -198,7 +208,9 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
     if (z >= D.bowZ) return D.noseY - (z - D.bowZ) * 0.35;
     if (z >= D.glacisZ) return D.noseY + (D.bowZ - z) * (D.deckY - D.noseY) / (D.bowZ - D.glacisZ);
     if (z >= D.rearTopZ) return D.deckY;
-    return D.deckY - (D.rearTopZ - z) / (D.rearTopZ - D.sternZ) * (D.deckY - D.rearY);
+    const u = Math.min(1, (D.rearTopZ - z) / (D.rearTopZ - D.sternZ));
+    // the X1's rear deck a convex quarter-round down to the stern's lip; the X1A2's falls straight
+    return a2 ? D.deckY - u * (D.deckY - D.rearY) : D.rearY + (D.deckY - D.rearY) * Math.sqrt(1 - u * u);
   };
   const bar = (slot: string, a: readonly number[], b: readonly number[], r: number): void => {
     P.add(slot, beamBetween([a[0], a[1], a[2]], [b[0], b[1], b[2]], r, 8));
@@ -214,7 +226,12 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   // ---------------------------------------------------------------- hull --
   const buildX1Hull = (): void => {
     // the lower hull: the rounded transmission cover at the bow (sprocket forward), the belly, the rear plate's slope
-    const LOWER: readonly (readonly [number, number])[] = [[D.sternZ, D.rearY - 0.30], [D.rearBellyZ, D.bellyY],
+    // (the X1's lower rear set back under the overhang's sloping underside; the X1A2's rear plate overhanging, its top
+    // rearmost, over a short lower plate)
+    const REAR: readonly (readonly [number, number])[] = a2
+      ? [[D.sternZ, D.rearY - 0.04], [D.sternZ + 0.23, D.rearY - 0.48]]
+      : [[D.sternZ, D.rearY - 0.06], [D.sternZ + 0.25, 0.92]];
+    const LOWER: readonly (readonly [number, number])[] = [...REAR, [D.rearBellyZ, D.bellyY],
       [D.glacisZ, D.bellyY], [D.bowZ - 0.25, D.bellyY], [D.noseZ - 0.10, D.bellyY + 0.25], [D.noseZ, D.noseY - 0.40]];
     P.add('hull', sectionSolid(LOWER.map(([z, b]) => ({ z, ring: [[-D.lowerX, b], [D.lowerX, b], [D.lowerX, deckY(z)],
       [-D.lowerX, deckY(z)]] as SectionPoint[] }))));
@@ -268,7 +285,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         const bz = D.bogieZs[b], zf = D.wheelZs[2 * b], zr = D.wheelZs[2 * b + 1];
         const xi = s * (D.trackXc - 0.10), xo = s * (D.trackXc + 0.04), xm = (xi + xo) / 2;
         // the bracket: narrow between the wheels, widening above them to the roller seat
-        const lo = D.wheelY - 0.02, bw = 0.085, tw = 0.20;
+        const lo = D.wheelY - 0.02, bw = Math.min(0.085, (zf - zr) / 2 - r - 0.02), tw = 0.20;
         P.add('hullRunningGearDetail', slab([xi, lo, bz - bw], [xo, lo, bz - bw], [xo, lo, bz + bw], [xi, lo, bz + bw],
           [xi, top, bz - tw], [xo, top, bz - tw], [xo, top, bz + tw], [xi, top, bz + tw]));
         // its foot on the lower hull side and the roller's saddle
@@ -317,9 +334,14 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
       }
       const ez = D.glacisZ + (a2 ? 0.55 : 0.20);
       liftEye(P, 'hullDetail', s * (D.sponsonX - 0.15), deckY(ez) + 0.012, ez, s * 0.3);
-      P.add('hullDark', box(0.14, 0.10, 0.06), s * (D.lowerX - 0.18), D.rearY - 0.10, D.sternZ - 0.01);
-      P.add('hullGlass', box(0.09, 0.05, 0.012), s * (D.lowerX - 0.18), D.rearY - 0.10, D.sternZ - 0.045);
-      P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.45, D.rearY - 0.22, D.sternZ - 0.03, 0, 0, Math.PI / 2);
+      // (the X1A2's on its overhanging rear plate; the X1's on the sponsons' rear ends, its tow eyes on the lower rear)
+      const plateZ = (y: number): number => D.sternZ + ((D.rearY - 0.04 - y) / 0.44) * 0.23;
+      const [tx, ty, tz] = a2 ? [s * (D.lowerX - 0.18), D.rearY - 0.16, plateZ(D.rearY - 0.16) - 0.012]
+        : [s * (D.sponsonX - 0.12), D.sponsonFloorY + 0.08, D.sponsonRearZ - 0.012];
+      P.add('hullDark', box(0.14, 0.10, 0.06), tx, ty, tz);
+      P.add('hullGlass', box(0.09, 0.05, 0.012), tx, ty, tz - 0.035);
+      const [ry, rz] = a2 ? [D.rearY - 0.34, plateZ(D.rearY - 0.34) - 0.03] : [0.80, -2.25];
+      P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.45, ry, rz, 0, 0, Math.PI / 2);
     }
     // the pioneer tools on the hull's flanks, each on its clips: the shovel and the crowbar (both marks); the X1A2 also
     // carries the pick and a second bar (Gaydos' X1A2 profile)
@@ -413,7 +435,7 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
     body.userData.primaryStockRole = a2 ? 'x1a2-wedge-turret' : 'bt90a1-turret';
     P.add('turret', body);
     for (const s of [-1, 1] as const) {
-      const fz = T.slopeTop - 0.25, rz = T.rear + 0.30;
+      const fz = T.slopeTop - (a2 ? 0.25 : 0.02), rz = T.rear + (a2 ? 0.30 : 0.45);
       liftEye(P, 'turretDetail', s * (sectionAt(fz).hwt - 0.10), sectionAt(fz).top + 0.005, fz, s * 0.4);
       liftEye(P, 'turretDetail', s * (sectionAt(rz).hwt - 0.10), sectionAt(rz).top + 0.005, rz, s * 2.7);
     }
@@ -423,49 +445,54 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
 
   const buildX1TurretFittings = (): void => {
     const roof = T.roof;
-    // the commander's cupola (right): the X1's tall flat-topped cylinder with its vision slits, the X1A2's low wide drum
-    // with its periscopes round the front
-    const cx = -0.34, cz = a2 ? -0.05 : -0.15, top = (z: number): number => sectionAt(z).top;
-    let cupolaTop: number, mgFootY: number, mgZ: number;
+    // the commander's cupolas: the X1's domed cupola with its vision slits, near the roof's middle; the X1A2's raised
+    // rectangular cupola (right) with three periscope heads, its .50 on a pintle in front and the tall sight rod behind
+    const top = (z: number): number => sectionAt(z).top;
+    const slope = Math.atan2(top(T.slopeTop) - top(T.front), T.front - T.slopeTop);
+    let cupolaTop: number, mgX: number, mgFootY: number, mgZ: number;
     if (a2) {
-      const cr = 0.36, h = 0.09;
-      P.addCupola('turret', cylY(cr, cr + 0.01, h, P.q ? 26 : 16), cx, roof + h / 2, cz);
-      for (let k = 0; k < 6; k++) {
-        const a = -1.9 + (k * 3.8) / 5, rr = cr - 0.065;
-        P.add('turretDetail', box(0.10, 0.07, 0.08), cx + Math.sin(a) * rr, roof + h + 0.035, cz + Math.cos(a) * rr, 0, a, 0);
-        P.add('turretGlass', box(0.07, 0.035, 0.008), cx + Math.sin(a) * (rr + 0.042), roof + h + 0.04, cz + Math.cos(a) * (rr + 0.042), 0, a, 0);
+      const cx = -0.30, cz = -0.16, h = 0.14;
+      P.addCupola('turret', box(0.56, h, 0.88), cx, roof + h / 2 - 0.005, cz);
+      for (const z of [0.12, -0.16, -0.44]) {
+        P.add('turretDetail', box(0.16, 0.09, 0.11), cx, roof + h + 0.04, z);
+        P.add('turretGlass', box(0.12, 0.04, 0.008), cx, roof + h + 0.05, z + 0.057);
       }
-      P.addCupola('turret', cylY(0.22, 0.23, 0.03, P.q ? 22 : 14), cx, roof + h + 0.015, cz);
-      cupolaTop = roof + h + 0.03;
-      mgFootY = roof + h;
-      mgZ = cz - 0.29;
+      // the pintle on the front slope ahead of the cupola
+      const pz = 0.44, py = top(pz) - 0.01, post = 0.24;
+      P.addEquipment('turretDark', cylY(0.032, 0.042, post, 10), cx, py + post / 2, pz);
+      mgX = cx; mgFootY = py + post; mgZ = pz;
+      // the sight rod
+      P.addEquipment('turretDark', cylY(0.013, 0.016, 0.55, 8), -0.06, roof + 0.275, -0.42);
+      P.addEquipment('turretDark', box(0.05, 0.05, 0.07), -0.06, roof + 0.57, -0.42);
+      cupolaTop = roof + h + 0.085;
     } else {
-      const cr = 0.29, wall = 0.19, base = top(cz) - 0.01;
-      P.addCupola('turret', cylY(cr, cr + 0.015, wall, P.q ? 24 : 14), cx, base + wall / 2, cz);
+      const cx = -0.12, cz = -0.15, cr = 0.29, wall = 0.12, base = top(cz) - 0.01;
+      P.addCupola('turret', cylY(cr, cr + 0.012, wall, P.q ? 24 : 14), cx, base + wall / 2, cz);
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2 + 0.2;
-        P.add('turretGlass', box(0.075, 0.028, 0.012), cx + Math.sin(a) * (cr + 0.006), base + wall * 0.66, cz + Math.cos(a) * (cr + 0.006), 0, a, 0);
+        P.add('turretGlass', box(0.075, 0.028, 0.012), cx + Math.sin(a) * (cr + 0.004), base + wall * 0.60, cz + Math.cos(a) * (cr + 0.004), 0, a, 0);
       }
-      P.addCupola('turret', cylY(0.25, 0.26, 0.03, P.q ? 22 : 14), cx, base + wall + 0.015, cz);
-      P.add('turretDetail', box(0.12, 0.035, 0.07), cx + 0.21, base + wall + 0.012, cz);
-      cupolaTop = base + wall + 0.03;
-      mgZ = -0.62;
-      mgFootY = top(mgZ);
+      const dome = new THREE.SphereGeometry(cr * 0.98, P.q ? 24 : 14, P.q ? 8 : 5, 0, Math.PI * 2, 0, Math.PI / 2);
+      dome.scale(1, 0.55, 1);
+      P.addCupola('turret', dome, cx, base + wall - 0.004, cz);
+      P.add('turretDetail', cylY(0.05, 0.06, 0.04, 10), cx, base + wall + cr * 0.98 * 0.55 + 0.012, cz);
+      cupolaTop = base + wall + cr * 0.98 * 0.55 + 0.032;
+      // the .50 on the roof aft of the loader's hatch
+      mgX = 0.42; mgZ = -0.75; mgFootY = top(mgZ);
     }
-    // the .50: on the X1A2's cupola behind the hatch, on the X1's roof left of the cupola (its foot on the surface)
     const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.60, elev: 0.03, ring: false,
       shield: false, seed: a2 ? 6651 : 6641, working: true });
     mg.name = a2 ? 'x1a2CommanderM2' : 'x1CommanderM2';
-    mg.position.set(a2 ? cx : 0.08, mgFootY, mgZ);
+    mg.position.set(mgX, mgFootY, mgZ);
     P.turretG.add(mg);
-    // the gunner's periscope ahead of the cupola, the loader's hatch (left), the roof ventilator
-    // (the X1's periscope stands on its front slope)
-    const pz = a2 ? Math.min(T.slopeTop - 0.20, cz + 0.55) : 0.32, tilt = a2 ? 0 : Math.atan2(top(0.15) - top(0.62), 0.47);
-    P.addEquipment('turret', xform(box(0.18, 0.12, 0.22), 0, 0, 0, tilt, 0, 0), -0.36, top(pz) + 0.05, pz);
-    P.add('turretGlass', xform(box(0.12, 0.05, 0.008), 0, 0, 0, tilt, 0, 0), -0.36, top(pz) + 0.06 - Math.sin(tilt) * 0.115,
-      pz + 0.115);
-    P.addCupola('turret', cylY(0.25, 0.26, 0.05, P.q ? 20 : 12), 0.36, top(-0.25) + 0.015, -0.25);
-    P.add('turretDetail', cylY(0.22, 0.23, 0.03, P.q ? 20 : 12), 0.36, top(-0.25) + 0.055, -0.25);
+    // the gunner's periscope on the front slope (left of the X1A2's pintle), the loader's hatch (left), the ventilator
+    const gx = a2 ? 0.28 : -0.36, gz = a2 ? 0.50 : 0.32;
+    P.addEquipment('turret', xform(box(0.18, 0.12, 0.22), 0, 0, 0, slope, 0, 0), gx, top(gz) + 0.05, gz);
+    P.add('turretGlass', xform(box(0.12, 0.05, 0.008), 0, 0, 0, slope, 0, 0), gx, top(gz) + 0.06 - Math.sin(slope) * 0.115,
+      gz + 0.115);
+    const [hx, hz, hr] = a2 ? [0.36, -0.25, 0.25] : [0.42, -0.30, 0.22];
+    P.addCupola('turret', cylY(hr, hr + 0.01, 0.05, P.q ? 20 : 12), hx, top(hz) + 0.015, hz);
+    P.add('turretDetail', cylY(hr - 0.03, hr - 0.02, 0.03, P.q ? 20 : 12), hx, top(hz) + 0.055, hz);
     P.addEquipment('turret', cylY(0.12, 0.14, 0.05, 12), 0.10, top(T.rear + 0.55) + 0.015, T.rear + 0.55);
     for (const s of [-1, 1] as const) {
       if (a2) {
@@ -493,25 +520,35 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         }
       } else {
         // the X1's two dischargers each side at the turret rear, on a bracket on the lower flank
-        const y = 0.36, fx = flankX(-0.95, y);
-        P.addEquipment('turret', box(0.06, 0.08, 0.34), s * (fx + 0.02), y, -0.95);
+        // (on the rear flanks below the rear plate, Gaydos' X1)
+        const y = 0.34, fx = flankX(-1.06, y);
+        P.addEquipment('turret', box(0.06, 0.08, 0.40), s * (fx + 0.02), y, -1.06);
         for (let k = 0; k < 2; k++) {
           P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.45, 0),
-            s * (fx + 0.07), y + 0.06, -0.87 - k * 0.16);
+            s * (fx + 0.07), y + 0.06, -0.94 - k * 0.22);
         }
       }
     }
-    // the bustle: the X1's rear bin across its back plate; the raked antenna on the rear
+    // the X1's stowage rack laid on its rear plate
     if (!a2) {
-      const back = sectionAt(T.rear);
-      P.addEquipment('turret', box(back.hwc * 1.5, back.top - back.yb + 0.04, 0.18), 0, (back.yb + back.top) / 2, T.rear - 0.08);
+      const pa = Math.atan2(-1.37 - -1.54, 0.64 - 0.24);
+      P.addEquipment('turretDark', xform(box(0.80, 0.30, 0.03), 0, 0, 0, pa, 0, 0), 0, 0.448, -1.473);
     }
-    // the whip's base: the X1A2's on the bustle roof, the X1's on the roof ahead of its sloping bustle
-    const az = a2 ? T.rear + 0.25 : -0.70, aTop = sectionAt(az).top;
-    P.addEquipment('turret', box(0.08, 0.08, 0.08), 0.55, aTop + 0.04, az);
-    P.addEquipment('turret', xform(cylY(0.012, 0.015, 2.2, 8), 0, 1.10, 0, 0.35, 0, 0), 0.55, aTop + 0.08, az);
-    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r3', mark, roofY: roof, front: T.front, rear: T.rear,
-      spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'low-periscope' : 'flat-slit', cupolaTopY: +cupolaTop.toFixed(3) };
+    // the whip, its foot on its base: the X1's at the roof's right rear corner, the X1A2's on a bracket off the turret's
+    // upper rear corner
+    const whip = xform(xform(cylY(0.012, 0.015, 2.2, 8), 0, 1.10, 0), 0, 0, 0, -0.25, 0, 0);
+    if (a2) {
+      const wz = T.rear - 0.07, wy = top(T.rear) - 0.03;
+      P.addEquipment('turret', box(0.12, 0.06, 0.18), 0.60, wy, T.rear - 0.03);
+      P.addEquipment('turret', cylY(0.035, 0.04, 0.06, 10), 0.60, wy + 0.06, wz);
+      P.addEquipment('turret', whip, 0.60, wy + 0.09, wz);
+    } else {
+      const wz = -1.25, wy = top(wz);
+      P.addEquipment('turret', cylY(0.035, 0.045, 0.08, 10), -0.50, wy + 0.035, wz);
+      P.addEquipment('turret', whip, -0.50, wy + 0.075, wz);
+    }
+    P.turretG.userData.x1TurretReceipt = { revision: 'x1-266-r4', mark, roofY: roof, front: T.front, rear: T.rear,
+      spareLinks: false, flankSmokeBoxes: a2, cupola: a2 ? 'rect-periscope' : 'dome-slit', cupolaTopY: +cupolaTop.toFixed(3) };
   };
   buildX1TurretFittings();
   yield 'buildX1TurretFittings';
@@ -520,22 +557,24 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
   const buildX1Gun = (): void => {
     P.gunG.position.set(0, D.trunnion.y, D.trunnion.z);
     const seg = P.q ? 22 : 12;
-    // the X1A2's mantlet block on its nose, the X1's pot mantlet (a drum about the trunnion standing out of the front
-    // slope); the long sleeve out of each, the coaxial MG's port beside the gun
+    // the X1A2's mantlet block on its nose with the coaxial MG above the gun on the left, its thick sleeve over the rear
+    // 40% of the barrel; the X1's mantlet housing and short sleeve
     let sleeve0: number;
-    const sleeve1 = 0.50;
+    const sleeve1 = a2 ? 1.10 : 0.50;
     if (a2) {
       const nose = T.front - D.trunnion.z;
       P.addGunExtra(box(0.58, 0.30, 0.24), 0, 0, nose + 0.08);
       sleeve0 = nose + 0.20;
-      P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.20, -0.04, sleeve0 + 0.01);
+      P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.17, 0.10, sleeve0 + 0.01);
+      P.addGunExtraDark(cylZ(0.018, 0.26, 10), 0.17, 0.10, sleeve0 + 0.13);
     } else {
       // the mantlet housing that is the turret's front point (Gaydos' X1)
       P.addGunExtra(box(0.46, 0.32, 0.26), 0, 0, 0);
       sleeve0 = 0.13;
       P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.17, -0.04, 0.135);
     }
-    P.addGunExtra(cylZ(a2 ? 0.115 : 0.13, sleeve1 - sleeve0, seg, a2 ? 0.135 : 0.15), 0, 0, (sleeve0 + sleeve1) / 2);
+    P.addGunExtra(cylZ(a2 ? 0.10 : 0.13, sleeve1 - sleeve0, seg, a2 ? 0.118 : 0.15), 0, 0, (sleeve0 + sleeve1) / 2);
+    if (a2) P.addGunExtra(cylZ(0.072, 0.05, seg, 0.10), 0, 0, sleeve1 + 0.025);
     const len = D.muzzleHullZ - (D.ring.z + D.trunnion.z);
     if (a2) {
       // the Engesa EC-90 (the Cockerill Mk 3): a plain tube and the wide multi-baffle cage brake (five baffles on four
@@ -549,13 +588,13 @@ function* buildX1Steps(P: TankBuilderPort, mark: BernardiniX1Mark): TankProfileB
         P.add('gun', box(0.024, 0.024, brake), Math.cos(a) * 0.104, Math.sin(a) * 0.104, len - brake / 2);
       }
     } else {
-      // the 90 mm D-921: a short tapering tube and its two-baffle box brake (three plates on straps above and below,
+      // the 90 mm D-921: a tapering tube and its rounded two-baffle brake (three round plates on straps above and below,
       // the bore dark through both side ports)
-      const r0 = 0.075, r1 = 0.058, brake = 0.34;
+      const r0 = 0.075, r1 = 0.058, brake = 0.32;
       P.add('gun', cylZ(r1, len - brake - sleeve1, seg, r0), 0, 0, (sleeve1 + len - brake) / 2);
       P.add('gunDark', cylZ(0.062, brake, seg), 0, 0, len - brake / 2);
-      for (const z of [len - 0.025, len - brake / 2, len - brake + 0.025]) P.add('gun', box(0.22, 0.20, 0.05), 0, 0, z);
-      for (const sy of [-1, 1]) P.add('gun', box(0.22, 0.035, brake), 0, sy * 0.0825, len - brake / 2);
+      for (const z of [len - 0.025, len - brake / 2, len - brake + 0.025]) P.add('gun', cylZ(0.112, 0.05, seg), 0, 0, z);
+      for (const sy of [-1, 1]) P.add('gun', box(0.10, 0.03, brake), 0, sy * 0.095, len - brake / 2);
     }
     muzzleBore(P, { z: len + 0.004, r: 0.046 });
     P.muzzleZ = len;

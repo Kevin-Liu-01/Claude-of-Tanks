@@ -89,7 +89,7 @@ const NATION_WORD = {
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',
   desert: 'Desert', ambush: 'Ambush', fleck: 'Flecktarn', woodland: 'Woodland', blotch: 'Blotch', amoeba: 'Amoeba', chip6: 'Chip',
-  caunter: 'Caunter', hexfield: 'Hex',
+  caunter: 'Caunter', hexfield: 'Hex', merdc: 'Two-Tone',
 };
 const ENV_WORD = { woodland: 'Woodland', desert: 'Desert', winter: 'Winter', urban: 'Urban' };
 // the tone word of a plain coat, from its base colour
@@ -127,11 +127,12 @@ const labelEn = ({ who, word, envWord, tone }) => (tone
 const NATION_ZH = {
   'US Army': '美国陆军', Bundeswehr: '联邦国防军', Russian: '俄罗斯', Soviet: '苏联', British: '英国', French: '法国', PLA: '解放军',
   Italian: '意大利', JGSDF: '陆上自卫队', Polish: '波兰', ROK: '韩国', Swedish: '瑞典', IDF: '以色列国防军', Ukrainian: '乌克兰',
-  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', Danish: '丹麦',
+  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', Danish: '丹麦', Brazilian: '巴西',
 };
 const PATTERN_ZH = {
   Plain: '单色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
   Woodland: '林地', Blotch: '斑块', Amoeba: '变形虫', Chip: '碎块', Caunter: '考恩特', Hex: '六角', Livery: '涂装',
+  'Two-Tone': '双色',
 };
 const ENV_ZH = { Woodland: '林地', Desert: '沙漠', Winter: '冬季', Urban: '城市' };
 const TONE_ZH = {

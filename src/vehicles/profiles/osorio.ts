@@ -271,9 +271,14 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.addEquipment('turret', xform(sph(0.12, P.q ? 16 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), -0.26, roof + 0.18, 0.42);
       P.add('turretGlass', cylZ(0.05, 0.01, 12), -0.26, roof + 0.11, 0.545);
     } else {
-      // the P.1's two low OIP LRS-5 heads in a row (2.68 m over the ground)
+      // the P.1's two low OIP LRS-5 heads in a row (2.68 m over the ground), and behind the cupola the commander's tall
+      // sight head under its rounded hood (the 2015 museum photograph; blind critic, round 3)
       sightBox(-0.62, 0.60, 0.30, 0.24, 0.40);
       sightBox(-0.62, 0.05, 0.30, 0.24, 0.40);
+      P.addEquipment('turret', cylY(0.09, 0.10, 0.22, P.q ? 16 : 10), -0.62, roof + 0.11, -1.30);
+      P.addEquipment('turret', box(0.24, 0.22, 0.26), -0.62, roof + 0.22 + 0.11, -1.30);
+      P.addEquipment('turret', xform(cylZ(0.12, 0.26, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.7, 1]), -0.62, roof + 0.44, -1.30);
+      P.add('turretGlass', box(0.16, 0.08, 0.008), -0.62, roof + 0.36, -1.164);
     }
     const cx = -0.66, cz = -0.76, cr = 0.34;
     P.addCupola('turret', cylY(cr, cr * 1.06, 0.14, P.q ? 26 : 16), cx, roof + 0.07, cz);
@@ -311,33 +316,44 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.addEquipment('turret', box(0.09, 0.09, 0.09), s * 0.86, roof + 0.045, -1.95);
       P.addEquipment('turret', cylY(0.012, 0.015, 2.0, 8), s * 0.86, roof + 1.09, -1.95, 0, 0, s * 0.03);
     }
-    // the grid baskets (the 2015 museum, 2022 parade and CIBld photographs): one on each side over the middle and rear of
-    // the wall, wrapping round the bustle's rear face; tubular rails and uprights on a mesh floor, the crew's kit inside
-    const bOut = T.hw + 0.22, bLow = 0.08, bTop = 0.46, bz0 = -0.30, bRear = T.rearZ - 0.22;
+    // the right wall's grid, the left wall bare (the 1987 and 2024 left-side photographs; blind critic, round 3): the P.2's
+    // deep basket from the cheeks' root to two-thirds back, its rails, uprights and fine wire mesh on a mesh floor and the
+    // crew's kit inside (the 2022 parade and CIBld photographs); the P.1's flat bar grid close on the wall (the 2015 museum
+    // photograph)
     const rail = (a: readonly [number, number, number], b: readonly [number, number, number]): void => bar('turretOpenLattice', a, b, 0.013);
-    for (const s of [-1, 1] as const) {
-      const xo = s * bOut, xi = s * (T.hw + 0.004);
-      for (const y of [bLow, (bLow + bTop) / 2, bTop]) rail([xo, y, bz0], [xo, y, bRear]);
-      for (const y of [bLow, bTop]) rail([xi, y, bz0], [xo, y, bz0]);
-      const n = Math.round((bz0 - bRear) / 0.30);
-      for (let k = 0; k <= n; k++) rail([xo, bLow, bz0 - (bz0 - bRear) * k / n], [xo, bTop, bz0 - (bz0 - bRear) * k / n]);
-      P.addEquipment('turretOpenLattice', box(bOut - T.hw, 0.012, bz0 - bRear), s * (T.hw + bOut) / 2, bLow - 0.008, (bz0 + bRear) / 2);
-      // the flat wire mesh across the outer face (the 2022 parade photograph): fine wires on a 6 x 10 cm grid
-      for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLattice', box(0.008, 0.008, bz0 - bRear), xo, bLow + (bTop - bLow) * k / 6, (bz0 + bRear) / 2);
-      for (let k = 1, m = Math.round((bz0 - bRear) / 0.10); k < m; k++) {
-        P.addEquipment('turretOpenLattice', box(0.008, bTop - bLow, 0.008), xo, (bLow + bTop) / 2, bz0 - (bz0 - bRear) * k / m);
+    const bLow = 0.08, bTop = 0.46;
+    if (p2) {
+      const xo = -(T.hw + 0.20), xi = -(T.hw + 0.004), zf = 0.15, zr = -1.42, top = 0.56;
+      for (const y of [bLow, (bLow + top) / 2, top]) rail([xo, y, zf], [xo, y, zr]);
+      for (const z of [zf, zr]) for (const y of [bLow, top]) rail([xi, y, z], [xo, y, z]);
+      for (let k = 0; k <= 5; k++) rail([xo, bLow, zf - (zf - zr) * k / 5], [xo, top, zf - (zf - zr) * k / 5]);
+      P.addEquipment('turretOpenLattice', box(0.20, 0.012, zf - zr), (xo + xi) / 2, bLow - 0.008, (zf + zr) / 2);
+      for (let k = 1; k < 7; k++) P.addEquipment('turretOpenLattice', box(0.008, 0.008, zf - zr), xo, bLow + (top - bLow) * k / 7, (zf + zr) / 2);
+      for (let k = 1, m = Math.round((zf - zr) / 0.10); k < m; k++) {
+        P.addEquipment('turretOpenLattice', box(0.008, top - bLow, 0.008), xo, (bLow + top) / 2, zf - (zf - zr) * k / m);
       }
       stowage(P, 'turretCloth', rng, [
-        [s * (T.hw + 0.11), bLow + 0.14, -0.62, 0.18, 0.26, 0.48], [s * (T.hw + 0.11), bLow + 0.12, -1.22, 0.17, 0.22, 0.52],
-        [s * (T.hw + 0.11), bLow + 0.15, -1.86, 0.18, 0.28, 0.44]]);
+        [-(T.hw + 0.10), bLow + 0.15, -0.10, 0.17, 0.28, 0.44], [-(T.hw + 0.10), bLow + 0.13, -0.66, 0.16, 0.24, 0.52],
+        [-(T.hw + 0.10), bLow + 0.16, -1.16, 0.17, 0.30, 0.40]]);
+    } else {
+      const xo = -(T.hw + 0.05), xi = -(T.hw + 0.004), zf = 0.04, zr = -1.62, low = 0.10, top = 0.62;
+      for (const z of [zf, zr]) rail([xo, low, z], [xo, top, z]);
+      for (const y of [low, top]) rail([xo, y, zf], [xo, y, zr]);
+      for (const z of [zf, (zf + zr) / 2, zr]) for (const y of [low + 0.04, top - 0.04]) rail([xi, y, z], [xo, y, z]);
+      for (let k = 1; k < 5; k++) rail([xo, low + (top - low) * k / 5, zf], [xo, low + (top - low) * k / 5, zr]);
+      for (let k = 1, m = Math.round((zf - zr) / 0.15); k < m; k++) {
+        P.addEquipment('turretOpenLattice', box(0.016, top - low, 0.016), xo, (low + top) / 2, zf - (zf - zr) * k / m);
+      }
     }
-    for (const y of [bLow, (bLow + bTop) / 2, bTop]) rail([-bOut, y, bRear], [bOut, y, bRear]);
-    for (let k = 0; k <= 7; k++) rail([-bOut + 2 * bOut * k / 7, bLow, bRear], [-bOut + 2 * bOut * k / 7, bTop, bRear]);
-    for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLattice', box(2 * bOut, 0.008, 0.008), 0, bLow + (bTop - bLow) * k / 6, bRear);
-    for (let k = 1; k < 28; k++) if (k % 4) P.addEquipment('turretOpenLattice', box(0.008, bTop - bLow, 0.008), -bOut + 2 * bOut * k / 28, (bLow + bTop) / 2, bRear);
+    // the bustle rack across the rear face (the 1987 and 2024 photographs): rails and uprights on a mesh floor, the tall
+    // upright cylinders at its corners and the angled-lid bins between them
+    const bRear = T.rearZ - 0.22;
+    for (const y of [bLow, (bLow + bTop) / 2, bTop]) rail([-T.hw, y, bRear], [T.hw, y, bRear]);
+    for (const s of [-1, 1] as const) for (const y of [bLow, bTop]) rail([s * T.hw, y, T.rearZ - 0.004], [s * T.hw, y, bRear]);
+    for (let k = 0; k <= 7; k++) rail([-T.hw + 2 * T.hw * k / 7, bLow, bRear], [-T.hw + 2 * T.hw * k / 7, bTop, bRear]);
+    for (let k = 1; k < 6; k++) P.addEquipment('turretOpenLattice', box(2 * T.hw, 0.008, 0.008), 0, bLow + (bTop - bLow) * k / 6, bRear);
+    for (let k = 1; k < 28; k++) if (k % 4) P.addEquipment('turretOpenLattice', box(0.008, bTop - bLow, 0.008), -T.hw + 2 * T.hw * k / 28, (bLow + bTop) / 2, bRear);
     P.addEquipment('turretOpenLattice', box(2 * T.hw, 0.012, T.rearZ - bRear), 0, bLow - 0.008, (T.rearZ + bRear) / 2);
-    // in the bustle basket: the tall upright cylinders at its corners and the angled-lid bins between them (the 1987 and
-    // 2022 photographs)
     for (const x of [-0.95, -0.78, 0.95]) P.addEquipment('turret', cylY(0.075, 0.075, 0.46, P.q ? 14 : 10), x, bLow + 0.23, T.rearZ - 0.11);
     for (const [x, w] of [[-0.30, 0.62], [0.42, 0.66]] as const) {
       const zf = T.rearZ - 0.02, zb = T.rearZ - 0.20;
@@ -350,20 +366,22 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addEquipment('turret', box(0.20, 0.40, 0.88), T.hw + 0.10, 0.36, 0.28);
     P.addEquipment('turretDark', box(0.012, 0.02, 0.84), T.hw + 0.205, 0.52, 0.28);
     if (!p2) P.decal('turret', 'stencil', 'Ø', 0.22, [T.hw + 0.2035, 0.34, 0.30], Math.PI / 2);
-    // the dischargers at the rear of each side, aimed forward, out and up: the P.2 two rows of three, the P.1 two of two
+    // the dischargers high on the walls, aimed forward, out and up: the P.2 two rows of three on each rear corner, behind
+    // the basket (the 1987 and 2022 photographs); the P.1 two of two, on the left wall's plate two-thirds back (2024) and on
+    // the right behind its grid
     const cols = p2 ? 3 : 2;
     for (const s of [-1, 1] as const) {
-      const wallX = T.hw + 0.06;
-      // (over the basket's rear end, the rear-top corner of the wall in the 2022 photograph)
-      P.addEquipment('turret', box(0.10, 0.20, 0.16 * cols + 0.08), s * wallX, 0.575, -1.62 - (cols - 2) * 0.08);
+      const wallX = T.hw + 0.06, z0 = p2 ? -1.84 : s > 0 ? -0.98 : -1.86;
+      P.addEquipment('turret', box(0.10, 0.20, 0.16 * cols + 0.08), s * wallX, 0.575, z0 - 0.08 * (cols - 1));
       for (let row = 0; row < 2; row++) for (let k = 0; k < cols; k++) {
         P.addEquipment('turret', xform(markSmokeTube(cylZ(0.035, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.55, s * 0.40, 0),
-          s * (wallX + 0.08), 0.53 + row * 0.10, -1.46 - k * 0.16);
+          s * (wallX + 0.08), 0.53 + row * 0.10, z0 + 0.16 - k * 0.16);
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r3', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
-      dischargers: cols * 4, gridBaskets: 'sides-and-rear', panoramicPedestal: p2, sightHeads: p2 ? 3 : 2,
+      revision: 'osorio-266-r4', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
+      sightHeads: 3, gunBoot: p2 ? 'canvas' : 'black',
     };
   };
   buildOsorioTurretFittings();
@@ -395,9 +413,21 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.25, -0.01, 0.475);
     P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475);
     P.add('gunMountGlass', cylZ(0.035, 0.008, 12), -0.27, 0.06, 0.498);
-    P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.145), 0, 0, 0.71);
-    for (const z of [0.58, 0.74, 0.82]) {
-      P.add('gunMountCloth', torus(0.145 - ((z - 0.54) / 0.34) * 0.025, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
+    if (p2) {
+      P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.145), 0, 0, 0.71);
+      for (const z of [0.58, 0.74, 0.82]) {
+        P.add('gunMountCloth', torus(0.145 - ((z - 0.54) / 0.34) * 0.025, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
+      }
+    } else {
+      // the P.1's large black boot over the gun's root (the 2015 museum photograph; blind critic, round 3), its folds; an
+      // oval 0.40 m wide, flattened below and lifted 2 cm so its underside stays inside the old cover's (the -10 degree
+      // depression over the deck)
+      const oval = [1, 0.78, 1] as const;
+      P.addGunExtraDark(xform(cylZ(0.15, 0.46, P.q ? 20 : 12, 0.20), 0, 0, 0, 0, 0, 0, oval), 0, 0.02, 0.66);
+      for (const z of [0.52, 0.66, 0.80]) {
+        const ring = xform(torus(0.20 - ((z - 0.43) / 0.46) * 0.05 + 0.006, 0.014, P.q ? 20 : 12, 5), 0, 0, 0, Math.PI / 2, 0, 0);
+        P.addGunExtraDark(xform(ring, 0, 0, 0, 0, 0, 0, oval), 0, 0.02, z);
+      }
     }
     const seg = P.q ? 24 : 12;
     if (p2) {
@@ -428,7 +458,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.muzzleZ = len;
       P.gunG.userData.osorioGunReceipt = { mark, caliberMm: 105, muzzleZ: len, fumeExtractor: true, sleeveJoints: 3 };
     }
-    // the dark olive canvas of the mantlet cover (the 2015 museum photograph)
+    // the dark olive canvas of the P.2's mantlet cover and the crew's kit
     P.mats.canvasCloth.color.setHex(0x33372b);
     P.mats.glass.color.setHex(0x3a463f);
     P.mats.glass.roughness = 0.42;
