@@ -180,8 +180,8 @@
       "concealers": 0
     },
     "orchard": {
-      "bytes": 1385762,
-      "sha256": "f1d37cfb67d9cbc1135889cf7391a8811a41ecfba5cc78ac666207e71ce0ebfd",
+      "bytes": 1386323,
+      "sha256": "0f6d1d21ab6e9efad9dccdc635f64c891e6d80fd9861a5e63cd436bd8958b53e",
       "obstacles": 4537,
       "colliders": 4669,
       "concealers": 4807
@@ -414,8 +414,8 @@
         "concealers": 0
       },
       "orchard": {
-        "bytes": 1391284,
-        "sha256": "9fdc9e0c8f3e79fc45bedf1e833f7475cf18cfd82c627fef8eec624e9afa750b",
+        "bytes": 1391845,
+        "sha256": "aeea5d27bf80a5572c00ab0853a52ddaf4c352d004918aa3d2c8399d60665675",
         "obstacles": 4604,
         "colliders": 4651,
         "concealers": 4705
