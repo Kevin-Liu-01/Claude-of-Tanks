@@ -11,8 +11,10 @@ export interface VehicleStatus {
 const MODULE_ORDER: readonly ModuleId[] = ['engine','gun','turretRing','missileRack','roofGun',
   'transmission','ammoRack','fuelTank','gunMount','autoloader','feedSystem','optics','radio'];
 const compare = (a: VehicleStatus, b: VehicleStatus) => a.priority - b.priority;
-export function vehicleStatusCapacity(width: number, touch: boolean): number {
-  return Math.max(2, Math.min(MAX_VEHICLE_STATUS_BOXES, Math.floor((width + 4) / (touch ? 48 : 38))));
+/** The chips that fit `room` px at `chip` px each, `gap` px apart (2 at least: one status and the overflow mark). The room
+ *  is what the strip may take, never the strip's own width: a strip that hugs its chips is as wide as what it shows. */
+export function vehicleStatusCapacity(room: number, chip: number, gap: number): number {
+  return Math.max(2, Math.min(MAX_VEHICLE_STATUS_BOXES, Math.floor((room + gap) / (chip + gap))));
 }
 /** Retained records and output: safe to read from the HUD update without allocating. */
 export function createVehicleStatusReader() {

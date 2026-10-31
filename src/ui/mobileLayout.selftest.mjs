@@ -253,6 +253,11 @@ assert.match(hud, /\.cot-hpb\{[^}]*width:128px;[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
 assert.match(hud, /bar\.layoutH = Math\.ceil\(bar\.root\.offsetHeight\)/,
   'a world tank label measures its height once with its copy, never per frame');
+// (each line is measured at its own content's width: the vehicle line stretched to the bar read back the width the bar
+// had been given, 14 px more at every measure up to 280, 266; tools/hud-self-measure.browser.selftest.mjs measures it live)
+assert.match(hud, /\.cot-hpb \.vh\{align-self:center;/, 'a world tank label\'s vehicle line is as wide as its words, never the bar');
+assert.match(hud, /const vehicle = bar\.solo \|\| hpBarsShort \? 0 : Math\.ceil\(bar\.nm\.scrollWidth\);/,
+  'a world tank label reads its vehicle line\'s own width');
 // (a hidden label is placed at the height its lines will have: the two-line default kept a short window's one-line
 // labels out of every gap, so none showed to be measured)
 assert.match(hud, /if \(bar\.shown\) measureHpBar\(bar\);\s+else measureHiddenHpBar\(bar\);/,

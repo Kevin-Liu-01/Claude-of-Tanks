@@ -31,6 +31,8 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   // 2026-10-19 (black-screen-228): the black-world guard's battle receipt
   'tools/black-world.browser.selftest.mjs',
+  // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard serves the checkout and takes the lock itself
+  'tools/hud-self-measure.browser.selftest.mjs',
   // 2026-09-26: part 2 of the Garage switch probe takes the capture lock itself (createCaptureLock in the receipt) —
   // under the runner's lease it deadlocked for 80 min (the runner refreshing its lease every 30 s while the child queued
   // on the same lock); it stays an exclusive-CPU file as well.

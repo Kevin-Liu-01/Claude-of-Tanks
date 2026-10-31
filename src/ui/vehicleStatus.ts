@@ -94,9 +94,16 @@ export function createVehicleStatusStrip() {
     }
     if(changed)window.dispatchEvent(new Event('cot-hud-relayout'));
   }
+  // The chips that fit the room the strip may take (its panel, less the touch strip's --status-room-inset) at a chip's own
+  // width, never the strip's own width: on touch the strip hugs its chips (hud.ts), so its width is what it already shows,
+  // and a capacity read from it never grew past two (266).
+  let room:HTMLElement|null=null;
   const resize=new ResizeObserver(()=>{
     if(!root.getClientRects().length)tooltip.hide();
-    capacity=vehicleStatusCapacity(root.clientWidth,document.body.classList.contains('cot-touch-layout'));paint();
+    if(!room)return;
+    const style=getComputedStyle(root),chip=parseFloat(getComputedStyle(cells[0]!.button).flexBasis)||34;
+    capacity=vehicleStatusCapacity(room.clientWidth-(parseFloat(style.getPropertyValue('--status-room-inset'))||0),chip,parseFloat(style.columnGap)||0);
+    paint();
   });
   resize.observe(root);
   // Cache primitive snapshots because the reader intentionally reuses its records.
@@ -113,5 +120,7 @@ export function createVehicleStatusStrip() {
     if(changed)paint();
   }
   return {root,update,
+    /** Mount on the damage panel, whose width is the strip's room. */
+    mount(panel:HTMLElement){panel.appendChild(root);room=panel;resize.observe(panel);},
     clear(){previousCount=-1;active=read(null);paint();},dispose(){resize.disconnect();tooltip.dispose();root.remove();}};
 }

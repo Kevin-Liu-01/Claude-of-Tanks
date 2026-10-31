@@ -386,6 +386,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/sourced-building-source.browser.selftest.mjs',
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
+  'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
   'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {

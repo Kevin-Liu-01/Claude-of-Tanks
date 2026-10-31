@@ -36,6 +36,11 @@ ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI ga
 1920x1080, 1440x900, 1280x720, 1024x600, 900x700, 390x844 and 844x390 touch). It fails on any two visible instruments that intersect, unless the pair is in its ALLOWED list with a
 reason. A new HUD instrument joins its INSTRUMENTS list and a new HUD state the fixture's `state()`. The full
 Playwright regression (`battle-hud-layout.browser.mjs`) covers more windows and locales.
+`hud-self-measure.browser.selftest.mjs` (Puppeteer, the capture lock; `--url=` a served game, else its own vite server;
+the manual `ui` suite) checks on the HUD layout fixture that the battle HUD measures nothing it sets. With four statuses up,
+the touch status strip shows every chip its room fits and keeps clear of the joystick. The hull bars keep their widths
+across relabels and a short-band toggle. A page at rest rewrites no attribute. `--negative-control` puts back the
+stretched vehicle line and a 150 ms class sweep, and the run must then fail on both.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments

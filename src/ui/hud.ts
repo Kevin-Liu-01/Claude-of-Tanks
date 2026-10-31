@@ -1827,8 +1827,11 @@ ${spectatorSwitcherStyles}
 /* brand-ui 245: the battle layout's touch and roster rules that only matter once the HUD is up ride this lazy sheet, not
    the boot CSS (battleHudLayout.css); their selectors keep the layout sheet's weight */
 /* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
-   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
+   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom). Their room is the
+   panel less --status-room-inset, the dock's margin, on the joystick's side: vehicleStatus.ts fits the chips to it, so a
+   full strip stays clear too (266) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto;
+  --status-room-inset:8px;max-width:calc(100% - var(--status-room-inset))}
 /* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
    tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
@@ -2143,7 +2146,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb .nm .si,.cot-tgt .cg{filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 0 1px var(--surface-scene))
   drop-shadow(0 1px 1px var(--surface-scene));}
 .cot-hpb .nm span{display:block;min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
-.cot-hpb .vh{height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
+/* (the vehicle line is as wide as its words, centred: measureHpBar reads it, and stretched to the bar's width it read
+   back the width it set, 14 px more at every measure, 266) */
+.cot-hpb .vh{align-self:center;height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
   white-space:nowrap;}
 /* (the quiet lines' halo doubled, so they hold over snow where their ink is the snow's own value) */
 .cot-hpb .vh,.cot-tgt .mt,.cot-tgt .hp{text-shadow:var(--battle-control-label-halo),var(--battle-control-label-halo);}
@@ -6143,7 +6148,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function measureHpBar(bar: HpBar): void {
     bar.measure = false;
     // the wider of its lines (the name with the silhouette's room on both sides, the name on the axis; the vehicle) and
-    // their padding
+    // their padding, each read at its own content's width (the vehicle line is not stretched, .vh), never the bar's
     const vehicle = bar.solo || hpBarsShort ? 0 : Math.ceil(bar.nm.scrollWidth);
     const measured = hpBarsShort ? Math.ceil(bar.cs.scrollWidth) + 10
       : Math.max(Math.ceil(bar.cs.scrollWidth) + 2 * (22 + 4), vehicle) + 14;
@@ -9242,8 +9247,8 @@ export function initHud(bus: EventBus): HudRuntime {
     setDamagePanel(panel: DamagePanelController) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
-        // Conditions travel with the damage panel, including custom HUD placement.
-        panel.root.appendChild(vehicleStatus.root);
+        // Conditions travel with the damage panel, including custom HUD placement; its width is their room.
+        vehicleStatus.mount(panel.root);
         // r5-2: keep a handle so update() can feed the live turret bearing
         // into the panel's rotating turret/barrel schematic
         dmgPanelRef = panel;
