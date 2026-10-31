@@ -994,28 +994,21 @@ function roofScope(P: CastPort, T: TurretFrame, x: number, z: number, ry = 0, ta
   P.add('turretGlass', box(wide - 0.04, 0.035, 0.012), x + Math.sin(ry) * 0.092, L.y(y + tall * 0.7), L.z(z + Math.cos(ry) * 0.092), 0, ry, 0);
 }
 
-/** Roof ventilator (world): the armoured mushroom cover, its base ring, a dark louvre band, the lipped cap and its low
- * dome, one closed lathe. 266 (blind critics on the whole-sphere fix): crisp steps in place of a drum under a smooth dome
- * (the old dome's wound-over facets had read as this cover's steps). */
+/** Roof ventilator (world): its drum (r at the roof to 0.85 r) under a low two-band dome, one closed lathe. 266 (roof-pocket
+ * census and the blind critics): the outer envelope of the drum and the old wound-over dome (KIT.sph took its height
+ * count as the polar sweep), which the census read as a roof over air; the look the critics kept, outward and closed. */
 function ventilator(P: CastPort, T: TurretFrame, x: number, z: number, r: number): void {
   const L = tl(T);
-  const y = frameTop(T, x, z), seg = P.q ? 18 : 10;
-  P.add('turret', KIT.lathe([[0.001, -0.03], [r, -0.03], [r, 0.03], [r * 0.9, 0.036], [r * 0.9, 0.048], [r * 0.95, 0.052],
-    [r * 0.95, 0.068], [r * 0.78, 0.092], [r * 0.5, 0.115], [0.001, 0.125]], seg), x, L.y(y), L.z(z));
-  P.add('turretDark', KIT.cylY(r * 0.905, r * 0.905, 0.010, seg), x, L.y(y + 0.042), L.z(z));
-  // the louvre slots round the band, each a short dark vane standing a few mm proud of it
-  for (let k = 0; k < 12; k++) {
-    const a = (k / 12) * Math.PI * 2;
-    P.add('turretDark', KIT.box(0.012, 0.009, r * 0.16), x + Math.sin(a) * r * 0.9, L.y(y + 0.042), L.z(z + Math.cos(a) * r * 0.9), 0, a, 0);
-  }
+  const y = frameTop(T, x, z);
+  P.add('turret', KIT.lathe([[0.001, -0.01], [r, -0.01], [r * 0.85, 0.04], [r * 0.826, 0.04], [r * 0.713, 0.04 + r * 0.2066],
+    [0.001, 0.04 + r * 0.3825]], P.q ? 16 : 10), x, L.y(y), L.z(z));
 }
 
-/** The M48s' ventilator lid on its drum (top `yTop`, world): a 1 cm lip round the drum's 0.265 m top, a sloped armoured
- * side up to a flat top 0.34 m across, to the drum's 0.117 m dome height, one closed lathe (266, as `ventilator`; the blind
- * critics' pick over a plain dome, a flat stepped lid and a peaked cap). */
+/** The M48s' ventilator lid on its drum (top `yTop`, world): the outer envelope of the old wound-over dome (0.265 m,
+ * 0.44 tall), a low cone in two bands set in from the drum's rim, one closed lathe (266, as `ventilator`). */
 function ventilatorLid(P: CastPort, L: ReturnType<typeof tl>, x: number, yTop: number, z: number): void {
-  P.add('turret', KIT.lathe([[0.001, -0.01], [0.27, -0.01], [0.276, -0.002], [0.276, 0.014], [0.25, 0.024], [0.18, 0.100],
-    [0.17, 0.104], [0.10, 0.110], [0.001, 0.112]], P.q ? 22 : 12), x, L.y(yTop), L.z(z));
+  P.add('turret', KIT.lathe([[0.001, -0.01], [0.262, -0.01], [0.25, 0], [0.2057, 0.0733], [0.195, 0.0789], [0.001, 0.1166]],
+    P.q ? 18 : 10), x, L.y(yTop), L.z(z));
 }
 
 /** Browning M2 HB on a working mount (world base). */
