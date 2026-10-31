@@ -958,7 +958,7 @@ function drawSouthAfricaCastle({ ctx, cx, cy, size, radius }: InsigniaPainterArg
   ctx.beginPath();
   for (let k = 0; k < 10; k++) {
     const a = -Math.PI / 2 + k * Math.PI / 5, r = radius * (k % 2 === 0 ? 0.70 : 0.46);
-    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    const x = cx + detMath.cos(a) * r, y = cy + detMath.sin(a) * r;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.closePath();

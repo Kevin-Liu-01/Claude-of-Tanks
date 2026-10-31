@@ -65,7 +65,10 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // size goes to the lockdown budgets next.
 // 7.57 MB at integ/231 for release 263 (fourteen new tanks' specs and armour models, the fleet at 235; no builder, kit
 // or calibration literal entered): the bound re-pinned by the same rule, that measure plus 2 % (7.72 MB).
-assert.ok(sourceBytes < 7.72e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 7.80 MB (7,798,230 B) at integ/265 dd53e635f8 for release 265 (the fleet at 255: the Centurion family's six, the four
+// M48s, the Longwei family's four, the Leopard 1A2A1, the fourth-batch 2A3, the three PT-84s and the rebuilt 2A4 family's
+// armour tables; no builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (7.95 MB).
+assert.ok(sourceBytes < 7.95e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
