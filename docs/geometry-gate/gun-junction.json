@@ -96,7 +96,7 @@
   "leo1a3dk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1c135082b80e1bb1","gun":"c126e15928ffb2a3"}},
   "leo1a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f176b71002dd7487","gun":"aa4dd03aa26a1dea"}},
   "leo1a5dk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b064848202743840","gun":"b0bcbc81eef29397"}},
-  "leo1a5dk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"05914ce61bb363eb","gun":"f8b2ea1684378ad8"}},
+  "leo1a5dk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"88954fe2d8320f5c","gun":"f51094f6fd67541a"}},
   "leo2_improved": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b0d4743ff346b8a5","gun":"174ff3c32785806a"}},
   "leo2_revolution": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"780129b89561f835","gun":"2dca5d3698c26f32"}},
   "leo2_revolution_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fa2d97b87b52c87d","gun":"f7780404f86c5e4d"}},
