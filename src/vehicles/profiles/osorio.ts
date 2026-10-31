@@ -125,6 +125,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         P.add('hull', slab([-lx, iy0, iz0], [lx, iy0, iz0], [lx, iy1, iz1], [-lx, iy1, iz1],
           [-lx, iy0 + oy, iz0 + oz], [lx, iy0 + oy, iz0 + oz], [lx, iy1 + oy, iz1 + oz], [-lx, iy1 + oy, iz1 + oz]));
         P.add('hullDark', box(2 * lx + 0.01, 0.02, 0.05), 0, iy0 + oy / 2 - 0.005, iz0 + oz / 2);
+        // (its top a ledge standing proud of the upper face, so the light finds the second plate: round c5)
+        P.add('hullDetail', box(2 * lx, 0.03, 0.07), 0, iy1 - 0.035, iz1 + 0.035);
         for (let k = 0; k < 6; k++) P.add('hullDetail', xform(cylZ(0.02, 0.014, 8), 0, 0, 0, -0.81, 0, 0), -0.80 + k * 0.32, 0.93 + oy, 3.45 + oz);
       }
     }
@@ -527,7 +529,9 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       const bevel = (z: number): number => Math.min(T.roofY - T.bevelY, (facetY(z) - cheekBot(z)) * 0.3);
       const xi = T.recessX + 0.025, wz0 = 0.88, tipZ = T.cheekNoseZ + (t4 ? 0.80 : 0.50), tipY = t4 ? 0.12 : 0.40;
       const yt0 = T.roofY + (t4 ? 0.05 : 0.012), edge = t4 ? 0.44 : 0.03, tipW = t4 ? 0.22 : 0.03;
-      const noseFoot = t4 ? 0.20 : T.cheekNoseY - 0.03;
+      // (the EE-T4's inner faces stop at the cheeks' line and fall only to 0.30 at the face, the outer flanks carried down:
+      // a shallow, lit slot over the mantlet block, not a dark well; round c5)
+      const noseFoot = t4 ? 0.20 : T.cheekNoseY - 0.03, tipInner = t4 ? 0.30 : tipY;
       const wedgeTop = (z: number): number => yt0 + (z - wz0) / (tipZ - wz0) * (tipY + edge - yt0);
       // (in plan a straight edge from the wall's front corner to the apex, overhanging the cheeks' swept noses; the EE-T4's
       // flaring 12 cm past the walls ahead of the side armour, so its outline grows head-on: round c3)
@@ -542,8 +546,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         const behind = (z: number) => ({ z, ring: ringAt(z, facetY(z) - 0.03, facetY(z) - bevel(z) - 0.01) });
         const wedge = sectionSolid([
           behind(wz0), ...(t4 ? [behind(flareZ)] : []), behind(T.frontZ),
-          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseZ, noseFoot, noseFoot) },
-          { z: tipZ, ring: ringAt(tipZ, tipY, tipY) },
+          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseZ, T.cheekNoseY - 0.03, noseFoot) },
+          { z: tipZ, ring: ringAt(tipZ, tipInner, tipY) },
         ]);
         wedge.userData.primaryStockRole = 'osorio-cheek-module';
         P.add('turret', wedge);
@@ -562,21 +566,25 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // pair aft of the dischargers, on brackets; two launchers on pedestals at the roof's sides standing over the roofline
       // (blind critics, rounds c2 and c3)
       for (const s of [-1, 1] as const) {
+        // (the front pair on the side armour's outer faces, aft of the wedges and turned 20 degrees forward of abeam: in
+        // profile and head-on clear of the wedges; round c5)
         for (const [cx, cz, ry, bx0, bx1, bz0, bz1] of [
-          [1.40, 1.04, s * Math.PI / 4, 1.27, 1.40, 0.89, 1.06],
+          [1.53, 0.62, s * (Math.PI / 2 - 0.35), 1.39, 1.47, 0.58, 0.66],
           [1.36, -2.30, s * Math.PI * 3 / 4, T.hw - 0.01, 1.30, -2.33, -2.27],
         ] as const) {
           const nx = Math.sin(ry), nz = Math.cos(ry), cy = 0.45;
           P.addEquipment('turret', box(0.42, 0.32, 0.12), s * cx, cy, cz, 0, ry, 0);
           P.addEquipment('turret', box(0.46, 0.03, 0.18), s * cx + nx * 0.02, cy + 0.175, cz + nz * 0.02, 0, ry, 0);
-          // (a framed face: the housing's border wide and a lip round the dark panel, so in profile it is a box, not a pane)
-          P.addEquipment('turret', box(0.34, 0.24, 0.02), s * cx + nx * 0.065, cy, cz + nz * 0.065, 0, ry, 0);
-          P.add('turretDark', box(0.30, 0.20, 0.012), s * cx + nx * 0.080, cy, cz + nz * 0.080, 0, ry, 0);
+          // (the radar's face painted in the coat inside a dark outline, as the hard-kill radars are: a dark pane read as a
+          // window in profile; rounds c4 and c5)
+          P.add('turretDark', box(0.34, 0.24, 0.02), s * cx + nx * 0.065, cy, cz + nz * 0.065, 0, ry, 0);
+          P.addEquipment('turret', box(0.31, 0.21, 0.012), s * cx + nx * 0.080, cy, cz + nz * 0.080, 0, ry, 0);
           P.addEquipment('turret', box(bx1 - bx0, 0.08, bz1 - bz0), s * (bx0 + bx1) / 2, cy, (bz0 + bz1) / 2);
         }
         // (each launcher a drum on a turning ring over its pedestal, four tube mouths on its face: round c4, not a lamp)
         const lx = s * 0.96, lz = -1.35, ly = T.roofY + 0.35, ay = s * 0.6, dx = Math.sin(ay), dz = Math.cos(ay);
-        P.addEquipment('turret', cylY(0.08, 0.10, 0.17, P.q ? 14 : 10), lx, T.roofY + 0.085, lz);
+        P.addEquipment('turret', box(0.32, 0.05, 0.32), lx, T.roofY + 0.025, lz);
+        P.addEquipment('turret', cylY(0.11, 0.13, 0.15, P.q ? 14 : 10), lx, T.roofY + 0.11, lz);
         P.addEquipment('turret', cylY(0.13, 0.13, 0.04, P.q ? 16 : 12), lx, T.roofY + 0.19, lz);
         P.addEquipment('turret', cylZ(0.15, 0.30, P.q ? 18 : 12), lx, ly, lz, 0, ay, 0);
         P.addEquipment('turret', cylZ(0.155, 0.02, P.q ? 18 : 12), lx + dx * 0.10, ly, lz + dz * 0.10, 0, ay, 0);

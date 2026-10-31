@@ -309,10 +309,10 @@ ee_t4_osorio.visual = {
   ...osorio_p2.visual,
   // a two-scale digital woodland in the Army's tones (olive, a light olive, brown and black), the 1998 arms (the light
   // olive laid first, under the others, and every tone a step darker: a medium olive field, woodland, not sand; the black
-  // laid before the brown so no panel goes black, a deep black and a darker earth for contrast at range: blind critics,
-  // rounds c1 to c4)
-  scheme: 'digital', base: '#353d29', weather: '#3d4530', patches: ['#4b4c36', '#191a15', '#45331f'], marking: 'number',
-  number: '41', camoScale: 0.48, patchK: 1.6, trackWidthM: 0.57, insignia: 'br-eb-arms',
+  // laid before the brown so no panel goes black, a deep black and a darker earth for contrast at range, the olives
+  // warmer and the pixel a size up so its steps stay crisp: blind critics, rounds c1 to c5)
+  scheme: 'digital', base: '#3a3f27', weather: '#41462d', patches: ['#56553a', '#191a15', '#45331f'], marking: 'number',
+  number: '41', camoScale: 0.48, patchK: 1.6, digitalCellK: 1.4, trackWidthM: 0.57, insignia: 'br-eb-arms',
 };
 
 registerFleetSpecs(registries, ['x1_pioneiro', 'x1a2_carcara', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'ee_t3_osorio',
