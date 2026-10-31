@@ -200,6 +200,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fleet-partition.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // computeState of this checkout against release/fingerprints.tsv (live: it reads the manifest no closure holds)
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
+  // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
+  'tools/changed-only/balance-keys.selftest.mjs': lists('src/**', 'tools/**', 'package.json', 'package-lock.json'),
 
   // this table's census: every module a registered receipt runs (and the fixture repository it writes under tmpdir)
   'tools/selftest-scans.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,cjs}', 'tools/**/*.{ts,mts,mjs,js,cjs}',
@@ -289,8 +291,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/test-diff.mjs': cli('changedPaths lists the diff and fleetPartition runs computeState only when test:lane or test:recommend run as commands; the tiers receipt imports its pure helpers'),
   'tools/test-heavy.mjs': cli('npm run test:heavy reads the id-scoped closures; the tiers receipt imports idScopedSelection'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
-  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) from selftest-cache.mjs: ' +
-    'the closures of fixed files, for its pass fingerprint'),
+  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) and of ' +
+    'tools/destruction-slab-check.mjs from selftest-cache.mjs: the closures of fixed files, for its pass fingerprint and its maps\' listings'),
 });
 
 const KINDS = ['lists', 'tracked', 'caller', 'outside', 'identity', 'cli', 'none'];

@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, getPriority, setPriority, tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -116,16 +116,20 @@ export function selftestRunDirectory(env = process.env, make = () => mkdtempSync
 // Every child also preloads tools/assert-graph-guard.mjs: an equality assert on a three.js graph object fails with
 // identity labels instead of node's whole-graph inspect and diff (the 226 T-72 receipts reached 40 GB).
 export const SELFTEST_GRAPH_GUARD = `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`;
+// ...and tools/selftest-observe.mjs: what the receipt and every process it starts read, listed and probed (266), which
+// keys its PASS beside the static closure and selects it in lane mode. It records only with an observe directory.
+export const SELFTEST_OBSERVER = `--import=${new URL('./selftest-observe.mjs', import.meta.url).href}`;
+const SELFTEST_PRELOADS = [SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER];
 
 // The environment the result cache keys receipts on: a copy taken before the run directory is
 // set, without it. The directory's path changes every run and a receipt reads only what its own
 // run wrote there, so it is not an input; keyed, it would make every receipt that reads it miss.
 export function selftestCacheEnv(env = process.env) {
   const { COT_SELFTEST_RUN_DIR: _runDirectory, ...keyed } = env;
-  // The graph guard decides only failing asserts on graph objects, and its URL names this checkout: it never keys a
-  // proof (worktrees share one store).
-  if (keyed.NODE_OPTIONS?.includes(SELFTEST_GRAPH_GUARD)) {
-    const options = keyed.NODE_OPTIONS.replace(SELFTEST_GRAPH_GUARD, '').trim();
+  // The graph guard decides only failing asserts on graph objects, the observer only records, and their URLs name this
+  // checkout: neither keys a proof (worktrees share one store).
+  for (const preload of SELFTEST_PRELOADS) if (keyed.NODE_OPTIONS?.includes(preload)) {
+    const options = keyed.NODE_OPTIONS.replace(preload, '').trim();
     if (options) keyed.NODE_OPTIONS = options; else delete keyed.NODE_OPTIONS;
   }
   return keyed;
@@ -133,10 +137,12 @@ export function selftestCacheEnv(env = process.env) {
 
 // This caches compilation, NEVER test results or module instances. Every file
 // still executes all assertions in a fresh process. Node validates source and
-// engine versions. Respect explicit cache/coverage settings and opt-outs; the graph guard is always preloaded.
+// engine versions. Respect explicit cache/coverage settings and opt-outs; the graph guard and the observer are always
+// preloaded.
 export function selftestChildEnv(env = process.env) {
   const options = env.NODE_OPTIONS ?? '';
-  const guarded = options.includes(SELFTEST_GRAPH_GUARD) ? env : { ...env, NODE_OPTIONS: `${options} ${SELFTEST_GRAPH_GUARD}`.trim() };
+  const missing = SELFTEST_PRELOADS.filter((preload) => !options.includes(preload));
+  const guarded = missing.length ? { ...env, NODE_OPTIONS: [options, ...missing].join(' ').trim() } : env;
   if (env.NODE_COMPILE_CACHE || env.NODE_DISABLE_COMPILE_CACHE || env.NODE_V8_COVERAGE) return guarded;
   return { ...guarded, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
 }
@@ -154,14 +160,18 @@ export function selftestWorkerCount(env = process.env, availableCpus = available
 // `logFile` (gate P13, `--logs=<dir>`) sends the child's stdout and stderr to that file through a
 // file descriptor, never a pipe: a grandchild that outlives the receipt cannot hold the runner open.
 // `cwd` lets the gate run a receipt in a baseline worktree. Defaults keep the inherited terminal.
+// `observeDir` (the runner's, per receipt) turns the observer on for this child and every process it starts; the
+// result then carries `observed` ({ reads, lists, probes }: checkout paths relative to `cwd`) and the directory is
+// removed.
 export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv(),
-  cwd = process.cwd(), logFile = null, nice = 0 } = {}) {
+  cwd = process.cwd(), logFile = null, nice = 0, observeDir = null } = {}) {
   return new Promise((resolveResult) => {
     let output = null;
     if (logFile) {
       mkdirSync(dirname(logFile), { recursive: true });
       output = openSync(logFile, 'w');
     }
+    if (observeDir) env = { ...env, COT_SELFTEST_OBSERVE_DIR: observeDir, COT_SELFTEST_OBSERVE_ROOT: realpathSync(cwd) };
     let child;
     try {
       child = spawnProcess(process.execPath, [file], {
@@ -187,9 +197,25 @@ export function runSelftestFile(file, { spawnProcess = spawn, signals = process,
       const exitSignal = interruptedBy || signal;
       // A child may clean up and exit zero after SIGTERM. The requested suite
       // interruption must still stop subsequent tests with the normal code.
-      resolveResult({ status: exitSignal ? 128 + constants.signals[exitSignal] : status, error });
+      const result = { status: exitSignal ? 128 + constants.signals[exitSignal] : status, error };
+      resolveResult(observeDir ? { ...result, observed: collectObservations(observeDir) } : result);
     });
   });
+}
+
+/** Every process's record in one receipt's observe directory, merged (tools/selftest-observe.mjs); the directory goes. */
+function collectObservations(dir) {
+  const merged = { reads: new Set(), lists: new Set(), probes: new Set() };
+  let names = [];
+  try { names = readdirSync(dir); } catch { /* no process recorded anything */ }
+  for (const name of names) {
+    try {
+      const record = JSON.parse(readFileSync(join(dir, name), 'utf8'));
+      for (const kind of Object.keys(merged)) for (const path of record[kind] ?? []) merged[kind].add(path);
+    } catch { /* a process killed mid-write: its record is partial, so it is left out */ }
+  }
+  rmSync(dir, { recursive: true, force: true }); // this receipt's own directory
+  return Object.fromEntries(Object.entries(merged).map(([kind, paths]) => [kind, [...paths].sort()]));
 }
 
 // Fast checks (2026-09-15): every file in a group runs and every failure is reported
@@ -212,7 +238,12 @@ export function selftestCacheGate(cache, log) {
       log(`[selftests] SKIP ${file}: ${hit.inputs} inputs unchanged since PASS at ${hit.passedAt}`);
       return { skip: true, key: hit.key };
     },
-    record(file, key, status, runMs) { if (status === 0 && key) cache.recordPass(file, key, { runMs }); },
+    // a PASS keeps what the run observed: keyed beside the closure, and the receipt's latest reads for lane mode
+    record(file, key, status, runMs, observed) {
+      if (status !== 0) return;
+      if (key) cache.recordPass(file, key, { runMs, observed });
+      if (observed) cache.recordObserved(file, observed);
+    },
   };
 }
 
@@ -365,7 +396,7 @@ export async function runSelftestSuite(suiteName, suite, {
         if (failFast || result.status === null || result.status >= 128) return failure;
         continue;
       }
-      gate.record(file, cached?.key, result.status, now() - startedAt);
+      gate.record(file, cached?.key, result.status, now() - startedAt, result.observed);
     }
     if (failure !== null) return failure;
     log('[selftests] PASS ' + suiteName);
@@ -533,7 +564,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         ...(memoryGate ? { memoryGate } : {}),
         // CPU children under nice; the timing-sensitive exclusive and browser receipts keep the runner's priority
         runFile: file => runSelftestFile(file, { ...(command.logs ? { logFile: logOf(file) } : {}),
-          nice: SELFTEST_BARRIER_FILES.includes(file) ? 0 : SELFTEST_CHILD_NICE }),
+          nice: SELFTEST_BARRIER_FILES.includes(file) ? 0 : SELFTEST_CHILD_NICE,
+          observeDir: join(runDirectory.dir, 'observe', createHash('sha1').update(file).digest('hex')) }),
         onTiming(row) {
           rows.push({ ...row, error: row.error?.message });
           completed++; executionMs += row.runMs; queueMs += row.queueMs;
