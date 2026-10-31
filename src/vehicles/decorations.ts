@@ -2739,7 +2739,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretSide', { side: 1 }] },
+    // Release 266: the true-size rebuild's bustle rack carries its own load, so the fleet cargo's deck case hangs on
+    // this flank, 3 cm into each of the roll's stations; the theatre-dyed roll (round 5's sand net) seats first.
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretSide', { side: 1 }], early: true },
     { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, back: true, small: true }] },
   ],
   // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the A3 takes none of the A1's fender bin, and its
