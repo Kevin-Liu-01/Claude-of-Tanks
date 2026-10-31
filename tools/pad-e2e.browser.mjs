@@ -375,6 +375,7 @@ try {
   // touch while another finger is down, so every control acts on its own pointer (owner 2026-10-30: "make the buttons
   // work properly"). CDP's touch points are the touch screen's own, one id per finger.
   const cdp = await phone.createCDPSession();
+  // touchStart and touchMove list every finger down; touchEnd lists the fingers lifting (none: all of them)
   const touches = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id]) => ({ x, y, id, radiusX: 6, radiusY: 6, force: 1 })) });
   const centre = async (selector) => { const b = await box(selector); return [b.x + b.width / 2, b.y + b.height / 2]; };
   const inputHeld = (action) => desktop.evaluate((a) => !!window.__DEBUG.input.getState()[a], action);
@@ -389,7 +390,7 @@ try {
   for (let i = 1; i <= 6; i++) { lever[1] = ly - 140 * i / 6; await touches('touchMove', [lever]); await sleep(16); }
   await touches('touchStart', [lever, [sx, sy, 2]]);
   await sleep(60);
-  await touches('touchEnd', [lever]);
+  await touches('touchEnd', [[sx, sy, 2]]); // CDP lifts the points a touchEnd lists; the lever's stays down
   await desktop.waitForFunction((m) => window.__DEBUG.rig.mode !== m, { timeout: 5000 }, together0.mode).catch(() => {});
   const fire = [fx, fy, 3];
   const aim = [aimBox.x + aimBox.width * 0.3, aimBox.y + aimBox.height * 0.35, 4];

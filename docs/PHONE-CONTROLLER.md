@@ -232,6 +232,9 @@ frame received, on one clock.
 | — the link (stamp to receipt; mostly the busy desktop's main-thread wait) | same | 23 ms | 37 ms | 40 |
 | — the desktop (receipt to the frame that carries it), at a 25 ms (40 fps) frame | same | 26 ms | 36 ms | 40 |
 | Relay over the LAN helper, phone event to the desktop frame | run 8, a phone page without WebRTC (15 Hz cap, trailing edge) | 37 ms | 45 ms | 20 |
+| WebRTC end to end after the panel and edge-case round | run 10, load 99 to 119 (desktop frame 25 ms) | 50 ms | 69 ms | 40 |
+| — the phone's send / the link | same | 0 / 22 ms | 1 / 34 ms | 40 |
+| Run 9, same harness at load 133 to 301 (desktop frame 42 ms) | WebRTC end to end; the controller's share went past 60 ms p95 on the desktop's main thread | 77 ms | 125 ms | 39 |
 | Run 6, same harness at load ~250 (30 fps desktop) | WebRTC end to end | 54 ms | 90 ms | 40 |
 
 Reading it against the pass rule (`pad-e2e` holds the controller's share, send plus link, to 60 ms p95; the end-to-end
