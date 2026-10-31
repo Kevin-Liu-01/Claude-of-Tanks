@@ -199,11 +199,12 @@ When a merge moves the geometry of ids that have rows (an integrator taking fami
 npm run gate:repin -- --ids=<ids> [--chunk=10]
 ```
 
-It runs the gate on 10 ids at a time, each chunk under one render capture ticket, with `--require-oracles`: an id
-whose registered oracle file is not in this checkout stops the run before anything is measured or written (an
-unavailable row would replace its measured one; the file to restore is named). Ids without a registration are
-skipped and named. It ends with each id's height interval and hull-length row, marked moved or unchanged; commit
-`docs/geometry-gate/`.
+It runs the gate on 10 ids at a time, each chunk under one render capture ticket, with `--repin`: an id whose
+registered oracle file is not in this checkout stops the run before anything is measured or written (an unavailable
+row would replace its measured one; the file to restore is named). An id the page cannot measure (a source-datum or
+registration error) keeps its previous row, marked `repinError` with the error, and the run exits 1 naming it: its
+owner fixes it and the next run clears the mark. Ids without a registration are skipped and named. It ends with each
+id's height interval and hull-length row, marked moved or unchanged; commit `docs/geometry-gate/`.
 
 ### Top-down fill & circularity review (owner directive 2026-08-02)
 

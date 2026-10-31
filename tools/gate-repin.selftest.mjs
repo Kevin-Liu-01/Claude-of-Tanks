@@ -1,7 +1,8 @@
 // gate:repin's plan: chunks (one capture ticket each), the first failing chunk stops the rest, and the printed dims rows.
-// The guard it relies on (geometry-gate.mjs --require-oracles) is geometry-gate-policy.selftest.mjs's missingOraclesError.
+// The guards it relies on (geometry-gate.mjs --repin) are geometry-gate-policy.selftest.mjs's missingOraclesError and
+// mergeLedgerRow.
 import assert from 'node:assert/strict';
-import { dimsSummary, repinAll, repinChunks } from './gate-repin.mjs';
+import { dimsSummary, notRepinned, repinAll, repinChunks } from './gate-repin.mjs';
 
 assert.deepEqual(repinChunks(['a', 'b', 'c', 'd', 'e'], 2), [['a', 'b'], ['c', 'd'], ['e']]);
 assert.deepEqual(repinChunks(['a'], 10), [['a']]);
@@ -31,4 +32,10 @@ const line = dimsSummary({ id: 't64bv1', geoMin: 0, requiredMinimum: 90, compone
 assert.match(line, /^t64bv1 +geo +0\/90 dims 0 {2}height 2\.536\.\.2\.845 vs 2\.274 11\.5% {2}hull 7\.501 vs 7\.193 4\.3% \(donor frame: donor silhouette\)$/);
 assert.match(dimsSummary({ id: 'x', geoMin: 95, dimRows: [] }), /geo +95\/90 dims - {2}height - {2}hull -$/, 'a record without dims rows prints dashes');
 
-console.log('gate-repin.selftest: chunks, stop-at-first-failure and the dims summary pass');
+// a row the re-pin could not replace is named with its page error; a re-measured row and an id outside the run are not
+const ledger = { rows: [{ id: 't80u', geoMin: 94.1, repinError: 'procedural: turret differs from the independent source datum' },
+  { id: 'type90', geoMin: 97.3 }, { id: 'stb1', geoMin: 29.1, repinError: 'an older run' }] };
+assert.deepEqual(notRepinned(ledger, ['t80u', 'type90']), [{ id: 't80u', error: 'procedural: turret differs from the independent source datum' }]);
+assert.deepEqual(notRepinned({ rows: [] }, ['t80u']), []);
+
+console.log('gate-repin.selftest: chunks, stop-at-first-failure, rows not re-pinned and the dims summary pass');
