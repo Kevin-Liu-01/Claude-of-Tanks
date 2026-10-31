@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS } from './steps.mjs';
+  SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS, gpuChunks } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -138,5 +138,23 @@ assert.ok(at('controls') >= 0 && at('fills') > at('controls') && at('seats') > a
 assert.ok(at('anatomy') > at('controls'), 'anatomy reads the roof guns');
 const chain = readFileSync(join(root, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(chain, /for \(const name of CPU_FIXPOINT_STEPS\.filter\(selected\)\)/, 'the chain runs the CPU steps in table order');
+
+// A GPU step's browser holds a chunk within its time and its renderer caps (266: icons' time cap alone, 440 ids, put the
+// whole 255-id fleet in one browser and the 6 GB renderer guard killed it). Every chunk of this fleet and of 255 ids keeps
+// both, the chunks cover the list once in order, and the chain plans and runs GPU steps through gpuChunks. Control: the
+// time cap alone puts the 255 ids in one browser.
+assert.match(chain, /const chunks = gpuChunks\(step, list\);/, 'the chain runs GPU steps in gpuChunks holds');
+for (const step of STEPS.filter((entry) => entry.device === 'gpu')) {
+  assert.ok(step.maxIds > 0, `${step.name}: a GPU step caps its ids per browser (maxIds)`);
+  for (const list of [state.ids, Array.from({ length: 255 }, (_, index) => `id${index}`)]) {
+    const chunks = gpuChunks(step, list);
+    assert.deepEqual(chunks.flat(), list, `${step.name}: the chunks cover the ${list.length} ids once, in order`);
+    assert.ok(chunks.every((chunk) => chunk.length <= step.maxIds && chunk.length * step.perIdS <= step.chunkS),
+      `${step.name}: chunks ${chunks.map((chunk) => chunk.length)} within ${step.maxIds} ids and ${step.chunkS} s`);
+  }
+}
+const icons = STEPS.find((entry) => entry.name === 'icons');
+assert.equal(gpuChunks({ ...icons, maxIds: undefined }, Array.from({ length: 255 }, (_, index) => `id${index}`)).length, 1,
+  'control: the time cap alone puts 255 icons ids in one browser');
 
 console.log(`changed-only fleet-partition.selftest: PASS (${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files; kit marks ${marked.ids.length}; ${state.world.ids.length} maps, a ${t90Group} edit marks ${remarked.ids.length})`);

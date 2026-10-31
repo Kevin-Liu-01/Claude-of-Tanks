@@ -323,6 +323,27 @@ export const BALANCE = Object.freeze({
 const ids = (list) => `--ids=${list.join(',')}`;
 
 /**
+ * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
+ * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
+ * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
+ * killed. `maxIds` caps a chunk by renderer memory as well. Measured on this Mac (2026-10-31, RSS of the browser tree):
+ * icons on the 60 heaviest ids by ledger vertices peaked at 3.0 GB renderer / 4.4 GB tree in 162 s, so 51 keeps half the
+ * cap; centering on all 236 ids peaked at 4.45 GB / 5.7 GB, so 120 keeps it near half as the fleet grows.
+ */
+const ICONS_MAX_IDS = 51;
+const CENTERING_MAX_IDS = 120;
+
+/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within both caps, chunkS seconds of estimated
+ *  work (perIdS each) and maxIds ids, split evenly (255 ids at 51: five of 51). */
+export function gpuChunks(step, list) {
+  const cap = Math.max(1, Math.min(Math.floor(step.chunkS / step.perIdS), step.maxIds ?? Infinity));
+  const count = Math.ceil(list.length / cap), size = Math.ceil(list.length / Math.max(1, count));
+  const chunks = [];
+  for (let index = 0; index < list.length; index += size) chunks.push(list.slice(index, index + size));
+  return chunks;
+}
+
+/**
  * The fleet steps, in chain order. Seats read the fills and the roof guns (controls), and missionDockSeats feeds the
  * spare-track dock keep-out, so the CPU order is controls, fills, seats, spare-track, anatomy, marking; the ledger
  * measures the settled builds; the GPU steps follow.
@@ -332,6 +353,8 @@ const ids = (list) => `--ids=${list.join(',')}`;
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
  *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
  *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
+ *   chunkS, perIdS, maxIds  a GPU step's capture-lock holds: at most chunkS seconds of estimated work and maxIds ids per
+ *           browser (gpuChunks); none of them is keyed
  */
 export const STEPS = Object.freeze([
   {
@@ -418,7 +441,7 @@ export const STEPS = Object.freeze([
     rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100, maxIds: CENTERING_MAX_IDS,
     // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
     // models excepted: no playable build loads one, AGENTS.md).
     reads: ['public/**'],
@@ -435,7 +458,7 @@ export const STEPS = Object.freeze([
     // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
     // into public/icons): not inputs of its own key.
     writes: ['public/icons/**'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
     reads: ['public/**'],
     // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
     excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],

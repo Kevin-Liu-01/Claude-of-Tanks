@@ -39,6 +39,7 @@ import { join, resolve } from 'node:path';
 import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
+import { gpuChunks } from './changed-only/steps.mjs';
 import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
@@ -184,15 +185,13 @@ async function runCpuStep(step, ids, state) {
   return run;
 }
 
-/** Run a GPU step on `ids` in capture-lock holds of at most step.chunkS seconds of estimated work. */
+/** Run a GPU step on `ids` in capture-lock holds, each one browser within the step's time and renderer caps (gpuChunks). */
 async function runGpuStep(step, ids, state) {
   const { createCaptureLock } = await import('./capture-lock.mjs');
   const list = ids ?? state.ids;
-  const perChunk = Math.max(1, Math.floor(step.chunkS / step.perIdS));
-  const chunks = [];
-  // A whole-fleet run longer than one hold is chunked too; the chunks together cover every id, written by the tool's
+  // A whole-fleet run larger than one hold is chunked too; the chunks together cover every id, written by the tool's
   // own --ids merge.
-  for (let index = 0; index < list.length; index += perChunk) chunks.push(list.slice(index, index + perChunk));
+  const chunks = gpuChunks(step, list);
   for (const [index, chunk] of chunks.entries()) {
     const lock = createCaptureLock();
     log(`[regen] ${step.name}: waiting for the capture lock (chunk ${index + 1}/${chunks.length}, ${chunk.length} ids)`);
@@ -250,7 +249,12 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   if (resolved.mode === 'none') { log(`[regen] ${name}: 0 changed`); return false; }
   const why = resolved.reasons['*'] ?? [...new Set(Object.values(resolved.reasons).flat())].slice(0, 6);
   log(`[regen] ${name}: ${resolved.mode} ${resolved.ids.length} id(s) (${why.join('; ')})`);
-  if (DRY) { summary.runs.push({ step: name, mode: resolved.mode, count: resolved.ids.length, ids: resolved.ids, dryRun: true }); return false; }
+  if (DRY) {
+    const chunks = definition.device === 'gpu' ? gpuChunks(definition, resolved.ids).map((chunk) => chunk.length) : null;
+    if (chunks) log(`[regen] ${name}: would run ${chunks.length} browser chunk(s) of ${chunks.join(', ')} id(s) (at most ${definition.maxIds ?? 'any'} per browser, ${definition.chunkS} s per hold)`);
+    summary.runs.push({ step: name, mode: resolved.mode, count: resolved.ids.length, ids: resolved.ids, dryRun: true, ...(chunks ? { chunks } : {}) });
+    return false;
+  }
   const scoped = resolved.mode === 'ids' ? resolved.ids : null;
   const inKeys = Object.fromEntries((scoped ?? state.ids).map((id) => [id, state.inKey(name, id)]));
   if (!state.steps[name].decomposed) log(`[regen] ${name}: not decomposable (${state.steps[name].reasons.join('; ')})`);
