@@ -6736,17 +6736,17 @@
  },
  {
   "n": 273,
-  "id": "centurion5-1-aus-copper-mesa",
+  "id": "centurion5-1-aus-airfield",
   "hero": "centurion5_1_aus",
   "nation": "Australia",
   "era": "cold-war",
-  "map": "copper_mesa",
+  "map": "airfield",
   "time": "golden",
   "anchor": [
-   -267,
-   318
+   305,
+   212
   ],
-  "heading": 75,
+  "heading": 334.9,
   "template": 23,
   "action": "hold",
   "lineup": [
@@ -6761,12 +6761,12 @@
    "service_soviet_coldwar"
   ],
   "title": {
-   "en": "A Centurion Mk 5/1 (Aust) holds its ground at Copper Mesa Mine in the evening light",
-   "zh": "傍晚，一辆 Centurion Mk 5/1 (Aust) 在铜台地矿场坚守阵地"
+   "en": "A Centurion Mk 5/1 (Aust) holds its ground at Kestrel Airfield in the evening light",
+   "zh": "傍晚，一辆 Centurion Mk 5/1 (Aust) 在红隼机场坚守阵地"
   },
   "short": {
-   "en": "Centurion Mk 5/1 (Aust), Copper Mesa Mine",
-   "zh": "Centurion Mk 5/1 (Aust)，铜台地矿场"
+   "en": "Centurion Mk 5/1 (Aust), Kestrel Airfield",
+   "zh": "Centurion Mk 5/1 (Aust)，红隼机场"
   }
  },
  {
@@ -7023,6 +7023,259 @@
   "short": {
    "en": "Leopard 2A3, Amberford",
    "zh": "Leopard 2A3，安伯福"
+  }
+ },
+ {
+  "n": 281,
+  "id": "m48-super-urban",
+  "hero": "m48_super",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "urban",
+  "time": "day",
+  "anchor": [
+   117.7,
+   -214.5
+  ],
+  "heading": 257.3,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "m48_super",
+   "leo2a2",
+   "marder1a3"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M48 Super crosses Steinburg through shellfire",
+   "zh": "一辆 M48 Super 冒着炮火穿越斯泰因堡"
+  },
+  "short": {
+   "en": "M48 Super, Steinburg",
+   "zh": "M48 Super，斯泰因堡"
+  }
+ },
+ {
+  "n": 282,
+  "id": "m48a2ga2-verdant",
+  "hero": "m48a2ga2",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "verdant",
+  "time": "day",
+  "anchor": [
+   48,
+   48
+  ],
+  "heading": 15,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "m48a2ga2",
+   "mbt70"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Kpz M48A2GA2 leads the column through Verdant Fields",
+   "zh": "一辆 Kpz M48A2GA2 率领纵队穿过翠野原"
+  },
+  "short": {
+   "en": "Kpz M48A2GA2, Verdant Fields",
+   "zh": "Kpz M48A2GA2，翠野原"
+  }
+ },
+ {
+  "n": 283,
+  "id": "magach3-oasis",
+  "hero": "magach3",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "oasis",
+  "time": "golden",
+  "anchor": [
+   183,
+   -132
+  ],
+  "heading": 281,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "magach3",
+   "merkava1b"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_merkava2d",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Magach 3 holds its ground at Sunscar Oasis in the evening light",
+   "zh": "傍晚，一辆 Magach 3 在日痕绿洲坚守阵地"
+  },
+  "short": {
+   "en": "Magach 3, Sunscar Oasis",
+   "zh": "Magach 3，日痕绿洲"
+  }
+ },
+ {
+  "n": 284,
+  "id": "pt84-orzel-reservoir",
+  "hero": "pt84_orzel",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "reservoir",
+  "time": "golden",
+  "anchor": [
+   -4,
+   78
+  ],
+  "heading": 15,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "pt84_orzel",
+   "t72b3_zubr_ii"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "paint_pt84_orzel",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-84 Orzeł fires across Highland Reservoir in the evening light",
+   "zh": "傍晚，一辆 PT-84 Orzeł在高地水库开火"
+  },
+  "short": {
+   "en": "PT-84 Orzeł, Highland Reservoir",
+   "zh": "PT-84 Orzeł，高地水库"
+  }
+ },
+ {
+  "n": 285,
+  "id": "pt84-sokol-orchard",
+  "hero": "pt84_sokol",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "orchard",
+  "time": "day",
+  "anchor": [
+   -312,
+   -222
+  ],
+  "heading": 196,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "pt84_sokol"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-84 Sokół charges through artillery at Orchard Valley",
+   "zh": "一辆 PT-84 Sokół冒着炮击冲过果园谷"
+  },
+  "short": {
+   "en": "PT-84 Sokół, Orchard Valley",
+   "zh": "PT-84 Sokół，果园谷"
+  }
+ },
+ {
+  "n": 286,
+  "id": "pt84-zbik-monsoon",
+  "hero": "pt84_zbik",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "monsoon",
+  "time": "golden",
+  "anchor": [
+   -87,
+   -42
+  ],
+  "heading": 353,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "pt84_zbik",
+   "t72b3_zubr",
+   "pt64_tur"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "urbanblock",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-84 Żbik knocks out a T-90A at Monsoon Ridge in the evening light",
+   "zh": "傍晚，一辆 PT-84 Żbik 在季风雨脊击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "PT-84 Żbik, Monsoon Ridge",
+   "zh": "PT-84 Żbik，季风雨脊"
+  }
+ },
+ {
+  "n": 287,
+  "id": "m48a3-patton-urban",
+  "hero": "m48a3_patton",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "urban",
+  "time": "morning",
+  "anchor": [
+   -321.2,
+   101.8
+  ],
+  "heading": 186.5,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "m48a3_patton",
+   "m60a3"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "summer",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M48A3 Patton leads the column through Steinburg in the morning",
+   "zh": "清晨，一辆 M48A3 Patton 率领纵队穿过斯泰因堡"
+  },
+  "short": {
+   "en": "M48A3 Patton, Steinburg",
+   "zh": "M48A3 Patton，斯泰因堡"
   }
  }
 ]
