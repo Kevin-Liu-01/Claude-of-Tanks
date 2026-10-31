@@ -2418,7 +2418,7 @@ function m48SuperSkirts(P: CastPort): void {
 /** The bustle and its load on the A5's other marks (world): the rack round the tail (the Magach's IDF basket stands
  * taller and wider), the bedroll and bags, the ventilator. */
 function m48MarkBustle(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Variant): void {
-  const { cylY, xform } = KIT;
+  const { cylY } = KIT;
   const L = tl(T);
   // (the racks start behind the flanks, inside the turret's outline seen from the front; the Magach's runs behind its
   // Blazer wall, and the Super's armour wraps the tail)
