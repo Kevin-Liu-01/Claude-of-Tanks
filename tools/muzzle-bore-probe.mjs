@@ -3,6 +3,7 @@
 // verify that the real recess reads clearly under the gallery lighting.
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -36,149 +37,153 @@ const server = await createServer({
 });
 await server.listen();
 const origin = boundOrigin(server);
-let browser = null;
-let page = null;
-const openProbePage = async () => {
-  browser = await launchGuardedBrowser(puppeteer, {
-    headless: 'new',
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  page = await browser.newPage();
+const launchOptions = {
+  headless: 'new',
+  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+};
+const openProbePage = async (browser) => {
+  const page = await browser.newPage();
   // A cold Vite transform of the complete procedural fleet can exceed
   // Puppeteer's 30 s navigation default when another release probe is using
   // the local GPU. Keep the readiness assertion bounded separately, but allow
   // the document transform 180 s and retry a timed-out load once (R4c).
   await loadReadyPage(page, `${origin}/tools/icons-page.html`, { label: 'muzzle-bore', ready: 'window.__ICONS_READY === true' });
+  return page;
 };
 const failures = [];
 let checkedIds = ids;
 const report = { schemaVersion: 1, generatedAt: new Date().toISOString(), tanks: {} };
 try {
-  await openProbePage();
-  checkedIds = ids.length ? ids : await page.evaluate(() => [...window.__FLEET_IDS]);
-  for (let idIndex = 0; idIndex < checkedIds.length; idIndex++) {
-    const id = checkedIds[idIndex];
-    if (idIndex > 0 && idIndex % 40 === 0) {
-      // Recreate the browser/WebGL process periodically. Three.js disposes
-      // each visual, but Chromium's driver process defers GPU frees and a
-      // 100+ tank pass can otherwise lose the context in later families.
-      await browser.close();
-      browser = null;
-      page = null;
-      await openProbePage();
-    }
-    // One tank at a time keeps the WebGL working set bounded across the full
-    // roster and makes the exact failing id available even if a renderer
-    // allocation fails. Each helper disposes its visual before the next id.
-    const interiorFillLoaded = await page.evaluate(async (tankId) => {
-      const fills = await import('/src/vehicles/interiorFills.ts');
-      await fills.ensureInteriorFills([tankId]);
-      return fills.hasInteriorFills(tankId);
-    }, id);
-    await page.evaluate((tankId) => window.__WARM([tankId]), id);
-    const shot = await page.evaluate((tankId) => window.__BORE_SHOTS([tankId])[tankId], id);
-    if (!shot || shot.error) {
-      failures.push(`${id}: ${shot && shot.error || 'missing shot'}`);
-      report.tanks[id] = { pass: false, error: shot && shot.error || 'missing shot' };
-      continue;
-    }
-    const path = resolve(outDir, `${id}.png`);
-    writeFileSync(path, Buffer.from(shot.image.split(',')[1], 'base64'));
-    if (shot.obliqueImage) writeFileSync(resolve(outDir, `${id}-oblique.png`), Buffer.from(shot.obliqueImage.split(',')[1], 'base64'));
-    const contrast = shot.surroundLuma - shot.innerLuma;
-    const expectedBores = expectedMuzzleBoreCount(getSpec(id));
-    if (!all) {
-      console.log(`[muzzle-bore] ${id} inner ${shot.innerLuma.toFixed(1)} surround ${shot.surroundLuma.toFixed(1)} contrast ${contrast.toFixed(1)} ${JSON.stringify(shot.muzzleBore)} -> ${path}`);
-    } else if ((idIndex + 1) % 10 === 0 || idIndex + 1 === checkedIds.length) {
-      console.log(`[muzzle-bore] checked ${idIndex + 1}/${checkedIds.length} (latest ${id})`);
-    }
-    if (shot.muzzleBore.tagged !== expectedBores) {
-      failures.push(`${id}: expected ${expectedBores} visible tagged bore(s), found ${shot.muzzleBore.tagged}`);
-    }
-    // A verified physical recess is its own rim (2026-09-22, owner: holes are added, not carved,
-    // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
-    const visibleRims = shot.muzzleBore.rims + (shot.muzzleBore.physicalRims || 0);
-    if (visibleRims !== expectedBores || ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) !== expectedBores) {
-      failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
-    }
-    if (expectedBores === 0) {
-      const pass = shot.muzzleBore.tagged === 0 && shot.muzzleBore.rims === 0 && shot.muzzleBore.discs === 0;
-      report.tanks[id] = { pass, applicable: false, reason: 'Sealed launch canisters have no cannon bore',
-        proof: `${id}.png`, interiorFillLoaded, muzzleBore: shot.muzzleBore };
-      continue;
-    }
-    const firstHit = shot.boreDebug && shot.boreDebug.centerHits && shot.boreDebug.centerHits[0];
-    const firstHitIsBore = !!(firstHit && firstHit.bore);
-    const readsRecessed = shot.innerLuma < 80 && contrast > 15;
-    // Very dark-painted barrel faces (Vickers Mk.1) have no useful outer
-    // contrast at this macro framing. Accept that case only when the center
-    // ray proves the near-black pixel belongs to the explicit bore disc.
-    const readsAbsoluteBlack = shot.innerLuma < 20;
-    const innerSamplesPass = shot.boreDebug.innerSamples?.every((sample) => sample.pass) === true;
-    const rimSamplesPass = shot.boreDebug.rimSamples?.every((sample) => sample.pass) === true;
-    const concentric = Number.isFinite(shot.boreDebug.concentricOffsetM)
-      && shot.boreDebug.concentricOffsetM <= 0.004;
-    const seatReceipts = shot.boreDebug.muzzleSeatReceipts || [];
-    const seatCoverage = seatReceipts.length === expectedBores;
-    const seatSupportMeasured = seatReceipts.every((receipt) =>
-      receipt.supportSource === 'terminal-cap'
-      || receipt.supportSource === 'terminal-edge'
-      || receipt.supportSource === 'authored-rim'
-      || receipt.supportSource === 'authored-physical-bore');
-    const seatRadialFit = seatReceipts.every((receipt) =>
-      Number.isFinite(receipt.supportOuterRadiusM)
-      && Number.isFinite(receipt.outerRadiusM)
-      && Number.isFinite(receipt.radialRatio)
-      && receipt.supportOuterRadiusM >= 0.005
-      && receipt.outerRadiusM >= 0.005
-      && receipt.radialRatio >= 0.35
-      && receipt.radialRatio <= 1.001);
-    // A visible mouth belongs at the tube edge. Source-study sleeves with an
-    // inner bore tube used to seat the fleet mouth at a floor disc 25-32 cm
-    // back, so the player looked down a hollow throat.
-    const counterboreDepthM = Number.isFinite(shot.boreDebug.capOffsetM) ? -shot.boreDebug.capOffsetM : 0;
-    const counterboreOk = counterboreDepthM <= 0.05;
-    const seatAxialFit = seatReceipts.every(muzzleSeatAxialFit);
-    const pass = shot.muzzleBore.tagged === expectedBores
-      && visibleRims === expectedBores
-      && ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) === expectedBores
-      && firstHitIsBore
-      && innerSamplesPass
-      && rimSamplesPass
-      && concentric
-      && seatCoverage
-      && seatSupportMeasured
-      && seatRadialFit
-      && seatAxialFit
-      && (readsRecessed || readsAbsoluteBlack);
-    report.tanks[id] = {
-      pass,
-      proof: `${id}.png`,
-      interiorFillLoaded,
-      innerLuma: Number(shot.innerLuma.toFixed(2)),
-      surroundLuma: Number(shot.surroundLuma.toFixed(2)),
-      contrast: Number(contrast.toFixed(2)),
-      radiusPx: Number(shot.radiusPx.toFixed(2)),
-      luminanceSampling: { innerRadiusPx: shot.innerRadiusPx,
-        innerPixelCount: shot.innerPixelCount, surroundPixelCount: shot.surroundPixelCount },
-      muzzleBore: shot.muzzleBore,
-      boreDebug: shot.boreDebug,
-    };
-    if (!(readsRecessed || readsAbsoluteBlack)) {
-      failures.push(`${id}: center does not read as a recessed dark bore ${JSON.stringify(shot.boreDebug)}`);
-    }
-    if (!firstHitIsBore) failures.push(`${id}: first visible center hit is not bore furniture ${JSON.stringify(firstHit)}`);
-    if (!innerSamplesPass) failures.push(`${id}: bore disc is blocked or undersized ${JSON.stringify(shot.boreDebug.innerSamples)}`);
-    if (!rimSamplesPass) failures.push(`${id}: rim is incomplete or occluded ${JSON.stringify(shot.boreDebug.rimSamples)}`);
-    if (!concentric) failures.push(`${id}: rim/disc are not concentric (${shot.boreDebug.concentricOffsetM})`);
-    if (!seatCoverage) failures.push(`${id}: expected ${expectedBores} muzzle-seat receipt(s), found ${seatReceipts.length}`);
-    if (!seatSupportMeasured) failures.push(`${id}: muzzle fallback still uses unmeasured nominal support ${JSON.stringify(seatReceipts)}`);
-    if (!seatRadialFit) failures.push(`${id}: muzzle lip overhangs or undersizes its terminal support ${JSON.stringify(seatReceipts)}`);
-    if (!seatAxialFit) failures.push(`${id}: muzzle face is axially detached from its terminal support ${JSON.stringify(seatReceipts)}`);
-    if (!counterboreOk) failures.push(`${id}: visible muzzle mouth sits ${(counterboreDepthM * 100).toFixed(1)} cm behind the tube edge (hollow throat)`);
+  if (!checkedIds.length) {
+    // --all: the icons page's fleet, read once in a short-lived browser
+    const listBrowser = await launchGuardedBrowser(puppeteer, launchOptions);
+    try { checkedIds = await (await openProbePage(listBrowser)).evaluate(() => [...window.__FLEET_IDS]); } finally { await listBrowser.close(); }
   }
+  let idIndex = -1;
+  // A fresh browser/WebGL process per chunk of ids (tools/browser-id-chunks.mjs). Three.js disposes
+  // each visual, but Chromium's driver process defers GPU frees and a
+  // 100+ tank pass can otherwise lose the context in later families.
+  await eachBrowserChunk('tools/muzzle-bore-probe.mjs', checkedIds, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, launchOptions);
+    try {
+      const page = await openProbePage(browser);
+      for (const id of chunk) {
+        idIndex += 1;
+        // One tank at a time keeps the WebGL working set bounded across the full
+        // roster and makes the exact failing id available even if a renderer
+        // allocation fails. Each helper disposes its visual before the next id.
+        const interiorFillLoaded = await page.evaluate(async (tankId) => {
+          const fills = await import('/src/vehicles/interiorFills.ts');
+          await fills.ensureInteriorFills([tankId]);
+          return fills.hasInteriorFills(tankId);
+        }, id);
+        await page.evaluate((tankId) => window.__WARM([tankId]), id);
+        const shot = await page.evaluate((tankId) => window.__BORE_SHOTS([tankId])[tankId], id);
+        if (!shot || shot.error) {
+          failures.push(`${id}: ${shot && shot.error || 'missing shot'}`);
+          report.tanks[id] = { pass: false, error: shot && shot.error || 'missing shot' };
+          continue;
+        }
+        const path = resolve(outDir, `${id}.png`);
+        writeFileSync(path, Buffer.from(shot.image.split(',')[1], 'base64'));
+        if (shot.obliqueImage) writeFileSync(resolve(outDir, `${id}-oblique.png`), Buffer.from(shot.obliqueImage.split(',')[1], 'base64'));
+        const contrast = shot.surroundLuma - shot.innerLuma;
+        const expectedBores = expectedMuzzleBoreCount(getSpec(id));
+        if (!all) {
+          console.log(`[muzzle-bore] ${id} inner ${shot.innerLuma.toFixed(1)} surround ${shot.surroundLuma.toFixed(1)} contrast ${contrast.toFixed(1)} ${JSON.stringify(shot.muzzleBore)} -> ${path}`);
+        } else if ((idIndex + 1) % 10 === 0 || idIndex + 1 === checkedIds.length) {
+          console.log(`[muzzle-bore] checked ${idIndex + 1}/${checkedIds.length} (latest ${id})`);
+        }
+        if (shot.muzzleBore.tagged !== expectedBores) {
+          failures.push(`${id}: expected ${expectedBores} visible tagged bore(s), found ${shot.muzzleBore.tagged}`);
+        }
+        // A verified physical recess is its own rim (2026-09-22, owner: holes are added, not carved,
+        // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
+        const visibleRims = shot.muzzleBore.rims + (shot.muzzleBore.physicalRims || 0);
+        if (visibleRims !== expectedBores || ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) !== expectedBores) {
+          failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
+        }
+        if (expectedBores === 0) {
+          const pass = shot.muzzleBore.tagged === 0 && shot.muzzleBore.rims === 0 && shot.muzzleBore.discs === 0;
+          report.tanks[id] = { pass, applicable: false, reason: 'Sealed launch canisters have no cannon bore',
+            proof: `${id}.png`, interiorFillLoaded, muzzleBore: shot.muzzleBore };
+          continue;
+        }
+        const firstHit = shot.boreDebug && shot.boreDebug.centerHits && shot.boreDebug.centerHits[0];
+        const firstHitIsBore = !!(firstHit && firstHit.bore);
+        const readsRecessed = shot.innerLuma < 80 && contrast > 15;
+        // Very dark-painted barrel faces (Vickers Mk.1) have no useful outer
+        // contrast at this macro framing. Accept that case only when the center
+        // ray proves the near-black pixel belongs to the explicit bore disc.
+        const readsAbsoluteBlack = shot.innerLuma < 20;
+        const innerSamplesPass = shot.boreDebug.innerSamples?.every((sample) => sample.pass) === true;
+        const rimSamplesPass = shot.boreDebug.rimSamples?.every((sample) => sample.pass) === true;
+        const concentric = Number.isFinite(shot.boreDebug.concentricOffsetM)
+          && shot.boreDebug.concentricOffsetM <= 0.004;
+        const seatReceipts = shot.boreDebug.muzzleSeatReceipts || [];
+        const seatCoverage = seatReceipts.length === expectedBores;
+        const seatSupportMeasured = seatReceipts.every((receipt) =>
+          receipt.supportSource === 'terminal-cap'
+          || receipt.supportSource === 'terminal-edge'
+          || receipt.supportSource === 'authored-rim'
+          || receipt.supportSource === 'authored-physical-bore');
+        const seatRadialFit = seatReceipts.every((receipt) =>
+          Number.isFinite(receipt.supportOuterRadiusM)
+          && Number.isFinite(receipt.outerRadiusM)
+          && Number.isFinite(receipt.radialRatio)
+          && receipt.supportOuterRadiusM >= 0.005
+          && receipt.outerRadiusM >= 0.005
+          && receipt.radialRatio >= 0.35
+          && receipt.radialRatio <= 1.001);
+        // A visible mouth belongs at the tube edge. Source-study sleeves with an
+        // inner bore tube used to seat the fleet mouth at a floor disc 25-32 cm
+        // back, so the player looked down a hollow throat.
+        const counterboreDepthM = Number.isFinite(shot.boreDebug.capOffsetM) ? -shot.boreDebug.capOffsetM : 0;
+        const counterboreOk = counterboreDepthM <= 0.05;
+        const seatAxialFit = seatReceipts.every(muzzleSeatAxialFit);
+        const pass = shot.muzzleBore.tagged === expectedBores
+          && visibleRims === expectedBores
+          && ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) === expectedBores
+          && firstHitIsBore
+          && innerSamplesPass
+          && rimSamplesPass
+          && concentric
+          && seatCoverage
+          && seatSupportMeasured
+          && seatRadialFit
+          && seatAxialFit
+          && (readsRecessed || readsAbsoluteBlack);
+        report.tanks[id] = {
+          pass,
+          proof: `${id}.png`,
+          interiorFillLoaded,
+          innerLuma: Number(shot.innerLuma.toFixed(2)),
+          surroundLuma: Number(shot.surroundLuma.toFixed(2)),
+          contrast: Number(contrast.toFixed(2)),
+          radiusPx: Number(shot.radiusPx.toFixed(2)),
+          luminanceSampling: { innerRadiusPx: shot.innerRadiusPx,
+            innerPixelCount: shot.innerPixelCount, surroundPixelCount: shot.surroundPixelCount },
+          muzzleBore: shot.muzzleBore,
+          boreDebug: shot.boreDebug,
+        };
+        if (!(readsRecessed || readsAbsoluteBlack)) {
+          failures.push(`${id}: center does not read as a recessed dark bore ${JSON.stringify(shot.boreDebug)}`);
+        }
+        if (!firstHitIsBore) failures.push(`${id}: first visible center hit is not bore furniture ${JSON.stringify(firstHit)}`);
+        if (!innerSamplesPass) failures.push(`${id}: bore disc is blocked or undersized ${JSON.stringify(shot.boreDebug.innerSamples)}`);
+        if (!rimSamplesPass) failures.push(`${id}: rim is incomplete or occluded ${JSON.stringify(shot.boreDebug.rimSamples)}`);
+        if (!concentric) failures.push(`${id}: rim/disc are not concentric (${shot.boreDebug.concentricOffsetM})`);
+        if (!seatCoverage) failures.push(`${id}: expected ${expectedBores} muzzle-seat receipt(s), found ${seatReceipts.length}`);
+        if (!seatSupportMeasured) failures.push(`${id}: muzzle fallback still uses unmeasured nominal support ${JSON.stringify(seatReceipts)}`);
+        if (!seatRadialFit) failures.push(`${id}: muzzle lip overhangs or undersizes its terminal support ${JSON.stringify(seatReceipts)}`);
+        if (!seatAxialFit) failures.push(`${id}: muzzle face is axially detached from its terminal support ${JSON.stringify(seatReceipts)}`);
+        if (!counterboreOk) failures.push(`${id}: visible muzzle mouth sits ${(counterboreDepthM * 100).toFixed(1)} cm behind the tube edge (hollow throat)`);
+      }
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
-  if (browser) await browser.close();
   await server.close();
 }
 

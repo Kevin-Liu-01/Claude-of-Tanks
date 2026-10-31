@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1490 | 145.3 |
+| KEEP | 1491 | 145.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 652 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2143 | 1264.4 | 211.9 |
-| After: the default tier | 1490 | 145.3 | 20.5 |
+| Before: every receipt (npm test without the tiers) | 2144 | 1264.5 | 211.9 |
+| After: the default tier | 1491 | 145.4 | 20.5 |
 
 Default tier: 11.5 % of the whole registry's CPU; 15.9 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
 
@@ -798,7 +798,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1490)
+## KEEP (1491)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1023,6 +1023,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/docs/docsSearch.selftest.mjs` | 9.9 | KEEP | site, manual or app contract, 9.9 s: docsSearch.selftest.mjs — the Field Manual's search (08 .side .search): the index is every chapter and section | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/watchBattleReport.selftest.mjs` | 9.9 | KEEP | interface contract, 9.9 s: (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highl | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/browser-launch.selftest.mjs` | 9.9 | KEEP | tool contract, 9.9 s: 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/selftest-process-groups.selftest.mjs` | 9.7 | KEEP | test, gate or release tooling, 9.7 s: Every receipt leads its own process group, and nothing in it outlives the receipt (266, Main: three `for (;;) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/presentation/predictionStructureYield.selftest.mjs` | 9.5 | KEEP | multiplayer wire, session or host, 9.5 s: 2026-10-29 (ram-yield-prediction-264): a building the own ram brings down yields to the drawn hull as to the a | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/match/service.selftest.mjs` | 9.0 | KEEP | match authority, 9.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/textureUnits.selftest.mjs` | 9.0 | KEEP | renderer contract, 9.0 s: 2026-10-05 (the skies-and-atmosphere lane): the terrain's program counted as the GPU binds it — the expanded s | default tier (npm test, the release gate; lane mode by its closure) |

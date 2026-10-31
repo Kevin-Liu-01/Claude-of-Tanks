@@ -13,6 +13,7 @@ import { measureSourceOpenings } from './source-opening-check.mjs';
 import { isArieteOpeningTarget } from './ariete-source-openings.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createStageRunner, formatStageSummary, stageStatus, summarizeStages } from './standard-check-stages.mjs';
 import { contiguityPassed } from './contig-grid.mjs';
 import { CONTIG_HIDDEN_LEDGER, applyHiddenGaps, readHiddenLedger } from './contig-hidden-gaps.mjs';
@@ -186,12 +187,9 @@ async function readLowQualityScan(page,base,id) {
     return {id,quality:'low',error:String(error.message || error)};
   }
 }
-const standard = new Map(); // id -> { census, holes } | { error }
-const hiddenLedger = readHiddenLedger();
-let fixture = null;
-if ((ids.length && !noRender) || wantFixture) await stages.run('render', async () => {
-  {
-    await withIsolatedCaptureBrowser({
+/** One server and browser on the committed page, in its own capture hold (the server and browser warm while queued). */
+async function withStandardPage(run) {
+  return await withIsolatedCaptureBrowser({
     root: process.cwd(), logLevel: 'error',
     // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
     server: toolServerOptions(7400, { span: 400 }),
@@ -201,11 +199,21 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
   }, async ({ server, browser }) => {
     const page = await browser.newPage();
     page.setDefaultTimeout(120000);
-    let pageError = null;
-    page.on('pageerror', (e) => { pageError = String(e && e.message || e).slice(0, 160); });
-    const base = `${boundOrigin(server)}/tools/standard-check-page.html`;
-    if (!noRender) {
-      for (const id of ids) {
+    return run({ browser, page, base: `${boundOrigin(server)}/tools/standard-check-page.html` });
+  }, { capture: { lock: captureLock, waitMs: 20 * 60 * 1000 } });
+}
+const standard = new Map(); // id -> { census, holes } | { error }
+const hiddenLedger = readHiddenLedger();
+let fixture = null;
+if ((ids.length && !noRender) || wantFixture) await stages.run('render', async () => {
+  {
+    // A fresh server and browser, each in its own hold, per chunk of ids (tools/browser-id-chunks.mjs); the fixture
+    // builds no fleet id and takes one of its own.
+    await eachBrowserChunk('tools/tank-standard-check.mjs', noRender ? [] : ids, (chunk, { track }) => withStandardPage(async ({ browser, page, base }) => {
+      track(browser);
+      let pageError = null;
+      page.on('pageerror', (e) => { pageError = String(e && e.message || e).slice(0, 160); });
+      for (const id of chunk) {
         pageError = null;
         try {
           await page.goto(`${base}?id=${id}`, { waitUntil: 'domcontentloaded' });
@@ -219,13 +227,12 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
           standard.set(id, { error: (pageError || e.message).slice(0, 160) });
         }
       }
-    }
-    if (wantFixture) {
+    }));
+    if (wantFixture) await withStandardPage(async ({ page, base }) => {
       await page.goto(`${base}?fixture=fittings`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__FIXTURE_READY === true', { polling: 50 });
       fixture = await page.evaluate('window.__FIXTURE');
-    }
-    }, { capture: { lock: captureLock, waitMs: 20 * 60 * 1000 } });
+    });
     // --stages: one id's source verification failing leaves every other id's B2/B3 evidence intact.
     for (const id of ids) await stages.run('contiguity', async () => {
       const configuration = configurations[id];
