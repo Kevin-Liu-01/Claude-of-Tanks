@@ -4901,6 +4901,8 @@ const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 
   'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
+/** How far under a load's foot a field suit's roof cloth still counts as lying on the plate the load stands on. */
+const ROOF_NET_FOOT_M = 0.08;
 /**
  * Camo-painted hard kit (bins, boxes, the smoke banks' own finish) rides the resident group with the working smoke
  * banks: it reads as part of the vehicle, it was resident before the 2026-10-05 retag, and sharing that draw keeps
@@ -5183,6 +5185,11 @@ function* decorationSteps(
     // and its hanging drapes (the net's triangles after its roof and deck carriers, owner frame): a load seated on a
     // wall, a fender or a bustle face under one would sit inside the cloth, so it takes another seat
     const suitDrapes: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
+    // 266 (the net-hoop class; the Ukrainian CV9040C's ua3 critics, both: "a hollow hoop, daylight through it", as the
+    // Ariete prototype's cradle in 240): and its roof and deck cloth (the net's leading triangles, on their carriers). A
+    // load stowed under it stood up through the cloth, and drawn up over it (ghillieDrape.ts) the net became an arch, open
+    // underneath; the decor stows nothing on a roof or deck a field net covers
+    const suitRoofs: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
     for (const [frame, group] of [['hull', hullG], ['turret', turretG]] as const) {
       group.updateWorldMatrix(true, true);
       const toFrame = new THREE.Matrix4().copy(group.matrixWorld).invert(), m = new THREE.Matrix4();
@@ -5193,8 +5200,8 @@ function* decorationSteps(
         if (!pos) return;
         m.multiplyMatrices(toFrame, mesh.matrixWorld);
         const top = Number(mesh.userData[GHILLIE_TOP_VERTICES]) || 0;
-        for (let i = top - (top % 3); i + 2 < pos.count; i += 3) {
-          suitDrapes[frame].push(new THREE.Triangle(
+        for (let i = 0; i + 2 < pos.count; i += 3) {
+          (i < top - (top % 3) ? suitRoofs : suitDrapes)[frame].push(new THREE.Triangle(
             new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 1).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 2).applyMatrix4(m)));
@@ -5205,6 +5212,13 @@ function* decorationSteps(
     const meetsDrape = (frame: DecorFrame, bb: THREE.Box3): boolean => suitDrapes[frame].some((t) => {
       triBox.setFromPoints([t.a, t.b, t.c]);
       return triBox.intersectsBox(bb) && bb.intersectsTriangle(t);
+    });
+    // the roof cloth over the load's footprint, from its foot (less ROOF_NET_FOOT_M: the cloth lies on the plate the load
+    // stands on) to its top: the load would stand up through the net
+    const underRoofNet = (frame: DecorFrame, bb: THREE.Box3): boolean => suitRoofs[frame].some((t) => {
+      triBox.setFromPoints([t.a, t.b, t.c]);
+      return triBox.max.x >= bb.min.x && triBox.min.x <= bb.max.x && triBox.max.z >= bb.min.z && triBox.min.z <= bb.max.z
+        && triBox.min.y < bb.max.y && triBox.max.y > bb.min.y - ROOF_NET_FOOT_M;
     });
     {
       turretG.updateWorldMatrix(true, false);
@@ -5715,6 +5729,7 @@ function* decorationSteps(
       if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && !launcherSweepOK(bb)) return rejectCommit(name, parts, 'launcher-sweep');
       // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('hull', bb)) return rejectCommit(name, parts, 'suit-roof');
       return true;
     }
 
@@ -5741,6 +5756,7 @@ function* decorationSteps(
         if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
       }
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('turret', bb)) return rejectCommit(name, parts, 'suit-roof');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {
