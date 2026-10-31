@@ -8,6 +8,7 @@ import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
+import { DRONE_DOCK_EXEMPT } from '../sim/droneDockExempt.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const ids = [
@@ -527,7 +528,13 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
   // suitDockBoxes with 3 cm to spare (the decor's DOCK_KEEP_OUT_CLEAR), and no vertex of that owner's suit lies within
   // 3 cm of a volume, measured in the seat's own frame as the seat generator measures it (the owner rig, or the vehicle
   // root, without its own scale: the T-90M's and the Merkavas' turret rigs are scaled). gen-mission-attachment-seats
-  // --check is the dock's own gate.
+  // --check is the dock's own gate. A sealed dockless vehicle (droneDockExempt.ts DRONE_DOCK_EXEMPT: Main's 262 ruling on
+  // the rebuilt Mk 4B) keeps no seat and no dock to hold.
+  if (Object.hasOwn(DRONE_DOCK_EXEMPT, id)) {
+    assert.equal(MISSION_ATTACHMENT_SEATS[id], undefined, `${id}: a sealed dockless vehicle keeps no seat`);
+    tank.dispose();
+    continue;
+  }
   const seat = MISSION_ATTACHMENT_SEATS[id];
   assert.ok(seat, `${id}: a suited hull keeps its native drone dock seat record`);
   const dock = suitDockBoxes(id);

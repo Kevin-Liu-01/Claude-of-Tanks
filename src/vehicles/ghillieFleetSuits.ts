@@ -207,7 +207,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     hull: {
       top: [
-        laid({ x0: -1.75, x1: 1.75, z0: -3.70, z1: -0.55, nx: 35, nz: 32, y: 1.76, garnishRiseM: 0.10, seed: 31 }),
+        // 265: the two stern rows over the rear plate's recess (x -0.95..-0.45, top 1.572) were cut off from the deck net
+        // and hung 1.7 cm over the plate (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.75, x1: 1.75, z0: -3.70, z1: -0.55, nx: 35, nz: 32, y: 1.76, holes: [rect(-0.98, -0.46, -3.75, -3.55)],
+          garnishRiseM: 0.10, seed: 31 }),
         // 2026-10-12 (cam-netting): the front engine deck netted to the bow (the fix round left it bare): the driver's
         // hatch and periscopes open (the builder), the cloth flat under the gun, no bough in its sweep
         laid({ x0: -1.72, x1: 1.72, z0: 0.72, z1: 3.15, nx: 34, nz: 25, yAt: (_x, z) => 1.76 - Math.max(0, z - 1.0) * 0.17,
@@ -245,7 +248,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
             rect(-1.01, -0.55, 0.37, 0.85), rect(-1.30, -0.98, 0.53, 0.93)],
           garnishRiseM: 0.12, seed: 11,
         }),
-        laid({ x0: -1.05, x1: 1.05, z0: -3.10, z1: -2.38, nx: 21, nz: 10, y: 0.57, garnishRiseM: 0.14, seed: 13 }),
+        // 265: the basket's front rows at x -0.85..-0.65 were cut off from its net by the load and hung 2.1 cm over it
+        // (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.05, x1: 1.05, z0: -3.10, z1: -2.38, nx: 21, nz: 10, y: 0.57, holes: [rect(-0.90, -0.60, -2.70, -2.35)],
+          garnishRiseM: 0.14, seed: 13 }),
       ],
       side: [
         ...flanks(-1.87, -0.15, 0.90, 0.40, 1.42, 17),
