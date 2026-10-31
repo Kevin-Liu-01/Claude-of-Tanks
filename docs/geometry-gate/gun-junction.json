@@ -212,7 +212,7 @@
   "t90a_burlak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6d796463bde60ee4","gun":"114b0e61a3e938c8"}},
   "t90a_burlak_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bce58cf1dd5ee73e","gun":"158f810c4500dda3"}},
   "t90a_vladimir": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1ad6620c45228b6e","gun":"1406cdf892729d9a"}},
-  "t90am": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b170684304691499","gun":"0532d00bb614b8a5"}},
+  "t90am": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d48e70b7784cf9fb","gun":"0532d00bb614b8a5"}},
   "t90m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6008b9baea4f09ec","gun":"c72b62c4c995fa4f"}},
   "t90m_proryv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"05026b4aefc55d15","gun":"cda2e00bb8d86764"}},
   "t90ms_2011": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"905bdc8c6e1dd595","gun":"daedb9651ceca295"}},

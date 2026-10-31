@@ -1973033,17 +1973033,17 @@
           }
         ]
       },
-      "geometryHash": "68fbd684",
+      "geometryHash": "ead9e1a1",
       "metadataHash": "04a11fc7",
       "presentationAnchor": {
-        "xM": -0.0019,
-        "zM": -0.3065
+        "xM": -0.0004,
+        "zM": -0.3252
       },
-      "presentationHash": "cb49746b",
+      "presentationHash": "6ea010b1",
       "presentationProjection": {
         "centerYM": 2.0715,
-        "topHalfM": 8.2373,
-        "sideHalfM": 4.1186
+        "topHalfM": 8.2573,
+        "sideHalfM": 4.1286
       },
       "appearance": {
         "version": 1,
@@ -1973094,15 +1973094,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31126,
-          "sha256": "2b2d8eb3b6df1c6c88084de6bfe0e3e8774b3991edd75deec80dce98b7e67c45",
+          "bytes": 31128,
+          "sha256": "351e3a7e962d8cc97412dab5e161eebde5936ace31a92243c1c9f120f5af095b",
           "thumbnail": {
             "file": "thumbs/t90am_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11594,
-            "sha256": "edb679ef116ea3d5b4ceccc93279a0cce17d83bc99d7e997bd1516f299fb8ed1"
+            "bytes": 11692,
+            "sha256": "65dff11475f3a4a38fa3cc79dc46748b58a05e4b7dd5e53537a105ca42972569"
           }
         },
         "top": {
@@ -1973110,56 +1973110,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15208,
-          "sha256": "190e16276bea2204335ef4d76bae0a3066534bd72f7fbb47722f405d3253ab9b"
+          "bytes": 14874,
+          "sha256": "753574750c25ca0510360649c95c59eab46e41bc182c3d8e4a49bd11e3a1e4e5"
         },
         "side": {
           "file": "t90am_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10736,
-          "sha256": "96d739c6f078784d9fd40e83b0e540506c2d56b9038035e727b9887358a0cc43"
+          "bytes": 11830,
+          "sha256": "eb392a5640154ac51f72a7f6f4f57871eee4e4bb4428efb4c724ae2f4a1215f5"
         },
         "topSilhouette": {
           "file": "t90am_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1424,
-          "sha256": "2587e827ccbeb73df8532bc8a0c81b68004180a324d186eda84f306d4a5e5a07"
+          "bytes": 1269,
+          "sha256": "183da860ef3f645dbeaa8b8d7abcdfeb1077f6241f30a498be3b0d9ddeb850de"
         },
         "sideSilhouette": {
           "file": "t90am_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4791,
-          "sha256": "e2e532433e2e058868796c6e2c4d17fd605cbbecc369fd255d54d7f5f574ed6a"
+          "bytes": 4796,
+          "sha256": "ea9ab173afa21b54a3023fc989ba6f82200b9fb2a06e70655ce61036863f63b7"
         },
         "armorSide": {
           "file": "t90am_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28862,
-          "sha256": "3ec3c6fb5b6792794e6ab85e792515c67cac1ec94026e51edf467c41c9a298b4"
+          "bytes": 28586,
+          "sha256": "4c6e19e6cb3e6e9f7bb96a4b255fb95f6a27fb5c759e715d5f7c9a794344772b"
         },
         "modulesSide": {
           "file": "t90am_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27016,
-          "sha256": "7806e3f38df55d19ddc58fe8ea7d2817c4b6cac2033bfcfd8e9faeb633bbeaf3"
+          "bytes": 26840,
+          "sha256": "e30eee0546e2130967552cbc9f459f950ea8d86273761f8247574e4460b4d335"
         },
         "crewSide": {
           "file": "t90am_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24464,
-          "sha256": "247386038ced2cc68ac3bf201aed8dfcc58781d5c8a245074c68fab9fa69df4b"
+          "bytes": 24310,
+          "sha256": "ec35848090389f6e966513100761dcf84a1f8793675c19e2b9172a65fdb3ff36"
         },
         "markings": {
           "file": "t90am_markings.png",
@@ -1973172,8 +1973172,8 @@
         "technicalLabels": {
           "file": "t90am_technical.json",
           "mime": "application/json",
-          "bytes": 4836,
-          "sha256": "b842d902c7d507efb984d17e9540adb8547edbb933bdab617f6cd7716628987e"
+          "bytes": 4830,
+          "sha256": "fdd1e2ee4a9591dadb4d0b13e0286f43d6482e9bef7d93987a04bb63fec0a274"
         }
       }
     },
