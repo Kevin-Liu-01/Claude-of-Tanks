@@ -6,6 +6,9 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/ifvs-20260925.json':Object.freeze(['marder2','cv9040c','dardo','lrmv_lynx','borsuk','amx10p','amx10p_25']),
   // 265 (Main 2026-10-28, option (a)): the ground-up ZTZ-85-III of 263, whose registered print was fused and ~9% tall
   'docs/references/photos/ztz85-iii-20261028.json':Object.freeze(['ztz85_iii']),
+  // 266 (Main 2026-10-31): the true T-64s on their published dimensions; the prints they were measured against (the
+  // T-64BV1 and Donbas prints, and the BM1M print the build departs from) are deregistered
+  'docs/references/photos/t64-20261031.json':Object.freeze(['t64bm1m','t64bv','t64b1v_2022']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */
@@ -32,6 +35,31 @@ export function photoTarget(id,packet){
     ||!['launcherTubes','roofMachineGuns'].every(k=>Number.isInteger(target[k])&&target[k]>=0)
     ||typeof target.unmannedTurret!=='boolean'||typeof target.test!=='string'||!PHOTO_FIXTURE.test(target.test))return null;
   return target;
+}
+/**
+ * Stage A's route (Main 2026-10-31): a registered 3D oracle always measures (a packet never overrides it), an owner
+ * concept proves its design, a photo-class id proves its packet; an id with none of them is procedural-only.
+ */
+export function stageARoute(id,{registered=false,concept=false}={}){
+  if(registered)return 'oracle';
+  if(concept)return 'concept';
+  return isPhotoReference(id)?'photo':'none';
+}
+/**
+ * Stage A's verdict on a route's evidence: the photo and concept routes on their fresh receipts; the oracle on its fresh
+ * geometry packet under --gate (outside it, a stale or absent packet stays N/A as before); a procedural-only id fails a
+ * forced gate and is N/A outside it. Only the route's own evidence counts: a photo receipt never passes an oracle.
+ */
+export function stageAPassed(route,{forceGate=false,gateApplicable=false,exactGatePassed=false,photoProof=false,conceptProof=false}={}){
+  if(route==='photo')return photoProof===true;
+  if(route==='concept')return conceptProof===true;
+  if(route==='oracle')return forceGate?gateApplicable&&exactGatePassed:!gateApplicable||exactGatePassed;
+  return !forceGate;
+}
+/** The geometry gate's refusal (rule c): an id with both a photo packet and a registered 3D oracle is a registry error. */
+export function assertNoPhotoOverride(ids,registered){
+  for(const id of ids)if(isPhotoReference(id)&&registered.has(id))
+    throw new Error(`${id}: photographic qualification cannot override a registered 3D target`);
 }
 export function photoDimensionsPassed(row,target){
   const min=row?.bounds?.min,max=row?.bounds?.max;
