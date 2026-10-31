@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-30T12:38:07.433Z",
+ "generatedAt": "2026-10-31T07:24:22.016Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1173,7 +1173,7 @@
    "openViews": 0,
    "insideOutPx": 36,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4265,
+   "netSeeThroughPx": 3052,
    "tris": 148877,
    "frame": [
     0,
@@ -1189,6 +1189,16 @@
      "date": "2026-10-20",
      "from": {
       "openPx": 6
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "266 cleanup (owner 10-30), the turret net now ends at the bustle box and its face drape is gone, so less declared net shows through, 4265 -> 3052 px",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4265
      }
     }
    ]
