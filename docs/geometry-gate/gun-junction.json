@@ -137,7 +137,7 @@
   "m551a1_tts": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"483fe64714bb5073","gun":"62069a7c34948111"}},
   "m60a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d226c8def1927f20","gun":"0bd60b0c042f21dc"}},
   "m60a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"19fb150a86cd1f5b","gun":"7877eda753a9a89c"}},
-  "m60a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9dd81f3f7bde53d6","gun":"841bef0ed46dc9ec"}},
+  "m60a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6077ab6c3508f7d2","gun":"841bef0ed46dc9ec"}},
   "m6_linebacker": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"191545124ab5c19d","gun":"c0913bb884125d69"}},
   "magach3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5d0ce1d22f2bef7e","gun":"635004500a27b961"}},
   "magach6b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"891e72e45a39376d","gun":"da1bc7afa0136947"}},

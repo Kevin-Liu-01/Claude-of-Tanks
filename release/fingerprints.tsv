@@ -2,101 +2,101 @@
 comp	world:donors:collision:airfield	dc517705209da27d
 comp	world:donors:collision:alpine	e3b0c44298fc1c14
 comp	world:donors:collision:autumn	e3b0c44298fc1c14
-comp	world:donors:collision:badlands	b09eb21ce6315879
+comp	world:donors:collision:badlands	08f3d1ff939a0885
 comp	world:donors:collision:blackglass	e3b0c44298fc1c14
 comp	world:donors:collision:caldera	afb57aa3625e5a4e
-comp	world:donors:collision:cliffbridge	af08192454bbf14d
+comp	world:donors:collision:cliffbridge	e781685d2e7e4e60
 comp	world:donors:collision:coastal	d715ff1f147f5369
 comp	world:donors:collision:copper_mesa	49c7dc7d15f263a6
 comp	world:donors:collision:delta	c1a93941c6705ee1
-comp	world:donors:collision:desert	235ddde2435b0522
+comp	world:donors:collision:desert	b997b2de9e20eeb1
 comp	world:donors:collision:fjord	e3b0c44298fc1c14
 comp	world:donors:collision:foundry	e3b0c44298fc1c14
-comp	world:donors:collision:frontier	3d24c16810779a2f
+comp	world:donors:collision:frontier	120b6409f1cb8dea
 comp	world:donors:collision:longleaf	e3b0c44298fc1c14
-comp	world:donors:collision:mangrove	8f2e706a7e1891ae
+comp	world:donors:collision:mangrove	f4bbda4e71b1a5ad
 comp	world:donors:collision:mars	58527fc73cb328b1
 comp	world:donors:collision:monsoon	e3b0c44298fc1c14
 comp	world:donors:collision:moon	e3b0c44298fc1c14
-comp	world:donors:collision:oasis	2e5611e6f81a3b01
-comp	world:donors:collision:orchard	e2497bf1a0053f78
+comp	world:donors:collision:oasis	483e5724ee12d35d
+comp	world:donors:collision:orchard	5ba3eada65735932
 comp	world:donors:collision:polders	e3b0c44298fc1c14
-comp	world:donors:collision:railyard	a71aec3044b14fb6
+comp	world:donors:collision:railyard	3eef2bef0841eb4d
 comp	world:donors:collision:reservoir	e3b0c44298fc1c14
 comp	world:donors:collision:ruinspires	34b6515cf5d59b4d
 comp	world:donors:collision:saltwind	34b6515cf5d59b4d
-comp	world:donors:collision:skybridge	b64b5f81cb7e66f1
+comp	world:donors:collision:skybridge	7ed23c1e1e9d17d5
 comp	world:donors:collision:steppe	c1a93941c6705ee1
-comp	world:donors:collision:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:collision:titan_gorge	7ed23c1e1e9d17d5
 comp	world:donors:collision:urban	25ba1213ec44fdd9
 comp	world:donors:collision:verdant	4e10764b034944db
-comp	world:donors:collision:whiteout	58be929723b7490f
+comp	world:donors:collision:whiteout	9f321f69c65eee32
 comp	world:donors:collision:winter	e3b0c44298fc1c14
 comp	world:donors:trenches:airfield	dc517705209da27d
 comp	world:donors:trenches:alpine	e3b0c44298fc1c14
 comp	world:donors:trenches:autumn	e3b0c44298fc1c14
-comp	world:donors:trenches:badlands	b09eb21ce6315879
+comp	world:donors:trenches:badlands	08f3d1ff939a0885
 comp	world:donors:trenches:blackglass	e3b0c44298fc1c14
 comp	world:donors:trenches:caldera	afb57aa3625e5a4e
-comp	world:donors:trenches:cliffbridge	af08192454bbf14d
+comp	world:donors:trenches:cliffbridge	e781685d2e7e4e60
 comp	world:donors:trenches:coastal	d715ff1f147f5369
 comp	world:donors:trenches:copper_mesa	49c7dc7d15f263a6
 comp	world:donors:trenches:delta	c1a93941c6705ee1
-comp	world:donors:trenches:desert	235ddde2435b0522
+comp	world:donors:trenches:desert	b997b2de9e20eeb1
 comp	world:donors:trenches:fjord	e3b0c44298fc1c14
 comp	world:donors:trenches:foundry	e3b0c44298fc1c14
-comp	world:donors:trenches:frontier	3d24c16810779a2f
+comp	world:donors:trenches:frontier	120b6409f1cb8dea
 comp	world:donors:trenches:longleaf	e3b0c44298fc1c14
-comp	world:donors:trenches:mangrove	8f2e706a7e1891ae
+comp	world:donors:trenches:mangrove	f4bbda4e71b1a5ad
 comp	world:donors:trenches:mars	58527fc73cb328b1
 comp	world:donors:trenches:monsoon	e3b0c44298fc1c14
 comp	world:donors:trenches:moon	e3b0c44298fc1c14
-comp	world:donors:trenches:oasis	2e5611e6f81a3b01
-comp	world:donors:trenches:orchard	e2497bf1a0053f78
+comp	world:donors:trenches:oasis	483e5724ee12d35d
+comp	world:donors:trenches:orchard	5ba3eada65735932
 comp	world:donors:trenches:polders	e3b0c44298fc1c14
-comp	world:donors:trenches:railyard	a71aec3044b14fb6
+comp	world:donors:trenches:railyard	3eef2bef0841eb4d
 comp	world:donors:trenches:reservoir	e3b0c44298fc1c14
 comp	world:donors:trenches:ruinspires	34b6515cf5d59b4d
 comp	world:donors:trenches:saltwind	34b6515cf5d59b4d
-comp	world:donors:trenches:skybridge	b64b5f81cb7e66f1
+comp	world:donors:trenches:skybridge	7ed23c1e1e9d17d5
 comp	world:donors:trenches:steppe	c1a93941c6705ee1
-comp	world:donors:trenches:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:trenches:titan_gorge	7ed23c1e1e9d17d5
 comp	world:donors:trenches:urban	25ba1213ec44fdd9
 comp	world:donors:trenches:verdant	4e10764b034944db
-comp	world:donors:trenches:whiteout	58be929723b7490f
+comp	world:donors:trenches:whiteout	9f321f69c65eee32
 comp	world:donors:trenches:winter	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:airfield	dc517705209da27d
 comp	world:donors:wreckPlan:alpine	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:autumn	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:badlands	b09eb21ce6315879
+comp	world:donors:wreckPlan:badlands	08f3d1ff939a0885
 comp	world:donors:wreckPlan:blackglass	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:caldera	afb57aa3625e5a4e
-comp	world:donors:wreckPlan:cliffbridge	af08192454bbf14d
+comp	world:donors:wreckPlan:cliffbridge	e781685d2e7e4e60
 comp	world:donors:wreckPlan:coastal	d715ff1f147f5369
 comp	world:donors:wreckPlan:copper_mesa	49c7dc7d15f263a6
 comp	world:donors:wreckPlan:delta	c1a93941c6705ee1
-comp	world:donors:wreckPlan:desert	235ddde2435b0522
+comp	world:donors:wreckPlan:desert	b997b2de9e20eeb1
 comp	world:donors:wreckPlan:fjord	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:foundry	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:frontier	3d24c16810779a2f
+comp	world:donors:wreckPlan:frontier	120b6409f1cb8dea
 comp	world:donors:wreckPlan:longleaf	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:mangrove	8f2e706a7e1891ae
+comp	world:donors:wreckPlan:mangrove	f4bbda4e71b1a5ad
 comp	world:donors:wreckPlan:mars	58527fc73cb328b1
 comp	world:donors:wreckPlan:monsoon	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:moon	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:oasis	2e5611e6f81a3b01
-comp	world:donors:wreckPlan:orchard	e2497bf1a0053f78
+comp	world:donors:wreckPlan:oasis	483e5724ee12d35d
+comp	world:donors:wreckPlan:orchard	5ba3eada65735932
 comp	world:donors:wreckPlan:polders	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:railyard	a71aec3044b14fb6
+comp	world:donors:wreckPlan:railyard	3eef2bef0841eb4d
 comp	world:donors:wreckPlan:reservoir	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:ruinspires	34b6515cf5d59b4d
 comp	world:donors:wreckPlan:saltwind	34b6515cf5d59b4d
-comp	world:donors:wreckPlan:skybridge	b64b5f81cb7e66f1
+comp	world:donors:wreckPlan:skybridge	7ed23c1e1e9d17d5
 comp	world:donors:wreckPlan:steppe	c1a93941c6705ee1
-comp	world:donors:wreckPlan:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:wreckPlan:titan_gorge	7ed23c1e1e9d17d5
 comp	world:donors:wreckPlan:urban	25ba1213ec44fdd9
 comp	world:donors:wreckPlan:verdant	4e10764b034944db
-comp	world:donors:wreckPlan:whiteout	58be929723b7490f
+comp	world:donors:wreckPlan:whiteout	9f321f69c65eee32
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
 comp	world:fleet	7cce69214e045180
 comp	world:map:collision:airfield	653bb1ba31589e19
@@ -199,9 +199,9 @@ comp	world:map:wreckPlan:verdant	9126604310529730
 comp	world:map:wreckPlan:whiteout	7fac80a15579e64a
 comp	world:map:wreckPlan:winter	bf2dc32dc52e1b8b
 comp	world:roster	c3797f6fbc261c2e
-comp	world:tool:collision	12b9fa01b72bbc44
-comp	world:tool:trenches	f87bf0531028fdac
-comp	world:tool:wreckPlan	36731d55c1711e30
+comp	world:tool:collision	26ce58bc30cbec81
+comp	world:tool:trenches	8e786901ea459c28
+comp	world:tool:wreckPlan	9f3b4af6f828c0b9
 core	5afcbf4a6f6915c3
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	d9322a273c2ec5d7
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	58e9120e79f049c3
@@ -345,7 +345,7 @@ file	fills	src/vehicles/interiorFillGroups/misc.generated.ts	54ae5f67350e98df
 file	fills	src/vehicles/interiorFillGroups/modern2.generated.ts	ae9064db28c6d92a
 file	fills	src/vehicles/interiorFillGroups/modern3Core.generated.ts	147d5dad98714f10
 file	fills	src/vehicles/interiorFillGroups/nationalModernization.generated.ts	74325fec91144cee
-file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	8511946cba84ba0d
+file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	caafea5b4e7bc9e3
 file	fills	src/vehicles/interiorFillGroups/poland.generated.ts	c620ac82eb702c9d
 file	fills	src/vehicles/interiorFillGroups/pumaS1SourceX.generated.ts	4b703231ab749f58
 file	fills	src/vehicles/interiorFillGroups/russia.generated.ts	f25f805ab836411b
@@ -379,9 +379,9 @@ file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	73719eb00bd6776b
 file	fills	src/vehicles/interiorFillGroups/ukraine.generated.ts	6687c71f0d1dffea
 file	fills	src/vehicles/interiorFillGroups/xk2.generated.ts	00db8fbca2bafbaa
 file	fills	src/vehicles/interiorFillLoaders.generated.ts	73ab64291838ae4f
-file	gunLines	docs/geometry-gate/gun-junction.json	8108ca41d01519e2
-file	icons	public/icons/tank-assets.json	7300fd14c843aebd
-file	ledger	docs/references/fleet-geometry-ledger.json	021dcc943a6fe13f
+file	gunLines	docs/geometry-gate/gun-junction.json	b1f1fec2a1c1fc63
+file	icons	public/icons/tank-assets.json	84c62f7bba50e0cb
+file	ledger	docs/references/fleet-geometry-ledger.json	0ba4b314e7de50f1
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -467,9 +467,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	d960b96a
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	dfacb429a6a67d8f
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	85979e5b8eff084f
-file	seats	src/sim/missionAttachmentSeats.generated.ts	d51e156de918f627
+file	seats	src/sim/missionAttachmentSeats.generated.ts	c6343ae31ed95b89
 file	seats	src/sim/missionDockSeats.generated.ts	b611cd629c615469
-file	spareTrack	docs/geometry-gate/spare-track.json	95d81f95c41da8fd
+file	spareTrack	docs/geometry-gate/spare-track.json	ce6ab37a0be52709
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	ed4028d24525797c
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -523,7 +523,7 @@ group	misc	45c6cd252b197700
 group	modern2	cc1f6be6be821cc2
 group	modern3Core	857759b6a3cb309b
 group	nationalModernization	352d905e83192f4a
-group	patton	e26928de10d8fd67
+group	patton	7ea42d844248a354
 group	poland	bef17e751012a507
 group	pumaS1SourceX	551093761ceb0bcd
 group	russia	96a3b51339df4030
@@ -669,7 +669,7 @@ key	anatomy	m551_sheridan	a16b4a209f84a840	9177502831432a19
 key	anatomy	m551a1_tts	7530b9ec81ddeb4c	168440f5d122bdbf
 key	anatomy	m60a1	065272bf8435483c	2be3925010624118
 key	anatomy	m60a2	a47a178b40f04c59	705431d836460755
-key	anatomy	m60a3	9a4d7b06a5b7f82a	b7ed8c8989d4b91e
+key	anatomy	m60a3	beea16893c118143	b7ed8c8989d4b91e
 key	anatomy	m6_linebacker	d53613b35ab6cf88	86c03aa789335d37
 key	anatomy	magach6b	f513451d177f14ac	da99afcbe32ae8d3
 key	anatomy	magach7c	2768efc65b207628	d8b902b10459dff7
@@ -907,7 +907,7 @@ key	centering	m551_sheridan	850c694cee7f0f8e	b16c2a0069d67f1a
 key	centering	m551a1_tts	c720d8bec408c5ca	56d1a307ea577d94
 key	centering	m60a1	88a475eddfa10c28	a52936cae8264dc8
 key	centering	m60a2	cfc130e14f22c868	368957eed1616b9d
-key	centering	m60a3	fd6449a9c237a37a	e678774fac80128d
+key	centering	m60a3	a23f48ba139a5aa3	e678774fac80128d
 key	centering	m6_linebacker	877c5b8af8ed2d74	20e23f4cac178aee
 key	centering	magach6b	bd2b3ce48c3fcc3c	3c88ac81bcb10306
 key	centering	magach7c	986bc0df13412584	616c3448430ba6ac
@@ -1178,7 +1178,7 @@ key	controls	m551_sheridan	db6081614b08ee9d	09bbd2ef765e9066
 key	controls	m551a1_tts	d73376214de9c3c2	8f5751eda03fbc26
 key	controls	m60a1	7e71a6116012469f	5383861088cd3896
 key	controls	m60a2	6c092de0d047643f	f23970d5ece51efe
-key	controls	m60a3	f6e020d40a957c35	c2f7c176e47311e7
+key	controls	m60a3	5e549348b6a65f59	c2f7c176e47311e7
 key	controls	m6_linebacker	df6644a2f191b6d6	5ffb101e48602974
 key	controls	magach6b	a1dcbc020bab276c	52ee12b1eb67ad4e
 key	controls	magach7c	d737f029f15fd9f1	65b28db21a4b8f1e
@@ -1416,7 +1416,7 @@ key	fills	m551_sheridan	ba89d6c44a13f595	45636264a1b07221
 key	fills	m551a1_tts	6bac14ecf4f2fb7d	517f37ba56b0360f
 key	fills	m60a1	cc29e37759c5041b	8fab9165a87c2d29
 key	fills	m60a2	dc6faced00a36ba1	ebe7a16cce069669
-key	fills	m60a3	c68d15f66e54c7d5	04c2b0d36c51e87d
+key	fills	m60a3	322d72d30e11a08d	af48ae463561448a
 key	fills	m6_linebacker	d78e925a1edf5080	2ceaba8e6686ea76
 key	fills	magach6b	e312434a65394d20	5c12462c9c465964
 key	fills	magach7c	8625e86413c4485a	2ce45d68f6d7b881
@@ -1654,7 +1654,7 @@ key	gunLines	m551_sheridan	db9715902a2d27f8	2549e3aa9e14899f
 key	gunLines	m551a1_tts	d92cd50737a38ee7	26e9f84e55608138
 key	gunLines	m60a1	1aa39b95494c60ac	79c62d9c2f4ac6be
 key	gunLines	m60a2	25d7da7c53e5670b	9e719c1cc91af0f0
-key	gunLines	m60a3	d3cf4ccf54269252	d661505a972b11ed
+key	gunLines	m60a3	096eb9af0e3de081	190671d4d0c95613
 key	gunLines	m6_linebacker	7872b540565a5da8	d90f43caa015d6ae
 key	gunLines	magach6b	fba2fffe81701026	d4e2ccf9b81eb877
 key	gunLines	magach7c	37930154c572c789	92ea36bc0ba0cd2c
@@ -1892,7 +1892,7 @@ key	icons	m551_sheridan	87d729ee94457ae5	76759bed959b5e23
 key	icons	m551a1_tts	8c97ed7663131c4e	c6755b49640a2de2
 key	icons	m60a1	692fdcb9d6112c62	7f26b93513bafc86
 key	icons	m60a2	0a974a0d18718958	7fe94fa718ec3830
-key	icons	m60a3	b89c5c904e611a88	09d26fd060c6679a
+key	icons	m60a3	ff4d878fb20ed2d6	3d771fe6f57b35ea
 key	icons	m6_linebacker	e1263adb9163cac2	23176c4830212bf2
 key	icons	magach6b	ec15754683fb46ac	fb2303af65f6ce87
 key	icons	magach7c	963a193254ff8750	e2aab17b05b1c3dc
@@ -2130,7 +2130,7 @@ key	ledger	m551_sheridan	f876fecc16115cac	7a2fa392a6ce757f
 key	ledger	m551a1_tts	7ffa84aa900cb101	3698eff5ebd227b6
 key	ledger	m60a1	d82f2e73157f0a17	3acf7edf12a8b194
 key	ledger	m60a2	e52576a9620febaf	69f9d8d4606320c7
-key	ledger	m60a3	e229066499355e4e	485913c5f5cf5336
+key	ledger	m60a3	9b826ff9bbc2c903	54a22982f9972b1d
 key	ledger	m6_linebacker	0b10e69d25a0efbd	56941e1bb0f33978
 key	ledger	magach6b	06477fa6daf29a9e	282d355753f9d081
 key	ledger	magach7c	97ce68d78e9c7e1f	0dde9de4a1ac1002
@@ -2368,7 +2368,7 @@ key	marking	m551_sheridan	4a7563f8c7dd1724	a1fc8bc72b812e05
 key	marking	m551a1_tts	5c4bf20cc9d29908	dedbb7bff88e9777
 key	marking	m60a1	2e6d2bf8eb6f7d0b	25dd25cfe5ca2e3b
 key	marking	m60a2	887cf4a69488169b	9a8d938519addfcd
-key	marking	m60a3	0ef2b08fb83e6fdc	fd85c38d1ca4d116
+key	marking	m60a3	600c508694e73c89	fd85c38d1ca4d116
 key	marking	m6_linebacker	08c4c84809bdd03e	3d5264a9eaba6342
 key	marking	magach6b	08cdc2f8cb38aab1	934b7a4a4dc4b695
 key	marking	magach7c	6b231a07b35f735c	84a00fb6105420a8
@@ -2606,7 +2606,7 @@ key	seats	m551_sheridan	15fce9f49f1c7ddf	d0d1fd1982329bf5
 key	seats	m551a1_tts	09ea722f07d9a9b6	64b7403aedf87a33
 key	seats	m60a1	3cc567dc209f48d1	31e5ac8159309f75
 key	seats	m60a2	8c273730f2ba348a	76c5c262d1d8b9ba
-key	seats	m60a3	13fa9a3b95e8f8b5	5d841dea4ea6a042
+key	seats	m60a3	c458b1c8cc5bef6d	f90db81105df298b
 key	seats	m6_linebacker	d838ac45c149915b	0dffb7b6a34c6e92
 key	seats	magach6b	f12f18391fabf2ff	0318ca74f96ada8c
 key	seats	magach7c	f9b46c1844771d91	c0f5a0ec4cbe5715
@@ -2844,7 +2844,7 @@ key	spareTrack	m551_sheridan	113002ced662d073	ece62989421b6fd4
 key	spareTrack	m551a1_tts	389b60b19ad43c49	3d30ebc5f82c452b
 key	spareTrack	m60a1	254700b4b2e1428f	b67b298e3c002df4
 key	spareTrack	m60a2	4d6008b41fec5952	33dc0ed6a77b4c51
-key	spareTrack	m60a3	e089bccbb0ceb790	5b15697bafc2eb0d
+key	spareTrack	m60a3	d584fbd266555dc3	12bf89a840e8c42c
 key	spareTrack	m6_linebacker	f0bf115008b9bf64	d240fdef657f5ff2
 key	spareTrack	magach6b	241f12c58fcf04e0	cb9973bae5078b9d
 key	spareTrack	magach7c	b823ad150d769270	ac4b99153a954ac4
@@ -4248,7 +4248,7 @@ row	geometryLedger	m551_sheridan	c9b302490537cea0
 row	geometryLedger	m551a1_tts	3c2bb61d7a96bfbe
 row	geometryLedger	m60a1	aa286ae70323808e
 row	geometryLedger	m60a2	16b31e3a5840afc5
-row	geometryLedger	m60a3	ab36d556a79c8ab7
+row	geometryLedger	m60a3	82690938c03a86bf
 row	geometryLedger	m6_linebacker	ddd2d5506c19e2b7
 row	geometryLedger	magach3	5f6b13ec62080cfb
 row	geometryLedger	magach6b	a05e4a9c0ef620ff
@@ -4500,7 +4500,7 @@ row	gunJunction	m551_sheridan	39610052403e988f
 row	gunJunction	m551a1_tts	412c585f6b4af0a0
 row	gunJunction	m60a1	e68ddaf08fee6210
 row	gunJunction	m60a2	4bf259f92ac68331
-row	gunJunction	m60a3	8b0e1af69c5636ea
+row	gunJunction	m60a3	3c6f1c14a1c6482a
 row	gunJunction	m6_linebacker	b756eee33929a735
 row	gunJunction	magach3	e45916fc748f9533
 row	gunJunction	magach6b	c945e6912dca6c57
@@ -4752,7 +4752,7 @@ row	interiorFills	m551_sheridan	572baafbfc808929
 row	interiorFills	m551a1_tts	4dc79a1299b24bb8
 row	interiorFills	m60a1	f8538144cef1d3bb
 row	interiorFills	m60a2	59cdd6c9e8886c90
-row	interiorFills	m60a3	ff232f75497906b0
+row	interiorFills	m60a3	7836c5a4729d4558
 row	interiorFills	m6_linebacker	1ae0eb8d4f6bdc08
 row	interiorFills	magach3	92b02769585edba5
 row	interiorFills	magach6b	c0cbeae7f3b58f5a
@@ -5256,7 +5256,7 @@ row	missionAttachmentSeats	m551_sheridan	072517b6b9e9de11
 row	missionAttachmentSeats	m551a1_tts	6fc432aa352807c3
 row	missionAttachmentSeats	m60a1	1c00e5d12c004032
 row	missionAttachmentSeats	m60a2	638e302675683bab
-row	missionAttachmentSeats	m60a3	436c3a290a9aa1fd
+row	missionAttachmentSeats	m60a3	67f4eaf848eb2a60
 row	missionAttachmentSeats	m6_linebacker	1c0d4ebbeeab4c95
 row	missionAttachmentSeats	magach3	11eac51ee0e36030
 row	missionAttachmentSeats	magach6b	a5c6e6fe839b6466
@@ -6269,7 +6269,7 @@ row	spareTrackLedger	m551_sheridan	74ba4554e2ce9548
 row	spareTrackLedger	m551a1_tts	c9e40a72bb8f31fe
 row	spareTrackLedger	m60a1	63ae0ce741e5fe91
 row	spareTrackLedger	m60a2	5d1b89b281e0d2d8
-row	spareTrackLedger	m60a3	6dc74d114d26310d
+row	spareTrackLedger	m60a3	7fbf8e2722dfc116
 row	spareTrackLedger	m6_linebacker	760817229ef99e3e
 row	spareTrackLedger	magach3	23cf1de735383bfb
 row	spareTrackLedger	magach6b	2fdb94274c9af456
@@ -7070,7 +7070,7 @@ row	tankAssets	m551_sheridan	14aeee652c6eed3a
 row	tankAssets	m551a1_tts	49b632bad307f76d
 row	tankAssets	m60a1	450b23499a99654f
 row	tankAssets	m60a2	a39b240ea76cb250
-row	tankAssets	m60a3	867e59f8b5475cb4
+row	tankAssets	m60a3	83aac860ce84da4f
 row	tankAssets	m6_linebacker	0dcbca9eda5f790d
 row	tankAssets	magach3	b8be11fa77cf4ef6
 row	tankAssets	magach6b	4ed643dd1cabd75b
