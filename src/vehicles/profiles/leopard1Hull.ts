@@ -3,7 +3,8 @@
 // builds it with the defaults. Integration 266: leopard1-263's critic rounds on the German 1A5's hull (the raked front
 // mudguards, the painted skirts, the louvred engine outlets, bow headlights and mirrors, the grouser lattice, the clean
 // transom). 266 (Main 2026-10-31: a family shares one hull): that is the one build; the Danish builds ride it too, their
-// gun stops swept against its louvres (denmarkSpecs.ts) and their rear fuel cans their own stowage (rearCans).
+// rear fuel cans their own stowage (rearCans). 267: the engine outlets flush in the side plates, their slats per mark
+// (outlets), the gun stops swept against them (modern2.ts, denmarkSpecs.ts).
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT, orientedSlab, convexSlab } from './kit.ts';
@@ -30,6 +31,10 @@ export interface Leo1HullOptions {
   readonly rearCans?: boolean;
   /** The rear fuel cans' finish: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
+  /** The engine's air outlets on the sloped rear side plates: the German A5's slats in three bays over 1 m behind its
+   * stern bin (Munster side, Cosford quarter), or the Danish tanks' continuous slats over 1.3 m behind their last fender
+   * bin (Krigsmuseet side). */
+  readonly outlets?: 'bays' | 'continuous';
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -50,7 +55,7 @@ export interface Leo1HullDatums {
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
   const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket: skirtOption = 'hullRubber', rearCans = false,
-    rearCanBucket = 'hullCloth', denseGrilles = false } = options;
+    rearCanBucket = 'hullCloth', denseGrilles = false, outlets = 'bays' } = options;
   const skirtBucket = skirtOption === 'hullRubber' ? 'hullDetail' : skirtOption;
   const { box, cylX, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool, xform } = KIT;
   const slab = orientedSlab;
@@ -107,11 +112,12 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
   const trackContactZR = roadWheelZs.at(-1);
   const frontIdler = { z: 3.17, y: 0.66, r: 0.28 };
   const rearSprocket = { z: -2.70, y: 0.73, r: 0.29 };
-  // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the rear louvre boxes' run.
+  // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the engine outlets' run on the
+  // sloped side plates (from the side's stern end; the German A5's ahead to its stern bin, the Danish to their last bin).
   const frontGuard = { rearZ: 2.98, frontZ: 3.64, frontY: 1.02 };
   const frontGuardTopY = (z: number): number =>
     fenderY - (fenderY - frontGuard.frontY) * (z - frontGuard.rearZ) / (frontGuard.frontZ - frontGuard.rearZ);
-  const rearLouvre = { rearZ: -3.36, frontZ: -2.40, topY: 1.655 };
+  const outletRun = { rearZ: -3.33, frontZ: outlets === 'bays' ? -2.37 : -2.04 };
 
   // ---------------------------------------------------------------- hull --
   // Lower tub between the tracks, from the 0.44 belly to the fender line.
@@ -231,42 +237,41 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
           P.addEquipment('hullWood', cylZ(0.022, 0.90, 8), s * (xAt(1.32) + 0.035), 1.32, z);
         }
       }
-      // The engine's louvred air outlets over the sprockets (critics 265, round 3: "the large louvred boxes on each rear
-      // side, a Leopard 1 signature, modelled as shallow slatted panels"; the Munster 1A5's side and quarter photos): a
-      // grille box on the sloped side from the fender to a level top 4-9 cm over the deck edge, its face leaning in
-      // 37 degrees, framed by end plates and rails, nine slats over a dark backing in three bays. The gun's stops over
-      // the stern quarters follow it (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG).
-      const louvreFaceFrom = new THREE.Vector2(1.708, fenderY + 0.05);
-      const louvreFaceTo = new THREE.Vector2(1.708 - 0.75 * (rearLouvre.topY - louvreFaceFrom.y), rearLouvre.topY);
-      const louvreRing = (outX: number, top: number): readonly (readonly [number, number])[] => {
-        const ring = [[1.24, fenderY], [outX, fenderY], [outX, louvreFaceFrom.y],
-          [outX - 0.75 * (top - louvreFaceFrom.y), top], [1.24, top]] as const;
-        return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+      // The engine's air outlets over the sprockets (267, Main 2026-10-31: the photographs show them flush in the sloped
+      // side plate, where 263's grille box stood 10 cm proud of it and over the deck edge): a dark bed, a frame and eight
+      // slats lying in the plate from the fender shelf to the deck edge, inside the hull edge in the top view. The German
+      // A5's slats in three bays (Munster side, Cosford quarter), the Danish tanks' continuous (Krigsmuseet side). The
+      // gun's stops over the stern quarters follow them (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG, denmarkSpecs.ts).
+      // (a point t of the way up the plate from its foot to the deck edge, out metres off its face; parts loft along the
+      // run through the side's stations, so each follows the plate as the deck edge rises to the stern)
+      const onPlate = (z: number, t: number, out: number): readonly [number, number] => {
+        const footY = fenderY - 0.02, dx = deckEdgeX - sponsonX, dy = deckEdgeY(z) - footY, len = Math.hypot(dx, dy);
+        return [s * (sponsonX + dx * t + dy / len * out), footY + dy * t - dx / len * out];
       };
-      P.addEquipment('hull', sectionSolid([rearLouvre.rearZ, rearLouvre.frontZ]
-        .map((z) => ({ z, ring: louvreRing(louvreFaceFrom.x, rearLouvre.topY) }))));
-      for (const [z0, z1] of [[rearLouvre.rearZ - 0.02, rearLouvre.rearZ], [rearLouvre.frontZ, rearLouvre.frontZ + 0.02]]) {
-        P.addEquipment('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: louvreRing(louvreFaceFrom.x + 0.03, rearLouvre.topY + 0.015) }))));
+      const onPlateSolid = (z0: number, z1: number, corners: readonly (readonly [number, number])[]): THREE.BufferGeometry => {
+        const zs = [z0, ...[-2.30].filter((z) => z > z0 + 0.01 && z < z1 - 0.01), z1];
+        const rings = zs.map((z) => corners.map(([t, out]) => onPlate(z, t, out)));
+        const [a, b, c] = rings[0];
+        const ccw = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0;
+        return sectionSolid(zs.map((z, i) => ({ z, ring: ccw ? rings[i] : [...rings[i]].reverse() })));
+      };
+      const band = (t0: number, t1: number, out: number): readonly (readonly [number, number])[] =>
+        [[t0, 0], [t1, 0], [t1, out], [t0, out]];
+      const { rearZ, frontZ } = outletRun;
+      P.add('hullDark', onPlateSolid(rearZ + 0.02, frontZ - 0.02, band(0.06, 0.96, 0.006)));
+      for (const [t0, t1] of [[0.045, 0.085], [0.935, 0.975]]) P.addEquipment('hull', onPlateSolid(rearZ, frontZ, band(t0, t1, 0.018)));
+      for (const z of [rearZ, frontZ - 0.03]) P.addEquipment('hull', onPlateSolid(z, z + 0.03, band(0.045, 0.975, 0.018)));
+      if (outlets === 'bays') {
+        for (const k of [1, 2]) {
+          const z = rearZ + (frontZ - rearZ) * k / 3;
+          P.addEquipment('hull', onPlateSolid(z - 0.015, z + 0.015, band(0.085, 0.935, 0.022)));
+        }
       }
-      const louvreN = new THREE.Vector2(0.8, 0.6), louvreTilt = s * Math.atan2(0.6, 0.8);
-      const louvreFaceLength = louvreFaceFrom.distanceTo(louvreFaceTo);
-      const louvreLength = rearLouvre.frontZ - rearLouvre.rearZ, louvreZ = (rearLouvre.rearZ + rearLouvre.frontZ) / 2;
-      const onLouvre = (t: number, out: number): THREE.Vector2 =>
-        louvreFaceFrom.clone().lerp(louvreFaceTo, t).addScaledVector(louvreN, out);
-      const backing = onLouvre(0.5, 0.003);
-      P.add('hullDark', box(0.006, louvreFaceLength * 0.92, louvreLength), s * backing.x, backing.y, louvreZ, 0, 0, louvreTilt);
-      for (const t of [0.02, 0.98]) {
-        const at = onLouvre(t, 0.016);
-        P.addEquipment('hull', box(0.026, 0.04, louvreLength), s * at.x, at.y, louvreZ, 0, 0, louvreTilt);
-      }
-      for (const bay of [-1, 1]) {
-        const at = onLouvre(0.5, 0.016);
-        P.addEquipment('hull', box(0.026, louvreFaceLength * 0.92, 0.04), s * at.x, at.y, louvreZ + bay * louvreLength / 6,
-          0, 0, louvreTilt);
-      }
-      for (let k = 0; k < 9; k++) {
-        const at = onLouvre(0.10 + k * 0.10, 0.014);
-        P.addEquipment('hull', box(0.022, 0.028, louvreLength), s * at.x, at.y, louvreZ, 0, 0, louvreTilt);
+      // (each slat a blade from its lower edge 16 mm off the bed up and in to it, the bed showing dark between them)
+      for (let k = 0; k < 8; k++) {
+        const t = 0.085 + k * 0.85 / 8;
+        P.addEquipment('hull', onPlateSolid(rearZ + 0.02, frontZ - 0.02,
+          [[t + 0.02, 0.016], [t + 0.05, 0.016], [t + 0.08, 0.006], [t + 0.05, 0.006]]));
       }
     }
     P.mats.rubber.color.setHex(0x34372d);
