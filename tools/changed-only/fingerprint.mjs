@@ -22,11 +22,14 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { AGGREGATES, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS, stepDefinition } from './steps.mjs';
-import { expandGlobs } from './globs.mjs';
+import { expandGlobs, declaredNotInput } from './globs.mjs';
 import { computeWorldState } from './world.mjs';
 
 export const SCHEMA = 1;
-const MENTION_ONLY_DATA = /(?:\.(?:md|txt|pdf|glb|gltf|obj|fbx|blend|png|jpe?g|webp|svg)$)|^public\/models\//;
+// A receipt a fleet record only names (docs/references/concepts/*.json lists its receipts) is no build input either: no
+// fleet module runs a receipt or reads a file (266: five such receipts sat in the core key, so an edit to one marked
+// every id). One a fleet module imports is still executed, and keyed.
+const MENTION_ONLY_DATA = /(?:\.(?:md|txt|pdf|glb|gltf|obj|fbx|blend|png|jpe?g|webp|svg)$)|^public\/models\/|\.selftest\.mjs$/;
 export const MANIFEST_PATH = 'release/fingerprints.tsv';
 const H = (...parts) => h16(parts.join('\n'));
 
@@ -220,7 +223,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const perIdTables = new Set();
     const skip = (from, to) => {
       const declaration = DECLARED_DYNAMIC[rel(from)];
-      if ([...(declaration?.covered ?? []), ...(declaration?.modeOnly ?? [])].includes(rel(to))) return true;
+      if (declaredNotInput(declaration, rel(to))) return true;
       const accessor = ACCESSORS[rel(from)];
       const names = [...(tableFiles.get(to) ?? [])];
       if (!accessor || !names.length || !names.every((name) => accessor.tables.includes(name))) return false;
