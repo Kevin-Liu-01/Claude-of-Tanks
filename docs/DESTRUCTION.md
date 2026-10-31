@@ -1557,4 +1557,11 @@ every run passed is not built. Guards on each worker's own clock: a build or run
 still for 10 min, is stopped and named; the receipt fails over its CPU budget (60 min); a stray slab planted in a building of the
 first map built must fail the verdict. A real defect fails it too: `ANCHORED_M` back at 0.4 m (landmarks/damage.ts)
 fails it on Whiteout #32 from its narrow back, its guy's 21.6 x 2.7 m debris plate on end with its top 19.9 m up, as
-world-reds 264 found it. Measured TBD.
+world-reds 264 found it. The salt the fingerprints share is keyed on the environment as the runner keys a receipt: the
+runner's graph guard named the checkout's path, so no worktree met another's passes.
+
+Measured alone, the receipt through the runner (the machine at load 100-380 all day; CPU reads the same at any load, wall
+time does not). Every run (the destruction code changed): before 95 min, 44.9 CPU min, peak footprint 11.0 GB; after
+20-43 min, 37-42 CPU min, 10.0 GB (six workers at 2 GB heaps; no run longer than 17 s of CPU, so on an idle machine
+about the CPU over six). Nothing changed: before 31.7 min, 13.2 CPU min, 7.4 GB (every map built, the judged runs run);
+after 3-6 s, 1.5 CPU s, 0.2 GB. A world change with every run passed (every map built): after 5.9 min, 8.5 CPU min, 6.3 GB.
