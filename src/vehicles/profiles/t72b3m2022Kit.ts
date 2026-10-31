@@ -117,6 +117,34 @@ function radioMast(P:TankBuilderPort):void{
   }finally{dispose();}
 }
 
+// The stern slat of the 2022 deliveries (Army-2022 display tank, rear): a bar cage across the whole stern standing behind
+// the six rear leaves (back face z -3.672), top 1.72 (no higher than the leaves, under the gun laid aft), with the two
+// tow cables coiled on it.
+function sternSlat(P:TankBuilderPort):void{
+  const bar=(a:Point,b:Point,r:number)=>P.addEquipment('hullOpenLattice',beamBetween(a,b,r,8));
+  const Z=-3.80,low=.98,high=1.72,half=1.46;
+  const {meshes,dispose}=stock(P,['hull','hullDetail']);
+  try{
+    for(const x of [-1.00,-.38,.38,1.00])for(const y of [low+.10,high-.12]){
+      const seat=hit(meshes,new THREE.Vector3(x,y,-4.6),new THREE.Vector3(0,0,1),'a stern slat arm',P.spec.id);
+      P.addEquipment('hullDark',box(.10,.07,.03),x,y,seat.z-.012);
+      bar([x,y,seat.z],[x,y,Z],.018);
+    }
+  }finally{dispose();}
+  for(const y of [low,high])bar([-half,y,Z],[half,y,Z],.020);
+  for(const x of [-half,half])bar([x,low,Z],[x,high,Z],.020);
+  const n=Math.round(2*half/.10);
+  for(let i=1;i<n;i++)P.addEquipment('hullOpenLattice',box(.045,high-low,.010),-half+2*half*i/n,(low+high)/2,Z);
+  // two tow cables, each coiled in a flat loop on the slat face
+  for(const side of [-1,1]){
+    const pts:THREE.Vector3[]=[];
+    for(let i=0;i<=48;i++){const a=i/48*Math.PI*2;pts.push(new THREE.Vector3(side*.72+.55*Math.cos(a),1.30+.24*Math.sin(a),Z-.045));}
+    P.addEquipment('hullDark',new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true),96,.016,8,true));
+    P.addEquipment('hullDark',box(.05,.10,.04),side*.72,1.55,Z-.03);
+  }
+}
+
 export function addT72B3M2022Kit(P:TankBuilderPort):void{
+  sternSlat(P);
   canopy(P);jammer(P);radioMast(P);engineBaySlat(P);bowFlaps(P);
 }
