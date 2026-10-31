@@ -593,10 +593,17 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         const maxDist = Math.min(MAX_QUERY_M, reach + 0.3);
         const info = queryAimArmor(muzzle, _dir, maxDist, pose, armor, target.combat.eraSpent) as AimArmorInfo | null;
         if (!info) continue;
-        const ratio = estimatePenRatio(shellSpec, info.distM, info);
-        if (!Number.isFinite(ratio)) continue;
         // clear: the ray's first main armour is the sample's own face (within 12 cm of it); else it saw another first
         const last = info.layers[info.layers.length - 1];
+        // (267) a face of this zone the round reads through the plate across its path (its own plate does not face the
+        // round: sim/armor.ts plateAlongShot) is painted in that plate's zone, so here it is judged as this zone's plate
+        const own = entry.template.zones[entry.sampleZone].plate;
+        if (last && last.plate !== own && last.collisionFace?.plate === own && !last.collisionFace.gunSplit) {
+          if (info.plate === last.plate) info.plate = own as typeof info.plate;
+          last.plate = own as typeof last.plate;
+        }
+        const ratio = estimatePenRatio(shellSpec, info.distM, info);
+        if (!Number.isFinite(ratio)) continue;
         const weight = zone.weights[k];
         if (last && last.plate.kind === 'main' && last.t * maxDist < reach - 0.12) {
           blend.hidden += ratio * weight; blend.hiddenWeight += weight;

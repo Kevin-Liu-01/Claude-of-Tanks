@@ -26,6 +26,7 @@ import type { ModuleId } from './moduleCatalog.ts';
 
 import * as detMath from './detMath.ts';
 import { gunFaceSplitPlate, type GunFaceSplit } from './gunFaceSplit.ts';
+import { zoneAlongShot, zonePlates, type ZonePlate } from './armorZones.ts';
 type FrameIndex = 0 | 1 | 2 | 3 | 4;
 type Vec3Tuple = readonly [number, number, number];
 type TrackModuleId = 'trackL' | 'trackR';
@@ -526,8 +527,8 @@ type PanelPlateResolver = (
   out: PanelPlateHit,
 ) => boolean;
 /**
- * Zone plates (262, off by default): sim/armorZonePlates.ts installs its resolver here when switched on, so this module
- * (in every boot) carries no zone code. Null: each cell face's own plate and normal, as ever.
+ * Zone plates (262, off by default): sim/armorZonePlates.ts installs its resolver here when switched on. Null: each cell
+ * face's own plate and normal, but for a plate the shot cannot meet (plateAlongShot, 267).
  */
 let panelPlateResolver: PanelPlateResolver | null = null;
 /** With zone plates, the cells a frame traces: its slices with their seams sealed (sim/armorZonePlates.ts). */
@@ -543,6 +544,27 @@ export function tracedCollisionCells<T extends readonly ArmorCollisionCell[] | u
 }
 /** The zone a cell's entry point meets (scratch: the trace allocates nothing for it). */
 const _panelHit: PanelPlateHit = { plate: null, nx: 0, ny: 0, nz: 0 };
+
+/** A frame's main plates as zones (sim/armorZones.ts), built once per plate list. */
+const shotZones = new WeakMap<readonly ArmorPlate[], ZonePlate[]>();
+
+/**
+ * (267) The plate a shot reads where it enters a frame's cells: the face's, unless that plate cannot meet the shot (it
+ * faces away from it: a roof under a level round, a side ahead of the bow; or it is a gun plate and the entry lies off
+ * its window), when it is the plate facing the shot whose outline the shot's line crosses nearest the entry
+ * (zoneAlongShot), as the authored armour stands. The impact angle stays the face's.
+ */
+function plateAlongShot(
+  plates: readonly ArmorPlate[], plate: ArmorPlate, x: number, y: number, z: number, frame: FrameIndex,
+): ArmorPlate {
+  let zones = shotZones.get(plates);
+  if (!zones) { zones = zonePlates(plates); shotZones.set(plates, zones); }
+  let own = -1;
+  for (let index = 0; index < zones.length; index++) if (zones[index].plate === plate) { own = index; break; }
+  if (own < 0) return plate;
+  const d = _dirN[frame];
+  return zones[zoneAlongShot(zones, own, x, y, z, d.x, d.y, d.z)].plate as ArmorPlate;
+}
 
 function traceCollisionShell(
   cells: readonly ArmorCollisionCell[] | undefined,
@@ -586,6 +608,7 @@ function traceCollisionShell(
         if (_panelHit.nx === _panelHit.nx) { nx = _panelHit.nx; ny = _panelHit.ny; nz = _panelHit.nz; }
       }
     }
+    if (plates) plate = plateAlongShot(plates, plate, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, frame);
     const cosI = Math.min(1, Math.max(0,
       -(_dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));
     out.push(finishFrameHit({

@@ -27,7 +27,7 @@
 
 import * as THREE from 'three';
 import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type ArmorPlate, type TankArmorPose } from '../sim/armor.ts';
-import { zoneAt, type ZonePlate } from '../sim/armorZones.ts';
+import { zoneAlongShot, zoneAt, type ZonePlate } from '../sim/armorZones.ts';
 import { gunFaceSplitPlate } from '../sim/gunFaceSplit.ts';
 import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
 
@@ -97,6 +97,8 @@ export interface PanelBakeStats {
   offArmour: number;
   sets: number;
   farStands: number;
+  /** (267) Triangles of panels some level view meets through another plate than their zone's, kept per-point. */
+  alongShot: number;
   /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
   wholeParts: number;
   creaseParts: number;
@@ -227,6 +229,35 @@ function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barre
     && (p.y > template.hullCentre.y + template.hullHalf.y + 0.1 || Math.abs(p.z - template.hullCentre.z) > template.hullHalf.z + 0.1)) return VOTE_BARE;
   const zone = zoneAt(turret ? split.turret : split.hull, p.x, p.y, p.z, n.x, n.y, n.z);
   return zone >= 0 ? zone + (turret ? hullN : 0) : VOTE_NONE;
+}
+
+/** A vehicle's traced cells by frame. */
+interface CellsByFrame { readonly hull: readonly ArmorCollisionCell[]; readonly turret: readonly ArmorCollisionCell[] }
+/** (267) The level views a baked panel is tested from: unit vectors back toward a gun, by bearing in the panel's frame. */
+const LEVEL_VIEWS = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 135, -135, 180]
+  .map((deg) => [Math.sin((deg * Math.PI) / 180), 0, Math.cos((deg * Math.PI) / 180)] as const);
+/** A surface this nearly edge-on to a view (n·v) is not seen from it. */
+const VIEW_SEEN = 0.05;
+const _vp = new THREE.Vector3(), _vn = new THREE.Vector3();
+
+/**
+ * (267) Whether some level view of a panel (its world centre and facing) meets it through another plate than its zone's: the authority reads the plate across a round's path where the face's own does not face the round
+ * (sim/armor.ts plateAlongShot, sim/armorZones.ts zoneAlongShot), and the paint's shader takes that plate along the
+ * eye's line, so such a panel keeps the per-point paint. Only a panel at the cells (within FLUSH_M), where rounds enter.
+ */
+function readThroughAnother(template: PanelTemplate, split: FrameZones, pose: PanelPose, cells: CellsByFrame, zone: number,
+  centre: THREE.Vector3, normal: THREE.Vector3): boolean {
+  const turret = zone >= template.hullZones;
+  const zones = turret ? split.turret : split.hull, own = turret ? zone - template.hullZones : zone;
+  const inverse = turret ? pose.turretInv : pose.hullInv;
+  const p = _vp.copy(centre).applyMatrix4(inverse), n = _vn.copy(normal).transformDirection(inverse);
+  // the authority reads it at the cells' faces: a part standing off them (a skirt) takes the plate behind it instead
+  if (!(cellGap(turret ? cells.turret : cells.hull, p) <= FLUSH_M)) return false;
+  for (const view of LEVEL_VIEWS) {
+    if (n.x * view[0] + n.y * view[1] + n.z * view[2] <= VIEW_SEEN) continue;
+    if (zoneAlongShot(zones, own, p.x, p.y, p.z, -view[0], -view[1], -view[2]) !== own) return true;
+  }
+  return false;
 }
 
 function plateName(zone: ZonePlate | undefined): string {
@@ -834,6 +865,26 @@ export function* bakePaintPanelSteps(
       // a cluster with no majority, by part: a small one whole on its plurality (a dome, a hatch); a large one (a welded
       // casting) split at its creases, each piece voting on all its triangles and taking its majority, or its plurality
       // when it is small; a piece still split keeps the per-point score
+      // (267) a panel some level view meets through another plate than its zone's keeps the per-point paint, naming its
+      // one zone (readThroughAnother): the panel as a whole, at its area-weighted centre facing its mean way, so a part
+      // reads one zone as ever (a dome faces up as a whole) and a bevel's piece faces its slope. The panel's zone + 1
+      // in, its value out
+      const keepAlongShot = (value: number, count: number, triangle: (i: number) => number): number => {
+        let area = 0, cx = 0, cy = 0, cz = 0, nx = 0, ny = 0, nz = 0;
+        for (let i = 0; i < count; i++) {
+          const t = triangle(i), a = areas[t];
+          if (!(a > 0)) continue;
+          area += a;
+          cx += centres[t * 3] * a; cy += centres[t * 3 + 1] * a; cz += centres[t * 3 + 2] * a;
+          nx += faces[t * 3] * a; ny += faces[t * 3 + 1] * a; nz += faces[t * 3 + 2] * a;
+        }
+        const facing = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (!(area > 0) || !(facing > 1e-9) || !readThroughAnother(template, split, pose, cellsOf, value - 1, _centre.set(cx / area, cy / area, cz / area),
+          _normal.set(nx / facing, ny / facing, nz / facing))) return value;
+        stats.alongShot += count;
+        const set = template.zoneSet ? template.zoneSet([value - 1]) : -1;
+        return set >= 0 ? PANEL_BARE - 1 - set : 0;
+      };
       function* resolveParts(start: number, end: number, total: number): Generator<void, void, void> {
         const count = end - start;
         const tv = new Int16Array(count);
@@ -919,6 +970,7 @@ export function* bakePaintPanelSteps(
               if (set >= 0) { value = PANEL_BARE - 1 - set; stats.sets += first[piece + 1] - first[piece]; }
             }
           }
+          if (value > 0) value = keepAlongShot(value, first[piece + 1] - first[piece], (i) => order[start + inPart[first[piece] + i]]);
           const kept = first[piece + 1] - first[piece];
           if (value > 0 || value === PANEL_BARE) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }
           if (value > 0) stats.baked += kept; else if (value === PANEL_BARE) stats.bare += kept;
@@ -1030,6 +1082,7 @@ export function* bakePaintPanelSteps(
             if (behind >= 0) { value = behind + 1; stats.standoff += kept; }
           }
         }
+        if (value > 0) value = keepAlongShot(value, end - start, (i) => order[start + i]);
         if (value === 0 && voted > 0 && top !== VOTE_LIVE) {
           yield* resolveParts(start, end, total);
           start = end;
@@ -1122,7 +1175,7 @@ export function* bakePaintPanelSteps(
 
 /** An empty tally for bakePaintPanelSteps. */
 export function panelBakeStats(): PanelBakeStats {
-  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, gear: 0, offArmour: 0, sets: 0, farStands: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
+  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, gear: 0, offArmour: 0, sets: 0, farStands: 0, alongShot: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
     disagreeArea: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
 }
 

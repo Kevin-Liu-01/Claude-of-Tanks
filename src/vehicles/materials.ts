@@ -4113,6 +4113,10 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  *   colours meet half and half, so the edge is smooth, never a stair of pixels; inside a footprint only its border is a
  *   border. (264) A border draws its dark line only as far as the two zones' colours differ: two plates of one verdict
  *   meet without a seam (the blind critics' thin dark lines across one casting).
+ * - (267) Where the zone's own plate does not face the eye (a bevel scored to the roof seen level, a front corner to a
+ *   side; or a mantlet's or gun notch's off its footprint), the plate facing the eye whose outline the eye's line through
+ *   the point crosses, nearest the point, as the authority reads a round there (sim/armorZones.ts zoneAlongShot): the
+ *   eye stands in for the gun. Its border is where that line leaves the outline; the bake leaves such panels per-point.
  * - The hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
  *   through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds). (263) The
  *   camo keeps a quarter of its light and shade (its blotches read as zone borders; every round preferred less of it),
@@ -4215,6 +4219,56 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
     if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
+    vec3 apD = normalize( apP - apEye );
+    int apCover = -1;
+    int apNearK = -1;
+    float apCoverEdge = 1.0;
+    if ( apZone >= 0 ) {
+      vec4 apOwnPl = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+      bool apOwnOff = false;
+      for ( int f = 0; f < apFootN; f++ ) {
+        vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+        vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+        if ( int( apFa.w + 0.5 ) == apZone && !( all( greaterThanEqual( apP, apFa.xyz ) ) && all( lessThanEqual( apP, apFb ) ) ) ) apOwnOff = true;
+      }
+      if ( -dot( apOwnPl.xyz, apD ) < ${ZONE_FACING_MIN.toFixed(4)} || apOwnOff ) {
+        float apReach = 1e9;
+        float apCoverIn = -1e3;
+        float apNearIn = -1e3;
+        for ( int k = apFrom; k < apTo; k++ ) {
+          vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+          float apAlong = dot( apPl.xyz, apD );
+          if ( -apAlong < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+          bool apKOff = false;
+          for ( int f = 0; f < apFootN; f++ ) {
+            vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+            vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+            if ( int( apFa.w + 0.5 ) == k && !( all( greaterThanEqual( apP, apFa.xyz ) ) && all( lessThanEqual( apP, apFb ) ) ) ) apKOff = true;
+          }
+          if ( apKOff ) continue;
+          float apS = -( dot( apPl.xyz, apP ) + apPl.w ) / apAlong;
+          vec3 apX = apP + apS * apD;
+          float apIn = 1e3;
+          for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+            vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+            apIn = min( apIn, -( dot( apEd.xyz, apX ) + apEd.w ) );
+          }
+          if ( apIn >= -0.001 && abs( apS ) < apReach ) { apReach = abs( apS ); apCover = k; apCoverIn = apIn; }
+          if ( apIn > apNearIn ) { apNearIn = apIn; apNearK = k; }
+        }
+        apCoverEdge = clamp( apCover >= 0 ? apCoverIn : apNearIn, -1.0, 1.0 );
+      }
+    }
+    float apCoverPx = abs( apCoverEdge ) / max( fwidth( apCoverEdge ), 1e-5 );
+    if ( apCover >= 0 && apCover != apZone ) {
+      apOther = apZone;
+      apZone = apCover;
+      apPx = apCoverPx;
+      apBlendPx = 1e3;
+    } else if ( apNearK >= 0 && apNearK != apZone && apCoverPx < apPx ) {
+      apOther = apNearK;
+      apPx = apCoverPx;
+    }
   }
   if ( apZone >= 0 ) {
     vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );

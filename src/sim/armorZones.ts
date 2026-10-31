@@ -125,3 +125,46 @@ export function zoneAt(zones: readonly ZonePlate[], x: number, y: number, z: num
   }
   return best;
 }
+
+/** A crossing this far (m) outside an outline's edge is off that plate (zoneAlongShot). */
+const ALONG_EDGE_SLACK_M = 1e-3;
+
+function overFootprint(box: NonNullable<ZonePlate['footprint']>, x: number, y: number, z: number): boolean {
+  return x >= box.min[0] && x <= box.max[0] && y >= box.min[1] && y <= box.max[1] && z >= box.min[2] && z <= box.max[2];
+}
+
+/**
+ * (267) The zone a shot along the unit direction (dx, dy, dz) reads at a frame-local point of the armour whose zone is
+ * `own`: `own` where it faces the shot (n·-d at least ZONE_FACING_MIN) and, a mantlet or gun notch, the point lies over
+ * its footprint; otherwise the zone facing the shot whose outline the shot's line through the point crosses, nearest the
+ * point (a mantlet or gun notch only over its footprint), or `own` where the line crosses none.
+ *
+ * nearestPlate's facing term outweighs its distance, so a sloped front-top bevel facing mostly up takes the roof (and a
+ * front corner a side): a level round met a 45 mm roof where the authored cheek or front stands across its path (Main's
+ * ruling, 267: 244 of 276 turrets, 142 hulls). A shot the plate does face (top attack on that bevel, a flank shot on
+ * that side) keeps it, and so does every hit whose plate faces its shot. Allocates nothing.
+ */
+export function zoneAlongShot(
+  zones: readonly ZonePlate[], own: number, x: number, y: number, z: number, dx: number, dy: number, dz: number,
+): number {
+  if (own >= 0) {
+    const zone = zones[own], n = zone.normal;
+    if (-(n[0] * dx + n[1] * dy + n[2] * dz) >= ZONE_FACING_MIN && (!zone.footprint || overFootprint(zone.footprint, x, y, z))) return own;
+  }
+  let best = own, bestReach = Infinity;
+  for (let index = 0; index < zones.length; index++) {
+    const zone = zones[index], n = zone.normal;
+    const along = n[0] * dx + n[1] * dy + n[2] * dz;
+    if (-along < ZONE_FACING_MIN || (zone.footprint && !overFootprint(zone.footprint, x, y, z))) continue;
+    const s = -(n[0] * x + n[1] * y + n[2] * z + zone.offset) / along;
+    const qx = x + s * dx, qy = y + s * dy, qz = z + s * dz;
+    let inside = true;
+    for (let e = 0; e < zone.edges.length; e++) {
+      const edge = zone.edges[e];
+      if (edge.normal[0] * qx + edge.normal[1] * qy + edge.normal[2] * qz + edge.offset > ALONG_EDGE_SLACK_M) { inside = false; break; }
+    }
+    const reach = s < 0 ? -s : s;
+    if (inside && reach < bestReach) { bestReach = reach; best = index; }
+  }
+  return best;
+}
