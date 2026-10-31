@@ -222,12 +222,12 @@
    "low": {"meshes":44,"vertices":91959,"triangles":36667,"digest":"14cef90d063e9985","groups":{"hull":"3e9af595c576786a","turret":"11fdba35f25ab1db","gun":"37caede02f8ad171","runningGear":"a0f886ecf81e87f2","other":"e3b0c44298fc1c14"}}
   },
   "ee_t3_osorio": {
-   "high": {"meshes":69,"vertices":236179,"triangles":97486,"digest":"0b2cebae18daa767","groups":{"hull":"b529cd94c85441db","turret":"f93a5d8eff4aac07","gun":"2b9d9d09980abd83","runningGear":"4adc234977d68cb6","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":63,"vertices":214285,"triangles":80508,"digest":"c94ba10bcc8517c5","groups":{"hull":"f0e9bae6cf309b8a","turret":"f43a2baf4352d1fe","gun":"fc6da7e2c8933938","runningGear":"c456d088ec357305","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":70,"vertices":245083,"triangles":100454,"digest":"ad8b2d505e231114","groups":{"hull":"2d545a6efd603a0b","turret":"f93a5d8eff4aac07","gun":"2b9d9d09980abd83","runningGear":"4adc234977d68cb6","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":64,"vertices":217381,"triangles":81540,"digest":"1ee998dafb090bd2","groups":{"hull":"8198cc331f856172","turret":"f43a2baf4352d1fe","gun":"fc6da7e2c8933938","runningGear":"c456d088ec357305","other":"e3b0c44298fc1c14"}}
   },
   "ee_t4_osorio": {
-   "high": {"meshes":70,"vertices":255049,"triangles":103776,"digest":"39d6543f89d94f9d","groups":{"hull":"9c5ea79942e788fd","turret":"b2627944fd4e77ed","gun":"6307512d42682053","runningGear":"e318f19f3353b519","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":64,"vertices":232339,"triangles":86526,"digest":"103ba353d5e35949","groups":{"hull":"8e65fa51597a9534","turret":"2d43a355d3961fee","gun":"f2de3e535067e2d0","runningGear":"822f4344a88fe786","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":71,"vertices":263953,"triangles":106744,"digest":"9cd1dff2fcfc6c29","groups":{"hull":"db9d0f1ad06526a5","turret":"b2627944fd4e77ed","gun":"6307512d42682053","runningGear":"e318f19f3353b519","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":65,"vertices":235435,"triangles":87558,"digest":"1d9d7f86fcd9f92b","groups":{"hull":"a234a48745e42788","turret":"2d43a355d3961fee","gun":"f2de3e535067e2d0","runningGear":"822f4344a88fe786","other":"e3b0c44298fc1c14"}}
   },
   "fv4034": {
    "high": {"meshes":51,"vertices":326081,"triangles":109634,"digest":"3de119e79f47c4ea","groups":{"hull":"99e40da0342aa99f","turret":"704f70df7fc58dda","gun":"7e5badefa4489d1c","runningGear":"aae2ac33a3bcc3a4","other":"e3b0c44298fc1c14"}},
