@@ -11,8 +11,9 @@
 //   short-band toggle. The vehicle line stretched to the bar read back the width it had been given, 14 px more at every
 //   measure, up to 280.
 // - idle: at rest, on the fixture and in the Garage, nothing keeps rewriting an attribute to the value it holds or back to
-//   one it held (2 s watched; 3 such writes of one attribute on one element fail; a lifecycle whose values move on, a kill
-//   feed's row fading, passes). The resume veil's 150 ms sweep rewrote its class seven times a second.
+//   one it held: 3 such writes of one attribute on one element in 2 s, seen again in a second watch 3 s later, fail (a
+//   lifecycle whose values move on, a kill feed's row fading, passes, and so does a layout still settling on a loaded
+//   machine). The resume veil's 150 ms sweep rewrote its class seven times a second.
 // --negative-control puts the mechanisms back in the page (the vehicle line stretched, and a 150 ms sweep removing an
 // absent class) and must see both: it exits 1 when bars or idle pass.
 //   node tools/hud-self-measure.browser.selftest.mjs [--url=http://127.0.0.1:5173] [--negative-control] [--sizes=844x390t,1920x1080]
@@ -98,24 +99,41 @@ const relabel = async () => {
   }
 };
 
-/** In the page: over `ms`, the attributes a page at rest keeps writing, per element and attribute: a rewrite to the value
- *  it already holds, or a value that comes back (A, B, A). A lifecycle whose values move on (a kill feed's row fading)
- *  is neither. Those with `min` or more such writes, as lines. */
+/** In the page: over `ms`, the attributes a page at rest keeps writing, per element (by identity: six kill feed rows
+ *  fading once each are six elements) and attribute: a rewrite to the value it already holds, or a value that comes back
+ *  (A, B, A). A lifecycle whose values move on is neither. Those with `min` or more such writes, as lines. */
 const idleWrites = (ms, min) => new Promise((done) => {
   const seen = new Map();
   const name = (el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${typeof el.className === 'string' && el.className ? `.${el.className.trim().split(/\s+/)[0]}` : ''}`;
   const mo = new MutationObserver((records) => {
     for (const r of records) {
-      const key = `${name(r.target)} @${r.attributeName}`, value = r.target.getAttribute(r.attributeName);
-      const entry = seen.get(key) ?? { values: new Set([r.oldValue]), repeats: 0 };
+      const byAttribute = seen.get(r.target) ?? new Map();
+      seen.set(r.target, byAttribute);
+      const value = r.target.getAttribute(r.attributeName);
+      const entry = byAttribute.get(r.attributeName) ?? { values: new Set([r.oldValue]), repeats: 0 };
       if (value === r.oldValue || entry.values.has(value)) entry.repeats++;
       entry.values.add(value);
-      seen.set(key, entry);
+      byAttribute.set(r.attributeName, entry);
     }
   });
   mo.observe(document.documentElement, { attributes: true, subtree: true, attributeOldValue: true });
-  setTimeout(() => { mo.disconnect(); done([...seen].filter(([, e]) => e.repeats >= min).map(([k, e]) => `${k} x${e.repeats}`)); }, ms);
+  setTimeout(() => {
+    mo.disconnect();
+    const lines = [];
+    for (const [el, byAttribute] of seen) for (const [attribute, e] of byAttribute) if (e.repeats >= min) lines.push(`${name(el)} @${attribute} x${e.repeats}`);
+    done(lines);
+  }, ms);
 });
+
+/** The writes a page at rest keeps making: two watches 3 s apart, and only what both see (a layout still settling on a
+ *  loaded machine stops; a loop does not). */
+const churn = async (page) => {
+  const first = await page.evaluate(idleWrites, 2000, 3);
+  if (!first.length) return first;
+  await sleep(3000);
+  const again = new Set((await page.evaluate(idleWrites, 2000, 3)).map((line) => line.replace(/ x\d+$/, '')));
+  return first.filter((line) => again.has(line.replace(/ x\d+$/, '')));
+};
 
 /** The mechanisms put back (--negative-control): the vehicle line stretched again, and a 150 ms sweep that removes an
  *  absent class. */
@@ -165,7 +183,7 @@ try {
       console.log(`${problems.length ? 'FAIL' : 'ok  '} ${s.name} ${part}${problems.length ? `: ${problems.join('; ')}` : ''}`);
     };
     let page = await open('idle');
-    report('idle', await page.evaluate(idleWrites, 2000, 3));
+    report('idle', await churn(page));
     report('status', await page.evaluate(statusProblems));
     await page.close();
     page = await open('markers');
@@ -209,7 +227,7 @@ try {
   await garage.waitForSelector('.cot-garage .cot-cards .cot-card', { visible: true, timeout: 600_000 });
   await sleep(3500);
   if (negative) await garage.evaluate(regress);
-  const garageIdle = await garage.evaluate(idleWrites, 2000, 3);
+  const garageIdle = await churn(garage);
   found.idle += garageIdle.length;
   console.log(`${garageIdle.length ? 'FAIL' : 'ok  '} garage 1440x900 idle${garageIdle.length ? `: ${garageIdle.join('; ')}` : ''}`);
   await garage.close();
