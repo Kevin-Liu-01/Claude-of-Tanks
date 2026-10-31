@@ -346,9 +346,13 @@ export function suggestedBase(root, base, head = 'HEAD') {
     try {
       try { git(root, ['cat-file', '-e', `${sha}^{commit}`], { stdio: 'ignore' }); }
       catch { git(root, ['fetch', '-q', 'origin', `refs/heads/${name}`], { timeout: 120_000, stdio: 'ignore' }); }
-      const mergeBase = git(root, ['merge-base', head, sha]).trim();
-      try { git(root, ['merge-base', '--is-ancestor', mergeBase, base], { stdio: 'ignore' }); continue; } catch { /* beyond base */ }
-      found.push({ name, sha, mergeBase, at: Number(git(root, ['log', '-1', '--format=%ct', mergeBase]).trim()) });
+      // criss-cross history has several merge bases; keep the newest one `base` does not contain (266: a lane merged
+      // integ/265, then main after integ/265 had merged main, and plain merge-base picked main's commit, so the
+      // suggestion fell back to origin/main and 2,903 paths)
+      const beyond = git(root, ['merge-base', '--all', head, sha]).trim().split('\n').filter(Boolean).filter((mergeBase) => {
+        try { git(root, ['merge-base', '--is-ancestor', mergeBase, base], { stdio: 'ignore' }); return false; } catch { return true; }
+      }).map((mergeBase) => ({ mergeBase, at: Number(git(root, ['log', '-1', '--format=%ct', mergeBase]).trim()) }));
+      if (beyond.length) found.push({ name, sha, ...beyond.sort((a, b) => b.at - a.at)[0] });
     } catch { /* an unreachable ref suggests nothing */ }
   }
   return found.sort((a, b) => b.at - a.at)[0] ?? null;
