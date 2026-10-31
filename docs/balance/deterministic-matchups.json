@@ -84,6 +84,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "amx56",
+      "revision": "the Type 90's 9 s magazine cycle with its Leclerc S2 donor (sourceXSecondWave)",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 27.52,
+      "speedKmh": [
+        71,
+        25
+      ],
+      "traverseDegS": [
+        50.6,
+        44.5
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          806,
+          733,
+          660
+        ],
+        "reloadS": 9,
+        "sustainedDpm": 6913.04,
+        "accuracy": 0.296,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 620
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "bm_oplot_m",
       "revision": "the X round (880 mm) and a x2 mantlet: its 400 mm gun face sat under X gun faces of ~1,000 mm",
       "tier": 10,
@@ -108,8 +142,8 @@
         ],
         "reloadS": 6.3,
         "sustainedDpm": 5190.48,
-        "accuracy": 0.316,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.63
       },
       "armorCeilingsMm": {
         "hullKe": 560,
@@ -142,8 +176,8 @@
         ],
         "reloadS": 6.3,
         "sustainedDpm": 5190.48,
-        "accuracy": 0.316,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.63
       },
       "armorCeilingsMm": {
         "hullKe": 560,
@@ -460,6 +494,74 @@
       "guidedWeapons": []
     },
     {
+      "id": "centurion13",
+      "revision": "262: the new Mk 13 shares the Mk 5/2 package (hull, armour factor, round, cadence, engine)",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 16.99,
+      "speedKmh": [
+        48,
+        15
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "centurion5_1_aus",
+      "revision": "262: the new Australian Mk 5/1: the Strv 81's Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1450,
+      "powerWeight": 12.55,
+      "speedKmh": [
+        35,
+        12
+      ],
+      "traverseDegS": [
+        28.6,
+        24.5
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          488,
+          444,
+          400
+        ],
+        "reloadS": 7.1,
+        "sustainedDpm": 4056.34,
+        "accuracy": 0.32,
+        "aimTimeS": 2.35
+      },
+      "armorCeilingsMm": {
+        "hullKe": 315,
+        "turretKe": 399
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "centurion5_2",
       "revision": "remove the Tier VIII Centurion survivability and mobility trough; 258: an engine over its shown-tier floor",
       "tier": 3,
@@ -490,6 +592,40 @@
       "armorCeilingsMm": {
         "hullKe": 336,
         "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "centurion5_avre",
+      "revision": "262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 16.99,
+      "speedKmh": [
+        35,
+        12
+      ],
+      "traverseDegS": [
+        26.6,
+        27
+      ],
+      "primary": {
+        "damage": 1150,
+        "penetrationMm": [
+          165,
+          165,
+          null
+        ],
+        "reloadS": 20,
+        "sustainedDpm": 3450,
+        "accuracy": 0.561,
+        "aimTimeS": 3.26
+      },
+      "armorCeilingsMm": {
+        "hullKe": 300,
+        "turretKe": 380
       },
       "guidedWeapons": []
     },
@@ -1168,7 +1304,7 @@
     },
     {
       "id": "leclerc_s2",
-      "revision": "improve the Tier IX ready-rack cycle while retaining burst downtime",
+      "revision": "improve the Tier IX ready-rack cycle while retaining burst downtime; 265: the Type 90's 9 s magazine cycle, the clip was still refilling when it died",
       "tier": 9,
       "era": "modern",
       "role": "mbt",
@@ -1189,8 +1325,8 @@
           733,
           660
         ],
-        "reloadS": 16.5,
-        "sustainedDpm": 4478.87,
+        "reloadS": 9,
+        "sustainedDpm": 6913.04,
         "accuracy": 0.296,
         "aimTimeS": 1.8
       },
@@ -1202,7 +1338,7 @@
     },
     {
       "id": "leclerc_sxxi",
-      "revision": "add a real Tier X ammunition, protection and ready-rack step",
+      "revision": "add a real Tier X ammunition, protection and ready-rack step; 265: a 9 s magazine cycle with the S2",
       "tier": 9,
       "era": "modern",
       "role": "mbt",
@@ -1223,14 +1359,48 @@
           830,
           730
         ],
-        "reloadS": 15.5,
-        "sustainedDpm": 4884.42,
+        "reloadS": 9,
+        "sustainedDpm": 7253.73,
         "accuracy": 0.296,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
         "hullKe": 700,
         "turretKe": 760
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leclerc_xlr",
+      "revision": "the Type 90's 9 s magazine cycle with the S2 and SXXI",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 27.52,
+      "speedKmh": [
+        71,
+        25
+      ],
+      "traverseDegS": [
+        50.6,
+        44.5
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          806,
+          733,
+          660
+        ],
+        "reloadS": 9,
+        "sustainedDpm": 6913.04,
+        "accuracy": 0.296,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 620
       },
       "guidedWeapons": []
     },
@@ -1304,7 +1474,7 @@
     },
     {
       "id": "leo2_improved",
-      "revision": "a x0.7 mantlet: its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "a x0.7 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1321,9 +1491,9 @@
       "primary": {
         "damage": 530,
         "penetrationMm": [
-          891,
-          811,
-          730
+          855,
+          778,
+          700
         ],
         "reloadS": 6,
         "sustainedDpm": 5300,
@@ -1439,8 +1609,42 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo2a3_b4",
+      "revision": "the 2A3's cycle and 2,400 HP at IV (262: the fourth batch carries the 2A3's combat data; 263: the HP in place of 260's turret-front trim)",
+      "tier": 4,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 26.79,
+      "speedKmh": [
+        68,
+        31
+      ],
+      "traverseDegS": [
+        44.9,
+        36.7
+      ],
+      "primary": {
+        "damage": 500,
+        "penetrationMm": [
+          586,
+          533,
+          480
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4687.5,
+        "accuracy": 0.3,
+        "aimTimeS": 1.67
+      },
+      "armorCeilingsMm": {
+        "hullKe": 400,
+        "turretKe": 420
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo2a4",
-      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
+      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity; 264: a x2.45 mantlet, a named balance trim on the square 2A4 front",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1468,13 +1672,13 @@
       },
       "armorCeilingsMm": {
         "hullKe": 484,
-        "turretKe": 546
+        "turretKe": 804
       },
       "guidedWeapons": []
     },
     {
       "id": "leo2a4_otco",
-      "revision": "a x0.55 mantlet: its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1507,8 +1711,42 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo2a4_v",
+      "revision": "the Leopard 2A4's main plates under its own Kontakt-1, in place of 264's x2.2 mantlet trim",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 25.21,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        44.9,
+        40.8
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4968.75,
+        "accuracy": 0.27,
+        "aimTimeS": 1.57
+      },
+      "armorCeilingsMm": {
+        "hullKe": 484,
+        "turretKe": 804
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo2a4m",
-      "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope; 263: a x0.55 mantlet, its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope; 265: a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1542,7 +1780,7 @@
     },
     {
       "id": "leo2a4m_can",
-      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
+      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection; 264/265: balance trims, a x1.28 mantlet and a x1.24 turret front, held between its two reviewed matchups (the M1A1 and the Challenger 1 Mk 2)",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1570,7 +1808,41 @@
       },
       "armorCeilingsMm": {
         "hullKe": 586,
-        "turretKe": 614
+        "turretKe": 812
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leo2a5",
+      "revision": "a x0.7 mantlet: its sloped wedge mantlet read ~1,300 mm against the published 850-930 at IX",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 25.21,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        44.9,
+        40.8
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4968.75,
+        "accuracy": 0.27,
+        "aimTimeS": 1.57
+      },
+      "armorCeilingsMm": {
+        "hullKe": 620,
+        "turretKe": 700
       },
       "guidedWeapons": []
     },
@@ -1780,7 +2052,7 @@
     },
     {
       "id": "m1a3",
-      "revision": "remove the next-generation autoloader, protection and missile ceiling",
+      "revision": "remove the next-generation autoloader, protection and missile ceiling; 265: armour x0.75, the published 25 % weight cut from passive armour (it shut out the AbramsX)",
       "tier": 10,
       "era": "next-generation",
       "role": "mbt",
@@ -1795,20 +2067,20 @@
         49
       ],
       "primary": {
-        "damage": 570,
+        "damage": 540,
         "penetrationMm": [
-          930,
-          846,
-          760
+          916,
+          833,
+          750
         ],
         "reloadS": 21,
-        "sustainedDpm": 4800,
+        "sustainedDpm": 4547.37,
         "accuracy": 0.25,
         "aimTimeS": 1.42
       },
       "armorCeilingsMm": {
-        "hullKe": 818,
-        "turretKe": 889
+        "hullKe": 614,
+        "turretKe": 667
       },
       "guidedWeapons": [
         {
@@ -1820,6 +2092,108 @@
           "velocityMps": 2050
         }
       ]
+    },
+    {
+      "id": "m48_super",
+      "revision": "266: the new M48 Super: the M48A5 package with its spaced armour, a stabilised fire control and the added weight",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2150,
+      "powerWeight": 19.81,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 450,
+        "penetrationMm": [
+          580,
+          535,
+          490
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3857.14,
+        "accuracy": 0.29,
+        "aimTimeS": 1.71
+      },
+      "armorCeilingsMm": {
+        "hullKe": 88,
+        "turretKe": 150
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m48a2ga2",
+      "revision": "266: the new M48A2GA2 shares the M48A5 package (the L7A3 is the M68's twin)",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 18.75,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 450,
+        "penetrationMm": [
+          580,
+          535,
+          490
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3857.14,
+        "accuracy": 0.3,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m48a3_patton",
+      "revision": "266: the new M48A3 shares the M48A5 package with the M47's 90 mm round and cadence",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 18.56,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 440,
+        "penetrationMm": [
+          570,
+          530,
+          480
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 3882.35,
+        "accuracy": 0.3,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
     },
     {
       "id": "m48a5_patton",
@@ -1967,6 +2341,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "magach3",
+      "revision": "266: the new Magach 3 shares the M48A5 package with its Blazer boxes",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 18.33,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 450,
+        "penetrationMm": [
+          580,
+          535,
+          490
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3857.14,
+        "accuracy": 0.3,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "marder1a3",
       "revision": "lift the 20 mm round over the shown-tier IFV penetration floor",
       "tier": 2,
@@ -2011,7 +2419,7 @@
     },
     {
       "id": "merkava1b",
-      "revision": "remove the Tier VII armor and penetration ceiling",
+      "revision": "remove the Tier VII armor and penetration ceiling; 265: on the frontal arc only, the roof, sides and rear keep their thickness",
       "tier": 1,
       "era": "cold-war",
       "role": "mbt",
@@ -2039,13 +2447,13 @@
       },
       "armorCeilingsMm": {
         "hullKe": 175,
-        "turretKe": 212
+        "turretKe": 350
       },
       "guidedWeapons": []
     },
     {
       "id": "merkava2b",
-      "revision": "lift the engine over the shown-tier MBT mobility floor",
+      "revision": "lift the engine over the shown-tier MBT mobility floor; 265: a x0.5 hull front, its sloped glacis read 1,055-1,850 mm at III",
       "tier": 3,
       "era": "cold-war",
       "role": "mbt",
@@ -2072,8 +2480,76 @@
         "aimTimeS": 1.82
       },
       "armorCeilingsMm": {
-        "hullKe": 500,
+        "hullKe": 250,
         "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "merkava2d",
+      "revision": "a x0.5 hull front: its sloped glacis read 1,055-1,850 mm at III",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2150,
+      "powerWeight": 23.08,
+      "speedKmh": [
+        50,
+        25
+      ],
+      "traverseDegS": [
+        36.1,
+        39.5
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          794,
+          722,
+          650
+        ],
+        "reloadS": 7.2,
+        "sustainedDpm": 4333.33,
+        "accuracy": 0.316,
+        "aimTimeS": 1.82
+      },
+      "armorCeilingsMm": {
+        "hullKe": 250,
+        "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "merkava4b",
+      "revision": "the Mk 4M's M338 round and 2,850 HP on the same hull: its flat gun notch read 481 mm at IX",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2850,
+      "powerWeight": 23.08,
+      "speedKmh": [
+        64,
+        25
+      ],
+      "traverseDegS": [
+        38,
+        41.6
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          900,
+          820,
+          740
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 5076.92,
+        "accuracy": 0.316,
+        "aimTimeS": 1.82
+      },
+      "armorCeilingsMm": {
+        "hullKe": 650,
+        "turretKe": 850
       },
       "guidedWeapons": []
     },
@@ -2108,6 +2584,40 @@
       "armorCeilingsMm": {
         "hullKe": 900,
         "turretKe": 300
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "olifant_mk2",
+      "revision": "262: the new Olifant Mk 2 package: the 1,040 hp diesel, the composite turret and glacis, a stabilised fire control and the GT-3B's APFSDS",
+      "tier": 3,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 17.33,
+      "speedKmh": [
+        58,
+        20
+      ],
+      "traverseDegS": [
+        28.6,
+        26.5
+      ],
+      "primary": {
+        "damage": 420,
+        "penetrationMm": [
+          520,
+          490,
+          460
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3600,
+        "accuracy": 0.25,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 400,
+        "turretKe": 520
       },
       "guidedWeapons": []
     },
@@ -2220,7 +2730,7 @@
       "era": "modern",
       "role": "mbt",
       "hp": 2250,
-      "powerWeight": 21.05,
+      "powerWeight": 21.79,
       "speedKmh": [
         60,
         20
@@ -2242,8 +2752,8 @@
         "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
-        "hullKe": 486,
-        "turretKe": 518
+        "hullKe": 450,
+        "turretKe": 480
       },
       "guidedWeapons": []
     },
@@ -2323,6 +2833,40 @@
           "velocityMps": 210
         }
       ]
+    },
+    {
+      "id": "shot_kal",
+      "revision": "262: the new Sho't Kal shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel's power",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 18.53,
+      "speedKmh": [
+        48,
+        17
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
+      },
+      "guidedWeapons": []
     },
     {
       "id": "spz_puma",
@@ -2441,6 +2985,40 @@
       "armorCeilingsMm": {
         "hullKe": 113,
         "turretKe": 201
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "strv105",
+      "revision": "262: the new Strv 105 shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel's power and its FFV cassettes",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 17.14,
+      "speedKmh": [
+        48,
+        15
+      ],
+      "traverseDegS": [
+        32.6,
+        30.6
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 1.96
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
       },
       "guidedWeapons": []
     },
@@ -2751,6 +3329,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "t72b3_zhuque",
+      "revision": "a x1.25 turret front: its flat box cheeks read ~600 mm and every VII round pierced them",
+      "tier": 7,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 23.85,
+      "speedKmh": [
+        68,
+        22
+      ],
+      "traverseDegS": [
+        41.8,
+        39.5
+      ],
+      "primary": {
+        "damage": 560,
+        "penetrationMm": [
+          855,
+          800,
+          720
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 5250,
+        "accuracy": 0.316,
+        "aimTimeS": 1.73
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 750
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "t72b3m_2022",
       "revision": "modernize the Tier IX fire-control floor without erasing Soviet handling",
       "tier": 6,
@@ -2815,6 +3427,40 @@
       "armorCeilingsMm": {
         "hullKe": 450,
         "turretKe": 700
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t72b3m_xuanwu",
+      "revision": "a x1.25 turret front: its flat box cheeks read ~600 mm and every VII round pierced them",
+      "tier": 7,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 23.85,
+      "speedKmh": [
+        68,
+        22
+      ],
+      "traverseDegS": [
+        41.8,
+        39.5
+      ],
+      "primary": {
+        "damage": 560,
+        "penetrationMm": [
+          855,
+          800,
+          720
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 5250,
+        "accuracy": 0.316,
+        "aimTimeS": 1.73
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 750
       },
       "guidedWeapons": []
     },
@@ -3739,6 +4385,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "ztz100",
+      "revision": "2,750 HP and a 480-damage round, the ZTZ-20 prototype's footing",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2750,
+      "powerWeight": 28.57,
+      "speedKmh": [
+        72,
+        30
+      ],
+      "traverseDegS": [
+        45.6,
+        52
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          840,
+          780,
+          680
+        ],
+        "reloadS": 4.8,
+        "sustainedDpm": 6000,
+        "accuracy": 0.245,
+        "aimTimeS": 1.44
+      },
+      "armorCeilingsMm": {
+        "hullKe": 540,
+        "turretKe": 620
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "ztz20",
       "revision": "2,800 HP and a 480-damage round: its 440 needed a hit more than its peers to kill",
       "tier": 10,
@@ -3808,11 +4488,11 @@
     },
     {
       "id": "ztz85_iii",
-      "revision": "a 460-damage round: its 500 killed every tier-I peer in four hits",
+      "revision": "a 460-damage round: its 500 killed every tier-I peer in four hits; 265 (interim pending the owner's re-tier): 430 damage and 1,950 HP, it topped I at 0.96 with no pair in band",
       "tier": 1,
       "era": "cold-war",
       "role": "mbt",
-      "hp": 2100,
+      "hp": 1950,
       "powerWeight": 22.88,
       "speedKmh": [
         57,
@@ -3823,14 +4503,14 @@
         35.4
       ],
       "primary": {
-        "damage": 460,
+        "damage": 430,
         "penetrationMm": [
           620,
           570,
           510
         ],
         "reloadS": 6.8,
-        "sustainedDpm": 4058.82,
+        "sustainedDpm": 3794.12,
         "accuracy": 0.337,
         "aimTimeS": 1.92
       },
@@ -3916,15 +4596,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 2,
+      "aWins": 9,
       "bWins": 3,
-      "draws": 7,
-      "aScore": 0.458,
-      "averageDurationS": 79.52,
-      "averageAEndHp": 555.33,
-      "averageBEndHp": 783.33,
-      "averageADamage": 1745.83,
-      "averageBDamage": 1884.92
+      "draws": 0,
+      "aScore": 0.75,
+      "averageDurationS": 58.94,
+      "averageAEndHp": 1136.92,
+      "averageBEndHp": 315.58,
+      "averageADamage": 2395.33,
+      "averageBDamage": 1293.67
     },
     {
       "id": "nextgen-challengers",
@@ -3976,11 +4656,11 @@
       "bWins": 3,
       "draws": 0,
       "aScore": 0.75,
-      "averageDurationS": 35,
-      "averageAEndHp": 885.33,
-      "averageBEndHp": 170.5,
-      "averageADamage": 2774.5,
-      "averageBDamage": 1988.08
+      "averageDurationS": 34.31,
+      "averageAEndHp": 469.83,
+      "averageBEndHp": 130.42,
+      "averageADamage": 2799.58,
+      "averageBDamage": 2338.33
     },
     {
       "id": "t90-export-step",
@@ -4140,15 +4820,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 60.25,
-      "averageAEndHp": 346.08,
-      "averageBEndHp": 282.33,
-      "averageADamage": 2545.5,
-      "averageBDamage": 2629.17
+      "aScore": 0.667,
+      "averageDurationS": 59.37,
+      "averageAEndHp": 470.5,
+      "averageBEndHp": 175.5,
+      "averageADamage": 2654.17,
+      "averageBDamage": 2485.25
     },
     {
       "id": "merkava-tier7-peer",
@@ -4172,11 +4852,11 @@
       "bWins": 4,
       "draws": 0,
       "aScore": 0.667,
-      "averageDurationS": 21.13,
-      "averageAEndHp": 278.42,
-      "averageBEndHp": 98.67,
-      "averageADamage": 1870.92,
-      "averageBDamage": 1390.67
+      "averageDurationS": 20.63,
+      "averageAEndHp": 192.08,
+      "averageBEndHp": 126.25,
+      "averageADamage": 1896.42,
+      "averageBDamage": 1478.92
     },
     {
       "id": "puma-tier8-peer",
@@ -4416,15 +5096,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 35.09,
-      "averageAEndHp": 617.33,
-      "averageBEndHp": 424.75,
-      "averageADamage": 2346.17,
-      "averageBDamage": 2185.17
+      "aScore": 0.417,
+      "averageDurationS": 34.09,
+      "averageAEndHp": 164.17,
+      "averageBEndHp": 417.08,
+      "averageADamage": 2295.67,
+      "averageBDamage": 2729.17
     },
     {
       "id": "leopard-tier9-peer",
@@ -4444,15 +5124,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 47.74,
-      "averageAEndHp": 617.92,
-      "averageBEndHp": 515.58,
-      "averageADamage": 1915.42,
-      "averageBDamage": 1984.5
+      "aScore": 0.75,
+      "averageDurationS": 46.59,
+      "averageAEndHp": 876.67,
+      "averageBEndHp": 170.83,
+      "averageADamage": 2320.83,
+      "averageBDamage": 1685.33
     },
     {
       "id": "ifv-nextgen-peer",
