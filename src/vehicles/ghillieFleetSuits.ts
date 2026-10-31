@@ -181,8 +181,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     turret: {
       top: [laid({
         x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,
-        holes: [rect(-0.72, -0.18, 0.50, 1.02), rect(0.20, 0.72, 0.20, 0.72), ...pair(0.48, 0.74, -1.18, -0.92)],
-        garnishRiseM: 0.12, seed: 11,
+        // (ua2, ua1 critics, both: a ring round an open roof; the photograph's net a closed heap over the roof and rear,
+        // the sight heads clear)
+        holes: [rect(-0.72, -0.18, 0.50, 1.02), rect(0.20, 0.72, 0.20, 0.72)],
+        garnishRiseM: 0.20, seed: 11,
       })],
       side: flanks(-1.30, 0.06, 0.82, 0.38, 1.22, 17),
       face: [face({ z: -1.42, x0: -0.92, x1: 0.92, y0: 0.38, y1: 0.75, nx: 18, ny: 6, seed: 23 })],

@@ -2172013,9 +2172013,9 @@
         "countryLabel": "Ukraine",
         "filterLabel": "UA",
         "insignia": "ua-trident",
-        "tacticalNumber": "9040",
-        "designation": "UA-9040",
-        "markingCode": "UA:ua-trident:9040"
+        "tacticalNumber": "UA 21",
+        "designation": "UA-UA 21",
+        "markingCode": "UA:ua-trident:UA 21"
       },
       "nation": "Ukraine",
       "countryCode": "ua",
@@ -2174539,16 +2174539,16 @@
           }
         ]
       },
-      "geometryHash": "5ced09eb",
-      "metadataHash": "04ee69b3",
+      "geometryHash": "aa0ee54b",
+      "metadataHash": "f17254b1",
       "presentationAnchor": {
-        "xM": 0.0015,
-        "zM": -0.0009
+        "xM": 0.0013,
+        "zM": -0.0407
       },
-      "presentationHash": "8ce1b729",
+      "presentationHash": "26903451",
       "presentationProjection": {
         "centerYM": 2.085,
-        "topHalfM": 3.9913,
+        "topHalfM": 4.0496,
         "sideHalfM": 2.231
       },
       "appearance": {
@@ -2174569,9 +2174569,9 @@
           "opticGlass": 2,
           "gunmetal": 6,
           "canvasPale": 1,
+          "canvas": 3,
           "unclassified": 23,
-          "fittingPaint": 1,
-          "canvas": 2
+          "fittingPaint": 1
         }
       },
       "muzzleBore": {
@@ -2174591,7 +2174591,7 @@
         "verifiedDesignation": 1,
         "minimumVisibilityRatio": 0.6666667,
         "codes": [
-          "UA:ua-trident:9040"
+          "UA:ua-trident:UA 21"
         ]
       },
       "assets": {
@@ -2174600,15 +2174600,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29580,
-          "sha256": "635daefda657c5d830f946ad844c1ab5e231f5448090a13858524b35f22d9bdb",
+          "bytes": 28930,
+          "sha256": "a1e152a0a96a00f024d588402870902654162afb75becc267102235137b8d8c1",
           "thumbnail": {
             "file": "thumbs/ua_cv9040c_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11886,
-            "sha256": "a7c022d426b69c2e09ac4927acc0e4137936276bf67636aae77c07f018c31f5a"
+            "bytes": 11624,
+            "sha256": "379555a0c2da2601b22c5ea00e80331f03f5298efa2fec08e91fd2057e5410e0"
           }
         },
         "top": {
@@ -2174616,70 +2174616,70 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22140,
-          "sha256": "3225140ec18cdd40a1143ca3aba1e632c9e78d8f7c51bf6ee238d21944a86e18"
+          "bytes": 22004,
+          "sha256": "d15b11b7f685f15dadc2f007c92800c2cb366e31aa20a0de39a26dd89605a398"
         },
         "side": {
           "file": "ua_cv9040c_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16198,
-          "sha256": "7ae700858066aa6092e01b9f8217d03d1acacc0b0b72ac2a5236b4f573f388e4"
+          "bytes": 17918,
+          "sha256": "4ed530b48141a02b64a40f8f9d75474cc02a45d1d0c43f61bc234e7bf4fda8fd"
         },
         "topSilhouette": {
           "file": "ua_cv9040c_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1667,
-          "sha256": "d25ae1fdae520d3411e6a3759c2af1d3b2162adb04cf6b96abca569fc4695f7b"
+          "bytes": 1586,
+          "sha256": "2a11195e50deb31eb34aeeff7ba22dd546cac046f5b87c0c357c6b0bcc8471ca"
         },
         "sideSilhouette": {
           "file": "ua_cv9040c_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5895,
-          "sha256": "b7c8111f826636b8e06a3931c42442000829f16f95bc3ab8b4da4083fe740e04"
+          "bytes": 5853,
+          "sha256": "f32e262e0980525384dd698af6a6cff66be7bf4eeb3d6c82fff532cf163b1a75"
         },
         "armorSide": {
           "file": "ua_cv9040c_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42622,
-          "sha256": "d695b93d12bd5399512f84a5b63a862f492e4e90b1c8f1dd12f0d5c2f2fb19f7"
+          "bytes": 42328,
+          "sha256": "336113f14afaae00144a4c60c73c3428ba45fdb1c259c55d689ec3df5291fce0"
         },
         "modulesSide": {
           "file": "ua_cv9040c_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 43364,
-          "sha256": "f1b98657f969154cac72dd9769f65e7f19c1062b71da30f69abd730361e22f5d"
+          "bytes": 43220,
+          "sha256": "a72528a33e6b41c685321d4e679e9f5fba3f6762649f14c7acb19258c76b3673"
         },
         "crewSide": {
           "file": "ua_cv9040c_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38448,
-          "sha256": "d4c507baa3bd815ea0db7df2d651f130e0f43f6ce3c6d7b703c7327a622444d9"
+          "bytes": 37974,
+          "sha256": "ab586e33b77b083f87bd57b87bf5bb98d2a5eedd41cd03f2fc355dc13657c68b"
         },
         "markings": {
           "file": "ua_cv9040c_markings.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 36736,
-          "sha256": "b46eaae6c7423e890bbb35216eb134a378b0cf1e889dfca1ba412ad3cf0f2b2b"
+          "bytes": 35592,
+          "sha256": "f9c4e3234a78efa5f47e872be30a8c3ac03d421005d095af8c0f10ebaf70f937"
         },
         "technicalLabels": {
           "file": "ua_cv9040c_technical.json",
           "mime": "application/json",
-          "bytes": 5002,
-          "sha256": "6c7a97e76757ff98458c9df723d38e31fe23f7a5adbb8b98fc34b841ae223f8d"
+          "bytes": 5014,
+          "sha256": "2b18aed6d275ee3583e83abbb9665b66db2cdd51b25a414392449ca22518d4f2"
         }
       }
     },

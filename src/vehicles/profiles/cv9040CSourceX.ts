@@ -142,22 +142,34 @@ function gun(P: TankBuilderPort): void {
 }
 
 /** The Ukrainian CV9040C's service kit (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): the
- *  white tactical triangle forward on each flank's upper wall, and rust-brown tarpaulins lashed over a load on the troop
- *  roof behind the turret, down to its edges, over the aft roof hatches; the net over its turret is its ghillie suit. */
+ *  white tactical triangle on each flank under the turret's rear, and a dusty maroon tarpaulin draped over the load on the
+ *  troop roof, from its rear edge over the step down to the turret, its edges hanging over the sides and the rear,
+ *  strapped down; the net over its turret is its ghillie suit.
+ *  (ua2, the ua1 critics, both, on the photograph: the tarp read as an orange crate with posts through it, short of the
+ *  turret; the triangle sat forward, small and hairline.) */
 function addUkrainianKit(P: TankBuilderPort): void {
-  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.56,[side*1.648,1.45,1.70],side*Math.PI/2);
-  const roof=1.94;
-  const mound=(z: number, k: number): {z: number; ring: [number, number][]}=>({z,ring:[
-    [-1.30,roof-.005],[1.30,roof-.005],[1.28,roof+.10+.04*k],[.95,roof+.30+.05*k],[.40,roof+.36-.04*k],
-    [-.10,roof+.30+.06*k],[-.62,roof+.40-.03*k],[-1.08,roof+.27+.04*k],[-1.28,roof+.12],
-  ]});
-  P.addEquipment('hullCanvasPale',sectionSolid([mound(-3.27,0),mound(-3.05,1),mound(-2.80,-1),mound(-2.56,.5),mound(-2.50,-.5)]));
-  // its lashings, over the mound and down to the roof's edge
-  for(const z of [-3.12,-2.68])for(const side of [-1,1]) {
-    P.addEquipment('hullDark',box(1.24,.018,.035),side*.64,roof+.36,z,0,0,side*-.30);
-    P.addEquipment('hullDark',box(.018,.16,.035),side*1.29,roof+.07,z);
+  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.72,[side*1.648,1.38,-.70],side*Math.PI/2);
+  // the troop roof is raised to 1.94 from its rear edge (z -3.32) to -2.45, then steps down to the turret deck at 1.76
+  const RING: readonly [number, number, number][] = [ // x, height over the base, the lump's weight
+    [1.47, -.04, 0], [1.45, .12, .03], [1.15, .28, .04], [.62, .37, -.03], [.05, .32, .05], [-.56, .39, -.02],
+    [-1.08, .28, .04], [-1.45, .12, 0], [-1.47, -.04, 0], [0, -.03, 0],
+  ];
+  const drape=(z: number, base: number, k: number, s=1): {z: number; ring: [number, number][]}=>({z,
+    ring:RING.map(([x,h,w])=>[x,base+(h>0?(h+w*k)*s:h)] as [number, number])});
+  const stations=[drape(-3.34,1.94,0),drape(-3.10,1.94,1),drape(-2.85,1.94,-1),drape(-2.62,1.94,.5),drape(-2.47,1.94,-.5),
+    drape(-2.30,1.77,.3,1.05),drape(-2.12,1.77,0,.54)];
+  P.addEquipment('hullCanvasPale',sectionSolid(stations));
+  // its edge hanging over the roof's rear edge
+  P.addEquipment('hullCanvasPale',box(2.86,.07,.02),0,1.895,-3.335);
+  // webbing straps lying on it, across and down to its edges (no posts)
+  for(const st of [stations[1],stations[3]]) {
+    const top=st.ring.slice(1,8);
+    for(let i=0;i+1<top.length;i++) {
+      const [x0,y0]=top[i],[x1,y1]=top[i+1],len=Math.hypot(x1-x0,y1-y0);
+      P.addEquipment('hullCloth',box(len,.012,.045),(x0+x1)/2,(y0+y1)/2+.012,st.z,0,0,Math.atan2(y1-y0,x1-x0));
+    }
   }
-  P.mats.canvasPale.color.setHex(0x6a4c38);
+  P.mats.canvasPale.color.setHex(0x5a403c);
 }
 
 /** The CV9040C (release 265: `ukrainian` builds the Ukrainian one, ukraineCv90Specs.ts). */

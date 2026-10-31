@@ -743,7 +743,8 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
 function drawUkraineTriangle({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const r = Math.min(size, 256) * 0.40;
   ctx.strokeStyle = '#ecebe4';
-  ctx.lineWidth = r * 0.17;
+  // (ua2: ua1 critics, both: a hairline at game distance; the photograph's stroke about twice as heavy)
+  ctx.lineWidth = r * 0.30;
   ctx.lineJoin = 'miter';
   ctx.beginPath();
   ctx.moveTo(cx, cy - r);
