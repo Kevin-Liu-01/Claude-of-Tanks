@@ -60,6 +60,9 @@ const padService = `ws://127.0.0.1:${padServer.address().port}`;
 const lock = createCaptureLock();
 let vite = null;
 let browser = null;
+/** The phone runs in a browser of its own: a second tab of one headless window would hide the desktop's, and a hidden
+ *  page draws no frames (the battle stops, its screenshots and the latency watch wait forever). */
+let phoneBrowser = null;
 try {
   // the dev server starts before the ticket (the hold is the browser's); the 18-minute cap counts from the grant
   vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/pad-e2e-vite-cache'), logLevel: 'error',
@@ -142,8 +145,10 @@ try {
   await desktop.screenshot({ path: resolve(outDir, 'desktop-settings-qr.png') });
 
   // ---- the phone: an emulated landscape phone opens the QR's link -----------------------------------------------------
+  phoneBrowser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 300_000,
+    args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] }, { label: 'pad-e2e-phone' });
   async function openPhone({ rtc = true } = {}) {
-    const phone = await browser.newPage();
+    const phone = await phoneBrowser.newPage();
     const phoneRequests = [];
     phone.on('request', (request) => phoneRequests.push(request.url()));
     phone.on('pageerror', (error) => report.errors.phone.push(String(error).slice(0, 300)));
@@ -363,6 +368,7 @@ try {
 } finally {
   report.wallS = Math.round((Date.now() - startedAt) / 1000);
   writeFileSync(resolve(outDir, 'report.json'), `${JSON.stringify(report, null, 1)}\n`);
+  try { await phoneBrowser?.close(); } catch { /* gone */ }
   try { await browser?.close(); } catch { /* gone */ }
   try { await vite?.close(); } catch { /* gone */ }
   lock.release();
