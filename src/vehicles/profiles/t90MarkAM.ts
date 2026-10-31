@@ -74,11 +74,28 @@ function sternCage(P:TankBuilderPort):void{
 // bay the screen, its returns and the hull enclosed read as a hole in plan; the crews floored theirs to stow kit in it.
 // It replaces the unditching log that hung behind the screen and left slots between the two.
 const DECK_Y=1.235;
+/** The hull's rear stock ahead of (x, y) behind the stern: the first 'hull' part a ray toward +Z meets, or null. */
+function sternFaceZ(P:TankBuilderPort,x:number,y:number):number|null{
+  const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+  const ray=new THREE.Raycaster(new THREE.Vector3(x,y,SCREEN_Z),new THREE.Vector3(0,0,1),0,1.2);
+  let face:number|null=null;
+  P.forEachBucketPart(['hull'],g=>{const h=ray.intersectObject(new THREE.Mesh(g,mat))[0];if(h&&(face===null||h.point.z<face))face=h.point.z;});
+  mat.dispose();
+  return face;
+}
 function stowageDeck(P:TankBuilderPort):void{
-  const front=-3.70,back=SCREEN_Z+.03,depth=front-back,z=(front+back)/2,w=2*RETURN_X-.04;
-  P.addEquipment('hullDetail',box(w,.012,depth),0,DECK_Y-.006,z);
-  for(let x=-w/2+.06;x<w/2-.05;x+=.12)P.addEquipment('hullOpenLatticeDark',box(.012,.010,depth-.02),x,DECK_Y+.004,z);
-  for(const dz of[-depth/2+.02,depth/2-.02])P.addEquipment('hullOpenLatticeDark',box(w-.02,.022,.022),0,DECK_Y+.011,z+dz);
+  const back=SCREEN_Z+.03,w=2*RETURN_X-.04;
+  // three strips, each running forward under the hull's rear stock it meets (the tub between the drums, the fender ends
+  // at the sides) and lapped 12 mm under it: the bay closes in plan right up to the hull (tank-standard-check B2)
+  for(const [x0,x1] of [[-w/2,-1.10],[-1.10,1.10],[1.10,w/2]] as const){
+    // probed at the deck and up to 10 cm over it: the fender ends and the tub's overhang stand a little above the deck,
+    // which then runs on under them
+    const xc=(x0+x1)/2,face=Math.max(...[x0+.05,xc,x1-.05].flatMap(x=>[.004,.045,.085].map(dy=>sternFaceZ(P,x,DECK_Y+dy)??-3.70)));
+    const front=Math.min(-3.40,face+.012),depth=front-back,z=(front+back)/2,sw=x1-x0;
+    P.addEquipment('hullDetail',box(sw,.012,depth),xc,DECK_Y-.006,z);
+    for(let x=x0+.06;x<x1-.05;x+=.12)P.addEquipment('hullOpenLatticeDark',box(.012,.010,depth-.02),x,DECK_Y+.004,z);
+    for(const dz of[-depth/2+.02,depth/2-.02])P.addEquipment('hullOpenLatticeDark',box(sw-.02,.022,.022),xc,DECK_Y+.011,z+dz);
+  }
   // the crate rides the deck between the drums' inner ends, clear under the gun laid aft
   const cz=SCREEN_Z+.03+.17;
   P.addEquipment('hullFittingPaint',box(.26,.20,.30),0,DECK_Y+.10,cz);
