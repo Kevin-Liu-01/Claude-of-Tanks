@@ -201,6 +201,7 @@ function hullScene() {
       stowage: add(box(0.6, 0.4, 0.6, -0.4, 2.2, 0), 'nonArmor'),
       flush: add(box(0.4, 0.03, 0.4, 0.5, 2.015, 0.5), 'nonArmor'),
       armour: add(box(0.1, 0.4, 0.4, 1.3, 1.0, -0.5), 'armor'),
+      applique: add(box(0.1, 0.4, 0.4, 1.3, 1.0, 0.5), 'externalArmor'),
     };
     root.updateMatrixWorld(true);
     return { root, hull, meshes };
@@ -210,6 +211,7 @@ function hullScene() {
   assert.deepEqual([...new Set(roof.meshes.stowage.geometry.getAttribute('apZone').array)], [-1], 'a stowage box on the roof: bare whole');
   assert.ok(faceValues(roof.meshes.flush.geometry, [0, 1, 0]).every((v) => v > 0), 'a plate flush on the roof: painted');
   assert.ok(faceValues(roof.meshes.armour.geometry, [1, 0, 0]).every((v) => v > 0), 'the hull\'s own armour off the cells: painted');
+  assert.ok(faceValues(roof.meshes.applique.geometry, [1, 0, 0]).every((v) => v > 0), 'add-on armour the sim does not trace: the plate behind it');
   assert.ok(roofStats.offArmour >= 12, `the box's twelve triangles off the armour (${roofStats.offArmour})`);
   // negative control: without the authority the box's flush underside takes the zone where it sits (above the cells, its
   // top and sides were bare before 267 too: the hull's gear rule)

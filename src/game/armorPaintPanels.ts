@@ -14,11 +14,11 @@
 // (267; the owner, 2026-10-31: "not highlight stuff that wouldnt actually lead to the enemy tank taking damage like drone
 // cages, props, machine guns etc.") The paint shows only what a round's damage reads. Gear stays bare whole: equipment
 // (sights, launchers, roof stations), machine guns and their ammunition, the running gear, a camouflage suit. A part
-// other than the hull's and the turret's own armour is armour only where it lies on what the authority traces: within
-// FLUSH_M of the cells (a bolt, a boot, a link of track) or within LAYER_REACH_M of a plate the sim traces a round through
-// (ERA, a spaced skirt or screen, external armour; never a drone screen, which the sim traces for drones only), a compact
-// solid touching such a plate being that layer whole. A cage, a stowage box, a rack, a fender or a net standing off it is
-// bare (a solid mostly off, whole), as it is air to the round.
+// other than armour (the hull's and the turret's own, and its add-on ERA and applique) is armour only where it lies on
+// what the authority traces: within FLUSH_M of the cells (a bolt, a boot, a link of track) or within LAYER_REACH_M of a
+// plate the sim traces a round through (ERA, a spaced skirt or screen, external armour; never a drone screen, which the
+// sim traces for drones only), a compact solid touching such a plate being that layer whole. A cage, a stowage box, a
+// rack, a fender or a net standing off it is bare (a solid mostly off, whole), as it is air to the round.
 //
 // Baked in slices once the overlay primes a vehicle (the battle visual streamer's staging, else the overlay's own frames),
 // once per geometry: copies of a spec share it. Each geometry is judged at one pose, its frames taken as it starts. Every
@@ -344,10 +344,12 @@ function gearDraw(mesh: THREE.Object3D): boolean {
   }
   return false;
 }
-/** (267) Whether a draw is the hull's or the turret's own armour (the cells are hulled from it): never judged standing off. */
+/** (267) Whether a draw is armour: the hull's or the turret's own (the cells are hulled from it) or its add-on armour (ERA,
+ * applique: what stands in front of the cells takes the plate behind it, as 264 has it). Never judged standing off. */
 function armourDraw(mesh: THREE.Object3D): boolean {
   for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
-    if (node.userData.combatHitboxRole) return node.userData.combatHitboxRole === 'armor';
+    const role = node.userData.combatHitboxRole;
+    if (role) return role === 'armor' || role === 'externalArmor';
   }
   return false;
 }
@@ -644,7 +646,7 @@ export function* bakePaintPanelSteps(
       stats.triangles += triangles;
       const mode = armorPaintMode(mesh.material as THREE.Material);
       const owner = ownerOf(mesh, frames);
-      // (267) the hull's and the turret's own armour is never air; every other part standing off it is judged
+      // (267) armour (its own and its add-on) is never air; every other part standing off it is judged
       const judgeStandoff = !armourDraw(mesh);
       const p = plain(position)!, n = plain(geometry.getAttribute('normal'));
       const m = mesh.matrixWorld.elements;
