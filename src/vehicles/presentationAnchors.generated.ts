@@ -396,7 +396,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   m551_sheridan: Object.freeze({ centerYM: 2.2545, topHalfM: 3.696, sideHalfM: 2.4123 }),
   m551a1_tts: Object.freeze({ centerYM: 2.2649, topHalfM: 3.6651, sideHalfM: 2.4235 }),
   m60a1: Object.freeze({ centerYM: 2.2459, topHalfM: 6.4937, sideHalfM: 3.2469 }),
-  m60a2: Object.freeze({ centerYM: 2.3751, topHalfM: 4.115, sideHalfM: 2.5413 }),
+  m60a2: Object.freeze({ centerYM: 2.3751, topHalfM: 4.1219, sideHalfM: 2.5413 }),
   m60a3: Object.freeze({ centerYM: 2.434, topHalfM: 6.544, sideHalfM: 3.272 }),
   m6_linebacker: Object.freeze({ centerYM: 1.7822, topHalfM: 3.592, sideHalfM: 1.907 }),
   magach3: Object.freeze({ centerYM: 1.8636, topHalfM: 6.1988, sideHalfM: 3.0994 }),

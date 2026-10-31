@@ -1,104 +1,104 @@
 #schema 1
-comp	world:donors:collision:airfield	06933c58ff01542c
+comp	world:donors:collision:airfield	dc517705209da27d
 comp	world:donors:collision:alpine	e3b0c44298fc1c14
 comp	world:donors:collision:autumn	e3b0c44298fc1c14
-comp	world:donors:collision:badlands	55b5993316bb21f0
+comp	world:donors:collision:badlands	b09eb21ce6315879
 comp	world:donors:collision:blackglass	e3b0c44298fc1c14
-comp	world:donors:collision:caldera	aa6f2bb337d8ce08
-comp	world:donors:collision:cliffbridge	6c41dbf83dc67cf4
-comp	world:donors:collision:coastal	f1cc4f0f46cd628f
-comp	world:donors:collision:copper_mesa	cecb0861f7ca3d7e
-comp	world:donors:collision:delta	8b013979d8bd38a3
-comp	world:donors:collision:desert	28d3dd222e6d39c3
+comp	world:donors:collision:caldera	afb57aa3625e5a4e
+comp	world:donors:collision:cliffbridge	af08192454bbf14d
+comp	world:donors:collision:coastal	d715ff1f147f5369
+comp	world:donors:collision:copper_mesa	49c7dc7d15f263a6
+comp	world:donors:collision:delta	c1a93941c6705ee1
+comp	world:donors:collision:desert	235ddde2435b0522
 comp	world:donors:collision:fjord	e3b0c44298fc1c14
 comp	world:donors:collision:foundry	e3b0c44298fc1c14
-comp	world:donors:collision:frontier	ae82e1dff8424ae8
+comp	world:donors:collision:frontier	3d24c16810779a2f
 comp	world:donors:collision:longleaf	e3b0c44298fc1c14
-comp	world:donors:collision:mangrove	dba35ccec6cc580e
-comp	world:donors:collision:mars	6fa758b860fecd34
+comp	world:donors:collision:mangrove	8f2e706a7e1891ae
+comp	world:donors:collision:mars	58527fc73cb328b1
 comp	world:donors:collision:monsoon	e3b0c44298fc1c14
 comp	world:donors:collision:moon	e3b0c44298fc1c14
-comp	world:donors:collision:oasis	d378af4dc31b54d6
-comp	world:donors:collision:orchard	cf0f450a2eecb9a4
+comp	world:donors:collision:oasis	2e5611e6f81a3b01
+comp	world:donors:collision:orchard	e2497bf1a0053f78
 comp	world:donors:collision:polders	e3b0c44298fc1c14
-comp	world:donors:collision:railyard	e4b2a55da3f21621
+comp	world:donors:collision:railyard	a71aec3044b14fb6
 comp	world:donors:collision:reservoir	e3b0c44298fc1c14
-comp	world:donors:collision:ruinspires	06a6cd41520f1f00
-comp	world:donors:collision:saltwind	06a6cd41520f1f00
-comp	world:donors:collision:skybridge	8c2b18cf7755e4f9
-comp	world:donors:collision:steppe	8b013979d8bd38a3
-comp	world:donors:collision:titan_gorge	8c2b18cf7755e4f9
-comp	world:donors:collision:urban	1f57457e6516fa8e
-comp	world:donors:collision:verdant	d37239aaeda010df
-comp	world:donors:collision:whiteout	2cae13109ebf165d
+comp	world:donors:collision:ruinspires	34b6515cf5d59b4d
+comp	world:donors:collision:saltwind	34b6515cf5d59b4d
+comp	world:donors:collision:skybridge	b64b5f81cb7e66f1
+comp	world:donors:collision:steppe	c1a93941c6705ee1
+comp	world:donors:collision:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:collision:urban	25ba1213ec44fdd9
+comp	world:donors:collision:verdant	4e10764b034944db
+comp	world:donors:collision:whiteout	58be929723b7490f
 comp	world:donors:collision:winter	e3b0c44298fc1c14
-comp	world:donors:trenches:airfield	06933c58ff01542c
+comp	world:donors:trenches:airfield	dc517705209da27d
 comp	world:donors:trenches:alpine	e3b0c44298fc1c14
 comp	world:donors:trenches:autumn	e3b0c44298fc1c14
-comp	world:donors:trenches:badlands	55b5993316bb21f0
+comp	world:donors:trenches:badlands	b09eb21ce6315879
 comp	world:donors:trenches:blackglass	e3b0c44298fc1c14
-comp	world:donors:trenches:caldera	aa6f2bb337d8ce08
-comp	world:donors:trenches:cliffbridge	6c41dbf83dc67cf4
-comp	world:donors:trenches:coastal	f1cc4f0f46cd628f
-comp	world:donors:trenches:copper_mesa	cecb0861f7ca3d7e
-comp	world:donors:trenches:delta	8b013979d8bd38a3
-comp	world:donors:trenches:desert	28d3dd222e6d39c3
+comp	world:donors:trenches:caldera	afb57aa3625e5a4e
+comp	world:donors:trenches:cliffbridge	af08192454bbf14d
+comp	world:donors:trenches:coastal	d715ff1f147f5369
+comp	world:donors:trenches:copper_mesa	49c7dc7d15f263a6
+comp	world:donors:trenches:delta	c1a93941c6705ee1
+comp	world:donors:trenches:desert	235ddde2435b0522
 comp	world:donors:trenches:fjord	e3b0c44298fc1c14
 comp	world:donors:trenches:foundry	e3b0c44298fc1c14
-comp	world:donors:trenches:frontier	ae82e1dff8424ae8
+comp	world:donors:trenches:frontier	3d24c16810779a2f
 comp	world:donors:trenches:longleaf	e3b0c44298fc1c14
-comp	world:donors:trenches:mangrove	dba35ccec6cc580e
-comp	world:donors:trenches:mars	6fa758b860fecd34
+comp	world:donors:trenches:mangrove	8f2e706a7e1891ae
+comp	world:donors:trenches:mars	58527fc73cb328b1
 comp	world:donors:trenches:monsoon	e3b0c44298fc1c14
 comp	world:donors:trenches:moon	e3b0c44298fc1c14
-comp	world:donors:trenches:oasis	d378af4dc31b54d6
-comp	world:donors:trenches:orchard	cf0f450a2eecb9a4
+comp	world:donors:trenches:oasis	2e5611e6f81a3b01
+comp	world:donors:trenches:orchard	e2497bf1a0053f78
 comp	world:donors:trenches:polders	e3b0c44298fc1c14
-comp	world:donors:trenches:railyard	e4b2a55da3f21621
+comp	world:donors:trenches:railyard	a71aec3044b14fb6
 comp	world:donors:trenches:reservoir	e3b0c44298fc1c14
-comp	world:donors:trenches:ruinspires	06a6cd41520f1f00
-comp	world:donors:trenches:saltwind	06a6cd41520f1f00
-comp	world:donors:trenches:skybridge	8c2b18cf7755e4f9
-comp	world:donors:trenches:steppe	8b013979d8bd38a3
-comp	world:donors:trenches:titan_gorge	8c2b18cf7755e4f9
-comp	world:donors:trenches:urban	1f57457e6516fa8e
-comp	world:donors:trenches:verdant	d37239aaeda010df
-comp	world:donors:trenches:whiteout	2cae13109ebf165d
+comp	world:donors:trenches:ruinspires	34b6515cf5d59b4d
+comp	world:donors:trenches:saltwind	34b6515cf5d59b4d
+comp	world:donors:trenches:skybridge	b64b5f81cb7e66f1
+comp	world:donors:trenches:steppe	c1a93941c6705ee1
+comp	world:donors:trenches:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:trenches:urban	25ba1213ec44fdd9
+comp	world:donors:trenches:verdant	4e10764b034944db
+comp	world:donors:trenches:whiteout	58be929723b7490f
 comp	world:donors:trenches:winter	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:airfield	06933c58ff01542c
+comp	world:donors:wreckPlan:airfield	dc517705209da27d
 comp	world:donors:wreckPlan:alpine	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:autumn	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:badlands	55b5993316bb21f0
+comp	world:donors:wreckPlan:badlands	b09eb21ce6315879
 comp	world:donors:wreckPlan:blackglass	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:caldera	aa6f2bb337d8ce08
-comp	world:donors:wreckPlan:cliffbridge	6c41dbf83dc67cf4
-comp	world:donors:wreckPlan:coastal	f1cc4f0f46cd628f
-comp	world:donors:wreckPlan:copper_mesa	cecb0861f7ca3d7e
-comp	world:donors:wreckPlan:delta	8b013979d8bd38a3
-comp	world:donors:wreckPlan:desert	28d3dd222e6d39c3
+comp	world:donors:wreckPlan:caldera	afb57aa3625e5a4e
+comp	world:donors:wreckPlan:cliffbridge	af08192454bbf14d
+comp	world:donors:wreckPlan:coastal	d715ff1f147f5369
+comp	world:donors:wreckPlan:copper_mesa	49c7dc7d15f263a6
+comp	world:donors:wreckPlan:delta	c1a93941c6705ee1
+comp	world:donors:wreckPlan:desert	235ddde2435b0522
 comp	world:donors:wreckPlan:fjord	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:foundry	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:frontier	ae82e1dff8424ae8
+comp	world:donors:wreckPlan:frontier	3d24c16810779a2f
 comp	world:donors:wreckPlan:longleaf	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:mangrove	dba35ccec6cc580e
-comp	world:donors:wreckPlan:mars	6fa758b860fecd34
+comp	world:donors:wreckPlan:mangrove	8f2e706a7e1891ae
+comp	world:donors:wreckPlan:mars	58527fc73cb328b1
 comp	world:donors:wreckPlan:monsoon	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:moon	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:oasis	d378af4dc31b54d6
-comp	world:donors:wreckPlan:orchard	cf0f450a2eecb9a4
+comp	world:donors:wreckPlan:oasis	2e5611e6f81a3b01
+comp	world:donors:wreckPlan:orchard	e2497bf1a0053f78
 comp	world:donors:wreckPlan:polders	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:railyard	e4b2a55da3f21621
+comp	world:donors:wreckPlan:railyard	a71aec3044b14fb6
 comp	world:donors:wreckPlan:reservoir	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:ruinspires	06a6cd41520f1f00
-comp	world:donors:wreckPlan:saltwind	06a6cd41520f1f00
-comp	world:donors:wreckPlan:skybridge	8c2b18cf7755e4f9
-comp	world:donors:wreckPlan:steppe	8b013979d8bd38a3
-comp	world:donors:wreckPlan:titan_gorge	8c2b18cf7755e4f9
-comp	world:donors:wreckPlan:urban	1f57457e6516fa8e
-comp	world:donors:wreckPlan:verdant	d37239aaeda010df
-comp	world:donors:wreckPlan:whiteout	2cae13109ebf165d
+comp	world:donors:wreckPlan:ruinspires	34b6515cf5d59b4d
+comp	world:donors:wreckPlan:saltwind	34b6515cf5d59b4d
+comp	world:donors:wreckPlan:skybridge	b64b5f81cb7e66f1
+comp	world:donors:wreckPlan:steppe	c1a93941c6705ee1
+comp	world:donors:wreckPlan:titan_gorge	b64b5f81cb7e66f1
+comp	world:donors:wreckPlan:urban	25ba1213ec44fdd9
+comp	world:donors:wreckPlan:verdant	4e10764b034944db
+comp	world:donors:wreckPlan:whiteout	58be929723b7490f
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
-comp	world:fleet	10096c4a6d4a4ee5
+comp	world:fleet	7cce69214e045180
 comp	world:map:collision:airfield	653bb1ba31589e19
 comp	world:map:collision:alpine	093933e44d61cf22
 comp	world:map:collision:autumn	4a47aa8f76c63e0f
@@ -202,7 +202,7 @@ comp	world:roster	c3797f6fbc261c2e
 comp	world:tool:collision	12b9fa01b72bbc44
 comp	world:tool:trenches	f87bf0531028fdac
 comp	world:tool:wreckPlan	36731d55c1711e30
-core	b424bbc1542c2a15
+core	5afcbf4a6f6915c3
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	d9322a273c2ec5d7
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	58e9120e79f049c3
 file	anatomy	src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts	794247cc208db05d
@@ -254,7 +254,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/misc.generated.ts	061faadde6ad9d82
 file	anatomy	src/vehicles/combatAnatomyGroups/modern2.generated.ts	783a3532d73d97db
 file	anatomy	src/vehicles/combatAnatomyGroups/modern3Core.generated.ts	662a35accaf76c09
 file	anatomy	src/vehicles/combatAnatomyGroups/nationalModernization.generated.ts	c8086044724365b9
-file	anatomy	src/vehicles/combatAnatomyGroups/patton.generated.ts	52bdb68dafe5e8a0
+file	anatomy	src/vehicles/combatAnatomyGroups/patton.generated.ts	ff53ebda9bc47368
 file	anatomy	src/vehicles/combatAnatomyGroups/poland.generated.ts	dc1e07a2abb16a88
 file	anatomy	src/vehicles/combatAnatomyGroups/pumaS1SourceX.generated.ts	976bf1037ab3a563
 file	anatomy	src/vehicles/combatAnatomyGroups/russia.generated.ts	c38e7d4037df1b83
@@ -288,7 +288,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	ec647b2949bae4a6
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	9bf37ec26baf4dea
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	9225c927534516d9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	f47ba3d7f7c51d84
-file	centering	src/vehicles/presentationAnchors.generated.ts	3373f0651e06af0e
+file	centering	src/vehicles/presentationAnchors.generated.ts	3409b719b77b18ce
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	0d1545fc466a4587
 file	controls	src/vehicles/auxiliaryInventory.generated.ts	e67fb7d2966650c8
@@ -345,7 +345,7 @@ file	fills	src/vehicles/interiorFillGroups/misc.generated.ts	54ae5f67350e98df
 file	fills	src/vehicles/interiorFillGroups/modern2.generated.ts	ae9064db28c6d92a
 file	fills	src/vehicles/interiorFillGroups/modern3Core.generated.ts	147d5dad98714f10
 file	fills	src/vehicles/interiorFillGroups/nationalModernization.generated.ts	74325fec91144cee
-file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	cc6722c6388d301e
+file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	8511946cba84ba0d
 file	fills	src/vehicles/interiorFillGroups/poland.generated.ts	c620ac82eb702c9d
 file	fills	src/vehicles/interiorFillGroups/pumaS1SourceX.generated.ts	4b703231ab749f58
 file	fills	src/vehicles/interiorFillGroups/russia.generated.ts	f25f805ab836411b
@@ -379,9 +379,9 @@ file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	73719eb00bd6776b
 file	fills	src/vehicles/interiorFillGroups/ukraine.generated.ts	6687c71f0d1dffea
 file	fills	src/vehicles/interiorFillGroups/xk2.generated.ts	00db8fbca2bafbaa
 file	fills	src/vehicles/interiorFillLoaders.generated.ts	73ab64291838ae4f
-file	gunLines	docs/geometry-gate/gun-junction.json	d28558e9a7a0f7c1
-file	icons	public/icons/tank-assets.json	2869ee2c036ac49f
-file	ledger	docs/references/fleet-geometry-ledger.json	c990ef174fb9a2d0
+file	gunLines	docs/geometry-gate/gun-junction.json	8108ca41d01519e2
+file	icons	public/icons/tank-assets.json	7300fd14c843aebd
+file	ledger	docs/references/fleet-geometry-ledger.json	021dcc943a6fe13f
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -467,9 +467,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	d960b96a
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	dfacb429a6a67d8f
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	85979e5b8eff084f
-file	seats	src/sim/missionAttachmentSeats.generated.ts	1fc601b87838d90d
+file	seats	src/sim/missionAttachmentSeats.generated.ts	d51e156de918f627
 file	seats	src/sim/missionDockSeats.generated.ts	b611cd629c615469
-file	spareTrack	docs/geometry-gate/spare-track.json	a0207529e3fd20bd
+file	spareTrack	docs/geometry-gate/spare-track.json	95d81f95c41da8fd
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	ed4028d24525797c
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -523,7 +523,7 @@ group	misc	45c6cd252b197700
 group	modern2	cc1f6be6be821cc2
 group	modern3Core	857759b6a3cb309b
 group	nationalModernization	352d905e83192f4a
-group	patton	9983b926c7618a50
+group	patton	e26928de10d8fd67
 group	poland	bef17e751012a507
 group	pumaS1SourceX	551093761ceb0bcd
 group	russia	96a3b51339df4030
@@ -667,12 +667,12 @@ key	anatomy	m47_patton	4b767971289f7f17	644094f9b6c2009f
 key	anatomy	m48a5_patton	cac7898d8314f056	f35598f6062c8fa4
 key	anatomy	m551_sheridan	a16b4a209f84a840	9177502831432a19
 key	anatomy	m551a1_tts	7530b9ec81ddeb4c	168440f5d122bdbf
-key	anatomy	m60a1	8e0a4560ae556599	2073e03925825286
-key	anatomy	m60a2	b4c4e99025407f83	00800a6dfc5aab67
-key	anatomy	m60a3	565200de62088768	645b352ba79db7ff
+key	anatomy	m60a1	065272bf8435483c	2be3925010624118
+key	anatomy	m60a2	a47a178b40f04c59	705431d836460755
+key	anatomy	m60a3	9a4d7b06a5b7f82a	b7ed8c8989d4b91e
 key	anatomy	m6_linebacker	d53613b35ab6cf88	86c03aa789335d37
-key	anatomy	magach6b	afd05ee87521ded8	fe376c01a6f8c7fb
-key	anatomy	magach7c	4769c07d1e842ec8	df26472b66d88ea6
+key	anatomy	magach6b	f513451d177f14ac	da99afcbe32ae8d3
+key	anatomy	magach7c	2768efc65b207628	d8b902b10459dff7
 key	anatomy	marder1a3	70b8c15d73a34b2f	00cc03d35be2551e
 key	anatomy	marder2	8c4d4fcf5f8182a5	009a3324daac2892
 key	anatomy	mbt70	19191c6b180797c0	2b1bdaa40ae77336
@@ -905,12 +905,12 @@ key	centering	m47_patton	1fcdcf1a76d0c868	03fc73fd876fbba2
 key	centering	m48a5_patton	87c2c333dc8aa30c	4018727b0c76b032
 key	centering	m551_sheridan	850c694cee7f0f8e	b16c2a0069d67f1a
 key	centering	m551a1_tts	c720d8bec408c5ca	56d1a307ea577d94
-key	centering	m60a1	8ada54dca6d949cc	a52936cae8264dc8
-key	centering	m60a2	c2725bf3c3b23a04	14faf4af4c31fb58
-key	centering	m60a3	b80e6ab9e9ab02b4	e678774fac80128d
+key	centering	m60a1	88a475eddfa10c28	a52936cae8264dc8
+key	centering	m60a2	cfc130e14f22c868	368957eed1616b9d
+key	centering	m60a3	fd6449a9c237a37a	e678774fac80128d
 key	centering	m6_linebacker	877c5b8af8ed2d74	20e23f4cac178aee
-key	centering	magach6b	9d3c387dd6c631f0	3c88ac81bcb10306
-key	centering	magach7c	5a7191e73d5de897	616c3448430ba6ac
+key	centering	magach6b	bd2b3ce48c3fcc3c	3c88ac81bcb10306
+key	centering	magach7c	986bc0df13412584	616c3448430ba6ac
 key	centering	marder1a3	78fbe77061fe3b95	a091063ab335d3a6
 key	centering	marder2	9eb90c547ddc7c32	173db268ad63618c
 key	centering	mbt70	5b8af3d9b19dd785	adad99f6850c514a
@@ -1176,12 +1176,12 @@ key	controls	m47_patton	45d19156c37f985a	703788d6d754002f
 key	controls	m48a5_patton	2a650a8ab8596567	0a9d36fdd02860b3
 key	controls	m551_sheridan	db6081614b08ee9d	09bbd2ef765e9066
 key	controls	m551a1_tts	d73376214de9c3c2	8f5751eda03fbc26
-key	controls	m60a1	8ab1fc08522c9331	5383861088cd3896
-key	controls	m60a2	07d183a626561666	f23970d5ece51efe
-key	controls	m60a3	d65e05870d60d650	c2f7c176e47311e7
+key	controls	m60a1	7e71a6116012469f	5383861088cd3896
+key	controls	m60a2	6c092de0d047643f	f23970d5ece51efe
+key	controls	m60a3	f6e020d40a957c35	c2f7c176e47311e7
 key	controls	m6_linebacker	df6644a2f191b6d6	5ffb101e48602974
-key	controls	magach6b	6ff0eb74ac9f009c	52ee12b1eb67ad4e
-key	controls	magach7c	a48171d0d1b405fc	65b28db21a4b8f1e
+key	controls	magach6b	a1dcbc020bab276c	52ee12b1eb67ad4e
+key	controls	magach7c	d737f029f15fd9f1	65b28db21a4b8f1e
 key	controls	marder1a3	7dc990a1cf8d9934	def05253f84c3dc1
 key	controls	marder2	bcd98d0d94f12cb0	a042f724704db58d
 key	controls	mbt70	0cd03490bc8b77d8	2eb1270004275f7c
@@ -1414,12 +1414,12 @@ key	fills	m47_patton	c65a5c14cc1738c3	e1af50eb636a3cdb
 key	fills	m48a5_patton	4af04c747589b113	6dfb9d99f5c45ecf
 key	fills	m551_sheridan	ba89d6c44a13f595	45636264a1b07221
 key	fills	m551a1_tts	6bac14ecf4f2fb7d	517f37ba56b0360f
-key	fills	m60a1	b3ac21ed4786df75	8fab9165a87c2d29
-key	fills	m60a2	2dea6845544da144	9a775e2ee658032c
-key	fills	m60a3	46d11a8ed08c2132	04c2b0d36c51e87d
+key	fills	m60a1	cc29e37759c5041b	8fab9165a87c2d29
+key	fills	m60a2	dc6faced00a36ba1	ebe7a16cce069669
+key	fills	m60a3	c68d15f66e54c7d5	04c2b0d36c51e87d
 key	fills	m6_linebacker	d78e925a1edf5080	2ceaba8e6686ea76
-key	fills	magach6b	ba885bf9d15e1565	5c12462c9c465964
-key	fills	magach7c	9661d098646e9353	2ce45d68f6d7b881
+key	fills	magach6b	e312434a65394d20	5c12462c9c465964
+key	fills	magach7c	8625e86413c4485a	2ce45d68f6d7b881
 key	fills	marder1a3	bb521546719feae4	d72870d370827782
 key	fills	marder2	eacd39260020056b	24a5999f25a8cae8
 key	fills	mbt70	a021acb15dba2d9b	57ee6900af557e53
@@ -1652,12 +1652,12 @@ key	gunLines	m47_patton	c08ce1291dcfa396	04c9e9d2235ecaf3
 key	gunLines	m48a5_patton	c9d024f0abb2406e	32ad0f958e7db17e
 key	gunLines	m551_sheridan	db9715902a2d27f8	2549e3aa9e14899f
 key	gunLines	m551a1_tts	d92cd50737a38ee7	26e9f84e55608138
-key	gunLines	m60a1	213ac204f79de271	79c62d9c2f4ac6be
-key	gunLines	m60a2	4bd553b95c49f756	535ba36ba325f4fa
-key	gunLines	m60a3	b3e26c1bff45649e	d661505a972b11ed
+key	gunLines	m60a1	1aa39b95494c60ac	79c62d9c2f4ac6be
+key	gunLines	m60a2	25d7da7c53e5670b	9e719c1cc91af0f0
+key	gunLines	m60a3	d3cf4ccf54269252	d661505a972b11ed
 key	gunLines	m6_linebacker	7872b540565a5da8	d90f43caa015d6ae
-key	gunLines	magach6b	125b61f99d78d7ae	d4e2ccf9b81eb877
-key	gunLines	magach7c	8152d1f34538eb55	92ea36bc0ba0cd2c
+key	gunLines	magach6b	fba2fffe81701026	d4e2ccf9b81eb877
+key	gunLines	magach7c	37930154c572c789	92ea36bc0ba0cd2c
 key	gunLines	marder1a3	98a52c428d695e3d	afd23d09a7184f10
 key	gunLines	marder2	1e9627e9c6f7e608	52daec377005ad75
 key	gunLines	mbt70	41452b2f022e5cd4	aeb38d6d5bc27f87
@@ -1890,12 +1890,12 @@ key	icons	m47_patton	17c1f6162d994727	491424ea05a9f092
 key	icons	m48a5_patton	83267fe968a912c2	02f292e252b7034f
 key	icons	m551_sheridan	87d729ee94457ae5	76759bed959b5e23
 key	icons	m551a1_tts	8c97ed7663131c4e	c6755b49640a2de2
-key	icons	m60a1	f820aee7db41b0db	24e3215476fdbc98
-key	icons	m60a2	4ca02497776f8bc2	ff1b33d6d065098a
-key	icons	m60a3	18b47bd051ae8c71	166a59a44834c957
+key	icons	m60a1	692fdcb9d6112c62	7f26b93513bafc86
+key	icons	m60a2	0a974a0d18718958	7fe94fa718ec3830
+key	icons	m60a3	b89c5c904e611a88	09d26fd060c6679a
 key	icons	m6_linebacker	e1263adb9163cac2	23176c4830212bf2
-key	icons	magach6b	e20152b350f4d2d1	2e6e1f77d3d41828
-key	icons	magach7c	7b4820015e374ffb	748ea65e8994280c
+key	icons	magach6b	ec15754683fb46ac	fb2303af65f6ce87
+key	icons	magach7c	963a193254ff8750	e2aab17b05b1c3dc
 key	icons	marder1a3	d83b389d691be74f	b642e21b61b05f45
 key	icons	marder2	69aee9ae30699779	7d4cc72af20b517a
 key	icons	mbt70	441b4ac157552886	360b72efdf8dc06a
@@ -2128,12 +2128,12 @@ key	ledger	m47_patton	903007ad209a2f36	becd1d4152bdb595
 key	ledger	m48a5_patton	f411ebdd463c70af	2c24ed8f07b71b68
 key	ledger	m551_sheridan	f876fecc16115cac	7a2fa392a6ce757f
 key	ledger	m551a1_tts	7ffa84aa900cb101	3698eff5ebd227b6
-key	ledger	m60a1	cbd4b7a095fbbf15	3acf7edf12a8b194
-key	ledger	m60a2	d9b27a9daee398bc	d72af2d1c674fd41
-key	ledger	m60a3	0c80c310e9c07fe0	485913c5f5cf5336
+key	ledger	m60a1	d82f2e73157f0a17	3acf7edf12a8b194
+key	ledger	m60a2	e52576a9620febaf	69f9d8d4606320c7
+key	ledger	m60a3	e229066499355e4e	485913c5f5cf5336
 key	ledger	m6_linebacker	0b10e69d25a0efbd	56941e1bb0f33978
-key	ledger	magach6b	02af4b1ee811fe0b	282d355753f9d081
-key	ledger	magach7c	f0466c87baf7b304	0dde9de4a1ac1002
+key	ledger	magach6b	06477fa6daf29a9e	282d355753f9d081
+key	ledger	magach7c	97ce68d78e9c7e1f	0dde9de4a1ac1002
 key	ledger	marder1a3	efaec741641b82f2	9e35a7d76cabf7f1
 key	ledger	marder2	974a44ee46612944	5ecfa85759ba15f6
 key	ledger	mbt70	b3a44233a91c7b1a	7a3256d3df28f1b1
@@ -2366,12 +2366,12 @@ key	marking	m47_patton	963439d2f61b4d7b	2fc83546f3edf61d
 key	marking	m48a5_patton	bc3d265315b2bdec	87811d6cb01f44cf
 key	marking	m551_sheridan	4a7563f8c7dd1724	a1fc8bc72b812e05
 key	marking	m551a1_tts	5c4bf20cc9d29908	dedbb7bff88e9777
-key	marking	m60a1	2923b37e989b54f9	25dd25cfe5ca2e3b
-key	marking	m60a2	df7c5008ff9d5c7c	9a8d938519addfcd
-key	marking	m60a3	80f95ee4e44aa352	fd85c38d1ca4d116
+key	marking	m60a1	2e6d2bf8eb6f7d0b	25dd25cfe5ca2e3b
+key	marking	m60a2	887cf4a69488169b	9a8d938519addfcd
+key	marking	m60a3	0ef2b08fb83e6fdc	fd85c38d1ca4d116
 key	marking	m6_linebacker	08c4c84809bdd03e	3d5264a9eaba6342
-key	marking	magach6b	d8dfa88d01fb9901	934b7a4a4dc4b695
-key	marking	magach7c	c4bc49ab6bc540e8	84a00fb6105420a8
+key	marking	magach6b	08cdc2f8cb38aab1	934b7a4a4dc4b695
+key	marking	magach7c	6b231a07b35f735c	84a00fb6105420a8
 key	marking	marder1a3	225719bf2cf822e4	4800c4d3f7fee7bf
 key	marking	marder2	ea3f16a78bae6e19	c719c659a013b10b
 key	marking	mbt70	6262b6ef50a23652	5e43e1f0052287b9
@@ -2604,12 +2604,12 @@ key	seats	m47_patton	1a0cbd3a8bda3c34	dcb30b0299c801c6
 key	seats	m48a5_patton	8d573e74ea11883d	124be6a71d58d1d4
 key	seats	m551_sheridan	15fce9f49f1c7ddf	d0d1fd1982329bf5
 key	seats	m551a1_tts	09ea722f07d9a9b6	64b7403aedf87a33
-key	seats	m60a1	416fc6829ad6b281	a999d137f7cfec04
-key	seats	m60a2	106a46a9c50b2c2f	cf0a73bff1bcb312
-key	seats	m60a3	cd1b50ae110c56d2	228e192df016f42e
+key	seats	m60a1	3cc567dc209f48d1	31e5ac8159309f75
+key	seats	m60a2	8c273730f2ba348a	76c5c262d1d8b9ba
+key	seats	m60a3	13fa9a3b95e8f8b5	5d841dea4ea6a042
 key	seats	m6_linebacker	d838ac45c149915b	0dffb7b6a34c6e92
-key	seats	magach6b	a1ca75d604fe6376	78c554126796d0ed
-key	seats	magach7c	b06735371d0d359f	130a6aec5802479e
+key	seats	magach6b	f12f18391fabf2ff	0318ca74f96ada8c
+key	seats	magach7c	f9b46c1844771d91	c0f5a0ec4cbe5715
 key	seats	marder1a3	09ce646932bce84f	62d0c3a065016b96
 key	seats	marder2	9b79ea0a4aa20cef	3a6e592858d3a791
 key	seats	mbt70	fdf84625fa9bb481	45c65eed96007cab
@@ -2842,12 +2842,12 @@ key	spareTrack	m47_patton	50d011e3d0026c7f	90969cb62c8e0cbc
 key	spareTrack	m48a5_patton	346f8d8bda95e62c	0f0d4037a0c3d47d
 key	spareTrack	m551_sheridan	113002ced662d073	ece62989421b6fd4
 key	spareTrack	m551a1_tts	389b60b19ad43c49	3d30ebc5f82c452b
-key	spareTrack	m60a1	9ef3f6da8939f17c	b67b298e3c002df4
-key	spareTrack	m60a2	9a634a08c43b58a2	5d8da16eea441dda
-key	spareTrack	m60a3	eca781cb40072d90	5b15697bafc2eb0d
+key	spareTrack	m60a1	254700b4b2e1428f	b67b298e3c002df4
+key	spareTrack	m60a2	4d6008b41fec5952	33dc0ed6a77b4c51
+key	spareTrack	m60a3	e089bccbb0ceb790	5b15697bafc2eb0d
 key	spareTrack	m6_linebacker	f0bf115008b9bf64	d240fdef657f5ff2
-key	spareTrack	magach6b	9c9301664aa1f894	cb9973bae5078b9d
-key	spareTrack	magach7c	a77c3955aa7fbe7b	ac4b99153a954ac4
+key	spareTrack	magach6b	241f12c58fcf04e0	cb9973bae5078b9d
+key	spareTrack	magach7c	b823ad150d769270	ac4b99153a954ac4
 key	spareTrack	marder1a3	7a0d1e009016dda3	b484ea658a9c428c
 key	spareTrack	marder2	a0f727ba05660caa	d998ef27bc035091
 key	spareTrack	mbt70	73e358995bcdcbe3	5a4691d9d93bf4de
@@ -3609,13 +3609,13 @@ row	combatAnatomy	m48a3_patton	92ec4cdbae65ded6
 row	combatAnatomy	m48a5_patton	373b7c97f71b4f13
 row	combatAnatomy	m551_sheridan	2a7b54f67b5a22f4
 row	combatAnatomy	m551a1_tts	9364bb68db92aeae
-row	combatAnatomy	m60a1	38aa27891dd32c90
-row	combatAnatomy	m60a2	4f89acf332816b81
-row	combatAnatomy	m60a3	4847e9c50c857a0f
+row	combatAnatomy	m60a1	f958aea6290d8fd6
+row	combatAnatomy	m60a2	62822c1eae0f351f
+row	combatAnatomy	m60a3	13c2bcba3b8e806e
 row	combatAnatomy	m6_linebacker	2566a61a464e3ef4
 row	combatAnatomy	magach3	2dfc54dd066251f7
-row	combatAnatomy	magach6b	3933a4f96d4235c5
-row	combatAnatomy	magach7c	8c05c134666d3a43
+row	combatAnatomy	magach6b	266ff4ff754f91cc
+row	combatAnatomy	magach7c	e952a939c528a1a3
 row	combatAnatomy	marder1a3	18427cec357efe43
 row	combatAnatomy	marder2	e9cf906c16c1672a
 row	combatAnatomy	mbt70	1d4a01f56b518819
@@ -3814,10 +3814,12 @@ row	combatGunRigs	m48_super	72d90ff8ed8d1dfe
 row	combatGunRigs	m48a2ga2	72d90ff8ed8d1dfe
 row	combatGunRigs	m48a3_patton	43bc088beca46a66
 row	combatGunRigs	m48a5_patton	6e7993971bfcebac
-row	combatGunRigs	m60a1	3e90a117429e01dd
-row	combatGunRigs	m60a2	521eaca676f060ec
-row	combatGunRigs	m60a3	718d4ce65b239374
+row	combatGunRigs	m60a1	ef64fadff8e9f3d3
+row	combatGunRigs	m60a2	23c44c5bdf08bb82
+row	combatGunRigs	m60a3	528464b216353e05
 row	combatGunRigs	magach3	682d659799cddef8
+row	combatGunRigs	magach6b	c3451b19eace1071
+row	combatGunRigs	magach7c	d6da0d846ab41fbb
 row	combatGunRigs	mbt70	0840f7d68f84815c
 row	combatGunRigs	merkava1b	51bafb6e24cb2929
 row	combatGunRigs	merkava2b	f55fed565a0f7dca
@@ -4245,7 +4247,7 @@ row	geometryLedger	m48a5_patton	b7a46684fbef6d0f
 row	geometryLedger	m551_sheridan	c9b302490537cea0
 row	geometryLedger	m551a1_tts	3c2bb61d7a96bfbe
 row	geometryLedger	m60a1	aa286ae70323808e
-row	geometryLedger	m60a2	ddd680334784a7a2
+row	geometryLedger	m60a2	16b31e3a5840afc5
 row	geometryLedger	m60a3	ab36d556a79c8ab7
 row	geometryLedger	m6_linebacker	ddd2d5506c19e2b7
 row	geometryLedger	magach3	5f6b13ec62080cfb
@@ -4497,7 +4499,7 @@ row	gunJunction	m48a5_patton	c376c502944125a0
 row	gunJunction	m551_sheridan	39610052403e988f
 row	gunJunction	m551a1_tts	412c585f6b4af0a0
 row	gunJunction	m60a1	e68ddaf08fee6210
-row	gunJunction	m60a2	6a30e694810d5c0f
+row	gunJunction	m60a2	4bf259f92ac68331
 row	gunJunction	m60a3	8b0e1af69c5636ea
 row	gunJunction	m6_linebacker	b756eee33929a735
 row	gunJunction	magach3	e45916fc748f9533
@@ -4749,7 +4751,7 @@ row	interiorFills	m48a5_patton	c5294954402571de
 row	interiorFills	m551_sheridan	572baafbfc808929
 row	interiorFills	m551a1_tts	4dc79a1299b24bb8
 row	interiorFills	m60a1	f8538144cef1d3bb
-row	interiorFills	m60a2	77c48c8a84a21cfe
+row	interiorFills	m60a2	59cdd6c9e8886c90
 row	interiorFills	m60a3	ff232f75497906b0
 row	interiorFills	m6_linebacker	1ae0eb8d4f6bdc08
 row	interiorFills	magach3	92b02769585edba5
@@ -5252,13 +5254,13 @@ row	missionAttachmentSeats	m48a3_patton	96fe5ee99416b7fb
 row	missionAttachmentSeats	m48a5_patton	943233bc40355893
 row	missionAttachmentSeats	m551_sheridan	072517b6b9e9de11
 row	missionAttachmentSeats	m551a1_tts	6fc432aa352807c3
-row	missionAttachmentSeats	m60a1	d3e8ee12f2c8c937
-row	missionAttachmentSeats	m60a2	d7ef9db3e69c1e31
-row	missionAttachmentSeats	m60a3	192c3d3cb95b80f6
+row	missionAttachmentSeats	m60a1	1c00e5d12c004032
+row	missionAttachmentSeats	m60a2	638e302675683bab
+row	missionAttachmentSeats	m60a3	436c3a290a9aa1fd
 row	missionAttachmentSeats	m6_linebacker	1c0d4ebbeeab4c95
 row	missionAttachmentSeats	magach3	11eac51ee0e36030
-row	missionAttachmentSeats	magach6b	42edeb77ce7da9a1
-row	missionAttachmentSeats	magach7c	0dd61cba0bcece8a
+row	missionAttachmentSeats	magach6b	a5c6e6fe839b6466
+row	missionAttachmentSeats	magach7c	bc959d208ee777b6
 row	missionAttachmentSeats	marder1a3	1edff2c9c8ffe238
 row	missionAttachmentSeats	marder2	fc5de69414c9df8a
 row	missionAttachmentSeats	mbt70	2af8e2491d774f16
@@ -6014,7 +6016,7 @@ row	presentationProjections	m48a5_patton	d3f91bc41bb157e8
 row	presentationProjections	m551_sheridan	f793012a6da39254
 row	presentationProjections	m551a1_tts	cbaf6d91e813dac1
 row	presentationProjections	m60a1	200f78abeeea064f
-row	presentationProjections	m60a2	a1adbab419fb5a5c
+row	presentationProjections	m60a2	99d41ab49b951d02
 row	presentationProjections	m60a3	8b29ff681484d093
 row	presentationProjections	m6_linebacker	b776c6a6a56660a2
 row	presentationProjections	magach3	7fd0f45fce4207d9
@@ -6266,7 +6268,7 @@ row	spareTrackLedger	m48a5_patton	e69e5a2f40d4d3c2
 row	spareTrackLedger	m551_sheridan	74ba4554e2ce9548
 row	spareTrackLedger	m551a1_tts	c9e40a72bb8f31fe
 row	spareTrackLedger	m60a1	63ae0ce741e5fe91
-row	spareTrackLedger	m60a2	ad80b54cc507e4ea
+row	spareTrackLedger	m60a2	5d1b89b281e0d2d8
 row	spareTrackLedger	m60a3	6dc74d114d26310d
 row	spareTrackLedger	m6_linebacker	760817229ef99e3e
 row	spareTrackLedger	magach3	23cf1de735383bfb
@@ -6445,6 +6447,510 @@ row	spareTrackSeatPlan	ua_m1a1	6fb1b561e21023f9
 row	spareTrackSeatPlan	ua_m1a2_abrams	c8c058bda3f60fd2
 row	spareTrackSeatPlan	ua_m2a3_bradley	87698c9c2dc48e6d
 row	spareTrackSeatPlan	xk2_black_panther	2becfbe531eb19a6
+row	specCombat	abramsx	c0ce462792298132
+row	specCombat	aft10	292ff0fda074d355
+row	specCombat	ajax	255dd50d16a10d5f
+row	specCombat	amx10p	c96deb6f43f908f6
+row	specCombat	amx10p_25	fa31fea2cb69865d
+row	specCombat	amx30	71b988d42e951f1b
+row	specCombat	amx30b	39e67a1a70d022ab
+row	specCombat	amx30b2	0b45950380e57dd6
+row	specCombat	amx40	1fefbc824fcb6550
+row	specCombat	amx40_proto	0ca64b705354c1df
+row	specCombat	amx56	e2dea96de78ce9b9
+row	specCombat	ares_apc	d7e2894a3aa038d1
+row	specCombat	bm_oplot_m	356b7d5a3afe2a31
+row	specCombat	bm_oplot_t	356b7d5a3afe2a31
+row	specCombat	bmp2	0e1860f01d9c3cb9
+row	specCombat	bmp3	48a407bf538a5853
+row	specCombat	bmp3_rok	db158eebf0bfe45b
+row	specCombat	bmp3m_dragun125	384c3847b6293f76
+row	specCombat	bmpt_t90	72b0c92b7d6ad2ab
+row	specCombat	bmpt_terminator2	00d1741e7ec104ec
+row	specCombat	borsuk	16e9de200ed026d7
+row	specCombat	bwp1	762db39d977ad4b1
+row	specCombat	c1_ariete	678b3e81b41ff942
+row	specCombat	c1_ariete_preserie	4f5398e7e27a7af8
+row	specCombat	c1_ariete_proto_serie1	c05c9d5f88ad863f
+row	specCombat	c2_ariete	d1e18ba96a5bb4a3
+row	specCombat	c2_ariete_proto	55fa535b254cd929
+row	specCombat	carro45t	8a8a8090fe780343
+row	specCombat	centurion13	b69bc14e82999437
+row	specCombat	centurion3	6350ee20e6f245a6
+row	specCombat	centurion5_1_aus	33f8eaa761e5321c
+row	specCombat	centurion5_2	b69bc14e82999437
+row	specCombat	centurion5_avre	825c7e2a00d837b7
+row	specCombat	challenger1_mk1	574852620f0628af
+row	specCombat	challenger1_mk2	574852620f0628af
+row	specCombat	challenger1_mk3	166f3a284c719616
+row	specCombat	challenger2	523525e79a90df3b
+row	specCombat	challenger2e	cada7e41f9ade4c5
+row	specCombat	challenger3	678e6a85ea84ff61
+row	specCombat	challenger3_proto	c205dcd16b50f488
+row	specCombat	challenger3_td	ae287bea19eecf00
+row	specCombat	challenger3_td_rws	c1754bafe3ac1859
+row	specCombat	challenger_x	4d2a03f5f1a46233
+row	specCombat	challenger_x_sleek	6c2e612b70e6d14b
+row	specCombat	chieftain3	63fd2b1fbe185bab
+row	specCombat	chieftain5	63fd2b1fbe185bab
+row	specCombat	chieftain_mk10	873cabade3210cbd
+row	specCombat	chieftain_mk9	5ea6885ace243f57
+row	specCombat	christian2	a600c64cceb91e4a
+row	specCombat	cv90	0854f1eebbba781d
+row	specCombat	cv90105_tml	fe3b217bf6095a28
+row	specCombat	cv9040c	8fd19cbced56d7f3
+row	specCombat	cv90_mk4	cad2b4bd0f4d584c
+row	specCombat	cv90_mk4_concept	f08e7f91de0050dd
+row	specCombat	dardo	28c55b08e3e5f6c4
+row	specCombat	fv4034	e74884db01a8b406
+row	specCombat	fv510	8d8b0376dfcc98aa
+row	specCombat	fv510_milan	d5175a39d8279adc
+row	specCombat	griffin50mm	796d21ec8cccd1dc
+row	specCombat	griffin_viper	7f996a331e850e9c
+row	specCombat	hayate_ifv	f793ffba5730f4ab
+row	specCombat	jpz_e100	48f71b52017f04d8
+row	specCombat	k1a1	6ade648b0e92e01d
+row	specCombat	k1e1	ce75000cc93000c6
+row	specCombat	k21	9da5308eda4dc93f
+row	specCombat	k2_black_panther	f40dc67961ea9be3
+row	specCombat	k2b	5a0e62e3a1dc060f
+row	specCombat	kf41_lynx	643b22c71151cdee
+row	specCombat	kf51_evo	3cd92215b9a925f3
+row	specCombat	kf51_panther	3cd92215b9a925f3
+row	specCombat	kf51_u	3cd92215b9a925f3
+row	specCombat	kurganets25	10cc679a2cdc741e
+row	specCombat	kv2	8cb0277499d6e1fb
+row	specCombat	leclerc_s1	3187683b4f0740f0
+row	specCombat	leclerc_s2	174ef46e377f5912
+row	specCombat	leclerc_sxxi	50c141138a87a3a3
+row	specCombat	leclerc_xlr	65591d3bfbe6083e
+row	specCombat	leo1a5	e3125db4f291d25e
+row	specCombat	leo2_improved	f566bcc85966f97e
+row	specCombat	leo2_revolution	c41eb891ccebdba1
+row	specCombat	leo2_revolution_proto	c41eb891ccebdba1
+row	specCombat	leo2a2	042f7180774bfddf
+row	specCombat	leo2a3	a3106e2a419a24c2
+row	specCombat	leo2a4	5d412330259a365a
+row	specCombat	leo2a4_otco	06d10a8a5951acc7
+row	specCombat	leo2a4_v	f8e41aaeeeea2009
+row	specCombat	leo2a4m	a1c398fa138bbc50
+row	specCombat	leo2a4m_can	8332729492c0622e
+row	specCombat	leo2a5	f8e41aaeeeea2009
+row	specCombat	leo2a5m	8332729492c0622e
+row	specCombat	leo2a6	02c2e73a9c1d0b6b
+row	specCombat	leo2a6_ua	ea6f4bf9d2663514
+row	specCombat	leo2a6m	12a288d8db6b5bd7
+row	specCombat	leo2a7v	62f374dda1a4cc91
+row	specCombat	leopard2_proto	b2ef0ad257fa5552
+row	specCombat	lrmv_lynx	ba1a0577737c89f4
+row	specCombat	m1a1	c368b732f85167dc
+row	specCombat	m1a1_abrams_aim	32df01269bb4cce6
+row	specCombat	m1a1_abrams_fep	50176f16a8b56fd8
+row	specCombat	m1a1_abrams_hc	2d1f632d939770d3
+row	specCombat	m1a1_abrams_sa	f746d142f1359400
+row	specCombat	m1a1ha	bf246df5ceea22ea
+row	specCombat	m1a2_abrams	f4f1c7be32004de4
+row	specCombat	m1a2_abrams_sepv2	d55f2d426e9ae294
+row	specCombat	m1a2_abrams_sepv3	caf931b1e09d71b4
+row	specCombat	m1a2_abrams_tusk	8e6e0a0399f42a5c
+row	specCombat	m1a3	6eae65248582cb0c
+row	specCombat	m2a2_bradley	40c6f0193f3c52ef
+row	specCombat	m3a3_bradley	f7812d53274199f3
+row	specCombat	m46_patton	afee64f8d0d91d1b
+row	specCombat	m47_patton	82b52bafd0ccbf59
+row	specCombat	m48_super	c04549c3b79ecaee
+row	specCombat	m48a2ga2	13f43c363292de70
+row	specCombat	m48a3_patton	c4f386e46af584f0
+row	specCombat	m48a5_patton	13f43c363292de70
+row	specCombat	m551_sheridan	eea08ac4d5c9b646
+row	specCombat	m551a1_tts	b09c1cfd78ddc29d
+row	specCombat	m60a1	b4e103f572463c95
+row	specCombat	m60a2	d72ecd4ed786f527
+row	specCombat	m60a3	21a36b5655bd1b06
+row	specCombat	m6_linebacker	f46ff65ed6f3e051
+row	specCombat	magach3	1f28c67fdc2c82fe
+row	specCombat	magach6b	ad31bb1b4a0dd3d7
+row	specCombat	magach7c	9b6e720b0d5c0258
+row	specCombat	marder1a3	c14a527ce26eeeae
+row	specCombat	marder2	3812047c747f11cf
+row	specCombat	mbt70	3fcd5740ee981f5a
+row	specCombat	merkava1b	198c5e36a16f0df5
+row	specCombat	merkava2b	0346a1dca49f1296
+row	specCombat	merkava2d	6d763159fd376bf3
+row	specCombat	merkava3_baz	4915ea086b71b3b2
+row	specCombat	merkava3c	7f654b90d07be2ab
+row	specCombat	merkava3d	4915ea086b71b3b2
+row	specCombat	merkava4	25eee3f28c2d423e
+row	specCombat	merkava4_barak	c18e85de12a5d2d9
+row	specCombat	merkava4_trophy	764c932efb795f0e
+row	specCombat	merkava4b	609db010354cb12f
+row	specCombat	namer_ifv	3a60bff029937ef1
+row	specCombat	object148_proto	f870a1a9f0513004
+row	specCombat	object695	5d4b9885c1f47d81
+row	specCombat	olifant_mk2	ff3763103dafa6bb
+row	specCombat	pl01	bcee9291906eff54
+row	specCombat	pl01_105	89a16e64ea10fe1f
+row	specCombat	pt64_tur	0b27268c35058249
+row	specCombat	pt91a_twardy	09e8568fb0055bf6
+row	specCombat	pt91m	fec526a69a3e3ff5
+row	specCombat	puma_s1	bd34a6b0138045ee
+row	specCombat	raiju_ifv	c0dcc76c38dcef6e
+row	specCombat	sabra_mk2	26b4d167744da918
+row	specCombat	shot_kal	0fa862d71199c850
+row	specCombat	spz_puma	f91407fa5cfd1aff
+row	specCombat	spz_wotan	87e2f4e0fa725702
+row	specCombat	stb1	1d6976f55c98f5b7
+row	specCombat	strv103a	5664eeabdd1d7b1f
+row	specCombat	strv103b	fe1f6b69681e85f9
+row	specCombat	strv105	e4136d97a6027ead
+row	specCombat	strv121	2d672d59eadca57a
+row	specCombat	strv122	05c9cffe5aefcef3
+row	specCombat	strv81	d534ffc7d1178927
+row	specCombat	t14_armata	f870a1a9f0513004
+row	specCombat	t55a	3034bc6bb8674959
+row	specCombat	t62_1975	86d96deb8a5ff222
+row	specCombat	t62mv1	a2a1cf7315988391
+row	specCombat	t64b1v_2022	d362616e871981eb
+row	specCombat	t64bm1m	c432375afef9164b
+row	specCombat	t64bv	70c7e50f75f0b447
+row	specCombat	t64bv1	74db5ae58a52000f
+row	specCombat	t64bv_donbas	37ed60f86e36aea8
+row	specCombat	t72_rys	a8463a94b2ea7164
+row	specCombat	t72b3	c3479fe65407a5b9
+row	specCombat	t72b3_bastion_m	de7b81ddc285edeb
+row	specCombat	t72b3_qilin	56ccf05e8b0a2a00
+row	specCombat	t72b3_sich	0272c28c6c0eef34
+row	specCombat	t72b3_zhuque	1c6fbc3190437243
+row	specCombat	t72b3_zubr	4ecfbf4d79522a46
+row	specCombat	t72b3_zubr_ii	4ecfbf4d79522a46
+row	specCombat	t72b3m_2016	149a58c255e73d8f
+row	specCombat	t72b3m_2022	4ba47e729450a2f2
+row	specCombat	t72b3m_bulat_m	e974a5f5ebe0f8b8
+row	specCombat	t72b3m_hetman	2303a20c18680de5
+row	specCombat	t72b3m_hetman_ii	2303a20c18680de5
+row	specCombat	t72b3m_kunlun	7407d8b36127f3c9
+row	specCombat	t72b3m_wilk	9cc006459261ac5f
+row	specCombat	t72b3m_xuanwu	9aa4ec51de5587eb
+row	specCombat	t72b_1987	6cc2725eee80e693
+row	specCombat	t72bu	325fb6d235b3833c
+row	specCombat	t72bu_1989	325fb6d235b3833c
+row	specCombat	t72m1_jaguar	fea25f9252f4bee8
+row	specCombat	t80	f29be314515fbe72
+row	specCombat	t80b	0f0faa09681945e2
+row	specCombat	t80bv	78f99c56b2826572
+row	specCombat	t80u	4dc94d4fa8f52f82
+row	specCombat	t80u_bars_m	c74aec0420851298
+row	specCombat	t80u_husarz	f1d3e548d261ce73
+row	specCombat	t80u_kursk	b3fe3a7d7840f20a
+row	specCombat	t80u_yun	81df0180f7119d54
+row	specCombat	t80u_zoria	a74faa684f3af3b7
+row	specCombat	t80uk	4dc94d4fa8f52f82
+row	specCombat	t84	b439d1485ae47db7
+row	specCombat	t84bm_oplot_m	c104592f37b12b9f
+row	specCombat	t90	5df02d42935d2728
+row	specCombat	t90_1992	2a369f4176e0ee35
+row	specCombat	t90a	1085c0022b630da3
+row	specCombat	t90a_2004	1085c0022b630da3
+row	specCombat	t90a_2006	fd4c75fbfd2b85b9
+row	specCombat	t90a_burlak	b7be61aec46bc874
+row	specCombat	t90a_burlak_proto	8b05bd632e78796e
+row	specCombat	t90a_vladimir	fd4c75fbfd2b85b9
+row	specCombat	t90am	53e2a2d040c130dd
+row	specCombat	t90m	53e2a2d040c130dd
+row	specCombat	t90m_proryv	2a69fffd673d7ba1
+row	specCombat	t90ms_2011	252255a239c2af48
+row	specCombat	t90ms_tagil	803e918302c909b3
+row	specCombat	t90sm	31108942cad78248
+row	specCombat	t90sm_2013	31108942cad78248
+row	specCombat	tos1a_tagil	f64cc711b1bb985d
+row	specCombat	type10	92a0cb01ef76da53
+row	specCombat	type100	0c62405078ccad76
+row	specCombat	type10_dozer	e25e60afe4b43d8c
+row	specCombat	type10_tk_x	15947c7eb1455d20
+row	specCombat	type10b	54d7a9fc675108e0
+row	specCombat	type59	c137e13673dca93d
+row	specCombat	type74	2c23b879182dbdad
+row	specCombat	type89	65d50523b62933a0
+row	specCombat	type90	d517a5fbba18c513
+row	specCombat	type90_kyumaru	9f37a41947f53d23
+row	specCombat	type90a	2d5e2a52729940aa
+row	specCombat	type96_72_long	d2e1271ea063d415
+row	specCombat	type96_72m_lei	f1ffd9215c2afdd6
+row	specCombat	type96_80_feng	6b50f8af1b6c6c70
+row	specCombat	type96b	d717f1aaf5c9c2a5
+row	specCombat	ua_challenger2	b38dc1a4d66b6044
+row	specCombat	ua_m1a1	b71230cdf73790a7
+row	specCombat	ua_m1a2_abrams	376e8f8127bae13e
+row	specCombat	ua_m2a3_bradley	da4b8dcf3f26f27f
+row	specCombat	ua_t80bv	0af2e3ae6213a40b
+row	specCombat	udes03	6d90d3eb95fbfd3a
+row	specCombat	upior	975cd43fa85ee5ba
+row	specCombat	vickers_mk1	b3000a9d4d2804f9
+row	specCombat	vt4a1	255844bf40f82c86
+row	specCombat	vt4a1_baihu	88a080252ad71dd4
+row	specCombat	warrior_tes_h	5ac227fdbcc7613e
+row	specCombat	xk2_black_panther	f46bd4d8f021e016
+row	specCombat	ztz100	ef0f3408185ad9e0
+row	specCombat	ztz100_prototype	a3d3a85589d2a1f7
+row	specCombat	ztz20	36c33154d797c06c
+row	specCombat	ztz20_prototype	9fe45898531cd699
+row	specCombat	ztz85_iii	cc11cbceee146e28
+row	specCombat	ztz99_longwei	5ce1b6cf8b300605
+row	specCombat	ztz99a	e872fedb5b806c3e
+row	specCombat	ztz99a2	7b34b495a42babe2
+row	specCombat	ztz99a2_qinglong	99a9b51b9474963f
+row	specRest	abramsx	0621b33ae2507cd2
+row	specRest	aft10	0850913862071594
+row	specRest	ajax	549a576a81ab5a4c
+row	specRest	amx10p	36a8676840dd2c53
+row	specRest	amx10p_25	60542d8d187ae651
+row	specRest	amx30	cf86e2128280c584
+row	specRest	amx30b	54765467e133226b
+row	specRest	amx30b2	d8ed26f196c4d6d2
+row	specRest	amx40	e3e706507d397b1b
+row	specRest	amx40_proto	ebc22c0a36a346fc
+row	specRest	amx56	69b11b0c74bb40d4
+row	specRest	ares_apc	30a8530e22925bb7
+row	specRest	bm_oplot_m	ea971226f9f20498
+row	specRest	bm_oplot_t	11f310f86d4a506d
+row	specRest	bmp2	0c5834fdf37e1e30
+row	specRest	bmp3	32419f3ae77068f3
+row	specRest	bmp3_rok	179ade1b831d4e55
+row	specRest	bmp3m_dragun125	5840497827c010a4
+row	specRest	bmpt_t90	fc0df39895c72621
+row	specRest	bmpt_terminator2	0872206cc4aab4e4
+row	specRest	borsuk	b54415821e4ed930
+row	specRest	bwp1	623a06664278c111
+row	specRest	c1_ariete	4b7d7d294fa93631
+row	specRest	c1_ariete_preserie	5b845d755a6382b8
+row	specRest	c1_ariete_proto_serie1	415c8af79bd6d852
+row	specRest	c2_ariete	28ed44e2e789963b
+row	specRest	c2_ariete_proto	96ac8a038f3ad4ca
+row	specRest	carro45t	54ed1b89e722c5f4
+row	specRest	centurion13	129273710e766e7d
+row	specRest	centurion3	d9d294c0e90a99ad
+row	specRest	centurion5_1_aus	a510d0735e35cbe8
+row	specRest	centurion5_2	4b155c3b5c7d855a
+row	specRest	centurion5_avre	c155a8dd9424ea75
+row	specRest	challenger1_mk1	dad65d8baa5e3fa5
+row	specRest	challenger1_mk2	0462f30643cbe245
+row	specRest	challenger1_mk3	af60b7007659ddb7
+row	specRest	challenger2	1d9301e16abb46dd
+row	specRest	challenger2e	29f983eab6ea955d
+row	specRest	challenger3	415726d0e8784698
+row	specRest	challenger3_proto	30df5754a91a3d5a
+row	specRest	challenger3_td	cc28cc0b83d9b0ea
+row	specRest	challenger3_td_rws	07e3fc5b324a077b
+row	specRest	challenger_x	4fe4025793dd8483
+row	specRest	challenger_x_sleek	ef7fd2c5bd5ac816
+row	specRest	chieftain3	21f9e6c4d901520f
+row	specRest	chieftain5	04a32842b8307e1a
+row	specRest	chieftain_mk10	9f1c5a07c981182c
+row	specRest	chieftain_mk9	81a94330eef18d4e
+row	specRest	christian2	95b12028a193079c
+row	specRest	cv90	9c01d5a0b39767b5
+row	specRest	cv90105_tml	becb14952b0ef080
+row	specRest	cv9040c	8f03ab9a5fb87467
+row	specRest	cv90_mk4	39da73c53ea513e9
+row	specRest	cv90_mk4_concept	dd96731599f3637e
+row	specRest	dardo	078345e002774c33
+row	specRest	fv4034	bb33bf67a165f9b7
+row	specRest	fv510	0447410b61d2ab15
+row	specRest	fv510_milan	d3fb0041007007d1
+row	specRest	griffin50mm	615272ff46a2bb11
+row	specRest	griffin_viper	aa968888b536e343
+row	specRest	hayate_ifv	c25deae432a95936
+row	specRest	jpz_e100	ca119b1cff1753b9
+row	specRest	k1a1	6d0d8066d579b03f
+row	specRest	k1e1	a2af488a6f03eb70
+row	specRest	k21	6df8a1a9a17d5f50
+row	specRest	k2_black_panther	3efbff808dea9c74
+row	specRest	k2b	918fc92834d8b207
+row	specRest	kf41_lynx	4995276bac5f4f97
+row	specRest	kf51_evo	230de99395868eef
+row	specRest	kf51_panther	4289ba75f544c620
+row	specRest	kf51_u	cb87b03818370446
+row	specRest	kurganets25	cf95eb168b22db71
+row	specRest	kv2	8bb9645a5810a7ae
+row	specRest	leclerc_s1	8028b25196933615
+row	specRest	leclerc_s2	08ddca579260677e
+row	specRest	leclerc_sxxi	ba90586655a76f54
+row	specRest	leclerc_xlr	aba1d38ead74dd17
+row	specRest	leo1a5	4a69a60ee362408a
+row	specRest	leo2_improved	efba89e3719a5fc8
+row	specRest	leo2_revolution	93a61b019ff3d1f1
+row	specRest	leo2_revolution_proto	1deb20dfa84f12d6
+row	specRest	leo2a2	ce8aec930bbd1387
+row	specRest	leo2a3	d5f6d6ae015b0ca1
+row	specRest	leo2a4	a8c9039438b54be7
+row	specRest	leo2a4_otco	0e28719a270847b7
+row	specRest	leo2a4_v	195ee967f05dd9c4
+row	specRest	leo2a4m	101a8d464229e049
+row	specRest	leo2a4m_can	887c5b1abcbfe3fd
+row	specRest	leo2a5	a906a2a682d0e313
+row	specRest	leo2a5m	4bf9e0fdea5c7a3d
+row	specRest	leo2a6	03cf77d5b5aae74b
+row	specRest	leo2a6_ua	d4449cf1c1b772a6
+row	specRest	leo2a6m	cbed66b53d9956b8
+row	specRest	leo2a7v	c6d284848e6ecfac
+row	specRest	leopard2_proto	6c94dda40ed93253
+row	specRest	lrmv_lynx	55a7c1231dbed29c
+row	specRest	m1a1	21b9f0f78dcc2042
+row	specRest	m1a1_abrams_aim	ad996837c4eb0742
+row	specRest	m1a1_abrams_fep	29dd54132e1906c3
+row	specRest	m1a1_abrams_hc	89069a863c981e18
+row	specRest	m1a1_abrams_sa	fd09938f72c236fe
+row	specRest	m1a1ha	10780453fead62b7
+row	specRest	m1a2_abrams	8a82c40ba0356b6c
+row	specRest	m1a2_abrams_sepv2	014e9bd467c6fc90
+row	specRest	m1a2_abrams_sepv3	7dd0f05ce7b908d4
+row	specRest	m1a2_abrams_tusk	2fb108b4338a45bf
+row	specRest	m1a3	699e1ee5cdf28a7a
+row	specRest	m2a2_bradley	293d73812b079c1d
+row	specRest	m3a3_bradley	20798fcfe0f184e7
+row	specRest	m46_patton	24e1761669222e19
+row	specRest	m47_patton	beac4ce0cbebd76d
+row	specRest	m48_super	98f33b817072c5ee
+row	specRest	m48a2ga2	04f9fe9960ec31a9
+row	specRest	m48a3_patton	695370ecac62dcc7
+row	specRest	m48a5_patton	10bd74f92d7f32ed
+row	specRest	m551_sheridan	aa9ffbd11e2fed4e
+row	specRest	m551a1_tts	d61d215fbc8c389a
+row	specRest	m60a1	7c2cf7b76936917a
+row	specRest	m60a2	a529722a5f354ed6
+row	specRest	m60a3	e0555385106702ef
+row	specRest	m6_linebacker	a051f1861038b35d
+row	specRest	magach3	e0790a02cd5b3e9f
+row	specRest	magach6b	c54ea3e1ce16dcd3
+row	specRest	magach7c	4724e3dcd88b8eb2
+row	specRest	marder1a3	295ce4c3b6075f44
+row	specRest	marder2	20ab6b6385c2d908
+row	specRest	mbt70	7911ca075365c1cb
+row	specRest	merkava1b	f6e26d695770ef4f
+row	specRest	merkava2b	c2f070d002dca5e5
+row	specRest	merkava2d	ebf818e3163ef2eb
+row	specRest	merkava3_baz	879545e643d06404
+row	specRest	merkava3c	65dfcfdb7d8ed536
+row	specRest	merkava3d	26e235fb77afdfb4
+row	specRest	merkava4	6f93a83d6f35e3ea
+row	specRest	merkava4_barak	ad8b06605d7bc952
+row	specRest	merkava4_trophy	6cf2f015c0c90aaa
+row	specRest	merkava4b	e165b475b13ee091
+row	specRest	namer_ifv	956ae9f79b5c6952
+row	specRest	object148_proto	b5d7c4147dbaec6f
+row	specRest	object695	29adccc99d51f91e
+row	specRest	olifant_mk2	8df3032542b4b08a
+row	specRest	pl01	2c6ccddabc04734d
+row	specRest	pl01_105	c7d9605bc0ae8981
+row	specRest	pt64_tur	0195f08b58766053
+row	specRest	pt91a_twardy	6cc5eefe43309926
+row	specRest	pt91m	3691caaae954d6fd
+row	specRest	puma_s1	ad42de1031d0d120
+row	specRest	raiju_ifv	8f549cbe378bd9aa
+row	specRest	sabra_mk2	bc1bb7c9d22cff31
+row	specRest	shot_kal	4f03fb7009c38832
+row	specRest	spz_puma	2161c15e9c1d584f
+row	specRest	spz_wotan	1a59f1fb4561c758
+row	specRest	stb1	425afbacadab64a1
+row	specRest	strv103a	7b365e87764d5327
+row	specRest	strv103b	752008b43f398311
+row	specRest	strv105	e6c7430811827b5c
+row	specRest	strv121	4146f56b3917de46
+row	specRest	strv122	5690e9560e5f43d9
+row	specRest	strv81	904c5be4018c45d8
+row	specRest	t14_armata	770e1db87573cd6e
+row	specRest	t55a	5a268d0cf2450a64
+row	specRest	t62_1975	75bb2e3503a928d4
+row	specRest	t62mv1	c7574c7ed5f392c4
+row	specRest	t64b1v_2022	87db1d40334121b9
+row	specRest	t64bm1m	c7e06f4aecfbb8f9
+row	specRest	t64bv	11c4bf94154f1ac0
+row	specRest	t64bv1	485b40f770cd6adf
+row	specRest	t64bv_donbas	bbc003faa3c05c74
+row	specRest	t72_rys	8a8feb52611ed032
+row	specRest	t72b3	c4d85456a6854b78
+row	specRest	t72b3_bastion_m	edc80437a477611d
+row	specRest	t72b3_qilin	ade90868fa1c41af
+row	specRest	t72b3_sich	d5fdaee2aac85fbe
+row	specRest	t72b3_zhuque	cd2982d0477d3d82
+row	specRest	t72b3_zubr	08573687843957d6
+row	specRest	t72b3_zubr_ii	39aa2bfa93858413
+row	specRest	t72b3m_2016	7f9d1fdb35416ab7
+row	specRest	t72b3m_2022	c05518da0f857514
+row	specRest	t72b3m_bulat_m	98ec93c314757513
+row	specRest	t72b3m_hetman	991a4dc1ba7edbfe
+row	specRest	t72b3m_hetman_ii	8163f7f732bc363c
+row	specRest	t72b3m_kunlun	f221e25f75b365d4
+row	specRest	t72b3m_wilk	4ad6c0e7b59be102
+row	specRest	t72b3m_xuanwu	404b941734b06bea
+row	specRest	t72b_1987	ec1e85b1a8271edb
+row	specRest	t72bu	fd40701e1c4830a7
+row	specRest	t72bu_1989	33dd90efbcd326ca
+row	specRest	t72m1_jaguar	845b4adfb4984fd6
+row	specRest	t80	7cdd8957daea2049
+row	specRest	t80b	40e6dbc59f591e83
+row	specRest	t80bv	7b12c41aeaddf109
+row	specRest	t80u	0ef1034d94e31425
+row	specRest	t80u_bars_m	bcc0789cb65bd500
+row	specRest	t80u_husarz	484499d0575b6fb7
+row	specRest	t80u_kursk	a5cb2084e0ed2138
+row	specRest	t80u_yun	0104e0ca415ad10d
+row	specRest	t80u_zoria	a37e8b86ac2fc954
+row	specRest	t80uk	185a56f32bad8582
+row	specRest	t84	a518a80784555bb4
+row	specRest	t84bm_oplot_m	c9a8d68dac96443b
+row	specRest	t90	770777668341f8dc
+row	specRest	t90_1992	4412a2789d4e458e
+row	specRest	t90a	90aeb46effe8e4ea
+row	specRest	t90a_2004	ac0f49a9b460813b
+row	specRest	t90a_2006	d438119d896ca4d2
+row	specRest	t90a_burlak	2d655dd1f25ee01d
+row	specRest	t90a_burlak_proto	8759a46e01cdb504
+row	specRest	t90a_vladimir	70ea227f2e0e3046
+row	specRest	t90am	d21cb53cafc5691f
+row	specRest	t90m	04f468128c8c74b8
+row	specRest	t90m_proryv	1fe3918b296bccab
+row	specRest	t90ms_2011	b976e18ce16fbfdf
+row	specRest	t90ms_tagil	8c14e384173e8c96
+row	specRest	t90sm	6b9461d14cf5cd98
+row	specRest	t90sm_2013	12f8421bcf3ede48
+row	specRest	tos1a_tagil	d41a5131e295793a
+row	specRest	type10	95b5b89a1dcc86cc
+row	specRest	type100	232fd09b5e0fcf56
+row	specRest	type10_dozer	730085138bf05a54
+row	specRest	type10_tk_x	d93ab436c8679755
+row	specRest	type10b	e11ed01cb2c119f0
+row	specRest	type59	1b9858704f10caad
+row	specRest	type74	d51e2fd93b6f4a42
+row	specRest	type89	d1bb40fae74230e7
+row	specRest	type90	9138e8f33c73cbaf
+row	specRest	type90_kyumaru	827164b4554321e7
+row	specRest	type90a	0c1e6112690eaadb
+row	specRest	type96_72_long	33f6dbc62435eb69
+row	specRest	type96_72m_lei	20457da51439fbe4
+row	specRest	type96_80_feng	d51ba29c5d3c7b6e
+row	specRest	type96b	498d2f40e4c5aa0a
+row	specRest	ua_challenger2	5518d5905a3b4cf3
+row	specRest	ua_m1a1	bc42a1b0ee025cd8
+row	specRest	ua_m1a2_abrams	fb0fb91cb8d2d4cb
+row	specRest	ua_m2a3_bradley	246e0c82f3ae171d
+row	specRest	ua_t80bv	e8823c617c88ad25
+row	specRest	udes03	8d4159b5105f8783
+row	specRest	upior	bdc2817d5759a57f
+row	specRest	vickers_mk1	a8419b5f55999d0f
+row	specRest	vt4a1	3f6577c90d0fbd46
+row	specRest	vt4a1_baihu	cb5a3be67a471a7e
+row	specRest	warrior_tes_h	28c69c5a926e518b
+row	specRest	xk2_black_panther	05448b8b8b708b5f
+row	specRest	ztz100	de140eb11834d961
+row	specRest	ztz100_prototype	1fc7aa6dd2a44610
+row	specRest	ztz20	20433155381e9ab1
+row	specRest	ztz20_prototype	18af338d0f4ce292
+row	specRest	ztz85_iii	842ae2137c63b8de
+row	specRest	ztz99_longwei	3a91b2d0b2052115
+row	specRest	ztz99a	2157cbb662aba785
+row	specRest	ztz99a2	db0a5890b522a2d0
+row	specRest	ztz99a2_qinglong	c94dfadaf244addf
 row	tankAssets	abramsx	32596d2121997c39
 row	tankAssets	aft10	4c05d044c2a856ac
 row	tankAssets	ajax	373552b8843953e9
@@ -6562,13 +7068,13 @@ row	tankAssets	m48a3_patton	75d9e26dbb01e2f2
 row	tankAssets	m48a5_patton	8ca873c16ee8b52a
 row	tankAssets	m551_sheridan	14aeee652c6eed3a
 row	tankAssets	m551a1_tts	49b632bad307f76d
-row	tankAssets	m60a1	504da6698d1c733a
-row	tankAssets	m60a2	bbf1afae5c2dd829
-row	tankAssets	m60a3	843edd0f3d9e0c4e
+row	tankAssets	m60a1	450b23499a99654f
+row	tankAssets	m60a2	a39b240ea76cb250
+row	tankAssets	m60a3	867e59f8b5475cb4
 row	tankAssets	m6_linebacker	0dcbca9eda5f790d
 row	tankAssets	magach3	b8be11fa77cf4ef6
-row	tankAssets	magach6b	27f6b9b6fadd7199
-row	tankAssets	magach7c	d5fa16b339cf3c88
+row	tankAssets	magach6b	4ed643dd1cabd75b
+row	tankAssets	magach7c	871e1251ff3dbea6
 row	tankAssets	marder1a3	3fc1f304069d1dfc
 row	tankAssets	marder2	825631c213a194c9
 row	tankAssets	mbt70	2e9f74d6b582f94a
@@ -6697,14 +7203,14 @@ row	tankAssets	ztz99_longwei	b808025874f0f8f9
 row	tankAssets	ztz99a	df0a81eaecef381e
 row	tankAssets	ztz99a2	3cc52a2ce0962fb7
 row	tankAssets	ztz99a2_qinglong	a1ccb1f159ea47a8
-tool	anatomy	ae1bfd13fbea9fd0
-tool	centering	613c6faa0c31ea05
+tool	anatomy	71dc94931840c9f8
+tool	centering	01eefc89b594b462
 tool	controls	61c62aac042df944
 tool	fills	4259463b962084ad
 tool	gunLines	07b6af9f7157b71e
-tool	icons	bda25535e00cb2d4
+tool	icons	c61a8c6292d246d1
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
-tool	seats	8f57146b2b259cb3
+tool	seats	8938f64b50b53e4e
 tool	spareTrack	b3c7c3ada1a0cd64
 toolchain	927084993d9b95e1
