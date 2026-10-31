@@ -26,8 +26,8 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 3514735,
-      "sha256": "33b857befeae1f95195126743dca310dbcd9bf2acbde37b0ec39572709be0fa6",
+      "bytes": 3514738,
+      "sha256": "4793a212f718e38dac98cd00cb1daffaf401daf014e73fbd02e0b7d483c32d59",
       "obstacles": 2988,
       "colliders": 8124,
       "concealers": 2491
@@ -260,8 +260,8 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 3662949,
-        "sha256": "1c517d1d943ff08a3f9fc80ac55f5fe05f1f3d7c7de8a0eb057678900ac5c744",
+        "bytes": 3663255,
+        "sha256": "f33544d814b421646a8673580f512462ff0ea9f65c8188d220b0589273bf5636",
         "obstacles": 3114,
         "colliders": 8166,
         "concealers": 2491

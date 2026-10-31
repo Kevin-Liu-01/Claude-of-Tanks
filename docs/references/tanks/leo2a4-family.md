@@ -171,3 +171,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   reading flush with the face in right-front renders), its width and sill unchanged; the housing shortened 0.62 ->
   0.49 m so its rear stays at z 0.685, clear of the PERI R17's drum; the window's plate and the optics module follow
   the datums (shared cheek front, leopard2CheekFrontDatums.ts).
+  The window critics (three rounds on leo2a4, leo2a3_b4, leo2a4_v, leo2a4m_can, strv121): PASS on the recess for all;
+  fixed on the way: the CAN's bolted cap on the sill-level wedge piece (dropped), the Strv 121's net (opened over the
+  window), the 2A4's right front eye (outboard of the lip). Kept against one critic's FAIL: the housing's lip running
+  14 cm past the window's outer wall (the 2A3's photo critic asked for it from the owner's Austrian 2A4 photo; two
+  other critics read it minor).
