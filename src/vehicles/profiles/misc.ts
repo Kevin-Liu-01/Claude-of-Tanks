@@ -1882,9 +1882,8 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     P.add('turretDetail', slab(
       [-1.102, 0.795, -0.975], [-1.06, 0.795, -0.975], [-1.06, 0.795, -0.925], [-1.102, 0.795, -0.925],
       [-1.102, 0.93, -0.975], [-1.06, 0.83, -0.975], [-1.06, 0.83, -0.925], [-1.102, 0.93, -0.925])); // tapered mast fairing closes the real load path into the broad sensor base
-    // whips STOWED along the bustle roof (the print carries no raised spikes)
-    P.add('turretDark', box(0.022, 0.022, 0.62), 0.95, roofAt(-1.75) + 0.03, -1.62);   // FSP-06: whip rods are dark
-    P.add('turretDark', box(0.022, 0.022, 0.62), -0.95, roofAt(-1.75) + 0.03, -1.62);
+    // 266 (both photo critics: "a thin rod lies across the rear roof"): the two whips stowed along the bustle roof lay at
+    // one height over a sloping roof, one end floating; they are gone, the standing whips and masts carry the radios.
     // GALIX: LEFT bank deep/outboard (the print's tall left corner), RIGHT
     // bank short/low/inboard (ref right cols top 1.94-2.06, rear -1.76).
     // §B3.2 density (2026-08-06): the real GALIX 80 fit is NINE tubes per
