@@ -546,12 +546,20 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   Every selected receipt prints its reason. A negative control runs every time: a receipt reading a file is selected
   when that file changes, and every changed receipt file is selected, or the run exits 2 before anything runs. The
   uncommitted and untracked files count as changed. A branch carrying an integration tree beyond the base
-  (an origin/integ/* commit not on origin/main) gets the suggested base printed first; `--base=integ` takes it.
+  (an origin/integ/* commit not on origin/main) gets the suggested base printed first; `--base=integ` takes it. On
+  criss-cross history (a lane that merged integ, then main after integ had merged main) it is the newest of
+  `git merge-base --all` that origin/main does not contain (`tools/test-base.selftest.mjs`).
   Speed (266 follow-up): each receipt's reads are computed once per diff from the cache's closure and listings
   (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt) and the changed tables' rows come from one git
-  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. test:lane and
+  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. A JSON table (steps.mjs
+  TABLES kind 'json') is compared row by row instead of diffed: the M60 lane's icon regen rewrote the 55 MB
+  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s), and
+  each batched diff of the other tables stops at 2 minutes (its files then mark every id they hold). test:lane and
   test:recommend stop their children and exit on SIGTERM, SIGINT, SIGHUP or SIGALRM, or when their parent dies
-  (`tools/test-commands-exit.selftest.mjs`, with an unguarded control that orphans).
+  (`tools/test-commands-exit.selftest.mjs`, with an untracked control that orphans). Their signal listeners are attached
+  only while a tracked child runs: a listener holds a signal until the event loop runs, and the selection is one
+  synchronous loop (the M60 lane's 2,904-path dry run ignored its alarm for 11 minutes). Otherwise the default action
+  ends the command at once, and the selection checks for a dead parent once per receipt.
 - `node tools/run-selftests.mjs all --heavy=<suite>[,<suite>]` selects manual receipts (`test:heavy` passes it);
   `--only` matching only another tier's receipts names that tier; `--only-from=<file>` reads one glob per line;
   `--write-durations` still times every tier.
@@ -666,8 +674,12 @@ Result reuse is based on source syntax and file contents:
   including dependencies outside those directories. Query suffixes resolve to
   the real file. Type-only imports remain the typecheck's responsibility.
 - Source text read for an assertion is a data input; its imports are not
-  executed. JSON-listed files, static paths and templated asset directories are
-  tracked. Opaque process/listing operations retain conservative directory inputs.
+  executed. JSON-listed files and static paths are tracked, and a templated data
+  path keys the files its pattern matches (`src/ui/i18nCatalog.${locale}.json` is
+  the two catalogs, not all of src/ui). Opaque process/listing operations retain
+  conservative directory inputs. A path literal can start at any tracked top-level
+  directory (`SELFTEST_ROOT_DIRS`, held to `git ls-files` by selftest-cache.selftest).
+- What the run observed keys the PASS too: see "Observed reads" below.
 - Files and directory members are content hashed. Timestamp-only checkout changes
   preserve a proof; different bytes with the same size and timestamp invalidate it.
   A missing named input becoming present also invalidates the proof.
@@ -715,6 +727,19 @@ cached PASS never hides it. It fails on an undeclared listing module, a `caller`
 stale entry, a missing directory, a root-recursive `lists` pattern and a keyed receipt with tracked listings. Census on
 2026-10-20: 111 modules (45 lists, 12 tracked, 8 caller, 19 outside, 11 identity, 11 cli, 5 none). Listings key and
 select 54 receipts; tracked listings select 12.
+
+**Observed reads (266).** A path computed from data is invisible to any closure. `tools/boot-static-closure.selftest.mjs`
+and `src/game/gunshipAirframe.selftest.mjs` walk src/main.ts's imports by computed path: of the 996 default-tier receipts
+measured with an fs observer, they read 582 and 578 src files their keys never named, so a change that pulled the battle
+graph into the garage boot could pass from cache. The runner therefore preloads `tools/selftest-observe.mjs` beside the
+graph guard. Every receipt process, and every process it starts, records the checkout paths it read, listed and probed.
+- A PASS keeps the observed paths its closure does not cover (a file's digest, a listing's names, a probe's kind) and is
+  reused only while all of them hold. A change shows as "an input its last PASS read changed (<path>)". Observation
+  only adds conditions; the static closure still keys every run, including the first.
+- Each receipt's latest PASS observation (`<cache>/observed/`) is a read for lane mode and the recommender
+  (`tools/test-diff.mjs` laneReadOf: "was seen reading <path>"), as is a file in a directory it listed. A receipt never run on this
+  machine has none; its static reads still select it.
+- Neither preload keys a proof (`selftestCacheEnv`); both salt every key, so changing either re-runs everything once.
 
 Liveness (browser, Git, computed imports) and the environment a key records come from the modules a receipt's imports
 execute, never from a file it only names, lists or spawns. They used to count once any other receipt's walk had parsed
