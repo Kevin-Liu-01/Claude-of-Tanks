@@ -25,6 +25,7 @@ import {
 import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
 import { applyCenturionGunPitch } from './centurionGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
+import { applyT90MarkSourceFrames } from './t90MarkFrames.ts';
 
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
@@ -70,10 +71,12 @@ import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './denmarkSpecs.ts';
 import './m60VariantSpecs.ts';
 import './brazilSpecs.ts';
+import './m41Specs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
+import './ukraineCv90Specs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';
@@ -107,5 +110,6 @@ applyM1A1GunLimits(TANK_SPECS);
 applyTurretScaleGunPitch(TANK_SPECS);
 applyCenturionGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
+applyT90MarkSourceFrames(TANK_SPECS);
 applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();

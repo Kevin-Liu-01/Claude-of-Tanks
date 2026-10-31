@@ -1,4 +1,5 @@
 import { beginAuxiliaryStation, stationFromGun } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, tankProfileCheckpoint, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // First-party sparse reconstruction of the owner's SEP v2 equipment study.
@@ -898,8 +899,8 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
     // 2026-10-19 (owner float sweep): each whip's foot stood 76 mm off the roof edge; seated on the nearest stock.
     C.P.snapGroup(`abrams-whip-${x}`, () => {
       emit(C, `WhipFoot${x}`, KIT.cylY(.020, .033075, .0944, 24), [x, 2.421745, -2.101085]);
-      emit(C, `WhipStock${x}`, KIT.cylY(.033075, .033075, 1.1729, 24), [x, 3.055395, -2.101085]);
-      emit(C, `WhipTip${x}`, KIT.cylY(.0172, .0172, .53513, 12), [x, 3.909410, -2.101085]);
+      emit(C, `WhipStock${x}`, antennaPart(KIT.cylY(.033075, .033075, 1.1729, 24)), [x, 3.055395, -2.101085]);
+      emit(C, `WhipTip${x}`, antennaPart(KIT.cylY(.0172, .0172, .53513, 12)), [x, 3.909410, -2.101085]);
     }, { reachM: .10 });
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const x of [1.069285, -1.20545]) {");

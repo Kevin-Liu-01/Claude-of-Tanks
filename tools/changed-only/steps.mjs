@@ -28,7 +28,8 @@ export const GROUP_LOADERS_FILE = 'src/vehicles/fleetFactory.ts';
 
 /**
  * Per-id tables. `module` tables are read by importing the file(s) and taking `exportName`; `json` tables by parsing
- * the file and following `path`. A row is the stable JSON of one id's entry ("absent" when it has none).
+ * the file and following `path`; `jsonRow` tables hold one id's row per file, the file named <id>.json (266: the tank
+ * asset manifest, tools/tank-assets-store.mjs). A row is the stable JSON of one id's entry ("absent" when it has none).
  */
 export const TABLES = Object.freeze({
   auxiliaryInventory: { kind: 'module', files: ['src/vehicles/auxiliaryInventory.generated.ts'], exportName: 'AUXILIARY_INVENTORY' },
@@ -46,7 +47,7 @@ export const TABLES = Object.freeze({
   geometryLedger: { kind: 'json', files: ['docs/references/fleet-geometry-ledger.json'], path: ['tanks'] },
   presentationAnchors: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_ANCHORS' },
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
-  tankAssets: { kind: 'json', files: ['public/icons/tank-assets.json'], path: ['tanks'] },
+  tankAssets: { kind: 'jsonRow', files: ['public/icons/tank-assets/tanks/*.json'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
   // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
   combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
@@ -142,7 +143,8 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/presentation-centering.mjs': {
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
     // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
-    pin: 'a4e7b6de6e518f96',
+    // 266 re-pin: --sync-assets reads the manifest through tools/tank-assets-store.mjs instead of one JSON file.
+    pin: 'd2a108825f11dc4e',
     reads: [],
     // public/icons is read only by --check (the exported-icon audit) and --sync-assets; the chain runs --update, which
     // renders live builds and writes the anchors file alone.
@@ -154,9 +156,19 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
     // 264 re-pin: 253 (bfb7e709e2) hashes the technical diagrams' label sidecar it has just written (technicalLabelsRecord):
     // its own output in outDir, like the images.
-    pin: '37576ee224e4fc6b',
+    // 266 re-pin: the manifest is a row file per tank, read and written through tools/tank-assets-store.mjs (declared
+    // below); genIcons' own remaining reads are the images and sidecars it has just written.
+    pin: '943e75f896468bd1',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest, images and technical-label sidecars',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest (through tools/tank-assets-store.mjs), images and technical-label sidecars',
+  },
+  'tools/tank-assets-store.mjs': {
+    // 266: the per-tank asset manifest. It names no repository path: every read and listing is under the icons
+    // directory its caller passes, which is genIcons' own output in the icons step and presentation-centering's
+    // --sync-assets input (a mode the chain never runs).
+    pin: '011ee8c31cb47e59',
+    reads: [],
+    note: 'lists and reads <icons>/tank-assets/ (index.json, tanks/<id>.json) for the caller\'s icons directory: the icons step\'s own output; centering reaches it only under --sync-assets',
   },
   // 229: genIcons passes each published picture through the optional local master filter (owner attribution, 228).
   'tools/media-r5/master-filter.mjs': {
@@ -458,7 +470,8 @@ export const STEPS = Object.freeze([
     // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
     // into public/icons): not inputs of its own key.
     writes: ['public/icons/**'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
+    // The manifest's header, written whole beside the per-tank row files (266, tools/tank-assets-store.mjs).
+    files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
     reads: ['public/**'],
     // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
     excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],

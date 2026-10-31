@@ -1027,15 +1027,17 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 3.3184990954451226,
+   "actual": 2.5156364110632383,
+   "roofFittingsTop": 2.890305663774784,
    "published": 2.274000205,
-   "pct": 45.93222499050401
+   "method": "interval: body top to roof-fittings top",
+   "pct": 10.6260415250595
   },
   {
    "name": "hullLengthM",
-   "actual": 7.306050427875148,
+   "actual": 7.536204397397956,
    "published": 6.356300116,
-   "pct": 14.941873331066418
+   "pct": 18.562752857246558
   },
   {
    "name": "overallLengthM",
@@ -1052,17 +1054,27 @@
  ],
  "referenceDimensions": {
   "heightM": 2.419292888937412,
-  "hullLengthM": 7.423803621584493,
+  "hullLengthM": 7.99651233644357,
   "overallLengthM": 10.137479494795262,
   "widthM": 3.7573973629072195
  },
  "referenceBodyExtent": {
   "h": 2.419,
-  "len": 7.424
+  "len": 7.997
  },
  "proceduralBodyExtent": {
-  "h": 3.318,
-  "len": 7.306
+  "h": 2.516,
+  "len": 7.536,
+  "roofFittingsTop": 2.89
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDark",
+   "antennaSpans:turretDetail",
+   "pintleMG:sourceMachineGun_turretDark",
+   "pintleMG:sourceMachineGun_turretDetail"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [

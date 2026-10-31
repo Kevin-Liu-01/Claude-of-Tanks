@@ -1,6 +1,7 @@
-// Receipt: public/icons/tank-assets.json is keyed to the current tank ids (SSOT 2.19, ID.04/05). The CPU re-key tool
-// recomputes every id-bearing field the browser generator writes (metadata, metadataHash, file names, bytes, sha256)
-// and finds the manifest byte-identical; after a rename the same tool re-keys it without rendering.
+// Receipt: the tank asset manifest (public/icons/tank-assets/) is keyed to the current tank ids (SSOT 2.19, ID.04/05).
+// The CPU re-key tool recomputes every id-bearing field the browser generator writes (metadata, metadataHash, file
+// names, bytes, sha256) and finds every row file byte-identical; after a rename the same tool re-keys it without
+// rendering.
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';

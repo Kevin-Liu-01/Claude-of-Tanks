@@ -69,6 +69,10 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     // M48 (release 266: the Bundeswehr's Wegmann rebuild and Rheinmetall's demonstrator on the M48A5's castings)
     node({ id: 'm48a2ga2', tier: 1, line: 'm48', lane: 0, parents: ['jpz_e100'], slot: 'line' }),
     node({ id: 'm48_super', tier: 2, line: 'm48', lane: 0, parents: ['m48a2ga2'], slot: 'line' }),
+    // M41: the Bundeswehr's armoured reconnaissance M41 (1956-66), release 265. 266 integration: a special at I, since the
+    // root's tier-I row is full (the M48A2GA2 on lane 0, the Leopard 1A5 on lane 5: a third child of the Jagdpanzer runs
+    // through one of them)
+    node({ id: 'm41_bw', tier: 1, line: 'special', lane: 1, parents: [], slot: 'special' }),
     // Special
     node({ id: 'leo2a4_otco', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

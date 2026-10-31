@@ -78,6 +78,7 @@ import { LEOPARD2A3B4_PROFILES } from './profiles/leopard2a3B4.ts';
 import { LEOPARD2A4_FAMILY_PROFILES } from './profiles/leopard2A4Family.ts';
 import { DENMARK_PROFILES } from './profiles/denmark.ts';
 import { BRAZIL_PROFILES } from './profiles/brazil.ts';
+import { M41_PROFILES } from './profiles/m41.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -164,6 +165,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LEOPARD2A4_FAMILY_PROFILES,
   ...DENMARK_PROFILES,
   ...BRAZIL_PROFILES,
+  ...M41_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,
@@ -195,6 +197,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   lrmv_lynx: { build: buildLrmvLynx },
   borsuk: { build: buildBorsuk },
   cv9040c: { build: buildCv9040CX },
+  ua_cv9040c: { build: (P: Parameters<typeof buildCv9040CX>[0]) => buildCv9040CX(P, { ukrainian: true }) },
   type89: { build: buildType89X },
 
   ...SINO_SOVIET_CONCEPT_PROFILES,

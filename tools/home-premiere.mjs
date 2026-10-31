@@ -2,7 +2,7 @@
 // home-premiere.mjs — writes the landing's blocks into site/home.html: the hero reel and the features, from the curated
 // set in public/media/home-r2/manifest.json (owner 2026-10-25: "use the videos and pics to show off game features, have
 // big hero pics always animate and show multiple"), and the fleet records the 404 page searches (src/presentation/
-// fleetWall.json, from the fleet takes, public/icons/tank-assets.json and the Garage's facet tables). Each block sits
+// fleetWall.json, from the fleet takes, public/icons/tank-assets/ and the Garage's facet tables). Each block sits
 // between <!--home:NAME--> and <!--/home:NAME-->. Run `node tools/public-shell.mjs --write` after it (the shell inlines the
 // glyphs the blocks reference). Copyright © 2026 Kevin B. Liu.
 //
@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
 import { heroLqip } from './hero-lqip.mjs';
 import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
@@ -25,7 +26,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = (path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
 const EN = json('src/ui/i18nCatalog.en-US.json');
 const ZH = json('src/ui/i18nCatalog.zh-CN.json');
-const ASSETS = json('public/icons/tank-assets.json').tanks;
+const ASSETS = readTankAssets(join(ROOT, 'public/icons')).tanks;
 const HERO = json('public/icons/hero/hero-cards.json');
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
@@ -40,7 +41,7 @@ const text = (key) => {
 const t = (key, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''} data-i18n="${key}">${esc(text(key))}</${tag}>`;
 const tank = (id) => {
   const a = ASSETS[id];
-  if (!a) throw new Error(`home-premiere: ${id} is not in public/icons/tank-assets.json`);
+  if (!a) throw new Error(`home-premiere: ${id} has no row in public/icons/tank-assets/`);
   return a;
 };
 const galleryHref = (id, layer = '') => `/gallery?id=${id}${layer ? `&amp;layer=${layer}` : ''}${STAMP ? `&amp;${STAMP}` : ''}`;

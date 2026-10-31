@@ -23,7 +23,6 @@ const TEXT_PINNED = new Set([
   'src/vehicles/profiles/chieftain10X.ts', // chieftain10XPublishedFoundation
   'src/vehicles/profiles/merkavaX.ts', // merkavaXEndReturnHistory
   'src/vehicles/profiles/t72buX.ts', // fixedSourceSkirtPaint
-  'src/vehicles/profiles/t90.ts', // historicalT90MLamps
   ...[
     'alpine', 'autumn', 'badlands', 'blackglass', 'caldera', 'coastal', 'copperMesa', 'delta', 'desert', 'fjord',
     'index', 'mars', 'railyard', 'ruinspires', 'skybridge', 'steppe', 'titanGorge', 'urban', 'whiteout', 'winter',

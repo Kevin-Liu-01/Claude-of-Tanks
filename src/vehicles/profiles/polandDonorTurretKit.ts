@@ -17,6 +17,7 @@
 // gunner's sight hood at x .58-.99, z -.21-.15 looking forward. The T-72B3 hull under the turret's sweep stands at most
 // .029 (the driver's hatch lid, r 1.23-1.81 ahead) and .075 (its periscope block, r 1.65-1.75) above the ring seat.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {Stock, loft, eraModule} from './eraModuleKit.ts';
@@ -211,7 +212,7 @@ function zubrRackLoad(P: TankBuilderPort): void {
   for (const side of SIDES) {
     const x = side * r.half, zz = r.rear;
     P.addEquipment('turretDetail', cylY(.050, .060, .06, seg(P, 12, 8)), x, r.top + .044, zz);
-    P.addEquipment('turretDark', cylY(.008, .014, .70, seg(P, 8, 6)), x, r.top + .424, zz);
+    P.addEquipment('turretDark', antennaPart(cylY(.008, .014, .70, seg(P, 8, 6))), x, r.top + .424, zz);
   }
 }
 

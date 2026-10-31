@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "cv9035dk": {
+      "name": "CV9035 DK",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): CV9035 DK at tier V with the 35 mm Bushmaster III and the Danish fit. The owner on 2026-10-30: \"the cv9035 should be based on the cv90 mk 4\": it is built on the fleet's CV90 Mk IV (profiles/cv90MkivSourceX.ts, docs/references/tanks/cv90_mkiv_x.md); no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://armyvehicles.dk/cv9035.htm",
+        "https://commons.wikimedia.org/wiki/File:Danish_CV90_75.117.jpg",
+        "https://www.baesystems.com/en/product/cv90"
+      ],
+      "widthM": 3.192,
+      "overallLengthM": 6.695,
+      "tallestM": 3.853,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the CV90 Mk IV build with the Danish fit: the 35 mm Bushmaster III with its long slotted muzzle brake in place of the Mk IV's 50 mm, the muzzle short of the bow, so the length is the hull's own; no missile launcher (the Danish vehicles carry none); the Danish registration plate and coat, as the Holstebro photograph of 75.117 (2024, CC0) shows them on the Danish CV9035. The tallest point is the whip antennas'. The width (re-recorded 2026-10-31, the C gate: 3.326 -> 3.192) is the hull's own since round c4 put the Danish shackles on the tow eyes in place of the source's side loop, which stood 13 cm past the right side.",
+      "caliberMm": 35,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}

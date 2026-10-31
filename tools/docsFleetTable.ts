@@ -1,11 +1,11 @@
-// The fleet rows the Field Manual's chapters print, read from the asset manifest (public/icons/tank-assets.json, a
-// tool-only file the build drops: tools/tool-only-public-files.mjs). Copyright © 2026 Kevin B. Liu.
-// The manifest is 48 MB, so it is read once per process; src/docs/chapters/fleet.ts takes the rows from here and the
-// prerender (tools/docs-prerender.mjs) is the only thing that runs it. Node only.
-import { readFileSync } from 'node:fs';
+// The fleet rows the Field Manual's chapters print, read from the asset manifest (public/icons/tank-assets/, tool-only
+// files the build drops: tools/tool-only-public-files.mjs). Copyright © 2026 Kevin B. Liu.
+// The manifest is a row file per tank (27 MB in all), so it is read once per process; src/docs/chapters/fleet.ts takes
+// the rows from here and the prerender (tools/docs-prerender.mjs) is the only thing that runs it. Node only.
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { displayTier, tierNumeral } from '../src/techTree/tiers.ts';
+import { readTankAssets } from './tank-assets-store.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -39,7 +39,7 @@ let rows: readonly DocsFleetRow[] | null = null;
  *  renders, in manifest order. */
 export function docsFleetRows(): readonly DocsFleetRow[] {
   if (rows) return rows;
-  const table = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks as Record<string, ManifestRow>;
+  const table = readTankAssets<ManifestRow>(join(ROOT, 'public/icons'))?.tanks ?? {};
   rows = Object.values(table).map(({ id, name, countryCode, nation, era, gun, label, assets }) => ({
     id, name, countryCode, nation, tier: displayTier(id), tierNumeral: tierNumeral(id), shells: gun?.shells ?? [],
     displayName: label?.displayName || name, era, aliases: label?.searchAliases ?? [],

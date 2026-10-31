@@ -1,4 +1,5 @@
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four independently authored September 2026 owner-reference reconstructions.
 // Source assets are quarantined comparison inputs only. Every runtime surface
@@ -846,7 +847,7 @@ function classicVMasts(P: TankBuilderPort): void {
   onTurret(P,d,'turretDetail',cylZ(.0769,.1175,20),.55,2.5142,-.7673);
   onTurret(P,d,'turretDetail',box(.09,.027,.045),.4467,2.4754,z);
   onTurret(P,d,'turretDetail',cylY(.0196,.242,12),-.2478,2.2886,-.9447);
-  onTurret(P,d,'turretDark',cylY(.0073,1.398,10),-.2478,3.1079,-.9447);
+  onTurret(P,d,'turretDark',antennaPart(cylY(.0073,1.398,10)),-.2478,3.1079,-.9447);
 }
 
 function modernSkirts(P: TankBuilderPort,roof: number): void {
@@ -1581,7 +1582,15 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
     trackShoeDimensions:{padHeight:.036,grouserHeight:.015,webHeight:.018,hornHeight:.125,pinRadius:.018,pinCentreY:-.003}});
   fenders(P,'t90a-vladimir-x',1.825,1.344);addT90VRearGuards(P);
   classicSkirts(P,'kontakt5-vladimir',1.344,-3.20,3.14);
-  engineDeck(P,1.547,-3.39,2.00);fuelDrums(P,-4.1899,1.517,.366,.83,.59);
+  engineDeck(P,1.547,-3.39,2.00);
+  // 2026-10-30 (Main's ruling A): 200 L drums (585 mm across, 880 mm long); the 732 mm drums read oversized. Same
+  // centre station and bracket floor.
+  fuelDrums(P,-4.1164,1.4435,.2925,.88,.59);
+  // 2026-10-31: the smaller drums' fronts stand 100 mm off the hull's rear edge (-3.42), an enclosed slot in plan
+  // (contig-phase-audit); each drum's cradle floor runs from under the deck edge to where it meets the drum's belly,
+  // and out over the hull's rear ledge (x 1.15), closing the notch the stern corner leaves open between the deck and
+  // that ledge (x 1.04-1.11, z -3.24 to -3.40, open to the ground in plan).
+  for(const side of [-1,1])P.addEquipment('hullDetail',box(.98,.025,.355),side*.68,1.278,-3.3975);
   bowGear(P,1.174,3.27,false,1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],

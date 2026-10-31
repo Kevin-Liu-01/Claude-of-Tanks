@@ -1,4 +1,5 @@
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independently authored Revolution geometry, measured against the owner's
 // September 2026 reference. The source remains a local comparison asset: no
 // source topology, textures, or runtime loader is used by this builder.
@@ -323,9 +324,9 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
   // Two distinct radio stations measured from the source, not paired rear
   // whips: forward starboard and aft port, with the latter leaning aft.
   equip('turretDetail', cylY(0.045, 0.058, 0.10, 12), 1.049, 2.192, 0.847);
-  equip('turretDark', cylY(0.006, 0.012, 1.724, 8), 1.049, 3.099, 0.847);
+  equip('turretDark', antennaPart(cylY(0.006, 0.012, 1.724, 8)), 1.049, 3.099, 0.847);
   equip('turretDetail', cylY(0.042, 0.055, 0.10, 12), -0.842, 2.303, -1.984);
-  equip('turretDark', cylY(0.006, 0.012, 1.679, 8), -0.842, 3.190, -2.029, -0.053);
+  equip('turretDark', antennaPart(cylY(0.006, 0.012, 1.679, 8)), -0.842, 3.190, -2.029, -0.053);
   // Gun-owned mantlet rolls and armored cover fill the central cheek slot.
   P.add('gunMount', sectionSolid([
     { z: -0.43, ring: [[-.40,-.24],[.40,-.24],[.415,.25],[-.40,.25]] },

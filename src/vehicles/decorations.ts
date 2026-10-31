@@ -2627,7 +2627,8 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
 const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
   ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' }, bm_oplot_m: { kind: 'oak' },
   ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
-  t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a_2004: { kind: 'birch' },
+  // 2026-10-30 (Main, t90-family-266): the T-90A obr. 2004 sheds its birch garnish (the parade/garrison mark)
+  t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' },
   pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },
 });
 
@@ -3063,9 +3064,50 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
   ],
+  // 2026-10-30 (lane t90-family-266; the owner: "our new versiosn now just look way too identical to sources"): each
+  // earlier T-90 mark carries its own crew load beside its own fittings (profiles/t90Mark*.ts); the source-X twins keep
+  // the default load. The drums and logs are the builds' own now (t90CradleDrums.ts, the mark kits), so none here.
+  t90_1992: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  t90a_2004: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.7 }, slot: ['turretSide', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+  ],
+  t90a_2006: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.8 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1, small: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  // The 2011 show prototype ran clean: tow gear only.
+  t90ms_2011: () => [
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+  ],
+  t90sm_2013: () => [
+    { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  t90m_proryv: () => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['rearDeck', { spread: 0.4 }] },
+    { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
   t90am: () => [
-    { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
-    { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
     { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.26, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
@@ -3192,11 +3234,21 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 266: the M48 marks on the A5's castings author their own period equipment the same way (pattonCast.ts
   // M48_VARIANTS, docs/references/tanks/<id>.md), dischargers included where the mark carried them
   if (['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].includes(spec.id)) return [];
+  // Release 265 (the M41 family's blind critics, against the 1957, 1961 and Aalborg photographs): the fleet's field load
+  // read as clutter on a 1950s tank (a roof lamp, a turret-side roll, crates on the bustle roof, a third whip). The M41s
+  // carry the loads their build authors in the bustle rack and the DK-1's baskets. The US, Bundeswehr and JGSDF marks keep
+  // the functional smoke pair (it carries the smoke consumable; the fleet has no exhaust smoke system); the DK-1's own
+  // Wegmann banks carry it there, so it takes no decor pair beside them.
+  if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  if (spec.id === 'm41dk1') return [];
+  // the T49's M551 turret carries its own smoke banks and searchlight (profiles/m41.ts)
+  if (spec.id === 't49') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
-  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). All build their own dischargers.
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
+  // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
@@ -3419,10 +3471,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
       ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
       : row));
-  // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
-  // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
-  // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
-  // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  // (Release 240's per-id rule for the C2 Ariete prototype's twin-can cradle, under its roof net, is the placement's
+  // field-suit roof rule since 266: underRoofNet.)
   // Release 264: the Leopard 2A4's kit (profiles/leopard2A4Kit.ts) loads its bustle rack (bundles, cans, the ammunition
   // box, the tarp, the bin) below the roof as the photographed 2A4s carry it; the fleet cargo piled over it and stood a
   // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
@@ -3436,10 +3486,17 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
     });
   }
-  if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
-    && row.slot[0] === 'fleetCargo' && row.slot[1].routes
-    ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
-    : row));
+  // 265 (the Ukrainian CV9040C, ua4): its troop roof's stowage is the tarpaulin load (profiles/cv9040CSourceX.ts); the
+  // fleet cargo stood on it. Its turret roof, under the bundled net, is the placement's field-suit roof rule (266:
+  // underRoofNet; the ua3 critics' "hollow hoop" was the decor's roof loads under that net).
+  if (spec.id === 'ua_cv9040c') {
+    const troopRoof = (slot: string): boolean => slot === 'rearDeck';
+    return manifest
+      .filter((row) => !troopRoof(row.slot[0]))
+      .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !troopRoof(slot)) }] }
+        : row));
+  }
   return manifest;
 }
 
@@ -4901,6 +4958,8 @@ const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 
   'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
+/** How far under a load's foot a field suit's roof cloth still counts as lying on the plate the load stands on. */
+const ROOF_NET_FOOT_M = 0.08;
 /**
  * Camo-painted hard kit (bins, boxes, the smoke banks' own finish) rides the resident group with the working smoke
  * banks: it reads as part of the vehicle, it was resident before the 2026-10-05 retag, and sharing that draw keeps
@@ -5183,6 +5242,11 @@ function* decorationSteps(
     // and its hanging drapes (the net's triangles after its roof and deck carriers, owner frame): a load seated on a
     // wall, a fender or a bustle face under one would sit inside the cloth, so it takes another seat
     const suitDrapes: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
+    // 266 (the net-hoop class; the Ukrainian CV9040C's ua3 critics, both: "a hollow hoop, daylight through it", as the
+    // Ariete prototype's cradle in 240): and its roof and deck cloth (the net's leading triangles, on their carriers). A
+    // load stowed under it stood up through the cloth, and drawn up over it (ghillieDrape.ts) the net became an arch, open
+    // underneath; the decor stows nothing on a roof or deck a field net covers
+    const suitRoofs: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
     for (const [frame, group] of [['hull', hullG], ['turret', turretG]] as const) {
       group.updateWorldMatrix(true, true);
       const toFrame = new THREE.Matrix4().copy(group.matrixWorld).invert(), m = new THREE.Matrix4();
@@ -5193,8 +5257,8 @@ function* decorationSteps(
         if (!pos) return;
         m.multiplyMatrices(toFrame, mesh.matrixWorld);
         const top = Number(mesh.userData[GHILLIE_TOP_VERTICES]) || 0;
-        for (let i = top - (top % 3); i + 2 < pos.count; i += 3) {
-          suitDrapes[frame].push(new THREE.Triangle(
+        for (let i = 0; i + 2 < pos.count; i += 3) {
+          (i < top - (top % 3) ? suitRoofs : suitDrapes)[frame].push(new THREE.Triangle(
             new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 1).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 2).applyMatrix4(m)));
@@ -5205,6 +5269,13 @@ function* decorationSteps(
     const meetsDrape = (frame: DecorFrame, bb: THREE.Box3): boolean => suitDrapes[frame].some((t) => {
       triBox.setFromPoints([t.a, t.b, t.c]);
       return triBox.intersectsBox(bb) && bb.intersectsTriangle(t);
+    });
+    // the roof cloth over the load's footprint, from its foot (less ROOF_NET_FOOT_M: the cloth lies on the plate the load
+    // stands on) to its top: the load would stand up through the net
+    const underRoofNet = (frame: DecorFrame, bb: THREE.Box3): boolean => suitRoofs[frame].some((t) => {
+      triBox.setFromPoints([t.a, t.b, t.c]);
+      return triBox.max.x >= bb.min.x && triBox.min.x <= bb.max.x && triBox.max.z >= bb.min.z && triBox.min.z <= bb.max.z
+        && triBox.min.y < bb.max.y && triBox.max.y > bb.min.y - ROOF_NET_FOOT_M;
     });
     {
       turretG.updateWorldMatrix(true, false);
@@ -5715,6 +5786,7 @@ function* decorationSteps(
       if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && !launcherSweepOK(bb)) return rejectCommit(name, parts, 'launcher-sweep');
       // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('hull', bb)) return rejectCommit(name, parts, 'suit-roof');
       return true;
     }
 
@@ -5741,6 +5813,7 @@ function* decorationSteps(
         if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
       }
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('turret', bb)) return rejectCommit(name, parts, 'suit-roof');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {

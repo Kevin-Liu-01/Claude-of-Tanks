@@ -208,6 +208,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   lrmv_lynx: anchor('hull', 'left', .42, .64, .22, 1),
   borsuk: anchor('hull', 'left', .45, .60, .22, 1),
   cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
+  ua_cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
   type89: anchor('hull', 'left', .45, .38, .20, 1),
   type96_72_long: anchor('turret','left',.33,.42,.23,1),
   type96_80_feng: anchor('turret','left',.36,.42,.23,1),
@@ -252,6 +253,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv121: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
   cv90: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  cv9035dk: anchor('hull', 'left', .52, .58, .20, 1),
   cv90_mk4_concept: anchor('hull', 'left', 0.36, 0.59, 0.23, 1),
   // Polish family deliberately uses three different, source-appropriate
   // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
@@ -312,6 +314,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
+  t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
+  m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
+  m41_bw: anchor('turret', 'left', 0.62, 0.40, 0.22, 1),
+  m41_jgsdf: anchor('turret', 'left', 0.62, 0.40, 0.20, 1),
   leo1a5dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leo1a5dk1: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
@@ -717,6 +724,49 @@ function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
 }
 
 /** Release 262 (the Christian II): a small Dannebrog, the white Nordic cross on red, its upright off the hoist. */
+function drawBundeswehrFlaredCross({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const L = radius * 0.86, a = L * 0.17, b = L * 0.44;
+  const pts: [number, number][] = [[-a, -a], [-b, -L], [b, -L], [a, -a], [L, -b], [L, b], [a, a], [b, L], [-b, L], [-a, a],
+    [-L, b], [-L, -b]];
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(cx + x, cy + y) : ctx.moveTo(cx + x, cy + y)));
+  ctx.closePath();
+  ctx.strokeStyle = '#e4e0d4';
+  ctx.lineWidth = size * 0.09;
+  ctx.lineJoin = 'miter';
+  ctx.stroke();
+  ctx.fillStyle = '#1d1f1d';
+  ctx.fill();
+}
+
+function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.84;
+  ctx.fillStyle = '#ebe7db';
+  // (r5, critics: round petals read as a generic flower): each petal drawn with the cherry blossom's notch in its tip
+  for (let k = 0; k < 5; k++) {
+    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5, ux = detMath.cos(t), uy = detMath.sin(t), vx = -uy, vy = ux;
+    const at = (u: number, v: number): [number, number] => [cx + (ux * u + vx * v) * r, cy + (uy * u + vy * v) * r];
+    ctx.beginPath();
+    ctx.moveTo(...at(0.10, 0));
+    ctx.quadraticCurveTo(...at(0.30, 0.44), ...at(0.74, 0.33));
+    ctx.quadraticCurveTo(...at(1.03, 0.25), ...at(0.98, 0.10));
+    ctx.lineTo(...at(0.80, 0));
+    ctx.lineTo(...at(0.98, -0.10));
+    ctx.quadraticCurveTo(...at(1.03, -0.25), ...at(0.74, -0.33));
+    ctx.quadraticCurveTo(...at(0.30, -0.44), ...at(0.10, 0));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  // (r4, critics: a red star read Soviet or Chinese; the blossom keeps a plain dark heart)
+  ctx.fillStyle = '#3a3f2c';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
   ctx.fillStyle = '#b8343a';
@@ -759,7 +809,7 @@ function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs):
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2;
       ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
+      ctx.arc(cx + detMath.cos(a) * rr, cy + detMath.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -820,7 +870,7 @@ function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterA
   ctx.lineWidth = radius * 0.08;
   ctx.beginPath();
   for (let k = 0; k <= 24; k++) {
-    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.40, y = cy + Math.sin(a) * radius * 0.66;
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.40, y = cy + detMath.sin(a) * radius * 0.66;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
@@ -844,7 +894,7 @@ function drawOsorioEmblem({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.lineWidth = radius * 0.09;
   ctx.beginPath();
   for (let k = 0; k <= 24; k++) {
-    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.20, y = ey + Math.sin(a) * radius * 0.40;
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.20, y = ey + detMath.sin(a) * radius * 0.40;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
@@ -872,6 +922,22 @@ function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): voi
   ctx.fill();
 }
 
+// Ukraine's white tactical triangle (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): an
+// upright open outline in white on the vehicle's flanks.
+function drawUkraineTriangle({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const r = Math.min(size, 256) * 0.40;
+  ctx.strokeStyle = '#ecebe4';
+  // (ua2: ua1 critics, both: a hairline at game distance; the photograph's stroke about twice as heavy)
+  ctx.lineWidth = r * 0.30;
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.95, cy + r * 0.66);
+  ctx.lineTo(cx - r * 0.95, cy + r * 0.66);
+  ctx.closePath();
+  ctx.stroke();
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -892,7 +958,7 @@ function drawSouthAfricaCastle({ ctx, cx, cy, size, radius }: InsigniaPainterArg
   ctx.beginPath();
   for (let k = 0; k < 10; k++) {
     const a = -Math.PI / 2 + k * Math.PI / 5, r = radius * (k % 2 === 0 ? 0.70 : 0.46);
-    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    const x = cx + detMath.cos(a) * r, y = cy + detMath.sin(a) * r;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.closePath();
@@ -945,9 +1011,14 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'dk-dannebrog': drawDenmarkDannebrog,
+  // release 265 (the M41 family's blind critics): the early Bundeswehr's flared black cross with its white border, and the
+  // JGSDF's cherry-blossom badge (its tanks wore no national roundel)
+  'de-cross-1956': drawBundeswehrFlaredCross,
+  'jp-jgsdf-sakura': drawJgsdfSakura,
   'dk-dannebrog-reverse': drawDenmarkDannebrogReverse,
   'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
+  'ua-triangle': drawUkraineTriangle,
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,

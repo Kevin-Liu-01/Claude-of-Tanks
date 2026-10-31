@@ -3,8 +3,11 @@
 Owner request, 2026-10-29: "add a bunch more denmark tanks". Lane `item/denmark-line-265`. Main ruled on the
 proposal the same day (DECISIONS 2026-10-29, about 12:50): all eight ids at the proposed tiers, the Denmark tree as drawn,
 the Christian II moves in as its special, Sweden's nations go back to `['Sweden']`. READY A = the five Leopards, the
-Christian II's move and the tree's Leopard line and special; READY B = the M41 DK-1, the Centurion Mk 5/2 DK and the
-CV9035 DK with the recce/Centurion and CV90 branches.
+Christian II's move and the tree's Leopard line and special; READY B = the M41 DK-1 and the
+CV9035 DK with the recce and CV90 branches (and the owner's M41 family: the US, Bundeswehr and JGSDF marks). The Centurion
+Mk 5/2 DK waits for the Centurion family (owner, 2026-10-29: "the new centurion should be based off of our new
+centuirions"): it composes `centurionFamilySteps(P, 'mk5_2')` once item/centurion-family-262 lands (that lane's ruling),
+kept on wip/denmark-centurion-dk-265.
 
 ## Current status
 
@@ -41,13 +44,13 @@ Experience Squadron (stock German 2A4s) and a 2A8.
 | leo1a5dk | Leopard 1A5 DK | I | the same, with EMES 18 |
 | leo1a5dk1 | Leopard 1A5 DK-1 | I (twin build on leo1a5dk) | the same, with the DK-1 fit, UN white |
 | m41dk1 | M41 DK-1 | II | a new photo-class build |
-| centurion5_2dk | Centurion Mk 5/2 DK | III | the Centurion Mk 5/2 builder with the DK fit |
+| centurion5_2dk | Centurion Mk 5/2 DK | III | held: the Centurion family's new Mk 5/2 (`centurionFamilySteps`) with the DK fit, after that branch lands |
 | cv9035dk | CV9035 DK | V | the CV90 family |
 | leo2a5dk | Leopard 2A5 DK | IX | the source-study 2A5 (`profiles/leopardX.ts`, Danish kit option) and `profiles/leopard2Dk.ts` |
 | leo2a7dk | Leopard 2A7 DK | X | the source-study 2A7V, the same way |
 
 Tree: `src/techTree/nations/denmark.ts`, one root (leo1a3dk). Leopard line leo1a3dk -> leo1a5dk [+ leo1a5dk1] ->
-leo2a5dk -> leo2a7dk; recce and Centurion leo1a3dk -> m41dk1 -> centurion5_2dk; CV90 centurion5_2dk -> cv9035dk; the
+leo2a5dk -> leo2a7dk; recce leo1a3dk -> m41dk1; CV90 m41dk1 -> cv9035dk (the Centurion DK joins between them, m41dk1 -> centurion5_2dk -> cv9035dk, when it lands); the
 Christian II in the special lane. Denmark is the fleet's fifteenth team country (`src/sim/countries.ts`), filling first
 from Sweden.
 

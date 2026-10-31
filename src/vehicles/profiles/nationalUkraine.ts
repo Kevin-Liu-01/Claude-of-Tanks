@@ -2,6 +2,7 @@
 // Compact cast-core turrets keep their ancestry visible between the finite
 // modern cheek banks, working stations, stowage and open protective screens.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
@@ -422,7 +423,7 @@ function roofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
     // inside the rotating receiver and barrel sweep.
     const ax=side<0?-.48:-1.48,az=side<0?-.97:-.68,ay=surfaceY(P,'turret',ax,az,true);
     P.addEquipment('turretDetail',cylY(.055,.070,.058,12),ax,ay+.022,az);
-    P.addEquipment('turretDark',cylY(.007,.014,.64,10),ax,ay+.36,az);
+    P.addEquipment('turretDark',antennaPart(cylY(.007,.014,.64,10)),ax,ay+.36,az);
   }
 }
 

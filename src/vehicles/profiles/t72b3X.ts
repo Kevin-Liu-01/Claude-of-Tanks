@@ -2,6 +2,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independently authored T-72B3 X. Only measured dimensions/planes inform these
 // mathematical solids; no source mesh, rig, texture or donor builder is used.
 import * as THREE from 'three';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
@@ -308,7 +309,10 @@ function roofEquipment(P:TankBuilderPort,sosna=true):void {
   addT72B3Stowage(P);addT72B3Optics(P,sosna);
 }
 
-function antennae(P:TankBuilderPort):void {
+// the whips, their pots and the compact antenna carry the antenna seat role: the geometry gate's body leaves them out
+// (tools/body-height-parts.mjs, Main's ruling 2026-10-30)
+function antennae(P0:TankBuilderPort):void {
+  withSeatRole(P0,'antenna',(P)=>{
   for(const [x,z,low,wideTop,neckTop]of [[-.2288,-1.0235,2.0291,2.0832,2.2685],[1.0391,-.18205,2.0272,2.1725,2.3577]]){
     turretPart(P,'turretDetail',cylY(.07895,wideTop-low,6),x,(low+wideTop)/2,z);
     turretPart(P,'turretDetail',cylY(.03095,neckTop-wideTop,6),x,(wideTop+neckTop)/2,z);
@@ -318,6 +322,7 @@ function antennae(P:TankBuilderPort):void {
   taperedWhip(P,1.0405,[[2.2743,-.18178333,.01273333],[3.2332,-.18128333,.01093333],
     [4.2167,-.21335,.0084],[5.457,-.29361667,.00326667]]);
   compactAntenna(P);
+  });
 }
 
 function taperedWhip(P:TankBuilderPort,x:number,sections:readonly(readonly[number,number,number])[]):void {

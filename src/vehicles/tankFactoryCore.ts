@@ -7626,6 +7626,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // is a measured source part keeps its own stock (the Type 96B's boot, type96GunOwnership.selftest.mjs)
   gunMountLamp: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // a pale canvas mantlet cover that turns with the gun (the M41 DK-1's)
+  gunMountCanvasPale: ['gunG', 'canvasPale'],
   // the Leopard 2A7 DK's cover wrap on the recoiling tube (release 265)
   gunCanvasPale: ['recoilG', 'canvasPale'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.

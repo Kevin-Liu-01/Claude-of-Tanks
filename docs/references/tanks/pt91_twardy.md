@@ -35,8 +35,25 @@ Combat frame: the study's (fleetRenewalSpecs.ts `FLEET_RENEWAL_DONORS`): its dim
 (glacis, skirt and turret, each L/R) the tiles are clustered into; the spec keeps the PT-91A's 1,000 hp, Pronit rounds and
 cadence at the published 45.9 t.
 
-The print below (pt91a_manako.glb) stays the gitignored measurement oracle for the fidelity tool; no geometry is taken
-from it.
+The print below (pt91a_manako.glb) is retired as the Twardy's gate oracle (266, Main): the Twardy is a declared
+derivative of the certified t72b3 study, as the T-84U and the Oplot-T are of theirs, and no geometry is taken from the
+print. Its bow is the outlier against four independent T-72 studies. Measured on each model's own running gear, the
+glacis nose leads the front road-wheel centre / the idler centre by:
+
+| model | nose - front road wheel (m) | nose - idler (m) |
+|---|---|---|
+| t72b3 study (t72b3X.ts) | 0.89 | +0.21 |
+| t72b_1987 study | 0.79 | +0.13 |
+| t72b3m study | 0.75 | +0.12 |
+| t72bu study | 0.45 | -0.16 |
+| pt91a_manako.glb (raw units) | ~1.27 | +0.62 |
+
+The PT-91 keeps the T-72M1 hull, so a bow 0.45 m past the idler is the print's, not the tank's. The hull lengths agree:
+the study's envelope (front fender 3.518 to rear fender -3.360) is 6.878 m against the published 6.86-6.95 (which
+grow with front add-ons), and the print's is 6.99 at the scale that gives its published 3.59 m width; the study's
+6.356 is its structural tub, nose to rear transom (t72b3_x.source-measurements.json). The gate runs before the
+retirement: docs/geometry-gate/pt91a_twardy.json, 0/90; with the B3 whips and the Drawa mast off, whole 11.9, turret
+0, stations 10.4.
 
 ## Oracle history (the retired pre-262 build)
 

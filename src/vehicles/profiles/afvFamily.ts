@@ -21,7 +21,7 @@ import {
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
-import { T90_PROFILES } from './t90.ts';
+import { T90_X_PROFILES } from './t90X.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
 import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
@@ -1537,7 +1537,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // own armor anchors (§5.361 rig-anchor law: the ring rides turretPivot).
   P.turretG.scale.set(1, 1, 1);
   P.gunG.scale.set(1, 1, 1);
-  P.turretG.position.set(0, 1.40, 0.15);
+  // The turntable's base (local -0.08) stays 45 mm into the source-X T-90M deck (1.339 m), as on the former T-90A hull.
+  P.turretG.position.set(0, 1.374, 0.15);
   P.gunG.position.set(0, 0.68, 0.55);
 
   // Broad armored turntable + base skirt: both a size up from the
@@ -1695,26 +1696,15 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
 }
 
 function buildBMPTT90(P: AfvBuilderPort): void {
-  T90_PROFILES.t90a_2004.build(P);
+  // Lane t90-family-266 (the owner 2026-10-30: "including updating the bmpt t90"; "take inspiration and update from the
+  // later t90s we added that have far more accurate models"): the BMPT rides the source-X T-90M hull, running gear and
+  // Relikt side protection (the 2018 BMPT's photographs: full-length ERA box skirts with slat over the rear). The X turret
+  // is cleared whole, every turret- and gun-owned bucket, before the station.
+  T90_X_PROFILES.t90m.build(P);
+  P.clear('turretBark', 'turretCanvasPale', 'turretEquipment', 'turretFittingPaint', 'turretOpenLattice',
+    'turretOpenLatticeDark', 'turretPaintedDetail', 'turretPermanentMarkingSurface', 'turretTrackLinks', 'turretWeaponSteel',
+    'gunMountCanvasSkin', 'gunMountCloth', 'gunMountGlass', 'gunMountLamp');
   addTerminatorT90Station(P);
-  // §5.350-class flank program over the donor's certified thin skirt band:
-  // 8 ERA panels per side (bottoms hold the certified 0.98 line — §B9 wheel
-  // exposure), top strips lapping the fender edge, rubber fore/rear
-  // sections outboard of the 1.70 track outer line.
-  P.visualEraCluster('bmpt-t90-relikt-hull-era', 'hull', () => {
-  sideArmorCourse(P, { x: 1.815, y: 1.10, h: 0.24, d: 0.62, count: 8,
-    front: 2.50, step: 0.70, cap: false });
-  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
-    P.add('hull', KIT.box(0.05, 0.10, 0.55), side * 1.80, 1.235,
-      2.42 - i * 0.72, 0, 0, side * 0.04);
-  }
-  for (const side of [-1, 1]) {
-    P.add('hullDark', KIT.box(0.03, 0.30, 0.42), side * 1.79, 1.02, 2.86,
-      0, 0, side * 0.02);
-    P.add('hullDark', KIT.box(0.03, 0.26, 0.34), side * 1.78, 0.98, -2.72,
-      0, 0, side * 0.03);
-  }
-  });
   // Twin AG-17 bow pods (hull-fixed, the real vehicle's corner stations):
   // seat buried into the bow deck, armored pod, stub tube with an explicit
   // dark mouth, drum feed lapped into the pod's inboard wall.

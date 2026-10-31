@@ -16,6 +16,7 @@ import puppeteer from 'puppeteer';
 import { presentationNumberSource as numberSource, presentationReceiptErrors, rekeyPresentationSource, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
@@ -238,7 +239,7 @@ try {
     if (syncAssets) {
       const before = readFileSync(outputPath, 'utf8');
       const iconsRoot = resolve(root, 'public/icons');
-      const manifest = JSON.parse(readFileSync(resolve(iconsRoot, 'tank-assets.json'), 'utf8'));
+      const manifest = readTankAssets(iconsRoot);
       const live = await page.evaluate(tankIds => window.__AUDIT(tankIds), ids);
       const captureErrors = ids.flatMap(id => presentationReceiptErrors(id,
         rows[id]?.currentAnchor, rows[id]?.capturedProjection,

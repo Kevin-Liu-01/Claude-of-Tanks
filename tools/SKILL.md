@@ -290,7 +290,7 @@ Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
 turret turned modestly toward the lens with the gun forward and level; turretless mounts
 keep the gun on the hull axis).
 `node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
-sha from `tank-assets.json`, flag SVG, policy keys); render only those with
+sha from the tank's `public/icons/tank-assets/tanks/<id>.json` row, flag SVG, policy keys); render only those with
 `node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
 change needs an explicit `--all --part=i/n`), then
 `node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and

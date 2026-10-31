@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent, seated source-file fittings. Hollow rims and channels have
 // physical walls; source material names are not treated as mechanical owners.
 import * as THREE from 'three';
@@ -111,7 +112,7 @@ function roofFurniture(P: TankBuilderPort): void {
   for (const x of [-.230, .183]) add(P, 'turretDetail', cylY(.020, .024, .278, 16),
     x, 2.199, -.834);
   add(P, 'turretDetail', cylY(.067, .067, .273, 24), .87222, 2.1673, -.86465);
-  add(P, 'turretDark', cylY(.004, .0109, 1.265014, 12), .88736, 2.93207, -.86549);
+  add(P, 'turretDark', antennaPart(cylY(.004, .0109, 1.265014, 12)), .88736, 2.93207, -.86549);
 }
 
 function launcher(P: TankBuilderPort, side: -1 | 1, z: number, angle: number): void {

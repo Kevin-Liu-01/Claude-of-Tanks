@@ -52,6 +52,7 @@ import { DRUM_ISSUE_PAINTS, fabricRollParts, fuelDrumParts, place } from '../acc
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { OPLOT_BM_AUTHORING, OPLOT_BM_ERA, OPLOT_BM_SCALE } from '../oplotFlankLayout.ts';
 import { resizeAuthoredVehicle } from './vehicleSize.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type OplotBMVariant = 'm' | 't' | 'u' | 'pl' | 'pls' | 'plz';
@@ -763,18 +764,22 @@ function buildRoof(P: TankBuilderPort, variant: OplotBMVariant): void {
   }
   // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner. 264:
   // on the T-84U the tall one stands on the bustle's right corner instead, outside the 1.34 m reach of the commander's
-  // true-scale NSVT, whose barrel swept through it behind the PNK-6 at every aft bearing
-  if (variant === 'u') {
-    P.add('turretDark', box(0.07, 0.06, 0.07), -0.34, 0.68, -1.90);
-    P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.34, 1.55, -1.90);
-  } else {
-    P.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
-    P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
-  }
-  // the bustle whip rides up onto the Orzeł's slatted bustle top (the PT-84s' rear slats)
+  // true-scale NSVT, whose barrel swept through it behind the PNK-6 at every aft bearing. The whips and their pots carry
+  // the antenna seat role: the geometry gate's body leaves them out (tools/body-height-parts.mjs, Main's ruling
+  // 2026-10-30) and the spare-track seats keep clear of them. The bustle whip rides up onto the Orzeł's slatted bustle
+  // top (the PT-84s' rear slats).
   const whipLift = fit?.rearSlats ? ORZEL_BUSTLE_TOP - 0.66 : 0;
-  P.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68 + whipLift, -1.90);
-  P.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30 + whipLift, -1.90);
+  withSeatRole(P, 'antenna', (W) => {
+    if (variant === 'u') {
+      W.add('turretDark', box(0.07, 0.06, 0.07), -0.34, 0.68, -1.90);
+      W.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.34, 1.55, -1.90);
+    } else {
+      W.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
+      W.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+    }
+    W.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68 + whipLift, -1.90);
+    W.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30 + whipLift, -1.90);
+  });
 }
 
 function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
@@ -1323,9 +1328,21 @@ function buildDozerBlade(P: TankBuilderPort): void {
       [-half, y0, z0], [half, y0, z0], [half, y0, z0 + t], [-half, y0, z0 + t],
       [-half, y1, z1], [half, y1, z1], [half, y1, z1 + t], [-half, y1, z1 + t]));
   }
-  P.addEquipment('hullDark', box(2 * half, 0.05, 0.08), 0, 0.36, 3.87);
+  // the cutting edge stops at the end cheeks' inner faces (its ends flush with their outer faces read as dark skid blocks)
+  P.addEquipment('hullDark', box(2 * (half - 0.05), 0.05, 0.08), 0, 0.36, 3.87);
   for (const s of [-1, 1]) {
-    P.addEquipment('hullEquipment', box(0.05, 0.88, 0.24), side(s, half - 0.025), 0.80, 3.83);
+    // the end cheek: its front edge follows the moldboard's dish, its back edge straight at z 3.58 with the top corner
+    // chamfered up to the lip, its foot level with the cutting edge's (round 11's flat end plate read the blade as a
+    // plank from the side; a back edge following the dish read as a waisted bow-tie)
+    const xi = side(s, half - 0.05), xo = side(s, half);
+    const back = (y: number): number => (y <= 1.08 ? 3.58 : 3.58 + (y - 1.08) * (0.24 / 0.16));
+    const cheek: readonly [number, number][] = [[0.335, 3.84], ...profile];
+    for (let i = 0; i < cheek.length - 1; i++) {
+      const [y0, z0] = cheek[i], [y1, z1] = cheek[i + 1];
+      P.addEquipment('hullEquipment', orientedSlab(
+        [xi, y0, back(y0)], [xo, y0, back(y0)], [xo, y0, z0 + t], [xi, y0, z0 + t],
+        [xi, y1, back(y1)], [xo, y1, back(y1)], [xo, y1, z1 + t], [xi, y1, z1 + t]));
+    }
     // hinge bosses where the push arm and the push frame's side plate meet the moldboard's back
     for (const [x, y, z] of [[0.80, 0.62, 3.70], [1.55, 0.44, 3.80]] as const) {
       P.addEquipment('hullDark', cylX(0.055, 0.14, 14), side(s, x), y, z);
@@ -1358,15 +1375,34 @@ function buildDozerBlade(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', box(0.16, 0.10, 0.10), foot[0], foot[1], foot[2]);
     P.addEquipment('hullDetail', box(0.16, 0.10, 0.10), top[0], top[1], top[2] + 0.03);
   }
-  // the push frame's side plates, out to the blade's ends under the track's front wrap (7 cm below it where it rounds
-  // the idler): with the web plate they close the ground between the nose, the track fronts and the blade seen from
-  // above, so the lift rams over it enclose nothing (B2)
+  // the push frame's side plates: with the web plate they close the ground between the nose, the track fronts and the
+  // blade seen from above, so the lift rams over it enclose nothing (B2). Inboard of the track they run back to the
+  // nose; under the track they start at the gusset's foot, 3 cm under the wrap's front seen from above (round 11: run
+  // back under the wrap, the plate read from the side as a rod ending in the air)
   for (const s of [-1, 1]) {
-    const xa = side(s, 0.78), xb = side(s, half - 0.02);
-    P.addEquipment('hullEquipment', orientedSlab(
-      [xa, 0.40, 3.30], [xb, 0.40, 3.30], [xb, 0.40, 3.83], [xa, 0.40, 3.83],
-      [xa, 0.43, 3.30], [xb, 0.43, 3.30], [xb, 0.43, 3.83], [xa, 0.43, 3.83]));
+    const xa = side(s, 0.78), xm = side(s, 1.10), xb = side(s, half - 0.02);
+    // (the outboard run is the side beam's 6 cm bottom flange, read from the side as part of it, not a hairline)
+    for (const [x0, x1, z0, y0] of [[xa, xm, 3.30, 0.40], [xm, xb, 3.40, 0.37]] as const) {
+      P.addEquipment('hullEquipment', orientedSlab(
+        [x0, y0, z0], [x1, y0, z0], [x1, y0, 3.83], [x0, y0, 3.83],
+        [x0, 0.43, z0], [x1, 0.43, z0], [x1, 0.43, 3.83], [x0, 0.43, 3.83]));
+    }
   }
+  // the push frame's side beams (round 11: "the blade's mount is not seen", the bow cowl hiding everything under 1.22 m
+  // from the side): a box section each side on the side plate, up the moldboard's back to 0.74 and out to the end
+  // cheek, its rear edge ahead of the track's front wrap (5 cm clear at the idler's height); the cross tube through its
+  // foot ahead of the track fronts, and a brace from its top to the moldboard's upper back, under the lift ram
+  for (const s of [-1, 1]) {
+    const x0 = side(s, 1.53), x1 = side(s, half - 0.05);
+    P.addEquipment('hullEquipment', orientedSlab(
+      [x0, 0.43, 3.40], [x1, 0.43, 3.40], [x1, 0.43, 3.79], [x0, 0.43, 3.79],
+      [x0, 0.74, 3.48], [x1, 0.74, 3.48], [x1, 0.74, 3.70], [x0, 0.74, 3.70]));
+    P.addEquipment('hullDark', beamBetween([side(s, 1.59), 0.72, 3.52], [side(s, 1.59), 1.04, 3.78], 0.04, 10));
+  }
+  // its end shows inside the beam's side face, not half off its rear edge (round 11: "a knob with nothing holding it")
+  P.addEquipment('hullDark', cylX(0.05, 2 * (half - 0.04), 16), 0, 0.48, 3.52);
+  // a rolled bar along the moldboard's top lip, the lip's edge from the side a round end, not a knife point
+  P.addEquipment('hullDetail', cylX(0.045, 2 * half, 16), 0, 1.225, 4.015);
 }
 
 /** The T-84U's commander's NSVT on its cupola (the standard mount: no remote stations at this stage), turning about the

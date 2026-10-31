@@ -2,6 +2,7 @@
 // X follows the supplied uniformly anchored visual source; the conflicting
 // official9.42×3.24m dimensions remain documented. No source buffers ship.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {fieldChestParts,reserveDecorVolume} from './fieldChest.ts';
@@ -418,7 +419,7 @@ function antenna(P:TankBuilderPort,base:number[],top:number[]):void {
   const a=new THREE.Vector3(...base),b=new THREE.Vector3(...top),axis=b.clone().sub(a);
   const g=KIT.cylY(.0025,.015,axis.length(),8);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis.normalize()));
-  const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',g,c.x,c.y,c.z);
+  const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',antennaPart(g),c.x,c.y,c.z);
 }
 
 function antennas(P:TankBuilderPort):void {
@@ -429,7 +430,7 @@ function antennas(P:TankBuilderPort):void {
   }
   steppedWhip(P,-1);steppedWhip(P,1);
   rearAntennaMount(P);
-  turret(P,'turretDetail',cylinder(.034,.511,16),.022,2.5825,-2.06);
+  turret(P,'turretDetail',antennaPart(cylinder(.034,.511,16)),.022,2.5825,-2.06);
   antenna(P,[.022,2.815,-2.06],[.022,3.643,-2.06]);
 }
 
@@ -446,7 +447,7 @@ function steppedWhip(P:TankBuilderPort,side:number):void {
     const b=new THREE.Vector3(side*1.37605,endY,at245+slope*(endY-2.45)),d=b.clone().sub(a);
     const g=KIT.cylY(r1,r0,d.length(),12);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()));
-    const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',g,c.x/EQUIPMENT_X_DATUM,c.y,c.z);
+    const c=a.add(b).multiplyScalar(.5);turret(P,'turretDark',antennaPart(g),c.x/EQUIPMENT_X_DATUM,c.y,c.z);
   }
 }
 

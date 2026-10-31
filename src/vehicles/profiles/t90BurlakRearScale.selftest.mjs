@@ -24,11 +24,17 @@ const inspect = (id) => {
   }
 };
 
-const production = inspect('t90_1992');
-assert.equal(production.scale, 1,
-  'T-90 production bustle retains its established envelope');
-near(production.rearZ, -3.30,
-  'T-90 production bustle rear station remains unchanged');
+// 2026-10-30 (lane t90-family-266, Main's identity call): the production obr. 1992 carries its cast turret with no
+// autoloader bustle; the Burlak module is the Burlak prototype's alone.
+{
+  const tank = createTank('t90_1992', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try {
+    assert.equal(tank.root.getObjectByName('rig_turret')?.userData.t90BurlakBustleReceipt, undefined,
+      't90_1992: the production cast turret carries no Burlak bustle');
+  } finally {
+    tank.dispose();
+  }
+}
 
 const burlak = inspect('t90a_burlak_proto');
 assert.equal(burlak.scale, 1,

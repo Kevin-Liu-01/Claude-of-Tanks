@@ -11,6 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
+import { antennaPart } from './profiles/antennaPart.ts';
 import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
@@ -769,9 +770,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const [x, z] of [[-1.00, -1.41], [0.72, 0.97], [1.00, 0.97]]) {
       P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), x, 0.66, z);      // roof socket bridges each antenna pot to the welded crown
     }
-    P.add('turretDetail', cylY(0.006, 0.006, 0.52, 6), -1.00, 0.850, -1.38);   // source Object_24 aft mast peak, centered on the print's single side-profile station
-    P.add('turretDetail', cylY(0.007, 0.007, 0.43, 6), 0.72, 0.987, 0.97);
-    P.add('turretDetail', cylY(0.007, 0.007, 0.34, 6), 1.00, 0.942, 0.97);      // spike-exempt paired receiver masts
+    P.add('turretDetail', antennaPart(cylY(0.006, 0.006, 0.52, 6)), -1.00, 0.850, -1.38);   // source Object_24 aft mast peak, centered on the print's single side-profile station
+    P.add('turretDetail', antennaPart(cylY(0.007, 0.007, 0.43, 6)), 0.72, 0.987, 0.97);
+    P.add('turretDetail', antennaPart(cylY(0.007, 0.007, 0.34, 6)), 1.00, 0.942, 0.97);      // spike-exempt paired receiver masts
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), -1.00, 0.762, -1.41);    // whip base pots at the source seats
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.72, 0.762, 0.97);
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 1.00, 0.762, 0.97);

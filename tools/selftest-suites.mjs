@@ -199,6 +199,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilian line's
     // X1, X1A2, Tamoyos and Osórios in their trees, tiers and photo packets at both qualities, each mark's kit
     'src/vehicles/profiles/brazil.selftest.mjs',
+    // 265: the M41 family on its supplied print's datums, each mark's kit and tree
+    'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
     // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
     // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis
@@ -324,7 +326,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',
     'tools/source-world-registration.selftest.mjs',
+    // 266: the gate page's reference table names each id once; certified ids register their private local oracle
+    'tools/reference-override-registry.selftest.mjs',
     'tools/source-dimension-frame.selftest.mjs',
+    // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
+    'tools/body-height-parts.selftest.mjs',
+    // 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare body to body
+    'tools/fused-roof-gun-boxes.selftest.mjs',
+    // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
+    'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
@@ -488,14 +498,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
     'src/vehicles/profiles/bradleyRunningGear.selftest.mjs',
-    'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
-    'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
-    'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
-    'src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs',
     'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
-    'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
-    'src/vehicles/profiles/t90MSTurretArmorSeat.selftest.mjs',
-    'src/vehicles/profiles/t90MProryvTrackRwsBustle.selftest.mjs',
+    'src/vehicles/profiles/t90XTwins.selftest.mjs',
     'src/vehicles/profiles/t90MachineGunForward.selftest.mjs',
     'src/vehicles/profiles/t90RoofStudioSelectability.selftest.mjs',
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
@@ -588,7 +592,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14XReturnRollers.selftest.mjs',
     'src/vehicles/sourceXFleet.selftest.mjs',
     'src/vehicles/t90XCanvasFinish.selftest.mjs',
-    'src/vehicles/historicalT90MLamps.selftest.mjs',
     'src/vehicles/sourceXSecondWave.selftest.mjs',
     'src/vehicles/sourceXSecondWaveLazy.selftest.mjs',
     'src/vehicles/sourceXSecondWaveMarkings.selftest.mjs',
@@ -725,7 +728,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
     'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
-    'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
     'src/vehicles/profiles/turretSeatClosure.selftest.mjs',
     'src/vehicles/profiles/chieftainFidelity.selftest.mjs',
     'src/vehicles/underbodyBackdrops.selftest.mjs',
@@ -1165,6 +1167,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     // 2026-10-30 (266): the hull's turret-sweep guard knows the launchers riding the gun, swept over its pitch range
     'src/vehicles/launcherSweepGuard.selftest.mjs',
+    // 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull
+    'src/vehicles/suitRoofDecor.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
@@ -1630,6 +1634,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
+    'tools/starvation-meter.selftest.mjs', // 267: the soak's starvation meter on driven clocks
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
@@ -1893,6 +1898,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduces
     // the browser generator's id-bearing fields byte for byte.
     'tools/tank-id-rekey-assets.selftest.mjs',
+    // 2026-10-30 (266): the tank asset manifest is a row file per tank: every file under the 5 MB cap, canonical, named
+    // for its row, joined and re-split byte for byte in the pinned id order; negative controls on fixtures.
+    'tools/tank-assets-layout.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
@@ -2627,7 +2635,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
-    'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
