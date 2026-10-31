@@ -210,7 +210,9 @@ function roofFittings(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
   eye.rotateY(-Math.PI / 2).translate(0.018685, -0.009, 0);
   P.addEquipment('turretDetail', eye);
   P.addEquipment('turretDetail', box(0.067, 0.025, 0.309), 0, roof - 0.001, -1.1398);
-  for (const [x, y, z] of [[0.95, T.blockTopY, 1.30], [-1.05, T.blockTopY, 1.20], [0.92, roof, -2.25], [-0.90, roof, -2.25]] as const) {
+  // the right front eye outboard of the EMES 15 housing's lip and on the block's flat top (at -1.05, 1.20 it stood half on the
+  // bevel and its foot met the lip once the window deepened: the window critic)
+  for (const [x, y, z] of [[0.95, T.blockTopY, 1.30], [-1.14, T.blockTopY, 1.06], [0.92, roof, -2.25], [-0.90, roof, -2.25]] as const) {
     KIT.liftEye(P, 'turretDetail', x, y + 0.015, z);
   }
   // the radios' antenna bases at the bustle's corners (the 2A6 X's), their whips

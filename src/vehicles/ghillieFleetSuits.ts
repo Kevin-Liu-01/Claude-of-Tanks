@@ -454,7 +454,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
-      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
+      // the EMES 15's window in the right cheek left open (the deepened window took the net's edge into it: the window critic)
+      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.98, -0.46, 1.10, 1.75)] })],
       side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19)],
       face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
     },
