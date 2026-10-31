@@ -80,16 +80,24 @@ import { createFixedStepLoop } from './loop.ts';
   console.log('loop.selftest: manual advance, catch-up window and error isolation hold');
 }
 
-// Real timers for one short stretch: cadence stays within a tick of the wall clock.
+// Real timers for one short stretch: every tick of the wall clock is run or counted as dropped.
+// (266, main's reds: under a loaded suite a stall past the catch-up window dropped ticks by design, and the stretch ended
+// before the loop's next wake-up saw the time since its last one, so the bare count fell more than three short.) The
+// stretch ends with the loop accounting up to now, and the run and dropped ticks together keep the wall clock; with no
+// stall that is the cadence itself.
 {
   const started = performance.now();
   let count = 0;
   const loop = createFixedStepLoop({ onTick: () => { count++; } });
   loop.start();
   await new Promise((resolve) => setTimeout(resolve, 250));
-  loop.stop();
   const elapsed = performance.now() - started;
+  loop.advance();
+  loop.stop();
   const expected = elapsed / (1000 / 60);
-  assert.ok(Math.abs(count - expected) <= 3, `real timers: ${count} ticks in ${elapsed.toFixed(1)} ms (expected ~${expected.toFixed(1)})`);
-  console.log(`loop.selftest: real timers ran ${count} ticks in ${elapsed.toFixed(0)} ms (max late wake ${loop.stats.lateWakeupMaxMs.toFixed(1)} ms)`);
+  const accounted = count + loop.stats.droppedTicks;
+  assert.ok(loop.stats.wakeups > 0, 'real timers drive the loop');
+  assert.ok(Math.abs(accounted - expected) <= 3,
+    `real timers: ${count} ticks run and ${loop.stats.droppedTicks} dropped in ${elapsed.toFixed(1)} ms (expected ~${expected.toFixed(1)})`);
+  console.log(`loop.selftest: real timers ran ${count} ticks (${loop.stats.droppedTicks} dropped over ${loop.stats.stalls} stalls) in ${elapsed.toFixed(0)} ms (max late wake ${loop.stats.lateWakeupMaxMs.toFixed(1)} ms)`);
 }
