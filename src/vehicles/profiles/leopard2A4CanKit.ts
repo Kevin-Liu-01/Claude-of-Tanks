@@ -373,10 +373,11 @@ function cheekWedges(P: TankBuilderPort): void {
         P.addEquipment('turretDark', box(0.014, crest - foot - 0.04, 0.006), sx * a, (foot + crest) / 2, frontZ(a) + 0.002, 0, sx * yaw, 0);
       }
     }
-    // bolted caps on the tops (four a side), a lifting eye on the side piece; the one under the EMES 15's window toward the
-    // wedge's front, clear of the window's line (at 1.88 it lay under the deepened sight head's frame: the window critic)
+    // bolted caps on the tops (four on the left, three on the right), a lifting eye on the side piece; none on the piece
+    // under the EMES 15's window, whose top runs level into the sill (a cap there read as lying in the window against the
+    // deepened sight head: two window critics)
     const caps: ReadonlyArray<readonly [number, number, number, number]> = sx < 0
-      ? [[0.60, 0.14, 1.98, e.y0], [(ex1 + edge) / 2, 0.12, 1.76, crest], [(edge + wall) / 2, 0.12, 1.70, crest], [(wall + out) / 2, 0.16, 1.46, crest]]
+      ? [[(ex1 + edge) / 2, 0.12, 1.76, crest], [(edge + wall) / 2, 0.12, 1.70, crest], [(wall + out) / 2, 0.16, 1.46, crest]]
       : [[0.62, 0.16, 1.88, crest], [0.88, 0.16, 1.80, crest], [(edge + wall) / 2, 0.12, 1.72, crest], [(wall + out) / 2, 0.16, 1.46, crest]];
     for (const [ax, w, z, top] of caps) {
       P.addEquipment('turretDark', box(w, 0.016, 0.12), sx * ax, top + 0.008, z);
