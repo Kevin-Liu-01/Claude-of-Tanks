@@ -1,4 +1,4 @@
-import {isPhotoReference,photoReceiptPassed} from './photo-reference-policy.mjs';
+import {isPhotoReference,photoReceiptPassed,stageARoute,stageAPassed} from './photo-reference-policy.mjs';
 import {readPhotoReference} from './photo-reference-record.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {readConceptDesign} from './first-party-concept-record.mjs';
@@ -288,11 +288,13 @@ for (const id of ids) {
   let gateRequired = 90;
   let gateApplicable = false;
   let exactGatePassed = false;
+  let gatePacket = false; // a geometry packet: the gate writes one for every registered oracle it measures
   const concept=firstPartyConcept(id);
   if(!concept&&!isPhotoReference(id))try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
     const packetMtime = statSync(p).mtimeMs;
+    gatePacket = true;
     gateApplicable = freshGateStartedAt === null || packetMtime >= freshGateStartedAt;
     const c = j.components;
     if (gateApplicable) {
@@ -308,11 +310,12 @@ for (const id of ids) {
   const clipOk = strictTrackClipPassed(cl);
   // Classified by id, not by document: a photo id whose document failed to load (--stages) fails its A stage.
   const photoId=isPhotoReference(id), photo=photoDocuments.get(id);
-  const gateOk = photoId
-    ? Boolean(photo) && photoReceiptPassed(id,photoReports.get(id),photo.packet,photo.packetSha256,photoStartedAt)
-    : concept
-    ? conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHashes.get(id))
-    : forceGate ? gateApplicable && exactGatePassed : !gateApplicable || exactGatePassed;
+  // Stage A's route and verdict (photo-reference-policy.mjs; Main 2026-10-31): a registered oracle measures (the gate
+  // refuses a photo packet beside one), a concept or photo id proves its record, a procedural-only id fails a forced gate.
+  const route = stageARoute(id, { registered: gatePacket, concept: Boolean(concept) });
+  const gateOk = stageAPassed(route, { forceGate, gateApplicable, exactGatePassed,
+    photoProof: photoId && Boolean(photo) && photoReceiptPassed(id,photoReports.get(id),photo.packet,photo.packetSha256,photoStartedAt),
+    conceptProof: Boolean(concept) && conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHashes.get(id)) });
   if(concept){row='concept: comparison N/A';gateRequired='N/A';}
   if(photoId){row='photo; 3D score UNVERIFIED';gateRequired='—';}
 

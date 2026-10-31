@@ -229,15 +229,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
   // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
-  // 262: the new true T-64s compare against the T-64 prints their siblings use (the 42manako T-64BV1 and T-64BV Donbas
-  // kitbash, local-only, CC-BY-NC); their builds follow published T-64 dimensions (docs/references/tanks/t64bm1m.md).
-  t64bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  t64b1v_2022: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
-  // 262: the 42manako T-64BM1M print (CC-BY-NC, local-only; sha256 c62063d8507a993c; docs/references/tanks/t64bm1m.md),
-  // +X forward in its own frame. Its horseshoe, searchlight, smoke banks, rack and bustle stores are root-level nodes that
-  // ride the turret; two stray two-triangle planes float 5.7 m up (gear1-optione002/003, recorded in the packet).
-  t64bm1m: { source:'glb', glb:{ path:'/models/community-candidates/t64bm1m_42manako.glb', turretNode:'^turret001$', gunNode:'^mount001$', autoPivot:true, yawOffset:-1.5707963267948966,
-    turretFollowers:'^(?:era(?:[2-9]|10)?|object0200[45]|object22\\d{3}|smoke-model[ef]\\d{3}|slat3002|suporte|gear|gear001|gear222|object01|weapon3)$' } },
+  // 266 (Main 2026-10-31): the true T-64s (t64bv, t64b1v_2022, t64bm1m) are not registered here. Their builds follow
+  // published T-64 dimensions, not the prints they were measured against in 262 (the T-64BV1 and Donbas prints, which are
+  // their siblings' own and stay registered below, and the 42manako BM1M print the build departs from); stage A takes
+  // them on their photo packet (docs/references/photos/t64-20261031.json, tools/photo-reference-policy.mjs).
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
   c1_ariete_proto_serie1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },

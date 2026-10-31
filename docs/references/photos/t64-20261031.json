@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "t64bm1m": {
+      "name": "T-64BM1M",
+      "authority": "Release 262's true T-64 (owner 2026-10-27, \"add these new tanks using our rigoorous tank generation workflow\"): a published-dimension build, accepted on that route by Main on 2026-10-28; on 2026-10-31 Main deregistered the print it had been measured against (the build does not follow it) and ruled it onto this photographic route. The T-64B1 with Nizh, the 6TD-1 and the KT-12.7: the 2013-2014 Kharkiv order for the DR Congo, its first batch diverted to Ukraine's National Guard in 2014.",
+      "sources": [
+        "https://www.oryxspioenkop.com/2021/06/welcome-to-jungle-ukrainian-t-64b1m.html",
+        "https://www.armyrecognition.com/archives/archives-land-defense/land-defense-2014/ukraine-31-july-2014-news-uk",
+        "https://en.wikipedia.org/wiki/T-64",
+        "https://militaryland.net/equipment/t-64/",
+        "https://commons.wikimedia.org/wiki/File:T-64B_wheels_and_track.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_forward_wheels_suspension.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_rear.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B1_-_Patriot_Museum,_Kubinka_(38415818576).jpg"
+      ],
+      "widthM": 3.612,
+      "overallLengthM": 9.405,
+      "tallestM": 3.658,
+      "envelopeBasis": "The as-built envelope of the true T-64 build (profiles/t64Foundation.ts, variant bm1m: Nizh over the glacis, the turret and the side screens; Box3 at both qualities, the photo check's rule): 3.612 m wide over its reactive armour, 9.405 m long (src/vehicles/t64Armor.ts T64_SILHOUETTE_DIMS.silhouetteOverallLengthM, the full lit length with the rear stowage), the tallest the whips (3.658 m; the body's p95 height is 2.788 m, T64_SILHOUETTE_DIMS.silhouetteHeightM). The hull follows the published T-64 figures (6.54 m hull, 3.27 m over the tracks, 2.17 m turret roof; docs/references/tanks/t64bm1m.md), not a print.",
+      "caliberMm": 125,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/t64Foundation.selftest.mjs"
+    },
+    "t64bv": {
+      "name": "T-64BV",
+      "authority": "Release 262's true T-64 (owner 2026-10-27, \"add these new tanks using our rigoorous tank generation workflow\"): a published-dimension build, accepted on that route by Main on 2026-10-28; on 2026-10-31 Main deregistered the print it had been measured against (the build does not follow it) and ruled it onto this photographic route. The Soviet T-64B line with Kontakt-1 reactive armour.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/T-64",
+        "https://militaryland.net/equipment/t-64/",
+        "https://commons.wikimedia.org/wiki/File:T-64B_wheels_and_track.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_forward_wheels_suspension.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_rear.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64BV,_Kyiv_2018,_04.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64BV_tank,_Kyiv,_2018_29.jpg"
+      ],
+      "widthM": 3.536,
+      "overallLengthM": 9.689,
+      "tallestM": 3.658,
+      "envelopeBasis": "The as-built envelope of the true T-64 build (profiles/t64Foundation.ts, variant bv: Kontakt-1 over the glacis, the turret and the skirts; Box3 at both qualities, the photo check's rule): 3.536 m wide over its reactive armour, 9.689 m long (src/vehicles/t64Armor.ts T64_SILHOUETTE_DIMS.silhouetteOverallLengthM, the full lit length with the rear stowage), the tallest the whips (3.658 m; the body's p95 height is 2.79 m, T64_SILHOUETTE_DIMS.silhouetteHeightM). The hull follows the published T-64 figures (6.54 m hull, 3.27 m over the tracks, 2.17 m turret roof; docs/references/tanks/t64bm1m.md), not a print.",
+      "caliberMm": 125,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/t64Foundation.selftest.mjs"
+    },
+    "t64b1v_2022": {
+      "name": "T-64B1V mod. 2022",
+      "authority": "Release 262's true T-64 (owner 2026-10-27, \"add these new tanks using our rigoorous tank generation workflow\"): a published-dimension build, accepted on that route by Main on 2026-10-28; on 2026-10-31 Main deregistered the print it had been measured against (the build does not follow it) and ruled it onto this photographic route. Ukraine's 2022 T-64B1V: updated radio, navigation and communication systems, a gunner's shield and slat armour (MilitaryLand).",
+      "sources": [
+        "https://en.wikipedia.org/wiki/T-64",
+        "https://militaryland.net/equipment/t-64/",
+        "https://commons.wikimedia.org/wiki/File:T-64B_wheels_and_track.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_forward_wheels_suspension.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64B_rear.jpg",
+        "https://commons.wikimedia.org/wiki/File:T-64BV_mod_2017,_Kyiv_2021,_16.jpg"
+      ],
+      "widthM": 3.536,
+      "overallLengthM": 9.41,
+      "tallestM": 3.658,
+      "envelopeBasis": "The as-built envelope of the true T-64 build (profiles/t64Foundation.ts, variant b1v2022: Kontakt-1, the night-sight box, digital radio whips and slat armour; Box3 at both qualities, the photo check's rule): 3.536 m wide over its reactive armour, 9.41 m long (src/vehicles/t64Armor.ts T64_SILHOUETTE_DIMS.silhouetteOverallLengthM, the full lit length with the rear stowage), the tallest the whips (3.658 m; the body's p95 height is 2.819 m, T64_SILHOUETTE_DIMS.silhouetteHeightM). The hull follows the published T-64 figures (6.54 m hull, 3.27 m over the tracks, 2.17 m turret roof; docs/references/tanks/t64bm1m.md), not a print.",
+      "caliberMm": 125,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/t64Foundation.selftest.mjs"
+    }
+  }
+}

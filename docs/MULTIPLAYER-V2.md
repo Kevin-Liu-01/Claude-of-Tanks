@@ -358,7 +358,8 @@ server/match/           main.ts (env, drain) · service.ts (/healthz, /metrics, 
                         matchActor.ts (one room) · loop.ts · inputBuffer.ts · lagCompensation.ts · publisher.ts
                         entityRows.ts · seatToken.ts · localRoomService.ts · link.ts · chat.ts · log.ts · metrics.ts
                         Dockerfile (+ Dockerfile.dockerignore), README.md
-tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short is the core receipt)
+tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short --plant-stall is the core receipt)
+tools/starvation-meter.mjs  what the machine withheld from the soak's thread (wall time CPU and idling do not cover)
 src/mp/transport/       Transport contract · WebSocketTransport (backoff, resume token, backpressure) · LoopbackTransport pair
 src/mp/match/           MatchClient · clock · inputStream · snapshotStream · interpolation · prediction (+ movementCheckpoint)
                         events · recovery · headlessDriver · scriptedServer.test-support (README: src/mp/README.md)
@@ -433,6 +434,14 @@ after the shooter looked is missed live and hit rewound.
   stand-in): the pose-step gate is measured with linear interpolation, an adaptive 2–4 interval
   delay and one interval of extrapolation, not with `localTankPrediction`; on a loaded host the
   28-client soak process itself starves and the gate reads its own catch-ups (see the table).
+  (267: the soak now measures that starvation, `tools/starvation-meter.mjs`, and judges every gate net of it: a round
+  trip, an acknowledgement or a pose step without the starvation inside its own span; with the server in-process, its
+  dropped ticks only past those the starved gap accounts for and each second's rate on the loop's own timeline. An
+  acknowledgement's lead is taken over the server tick its acknowledging snapshot measured, so the client clock still
+  slewing out dropped ticks is the drops' (judged by the tick gates), not the input path's. The receipt plants 400 ms of
+  CPU in one server tick and must charge its drops to the server. The 265 default tier had failed four gates at
+  load1 22 under the old load1 skip; under 5.5 s of SIGSTOP the old receipt fails and the new one passes. The child
+  server's own thread is not measured.)
 - The simulation moves a pushed hull up to 1.1 m in one tick (tank–tank separation); the wire
   carries it faithfully and a client will show it as a jolt — a sim question, not netcode.
 - The full soak's tick-cost child (`npm run test:net:v2:soak` without `--no-tick-cost`) and a
@@ -1839,9 +1848,13 @@ The diff per seat, view and kind: missing, duplicate, late (presented tick − h
 early (negative: applied before the presented world reached the event), wrong place (> 0.5 m from the authority's position),
 replays on a rejoin, re-destruction on a migration. Scenarios in one run: 30 s of live play; p3 leaves to the Garage and
 rejoins (a fresh presentation on the running match); p2's link reconnects (a fresh offer, the actor replaces the seat); p1 —
-the host — closes its tab, p2 is elected and resumes from the sealed keyframe; p1 returns as a peer. A send inside the last
-400 ms before a view ends, before its host stops, or before the seat's link resets is not judged (the interpolation delay
-keeps it from presenting; a reset clears the queue by design). Limit: one Node process cannot configure the fleet factory
+the host — closes its tab, p2 is elected and resumes from the sealed keyframe; p1 returns as a peer. A send is judged once
+the link it went to (one per welcome: the first, a reconnect's, a migration's) presented a frame the event queue's deadline
+(4 ticks) past its tick; a view that ended, lost its host or reset its link (a reset clears the queue by design) before
+that could not present it, and the matrix counts it unreached. (267: the old rule, a 400 ms wall-clock guard before a view's
+end, its host's stop or its link's reset, was stamped when the teardown ran; under machine load the harness was
+descheduled between a view's last frame and that stamp and judged sends the view never reached — "2 of 48 never presented",
+p3#1 and p1'#0. A planted drop on p2's view rides every run as the judge's negative control.) Limit: one Node process cannot configure the fleet factory
 twice (the actor's eager `tankFactory` and the presentation's lazy `fleetFactory`), so the presentations have no actors —
 own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here. (2026-10-01: the
 actor no longer loads `tankFactory` — it reads the spec-only authority fleet — so the actor no longer stands in the way;
