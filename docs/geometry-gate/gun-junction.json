@@ -140,7 +140,7 @@
   "merkava2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bb364c5037f3f9e0","gun":"5466975b4e76004b"}},
   "merkava2d": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d645bdc0f2bceb8d","gun":"8b00ba35cf118821"}},
   "merkava3_baz": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5eab7de306dadeb4","gun":"fec108b2a36b1b48"}},
-  "merkava3c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9d1335a1d080026a","gun":"3138eb4405ef892d"}},
+  "merkava3c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a924a2312631d38d","gun":"3138eb4405ef892d"}},
   "merkava3d": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b893d92ca1d0a67a","gun":"50c39c0f4b2bafca"}},
   "merkava4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"031bed8db4af2ecc","gun":"cb2133009d8db37a"}},
   "merkava4_barak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"96ce2a80237c6b12","gun":"e2f08f017815e52d"}},
