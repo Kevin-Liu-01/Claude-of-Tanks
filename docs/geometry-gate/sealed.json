@@ -2381,15 +2381,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 297,
-   "seeThroughPx": 3,
+   "insideOutPx": 352,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 70656,
+   "tris": 85266,
    "frame": [
     0,
-    1.45,
-    1.45,
-    5.2
+    1.6,
+    0.8,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "owner-directed pair of 200 L fuel drums on a welded stern shelf, 0.73 m aft of the stern plate",
+     "by": "kevinliu",
+     "date": "2026-10-30",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 3,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.45,
+       5.2
+      ]
+     },
+     "to": [
+      0,
+      1.6,
+      0.8,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "strv103a": {

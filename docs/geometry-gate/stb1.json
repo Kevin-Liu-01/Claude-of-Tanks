@@ -5,7 +5,27 @@
  "registration": {
   "mode": "legacy-hull-translation"
  },
- "comparisonPurpose": "source-fidelity",
+ "comparisonPurpose": "source-without-owner-kit",
+ "comparisonScope": {
+  "numericScope": "Registered print against the build without the owner-directed kit parts named in ownerKit",
+  "ownerDecision": "Owner: \"raise the drums on the stb1 so theyre visible in the hero images a lil more!!! just rule of cool type stuf\". Main (266): exempt the kit from the source comparison; do not trim it.",
+  "decisionDate": "2026-10-31",
+  "ownerKit": [
+   {
+    "reference": "owner-kit:stb1:stb1KitSternDrums",
+    "group": "stb1KitSternDrums",
+    "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a",
+    "arrangementAccepted": true,
+    "numericPhotoFidelity": null,
+    "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+    "part": "the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps",
+    "ownerWords": "raise the drums on the stb1"
+   }
+  ],
+  "retained": "everything else on the STB-1, the roof M2 included, compared as built",
+  "rawSourceComparison": "?comparison=raw-source",
+  "fullVehicleQualification": false
+ },
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
@@ -246,23 +266,15 @@
    ]
   },
   "plan_hull": {
-   "score": 92.31515438166157,
-   "meanPct": 0.6,
+   "score": 92.67638619600481,
+   "meanPct": 0.57,
    "p95Pct": 0.77,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 1.0301009419388711
+    "dy": 1.0279553046805245
    },
    "worst": [
-    {
-     "at": 1.11,
-     "refTop": 5.17,
-     "refBot": -1.7,
-     "procTop": 5.07,
-     "procBot": -1.74,
-     "errM": 0.073
-    },
     {
      "at": -0.29,
      "refTop": 4.99,
@@ -331,36 +343,44 @@
      "at": -1.34,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.07,
+     "procTop": 5.06,
      "procBot": -1.73,
-     "errM": 0.068
+     "errM": 0.07
     },
     {
-     "at": -1.22,
+     "at": 1.34,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.07,
+     "procTop": 5.06,
      "procBot": -1.73,
-     "errM": 0.068
+     "errM": 0.07
     },
     {
-     "at": -1.1,
+     "at": 0.87,
+     "refTop": 5.01,
+     "refBot": -1.72,
+     "procTop": 5.12,
+     "procBot": -1.73,
+     "errM": 0.06
+    },
+    {
+     "at": -1.57,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.08,
-     "procBot": -1.74,
-     "errM": 0.068
+     "procTop": 5.06,
+     "procBot": -1.71,
+     "errM": 0.059
     }
    ]
   },
   "plan_whole": {
-   "score": 90.23156927652967,
-   "meanPct": 0.76,
+   "score": 90.5928010908729,
+   "meanPct": 0.73,
    "p95Pct": 1.12,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 1.0301009419388711
+    "dy": 1.0279553046805245
    },
    "worst": [
     {
@@ -388,14 +408,6 @@
      "errM": 0.104
     },
     {
-     "at": 1.11,
-     "refTop": 5.17,
-     "refBot": -1.7,
-     "procTop": 5.07,
-     "procBot": -1.74,
-     "errM": 0.073
-    },
-    {
      "at": -0.29,
      "refTop": 4.99,
      "refBot": -1.72,
@@ -439,25 +451,33 @@
      "at": -1.34,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.07,
+     "procTop": 5.06,
      "procBot": -1.73,
-     "errM": 0.068
+     "errM": 0.07
     },
     {
-     "at": -1.22,
+     "at": 1.34,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.07,
+     "procTop": 5.06,
      "procBot": -1.73,
-     "errM": 0.068
+     "errM": 0.07
     },
     {
-     "at": -1.1,
+     "at": 0.87,
+     "refTop": 5.01,
+     "refBot": -1.72,
+     "procTop": 5.12,
+     "procBot": -1.73,
+     "errM": 0.06
+    },
+    {
+     "at": -1.57,
      "refTop": 5.17,
      "refBot": -1.7,
-     "procTop": 5.08,
-     "procBot": -1.74,
-     "errM": 0.068
+     "procTop": 5.06,
+     "procBot": -1.71,
+     "errM": 0.059
     }
    ]
   },
@@ -788,13 +808,13 @@
    ]
   },
   "plan": {
-   "score": 68.99065718166614,
-   "meanPct": 1.76,
-   "p95Pct": 6.51,
+   "score": 68.79131742545101,
+   "meanPct": 1.77,
+   "p95Pct": 6.54,
    "coverPct": 4,
    "reg": {
     "dAlong": 0,
-    "dy": 1.0301009419388711
+    "dy": 1.0279553046805245
    },
    "worst": [
     {
@@ -811,7 +831,7 @@
      "refBot": 0.26,
      "procTop": 2.88,
      "procBot": -0.65,
-     "errM": 0.603
+     "errM": 0.605
     },
     {
      "at": 0.17,
@@ -819,14 +839,14 @@
      "refBot": -1.62,
      "procTop": 3.39,
      "procBot": -2.41,
-     "errM": 0.423
+     "errM": 0.425
     },
     {
      "at": -1.34,
      "refTop": 2.18,
      "refBot": 0.99,
      "procTop": 1.69,
-     "procBot": 1.05,
+     "procBot": 1.04,
      "errM": 0.273
     },
     {
@@ -835,7 +855,7 @@
      "refBot": -0.58,
      "procTop": 3.02,
      "procBot": -0.66,
-     "errM": 0.221
+     "errM": 0.223
     },
     {
      "at": 1.34,
@@ -843,13 +863,13 @@
      "refBot": 1.1,
      "procTop": 2.08,
      "procBot": 0.75,
-     "errM": 0.221
+     "errM": 0.223
     },
     {
      "at": -0.87,
      "refTop": 3.26,
      "refBot": 0.1,
-     "procTop": 2.93,
+     "procTop": 2.92,
      "procBot": 0.12,
      "errM": 0.175
     },
@@ -881,8 +901,8 @@
      "at": -1.22,
      "refTop": 2.33,
      "refBot": 0.53,
-     "procTop": 2.22,
-     "procBot": 0.68,
+     "procTop": 2.21,
+     "procBot": 0.67,
      "errM": 0.131
     },
     {
@@ -1136,5 +1156,11 @@
     }
    ]
   }
- ]
+ ],
+ "rawSourceComparison": {
+  "file": "stb1.raw-source.json",
+  "gatePassed": false,
+  "rawGeoMin": 0,
+  "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+ }
 }

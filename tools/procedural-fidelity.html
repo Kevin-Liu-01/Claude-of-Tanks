@@ -34,6 +34,7 @@ import { supplementDigest, supplementSnapshot, verifySupplement } from '/tools/r
 import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
 import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
 import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
+import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
@@ -689,7 +690,7 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
 // Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
 // receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
-const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
+const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt,stb1:stb1OwnerKitReceipt};
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){
