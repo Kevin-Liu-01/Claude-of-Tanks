@@ -6,11 +6,32 @@ import { catalogText } from '../ui/i18nDictionaries.ts';
 import {
   hrefForLocale,
   resolveLocalePath,
+  type PublicRouteRecord,
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
 
 /** The canonical origin, from the deployment policy module (api/_lib/policy.ts). */
 export const SITE_ORIGIN = CANONICAL_ORIGIN;
+
+type ShareVideo = { readonly path: string; readonly width: number; readonly height: number };
+
+/**
+ * Each page family's share clip (og:video), chosen by the owner in the media election of 2026-10-30 and used as
+ * published: H.264 High@4.0, faststart, no audio, at most 10 s and 3 MB. localizedHtml.ts writes it into every public
+ * page; seoMetadata.selftest.mjs reads each file's own size and limits.
+ */
+const SHARE_VIDEOS = {
+  game: { path: '/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4', width: 1280, height: 720 },
+  gallery: { path: '/media/home-r2/fleet-montage.mp4', width: 1280, height: 720 },
+  docs: { path: '/media/docs-hero-r2/verdant-challenger3-t80u-mobile.mp4', width: 960, height: 540 },
+  studio: { path: '/media/home-r2/studio-246.mp4', width: 1280, height: 720 },
+} as const satisfies Record<string, ShareVideo>;
+
+/** A public route's share clip: the game's on the game, the landing and the 404; the manual's on its index and chapters. */
+export function shareVideoForRoute(routeId: PublicRouteRecord['id']): ShareVideo {
+  if (routeId === 'gallery' || routeId === 'studio') return SHARE_VIDEOS[routeId];
+  return routeId.startsWith('docs') ? SHARE_VIDEOS.docs : SHARE_VIDEOS.game;
+}
 
 type SiteMetadata = {
   title: string;
@@ -161,7 +182,11 @@ function replaceMeta(html: string, selector: 'name' | 'property', key: string, v
   return html.replace(pattern, (tag) => replaceAttribute(tag, 'content', value));
 }
 
-/** Replace an existing page's complete social metadata without touching its app body. */
+/**
+ * Replace an existing page's complete social metadata without touching its app body. og:type stays the document's:
+ * localizedHtml.ts makes every public page video.other beside its share clip, and a room invite, the game's document,
+ * keeps the game's clip.
+ */
 export function injectSiteMetadata(html: string, metadata: SiteMetadata): string {
   let output = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(metadata.title)}</title>`);
   output = replaceMeta(output, 'name', 'description', metadata.description);
@@ -170,7 +195,6 @@ export function injectSiteMetadata(html: string, metadata: SiteMetadata): string
     (tag) => replaceAttribute(tag, 'href', metadata.canonical));
   output = replaceMeta(output, 'property', 'og:title', metadata.ogTitle || metadata.title);
   output = replaceMeta(output, 'property', 'og:description', metadata.ogDescription || metadata.description);
-  output = replaceMeta(output, 'property', 'og:type', metadata.type);
   output = replaceMeta(output, 'property', 'og:url', metadata.url);
   output = replaceMeta(output, 'property', 'og:image', metadata.image);
   output = replaceMeta(output, 'property', 'og:image:type', metadata.image.endsWith('.png') ? 'image/png' : 'image/jpeg');

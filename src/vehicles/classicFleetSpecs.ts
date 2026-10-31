@@ -1,6 +1,7 @@
 // Additional first-party classic tank and assault-gun combat rows. Visual
 // geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import { LEOPARD2_PROTO_ARMOR } from './leopard2ProtoArmor.ts';
 import {
   rightCheekPlate as chR,
   leftCheekPlate as chL,
@@ -84,20 +85,14 @@ const SPECS: FleetTankSpec[] = [
   make('chieftain_mk9', 'centurion3', 'Centurion Mk.3', 'UK',
     { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
+  // release 262: the L7 stands 2.06 m past the front guards (the 9.83 m was the 20-pdr's; profiles/centurionFamily.ts)
   make('chieftain_mk9', 'centurion5_2', 'Centurion Mk.5/2', 'UK',
     { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 },
-      dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
+      dims: { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.38, heightM: 2.94 } }),
   make('leo2a2', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     {
       hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
       dims: { hullLengthM: 7.72, overallLengthM: 10.67, widthM: 3.70, heightM: 2.48 },
-      // The prototype now owns its elongated visual rig instead of silently
-      // inheriting the production A4 pivot and bustle envelope.
-      armor: {
-        ...requireFleetSpec('leo2a2').armor,
-        turretPivot: [0, 1.72, 0.55], gunPivot: [0, 0.26, 1.00],
-        barrelLenM: 5.26, tHalfW: 1.22, tFrontZ: 1.18, tRearZ: -2.75,
-      },
     }),
   // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
   // builder code dormant in abrams.js; packet historical.
@@ -142,13 +137,11 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];
 
-// The independently authored prototype rig is already in final dimensions.
-// Restore its datums after make() fits copied donor armor to the smaller hull;
-// that fit must not lower the installed trunnion or lengthen its visible tube.
+// The prototype owns its elongated visual rig and its own envelope (leopard2ProtoArmor.ts, pinned in release 262 when
+// leo2a2 moved to the new Leopard construction): make() fits leo2a2's copy to the prototype's dims, and that copy is
+// replaced whole, so the prototype no longer depends on when leo2a2's spec is re-enveloped.
 const leopardPrototype = SPECS.find(spec => spec.id === 'leopard2_proto')!;
-leopardPrototype.armor.turretPivot = [0, 1.72, 0.55];
-leopardPrototype.armor.gunPivot = [0, 0.26, 1.00];
-leopardPrototype.armor.gunBarrel = { lengthM: 5.26, radiusM: 0.064 };
+leopardPrototype.armor = copy(LEOPARD2_PROTO_ARMOR);
 
 // Register only first-party procedural gameplay rows. Historical source assets
 // remain offline comparison inputs and have no runtime registration path.

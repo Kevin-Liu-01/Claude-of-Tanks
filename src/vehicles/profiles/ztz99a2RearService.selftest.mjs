@@ -95,7 +95,9 @@ assert(chevronFaceEra && chevronFaceEra.geometry.attributes.position.count >= 18
 // (station 1 at x 0.34-0.40, station 2 at x 0.62-0.82): ridge (y 0.3791, z 1.6491), roof root (y 0.8257,
 // z 0.4314) and chin return (y -0.04, z 0.82). The front envelope is measured on the stock outboard of the channel.
 const channelHalfWidth = 0.40;
-const chevronWall = [[0.379091, 1.649091], [0.825714, 0.431429], [-0.04, 0.82]];
+// Release 264 (main-reds 261): since the 241 regen published the ZTZ-99A2's turretRing row, the turret seat
+// (turretSeatRace.ts seatTurretOverDeck) stands the chin return on its seat plane, y -0.04 -> 0.1525.
+const chevronWall = [[0.379091, 1.649091], [0.825714, 0.431429], [0.1525, 0.82]];
 const chevronPositions = production.turret.geometry.attributes.position;
 const onWall = (side, [y, z]) => {
   for (let index = 0; index < chevronPositions.count; index++) {

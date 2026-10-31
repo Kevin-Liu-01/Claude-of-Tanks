@@ -719,7 +719,17 @@ function main() {
   const proxies = want('proxies') ? buildProxies() : null;
   saveWebRecord();
   if (webMisses.length) { console.error(`[site-media] ${webMisses.length} web encode(s) missed their floor:\n  ${webMisses.join('\n  ')}`); process.exitCode = 1; }
-  if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
+  if (only) {
+    // a partial run merges what it recorded into the manifest a full run wrote: its files' rows replace theirs and every
+    // other row stays (2026-10-30: each lane had patched rows by hand after a partial run; a full run still prunes)
+    const path = join(OUT, 'manifest.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    const mine = new Set(files.map((f) => f.path));
+    manifest.files = [...manifest.files.filter((f) => !mine.has(f.path)), ...files].sort((a, b) => a.path.localeCompare(b.path));
+    writeFileSync(path, `${JSON.stringify(manifest, null, 1)}\n`);
+    console.log(`[site-media] ${files.length} files (${only.join(', ')}) merged into the manifest; a full run prunes`);
+    return;
+  }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
   // takes no slot names any more, and the stage copies the draft's collection forward
   const recorded = new Set(files.map((f) => f.path));

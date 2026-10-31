@@ -2,15 +2,25 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Newly authored asymmetric folded turret and fittings. Every station/plane
 // is a scalar design input; there are no source vertex/index arrays or models.
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { beamBetween, blindTube } from './measuredPrimitives.ts';
+import { beamBetween, blindTube, type Point3 } from './measuredPrimitives.ts';
 import { addChallenger1SourceHood } from './challenger1XSourceHood.ts';
 import { c1Length as m, c1Point as p, CHALLENGER1_SUPPLIED_DATUMS as D } from './challenger1XSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const {box,cylX,cylY}=KIT;
+const {box,cylX,cylY,cylZ}=KIT;
+/** The three marks' fits (challenger1XSupplied.ts). */
+export type Challenger1SuppliedMark = 1 | 2 | 3;
+const [PX,PY,PZ]=D.turretPivot;
 function local(g:THREE.BufferGeometry):THREE.BufferGeometry{
   return g.translate(-D.turretPivot[0],-D.turretPivot[1],-D.turretPivot[2]);
+}
+/** Vehicle-frame metres into the turret frame. */
+function at(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,bucket='turretDetail',rx=0,ry=0):void{
+  P.addEquipment(bucket,g,x-PX,y-PY,z-PZ,rx,ry,0);
+}
+function lens(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,ry=0):void{
+  P.addModuleVisual('optics','turretGlass',g,x-PX,y-PY,z-PZ,0,ry,0);
 }
 function equipment(P:TankBuilderPort,g:THREE.BufferGeometry,x:number,y:number,z:number,bucket='turretDetail'):void{
   const c=p(x,y,z);P.addEquipment(bucket,g,c[0]-D.turretPivot[0],c[1]-D.turretPivot[1],c[2]-D.turretPivot[2]);
@@ -57,8 +67,8 @@ function rearBin(P:TankBuilderPort):void{
     caseBox(P,x,86.0,-133.8,1.4,2.5,9.7);
     caseBox(P,x,83.3,-138.0,1.5,4.3,1.0);
   }
-  for(const x of[-9,9])P.addEquipment('turretDetail',local(beamBetween(p(x,79.5,-144.8),p(-x,79.5,-138.5),m(.7))));
-  caseBox(P,0,79.5,-144.4,32.3,.8,1.0);
+  // release 264 (the Mk 2's critic: "a thin black rod sticks straight back from the bustle"): the tie bar that stood
+  // 15 cm behind the bin on two crossed stays is gone; the bin's straps stay on its face
 }
 function sideBoxes(P:TankBuilderPort):void{
   leftCase(P);rightCarrier(P);
@@ -103,6 +113,23 @@ function rightCarrier(P:TankBuilderPort):void{
   P.addEquipment('turretDetail',local(beamBetween(p(58.2,68.3,28.8),p(40.5,68.3,38),m(.6))));
   P.addEquipment('turretDetail',local(beamBetween(p(40.5,68.3,38),p(40.5,83.2,35.0),m(.6))));
 }
+/** The left cheek's stowage basket, between the carrier's forward frame (x 1.325), the hood's inner seat (x .923) and
+ *  the outer return (release 264, the three marks' critics: the frame and return read as an open crate whose rails end
+ *  in air; the Bovington Mk 3 and the Flying Fox Mk 2 show a mesh basket there). A closed body behind the frame: the
+ *  Mk 1's is a bare painted bin, the Mk 2's and Mk 3's a basket packed with kit; mesh and a bottom rail outboard. */
+function leftBasket(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
+  // vehicle-frame metres; each station stays 6 mm behind the return's top course (z = 2.0283 - .5472 (x - .919))
+  const inner=.935,outer=1.31,lo=1.557,hi=1.885,c=.03;
+  const reach=(z:number):number=>Math.min(outer,.919+(2.0223-z)/.5472);
+  P.addEquipment(mark===1?'turretDetail':'turretCloth',local(sectionSolid([1.29,1.80,1.86,1.92,1.98].map((z):SolidSection=>{
+    const x=reach(z);
+    return{z,ring:[[inner,lo],[x,lo],[x,hi-c],[x-c,hi],[inner,hi]]};
+  }))));
+  const X=1.322,bar=(a:Point3,b:Point3,r=.006):void=>P.addEquipment('turretOpenLattice',local(beamBetween(a,b,r,6)));
+  bar([X,lo,1.271],[X,lo,1.881],.01);
+  for(const y of[1.685,1.813])bar([X,y,1.271],[X,y,1.874]);
+  for(const z of[1.60,1.70,1.80])bar([X,lo,z],[X,1.941,z]);
+}
 function cupola(P:TankBuilderPort):void{
   const c=p(-20.807,99.626,-53.898);
   P.addCupola('turret',cylY(m(20.57),m(20.57),m(8.386),40),c[0]-D.turretPivot[0],c[1]-D.turretPivot[1],c[2]-D.turretPivot[2]);
@@ -112,16 +139,59 @@ function cupola(P:TankBuilderPort):void{
     equipment(P,box(m(6.4),m(1.3),m(9.2)).rotateY(yaw),x,103.5,z);
     equipment(P,box(m(4.7),m(1.0),m(.5)).rotateY(yaw),x,104.25,z+3.5,'turretDark');
   }
-  // Complete source census shows an empty cupola mount: rails, hinge and
-  // brackets only. Deliberately no sourceMachineGun/markExact registration.
-  for(const x of[-29.4,-14.0]){
-    caseBox(P,x,105.7,-41.3,1.4,4.8,2.1);
-    caseBox(P,x,109.4,-40.0,1.4,1.0,2.0);
-  }
-  caseBox(P,-23.9,107.0,-42.5,8.74,7.64,1.05);
-  equipment(P,cylX(m(1.6),m(13.4),20),-21.1,108.3,-40.2);
+  // The source's cupola mount was empty (rails, hinge and brackets); the commander's gun now rides its own cradle there
+  // (below), and the one bracket left carries the MG sight head.
+  caseBox(P,-14.0,106.3,-41.3,1.4,6.0,2.1);
+  caseBox(P,-14.0,109.4,-40.0,1.4,1.0,2.0);
   caseBox(P,-15.12,110.43,-38.56,4.02,5.35,3.27);
   caseBox(P,-15.0,105.4,-50,1.8,4.6,12.1);
+  // Release 262 (owner 2026-10-28: "optics and machine guns"): the No. 32 cupola's nine episcopes round its wall and the
+  // glass of the MG sight head (FR wiki: "tourelleau No 32", nine episcopes and a No 37 Mk 6 periscope to aim the MG).
+  const r=m(20.57),[cx,cy,cz]=p(-20.807,101.6,-53.898);
+  for(let i=0;i<9;i++){
+    const a=i*Math.PI*2/9;
+    at(P,box(.10,.06,.04),cx+Math.sin(a)*(r+.008),cy,cz+Math.cos(a)*(r+.008),'turretDark',0,a);
+    lens(P,box(.075,.04,.006),cx+Math.sin(a)*(r+.030),cy,cz+Math.cos(a)*(r+.030),a);
+  }
+  lens(P,box(m(3.0),m(2.2),.006),...p(-15.12,110.9,-36.85));
+  // The commander's L37A2 7.62 mm GPMG rides the cupola's cradle (the source's mount: rails, hinge and brackets), aimed
+  // through that sight; it is every mark's one roof gun.
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',tone:'dark',scale:1,seed:8,riser:.02,working:true,ridingCradle:true});
+  mg.name='challenger1SuppliedCommanderL37';
+  const g=p(-21.1,103.6,-41.5);mg.position.set(g[0]-PX,g[1]-PY,g[2]-PZ);
+  P.turretG.add(mg);
+}
+/** TOGS: the armoured thermal-sight barbette standing on the right cheek's outer corner (FR wiki: "dans une boîte blindée
+ *  sur le flanc droit de la tourelle"), its top 0.2 m over the roof, its foot buried in the cheek's fall and its front's
+ *  top edge chamfered; the right smoke bank stands inboard of and below it. The Mk 1s were
+ *  delivered with it mostly empty, its port blanked (en Wikipedia, Haynes 2015 p. 110); the Mk 2 and Mk 3 carry the
+ *  sight behind an armoured door hinged on the port's top edge, propped open.
+ *  The box is turret equipment, not the turret shell (release 264c): in the shell bucket each of its slices' convex
+ *  hit cell bridged from its top to the far cheek, so the turret front over both cheeks read as sloped 50 mm roof and
+ *  the barbette as main armour (the Mk 1's tier-8 strength with C2 0.349, against 0.509 without the box in the shell).
+ *  It is a major silhouette piece, so it opts in to rangeSilhouette: past LOD1 like the shell, and its own hull in the
+ *  turret's shadow proxy. */
+const TOGS={inner:.88,outer:1.24,rear:1.02,front:1.84,top:2.20} as const;
+function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
+  const {inner,outer,rear,front,top}=TOGS,c=.04,lo=1.42;
+  const ring=(hi:number):[number,number][]=>([[inner,lo],[outer-c,lo],[outer,lo+c],[outer,hi-c],[outer-c,hi],[inner,hi]] as
+    const).map(([x,y]):[number,number]=>[-x,y]).reverse();
+  const shell=local(sectionSolid(([[rear,top],[1.55,top],[front-.07,top],[front,top-.07]] as const)
+    .map(([z,hi]):SolidSection=>({z,ring:ring(hi)}))));
+  shell.userData.rangeSilhouette=true;
+  P.addEquipment('turret',shell);
+  const dx=-1.06,dy=1.95;
+  if(mark===1){
+    at(P,box(.26,.19,.02),dx,dy,front+.01);
+    for(const ox of[-.10,0,.10])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
+  }else{
+    at(P,box(.26,.19,.03),dx,dy,front+.005,'turretDark');
+    lens(P,box(.19,.11,.006),dx,dy,front+.024);
+    const a=55*Math.PI/180,h=.24,hy=dy+.10;
+    // the door is armour plate, 45 mm (the Mk 2's critic: a thinner flap read edge-on as a stick)
+    at(P,box(.27,.045,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
+    at(P,cylX(.024,.29,10),dx,hy,front+.02,'turretDark');
+  }
 }
 function roof(P:TankBuilderPort):void{
   // 2026-10-19 (owner float sweep): the disc stood 30 mm over its seat; lowered onto it
@@ -139,26 +209,40 @@ function roof(P:TankBuilderPort):void{
   },{reachM:.07});
   for(const[x,y,z]of[[-44,97,-35],[-39,97,-74],[38,90,-91],[41,90,-67],[41,90,-41]])
     caseBox(P,x,y,z,1.3,2.5,5.2);
+  // the loader's periscope ahead of his hatch (release 262: the roof's optics glazed)
+  at(P,box(.15,.08,.12),.41,2.175,.417);
+  lens(P,box(.12,.045,.006),.41,2.18,.48);
 }
 function optics(P:TankBuilderPort):void{
   const x=-26.1;
   caseBox(P,x,95.8,-17.4,24,1.1,13.1);
   for(const dx of[-11.4,11.4])caseBox(P,x+dx,95.4,-16,1.1,7.7,12.0);
   caseBox(P,x,99.0,-16.5,24.8,1.0,13.0);
+  // the sight hood's back wall (release 264, the Mk 3's critic: base, cheeks and roof without it read as an open
+  // bench), so the window sits recessed in a hood that opens forward
+  caseBox(P,x,97.4,-23.4,24.8,4.2,1.0);
   equipment(P,box(m(19),m(4.6),m(.6)),x,96,-21.4,'turretDark');
   equipment(P,box(m(17.2),m(3.1),m(.3)),x,96,-21.0,'turretGlass');
-  caseBox(P,-.6,90.7,15.5,2.55,4.72,5.3);
+  // seated on the roof (release 262: it stood 16 mm over it, the hull-contact census)
+  caseBox(P,-.6,90.05,15.5,2.55,4.72,5.3);
 }
 function smoke(P:TankBuilderPort):void{
+  // The right bank stands on the cheek inboard of and below the TOGS barbette, the left on its cheek under the hood.
   for(const side of[-1,1]){
+    // the left bank stands 7 cm further forward, its muzzles clear of the hood's front edge as in the Bovington Mk 3
+    // (release 264, the Mk 3's critic: "the L8 cluster sits buried in that pocket")
+    const fore=side>0?3.0:0;
     for(const [dx,dy]of[[-4.3,1.6],[0,1.6],[4.3,1.6],[-2.15,-2.3],[2.15,-2.3]]){
-      const x=side*33.1+dx,z=39.0-side*.36*dx;
-      equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
+      const x=side*33.1+dx,z=39.0+fore-side*.36*dx;
+      // the L8 bank fans out and fires upward (release 262, the three marks' critics against the Bovington photos: the
+      // tubes lay level in a tight bundle): the upper row at 36 degrees, the lower at 26, the outer tubes splayed 12
+      equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true)
+        .rotateX(dy>0?-.62:-.45).rotateY(side*.35+dx*.05),x,70.3+dy,z);
     }
-    equipment(P,box(m(15.8),m(6.2),m(2.0)).rotateY(side*.35),side*31.4,69.4,33.4);
+    equipment(P,box(m(15.8),m(6.2),m(2.0)).rotateY(side*.35),side*31.4,69.4,33.4+fore);
   }
 }
-export function addChallenger1SuppliedTurret(P:TankBuilderPort):void{
-  bearing(P);body(P);rearBin(P);sideBoxes(P);cupola(P);roof(P);optics(P);smoke(P);
+export function addChallenger1SuppliedTurret(P:TankBuilderPort,mark:Challenger1SuppliedMark=3):void{
+  bearing(P);body(P);togsBarbette(P,mark);rearBin(P);sideBoxes(P);leftBasket(P,mark);cupola(P);roof(P);optics(P);smoke(P);
   addChallenger1SourceHood(P);
 }

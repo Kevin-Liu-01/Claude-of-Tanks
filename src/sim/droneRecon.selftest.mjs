@@ -13,6 +13,7 @@ import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { missionAirframeVolumes } from './missionAttachment.ts';
 import '../vehicles/tankFactory.ts';
 import { MISSION_ATTACHMENT_SEATS } from './missionAttachmentSeats.generated.ts';
+import { DRONE_DOCK_EXEMPT } from './droneDockExempt.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 // A renderer may add running-gear bookkeeping after authority registration;
 // it must never move the drone's shared launch point. Real roof/datum changes
@@ -27,10 +28,11 @@ roofFixture.armor.turretPlates[0].verts[0][1]+=.02;
 assert.notEqual(missionAttachmentSignature(roofFixture),baseSignature,'changed roof stock invalidates native support');
 // Load the authority's spec-only facade in a fresh process. Registration order
 // cannot quietly select a fallback origin instead of the browser's native seat.
-const authorityScript=`const {ensureAuthorityFleet}=await import('./src/vehicles/authorityFleet.ts');await ensureAuthorityFleet();const {TANK_SPECS}=await import('./src/vehicles/specs.ts');const {missionAttachmentSignature,missionAttachmentFor}=await import('./src/sim/missionAttachment.ts');console.log(JSON.stringify(Object.fromEntries(Object.entries(TANK_SPECS).map(([id,s])=>[id,{signature:missionAttachmentSignature(s),seat:missionAttachmentFor(s)}]))));`;
+const authorityScript=`const {ensureAuthorityFleet}=await import('./src/vehicles/authorityFleet.ts');await ensureAuthorityFleet();const {TANK_SPECS}=await import('./src/vehicles/specs.ts');const {missionAttachmentSignature,missionAttachmentFor}=await import('./src/sim/missionAttachment.ts');const {DRONE_DOCK_EXEMPT}=await import('./src/sim/droneDockExempt.ts');console.log(JSON.stringify(Object.fromEntries(Object.entries(TANK_SPECS).filter(([id])=>!Object.hasOwn(DRONE_DOCK_EXEMPT,id)).map(([id,s])=>[id,{signature:missionAttachmentSignature(s),seat:missionAttachmentFor(s)}]))));`;
 const authority=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',authorityScript],{cwd:fileURLToPath(new URL('../../',import.meta.url)),encoding:'utf8',maxBuffer:2_000_000}));
 let count=0;
 for(const spec of Object.values(TANK_SPECS)){
+ if(Object.hasOwn(DRONE_DOCK_EXEMPT,spec.id)){assert.equal(MISSION_ATTACHMENT_SEATS[spec.id],undefined,spec.id+': a sealed dockless vehicle keeps no seat');continue;}
  const record=MISSION_ATTACHMENT_SEATS[spec.id];assert.ok(record,spec.id+': native seat record required');
  assert.equal(authority[spec.id].signature,record.signature,spec.id+': authority and renderer agree on geometry signature');
  assert.deepEqual(authority[spec.id].seat,record,spec.id+': authority uses the identical certified seat');

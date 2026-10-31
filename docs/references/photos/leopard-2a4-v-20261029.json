@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo2a4_v": {
+      "name": "Leopard 2A4 V",
+      "authority": "Main ruled on 2026-10-29 (DECISIONS.md, ~11:00) that the release-264 2A4-era Leopards, rebuilt on the release Leopard 2 hull with the 2A4 turret derived from our 2A6 X (owner 2026-10-28: \"update and cleanup our old designs ... and have them be the before variants basically\") and unregistered from their later-variant 3D oracles on 2026-10-28 (Main: \"where a rebuild's registered oracle shows a different (later) variant, unregister it\"), qualify the geometry stage by this per-id photographic packet plus a shaded blind photo-critic PASS (lane evidence ~/cot-lanes/leo2a4-family-264-evidence, critic rounds on the SwiftShader Gallery stills). Numerical 3D comparison remains unverified. The owner via Main, 2026-10-29: leo2a4_v is the Ukrainian-service Leopard 2A4 under Kontakt-1, the tank Oryx's informal \"2A4V\" names (the V from the Soviet-Russian vzryvnoj, as on the T-64BV and T-72BV): a Canadian-origin 2A4 photographed on 2023-07-01 (TWZ; armyrecognition.com, after the Praise The Steph video) with 4S20 containers on both turret cheeks' faces, a course up the left cheek's bevel, grids down the turret's flanks ahead of the smoke rows and on the heavy fore skirt blocks, the glacis and the mantlet bare. Its 102 containers carry seven ERA plates (a combat addition, release 265: the fleet's Kontakt-1 values, 0.05 kinetic reduction and 280 mm against chemical energy). The stern frame, deck stowage, standing whips and the loader's MAG are its old build's, carried over.",
+      "sources": [
+        "https://www.armyrecognition.com/focus-analysis-conflicts/army/conflicts-in-the-world/russia-ukraine-war-2022/ukraine-receives-upgraded-leopard-2a4-tanks-with-kontakt-1-era-armor",
+        "https://www.twz.com/ukrainian-leopard-2-tank-seen-covered-in-explosive-reactive-armor",
+        "https://ckosr.sk/data/att/114729_subor.pdf",
+        "https://tanks-encyclopedia.com/modern/germany/leopard-2-kampfwertsteigerung"
+      ],
+      "widthM": 3.818,
+      "overallLengthM": 10.056,
+      "tallestM": 4.241,
+      "envelopeBasis": "Width is as built, 3.82 m over the Kontakt-1 containers on the fore skirt blocks (their faces 1.818 m out, the containers 8 cm off them); the published 2A4 is 3.70 m including the track guards (tanks-encyclopedia) and 3.75 m (Slovak MoD). Length is the published 9.67 m gun forward of the Leopard 2A4 (Slovak MoD technical sheet; tanks-encyclopedia; as built 9.70 m from the stern plate, which the fixture holds) plus the hull's stern rack and frame as built (0.36 m). Tallest is the tips of its two standing whip antennas as built (4.24 m); the published heights are 2.48 m to the turret roof, 2.84 m to the commander's sight and 2.79 m to the PERI R 17. The fixture holds the 2A4's figures and the Kontakt-1 courses' plates.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/leopard2A4Family.selftest.mjs"
+    }
+  }
+}

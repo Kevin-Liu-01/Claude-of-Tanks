@@ -158,8 +158,6 @@ export function createMatchHostCore({
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
-  // the page's word on its solo match's countdown ('countdown'): null until it speaks, then it outranks the boot's holdCountdown
-  let countdownHeld: boolean | null = null;
   // a standby's preparation (§13.21): the world it is building and the battlefield it is for; a boot of that battlefield takes it
   let prepared: { key: string; world: Promise<ActorWorldCollision | 'terrain'> } | null = null;
   let bootedPrepared: boolean | null = null;
@@ -477,7 +475,6 @@ export function createMatchHostCore({
       seats: next.seats.map((seat) => ({ ...seat })), bots: next.bots.map((bot) => ({ ...bot })),
       ruleset: hostRulesetFor(next.mode, next.arrangement, next.campaignOperationId),
       countdownS: next.countdownS, ...(next.battleLimitS != null ? { battleLimitS: next.battleLimitS } : {}),
-      holdCountdown: countdownHeld ?? next.holdCountdown === true,
       world, now, ...(schedule ? { schedule } : {}), autoStart: false,
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
@@ -561,7 +558,6 @@ export function createMatchHostCore({
     if (disposed) return;
     switch (message.type) {
       case 'boot':
-        countdownHeld = null;
         void boot(message.config).catch((error: unknown) => {
           post({ type: 'boot_failed', error: error instanceof Error ? error.message : String(error) });
         });
@@ -582,19 +578,6 @@ export function createMatchHostCore({
       }
       case 'link_pressure': links.get(message.peer)?.setPressure(message.bufferedAmount); return;
       case 'stop': stop(message.reason, message.detail); return;
-      case 'countdown': {
-        // (a release before the actor exists — the page revealed while the world still loaded — is the boot's to apply)
-        countdownHeld = message.held;
-        actor?.holdCountdown(message.held);
-        return;
-      }
-      case 'pause': {
-        if (!actor) return;
-        if (message.paused) actor.pause();
-        else actor.resume();
-        post({ type: 'paused', paused: actor.paused, tick: actor.tick });
-        return;
-      }
       case 'stats': { const summary = stats(); if (summary) post({ type: 'stats', stats: summary }); return; }
       default: return;
     }

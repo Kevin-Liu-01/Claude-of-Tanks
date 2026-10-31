@@ -121,7 +121,7 @@ assert.deepEqual(scriptRules("const re = /'/g; const t = 'transition'; ui.transi
 
 assert.deepEqual(finds('page.html', [
   '<link rel="icon" href="/favicon-32.png">',
-  '<meta property="og:video" content="/brand/og/game.mp4">',
+  '<meta property="og:video" content="/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4">',
   '<img class="partner" src="/brand/partners/acme.png" alt="">',
   '<img src="/ui/spinner.gif"><img src="/media/home/tank-640.webp">',
   '<video class="hero-logo" src="/media/x.webm"></video><video muted loop src="/media/reel.webm"></video>',

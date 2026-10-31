@@ -688,10 +688,12 @@ console.log('[19] round 62: no round is fired at a zone the probe rates unpenetr
 {
   // A Strv 103 (105 mm APDS / HEAT / HE) on a Leopard 2A7V's glacis at 80 m: nothing penetrates (best ratio
   // 0.56) and an HE round would burst for nothing on that armour — before round 62 the HE fallback fired it
-  // anyway. The same gun on the Leopard's rear fires.
+  // anyway. The same gun on the Leopard's rear fires. (Release 265: the 2A7V study itself; the Leopard 2 Improved it
+  // was cloned from now rides the 2A4 family's hull, whose upper glacis the probe's centre zone meets: 18 mm of
+  // Kontakt over 45 mm, where an HE burst is worth a shell.)
   const shots = (targetYaw) => {
     const bot = entity('td', 'strv103b', 'player', 0, 0);
-    const foe = entity('foe', 'leo2_improved', 'enemy', 0, 80, targetYaw);
+    const foe = entity('foe', 'leo2a7v', 'enemy', 0, 80, targetYaw);
     const ctl = controller(bot, [foe], [], 23, 'normal');
     let fired = false;
     let holds = 0;

@@ -64,6 +64,30 @@ stays a first-party closed casting or fitting.
 | Headlights | on the glacis | big groups on brackets ahead of the nose, guards to z 2.09 with a middle rod (an open guard window read as a plan hole) |
 
 
+### Release 264 detail pass (2026-10-28)
+
+Release 262 landed at gate 84.9 against the 90 floor (Main's ruling (a), gate owed). The 264 pass first rebuilt the
+turret's section to the reference's (a lower band under a stowage ledge and a 0.94 m upper wall): that build passed the
+real gate at 90.4, but a blind A/B critic against the Latrun and Saumur photographs preferred the 262 casting, 4 of 5
+("one smooth casting, widest near the bottom; no ledge in either photo"), so the 262 section stays and the pass keeps
+only what the photographs carry too:
+
+| Item | Release 262 | Release 264 | Evidence |
+|---|---|---|---|
+| Turret section | flanks 1.10 to 2.30, a straight chamfer to a 0.60 m roof edge at 2.72 | unchanged (the reference's ledged section reads as a separate pod on the real turret's smooth casting) | A/B critic, `~/cot-lanes/patton-262-evidence/critic264/ab/` |
+| Rangefinder ears | blisters at y 2.36, z 0.10 | high on the cheeks at y 2.52, z 0.20 | the photos' ears at the top front of each side |
+| Cupola | r 0.40 round at (-0.46, -0.72) | an oval 0.68 by 0.95 (r 0.34, stretched 1.40 fore and aft) at (-0.43, -0.78) | the reference's footprint x -0.79..-0.08, z -1.26..-0.30 |
+| Bustle | the casting to -2.70, no rack | the stowage rack on its tail (-2.66 to -2.80, 1.20 wide, floor 2.04 at the casting's bottom edge, rail 2.22) | the Latrun photo's rack; the reference's rear floor rail at -2.77 |
+| Bustle roof | the ventilator dome | the dome kept; the radio antenna's round mount ahead of it on the right (top 2.80) | the reference's 2.80 item at x -0.4..-0.2 |
+| Gun shield | a1 0.60 rad | a1 0.45 rad (its top 2.31 at the face, falling to the gun) | the reference's top falling 2.38 to 2.27 over z 0.90-1.09 |
+| Rear | plate at -4.10 to 0.70 | plate at -4.00 under the engine grilles' overhang to -4.16 (deep outer doors, the centre bay at half depth), the tail lights on its face, eyes and pintle on the plate under it | the reference's rear: y 1.0-1.54 to -4.16 across the width, nothing below 1.0 aft of -4.0 |
+| Headlights | groups ahead of the nose at (0.72, 1.22, 1.92) | high on the glacis by its edges at (0.90, 1.44, 1.62), guards to z 1.81 | the Latrun photograph; the reference's groups at x 0.8-1.2, y to 1.54, z 1.45-1.83 |
+| Sprocket | hub to x 1.707 | axial scale 0.94 (inside the fender line) | |
+
+Offline gate on the landed build: 87.5 (front_whole the floor: the reference's ledged upper wall). The geometry gate stays
+owed for the M47. The critic's next M47 orders: a pointed nose wedge with a low chin and a narrow, rounded gun shield set
+into it, and upper walls sloping further in from a low, rounded widest point.
+
 ## Historical record (release 260 and earlier)
 
 Exact vehicle: **90mm Gun Tank M47 Patton II** — M46 chassis with the new

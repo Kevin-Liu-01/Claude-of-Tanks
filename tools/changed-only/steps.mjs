@@ -308,7 +308,7 @@ export const SPEC_REST = 'specRest';
 export const BALANCE = Object.freeze({
   entries: Object.freeze(['src/vehicles/fleetBalancePass.ts']),
   importers: Object.freeze({
-    'src/vehicles/fleetRegistration.ts': { pin: '09848b33916b3875', note: 'applies the four passes to TANK_SPECS, once each, at registration' },
+    'src/vehicles/fleetRegistration.ts': { pin: 'bc25e02d684ab734', note: 'applies the four passes (and integ 265: leopard1-263\'s applyBuildFootings) to TANK_SPECS, once each, at registration' },
   }),
   tokens: Object.freeze(['fleetBalancePass', 'applyFleetBalancePass', 'applyModernEraFold', 'applyShownTierFloors', 'applySameTierFairness']),
   combat: Object.freeze([

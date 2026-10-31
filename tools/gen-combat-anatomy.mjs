@@ -352,11 +352,30 @@ const PRIMARY_BUCKETS = { hull: ['hull'], turret: ['turret'] };
 // of these three hulls stood 5-29 cm in front of the plate and of the new frontal ERA laid on it. Their slices are also
 // cut at the glacis plate's edges (measured on the builds: the Zubrs' plate ends at |x| 1.105-1.110, Hetman II's at 1.125
 // back to z 2.9 and at 1.0 round its nose, where its fender sponsons run on 20 cm past the plate), each band its own convex cell; every other hull keeps one cell a slice.
+// Release 265 (Main: the Leopard 1A2A1's turret crew): the 1A2A1's old hull carries its 1.43 m sponson shoulders 35 cm
+// either side of the 1.70-1.75 m deck and ring race, and a slice's one convex cell kept one side's deck edge, leaning the
+// roof under the ring to 1.43 m on the other side; cut at the deck's edges (|x| 1.28), the deck is level in its own band.
 const HULL_LATERAL_CUTS = Object.freeze({
+  leo1a2a1: [-1.27, 1.27],
   t72b3m_hetman_ii: [-1.125, -.995, .995, 1.125],
   t72b3_zubr: [-1.104, 1.104],
   t72b3_zubr_ii: [-1.104, 1.104],
 });
+
+// Release 262, the turret-front round (2026-10-28; Main: "the apertures are weak-spot cut-outs in the right plates (ask
+// yourself what a shell there hits)"): the early Leopard 2s' EMES 15 notch is a pocket in the right cheek's top inboard
+// corner, and one convex cell a slice closes over a pocket. The notch's own lateral band, 1 cm inside its walls (0.50 and
+// 0.94 m right of the bore: leopard2a3B4Armor.ts sightInnerX, sightOuterX), is its own cell, so the shell meets the
+// notch's sill and the sight housing's front, and the turret_front_sight_notch plate takes that face.
+const TURRET_LATERAL_CUTS = Object.freeze({
+  leo2a2: [-.93, -.51],
+  leo2a3_b4: [-.93, -.51],
+  leo2a3: [-.93, -.51],
+});
+// Their turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme points
+// drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill and
+// the notch over it would be one face and take one plate.
+const TURRET_PLATE_FIT_IDS = new Set(Object.keys(TURRET_LATERAL_CUTS));
 
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
   seatedUnderside = false) {
@@ -430,6 +449,7 @@ function receiptBoxes(root, owner, buckets, predicate = null) {
       module: receipt.module || null,
       min: box.min.toArray(),
       max: box.max.toArray(),
+      ...(receipt.frontPlate ? { frontPlate: receipt.frontPlate } : {}),
     });
   }
   return boxes;
@@ -480,6 +500,7 @@ function clusterBoxes(boxes, tolerance = 0.035) {
     min: box.min.slice(),
     max: box.max.slice(),
     bucket: box.bucket,
+    ...(box.frontPlate ? { frontPlate: box.frontPlate } : {}),
   }));
   const clusters = [];
   while (remaining.length) {
@@ -494,6 +515,7 @@ function clusterBoxes(boxes, tolerance = 0.035) {
           cluster.min[axis] = Math.min(cluster.min[axis], next.min[axis]);
           cluster.max[axis] = Math.max(cluster.max[axis], next.max[axis]);
         }
+        if (next.frontPlate && !cluster.frontPlate) cluster.frontPlate = next.frontPlate;
         changed = true;
       }
     }
@@ -501,6 +523,8 @@ function clusterBoxes(boxes, tolerance = 0.035) {
       min: cluster.min.map(round),
       max: cluster.max.map(round),
       bucket: cluster.bucket,
+      // an authoring hint (tankFactoryCore's part receipt): the structure's front face stands on this main plate
+      ...(cluster.frontPlate ? { frontPlate: cluster.frontPlate } : {}),
     });
   }
   return clusters.sort((a, b) => a.min[2] - b.min[2] || a.min[0] - b.min[0]);
@@ -522,6 +546,7 @@ function structureReceipts(root, owner, frame) {
         max: cluster.max,
         sourceHash: hash.digest('hex').slice(0, 16),
         index,
+        ...(cluster.frontPlate ? { frontPlate: cluster.frontPlate } : {}),
       });
     });
   }
@@ -691,7 +716,8 @@ function receiptFor(id) {
         PLATE_FIT_IDS.has(id),
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
-        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, null, PLATE_FIT_IDS.has(id),
+        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, TURRET_LATERAL_CUTS[id] ?? null,
+        PLATE_FIT_IDS.has(id) || TURRET_PLATE_FIT_IDS.has(id),
         seatedTurret,
       ) : []),
       hullStructures,

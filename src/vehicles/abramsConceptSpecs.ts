@@ -94,9 +94,12 @@ function armorM1A3(): ArmorEnvelope {
 
   return {
     boundingRadiusM: 7.65,
-    turretPivot: [0, 1.67 + M1A3_TURRET_VERTICAL_OFFSET_M, -0.15],
-    gunPivot: [0, 0.28, 0.78],
-    gunBarrel: { lengthM: 5.65, radiusM: 0.115 },
+    // 2026-10-28 (m1e3-264): the M1E3's own turret at the M1 ring station, its trunnion 0.56 m behind the family's and
+    // its 4.95 m gun 2.4 m past the bow (profiles/abrams.ts M1E3_TURRET). Geometry datums only; the combat
+    // barrel follows the drawn gun.
+    turretPivot: [0, 1.632, 0.35],
+    gunPivot: [0, 0.30, 1.00],
+    gunBarrel: { lengthM: 4.95, radiusM: 0.115 },
     hullPlates,
     turretPlates,
     modules: [
@@ -122,7 +125,7 @@ function armorM1A3(): ArmorEnvelope {
 }
 
 const m1a3: AbramsConceptSpec = {
-  id: 'm1a3', name: 'M1A3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
+  id: 'm1a3', name: 'M1E3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
   variantOf: 'm1a1_abrams_hc',
   hp: 2950,
   enginePowerHp: 1800, weightTons: 61.5, topSpeedKmh: 75, reverseSpeedKmh: 40,
@@ -143,17 +146,20 @@ const m1a3: AbramsConceptSpec = {
     sensorFusion: true, unmannedAerialSystemLink: true,
   },
   gun: {
-    caliberMm: 130, reloadS: 17.5, baseAccuracy: 0.23, aimTimeS: 1.25,
+    // Main 2026-10-29: the January 2026 demonstrator keeps the 120 mm, so the M1E3 fires the SEPv3's M829A4
+    // (the programme's 130 mm XM1301 is the spec, not the fit). The guided round and the weight stay with the
+    // stats proposal for the balance session; their calibre follows the tube.
+    caliberMm: 120, reloadS: 17.5, baseAccuracy: 0.23, aimTimeS: 1.25,
     autoloader: { magazineSize: 4, intraClipS: 2.25, fullReloadS: 17.5 },
     bloom: { ...tankSpecs.m1a1_abrams_hc.gun.bloom, move: 0.045, hullRot: 0.055, turret: 0.04, afterShot: 1.8 },
     shells: [
-      shell('XM1301 APFSDS-T', 'APFSDS', 130,
-        apfsdsPens(840)[0], apfsdsPens(840)[1], 620, 1900,
-        { pen2000Mm: apfsdsPens(840)[2], count: 24 }),
-      shell('XM1210 MRM-H Hypersonic GATGM', 'HEAT', 130,
+      shell('M829A4 APFSDS', 'APFSDS', 120,
+        apfsdsPens(750)[0], apfsdsPens(750)[1], 540, 1670,
+        { pen2000Mm: apfsdsPens(750)[2], count: 24 }),
+      shell('XM1210 MRM-H Hypersonic GATGM', 'HEAT', 120,
         1050, 1050, 650, 2050,
         { guided: true, guidanceTurnRateRadS: 0.34, reloadS: 2.8, count: 6, soundProfile: 'spike-launch', launcherTubes: 0 }),
-      shell('XM1302 AMP', 'HE', 130, 82, 82, 760, 1050, { count: 18 }),
+      shell('M1147 AMP', 'HE', 120, 82, 82, 760, 1050, { count: 18 }),
     ],
   },
   dims: { hullLengthM: 8.08, overallLengthM: 10.85, widthM: 4.32, heightM: 3.46 + M1A3_TURRET_VERTICAL_OFFSET_M },

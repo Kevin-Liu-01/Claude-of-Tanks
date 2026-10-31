@@ -6,12 +6,11 @@ import {KIT} from './kit.ts';
 import {sampleArmorRay} from './armorFaceSampling.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
-import {sourceMachineGun} from './sourceMachineGun.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 
 const YAW=new THREE.Vector3(...T72BU_X_DATUMS.turretPivot);
-const {box,cylZ,cylX}=KIT;
+const {box,cylX}=KIT;
 const cylY=(r:number,h:number,n=20)=>KIT.cylY(r,r,h,n);
 type Seat={owner:'hull'|'turret';center:number[];normal:number[];corners:number[][];surface:number[][]};
 function emittedShell(P:TankBuilderPort,owner:'hull'|'turret'):THREE.BufferGeometry{
@@ -124,17 +123,11 @@ function roof(P:TankBuilderPort,shell:THREE.BufferGeometry):void{
   equipment(P,'turretGlass',box(.08,.065,.025).rotateY(side*.7),side*1.02,roofY(side*1.00,-.2)+.06,-.135);
  }
  const gunY=roofY(-.58,-.05)+.38;
- equipment(P,'turretDetail',cylY(.065,.27),-.58,gunY-.16,-.05);
- const mg=sourceMachineGun(P,T72BU_X_DATUMS.turretPivot);
- mg.add('turretDark',box(.13,.115,.42),-.58,gunY,.17);
- mg.add('turretDark',cylZ(.025,.62,16),-.58,gunY,.65);
- mg.add('turretDetail',box(.22,.20,.25),-.78,gunY-.025,.09);
- mg.add('turretDark',box(.065,.055,.12),-.6575,gunY-.015,.14);
- mg.add('turretDark',box(.12,.03,.08),-.58,gunY+.071,.23);
- mg.add('turretDark',cylZ(.035,.10,12),-.58,gunY,1.01);
- const commandMg=mg.finish();commandMg.name='pt91mCommandMG';
- // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
- stationFromDrawnGun(commandMg,{name:'pt91mCommandMgStation',caliberMm:12.7});
+ // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+ // command NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle on the commander's
+ // cupola race's front rim (the race top 0.135 over the dome there, clear of the hatch handle), in place of the traced
+ // post, receiver block, rods and box.
+ libraryRoofMg(P,{station:'pt91mCommandMgStation',cls:'nsvt',seat:[-.58-YAW.x,roofY(-.58,-.05)+.135-YAW.y,.17-YAW.z]});
  P.turretG.userData.pt91mRoofEquipmentReceipt={revision:'t72bu-pendekar-roof-r1',cupolas:2,periscopeBlocks:12,mainSight:'boxed-recessed',panorama:true,metMast:true};
  P.topY=Math.max(my+.844,gunY+.10)-YAW.y;
 }

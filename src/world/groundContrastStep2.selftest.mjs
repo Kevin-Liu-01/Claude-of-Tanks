@@ -23,6 +23,10 @@ has('shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 };');
 // (b'')
 const swardGain = num('MID_SWARD_GAIN');
 assert.ok(swardGain > 0 && swardGain <= 1.5, `the sward's dapple gain (${swardGain})`);
-has('float swardGain = 1.0 + MID_SWARD_GAIN * meadowG * dapField * (1.0 - step(0.5, uReduxD.y));');
-has('n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardGain * (1.0 - fMs) * midGraze;');
-console.log(`groundContrastStep2: (b') the detail normal ×${(1 + dkGain).toFixed(2)} from 20 to 300 m, (b'') the sward's dapple ×${(1 + swardGain).toFixed(2)} on vegetated maps PASS; no GPU/art claim`);
+// (264b, the critics' pocked and smeared meadows) the gain stays in the sward's tone; its relief is cut to
+// SWARD_DAP_RELIEF and fades as the view grazes the flat sward (groundTrainIrregularity pins the cut)
+has('float vegSward = meadowG * vegGround;');
+has('float swardGain = 1.0 + MID_SWARD_GAIN * vegSward;');
+has('n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardRelief * (1.0 - fMs) * midGraze;');
+has('* uMidRelief * dapG * swardGain * (1.0 - fMs) * dapField;');
+console.log(`groundContrastStep2: (b') the detail normal ×${(1 + dkGain).toFixed(2)} from 20 to 300 m, (b'') the sward's dapple tone ×${(1 + swardGain).toFixed(2)} on vegetated maps PASS; no GPU/art claim`);

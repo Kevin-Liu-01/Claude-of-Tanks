@@ -80,6 +80,8 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
   dk: Object.freeze({ countryLabel: 'Denmark', filterLabel: 'DK', insignia: 'dk-dannebrog', designation: 'DK' }),
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
+  za: Object.freeze({ countryLabel: 'South Africa', filterLabel: 'ZA', insignia: 'za-castle', designation: 'SA' }),
+  au: Object.freeze({ countryLabel: 'Australia', filterLabel: 'AU', insignia: 'au-kangaroo', designation: 'AUS' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -290,6 +292,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   c2_ariete_proto: anchor('turret', 'left', 0.45, 0.40, 0.23, 1),
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
   leo2a2: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a4_v: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
@@ -298,6 +301,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
   leo2a3: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  leo2a3_b4: anchor('turret', 'right', 0.40, 0.42, 0.24, -1),
   leo2a4m_can: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
   // 2026-10-05: on the turret, where the surface search always landed. The ghillie side drape hides both hull sides,
@@ -311,6 +315,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leclerc_sxxi: anchor('turret', 'left', 0.34, 0.43, 0.24, 1),
   leclerc_s1: anchor('turret', 'right', 0.31, 0.45, 0.24, -1),
   ztz99_longwei: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  // release 264: the Longwei family carries the Longwei turret's anchor
+  ztz99a2_qinglong: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  vt4a1_baihu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3_zhuque: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3m_xuanwu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   type100: anchor('hull', 'left', 0.33, 0.77, 0.26, 1),
   // The missile banks leave the aft spine visible; the former mid-turret
@@ -342,7 +351,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // add-on side armour; 2026-10-23 ("Paint it on the drape"): painted on its ULCANS drape (vehicleMarkingPaintsOnSuit),
   // no window cut in the cloth; the designation keeps the left flank's drape
   m1a1_abrams_fep: anchor('turret', 'right', 0.48, 0.44, 0.27, 1),
-  m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
+  // 2026-10-28 (m1e3-264): the demonstrator's star on its left star skirt panel, behind the flag panel
+  m1a3: anchor('hull', 'left', 0.66, 0.54, 0.50, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),
@@ -358,9 +368,19 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   amx30: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   amx30b2: anchor('turret', 'right', 0.41, 0.48, 0.24, -1),
   m48a5_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  m48a3_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  magach3: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
+  m48a2ga2: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  m48_super: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  shot_kal: anchor('turret', 'left', 0.42, 0.49, 0.25, 1),
+  centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk2: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  centurion5_avre: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
+  centurion5_1_aus: anchor('turret', 'left', 0.47, 0.49, 0.25, 1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m47_patton: anchor('turret', 'right', 0.41, 0.49, 0.25, -1),
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),
@@ -374,6 +394,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
   bm_oplot_m: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
   bm_oplot_t: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
+  // the Orzeł's flank carries its Krata grid and the housing its Tellur bank: the checker goes on the right bin's face
+  pt84_orzel: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_sokol: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_zbik: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
@@ -429,12 +453,13 @@ export function vehicleMarkingPaintsOnSuit(
   return id === 'm1a1_abrams_fep' || id === 'christian2';
 }
 
-/** Continuous side modules may carry markings outside the core hull. */
+/** Continuous side modules may carry markings outside the core hull. Release 264: the ZTZ-99 Longwei's numbers stand on
+ * its skirt band, spaced armour since the envelope fix (profiles/longwei.ts addSkirts). */
 export function vehicleMarkingIncludesPermanentHullArmor(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'object695' || id === 'amx10p_25';
+  return id === 'object695' || id === 'amx10p_25' || id === 'ztz99_longwei';
 }
 
 /**
@@ -705,6 +730,40 @@ function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   }
 }
 
+/** The South African castle: the five-bastioned Castle of Good Hope outline the SANDF's insignia draw, gold on blue. */
+function drawSouthAfricaCastle({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.86, '#2f4f86');
+  ctx.fillStyle = '#e2b84e';
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + k * Math.PI / 5, r = radius * (k % 2 === 0 ? 0.70 : 0.46);
+    const x = cx + detMath.cos(a) * r, y = cy + detMath.sin(a) * r;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#ece6d6';
+  ctx.lineWidth = size * 0.035;
+  ctx.stroke();
+}
+
+/** The Australian kangaroo: a red bounding kangaroo in a white disc in a blue ring (the roundel the services share). */
+function drawAustraliaKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.86, '#2f4f86');
+  ring(ctx, cx, cy, radius * 0.62, '#ece6d6');
+  // facing left: tail low behind, the long hind foot, the body leaning forward, the head and ears raised
+  const pts: readonly (readonly [number, number])[] = [
+    [0.50, 0.30], [0.12, 0.22], [-0.10, 0.30], [-0.06, 0.18], [0.10, 0.06], [0.04, -0.12], [-0.14, -0.22], [-0.26, -0.30],
+    [-0.36, -0.26], [-0.40, -0.36], [-0.30, -0.40], [-0.18, -0.36], [-0.04, -0.30], [0.14, -0.20], [0.26, -0.02],
+    [0.24, 0.12], [0.54, 0.24],
+  ];
+  ctx.fillStyle = '#b73a3a';
+  ctx.beginPath();
+  pts.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(cx + x * radius, cy + y * radius) : ctx.lineTo(cx + x * radius, cy + y * radius)));
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#d6a74f';
   ctx.beginPath();
@@ -733,6 +792,8 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'dk-dannebrog': drawDenmarkDannebrog,
   'ua-trident': drawUkraineTrident,
   'th-flag': drawThaiFlag,
+  'za-castle': drawSouthAfricaCastle,
+  'au-kangaroo': drawAustraliaKangaroo,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

@@ -48,6 +48,9 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.deepEqual(budget.find((row) => row.step === 'budget').commands, [['node', 'tools/bundle-budget.mjs', '--check']],
   'the budget runs once it exists, and fails the gate when a page is over (--check; without it the tool only reports)');
   assert.match(budget.find((row) => row.step === 'workers').error, /npm ci --prefix cloudflare\/telemetry/, 'a missing Worker install fails with the command to run');
+  // 265 integration (Main 2026-10-30, strenuous suites manual): the whole fleet's fill exposure is the manual `fleet`
+  // suite's command now, not a gate step (tank:release:check still scopes it per id).
+  assert.equal(plan.find((row) => row.step === 'fills'), undefined, 'the fleet-wide fill exposure is not a gate step');
   const real = workerPackages(REPO_ROOT);
   assert.deepEqual(real.map((worker) => [worker.dir, worker.scripts]), [['cloudflare/rooms', ['typecheck', 'test']],
     ['cloudflare/telemetry', ['typecheck', 'test']]], 'both Workers are gated with their typecheck and tests');

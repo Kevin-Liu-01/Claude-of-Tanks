@@ -56,6 +56,11 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
     // Per id since 266: the fleet-wide form is the manual `fleet` suite's command (see above).
     cpu('gen-combat-anatomy','--check',selected),
+    // 2026-10-29 (the owner's voxel blocks): no committed interior fill stands outside its current body (a skin moved
+    // without a fills regen draws its old fills as stair-stepped slabs). --lane (Main, 2026-10-29): the selected ids
+    // plus every id whose body or fill record moved against the merge-base with origin/main, so a shared builder's
+    // other tanks run too. The whole-fleet form is the manual `fleet` suite's command (265 integration: both tiers' intents).
+    cpu('interior-fill-exposure',selected,'--lane','--check','--jobs=4'),
     // 2026-10-11 (217's closure; 211's TTS before it): a geometry change could pass this check and then
     // fail the closure's ledger and mission-seat checks. Both receipts now gate here, scoped to the ids.
     cpu('fleet-geometry-ledger','--check',selected),

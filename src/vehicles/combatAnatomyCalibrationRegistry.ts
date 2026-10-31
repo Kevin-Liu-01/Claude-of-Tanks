@@ -26,6 +26,9 @@ export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {
   readonly kind?: string;
   readonly sourceHash?: string;
   readonly index?: number;
+  /** The main plate this structure's front face stands on (a builder's authoring hint; combatAnatomy
+   *  applyStructureFrontPlates): that face takes the plate's armour, its other faces the roof's. */
+  readonly frontPlate?: string;
 }
 
 export interface AnatomyModuleShapeReceipt extends Record<string, RuntimeValue> {

@@ -8,7 +8,7 @@ import { FLAG_ICON_CODE_BY_NATION, flagIconCode } from './flagCodes.ts';
 const expected = {
   USA: 'us', Germany: 'de', USSR: 'ru', Russia: 'ru', 'USSR/Russia': 'ru',
   UK: 'gb', France: 'fr', China: 'cn', Israel: 'il', Italy: 'it', Japan: 'jp',
-  Poland: 'pl', 'South Korea': 'kr', Sweden: 'se', Denmark: 'dk', Ukraine: 'ua', Canada: 'ca', Community: 'xx',
+  Poland: 'pl', 'South Korea': 'kr', Sweden: 'se', Denmark: 'dk', Ukraine: 'ua', Canada: 'ca', 'South Africa': 'za', Australia: 'au', Community: 'xx',
 };
 
 assert.deepEqual(FLAG_ICON_CODE_BY_NATION, expected, 'every roster nation has a stable flag-icons code');

@@ -53,6 +53,16 @@
       "path": "s227-oasis-duel-mobile.mp4",
       "bytes": 947944,
       "source": "/media/site50-r14/loops/s227-oasis-duel.webm"
+    },
+    {
+      "path": "s29-fjord-road-kill-mobile.mp4",
+      "bytes": 943366,
+      "source": "/media/site50-r14/loops/s29-fjord-road-kill.webm"
+    },
+    {
+      "path": "s01-main-street-push-mobile.mp4",
+      "bytes": 926549,
+      "source": "/media/site50-r14/loops/s01-main-street-push.webm"
     }
   ]
 }

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { classicTurret, classicGun, LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -87,10 +88,10 @@ function mountedGun(P: TankBuilderPort): void {
   // match or an invented source object. All its solids share one real owner.
   const mg = sourceMachineGun(P, D.turretPivot);
   mg.add('turretDetail', box(.088, .055, .115), .88, 2.497, .18);
-  mg.add('turretDark', box(.07, .065, .24), .88, 2.549, .27);
-  mg.add('turretDark', cylZ(.016, .39, 20), .88, 2.553, .58);
-  const tube = new THREE.CylinderGeometry(.012, .012, .035, 20, 1, true).rotateX(Math.PI / 2);
-  mg.add('turretDark', tube, .88, 2.553, .7925);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // roof gun is the fleet's 7.62 mm construction at true length (libraryRoofMg.ts libraryStationGun, remote: fired from
+  // under armour) on the drawn bore, in place of the drawn receiver block, rod and open tube
+  libraryStationGun(mg, { cls: 'mag', x: .88, boreY: 2.553, pivotZ: .35 });
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(mg.finish(), { name: 'leclercClassicXRoofGpmg', caliberMm: 7.62 });
 }

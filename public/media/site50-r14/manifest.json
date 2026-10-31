@@ -524,7 +524,7 @@
   },
   "s87-leo2a4-otco-polders": {
    "map": "polders",
-   "title": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
+   "title": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -2685,8 +2685,8 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 97082,
-   "sha256": "587c122c826796ad05182b24e8becc86681480581aa4b64c10c1a4b888f0ef5b",
+   "bytes": 97102,
+   "sha256": "678786c48d46757606ef5feef84189877d86cfcd446139213b2588b4157f2c67",
    "source": null,
    "vehicles": 187
   },
@@ -3556,8 +3556,8 @@
    "sha256": "67bea6c216c73c908d719c344b9c5b512c1ec34ea991d5afe673a8c4409bbf08",
    "width": 640,
    "height": 360,
-   "fps": 30.0,
-   "seconds": 6.0,
+   "fps": 30,
+   "seconds": 6,
    "audio": null,
    "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.mp4",
    "take": "s197-m1a2-sepv3-airfield",
@@ -3648,8 +3648,8 @@
    "sha256": "6f355f06bf2329ff7708f41448ab491005589898b79369927ca7d0524b1f0380",
    "width": 640,
    "height": 360,
-   "fps": 30.0,
-   "seconds": 6.0,
+   "fps": 30,
+   "seconds": 6,
    "audio": null,
    "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s195-m1a2-airfield/s195-m1a2-airfield.mp4",
    "take": "s195-m1a2-airfield",
@@ -3770,6 +3770,29 @@
    "take": "s08-market-push",
    "round": "shots/media-r5/site50/deliver-r14",
    "vehicle": "m6_linebacker"
+  },
+  {
+   "path": "media/site50-r14/fleet/m60a3.jpg",
+   "bytes": 43780,
+   "sha256": "3acd3ba8adfeefc64a7ceb116303e4aa9971088c5887766232c679785f7e08e2",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa-close-4k.png",
+   "take": "s208-m60a3-copper-mesa",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
+   "vehicle": "m60a3"
+  },
+  {
+   "path": "media/site50-r14/fleet/m60a3.webm",
+   "bytes": 398162,
+   "sha256": "40497a3896b525316389ce37f835839a2ef2a1344772cd5152400008bf66fc4d",
+   "width": 640,
+   "height": 360,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.mp4",
+   "take": "s208-m60a3-copper-mesa",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
+   "vehicle": "m60a3"
   },
   {
    "path": "media/site50-r14/fleet/mbt70.jpg",
@@ -5037,6 +5060,29 @@
    "vehicle": "tos1a_tagil"
   },
   {
+   "path": "media/site50-r14/fleet/type10_dozer.jpg",
+   "bytes": 35627,
+   "sha256": "2f8740d402a8ee13a36268d6406db9ae06206aea7e8ad487a6392b9b84d64b51",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove-close-4k.png",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
+   "path": "media/site50-r14/fleet/type10_dozer.webm",
+   "bytes": 410194,
+   "sha256": "47d9d512b27c4c7d7671a1ace6bab03da39903f531d3cf360829cfbf64bdd376",
+   "width": 640,
+   "height": 360,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.mp4",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
    "path": "media/site50-r14/fleet/type10_x.jpg",
    "bytes": 41967,
    "sha256": "349069929f644179355b9feab358232f737b23b3a71405a07d84ad59465daddb",
@@ -5817,52 +5863,6 @@
    "take": "s70-ztz99a2-monsoon",
    "round": "shots/media-r5/site50/deliver-fleet226",
    "vehicle": "ztz99a2"
-  },
-  {
-   "path": "media/site50-r14/fleet/type10_dozer.webm",
-   "bytes": 410194,
-   "sha256": "47d9d512b27c4c7d7671a1ace6bab03da39903f531d3cf360829cfbf64bdd376",
-   "width": 640,
-   "height": 360,
-   "fps": 30.0,
-   "seconds": 6.0,
-   "audio": null,
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.mp4",
-   "take": "s253-type10-dozer-mangrove",
-   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
-   "vehicle": "type10_dozer"
-  },
-  {
-   "path": "media/site50-r14/fleet/type10_dozer.jpg",
-   "bytes": 35627,
-   "sha256": "2f8740d402a8ee13a36268d6406db9ae06206aea7e8ad487a6392b9b84d64b51",
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove-close-4k.png",
-   "take": "s253-type10-dozer-mangrove",
-   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
-   "vehicle": "type10_dozer"
-  },
-  {
-   "path": "media/site50-r14/fleet/m60a3.webm",
-   "bytes": 398162,
-   "sha256": "40497a3896b525316389ce37f835839a2ef2a1344772cd5152400008bf66fc4d",
-   "width": 640,
-   "height": 360,
-   "fps": 30.0,
-   "seconds": 6.0,
-   "audio": null,
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.mp4",
-   "take": "s208-m60a3-copper-mesa",
-   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
-   "vehicle": "m60a3"
-  },
-  {
-   "path": "media/site50-r14/fleet/m60a3.jpg",
-   "bytes": 43780,
-   "sha256": "3acd3ba8adfeefc64a7ceb116303e4aa9971088c5887766232c679785f7e08e2",
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa-close-4k.png",
-   "take": "s208-m60a3-copper-mesa",
-   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r",
-   "vehicle": "m60a3"
   },
   {
    "path": "media/site50-r14/frames/b01-pan-runway-thumb.webp",
@@ -7388,6 +7388,52 @@
    "home": "modes/zone_control"
   },
   {
+   "path": "media/site50-r14/loops/s01-main-street-push-960.webm",
+   "bytes": 1482967,
+   "sha256": "c6806d635acc6993ea6ba17eba002a6b0ac0459823aa4879f65872bdf9759d3a",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.mp4",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 39,
+    "kbps": 1972,
+    "vmaf": 90.41,
+    "vmafMin": 79.29
+   }
+  },
+  {
+   "path": "media/site50-r14/loops/s01-main-street-push.jpg",
+   "bytes": 437339,
+   "sha256": "5119de1a2a6ae7d02ee573741586f2281ce2b44f13e783049ae1088aa2af4365",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.jpg",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s01-main-street-push.webm",
+   "bytes": 4777409,
+   "sha256": "803b2bc65145da0a2ea0a10dce6724fd791e184bdf3226be972db1a4e03a5d2a",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.001,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.mp4",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 40,
+    "kbps": 6278,
+    "vmaf": 94.18,
+    "vmafMin": 79.72
+   }
+  },
+  {
    "path": "media/site50-r14/loops/s04-column-under-fire.jpg",
    "bytes": 568956,
    "sha256": "69b62b9d626c2e55a0224cb328d54802a4c4c97e41d8454f62ede056edffb667",
@@ -7610,6 +7656,99 @@
    }
   },
   {
+   "path": "media/site50-r14/loops/s226-church-duel-960.webm",
+   "bytes": 699486,
+   "sha256": "b60332f1702cd0860355dab4964b541e599bce6354d37fffa9f31dff6165e54c",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 4.6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
+   "take": "s226-church-duel",
+   "round": "shots/media-r5/site50/deliver-combat226",
+   "encode": {
+    "crf": 45,
+    "kbps": 1214,
+    "vmaf": 90,
+    "vmafMin": 74.04
+   }
+  },
+  {
+   "path": "media/site50-r14/loops/s226-church-duel.jpg",
+   "bytes": 289959,
+   "sha256": "bf783bfc587f241b539edbf38684c19abf827c4ee0d45af8e3702871627344ff",
+   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.jpg",
+   "take": "s226-church-duel",
+   "round": "shots/media-r5/site50/deliver-combat226"
+  },
+  {
+   "path": "media/site50-r14/loops/s226-church-duel.webm",
+   "bytes": 2773757,
+   "sha256": "441bbe42030d5179e329d7b77078ed8fa1c920a7c7853350c6ef150d84ff30ef",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 4.601,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
+   "take": "s226-church-duel",
+   "round": "shots/media-r5/site50/deliver-combat226",
+   "encode": {
+    "crf": 40,
+    "kbps": 4740,
+    "vmaf": 93.56,
+    "vmafMin": 83.96
+   }
+  },
+  {
+   "path": "media/site50-r14/loops/s227-oasis-duel-960.webm",
+   "bytes": 1443151,
+   "sha256": "f68eb282e44ae7e3656887dc047283de843d7c83869109d591f95c8f69a3f811",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
+   "take": "s227-oasis-duel",
+   "round": "shots/media-r5/site50/deliver-combat226",
+   "encode": {
+    "crf": 39,
+    "kbps": 1919,
+    "vmaf": 88,
+    "vmafMin": 76.15,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/loops/s227-oasis-duel.jpg",
+   "bytes": 462224,
+   "sha256": "e628e629659704e8993677945b17a06d17d3336e2a591c4da690e9912cae4dfa",
+   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.jpg",
+   "take": "s227-oasis-duel",
+   "round": "shots/media-r5/site50/deliver-combat226"
+  },
+  {
+   "path": "media/site50-r14/loops/s227-oasis-duel.webm",
+   "bytes": 4925387,
+   "sha256": "e6d726c56fef209936d40ce2fc1e39efee88c6a88ee03e96b15cc8c5d2d9d014",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.001,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
+   "take": "s227-oasis-duel",
+   "round": "shots/media-r5/site50/deliver-combat226",
+   "encode": {
+    "crf": 40,
+    "kbps": 6469,
+    "vmaf": 93.26,
+    "vmafMin": 77.21
+   }
+  },
+  {
    "path": "media/site50-r14/loops/s23-village-crossroads.jpg",
    "bytes": 568253,
    "sha256": "19730f654c7ca0c6153b73d87ca837ad4288c088178a9561dd5d37080d53cfe6",
@@ -7737,6 +7876,52 @@
    }
   },
   {
+   "path": "media/site50-r14/loops/s29-fjord-road-kill-960.webm",
+   "bytes": 1443080,
+   "sha256": "eca41a91f360c88cbd298dd5fa579cf54393bbddbf222b41b039e7723f80f314",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.mp4",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 36,
+    "kbps": 1919,
+    "vmaf": 90.85,
+    "vmafMin": 80.25
+   }
+  },
+  {
+   "path": "media/site50-r14/loops/s29-fjord-road-kill.jpg",
+   "bytes": 386459,
+   "sha256": "225cf112d6851895998ff1df4228364498f13b121299a283050036bbdc0520b8",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.jpg",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s29-fjord-road-kill.webm",
+   "bytes": 4156004,
+   "sha256": "b5875c91a25b174b27b0b81c17dd936c7baae6a19ad94a5a84df93e3de1ddae9",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.001,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.mp4",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 36,
+    "kbps": 5436,
+    "vmaf": 93.48,
+    "vmafMin": 82.78
+   }
+  },
+  {
    "path": "media/site50-r14/loops/s33-water-tower.jpg",
    "bytes": 618604,
    "sha256": "009d2f5230ec94981721cf5e3c7c25a5d60d6146f7d75be9c012341880bc24b8",
@@ -7816,99 +8001,6 @@
     "kbps": 6474,
     "vmaf": 93.49,
     "vmafMin": 74.2
-   }
-  },
-  {
-   "path": "media/site50-r14/loops/s226-church-duel-960.webm",
-   "bytes": 699486,
-   "sha256": "b60332f1702cd0860355dab4964b541e599bce6354d37fffa9f31dff6165e54c",
-   "width": 960,
-   "height": 540,
-   "fps": 30,
-   "seconds": 4.6,
-   "audio": null,
-   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
-   "take": "s226-church-duel",
-   "round": "shots/media-r5/site50/deliver-combat226",
-   "encode": {
-    "crf": 45,
-    "kbps": 1214,
-    "vmaf": 90,
-    "vmafMin": 74.04
-   }
-  },
-  {
-   "path": "media/site50-r14/loops/s226-church-duel.jpg",
-   "bytes": 289959,
-   "sha256": "bf783bfc587f241b539edbf38684c19abf827c4ee0d45af8e3702871627344ff",
-   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.jpg",
-   "take": "s226-church-duel",
-   "round": "shots/media-r5/site50/deliver-combat226"
-  },
-  {
-   "path": "media/site50-r14/loops/s226-church-duel.webm",
-   "bytes": 2773757,
-   "sha256": "441bbe42030d5179e329d7b77078ed8fa1c920a7c7853350c6ef150d84ff30ef",
-   "width": 1920,
-   "height": 1080,
-   "fps": 30,
-   "seconds": 4.601,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
-   "take": "s226-church-duel",
-   "round": "shots/media-r5/site50/deliver-combat226",
-   "encode": {
-    "crf": 40,
-    "kbps": 4740,
-    "vmaf": 93.56,
-    "vmafMin": 83.96
-   }
-  },
-  {
-   "path": "media/site50-r14/loops/s227-oasis-duel-960.webm",
-   "bytes": 1443151,
-   "sha256": "f68eb282e44ae7e3656887dc047283de843d7c83869109d591f95c8f69a3f811",
-   "width": 960,
-   "height": 540,
-   "fps": 30,
-   "seconds": 6.0,
-   "audio": null,
-   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
-   "take": "s227-oasis-duel",
-   "round": "shots/media-r5/site50/deliver-combat226",
-   "encode": {
-    "crf": 39,
-    "kbps": 1919,
-    "vmaf": 88,
-    "vmafMin": 76.15,
-    "capped": true
-   }
-  },
-  {
-   "path": "media/site50-r14/loops/s227-oasis-duel.jpg",
-   "bytes": 462224,
-   "sha256": "e628e629659704e8993677945b17a06d17d3336e2a591c4da690e9912cae4dfa",
-   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.jpg",
-   "take": "s227-oasis-duel",
-   "round": "shots/media-r5/site50/deliver-combat226"
-  },
-  {
-   "path": "media/site50-r14/loops/s227-oasis-duel.webm",
-   "bytes": 4925387,
-   "sha256": "e6d726c56fef209936d40ce2fc1e39efee88c6a88ee03e96b15cc8c5d2d9d014",
-   "width": 1920,
-   "height": 1080,
-   "fps": 30,
-   "seconds": 6.001,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
-   "take": "s227-oasis-duel",
-   "round": "shots/media-r5/site50/deliver-combat226",
-   "encode": {
-    "crf": 40,
-    "kbps": 6469,
-    "vmaf": 93.26,
-    "vmafMin": 77.21
    }
   },
   {
@@ -8417,8 +8509,8 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 99600,
-   "sha256": "7323171222034852f7747421d3513e3b7134b6be9755d33a7497d2671e23e368",
+   "bytes": 99620,
+   "sha256": "fc9510c758197bc6e0bdcac3c78381601c53a4f2c350c1dadd2de40cbbf677de",
    "source": null,
    "takes": 195
   },
@@ -9071,6 +9163,12 @@
    "source": "shots/media-r5/site50/deliver-fleet226/s201-m3a3-bradley-desert/s201-m3a3-bradley-desert.scene.json"
   },
   {
+   "path": "media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json",
+   "bytes": 76572,
+   "sha256": "0e9e3209009e6436f8e67de54e86d5e04619fe5c19bababed0f5a0f4de638dcc",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.scene.json"
+  },
+  {
    "path": "media/site50-r14/scenes/s209-bmp2-reservoir.scene.json",
    "bytes": 106654,
    "sha256": "aac7f91993476172021e2b147ee82cc2838d580ae4a927a8889c9e43376aebc9",
@@ -9201,6 +9299,12 @@
    "bytes": 76338,
    "sha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
    "source": "tools/media-r5/site50-shots/s25-alpine-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json",
+   "bytes": 77948,
+   "sha256": "c3d031063afeb7fb4adbe28c1df778b682563cf9cef7e3d9750fdcdaa3b76e3a",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s26-minaret-fire.scene.json",
@@ -9534,8 +9638,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s87-leo2a4-otco-polders.scene.json",
-   "bytes": 75348,
-   "sha256": "774ed01a64bca426e725d1d561274b139d61b7a60773a0126b940aadda3c1c30",
+   "bytes": 75353,
+   "sha256": "8028d52bc1a81fcc017e2b7ba243f9de88bd0d4e318d7931a4a8ff5b3b79dd6c",
    "source": "shots/media-r5/site50/deliver-fleet226/s87-leo2a4-otco-polders/s87-leo2a4-otco-polders.scene.json"
   },
   {
@@ -9579,18 +9683,6 @@
    "bytes": 76692,
    "sha256": "1fcfd90b5f487b6c31be8630adc70d379f07f24aed0bdbc7e2cfc2c0b03886d3",
    "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera.scene.json"
-  },
-  {
-   "path": "media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json",
-   "bytes": 77948,
-   "sha256": "c3d031063afeb7fb4adbe28c1df778b682563cf9cef7e3d9750fdcdaa3b76e3a",
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.scene.json"
-  },
-  {
-   "path": "media/site50-r14/scenes/s208-m60a3-copper-mesa.scene.json",
-   "bytes": 76572,
-   "sha256": "0e9e3209009e6436f8e67de54e86d5e04619fe5c19bababed0f5a0f4de638dcc",
-   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261r/s208-m60a3-copper-mesa/s208-m60a3-copper-mesa.scene.json"
   },
   {
    "path": "media/site50-r14/stills/s01-main-street-push-close-thumb.webp",

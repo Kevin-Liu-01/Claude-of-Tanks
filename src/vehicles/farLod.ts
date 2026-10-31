@@ -20,6 +20,15 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 export const FAR_LOD_ENTER_M = 180;
 export const FAR_LOD_RETURN_M = 165;
+/**
+ * (local-fps-265) The far LOD's running gear alone from nearer in: past GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M)
+ * a battle build draws its wheel stations (farWheelsGeometry: one mesh on the hull) for the 9-13 instanced and batched
+ * wheel layers, and the gear's runtime rests, while the hull, the turret and the gun keep their detail until
+ * FAR_LOD_ENTER_M. A road wheel is ~6 px tall at 90 m on a 720-line, 55-degree view: its hub, holes and bolts turning are
+ * below a pixel there. The tracks, their bands and shoes draw as they are.
+ */
+export const GEAR_LOD_ENTER_M = 90;
+export const GEAR_LOD_RETURN_M = 81;
 /** The layer the far LOD parks a vehicle's detailed draws on: no camera renders it. */
 export const FAR_LOD_PARKED_LAYER = 27;
 /** The far hull's clustering cell (m): a quarter of a pixel at FAR_LOD_ENTER_M on a 900-line, 55-degree view; a 9 cm cell

@@ -217,12 +217,6 @@ export interface BattlePresentationOptions {
   /** The seats' vehicles built beside the world load (prebuildRosterVisuals): the roster takes them before it builds. */
   prebuilt?: RosterPrebuild | null;
   rosterScheduling?: FrameSchedulerOptions;
-  /**
-   * A solo battle's room in the page (soloHostEntry.ts): the roster builds the viewer's vehicle alone, so the covered warms
-   * see one vehicle, and leaves every other seat to streamRoster, which takes them from `prebuilt` (started once the
-   * world stood) after those warms.
-   */
-  deferRoster?: boolean;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
   onVisualReady?: (actor: MatchActor) => void;
   /** The paint an actor wears (the wire carries none; the room service will). */
@@ -231,11 +225,6 @@ export interface BattlePresentationOptions {
   /** How long a verdict may sit in snapshot meta before it is presented without its `match_ended` event. */
   verdictGraceMs?: number;
   clock?: () => number;
-  /**
-   * A free sortie on the solo sim Worker (src/game/soloSimBattleRuntime.ts): its end is a solo battle's (`network: false`,
-   * the allies lost), kept in the records as the page's own simulation keeps it.
-   */
-  solo?: boolean;
 }
 
 export interface BattlePresentation extends PresentationAdapter {
@@ -245,11 +234,6 @@ export interface BattlePresentation extends PresentationAdapter {
   predictionWorld(): PredictionWorld | null;
   /** Resolves once every roster actor announced so far has its builder, textures and visual (the session owner waits here after WELCOME). */
   rosterReady(): Promise<void>;
-  /**
-   * The seats a deferred roster (deferRoster) left aside, taken now from the prebuild (or built), the viewer's side first.
-   * Resolves with the actors it made (none without a deferred roster).
-   */
-  streamRoster(): Promise<MatchActor[]>;
   mount(): void;
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
@@ -379,11 +363,6 @@ export interface RosterPrebuild {
   /** The seat's vehicle if it was built as these options name it (once); null otherwise, and a mismatch is disposed. */
   take(playerId: string, specId: string, options: TankVisualOptions): TankVisual | null;
   has(playerId: string): boolean;
-  /**
-   * Resolves once this seat's vehicle is built (or its build failed or stopped), at once for a seat the prebuild does not
-   * hold: a deferred roster's viewer (deferRoster) waits on its own seat alone, which the solo room's prebuild builds first.
-   */
-  whenBuilt?(playerId: string): Promise<void>;
   /** Settles when every build has finished or stopped. */
   readonly settled: Promise<void>;
   dispose(): void;
@@ -432,17 +411,6 @@ export function prebuildRosterVisuals(
     if (!group) groups.set(key, group = []);
     if (!group.some((other) => other.playerId === seat.playerId)) group.push(seat);
   }
-  // the seats whose builds are done (built, failed or stopped) and the waits on them (whenBuilt)
-  const members = new Set(seats.map((seat) => seat.playerId));
-  const finished = new Set<string>();
-  const waiting = new Map<string, (() => void)[]>();
-  const finish = (group: readonly RosterPrebuildSeat[]): void => {
-    for (const seat of group) {
-      finished.add(seat.playerId);
-      for (const resume of waiting.get(seat.playerId) ?? []) resume();
-      waiting.delete(seat.playerId);
-    }
-  };
   const keep = (seat: RosterPrebuildSeat, options: TankVisualOptions, visual: TankVisual): void => {
     if (stopped()) { visual.dispose(); return; }
     built.set(seat.playerId, { specId: getSpec(seat.specId).id, options, visual });
@@ -476,7 +444,6 @@ export function prebuildRosterVisuals(
       try { keep(seat, seatOptions, cloneVisual(visual, engineCtx, seatOptions)); } catch { /* this seat builds its own */ }
     }
     keep(source, options, visual);
-    finish(group);
     // the wreck warm's burnt bake for this vehicle and paint (battleWarmRuntime warmBurntVariant finds it baked)
     const burnt = `${source.specId}:${source.camo}`;
     if (burntBaked.has(burnt)) return;
@@ -489,9 +456,9 @@ export function prebuildRosterVisuals(
   const settled = (async () => {
     for (const group of groups.values()) {
       if (stopped()) return;
-      try { await buildGroup(group); } catch { /* the roster builds this group's seats */ } finally { finish(group); }
+      try { await buildGroup(group); } catch { /* the roster builds this group's seats */ }
     }
-  })().finally(() => finish(seats));
+  })();
   const dispose = (): void => {
     disposed = true;
     for (const entry of built.values()) entry.visual.dispose();
@@ -512,8 +479,6 @@ export function prebuildRosterVisuals(
       return null;
     },
     has: (playerId) => built.has(playerId),
-    whenBuilt: (playerId) => (finished.has(playerId) || !members.has(playerId) ? Promise.resolve()
-      : new Promise<void>((resolve) => { waiting.set(playerId, [...(waiting.get(playerId) ?? []), resolve]); })),
     settled,
     dispose,
   };
@@ -530,14 +495,12 @@ export function createBattlePresentation({
   prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
   prebuilt = null,
   rosterScheduling,
-  deferRoster = false,
   clearVehicleDecals = null,
   onVisualReady,
   camoFor = () => 'factory',
   onRosterProgress,
   verdictGraceMs = 500,
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
-  solo = false,
 }: BattlePresentationOptions): BattlePresentation {
   if (!engineCtx || !engineCtx.scene || !game || !bus) throw new TypeError('engineCtx, game and bus are required');
   const actors = new Map<string, MatchActor>();
@@ -668,42 +631,16 @@ export function createBattlePresentation({
     return actor;
   }
 
-  /** The seats a deferred roster left for after the reveal (deferRoster; streamRoster builds them). */
-  let deferredSeats: { entries: RosterEntry[]; context: RosterContext } | null = null;
-
   async function prepareRoster(entries: readonly RosterEntry[], rosterContext: RosterContext): Promise<void> {
     if (disposed) throw new Error('battle presentation disposed');
-    let active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
-    let deferring = false;
-    if (deferRoster && !spectator) {
-      const opening = active.filter((entry) => entry.entityId === rosterContext.ownEntityId);
-      if (opening.length) {
-        deferredSeats = { entries: active.filter((entry) => !opening.includes(entry) && !actors.has(entry.playerId)), context: rosterContext };
-        active = opening;
-        deferring = true;
-      }
-    }
-    // (a deferred roster's prebuild holds the other seats: the viewer's vehicle never waits on it; streamRoster takes them)
-    await paintSeats(active, rosterContext, createOpaqueLoadingYielder(8, 50, rosterScheduling), true, !deferring);
+    const active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
+    await paintSeats(active, rosterContext, createOpaqueLoadingYielder(8, 50, rosterScheduling), true);
     // the seats the room named and the WELCOME did not (a bot the plan guessed otherwise): their vehicles go
-    if (!deferring) prebuilt?.dispose();
-  }
-
-  async function streamRoster(): Promise<MatchActor[]> {
-    const pending = deferredSeats;
-    deferredSeats = null;
-    if (!pending || disposed) return [];
-    const ownTeam = actorsByEntity.get(pending.context.ownEntityId)?.networkTeam;
-    // the viewer's side first (the prebuild's order too)
-    const seats = [...pending.entries].sort((a, b) => Number(b.team === ownTeam) - Number(a.team === ownTeam));
-    const before = new Set(actors.keys());
-    await paintSeats(seats, pending.context, createOpaqueLoadingYielder(8, 50, rosterScheduling), false, true);
     prebuilt?.dispose();
-    return [...actors.values()].filter((actor) => !before.has(actor.id));
   }
 
   async function paintSeats(
-    active: readonly RosterEntry[], rosterContext: RosterContext, schedule: WorkYielder, progress: boolean, awaitPrebuilt: boolean,
+    active: readonly RosterEntry[], rosterContext: RosterContext, schedule: WorkYielder, progress: boolean,
   ): Promise<void> {
     const assertActive = () => { if (disposed) throw new Error('battle presentation disposed'); };
     assertActive();
@@ -711,9 +648,7 @@ export function createBattlePresentation({
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
     // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds is neither grouped nor built here
-    if (prebuilt && awaitPrebuilt) { await prebuilt.settled; assertActive(); }
-    // (a deferred roster's opening) its own seats' builds alone, which the prebuild starts with
-    else if (prebuilt?.whenBuilt) { for (const entry of active) await prebuilt.whenBuilt(entry.playerId); assertActive(); }
+    if (prebuilt) { await prebuilt.settled; assertActive(); }
     // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
     const shared = new Map<string, RosterEntry[]>();
     for (const entry of active) {
@@ -818,8 +753,7 @@ export function createBattlePresentation({
     actor.input.fire = (sample.flags & ENTITY_FLAGS.FIRING) !== 0;
     // The own tank's requested round is the player's: a row writes it only when the authority's own slot moves (an empty
     // round switched for it, a respawn). Written from every row, it undid a pick still on its way to the authority, and
-    // Q's ATGM or the 2 key flapped back (the solo sim Worker, 261; owner 2026-10-28: "why is atgm labeled Q? E does it
-    // for me")
+    // Q's ATGM or the 2 key flapped back (owner 2026-10-28: "why is atgm labeled Q? E does it for me")
     const authorityMoved = actor._authoritySlot !== sample.shellSlot;
     actor._authoritySlot = sample.shellSlot;
     if (!own || authorityMoved) actor.input.shellSlot = sample.shellSlot;
@@ -1077,8 +1011,8 @@ export function createBattlePresentation({
   }
 
   /**
-   * The killcam's step capture, as state.ts takes it each fixed step before the shells fly (a room's battle and a sortie
-   * on the solo sim Worker alike): the live shells' traces and every hull's last pose before this frame's hits (a frame
+   * The killcam's step capture, as state.ts takes it each fixed step before the shells fly (a room's battle): the live
+   * shells' traces and every hull's last pose before this frame's hits (a frame
    * applies, then its events), which a replay restages; at most once a step of presented time. Its steps also retire the
    * program warm-up rig, which a battle that never captures leaves drawn throughout. It allocates nothing a step (held
    * frames refreshed in place, pooled trace buffers).
@@ -1103,10 +1037,8 @@ export function createBattlePresentation({
     // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
     // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
-      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: !solo,
+      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: true,
       gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
-      // (a sortie on the solo sim Worker) the allies lost, as state.ts's battle:ended counts them
-      ...(solo ? { alliesLost: roster.filter((actor) => actor.team !== 'enemy' && !actor.isPlayer && actor.combat.destroyed).length } : {}),
     });
   }
 
@@ -1303,12 +1235,6 @@ export function createBattlePresentation({
         const hit: Record<string, RuntimeValue> = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
         // (ac130-fx-228 r2) the hit's source rides only as the authority's two values (as tank_destroyed's does below)
         if ('attackerSource' in hit && hit.attackerSource !== 'ac130' && hit.attackerSource !== 'drone') delete hit.attackerSource;
-        // (a sortie on the solo sim Worker) the hit names its attacker's vehicle as the page's own battle names it (state.ts
-        // enrichHitEvent): the report's final blow and the hit toasts read it
-        if (solo) {
-          const attacker = actors.get(String(hit.attackerId ?? ''));
-          if (attacker) { hit.attackerName = attacker.spec.name; hit.attackerSpecId = attacker.specId; }
-        }
         // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the match let this viewer
         // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
         // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms
@@ -1579,7 +1505,6 @@ export function createBattlePresentation({
     setVisibility,
     predictionWorld,
     rosterReady: () => rosterReady,
-    streamRoster,
     mount,
     unmount,
     endDisconnected,

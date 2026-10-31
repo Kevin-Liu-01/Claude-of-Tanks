@@ -9,11 +9,12 @@
 // load the machine. Every suit mesh (`<id>_ghillie_*`) must come out identical: the same meshes, vertex counts and
 // positions (to 0.01 mm). A difference names the hull and the mesh.
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { startCpuBurners } from '../../tools/cpu-burners.test-support.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
-const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 'pt91a_twardy'];
+const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 't64bv_donbas'];
 // built first in the loaded child: suited and unsuited hulls of every family the fleet's suits sit on
 const OTHERS = ['ua_m1a1', 'leo2a2', 't90am', 'strv103b', 'm1a1_abrams_hc', 't84', 't84bm_oplot_m', 'strv121'];
 const BURNERS = 3;
@@ -67,7 +68,9 @@ if (arg('child')) {
 } else {
   const reference = new Map(TARGETS.map((id) => [id, runChild('fresh', id)]));
   for (const [id, meshes] of reference) assert.ok(meshes.length > 0, `${id} builds its suit (no _ghillie_ mesh found)`);
-  const burners = Array.from({ length: BURNERS }, () => spawn(process.execPath, ['-e', 'for (;;) {}'], { stdio: 'ignore' }));
+  // the burners leave with this process however it ends (tools/cpu-burners.test-support.mjs: a runner's alarm once left
+  // them running for 13 hours)
+  const burners = startCpuBurners(BURNERS);
   try {
     for (const id of TARGETS) {
       const loaded = runChild('loaded', id);
@@ -75,7 +78,7 @@ if (arg('child')) {
         `${id}: the suit laid after ${OTHERS.length} other hulls under ${BURNERS} CPU burners matches the idle build`);
     }
   } finally {
-    for (const b of burners) b.kill('SIGKILL');
+    burners.stop();
   }
   console.log(`ghilliePlacementDeterminism.selftest: ${TARGETS.length} suited hulls lay identical cloth alone and after `
     + `${OTHERS.length} other hulls under ${BURNERS} CPU burners (${[...reference.values()].reduce((n, m) => n + m.length, 0)} suit meshes)`);

@@ -3,11 +3,13 @@ import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
 import {
   DEFAULT_LOCALE,
   hrefForLocale,
+  publicRouteForEntry,
+  resolveLocalePath,
   type PublicRouteRecord,
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
 import { renderProductStats } from '../productStats.ts';
-import { SITE_ORIGIN, socialCardUrl } from './siteMetadata.ts';
+import { SITE_ORIGIN, shareVideoForRoute, socialCardUrl } from './siteMetadata.ts';
 import { zhTypeFloorStyle } from '../ui/zhTypeFloor.ts';
 
 function escapeAttribute(value: string): string {
@@ -44,6 +46,29 @@ function localizeSocialCards(html: string, locale: SupportedLocale): string {
   const origin = SITE_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return html.replace(new RegExp(`${origin}/brand/og/([a-z0-9-]+)\\.jpg`, 'g'),
     (_, card: string) => socialCardUrl(card, locale));
+}
+
+const SHARE_VIDEO_TAG = /<meta\b[^>]*\bproperty\s*=\s*["']og:video(?::[a-z_]+)?["'][^>]*>/gi;
+const SHARE_IMAGE_TAG = /<meta\b[^>]*\bproperty\s*=\s*["']og:image(?::[a-z_]+)?["'][^>]*>/gi;
+
+/**
+ * A public page's share clip (266): og:video, og:video:url and og:video:secure_url name its family's mp4
+ * (siteMetadata.ts shareVideoForRoute) with its type and size, right after the page's one og:image, and og:type is
+ * video.other. Apple Messages plays a direct mp4 that og:video names; Discord plays it inline only for that type. The
+ * heads name no clip, and one already written (an English page the /cn generator re-localizes, the game's shell under
+ * /studio) is replaced, so a document names its own family's clip once.
+ */
+function addShareVideo(html: string, route: PublicRouteRecord): string {
+  const { path, width, height } = shareVideoForRoute(route.id);
+  const url = `${SITE_ORIGIN}${path}`;
+  const tags = ([
+    ['og:video', url], ['og:video:url', url], ['og:video:secure_url', url],
+    ['og:video:type', 'video/mp4'], ['og:video:width', String(width)], ['og:video:height', String(height)],
+  ] as const).map(([property, content]) => `<meta property="${property}" content="${escapeAttribute(content)}">`).join('');
+  const output = replaceMeta(html.replace(SHARE_VIDEO_TAG, ''), 'property', 'og:type', 'video.other');
+  const image = [...output.matchAll(SHARE_IMAGE_TAG)].at(-1);
+  const at = image ? (image.index ?? 0) + image[0].length : output.search(/<\/head>/i);
+  return at < 0 ? output : `${output.slice(0, at)}${tags}${output.slice(at)}`;
 }
 
 function translation(locale: SupportedLocale, key: string): string {
@@ -356,6 +381,7 @@ export function localizeHtmlDocument(
     (tag) => replaceAttribute(tag, 'href', canonical));
   output = replaceMeta(output, 'property', 'og:url', canonical);
   output = replaceMeta(output, 'property', 'og:locale', locale.replace('-', '_'));
+  output = addShareVideo(output, route);
   output = addLocaleLinks(output, route);
   output = addLocaleCatalogPreload(output, locale);
   if (locale !== DEFAULT_LOCALE) output = localizeBodyHtml(output, locale);
@@ -364,4 +390,22 @@ export function localizeHtmlDocument(
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);
+}
+
+/**
+ * The document an HTML entry becomes (vite.config.ts cot-locale-documents, on the dev server and in `vite build`). On
+ * the dev server the request names the route (/studio serves index.html, /cn/gallery serves gallery.html in Chinese);
+ * a build has no request, so the entry file names its own route, and an entry no public route owns (the manual's topic
+ * fallback, the HUD preview) stays as written. Until 265 the build read its missing request as `/`, the game's route,
+ * and shipped /home, /gallery, /docs and every chapter with the site root as canonical, og:url and hreflang links.
+ */
+export function localizeEntryDocument(html: string, entryFile: string, requestUrl?: string): string {
+  const request = requestUrl ? new URL(requestUrl, SITE_ORIGIN) : null;
+  const localePath = request ? resolveLocalePath(request.pathname) : null;
+  const route = localePath?.route ?? publicRouteForEntry(entryFile.split('/').at(-1) || '');
+  if (!route) return html;
+  const locale = request?.searchParams.get('_cot_locale') === 'zh-CN' || localePath?.locale === 'zh-CN'
+    ? 'zh-CN'
+    : DEFAULT_LOCALE;
+  return localizeHtmlDocument(html, route, locale);
 }
