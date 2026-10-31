@@ -311,7 +311,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       for (const s of [-1, 1] as const) {
         const x = s * 0.52;
         const drum = fuelDrumParts({ r, len, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
-          detail: P.q === false ? 0 : 1, bold: true, paint: DRUM_ISSUE_PAINTS[s > 0 ? 1 : 2], seed: (t4 ? 26640 : 26630) + (s > 0 ? 1 : 0) });
+          // the darker issue paints (blind critic c7: the faded green-grey read pale mint under the studio key)
+          detail: P.q === false ? 0 : 1, bold: true, paint: DRUM_ISSUE_PAINTS[s > 0 ? 1 : 0], seed: (t4 ? 26640 : 26630) + (s > 0 ? 1 : 0) });
         P.add('hullBark', place(drum.body, -len / 2, 0, 0, 0, 0, -Math.PI / 2), x, yc, zc);
         for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', place(part, -len / 2, 0, 0, 0, 0, -Math.PI / 2), x, yc, zc);
         // the cradle: two arms from the rear plate under each drum, two saddles across them
@@ -321,6 +322,13 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         // front crown
         const [fy, fz] = t4 ? [1.48, cageZ - 0.02] : [H.deckY - 0.01, H.sternZ - 0.01];
         for (const dx of [-0.308, 0.308]) bar('hullDark', [x + dx, fy, fz], [x + dx, yc + r * 0.87 + 0.005, zc + r * 0.5], 0.012);
+        // and a cradle strap over the top on each of the drum's bands, saddle to saddle (blind critic c7: "one visible
+        // strap over the top of each drum to the cradle")
+        const sr = r + 0.01, a0 = -Math.acos(0.15 / r), a1 = Math.PI - a0;
+        for (const dx of [-0.308, 0.308]) for (let k = 0; k < 9; k++) {
+          const t0 = a0 + (a1 - a0) * k / 9, t1 = a0 + (a1 - a0) * (k + 1) / 9;
+          bar('hullDark', [x + dx, yc + sr * Math.sin(t0), zc + sr * Math.cos(t0)], [x + dx, yc + sr * Math.sin(t1), zc + sr * Math.cos(t1)], 0.01);
+        }
       }
       P.add('hullDark', cylX(0.025, 1.90, 12), 0, armY, armEnd + 0.03);
     }
