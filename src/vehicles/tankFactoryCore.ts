@@ -6023,10 +6023,18 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
     return index;
   };
+  // (local-fps-266) the same segment findTrackSegment(distance) finds from 0, searched from a nearby one: the segments'
+  // ends (c0 + l, cumulative and strictly increasing) walk back to the first end past the distance, then forward as before.
+  // A shoe's two chord samples sit half a pitch either side of its own segment; from 0 they walked half the loop each.
+  const findTrackSegmentNear = (distance: number, hint: number): number => {
+    let index = hint;
+    while (index > 0 && distance < segsT[index - 1].c0 + segsT[index - 1].l) index--;
+    return findTrackSegment(distance, index);
+  };
   const chordA=new THREE.Vector2(),chordB=new THREE.Vector2();
   const sampleLiveShoeCourse=(attribute:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,
-    distance:number,out:THREE.Vector2):void=>{
-    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
+    distance:number,out:THREE.Vector2,hint:number):void=>{
+    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegmentNear(d,hint),segment=segsT[index];
     const base=index*24,t=(d-segment.c0)/segment.l;
     const y0=cfg.trackCarrierFromOuterFace?attribute.getY(base+2)+(bandBasePos[(base+6)*3+1]-bandBasePos[(base+2)*3+1])/2:(attribute.getY(base+2)+attribute.getY(base+6))/2;
     const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
@@ -6043,6 +6051,28 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     segmentIndex: number,
     progress: number,
   ): void => {
+    // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
+    // ground ribbon carry the read) — collapse that side's pads to zero
+    const broken = side < 0 ? brokenL : brokenR;
+    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
+    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
+    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
+    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
+    // A real rigid shoe spans two pins. On a rounded loaded-run transition
+    // a tangent at its centre puts its corners below the ground; the chord
+    // of those live pin stations does not. Both samples come from this
+    // same deformed carrier, without a world-floor clamp or detached layer.
+    // (local-fps-266) the chord sets the whole pose, so the centre tangent below is not computed for it.
+    if(cfg.rigidLinkChords !== false) {
+      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
+      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA,segmentIndex);
+      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB,segmentIndex);
+      _v.set(side * (xcForSide(side) + shoeOutboardOffset),(chordA.y+chordB.y)/2,(chordA.x+chordB.x)/2);
+      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
+      _m.compose(_v, _q, _s);
+      for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
+      return;
+    }
     const vertexBase = segmentIndex * 24;
     // Recover this LIVE belt segment's f0/f1 centerline directly from the
     // deformed outer/inner face vertices. The visible casting belt is the
@@ -6070,29 +6100,11 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
     _v.set(side * (xcForSide(side) + shoeOutboardOffset),
       y + tangentZ * rOut, z - tangentY * rOut);
-    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
-    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
-    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
-    if(cfg.rigidLinkChords !== false) {
-      // A real rigid shoe spans two pins. On a rounded loaded-run transition
-      // a tangent at its centre puts its corners below the ground; the chord
-      // of those live pin stations does not. Both samples come from this
-      // same deformed carrier, without a world-floor clamp or detached layer.
-      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
-      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA);
-      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB);
-      _v.y=(chordA.y+chordB.y)/2;_v.z=(chordA.x+chordB.x)/2;
-      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
-    }
       // The shoe stays on this exact deformed belt normal. A historical
       // hull-local floor clamp moved only the gray shoe layer upward on
       // slopes / turn roll, creating the visibly detached second course.
       // Ground clearance now comes from the measured shoe underside in
       // contactGeom, so no post-course transform is permitted here.
-      // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
-      // ground ribbon carry the read) — collapse that side's pads to zero
-    const broken = side < 0 ? brokenL : brokenR;
-    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
     _m.compose(_v, _q, _s);
     for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
   };
@@ -6149,6 +6161,27 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     detached[side] = kit;
     return kit;
   }
+  // (local-fps-266) layers over the same wheel entries, in the same order (one set's tires, dishes and insets; the return
+  // rollers' tires and dishes), get the same matrices bit for bit from update(): the first such layer computes them and
+  // each later one copies its array. Profile dressing may add layers after the build, so a new layer count re-reads them.
+  let layerSources: Int16Array = new Int16Array(0), layerSourcesFor = -1;
+  const wheelLayerSources = (): Int16Array => {
+    if (layerSourcesFor === made.length) return layerSources;
+    layerSources = new Int16Array(made.length).fill(-1);
+    for (let layer = 1; layer < made.length; layer++) {
+      const list = made[layer].list, size = made[layer].im.instanceMatrix.array.length;
+      for (let source = 0; source < layer; source++) {
+        const other = made[source].list;
+        if (layerSources[source] >= 0 || other.length !== list.length
+          || made[source].im.instanceMatrix.array.length !== size) continue;
+        let same = true;
+        for (let i = 0; i < list.length && same; i++) same = list[i] === other[i];
+        if (same) { layerSources[layer] = source; break; }
+      }
+    }
+    layerSourcesFor = made.length;
+    return layerSources;
+  };
   // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
   const conformWheels: WheelEntry[] = [];
   const conformDevs: number[] = [];
@@ -6343,7 +6376,14 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       this.update(0, 0, 0);
     },
     update(l, r, _dt = SIM_STEP) {
-      for (const { im, list } of made) {
+      const copyFrom = wheelLayerSources();
+      for (let layer = 0; layer < made.length; layer++) {
+        const { im, list } = made[layer];
+        if (copyFrom[layer] >= 0) {
+          im.instanceMatrix.array.set(made[copyFrom[layer]].im.instanceMatrix.array);
+          im.instanceMatrix.needsUpdate = true;
+          continue;
+        }
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
           const suspensionEntry = e.suspensionSource || e;

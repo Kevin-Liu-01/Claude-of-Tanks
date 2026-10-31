@@ -1442,6 +1442,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
     'src/engine/shadowGeometryClaims.selftest.mjs',
+    // (local-fps-266) __SHADOW_DEBUG held as the window's own property: the per-caster shadow hooks' reads skip the
+    // browser's named-element lookup
+    'src/engine/shadowDebugGlobal.selftest.mjs',
     'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/audioMath.selftest.mjs',
