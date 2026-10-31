@@ -4,12 +4,20 @@
 // shtora or otherr quipmennt, machine guns"). Laid after the source build, in the builder frame of that build.
 // The kit is the hot-climate export fit: a bustle air conditioner, full rubber dust skirts to the bow, long rear flaps, a sun
 // hood on the gunner's sight head and a closed equipment case on the bustle flank.
+// 2026-10-31 (the owner: "make 2013, 2006, and 2004 turrets look more like they were before just on the new base", then
+// "the new turrets have to be properly inspired from bases of the turrets from the ones that were there in the new
+// verisons. like they should properly look distinguished like what was done with the other tanks but upholding the new
+// level of visual quality", then "see the 2022 is the level of innovation i want in our reworked t90s. same but fresh and
+// different take"): the turret package (t90MarkSM2013Turret.ts) builds the old welded SM 2013 turret's character on the
+// source turret: broad diamond cheek wraps, long raked and binned shoulders, the long bustle wrapped in a slat stowage
+// cage, the hot-climate kit (with the air conditioner and sight hood here) and a flat crown plate with its roof line.
 import type * as THREE from 'three';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {T90_X_DATUMS} from './t90X.ts';
+import {addT90MarkSM2013Turret} from './t90MarkSM2013Turret.ts';
 
 const YAW=T90_X_DATUMS.t90sm.yaw;
 const {box,cylX,cylY,torus}=KIT;
@@ -94,4 +102,5 @@ function flankCase(P:TankBuilderPort):void{
 
 export function addT90MarkSM2013Kit(P:TankBuilderPort):void{
   airConditioner(P);dustSkirts(P);rearFlaps(P);sightHood(P);flankCase(P);
+  addT90MarkSM2013Turret(P);
 }
