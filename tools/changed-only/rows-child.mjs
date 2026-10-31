@@ -6,15 +6,17 @@
 // A row is the JSON of one id's entry as the module or file holds it (insertion order, so a reordered row is a changed
 // row). A spec chain is every roster id named anywhere in an id's registered spec (visualBase, variantOf, donors,
 // balance peers), followed transitively: over-inclusion only widens what a change marks.
+// With steps.mjs BALANCE, each id's registered spec is two more rows: its combat leaves and the rest of it.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { splitCombat } from './combat-fields.mjs';
 import { expandGlobs } from './globs.mjs';
 
 const root = resolve(process.argv[2] ?? join(import.meta.dirname, '../..'));
 // The repository's step table, or a fixture's (tools/changed-only/table.mjs).
-const { TABLES, WORLD_TABLES, MAP_REGISTRY_FILE } = process.argv[3]
+const { TABLES, WORLD_TABLES, MAP_REGISTRY_FILE, BALANCE, SPEC_COMBAT, SPEC_REST } = process.argv[3]
   ? await import(pathToFileURL(resolve(process.argv[3])).href) : await import('./steps.mjs');
 const h16 = (text) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 const load = (rel) => import(pathToFileURL(join(root, rel)).href);
@@ -60,6 +62,19 @@ for (const [name, table] of Object.entries(TABLES)) {
 }
 
 const known = new Set([...roster.saved, ...roster.all]);
+// Each id's registered spec as two rows (steps.mjs BALANCE): its combat leaves and the rest. The balance pass reaches a
+// tool only through these specs, so it is keyed here instead of in the shared core.
+if (BALANCE) {
+  rows[SPEC_COMBAT] = {};
+  rows[SPEC_REST] = {};
+  for (const id of [...known].sort()) {
+    const spec = specs.TANK_SPECS[id];
+    if (!spec) continue;
+    const { combat, rest } = splitCombat(spec, BALANCE.combat);
+    rows[SPEC_COMBAT][id] = h16(combat);
+    rows[SPEC_REST][id] = h16(rest);
+  }
+}
 const direct = {};
 const scan = (value, out, depth = 0) => {
   if (typeof value === 'string') { if (known.has(value)) out.add(value); return; }
