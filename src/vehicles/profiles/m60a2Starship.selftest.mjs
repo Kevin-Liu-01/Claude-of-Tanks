@@ -65,18 +65,19 @@ try {
   assert.ok(hullRig, 'Starship retains the canonical hull rig');
   assert.ok(turretRig, 'Starship retains the canonical turret rig');
   assert.ok(gunRig, 'Starship retains the canonical gun rig');
-  const compact = hullRig.userData.m60CompactScaleReceipt;
-  const vehicleScale = compact?.vehicleScale ?? 1;
-  assert.equal(vehicleScale, 0.9, 'Starship joins the ten-percent-smaller M60 family envelope');
-  assert.equal(hullRig.scale.x, vehicleScale, 'Starship hull, running gear and side armor scale together');
-  assert.equal(turretRig.scale.x, vehicleScale, 'Starship turret, launcher and equipment scale together');
+  // Release 266 (the M60 batch, Main's ruling 2026-10-28): the M60s are rebuilt at true size off the owner's models
+  // (pattonCast.ts buildM60CastSteps), so the 0.9 compact envelope and the old builder's ERA, side-cassette, glacis,
+  // searchlight and shoulder-closure receipts are gone with it; the rebuilt hull's closure is the fleet's contiguity
+  // ledger's, its gun's clearance pattonGunClearance's.
+  assert.equal(hullRig.scale.x, 1, 'Starship hull at true size');
+  assert.equal(turretRig.scale.x, 1, 'Starship turret, launcher and equipment at true size');
+  for (const key of ['m60CompactScaleReceipt', 'm60SideCassetteReceipt', 'm60GlacisArmorReceipt']) {
+    assert.equal(hullRig.userData[key], undefined, `the retired builder's ${key} is not published`);
+  }
+  assert.equal(turretRig.userData.m60a2EraGridReceipt, undefined, 'the rebuilt Starship carries no turret ERA (the owner\'s model)');
 
-  // Owner 2026-09-22 ("holes are added, not carved; the muzzle marker is the tube end"): the firing
-  // anchor sits on the 152 mm stub launcher's real tube end. Until then the generic M60A1 tube length
-  // (gun-local 5.0973, world z 5.98) left rig_muzzle 2.64 m ahead of the 3.34 tube end, the spec's
-  // gunBarrel.lengthM carried the authority's shell origin to the same air, and the factory seated the
-  // added hole on a hidden §B3.1 rim with a clamped 6 cm proud dark throat. The marker, the authority
-  // barrel and the flush terminal-cap seat now all meet on the collar face.
+  // Owner 2026-09-22 ("holes are added, not carved; the muzzle marker is the tube end"): the firing anchor sits on the
+  // 152 mm launcher's real tube end; the marker, the authority barrel and the flush terminal-cap seat meet on its face.
   tank.root.updateMatrixWorld(true);
   const muzzleWorld = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
   const tubeEndZ = new THREE.Box3().setFromObject(tank.root.getObjectByName('gun')).max.z;
@@ -85,131 +86,17 @@ try {
   assert.ok(Math.abs(authorityMuzzleZ - tubeEndZ) < 2e-3,
     `authority barrel (turretPivot + gunPivot + gunBarrel.lengthM) reaches the same tube end: ${authorityMuzzleZ} vs ${tubeEndZ}`);
   const mouth = tank.root.getObjectByName('muzzleBoreShadowFallback');
-  assert.equal(mouth?.userData.muzzleSeatReceipt?.supportSource, 'terminal-cap', 'the added hole seats on the launcher cap');
-  assert.ok(mouth.userData.muzzleSeatReceipt.markerGapM < 0.003, 'the marker is on the cap, so no clamped throat is needed');
+  assert.ok(mouth?.userData.muzzleSeatReceipt, 'the added hole publishes its seat');
+  assert.ok(mouth.userData.muzzleSeatReceipt.markerGapM < 0.003, 'the marker is on the launcher\'s face, so no clamped throat is needed');
   assert.ok(!tank.root.getObjectByName('muzzleBoreShadowFallbackThroat'), 'no dark throat sleeve stands proud of the launcher');
-  assert.ok(!tank.root.getObjectByName('muzzleBoreShadowRim') && !tank.root.getObjectByName('muzzleBoreShadowDisc'),
-    'no hidden authored rim/disc pair is built behind the mouth');
-
-  const seat=mouth.userData.muzzleSeatReceipt;
-  assert.ok(Math.abs(seat.supportOuterRadiusM-.158)<1e-6,'native collar radius');
-  assert.ok(Math.abs(seat.innerRadiusM-.076)<1e-9,'true 152 mm bore');
+  const seat = mouth.userData.muzzleSeatReceipt;
+  assert.ok(Math.abs(seat.innerRadiusM - .076) < 1e-9, 'true 152 mm bore');
+  assert.ok(seat.supportOuterRadiusM > seat.innerRadiusM, 'the bore sits inside the launcher\'s lip');
   assertHollowMuzzle(tank.root);
-  const lining=mouth.getObjectByName('muzzleBoreInnerWallAndBackstop');
-  assert.equal(lining.geometry.index.count/3,34,'sparse shared wall and floor');
-  assert.ok(Math.abs(lining.getWorldScale(new THREE.Vector3()).x*.076-.0684)<1e-6,
-    'compact scale preserves world-space bore diameter');
-
-  const sideCassettes = hullRig.userData.m60SideCassetteReceipt;
-  assert.ok(sideCassettes, 'Starship publishes its lowered side-armor seating receipt');
-  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
-    'Starship side ERA hangs below the fender datum');
-  assert(sideCassettes.trackClearanceInnerX >= 1.775,
-    'Starship side ERA remains outside the animated track and shoe envelope');
-  assert(sideCassettes.exteriorX <= 1.8155,
-    'Starship side ERA remains inside the published fender width');
-  assert(sideCassettes.cassetteDepthM <= 0.040,
-    'Starship uses a thin applique shell in the narrow track-to-fender lane');
-  assert.equal(sideCassettes.blackOutlineStrips, 0,
-    'Starship side ERA uses subdued inset faces instead of black frames');
-  const glacis = hullRig.userData.m60GlacisArmorReceipt;
-  assert.equal(glacis?.surfaceNormalAligned, true,
-    'Starship glacis armor follows the authored deck curve at every corner');
-  assert.equal(glacis?.maximumSupportGapM, 0,
-    'Starship glacis cassettes are flush-seated to the upper plate');
-  assert.equal(glacis?.blackOutlineStrips, 0,
-    'Starship glacis armor has no decorative black divider strips');
-  const turretGrid = turretRig.userData.m60a2EraGridReceipt;
-  assert.equal(turretGrid?.layout, 'surface-aligned-grid',
-    'Starship turret applique uses one deliberate surface grid');
-  assert.equal(turretGrid?.rowsPerSide, 2);
-  assert.equal(turretGrid?.columnsPerSide, 5);
-  assert.equal(turretGrid?.totalCassettes, 20);
-  assert.equal(turretGrid?.blackOutlineStrips, 0);
-  const bustle = turretRig.userData.m60A2BustleReceipt;
-  assert.equal(bustle?.attachedToTurret, true,
-    'Starship rear lattice is a true turret bustle');
-  assert.equal(bustle?.designFamily, 'cot-open-lattice-bustle-v2');
-  const searchlight = gunRig.userData.m60SearchlightReceipt;
-  assert.equal(searchlight?.housingBucket, 'gunMount',
-    'Starship mantlet searchlight has a painted housing');
-  assert.equal(searchlight?.lensBucket, 'gunMountGlass',
-    'Starship mantlet searchlight has a real optical lens');
-  assert.ok(Math.abs(searchlight.offsetX - 0.005) < 1e-9,
-    'Starship searchlight is centered on the asymmetric launcher-shield opening');
-  assert.ok(Math.abs(searchlight.housingCenterY - 0.355) < 1e-9,
-    'Starship searchlight is vertically centered on the selected mount face');
-  assert.ok(Math.abs(searchlight.rearFaceZ - 0.806) < 1e-9,
-    'Starship searchlight rear face is attached flush to the launcher shield');
-  assert.ok(searchlight.supportGapM <= 0.003,
-    'Starship searchlight yoke closes onto the gun-mount surface');
-  assert.equal(turretRig.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
-    'Starship armor has no black outline geometry');
-  const receipt = hullRig.userData.m60a2RearClosureReceipt;
-  assert.equal(receipt?.panels, 2, 'both over-track rear shoulders are structurally closed');
-  assert.ok(receipt.deckOverlapM >= 0.02, 'closures overlap the deck instead of floating below it');
-
-  const sideShoulder = hullRig.userData.m60a2SideShoulderReceipt;
-  assert.equal(sideShoulder?.panels, 6,
-    'both raised side shoulders are sealed from the transition through the aft deck');
-  assert.ok(sideShoulder.roofOverlapM >= 0.015,
-    'side shoulder volumes overlap the marked roof course instead of leaving a seam');
-  assert.ok(sideShoulder.trackClearanceM >= 0.069,
-    'side shoulder floors retain visible clearance over the moving track crown');
-  assert.equal(sideShoulder.mergedHullDrawCalls, 0,
-    'structural side fills merge into the existing camouflaged hull bucket');
-
-  const gear = hullRig.userData.runningGearReceipts?.at(-1);
-  const sprocketCrestY = gear.sprocket.y + gear.sprocket.r;
-  assert.ok(receipt.bottomY - sprocketCrestY >= 0.07,
-    'rear closures preserve visible clearance above the sprocket and track wrap');
-
-  tank.root.updateMatrixWorld(true);
-  for (const side of [-1, 1]) {
-    const ray = new THREE.Raycaster(
-      new THREE.Vector3(side * 1.4, 1.7, -5),
-      new THREE.Vector3(0, 0, 1),
-      0,
-      2,
-    );
-    const hit = ray.intersectObject(hullRig, true)
-      .find((intersection) => intersection.object.name === 'hull');
-    if (!hit) assert.fail(
-      `${side < 0 ? 'left' : 'right'} rear shoulder has a camouflaged structural panel`,
-    );
-    assert.ok(hit.point.z <= -3.40 * vehicleScale && hit.point.z >= -3.70 * vehicleScale,
-      `${side < 0 ? 'left' : 'right'} closure is seated against the rear deck edge`);
-
-    for (const [y, label] of [[1.70 * vehicleScale, 'lower'], [1.90 * vehicleScale, 'upper']]) {
-      const shoulderRay = new THREE.Raycaster(
-        new THREE.Vector3(side * 2.5, y, -3.0 * vehicleScale),
-        new THREE.Vector3(-side, 0, 0),
-        0,
-        1.5,
-      );
-      const shoulderHit = shoulderRay.intersectObject(hullRig, true)
-        .find((intersection) => intersection.object.name === 'hull');
-      assert.ok(shoulderHit,
-        `${side < 0 ? 'left' : 'right'} ${label} side shoulder is backed by structural hull`);
-      assert.ok(Math.abs(Math.abs(shoulderHit.point.x) - sideShoulder.outerX * vehicleScale) <= 0.015,
-        `${side < 0 ? 'left' : 'right'} ${label} shoulder reaches the marked outer hull edge`);
-    }
-
-    // (the 240 gun-hull pass lowered the deck under the turret and moved the shoulder's rise aft: it now climbs from
-    // z -1.28 to -1.56, so the probe starts at -1.35 instead of -1.10)
-    const transitionRay = new THREE.Raycaster(
-      new THREE.Vector3(side * 1.47 * vehicleScale, 1.72 * vehicleScale, -1.35 * vehicleScale),
-      new THREE.Vector3(0, 0, 1),
-      0,
-      0.7 * vehicleScale,
-    );
-    const transitionHit = transitionRay.intersectObject(hullRig, true)
-      .find((intersection) => intersection.object.name === 'hull');
-    assert.ok(transitionHit,
-      `${side < 0 ? 'left' : 'right'} sloped shoulder transition is structurally filled`);
-  }
+  const lining = mouth.getObjectByName('muzzleBoreInnerWallAndBackstop');
+  assert.ok(Math.abs(lining.getWorldScale(new THREE.Vector3()).x * .076 - .076) < 1e-6, 'true scale keeps the 152 mm bore in world space');
 } finally {
   tank.dispose();
 }
 
-console.log('m60a2Starship.selftest: side/rear shoulders closed and 152 mm Shillelagh channel verified');
+console.log('m60a2Starship.selftest: true-size rebuilt Starship, its 152 mm muzzle seat and the Shillelagh channel verified');

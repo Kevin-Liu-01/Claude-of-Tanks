@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
-import { M60_TRACK_FINISH } from './patton.ts';
 
-// Owner 2026-09-22 ("the muzzle marker is the tube end"), round-46 follow-up 2026-09-23: the hulls
-// whose authority barrel (turretPivot + gunPivot + gunBarrel.lengthM along the gun axis) has been
-// pinned to the visible mouth. The donor Leopard 1A5 barrel (5.0944) fired 14.9 cm ahead of it.
-const TUBE_END_AUTHORITY = new Set(['m60a1']);
+// Release 266 (the M60 batch): the M60A1 and M60A3 are rebuilt at true size on the owner's models' castings
+// (pattonCast.ts buildM60CastSteps; Main's rulings 2026-10-28: the 0.9 compact envelope retired, the M60A3's ERA off).
+// The old builder's attachment, cassette, shoulder and finish receipts went with it. What an M60 still has to carry:
+// its canonical rigs at true size, the A1's searchlight glass riding the gun (no armour), one track band a side, and the
+// authority's barrel ending on the drawn mouth (owner 2026-09-22: "the muzzle marker is the tube end").
 
 const worldGeometryCenter = (mesh) => {
   mesh.geometry.computeBoundingBox();
@@ -15,177 +15,48 @@ const worldGeometryCenter = (mesh) => {
 };
 
 for (const id of ['m60a1', 'm60a3']) {
-  const tank = createTank(id, null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   const turret = tank.root.getObjectByName('rig_turret');
   const hull = tank.root.getObjectByName('rig_hull');
   const gun = tank.root.getObjectByName('rig_gun');
-  const attachments = turret?.userData.m60VariantAttachmentReceipt;
-  const sideCassettes = hull?.userData.m60SideCassetteReceipt;
-  const shoulders = hull?.userData.m60FrontShoulderReceipt;
-  const compact = hull?.userData.m60CompactScaleReceipt;
-  const searchlight = gun?.userData.m60SearchlightReceipt;
-  const glacis = hull?.userData.m60GlacisArmorReceipt;
-  const armorFinish = turret?.userData.americanArmorFinishReceipt;
-
-  // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the USMC M60A1 keeps its side and glacis armour;
-  // the US Army M60A3 runs with open running gear under full-length fenders (patton.ts finishM60A3Fenders).
-  if (id === 'm60a1') {
-    assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
-    assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
-      `${id}: side armor hangs below rather than above/in line with the fender datum`);
-    assert(sideCassettes.supportRailCenterY > sideCassettes.cassetteTopY,
-      `${id}: upper support rail remains above the lowered cassette course`);
-    assert.equal(sideCassettes.hangerCount, sideCassettes.count,
-      `${id}: every lowered side cassette has a visible fender hanger`);
-    assert(sideCassettes.cassetteCenterY < sideCassettes.previousCenterY,
-      `${id}: side armor is lower than the superseded perched placement`);
-    assert(sideCassettes.trackClearanceInnerX > 1.78,
-      `${id}: lowered cassette wall remains outside the live track envelope`);
-    assert(sideCassettes.exteriorX <= 1.8155,
-      `${id}: track clearance does not widen the tank past its M60 fender envelope`);
-    assert.equal(sideCassettes.blackOutlineStrips, 0,
-      `${id}: side armor separation uses panel gaps instead of black outline strips`);
-    assert.equal(glacis?.surfaceNormalAligned, true,
-      `${id}: every glacis cassette is built from the actual upper-deck surface`);
-    assert.equal(glacis?.maximumSupportGapM, 0,
-      `${id}: glacis armor is embedded flush rather than hovering above the rake`);
-    assert.equal(glacis?.blackOutlineStrips, 0,
-      `${id}: glacis armor does not paint high-contrast frames over the camouflage`);
-  } else {
-    const fenders = hull?.userData.m60a3FenderReceipt;
-    assert.equal(sideCassettes, undefined, 'M60A3: no USMC side armour over its running gear');
-    assert.equal(glacis, undefined, 'M60A3: a clean glacis without the A1 cassettes');
-    assert.equal(fenders?.openRunningGear, true, 'M60A3: open running gear under full-length fenders');
-    assert.equal(fenders.fenderFollowsDeck, true, 'M60A3: each fender follows the deck line');
-    assert(fenders.outerX <= 1.8155, 'M60A3: the fenders keep the M60 width envelope');
-    assert.equal(fenders.rearBins, 2, 'M60A3: two rear fender stowage bins');
+  assert.ok(turret && hull && gun, `${id}: the canonical hull, turret and gun rigs`);
+  for (const rig of [hull, turret]) assert.equal(rig.scale.x, 1, `${id}: ${rig.name} at true size`);
+  for (const key of ['m60CompactScaleReceipt', 'm60SideCassetteReceipt', 'm60FrontShoulderReceipt']) {
+    assert.equal(hull.userData[key], undefined, `${id}: the retired builder's ${key} is not published`);
   }
-  assert.equal(shoulders?.mirroredClosedVolumes, 2,
-    `${id}: closed bow shoulders extend from both fenders`);
-  assert(shoulders?.trackClearanceFloorY >= 1.40,
-    `${id}: bow-shoulder floor remains above the animated front track wrap`);
-  assert(shoulders?.innerX <= 0.42,
-    `${id}: bow shoulders overlap the central glacis instead of leaving plan-view holes`);
-  assert.equal(shoulders?.texturedCamouflage, true,
-    `${id}: bow shoulders use the hull camouflage material`);
-  assert.equal(compact?.vehicleScale, 0.9, `${id}: complete vehicle is reduced by ten percent`);
-  assert.equal(hull.scale.x, 0.9, `${id}: running gear and side protection share the hull scale`);
-  assert.equal(turret.scale.x, 0.9, `${id}: turret, gun and roof equipment share the turret scale`);
-
-  assert.ok(attachments?.roofShelf, `${id}: right roof shelf publishes a seating receipt`);
-  assert.equal(attachments.roofShelf.conformalCorners, 4,
-    `${id}: all roof-shelf corners descend to the cast roof`);
-  assert(attachments.roofShelf.surfaceEmbeddedM >= 0.01,
-    `${id}: shelf underside is embedded instead of hovering above the casting`);
-
-  assert.ok(searchlight, `${id}: mantlet searchlight is present`);
-  assert.equal(searchlight.owner, 'rig_gun', `${id}: searchlight pitches with the gun`);
-  assert.equal(searchlight.housingBucket, 'gunMount',
-    `${id}: searchlight housing uses the gun-mount camouflage rather than a black block`);
-  assert.equal(searchlight.housingFinish, 'vehicle-paint',
-    `${id}: searchlight housing participates in the vehicle finish`);
-  assert.equal(searchlight.lensBucket, 'gunMountGlass', `${id}: searchlight owns a real glass lens`);
-  assert(searchlight.supportGapM <= 0.04,
-    `${id}: searchlight yoke closes the gap to the marked gun-mount surface`);
-  assert(searchlight.footprintZ[0] < 0.744 && searchlight.footprintZ[1] > 1.076,
-    `${id}: searchlight footprint overlaps the complete marked mount patch`);
+  assert.equal(turret.userData.m60VariantAttachmentReceipt, undefined, `${id}: no retired attachment receipt`);
 
   const lens = gun.getObjectByName('gunMountGlass');
-  assert.ok(lens?.isMesh, `${id}: glass lens is emitted in the pitching gun rig`);
-  assert.equal(lens.userData.combatHitboxRole, 'nonArmor',
-    `${id}: searchlight glass cannot enlarge the cannon armor hitbox`);
-  tank.root.updateMatrixWorld(true);
-  const before = worldGeometryCenter(lens).clone();
-  gun.rotation.x = 0.18;
-  tank.root.updateMatrixWorld(true);
-  const after = worldGeometryCenter(lens).clone();
-  assert(after.distanceTo(before) > 0.12,
-    `${id}: searchlight follows gun elevation instead of remaining on the turret`);
+  if (id === 'm60a1') {
+    assert.ok(lens?.isMesh, 'M60A1: the searchlight\'s glass is emitted in the pitching gun rig');
+    assert.equal(lens.userData.combatHitboxRole, 'nonArmor', 'M60A1: the searchlight glass cannot enlarge the cannon\'s hitbox');
+    tank.root.updateMatrixWorld(true);
+    const before = worldGeometryCenter(lens).clone();
+    gun.rotation.x = 0.18;
+    tank.root.updateMatrixWorld(true);
+    assert(worldGeometryCenter(lens).distanceTo(before) > 0.12, 'M60A1: the searchlight follows the gun\'s elevation');
+    gun.rotation.x = 0;
+  } else {
+    assert.equal(lens, undefined, 'M60A3: no searchlight over the gun (the owner\'s model), only its mounting studs');
+  }
 
   const bands = [];
   tank.root.traverse((object) => {
     if (object.name === 'gearTrackBandL' || object.name === 'gearTrackBandR') bands.push(object);
   });
-  assert.equal(bands.length, 2, `${id}: exactly one continuous band remains on each side`);
-  for (const band of bands) {
-    assert.equal(band.material.color.getHex(), M60_TRACK_FINISH.trackBandHex,
-      `${id} ${band.name}: track is neutral steel rather than camouflage-white`);
-    assert.equal(band.material.roughness, M60_TRACK_FINISH.trackBandRoughness,
-      `${id} ${band.name}: exposed track steel stays matte`);
-    assert.equal(band.material.envMapIntensity, M60_TRACK_FINISH.trackBandEnvMapIntensity,
-      `${id} ${band.name}: environment light cannot recolor the track`);
-    assert.equal(band.userData.appearanceRole, 'trackBand',
-      `${id} ${band.name}: semantic running-gear role survives the finish override`);
-  }
+  assert.equal(bands.length, 2, `${id}: exactly one continuous band on each side`);
+  for (const band of bands) assert.equal(band.userData.appearanceRole, 'trackBand', `${id} ${band.name}: its running-gear role`);
 
-  if (id === 'm60a1') {
-    assert.equal(attachments.cheekPanels?.count, 12,
-      'M60A1 has two conformal three-panel courses per side');
-    assert.equal(attachments.cheekPanels.conformalSurfaceNormals, 12,
-      'every M60A1 cheek panel derives its own cast-surface orientation');
-    assert.equal(attachments.cheekPanels.courses, 2,
-      'M60A1 cheek coverage is subdivided vertically to follow the casting');
-    assert.equal(attachments.cheekPanels.layout, 'surface-parameter-grid',
-      'M60A1 cheek cassettes use a repeatable surface grid');
-    assert.equal(attachments.cheekPanels.alignedRows, 2,
-      'M60A1 cheek rows share common cast-height stations');
-    assert.equal(attachments.cheekPanels.alignedColumns, 3,
-      'M60A1 cheek columns share common longitudinal stations');
-    assert.equal(attachments.cheekPanels.blackOutlineStrips, 0,
-      'M60A1 cheek armor has no ink-black divider geometry');
-    assert(attachments.cheekPanels.maximumTileSpanM <= 0.42,
-      'M60A1 panels stay narrow enough to follow compound cheek curvature');
-    assert(attachments.cheekPanels.maximumSupportGapM <= 0.002,
-      'M60A1 panel inner faces remain supported at all audited corners');
-    assert(attachments.cheekPanels.castEmbedM >= 0.055,
-      'M60A1 cheek panels overlap the casting instead of floating beside it');
-    assert(attachments.cheekPanels.maximumExteriorProjectionM <= 0.045,
-      'M60A1 cheek faces remain close to the cast skin instead of standing proud');
-    assert(attachments.cheekPanels.minimumExteriorProjectionM >= 0.04,
-      'M60A1 cheek faces stay fully visible after the conformal seat correction');
-  } else {
-    assert(searchlight.widthM >= 0.56 && searchlight.lensDiameterM >= 0.34,
-      'M60A3 carries the requested oversized gun-mounted searchlight');
-    assert.equal(attachments.ttsHousing?.housingBucket, 'turretEquipment',
-      'M60A3 sight housing is turret-owned equipment, not armor');
-    assert.equal(attachments.ttsHousing?.duplicateHousingRemoved, true,
-      'M60A3 emits one seated sight housing without overlapping duplicate boxes');
-    const sight = turret.getObjectByName('turretEquipment');
-    assert.ok(sight?.isMesh, 'M60A3 seated sight housing remains visible');
-    assert.equal(sight.userData.combatHitboxRole, 'equipment',
-      'M60A3 sight housing cannot inflate the turret armor envelope');
-  }
-
-  assert.equal(armorFinish?.eraSeparation, 'physical-panel-gaps',
-    `${id}: armor panel readability comes from modeled gaps`);
-  assert.equal(armorFinish?.outlineGeometry, 0,
-    `${id}: no decorative black outline geometry remains on the armor`);
-  assert.equal(armorFinish?.highContrastOutlineMaterial, false,
-    `${id}: camouflage-adjacent detail remains subdued`);
-  assert.equal(armorFinish?.mechanicalGunmetalPreserved, true,
-    `${id}: lowering armor contrast does not repaint the weapon mechanisms`);
-
-  if (TUBE_END_AUTHORITY.has(id)) {
-    // The authority fires along the gun axis from the hull frame at the entity's own pitch; the
-    // searchlight clearance check above elevated rig_gun 0.18 rad, so measure at rest pitch.
-    gun.rotation.x = 0;
-    tank.root.updateMatrixWorld(true);
-    const spec = getSpec(id);
-    const marker = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
-    const mouthRing = tank.root.getObjectByName('muzzleBoreShadowFallback').getWorldPosition(new THREE.Vector3());
-    const authorityMuzzleZ = spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + spec.armor.gunBarrel.lengthM;
-    assert.ok(Math.abs(authorityMuzzleZ - marker.z) < 1e-6,
-      `${id}: the authority barrel ends on the muzzle marker (${authorityMuzzleZ} vs ${marker.z})`);
-    assert.ok(Math.abs(authorityMuzzleZ - mouthRing.z) < 0.02,
-      `${id}: the shell origin is within 2 cm of the visible mouth (${authorityMuzzleZ} vs ${mouthRing.z})`);
-  }
-
+  tank.root.updateMatrixWorld(true);
+  const spec = getSpec(id);
+  const marker = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
+  const mouthRing = tank.root.getObjectByName('muzzleBoreShadowFallback').getWorldPosition(new THREE.Vector3());
+  const authorityMuzzleZ = spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + spec.armor.gunBarrel.lengthM;
+  assert.ok(Math.abs(authorityMuzzleZ - marker.z) < 2e-3,
+    `${id}: the authority barrel ends on the muzzle marker (${authorityMuzzleZ} vs ${marker.z})`);
+  assert.ok(Math.abs(authorityMuzzleZ - mouthRing.z) < 0.02,
+    `${id}: the shell origin is within 2 cm of the visible mouth (${authorityMuzzleZ} vs ${mouthRing.z})`);
   tank.dispose();
 }
 
-console.log('m60FamilyAttachments.selftest: lights, sight, panels, shelf, and tracks stay seated and material-correct');
+console.log('m60FamilyAttachments.selftest: the rebuilt M60A1/A3 at true size, the A1\'s light on the gun, one band a side, the muzzle authority');
