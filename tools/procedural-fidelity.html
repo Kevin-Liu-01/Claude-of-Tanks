@@ -57,6 +57,7 @@ import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-over
 import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
+import { FUSED_ROOF_GUN_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -785,7 +786,7 @@ for (const root of [reference.root, procedural.root]) {
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
 const roofFittings = [
   roofFittingParts(procedural.root, { isRenderNode }),
-  roofFittingParts(reference.root, { isRenderNode, oracle:true,
+  roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
     ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
 ];
 const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
@@ -797,9 +798,11 @@ const paired = pairedRoofFittings(roofFittings[0], roofFittings[1]);
 let hiddenRoofFittings = null;
 function withBodyOnly(measure, mode = 'body') {
   const swapped = [];
-  for (const [i, { trimmed }] of roofFittings.entries()) {
+  for (const [i, { trimmed, boxed }] of roofFittings.entries()) {
     if (mode === 'paired' && i === 0 && !paired.cutBuildSpans) continue;
     for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
+    // a fused oracle's roof gun (its registered boxes) leaves the body masks, never the roof-fittings top
+    if (mode !== 'roof') for (const [node, body] of boxed) { swapped.push([node, node.geometry]); node.geometry = body; }
   }
   hiddenRoofFittings = mode === 'roof' ? antennaNodes : mode === 'paired' ? paired.hidden : roofFittingNodes;
   try { return measure(); } finally {
@@ -808,9 +811,10 @@ function withBodyOnly(measure, mode = 'body') {
   }
 }
 const roofFittingsExcluded = (() => {
-  const [built, oracle] = roofFittings.map(({ nodes, trimmed }) => [...new Set([
+  const [built, oracle] = roofFittings.map(({ nodes, trimmed, boxed }) => [...new Set([
     ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
     ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => `antennaSpans:${node.name}`),
+    ...[...boxed.keys()].filter((node) => baseVisible.get(node)).map((node) => `roofGunBoxes:${node.name}`),
   ])].sort());
   return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
 })();
