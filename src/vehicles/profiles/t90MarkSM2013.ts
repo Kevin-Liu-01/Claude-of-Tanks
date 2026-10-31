@@ -41,20 +41,22 @@ function airConditioner(P:TankBuilderPort):void{
 
 function dustSkirts(P:TankBuilderPort):void{
   // Full-length rubber dust skirts, the hot-climate export fit: one sheet per side hung 40 mm up behind the six side
-  // screens' V hems (y .52/.4411, inner face x 1.7813/-1.77053), down to a straight hem at y .30, outboard of the track.
+  // screens' V hems (y .52/.4411, inner face x 1.7813/-1.77053), down to a straight hem at y .45, outboard of the track.
+  // The hem stays above the belly pan (y .4411, the screens' own V tips): the rubber bucket spans both sides, so its
+  // lowest point is the pan the simulation grounds on (restPoseContact.ts); a lower hem dropped it 148 mm.
   for(const side of [-1,1]){
     const inner=side>0?1.7813:1.77053,l=Math.min(side*(inner-.016),side*inner),r=Math.max(side*(inner-.016),side*inner);
     const sections:SolidSection[]=[];
     for(let i=0;i<6;i++){
       const z0=-1.082+i*.716,z1=z0+.705;
       for(const[z,hem]of [[z0,.52],[(z0+z1)/2,.4411],[z1,.52]])
-        sections.push({z,ring:[[l,.30],[r,.30],[r,hem+.04],[l,hem+.04]]});
+        sections.push({z,ring:[[l,.45],[r,.45],[r,hem+.04],[l,hem+.04]]});
     }
     P.addEquipment('hullRubber',sectionSolid(sections));
     // The fold-down rubber front panel of the T-72/T-90 skirt, here under the rounded bow guard's lip (underside
     // y 1.246/1.234/1.151 at z 3.22/3.50/3.70) over the idler, raked up at its leading edge.
     const shift=side>0?0:.01371,a=side*(1.775-shift),b=side*(1.791-shift);
-    P.addEquipment('hullRubber',sectionSolid([[3.212,1.2576,.30],[3.50,1.2457,.30],[3.70,1.1632,.50]].map(([z,top,low]):SolidSection=>
+    P.addEquipment('hullRubber',sectionSolid([[3.212,1.2576,.45],[3.50,1.2457,.45],[3.70,1.1632,.50]].map(([z,top,low]):SolidSection=>
       ({z,ring:[[Math.min(a,b),low],[Math.max(a,b),low],[Math.max(a,b),top],[Math.min(a,b),top]]}))));
   }
 }

@@ -279,7 +279,7 @@
    "hostSweep": []
   },
   "bmpt_t90": {
-   "inputHash": "812771934703c50f",
+   "inputHash": "6a309928abd75a5b",
    "runs": [
     {
      "index": 0,
@@ -295,11 +295,11 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.119,
-      "gap": 0.881,
+      "support": 0.133,
+      "gap": 0.867,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.025,
+      "sunkMaxM": 0.04,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.967,
@@ -3275,13 +3275,13 @@
    "hostSweep": []
   },
   "t90": {
-   "inputHash": "d76e3d6d7153526a",
+   "inputHash": "416a644a076197d2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90_1992": {
-   "inputHash": "5a960f0e8ada9cce",
+   "inputHash": "a442b2e11ceb783f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3293,13 +3293,13 @@
    "hostSweep": []
   },
   "t90a_2004": {
-   "inputHash": "03ff6929b97a3c9d",
+   "inputHash": "6f7222471207d6cf",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90a_2006": {
-   "inputHash": "84cc5fc55cb83da8",
+   "inputHash": "1075bd3529f594bd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3311,19 +3311,19 @@
    "hostSweep": []
   },
   "t90a_burlak_proto": {
-   "inputHash": "48531ee047ac0af8",
+   "inputHash": "568dbf8e0a3369c5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90a_vladimir": {
-   "inputHash": "31ab1ab3da42b193",
+   "inputHash": "c40a852f433c77d6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "25e10a5d783c4b61",
+   "inputHash": "6f1d65b66164a5c7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3335,31 +3335,31 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "aff88f22face085b",
+   "inputHash": "ad2988b74a5f42e3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90ms_2011": {
-   "inputHash": "c98486b8ab36df18",
+   "inputHash": "bd548cfaeead9d44",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90ms_tagil": {
-   "inputHash": "ef670765019a13f3",
+   "inputHash": "4bd362f0ec853d4a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90sm": {
-   "inputHash": "17df28d4114b3b07",
+   "inputHash": "35de251e670abb64",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90sm_2013": {
-   "inputHash": "9ff2fc67bfd4916b",
+   "inputHash": "2f3d407d5cf4219a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -6,12 +6,12 @@ cleaned up and updated significantly bc those models are a little old and rough 
 relatively nnewer and cleaner)", and then: "just update all the hulls based on what they share already, including
 updating the bmpt t90". Identity and variant calls are Main's under the owner's delegation (rulings recorded below).
 
-The source-X builds (`t90`, `t90a`, `t90a_burlak`, `t90a_vladimir`, `t90m`, `t90ms_tagil`, `t90sm`) and `pt91m` build
-from other packs and are not touched.
+The source-X builds (`t90`, `t90a`, `t90a_burlak`, `t90a_vladimir`, `t90m`, `t90ms_tagil`, `t90sm`) are the earlier
+marks' bases; under Main's ruling A they move with them (the rear drums below). `pt91m` builds from another pack.
 
 ## Outcome
 
-Two steps, both in the lane's history:
+Three steps, all in the lane's history:
 
 1. **One family chassis** (Main's rulings below): the six print-fitted lofts in `profiles/t90.ts` collapsed onto one
    T-90 family chassis with Kontakt-5 or Relikt fits, the obr. 1992 on a cast turret, the AM-type marks on one turret.
@@ -34,6 +34,29 @@ Two steps, both in the lane's history:
 
 `profiles/t90.ts`: 8,386 lines to 768 (the Burlak turret and the X wiring). The AM and AM II 1.10 chassis length
 retired with the move (Main: the X proportions are measured; owner commit 245aa4e4e recorded no reason for it).
+
+3. **Each mark's own fittings** (the owner, 2026-10-30: "our new versiosn now just look way too identical to sources.
+   tone down that copying a lil", then "we can also make new turrets, layerring onn top, hull modificaitons, track
+   shapes, shoulders, rear stuuff like barrrles and so on, sideskirts, cages, shtora or otherr quipmennt, machine
+   guns"). Each earlier mark lays an equipment kit on its twin (`profiles/t90Mark*.ts`; no armour, gun, station or
+   running-gear change) and carries its own crew load (`decorations.ts`):
+
+| Mark | Own fittings | Basis |
+|---|---|---|
+| obr. 1992 | Commander's OU-3GA2M and driver's IR lamps, front/rear mud flaps, rubber fringe under the screens, fender ZIP boxes, turret rear-corner bins | The first T-90s kept the T-72B's IR lamps and stowage |
+| obr. 2004 | Rubber skirt flaps, bow mud flaps, fender crew boxes, tube rack on the turret-rear box, grab handles | Garrison and parade fit |
+| obr. 2006 | Field slat round the engine bay, slat off the turret-rear box, open turret basket, stern log, Kord ammunition box | The 2022-24 field fit |
+| T-90MS obr. 2011 | No Shtora (the T-90MS has none); laser-warning heads on the housings, closed bustle bins with snorkel, rear skirt flaps, bow flaps, lamp guards | REA-2011 show tank |
+| T-90SM obr. 2013 | Air-conditioner housing on the bustle, full rubber dust skirts, long rear flaps, sight sun hood, bustle case | Export, hot-climate fit |
+| T-90AM | Stern bar cage with log, front/rear flaps, fender tool box, under the owner's field net | 2022+ rear slat practice |
+| T-90AM II | Anti-drone roof cage, Volnorez-type EW jammer, second mast, forward side slat, stern log | T-90M Proryv-3 in 2022-24 service |
+
+   `t90XTwins.selftest.mjs` holds both halves: each mark keeps at least 90 % of its twin's parts (all keep 96.5-100 %)
+   and carries at least 12 of its own.
+
+Main's polish ruling on the shared X builders (2026-10-30): the four empty rear drum cradles of the T-90, T-90MS and
+T-90SM builds read as hooks or tusks, so two 200 L drums now ride each pair (`t90CradleDrums.ts`); the T-90A Vladimir's
+732 mm drums became 585 mm 200 L drums. The T-90A obr. 2004 sheds its birch garnish.
 
 ## Measured datums (builder frame, before the 1.05 installed scale)
 
@@ -72,6 +95,8 @@ English Wikipedia say a modernised T-72. The game keeps it on the T-90 family ch
    a correctness fix; its own turret stays untouched.
 6. After the owner's message: each mark builds from its source-X twin by the mapping above; the X ids stay
    byte-identical; the family chassis, cast and AM-type turret code retire; the AM / AM II drop the 1.10 length.
+7. Ruling A: polish the shared X builders in place so all sixteen ids move together (the byte-identical condition is
+   lifted for shared builders); each mark then takes its own kit (the owner's later messages).
 
 ## Open questions and unknowns
 
