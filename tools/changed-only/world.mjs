@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { h16 } from './graph.mjs';
+import { declaredNotInput } from './globs.mjs';
 
 const H = (...parts) => h16(parts.join('\n'));
 
@@ -94,7 +95,7 @@ export function computeWorldState(ctx) {
     const skip = (from, to) => {
       if (from === registryFile && configFiles.has(to)) return true; // the registry's config imports: per map
       const declaration = config.declared[rel(from)];
-      return [...(declaration?.modeOnly ?? []), ...(declaration?.covered ?? [])].includes(rel(to));
+      return declaredNotInput(declaration, rel(to));
     };
     const closure = graph.closure([step.tool, ...(step.entries ?? [])], { stop: fleetStop, skip });
     const toolFiles = new Set([...closure.files].filter((file) => !fleetStop.has(file) && !isOutput(file)));

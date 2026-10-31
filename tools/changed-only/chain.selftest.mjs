@@ -7,7 +7,10 @@
 //   - --verify checks exactly the ids each step ran;
 //   - an output row edited by hand is found and regenerated;
 //   - the world step (per map, after the tank steps) re-runs only the maps whose wreck donors or config moved, and its
-//     shards and index match the whole-world regen byte for byte.
+//     shards and index match the whole-world regen byte for byte;
+//   - (266) with no fingerprints table, or one recorded on another toolchain, a plain run refuses (exit 2, nothing run);
+//     --ids runs every step on exactly those ids (the world step on the maps casting them), records their rows only
+//     when the table exists, and refuses an unknown or repeated id; --help prints the usage.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -142,6 +145,9 @@ writeFileSync(tableModule, [
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
   "export const STEPS = [step('controls'), step('fills'), step('seats')];", ''].join('\n'));
 
+// A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
+const N = join(base, 'N');
+cpSync(B, N, { recursive: true });
 const env = { ...process.env, COT_CHANGED_ONLY_CACHE_DIR: cacheDir, NODE_OPTIONS: '' };
 const summaries = (root) => {
   const dir = join(root, '.qa-dev/changed-only');
@@ -218,6 +224,76 @@ const mapRun = chain(C);
 assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['collision[beta]'], 'a map config edit runs that map only');
 chain(F, '--all', '--steps=collision');
 assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
+
+/** A chain run expected to refuse: exit 2 and no generator; returns its output. */
+function refused(root, ...flags) {
+  const before = summaries(root).length;
+  try {
+    execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`, '--no-gpu', '--jobs=1', ...flags],
+      { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
+  } catch (error) {
+    assert.equal(error.status, 2, `${flags.join(' ')} refuses with exit 2:\n${error.stderr}`);
+    const written = summaries(root).slice(before);
+    for (const name of written) assert.deepEqual(JSON.parse(read(root, `.qa-dev/changed-only/${name}`)).runs, [], 'a refusal runs no generator');
+    return `${error.stdout}${error.stderr}`;
+  }
+  assert.fail(`${flags.join(' ') || 'a plain run'} in ${root} should have refused`);
+}
+const rowOf = (root, table, id) => JSON.parse(read(root, `src/vehicles/${table}.generated.ts`).replace(/^export const \w+ = /, '').replace(/;\n$/, ''))[id];
+
+// 6. No fingerprints table (main before the 265 bootstrap): a plain run, a dry run and --verify refuse; --help prints usage.
+assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')));
+for (const flags of [[], ['--dry-run'], ['--verify']]) {
+  assert.match(refused(N, ...flags), /no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap/);
+}
+assert.deepEqual(summaries(N), [], 'the table refusals write nothing at all');
+const help = execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), '--help'], { cwd: N, env, encoding: 'utf8' });
+assert.match(help, /--ids=a,b/); assert.match(help, /--all/); assert.match(help, /refuses/);
+assert.match(refused(N, '--ids=a1,a1'), /lists a1 2 times/, 'a repeated id is refused');
+assert.match(refused(N, '--ids=zz'), /roster does not hold: zz/, 'an unknown id is refused before any step runs');
+assert.match(refused(N, '--ids=b1', '--all'), /drop --all/);
+
+// 7. --ids with no table: every step on exactly b1, the world step on the map casting it; nothing recorded.
+const lone = chain(N, '--ids=b1');
+for (const name of ['controls', 'fills', 'seats']) assert.deepEqual(ranIds(lone, name), ['b1'], `${name} ran b1 alone`);
+assert.deepEqual(ranIds(lone, 'collision'), ['beta'], 'the world step ran the map whose wrecks cast b1');
+assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')), 'no table: none created, no rows recorded');
+for (const table of ['controls', 'fills', 'seats']) {
+  // (the fixture generators fill an absent row even under --ids; the chain asked for b1 alone, as ranIds shows)
+  assert.deepEqual(rowOf(N, table, 'b1'), rowOf(B, table, 'b1'), `${table}: b1's row equals the bootstrapped tree's`);
+}
+assert.equal(read(N, 'server/world-collision-manifests/beta.json'), read(B, 'server/world-collision-manifests/beta.json'));
+assert.ok(!existsSync(join(N, 'server/world-collision-manifests/alpha.json')), 'the map that does not cast b1 is untouched');
+
+// 8. A table recorded on another toolchain marks every id: a plain run refuses and names this run's parts; --ids runs.
+const T = join(base, 'T');
+cpSync(B, T, { recursive: true });
+put(T, 'release/fingerprints.tsv', read(T, 'release/fingerprints.tsv').replace(/^toolchain\t\w+$/m, 'toolchain\t0123456789abcdef'));
+assert.match(refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: schema:1, node:v\d+/);
+assert.deepEqual(ranIds(chain(T, '--ids=b1'), 'seats'), ['b1'], '--ids is not blocked by the toolchain');
+
+// 9. With a table: --ids runs exactly those ids and records their rows; the plain chain then finds only the rest, and the
+// tree ends equal to a whole-fleet regen of the same edit. Negative control: the plain chain on a tree with a current
+// table is not refused.
+const S = join(base, 'S'), G = join(base, 'G');
+cpSync(B, S, { recursive: true });
+cpSync(B, G, { recursive: true });
+for (const root of [S, G]) put(root, 'src/vehicles/profiles/alpha.ts', "import { TURRET } from './turretKit.ts';\nexport const ALPHA = { a1: 12 + TURRET, a2: 21 + TURRET };\n");
+const first = chain(S, '--ids=a1');
+for (const name of ['controls', 'fills', 'seats']) assert.deepEqual([...new Set(ranIds(first, name))], ['a1'], `${name} ran a1 alone (a later pass re-runs it when the fills it reads moved)`);
+assert.deepEqual(ranIds(first, 'collision'), ['alpha'], 'the world step ran the map casting a1');
+const rest = chain(S);
+for (const name of ['controls', 'fills', 'seats']) {
+  const ids = ranIds(rest, name);
+  assert.ok(!ids.includes('a1') && ids.includes('a2') && ids.includes('b2'), `${name}: a1's rows were recorded, the rest ran (${ids})`);
+}
+chain(G, '--all');
+assert.deepEqual(snapshot(S), snapshot(G), '--ids then changed-only equals a whole-fleet regen, manifest included');
+assert.deepEqual(chain(S).runs, [], 'a current table: the plain chain runs nothing and is not refused');
+
+// 10. Bootstrapping the pristine tree lifts the refusal (negative control for 6).
+chain(N, '--all');
+assert.deepEqual(chain(N).runs, [], 'after --all the plain chain resolves clean');
 
 const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.join(',')}]`).join(' ');
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
