@@ -5,21 +5,28 @@
 // The T-90M Proryv-3 as it served in 2022-24: the anti-drone roof cage, an EW jammer, slat over the hull sides, the log.
 // The shared fieldRoofCage.ts wings find no pad on this turret (its feet at x ±1.01, z -1.03 fall past the narrow
 // rear roof), so the cage here is fitted to the T-90M roof.
+// 2026-10-31 (the owner: "also make some of our reworked t90s have new or unique machine gun arrangmenet,s like 2
+// machine guns"): a second, working roof gun, the frontline crews' anti-drone fit: a 7.62 mm PK-pattern gun on a crew
+// pintle at the gunner's hatch (turret left), beside the commander's Kord station.
 import * as THREE from 'three';
-import {KIT} from './kit.ts';
+import {FITTINGS,KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
+import {sectionSolid} from './sectionSolid.ts';
+import {latheY} from '../accessoryPrimitives.ts';
+import {MG_CLASSES} from '../machineGunGeometry.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 type Point=readonly[number,number,number];
 type XZ=readonly[number,number];
-const {box,cylX,cylY}=KIT;
+const {box,cylX,cylY,cylZ}=KIT;
 // Turret frame (pivot at hull 0.018, 1.337, -0.104). The cage plane clears the commander's cupola (0.94) by 0.19 m and
 // sits under the remote station's barrel (pivot 1.42; at 10 degrees' depression its muzzle stays above 1.25).
 const CAGE_Y=1.13;
 const OUTER:readonly XZ[]=[[-1.45,.75],[1.45,.75],[1.40,-.60],[1.15,-1.55],[.88,-2.70],[-.80,-2.70],[-1.18,-1.55],[-1.40,-.60]];
 // The open bay over both hatches, the gunner's sight, the wind mast and the station's whole lower sweep (0.5 m round
-// its yaw at x -0.444, z -0.927).
-const BAY={x0:-1.08,x1:.90,z0:-1.55,z1:.55};
+// its yaw at x -0.444, z -0.927). Its left edge stands 0.18 m outboard of the gunner's pintle (x 0.84), so the pintle's
+// column and yoke turn in the open and only the gun itself passes over the bars.
+const BAY={x0:-1.08,x1:1.02,z0:-1.55,z1:.55};
 
 function bar(P:TankBuilderPort,a:Point,b:Point,r:number):void{
   const g=beamBetween(a,b,r,8);g.userData.fieldRoofCage=true;P.addEquipment('turretOpenLattice',g);
@@ -107,6 +114,51 @@ function secondMast(P:TankBuilderPort,stock:THREE.Mesh[]):void{
   P.addEquipment('turretDark',cylY(.012,.016,1.10,10),x,base+1.02,z);
 }
 
+// Gunner's pintle: the 7.62 mm PK-pattern gun frontline T-90M crews mounted at the gunner's hatch from 2023 against
+// drones, beside the commander's Kord station. A welded socket post stands on the roof ahead and outboard of the hatch
+// ring (0.10 m off the ring's rim, clear of the lid's swing and of the sight hood's back), braced by four gussets and
+// strapped to the ring; the gun's pintle turns in its collar. It is the fleet's crew pintle (FITTINGS.pintleMG: the
+// GPMG section, the feed on the right as on the PK, its box on the cradle, the riding cradle a working station rides),
+// and a working station the roof-gun control drives (calibre 7.62: the rifle profile). Its trunnion stands at 1.40,
+// 0.72 m over the roof, where the whole circle turns clear: 0.25 m over the cage plane (at the weapon's full depression
+// the muzzle still clears the bars by over 50 mm, at full elevation the butt clears the bay's edge bar by 45 mm), and
+// its 0.72 m reach and the Kord's 0.95 m keep 40 mm apart across their axes' 1.71 m, so neither turns into the other at
+// any bearing. It rests 25 degrees to the left, the Kord 45 to the right.
+const PINTLE={x:.84,z:.20,bore:1.40,bearingDeg:25};
+function gunnerPintle(P:TankBuilderPort,stock:THREE.Mesh[]):void{
+  const {x,z}=PINTLE,[low,high]=footprint(P,stock,x,z,.20,.18);
+  // the base plate, buried 8 mm under the roof's lowest corner, and the socket post on it: a turned tube with a welded
+  // foot ring and its clamp collar at the top
+  const plateTop=high+.014,top=high+.30;
+  P.addEquipment('turretDetail',box(.20,plateTop-low+.008,.18),x,(plateTop+low-.008)/2,z);
+  const h=top-plateTop;
+  P.addEquipment('turretDetail',latheY([[0,0],[.058,0],[.058,.012],[.044,.024],[.040,.04],[.040,h-.05],[.050,h-.045],
+    [.050,h-.004],[.046,h],[0,h]],20),x,plateTop-.002,z);
+  // four gussets from the plate to the tube, on the post's diagonals
+  const g=sectionSolid([-1,1].map(side=>({z:side*.004,ring:[[.038,0],[.098,0],[.038,.11]] as [number,number][]})));
+  for(let k=0;k<4;k++){
+    const a=Math.PI/4+k*Math.PI/2;
+    P.addEquipment('turretDetail',KIT.xform(g.clone(),0,0,0,0,a-Math.PI/2,0),x,plateTop-.002,z);
+  }
+  g.dispose();
+  // the collar's lock: a T-handled clamp bolt on the outboard side
+  P.addEquipment('turretDark',cylX(.009,.07,10),x+.08,top-.024,z);
+  P.addEquipment('turretDark',cylZ(.007,.06,8),x+.115,top-.024,z);
+  // the strap welded from the post to the hatch ring's outer face, buried 10 mm into the ring
+  const hx=.517,hz=-.246,dx=hx-x,dz=hz-z,d=Math.hypot(dx,dz),ux=dx/d,uz=dz/d,a0=.036,a1=d-.35+.010;
+  P.addEquipment('turretDetail',KIT.xform(box(.012,.05,a1-a0),0,0,0,0,Math.atan2(ux,uz),0),x+ux*(a0+a1)/2,high+.04,z+uz*(a0+a1)/2);
+  // the gun on its pintle: the crew pintle's trunnion stands 0.225 m over its foot before the riser (machineGunGeometry.ts
+  // createPintleLayout at the GPMG's true scale)
+  const cls=MG_CLASSES.mag,s=cls.s,trunnion=.014+.16*s+.08*s+cls.rec[1]*s/2+.004;
+  const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',tone:'two-tone',working:true,ridingCradle:true,feed:'right',
+    riser:PINTLE.bore-top-trunnion,seed:290});
+  gun.name='t90mProryvGunnerPkt';
+  gun.position.set(x,top,z);
+  gun.rotation.y=THREE.MathUtils.degToRad(PINTLE.bearingDeg);
+  gun.userData.t90OwnBearing=true;
+  P.turretG.add(gun);
+}
+
 // Side slat screens: flat-bar grilles over the Relikt skirts from the source rear cage forward to mid-hull, the 2023-24
 // add-on the T-90Ms took against drone-dropped and RPG hits, bracketed to the inner side plates on the source cage's pitch.
 function sideSlat(P:TankBuilderPort):void{
@@ -138,6 +190,6 @@ export function addT90MarkAM2Kit(P:TankBuilderPort):void{
     if(g.userData.eraHitFaceVertexStarts)return;
     const m=new THREE.Mesh(g,mat);m.updateMatrixWorld();stock.push(m);
   });
-  try{roofCage(P,stock);jammer(P,stock);secondMast(P,stock);}finally{mat.dispose();}
+  try{roofCage(P,stock);jammer(P,stock);secondMast(P,stock);gunnerPintle(P,stock);}finally{mat.dispose();}
   sideSlat(P);sternLog(P);
 }

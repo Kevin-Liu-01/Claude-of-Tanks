@@ -4,10 +4,21 @@
 // shtora or otherr quipmennt, machine guns"). Laid after the source build, in the builder frame of that build.
 // The obr. 2004 is the early welded-turret T-90A in its 2004-2010 garrison and parade fit: rubber skirting, a tubular
 // rack on the turret box and crew boxes on the rear fenders. Every part is seated on the source stock by a ray.
+// 2026-10-31 (the owner: "make 2013, 2006, and 2004 turrets look more like they were before just on the new base", then
+// "the new turrets have to be properly inspired from bases of the turrets from the ones that were there in the new
+// verisons. like they should properly look distinguished like what was done with the other tanks but upholding the new
+// level of visual quality", then "see the 2022 is the level of innovation i want in our reworked t90s. same but fresh
+// and different take"): the turret package (t90MarkA2004Turret.ts) builds the pre-rebuild obr. 2004 turret's boxy,
+// cassette-walled, bin-laden character on the source casting as the walled turret: slab-sided two-tier K-5 walls on
+// both flanks over cast perimeter flanges, a tall asymmetric bustle superstructure (its chest stands in this kit's
+// rack; its bins carry the crew's grab handles), a raised sight crown, a welded roof crown, the tiled K-5 chevron front
+// (brows on the cheek wedges, leaves beside the mantlet) and two radio courses with whips. The roof machine-gun
+// station is t90.ts's.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addT90A2004TurretPackage } from './t90MarkA2004Turret.ts';
 type Point = readonly [number, number, number];
 const { box } = KIT;
 
@@ -88,21 +99,10 @@ function turretRack(P: TankBuilderPort): void {
   for (const [x, , z] of posts.slice(0, 4)) P.addEquipment('turretDetail', box(.07, .012, .07), x, roof + .004, z); // weld pads
 }
 
-// Grab handles welded to the turret box flanks (the crew's climbing holds on the T-72/T-90 stowage boxes).
-function boxHandles(P: TankBuilderPort): void {
-  for (const side of [-1, 1]) {
-    const face = stockRay(P, ['turretDetail'], [side * 3, .50, -1.52], [-side, 0, 0]);
-    if (!face) throw new Error('t90a_2004: no turret box flank for the grab handle');
-    const x = face.x - side * .005, out = x + side * .055, y = .50;
-    tube(P, [x, y, -1.38], [out, y, -1.38], .011); tube(P, [x, y, -1.66], [out, y, -1.66], .011);
-    tube(P, [out, y, -1.38], [out, y, -1.66], .011);
-  }
-}
-
 export function addT90MarkA2004Kit(P: TankBuilderPort): void {
   skirtFlaps(P);
   bowFlaps(P);
   rearFenderBoxes(P);
   turretRack(P);
-  boxHandles(P);
+  addT90A2004TurretPackage(P);
 }

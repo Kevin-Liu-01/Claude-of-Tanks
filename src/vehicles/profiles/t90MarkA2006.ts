@@ -1,13 +1,21 @@
-// The T-90A obr. 2006 (`t90a_2006`): its own fittings on the T-90A Vladimir source build (t90X.ts T90_X_PROFILES.t90a_vladimir). 2026-10-30 (lane t90-family-266; the owner: "our new
-// versiosn now just look way too identical to sources. tone down that copying a lil", then "we can also make new turrets,
+// The T-90A obr. 2006 (`t90a_2006`): its own fittings on the T-90A Vladimir source build (t90X.ts T90_X_PROFILES.t90a_vladimir). 2026-10-30 (lane t90-family-266; the owner:
+// "our new versiosn now just look way too identical to sources. tone down that copying a lil", then "we can also make new turrets,
 // layerring onn top, hull modificaitons, track shapes, shoulders, rear stuuff like barrrles and so on, sideskirts, cages,
 // shtora or otherr quipmennt, machine guns"). Laid after the source build, in the builder frame of that build.
-// The obr. 2006 (ESSA sight) as it serves in 2022-24: field-welded slat over the engine bay and the turret box, an open
-// basket, the stern log and a Kord box. Every part is seated on the source stock by a ray.
+// The hull carries the 2022-24 field fit (welded slat over the engine bay, the stern log). 2026-10-31 (the owner: "make
+// 2013, 2006, and 2004 turrets look more like they were before just on the new base", then "they should properly look
+// distinguished like what was done with the other tanks but upholding the new level of visual quality"): the turret
+// carries the pre-rebuild obr. 2006 turret's character as layered equipment on the Vladimir X turret
+// (t90MarkA2006Turret.ts), at the level of the T-72B3M obr. 2022 redesign (the owner: "see the 2022 is the level of
+// innovation i want in our reworked t90s. same but fresh and different take"): in front, boxed K-5 chevron cassettes
+// across the face, the Shtora heads on broad shoes, 902B fans on the cheek course and a crown behind the sight head;
+// behind, the raised welded crown growing into a long bustle with lids, rails carrying rolls, flank bins and a louvred
+// face; with 902B shoes, the armoured Kord base and two radio courses. Every part is seated on the source stock by a ray.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addT90A2006TurretPackage } from './t90MarkA2006Turret.ts';
 type Point = readonly [number, number, number];
 const { box, cylX } = KIT;
 
@@ -46,36 +54,6 @@ function bayScreens(P: TankBuilderPort): void {
   }
 }
 
-// A slat screen hung off the turret-rear box on four standoff arms (2022-24 field fit against drones and RPGs).
-function turretScreen(P: TankBuilderPort): void {
-  // its foot (1.70 m) clears the engine-deck rear plate (1.63 m) it sweeps over
-  const zs = -2.15, yl = .30, yh = .84, yc = (yl + yh) / 2;
-  for (const x of [-.42, .42]) for (const y of [.42, .66]) {
-    const face = need(stockRay(P, ['turretDetail'], [x, y, -5], [0, 0, 1]), 'turret screen arm');
-    P.addEquipment('turretOpenLattice', beamBetween([x, y, face.z + .012], [x, y, zs + .05], .018, 10));
-  }
-  for (let x = -.81; x < .82; x += .09) P.addEquipment('turretOpenLattice', box(.010, yh - yl, .060), x, yc, zs);
-  for (const y of [yl, yh]) P.addEquipment('turretOpenLattice', box(1.76, .040, .040), 0, y, zs);
-  for (const x of [-.86, .86]) P.addEquipment('turretOpenLattice', box(.040, yh - yl + .04, .040), x, yc, zs);
-  for (const y of [.42, .66]) P.addEquipment('turretOpenLattice', box(1.72, .030, .030), 0, y, zs + .045);  // backing rails
-}
-
-// An open welded basket in the empty right-rear quarter, welded to the turret box flank and braced to the right bin.
-function rightBasket(P: TankBuilderPort): void {
-  const flank = need(stockRay(P, ['turretDetail'], [3, .50, -1.72], [-1, 0, 0]), 'basket flank');
-  const xi = flank.x + .015, xo = 1.17, zf = -1.60, zr = -1.83, yb = .32, yt = .66, ym = .49;
-  const bar = (a: Point, b: Point, r = .012) => P.addEquipment('turretOpenLattice', beamBetween(a, b, r, 8));
-  for (const x of [xi, xo]) for (const z of [zf, zr]) bar([x, yb - .012, z], [x, yt, z], .014);
-  for (const y of [yb, yt]) {
-    bar([xi, y, zf], [xo, y, zf]); bar([xi, y, zr], [xo, y, zr]); bar([xo, y, zf], [xo, y, zr]); bar([xi, y, zf], [xi, y, zr]);
-  }
-  bar([xi, ym, zf], [xo, ym, zf]); bar([xi, ym, zr], [xo, ym, zr]); bar([xo, ym, zf], [xo, ym, zr]);
-  for (const z of [-1.66, -1.715, -1.77]) P.addEquipment('turretOpenLattice', box(xo - xi, .010, .025), (xi + xo) / 2, yb, z); // floor slats
-  for (const y of [.36, .62]) for (const z of [zf, zr]) P.addEquipment('turretDetail', box(.025, .08, .08), flank.x + .0115, y, z); // weld pads
-  const bin = need(stockRay(P, ['turretDetail'], [1.10, .50, -3], [0, 0, 1]), 'basket brace');
-  bar([xo, .50, zf], [1.10, .50, bin.z + .01], .014);
-}
-
 // The unditching log carried across the stern under the drums, in two welded cradles (T-72/T-90 practice).
 function sternLog(P: TankBuilderPort): void {
   const y = 1.04, r = .10, face = need(stockRay(P, ['hull'], [0, y, -5], [0, 0, 1]), 'stern log');
@@ -90,27 +68,8 @@ function sternLog(P: TankBuilderPort): void {
   }
 }
 
-// A Kord-pattern ammunition box strapped in a welded frame on the commander's bin lid (2022-24 crews carry spare
-// heavy-MG ammunition at the commander's station; the remote weapon station itself is unchanged).
-function kordBox(P: TankBuilderPort): void {
-  const cx = -1.11, cz = -1.045, yaw = -.35, c = Math.cos(yaw), s = Math.sin(yaw);
-  const lid = need(stockRay(P, ['turretDetail'], [cx, 3, cz], [0, -1, 0]), 'Kord box').y;
-  const at = (bucket: string, g: THREE.BufferGeometry, lx: number, ly: number, lz: number) =>
-    P.addEquipment(bucket, g, cx + lx * c + lz * s, lid + ly, cz - lx * s + lz * c, 0, yaw, 0);
-  for (const lx of [-.10, .10]) at('turretDetail', box(.03, .025, .46), lx, .0125, 0);                // frame rails
-  for (const lz of [-.215, .215]) at('turretDetail', box(.23, .07, .012), 0, .045, lz);               // end stops
-  at('turretFittingPaint', box(.17, .19, .40), 0, .025 + .095, 0);
-  at('turretDark', box(.15, .012, .30), 0, .025 + .196, 0);                                          // lid seal
-  at('turretDark', beamBetween([0, .22, -.08], [0, .25, -.04], .008, 6), 0, 0, 0);
-  at('turretDark', beamBetween([0, .25, -.04], [0, .25, .04], .008, 6), 0, 0, 0);
-  at('turretDark', beamBetween([0, .25, .04], [0, .22, .08], .008, 6), 0, 0, 0);                    // carry handle
-  for (const lz of [-.12, .12]) at('turretDark', box(.19, .21, .025), 0, .025 + .10, lz);             // tie-down straps
-}
-
 export function addT90MarkA2006Kit(P: TankBuilderPort): void {
   bayScreens(P);
-  turretScreen(P);
-  rightBasket(P);
   sternLog(P);
-  kordBox(P);
+  addT90A2006TurretPackage(P);
 }
