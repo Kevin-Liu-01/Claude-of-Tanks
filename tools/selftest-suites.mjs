@@ -967,6 +967,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 265 (FAIRNESS-265 §3, release 266): a forward turret face only partly over the gun reads, point by point, the plate
     // it lies over (sim/gunFaceSplit.ts); the M1A2 reads its SEPv2 twin across the gun face; the control without splits
     'src/vehicles/gunFaceSplit.selftest.mjs',
+    // 266 (FAIRNESS-265 §8): the KF51 EVO's level rounds meet its gun slot's face and read its mantlet; the cheeks keep the front
+    'src/vehicles/kf51EvoGunFace.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',

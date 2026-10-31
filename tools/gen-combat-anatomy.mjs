@@ -368,15 +368,23 @@ const HULL_LATERAL_CUTS = Object.freeze({
 // corner, and one convex cell a slice closes over a pocket. The notch's own lateral band, 1 cm inside its walls (0.50 and
 // 0.94 m right of the bore: leopard2a3B4Armor.ts sightInnerX, sightOuterX), is its own cell, so the shell meets the
 // notch's sill and the sight housing's front, and the turret_front_sight_notch plate takes that face.
+// 266 (FAIRNESS-265 §8, Main: the KF51 EVO's turret front read 2,455 mm effective at the balance range, no round
+// passing, a modelling error routed since 263): its turret carries two forward wedge cheeks either side of a gun slot whose
+// front is a vertical face at z 1.10 (measured on the build: the cheeks' inner walls stand at |x| 0.430, the slot face
+// runs y 0.05-0.75). A slice's one convex cell bridged the cheeks' 74-degree noses across the slot, so a level round in
+// front of the gun met a 74-degree face 1.2 m ahead of the armour it should meet. Its turret slices are cut 1 mm inside
+// the walls, so each wall stays with its cheek and the slot's band follows the vertical face; every other turret keeps
+// one cell a slice.
 const TURRET_LATERAL_CUTS = Object.freeze({
   leo2a2: [-.93, -.51],
   leo2a3_b4: [-.93, -.51],
   leo2a3: [-.93, -.51],
+  kf51_evo: [-0.429, 0.429],
 });
-// Their turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme points
-// drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill and
-// the notch over it would be one face and take one plate.
-const TURRET_PLATE_FIT_IDS = new Set(Object.keys(TURRET_LATERAL_CUTS));
+// The Leopards' turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme
+// points drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill
+// and the notch over it would be one face and take one plate. The KF51 EVO's cut cells are not plate-fitted.
+const TURRET_PLATE_FIT_IDS = new Set(['leo2a2', 'leo2a3_b4', 'leo2a3']);
 
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
   seatedUnderside = false) {

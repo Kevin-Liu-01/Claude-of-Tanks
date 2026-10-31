@@ -94,6 +94,16 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
 const specs: Record<string, FleetTankSpec> = {};
 
 function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): void {
+  // (266) a plate measured on the donor's drawn build (`drawn`, the KF51 EVO's gun slot) does not fit this independent
+  // build: the variant takes back the template plate it replaced
+  for (const plates of [spec.armor.hullPlates, spec.armor.turretPlates]) {
+    for (let index = plates.length - 1; index >= 0; index--) {
+      const plate = plates[index];
+      if (!plate.drawn) continue;
+      if (plate.template) plates[index] = structuredClone(plate.template);
+      else plates.splice(index, 1);
+    }
+  }
   let baseDimensions = donorDimensions;
   if (spec.id === 'leo2a7v') {
     // The independent 2A7V retains its original hull and turret proportions.

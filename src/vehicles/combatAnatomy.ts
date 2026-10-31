@@ -67,6 +67,9 @@ interface ArmorPlate {
   convexPolygon?: boolean;
   openEdges?: number[];
   traceBounds?: { min: Vec3; max: Vec3 };
+  /** 266: a main plate measured on the drawn build (the KF51 EVO's mantlet on its gun slot), already in its frame: the
+   * calibration leaves it in place and only the faces over it read it (prepareCollisionCells) */
+  drawn?: boolean;
 }
 
 interface AnatomyShapeEllipsoid {
@@ -243,7 +246,7 @@ function plateBounds(plates: readonly ArmorPlate[] | undefined, mainOnly = false
   const max = [-Infinity, -Infinity, -Infinity];
   for (const plate of plates || []) {
     if (plate.kind === 'external') continue;
-    if (mainOnly && (plate.kind || 'main') !== 'main') continue;
+    if (mainOnly && ((plate.kind || 'main') !== 'main' || plate.drawn)) continue;
     for (const point of plate.verts || []) {
       for (let axis = 0; axis < 3; axis++) {
         min[axis] = Math.min(min[axis], point[axis]);
@@ -573,9 +576,13 @@ function prepareCollisionCells(
   if (!descriptors.length) return [];
   // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate, gunSplit)
   const gun = gunFaces ? gunFaceContext(descriptors) : null;
+  // 266: a plate measured on the drawn build is read by the faces over it (the gun-face rule), never as another
+  // face's nearest guess (the KF51 EVO's cheek noses face below every plate's alignment and kept the front's read)
+  const nearest = descriptors.some((descriptor) => !descriptor.plate.drawn)
+    ? descriptors.filter((descriptor) => !descriptor.plate.drawn) : descriptors;
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, descriptors, gun);
+    const cell = collisionCellFromCalibration(source, nearest, gun);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);
@@ -1056,12 +1063,13 @@ function reconcileFrame(
   // base-shell calibration transform: applying the hull/turret envelope scale
   // to those already-seated coordinates silently moves the gameplay surface
   // away from its cassette (most visibly on long skirt fields). Main armor and
-  // internal boxes remain receipt-calibrated below.
+  // internal boxes remain receipt-calibrated below; a main plate measured on the
+  // drawn build (266, `drawn`) is already where it belongs, like those layers.
   const from = plateBounds(plates, true);
   if (!from || !target) return;
   const seen = new Set<Vec3>();
   for (const plate of plates || []) {
-    if ((plate.kind || 'main') !== 'main') continue;
+    if ((plate.kind || 'main') !== 'main' || plate.drawn) continue;
     for (const point of plate.verts || []) {
       if (seen.has(point)) continue;
       seen.add(point);
@@ -1223,6 +1231,7 @@ function reconcileChildFrame(
   };
   const seen = new Set<Vec3>();
   for (const plate of plates || []) {
+    if (plate.drawn) continue;
     for (const point of plate.verts || []) {
       if (seen.has(point)) continue;
       seen.add(point);
