@@ -141,4 +141,21 @@ one datum (`phone-link`, `src/ui/surfaceRegistry.ts`).
 
 ## Measured
 
-(filled in by the lane, see below)
+2026-10-30, this lane's Mac (busy: load 95 to 400 throughout), labelled by path. Network numbers are one-way, frame sent to
+frame received, on one clock.
+
+| Path | How | p50 | p95 | n |
+|---|---|---|---|---|
+| Relay through the real Worker (cot-rooms-preview, Cloudflare) | two real `padLink`s in Node on this Mac, both ends behind the home connection; Node has no WebRTC so the link takes the relay (`cf/relay-latency.mjs` in the evidence folder) | 23.7 ms / 20.9 ms | 93.6 ms / 79.0 ms | 40 / 60 |
+| Edge round trip | TCP connect to cot-rooms from this Mac | ~16 to 21 ms typical | 86 to 134 ms spikes under load | 5 |
+| WebRTC data channel, phone event to the desktop frame that carries it | `tools/pad-e2e.browser.mjs`, two headless pages, loopback | (pending: the e2e's queued run) | | |
+| Relay over the LAN helper, same | the same e2e, a phone page without WebRTC | (pending) | | |
+
+Reading it against the pass rule:
+- The relay through Cloudflare already meets the cellular bar (p95 under 120 ms) with both ends on one home connection; a
+  phone on cellular adds its radio's one-way time (typically 15 to 40 ms on 4G/5G). It is the fallback, not the path.
+- A WebRTC data channel on a LAN skips the edge entirely: its share is the Wi-Fi hop (a few ms) plus the desktop's
+  sample-to-frame wait (at most one 60 Hz frame); the e2e measures the browser pipeline end to end.
+- The real phone: the pad's link chip shows the round trip live, and `?padDebug` exposes `__COT_PAD_PHONE` (round trip
+  and the desktop's receipt-to-frame time). The owner's check on the preview gives the LAN and cellular numbers on a
+  real radio; the simulator proved the WebKit page (pairing, touch, options, resume) but not its sensors or a radio.
