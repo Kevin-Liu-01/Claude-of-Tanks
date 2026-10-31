@@ -94,7 +94,6 @@ const rh202:AuxiliaryWeaponProfile={
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
-  t72b3m_2022:b32Heavy,
   t84bm_oplot_m:b32Heavy,bm_oplot_m:b32Heavy,bm_oplot_t:b32Heavy,
   t72b3m_hetman_ii:ubr6,
   t72b3_zubr_ii:wkmb,
@@ -118,7 +117,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
   t62_1975:b32Nsvt,t62mv1:b32Nsvt,t64bv1:b32Nsvt,t64bv_donbas:b32Nsvt,t64bm1m:b32Nsvt,t64bv:b32Nsvt,t64b1v_2022:b32Nsvt,pt64_tur:b32Nsvt,t72bu_1989:b32Nsvt,t72bu:b32Nsvt,t72b3:b32Nsvt,
-  t72b3m_2016:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
+  t72b3m_2016:b32Nsvt,t72b3m_2022:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
   t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80uk:b32Nsvt,t80u:b32Nsvt,ua_t80bv:b32Nsvt,t80u_kursk:b32Nsvt,
   t84:b32Nsvt,t90:b32Nsvt,t90a_2004:b32Nsvt,t90a_burlak_proto:b32Nsvt,t90a_burlak:b32Nsvt,t90a_2006:b32Nsvt,
   t90am:b32Nsvt,t90sm_2013:b32Nsvt,

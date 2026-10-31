@@ -1,32 +1,16 @@
 // Owner-directed family rebuilds on the detailed T-72 foundations (2026-09-30).
 import {KIT} from './kit.ts';
-import {buildT72B3MXHull} from './t72b3mX.ts';
+import {buildT72B3MX} from './t72b3mX.ts';
+import {addT72B3M2022Kit} from './t72b3m2022Kit.ts';
 import {buildT72B3X} from './t72b3X.ts';
-import {buildT90SMXTurret} from './t90X.ts';
 import {buildT72BUX} from './t72buX.ts';
 import {attachedCage,eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box}=KIT;
 
-function addB3M2022HullProtection(P:TankBuilderPort):void {
-  // Deep segmented Relikt side cassettes, with a second soft-case belt beneath.
-  // They overlap the donor's mounting sheet, outside the articulated tracks.
-  for(const side of [-1,1])for(let i=0;i<6;i++){
-    const z=-1.82+i*.77;
-    eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*1.97,1.09,z], [.12,.47,.72],[0,0,-side*.04]);
-    P.addEquipment('hullDetail',box(.14,.05,.59),side*1.97,1.35,z);
-    strappedPack(P,'hull',[side*1.99,.728,z],[.11,.22,.69]);
-  }
-}
-export function buildT72B3M2022Hull(P:TankBuilderPort):void {
-  buildT72B3MXHull(P);addB3M2022HullProtection(P);
-}
 export function buildT72B3M2022(P:TankBuilderPort):void {
-  buildT72B3M2022Hull(P);
-  buildT90SMXTurret(P);
-  P.turretG.position.set(.008,1.545,.114315);
-  P.hullG.userData.familyRebuild={donor:'t72b3m_2016',turret:'t90sm',revision:2,
-    features:['welded-sm-turret','modular-cheeks','panoramic-sight','remote-weapon','bustle-stowage','relikt-side','lower-soft-cases']};
+  buildT72B3MX(P);addT72B3M2022Kit(P);
+  P.hullG.userData.familyRebuild={donor:'t72b3m_2016',revision:3,features:['t72b3m-cast-relikt-turret','anti-drone-canopy']};
 }
 export function buildT72BU1989(P:TankBuilderPort):void {
   buildT72BUX(P);
