@@ -152,7 +152,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // the rebuilt Merkava 2D and 4B.
 // 125 -> 128 (265, FAIRNESS-265 P1/P2 on the rebuilt 2A4 family): leo2_improved and leo2a4_otco take their mantlet entries
 // back, re-measured on the 27-degree fronts, and leo2a4_v carries the 2A4's main plates.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 128,
+// 128 -> 130 (266, m60-family-265): the new Magach 6B and 7C take the M60A1's.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 130,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

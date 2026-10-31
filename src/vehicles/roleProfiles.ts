@@ -172,6 +172,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // Magach 3's Blazer boxes and the M48 Super's added armour bulk them out; the GA2 is the A5's twin in the field
   m48a3_patton: { doctrine: 'flexible', viewM: 385, still: 0.196, moving: 0.136 },
   magach3: { doctrine: 'flexible', viewM: 395, still: 0.196, moving: 0.136 },
+  // release 267: the Magach 6B's Blazer and the 7C's armour and skirts bulk the M60A1 out
+  magach6b: { doctrine: 'flexible', viewM: 395, still: 0.194, moving: 0.134 },
+  magach7c: { doctrine: 'flexible', viewM: 405, still: 0.198, moving: 0.138 },
   m48a2ga2: { doctrine: 'flexible', viewM: 405, still: 0.190, moving: 0.130 },
   m48_super: { doctrine: 'flexible', viewM: 415, still: 0.198, moving: 0.138 },
   m60a2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },

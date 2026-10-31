@@ -2,13 +2,7 @@
 // geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { LEOPARD2_PROTO_ARMOR } from './leopard2ProtoArmor.ts';
-import {
-  rightCheekPlate as chR,
-  leftCheekPlate as chL,
-  rightSidePlate as sR,
-  leftSidePlate as sL,
-  type ArmorEnvelope,
-} from './specHelpers.ts';
+import type { ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
@@ -57,28 +51,6 @@ function make(
   // resolution agrees with the rendered vehicle (see specs.fitArmorToDims).
   if (patch.dims) fitArmorToDims(s.armor, dims, s.dims);
   return s;
-}
-
-function m60a3Armor(): ArmorEnvelope {
-  const armor = copy(requireFleetSpec('m60a1').armor);
-  // First-generation Blazer-style protection: a meaningful shaped-charge
-  // defeat layer with only a modest kinetic effect.  The broad records are
-  // sector hit surfaces; each name maps to a dense visual cassette cluster
-  // in profiles/patton.ts and is independently consumed after detonation.
-  const blazer = { keReduction: 0.08, ceFlatMm: 300 };
-  const era = { kind: 'era', era: blazer, keMm: 18, ceMm: 18 };
-  armor.turretPlates = [
-    chL('m60a3_turret_era_front_L', 18,
-      0.34, 1.86, 1.43, 0.02, 0.14, 0.90, 0.12, 0, era),
-    chR('m60a3_turret_era_front_R', 18,
-      0.34, 1.86, 1.43, 0.02, 0.14, 0.90, 0.12, 0, era),
-    sL('m60a3_turret_era_side_L', 18,
-      1.42, 0.14, 1.36, 0.90, -1.58, 0.12, era),
-    sR('m60a3_turret_era_side_R', 18,
-      1.42, 0.14, 1.36, 0.90, -1.58, 0.12, era),
-    ...armor.turretPlates,
-  ];
-  return armor;
 }
 
 const SPECS: FleetTankSpec[] = [
@@ -133,7 +105,8 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 530 }),
         })),
       },
-      armor: m60a3Armor(),
+      // release 265 (Main, 2026-10-28): the owner's M60A3 model carries no reactive armour and US M60A3s never fielded
+      // it, so the 233 cassettes are gone; the A3 keeps the A1's casting armour
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];
 

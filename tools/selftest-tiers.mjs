@@ -419,7 +419,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
-    'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',

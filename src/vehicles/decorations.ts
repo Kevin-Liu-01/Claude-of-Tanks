@@ -2742,18 +2742,39 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretSide', { side: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, back: true, small: true }] },
   ],
-  // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the US Army M60A3 runs open fenders with two rear
-  // bins of its own (profiles/patton.ts finishM60A3Fenders), so its loadout takes none of the A1's fender bin and the
-  // cupola's shielded M2 stands alone; cans and tools sit on the opposite sides to the A1's, and no net roll covers the
-  // A3's turret-side ERA.
-  m60a3: () => [
-    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
-    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.12, along: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  ],
+  // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the A3 takes none of the A1's fender bin, and its
+  // cans and tools sit on the opposite sides to the A1's. Release 266 (the owner, 2026-10-30: "the m60a3 should have more
+  // decorations like wheels and bags and fuel tanks annd fuel barrels and tech annd more"): a lived-in field load of its
+  // own in place of the fleet's seven cargo draws (cargo below), which crowded its roof and spent the budget the drums
+  // and cans need. The two spare road wheels and the packs in its bustle rack are authored with the rack
+  // (profiles/pattonCast.ts); its turret sides carry no reactive armour now, so packs hang there.
+  m60a3: (spec) => {
+    const cargo = (v: FleetEquipmentVariant, routes: Array<[string, DecorSlotArgs]>): DecorManifestRow => ({
+      kit: 'cargo', p: 1, v: { v, scale: 1, nation: spec.nation || '' }, slot: ['fleetCargo', { routes }],
+    });
+    // (the rear deck under the bustle holds nothing: the bustle's floor rides 2 cm over it, inside the turret's sweep,
+    // so the load keeps to the rear plate, the rear rack, the fenders' rear corners and the turret; the turret carries
+    // its own tow cable on its flank, and the fender bins' lids seat no tool set inside the width guard and the sweep)
+    return [
+      // the fuel: a 200 L drum on the rear plate and a pair of fuel cans beside it on the rear rack (its other half
+      // seats no second pair)
+      { kit: 'drums', p: 1, v: { v: 'single' }, slot: ['hullRear', {}] },
+      cargo('nato-fuel-can', [['hullRearRack', { x: -0.20 }], ['fender', { side: -1, zFrac: -0.45, small: true }]]),
+      // the crew's bags on the turret's rear flanks
+      cargo('large-rucksack', [['turretSide', { side: 1, rear: true }], ['turretRear', { side: 1 }]]),
+      cargo('crew-backpack', [['turretSide', { side: -1, rear: true }], ['turretRear', { side: -1 }]]),
+      // the tech: the M85's ammunition and the spare optics' case on the fenders, two radio whips
+      cargo('fifty-cal-ammo-can', [['fender', { side: 1, zFrac: -0.30, small: true }], ['fender', { side: 1, zFrac: -0.45, small: true }]]),
+      cargo('spare-optics-case', [['turretRoof', { rear: true, side: -1 }], ['fender', { side: -1, zFrac: -0.30, small: true }],
+        ['fender', { side: 1, zFrac: 0.10, small: true }], ['fender', { side: -1, zFrac: 0.10, small: true }]]),
+      { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+      { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+      // the rest of the field load
+      cargo('ration-case', [['fender', { side: 1, zFrac: 0.30, small: true }], ['fender', { side: -1, zFrac: 0.30, small: true }],
+        ['fender', { side: -1, zFrac: -0.40, small: true }]]),
+      { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    ];
+  },
   // --- Modern ---
   // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) go out loaded (the owner,
   // 2026-10-28: "a lot of the equipment and decorations and stuff! add a lot on our tanks"): over the fleet's seven-piece
@@ -3156,6 +3177,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
   if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
+  // (release 266: the Magachs on the M60A1's castings, the same way)
+  if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3326,7 +3349,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     },
   ];
   // opt-in branch bundles take their seats before loose cargo crowds the turret's rear quarters
-  const manifest = [...fieldFoliageRows(spec), ...cargo, ...base];
+  // (release 266: the M60A3's curated load carries its own cargo; TANK_MANIFESTS.m60a3)
+  const manifest = [...fieldFoliageRows(spec), ...(spec.id === 'm60a3' ? [] : cargo), ...base];
   if (spec.id === 'ares_apc') {
     // The tiny remote station is not a turret-bustle cargo shelf. The three
     // procedural soft packs read as sandbags perched on its weapon housing.

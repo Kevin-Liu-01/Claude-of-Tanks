@@ -344,6 +344,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // release 266: the M48s drawn on the M48A5's castings
   m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
   magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },
+  // release 267: the IDF's M60s
+  magach6b: { displayName: 'Magach 6B', searchAliases: ['Magach 6', 'Magach 6B Blazer', 'IDF M60A1', 'Israeli M60'] },
+  magach7c: { displayName: 'Magach 7C', searchAliases: ['Magach 7', 'Magach 7C', 'IDF M60 passive armour'] },
   m48a2ga2: {
     displayName: 'Kpz M48A2GA2', shortName: 'M48A2GA2',
     searchAliases: ['M48A2GA2', 'Kampfpanzer M48A2GA2', 'M48A2G A2', 'Bundeswehr M48'],

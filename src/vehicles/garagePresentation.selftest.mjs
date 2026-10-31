@@ -91,7 +91,8 @@ visual.dispose();
 
 // ERA is an explicitly owned external-armor layer, so exercise it on a vehicle
 // that owns real clusters instead of relying on the Abrams no-op path above.
-const eraVisual = createTank('m60a3', null, {
+// (release 265: the M60A3 lost its reactive armour; the M551A1 TTS's glacis cassettes are external-armour layers)
+const eraVisual = createTank('m551a1_tts', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   batchStatic: false,
@@ -103,7 +104,7 @@ eraVisual.root.traverse((object) => {
   if (position) eraPositions.set(position, Array.from(position.array));
 });
 assert.ok(eraPositions.size > 0, 'probe tank exposes explicit external-armor geometry');
-eraVisual.stripEra('m60a3_turret_era_front_R');
+eraVisual.stripEra('m551a1_tts_glacis_era');
 assert.ok([...eraPositions].some(([position, rest]) =>
   !rest.every((value, index) => value === position.array[index])),
   'battle damage can remove an ERA cluster');

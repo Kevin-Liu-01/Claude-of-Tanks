@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1481 | 144.0 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 662 | 1121.1 |
+| MANUAL | 661 | 1120.6 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2144 | 1265.5 | 212.1 |
+| Before: every receipt (npm test without the tiers) | 2143 | 1265.0 | 212.0 |
 | After: the default tier | 1481 | 144.0 | 20.4 |
 
 Default tier: 11.4 % of the whole registry's CPU; 15.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.7 min pool, 2.5 min browser receipts.
@@ -37,7 +37,7 @@ Default tier: 11.4 % of the whole registry's CPU; 15.7 % of the 916 CPU-min the 
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 60 | 245.6 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
-| `tanks` | 419 | 292.6 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `tanks` | 418 | 292.0 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 6 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 4 | 24.7 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -141,7 +141,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (662)
+## MANUAL (661)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -396,7 +396,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/challenger2Family.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (fv4034, challenger2, challenger2e, ua_challenger2), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/chieftain10XCastCupola.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (chieftain_mk10), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leopardHullClosure.selftest.mjs` | 32 | MANUAL (tanks) | per-family pin, 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/m60a3TurretEra.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (m60a3), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (pl01, pl01_105), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/type10XRunningGear.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (type10), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/returnRollerOutset.selftest.mjs` | 32 | MANUAL (tanks) | per-tank pin (t90sm_2013), 32 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -753,7 +752,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/ztz85iii.selftest.mjs` | 11 | MANUAL (tanks) | per-tank pin (ztz85_iii), 11 s: ZTZ-85-III (release 263, owner 2026-10-28: "yeah going to need a totally new ztz 85 III"): the native fixture | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/roofWeaponPolicy.selftest.mjs` | 11 | MANUAL (tanks) | per-tank pin (bmpt_t90, m1a1_abrams_hc), 11 s: VH.14 (coordinator ruling 2026-10-14, the owner's field-equipment standard): roof weapons match the real vehic | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/mp-world-events-scenarios.selftest.mjs` | 11 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, t90am), 11 s: 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/garagePresentation.selftest.mjs` | 10 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, m60a3), 10 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/garagePresentation.selftest.mjs` | 10 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, m551a1_tts), 10 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/abramsRoofSeating.selftest.mjs` | 10 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, m1a1_abrams_sa, m1a1_abrams_aim), 10 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/amx30B2Roof.selftest.mjs` | 10 | MANUAL (tanks) | per-tank pin (amx30b2), 10 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leopard2A7VGunEra.selftest.mjs` | 10 | MANUAL (tanks) | per-tank pin (leo2_improved), 10 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |

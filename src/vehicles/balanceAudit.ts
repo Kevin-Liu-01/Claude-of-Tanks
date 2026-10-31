@@ -35,6 +35,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   centurion5_2: 'remove the Tier VIII Centurion survivability and mobility trough; 258: an engine over its shown-tier floor',
   m48a3_patton: '266: the new M48A3 shares the M48A5 package with the M47\'s 90 mm round and cadence',
   magach3: '266: the new Magach 3 shares the M48A5 package with its Blazer boxes',
+  magach6b: '267: the new Magach 6B shares the M60A1 package with its Blazer boxes',
+  magach7c: '267: the new Magach 7C: the M60A1 package with its passive armour, skirts and the 908 hp AVDS-1790-5A',
   m48a2ga2: '266: the new M48A2GA2 shares the M48A5 package (the L7A3 is the M68\'s twin)',
   m48_super: '266: the new M48 Super: the M48A5 package with its spaced armour, a stabilised fire control and the added weight',
   shot_kal: '262: the new Sho\'t Kal shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel\'s power',

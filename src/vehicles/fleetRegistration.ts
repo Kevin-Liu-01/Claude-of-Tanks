@@ -68,6 +68,7 @@ import './centurionAusSpecs.ts';
 import './leopard2a3B4Specs.ts';
 import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './denmarkSpecs.ts';
+import './m60VariantSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';

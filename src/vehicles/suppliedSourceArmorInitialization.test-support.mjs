@@ -14,7 +14,9 @@ const saved=new Map(Object.entries(TANK_SPECS).map(([id,s])=>[id,structuredClone
 const owners=['hull','turret'];
 // Release 233: the Type 96B X fits a frozen frame (the Longwei's retired envelope, suppliedSourceFleetSpecs.ts), not a
 // live donor, so it has no donor refresh to exercise here.
-const cases=[['aft10','m551_sheridan'],['sabra_mk2','m60a3']].map(([id,donorId])=>({id,spec:TANK_SPECS[id],donor:TANK_SPECS[donorId]}));
+// Release 265: the Sabra's M60A3 donor lost its reactive armour (the owner's model carries none), so it has no donor
+// ERA left to exercise; the AFT-10's Sheridan still does.
+const cases=[['aft10','m551_sheridan']].map(([id,donorId])=>({id,spec:TANK_SPECS[id],donor:TANK_SPECS[donorId]}));
 function check({id,spec,donor,frame,donorBefore}){
  assert.equal(spec.hp,donor.hp,`${id}: fresh donor tuning copied`);
  const ratios=['widthM','heightM','hullLengthM'].map(k=>spec.dims[k]/donor.dims[k]);

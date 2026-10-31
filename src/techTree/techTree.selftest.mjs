@@ -193,5 +193,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // are Sweden's alone again.
 // Re-pinned 2026-10-31 at integ/266 (leo2-front-265 3fc640ea29 merged; every other tree check passes): 265's trees + the
 // Denmark tree (the Christian II out of Sweden's special lane, the Strv 105 kept there).
-assert.equal(digest, '020f27cc29aa9bae', `tree content changed: re-pin to ${digest} if deliberate`);
+// 266 (m60-family-265): the Magach 6B (I) and 7C (II) in Israel's second special lane, beside the Magach 3 and the Sabra.
+// Re-pinned 2026-10-31 at integ/266 (m60-family-265 17fe8bb7d1 merged; every other tree check passes): + the Magach 6B and 7C.
+assert.equal(digest, 'cd6f2f04cb7dfff1', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

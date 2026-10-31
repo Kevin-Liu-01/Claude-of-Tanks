@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-30T12:38:07.433Z",
+ "generatedAt": "2026-10-31T09:52:05.902Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1894,33 +1894,105 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 396,
+   "insideOutPx": 0,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 90338,
+   "tris": 106580,
    "frame": [
     0,
-    1.65,
-    0,
-    4.2
+    2.4,
+    0.1,
+    4.9
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 266 M60 batch, rebuilt at true size on the owner's models (Main's ruling 2026-10-28, the 0.9 envelope retired), the Starship's whip and the A3's field load, owner-requested 2026-10-30",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.65,
+       0,
+       4.2
+      ]
+     },
+     "to": [
+      0,
+      2.4,
+      0.1,
+      4.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "m60a3": {
-   "sealed": false,
-   "openPx": 42,
-   "openViews": 1,
-   "openViewNames": [
-    "ring12_4"
-   ],
-   "insideOutPx": 1683,
-   "seeThroughPx": 1,
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 44,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 91824,
+   "tris": 98093,
    "frame": [
     0,
-    1.6,
-    1.1,
-    5
+    1.7,
+    1.2,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 266 M60 batch, rebuilt at true size on the owner's models (Main's ruling 2026-10-28, the 0.9 envelope retired), the Starship's whip and the A3's field load, owner-requested 2026-10-30",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": false,
+      "openPx": 42,
+      "openViews": 1,
+      "openViewNames": [
+       "ring12_4"
+      ],
+      "seeThroughPx": 1,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.6,
+       1.1,
+       5
+      ]
+     },
+     "to": [
+      0,
+      1.7,
+      1.2,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 1,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "m6_linebacker": {
@@ -4633,6 +4705,36 @@
     1.8,
     1.75,
     6.4
+   ]
+  },
+  "magach6b": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 45,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 111065,
+   "frame": [
+    0,
+    2.6,
+    1.2,
+    5.9
+   ]
+  },
+  "magach7c": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 457,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 101742,
+   "frame": [
+    0,
+    2.65,
+    1.2,
+    5.9
    ]
   }
  }
