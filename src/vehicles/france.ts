@@ -837,9 +837,12 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.addGunExtra(slab(                                                           // short connector crown closes the 0.40..0.50 shoulder
     [-0.19, 0.14, 0.40], [0.25, 0.14, 0.40], [0.25, 0.14, 0.50], [-0.19, 0.14, 0.50],
     [-0.19, 0.14, 0.40], [0.25, 0.14, 0.40], [0.25, 0.13, 0.50], [-0.19, 0.13, 0.50]));
-  {                                                                             // measured faceted crown over the center course
-    const crownCourse: [number, number][] = [[0.55, 0.15], [0.585, 0.35], [0.695, 0.45],
-      [0.805, 0.25], [0.925, 0.16], [1.035, 0.14], [1.10, 0.14]];
+  {
+    // 266 (critics round 1: "a pointed fin rises above the roof just behind the mantlet"): the faceted crown peaked at
+    // 0.45 over the gun (10 cm over the roof line) and fell away fore and aft like a fin; it is a flat crown at the roof
+    // line with a chamfered front now, as on the Saumur mantlet. At full elevation it stands lower than the old peak.
+    const crownCourse: [number, number][] = [[0.55, 0.15], [0.60, 0.34], [0.85, 0.34],
+      [0.95, 0.22], [1.035, 0.15], [1.10, 0.14]];
     for (let i = 0; i < crownCourse.length - 1; i++) {
       const [z0, y0] = crownCourse[i], [z1, y1] = crownCourse[i + 1];
       P.addGunExtra(slab(
