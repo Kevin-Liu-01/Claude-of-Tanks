@@ -42,6 +42,11 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
   padding:0 var(--s2);border:0;border-radius:var(--r2);background:var(--pad-key);box-shadow:var(--pad-key-shadow);color:var(--ink-2);
   text-shadow:var(--pad-engrave);}
 .pad-key.is-down{transform:translateY(2px);box-shadow:var(--pad-key-down);}
+.pad .cot-i{flex:none;}
+/* the join and end screens' one action: a lit amber key (the panel's own; the page loads no kit sheet) */
+.pad-go{min-height:56px;padding:0 var(--s6);background:var(--pad-lamp-on);color:var(--ink-on-accent);font-size:var(--fs-16);
+  font-weight:var(--fw-semibold);text-shadow:none;}
+.pad-stop{color:var(--text-danger);}
 .pad-key:focus-visible,.pad-guard:focus-visible,.pad-gauge:focus-visible,.pad-fire:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 
 .pad-top{grid-area:top;display:flex;align-items:center;gap:var(--s2);min-width:0;}

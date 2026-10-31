@@ -169,7 +169,7 @@ try {
   const code = pairing.url.slice(-6);
   await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${code}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
-  const startLabel = await phone.$eval('.pad-form .cot-c-btn__label', (el) => el.textContent);
+  const startLabel = await phone.$eval('.pad-form .pad-go', (el) => el.textContent);
   await phone.tap('.pad-form button[type="submit"]');
   // the first reading centres the wheel: hold the phone level, then wait for the data channel
   await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));

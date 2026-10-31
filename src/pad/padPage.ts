@@ -78,14 +78,14 @@ const join = html(`<section class="pad-join">
   <form class="pad-form" novalidate>
     <label for="pad-code">${esc(t('pad.join.label'))}</label>
     <input class="pad-code" id="pad-code" name="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="7" inputmode="text">
-    <button class="cot-c-btn cot-c-btn--primary cot-c-btn--56" type="submit"><span class="cot-c-btn__label">${esc(t('pad.join.connect'))}</span></button>
+    <button class="pad-key pad-go" type="submit">${esc(t('pad.join.connect'))}</button>
   </form>
   <p class="pad-hint">${esc(t('pad.join.hint'))}</p>
   <p class="pad-error" role="alert"></p>
 </section>`);
 const form = join.querySelector('form') as HTMLFormElement;
 const codeInput = join.querySelector('input') as HTMLInputElement;
-const submitLabel = join.querySelector('.cot-c-btn__label') as HTMLElement;
+const submitLabel = join.querySelector('.pad-go') as HTMLElement;
 const hint = join.querySelector('.pad-hint') as HTMLElement;
 const error = join.querySelector('.pad-error') as HTMLElement;
 
@@ -152,15 +152,15 @@ const ctl = html(`<section class="pad-ctl" hidden>
       + `<button class="pad-key" type="button" data-step="${name}" data-dir="1" aria-label="${esc(t('pad.opt.raise'))}">${icon('chevronRight', { size: 18 })}</button>`
       + '</span></div>').join('')}
     <div class="end">
-      <button class="cot-c-btn cot-c-btn--danger cot-c-btn--48" type="button" data-disconnect><span class="cot-c-btn__label">${esc(t('pad.opt.disconnect'))}</span></button>
-      <button class="cot-c-btn cot-c-btn--secondary cot-c-btn--48" type="button" data-close><span class="cot-c-btn__label">${esc(t('pad.opt.close'))}</span></button>
+      <button class="pad-key pad-stop" type="button" data-disconnect>${esc(t('pad.opt.disconnect'))}</button>
+      <button class="pad-key" type="button" data-close>${esc(t('pad.opt.close'))}</button>
     </div>
   </dialog>
 </section>`);
 const end = html(`<section class="pad-end" hidden>
   <h1 class="pad-title">${icon('phone', { size: 28 })}<span>${esc(t('pad.title'))}</span></h1>
   <p class="pad-end-msg" role="alert"></p>
-  <button class="cot-c-btn cot-c-btn--primary cot-c-btn--56" type="button"><span class="cot-c-btn__label">${esc(t('pad.ended.again'))}</span></button>
+  <button class="pad-key pad-go" type="button">${esc(t('pad.ended.again'))}</button>
 </section>`);
 // the safe areas (the island, the home bar) as the system lays them on the viewport, read once per layout
 const probe = html('<div class="pad-probe" aria-hidden="true"></div>');
