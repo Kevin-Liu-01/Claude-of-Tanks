@@ -189,7 +189,11 @@ author new sketches with the left at +x. One placement pass then resolves the
 internals in a fixed order (shell, ring/basket, crew, then modules from hard to
 soft) and each row publishes `moduleSeats` beside `crewSeats`;
 `gen-combat-anatomy` prints sketches lying largely outside their armour as data
-fixes, and `internalPlacement.selftest.mjs` holds sides, ring and overlaps.
+fixes, and `internalPlacement.selftest.mjs` holds sides, ring, volumes and
+overlaps. `armorInterior.ts` is the one definition of the interior a volume
+fills: hull volumes in the hull's armour envelope, turret-local ones in the
+turret's or, under the deck, the basket (the ring's cylinder about the yaw
+axis). The receipt and `module-visual-align-probe`'s volume-out both read it.
 Crew stations are seated, not boxed (235): every calibration row carries
 `crewSeats` from `tools/crew-seat-fit.mjs` (run by `gen-combat-anatomy`; refit
 against committed rows with `--crew-only [--ids=…]`): a P50 1.75 m body (the

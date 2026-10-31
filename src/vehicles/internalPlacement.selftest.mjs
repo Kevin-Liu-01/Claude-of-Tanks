@@ -8,10 +8,13 @@
 //   - ring: turret crew under the deck inside the turret ring's radius about the axis the turret turns on (or inside the
 //     turret's own armour where it hangs below the deck), hull crew under the deck outside it where a basket turns (2 cm
 //     tolerance); trimmed stations (no posture fits; pinned in crewSeats.selftest) are held there, not here;
+//   - volumes: every interior volume inside its frame's armour envelope, turret-local ones in the turret or the basket
+//     under the deck (src/vehicles/armorInterior.ts, module-visual-align-probe's volume-out; 15 cm); pinned data fixes;
 //   - overlap: no crew hit shape inside a module's hit shapes, no module's inside another's (2 cm tolerance), except the
 //     carousel autoloader inside the ammunition it carries and a crew member at the drawn sight he uses;
 //   - negative controls: the checks flag a mirrored M1A2 crew (3 of 3), a module shape planted in a gunner, a turret
-//     crew member slid out past the ring and a module planted in another; a sketch drawn left-at--x comes out of
+//     crew member slid out past the ring, a module planted in another, a crew box outside the hull and one under the deck past
+//     the ring (the basket is the ring's cylinder, not the hull envelope); a sketch drawn left-at--x comes out of
 //     finalizeCombatAnatomy mirrored back (crew and sketched modules; tracks and the gun stay), one drawn the right way
 //     round is left alone.
 import assert from 'node:assert/strict';
@@ -21,6 +24,7 @@ import { finalizeCombatAnatomy } from './combatAnatomy.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
+import { armorEnvelope, armorVolumeOverflows, basketExcess } from './armorInterior.ts';
 import { crewShell, shapeSurfaceSamples, shapesIntersect } from '../../tools/crew-seat-fit.mjs';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 
@@ -38,6 +42,15 @@ const NESTED = new Set(['ammoRack|autoloader', 'autoloader|ammoRack']);
 const DATA_FIXES = Object.freeze({
   'aft10: missileRack ∩ radio': 'the 2.5 L radio is sketched 95 % inside the eight-canister launcher',
 });
+
+/** Volumes outside their frame's armour envelope that are authored that way: data fixes, pinned. */
+const VOLUME_DATA_FIXES = Object.freeze({
+  'strv103a: gun': 'the casemate gun\'s box rises 0.51 m above the hull plates\' envelope',
+  'strv103b: gun': 'the casemate gun\'s box rises 0.44 m above the hull plates\' envelope',
+  'udes03: gun': 'the casemate gun\'s box rises 0.49 m above the hull plates\' envelope',
+});
+/** module-visual-align-probe's TOL. */
+const VOLUME_TOL_M = 0.15;
 
 const add = (p, d) => p.map((value, axis) => value + d[axis]);
 const shift = (shape, d) => (shape.kind === 'capsule'
@@ -78,14 +91,17 @@ function ringCrossings(id, armor, crew, ring, trimmed = new Set()) {
   for (const volume of crew) {
     if (trimmed.has(volume.crew)) continue;
     const samples = hullShapes(armor, volume).flatMap(shapeSurfaceSamples).filter((p) => p[1] < ring.deckY - TOL_M);
-    const r = (p) => Math.hypot(p[0] - pivot[0], p[2] - pivot[2]);
     const crossing = volume.turretLocal
-      ? samples.filter((p) => r(p) > ring.rimR + TOL_M && !inTurret(p)).length
-      : basket ? samples.filter((p) => r(p) < ring.rimR - TOL_M).length : 0;
+      ? samples.filter((p) => basketExcess(p, pivot, ring) > TOL_M && !inTurret(p)).length
+      : basket ? samples.filter((p) => basketExcess(p, pivot, ring) < -TOL_M).length : 0;
     if (crossing) out.push(`${id}/${volume.crew} ${volume.turretLocal ? 'turret crew past' : 'hull crew inside'} the ring (${crossing} samples)`);
   }
   return out;
 }
+
+/** Interior volume parts more than VOLUME_TOL_M outside their frame's interior. */
+const volumesOut = (id, armor, ring) => armorVolumeOverflows(armor, ring).filter((part) => part.overflow > VOLUME_TOL_M)
+  .map((part) => `${id}: ${part.turretLocal ? 'turret ' : ''}${part.name}`).filter((line, index, all) => all.indexOf(line) === index);
 
 /** Crew∩module and module∩module hit-shape intersections. */
 function overlaps(id, armor) {
@@ -107,7 +123,7 @@ function overlaps(id, armor) {
 
 // fleet
 let sided = 0;
-const wrong = [], rings = [], overlapping = [];
+const wrong = [], rings = [], outside = [], overlapping = [];
 for (const id of ALL_TANK_IDS) {
   const armor = getSpec(id).armor;
   const crew = armor?.crew || [];
@@ -115,11 +131,14 @@ for (const id of ALL_TANK_IDS) {
   wrong.push(...wrongSides(id, crew));
   const trimmed = new Set((COMBAT_ANATOMY_CALIBRATIONS[id]?.crewSeats || []).filter((seat) => seat.trimmed !== undefined).map((seat) => seat.crew));
   rings.push(...ringCrossings(id, armor, crew, combatAnatomyCalibration(id)?.turretRing, trimmed));
+  outside.push(...volumesOut(id, armor, combatAnatomyCalibration(id)?.turretRing));
   overlapping.push(...overlaps(id, armor));
 }
 assert.ok(sided > 600, `the fleet names a side for most stations (${sided})`);
 assert.deepEqual(wrong, [], 'every side-named crew station sits on its own side');
 assert.deepEqual(rings, [], 'turret crew stay inside the ring under the deck; hull crew outside it');
+assert.deepEqual(outside.filter((line) => !VOLUME_DATA_FIXES[line]), [], 'every interior volume inside its armour (turret-local: the turret or the basket)');
+assert.deepEqual(Object.keys(VOLUME_DATA_FIXES).filter((line) => !outside.includes(line)), [], 'every pinned volume data fix is still outside (unpin it once fixed)');
 assert.deepEqual(overlapping.filter((line) => !DATA_FIXES[line]), [], 'no crew or module hit shape inside another module');
 assert.deepEqual(Object.keys(DATA_FIXES).filter((line) => !overlapping.includes(line)), [], 'every pinned data fix still overlaps (unpin it once fixed)');
 
@@ -166,6 +185,21 @@ const ring = combatAnatomyCalibration('m1a2_abrams').turretRing;
 const slid = m1.crew.map((volume) => (volume.crew === 'loader'
   ? { ...volume, shapes: volume.shapes.map((shape) => shift(shape, [ring.rimR, 0, 0])) } : volume));
 assert.ok(ringCrossings('m1a2_abrams', m1, slid, ring).some((line) => /loader turret crew past/.test(line)), 'control: a loader slid past the ring is flagged');
+// the basket: measured against the turret's envelope alone (no ring), the M1A2's basket crew read as outside their armour
+const m1Ring = combatAnatomyCalibration('m1a2_abrams').turretRing;
+assert.ok(volumesOut('m1a2_abrams', m1, null).some((line) => / turret (?:gunner|commander|loader)$/.test(line))
+  && volumesOut('m1a2_abrams', m1, m1Ring).length === 0, 'the M1A2\'s basket crew are outside the turret envelope and inside the basket');
+const loader = m1.crew.find((volume) => volume.crew === 'loader');
+const moved = (min, max) => ({ ...m1, crew: [...m1.crew.filter((volume) => volume !== loader), { ...loader, min, max, parts: undefined }] });
+const hullEnvelope = armorEnvelope(m1.hullPlates);
+const outboard = moved(add(loader.min, [hullEnvelope.max[0] + 1, 0, 0]), add(loader.max, [hullEnvelope.max[0] + 1, 0, 0]));
+assert.ok(volumesOut('m1a2_abrams', outboard, m1Ring).includes('m1a2_abrams: turret loader'), 'control: a crew box outside the hull is flagged');
+// under the deck, past the ring's radius, inside the hull's envelope: outside the basket
+const underDeck = m1Ring.deckY - m1.turretPivot[1];
+const pastRing = moved([m1Ring.rimR + 0.2, underDeck - 0.6, -0.2], [m1Ring.rimR + 0.45, underDeck - 0.2, 0.2]);
+const pastRingHull = [m1Ring.rimR + 0.45 + m1.turretPivot[0], underDeck - 0.6 + m1.turretPivot[1]];
+assert.ok(pastRingHull[0] < hullEnvelope.max[0] && pastRingHull[1] > hullEnvelope.min[1], 'control setup: the box is inside the hull envelope');
+assert.ok(volumesOut('m1a2_abrams', pastRing, m1Ring).includes('m1a2_abrams: turret loader'), 'control: a crew box under the deck past the ring is flagged');
 
 // the handedness mechanism: a sketch on the M1A2's layout drawn left-at--x is mirrored (crew and the sketched fuel cell);
 // the same sketch drawn the right way round is left as it is; tracks and the gun stay where they are
@@ -203,4 +237,4 @@ for (const [sign, label] of [[1, 'mirrored sketch'], [-1, 'right-way sketch']]) 
   assert.ok(moduleX.trackL < -1 && moduleX.trackR > 1 && Math.abs(moduleX.gun) < 1e-9, `${label}: tracks and gun stay`);
 }
 
-console.log(`internalPlacement: ${sided} side-named stations on their sides, no ring crossings or hit-shape overlaps across ${ALL_TANK_IDS.length} vehicles; 5 families as built; 5 controls PASS`);
+console.log(`internalPlacement: ${sided} side-named stations on their sides, no ring crossings, hit-shape overlaps or volumes outside their armour (${Object.keys(VOLUME_DATA_FIXES).length} pinned) across ${ALL_TANK_IDS.length} vehicles; 5 families as built; 7 controls PASS`);
