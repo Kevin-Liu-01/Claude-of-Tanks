@@ -23,7 +23,11 @@
 // - `cli`: the listing runs only when the module is started as a command (or in the fixture repository a receipt
 //   starts it in); the receipts that reach it import its functions. Nothing is inherited.
 // - `none`: it runs a `caller` library without listing anything through it (a constant, a fixture's root).
-import { existsSync } from 'node:fs';
+// - `imports`: it reads the static import graph of the entry files named (an import-graph lint: det-math-lint walks
+//   the authority's). Every receipt that runs the module is keyed on every module that graph executes and is selected
+//   by a change to any of them (tools/selftest-cache.mjs closureOf), whether or not a run of it was ever observed
+//   (266: lanes missed native Math in the graph twice). Each entry is a file the module's source names.
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { globToRegExp } from './selftest-schedule.mjs';
 
@@ -55,6 +59,7 @@ const caller = (reason) => Object.freeze({ caller: reason });
 const identity = (reason) => Object.freeze({ identity: reason });
 const cli = (reason) => Object.freeze({ cli: reason });
 const none = (reason) => Object.freeze({ none: reason });
+const imports = (...entries) => Object.freeze({ imports: Object.freeze(entries) });
 
 export const SELFTEST_SCANS = Object.freeze({
   // ---- receipts and helpers that list this checkout's sources
@@ -121,6 +126,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
   'tools/hero-cards-check.mjs': lists('public/icons/hero/*'),
+  // 266 (Main): the det-math lint reads every module the authority's graph executes (its AUTHORITY_ENTRIES); lanes
+  // missed native Math there in 265 (vehicleMarkings.ts) and 266 (gunFaceSplit.ts through armor.ts)
+  'tools/det-math-lint.mjs': imports('src/sim/authoritativeMatch.ts', 'server/dedicatedWorldCollision.ts'),
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
@@ -299,7 +307,7 @@ export const SELFTEST_SCANS = Object.freeze({
     'tools/destruction-slab-check.mjs from selftest-cache.mjs: the closures of fixed files, for its pass fingerprint and its maps\' listings'),
 });
 
-const KINDS = ['lists', 'tracked', 'caller', 'outside', 'identity', 'cli', 'none'];
+const KINDS = ['lists', 'tracked', 'imports', 'caller', 'outside', 'identity', 'cli', 'none'];
 /** The declaration's one kind, or null when it has none or several. */
 export function scanKind(declaration) {
   const kinds = KINDS.filter((kind) => Object.hasOwn(declaration ?? {}, kind));
@@ -345,6 +353,16 @@ export function scanCensus(cache, receipts, { root, scans = SELFTEST_SCANS, decl
     const kind = scanKind(declaration);
     if (!kind) { problems.push(`${path}: one of ${KINDS.join(', ')} per entry`); continue; }
     if (!reached.has(path)) { problems.push(`${path}: no registered receipt runs it (a stale entry)`); continue; }
+    if (kind === 'imports') {
+      let source = '';
+      try { source = readFileSync(join(root, path), 'utf8'); } catch {}
+      if (!declaration.imports.length) problems.push(`${path}: an empty entry list`);
+      for (const entry of declaration.imports) {
+        if (!existsSync(join(root, entry))) problems.push(`${path}: imports entry ${entry} is gone`);
+        else if (!source.includes(`'${entry}'`)) problems.push(`${path}: never names its imports entry '${entry}' (a stale entry)`);
+      }
+      continue;
+    }
     if (!listingsOf(path).length && !runsCaller(path).length) problems.push(`${path}: lists nothing and runs no caller-directed lister (a stale entry)`);
     const patterns = declaration.lists ?? declaration.tracked;
     if (patterns) {
