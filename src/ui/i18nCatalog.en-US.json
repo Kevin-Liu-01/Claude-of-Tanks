@@ -1920,7 +1920,7 @@
   "publicNav.footerAria": "Site pages",
   "publicNav.language.aria": "Language",
   "publicNav.language.credit": "Localized with General Translation",
-  "home.hero.title": "Tank battles in your browser",
+  "home.hero.title": "Tank battles in your <span class=\"t-hollow\">browser</span>",
   "home.hero.lede": "Fight bots or friends with simulated shells and plate-level armor, free with no install.",
   "home.hero.shot": "{a} vs {b}",
   "home.hero.shotThree": "{a} vs {b} and {c}",

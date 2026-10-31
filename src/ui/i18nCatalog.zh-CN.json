@@ -1944,7 +1944,7 @@
   "publicNav.footerAria": "站点页面",
   "publicNav.language.aria": "语言",
   "publicNav.language.credit": "由 General Translation 完成本地化",
-  "home.hero.title": "浏览器中的坦克大战",
+  "home.hero.title": "<span class=\"t-hollow\">浏览器</span>中的坦克大战",
   "home.hero.lede": "与机器人或好友对战，炮弹逐发模拟，装甲逐块结算，免费且无需安装。",
   "home.hero.shot": "{a} 对阵 {b}",
   "home.hero.shotThree": "{a} 对阵 {b} 与 {c}",

@@ -599,7 +599,7 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n="home\.hero\.title">/, 'the landing\'s h1 is the hero\'s headline and names the game; the lockup is the nav bar\'s alone (owner 2026-10-25)');
+assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n-html="home\.hero\.title">[^<]+<span class="t-hollow">/, 'the landing\'s h1 is the hero\'s headline and names the game; the lockup is the nav bar\'s alone (owner 2026-10-25)');
 assert.match(read('site/home.html'), /<h2 class="home-h2 press__title" id="press-title">[^]*?<span class="t-hollow" data-i18n-html="home\.social\.kicker"/, 'the landing\'s section headline uses the shared hollow treatment (2026-10-25: the press band)');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.

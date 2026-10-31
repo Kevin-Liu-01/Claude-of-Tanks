@@ -63,6 +63,10 @@ img{display:block;max-width:100%}
 .hero__card{grid-area:card;align-self:end;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s6);margin-bottom:var(--s6)}
 .hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:max(calc(var(--home-h1) * 9.4),34rem)}
 .hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
+/* the headline's last word in the section heads' hollow voice (owner 2026-10-31: "make 'browser' be the outline text"),
+   its stroke grown with the hero's type and their shadow under it over every reel frame; Chinese stays solid ink */
+.hero__title .t-hollow{--hollow-stroke:max(1.5px,.024em);--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+:lang(zh-CN) .hero__title .t-hollow{opacity:1}
 .hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:balance}
 /* the shot's caption sits beside the reel's pause, which holds the hero's right edge, both centred on the actions' row.
    The pause keeps its place while it waits for the reel (hidden only under reduced motion, where the reel never starts),
