@@ -40,6 +40,8 @@ export const GERMANY_TREE: NationTree = Object.freeze({
       id: 'leo1a5', tier: 1, line: 'leopard_side', lane: 5, parents: ['jpz_e100'], slot: 'line', builds: ['leo1a2a1'],
     }),
     node({ id: 'leo2a3', tier: 4, line: 'leopard_side', lane: 3, parents: ['leo2a2'], slot: 'line' }),
+    // 262: the fourth batch's Leopard 2A3 beside the 2A3 OTCO (Main: a 2A2 variant never above a 2A3)
+    node({ id: 'leo2a3_b4', tier: 4, line: 'leopard_side', lane: 2, parents: ['leo2a3'], slot: 'line' }),
     node({ id: 'leo2a6', tier: 9, line: 'leopard_side', lane: 0, parents: ['leo2a5'], slot: 'line' }),
     node({ id: 'leo2_improved', tier: 8, line: 'leopard_side', lane: 0, parents: ['leo2a4'], slot: 'line' }),
     node({

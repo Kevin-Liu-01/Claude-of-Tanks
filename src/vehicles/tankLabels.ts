@@ -176,9 +176,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo1a2a1: { displayName: 'Leopard 1A2A1', searchAliases: ['Leopard 1', 'Leo 1', 'Leopard 1A2', 'Leopard 1 A2 A1', 'Leopard cast turret'] },
+  // 262: the 2A3 OTCO, a fourth-batch 2A3 with the OTCO field modification (the owner, 2026-10-28; Main had shown it as
+  // the 2A2 OTCO earlier in the release); the plain fourth-batch 2A3 is leo2a3_b4
   leo2a3: {
+    displayName: 'Leopard 2A3 OTCO', shortName: 'Leopard 2A3 OTCO',
+    searchAliases: ['Leopard 2A2 OTCO', 'Leopard 2A4 OTCO', '2A3 OTCO', '2A2 OTCO'],
+  },
+  leo2a3_b4: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
-    searchAliases: ['Leopard 2A4 OTCO', '2A3'],
+    searchAliases: ['Leopard 2A3 fourth batch', '2A3', 'Leopard 2A3 4. Los'],
   },
   leo2a4m_can: {
     displayName: 'Leopard 2A4M CAN', shortName: 'Leopard 2A4M CAN',

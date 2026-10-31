@@ -2,15 +2,16 @@
 //
 // The owner-supplied Strv 103B, Strv 81 and Strv 122 GLBs are fixed
 // visual/metric oracles only. Runtime geometry remains first-party procedural.
+// (264: the Strv 121, the Swedish Leopard 2A4, is built on the release construction: profiles/leopard2A4Family.ts and
+// its kit, profiles/leopard2A4Strv121Kit.ts.)
 // Each build preserves its donor hull and single suspension-driven native
 // course, then adds supported Swedish armor, equipment and gun-station cues.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, convexSlab, muzzleBore } from './kit.ts';
 import { addFixedGunPort, buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
@@ -182,127 +183,6 @@ function buildStrv81(P: TankBuilderPort): void {
 function buildStrv105(P: TankBuilderPort): void {
   // release 262: the Strv 105 prototype (a Strv 104 with its FFV cassettes and a thermal sight) from the rebuilt family
   centurionBuild(P, 'strv105');
-}
-
-function addStrv122Package(P: SwedishBuilderPort): void {
-  const { box, cylY, cylZ } = KIT;
-  const slab = orientedSlab;
-
-  // Swedish hull-front package: thick upper-glacis wedges and lower shoulder
-  // returns overlap the A5 shell while remaining clear of both idler lanes.
-  for (const side of [-1, 1]) {
-    P.add('hull', slab(
-      [side * 0.12, 1.47, 2.36], [side * 1.18, 1.44, 2.48],
-      [side * 0.96, 1.28, 3.52], [side * 0.12, 1.30, 3.62],
-      [side * 0.12, 1.61, 2.36], [side * 1.18, 1.58, 2.48],
-      [side * 0.96, 1.42, 3.52], [side * 0.12, 1.44, 3.62]));
-    P.add('hullDark', box(0.025, 0.28, 0.76), side * 0.94, 1.43, 2.74,
-      0, 0, side * 0.08);
-
-    // Distinct 122 side armor: eight shallow ceramic cassettes over the
-    // donor skirt, stopping above and outside the single native shoe course.
-    for (let i = 0; i < 8; i++) {
-      plate(P, 'hull', side * 1.84, 1.23, 2.52 - i * 0.73,
-        0.055, 0.52, 0.58, [0, 0, side * 0.018], false);
-      // 2026-10-19 (owner float sweep): aft of the bow pair the cassettes stood 77 mm off the donor's 1.731 side line; a
-      // spacer block under each cassette's top edge carries it.
-      if (i >= 2) P.add('hullDark', box(0.10, 0.20, 0.12), side * 1.775, 1.40, 2.52 - i * 0.73);
-    }
-
-    // Flush turret-side protection and supported rear-corner returns.
-    for (let i = 0; i < 5; i++) {
-      // 2026-10-19 (owner float sweep): the left 3rd/4th plates stood 34/41 mm off the narrowing turret side; inset.
-      const inset = side < 0 ? [0, 0, 0.037, 0.044, 0][i] : 0;
-      plate(P, 'turret', side * (1.50 - inset), 0.42 + (i & 1) * 0.025,
-        0.08 - i * 0.43, 0.13, 0.40, 0.36, [0, 0, side * 0.08], true);
-    }
-    P.add('turret', slab(
-      [side * 1.16, 0.10, -1.52], [side * 1.48, 0.10, -1.62],
-      [side * 1.48, 0.12, -2.54], [side * 1.12, 0.12, -2.34],
-      [side * 1.12, 0.62, -1.52], [side * 1.42, 0.60, -1.62],
-      [side * 1.42, 0.56, -2.50], [side * 1.08, 0.58, -2.30]));
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 6, r: 0.043, len: 0.30,
-      splay: side * 1.04, pitch: -0.44, arc: 0.62,
-      slot: 'detail', seed: 12200 + (side > 0 ? 1 : 0),
-    }), side * 1.34, 0.58, 0.26);
-  }
-
-  // Reinforced roof armor is a defining Strv 122 cue. These closed plates
-  // overlap the wedge crown and leave the crew stations visibly seated.
-  P.add('turret', box(1.96, 0.10, 1.42), 0, 0.82, -0.74);
-  P.add('turretDark', box(1.82, 0.018, 1.28), 0, 0.88, -0.74);
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.58, 0.10, 0.66), side * 0.72, 0.88, -0.55);
-    P.add('turretDark', box(0.48, 0.018, 0.55), side * 0.72, 0.94, -0.55);
-  }
-
-  // Two low crew hatches, surrounding periscopes and roof service boxes sit
-  // on the new armor plate. Their feet overlap the crown instead of hovering
-  // above it, restoring the dense roof grammar visible on the 122 oracle.
-  for (const [x, z, r] of [[0.42, -0.78, 0.26], [-0.28, -0.82, 0.23]]) {
-    P.add('turret', cylY(r, r + 0.015, 0.065, 18), x, 0.92, z);
-    P.add('turretDark', KIT.torus(r * 0.92, 0.014, 18), x, 0.96, z);
-  }
-  for (const [x, z, ry] of [
-    [0.17, -0.50, -0.12], [0.40, -0.43, -0.04], [0.65, -0.52, 0.10],
-    [-0.52, -0.48, 0.14], [-0.73, -0.62, 0.22], [-0.08, -0.45, -0.12],
-  ]) {
-    // 2026-10-19 (owner float sweep): the two centre heads (off the side plates) stood 27 mm over the roof; seated.
-    const py = Math.abs(x) < 0.3 ? 0.911 : 0.94;
-    P.add('turretDetail', box(0.14, 0.048, 0.078), x, py, z, 0, ry, 0);
-    P.add('turretGlass', box(0.098, 0.022, 0.014), x, py + 0.028, z + 0.036, 0, ry, 0);
-  }
-  P.add('turret', box(0.34, 0.12, 0.42), 0.78, 0.95, -1.22);
-  P.add('turretDark', box(0.28, 0.018, 0.34), 0.78, 1.02, -1.22);
-  P.add('turret', box(0.30, 0.10, 0.34), -0.78, 0.94, -1.34);
-  P.add('turretDark', box(0.24, 0.018, 0.27), -0.78, 1.00, -1.34);
-  for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.12, 0.10, 0.12), side * 1.02, 0.86, -0.12);
-    P.add('turretGlass', box(0.075, 0.055, 0.018), side * 1.02, 0.87, -0.05);
-    P.add('turretDark', box(0.025, 0.025, 0.22), side * 1.02, 0.81, -0.24);
-  }
-
-  // Commander panorama on its broad roof shoe. VH.14 (coordinator ruling 2026-10-14: roof weapons match the real
-  // vehicle and every drawn gun works): the Strv 121's one roof gun is the loader's Ksp on his hatch ring, a working
-  // station; the second shielded Ksp 58 here is gone.
-  P.add('turret', box(0.38, 0.08, 0.38), -0.58, 0.96, -0.62);
-  P.add('turretDetail', cylY(0.14, 0.17, 0.32, 16), -0.58, 1.15, -0.62);
-  // 2026-10-19 (owner float sweep): the panorama window stood 24 mm ahead of its head and the radio bases 20 mm over
-  // the 0.68 roof; window set into the head, bases onto the roof.
-  P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.462);
-  addSwedishRadioPair(P, 'turret', 0.708, -2.18, 12230);
-
-  // Connected rear basket/slat complex. Every rail meets a post, and the
-  // posts return into the backed bustle armor.
-  P.add('turretDark', box(2.50, 0.34, 0.06), 0, 0.36, -2.78);
-  for (const y of [0.26, 0.38, 0.50, 0.62]) {
-    P.add('turretDetail', box(2.66, 0.028, 0.032), 0, y, -2.82);
-  }
-  for (let i = 0; i < 9; i++) {
-    P.add('turretDetail', box(0.030, 0.42, 0.032), -1.25 + i * 0.3125, 0.44, -2.82);
-  }
-  for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.032, 0.36, 0.62), side * 1.33, 0.44, -2.53);
-    P.add('turretDetail', box(0.24, 0.035, 0.035), side * 1.22, 0.26, -2.50);
-    P.add('turretDetail', box(0.24, 0.035, 0.035), side * 1.22, 0.62, -2.50);
-  }
-
-  // Swedish L/44 gun root: broad buried mask, stepped collar and two visible
-  // trunnion fasteners around the inherited barrel/elevation rig.
-  P.addGunExtra(box(0.82, 0.58, 0.24), 0, -0.01, 0.38);
-  P.addGunExtra(cylZ(0.22, 0.40, 18, 0.17), 0, 0, 0.68);
-  for (const side of [-1, 1]) P.addGunExtraDark(cylZ(0.037, 0.095, 10),
-    side * 0.30, 0.08, 0.58);
-
-  P.decal('turret', 'number', '122', 0.25, [-1.56, 0.43, -0.82], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.54);
-}
-
-function buildStrv122(P: SwedishBuilderPort): void {
-  buildLeo2A5(P);
-  addStrv122Package(P);
-  addVehicleGhillieSuit(P);
 }
 
 // ---------------------------------------------------------------------------
@@ -869,5 +749,5 @@ export const SWEDEN_PROFILES = {
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
   strv105: { build: buildStrv105 },
-  strv121: { build: buildStrv122 },
+  // 264: strv121 (the Swedish Leopard 2A4) is built on the release construction (profiles/leopard2A4Family.ts)
 } satisfies VehicleProfileRecord;

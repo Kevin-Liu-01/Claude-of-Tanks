@@ -69,7 +69,9 @@ const flight = (shot) => Array.from({ length: Math.ceil(shot[6] / 0.005) + 1 }, 
 }
 
 // ---- 3. a salvo fired at a house from close in ------------------------------------------------------------------------
-const tank = (specId = 'leo2a4') => ({ id: specId, team: 'player', spec: { id: specId, dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+// (release 265: the Leopard 1A5's turret clusters. The rebuilt 2A4's, like most fanned launchers, lob the salvo's
+// centre over this 5 m wall from 8 m onto the roof, where a canister rightly rests; the low clusters meet the wall)
+const tank = (specId = 'leo1a5') => ({ id: specId, team: 'player', spec: { id: specId, dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
   state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} });
 const shooter = tank();
 assert.ok(requestAuxiliary(shooter, 'smoke', 0, ground, world), 'the salvo launches');

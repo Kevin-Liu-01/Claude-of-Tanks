@@ -49,6 +49,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["leopard2_proto","germany","cold-war",3],
   ["leo2a2","germany","cold-war",3],
   ["leo2a3","germany","modern",4],
+  ["leo2a3_b4","germany","modern",4],
   ["leo2a4m_can","canada","modern",8],
   ["leo2a4_v","germany","modern",8],
   ["leo2a4m","germany","modern",8],

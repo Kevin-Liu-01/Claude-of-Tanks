@@ -36,6 +36,12 @@ for (const donor of new Set(Object.values(SOURCE_X_DONORS))) {
 // applied (merkava4: assault; k2_black_panther: flanker), field for field. A registered donor carries its own doctrine.
 const roleTuned = (id, gun) => VEHICLE_ROLE_PROFILES[id]
   ? tacticalRoleHandling({ hullTraverseDegS: 0, turretTraverseDegS: 0, gun }, VEHICLE_ROLE_PROFILES[id].doctrine).gun : gun;
+// release 265 (the owner via Main, 2026-10-29): the Leopard 2 Improved's DM63 takes its L/44's figures after the
+// registration-time copies (leopard2A4FamilySpecs.ts); the 2A7V study keeps the 2A7V record's L/55 891/811/730 mm it
+// copied, main's state (a known gap until a balance lane rules the study's own gun)
+const L55_DM63 = { leo2a7v: { pen100Mm: 891, pen1000Mm: 811, pen2000Mm: 730 } };
+const studyGun = (id, gun) => L55_DM63[id]
+  ? { ...gun, shells: gun.shells.map((s) => (s.type === 'APFSDS' ? { ...s, ...L55_DM63[id] } : s)) } : gun;
 assert.equal(SOURCE_X_IDS.length, 13);
 for (const id of SOURCE_X_IDS) {
   const donor = SOURCE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
@@ -54,7 +60,7 @@ for (const id of SOURCE_X_IDS) {
   if (donor === id) assert.match(PROCEDURAL_PROFILES[id].build.name, /X$/, `${id}: its own X builder, not its donor template's`);
   else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
   const templateGun = donor === 'xk2_black_panther' ? k2SourceMetadata().gun : RETIRED_DONORS.has(donor) ? donorRow.gun : null;
-  assert.deepEqual(spec.gun, templateGun ? roleTuned(id, templateGun) : donorRow.gun,
+  assert.deepEqual(spec.gun, templateGun ? roleTuned(id, templateGun) : studyGun(id, donorRow.gun),
     `${id}: production donor combat balance remains independent of the XK2 hybrid`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);

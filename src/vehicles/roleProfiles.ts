@@ -90,6 +90,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leopard2_proto: { doctrine: 'flanker', viewM: 395, still: 0.225, moving: 0.165 },
   leo2a2: { doctrine: 'flexible', viewM: 400, still: 0.185, moving: 0.125 },
   leo2a3: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
+  leo2a3_b4: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
   leo2a4m_can: { doctrine: 'flexible', viewM: 410, still: 0.178, moving: 0.118 },
   leo2a4_v: { doctrine: 'flexible', viewM: 405, still: 0.181, moving: 0.121 },
   leo2a4m: { doctrine: 'flexible', viewM: 415, still: 0.176, moving: 0.116 },

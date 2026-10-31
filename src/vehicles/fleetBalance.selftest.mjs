@@ -146,7 +146,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 111 -> 117 (265 integration, centurion family 262 on 264c): the new Sho't Kal and Mk 13 share the Mk 5/2's package (fleetBalancePass);
 // the Strv 105 shares it too, the Olifant Mk 2 and the Mk 5 AVRE carry their own, the Australian Mk 5/1 the Strv 81's.
 // 117 -> 118 (265 integration, leopard1-263): the Leopard 1A2A1 takes its 1A5's tier I footing (applyBuildFootings).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 118,
+// 118 -> 117 (265 integration, leo2a4-family-265 ca927a900a): the fourth batch's Leopard 2A3 carries the 2A3's cycle and
+// 2,400 HP (+1); the rebuilt leo2_improved and leo2a4_otco drop 263's VIII mantlet entries, measured on the old builds (-2).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 117,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

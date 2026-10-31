@@ -301,6 +301,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
   leo2a3: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  leo2a3_b4: anchor('turret', 'right', 0.40, 0.42, 0.24, -1),
   leo2a4m_can: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
   // 2026-10-05: on the turret, where the surface search always landed. The ghillie side drape hides both hull sides,

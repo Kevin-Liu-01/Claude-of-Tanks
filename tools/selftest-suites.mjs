@@ -193,6 +193,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // 262: the Challenger 3 TD's deep mantlet and tube clear its two cheeks and every turret fitting through the gun's
     // whole travel, in battery and at full recoil (a rod across the slot fails)
     'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
+    // release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, its gun
+    // clear of its hull at its published stops
+    'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
+    // release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wedge
+    // split, each one's gun forward, the ring on the deck and the 2A4 turret's roof, at both qualities
+    'src/vehicles/profiles/leopard2A4Family.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -704,8 +710,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/k2XReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sourceK2Equipment.selftest.mjs',
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4SideSkirt.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4GunSeat.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
     'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
     'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
@@ -1904,7 +1908,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/merkavaFamily.selftest.mjs',
     'src/vehicles/profiles/merkavaFamilyGunClearance.selftest.mjs',
     'src/vehicles/profiles/swedishSiegeLine.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4Ghillie.selftest.mjs',
     'src/vehicles/profiles/t72JaguarRedesign.selftest.mjs',
     'src/vehicles/profiles/challenger2Geometry.selftest.mjs',
     'src/vehicles/profiles/challenger2Family.selftest.mjs',

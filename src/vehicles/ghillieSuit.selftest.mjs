@@ -264,9 +264,9 @@ for (const id of ids) {
   tank.dispose();
 }
 
-// the suits with their own receipts (the A4) or their own field configs (the Ukrainian national rebuilds, push 3:
-// nationalUkraineProtection.ts) are held to the same contact rule
-for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
+// the suits with their own field configs (the Ukrainian national rebuilds, push 3: nationalUkraineProtection.ts) are held
+// to the same contact rule (262: the old A4's suit retired with its build; the 2A2 now drives unsuited)
+for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
@@ -409,15 +409,16 @@ for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const tank = createTank('leo2a2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
-    const net = tank.root.getObjectByName('leo2a4_ghillie_turret_net');
-    assert.match(net?.material?.map?.name ?? '', /^ghillieNet:woodland:/, 'the A4 wears a woodland net on its woodland scheme');
-    setCamoOverride('leo2a2', 'desert');
-    applyCamoPatterns('leo2a2');
-    assert.match(net.material.map.name, /^ghillieNet:desert:/, 'a switch to a desert scheme carries the net to the desert');
-    setCamoOverride('leo2a2', null);
-    applyCamoPatterns('leo2a2');
-    assert.match(net.material.map.name, /^ghillieNet:woodland:/, 'and back');
+    // (262: the Christian II's suit on the same Leopard hull, the old A4's retired with its build)
+    const tank = createTank('christian2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    const net = tank.root.getObjectByName('christian2_ghillie_turret_net');
+    assert.match(net?.material?.map?.name ?? '', /^ghillieNet:(field:)?woodland:/, 'the Christian II wears a woodland net on its woodland scheme');
+    setCamoOverride('christian2', 'desert');
+    applyCamoPatterns('christian2');
+    assert.match(net.material.map.name, /^ghillieNet:(field:)?desert:/, 'a switch to a desert scheme carries the net to the desert');
+    setCamoOverride('christian2', null);
+    applyCamoPatterns('christian2');
+    assert.match(net.material.map.name, /^ghillieNet:(field:)?woodland:/, 'and back');
     tank.dispose();
     // the decor's rolled nets follow too: the M60A1's sand roll turns woodland on a woodland scheme
     const m60 = createTank('m60a1', null, { quality: 'high', camoSeed: 4242, decor: true });

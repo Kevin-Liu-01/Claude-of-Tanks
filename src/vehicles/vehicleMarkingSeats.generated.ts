@@ -25,7 +25,6 @@ import { VEHICLE_MARKING_SEATS as SEATS_CV90MKIVSOURCEX } from './vehicleMarking
 import { VEHICLE_MARKING_SEATS as SEATS_DARDO } from './vehicleMarkingSeatGroups/dardo.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_FRANCECORE } from './vehicleMarkingSeatGroups/franceCore.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_FV510MILANX } from './vehicleMarkingSeatGroups/fv510MilanX.generated.ts';
-import { VEHICLE_MARKING_SEATS as SEATS_GERMANY } from './vehicleMarkingSeatGroups/germany.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_GRIFFIN50X } from './vehicleMarkingSeatGroups/griffin50X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_GRIFFINVIPER } from './vehicleMarkingSeatGroups/griffinViper.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ITALY } from './vehicleMarkingSeatGroups/italy.generated.ts';
@@ -41,6 +40,8 @@ import { VEHICLE_MARKING_SEATS as SEATS_KURGANETSX } from './vehicleMarkingSeatG
 import { VEHICLE_MARKING_SEATS as SEATS_LECLERCCLASSICX } from './vehicleMarkingSeatGroups/leclercClassicX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LECLERCX } from './vehicleMarkingSeatGroups/leclercX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD } from './vehicleMarkingSeatGroups/leopard.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD2A3B4 } from './vehicleMarkingSeatGroups/leopard2a3B4.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD2A4FAMILY } from './vehicleMarkingSeatGroups/leopard2a4Family.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDA6X } from './vehicleMarkingSeatGroups/leopardA6X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDX } from './vehicleMarkingSeatGroups/leopardX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LRMVLYNX } from './vehicleMarkingSeatGroups/lrmvLynx.generated.ts';
@@ -112,7 +113,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_DARDO,
   SEATS_FRANCECORE,
   SEATS_FV510MILANX,
-  SEATS_GERMANY,
   SEATS_GRIFFIN50X,
   SEATS_GRIFFINVIPER,
   SEATS_ITALY,
@@ -128,6 +128,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_LECLERCCLASSICX,
   SEATS_LECLERCX,
   SEATS_LEOPARD,
+  SEATS_LEOPARD2A3B4,
+  SEATS_LEOPARD2A4FAMILY,
   SEATS_LEOPARDA6X,
   SEATS_LEOPARDX,
   SEATS_LRMVLYNX,

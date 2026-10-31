@@ -139,25 +139,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
   // (orchestrator owns corrections).
-  // Owner-authoritative 2026-08-10 source rebuild. The nested OBJ preserves
-  // 102 semantic names while the convenient loose GLB merges them by
-  // material. The bake therefore emits this deterministic, locally ignored
-  // articulation oracle without altering any source triangle.
-  // The repaired oracle's Turret mesh descends to y=.789 while its visible
-  // deck is ~1.70 m: it includes the hidden internal basket. A direct mask
-  // therefore compares exposed source internals against our exterior-only
-  // authored turret. Keep every exterior, gun, track and yaw gate instead.
-  leo2a2: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
-  // Owner-authoritative 2026-08-10 nested source rebuild. The deterministic
-  // local oracle restores semantic Hull/Turret/Gun ownership without
-  // altering any source triangle.
-  // The neutral oracle bake intentionally merged many roof/turret fittings
-  // into its HullDetail mesh before export.  Whole-vehicle, gun and running-
-  // gear masks remain valid, but independent hull/turret component masks do
-  // not.  Disabling those two misleading cells keeps the comparison honest.
-  leo2_improved: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb',
-    turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false,
-    trackComponentMasks:true } },
+  // 262 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a2 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a4_otco_repaired.glb shows a Leopard 2A4 OTCO (fleet id leo2a4_otco): re-register it there later.
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2_improved is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a7v_repaired.glb shows a Leopard 2A7V (fleet id leo2a7v): re-register it there later.
   // ZTZ-99 Longwei: the game's own ZTZ-99-lineage design (owner, 2026-10-28), docs/references/concepts/ztz99-longwei-20261028.json.
   // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull but uses
   // an independent low integrated-chevron turret. Keep the A2 print as the
@@ -196,16 +179,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
     componentMasks:false } },
   m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
-  // §5.248 germany round _vlo shell-isolation audit (real-vertex scans,
-  // docs/references/tanks/leo2a6m.md): the chassis_vlo pair (Object_9/10)
-  // is a benign-REQUIRED running-gear LOD pair (y<=0.495, the print's ONLY
-  // full wheel train), but the chassis.0 detail shells Object_5/7 bake the
-  // FULL GUN TUBE (x 4.31..7.964) and an at-rest TURRET BAND (tops mirror
-  // Object_6's 1.636..1.847 across the works span), and the Slat_Armor
-  // shell parks turret-height cage panels hull-side — hull/turret mask
-  // decomposition is structurally dishonest (marder1a3/t72m1_jaguar class).
-  // componentMasks:false keeps the honest rows: whole views, dims, floaters.
-  leo2a4_otco: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2, componentMasks:false } },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_otco is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6m_arrafi.glb shows a Leopard 2A6M (fleet id leo2a6m): re-register it there later.
   // §5.248 germany round row addition: fused whole-shell pairs (Object_3/4
   // both carry hull+turret+gun; Object_5 = vlo running-gear band) — NO
   // usable split, whole-view instrument only (jaguar class). Audit in
@@ -244,7 +218,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
-  strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): strv121 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle strv122_vavtrudner.glb shows a Stridsvagn 122 (fleet id strv122): re-register it there later.
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   // ztz85_iii (265): qualified by photographs (docs/references/photos/ztz85-iii-20261028.json); its fused print is retired
   // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
@@ -492,12 +466,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // oracles. These entries keep the gate/board loadable for graduates —
   // without them a gate run writes a FALSE 0 row (leo2a4 incident,
   // repaired). Configs are the retired registrations verbatim.
-  leo2a4: {
-    source:'glb',
-    glb:{ path:'/models/tanks/leo2a6_buh.glb',
-      turretNode:'^turret$', gunNode:'^gun$', autoPivot:true,
-      yawOffset:Math.PI },
-  },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
   // kf51_evo (graduated 2026-08-03): retired source-model registration —
   // measurement-only.
   kf51_evo: {
@@ -581,14 +550,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/t84.glb',
       turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
   },
-  // leo2a4_v (graduated 2026-08-04, the 21st): retired userdrops5
-  // registration — measurement-only.
-  leo2a4_v: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/leo2a5.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true },
-  },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_v is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle recovered/leo2a5.glb shows a Leopard 2A5 (fleet id leo2a5): re-register it there later.
   // m47_patton (graduated 2026-08-04, the 20th — the patton family's first):
   // retired userdrops6 registration — measurement-only.
   m47_patton: {

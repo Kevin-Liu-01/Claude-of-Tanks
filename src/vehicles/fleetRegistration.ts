@@ -65,6 +65,8 @@ import './strv105Specs.ts';
 import './olifantMk2Specs.ts';
 import './centurionAvreSpecs.ts';
 import './centurionAusSpecs.ts';
+import './leopard2a3B4Specs.ts';
+import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
@@ -91,6 +93,8 @@ synchronizeIfvReplicaCombatMetadata();
 synchronizeFleetRenewalMetadata();
 synchronizeNationalModernizationMetadata();
 synchronizeLongweiFamilyMetadata();
+// 264: the 2A4-era Leopards' plates move onto the release's construction after every registration-time copy of them
+applyLeopard2A4FamilyEnvelopes(TANK_SPECS);
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);

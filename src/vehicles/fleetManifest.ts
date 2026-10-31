@@ -29,6 +29,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   type10X: Object.freeze(['type10']),
   type90X: Object.freeze(['type90']),
   christian2: Object.freeze(['christian2']),
+  leopard2a3B4: Object.freeze(['leo2a3_b4', 'leo2a2', 'leo2a3']),
+  leopard2a4Family: Object.freeze(['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a4_otco', 'leo2_improved', 'strv121']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
@@ -82,12 +84,11 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'challenger3', 'challenger3_td', 'challenger3_td_rws',
   ]),
   leopard: Object.freeze([
-    'leo2a2', 'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',
-    'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo1a2a1', 'leo2a4m_can', 'leo2a4_otco',
+    'leopard2_proto', 'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo1a2a1',
   ]),
   italy: Object.freeze(['c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto', 'carro45t']),
   sweden: Object.freeze([
-    'udes03', 'strv103b', 'strv103a', 'strv81', 'strv105', 'strv121', 'cv90', 'cv90_mk4_concept',
+    'udes03', 'strv103b', 'strv103a', 'strv81', 'strv105', 'cv90', 'cv90_mk4_concept',
   ]),
   sovietHeavy: Object.freeze(['kv2']),
   t90_1992: Object.freeze([
@@ -122,7 +123,6 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_dozer']),
-  germany: Object.freeze(['leo2a3']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);
 
