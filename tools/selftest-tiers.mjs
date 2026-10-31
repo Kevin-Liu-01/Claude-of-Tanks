@@ -601,6 +601,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/sourceXSovietAuxArmor.selftest.mjs',
     'src/vehicles/sourceXWesternAuxArmor.selftest.mjs',
     'src/vehicles/strv103GunPort.selftest.mjs',
+    'src/vehicles/suitRoofDecor.selftest.mjs',
     'src/vehicles/suppliedSourceWeapons.selftest.mjs',
     'src/vehicles/suspensionClearance.selftest.mjs',
     'src/vehicles/trackContactDerivationAudit.selftest.mjs',
