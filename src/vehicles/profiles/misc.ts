@@ -924,6 +924,9 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     fenders(P, 1.20, 1.40, 1.587, -3.06, -2.55, 0.03);                           // engine deck aft 1.602 (ref falls 1.617 by -2.91 — split priced lower)
     fenders(P, 1.38, 1.72, 1.570, -3.06, -1.80, 0.03);                           // engine deck outer edge 1.585 (front ±1.72 wants 1.555)
     fenders(P, 1.20, 1.695, 1.590, -3.24, -3.00, 0.03);                          // tail lip 1.605 (90-ladder r1: outer 1.695 — its 1.72 edge owned the front ±1.72 cols at 1.602 vs the ref's 1.553)
+    // 266 (roof-pocket census): a 6 cm slot ran under the engine deck's side plates, between the sponson band's 1.49 top
+    // and the plates, open at each plate step; it is closed with a buried fill out to the skirt line on both sides.
+    for (const s2 of [-1, 1]) P.add('hull', box(0.50, 0.075, 1.44), s2 * 1.45, 1.5175, -2.52);
     // 2026-10-19 (owner float sweep): the pots stood 10-15 mm over the deck step; they run down into it (tops kept).
     for (const s2 of [-1, 1]) P.add('hull', box(0.07, 0.11, 0.165), s2 * 1.05, 1.633, -2.5025); // filler pots (the ref's 1.715 'hump' is two x ±1.05 caps. 90-ladder r1: ref front cols carry the 1.71 line ONLY at ±1.033/1.073 — the 0.16-wide pots printed +0.044/+0.063 on ±0.991/±1.112; x-span now 1.015..1.085. z rear pulled to -2.395: the old -2.415 edge AA'd into side col -2.464's window [-2.409..])
     // GLACIS: raked surface (1.64,1.55) -> (2.66,1.363) full width, then a
