@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { PadStatusSource } from '../pad/padReceiver.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -185,6 +186,8 @@ export interface SettingsOptions {
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
   readonly registerMenuAction?: boolean;
+  /** The local player's battle facts for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
+  readonly phoneSource?: () => PadStatusSource | null;
 }
 
 export interface SettingsRuntime {
@@ -929,10 +932,51 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     el('div', 'cot-set-note', parent).textContent = t('settings.aim.note');
   }
 
+  // --- PHONE CONTROLLER (phone-controller-266, docs/PHONE-CONTROLLER.md) ------------------------------------------
+  // The card's button loads the pairing card and its receiver (src/pad/padConnectCard.ts): nothing of it, and no request,
+  // until the player asks. Once loaded the card re-renders with the tab and shows the live pairing.
+  let padCard: typeof import('../pad/padConnectCard.ts') | null = null;
+  const padPorts = () => ({
+    input,
+    source: () => opts.phoneSource?.() ?? null,
+    // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture
+    togglePause: () => { if (!isBattleActive()) return; if (open) closePanel({ noRelock: true }); else openPanel(); },
+  });
+  function phoneCard(parent: HTMLElement): void {
+    const host = el('div', '', groupCard(parent, t('settings.phone.title')));
+    if (padCard) { padCard.renderPadCard(host, padPorts()); return; }
+    const row = el('div', 'cot-set-row', host);
+    settingLabel(row, t('settings.phone.label'), { id: 'phone', tone: 'cyan' });
+    // the kit's button as markup (as the footer's are): the builder would pull itself into the chunk the Gallery shares
+    const connect = el('button', 'cot-c-btn cot-c-btn--secondary cot-c-btn--36 cot-pad-action', row);
+    connect.type = 'button';
+    connect.dataset.uiSound = 'press';
+    connect.innerHTML = `${uiIconSVG('phone', 18)}<span class="cot-c-btn__label"></span>`;
+    (connect.lastElementChild as HTMLElement).textContent = t('settings.phone.connect');
+    connect.addEventListener('click', () => {
+      if (pressFailed(connect)) return;
+      void import('../pad/padConnectCard.ts').then((module) => {
+        padCard = module;
+        if (host.isConnected) module.renderPadCard(host, padPorts(), true);
+      }).catch((error: RuntimeValue) => {
+        console.error('[settings] phone controller failed to load', error);
+        markLoadFailed([connect]);
+      });
+    });
+  }
+  // a pairing live when this tab reloaded resumes by itself (src/pad/padReceiver.ts keeps its token for the tab under
+  // this key): the one way the card's code loads without the button, and never without a pairing
+  try {
+    if (sessionStorage.getItem('cot.pad.desk')) {
+      void import('../pad/padConnectCard.ts').then((module) => { padCard = module; module.resumePadReceiver(padPorts()); }).catch(() => {});
+    }
+  } catch { /* storage blocked */ }
+
   function renderControls() {
     body.textContent = '';
     rowByAction.clear();
     consumableLabels.clear();
+    phoneCard(body);
     const colhdr = el('div', 'cot-set-colhdr', body);
     colhdr.innerHTML =
       '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';

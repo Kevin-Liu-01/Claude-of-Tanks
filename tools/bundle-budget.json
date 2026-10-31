@@ -1,5 +1,5 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build.",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (phone-controller-266, Main's 10-30 ruling): pad (pad.html, the phone controller's page) budgeted at +3 % over the lane's build (14 requests; raw 96967, gzip 34522, brotli 30444, inlineCss 843 measured).",
   "headroom": 0.03,
   "pages": {
     "game": {
@@ -47,6 +47,13 @@
       "inlineCss": 5534,
       "entryRaw": 924118,
       "entryBrotli": 255936
+    },
+    "pad": {
+      "requests": 14,
+      "raw": 99877,
+      "gzip": 35558,
+      "brotli": 31358,
+      "inlineCss": 869
     }
   }
 }

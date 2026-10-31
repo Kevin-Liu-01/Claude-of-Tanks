@@ -45,7 +45,7 @@
     { "source": "/cn/gallery.html", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] }
   ],
   "rewrites": [
-    { "source": "/:page(home|docs|gallery)", "destination": "/:page.html" },
+    { "source": "/:page(home|docs|gallery|pad)", "destination": "/:page.html" },
     { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/cn", "destination": "/cn/index.html" },

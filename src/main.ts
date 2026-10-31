@@ -241,6 +241,7 @@ import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
+import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import { installAccessibility } from './ui/accessibilityPreferences.ts';
@@ -2284,6 +2285,9 @@ const settings = createSettingsAccess({
   // livePaused from (kill-cam replays close the panel themselves; the end
   // overlay keeps the old non-paused Esc behavior).
   isGamePaused: battlePhase.isPauseEligible,
+  // a paired phone's readout (docs/PHONE-CONTROLLER.md): the raw facts; the lazy receiver maps them
+  phoneSource: () => ({ battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
+    shellCode: shellTypeCode }),
 });
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value

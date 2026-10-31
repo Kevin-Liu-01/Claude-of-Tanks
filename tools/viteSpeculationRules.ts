@@ -13,10 +13,11 @@
 // The game document gets none: its Garage links leave the game rarely, and its boot owns the network.
 import type { Plugin } from 'vite';
 
-/** The public entries (site/*.html and the 404); the game document and the HUD preview stay out. */
+/** The public entries (site/*.html and the 404); the game document, the HUD preview and the phone controller's page (a
+ *  controller held in the hand prefetches nothing) stay out. */
 export function isSpeculationEntry(filename: string): boolean {
   const name = filename.split(/[\\/]/).at(-1) || '';
-  if (name === 'index.html' || name === 'hud-preview.html') return false;
+  if (name === 'index.html' || name === 'hud-preview.html' || name === 'pad.html') return false;
   return /[\\/]site[\\/][^\\/]+\.html$/.test(filename) || name === '404.html';
 }
 

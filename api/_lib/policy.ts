@@ -35,6 +35,15 @@ export const ALLOWED_ORIGINS: readonly string[] = Object.freeze([
 ]);
 /** The rooms Worker admits the canonical origin alone: multiplayer runs on the official site (src/mp/session/endpoint.ts). */
 export const ROOMS_ALLOWED_ORIGINS: readonly string[] = Object.freeze([CANONICAL_ORIGIN]);
+/**
+ * The preview rooms Worker (`cot-rooms-preview`, `env.preview` in cloudflare/rooms/wrangler.jsonc; 2026-10-30, Main's
+ * ruling for the phone controller's owner check) admits the team's Vercel preview deployments of this project and
+ * nothing else: `*` stands for one lowercase alphanumeric label (the deployment hash), never a hyphen, so neither a branch
+ * alias nor another team's or project's host matches (cloudflare/rooms/src/util.ts allowedOrigin).
+ */
+export const ROOMS_PREVIEW_ALLOWED_ORIGINS: readonly string[] = Object.freeze(['https://claude-of-tanks-*-kl01s-projects.vercel.app']);
+/** The preview rooms Worker a preview site build names in `VITE_ROOMS_URL`. */
+export const PREVIEW_ROOMS_URL = 'wss://cot-rooms-preview.kk23907751.workers.dev';
 /** The telemetry Worker admits the API's origins (its code adds any localhost page for `wrangler dev`). */
 export const TELEMETRY_ALLOWED_ORIGINS: readonly string[] = ALLOWED_ORIGINS;
 /** The rooms Worker (Multiplayer v2, `cloudflare/rooms`, Free plan). */

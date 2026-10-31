@@ -102,6 +102,27 @@ for (const [path, expected] of [
   assert.deepEqual(allowedOriginsOf(config), [...expected],
     `${path}: ALLOWED_ORIGINS must equal api/_lib/policy.ts (a change goes live with that Worker's next deploy)`);
 }
+// 4-preview. 2026-10-30 (phone-controller-266, Main's ruling): the preview rooms Worker (env.preview) admits the policy's
+// preview pattern alone, is its own Worker (name, Durable Object namespaces, limiter counters), and its URL names it.
+{
+  const rooms = parseJsonc(read('cloudflare/rooms/wrangler.jsonc'));
+  const preview = rooms.env?.preview;
+  assert.ok(preview, 'cloudflare/rooms/wrangler.jsonc has env.preview');
+  assert.deepEqual(allowedOriginsOf(preview), [...policy.ROOMS_PREVIEW_ALLOWED_ORIGINS], 'env.preview ALLOWED_ORIGINS must equal ROOMS_PREVIEW_ALLOWED_ORIGINS');
+  for (const pattern of policy.ROOMS_PREVIEW_ALLOWED_ORIGINS) {
+    assert.equal(pattern.split('*').length, 2, `${pattern}: one wildcard label`);
+    assert.match(pattern, /^https:\/\/[a-z0-9-]+-\*-kl01s-projects\.vercel\.app$/, `${pattern}: the team's preview deployments only`);
+  }
+  assert.equal(preview.vars?.COT_STUN_URLS, policy.OFFICIAL_STUN_URLS.join(','), 'env.preview COT_STUN_URLS');
+  assert.notEqual(preview.name, rooms.name, 'the preview is its own Worker');
+  assert.equal(new URL(policy.PREVIEW_ROOMS_URL).hostname.split('.')[0], preview.name, 'PREVIEW_ROOMS_URL names the preview Worker');
+  const ids = (config) => (config.ratelimits ?? []).map((limit) => limit.namespace_id);
+  for (const id of ids(preview)) assert.ok(!ids(rooms).includes(id), `limiter namespace ${id} is the preview's own`);
+  assert.deepEqual((preview.durable_objects?.bindings ?? []).map((b) => b.class_name).sort(), ['PadPair', 'Room']);
+  for (const name of ['COT_CLOUDFLARE_TURN_KEY_ID', 'COT_CLOUDFLARE_TURN_API_TOKEN', 'COT_TURN_SHARED_SECRET', 'MATCH_SEAT_SECRET']) {
+    assert.equal(preview.vars?.[name], undefined, `env.preview commits no ${name} (a secret)`);
+  }
+}
 // 4a. 2026-10-02 (docs/MULTIPLAYER-V2.md §13.14): the STUN servers a seat's relay grant carries without a TURN credential are the
 // policy's in the deployed Worker and both test Workers; the relay test Worker's TURN key and token are fake test values, and
 // no Worker configuration commits a real relay secret (those are `wrangler secret put`, names only).
@@ -129,13 +150,15 @@ for (const [url, dir] of [[policy.OFFICIAL_ROOMS_URL, 'rooms'], [policy.OFFICIAL
 const namespacesOf = (config) => (config.ratelimits || []).map((limit) => String(limit.namespace_id));
 const roomsNamespaces = namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.jsonc')));
 const telemetryNamespaces = namespacesOf(parseJsonc(read('cloudflare/telemetry/wrangler.jsonc')));
-assert.deepEqual(roomsNamespaces, ['2609055513'], 'the rooms limiter has its own namespace');
+// 2026-10-30 (phone-controller-266): the phone controller's pairing counts its own upgrades (PAD_CONNECT_LIMITER)
+assert.deepEqual(roomsNamespaces, ['2609055513', '2610300266'], 'the rooms and pad limiters have their own namespaces');
 assert.deepEqual(telemetryNamespaces, ['2609055512'], 'the telemetry limiter keeps its namespace');
 assert.deepEqual(namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.test.jsonc'))), roomsNamespaces,
   'the rooms test configuration mirrors the deployed binding');
 assert.deepEqual(namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.relay.test.jsonc'))), roomsNamespaces,
   'the relay test configuration mirrors the deployed binding');
-const allNamespaces = [...roomsNamespaces, ...telemetryNamespaces];
+const previewNamespaces = namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.jsonc')).env.preview);
+const allNamespaces = [...roomsNamespaces, ...telemetryNamespaces, ...previewNamespaces];
 assert.equal(new Set(allNamespaces).size, allNamespaces.length, 'no two Workers share a rate-limit namespace');
 assert.ok(!allNamespaces.includes('2609055511'), 'the retired signaling Worker\'s namespace stays unused');
 
