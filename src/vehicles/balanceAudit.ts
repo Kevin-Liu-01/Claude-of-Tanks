@@ -22,6 +22,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger3_td: '262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)',
   challenger3_td_rws: '262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)',
   challenger3: 'retain a measured protection and fire-control step over the base vehicle, inside the modern fire-control ceiling',
+  // 265: the Leopard 1A2A1 on the 1A5's node at I (fleetBalancePass applyBuildFootings)
+  leo1a2a1: 'the Leopard 1A5\'s tier I footing, its HP and round damage: the 1A5\'s spec with the DM23 round',
   // 2026-10-25: the IFVs relabelled modern fold into their modern Tier X peers (fleetBalancePass applyModernEraFold)
   kf41_lynx: 'fold the Raijū-donor cannon package into the modern IFV cadence and 35 mm penetration',
   cv90_mk4: 'fold the Raijū-donor cannon package into the modern IFV cadence',
@@ -50,6 +52,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   // 2026-10-26 (259): same-tier fairness at the shown tiers IV and VII (fleetBalancePass applySameTierFairness)
   c1_ariete_preserie: 'take the Chieftain round, a quicker cycle and hull for same-tier fairness at IV',
   leo2a3: 'slow the cycle for same-tier fairness at IV; 260: a balance trim of the turret front (x0.9): no sourced period round defeats the basic package\'s turret front; 263: the 260 trim undone and 2,400 HP, IV\'s weakest on the fixed gun face',
+  leo2a3_b4: 'the 2A3\'s cycle and 2,400 HP at IV (262: the fourth batch carries the 2A3\'s combat data; 263: the HP in place of 260\'s turret-front trim)',
   chieftain_mk10: 'keep the Mk 9 rebuild on its donor\'s slower cycle and hull at IV',
   c2_ariete: 'trim the Tier X armour and hull it brought to VII and fire its prototype\'s rounds; the cadence stays over the C1',
   c2_ariete_proto: 'trim the Tier X armour it brought to VII, slow its cycle and aim, and (261) carry 2,200 HP, under the production C2',
@@ -65,7 +68,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   bmp3_rok: 'restore a complete Tier VIII cannon, missile and protection package',
   spz_wotan: 'remove the Tier X autocannon ceiling while retaining anti-armor utility',
   bmpt_t90: 'normalize guided-weapon cadence against other Tier X IFVs (load stays eight: one Ataka per tube, owner 2026-09-18)',
-  leo2a4m: 'trim the enhanced Leopard package to the Strv 122 peer envelope; 263: a x0.55 mantlet, its steep gun face read 1,200-1,700 mm at VIII',
+  leo2a4m: 'trim the enhanced Leopard package to the Strv 122 peer envelope',
   leo2a4: 'exchange excess stationary protection for its intended mobile Tier IX identity',
   leo2a4m_can: 'replace a Tier VIII penetration holdover and realize Tier IX protection',
   m48a5_patton: 'restore the M48 baseline so M60 upgrades are meaningful rather than mandatory',
@@ -103,8 +106,6 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger_x_sleek: 'a x1.4 gun slot: the Challenger 1\'s upright 624 mm slot was pierced by every VIII round',
   c1_ariete: 'a x0.6 mantlet and x0.85 turret front: its ~730 mm gun face topped VI and shut out the XK2 on the move',
   vt4a1: 'a x0.7 mantlet: its steep gun face read 1,200-1,700 mm at VIII',
-  leo2_improved: 'a x0.7 mantlet: its steep gun face read 1,200-1,700 mm at VIII',
-  leo2a4_otco: 'a x0.55 mantlet: its steep gun face read 1,200-1,700 mm at VIII',
   leo2_revolution: 'a x1.7 mantlet: its upright gun face read under 470 mm at VIII',
   leo2_revolution_proto: 'a x1.7 mantlet: its upright gun face read under 470 mm at VIII',
   m1a1ha: 'a x2 mantlet and 2,500 HP: its upright gun face read under 470 mm at VIII',

@@ -175,9 +175,16 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
+  leo1a2a1: { displayName: 'Leopard 1A2A1', searchAliases: ['Leopard 1', 'Leo 1', 'Leopard 1A2', 'Leopard 1 A2 A1', 'Leopard cast turret'] },
+  // 262: the 2A3 OTCO, a fourth-batch 2A3 with the OTCO field modification (the owner, 2026-10-28; Main had shown it as
+  // the 2A2 OTCO earlier in the release); the plain fourth-batch 2A3 is leo2a3_b4
   leo2a3: {
+    displayName: 'Leopard 2A3 OTCO', shortName: 'Leopard 2A3 OTCO',
+    searchAliases: ['Leopard 2A2 OTCO', 'Leopard 2A4 OTCO', '2A3 OTCO', '2A2 OTCO'],
+  },
+  leo2a3_b4: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
-    searchAliases: ['Leopard 2A4 OTCO', '2A3'],
+    searchAliases: ['Leopard 2A3 fourth batch', '2A3', 'Leopard 2A3 4. Los'],
   },
   leo2a4m_can: {
     displayName: 'Leopard 2A4M CAN', shortName: 'Leopard 2A4M CAN',
@@ -379,6 +386,20 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   bm_oplot_t: {
     displayName: 'T-84BM Oplot-T', shortName: 'Oplot-T',
     searchAliases: ['BM Oplot-T', 'Object 478DU9-T', 'Oplot T', 'Royal Thai Army Oplot', 'Thai Oplot'],
+  },
+  // Release 262 (owner 2026-10-28): the Polish concept on the Oplot-M's base (Orzeł, "eagle")
+  pt84_orzel: {
+    displayName: 'PT-84 Orzeł', shortName: 'PT-84 Orzeł',
+    searchAliases: ['PT-84 Orzel', 'Polish Oplot', 'Oplot PL', 'Orzel', 'T-84 Poland'],
+  },
+  // the light hunter (Sokół, "falcon") and the assault tank (Żbik, "wildcat") on the same base
+  pt84_sokol: {
+    displayName: 'PT-84 Sokół', shortName: 'PT-84 Sokół',
+    searchAliases: ['PT-84 Sokol', 'Sokol', 'Polish Oplot hunter', 'PT-84 mast'],
+  },
+  pt84_zbik: {
+    displayName: 'PT-84 Żbik', shortName: 'PT-84 Żbik',
+    searchAliases: ['PT-84 Zbik', 'Zbik', 'Polish Oplot assault', 'PT-84 dozer'],
   },
   ua_m1a1: { displayName: 'M1A1 SA (Ukraine)', shortName: 'M1A1 SA UA', searchAliases: ['M1A1 Abrams UA', 'M1A1 Abrams (Ukraine)'] },
 });

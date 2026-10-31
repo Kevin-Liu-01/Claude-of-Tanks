@@ -155,6 +155,14 @@ function applyJagdpanzerFixedArmor(spec: FleetTankSpec): void {
     convexPolygon: true, verts });
 }
 
+// release 265: the 262 Strv 121's stops (tools/gun-depression-sweep.mjs --no-suit at 26 mm, lane christian2-262), which
+// the Strv 122 cloned from its donor; the Strv 121 rebuilt on the 2A4 family takes its own after registration
+// (leopard2A4FamilySpecs.ts)
+const STRV122_X_GUN_PITCH_BY_YAW_DEG: NonNullable<FleetTankSpec['gunPitchByYawDeg']> = [[0, -7.8], [14, -7.4], [18, -6.2],
+  [19, -4.7], [20, -4.3], [26, -3.8], [36, -3.2], [45, -3.2], [51, -3.9], [52, -4.1], [53, -4.4], [54, -5.7], [55, -9],
+  [126, -9], [127, -5.9], [128, -4], [129, -3.7], [130, -0.7], [131, 0.2], [135, 1], [140, 1.1], [141, -1.8], [142, -1.5],
+  [143, -0.3], [144, 0.2], [161, 0.4], [162, 2.6], [173, 2.8], [174, 3.9], [175, 4.2], [180, 4.2]];
+
 function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   if (id === 'c1_ariete') {
     spec.gunPitchByYawDeg = ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG;
@@ -163,6 +171,7 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   if (id === 't72b3') spec.gunPitchByYawDeg = T72B3_X_GUN_PITCH_BY_YAW_DEG;
   // release 231: the raised T-80U's measured stops (t80uXArmor.ts)
   if (id === 't80u') spec.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
+  if (id === 'strv122') spec.gunPitchByYawDeg = STRV122_X_GUN_PITCH_BY_YAW_DEG;
   const frame = frames[id];
   spec.armor.turretPivot = [...frame.turret];
   spec.armor.gunPivot = [frame.gun[0] - frame.turret[0],

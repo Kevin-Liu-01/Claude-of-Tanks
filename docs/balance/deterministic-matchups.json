@@ -1371,36 +1371,36 @@
       "guidedWeapons": []
     },
     {
-      "id": "leclerc_xlr",
-      "revision": "the Type 90's 9 s magazine cycle with the S2 and SXXI",
-      "tier": 10,
-      "era": "modern",
+      "id": "leo1a2a1",
+      "revision": "the Leopard 1A5's tier I footing, its HP and round damage: the 1A5's spec with the DM23 round",
+      "tier": 1,
+      "era": "cold-war",
       "role": "mbt",
-      "hp": 2350,
-      "powerWeight": 27.52,
+      "hp": 1750,
+      "powerWeight": 20.75,
       "speedKmh": [
-        71,
+        65,
         25
       ],
       "traverseDegS": [
-        50.6,
-        44.5
+        44,
+        38.2
       ],
       "primary": {
-        "damage": 530,
+        "damage": 430,
         "penetrationMm": [
-          806,
-          733,
-          660
+          404,
+          368,
+          331
         ],
-        "reloadS": 9,
-        "sustainedDpm": 6913.04,
-        "accuracy": 0.296,
+        "reloadS": 5.5,
+        "sustainedDpm": 4690.91,
+        "accuracy": 0.306,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
-        "hullKe": 550,
-        "turretKe": 620
+        "hullKe": 70,
+        "turretKe": 96
       },
       "guidedWeapons": []
     },

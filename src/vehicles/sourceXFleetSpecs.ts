@@ -104,6 +104,10 @@ function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): 
   fitArmorToDims(spec.armor, baseDimensions, spec.dims);
 }
 
+// A donor rebuilt under its own designation hands its clone the number the clone wore before (265: the 2A4 OTCO now
+// carries 'OTCO'; the 2A6M keeps the 'A6M' it took from that donor's old 2A6M build, its markings and Factory coat).
+const PRODUCTION_NUMBERS: Readonly<Record<string, string>> = Object.freeze({ leo2a6m: 'A6M' });
+
 for (const [id, donorId, name] of entries) {
   // Registered donors first, then the unregistered templates (merkava4 retired 2026-09-23).
   const donor = donorSpec(registries.tankSpecs, donorId);
@@ -113,6 +117,7 @@ for (const [id, donorId, name] of entries) {
   delete spec.publicVisualFallback;
   delete spec.label;
   delete spec.roster;
+  if (PRODUCTION_NUMBERS[id]) spec.visual.number = PRODUCTION_NUMBERS[id];
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   const baseDimensions = { ...spec.dims };

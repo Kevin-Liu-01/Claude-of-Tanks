@@ -91,8 +91,8 @@ const CRITIC_REFERENCE_OVERRIDES = {
   leo1a5: { source:'glb', glb:{ path:'/models/community-candidates/tank_leopard_1.glb',
     turretNode:'^Turret_01$', gunNode:'^gun_01_Shape$', autoPivot:true,
     yawOffset:Math.PI } },
-  leo2a2: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
-  leo2_improved: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
+  // 262 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2a2 is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A4 OTCO) is unregistered here too.
+  // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2_improved is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A7V) is unregistered here too.
   xk2_black_panther: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
   ztz99_longwei: { source:'glb', glb:{ path:'/models/community-candidates/type_99a2_armored_warfare.glb', turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true, turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$' } },
   amx40_proto: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
@@ -129,7 +129,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // audit (gun tube + at-rest turret band baked into the chassis.0 hull
   // shells; see docs/references/tanks/leo2a6m.md); leo2a4m_can row added —
   // fused whole-shell pairs, whole-view instrument only (jaguar class).
-  leo2a4_otco: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2, componentMasks:false } },
+  // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2a4_otco is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A6M) is unregistered here too.
   leo2a4m_can: { source:'glb', glb:{ path:'/models/community-candidates/leo2a4m_arrafi.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   // ---- §5.248 batch B (Claude of Tanks Models folder, 15 prints — ALL
   // LOCAL-ONLY quarantine, measurement/influence only; see ATTRIBUTION).
@@ -142,7 +142,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
-  strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
+  // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): strv121 is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Stridsvagn 122) is unregistered here too.
   ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false } },
   // VT-4A1 deliberately shares the complete ZTZ-99A2 hull. Its independent
   // low closed-chevron turret is checked in the vehicle-profile selftest;
@@ -246,8 +246,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
       { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
       { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
     ] } },
-  leo2a4: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
-    turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },
+  // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2a4 is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A6) is unregistered here too.
   kf51_evo: { source:'glb', glb:{ path:'/models/tanks/kf51_grip420.glb',
     turretNode:'^KF51_Turret_Msh$', gunNode:'^Gun_Msh$',
     autoPivot:true, pivot:[0.52, 1.7, 0], yawOffset:-Math.PI/2 } },
@@ -270,9 +269,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // on this shape through r31/r32).
   t84: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t84.glb',
     turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // leo2a4_v (graduated 2026-08-04, the 21st; no harness offsets).
-  leo2a4_v: { source:'glb', glb:{ path:'/models/tanks/community/recovered/leo2a5.glb',
-    turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true } },
+  // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2a4_v is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A5) is unregistered here too.
   // m47_patton (graduated 2026-08-04, the 20th; no harness offsets).
   m47_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m47_patton.glb',
     turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },

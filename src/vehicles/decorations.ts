@@ -2754,36 +2754,69 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type74: () => [
-    { kit: 'aamg', p: 1, v: { v: 'm2' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
-    { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
-    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+  // --- Modern ---
+  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) go out loaded (the owner,
+  // 2026-10-28: "a lot of the equipment and decorations and stuff! add a lot on our tanks"): over the fleet's seven-piece
+  // field cargo, packs and rolls in the basket, a tow cable down the hull's side, tools and a long bin on the fenders,
+  // cans, rations and a tarp on the engine deck, shackles on the bow; the profile draws the radios' whips, so no decor
+  // antenna. The 2A3 OTCO the heaviest: its tall cage packed, both cables, a drape and drums on the stern.
+  leo2a2: () => [
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  leo2a3_b4: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['rearDeck', {}] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  // --- Modern ---
-  leo2a2: () => [
-    // The family profile owns the complete hull-and-turret ghillie suit.
-    // Keep normal stowage here, but do not layer the old rectangular side
-    // veils or tied rolls over its shaped, cut-out carrier meshes.
-    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
-  ],
-  leo2a4: () => [
-    { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+  leo2a3: () => [
+    { kit: 'packs', p: 1, v: { n: 5 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
-    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
     { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  // 264: the Leopard 2A4 on the release construction. Its kit (profiles/leopard2A4Kit.ts) draws the bustle rack and its
+  // load, the bow shackles and the wall crosses, and carries the spare links on the glacis as the photographed 2A4s do,
+  // so the decor keeps the standing whips and the field load the kit does not (a second basket leaned off the bustle's
+  // corner and four links on the turret wall hid the cross; no 2A4 photograph shows either)
+  leo2a4: () => [
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
+    // on the deck's back corners as on the 262 family (the release hull's hullRearRack slot resolves under the bustle,
+    // which tipped them up its corner)
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1, back: true }] },
+  ],
+  // 264: the Stridsvagn 121 on the release construction. Its kit (profiles/leopard2A4Strv121Kit.ts) draws the radios'
+  // whips, the Swedish rear basket and its load, and the field suit dresses the hull, so the decor keeps the cans, tools
+  // and shackles (the fleet default hung four links on the turret wall, which no Strv 121 photograph shows)
+  strv121: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   xk2_black_panther: (s) => [
@@ -3029,6 +3062,18 @@ const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifes
   ],
 });
 
+// 262 (owner on the STB-1 and the Type 74: "we should upgrade the hulls and everything about the tanks too"): both now
+// carry their sourced equipment in their builders (the production tank's M2, smoke dischargers at the turret's front
+// corners, the gun-riding searchlight, the bow shackles, the fender lockers and mufflers; the prototype's remote gun,
+// rear-side smoke and silencer). No photograph shows a production Type 74 with jerry cans or a rear rack, so neither
+// takes the fleet's cargo pools: the Type 74 its crew packs in the bustle basket, the trials prototype nothing.
+const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[]>> = Object.freeze({
+  type74: (): DecorManifestRow[] => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+  ],
+  stb1: (): DecorManifestRow[] => [],
+});
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -3097,6 +3142,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  if (spec.id === 'type74' || spec.id === 'stb1') return JAPAN_74_DECOR[spec.id]();
   // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
   // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
@@ -3289,6 +3335,20 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // decor pair stood above the roofline as a comb).
   if (spec.id === 'ztz99_longwei' || (LONGWEI_FAMILY_IDS as readonly string[]).includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // The Leopard 1A5 and 1A2A1 carry their own Wegmann banks on the casting's rear quarters (profiles/leopard.ts,
+  // leopard1A2A1.ts): a decor pair would double them along the side plates (critics 265: "the smoke dischargers forward").
+  // Their crew's kit rides in the closed bin on the turret's tail, so the fleet cargo, everything hung on the turret's
+  // flanks, the deck tarp and the roof lamp stay off: with the bin full the cargo fell through to crates on the engine
+  // deck, and the Munster vehicles' decks, roofs and turret flanks are clear (critics 265, rounds 4 and 5: "a crate and
+  // bottles on the turret's right flank", a tarp roll on its left flank and one on the deck, and "a round lamp on the
+  // left front of the roof" are "not in the photos").
+  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke'
+    && row.kit !== 'cargo' && row.kit !== 'light' && row.slot[0] !== 'turretSide' && row.slot[0] !== 'turretSidePlate'
+    && !(row.kit === 'tarp' && row.slot[0] === 'rearDeck'));
+  // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
+  // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
+  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
+  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
   // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
@@ -3304,6 +3364,19 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
   // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  // Release 264: the Leopard 2A4's kit (profiles/leopard2A4Kit.ts) loads its bustle rack (bundles, cans, the ammunition
+  // box, the tarp, the bin) below the roof as the photographed 2A4s carry it; the fleet cargo piled over it and stood a
+  // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
+  // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
+  // bustle too).
+  if (spec.id === 'leo2a4') {
+    const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
+    return manifest.flatMap((row) => {
+      if (row.kit !== 'cargo' || row.slot[0] !== 'fleetCargo' || !row.slot[1].routes) return [row];
+      const routes = row.slot[1].routes.filter(([slot]) => !aloft.has(slot));
+      return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
+    });
+  }
   if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
     && row.slot[0] === 'fleetCargo' && row.slot[1].routes
     ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
@@ -3853,7 +3926,7 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
   't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
 ]);
 
@@ -4246,6 +4319,139 @@ export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
   const at = new THREE.Vector3(seat.x, seat.y, seat.z);
   return [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>
     new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_KEEP_OUT_CLEAR));
+}
+
+/** Clearance kept round a missile launcher's stock (m), and how far its keep-out rises above the stock's top (m). */
+export const LAUNCHER_KEEP_OUT_CLEAR = 0.03;
+export const LAUNCHER_KEEP_OUT_HEAD = 1.5;
+/** Decor kept off the launchers: every piece but the smoke banks, a gameplay fitting always seated (FUNCTIONAL_KITS). */
+const LAUNCHER_KEEP_OUT_EXEMPT: ReadonlySet<string> = new Set(['smoke']);
+
+/** The largest pitch step (rad) between the poses a pitching launcher's keep-out is swept through: 5 degrees, so a point
+ *  1.5 m off the trunnion strays at most 1.4 mm outside the sampled boxes between two poses. */
+const LAUNCHER_SWEEP_STEP = (5 * Math.PI) / 180;
+
+/**
+ * The bounds, in the space `toSpace` maps `mesh` into, of each connected piece of a vertex span of its geometry (vertices
+ * welded on a 0.1 mm grid of the mesh's own coordinates; an exact numeric key within 10 m of its origin).
+ */
+function spanPieceBoxes(mesh: THREE.Mesh, start: number, count: number, toSpace: THREE.Matrix4): THREE.Box3[] {
+  const pos = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex();
+  const vertex = (i: number): number => (index ? index.getX(start + i) : start + i);
+  const parent = new Int32Array(count);
+  for (let i = 0; i < count; i++) parent[i] = i;
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const welded = new Map<number | string, number>();
+  for (let i = 0; i < count; i++) {
+    const vi = vertex(i);
+    const ix = Math.round(pos.getX(vi) * 1e4), iy = Math.round(pos.getY(vi) * 1e4), iz = Math.round(pos.getZ(vi) * 1e4);
+    const key = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz)) < 1e5
+      ? ((ix + 1e5) * 200001 + (iy + 1e5)) * 200001 + (iz + 1e5) : `${ix},${iy},${iz}`;
+    const at = welded.get(key);
+    if (at === undefined) welded.set(key, i); else parent[find(i)] = find(at);
+  }
+  for (let t = 0; t + 2 < count; t += 3) { parent[find(t + 1)] = find(t); parent[find(t + 2)] = find(t); }
+  const boxes = new Map<number, THREE.Box3>();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < count; i++) {
+    const r = find(i);
+    let box = boxes.get(r);
+    if (!box) boxes.set(r, box = new THREE.Box3());
+    box.expandByPoint(v.fromBufferAttribute(pos, vertex(i)).applyMatrix4(toSpace));
+  }
+  return [...boxes.values()];
+}
+
+/**
+ * The launchers' keep-out boxes in one decor frame, `group`-local (2026-10-30; the owner on the Griffin Viper: "dont allow
+ * decorations to be on the missile pods. theres likea bag and stuff on it"). Every connected piece of the frame's
+ * missile-rack stock (the factory's missileRackRanges: the pods, canisters, tubes, rails and mounts a profile builds in
+ * weaponAssembly, on the gun group or any launcher sub-group the frame carries), grown by LAUNCHER_KEEP_OUT_CLEAR and
+ * raised LAUNCHER_KEEP_OUT_HEAD over its top, so no decor piece seats on, in or over a launcher. A piece that rides the
+ * gun group pitches with it (the coordinator: a load on the turret roof under a pod is struck at full depression), so
+ * its box spans every pose from `elevationRad` up to `depressionRad` down: its box in the gun's own frame, corner by
+ * corner (a pitch turns the gun frame about its x axis, so a prism's y-z outline is its box's), at every pose. Read off
+ * the built geometry, never a per-vehicle list; the other frame and the decor are never read.
+ */
+export function launcherKeepOut(group: THREE.Object3D, elevationRad = 0, depressionRad = 0): THREE.Box3[] {
+  return launcherStock(group, elevationRad, depressionRad).map(({ box }) => {
+    box.expandByScalar(LAUNCHER_KEEP_OUT_CLEAR);
+    box.max.y += LAUNCHER_KEEP_OUT_HEAD;
+    return box;
+  });
+}
+
+/** launcherKeepOut's pieces before their clearance, each with whether it rides the gun group (`onGun`). */
+function launcherStock(group: THREE.Object3D, elevationRad: number, depressionRad: number): Array<{ box: THREE.Box3; onGun: boolean }> {
+  const out: Array<{ box: THREE.Box3; onGun: boolean }> = [];
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const corner = new THREE.Vector3();
+  group.traverse((o) => {
+    const ranges = o.userData?.missileRackRanges as ReadonlyArray<{ start: number; count: number }> | undefined;
+    if (!ranges?.length || !(o instanceof THREE.Mesh) || !o.geometry?.getAttribute('position')) return;
+    // rig_gun's own pitch (gunPitch = -rotation.x) between the frame and the mesh, if the mesh rides it
+    let gun: THREE.Object3D | null = null;
+    for (let p: THREE.Object3D | null = o.parent; p && p !== group; p = p.parent) if (p.name === 'rig_gun') gun = p;
+    const swept = !!gun?.parent && elevationRad + depressionRad > 0;
+    const poses: THREE.Matrix4[] = [];
+    let toSpace = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    if (swept && gun?.parent) {
+      toSpace = new THREE.Matrix4().copy(gun.matrixWorld).invert().multiply(o.matrixWorld);
+      const toParent = new THREE.Matrix4().multiplyMatrices(inv, gun.parent.matrixWorld);
+      const steps = Math.ceil((elevationRad + depressionRad) / LAUNCHER_SWEEP_STEP);
+      for (const x of [gun.rotation.x, ...Array.from({ length: steps + 1 }, (_, k) => -elevationRad + (k / steps) * (elevationRad + depressionRad))]) {
+        const local = new THREE.Matrix4().compose(gun.position,
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(x, gun.rotation.y, gun.rotation.z, gun.rotation.order)), gun.scale);
+        poses.push(new THREE.Matrix4().multiplyMatrices(toParent, local));
+      }
+    }
+    for (const { start, count } of ranges) {
+      for (const piece of spanPieceBoxes(o, start, count, toSpace)) {
+        let b = piece;
+        if (swept) {
+          b = new THREE.Box3();
+          for (const pose of poses) {
+            for (let k = 0; k < 8; k++) {
+              corner.set(k & 1 ? piece.max.x : piece.min.x, k & 2 ? piece.max.y : piece.min.y, k & 4 ? piece.max.z : piece.min.z);
+              b.expandByPoint(corner.applyMatrix4(pose));
+            }
+          }
+        }
+        out.push({ box: b, onGun: !!gun });
+      }
+    }
+  });
+  return out;
+}
+
+/** The gun's pitch limits the launchers are swept over (rad): the decor pass's, elevation then depression. */
+function launcherPitch(spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>): [number, number] {
+  return [(spec.gunElevationDeg ?? 20) * D2R, (spec.gunDepressionDeg ?? 8) * D2R];
+}
+
+/** Both decor frames' launcher keep-out boxes for a built vehicle, swept over its gun's pitch limits (the decor pass's). */
+export function launcherKeepOutVolumes(hullG: THREE.Object3D, turretG: THREE.Object3D,
+  spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>): Record<DecorFrame, THREE.Box3[]> {
+  const [elevation, depression] = launcherPitch(spec);
+  return { hull: launcherKeepOut(hullG, elevation, depression), turret: launcherKeepOut(turretG, elevation, depression) };
+}
+
+/**
+ * The turret's launcher stock that rides the gun group, as bands of the hull's turret-sweep guard (2026-10-30, 266): each
+ * piece's annulus about the yaw axis (its box's nearest approach to the axis and farthest corner, turret frame) and its
+ * lowest point anywhere in the gun's pitch range, with no clearance. measureTurretSweep leaves the gun subtree to the bore
+ * guard, which knows only the barrel, so a pod riding the gun swept over the hull unseen: the Griffin Viper's reach
+ * 1.66 m from the axis (the turret's own sweep 1.04 m) and their rear drops about 0.5 m at full elevation.
+ */
+export function launcherSweepBands(turretG: THREE.Object3D, spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>):
+  Array<{ rMin: number; rMax: number; minY: number }> {
+  const [elevation, depression] = launcherPitch(spec);
+  return launcherStock(turretG, elevation, depression).filter((s) => s.onGun).map(({ box: b }) => ({
+    rMin: Math.hypot(Math.max(0, b.min.x, -b.max.x), Math.max(0, b.min.z, -b.max.z)),
+    rMax: Math.max(Math.hypot(b.min.x, b.min.z), Math.hypot(b.min.x, b.max.z), Math.hypot(b.max.x, b.min.z), Math.hypot(b.max.x, b.max.z)),
+    minY: b.min.y,
+  }));
 }
 
 function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
@@ -4907,6 +5113,9 @@ function* decorationSteps(
       return { sweepR, turretMinY, bandMinY };
     }
     const { sweepR, turretMinY, bandMinY } = measureTurretSweep();
+    // 2026-10-30 (266): and the launcher stock riding the gun, which the bands leave to the bore guard: each piece its own
+    // band (launcherSweepBands), its annulus down to its lowest point through the gun's pitch range
+    const launcherBands = casemate ? [] : launcherSweepBands(turretG, spec);
     // 2026-10-09 (the netting lane): a hull dressed in a field suit with working clearances (ghillieSuit.ts
     // fieldClearanceM: its meshes carry userData.fieldSuit) holds its net and garnish on the decks the turret's loads
     // swing over; each load hung on the turret clears the suit's top at its radius by 3 cm through the traverse. The
@@ -5063,8 +5272,7 @@ function* decorationSteps(
       return true;
     };
     gunGuardOK.lastYaw = null;
-    const sweepGuardOK = (bb: THREE.Box3) => {
-      if (casemate) return true;
+    const radialSpan = (bb: THREE.Box3): [number, number] => {
       // closest horizontal approach of the box to the yaw axis (edges count,
       // not just corners — a long cable's mid-span is its nearest point)
       const rMin = Math.hypot(
@@ -5075,6 +5283,11 @@ function* decorationSteps(
       for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) {
         rMax = Math.max(rMax, Math.hypot(x - pivot[0], z - pivot[2]));
       }
+      return [rMin, rMax];
+    };
+    const sweepGuardOK = (bb: THREE.Box3) => {
+      if (casemate) return true;
+      const [rMin, rMax] = radialSpan(bb);
       if (rMin > sweepRLive + 0.07) return true;
       // clear the lowest turret surface among the radial bands overlapped
       let minY = Infinity;
@@ -5084,6 +5297,14 @@ function* decorationSteps(
       if (n1 > 0.8) minY = Math.min(minY, bandMinY[2]);
       if (!Number.isFinite(minY)) minY = turretMinYLive;
       return bb.max.y <= pivot[1] + minY - 0.035;
+    };
+    // under a launcher band's annulus a hull piece clears the launcher's lowest pitched point the way the sweep clears the
+    // turret's: it bites only where the launcher reaches lower than the rest-pose bands, or past their radius
+    const launcherSweepOK = (bb: THREE.Box3) => {
+      if (!launcherBands.length) return true;
+      const [rMin, rMax] = radialSpan(bb);
+      return !launcherBands.some((band) => rMin <= band.rMax + 0.07 && rMax >= band.rMin - 0.07
+        && bb.max.y > pivot[1] + band.minY - 0.035);
     };
 
     // --- collision ledgers (hull & turret frames kept apart) ---------------
@@ -5211,6 +5432,11 @@ function* decorationSteps(
     // record (dockKeepOut) — the cradle, the parked airframe and its launch column, 3 cm clear — out of every decor
     // piece's placed box, so stowage packs round the dock instead of through it (107 of 220 seats had loads inside).
     const dockVolumes: Record<DecorFrame, THREE.Box3[]> = { hull: dockKeepOut(spec.id, 'hull'), turret: dockKeepOut(spec.id, 'turret') };
+    // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher's
+    // stock (launcherKeepOut), swept over the gun's whole pitch range where it rides the gun, 3 cm clear and open above,
+    // out of every decor piece's placed box but the smoke banks', so a load turned away takes its next route or drops
+    // (the Viper's pods carried a soft bag and two cases)
+    const launcherVolumes = launcherKeepOutVolumes(hullG, turretG, spec);
     // VEH-13: every spare-link run the factory built (spareTrackSeatPass.ts), with a 10 cm lid: no rigid piece goes into
     // or onto a run (a load on the links read as "on softload", a rack through them as clipping); drapes still lie over
     const spareRuns: Record<DecorFrame, THREE.Box3[]> = { hull: spareRunVolumes(root, 'hull'), turret: spareRunVolumes(root, 'turret') };
@@ -5427,6 +5653,7 @@ function* decorationSteps(
         return rejectCommit(name, parts, reason);
       }
       if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
+      if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && !launcherSweepOK(bb)) return rejectCommit(name, parts, 'launcher-sweep');
       // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
       return true;
@@ -5571,6 +5798,9 @@ function* decorationSteps(
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const dockMet = dockVolumes[frame].filter((box) => box.intersectsBox(bb));
       if (dockMet.length && placedPartsEnter(parts, pos, rot, dockMet)) return rejectCommit(name, parts, 'drone-dock');
+      if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && launcherVolumes[frame].some((box) => box.intersectsBox(bb))) {
+        return rejectCommit(name, parts, 'launcher');
+      }
       if (name !== 'tracks' && !parts.meta?.drape) {
         const runMet = spareRuns[frame].filter((box) => box.intersectsBox(bb));
         if (runMet.length && placedPartsEnter(parts, pos, rot, runMet)) return rejectCommit(name, parts, 'spare-track');

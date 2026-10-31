@@ -8,10 +8,11 @@ import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
+import { DRONE_DOCK_EXEMPT } from '../sim/droneDockExempt.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const ids = [
-  't64bv_donbas', 'pt91a_twardy', 'm1a1_abrams_fep',
+  't64bv_donbas', 'm1a1_abrams_fep',
   'strv103a', 'strv103b', 't84', 'ua_m1a1',
 ];
 // 264: the Leopard 2A6 UA's suit is a fleet field net now (ghillieFleetSuits.ts), held to the fleet rules below
@@ -19,7 +20,8 @@ const ids = [
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
 // net (ghillieFleetSuits.ts) and left this control list; the others stay net-free. Release 262 (the owner, 2026-10-27:
 // "our strv 121 should also get a ton btw to distinguishh it as swedish"): the Strv 121 wears a fleet suit and leaves it too
-for (const id of ['t90a_2004', 't84bm_oplot_m']) {
+// (262: the rebuilt PT-91 Twardy shows its ERAWA tiles bare, as the serial tanks do)
+for (const id of ['t90a_2004', 't84bm_oplot_m', 'pt91a_twardy']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -264,9 +266,9 @@ for (const id of ids) {
   tank.dispose();
 }
 
-// the suits with their own receipts (the A4) or their own field configs (the Ukrainian national rebuilds, push 3:
-// nationalUkraineProtection.ts) are held to the same contact rule
-for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
+// the suits with their own field configs (the Ukrainian national rebuilds, push 3: nationalUkraineProtection.ts) are held
+// to the same contact rule (262: the old A4's suit retired with its build; the 2A2 now drives unsuited)
+for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
@@ -409,15 +411,16 @@ for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const tank = createTank('leo2a2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
-    const net = tank.root.getObjectByName('leo2a4_ghillie_turret_net');
-    assert.match(net?.material?.map?.name ?? '', /^ghillieNet:woodland:/, 'the A4 wears a woodland net on its woodland scheme');
-    setCamoOverride('leo2a2', 'desert');
-    applyCamoPatterns('leo2a2');
-    assert.match(net.material.map.name, /^ghillieNet:desert:/, 'a switch to a desert scheme carries the net to the desert');
-    setCamoOverride('leo2a2', null);
-    applyCamoPatterns('leo2a2');
-    assert.match(net.material.map.name, /^ghillieNet:woodland:/, 'and back');
+    // (262: the Christian II's suit on the same Leopard hull, the old A4's retired with its build)
+    const tank = createTank('christian2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    const net = tank.root.getObjectByName('christian2_ghillie_turret_net');
+    assert.match(net?.material?.map?.name ?? '', /^ghillieNet:(field:)?woodland:/, 'the Christian II wears a woodland net on its woodland scheme');
+    setCamoOverride('christian2', 'desert');
+    applyCamoPatterns('christian2');
+    assert.match(net.material.map.name, /^ghillieNet:(field:)?desert:/, 'a switch to a desert scheme carries the net to the desert');
+    setCamoOverride('christian2', null);
+    applyCamoPatterns('christian2');
+    assert.match(net.material.map.name, /^ghillieNet:(field:)?woodland:/, 'and back');
     tank.dispose();
     // the decor's rolled nets follow too: the M60A1's sand roll turns woodland on a woodland scheme
     const m60 = createTank('m60a1', null, { quality: 'high', camoSeed: 4242, decor: true });
@@ -525,7 +528,13 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
   // suitDockBoxes with 3 cm to spare (the decor's DOCK_KEEP_OUT_CLEAR), and no vertex of that owner's suit lies within
   // 3 cm of a volume, measured in the seat's own frame as the seat generator measures it (the owner rig, or the vehicle
   // root, without its own scale: the T-90M's and the Merkavas' turret rigs are scaled). gen-mission-attachment-seats
-  // --check is the dock's own gate.
+  // --check is the dock's own gate. A sealed dockless vehicle (droneDockExempt.ts DRONE_DOCK_EXEMPT: Main's 262 ruling on
+  // the rebuilt Mk 4B) keeps no seat and no dock to hold.
+  if (Object.hasOwn(DRONE_DOCK_EXEMPT, id)) {
+    assert.equal(MISSION_ATTACHMENT_SEATS[id], undefined, `${id}: a sealed dockless vehicle keeps no seat`);
+    tank.dispose();
+    continue;
+  }
   const seat = MISSION_ATTACHMENT_SEATS[id];
   assert.ok(seat, `${id}: a suited hull keeps its native drone dock seat record`);
   const dock = suitDockBoxes(id);
@@ -552,18 +561,5 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
   }
   tank.dispose();
 }
-
-const twardy = GHILLIE_SUIT_CONFIGS.pt91a_twardy;
-const twardyTop = twardy.turret.top[0];
-assert.ok(twardyTop.yAt(0, 0) > 0.82 && twardyTop.yAt(0, 0) < 0.86,
-  'Twardy net keeps a small suspended air layer over the dome crown');
-assert.ok(twardyTop.yAt(1.05, 0.45) < 0.74,
-  'Twardy net descends onto the ERAWA cheek instead of retaining a flat roof plane');
-assert.ok(twardyTop.yAt(0, -1.48) < 0.72,
-  'Twardy net seats onto the bustle roof instead of floating at crown height');
-assert.ok(twardy.turret.side[0].topAt(0.90) < twardy.turret.side[0].topAt(-0.40),
-  'Twardy side drape follows the falling front shoulder');
-assert.ok(twardy.turret.face[0].zAt(1.0, 0.42) < twardy.turret.face[0].zAt(0.35, 0.42),
-  'Twardy front drape follows the swept ERAWA wedge instead of one flat face');
 
 console.log('Shared physical-ghillie suit selftest passed');

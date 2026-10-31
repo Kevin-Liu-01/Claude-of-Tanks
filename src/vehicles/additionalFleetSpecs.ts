@@ -13,6 +13,7 @@ import {
 import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
 import {
   apfsdsPenetration as apfsdsPens,
+  LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG,
   reactivePlate,
   shell,
   type ArmorEnvelope,
@@ -109,6 +110,7 @@ function make(
 ): FleetTankSpec {
   const donor = requireFleetSpec(baseId);
   const spec = copy(donor);
+  if (baseId === 'leo1a5') spec.gunPitchByYawDeg = LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG;
   spec.id = id;
   spec.name = name;
   spec.nation = nation;

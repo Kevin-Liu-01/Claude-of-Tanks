@@ -207,7 +207,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     hull: {
       top: [
-        laid({ x0: -1.75, x1: 1.75, z0: -3.70, z1: -0.55, nx: 35, nz: 32, y: 1.76, garnishRiseM: 0.10, seed: 31 }),
+        // 265: the two stern rows over the rear plate's recess (x -0.95..-0.45, top 1.572) were cut off from the deck net
+        // and hung 1.7 cm over the plate (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.75, x1: 1.75, z0: -3.70, z1: -0.55, nx: 35, nz: 32, y: 1.76, holes: [rect(-0.98, -0.46, -3.75, -3.55)],
+          garnishRiseM: 0.10, seed: 31 }),
         // 2026-10-12 (cam-netting): the front engine deck netted to the bow (the fix round left it bare): the driver's
         // hatch and periscopes open (the builder), the cloth flat under the gun, no bough in its sweep
         laid({ x0: -1.72, x1: 1.72, z0: 0.72, z1: 3.15, nx: 34, nz: 25, yAt: (_x, z) => 1.76 - Math.max(0, z - 1.0) * 0.17,
@@ -245,7 +248,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
             rect(-1.01, -0.55, 0.37, 0.85), rect(-1.30, -0.98, 0.53, 0.93)],
           garnishRiseM: 0.12, seed: 11,
         }),
-        laid({ x0: -1.05, x1: 1.05, z0: -3.10, z1: -2.38, nx: 21, nz: 10, y: 0.57, garnishRiseM: 0.14, seed: 13 }),
+        // 265: the basket's front rows at x -0.85..-0.65 were cut off from its net by the load and hung 2.1 cm over it
+        // (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.05, x1: 1.05, z0: -3.10, z1: -2.38, nx: 21, nz: 10, y: 0.57, holes: [rect(-0.90, -0.60, -2.70, -2.35)],
+          garnishRiseM: 0.14, seed: 13 }),
       ],
       side: [
         ...flanks(-1.87, -0.15, 0.90, 0.40, 1.42, 17),
@@ -462,7 +468,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   strv121: {
     id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.45, foliageKind: 'spruce',
     light: 0x5f7148, dark: 0x2c3a28, netColor: 'rgba(36,50,30,0.82)', netTextureSeed: 1220,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
+    fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
@@ -474,8 +480,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.72, x1: 1.72, z0: -3.70, z1: -0.60, nx: 34, nz: 31, y: 1.86, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.72, x1: 1.72, z0: -0.60, z1: 3.85, nx: 34, nz: 45, y: 1.69, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      // the cassettes' tops stand at 1.49: the drapes start just under them
-      side: skirts(-3.40, 3.50, 1.46, 0.48, 1.90, 41),
+      // four drapes a side over the 2A4 skirts (release 265), their gaps over the skirts' two open seams (the aft run's
+      // rear end at z -2.82 and its step to the fore blocks at 1.40-1.42): a drape column over either seam was laid
+      // through it onto the road wheels' tops, inside the track's sweep (28 voxels, the strict track clip)
+      side: [...flanks(-3.40, -2.92, 1.46, 0.51, 1.90, 41), ...flanks(-2.76, -0.05, 1.46, 0.44, 1.90, 47),
+        ...flanks(0.15, 1.33, 1.46, 0.51, 1.90, 53), ...flanks(1.49, 3.50, 1.46, 0.44, 1.90, 59)],
     },
   },
   // C2 Ariete: the roof netted round both hatches and their MGs, the commander's and gunner's sights, drapes down the

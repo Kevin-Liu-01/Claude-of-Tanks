@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -273,6 +273,84 @@ for (const [file, canonical] of [...indexedPages].filter(([file]) => file.starts
 // and every chapter the site root as canonical, og:url and hreflang links); the /cn pages are
 // tools/generate-localized-pages.mjs's over those; /studio, /cn/studio and an unknown /cn path's 404 are middleware.ts's
 // over the built shells. The build's other HTML transforms never touch these tags.
+/** Every content value a document gives one meta key, in order: a duplicated tag shows twice. */
+function metaValues(html, selector, key) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [...html.matchAll(new RegExp(`<meta\\b[^>]*\\b${selector}=["']${escaped}["'][^>]*>`, 'gi'))]
+    .map(([tag]) => tag.match(/\bcontent=(["'])(.*?)\1/i)?.[2] ?? '');
+}
+
+/** What an mp4 says of itself: its top-level box order, length, and each track's handler, size and codec. */
+function mp4Facts(file) {
+  const bytes = readFileSync(file);
+  const facts = { topLevel: [], seconds: 0, tracks: [] };
+  const walk = (start, end, depth, track) => {
+    for (let at = start; at + 8 <= end;) {
+      let size = bytes.readUInt32BE(at);
+      const type = bytes.toString('latin1', at + 4, at + 8);
+      let body = at + 8;
+      if (size === 1) { size = Number(bytes.readBigUInt64BE(at + 8)); body += 8; } else if (size === 0) size = end - at;
+      const next = at + size;
+      if (size < 8) break;
+      if (depth === 0) facts.topLevel.push(type);
+      const v1 = bytes[body] === 1;
+      if (type === 'trak') {
+        const child = {};
+        facts.tracks.push(child);
+        walk(body, next, depth + 1, child);
+      } else if (['moov', 'mdia', 'minf', 'stbl'].includes(type)) walk(body, next, depth + 1, track);
+      else if (type === 'mvhd') {
+        const timescale = bytes.readUInt32BE(body + (v1 ? 20 : 12));
+        facts.seconds = (v1 ? Number(bytes.readBigUInt64BE(body + 24)) : bytes.readUInt32BE(body + 16)) / timescale;
+      } else if (type === 'tkhd' && track) {
+        const at16 = body + (v1 ? 88 : 76); // 16.16 fixed point, after the matrix
+        track.width = bytes.readUInt32BE(at16) / 65536;
+        track.height = bytes.readUInt32BE(at16 + 4) / 65536;
+      } else if (type === 'hdlr' && track) track.handler = bytes.toString('latin1', body + 8, body + 12);
+      else if (type === 'stsd' && track) walk(body + 8, next, depth + 1, track);
+      else if (type === 'avc1' && track) {
+        track.codec = type;
+        walk(body + 78, next, depth + 1, track); // past the visual sample entry: its avcC
+      } else if (type === 'avcC' && track) [track.profile, track.level] = [bytes[body + 1], bytes[body + 3]];
+      at = next;
+    }
+  };
+  walk(0, bytes.length, 0, null);
+  return facts;
+}
+
+// The share clips (266): the owner's media election (2026-10-30) gave each page family one published clip, used as it
+// is. Each must stay inside the limits it was chosen under: H.264 High at level 4.0 or lower, faststart (moov before
+// mdat), one video track and no audio, at most 10 s and 3 MB (Apple Messages caps a preview's video and image at
+// 10 MB together, TN3156).
+const SHARE_CLIPS = {
+  game: '/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4',
+  gallery: '/media/home-r2/fleet-montage.mp4',
+  docs: '/media/docs-hero-r2/verdant-challenger3-t80u-mobile.mp4',
+  studio: '/media/home-r2/studio-246.mp4',
+};
+/** The game's clip on the game, the landing and the 404; the manual's on its index and every chapter. */
+const clipFamily = (route) => (route.id === 'gallery' || route.id === 'studio' ? route.id
+  : route.id.startsWith('docs') ? 'docs' : 'game');
+const shareClips = new Map();
+for (const [family, path] of Object.entries(SHARE_CLIPS)) {
+  const file = join(ROOT, 'public', path);
+  assert.ok(existsSync(file), `the ${family} share clip public${path} is published`);
+  const facts = mp4Facts(file);
+  const video = facts.tracks.filter((track) => track.handler === 'vide');
+  assert.equal(video.length, 1, `${path} has one video track`);
+  assert.deepEqual(facts.tracks.map((track) => track.handler), ['vide'], `${path} carries no audio or other track`);
+  assert.deepEqual([video[0].codec, video[0].profile], ['avc1', 100], `${path} is H.264 High`);
+  assert.ok(video[0].level <= 40, `${path} is level 4.0 or lower (${video[0].level / 10})`);
+  assert.ok(facts.topLevel.indexOf('moov') >= 0 && facts.topLevel.indexOf('moov') < facts.topLevel.indexOf('mdat'),
+    `${path} is faststart (${facts.topLevel.join(' ')})`);
+  assert.ok(facts.seconds > 0 && facts.seconds <= 10, `${path} runs at most 10 s (${facts.seconds} s)`);
+  assert.ok(statSync(file).size <= 3e6, `${path} is at most 3 MB (${statSync(file).size} bytes)`);
+  assert.ok(video[0].width >= 640 && Number.isInteger(video[0].width) && Number.isInteger(video[0].height),
+    `${path} names whole-pixel dimensions (${video[0].width}x${video[0].height})`);
+  shareClips.set(family, { url: `${SITE}${path}`, width: String(video[0].width), height: String(video[0].height) });
+}
+
 const viteConfig = (await import('../../vite.config.ts')).default;
 const localeDocuments = viteConfig.plugins.flat(Infinity).find((plugin) => plugin?.name === 'cot-locale-documents');
 assert.ok(localeDocuments, 'vite.config.ts names its locale-document transform cot-locale-documents');
@@ -332,9 +410,39 @@ try {
   // the manual's noindex topic fallback keeps its own canonical (the index) through the build
   assert.equal(attribute(buildEntry('site/docs-topic.html'), 'link', 'rel', 'canonical', 'href'), `${SITE}/docs`,
     'the built topic fallback keeps the manual index as its canonical');
+
+  // og:video (266): the same pages, as served, each share their family's clip. Apple Messages plays a direct mp4 that
+  // og:video names; Discord plays one inline only for og:type video.other, an https video/mp4 and exactly one og:image
+  // (a second turns the embed into a gallery). X, Slack, Bluesky and Mastodon never play og:video, so twitter:card
+  // stays summary_large_image and no twitter:player is named. Each tag appears once, and its size is the file's own.
+  const videoFailures = [];
+  const expectOne = (label, html, selector, key, wanted) => {
+    const values = metaValues(html, selector, key);
+    if (values.length !== 1 || values[0] !== wanted) {
+      videoFailures.push(`${label}: ${key} ${values.length ? values.join(' + ') : '(missing)'} is not ${wanted}`);
+    }
+  };
+  const expectClip = (label, html, clip) => {
+    expectOne(label, html, 'property', 'og:type', 'video.other');
+    for (const key of ['og:video', 'og:video:url', 'og:video:secure_url']) expectOne(label, html, 'property', key, clip.url);
+    expectOne(label, html, 'property', 'og:video:type', 'video/mp4');
+    expectOne(label, html, 'property', 'og:video:width', clip.width);
+    expectOne(label, html, 'property', 'og:video:height', clip.height);
+    const images = metaValues(html, 'property', 'og:image');
+    if (images.length !== 1) videoFailures.push(`${label}: ${images.length} og:image tags, not one`);
+    expectOne(label, html, 'name', 'twitter:card', 'summary_large_image');
+    if (/<meta\b[^>]*\bname=["']twitter:player/i.test(html)) videoFailures.push(`${label}: names a twitter:player`);
+    return images[0];
+  };
+  for (const { label, html, route } of pages) expectClip(label, html, shareClips.get(clipFamily(route)));
+  // a room invite is the game's document under middleware.ts: it plays the game's clip and keeps its invite card
+  const inviteImage = expectClip('room invite', await served('/?room=HKP5XW&mode=lan&host=Commander+09HY'),
+    shareClips.get('game'));
+  if (inviteImage !== `${SITE}/brand/og/private-room.jpg`) videoFailures.push(`room invite: og:image ${inviteImage}`);
+  assert.deepEqual(videoFailures, [], 'every public page, as served, shares its family clip as a playable og:video');
 } finally {
   globalThis.fetch = originalFetch;
   rmSync(built, { recursive: true, force: true });
 }
 
-console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages; og:url as served on ${pageUrls.length} pages, en and zh)`);
+console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages; og:url and og:video as served on ${pageUrls.length} pages, en and zh, and a room invite; ${shareClips.size} share clips within their limits)`);

@@ -4,6 +4,7 @@ import { addPL01GunAssembly } from './pl01GunAssembly.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
 import { buildPT64Tur } from './pt64Tur.ts';
+import { buildPT91Twardy } from './pt91Twardy.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
 // AND exact geometric comparison with the 3d models... leclerc_s2 highest
@@ -11,7 +12,8 @@ import { buildPT64Tur } from './pt64Tur.ts';
 // buildT72B87Native / buildPT91M) and overlaid decoration packages; every
 // builder below is a fresh §K measured-loft construction against its own
 // §5.248 batch-B print (pl01_501st / t72m1_jaguar_manako / pt91a_manako),
-// published dims sovereign. Donor GRAMMAR (russia-lane loftHull/dome/tube
+// published dims sovereign (262: the PT-91 Twardy moved to pt91Twardy.ts,
+// the T-72B3 study under its ERAWA tiles). Donor GRAMMAR (russia-lane loftHull/dome/tube
 // helpers, KIT fittings) is shared per §H family-rig law; donor GEOMETRY is
 // not. Measured lines cite the poland-wave vertex workorders (round 1).
 //
@@ -19,29 +21,15 @@ import { buildPT64Tur } from './pt64Tur.ts';
 // playables stay first-party procedural.
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
-import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import * as THREE from 'three';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import {
-  loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, mast,
-  ruGlacisKit, ruDeck, ruSkirtBand,
-} from './russia.ts';
+import { loftHull } from './russia.ts';
 import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
-type PolishWhip = [number, number, number, number, number];
 type StripRow = number[];
-
-interface DomeSurfaceSeat {
-  readonly x: number;
-  readonly z: number;
-  readonly nx: number;
-  readonly nz: number;
-  readonly surfaceGapM: number;
-}
 
 interface DisposableResource {
   dispose(): void;
@@ -95,91 +83,11 @@ interface PolishBuilderPort {
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-interface EraCourseOptions {
-  readonly bucket?: string;
-  readonly dark?: string;
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-  readonly right: Vec3Tuple;
-  readonly up: Vec3Tuple;
-  readonly out: Vec3Tuple;
-  readonly cols: number;
-  readonly rows: number;
-  readonly pitchU: number;
-  readonly pitchV: number;
-  readonly tileW: number;
-  readonly tileH: number;
-  readonly tileD: number;
-  readonly rx?: number;
-  readonly ry?: number;
-  readonly rz?: number;
-  readonly seams?: boolean;
-  readonly skip?: (row: number, column: number) => boolean;
-  readonly planSeat?: (position: {
-    readonly x: number;
-    readonly y: number;
-    readonly z: number;
-    readonly row: number;
-    readonly col: number;
-  }) => Pick<DomeSurfaceSeat, 'x' | 'z'>;
-}
-
-interface PolishCupolaOptions {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-  readonly r: number;
-  readonly ringH?: number;
-  readonly lidTop?: number;
-  readonly periscopes?: number;
-  readonly arc0: number;
-  readonly arc1: number;
-}
-
 
 // ---------------------------------------------------------------------------
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
 // are retired with the clones)
 // ---------------------------------------------------------------------------
-
-// ERAWA cassette course — the Polish ERA grammar (square shallow cassettes
-// with visible rim + bolt, on a real carrier plate; never floating bricks).
-// Face-proud <=55 mm; rows follow the carrier plane's own rake.
-function erawaCourse(P: PolishBuilderPort, o: EraCourseOptions): void {
-  const { box } = KIT;
-  const bucket = o.bucket ?? 'hull';
-  const owner = bucket.startsWith('hull') ? 'hull' : 'turret';
-  P.visualEraCluster(`polish-erawa-${owner}`, owner, () => {
-  const dark = o.dark ?? (bucket.startsWith('hull') ? 'hullDark' : 'turretDark');
-  const nx = o.cols, ny = o.rows;
-  for (let r = 0; r < ny; r++) {
-    for (let c = 0; c < nx; c++) {
-      if (o.skip && o.skip(r, c)) continue;
-      const u = (c - (nx - 1) / 2) * o.pitchU;
-      const v = (r - (ny - 1) / 2) * o.pitchV;
-      // local face frame: right = o.right, up = o.up, out = o.out
-      let x = o.x + o.right[0] * u + o.up[0] * v;
-      const y = o.y + o.right[1] * u + o.up[1] * v;
-      let z = o.z + o.right[2] * u + o.up[2] * v;
-      if (o.planSeat) {
-        const seat = o.planSeat({ x, y, z, row: r, col: c });
-        x = seat.x;
-        z = seat.z;
-      }
-      P.add(bucket, box(o.tileW, o.tileH, o.tileD), x, y, z,
-        o.rx ?? 0, o.ry ?? 0, o.rz ?? 0);
-      if (o.seams !== false) {
-        P.add(dark, box(o.tileW * 0.86, o.tileH * 0.86, 0.012),
-          x + o.out[0] * (o.tileD * 0.5 + 0.004),
-          y + o.out[1] * (o.tileD * 0.5 + 0.004),
-          z + o.out[2] * (o.tileD * 0.5 + 0.004),
-          o.rx ?? 0, o.ry ?? 0, o.rz ?? 0);
-      }
-    }
-  }
-  });
-}
 
 // Edge-on prism law (GEOMETRY-GATE station-slice visibility): long slab
 // strips are subdivided so every ~0.52 m station slab contains real
@@ -201,372 +109,6 @@ function segmentedStrip(
   }
 }
 
-// §5.267 fix-round cupola: a REAL T-72-family commander/gunner station —
-// ring, domed lid with hinge lug + grab rail, and a RADIAL periscope
-// wreath around the ring wall (lateral pokes, not crown spikes — the
-// heightM p95 budget stays untouched). lidTop caps the crown absolutely.
-function polishCupola(P: PolishBuilderPort, o: PolishCupolaOptions): void {
-  const { box, cylY, torus } = KIT;
-  const r = o.r;
-  P.add('turret', cylY(r, r + 0.02, o.ringH ?? 0.05, 16), o.x, o.y, o.z);
-  P.add('turretDark', torus(r + 0.005, 0.012, 16), o.x, o.y + (o.ringH ?? 0.05) / 2 + 0.006, o.z);
-  // domed lid: shallow lathe capped at lidTop
-  const lidBase = o.y + (o.ringH ?? 0.05) / 2 + 0.008;
-  const lidH = Math.max(0.012, (o.lidTop ?? (lidBase + 0.03)) - lidBase);
-  P.add('turret', KIT.lathe(
-    [[r * 0.94, 0], [r * 0.84, lidH * 0.55], [r * 0.48, lidH * 0.9], [0.02, lidH]], 16),
-    o.x, lidBase, o.z);
-  // hinge lug + grab rail stay BELOW the lid crown (r-fix receipt: a lug
-  // at lidBase+0.02 read heightM 2.213 on pt91 and broke the dims-100 hold)
-  P.add('turretDark', box(0.055, 0.020, 0.10), o.x + r * 0.86, o.y + (o.ringH ?? 0.05) / 2 - 0.002, o.z, 0, 0.3, 0);
-  P.add('turretDetail', box(0.10, 0.014, 0.02), o.x - r * 0.55, lidBase + lidH * 0.35, o.z + r * 0.35, 0, -0.5, 0);
-  // radial periscope wreath on the ring wall
-  const n = o.periscopes ?? 4;
-  for (let i = 0; i < n; i++) {
-    const a = o.arc0 + (i / Math.max(1, n - 1)) * (o.arc1 - o.arc0);
-    P.add('turretDark', box(0.055, 0.035, 0.045),
-      o.x + Math.sin(a) * (r + 0.035), o.y + 0.012, o.z + Math.cos(a) * (r + 0.035), 0, a, 0);
-  }
-}
-
-function polishWhips(P: PolishBuilderPort, list: PolishWhip[], seedBase: number): void {
-  list.forEach(([x, y, z, h, rake], i) => {
-    P.add('turretDetail', KIT.cylY(0.030, 0.040, 0.055, 10), x, y, z);
-    mount(P, 'turret', FITTINGS.antennaWhip({
-      mats: P.mats, h, r: 0.011, rake, seed: seedBase + i,
-    }), x, y + 0.028, z);
-  });
-}
-
-// ===========================================================================
-// PT-91A TWARDY — ERAWA-1/2 coverage, Polish bins, PCO sights, WKM-B.
-// Print: pt91a_manako.glb (misc_a/misc_b split). _vlo AUDIT (this round):
-// chassis_vlo is a whole-vehicle LOD shell riding the HULL node — it bakes
-// the at-rest turret AND the full gun into every hull mask (ref side_hull
-// carries the tube band 1.84..1.56 out to z 6.25 and turret tops 2.07-2.46
-// across the works band; stations z-range inflates to ~10 m). hullCurves /
-// stations / front_hull are certified-capped until the orchestrator lands
-// the chassis_vlo excision (normalize plan reported in the packet). Whole +
-// turret rows and dims/floaters are honest and are the round's targets.
-// Measured (workorder r1, absolute): rear rack 1.31-1.40 to -3.71, engine
-// tops 1.45-1.56 z -3.15..-2.03, bustle 2.04-2.07 z -1.58..-1.14, mast
-// spike 3.52 @ -1.02, dome band 2.13-2.29 z -0.8..-0.13, cupola crest
-// 2.46-2.60 z -0.02..+0.43, ERA wedge fall 2.52-2.46 z 0.43..1.66, IR spike
-// 2.54 @ 1.44, tube band 1.84..1.56/1.62 to muzzle 6.25, plan: hull edge
-// ±1.75, fender fronts 3.84 (PRINT-LONG vs published hull 6.95 — capped),
-// rear -3.54 with drum slivers -3.62..-3.68, turret shoulders ±1.50-1.52,
-// wedge tips plan 1.72 @ |x| 0.5-0.6, evacuator col +0.18 to 4.71.
-// Published sovereign: hull 6.95 (body -3.41..+3.54, mid 0.065 = the
-// polluted-registration counterweight), overall 9.67 (rear drums -3.42 ->
-// muzzle 6.25 — the print's own muzzle), width 3.59, height 2.19 (dome
-// crown 2.19; mast+cupola spikes <=4 columns at the ref's own zones).
-// ===========================================================================
-
-function addPt91PowerpackLouvres(P: PolishBuilderPort): void {
-  for (let index = 0; index < 5; index++) {
-    const z = -1.06 - index * 0.21;
-    P.add('hullDark', KIT.box(1.46, 0.016, 0.14), 0, 1.494, z);
-    P.add('hullDetail', KIT.box(1.50, 0.030, 0.038), 0, 1.498, z + 0.09);
-  }
-}
-
-function buildPT91Twardy(P: PolishBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
-
-  // ---- hull loft (published envelope, ref engine-stack cadence) ----------
-  loftHull(P, {
-    deck: [[-3.41, 1.30], [-3.24, 1.43], [-3.00, 1.50], [-2.62, 1.555],
-      [-2.06, 1.555], [-1.90, 1.50], [-0.80, 1.475], [1.10, 1.49],
-      [2.00, 1.40], [2.30, 1.335], [2.55, 1.29], [3.05, 1.13], [3.54, 1.00]],
-    belly: [[-3.41, 0.84], [-3.14, 0.55], [-2.68, 0.43], [2.30, 0.43],
-      [2.92, 0.56], [3.54, 0.78]],
-    wUp: [[-3.41, 1.63], [2.60, 1.63], [3.18, 1.32], [3.54, 1.02]],
-    wLo: [[-3.41, 0.97], [2.50, 0.97], [3.54, 0.80]],
-    sponsonY: 1.14,
-  });
-
-  // bow corner fenders carry the plan front outboard of the center V
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.62, 0.13, 0.42), s * 1.40, 1.09, 3.30);
-    P.hangMudguard('pt91a-front-flap', 'hullRubber', box(0.58, 0.15, 0.04), s * 1.38, 0.93, 3.52);
-    P.add('hullDark', box(0.03, 0.05, 0.44), s * 1.755, 1.235, 3.28);
-    P.add('hull', box(0.16, 0.05, 5.7), s * 1.70, 1.215, 0.30);
-    // fender-slot §B2 floor: a REAL dark slot plate riding 6 cm above the
-    // idler wrap arc at its z (strict clip audit proof; the v2 hole scan
-    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2); it rides 5 mm into the sponson's
-    // underside and carries the bow corner fender, which stops 4 cm ahead of the sponson
-    P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.125, 3.00);
-  }
-
-  // ---- running gear: T-72 stance centered on the 0.065 body mid ----------
-  const wheelZs = [-1.95, -1.13, -0.31, 0.51, 1.33, 2.15];
-  // owner 2026-09-22 ("pt 91 m … wheels too big … overlap each other"): r 0.455 on the 0.82 pitch
-  // overlapped by 9 cm and both end wheels sat 35-39 cm inside the outer road wheels. Six 750 mm
-  // T-72 wheels (2R/pitch 0.91, a 7 cm gap), the end wheels moved out to clear them. FSP-03 2026-09-25:
-  // the T-72 family carries three return rollers per side (FAS T-72 entry) — stationed by the T-90A X
-  // source law, r 0.10, the axle fitted under the measured 1.14 lane ceiling.
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.375, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
-    dishR: 0.79, wheelZs,
-    sprocket: { z: -2.64, y: 0.68, r: 0.32 },
-    idler: { z: 2.82, y: 0.69, r: 0.30 },
-    contactZF: 2.26, contactZR: -2.02,
-    rollers: [-1.76, 0.16, 1.80].map((z) => ({ z, y: 0.935, r: 0.10 })),
-    trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
-    coveredTop: true, arms: true,
-  });
-
-  // The smart running-gear builder owns the complete road-wheel face stack.
-  // Do not add a second static disc/inset layer here: it would remain hull-
-  // fixed while the suspension instances move and visibly double the wheels.
-
-  // ---- skirts: ERAWA-1 armored forward third + rubber run (±1.795) -------
-  P.visualEraCluster('polish-erawa-hull-skirt', 'hull', () => {
-    for (const s of [-1, 1]) {
-      for (let k = 0; k < 3; k++) {
-        P.add('hull', box(0.065, 0.36, 0.60), s * 1.7625, 1.02, 2.02 - k * 0.64,
-          0, 0, s * (k % 2 ? 0.015 : -0.012));
-        P.add('hullDark', box(0.018, 0.28, 0.025), s * 1.797, 1.02, 2.32 - k * 0.64);
-      }
-    }
-  });
-  ruSkirtBand(P, {
-    x: 1.775, th: 0.04, z0: -2.02, z1: 0.10, yTop: 1.20, yBot: 0.74,
-    panels: 4, dressIn: 0.03,
-  });
-
-  // ---- ERAWA-1 glacis field on the plate rake + bow kit -------------------
-  erawaCourse(P, {
-    x: 0, y: 1.255, z: 2.28, right: [1, 0, 0], up: [0, 0.30, -0.954],
-    out: [0, 0.954, 0.30], cols: 9, rows: 3, pitchU: 0.292, pitchV: 0.285,
-    tileW: 0.27, tileH: 0.26, tileD: 0.05, rx: -1.265,
-    skip: (r, c) => r === 2 && c >= 3 && c <= 5,
-  });
-  ruGlacisKit(P, { w: 3.30, y: 1.18, z: 2.66, eyeX: 0.96, eyeZ: 2.98,
-    eyeSplit: true, hookY: 0.92, hookZ: 3.10, lights: false });
-  for (const s of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
-      mats: P.mats, pods: 2, spacing: 0.10, r: 0.042,
-      shield: true, seed: 9351 + (s > 0 ? 1 : 0),
-    }), s * 1.16, 1.22, 2.52, [-0.30, 0, 0]);
-  }
-  P.add('hull', box(2.24, 0.045, 0.15), 0, 1.335, 2.50, -0.30, 0, 0);
-  ruDeck(P, { deckY: 1.475, hatchX: -0.40, hatchZ: 1.86, gz: -0.95,
-    grilles: 4, gw: 1.48, periY: 1.45, gY: 1.50 });
-  // §5.267 fix 3: real louvre relief over the powerpack run (sunk wells +
-  // rib bars; relief tops +0.012 over the local deck line — mask-safe)
-  addPt91PowerpackLouvres(P);
-  for (const s of [-1, 1]) P.add('hull', box(0.06, 0.034, 1.15), s * 0.77, 1.496, -1.48);
-
-  // Malaysian-lineage powerpack stack cadence over the rear deck
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.50, 0.11, 0.98), s * 0.86, 1.575, -2.58);
-    P.add('hullDark', box(0.42, 0.02, 0.88), s * 0.86, 1.64, -2.58);
-  }
-  P.add('hull', box(0.56, 0.09, 1.00), 0, 1.565, -2.60);
-  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.98, 0.024, 0.05),
-    0, 1.585, -2.24 - k * 0.22);
-
-  // ---- rear service load: transverse drums + rack (rear extreme -3.42) ---
-  // §5.267 fix 2: the drums READ AS CYLINDERS now — camo steel bodies (the
-  // r1 hullWood tone fused them into a tan plank band), dark end rings +
-  // hub bosses, steel straps over the crowns; the solid backing plate is
-  // replaced by an open rail frame (verticals + the 3 rails) so the round
-  // bodies stay visible from dead-rear.
-  for (const s of [-1, 1]) {
-    P.add('hull', cylX(0.235, 0.74, 18), s * 0.55, 1.16, -3.18);
-    for (const rx of [-0.17, 0, 0.17]) P.add('hullDark', cylX(0.244, 0.018, 18),
-      s * (0.55 + rx), 1.16, -3.18);
-    for (const e of [-1, 1]) {
-      P.add('hullDark', cylX(0.238, 0.014, 18), s * 0.55 + e * 0.365, 1.16, -3.18);
-      P.add('hullDetail', cylX(0.09, 0.018, 12), s * 0.55 + e * 0.376, 1.16, -3.18);
-    }
-    P.add('hull', box(0.48, 0.13, 0.22), s * 0.55, 0.98, -3.10);
-    P.add('hullDetail', box(0.03, 0.47, 0.022), s * 0.55, 1.17, -3.415); // crown strap
-  }
-  for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.80, 0.032, 0.035),
-    0, 1.00 + k * 0.11, -3.40);
-  for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.035, 0.30, 0.035),
-    -0.90 + k * 0.45, 1.11, -3.40);
-  // §5.267 fix 2: round log read — risers keep it proud. 2026-10-07 (tank-accessories round 3: "the unditching log is
-  // a smooth green pipe"): the clone's green-grey 0x4a4636 became a dark bark brown, and the scheme-painted end discs
-  // that capped the sawn ends in hull green gave way to the shared log's own pale end grain. Round 4 (wave 216: "a
-  // smooth brown tub"): the shared fitting log carries its own furrowed bark and baked wood colours in the log wood, so
-  // the dark wood clone goes.
-  mount(P, 'hull', FITTINGS.unditchingLog({
-    mats: P.mats,
-    len: 2.10, r: 0.115, straps: 3, seed: 9301,
-  }), 0, 1.44, -3.30);
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.04, 0.09, 0.10), s * 0.80, 1.36, -3.30);
-  }
-
-  // ---- turret: measured dome + ERAWA-2 wedges + Polish stations -----------
-  // pivot [0,1.38,0.02]; dome crown world 2.19 (published height), base 1.50
-  const rings = [
-    [1.22, 0.12], [1.26, 0.24], [1.18, 0.46], [1.00, 0.64],
-    [0.72, 0.755], [0.38, 0.80], [0.03, 0.81],
-  ];
-  // TANK-OPT companions (227): half the ring disc looks up into the open casting from below a thrown turret;
-  // `closeBase: true` caps it. Held for the gun-hull lane's T-72 batch (240): that lane flips it and regenerates.
-  meshDomeCurved(P, rings, 0.98, 0, -0.08, { capR: 1.85 });
-  // bustle (ref 2.04-2.07 band z -1.58..-1.14 -> local -1.60..-1.16)
-  P.add('turret', box(1.52, 0.40, 0.50), 0, 0.46, -1.35);
-  P.add('turret', box(1.10, 0.30, 0.22), 0, 0.42, -1.66, 0.12, 0, 0);
-  P.add('turretDark', box(1.42, 0.28, 0.035), 0, 0.44, -1.625);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.64, d: 0.38, h: 0.16, fill: 0.36, rails: 3, seed: 9311,
-  }), 0, 0.56, -1.38);
-  // the distinctive Polish flank bins (both cheek-rears, lidded)
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.22, 0.34, 0.88), s * 1.30, 0.40, -0.62, 0, s * 0.14, 0);
-    P.add('turretDark', box(0.20, 0.02, 0.80), s * 1.315, 0.585, -0.64, 0, s * 0.14, 0);
-    P.add('turretDetail', box(0.03, 0.10, 0.05), s * 1.42, 0.42, -0.30, 0, s * 0.14, 0);
-  }
-
-  // ERAWA-2 wedge cheeks — plan tips at the measured 1.72 line (|x| 0.5-0.6),
-  // faces falling 2.52 -> 2.46 over z 0.43..1.66 (world)
-  for (const s of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [s * 0.20, 0.16, 1.66], [s * 1.06, 0.14, 1.02], [s * 1.24, 0.16, 0.28], [s * 0.30, 0.18, 0.60],
-      [s * 0.18, 0.70, 1.34], [s * 0.96, 0.66, 0.82], [s * 1.14, 0.64, 0.22], [s * 0.28, 0.70, 0.48]));
-    erawaCourse(P, {
-      bucket: 'turret',
-      x: s * 0.64, y: 0.42, z: 1.10, right: [s * 0.50, 0, -0.60],
-      up: [0, 0.94, 0.24], out: [s * 0.66, 0.30, 0.60],
-      cols: 3, rows: 2, pitchU: 0.315, pitchV: 0.25,
-      tileW: 0.28, tileH: 0.22, tileD: 0.05,
-      ry: s * 0.66, rx: -0.20,
-    });
-  }
-  // roof ERAWA-1 singles behind the wedges (the Twardy roof course)
-  erawaCourse(P, {
-    bucket: 'turret', x: 0, y: 0.7825, z: 0.10, right: [1, 0, 0], up: [0, 0.06, -1],
-    out: [0, 1, 0.06], cols: 4, rows: 1, pitchU: 0.30, pitchV: 0.26,
-    tileW: 0.27, tileH: 0.045, tileD: 0.26, seams: false,
-  });
-  // §5.267 fix 1: the FRONT-SECTOR ERAWA CARPET — the print wraps the whole
-  // dome nose in the square-cassette grid (my r1 build carried wedges +
-  // cheek patches only, bare nose/roof between). Two dome-skin arcs seated
-  // by ringSkin + two forward-roof rows; every crown stays under the 2.19
-  // grace band (tops <=0.80 local).
-  {
-    // the arcs ride the bare upper-nose band ABOVE the ERAWA-2 wedge tops
-    // (~0.68 local) and below the crown — the exact band the critic sheet
-    // shows carpeted on the print and bare on r1
-    const arcs = [
-      { y: 0.58, rows: 1, tile: [0.24, 0.20, 0.05], n: 7, a0: -0.95, a1: 0.95 },
-      { y: 0.688, rows: 1, tile: [0.22, 0.16, 0.045], n: 5, a0: -0.72, a1: 0.72 },
-    ];
-    for (const arc of arcs) {
-      const r = ringSkin(rings, arc.y) - 0.012;
-      for (let i = 0; i < arc.n; i++) {
-        const a = arc.a0 + (i / (arc.n - 1)) * (arc.a1 - arc.a0);
-        const cx = Math.sin(a) * r * 0.99;
-        const cz = Math.cos(a) * r * 0.98 - 0.08;
-        // dome slope tilt at this band (outward lean follows the profile)
-        P.add('turret', box(arc.tile[0], arc.tile[1], arc.tile[2]),
-          cx, arc.y + 0.02, cz, -0.38, a, 0);
-        // seam plate rides the tile FACE (outward), not its crown — the
-        // +0.032 y-lift version topped 2.202 and owned heightM's 4th column
-        P.add('turretDark', box(arc.tile[0] * 0.86, arc.tile[1] * 0.86, 0.012),
-          cx + Math.sin(a) * 0.034, arc.y + 0.008, cz + Math.cos(a) * 0.034, -0.38, a, 0);
-      }
-    }
-    // forward-roof carpet rows (flat tiles lying on the crown fall)
-    erawaCourse(P, {
-      bucket: 'turret', x: 0, y: 0.745, z: 0.62, right: [1, 0, 0], up: [0, -0.10, -0.995],
-      out: [0, 0.995, -0.10], cols: 4, rows: 1, pitchU: 0.27, pitchV: 0.24,
-      tileW: 0.25, tileH: 0.05, tileD: 0.23, rx: 0.10, seams: false,
-    });
-    erawaCourse(P, {
-      bucket: 'turret', x: 0, y: 0.775, z: 0.38, right: [1, 0, 0], up: [0, -0.04, -1],
-      out: [0, 1, -0.04], cols: 5, rows: 1, pitchU: 0.27, pitchV: 0.24,
-      tileW: 0.25, tileH: 0.045, tileD: 0.23, seams: false,
-    });
-  }
-
-  // stations: commander cupola with a REAL lid (§5.267 fix 4 — crown holds
-  // 2.205 world, inside the 2.212 grace edge so dims 100 HOLDS) + radial
-  // periscope wreath on the ring wall; the print's broad 2.46-2.60 crest
-  // stays certified print-tall
-  // (r-fix receipt: the cupola cluster at y 0.78 kept the p95 4th column
-  // at 2.2124 — the whole station sinks 12 mm so every wide top holds
-  // <=2.196 and the dims-100 constraint keeps real margin)
-  polishCupola(P, { x: -0.36, y: 0.768, z: 0.10, r: 0.29, ringH: 0.05,
-    lidTop: 0.806, periscopes: 5, arc0: -0.6, arc1: 2.4 });
-  // loader/gunner hatch: flush seam ring + handles (no crown budget left)
-  P.add('turretDark', torus(0.21, 0.012, 14), 0.42, 0.792, -0.38);
-  P.add('turretDetail', box(0.09, 0.018, 0.025), 0.42, 0.80, -0.16);
-  P.add('turretDetail', box(0.025, 0.018, 0.09), 0.62, 0.80, -0.38);
-  // WKM-B 12.7 low-slung on the right dome shoulder (pt91m NSVT precedent —
-  // receiver under the crown line; r1/r2 dims receipts: crown-top stations
-  // read heightM 2.45-2.47). Pedestal ring seats it on the dome skin.
-  // 2026-10-07 (tank-accessories round 4, wave 216: "seen from above, no MG reads on the roof, only a thin rod"; "a
-  // pintle that is a bare cylinder, with no ring, box or belt"): the pedestal widens into a ring mount (a turned base
-  // with its machined ring on brackets, the gun's `ring`), and the WKM-B takes the NSVT's own construction with its
-  // box hung outboard (the NSV feeds from either side; inboard the box would sit in the dome) and the mount's
-  // collimator inboard, so the box, its belt and the long receiver read from the hero and turret-top cameras.
-  P.add('turretDark', cylY(0.16, 0.19, 0.09, 16), 1.00, 0.585, -0.30);
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's NSVT)
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
-    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true, ridingCradle: true,
-  }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
-
-  // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
-  // POD-72 head — the Polish optical identity (crowns at the dome band)
-  P.add('turretDetail', box(0.34, 0.22, 0.34), 0.52, 0.70, 0.66);
-  P.add('turretDark', box(0.26, 0.13, 0.03), 0.52, 0.72, 0.845);
-  P.add('turretGlass', box(0.18, 0.08, 0.02), 0.52, 0.72, 0.862);
-  P.add('turretDetail', box(0.26, 0.14, 0.22), -0.36, 0.735, -0.38);
-  P.add('turretDark', box(0.20, 0.08, 0.025), -0.36, 0.745, -0.265);
-  // IR/searchlight block right of the mantlet (ref spike 2.54 @ z 1.44)
-  P.add('turretDetail', box(0.30, 0.30, 0.26), 0.58, 0.56, 1.28);
-  P.add('turretDark', box(0.24, 0.24, 0.03), 0.58, 0.56, 1.425);
-
-  // met mast — the ref's own 3.52 @ z -1.02 spike (thin, one column).
-  // Seated at the ref's own station on a real pedestal cone rising from the
-  // dome skin (r1 floater receipt: the bare 0.81 base floated 0.46 above
-  // the falling dome at yaw 90).
-  P.add('turret', KIT.frustum(0.10, -0.96, -1.16, 0.05, -1.01, -1.11, 0.30, 0.76), -0.55, 0, 0);
-  mast(P, -0.55, 0.74, -1.06, 2.06, 0.023, 0.09);
-
-  // Tellur smoke banks on the LEFT cheek (the print's asymmetric tell) +
-  // a compact right pair
-  mount(P, 'turret', FITTINGS.smokeBank({
-    mats: P.mats, count: 6, r: 0.042, len: 0.28, splay: -1.05, pitch: -0.44,
-    arc: 0.60, spacing: 0.10, slot: 'detail', rotation: [0, 0, 0.10], seed: 9331,
-  }), -1.12, 0.52, 0.30);
-  mount(P, 'turret', FITTINGS.smokeBank({
-    mats: P.mats, count: 3, r: 0.042, len: 0.28, splay: 1.05, pitch: -0.44,
-    arc: 0.42, spacing: 0.10, slot: 'detail', rotation: [0, 0, -0.10], seed: 9332,
-  }), 1.16, 0.50, 0.44);
-  // conformal antenna bases only (r-fix receipt: the 0.20/0.17 stubs'
-  // AA-faded tips floated heightM's 4th p95 column at 2.2016-2.2124
-  // phase-dependent — the dims-100 hold needs every read <=2.2119; the
-  // rods now stop under the 2.19 crown line)
-  polishWhips(P, [[-0.98, 0.62, -1.30, 0.065, -0.05], [1.00, 0.62, -1.20, 0.055, 0.06]], 9341);
-
-  // ---- gun: 2A46MS with thermal sleeve, evacuator, measured muzzle 6.25 ---
-  // axis world 1.70 (pivot 1.38 + 0.32); local muzzle 5.73
-  ruBoot(P, { pts: [[0.30, 0.64, 0.54, 0.00], [0.64, 0.48, 0.42, 0.01], [0.98, 0.33, 0.31, 0.015]] });
-  tubeGun(P, [
-    [0.98, 2.50, 0.122, 0.118],
-    [2.50, 3.80, 0.118, 0.114],
-    [3.80, 4.19, 0.114, 0.112],
-    [4.19, 4.66, 0.172, 0.162],          // evacuator (plan col +0.18 to 4.71)
-    [4.66, 5.60, 0.110, 0.106],
-    [5.60, 5.73, 0.114, 0.114],
-  ], { rings: [[2.50, 0.124], [3.80, 0.118], [4.19, 0.176], [4.66, 0.114]], muzzle: 5.73 });
-  muzzleBore(P, { r: 0.099, boreR: 0.063 });
-  P.addGunExtraDark(cylZ(0.032, 0.10, 10), 0.30, 0.11, 0.55);
-  P.decal('turret', 'number', 'PT-91', 0.24, [-1.32, 0.42, -0.98], -Math.PI / 2);
-  P.decal('turret', 'number', 'PT-91', 0.24, [1.32, 0.42, -0.98], Math.PI / 2);
-  addVehicleGhillieSuit(P);
-  addMissionAttachmentReceiver(P, 'pt91a_twardy');
-  P.topY = Math.max(P.topY || 0, 1.35);
-}
 
 // ===========================================================================
 // PL-01 — the faceted stealth demonstrator (OBRUM/BAE concept).

@@ -1,104 +1,104 @@
 #schema 1
-comp	world:donors:collision:airfield	d46ddd1a347083c9
+comp	world:donors:collision:airfield	c303daf896bb6d5b
 comp	world:donors:collision:alpine	e3b0c44298fc1c14
 comp	world:donors:collision:autumn	e3b0c44298fc1c14
-comp	world:donors:collision:badlands	1c9e7f33f6112c14
+comp	world:donors:collision:badlands	0fffef04c07e3b09
 comp	world:donors:collision:blackglass	e3b0c44298fc1c14
-comp	world:donors:collision:caldera	8f6cea77bf096de3
-comp	world:donors:collision:cliffbridge	030f1b173b1b1f34
-comp	world:donors:collision:coastal	e80b5c36f5533382
-comp	world:donors:collision:copper_mesa	d2559aef32be17c0
-comp	world:donors:collision:delta	0881e4c607e33916
-comp	world:donors:collision:desert	42e7ba3b01f3a12b
+comp	world:donors:collision:caldera	c0cc06c52628f7f3
+comp	world:donors:collision:cliffbridge	3871a2390f22dc48
+comp	world:donors:collision:coastal	fcc5e23f7c2f3072
+comp	world:donors:collision:copper_mesa	cf7186cd69500ab0
+comp	world:donors:collision:delta	3859042839dc8970
+comp	world:donors:collision:desert	fad6ed2051fc1be8
 comp	world:donors:collision:fjord	e3b0c44298fc1c14
 comp	world:donors:collision:foundry	e3b0c44298fc1c14
-comp	world:donors:collision:frontier	7defa683a5998934
+comp	world:donors:collision:frontier	0e991c5d06f5ef6f
 comp	world:donors:collision:longleaf	e3b0c44298fc1c14
-comp	world:donors:collision:mangrove	eb9755bf026d185e
-comp	world:donors:collision:mars	218aa74ff408d23e
+comp	world:donors:collision:mangrove	1a50b934ece9345b
+comp	world:donors:collision:mars	03d142986432fafe
 comp	world:donors:collision:monsoon	e3b0c44298fc1c14
 comp	world:donors:collision:moon	e3b0c44298fc1c14
-comp	world:donors:collision:oasis	399355be958981d2
-comp	world:donors:collision:orchard	8909a66b82a04ef0
+comp	world:donors:collision:oasis	96603055a1a6d3d7
+comp	world:donors:collision:orchard	e67891ee7c171fcf
 comp	world:donors:collision:polders	e3b0c44298fc1c14
-comp	world:donors:collision:railyard	628b3af3c1f11d0a
+comp	world:donors:collision:railyard	1347e15e247f88c1
 comp	world:donors:collision:reservoir	e3b0c44298fc1c14
-comp	world:donors:collision:ruinspires	1690bb5544a45893
-comp	world:donors:collision:saltwind	1690bb5544a45893
-comp	world:donors:collision:skybridge	e3d5804266cbc0bf
-comp	world:donors:collision:steppe	0881e4c607e33916
-comp	world:donors:collision:titan_gorge	e3d5804266cbc0bf
-comp	world:donors:collision:urban	e8a6189cd6e533be
-comp	world:donors:collision:verdant	fa98a732c19bbc2c
-comp	world:donors:collision:whiteout	a855b38728552d8d
+comp	world:donors:collision:ruinspires	9c82c689b3589ab0
+comp	world:donors:collision:saltwind	9c82c689b3589ab0
+comp	world:donors:collision:skybridge	6faf69d649ca1b81
+comp	world:donors:collision:steppe	3859042839dc8970
+comp	world:donors:collision:titan_gorge	6faf69d649ca1b81
+comp	world:donors:collision:urban	b8a38b85a5d3528c
+comp	world:donors:collision:verdant	c38e2001a05ebb29
+comp	world:donors:collision:whiteout	af9c19626e6495f2
 comp	world:donors:collision:winter	e3b0c44298fc1c14
-comp	world:donors:trenches:airfield	d46ddd1a347083c9
+comp	world:donors:trenches:airfield	c303daf896bb6d5b
 comp	world:donors:trenches:alpine	e3b0c44298fc1c14
 comp	world:donors:trenches:autumn	e3b0c44298fc1c14
-comp	world:donors:trenches:badlands	1c9e7f33f6112c14
+comp	world:donors:trenches:badlands	0fffef04c07e3b09
 comp	world:donors:trenches:blackglass	e3b0c44298fc1c14
-comp	world:donors:trenches:caldera	8f6cea77bf096de3
-comp	world:donors:trenches:cliffbridge	030f1b173b1b1f34
-comp	world:donors:trenches:coastal	e80b5c36f5533382
-comp	world:donors:trenches:copper_mesa	d2559aef32be17c0
-comp	world:donors:trenches:delta	0881e4c607e33916
-comp	world:donors:trenches:desert	42e7ba3b01f3a12b
+comp	world:donors:trenches:caldera	c0cc06c52628f7f3
+comp	world:donors:trenches:cliffbridge	3871a2390f22dc48
+comp	world:donors:trenches:coastal	fcc5e23f7c2f3072
+comp	world:donors:trenches:copper_mesa	cf7186cd69500ab0
+comp	world:donors:trenches:delta	3859042839dc8970
+comp	world:donors:trenches:desert	fad6ed2051fc1be8
 comp	world:donors:trenches:fjord	e3b0c44298fc1c14
 comp	world:donors:trenches:foundry	e3b0c44298fc1c14
-comp	world:donors:trenches:frontier	7defa683a5998934
+comp	world:donors:trenches:frontier	0e991c5d06f5ef6f
 comp	world:donors:trenches:longleaf	e3b0c44298fc1c14
-comp	world:donors:trenches:mangrove	eb9755bf026d185e
-comp	world:donors:trenches:mars	218aa74ff408d23e
+comp	world:donors:trenches:mangrove	1a50b934ece9345b
+comp	world:donors:trenches:mars	03d142986432fafe
 comp	world:donors:trenches:monsoon	e3b0c44298fc1c14
 comp	world:donors:trenches:moon	e3b0c44298fc1c14
-comp	world:donors:trenches:oasis	399355be958981d2
-comp	world:donors:trenches:orchard	8909a66b82a04ef0
+comp	world:donors:trenches:oasis	96603055a1a6d3d7
+comp	world:donors:trenches:orchard	e67891ee7c171fcf
 comp	world:donors:trenches:polders	e3b0c44298fc1c14
-comp	world:donors:trenches:railyard	628b3af3c1f11d0a
+comp	world:donors:trenches:railyard	1347e15e247f88c1
 comp	world:donors:trenches:reservoir	e3b0c44298fc1c14
-comp	world:donors:trenches:ruinspires	1690bb5544a45893
-comp	world:donors:trenches:saltwind	1690bb5544a45893
-comp	world:donors:trenches:skybridge	e3d5804266cbc0bf
-comp	world:donors:trenches:steppe	0881e4c607e33916
-comp	world:donors:trenches:titan_gorge	e3d5804266cbc0bf
-comp	world:donors:trenches:urban	e8a6189cd6e533be
-comp	world:donors:trenches:verdant	fa98a732c19bbc2c
-comp	world:donors:trenches:whiteout	a855b38728552d8d
+comp	world:donors:trenches:ruinspires	9c82c689b3589ab0
+comp	world:donors:trenches:saltwind	9c82c689b3589ab0
+comp	world:donors:trenches:skybridge	6faf69d649ca1b81
+comp	world:donors:trenches:steppe	3859042839dc8970
+comp	world:donors:trenches:titan_gorge	6faf69d649ca1b81
+comp	world:donors:trenches:urban	b8a38b85a5d3528c
+comp	world:donors:trenches:verdant	c38e2001a05ebb29
+comp	world:donors:trenches:whiteout	af9c19626e6495f2
 comp	world:donors:trenches:winter	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:airfield	d46ddd1a347083c9
+comp	world:donors:wreckPlan:airfield	c303daf896bb6d5b
 comp	world:donors:wreckPlan:alpine	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:autumn	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:badlands	1c9e7f33f6112c14
+comp	world:donors:wreckPlan:badlands	0fffef04c07e3b09
 comp	world:donors:wreckPlan:blackglass	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:caldera	8f6cea77bf096de3
-comp	world:donors:wreckPlan:cliffbridge	030f1b173b1b1f34
-comp	world:donors:wreckPlan:coastal	e80b5c36f5533382
-comp	world:donors:wreckPlan:copper_mesa	d2559aef32be17c0
-comp	world:donors:wreckPlan:delta	0881e4c607e33916
-comp	world:donors:wreckPlan:desert	42e7ba3b01f3a12b
+comp	world:donors:wreckPlan:caldera	c0cc06c52628f7f3
+comp	world:donors:wreckPlan:cliffbridge	3871a2390f22dc48
+comp	world:donors:wreckPlan:coastal	fcc5e23f7c2f3072
+comp	world:donors:wreckPlan:copper_mesa	cf7186cd69500ab0
+comp	world:donors:wreckPlan:delta	3859042839dc8970
+comp	world:donors:wreckPlan:desert	fad6ed2051fc1be8
 comp	world:donors:wreckPlan:fjord	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:foundry	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:frontier	7defa683a5998934
+comp	world:donors:wreckPlan:frontier	0e991c5d06f5ef6f
 comp	world:donors:wreckPlan:longleaf	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:mangrove	eb9755bf026d185e
-comp	world:donors:wreckPlan:mars	218aa74ff408d23e
+comp	world:donors:wreckPlan:mangrove	1a50b934ece9345b
+comp	world:donors:wreckPlan:mars	03d142986432fafe
 comp	world:donors:wreckPlan:monsoon	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:moon	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:oasis	399355be958981d2
-comp	world:donors:wreckPlan:orchard	8909a66b82a04ef0
+comp	world:donors:wreckPlan:oasis	96603055a1a6d3d7
+comp	world:donors:wreckPlan:orchard	e67891ee7c171fcf
 comp	world:donors:wreckPlan:polders	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:railyard	628b3af3c1f11d0a
+comp	world:donors:wreckPlan:railyard	1347e15e247f88c1
 comp	world:donors:wreckPlan:reservoir	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:ruinspires	1690bb5544a45893
-comp	world:donors:wreckPlan:saltwind	1690bb5544a45893
-comp	world:donors:wreckPlan:skybridge	e3d5804266cbc0bf
-comp	world:donors:wreckPlan:steppe	0881e4c607e33916
-comp	world:donors:wreckPlan:titan_gorge	e3d5804266cbc0bf
-comp	world:donors:wreckPlan:urban	e8a6189cd6e533be
-comp	world:donors:wreckPlan:verdant	fa98a732c19bbc2c
-comp	world:donors:wreckPlan:whiteout	a855b38728552d8d
+comp	world:donors:wreckPlan:ruinspires	9c82c689b3589ab0
+comp	world:donors:wreckPlan:saltwind	9c82c689b3589ab0
+comp	world:donors:wreckPlan:skybridge	6faf69d649ca1b81
+comp	world:donors:wreckPlan:steppe	3859042839dc8970
+comp	world:donors:wreckPlan:titan_gorge	6faf69d649ca1b81
+comp	world:donors:wreckPlan:urban	b8a38b85a5d3528c
+comp	world:donors:wreckPlan:verdant	c38e2001a05ebb29
+comp	world:donors:wreckPlan:whiteout	af9c19626e6495f2
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
-comp	world:fleet	60b3c895961bcde1
+comp	world:fleet	8b984ed17d85c3ea
 comp	world:map:collision:airfield	653bb1ba31589e19
 comp	world:map:collision:alpine	093933e44d61cf22
 comp	world:map:collision:autumn	4a47aa8f76c63e0f
@@ -199,10 +199,10 @@ comp	world:map:wreckPlan:verdant	9126604310529730
 comp	world:map:wreckPlan:whiteout	7fac80a15579e64a
 comp	world:map:wreckPlan:winter	bf2dc32dc52e1b8b
 comp	world:roster	c3797f6fbc261c2e
-comp	world:tool:collision	9225ee9c133a088a
-comp	world:tool:trenches	02db190e03cbae15
-comp	world:tool:wreckPlan	119c794962a32c30
-core	db2c66d506a10dc7
+comp	world:tool:collision	ed519bd7950618b3
+comp	world:tool:trenches	1e963f46a92c1fe7
+comp	world:tool:wreckPlan	a2cf1518b594fb71
+core	1a71e23ab30a66e5
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	d9322a273c2ec5d7
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	a20cc2e21c778d7d
 file	anatomy	src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts	794247cc208db05d
@@ -288,7 +288,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	62b1bf3d4387e115
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	9bf37ec26baf4dea
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	9225c927534516d9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	f47ba3d7f7c51d84
-file	centering	src/vehicles/presentationAnchors.generated.ts	2bac530ce5879c4d
+file	centering	src/vehicles/presentationAnchors.generated.ts	2aaecb2d17acf0c2
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	842ab74d0f1fe1d8
 file	controls	src/vehicles/auxiliaryInventory.generated.ts	9d9b5396d8f91a4b
@@ -380,7 +380,7 @@ file	fills	src/vehicles/interiorFillGroups/ukraine.generated.ts	6687c71f0d1dffea
 file	fills	src/vehicles/interiorFillGroups/xk2.generated.ts	00db8fbca2bafbaa
 file	fills	src/vehicles/interiorFillLoaders.generated.ts	73ab64291838ae4f
 file	gunLines	docs/geometry-gate/gun-junction.json	96d0c0e520a003d3
-file	icons	public/icons/tank-assets.json	991956ac21b48579
+file	icons	public/icons/tank-assets.json	b66b81f238f66643
 file	ledger	docs/references/fleet-geometry-ledger.json	a725acb71ec49152
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	ea0b75fe965ac66c
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
@@ -469,7 +469,7 @@ file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	dfacb429a6a67d8
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	85979e5b8eff084f
 file	seats	src/sim/missionAttachmentSeats.generated.ts	02dc21e868977010
 file	seats	src/sim/missionDockSeats.generated.ts	4100e4e829e2b84f
-file	spareTrack	docs/geometry-gate/spare-track.json	6a1753471df03216
+file	spareTrack	docs/geometry-gate/spare-track.json	3b518333e85e2445
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	de0d8a0b67a03af0
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -612,7 +612,7 @@ key	anatomy	fv4034	66f9d5110aa2e61f	57527a3af25a9210
 key	anatomy	fv510	82233f4e3c12aa20	f9679ec2482afd8a
 key	anatomy	fv510_milan	f39e7a5f89b5d811	56cd7901334a2bbb
 key	anatomy	griffin50mm	ba7b4abe31414711	e412cf5709d8a424
-key	anatomy	griffin_viper	98aacfd4b2302e1a	a8afac7828f5afa7
+key	anatomy	griffin_viper	a6f2de6b717956a1	a8afac7828f5afa7
 key	anatomy	hayate_ifv	5d0a58737e89c828	401e1f0ac62ab744
 key	anatomy	jpz_e100	25d849fb8e2b4a96	56bf8c4bcf547652
 key	anatomy	k1a1	f0f5d27b3f2eb666	9e14f132dfe4a53b
@@ -848,7 +848,7 @@ key	centering	fv4034	9f91c1018ce9f7d8	5e87b5f0a1b5dbb7
 key	centering	fv510	c729ea8d9e39d5ee	85ac851019030b1b
 key	centering	fv510_milan	0c085864fe37b98c	93b959e786a5cea6
 key	centering	griffin50mm	69b32540e5b1c6dd	0b0ef1015ab222c7
-key	centering	griffin_viper	d0b3f34f77050db4	38904858e94383ea
+key	centering	griffin_viper	8c102592d79dd2d9	d51eecb13a0d5bcb
 key	centering	hayate_ifv	b6ba99b87d138853	57d1f9409b60b2d0
 key	centering	jpz_e100	7fd5b9fe48bd52af	9e95905385a31f0d
 key	centering	k1a1	754b384978f5ea03	75a24f7cfaa9bb17
@@ -1117,7 +1117,7 @@ key	controls	fv4034	a43ea10b0dbfde1d	b38045d1bf73c900
 key	controls	fv510	5416b7c16b057f67	502d5b867de60d51
 key	controls	fv510_milan	f5ed835363c319a9	5f94d49b202bad38
 key	controls	griffin50mm	9745ed4ca55407bf	47d29f7456711068
-key	controls	griffin_viper	63089d3d2af7cb4d	6a4238fa2340858d
+key	controls	griffin_viper	fa7d63e754e33ec4	6a4238fa2340858d
 key	controls	hayate_ifv	b26986958dcb153a	8da7e67b7b7a53a6
 key	controls	jpz_e100	df12e832a484f9dd	4dee417772ebbcb8
 key	controls	k1a1	8322e361ba3d1f59	afb2274ddb2d1a49
@@ -1353,7 +1353,7 @@ key	fills	fv4034	be880d727c172afb	db8de3fe2879492b
 key	fills	fv510	cc2f48954d04a58e	9440bfdad87bdef2
 key	fills	fv510_milan	162ed89aa200382f	375940d5c503f52a
 key	fills	griffin50mm	a8a6450789fdc24d	286d8613c03bc107
-key	fills	griffin_viper	65b84c9ea1fb9e6f	4e214380fcdf9163
+key	fills	griffin_viper	731ce6001b5205fc	4e214380fcdf9163
 key	fills	hayate_ifv	a4fbc242de81e3fc	31a5cf2c546ca1cc
 key	fills	jpz_e100	19d308db7899753b	9726d80d1b9e17e6
 key	fills	k1a1	b43f5b1221bcf6e3	a2904d6d24615085
@@ -1589,7 +1589,7 @@ key	gunLines	fv4034	1da38f9ce489a297	84eb8707c90b9c50
 key	gunLines	fv510	ba6fd690499a16a4	8bd41bb376758f30
 key	gunLines	fv510_milan	e9c9f4b9af1f5b81	69b700443c93f80d
 key	gunLines	griffin50mm	02a416fb9046a163	b2bdd3e6d665ddc0
-key	gunLines	griffin_viper	c79d7262ac3c65b8	5bd7627322518575
+key	gunLines	griffin_viper	ac95078708e38e6b	5bd7627322518575
 key	gunLines	hayate_ifv	387e76db2f934cd2	e3cc85945262e29e
 key	gunLines	jpz_e100	3e8b058d0c32d9f6	a457bb7a95eeacc0
 key	gunLines	k1a1	fd04beb0b5089317	c3704c53596cf541
@@ -1825,7 +1825,7 @@ key	icons	fv4034	77fda2145cf68485	d04ac445cf5b9259
 key	icons	fv510	4d22aec1757f65e2	b7390089c312978e
 key	icons	fv510_milan	e3ceae6e135dc956	24543ab63b980827
 key	icons	griffin50mm	e89894a8546ddb40	097783342cae823e
-key	icons	griffin_viper	f6fa84575a88ddda	2b3f0282f4a2a52a
+key	icons	griffin_viper	a6eee5f8921196b6	11cc3c1bc44f9f30
 key	icons	hayate_ifv	3688b04e5b6f1d87	7653d10b7101decd
 key	icons	jpz_e100	fdb5160c1b43cbdb	fb5b7945bbaeff06
 key	icons	k1a1	eda8bf31d0417203	5b97ed4deb205782
@@ -2061,7 +2061,7 @@ key	ledger	fv4034	165803a65b37603d	b30f0c3fe29c1e63
 key	ledger	fv510	04e11ddc373a6e6a	70465608b360b182
 key	ledger	fv510_milan	e5683dd7acaae288	d48da05d1df02713
 key	ledger	griffin50mm	9f392edd32473380	a50c2e097fb9653b
-key	ledger	griffin_viper	089d7adc69e3cb3c	6575a8dd48135fe6
+key	ledger	griffin_viper	27b8a23c43f93906	6575a8dd48135fe6
 key	ledger	hayate_ifv	f87ff3a83f405311	c558da62fff3c349
 key	ledger	jpz_e100	28698c85c0bbe227	b97ebdd9088bfcde
 key	ledger	k1a1	8eb0f2d58698e3fa	2fdb4605ba2540d2
@@ -2297,7 +2297,7 @@ key	marking	fv4034	7d96675e919dd04f	a823374225ec009d
 key	marking	fv510	3a23658dd9fc0f8a	347ecb664f4bc176
 key	marking	fv510_milan	6519b99a39e91acb	7c39f7feb6c23ed7
 key	marking	griffin50mm	ed60128b5224f7ef	10a4577ce630658e
-key	marking	griffin_viper	b7c31f8480a4089e	937996a2872b8e92
+key	marking	griffin_viper	18c63ad5f9ad63df	937996a2872b8e92
 key	marking	hayate_ifv	20c39db6dea72fda	198cd35e637e27fc
 key	marking	jpz_e100	785f51806d28185a	a79410f5c465ffb9
 key	marking	k1a1	0e5e8d307337eae6	65f91c919cc08b5a
@@ -2533,7 +2533,7 @@ key	seats	fv4034	db5c4bd12305d9c5	0501ea4a47955a8d
 key	seats	fv510	25fff87c9288d829	d698acd55099c2d5
 key	seats	fv510_milan	f2d0c1517d80a3ce	a8eee03543676353
 key	seats	griffin50mm	effe2170c71164a5	2ead02d1c0cd6b46
-key	seats	griffin_viper	4df1fc45f8849025	8f519590960b1299
+key	seats	griffin_viper	44d30c92ba439c19	8f519590960b1299
 key	seats	hayate_ifv	a68966b929fc2fd5	2eb84677f5c012a4
 key	seats	jpz_e100	59fdec94af796732	df039f054a413618
 key	seats	k1a1	0500f49aa5efa0a1	d480672df55f6202
@@ -2769,7 +2769,7 @@ key	spareTrack	fv4034	f2d0ad52e52c0c51	ae45e48bb3b38f7e
 key	spareTrack	fv510	7c42c1d8e4e8b641	60281103f62fcceb
 key	spareTrack	fv510_milan	128a119d945a99f1	9d678e1eedb3d97b
 key	spareTrack	griffin50mm	17a72dbe0820cccf	33a276f35ccf7f21
-key	spareTrack	griffin_viper	4e8df3ce93b8111b	9f5aec1800436458
+key	spareTrack	griffin_viper	2b1c75b7fbaa255b	9328cc233a8bbcd6
 key	spareTrack	hayate_ifv	8357078a5a40a264	6a8a408a4c7e121d
 key	spareTrack	jpz_e100	eae4124e1dc8b98d	c26a10fc873cb707
 key	spareTrack	k1a1	f1fd8dad23c632a0	5afef4f6b6aeacec
@@ -5450,7 +5450,7 @@ row	movingClearanceAir	m1a1_abrams_sa	df89063d26d1d05f
 row	movingClearanceAir	m1a1ha	f6584e78b0249d0d
 row	movingClearanceAir	ua_m1a1	e7876b636212602f
 row	presentationAnchors	abramsx	3e826d9f41e9173b
-row	presentationAnchors	aft10	b79f074f80b94998
+row	presentationAnchors	aft10	d5f0ecbe3ec9f251
 row	presentationAnchors	ajax	eefe40c40b2e9dce
 row	presentationAnchors	amx10p	22b2dec28161316d
 row	presentationAnchors	amx10p_25	4a42f0631af992b8
@@ -5503,14 +5503,14 @@ row	presentationAnchors	cv90_mk4_concept	410b9341859a7f44
 row	presentationAnchors	dardo	759cf1c0181ca46c
 row	presentationAnchors	fv4034	66bd0158cd36700a
 row	presentationAnchors	fv510	66ce72b6bad94800
-row	presentationAnchors	fv510_milan	45c94eaaba1b8725
+row	presentationAnchors	fv510_milan	35480c9ad741ce6a
 row	presentationAnchors	griffin50mm	b41c91f9e886ab07
-row	presentationAnchors	griffin_viper	d58f2ac60d749edc
-row	presentationAnchors	hayate_ifv	9e75b84ff999b67d
+row	presentationAnchors	griffin_viper	06c78cf3c1e50033
+row	presentationAnchors	hayate_ifv	a3971aba6186ef0e
 row	presentationAnchors	jpz_e100	712ecc3dfb37a0df
 row	presentationAnchors	k1a1	d8caa3e1c0962185
 row	presentationAnchors	k1e1	b95293c2915561dc
-row	presentationAnchors	k21	f59a5096aadb2a3f
+row	presentationAnchors	k21	cda418e2ac680dfa
 row	presentationAnchors	k2_black_panther	266fa1d1f84a6808
 row	presentationAnchors	k2b	bd571b5595bec44e
 row	presentationAnchors	kf41_lynx	d37ca01bee509b8d
@@ -5554,7 +5554,7 @@ row	presentationAnchors	m1a2_abrams_sepv3	bd2ef478edd4185a
 row	presentationAnchors	m1a2_abrams_tusk	f4476e825024876c
 row	presentationAnchors	m1a3	4e55fbc22c1e3540
 row	presentationAnchors	m2a2_bradley	9266d081ea2fedca
-row	presentationAnchors	m3a3_bradley	d56ac087a6fe87fb
+row	presentationAnchors	m3a3_bradley	ac3b24c488cc9a88
 row	presentationAnchors	m46_patton	8802f71a1d5731a7
 row	presentationAnchors	m47_patton	e20a2170543f8333
 row	presentationAnchors	m48a5_patton	bc48537213b3baf1
@@ -5585,7 +5585,7 @@ row	presentationAnchors	pl01_105	63382e8fc5761d44
 row	presentationAnchors	pt64_tur	6be455f159481631
 row	presentationAnchors	pt91a_twardy	4433809110486db7
 row	presentationAnchors	pt91m	1c0bafe9bac542b6
-row	presentationAnchors	puma_s1	b2b337102e2aa2f9
+row	presentationAnchors	puma_s1	37eb90869ec55b8e
 row	presentationAnchors	raiju_ifv	bb0ada0b681046b8
 row	presentationAnchors	sabra_mk2	c16c672a969b688a
 row	presentationAnchors	spz_puma	8208bbda7e6b84bc
@@ -5686,7 +5686,7 @@ row	presentationAnchors	ztz99_longwei	e9d72aea21f62096
 row	presentationAnchors	ztz99a	589d0a3210035fe5
 row	presentationAnchors	ztz99a2	847d628021b9114b
 row	presentationProjections	abramsx	090e5622b9eb8b60
-row	presentationProjections	aft10	619a323cb6deefcc
+row	presentationProjections	aft10	86e71627905fcd8f
 row	presentationProjections	ajax	c962349285f29a35
 row	presentationProjections	amx10p	365f09c5f7275be0
 row	presentationProjections	amx10p_25	f3a6ec1e906d8d8d
@@ -5739,14 +5739,14 @@ row	presentationProjections	cv90_mk4_concept	25144de001e91581
 row	presentationProjections	dardo	3e8d73ccbb65b99a
 row	presentationProjections	fv4034	0b5ae4c48fca4c13
 row	presentationProjections	fv510	c92c6fdacb906a7e
-row	presentationProjections	fv510_milan	289b61cd2b393e07
+row	presentationProjections	fv510_milan	dee37bbb5a095c3f
 row	presentationProjections	griffin50mm	2ffc13999ce3553c
-row	presentationProjections	griffin_viper	4b57920c3eb534b9
-row	presentationProjections	hayate_ifv	443e4b1d6c416463
+row	presentationProjections	griffin_viper	2a38a19fcc5f20e3
+row	presentationProjections	hayate_ifv	6907fbebb8450701
 row	presentationProjections	jpz_e100	a2d85b8e9647a2bf
 row	presentationProjections	k1a1	ab3c05de23a1a4d8
 row	presentationProjections	k1e1	ba9423fcd263d5de
-row	presentationProjections	k21	1ac8b72450998aa7
+row	presentationProjections	k21	772b821536de6bd5
 row	presentationProjections	k2_black_panther	fff646f32b71b2c6
 row	presentationProjections	k2b	18a0adb4e353d6aa
 row	presentationProjections	kf41_lynx	ec8480aa86ed3f43
@@ -5790,7 +5790,7 @@ row	presentationProjections	m1a2_abrams_sepv3	219365a71ca4e73d
 row	presentationProjections	m1a2_abrams_tusk	9ec4882077e5f2b9
 row	presentationProjections	m1a3	df924be8e594fc9f
 row	presentationProjections	m2a2_bradley	2e9e3556f8a0e516
-row	presentationProjections	m3a3_bradley	b4e73c91658e0bc3
+row	presentationProjections	m3a3_bradley	ac25cd2e6fd86be2
 row	presentationProjections	m46_patton	39869c73e1c14bad
 row	presentationProjections	m47_patton	b40d8741ab19edd3
 row	presentationProjections	m48a5_patton	d3f91bc41bb157e8
@@ -5800,7 +5800,7 @@ row	presentationProjections	m60a1	efa4724a5f0903fc
 row	presentationProjections	m60a2	4e9e1f0ad421ff87
 row	presentationProjections	m60a3	5751fb5040f612e1
 row	presentationProjections	m6_linebacker	b776c6a6a56660a2
-row	presentationProjections	marder1a3	551c710f3261b16b
+row	presentationProjections	marder1a3	0b90be1e189de2ab
 row	presentationProjections	marder2	757fe63e8168536c
 row	presentationProjections	mbt70	f811d2c6ab89e8e5
 row	presentationProjections	merkava1b	2c8c9c39f6bae87f
@@ -5821,7 +5821,7 @@ row	presentationProjections	pl01_105	005de989cd47d239
 row	presentationProjections	pt64_tur	acc3dc3f32fb40cf
 row	presentationProjections	pt91a_twardy	3803fd0847eaf658
 row	presentationProjections	pt91m	cc0c8deb0ca29888
-row	presentationProjections	puma_s1	5d4cce0097e9b9bc
+row	presentationProjections	puma_s1	52536afe1b45ec59
 row	presentationProjections	raiju_ifv	8a7f4e53271fe4a0
 row	presentationProjections	sabra_mk2	c1b84a2d93909618
 row	presentationProjections	spz_puma	78f5cb942caca8e1
@@ -5922,7 +5922,7 @@ row	presentationProjections	ztz99_longwei	a49b7a716499fb4d
 row	presentationProjections	ztz99a	c3fec84e29951bd3
 row	presentationProjections	ztz99a2	97ca9ac0660d23d7
 row	spareTrackLedger	abramsx	e30394397714d43e
-row	spareTrackLedger	aft10	3e1febea80d0e029
+row	spareTrackLedger	aft10	90eb91c8c4c1b04e
 row	spareTrackLedger	ajax	191b39acaa148e98
 row	spareTrackLedger	amx10p	5604f9ec0d66806f
 row	spareTrackLedger	amx10p_25	2ed55e6accc2a3c8
@@ -5939,9 +5939,9 @@ row	spareTrackLedger	bmp2	487ac983961d2175
 row	spareTrackLedger	bmp3	3037515094928245
 row	spareTrackLedger	bmp3_rok	c04c0e599aea5a7f
 row	spareTrackLedger	bmp3m_dragun125	3e35e1e3bae16f2c
-row	spareTrackLedger	bmpt_t90	236ceb76b2ad3068
+row	spareTrackLedger	bmpt_t90	d9c4d73f572faeb1
 row	spareTrackLedger	bmpt_terminator2	00b32d89ebda233e
-row	spareTrackLedger	borsuk	04bd20bd78b1561e
+row	spareTrackLedger	borsuk	e4edc2048d66d821
 row	spareTrackLedger	bwp1	74d99e97232fc802
 row	spareTrackLedger	c1_ariete	32c66dcf92f4c9ac
 row	spareTrackLedger	c1_ariete_preserie	494746f1b3adde2a
@@ -5971,25 +5971,25 @@ row	spareTrackLedger	cv90	f32cd861d0b70c39
 row	spareTrackLedger	cv90105_tml	a71e534cef36dfa6
 row	spareTrackLedger	cv9040c	2c227d1913d53903
 row	spareTrackLedger	cv90_mk4	6b261480df9e151d
-row	spareTrackLedger	cv90_mk4_concept	0b9c75ec173e3477
+row	spareTrackLedger	cv90_mk4_concept	e14a0aaa4bebd2aa
 row	spareTrackLedger	dardo	49ae70ef5f0bb056
 row	spareTrackLedger	fv4034	1bc6d257bcd0bbc8
 row	spareTrackLedger	fv510	a6a3dc592221db3c
-row	spareTrackLedger	fv510_milan	293fac126cda6c88
+row	spareTrackLedger	fv510_milan	99fa78e3a9a2e214
 row	spareTrackLedger	griffin50mm	04d87ab4068e61b9
-row	spareTrackLedger	griffin_viper	bf4aacef30152ba7
-row	spareTrackLedger	hayate_ifv	3b4d9b32ee768e50
+row	spareTrackLedger	griffin_viper	4548e78c70249fe1
+row	spareTrackLedger	hayate_ifv	77ef6e7d2255ee97
 row	spareTrackLedger	jpz_e100	1fd743496d22132c
 row	spareTrackLedger	k1a1	0b1d287fae98c289
 row	spareTrackLedger	k1e1	e168c417cf0cdd81
-row	spareTrackLedger	k21	98630b33ed0ff1df
+row	spareTrackLedger	k21	8b3252ee87059817
 row	spareTrackLedger	k2_black_panther	1f54432f946c12da
 row	spareTrackLedger	k2b	e63a44e44b08a7cf
 row	spareTrackLedger	kf41_lynx	b2c26e725668def6
 row	spareTrackLedger	kf51_evo	ca4b9228b47ab368
 row	spareTrackLedger	kf51_panther	b1e88a03cbf4cc30
 row	spareTrackLedger	kf51_u	dec9ba8675caa7ec
-row	spareTrackLedger	kurganets25	c2c9b296425b33b0
+row	spareTrackLedger	kurganets25	c98fdf4f047218ba
 row	spareTrackLedger	kv2	85d26f8307472788
 row	spareTrackLedger	leclerc_s1	ba7c15e2de635f12
 row	spareTrackLedger	leclerc_s2	4e2354cecb6aa5ef
@@ -6026,7 +6026,7 @@ row	spareTrackLedger	m1a2_abrams_sepv3	087be7a67baf7b37
 row	spareTrackLedger	m1a2_abrams_tusk	0a6eb9027e64c418
 row	spareTrackLedger	m1a3	4922778b9df49e33
 row	spareTrackLedger	m2a2_bradley	db09f39e18ed6e22
-row	spareTrackLedger	m3a3_bradley	be30744f7f9010a8
+row	spareTrackLedger	m3a3_bradley	1cb32a487a3dbdac
 row	spareTrackLedger	m46_patton	5aebd226d5c65347
 row	spareTrackLedger	m47_patton	63adaebe53f99559
 row	spareTrackLedger	m48a5_patton	e69e5a2f40d4d3c2
@@ -6036,7 +6036,7 @@ row	spareTrackLedger	m60a1	ae931015db7d538e
 row	spareTrackLedger	m60a2	dda745f2895ec9e7
 row	spareTrackLedger	m60a3	678a096c31669121
 row	spareTrackLedger	m6_linebacker	760817229ef99e3e
-row	spareTrackLedger	marder1a3	d7f9f75ab9d0c835
+row	spareTrackLedger	marder1a3	712bb2f5785aad54
 row	spareTrackLedger	marder2	cb1667ff00fd1442
 row	spareTrackLedger	mbt70	a57f50c42b1131bf
 row	spareTrackLedger	merkava1b	2bbc62f6d38e9a4c
@@ -6057,7 +6057,7 @@ row	spareTrackLedger	pl01_105	bff4290b5f1a46d8
 row	spareTrackLedger	pt64_tur	c51e0a48c08a8aa6
 row	spareTrackLedger	pt91a_twardy	c2317a8fb10e9a3b
 row	spareTrackLedger	pt91m	0aa8daac7207db0d
-row	spareTrackLedger	puma_s1	f9ee81190dfe5dea
+row	spareTrackLedger	puma_s1	088fc3578f09fac8
 row	spareTrackLedger	raiju_ifv	335b4b7e07bd03ae
 row	spareTrackLedger	sabra_mk2	bf4ccaba26b46306
 row	spareTrackLedger	spz_puma	2b12dcd915e2a85f
@@ -6130,7 +6130,7 @@ row	spareTrackLedger	type10_tk_x	817dbd6f882c161b
 row	spareTrackLedger	type10b	5e96ed5634fb22be
 row	spareTrackLedger	type59	551ae7c3e501ceb0
 row	spareTrackLedger	type74	64dd5406fb3823c9
-row	spareTrackLedger	type89	bdea30d344433fb8
+row	spareTrackLedger	type89	836588441a1fdc05
 row	spareTrackLedger	type90	1f0dc03f143bbeea
 row	spareTrackLedger	type90_kyumaru	6b308c053c091227
 row	spareTrackLedger	type90a	3cc9929d0e2a1384
@@ -6141,7 +6141,7 @@ row	spareTrackLedger	type96b	c190a3349753bc0a
 row	spareTrackLedger	ua_challenger2	721500cd64aa315c
 row	spareTrackLedger	ua_m1a1	ed44b261ea8a6e27
 row	spareTrackLedger	ua_m1a2_abrams	a5b5ebe6e739f705
-row	spareTrackLedger	ua_m2a3_bradley	cab20adfb6991b07
+row	spareTrackLedger	ua_m2a3_bradley	8bc7f43b962b0492
 row	spareTrackLedger	ua_t80bv	24bf18e0002fff93
 row	spareTrackLedger	udes03	17769f952fad7a92
 row	spareTrackLedger	upior	d4b9eafb24578a52
@@ -6208,7 +6208,7 @@ row	spareTrackSeatPlan	ua_m1a2_abrams	c8c058bda3f60fd2
 row	spareTrackSeatPlan	ua_m2a3_bradley	87698c9c2dc48e6d
 row	spareTrackSeatPlan	xk2_black_panther	2becfbe531eb19a6
 row	tankAssets	abramsx	32596d2121997c39
-row	tankAssets	aft10	4c05d044c2a856ac
+row	tankAssets	aft10	79a053d56369a7f1
 row	tankAssets	ajax	373552b8843953e9
 row	tankAssets	amx10p	d352011b6f3ff9d1
 row	tankAssets	amx10p_25	249e063b9ae29b86
@@ -6225,9 +6225,9 @@ row	tankAssets	bmp2	15853d3e97662593
 row	tankAssets	bmp3	e9f5c52765795dd1
 row	tankAssets	bmp3_rok	06109f041a071573
 row	tankAssets	bmp3m_dragun125	a7459528122a2781
-row	tankAssets	bmpt_t90	32776c9a3c8de2a5
+row	tankAssets	bmpt_t90	c3e2c94eae170a40
 row	tankAssets	bmpt_terminator2	fffa3741d0f0dca1
-row	tankAssets	borsuk	1964fa4584d4c2e1
+row	tankAssets	borsuk	782eb03a62a0b525
 row	tankAssets	bwp1	2919b8323be980e6
 row	tankAssets	c1_ariete	02feffa66864be24
 row	tankAssets	c1_ariete_preserie	3839584c56725b19
@@ -6257,25 +6257,25 @@ row	tankAssets	cv90	fcec083e645aefcf
 row	tankAssets	cv90105_tml	54b377d4eef3eb24
 row	tankAssets	cv9040c	6d68706475206a85
 row	tankAssets	cv90_mk4	ed8f9d81e4214c1d
-row	tankAssets	cv90_mk4_concept	19f2a283eaf3dc28
+row	tankAssets	cv90_mk4_concept	d4b3d896b2767c0e
 row	tankAssets	dardo	ddccb81be8fa7af2
 row	tankAssets	fv4034	c2a9fa802a0d1554
 row	tankAssets	fv510	d28440756d87344e
-row	tankAssets	fv510_milan	d2e57d3965451e67
+row	tankAssets	fv510_milan	b8c1ec9f94b9e446
 row	tankAssets	griffin50mm	486d4c472e75965e
-row	tankAssets	griffin_viper	767b802e1aa170f0
-row	tankAssets	hayate_ifv	3749cea97ea5df12
+row	tankAssets	griffin_viper	989c9225c4212e8e
+row	tankAssets	hayate_ifv	a95389bf03ebe94f
 row	tankAssets	jpz_e100	4bdd0709a8246a48
 row	tankAssets	k1a1	74442a42869f3a90
 row	tankAssets	k1e1	99408705541767cd
-row	tankAssets	k21	d1194c6ce68e8316
+row	tankAssets	k21	135d4e1b50ffde86
 row	tankAssets	k2_black_panther	94f2888b483ff8cc
 row	tankAssets	k2b	f499ebd1cbde2d5f
 row	tankAssets	kf41_lynx	4ea409128b86c5e2
 row	tankAssets	kf51_evo	d7286be85aeca072
 row	tankAssets	kf51_panther	46fbe3996fddc54e
 row	tankAssets	kf51_u	32b9b2e5cecda3e6
-row	tankAssets	kurganets25	c7a032fe71e10e40
+row	tankAssets	kurganets25	9256beae5fa2f095
 row	tankAssets	kv2	377293bb38d9317d
 row	tankAssets	leclerc_s1	cc1927074d4d941b
 row	tankAssets	leclerc_s2	8ce729f8662ca0ee
@@ -6312,7 +6312,7 @@ row	tankAssets	m1a2_abrams_sepv3	871da20dcbef5935
 row	tankAssets	m1a2_abrams_tusk	4c3f6e6fa7fb2691
 row	tankAssets	m1a3	a85d8bcc00d94e9e
 row	tankAssets	m2a2_bradley	8722f35a303d6c4a
-row	tankAssets	m3a3_bradley	2e48ec591d9d0309
+row	tankAssets	m3a3_bradley	31be62695eb7f51e
 row	tankAssets	m46_patton	03daf5dbae14f2c5
 row	tankAssets	m47_patton	3623a4806bc640d7
 row	tankAssets	m48a5_patton	8ca873c16ee8b52a
@@ -6322,7 +6322,7 @@ row	tankAssets	m60a1	7264bec4ce73cb58
 row	tankAssets	m60a2	072fe73e00fefeb3
 row	tankAssets	m60a3	3948d8d60b14be60
 row	tankAssets	m6_linebacker	0dcbca9eda5f790d
-row	tankAssets	marder1a3	3fc1f304069d1dfc
+row	tankAssets	marder1a3	9abf95c11aeb0c4d
 row	tankAssets	marder2	825631c213a194c9
 row	tankAssets	mbt70	2e9f74d6b582f94a
 row	tankAssets	merkava1b	83f60a96fcb24749
@@ -6343,7 +6343,7 @@ row	tankAssets	pl01_105	076f2c73baafb279
 row	tankAssets	pt64_tur	c0cf7bf0b85033ab
 row	tankAssets	pt91a_twardy	4cfdcdacd1db3ef0
 row	tankAssets	pt91m	48e89c1540178c9c
-row	tankAssets	puma_s1	a48e0dd8ba712f24
+row	tankAssets	puma_s1	dacfb8850e4f15f5
 row	tankAssets	raiju_ifv	05c7dcd57dca0663
 row	tankAssets	sabra_mk2	4752cf206e4682ea
 row	tankAssets	spz_puma	002f53faf0e95879
@@ -6416,7 +6416,7 @@ row	tankAssets	type10_tk_x	0dc22914bcc2bf60
 row	tankAssets	type10b	f8abac6c2f30854a
 row	tankAssets	type59	fc0cc3ae098ff2bd
 row	tankAssets	type74	fc9229e8a9ffbb91
-row	tankAssets	type89	ac9ed803586b4abf
+row	tankAssets	type89	8d6dbaa3112b31f6
 row	tankAssets	type90	65023b9f5d804ae6
 row	tankAssets	type90_kyumaru	14c6b37afc888b58
 row	tankAssets	type90a	90ccdc8d6f786f46
@@ -6427,7 +6427,7 @@ row	tankAssets	type96b	a55b2a54f128f40b
 row	tankAssets	ua_challenger2	89345bb8820e9e63
 row	tankAssets	ua_m1a1	48b64689beedc75c
 row	tankAssets	ua_m1a2_abrams	df6ef78d687f6e37
-row	tankAssets	ua_m2a3_bradley	55da409429b88a11
+row	tankAssets	ua_m2a3_bradley	d5f2c09f0211b76d
 row	tankAssets	ua_t80bv	bba885f7b0577d79
 row	tankAssets	udes03	491fe22f2c86636a
 row	tankAssets	upior	310b08e9144d07e1
@@ -6444,13 +6444,13 @@ row	tankAssets	ztz99_longwei	9d705241176d5f8c
 row	tankAssets	ztz99a	616b7ca53ef6516e
 row	tankAssets	ztz99a2	d1bf799bda16a878
 tool	anatomy	2ab0b2ef9baebede
-tool	centering	fb109e3c626c217a
+tool	centering	abdd5883ba5a4bf7
 tool	controls	e896aa9db776053c
 tool	fills	4259463b962084ad
 tool	gunLines	07b6af9f7157b71e
-tool	icons	2e1e70b83393451d
+tool	icons	535696e9747b0c75
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
 tool	seats	12ab4ae45220a0a3
 tool	spareTrack	48e50f02c4cdd682
-toolchain	576f5e32ebc3c262
+toolchain	927084993d9b95e1

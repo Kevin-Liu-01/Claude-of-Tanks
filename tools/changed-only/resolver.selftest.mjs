@@ -220,6 +220,25 @@ put('public/out/a1.webp', 'image-4');
 assert.equal(resolveChanged(state({ cfg: modeOnly }), m4).other.mode, 'none', 'a modeOnly path is not an input');
 put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
 
+// 11. Test-only files never key a build (266): a fleet record naming its receipt (as docs/references/concepts/*.json do)
+// keeps the record keyed and the receipt out, so an edit to the receipt or to the test runner marks no id. Negative
+// controls: an edit to the record itself, or to the kit beside it, still marks every id.
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.4 };\n");
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 1;\n');
+const s5 = state(), m5 = bootstrap(s5);
+assert.ok(s5.partition.core.includes('docs/references/concepts/alpha.json'), 'the record a core module names is a core input');
+assert.ok(!s5.partition.core.includes('src/vehicles/profiles/alpha.selftest.mjs'), 'the receipt it names is not');
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha, edited');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 2;\n');
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'none:', other: 'none:' }, 'a receipt or test-runner edit marks no id');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs', note: 'x' })}\n`);
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'the record itself still keys the core');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.45 };\n");
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a kit edit still marks every id');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
 // 265: a key the committed manifest holds reads the same in every checkout. A route in the app (`/docs/${topic}`) names
 // no directory, so docs/ edits never re-key the GPU steps (the same string in a tool still does); a file under
 // public/models/ (gitignored whole) is a row by its path, the same with any bytes or none.
@@ -245,5 +264,28 @@ put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFact
   add('public/models/x_source.glb', 'glb-2');
   assert.deepEqual(rows(), absent, 'other bytes, the same row');
 }
+
+// 13. Route strings are no input (266): a module that only names the public pages (src/ui/localeRouting.ts's route
+// table) declares them `namesOnly`, so a document-head edit marks no id. Controls: undeclared, the mention keys the step
+// (466cea1178 marked centering, icons and every map's world steps that way); a tool that reads a page itself still keys it.
+const read = (rel) => readFileSync(join(root, rel), 'utf8');
+const genSizes = read('tools/gen-sizes.mjs'), genOther = read('tools/gen-other.mjs');
+put('src/ui/routes.ts', "export const ROUTES = [{ path: '/', file: 'index.html' }, { path: '/404', file: '404.html' }];\n");
+put('index.html', '<!doctype html><html><head><title>t</title></head><body></body></html>\n');
+put('404.html', '<!doctype html><html><head><title>404</title></head></html>\n');
+put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nimport { ROUTES } from '../src/ui/routes.ts';\nexport default [createTank, ROUTES];\n");
+const routes = { ...config, declared: { 'src/ui/routes.ts': { pin: '', reads: [], namesOnly: ['*.html'] } } };
+const head = (title) => put('index.html', `<!doctype html><html><head><title>${title}</title><meta name="og" content="x"></head><body></body></html>\n`);
+const m6 = bootstrap(state({ cfg: routes })), m7 = bootstrap(state());
+assert.ok(!state({ cfg: routes }).steps.other.toolFiles.includes('index.html') && state().steps.other.toolFiles.includes('index.html'));
+head('t2');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m6)), { sizes: 'none:', other: 'none:' }, 'a document-head edit marks no id');
+assert.equal(resolveChanged(state(), m7).other.mode, 'all', 'control: undeclared, the route string keys the step');
+put('tools/gen-sizes.mjs', "import { readFileSync } from 'node:fs';\nimport { createTank } from '../src/vehicles/tankFactory.ts';\nimport { round } from './helper.mjs';\nexport const PAGE = readFileSync('index.html', 'utf8');\nexport default [createTank, round];\n");
+const m8 = bootstrap(state({ cfg: routes }));
+head('t3');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m8)), { sizes: 'all:a1,a2,b1', other: 'none:' }, 'control: a tool reading the page itself keeps it keyed');
+put('tools/gen-sizes.mjs', genSizes);
+put('tools/gen-other.mjs', genOther);
 
 console.log('changed-only resolver.selftest: PASS');

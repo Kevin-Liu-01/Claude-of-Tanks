@@ -1007,12 +1007,12 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
-   "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M Proryv"
+   "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+   "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv"
   },
   "short": {
-   "en": "Leopard 2A3, Tidegate Polders",
-   "zh": "Leopard 2A3，潮闸圩田"
+   "en": "Leopard 2A3 OTCO, Tidegate Polders",
+   "zh": "Leopard 2A3 OTCO，潮闸圩田"
   }
  },
  {
@@ -6952,6 +6952,77 @@
   "short": {
    "en": "Centurion Mk 5 AVRE, Nordhavn Fjord",
    "zh": "Centurion Mk 5 AVRE，诺德港峡湾"
+  }
+ },
+ {
+  "n": 279,
+  "id": "leo1a2a1-ruinspires",
+  "hero": "leo1a2a1",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "ruinspires",
+  "time": "night",
+  "anchor": [
+   -132,
+   273
+  ],
+  "heading": 86,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "leo1a2a1",
+   "leo2a2"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 1A2A1 knocks out a T-72B at Ruinspires at night",
+   "zh": "夜间，一辆 Leopard 1A2A1 在废墟尖塔击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "Leopard 1A2A1, Ruinspires",
+   "zh": "Leopard 1A2A1，废墟尖塔"
+  }
+ },
+ {
+  "n": 280,
+  "id": "leo2a3-b4-autumn",
+  "hero": "leo2a3_b4",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "autumn",
+  "time": "day",
+  "anchor": [
+   138,
+   48
+  ],
+  "heading": 283,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "leo2a3_b4"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "sig_leo2a4_otco",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A3 knocks out a T-72B3 at Amberford",
+   "zh": "一辆 Leopard 2A3 在安伯福击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "Leopard 2A3, Amberford",
+   "zh": "Leopard 2A3，安伯福"
   }
  }
 ]

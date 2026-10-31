@@ -437,6 +437,18 @@ function cannonReload(registry: TankSpecRegistry, id: string, reloadS: number): 
 }
 
 /**
+ * 265: a build drawn on another vehicle's tech-tree node takes that vehicle's tier footing after the same-tier pass. The
+ * Leopard 1A2A1, on the 1A5's node at I, is the 1A5's spec with the DM23 round; at I hits to kill decide, so it takes the
+ * 1A5's HP and round damage, whatever applySameTierFairness gives the 1A5. Runs after that pass and before the tactical
+ * role balance (fleetRegistration.ts).
+ */
+export function applyBuildFootings(registry: TankSpecRegistry): void {
+  const sibling = spec(registry, 'leo1a5');
+  spec(registry, 'leo1a2a1').hp = sibling.hp;
+  primary(registry, 'leo1a2a1', { damage: sibling.gun.shells[0].dmg });
+}
+
+/**
  * 2026-10-25 (owner: "properly label next gen vs modern"; taxonomy.ts): the IFVs relabelled modern leave the
  * next-generation envelope for their modern Tier X peers (balanceAudit.ts). The KF41 Lynx, the CV90 Mk IV and the Type 89
  * took the Raijū's next-generation cannon package by combat-donor synchronization: they keep its rounds at the modern
@@ -535,6 +547,21 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // 263: 260's turret-front trim (x0.9) is undone, the 2A3's package reads true again; on the fixed gun face it was IV's
   // weakest (0.22). 2,400 HP, the Leopard 2's weight class at IV, lifts it to 0.37
   spec(registry, 'leo2a3').hp = 2400;
+  // 262: the fourth batch's Leopard 2A3 (leopard2a3B4Specs.ts) carries the 2A3's combat data, these trims included
+  // (265, merging 263: the 2A3's 2,400 HP in place of 260's turret-front trim)
+  cannonReload(registry, 'leo2a3_b4', 6.4);
+  spec(registry, 'leo2a3_b4').hp = 2400;
+  // 264 (a balance trim, not fidelity): the 2A4-era Leopards on the release construction (leopard2A4FamilySpecs.ts)
+  // keep their old builds' plates, but the square 2A4 front stands its wide flat mantlet where the old 2A6-look builds'
+  // spaced wedges stood ahead of a narrow one (the range's aim point lands on it), and the CAN's MEXAS cheeks stand
+  // near vertical where the old build's swept back 40 degrees. VIII round robin (balance range, 120 m): leo2a4 0.497 ->
+  // 0.167, leo2a4_v 0.724 -> 0.121, leo2a4m_can 0.493 -> 0.157; these bring each back to its old standing.
+  mantlet(registry, 'leo2a4', 2.45);
+  mantlet(registry, 'leo2a4_v', 2.2);
+  // the CAN's pair also holds both of its reviewed matchups (balanceScenarios: v m1a1 0.75, challenger1_mk2 v it 0.708):
+  // the turret front alone flips one or the other between x1.34 and x1.35
+  mantlet(registry, 'leo2a4m_can', 1.28);
+  turretFront(registry, 'leo2a4m_can', 1.33);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
@@ -593,8 +620,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
 
   // Tier VIII (263, 262's VIII v2 on the merged fleet): the gun face decides the range, and its slope sets how strong
   // it reads. The steep faces read 1,200-1,700 mm and are trimmed; the upright ones read 350-470 mm and are raised.
-  for (const id of ['vt4a1', 'leo2_improved']) mantlet(registry, id, 0.7);
-  for (const id of ['leo2a4m', 'leo2a4_otco']) mantlet(registry, id, 0.55);
+  // 265 (Main, 2026-10-30): the rebuilt leo2_improved, leo2a4m and leo2a4_otco take none of 263's trims here (x0.7,
+  // x0.55): they were measured on the old builds' steep gun faces; the balance lane re-measures VIII on the rebuilt fronts
+  mantlet(registry, 'vt4a1', 0.7);
   for (const id of ['leo2_revolution', 'leo2_revolution_proto']) mantlet(registry, id, 1.7);
   mantlet(registry, 'm1a1', 1.5);
   mantlet(registry, 'm1a1ha', 2.0);

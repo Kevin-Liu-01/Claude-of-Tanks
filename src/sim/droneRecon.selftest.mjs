@@ -13,7 +13,7 @@ import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { missionAirframeVolumes } from './missionAttachment.ts';
 import '../vehicles/tankFactory.ts';
 import { MISSION_ATTACHMENT_SEATS } from './missionAttachmentSeats.generated.ts';
-import { DRONE_DOCK_EXEMPT } from './droneDockRules.ts';
+import { DRONE_DOCK_EXEMPT } from './droneDockExempt.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 // A renderer may add running-gear bookkeeping after authority registration;
 // it must never move the drone's shared launch point. Real roof/datum changes
@@ -28,7 +28,7 @@ roofFixture.armor.turretPlates[0].verts[0][1]+=.02;
 assert.notEqual(missionAttachmentSignature(roofFixture),baseSignature,'changed roof stock invalidates native support');
 // Load the authority's spec-only facade in a fresh process. Registration order
 // cannot quietly select a fallback origin instead of the browser's native seat.
-const authorityScript=`const {ensureAuthorityFleet}=await import('./src/vehicles/authorityFleet.ts');await ensureAuthorityFleet();const {TANK_SPECS}=await import('./src/vehicles/specs.ts');const {missionAttachmentSignature,missionAttachmentFor}=await import('./src/sim/missionAttachment.ts');const {DRONE_DOCK_EXEMPT}=await import('./src/sim/droneDockRules.ts');console.log(JSON.stringify(Object.fromEntries(Object.entries(TANK_SPECS).filter(([id])=>!Object.hasOwn(DRONE_DOCK_EXEMPT,id)).map(([id,s])=>[id,{signature:missionAttachmentSignature(s),seat:missionAttachmentFor(s)}]))));`;
+const authorityScript=`const {ensureAuthorityFleet}=await import('./src/vehicles/authorityFleet.ts');await ensureAuthorityFleet();const {TANK_SPECS}=await import('./src/vehicles/specs.ts');const {missionAttachmentSignature,missionAttachmentFor}=await import('./src/sim/missionAttachment.ts');const {DRONE_DOCK_EXEMPT}=await import('./src/sim/droneDockExempt.ts');console.log(JSON.stringify(Object.fromEntries(Object.entries(TANK_SPECS).filter(([id])=>!Object.hasOwn(DRONE_DOCK_EXEMPT,id)).map(([id,s])=>[id,{signature:missionAttachmentSignature(s),seat:missionAttachmentFor(s)}]))));`;
 const authority=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',authorityScript],{cwd:fileURLToPath(new URL('../../',import.meta.url)),encoding:'utf8',maxBuffer:2_000_000}));
 let count=0;
 for(const spec of Object.values(TANK_SPECS)){

@@ -91,8 +91,8 @@ const restoreCanvas = installCanvasFixture();
 const visuals = [];
 let suitMeshes = 0, leafMeshes = 0, decorMeshes = 0;
 try {
-  // a leafy suit (birch sprays), the ULCANS multispectral cover (painted garnish), a spruce suit
-  for (const id of ['pt91a_twardy', 'm1a1_abrams_fep', 'strv103b']) {
+  // a leafy suit, the ULCANS multispectral cover (painted garnish), a spruce suit
+  for (const id of ['t64bv_donbas', 'm1a1_abrams_fep', 'strv103b']) {
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     visuals.push(visual);
     visual.root.traverse((object) => {

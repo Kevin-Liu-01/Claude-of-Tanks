@@ -31,7 +31,7 @@ for(const id of PHOTO_REFERENCE_IDS){
   assert.equal(roofEquipmentVerdict(id,{...census,mg:target.roofMachineGuns+1},config,receipt).passed,false);
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'photo targets cannot waive unexplained holes');
   const steps=tankReleaseSteps(id,true,'node');
-  assert.equal(steps.length,18,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18 227 gun-gaps: + the gun-junction ledger; 2026-10-29 265: + the interior-fill exposure)
+  assert.equal(steps.length,19,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18 227 gun-gaps: + the gun-junction ledger; 266: + the id-scoped tanks receipts) 265 integration: + the id-scoped fill exposure beside the id-scoped tanks step (19).
   assert.equal(steps.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,'do not fabricate 3D scores');
 }
 // Per-id packets (265): each id reads the packet registered to it, which holds exactly that packet's ids, and the fixture

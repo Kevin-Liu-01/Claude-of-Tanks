@@ -15,6 +15,14 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+Receipt tiers (266): `selftest-tiers.mjs` splits `selftest-suites.mjs` into the default tier (`npm test`, the
+release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser) that only
+`npm run test:heavy -- <suite>` runs, when the owner triggers it. `test-recommend.mjs` says which suites a diff
+warrants, one plain line each for Main to relay; `test-lane.mjs` runs a lane's share of the default tier plus its
+tanks' pins, each with its reason and a negative control; `test-diff.mjs` holds what both read (the diff, the
+changed-only fleet and world partitions in reverse, the balance inputs per id); `test-audit.mjs --write` regenerates
+`docs/TEST-AUDIT.md`. `selftest-tiers.selftest.mjs` holds the callers: nothing but test:heavy (and tank:release:check's
+`tanks --ids` step) runs a manual suite.
 `deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
 every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
 cases:
@@ -28,6 +36,11 @@ ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI ga
 1920x1080, 1440x900, 1280x720, 1024x600, 900x700, 390x844 and 844x390 touch). It fails on any two visible instruments that intersect, unless the pair is in its ALLOWED list with a
 reason. A new HUD instrument joins its INSTRUMENTS list and a new HUD state the fixture's `state()`. The full
 Playwright regression (`battle-hud-layout.browser.mjs`) covers more windows and locales.
+`garage-roster-settle.browser.selftest.mjs` (Puppeteer, the capture lock; `--url=` a served game, else its own vite
+server; the manual `ui` suite) is the Garage roster's settle pass. At each window it chooses every nation and checks the strip where the window puts it. At three windows it
+also steps the carousel's width across its whole range. It fails when the card strip or the nation rail keeps changing
+once it has had four frames to settle. `--negative-control` makes the carousel arrows shrink again, the 265 loop (the
+strip's width followed its own end pad), and the run must then find the loop.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments
@@ -92,6 +105,13 @@ one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
 `COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
 generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
 also spelled `--release`); exploration passes its own rounds explicitly.
+
+A receipt that pools many independent runs (`destruction-slab-kinds`, 2026-10-30, item 265) queues its
+smallest unit (a run, not the map that holds it) so no container is the long pole, keys every result on its
+inputs (a clean or judged run on its fingerprint, a map's listing on the tool's import closure) so unchanged
+work is never redone, stops a unit past its CPU on the worker thread's clock (`worker.cpuUsage()`: at load
+300 the wall runs 10-15x the CPU), budgets the whole receipt in CPU minutes, and plants a defect the verdict
+must catch.
 
 Every browser goes through `browser-launch.mjs` (2026-10-26, item 244; the
 10-23 crashes came from a 14.1 GB capture renderer): `launchGuardedBrowser(

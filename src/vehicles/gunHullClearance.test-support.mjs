@@ -335,6 +335,85 @@ export function fixedGunHullProbe(id, { decor = true } = {}) {
   };
 }
 
+/** The clearance the pitching shield and gun keep from the turret's fixed castings round its channel (261). */
+export const GUN_SHIELD_KEEP_M = .004;
+
+/**
+ * 261 (owner on the STB-1 and Type 74: "completely new mantlets and turret geometry around the mantlets"): a gun whose
+ * shield pitches in a channel cast into its turret front, measured against that channel over the gun's whole travel. The
+ * builder publishes the channel on rig_gun (userData.gunShieldFit, turret frame: halfWidthM the channel's cheek faces,
+ * shieldHalfWidthM the shield's sides, axis [y, z] the trunnion, faceZ the receiver's deepest face, mouth [y0, y1] the
+ * opening's height, stub.r the trunnion pins' radius). Build `id` (seed 4242, high quality, decorations on) and pose the
+ * gun at `pitchDeg` (positive up, the turret level: the hull's hydropneumatic pitch moves turret and gun as one and
+ * changes nothing here). `measure(pitchDeg)` returns `clearance`, the smallest distance from the gun's samples (every
+ * rig_gun mesh, the recoiling parts in battery and at 0.135 m, 10 mm apart; not the trunnion pins, which run into the
+ * cheeks by design, nor the breech behind the trunnion inside the turret) to every fixed turret mesh (`part`, `at`), and `holes`, the rays of a 20 mm grid
+ * across the channel's mouth, shot straight down the turret's axis from ahead, whose first hit is the receiver face: a
+ * gap where the shield no longer fills its channel. Dispose the probe when done.
+ */
+export function gunShieldProbe(id) {
+  const spec = getSpec(id);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor: true });
+  tank.root.updateMatrixWorld(true);
+  const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
+  const fit = gun?.userData.gunShieldFit;
+  if (!turret || !gun || gun.parent !== turret || !fit) { tank.dispose(); throw new Error(`${id}: no gunShieldFit on a rig_gun under rig_turret`); }
+  const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert();
+  const recoiling = new Set(); recoil?.traverse((o) => recoiling.add(o));
+  const gunMeshes = meshesUnder(gun), fixedMeshes = meshesUnder(turret, [gun]);
+  const mountPts = densePoints(meshTriangles(gunMeshes.filter((m) => !recoiling.has(m)), gInv).tri, .01);
+  const tubePts = densePoints(meshTriangles(gunMeshes.filter((m) => recoiling.has(m)), gInv).tri, .01);
+  const soup = meshTriangles(fixedMeshes, tInv), grid = new SurfaceGrid(soup.tri, { cell: .04, rq: .05 });
+  const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
+  const twoSided = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), raycaster = new THREE.Raycaster();
+  const proxy = (m, owner) => { const o = new THREE.Mesh(m.geometry, twoSided); o.matrixAutoUpdate = false; o.userData.owner = owner; o.userData.mesh = m; return o; };
+  const fixedProxies = fixedMeshes.filter((m) => !m.isInstancedMesh).map((m) => proxy(m, 'turret'));
+  const gunProxies = gunMeshes.filter((m) => !m.isInstancedMesh).map((m) => proxy(m, 'gun'));
+  const P = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), o = new THREE.Vector3();
+  const minus = new THREE.Vector3(0, 0, -1), shift = { x: 0 };
+  const measure = (pitchDeg) => {
+    P.compose(gun.position, q.setFromEuler(e.set(-pitchDeg * DEG, 0, 0)), gun.scale);
+    let clearance = Infinity, part = null, at = null, ahead = 0;
+    for (const [pts, strokes] of [[mountPts, [0]], [tubePts, GUN_RECOIL_STROKES_M]]) for (const back of strokes) {
+      for (let i = 0; i < pts.length; i += 3) {
+        v.set(pts[i] + shift.x, pts[i + 1], pts[i + 2] - back).applyMatrix4(P);
+        // the breech behind the trunnion runs inside the turret's casting
+        if (pts === tubePts && v.z < fit.axis[1]) continue;
+        // a trunnion pin, run from the shield's side into its cheek by design
+        if (Math.abs(v.x - shift.x) > fit.shieldHalfWidthM - 1e-4 && Math.hypot(v.y - fit.axis[0], v.z - fit.axis[1]) <= fit.stub.r + 1e-4) continue;
+        ahead++;
+        const d = grid.distance(v.x, v.y, v.z);
+        if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = v.toArray().map((c) => +c.toFixed(3)); }
+      }
+    }
+    // the mouth, looked into straight down the turret's axis with the gun at this pitch (turret frame = proxies' frame)
+    const G = new THREE.Matrix4().makeTranslation(shift.x, 0, 0).multiply(P).multiply(gInv);
+    for (const p of fixedProxies) p.matrixWorld.copy(tInv).multiply(p.userData.mesh.matrixWorld);
+    for (const p of gunProxies) p.matrixWorld.copy(G).multiply(p.userData.mesh.matrixWorld);
+    let holes = 0, rays = 0, hole = null;
+    const [y0, y1] = fit.mouth, xs = fit.halfWidthM - .02;
+    for (let x = -xs; x <= xs + 1e-9; x += .02) for (let y = y0 + .02; y <= y1 - .02 + 1e-9; y += .02) {
+      rays++;
+      raycaster.set(o.set(x, y, fit.faceZ + 4), minus); raycaster.far = 8;
+      const hit = raycaster.intersectObjects([...fixedProxies, ...gunProxies], false)[0];
+      if (!hit || (hit.object.userData.owner === 'turret' && hit.point.z < fit.faceZ + .02)) { holes++; hole ??= [+x.toFixed(3), +y.toFixed(3)]; }
+    }
+    return { pitchDeg, clearance, part, at, ahead, holes, rays, hole };
+  };
+  return {
+    id, spec, fit, measure,
+    pitchesDeg: [-(spec.gunDepressionDeg ?? 0), spec.gunElevationDeg ?? 0],
+    /** Slide the gun's samples and meshes `x` metres sideways (a negative control) while `run` measures. */
+    withShift(x, run) { shift.x = x; try { return run(); } finally { shift.x = 0; } },
+    /** Leave the gun's non-recoiling parts (its shield) out of the mouth's rays while `run` measures (a negative control). */
+    withoutShield(run) {
+      const kept = gunProxies.splice(0, gunProxies.length); gunProxies.push(...kept.filter((p) => recoiling.has(p.userData.mesh)));
+      try { return run(); } finally { gunProxies.splice(0, gunProxies.length, ...kept); }
+    },
+    dispose: () => { twoSided.dispose(); tank.dispose(); },
+  };
+}
+
 /** The clearance a turret gun's tube keeps, ahead of its port, from every turret part (262). */
 export const TURRET_GUN_PORT_KEEP_M = .01;
 

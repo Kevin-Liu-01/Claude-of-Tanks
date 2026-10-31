@@ -98,6 +98,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t84bm_oplot_m:b32Heavy,bm_oplot_m:b32Heavy,bm_oplot_t:b32Heavy,
   t72b3m_hetman_ii:ubr6,
   t72b3_zubr_ii:wkmb,
+  pt84_orzel:wkmb,pt84_sokol:wkmb,pt84_zbik:wkmb,
   t80u_zoria:b32Heavy,
   t72b3m_hetman:ubr6,
   t72b3_sich:ubr6,

@@ -1225,17 +1225,32 @@
   },
   "leo2_improved": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 17,
    "openViews": 0,
-   "insideOutPx": 246,
-   "seeThroughPx": 68,
+   "insideOutPx": 322,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 126562,
+   "tris": 114382,
    "frame": [
     0,
-    2.4,
-    1.6,
-    6.4
+    2.5,
+    0.85,
+    6.1
+   ]
+  },
+  "leo2a3_b4": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 470,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 102172,
+   "frame": [
+    0,
+    1.95,
+    0.75,
+    5.8
    ]
   },
   "leo2_revolution": {
@@ -1272,124 +1287,75 @@
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 190,
+   "insideOutPx": 470,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 5584,
-   "tris": 114498,
+   "netSeeThroughPx": 0,
+   "tris": 102228,
    "frame": [
     0,
-    1.9,
-    1.2,
-    6
-   ],
-   "accepts": [
-    {
-     "kind": "see-through",
-     "reason": "watertight-230 seats the turret spare-track strip flat on the rear roof where it rode a four-post rack and the field net laid on the build drapes over it (netting 6766 to 6616 px)",
-     "by": "kevinliu",
-     "date": "2026-10-21",
-     "from": {
-      "seeThroughPx": 0,
-      "netSeeThroughPx": 6766
-     }
-    },
-    {
-     "kind": "see-through",
-     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
-     "by": "kevinliu",
-     "date": "2026-10-21",
-     "from": {
-      "seeThroughPx": 0,
-      "netSeeThroughPx": 6616
-     }
-    },
-    {
-     "kind": "see-through",
-     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
-     "by": "kevinliu",
-     "date": "2026-10-29",
-     "from": {
-      "seeThroughPx": 0,
-      "netSeeThroughPx": 6389
-     }
-    }
+    1.95,
+    0.75,
+    5.8
    ]
   },
   "leo2a3": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 200,
+   "insideOutPx": 470,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 114100,
+   "tris": 104887,
    "frame": [
     0,
-    1.9,
-    1.25,
-    5.9
+    1.95,
+    0.75,
+    5.8
    ]
   },
   "leo2a4": {
-   "sealed": false,
-   "openPx": 17,
-   "openViews": 1,
-   "openViewNames": [
-    "cube_1_0_-1"
-   ],
-   "insideOutPx": 211,
-   "seeThroughPx": 7,
+   "sealed": true,
+   "openPx": 14,
+   "openViews": 0,
+   "insideOutPx": 430,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 131680,
+   "tris": 108781,
    "frame": [
     0,
     1.45,
-    1.65,
-    6.1
-   ],
-   "accepts": [
-    {
-     "kind": "rebaseline",
-     "reason": "framed re-base recorded this row open (seethrough/apply-rebaseline3.mjs, not --reframe): a real slit about 1 cm tall along the turret roof line at y 2.56 m, x 0.51..0.63, z -0.30..-0.07 (back-facing turret facets 14 cm before any front face; 9-17 px in the four level front, rear and front-diagonal views at 1024 px), one 6 px hole cluster in view cube_1_0_-1 at 256 px (2 px under the old frame, below the cluster size). The row holds its one hole view: a new hole cluster fails. A vehicle-lane work order: close the slit, then --tighten-ledger=leo2a4.",
-     "by": "guards-229",
-     "date": "2026-10-20",
-     "from": {
-      "sealed": true,
-      "openPx": 0,
-      "seeThroughPx": 27,
-      "netSeeThroughPx": 0
-     }
-    }
+    0.85,
+    5.7
    ]
   },
   "leo2a4_otco": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 223,
+   "insideOutPx": 448,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 140784,
+   "tris": 120204,
    "frame": [
     0,
-    1.7,
     1.75,
-    6.3
+    0.85,
+    5.8
    ]
   },
   "leo2a4_v": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 99,
+   "insideOutPx": 407,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 129808,
+   "tris": 115071,
    "frame": [
     0,
-    1.45,
-    1.05,
-    5.7
+    2.1,
+    0.85,
+    5.9
    ]
   },
   "leo2a4m": {
@@ -2256,17 +2222,69 @@
   },
   "pt91a_twardy": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 317,
-   "seeThroughPx": 16,
-   "netSeeThroughPx": 7108,
-   "tris": 82560,
+   "insideOutPx": 135,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 80968,
    "frame": [
-    -0.2,
-    1.7,
-    1.4,
-    5.8
+    0,
+    2.75,
+    0.95,
+    6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "rebuilt as the serial PT-91 on the T-72B3 study, whose own row holds this frame [0 2.75 0.95 6] for the same roof whips",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "sealed": true,
+      "openPx": 1,
+      "openViews": 0,
+      "seeThroughPx": 16,
+      "netSeeThroughPx": 7108,
+      "frame": [
+       -0.2,
+       1.7,
+       1.4,
+       5.8
+      ]
+     },
+     "to": [
+      0,
+      2.75,
+      0.95,
+      6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the ghillie net is gone with the rebuild, see-through and netting both fell to 0",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 16,
+      "netSeeThroughPx": 7108,
+      "frame": [
+       -0.2,
+       1.7,
+       1.4,
+       5.8
+      ]
+     }
+    }
    ]
   },
   "pt91m": {
@@ -2434,7 +2452,7 @@
    "openViews": 0,
    "insideOutPx": 47,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4240,
+   "netSeeThroughPx": 2296,
    "tris": 128604,
    "frame": [
     0,
@@ -2445,9 +2463,9 @@
    "accepts": [
     {
      "kind": "see-through",
-     "reason": "christian2-262 dressed the Strv 121 in its Swedish field suit (an ulcans cover and spruce boughs) whose alpha-cut netting shows sky between the leaves",
-     "by": "integ-263",
-     "date": "2026-10-28",
+     "reason": "release 265 the Swedish 2A4 rebuild on the Leopard 2 release hull, its field suit re-seated by the ghillie lane fix f7ae245d99 and its skirt drapes split around the 2A4 skirts' two open seams (the strict track clip), so the alpha-cut netting covers a new hull, 2139 px against main's 2806 row",
+     "by": "strv121-2a4-265",
+     "date": "2026-10-29",
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 0
@@ -2455,12 +2473,22 @@
     },
     {
      "kind": "see-through",
-     "reason": "ghillie-render-264 straight-alpha nets and garnish, the Strv 121 cover boughs, critic r4 PASS",
-     "by": "kevinliu",
+     "reason": "release 265 the 2A4 turret's cheeks swept back 27 degrees (the owner's ruling) and the field suit's turret net laid over the new front, 2212 px",
+     "by": "strv121-2a4-265",
      "date": "2026-10-29",
      "from": {
       "seeThroughPx": 0,
-      "netSeeThroughPx": 2806
+      "netSeeThroughPx": 2139
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "main's ghillie rework (c62dba2c1a via 6df1629187) lays the Strv 121's cover boughs low among the flaps - netting 2212 to 2296 px with see-through unchanged",
+     "by": "kevinliu",
+     "date": "2026-10-30",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2212
      }
     }
    ]
@@ -3986,6 +4014,21 @@
     }
    ]
   },
+  "leo1a2a1": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 132,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 114823,
+   "frame": [
+    0,
+    2.2,
+    1.2,
+    5.7
+   ]
+  },
   "shot_kal": {
    "sealed": true,
    "openPx": 1,
@@ -4389,6 +4432,51 @@
     2,
     1.45,
     6.1
+   ]
+  },
+  "pt84_orzel": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116244,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "pt84_sokol": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 146,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 113716,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "pt84_zbik": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 56,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 118705,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
    ]
   },
   "ztz99a2_qinglong": {

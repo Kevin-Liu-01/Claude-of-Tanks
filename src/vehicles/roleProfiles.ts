@@ -85,9 +85,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   c2_ariete: { doctrine: 'flanker', viewM: 425, still: 0.218, moving: 0.158 },
   amx40_proto: { doctrine: 'flanker', viewM: 395, still: 0.236, moving: 0.176 },
   leo1a5: { doctrine: 'flanker', viewM: 430, still: 0.238, moving: 0.178 },
+  // the 1A1: the 1A5's flanker without the EMES 18, so a shorter view
+  leo1a2a1: { doctrine: 'flanker', viewM: 410, still: 0.240, moving: 0.180 },
   leopard2_proto: { doctrine: 'flanker', viewM: 395, still: 0.225, moving: 0.165 },
   leo2a2: { doctrine: 'flexible', viewM: 400, still: 0.185, moving: 0.125 },
   leo2a3: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
+  leo2a3_b4: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
   leo2a4m_can: { doctrine: 'flexible', viewM: 410, still: 0.178, moving: 0.118 },
   leo2a4_v: { doctrine: 'flexible', viewM: 405, still: 0.181, moving: 0.121 },
   leo2a4m: { doctrine: 'flexible', viewM: 415, still: 0.176, moving: 0.116 },
@@ -198,6 +201,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // Oplot-T's air conditioner and APU box make it the easier one to spot
   bm_oplot_m: { doctrine: 'flanker', viewM: 435, still: 0.226, moving: 0.166 },
   bm_oplot_t: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.170 },
+  pt84_orzel: { doctrine: 'flanker', viewM: 435, still: 0.229, moving: 0.168 },
+  pt84_sokol: { doctrine: 'precision', viewM: 470, still: 0.214, moving: 0.158 },
+  pt84_zbik: { doctrine: 'assault', viewM: 410, still: 0.246, moving: 0.182 },
   ua_m1a1: { doctrine: 'flexible', viewM: 400, still: 0.176, moving: 0.116 },
   leo2a6_ua: { doctrine: 'flexible', viewM: 425, still: 0.168, moving: 0.108 },
   object695: { doctrine: 'support', viewM: 440, still: 0.275, moving: 0.215 },

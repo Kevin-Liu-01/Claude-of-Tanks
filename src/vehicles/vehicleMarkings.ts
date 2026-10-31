@@ -292,6 +292,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   c2_ariete_proto: anchor('turret', 'left', 0.45, 0.40, 0.23, 1),
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
   leo2a2: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a4_v: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
@@ -300,6 +301,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
   leo2a3: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  leo2a3_b4: anchor('turret', 'right', 0.40, 0.42, 0.24, -1),
   leo2a4m_can: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
   // 2026-10-05: on the turret, where the surface search always landed. The ghillie side drape hides both hull sides,
@@ -392,6 +394,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
   bm_oplot_m: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
   bm_oplot_t: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
+  // the Orzeł's flank carries its Krata grid and the housing its Tellur bank: the checker goes on the right bin's face
+  pt84_orzel: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_sokol: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_zbik: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
