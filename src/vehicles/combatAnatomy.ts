@@ -17,6 +17,7 @@ import {
   type AnatomyCalibrationCell,
   type AnatomyCalibrationStructure,
   type AnatomyCrewSeatReceipt,
+  type AnatomyModuleSeatReceipt,
   type AnatomyModuleShapeReceipt,
   type AnatomyEraPlateReceipt,
   type CombatAnatomyCalibration,
@@ -26,6 +27,7 @@ import {
   calibrationOrientationPoint, stockCollisionCoverCandidates, stockCollisionFaceCovered,
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
+import { stationSideSign } from './vehicleSide.ts';
 import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
 import { rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
@@ -655,16 +657,18 @@ function moduleUsesInternalShell(volume: ModuleVolume): boolean {
     && volume.module !== 'optics';
 }
 
-function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+/** The hit shapes a module volume carries (266: the placement pass in tools/crew-seat-fit.mjs judges a module by them). */
+export function moduleHitShapes(armor: ArmorAnatomy, volume: ModuleVolume): AnatomyShape[] {
   const parts = Array.isArray(volume.parts) && volume.parts.length
     ? volume.parts
     : [volume];
   const cells = collisionCellsForVolume(armor, volume);
   const internal = moduleUsesInternalShell(volume);
-  volume.shapes = [];
-  for (const part of parts) {
-    volume.shapes.push(...fitModulePartToShell(volume.module, part, cells, internal));
-  }
+  return parts.flatMap((part) => fitModulePartToShell(volume.module, part, cells, internal));
+}
+
+function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+  volume.shapes = moduleHitShapes(armor, volume);
 }
 
 function crewBodyShapes(volume: CrewVolume): AnatomyShapeEllipsoid[] {
@@ -732,9 +736,27 @@ function applyCrewSeat(volume: CrewVolume, seat: AnatomyCrewSeatReceipt): void {
   volume.blastPoints = seat.blastPoints.map((point) => point.slice());
 }
 
+/**
+ * 266 module placement: a calibration's module seat (tools/crew-seat-fit.mjs placeModules) is the sketched module's
+ * parts placed around the seated crew inside its armour; applied as literal numbers before its hit shapes are fitted.
+ */
+function applyModuleSeat(volume: ModuleVolume, seat: AnatomyModuleSeatReceipt): void {
+  const parts = seat.parts.map((part) => ({ min: part.min.slice(), max: part.max.slice() }));
+  const bounds = boxBounds(parts);
+  if (!bounds) return;
+  volume.min = bounds.min;
+  volume.max = bounds.max;
+  if (parts.length > 1 || volume.parts?.length) volume.parts = parts;
+}
+
 function addPreciseInternalShapes(armor: ArmorAnatomy, calibration: CombatAnatomyCalibration | null): void {
-  for (const volume of armor.modules || []) addPreciseModuleShapes(armor, volume);
-  // The generator measures the legacy stations; it never reads its own previous seats.
+  // The generator measures the sketches; it never reads its own previous seats.
+  const moduleSeats = isCombatAnatomyMeasurementMode() ? null : calibration?.moduleSeats;
+  for (const volume of armor.modules || []) {
+    const seat = moduleSeats?.find((entry) => entry.module === volume.module && entry.turretLocal === !!volume.turretLocal);
+    if (seat && !volume.gunFollow) applyModuleSeat(volume, seat);
+    addPreciseModuleShapes(armor, volume);
+  }
   const seats = isCombatAnatomyMeasurementMode() ? null : calibration?.crewSeats;
   for (const volume of armor.crew || []) {
     const seat = seats?.find((entry) => entry.crew === volume.crew);
@@ -1259,7 +1281,7 @@ function boxForStation(
     template.max[axis] - value,
     (frameBounds.max[axis] - frameBounds.min[axis]) * (axis === 1 ? 0.72 : 0.34),
   ));
-  const xFraction = station.endsWith('Left') ? -0.28 : station.endsWith('Right') ? 0.28 : 0;
+  const xFraction = stationSideSign(station) * 0.28;
   const zFraction = station.startsWith('front') ? 0.29 : station.startsWith('rear') ? -0.24 : 0;
   const center = [
     (frameBounds.min[0] + frameBounds.max[0]) * 0.5
@@ -1273,6 +1295,64 @@ function boxForStation(
     min: center.map((value, axis) => Math.max(frameBounds.min[axis] + 0.03, value - size[axis] * 0.5)),
     max: center.map((value, axis) => Math.min(frameBounds.max[axis] - 0.03, value + size[axis] * 0.5)),
   };
+}
+
+/** A box this close to its frame's axis names no side. */
+const SIDE_DEADBAND_M = 0.05;
+/** Volumes with a place of their own: measured (tracks, the ring), drawn with the gun, or outside the hull. */
+const SKETCH_FIXED_MODULES = new Set(['trackL', 'trackR', 'turretRing', 'gun', 'gunMount', 'roofGun']);
+
+function boxSide(box: Bounds): number {
+  const x = (box.min[0] + box.max[0]) * 0.5;
+  return Math.abs(x) < SIDE_DEADBAND_M ? 0 : Math.sign(x);
+}
+
+function mirrorBoxX(box: AnatomyVolume): void {
+  for (const part of [box, ...(box.parts || [])]) {
+    const min = part.min[0];
+    part.min[0] = -part.max[0];
+    part.max[0] = -min;
+  }
+}
+
+/**
+ * (266) The combat anatomy is a hand sketch in vehicleSide.ts's frame, but most families were sketched with the left at
+ * -x, the mirror of the world and of their drawn models: the M1A2's commander sat under the loader's M240, the
+ * Leopard 2A6's gunner under the loader's hatch, the Merkava 4's engine on the left. The sourced crew stations
+ * (internalLayoutRegistry.ts) decide each sketch's handedness, frame by frame (a hull and a turret are often sketched
+ * by different helpers): where more of a frame's side-named stations sit on the wrong side than on their own, that
+ * frame's sketch (its crew and the modules sketched with them) is mirrored about its axis. A frame with no side-named
+ * station follows the vehicle's vote. Drawn module receipts, the tracks, the ring and the gun are measured from the
+ * model and stay.
+ */
+function matchSketchHandedness(
+  armor: ArmorAnatomy,
+  layout: CombatInternalLayout,
+  calibration: CombatAnatomyCalibration | null,
+): void {
+  if (layout.confidence === 'legacy-nonplayable') return;
+  const votes = { hull: { own: 0, mirrored: 0 }, turret: { own: 0, mirrored: 0 } };
+  for (const station of layout.crew) {
+    const want = stationSideSign(station.station);
+    const box = (armor.crew || []).find((entry) => entry.crew === station.role);
+    const side = box ? boxSide(box) : 0;
+    if (!box || !want || !side) continue;
+    votes[box.turretLocal ? 'turret' : 'hull'][side === want ? 'own' : 'mirrored']++;
+  }
+  const own = votes.hull.own + votes.turret.own;
+  const mirrored = votes.hull.mirrored + votes.turret.mirrored;
+  const mirrors = (box: AnatomyVolume): boolean => {
+    const frame = votes[box.turretLocal ? 'turret' : 'hull'];
+    return frame.own + frame.mirrored ? frame.mirrored > frame.own : mirrored > own;
+  };
+  const drawn = new Set((calibration?.moduleShapes || []).map((receipt) => (
+    `${receipt.module}|${!!receipt.turretLocal}|${!!receipt.gunFollow}`)));
+  for (const box of armor.crew || []) if (mirrors(box)) mirrorBoxX(box);
+  for (const box of armor.modules || []) {
+    if (SKETCH_FIXED_MODULES.has(box.module) || box.external || box.gunFollow || box.roofGunFollow) continue;
+    if (drawn.has(`${box.module}|${!!box.turretLocal}|${!!box.gunFollow}`)) continue;
+    if (mirrors(box)) mirrorBoxX(box);
+  }
 }
 
 function applyPublishedCrewLayout(
@@ -1298,6 +1378,16 @@ function applyPublishedCrewLayout(
       if (!template || !bounds) continue;
       const placed = boxForStation(template, bounds, station.station);
       box = { crew: station.role, min: placed.min, max: placed.max, turretLocal };
+    }
+    // a station the sketch still puts on the wrong side of its frame's axis crosses over; one on the axis that names a
+    // side steps onto it, its box clear of the axis (the seat fitter may move it further out)
+    const want = layout.confidence === 'legacy-nonplayable' ? 0 : stationSideSign(station.station);
+    const side = boxSide(box);
+    if (want && side === -want) mirrorBoxX(box);
+    if (want && !side) {
+      const shift = want * (box.max[0] - box.min[0]) * 0.5 - (box.min[0] + box.max[0]) * 0.5;
+      box.min[0] += shift;
+      box.max[0] += shift;
     }
     box.station = station.station;
     box.visualForm = 'seatedCrew';
@@ -1737,6 +1827,7 @@ export function finalizeCombatAnatomy(
   // 122-vehicle evidence registry. Keep their authored anatomy usable without
   // diluting the playable-fleet exact-coverage gate.
   const layout = internalLayoutFor(spec.id) || legacyInternalLayout(spec);
+  matchSketchHandedness(armor, layout, calibration);
   applyPublishedCrewLayout(spec, layout, calibration);
   applyModuleLayoutMetadata(spec, layout, calibration);
   addDerivedModules(spec, layout, calibration);

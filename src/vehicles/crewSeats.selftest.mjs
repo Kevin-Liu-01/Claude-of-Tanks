@@ -15,10 +15,36 @@ import { INTERNAL_LAYOUT_BY_TANK } from './internalLayoutRegistry.ts';
 import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSurfaceSamples } from '../../tools/crew-seat-fit.mjs';
 
 // Stations where no P50 posture fits the measured shell (the body's share left outside at the best placement): kept
-// there, shapes trimmed inside. The two drivers miss by 0.1 %. The ZTZ-100's crew ride in its hull capsule (247); the
-// Challenger 2 family's turret crews fit untrimmed on their 1.1-scaled combat hull (248, turret-scale fb37cd1b87).
+// there, shapes trimmed inside. The ZTZ-100's crew ride in its hull capsule (247); the Challenger 2 family's turret
+// crews fit untrimmed on their 1.1-scaled combat hull (248, turret-scale fb37cd1b87).
+// 2026-10-30 (crew-side 266): stations on their true sides, turret crew held within the drawn race under the deck and
+// hull crew out of the basket's cylinder (crew-seat-fit ring limits). Each is re-seated first (every posture over the
+// position grid); what remains is trimmed. Over 10 %: the gunners of five T-72/T-80-derived concept turrets
+// (type96_72_long, t72b3_qilin, type96_80_feng, t80u_yun, t72b3m_kunlun), whose race (0.84 m) is shared with the
+// carousel and breech: listed as data fixes (race or carousel sketch), not loosened here.
 const TRIMMED = Object.freeze({
-  'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
+  'm46_patton/driver': 0.016,
+  'leclerc_xlr/driver': 0.013,
+  't72b3m_hetman_ii/driver': 0.001,
+  'leopard2_proto/driver': 0.002,
+  'type96_72_long/gunner': 0.213,
+  'merkava2b/commander': 0.031,
+  'type96_80_feng/gunner': 0.122,
+  'merkava2d/commander': 0.061,
+  'merkava4b/commander': 0.071,
+  'm60a3/driver': 0.005,
+  'k2_black_panther/commander': 0.004,
+  't80u_yun/gunner': 0.118,
+  'type96_72m_lei/gunner': 0.06,
+  'kf51_evo/commander': 0.007,
+  'kf51_panther/commander': 0.035,
+  't72b3m_kunlun/gunner': 0.109,
+  'kf51_u/commander': 0.062,
+  'merkava3c/commander': 0.05,
+  'kf41_lynx/gunner': 0.047,
+  't72b3_qilin/gunner': 0.206,
+  'ztz99_longwei/driver': 0.016,
+  'merkava3_baz/commander': 0.05,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);

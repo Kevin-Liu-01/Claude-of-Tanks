@@ -181,6 +181,19 @@ gear profile, and land per-tank changes atomically with audits. Every playable
 tank carries the core combat modules; `combatAnatomy.ts` adds only
 gameplay-backed vehicle-specific systems (autoloader, IFV feed, missile rack)
 and calibrates armor/module/crew coordinates to checked geometry receipts.
+Sides (266): +X is the vehicle's LEFT (forward +Z; `vehicleSide.ts` owns the
+convention, a `...Left` station sits at +x). Most anatomy sketches were drawn
+mirrored; `finalizeCombatAnatomy` lets the sourced stations decide each sketch
+frame's handedness and mirrors a wrong frame whole (crew and its modules), so
+author new sketches with the left at +x. One placement pass then resolves the
+internals in a fixed order (shell, ring/basket, crew, then modules from hard to
+soft) and each row publishes `moduleSeats` beside `crewSeats`;
+`gen-combat-anatomy` prints sketches lying largely outside their armour as data
+fixes, and `internalPlacement.selftest.mjs` holds sides, ring, volumes and
+overlaps. `armorInterior.ts` is the one definition of the interior a volume
+fills: hull volumes in the hull's armour envelope, turret-local ones in the
+turret's or, under the deck, the basket (the ring's cylinder about the yaw
+axis). The receipt and `module-visual-align-probe`'s volume-out both read it.
 Crew stations are seated, not boxed (235): every calibration row carries
 `crewSeats` from `tools/crew-seat-fit.mjs` (run by `gen-combat-anatomy`; refit
 against committed rows with `--crew-only [--ids=…]`): a P50 1.75 m body (the

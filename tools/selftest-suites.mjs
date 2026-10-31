@@ -2412,6 +2412,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/turretRingWatertight.selftest.mjs',
     // 2026-10-22 (crew-fit 235): every crew station a seated P50 body inside the shell at every turret yaw
     'src/vehicles/crewSeats.selftest.mjs',
+    // 2026-10-30 (crew-side 266): +X is the vehicle's left; every side-named station on its side, no ring crossings, no
+    // crew or module hit shape inside another module (default tier: the fleet's finalized anatomy, no builds)
+    'src/vehicles/internalPlacement.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',

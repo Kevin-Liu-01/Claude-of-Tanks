@@ -260,20 +260,9 @@ await withIsolatedCaptureBrowser({
         };
         const { roofPlateY, deckRayModules, sidePlateX } = measureArmorReferences();
 
-        const boundsOf = (plates) => {
-          const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-          for (const plate of plates || []) {
-            if ((plate.kind || 'main') !== 'main') continue;
-            if (/^(?:hull|turret)_(?:hatch|cupola)_\d+_/.test(plate.name || '')) continue;
-            for (const point of plate.verts || []) {
-              for (let axis = 0; axis < 3; axis++) {
-                min[axis] = Math.min(min[axis], point[axis]);
-                max[axis] = Math.max(max[axis], point[axis]);
-              }
-            }
-          }
-          return Number.isFinite(min[0]) ? { min, max } : null;
-        };
+        // 266: the armour envelopes and the interior volumes fill (turret-local ones: the turret, or the basket under the
+        // deck) have one definition, shared with src/vehicles/internalPlacement.selftest.mjs
+        const { armorEnvelope, armorVolumeOverflows } = await import('/src/vehicles/armorInterior.ts');
         const faceGap = (actual, target, skipFloor = false) => {
           if (!actual || !target) return 0;
           let gap = 0;
@@ -283,14 +272,14 @@ await withIsolatedCaptureBrowser({
           }
           return gap;
         };
-        const hullArmor = boundsOf(armor.hullPlates);
-        const turretArmor = boundsOf(armor.turretPlates);
+        const hullArmor = armorEnvelope(armor.hullPlates);
+        const turretArmor = armorEnvelope(armor.turretPlates);
         const structureGap = (frame, receipts, plates) => {
           let gap = 0;
           for (let index = 0; index < (receipts || []).length; index++) {
             const kind = receipts[index].kind || 'roof_structure';
             const prefix = `${frame}_${kind}_${String(index + 1).padStart(2, '0')}_`;
-            const actual = boundsOf((plates || []).filter((plate) =>
+            const actual = armorEnvelope((plates || []).filter((plate) =>
               String(plate.name || '').startsWith(prefix)));
             gap = Math.max(gap, faceGap(actual, receipts[index]));
           }
@@ -323,33 +312,17 @@ await withIsolatedCaptureBrowser({
         };
         const measureInteriorVolumes = () => {
           let volumeOverflow = 0;
+          for (const part of armorVolumeOverflows(armor, calibration?.turretRing)) {
+            volumeOverflow = Math.max(volumeOverflow, part.overflow);
+          }
           let minVolumeDepth = Infinity;
-          const measureShape = (shape, envelope, externalVolume) => {
-            let shapeOverflow = 0;
-            let shapeMinDepth = Infinity;
-            for (let axis = 0; axis < 3; axis++) {
-              if (!externalVolume) {
-                shapeMinDepth = Math.min(shapeMinDepth, shape.max[axis] - shape.min[axis]);
-              }
-              if (!envelope || externalVolume) continue;
-              shapeOverflow = Math.max(
-                shapeOverflow,
-                envelope.min[axis] - shape.min[axis],
-                shape.max[axis] - envelope.max[axis],
-              );
-            }
-            return { shapeOverflow, shapeMinDepth };
-          };
           for (const entry of [...(armor.modules || []), ...(armor.crew || [])]) {
             if (entry.module === 'trackL' || entry.module === 'trackR') continue;
-            const externalVolume = entry.external === true || entry.module === 'optics'
-              || entry.module === 'turretRing' || entry.module === 'gunMount';
-            const envelope = entry.turretLocal ? turretArmor : hullArmor;
+            if (entry.external === true || entry.module === 'optics'
+              || entry.module === 'turretRing' || entry.module === 'gunMount') continue;
             const shapes = Array.isArray(entry.parts) && entry.parts.length ? entry.parts : [entry];
             for (const shape of shapes) {
-              const measured = measureShape(shape, envelope, externalVolume);
-              volumeOverflow = Math.max(volumeOverflow, measured.shapeOverflow);
-              minVolumeDepth = Math.min(minVolumeDepth, measured.shapeMinDepth);
+              for (let axis = 0; axis < 3; axis++) minVolumeDepth = Math.min(minVolumeDepth, shape.max[axis] - shape.min[axis]);
             }
           }
           return { volumeOverflow, minVolumeDepth };
