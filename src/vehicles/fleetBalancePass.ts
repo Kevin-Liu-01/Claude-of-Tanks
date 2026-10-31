@@ -611,7 +611,12 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   spec(registry, 'stb1').hp = 1850;
   cannonReload(registry, 'stb1', 6.6);
   cannonReload(registry, 'type74', 6.2);
-  primary(registry, 'ztz85_iii', { damage: 460 });
+  // 265 (FAIRNESS-265 P14, INTERIM pending the owner's re-tier): the ZTZ-85-III, a 125 mm composite-armour MBT, still
+  // topped I at 0.961 with no pair in band once the STB-1/Type 74 rebuild took its last even pairs; both sides pierce
+  // every hit, so its footing decided. The Type 74's 1,950 HP and the 105 mm peers' 430 damage bring it to 0.78 (6 of
+  // 15 in band); no stat lever brings its pairs in, so its tier is the owner's question (Main's 266 recommendation)
+  primary(registry, 'ztz85_iii', { damage: 430 });
+  spec(registry, 'ztz85_iii').hp = 1950;
   spec(registry, 'm60a3').hp = 2100;
   cannonReload(registry, 'm60a3', 6.8);
 

@@ -122,7 +122,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   leo1a5: '1,750 HP and the L7 family\'s 430-damage round: it died a hit early at I and needed a hit more',
   stb1: '1,850 HP and a 6.6 s cycle, a step over its Type 74 production tank\'s',
   type74: 'a 6.2 s cycle: the quickest at I',
-  ztz85_iii: 'a 460-damage round: its 500 killed every tier-I peer in four hits',
+  ztz85_iii: 'a 460-damage round: its 500 killed every tier-I peer in four hits; 265 (interim pending the owner\'s re-tier): 430 damage and 1,950 HP, it topped I at 0.96 with no pair in band',
   // 2026-10-29 (264, Main's ruling)
   leo2a6_ua: 'the 2A6\'s main plates, HP and cadence: drawn on the 2A6\'s shell with its 2A6M donor\'s 1.72x plates, it topped IX at 0.86',
   // 2026-10-30 (265, FAIRNESS-265, Main's rulings)

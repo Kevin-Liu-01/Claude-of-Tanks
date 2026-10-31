@@ -4488,11 +4488,11 @@
     },
     {
       "id": "ztz85_iii",
-      "revision": "a 460-damage round: its 500 killed every tier-I peer in four hits",
+      "revision": "a 460-damage round: its 500 killed every tier-I peer in four hits; 265 (interim pending the owner's re-tier): 430 damage and 1,950 HP, it topped I at 0.96 with no pair in band",
       "tier": 1,
       "era": "cold-war",
       "role": "mbt",
-      "hp": 2100,
+      "hp": 1950,
       "powerWeight": 22.88,
       "speedKmh": [
         57,
@@ -4503,14 +4503,14 @@
         35.4
       ],
       "primary": {
-        "damage": 460,
+        "damage": 430,
         "penetrationMm": [
           620,
           570,
           510
         ],
         "reloadS": 6.8,
-        "sustainedDpm": 4058.82,
+        "sustainedDpm": 3794.12,
         "accuracy": 0.337,
         "aimTimeS": 1.92
       },
