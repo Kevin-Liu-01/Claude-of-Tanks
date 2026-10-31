@@ -38,11 +38,11 @@ export function buildT72B3MXHullCore(P:TankBuilderPort):void {
 
 function hull(P:TankBuilderPort,skirtEra=true,bowTip=true):void {
   buildT72B3MXHullCore(P);
-  for(const side of [-1,1])fenders(P,side,bowTip);
+  for(const side of [-1,1])fenders(P,side,bowTip,true);
   addT72B3MSideMounts(P,{skirtEra});
 }
 
-function fenders(P:TankBuilderPort,side:number,bowTip=true):void {
+function fenders(P:TankBuilderPort,side:number,bowTip=true,tipSheet=false):void {
   const a=Math.min(side*1.128,side*1.764),b=Math.max(side*1.128,side*1.764);
   P.addMudguard('t72b3m-x-deck','hull',roofSheet([
     [-3.47,a,b,1.20,1.20],[-3.15,a,b,1.3324,1.3324],[-2.80,a,b,1.526,1.526],
@@ -55,10 +55,16 @@ function fenders(P:TankBuilderPort,side:number,bowTip=true):void {
   const sheet=(rows:readonly(readonly[number,number,number,number])[])=>roofSheet(rows.map(([z,inner,outer,y])=>{
     const l=Math.min(side*inner,side*outer),r=Math.max(side*inner,side*outer);return[z,l,r,y,y] as const;
   }),.015);
-  P.addMudguard('t72b3m-x-rounded-front','hull',sheet(ringRows));
-  // (266) the bow tip, the steep 24 cm drop ahead of the idler, is its own sheet in hullDetail: the guard in 'hull' is
-  // then the same with or without it (bowGuardTip false, the obr. 2022), as fleetRenewal's donor-hull receipt holds
-  if(bowTip)P.addMudguard('t72b3m-x-rounded-front-tip','hullDetail',sheet([ringRows[4],[3.835,1.19,1.78,.915]]));
+  const tip=[3.835,1.19,1.78,.915] as const;
+  // (266) on the complete hull (buildT72B3MXHull) the bow tip, the steep 24 cm drop ahead of the idler, is its own
+  // sheet in hullDetail, so the guard in 'hull' is the same with or without it (bowGuardTip false, the obr. 2022), as
+  // fleetRenewal's donor-hull receipt holds for the 2022 and the T-84. The fenders alone (buildT72B3MXFenders) keep
+  // the one guard sheet in 'hull': the national rebuilds on them (nationalPoland.ts, nationalRussia.ts) seat their
+  // fender armour on the 'hull' stock at the tip's stations.
+  if(tipSheet){
+    P.addMudguard('t72b3m-x-rounded-front','hull',sheet(ringRows));
+    if(bowTip)P.addMudguard('t72b3m-x-rounded-front-tip','hullDetail',sheet([ringRows[4],tip]));
+  }else P.addMudguard('t72b3m-x-rounded-front','hull',sheet(bowTip?[...ringRows,tip]:ringRows));
   // (266; blind critics: "the front mudguards are flat plates that flare out like wings") the guard's outer edge is
   // turned down 10 cm, a 12 mm flange from the skirt's front to the guard's last station, so it reads as a pressed
   // mudguard; outboard of the track (x > 1.88 against its 1.75)
