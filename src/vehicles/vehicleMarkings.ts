@@ -167,6 +167,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a6m: anchor('hull', 'left', .192, .493, .22, 1),
   leo2a5m: anchor('hull', 'right', .655, .54, .22, -1),
   leo2a5: anchor('hull', 'left', .758, .484, .22, -1),
+  // 265: the Danish flag on the hull side ahead of the bar-armour cages / under the Barracuda drapes' cut
+  leo2a5dk: anchor('hull', 'left', .62, .484, .20, -1),
   merkava4: anchor('hull', 'left', .55132, .48234, .24, 1),
   // Source-built variants use exposed permanent armor: Trophy’s turret cheek
   // clears its outer skirts; Barak and Namer retain clear hull-side fields.
@@ -293,6 +295,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
+  leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  leo1a5dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  leo1a5dk1: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
   leo2a2: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a4_v: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
@@ -703,6 +709,45 @@ function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): voi
   ctx.fillRect(x0, cy - bar / 2, w, bar);
 }
 
+// the Dannebrog seen from the flag's other face (release 265, r7 critics: the far face showed the cross toward the fly):
+// the cross stays at the hoist, so from that side it stands right of centre
+function drawDenmarkDannebrogReverse({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
+  ctx.fillStyle = '#b8343a';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#ece8dc';
+  ctx.fillRect(x0 + w * 0.64 - bar / 2, y0, bar, h);
+  ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
+// the Leopard 1A5 DK's blanked rangefinder port (the Aalborg turret): a white perforated cover round a dark centre hole
+function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.92;
+  ctx.fillStyle = '#e4e2da';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a2c26';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  // (r8 critics: a pin-dot centre in a thin ring read as a target roundel: a larger hole, a thick dark collar)
+  ctx.lineWidth = r * 0.14;
+  ctx.strokeStyle = '#3c4232';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.93, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let ring = 0; ring < 1; ring++) {
+    const rr = r * 0.63, n = 12;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
 function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
   ctx.strokeStyle = '#e0bd4c';
   ctx.lineWidth = size * 0.09;
@@ -790,6 +835,8 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'dk-dannebrog': drawDenmarkDannebrog,
+  'dk-dannebrog-reverse': drawDenmarkDannebrogReverse,
+  'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,

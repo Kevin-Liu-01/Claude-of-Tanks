@@ -42,7 +42,10 @@ let stations = 0;
 {
   const KNOWN = {
     'leo2a7v:leo2a7v_xRoofMachineGun': 21.3, 'leo2a5m:leo2a4m_xRoofMachineGun': 21.9, 'leo2a6m:leo2a6m_xRoofMachineGun': 28.0,
-    'leo2a5:leo2a5_xRoofMachineGun': 29.2, 'challenger3_proto:fitting_browningDerived_m2': 31.0, 'challenger3:fitting_browningDerived_m2': 31.0,
+    'leo2a5:leo2a5_xRoofMachineGun': 29.2,
+    // 265: the Danish 2A5 rides the 2A5's turret and roof mount, so it inherits that mount's reach
+    'leo2a5dk:leo2a5dkRoofMachineGun': 29.2,
+    'challenger3_proto:fitting_browningDerived_m2': 31.0, 'challenger3:fitting_browningDerived_m2': 31.0,
     'm551_sheridan:m551LoaderMg': 36.1,
   };
   // 259: the squashed turrets' stations take the squash rigidly (turretRigScale.ts), as rig_gun does: the Challenger 1's

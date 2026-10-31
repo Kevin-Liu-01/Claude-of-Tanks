@@ -31,6 +31,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   christian2: Object.freeze(['christian2']),
   leopard2a3B4: Object.freeze(['leo2a3_b4', 'leo2a2', 'leo2a3']),
   leopard2a4Family: Object.freeze(['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a4_otco', 'leo2_improved', 'strv121']),
+  denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),

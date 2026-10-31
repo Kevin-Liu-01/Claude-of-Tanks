@@ -536,7 +536,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
   merkava: [

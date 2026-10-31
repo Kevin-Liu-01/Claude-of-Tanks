@@ -225,6 +225,8 @@ const laterChannelCounts = {
   leo2a3_b4: 3,
   // 262 (the PT-84 Polish concepts on the Oplot-M base): the K2PL's K279, K280 and K281 each, the Falarick owed
   pt84_orzel: 3, pt84_sokol: 3, pt84_zbik: 3,
+  // 266: the Danish Leopards' three rounds each (an APFSDS, a HEAT and an HE round)
+  leo1a3dk: 3, leo1a5dk: 3, leo1a5dk1: 3, leo2a5dk: 3,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -236,6 +238,7 @@ for (const m of LONGWEI_FAMILY) {
 const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']
   .reduce((n, id) => n + laterChannelCounts[id], 0);
 const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
@@ -288,10 +291,10 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265), and the
 // four new M48s' three each (265 integration), and the Centurion family's six marks (262, merged in 265),
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
-// three each (262, merged in 265).
+// three each (262, merged in 265), and the Danish Leopards' three each (266).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
-  - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels, 560,
+  - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

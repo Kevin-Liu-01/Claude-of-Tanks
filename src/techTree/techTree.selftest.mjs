@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 13, 'thirteen national trees');
+assert.equal(TECH_TREES.length, 14, 'fourteen national trees'); // 265: Denmark
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -108,6 +108,8 @@ const FAMILY_UPGRADES = Object.freeze({
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
+  // 265: the Danish Leopards
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -185,5 +187,11 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // from the Sokół at X (lane 4). Re-pinned on the merged tree (main 637c3b4ccf + the PT-84s).
 // Re-pinned 2026-10-30 at integ/265 (pt91-twardy-262 bbf22b6ce3 merged; every other tree check passes): + the three
 // PT-84s on Poland's Twardy line.
-assert.equal(digest, 'e74e06310faaa982', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-31 re-pin (266, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
+// Leopard line on through the 1A5 DK (I, the DK-1 its twin) to the 2A5 DK (IX), the 2A7 DK held (2026-10-30, Main: its
+// Barracuda lands later); the Christian II moves out of the Sweden tree into Denmark's special lane, and Sweden's nations
+// are Sweden's alone again.
+// Re-pinned 2026-10-31 at integ/266 (leo2-front-265 3fc640ea29 merged; every other tree check passes): 265's trees + the
+// Denmark tree (the Christian II out of Sweden's special lane, the Strv 105 kept there).
+assert.equal(digest, '020f27cc29aa9bae', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

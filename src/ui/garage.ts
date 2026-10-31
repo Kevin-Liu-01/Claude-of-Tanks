@@ -466,8 +466,8 @@ const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
   ['UK', 3], ['France', 4], ['China', 5], ['Italy', 6], ['Japan', 7],
-  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Denmark', 10], ['Community', 11],
-  ['Israel', 12], ['Ukraine', 13], ['South Africa', 14], ['Australia', 15],
+  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Denmark', 11], ['Community', 12],
+  ['Israel', 13], ['Ukraine', 14], ['South Africa', 15], ['Australia', 16],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
   return compareCountryThenTierThenName(a, b, NATION_RANK, displayTier);

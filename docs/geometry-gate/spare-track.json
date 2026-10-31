@@ -1207,6 +1207,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "leo1a3dk": {
+   "inputHash": "81c247bc5d86e123",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "leo1a2a1": {
    "inputHash": "8ba80ed8c4a10f8a",
    "runs": [],
@@ -1215,6 +1221,18 @@
   },
   "leo1a5": {
    "inputHash": "c01ae91da7225165",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo1a5dk": {
+   "inputHash": "d5d0fe53497e1d90",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo1a5dk1": {
+   "inputHash": "be526cac2541609f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1582,8 +1600,14 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "leo2a5dk": {
+   "inputHash": "037ef9966d8871a3",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "leo2a5m": {
-   "inputHash": "6d583887b9d469ce",
+   "inputHash": "08b54fdc11c5019a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1601,7 +1625,7 @@
    "hostSweep": []
   },
   "leo2a6m": {
-   "inputHash": "270e62d411de96c5",
+   "inputHash": "7bb2acc56a18acb9",
    "runs": [
     {
      "index": 0,
@@ -1630,7 +1654,7 @@
    "hostSweep": []
   },
   "leo2a7v": {
-   "inputHash": "574888d770421987",
+   "inputHash": "d8031e26142875ca",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

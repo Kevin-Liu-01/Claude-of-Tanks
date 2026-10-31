@@ -3151,6 +3151,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 266: the M48 marks on the A5's castings author their own period equipment the same way (pattonCast.ts
   // M48_VARIANTS, docs/references/tanks/<id>.md), dischargers included where the mark carried them
   if (['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].includes(spec.id)) return [];
+  // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
+  // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). All build their own dischargers.
+  // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

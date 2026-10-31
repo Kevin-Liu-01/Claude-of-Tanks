@@ -109,8 +109,9 @@ for (const patternId of CAMO_PATTERN_IDS) {
   assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a1_abrams_hc'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90am'), patternId)),
     `${patternId}: renders identically on hulls from different nations`);
 }
-// 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet.
-assert.ok(paints >= 10 && paints <= 30, `the authored paint catalog is compact (${paints} entries)`);
+// 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet. 2026-10-29 (release
+// 265): 34 with the Danish line's coats and the M41 family's period paints (the Bundeswehr's Gelboliv, the JGSDF's OD).
+assert.ok(paints >= 10 && paints <= 40, `the authored paint catalog is compact (${paints} entries)`);
 // no duplicates: no paint_* repeats (or shades) any other preset's recipe, and paint labels are unique and never
 // reuse another catalog label
 {

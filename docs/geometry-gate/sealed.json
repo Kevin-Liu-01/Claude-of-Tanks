@@ -4434,6 +4434,66 @@
     6.1
    ]
   },
+  "leo1a3dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 164,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 107713,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo1a5dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 164,
+   "seeThroughPx": 2,
+   "netSeeThroughPx": 0,
+   "tris": 108561,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo1a5dk1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 184,
+   "seeThroughPx": 2,
+   "netSeeThroughPx": 0,
+   "tris": 107671,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo2a5dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 137,
+   "seeThroughPx": 1,
+   "netSeeThroughPx": 0,
+   "tris": 118396,
+   "frame": [
+    0,
+    2.05,
+    1.05,
+    5.9
+   ]
+  },
   "pt84_orzel": {
    "sealed": true,
    "openPx": 0,

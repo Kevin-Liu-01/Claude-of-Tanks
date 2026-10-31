@@ -52,6 +52,12 @@ const CURVES = {
   leo1a5: [],
   // 263: the Leopard 1A2A1, its bare casting on the 1A5's pre-262 hull; its measured curve (leo1a2a1Specs.ts)
   leo1a2a1: [],
+  // 265: the Danish Leopards (denmarkSpecs.ts): the welded 1A3 DK turret on the 1A5 hull without its deck tools (the
+  // breech swung through the shovel and crowbar at full elevation), the 2A5 DK's bar armour clear of the gun
+  leo1a3dk: [],
+  leo1a5dk: [],
+  leo1a5dk1: [],
+  leo2a5dk: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

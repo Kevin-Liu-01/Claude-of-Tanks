@@ -131,13 +131,18 @@ const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_b
 /** The Centurion family (262, merged on 264c): the Sho't Kal's 1973 Sinai grey, the Olifant Mk 2's SANDF coat and
  * the Australian Mk 5/1's olive drab came with those tanks; they append after 264's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
+/** Release 266: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white and the 2A5 DK's
+ * three-tone of the 2010s; they append after 265's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -177,6 +182,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_262,
   ...RELEASE_265_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_264,
+  ...AUTHORED_PAINT_IDS_AFTER_265,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -867,6 +873,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   pt84_orzel: 'paint_pt84_orzel',
   // the Żbik in the urban block grey (the Sokół keeps Poland's factory coat, the PL-01's digital)
   pt84_zbik: 'urbanblock',
+  // release 266: the Danish line in its own coats (the 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone are near a
+  // named preset, so they paint their spec's coat as Factory)
+  leo1a5dk1: 'paint_leo1a5dk1',
+  leo2a5dk: 'paint_leo2a5dk',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

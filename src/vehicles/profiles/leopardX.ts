@@ -1,4 +1,5 @@
 import { tankSeedId } from '../tankIdAliases.ts';
+import { LEOPARD_X_WEDGES } from '../leopardXWedges.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
@@ -46,6 +47,10 @@ export const LEOPARD_X_DATUMS: Readonly<Record<string, Datum>> = Object.freeze({
     turretPivot: [0, 1.662, .661], trunnion: [.0238, 1.9979, 1.659], muzzleZ: 6.11 },
 });
 
+/** A national fit of a source-study Leopard (release 265): the Danish 2A5 DK and 2A7 DK (profiles/leopard2Dk.ts) drop
+ * the German build's PERI R17 head and remote 30 mm station for their own kit. */
+export interface LeopardXKit { readonly danish?: boolean }
+
 function begin(P: TankBuilderPort, d: Datum): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...d.turretPivot);
@@ -84,6 +89,16 @@ function shellSection(d: Datum, [z, left, right, bottom, top]: ShellStation,
 function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
   bevelWidth=.12,upperDepth=.16): void {
   addTurretSections(P,d,stations.map((station) => shellSection(d, station,bevelWidth,upperDepth)));
+}
+
+/** A frontal wedge whose root section is the given outline (world x, y at world z), so its back lies inside the cheeks
+ *  it meets and neither its back cap nor their front caps show; the rest are shell stations (the owner 2026-10-30, faces
+ *  marked on the 2A5M and 2A7V: the wedge's back stood proud of the forward cheeks, their caps showed past it, and the
+ *  interior fill showed through the gap under it). */
+function wedge(P:TankBuilderPort,d:Datum,root:readonly (readonly [number,number])[],rootZ:number,stations:readonly ShellStation[]):void {
+  const x=d.turretPivot[0],y=d.turretPivot[1];
+  addTurretSections(P,d,[{z:rootZ-d.turretPivot[2],ring:root.map(([px,py])=>[px-x,py-y] as [number,number])},
+    ...stations.map((station)=>shellSection(d,station))]);
 }
 
 function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
@@ -149,7 +164,7 @@ function a7ForwardCheek(P:TankBuilderPort,d:Datum): void {
   addTurretSections(P,d,sections);
 }
 
-function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): void {
+function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean, sleeved = false): void {
   const length = d.muzzleZ - d.trunnion[2];
   // Release 240 (gun sweep): the A7V and A5M trunnions stand only 19-25 cm over the deck round the turret, and their
   // mounts hung under it. The .275 m bearing drum stood in the deck at every pitch (A7V 1.758 under 1.796, A5M 1.633
@@ -159,7 +174,20 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   // collar (.195 m, 7-10 cm under the barrel) took the engine deck astern; it now stands 2 cm proud of the sleeve.
   const trimmed = d !== LEOPARD_X_DATUMS.leo2a6m;
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * (trimmed ? 1 : 1.6),
-    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
+    sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true,
+    // release 265, r6 (critics on the Latvia photograph: the 2A7 DK's gun is wrapped in the cover's tan sleeve); r9 (r8
+    // critics, both: a flat bare tan tube on a green tank; the photograph's is the cover's texture, lighter, banded): the
+    // tube in the coat, the wrap's lighter bands over the sleeves; r11 (r10 critics, both: the evacuator and the muzzle
+    // in the coat between two sand sleeves; the photograph's one wrap to the muzzle): the whole tube in the wrap, its
+    // shape unchanged
+    tubeBucket: sleeved ? 'gunCanvasPale' : 'gun' });
+  if (sleeved) {
+    // r12 (r11 critics, both: a flat smooth sand tube; the photograph's wrap mottled): patches of the coat over the wrap,
+    // on the thermal sleeves only (1.4 mm proud of them, so the gun keeps its clearances)
+    for (const [a, b] of [[0.19, 0.25], [0.33, 0.37], [0.41, 0.45], [0.55, 0.62], [0.70, 0.74], [0.77, 0.81]] as const) {
+      P.add('gun', cylZ(radius * 1.235, (b - a) * length, 24), 0, 0, (a + b) / 2 * length);
+    }
+  }
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
@@ -168,7 +196,7 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
       : {crown:.445,noseZ:1.04,noseRoof:.120,drumR:.16,keel:-.11,collarR:.12};
   addLeopardMovingMantlet(P,fit);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
-  P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
+  P.add(sleeved ? 'gunCanvasPale' : 'gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
   P.addEquipment('gun', box(.066, .055, .15), 0, radius + .025, length - .41);
 }
 
@@ -912,7 +940,7 @@ function a5ArrowheadWraps(P:TankBuilderPort,d:Datum): void {
   }
 }
 
-function a5Optics(P:TankBuilderPort,d:Datum): void {
+function a5Optics(P:TankBuilderPort,d:Datum,periHead=true): void {
   // The source EMES is a long shallow housing. A short tall substitute
   // incorrectly removes the forward roof silhouette and obscures its frame.
   const [px,py,pz]=d.turretPivot;
@@ -924,16 +952,17 @@ function a5Optics(P:TankBuilderPort,d:Datum): void {
   equip(P,d,'turretGlass',box(.364,.13,.010),-.707,2.438,1.962);
   equip(P,d,'turretDetail',box(.47,.020,.23),-.687,2.578,1.834);
   equip(P,d,'turretDetail',box(.023,.25,.21),-.49,2.45,2.025);
-  a5Panorama(P,d);
+  a5Panorama(P,d,periHead);
   equip(P,d,'turretDetail',box(.394,.114,.127),-.630,2.675,.562);
   equip(P,d,'turretDark',box(.344,.084,.015),-.630,2.681,.631);
   equip(P,d,'turretGlass',box(.301,.051,.009),-.630,2.681,.643);
 }
 
-function a5Panorama(P:TankBuilderPort,d:Datum): void {
+function a5Panorama(P:TankBuilderPort,d:Datum,head=true): void {
   // The .461 m round lower bearing stops at 2.799 m. The raised optical
   // head is only .273 m wide; a full-diameter top cap erases this step.
   equip(P,d,'turretDetail',cylY(.2304,.2304,.17186,32),-.27768,2.71286,-.37184);
+  if(!head) return;
   equip(P,d,'turretDetail',box(.2495,.2189,.2425),-.27822,2.9072,-.38895);
   for(const x of [-.4122,-.1432]) equip(P,d,'turretDetail',box(.004,.2005,.232),x,2.9133,-.4014);
   equip(P,d,'turretDetail',box(.273,.012,.252),-.2777,3.0106,-.391);
@@ -1158,7 +1187,7 @@ function a4Whip(P:TankBuilderPort,d:Datum,x:number,dy:number,dz:number): void {
 
 // A7V: separate authored tub, low broad asymmetric shell, deep actual EMES
 // recess, full-height modules, and the source's two rear tall masts.
-export function buildLeopard2A7VX(P: TankBuilderPort): void {
+export function buildLeopard2A7VX(P: TankBuilderPort, kit: LeopardXKit = {}): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const d = LEOPARD_X_DATUMS.leo2a7v;
@@ -1195,8 +1224,8 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   P.add('turret',cylY(1.02,1.02,.11,40),0,.023,0);
   opticPocket(P,d,{back:1.65,mouth:2.51,x0:-1.025,x1:-.60,
     floor:2.352,roof:2.61,outerLeft:-1.56,outerRight:1.48,bottom:1.75,sourceA7Cheek:true});
-  shell(P,d,[[2.505,-1.13,1.16,1.91,2.340],[2.82,-.72,.77,2.016,2.286],
-    [3.11,-.22,.29,2.146,2.181]]);
+  // the frontal wedge, its root inside the forward cheeks' mouth (leopardXWedges.ts, which its armour reads too)
+  wedge(P,d,LEOPARD_X_WEDGES.leo2a7v.root.outline,LEOPARD_X_WEDGES.leo2a7v.root.z,LEOPARD_X_WEDGES.leo2a7v.stations);
   roofHatch(P,d,-.61,2.675,-.35);
   roofHatch(P,d,.66,2.670,-.35);
   equip(P,d,'turretDetail',cylY(.20,.22,.16,24),-.301,2.74,-.433);
@@ -1219,8 +1248,8 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   }
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
-  mainGun(P,d,.096,true);
-  addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
+  mainGun(P,d,.096,true,!!kit.danish);
+  if(!kit.danish) addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 
 // A6M CAN: clean low tub and compact central turret. The cage is genuine
@@ -1256,8 +1285,8 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
   P.add('turret',cylY(1.027,1.027,.16,40),0,.015,0);
   opticPocket(P,d,{back:1.64,mouth:2.43,x0:-1.04,x1:-.56,floor:2.15,
     roof:2.46,frontRoof:2.302,outerLeft:-1.27,outerRight:1.283,bottom:1.738});
-  shell(P,d,[[2.42,-1.12,1.14,1.895,2.302],[2.95,-.60,.64,2.038,2.219],
-    [3.28,-.20,.29,2.104,2.126]]);
+  // the frontal wedge, its root inside the cheeks' mouths (leopardXWedges.ts, which its armour reads too)
+  shell(P,d,LEOPARD_X_WEDGES.leo2a6m.stations);
   // Turret cage extends around the bustle but never closes its stand-off air.
   for(const side of [-1,1]) {
     for(let j=0;j<9;j++) equip(P,d,'turretOpenLattice',box(.025,.017,2.60),side*1.496,1.947+j*.074,-1.45);
@@ -1317,15 +1346,17 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   driver(P,1.5619,-.58,2.20,.03,Math.atan2(1.684-1.45,2.75-1.60));
   bowFittings(P,1.33,3.56,false);
   sternFittings(P,1.47,-3.79,1.65);
-  shell(P,d,[[-2.82,-1.02,-.64,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
+  // (the owner 2026-10-30: the bustle's rear square across its width; its last station covered the left half only, so the
+  // rear plate ran skewed)
+  shell(P,d,[[-2.82,-1.02,.98,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
     [-2.24,-1.405,1.33,1.842,2.437],[-1.36,-1.50,1.412,1.846,2.444],
     [-.78,-1.512,1.417,1.671,2.446],[.39,-1.519,1.408,1.674,2.448],
     [1.36,-1.496,1.374,1.675,2.374]]);
   P.add('turret',cylY(1.015,1.015,.11,40),0,.018,0);
   opticPocket(P,d,{back:1.355,mouth:2.28,x0:-1.10,x1:-.65,floor:2.12,
     roof:2.38,outerLeft:-1.497,outerRight:1.375,bottom:1.675});
-  shell(P,d,[[2.27,-1.27,1.15,1.742,2.129],[2.70,-.76,.63,1.813,2.139],
-    [3.02,.10,.16,1.978,1.997]]);
+  // the frontal wedge, its root inside the cheeks' mouths (leopardXWedges.ts, which its armour reads too)
+  shell(P,d,LEOPARD_X_WEDGES.leo2a5m.stations);
   roofHatch(P,d,-.62,2.448,-.24);
   roofHatch(P,d,.62,2.448,-.24);
   panorama(P,d,-.342,2.487,-.529);
@@ -1348,7 +1379,7 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
 // A5 web/horn stock hangs 14.03 mm inside the authored 38.9 mm band's inner face; on the 28 mm fleet band the same stock
 // sits (38.9 − 28) mm further in, so the roller seat and the inner lining follow it (2026-09-17).
 const A5_WEB_INSET_M = .01403 + (.0389 - .028);
-export function buildLeopard2A5X(P: TankBuilderPort): void {
+export function buildLeopard2A5X(P: TankBuilderPort, kit: LeopardXKit = {}): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const d=LEOPARD_X_DATUMS.leo2a5;
@@ -1405,13 +1436,14 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   for(const side of [-1,1]) {
     const basketX=side>0?.994:-.911;
     equip(P,d,'turretDetail',box(.72,.53,.89),basketX,2.186,-2.337);
-    equip(P,d,'turretDark',box(.67,.015,.84),basketX,2.457,-2.337);
+    // (the Danish cage leaves the bins' lids in the coat: r3 critics read the dark lids as bare plates)
+    equip(P,d,kit.danish?'turretDetail':'turretDark',box(.67,.015,.84),basketX,2.457,-2.337);
   }
   for(const [x,z] of [[-.604,.070],[.589,.050]]) {
     P.add('turret',cylY(.37,.40,.049,32),x-d.turretPivot[0],2.543-d.turretPivot[1],z-d.turretPivot[2]);
     roofHatch(P,d,x,2.566,z);
   }
-  a5Optics(P,d);
+  a5Optics(P,d,!kit.danish);
   // 2026-10-07 (tank-accessories round 4): round 3's butt growth under the 1.92 stretch put the stock at -0.505 (source
   // -0.437). The gun moves 4.6 cm forward and the stretch drops to 1.795: stock -0.437, muzzle 0.820 again.
   mg(P,d,.954,2.612,-.115,false,1.795,1.077);
@@ -1424,12 +1456,13 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
-  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
+  if(!kit.danish) addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({
-  leo2a7v: { build: buildLeopard2A7VX },
+  // (the factory passes the profile record second; the German rows take the default kit)
+  leo2a7v: { build: (P: TankBuilderPort) => buildLeopard2A7VX(P) },
   leo2a6m: { build: buildLeopard2A6MX },
   leo2a5m: { build: buildLeopard2A4MX },
-  leo2a5: { build: buildLeopard2A5X },
+  leo2a5: { build: (P: TankBuilderPort) => buildLeopard2A5X(P) },
 });
