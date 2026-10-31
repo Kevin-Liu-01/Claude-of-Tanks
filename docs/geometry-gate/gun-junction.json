@@ -240,7 +240,7 @@
   "type96_80_feng": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d017c1349e4f2f93","gun":"1b741bdaffef8983"}},
   "type96b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b8909a7d2f58c406","gun":"ce8fe9e6de5b252f"}},
   "ua_challenger2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e81fb065e776b366","gun":"633f40272b66f0da"}},
-  "ua_cv9040c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c30a171adbd46a5b","gun":"5b53cf7f742abe80"}},
+  "ua_cv9040c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3bf2323eab663a6f","gun":"5b53cf7f742abe80"}},
   "ua_m1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"343adb8f2174ab3a","gun":"1428c8678d768cf1"}},
   "ua_m1a2_abrams": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5302fb8dfed07406","gun":"6b0d0b37ca75c8d4"}},
   "ua_m2a3_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"89ad1c884523acb3","gun":"95e1c08e41b9a46d"}},

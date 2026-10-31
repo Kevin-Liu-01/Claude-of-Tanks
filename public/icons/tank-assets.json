@@ -2174539,16 +2174539,16 @@
           }
         ]
       },
-      "geometryHash": "2b82ea6a",
+      "geometryHash": "c498eefb",
       "metadataHash": "f17254b1",
       "presentationAnchor": {
-        "xM": 0.001,
-        "zM": -0.0518
+        "xM": 0.0005,
+        "zM": -0.0694
       },
-      "presentationHash": "44052e55",
+      "presentationHash": "52d5b56c",
       "presentationProjection": {
         "centerYM": 2.085,
-        "topHalfM": 4.034,
+        "topHalfM": 4.0152,
         "sideHalfM": 2.231
       },
       "appearance": {
@@ -2174567,10 +2174567,10 @@
           "armorPaint": 12,
           "hullRubber": 1,
           "opticGlass": 2,
-          "gunmetal": 6,
+          "gunmetal": 7,
           "canvasPale": 1,
-          "canvas": 3,
-          "unclassified": 23,
+          "canvas": 4,
+          "unclassified": 21,
           "fittingPaint": 1
         }
       },
@@ -2174600,15 +2174600,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28790,
-          "sha256": "72beaddecbe129c9128e39f672e96243f002f7a130c5b9a425e0082314ac595a",
+          "bytes": 27570,
+          "sha256": "e5cc501e266550a5c7e08d05035d9447b4419450f68f8df2ef0984bce52723b5",
           "thumbnail": {
             "file": "thumbs/ua_cv9040c_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11698,
-            "sha256": "d15c599c10e37fdbee66c520abf085780ef08727ac1560fda05880c7dd0f5108"
+            "bytes": 11152,
+            "sha256": "f94d3691fc84e0826b3255d4a256574bd506e6ba0b5c5b91fe19192486b1d8e3"
           }
         },
         "top": {
@@ -2174616,56 +2174616,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21836,
-          "sha256": "bebdda76ed047ab46f95c70ce5b5f3ba5da47b2343b83de219a41f8c9a7ba656"
+          "bytes": 20960,
+          "sha256": "45c27215bc8a810b7091f35b18f1e338cef61570af94ae50dff2cabf5ad3b1ef"
         },
         "side": {
           "file": "ua_cv9040c_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17978,
-          "sha256": "13c40c41777d55baf33747dcd7e3e6955956ac1e55e499a3e4c42375e311af06"
+          "bytes": 15200,
+          "sha256": "28d14633ac999a25514cc05e2126389bcd9cc94709667876ca26b3b750665d1b"
         },
         "topSilhouette": {
           "file": "ua_cv9040c_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1417,
-          "sha256": "c9ba61873221ba0f77f2802744cbfe4910e4dbe8c171bf7b93a94bda835788d7"
+          "bytes": 1654,
+          "sha256": "a7329590ac69a7cc63fcb50d12a3b1208d8a40eb69c8431d0d49bfcd14dbad0f"
         },
         "sideSilhouette": {
           "file": "ua_cv9040c_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5874,
-          "sha256": "bd9a4afb03c74b8f07a093f2b0db17effd660b938ac94f8b39e7691baebe5116"
+          "bytes": 5677,
+          "sha256": "16281cc3fe3cbb8fa9e56572dfdc7fe51c2a1a4e142b80e5fac402c7b16bd63e"
         },
         "armorSide": {
           "file": "ua_cv9040c_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42090,
-          "sha256": "550d82f4620e7ff798ea1755a9f39e78472f00031a6d52cadc4570ffae1160bf"
+          "bytes": 39960,
+          "sha256": "6125e2716450844a05e678f5c9b2d76ff55f76038ce01dc8e584411db7b2c199"
         },
         "modulesSide": {
           "file": "ua_cv9040c_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42862,
-          "sha256": "63139eeafe4412325fc78a4e64550560a1e72cd216568700b8000bccc8134c58"
+          "bytes": 40714,
+          "sha256": "2f44dc6f556917838ef7d6f073435d50a94cf7f41b7814564ee444cd7ba8f3ed"
         },
         "crewSide": {
           "file": "ua_cv9040c_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37750,
-          "sha256": "0a5c5e864e552af9c4d48a30f28bd9e6fe9e0c32d6caa913a92a8da496036a9f"
+          "bytes": 35806,
+          "sha256": "b8433a2f58c1a4ab795f3fcebbaf81ededbafe305c81c837037882cdafc0d1dc"
         },
         "markings": {
           "file": "ua_cv9040c_markings.png",
@@ -2174678,8 +2174678,8 @@
         "technicalLabels": {
           "file": "ua_cv9040c_technical.json",
           "mime": "application/json",
-          "bytes": 5014,
-          "sha256": "adde9c48da8d3f3d7c523f914cd446b69279d90051e9b63843b39bd6409c0b88"
+          "bytes": 5013,
+          "sha256": "2d590349cd071907f691ebea8a28a54981d80ab3aa511ed9ec19fd06ad6a7cc0"
         }
       }
     },

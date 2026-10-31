@@ -148,23 +148,30 @@ function gun(P: TankBuilderPort): void {
  *  (ua2, the ua1 critics, both, on the photograph: the tarp read as an orange crate with posts through it, short of the
  *  turret; the triangle sat forward, small and hairline.) */
 function addUkrainianKit(P: TankBuilderPort): void {
-  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.72,[side*1.648,1.38,-.70],side*Math.PI/2);
+  // (ua4, the ua3 critics: its apex met the roof edge; the upper side panel, 1.20 to 1.70, holds it whole with the
+  // mitred apex 3 cm under the edge, its base on the panel above the skirt's step)
+  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.64,[side*1.648,1.385,-.70],side*Math.PI/2);
   // the troop roof is raised to 1.94 from its rear edge (z -3.32) to -2.45, then steps down to the turret deck at 1.76
   // (ua3, the ua2 critics, both: a stiff faceted cushion; lumps, its edges down over the rear plate and the rear corners,
-  // crossing cords, a duller grey-brown; its front tucked in, where a corner stood out as a beak)
+  // crossing cords, a duller grey-brown; its front tucked in, where a corner stood out as a beak. ua4, the ua3 critics:
+  // its ridge a row of pyramids, the sheet stopping at the roof's edges: one soft load, its lumps swelling and settling
+  // along it, hanging over the side edges onto the packets' tops (1.90, 1.73 forward of the step) and over the rear)
   const RING: readonly [number, number, number][] = [ // x, height over the base, the lump's weight
-    [1.50, -.05, 0], [1.46, .10, .04], [1.20, .27, .06], [.78, .33, -.05], [.30, .38, .06], [-.18, .30, -.06],
-    [-.62, .39, .05], [-1.10, .26, -.05], [-1.46, .11, .04], [-1.50, -.05, 0], [0, -.03, 0],
+    [1.60, -.03, 0], [1.55, 0, 0], [1.46, .08, .02], [1.30, .17, .03], [1.02, .25, -.03], [.62, .30, .04], [.20, .33, -.02],
+    [-.25, .32, .04], [-.68, .31, -.03], [-1.06, .25, .04], [-1.32, .16, -.02], [-1.47, .07, .02], [-1.55, 0, 0],
+    [-1.60, -.03, 0], [-1.44, -.02, 0], [0, -.03, 0], [1.44, -.02, 0],
   ];
   const drape=(z: number, base: number, k: number, s=1, w=1): {z: number; ring: [number, number][]}=>({z,
     ring:RING.map(([x,h,wt])=>[x*w,base+(h>0?(h+wt*k)*s:h)] as [number, number])});
-  const stations=[drape(-3.34,1.94,0),drape(-3.22,1.94,1),drape(-3.07,1.94,-1),drape(-2.92,1.94,.8),
-    drape(-2.77,1.94,-.7),drape(-2.62,1.94,1),drape(-2.47,1.94,-.6),drape(-2.30,1.77,.4,1.05,.94),drape(-2.12,1.77,0,.54,.88)];
-  P.addEquipment('hullCanvasPale',sectionSolid(stations));
-  // its edge sloping down over the roof's rear edge and clear of the rear door below it
-  P.addEquipment('hullCanvasPale',box(2.90,.17,.02),0,1.86,-3.37,.52,0,0);
+  const stations=[drape(-3.36,1.94,0,.62),drape(-3.24,1.94,.5),drape(-3.09,1.94,.9),drape(-2.93,1.94,.6),
+    drape(-2.77,1.94,0),drape(-2.62,1.94,.5),drape(-2.47,1.94,.9),drape(-2.30,1.77,.5,1.05,.94),drape(-2.12,1.77,0,.54,.88)];
+  // the sheet's upper courses one surface (its hems and underside keep their edges)
+  P.addEquipment('hullCanvasPale',sectionSolid(stations,{smoothSideEdges:[0,1,2,3,4,5,6,7,8,9,10,11,12]}));
+  // its rear edge hanging over the roof's in three folds, clear of the rear door (its face at z -3.40, top 1.83)
+  for(const [x,w,len,tilt] of [[-.99,1.02,.20,.62],[0,1.0,.23,.60],[.99,1.02,.18,.66]] as const)
+    P.addEquipment('hullCanvasPale',box(w,len,.02),x,1.945-len/2*Math.cos(tilt),-3.335-len/2*Math.sin(tilt),tilt,0,0);
   // crossing cords, laid over it station to station
-  const RIDGE=[1,2,3,4,5,6,7,8];
+  const RIDGE=[2,4,5,6,7,8,9,11];
   for(const dir of [1,-1]) for(let i=1;i+1<stations.length-1;i++) {
     const j=dir>0?RIDGE[i-1]:RIDGE[RIDGE.length-i];
     const k=dir>0?RIDGE[i]:RIDGE[RIDGE.length-i-1];
@@ -175,7 +182,22 @@ function addUkrainianKit(P: TankBuilderPort): void {
     cord.lookAt(new THREE.Vector3(x1-x0,y1-y0,z1-z0));
     P.addEquipment('hullCloth',cord,(x0+x1)/2,(y0+y1)/2+.014,(z0+z1)/2);
   }
-  P.mats.canvasPale.color.setHex(0x4c3f3a);
+  // (ua4, a shade lighter toward the photograph's faded rust)
+  P.mats.canvasPale.color.setHex(0x5a4842);
+  // ua4 (the ua3 critics, both: the turret's net "a hollow hoop", daylight under it, drawn up over the fleet loads stowed
+  // on the roof; the photograph's a closed heap): the net bundled on the rear roof behind the hatches, a filled heap the
+  // suit lies on (ghillieFleetSuits.ts) over the antenna feet, rolled down to the walls (the roof 0.78 to |x| 0.80-0.95,
+  // 0.61-0.68 at the walls) and over the rear edge onto the rack (0.69 to z -1.395); the roof carries no other load
+  // under the net (decorations.ts)
+  const HEAP: readonly [number, number][] = [ // across the half-width, height over the roof as a share of the crown
+    [1, NaN], [.95, .14], [.84, .46], [.64, .75], [.38, .93], [.10, 1], [-.20, .93], [-.48, 1], [-.74, .71], [-.90, .39],
+    [-.97, .11], [-1, NaN], [-.5, NaN], [.5, NaN],
+  ];
+  const heap=(z: number, w: number, crown: number, edge: number): {z: number; ring: [number, number][]}=>({z,
+    ring:HEAP.map(([x,h],i)=>[x*w,Number.isNaN(h)?edge-(i>11?.01:0):.78+h*crown] as [number, number])});
+  P.addEquipment('turretCloth',sectionSolid([heap(-1.34,.58,.03,.67),heap(-1.30,.66,.10,.67),heap(-1.24,.84,.20,.68),
+    heap(-1.14,.88,.25,.68),heap(-1.02,.95,.26,.64),heap(-.90,1.0,.23,.62),heap(-.80,1.02,.15,.60),heap(-.72,.98,.05,.66)],
+  {smoothSideEdges:[0,1,2,3,4,5,6,7,8,9,10]}));
 }
 
 /** The CV9040C (release 265: `ukrainian` builds the Ukrainian one, ukraineCv90Specs.ts). */

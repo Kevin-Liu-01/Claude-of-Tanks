@@ -5,5 +5,5 @@ import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
   "cv9040c": { v: 0.025, o: [-1.7875, 0.295, -3.532], t: [0, 1.78, -0.76], g: [0, 2.185, 0.8], hull: "CwAkAA0ACwAkAA0AgwAkAA0AgwAkAA0A" },
-  "ua_cv9040c": { v: 0.025, o: [-1.7875, 0.295, -3.532], t: [0, 1.78, -0.76], g: [0, 2.185, 0.8], hull: "CwAkAA0ACwAkAA0AgwAkAA0AgwAkAA0APAA9ACwATwA9ACwAPAA8AC0ATwA8AC0APAA7AC4ATwA7AC4A" },
+  "ua_cv9040c": { v: 0.025, o: [-1.7875, 0.295, -3.548121], t: [0, 1.78, -0.76], g: [0, 2.185, 0.8], hull: "DgBAAAkADgBAAAwAgABAAAkAgABAAAwACwA/ACsADQA/ACsAgQA/ACsAgwA/ACsACwA+ACwAIwA+ACwAZAA+ACwAgwA+ACwACwA9AC0AJQA9AC0AYwA9AC0AgwA9AC0ACwA8AC4AJwA8AC4AZgA8AC4AgwA8AC4ADgA7AC8AKQA7AC8AZAA7AC8AgAA7AC8A", turret: "UwBbAFwAVABcAFwA" },
 });
