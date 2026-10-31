@@ -626,7 +626,9 @@ function buildAMX40(P: FranceBuilderPort): void {
       };
     };
     for (let i = 0; i < stations.length - 1; i++) {
-      const a = section(stations[i]), b = section(stations[i + 1]);
+      // 267 round 3 (Opus, critic2: "a light hairline seam down the turret side"): each piece runs 5 mm into the next, so
+      // no crack opens along the joints between the convex pieces
+      const a = section(stations[i]), b = section(i < stations.length - 2 ? stations[i + 1] + 0.005 : stations[i + 1]);
       P.add('turret', convexSlab(...a.lower, ...b.lower));
       P.add('turret', convexSlab(...a.upper, ...b.upper));
     }
@@ -689,11 +691,13 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 round 2 (both photo critics, critic1: "the roof sight is a black box on a pedestal; the real one is a tan
   // cylindrical tower with a head, standing about half a turret height above the cupola"): a round column to a round
   // head with its window band and cap, in the turret's paint (the print's own head stands at 3.09 m).
-  P.add('turret', cylY(0.150, 0.165, 0.40, 20), -0.15, 0.80, 0.24);           // column 0.60..1.00
-  P.add('turretDetail', cylY(0.175, 0.170, 0.13, 20), -0.15, 1.055, 0.24);    // head 0.99..1.12
-  P.add('turretDetail', cylY(0.160, 0.175, 0.025, 20), -0.15, 1.132, 0.24);   // cap
-  P.add('turretDark', box(0.20, 0.06, 0.03), -0.15, 1.06, 0.40);              // window frame
-  P.add('turretGlass', box(0.17, 0.045, 0.012), -0.15, 1.06, 0.418);          // window
+  // 267 round 3 (Opus, critic2: "unpainted black with a plain flat cap; the real one is body-coloured with a squared head
+  // and a window"): the column is painted detail (the camouflage's black patch lies there) and the head a squared box.
+  P.add('turretDetail', cylY(0.150, 0.165, 0.40, 20), -0.15, 0.80, 0.24);     // column 0.60..1.00
+  P.add('turretDetail', box(0.34, 0.14, 0.34), -0.15, 1.065, 0.24);           // squared head 0.995..1.135
+  P.add('turretDetail', box(0.30, 0.02, 0.30), -0.15, 1.145, 0.24);           // its lid
+  P.add('turretDark', box(0.24, 0.07, 0.02), -0.15, 1.07, 0.415);             // window frame
+  P.add('turretGlass', box(0.21, 0.05, 0.012), -0.15, 1.07, 0.427);           // window
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown
   P.add('turretDark', torus(0.205, 0.012, 18), 0.62, 0.666, -0.72);            // loader hatch well
   P.add('turret', cylY(0.185, 0.195, 0.030, 18), 0.62, 0.681, -0.72);          // loader hatch RIGHT-REAR

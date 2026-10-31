@@ -3464,6 +3464,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
     // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
     && !(spec.id !== 'amx40_proto' && row.kit === 'antenna')
+    // 267 round 3 (both critics, critic2, S1: "a rigid tow cable across the whole nose"): the bow chain/cable row is off
+    && row.kit !== 'chain'
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
