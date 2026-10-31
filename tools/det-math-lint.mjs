@@ -53,6 +53,21 @@ export function sourceFindings(source) {
   return findings;
 }
 
+// (267) Presentation stays out of the graph: the vehicle marking modules (their canvas insignia painters and the UI's
+// flag codes) came in once through the spec registry's marking record, which the authority never read, and detMath
+// policed their paint. A listed module, or any vehicle module that paints on a canvas, fails the lint.
+export const PRESENTATION_MODULES = Object.freeze(['src/vehicles/vehicleMarkings.ts', 'src/vehicles/vehicleMarkingSeatRegistry.ts', 'src/ui/flagCodes.ts']);
+const CANVAS = /\bCanvasRenderingContext2D\b|getContext\(\s*['"]2d['"]/;
+
+/** The presentation in the graph: [{ file, reason }]. */
+export function presentationFindings(root = ROOT, entries = AUTHORITY_ENTRIES) {
+  return authorityModules(root, entries).map((file) => path.relative(root, file)).flatMap((file) => {
+    if (PRESENTATION_MODULES.includes(file)) return [{ file, reason: 'a vehicle presentation module' }];
+    if (file.startsWith('src/vehicles/') && CANVAS.test(readFileSync(path.join(root, file), 'utf8'))) return [{ file, reason: 'a vehicle canvas painter' }];
+    return [];
+  });
+}
+
 /** Every native transcendental and non-square exponent in the graph: [{ file, line, text }]. */
 export function detMathFindings(root = ROOT) {
   const detMath = path.resolve(root, 'src/sim/detMath.ts');
@@ -64,7 +79,9 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const modules = authorityModules();
   const findings = detMathFindings();
+  const presentation = presentationFindings();
   for (const f of findings) console.error(`${f.file}:${f.line}: ${f.text}`);
-  console.log(`det-math-lint: ${modules.length} authority modules, ${findings.length} native transcendental(s) or non-square exponent(s)`);
-  process.exitCode = findings.length ? 1 : 0;
+  for (const f of presentation) console.error(`${f.file}: ${f.reason} in the authority graph`);
+  console.log(`det-math-lint: ${modules.length} authority modules, ${findings.length} native transcendental(s) or non-square exponent(s), ${presentation.length} presentation module(s)`);
+  process.exitCode = findings.length || presentation.length ? 1 : 0;
 }

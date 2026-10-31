@@ -270,7 +270,6 @@ export interface FactoryTankSpec extends FleetTankSpec {
   visual: FactoryVisualSpec;
   visualBase?: string;
   variantOf?: string;
-  markings?: VehicleMarkingRecord;
 }
 
 interface GearEndpoint {
@@ -8164,7 +8163,7 @@ function* buildTankCoreSteps(
   // (combatGunRigSeat.ts). The same object when no row moved this tank's frame.
   const spec = authoringRigSpec(combatSpec);
   const armor = spec.armor;
-  const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
+  const marking: VehicleMarkingRecord = vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
   const coreMaterialsStartedAt = coreClock();
   const mats: TankMaterials = usesSharedMaterialTextures

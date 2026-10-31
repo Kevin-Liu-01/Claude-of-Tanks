@@ -5,7 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as det from './detMath.ts';
-import { detMathFindings, authorityModules, sourceFindings } from '../../tools/det-math-lint.mjs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { detMathFindings, authorityModules, presentationFindings, sourceFindings } from '../../tools/det-math-lint.mjs';
 
 const golden = JSON.parse(readFileSync(new URL('./detMath.golden.json', import.meta.url), 'utf8'));
 const view = new DataView(new ArrayBuffer(8));
@@ -48,4 +51,24 @@ assert.deepEqual(findings, [], `native transcendentals in the authority graph:\n
 const modules = authorityModules();
 assert.ok(modules.length > 200, `the authority graph resolves (${modules.length} modules)`);
 
-console.log(`detMath.selftest: ${checked} golden rows bit-identical to the Rust jsmath; ${modules.length} authority modules on detMath`);
+// (267) no presentation in the graph: the marking modules left it with the spec registry's marking record
+const presentation = presentationFindings();
+assert.deepEqual(presentation, [], `presentation in the authority graph:\n${presentation.map((f) => `${f.file}: ${f.reason}`).join('\n')}`);
+// the negative control: a fixture authority that imports the registry, the registry the marking module, and a vehicle
+// canvas painter beside it; both are named
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-det-math-presentation-'));
+  try {
+    const write = (file, source) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), source); };
+    write('src/sim/authority.ts', "import { spec } from '../vehicles/specs.ts';\nimport { paint } from '../vehicles/insigniaPainter.ts';\n");
+    write('src/vehicles/specs.ts', "import { vehicleMarkingRecord } from './vehicleMarkings.ts';\nexport const spec = vehicleMarkingRecord;\n");
+    write('src/vehicles/vehicleMarkings.ts', 'export const vehicleMarkingRecord = () => null;\n');
+    write('src/vehicles/insigniaPainter.ts', 'export const paint = (ctx: CanvasRenderingContext2D) => ctx.fill();\n');
+    assert.deepEqual(presentationFindings(root, ['src/sim/authority.ts']), [
+      { file: 'src/vehicles/insigniaPainter.ts', reason: 'a vehicle canvas painter' },
+      { file: 'src/vehicles/vehicleMarkings.ts', reason: 'a vehicle presentation module' },
+    ], 'the lint names a marking module and a canvas painter brought into the graph');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+console.log(`detMath.selftest: ${checked} golden rows bit-identical to the Rust jsmath; ${modules.length} authority modules on detMath, no presentation among them (a planted marking module and painter are named)`);

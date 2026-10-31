@@ -4,7 +4,6 @@
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
 import { tankLabelRecord } from './tankLabels.ts';
-import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 import {
   DEV_FLEET_ACTIVE,
   DEV_FLEET_LABEL,
@@ -515,7 +514,8 @@ export function finalizeFirstPartyRoster(): void {
     const label = tankLabelRecord(spec);
     spec.name = label.displayName;
     spec.label = label;
-    spec.markings = vehicleMarkingRecord(spec);
+    // (267) the national marking record is presentation (vehicleMarkings.ts, its canvas painters and the UI's flag
+    // codes): the builders derive it from the spec, so the authority, which imports this registry, never loads it
     spec.authorship = FIRST_PARTY_VEHICLE_AUTHORSHIP;
     const productionVisible = productionSet.has(id);
     spec.roster = Object.freeze({
