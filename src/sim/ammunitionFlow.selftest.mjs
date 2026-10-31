@@ -214,10 +214,12 @@ const laterChannelCounts = {
   challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
   // 265: the Danish Leopards' three rounds each (an APFSDS, a HEAT and an HE round)
   leo1a3dk: 3, leo1a5dk: 3, leo1a5dk1: 3, leo2a5dk: 3,
+  // 266: the Ukrainian CV9040C (the Swedish CV9040C's three rounds)
+  ua_cv9040c: 3,
 };
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
-const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;

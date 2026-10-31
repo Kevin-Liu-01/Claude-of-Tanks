@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1456 | 114.1 |
+| KEEP | 1457 | 114.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 668 | 1114.0 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2125 | 1228.4 | 207.4 |
-| After: the default tier | 1456 | 114.1 | 16.6 |
+| Before: every receipt (npm test without the tiers) | 2126 | 1228.7 | 207.5 |
+| After: the default tier | 1457 | 114.4 | 16.7 |
 
-Default tier: 9.3 % of the whole registry's CPU; 12.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 13.9 min pool, 2.5 min browser receipts.
+Default tier: 9.3 % of the whole registry's CPU; 12.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 14.0 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -814,7 +814,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1456)
+## KEEP (1457)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -899,6 +899,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/motion-lint.selftest.mjs` | 19 | KEEP | static motion lint (must-keep: UI lint) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/sourced-building-source.browser.selftest.mjs` | 19 | KEEP | GPU regression, 19 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/tank-id-rekey-assets.selftest.mjs` | 19 | KEEP | tool contract, 19 s: 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduce | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/denmark.selftest.mjs` | 18 | KEEP | vehicle rule, 18 s: release 265 (owner: "add a bunch more denmark tanks"): the Danish Leopards within their photo packets at both | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/audioRevival.selftest.mjs` | 18 | KEEP | audio contract, 18 s: Receipt (the 2.0 revival, 2026-10-06): the engine plays the revival's sounds at their moments, on the shipped | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/gallery/damageLab.selftest.mjs` | 18 | KEEP | site, manual or app contract, 18 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/garageModePreview.selftest.mjs` | 18 | KEEP | game flow, 18 s | default tier (npm test, the release gate; lane mode by its closure) |
