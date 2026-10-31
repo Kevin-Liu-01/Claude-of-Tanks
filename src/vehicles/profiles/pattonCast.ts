@@ -1116,7 +1116,7 @@ const glacisDeg = (toe: readonly [number, number], knee: readonly [number, numbe
 // M46 Patton
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** M46 / M47 track finish (neutral weathered steel), as the family kept it. */
+/** M46 / M47 / M60 track finish (neutral weathered steel), as the family kept it. */
 export interface TrackFinish { readonly trackBandHex: number; readonly trackBandRoughness: number; readonly trackBandEnvMapIntensity: number }
 
 const M46_RING = { y: 1.62, z: -0.34 };
@@ -2667,11 +2667,6 @@ const M60_HULL_SPEC: PershingHullSpec = {
   },
 };
 
-/** The Starship's hull: the A1's, its ring deck run on 0.36 m under the dome's front before it steps down to the
- * driver's deck (the owner's model's step lies under the dome's edge), the hatch further forward on it. */
-const M60A2_HULL_SPEC: PershingHullSpec = {
-  ...M60_HULL_SPEC, knee: [1.80, 1.757], glacisLine: [[1.86, 1.627], [2.45, 1.627]], driverHatchZ: 2.17,
-};
 
 /** The marks drawn on the A1's casting: the A3, and the IDF's Magach 6B (Blazer) and Magach 7C (passive armour). */
 type M60TurretMark = 'a1' | 'a3' | 'magach6b' | 'magach7c';
@@ -3873,13 +3868,16 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   yield 'm60a2Gun';
 }
 
-export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3' | 'magach6b' | 'magach7c'): TankProfileBuild {
-  yield* pershingHullSteps(P, M60_HULL_SPEC);
+export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3' | 'magach6b' | 'magach7c', finish: TrackFinish): TankProfileBuild {
+  // (round 17: the M60s' exposed manganese-steel track finish, as the M46/M47 take theirs; the Starship on the A1's hull,
+  // its receipt reading the hull it is built on: its own deck run on under the dome gated half a point worse against the
+  // owner's model)
+  const H = M60_HULL_SPEC, G = variant === 'a2' ? M60A2_GUN : M60_GUN;
+  yield* pershingHullSteps(P, { ...H, gear: { ...H.gear, ...finish } });
   if (variant === 'magach6b') { m60BlazerGlacis(P); yield 'm60HullEra'; }
   if (variant === 'magach7c') { m60Magach7Hull(P); yield 'm60HullArmour'; }
   if (variant === 'a2') yield* m60a2TurretSteps(P);
   else yield* m60TurretSteps(P, variant);
-  const H = variant === 'a2' ? M60A2_HULL_SPEC : M60_HULL_SPEC, G = variant === 'a2' ? M60A2_GUN : M60_GUN;
   publishReceipt(P, {
     mark: variant === 'a1' || variant === 'a2' || variant === 'a3' ? `m60${variant}` : variant, ring: [M60_RING.y, M60_RING.z],
     trunnion: [G.axisY, G.trunnionZ],

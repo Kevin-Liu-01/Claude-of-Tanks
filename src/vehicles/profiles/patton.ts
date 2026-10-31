@@ -190,17 +190,17 @@ export const PATTON_PROFILES = {
   m48_super: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48super')) },
   // release 265 (the owner, 2026-10-28: "be sure to update th estartship too"): the Starship rebuilt on the A1's hull
   // off the owner's model (pattonCast.ts m60a2TurretSteps)
-  m60a2: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a2')) },
+  m60a2: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a2', M60_TRACK_FINISH)) },
 
   // Release 265 (the owner, 2026-10-28: "rework ALL the m60s, their models proper are in my folders"): the M60A1 and
   // M60A3 are new measured castings at true size in pattonCast.ts (docs/references/tanks/m60a1.md, m60a3.md).
-  m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a1')) },
+  m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a1', M60_TRACK_FINISH)) },
   // A3 TTS: the supplied A3 oracle resolves the correct variant package —
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
-  m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a3')) },
+  m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a3', M60_TRACK_FINISH)) },
   // release 267 (the owner, 2026-10-28: "Magach Series (Israel) ... (Magach 6 and Magach 7 families)"): the IDF's M60s on
   // the A1's castings (pattonCast.ts buildM60CastSteps)
-  magach6b: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach6b')) },
-  magach7c: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach7c')) },
+  magach6b: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach6b', M60_TRACK_FINISH)) },
+  magach7c: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach7c', M60_TRACK_FINISH)) },
 } satisfies VehicleProfileRecord;

@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { M60_TRACK_FINISH } from './patton.ts';
 
 // Release 266 (the M60 batch): the M60A1 and M60A3 are rebuilt at true size on the owner's models' castings
 // (pattonCast.ts buildM60CastSteps; Main's rulings 2026-10-28: the 0.9 compact envelope retired, the M60A3's ERA off).
 // The old builder's attachment, cassette, shoulder and finish receipts went with it. What an M60 still has to carry:
-// its canonical rigs at true size, the A1's searchlight glass riding the gun (no armour), one track band a side, and the
-// authority's barrel ending on the drawn mouth (owner 2026-09-22: "the muzzle marker is the tube end").
+// its canonical rigs at true size, the A1's searchlight glass riding the gun (no armour), one matte steel track band a
+// side, and the authority's barrel ending on the drawn mouth (owner 2026-09-22: "the muzzle marker is the tube end").
 
 const worldGeometryCenter = (mesh) => {
   mesh.geometry.computeBoundingBox();
@@ -45,7 +46,11 @@ for (const id of ['m60a1', 'm60a3']) {
     if (object.name === 'gearTrackBandL' || object.name === 'gearTrackBandR') bands.push(object);
   });
   assert.equal(bands.length, 2, `${id}: exactly one continuous band on each side`);
-  for (const band of bands) assert.equal(band.userData.appearanceRole, 'trackBand', `${id} ${band.name}: its running-gear role`);
+  for (const band of bands) {
+    assert.equal(band.material.color.getHex(), M60_TRACK_FINISH.trackBandHex, `${id} ${band.name}: neutral track steel, not camouflage`);
+    assert.equal(band.material.roughness, M60_TRACK_FINISH.trackBandRoughness, `${id} ${band.name}: exposed track steel stays matte`);
+    assert.equal(band.userData.appearanceRole, 'trackBand', `${id} ${band.name}: its running-gear role`);
+  }
 
   tank.root.updateMatrixWorld(true);
   const spec = getSpec(id);
