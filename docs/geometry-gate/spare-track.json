@@ -2035,19 +2035,19 @@
    "hostSweep": []
   },
   "m60a1": {
-   "inputHash": "92b1d139988cfb6a",
+   "inputHash": "86842035bf71dfeb",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m60a2": {
-   "inputHash": "678e6422f01e6356",
+   "inputHash": "4ece50e40e736da8",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m60a3": {
-   "inputHash": "07553441c7eb9c23",
+   "inputHash": "c2e211d6121f0722",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2083,6 +2083,18 @@
   },
   "magach3": {
    "inputHash": "5b29fe05b53c644e",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "magach6b": {
+   "inputHash": "e1f078d1a9f7b38c",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "magach7c": {
+   "inputHash": "05425ed3a1a591e8",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
