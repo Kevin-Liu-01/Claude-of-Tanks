@@ -434,9 +434,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({
-        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.30, nx: 36, nz: 56, y: 0.84,
-        // the gun slot (the sights, lids and posts open the net round their own shapes)
-        holes: [rect(-0.50, 0.50, 0.80, 1.34)],
+        // to the frontal modules' swept tips (z 1.66; the net ends at the faces)
+        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.68, nx: 36, nz: 61, y: 0.84,
+        // the gun slot and the gunner's sight window in the right cheek (the sights, lids and posts open the net round
+        // their own shapes)
+        holes: [rect(-0.50, 0.50, 0.80, 1.72), rect(-0.94, -0.50, 1.00, 1.50)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // the walls' shoulders stand at 0.76-0.77 under the roof's bevel: the drapes hang from over them, behind the smoke
@@ -453,9 +455,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
       // three long overlapping drapes a side from the sponson's wall, their tops 13 cm under the deck's edge (the gun's
       // low sweep over the sides at full depression stays clear of their garnish): over the heavy fore blocks, amidships
-      // and aft over the panels, ending ahead of the sprocket
+      // and aft over the panels, ending ahead of the sprocket (6 cm short of the aft run's rear end at z -2.81: a column
+      // at -2.80 fell past the panel's end, and a leaf lay behind it on the track, 25 voxels in the strict track clip)
       side: [...flanks(1.36, 3.16, 1.50, 0.58, 1.86, 41), ...flanks(-1.40, 1.42, 1.50, 0.54, 1.78, 47),
-        ...flanks(-2.80, -1.10, 1.50, 0.56, 1.78, 53)],
+        ...flanks(-2.75, -1.10, 1.50, 0.56, 1.78, 53)],
     },
   },
   // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
@@ -471,7 +474,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
-      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
+      // the EMES 15's window in the right cheek left open (the deepened window took the net's edge into it: the window critic)
+      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.98, -0.46, 1.10, 1.75)] })],
       side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19)],
       face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
     },

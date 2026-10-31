@@ -4,7 +4,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 
 ## Current status
 
-- Updated: 2026-10-27.
+- Updated: 2026-10-30 (R7, the swept frontal modules).
 - Owner request / latest superseding instruction (verbatim, 2026-10-27): "add these new tanks using our rigoorous tank
   generation workflow"; through Main: "the christian 2 is based off the leopard, take innnspo from japanese type 90. but
   dress it in a ton of netting and ghillie, which our strv 121 should also get a ton of btw to distinguishh it as
@@ -85,7 +85,13 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
   three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
-  frontal modules to z 1.32 either side of a 0.71 m gun slot; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+  the cheek blocks on the early Leopards' and the 2A4 family's construction (leopard2CheekFront.ts; R8): faces at
+  z 1.58 across a 0.95 m gun slot, swept back 33.8 degrees to 1.17 m off the bore, vertical to 0.64, a 10 cm bevel
+  back to flat tops at 0.74, a 10 cm chamfer to the walls, the shell's front behind them at z 0.91; the gunner's sight
+  window through the right block's top inboard corner (0.57-0.88 m off the bore, sill 0.38, back 0.35 m behind the
+  face), the EMES 15-pattern head, door leaves and armoured housing in it; the 0.91 m box mantlet's face 6 cm proud
+  of the faces (gun z 0.60), its top level with the blocks' tops and bevelled to the faces' top line, its underside at
+  -0.26; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
@@ -133,3 +139,45 @@ See the round log; filled as each gate runs.
 - R6 (the Leopard 2A3's blind critics on the shared hull): the last skirt panel a fender strip so the sprocket shows whole;
   one continuous exhaust band across the upper rear plate and a deck-level tubular stern rack to the oracle's 4.155 m
   instead of the stern box. Fairness re-run on the final build: mantlet 850/1000 and the 2.1/17 s cycle, 0.499 (9/29).
+- R7 (2026-10-30, the owner on the lane's five-tank sheet: "christain 2 missinng thhe angled ness"): the supplied model
+  sliced at heights (game frame, ~/cot-lanes/christian2-262-evidence/front-27/slice.mjs): its cheek faces vertical from
+  the floor to 2.27 m, straight in plan from a 0.475 m slot to the walls and swept back 33.5 degrees (left) and 35.4
+  (right), its roof rising 6 degrees back from their top edge, the box mantlet flush with their tips. R1-R6 had read
+  the turret front at the roof's edge (z 1.66 world, 1.29 turret) and built square modules there. Now: each module one
+  convex piece swept 33.8 degrees from turret z 1.66 at the slot to the wall at the shell's front, the seams and bolts
+  square to the face; the mantlet's face brought forward to the tips (gun z 0.60), its underside rising 11 cm over its
+  front 0.30 m (traversed astern, a square box would stand 1-3 cm into the engine deck's net at the +0.6 degree stop);
+  the cheek plates on the swept face, the mantlet's plate 4 cm inside its face; the roof net to the tips. The
+  Leopards' 27 degrees (leopard2CheekFrontDatums.ts) is the owner's fit to a real 2A4; this concept keeps its own
+  model's angle. R7's blind critic (FAIL; the sweep matched, about 33 degrees both sides): the mantlet narrower than the
+  model's and dark between the cheeks, a ledge where the modules' tops met the shell's front roof edge, a wedge at the
+  outer corners, dark seam bars on the faces, the glacis net tented in four spikes over the splash board. R7b: the slot
+  and mantlet at the model's widths (0.95 and 0.88 m; the face line unchanged, so the tips stand at turret z 1.58 and
+  the mantlet 6 cm proud, as the model's), the modules' tops from the shell's front roof edge (0.74), the seam bars
+  gone, and no splash board under the glacis net (the Strv 121's ruling in leopard2Hull.ts).
+  R7b's blind critic (FAIL; plan and the mantlet's width and position now matched): the mantlet stood only 45% of the
+  cheek's height (the model's 95%), a notch over it showing the shell's wall; its sight port read as a hole. R7c: the
+  mantlet from gun -0.26 to +0.30 (the model's face spans 1.70-2.30 m; ours 1.80-2.28, its underside still rising
+  6 cm over its front for the engine deck's net), filling the slot to 2 cm a side; the sight port framed.
+  R7c's blind critic (FAIL on one major; the plan, the mantlet's footprint, height and position matched): a black
+  triangle on the 8 cm step between the mantlet's top and the shell's front roof edge; the mantlet's face dark in
+  every round (one dark blob of the projection covered it). R7d: a brow over the slot from the roof's edge down to
+  1.4 cm over the mantlet's top at every pitch, and the mantlet's camouflage phased off the projection's origin
+  (userData.camoUvOffset, as the Sabra's cheek covers).
+  R7d's blind critic: PASS (the build's faces about 32 degrees, the model's 34 and 37; the mantlet's width, height and
+  position the model's, its face lit and painted; the net clear of the front and the gun). Minors left: the slot's
+  2 cm running clearance beside the mantlet reads dark from the side; the gun's plain collar where the model wraps a
+  stepped sleeve in cloth.
+- R8 (2026-10-30, the owner: "make sure the christain has the winndow cutout and other things on leopard 2a4
+  session"): the cheeks rebuilt on the shared Leopard cheek front (addLeopard2CheekBlocks, addLeopard2Emes15) with
+  the model's datums; its window sliced from the model's right cheek (0.57-0.88 m off the bore, open from 2.02 m
+  through the top, its back parallel to the face 0.35 m behind it) replaces R1's roof sight box; the 2A4's welded
+  joints and lifting lug and the early Leopards' face rails; the mantlet's top level with the blocks' and bevelled
+  like theirs (the 2A4's brow over the slot would meet this deep box at elevation, so the slot stays open over it);
+  the window's plate and the optics module in it (the early Leopards' armour); the roof net opened over the window.
+  R8's blind critic: PASS (the sweep 32-38 degrees against the model's 34-36, the window in the right block beside the
+  mantlet with the head set back, the mantlet's size and stance the model's, the net clear of the window). Its minors
+  taken: the window widened to 0.52-0.90 m (it read 25% narrower than the model's), the housing lowered to the 2A4's
+  0.83, the blocks' seam rods dropped (they stood off the walls' chamfered feet), the mantlet's sight port round.
+  Fairness (tier-fairness-259 round robin, 34 peers at VIII, fairlever.mjs): the bigger mantlet at 850/1000 read 0.718
+  (12/34 in band); 750/900 reads 0.523 (21/34), adopted; the cheeks at 680 or 760 read the same (760 kept).

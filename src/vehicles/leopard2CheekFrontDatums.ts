@@ -1,5 +1,5 @@
-// The early Leopard 2 turrets' cheek front in plan: release 262's 2A2 and 2A3 (leopard2a3B4Armor.ts) and release 265's 2A4
-// family (leopard2A4FamilyArmor.ts) share it. The cheeks' vertical faces stand at frontZ across the gun slot and sweep back
+// The early Leopard 2 turrets' cheek front in plan: release 262's 2A2 and 2A3 (leopard2a3B4Armor.ts), release 265's 2A4
+// family (leopard2A4FamilyArmor.ts) and the Christian II (christian2Armor.ts, its own model's 33.8-degree sweep) share it. The cheeks' vertical faces stand at frontZ across the gun slot and sweep back
 // toward their outer ends; a short chamfer meets each side wall; the faces bevel back to the cheeks' flat tops; the EMES
 // 15's notch is cut through the right cheek's top inboard corner, its back the sight head's face, parallel to the cheek's
 // face. One set of lines for every turret on it (the builder: profiles/leopard2CheekFront.ts); each turret passes its own
