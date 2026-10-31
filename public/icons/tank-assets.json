@@ -181768,22 +181768,22 @@
               [
                 -1.38,
                 0.916,
-                3.565
+                3.609
               ],
               [
                 1.38,
                 0.916,
-                3.565
+                3.609
               ],
               [
                 1.38,
                 1.6,
-                1.2964
+                1.3264
               ],
               [
                 -1.38,
                 1.6,
-                1.2964
+                1.3264
               ]
             ]
           },
@@ -181799,22 +181799,22 @@
               [
                 -1.35,
                 0.46,
-                2.9888
+                3.0293
               ],
               [
                 1.35,
                 0.46,
-                2.9888
+                3.0293
               ],
               [
                 1.35,
                 0.916,
-                3.565
+                3.609
               ],
               [
                 -1.35,
                 0.916,
-                3.565
+                3.609
               ]
             ]
           },
@@ -181830,7 +181830,7 @@
               [
                 1.5,
                 0.92,
-                1.8365
+                1.8698
               ],
               [
                 1.5,
@@ -181845,7 +181845,7 @@
               [
                 1.5,
                 1.6,
-                1.8365
+                1.8698
               ]
             ]
           },
@@ -181866,12 +181866,12 @@
               [
                 -1.5,
                 0.92,
-                1.8365
+                1.8698
               ],
               [
                 -1.5,
                 1.6,
-                1.8365
+                1.8698
               ],
               [
                 -1.5,
@@ -181892,22 +181892,22 @@
               [
                 1,
                 0.46,
-                3.2769
+                3.3191
               ],
               [
                 1,
                 0.46,
-                -3.3849
+                -3.3838
               ],
               [
                 1,
                 0.92,
-                -3.3849
+                -3.3838
               ],
               [
                 1,
                 0.92,
-                3.2769
+                3.3191
               ]
             ]
           },
@@ -181923,22 +181923,22 @@
               [
                 -1,
                 0.46,
-                -3.3849
+                -3.3838
               ],
               [
                 -1,
                 0.46,
-                3.2769
+                3.3191
               ],
               [
                 -1,
                 0.92,
-                3.2769
+                3.3191
               ],
               [
                 -1,
                 0.92,
-                -3.3849
+                -3.3838
               ]
             ]
           },
@@ -182109,12 +182109,12 @@
               [
                 -1.425,
                 1.6,
-                1.2964
+                1.3264
               ],
               [
                 1.425,
                 1.6,
-                1.2964
+                1.3264
               ],
               [
                 1.425,
@@ -182833,12 +182833,12 @@
             "min": [
               -0.9733,
               1.479,
-              -0.5253
+              -0.531
             ],
             "max": [
               0.9733,
               1.679,
-              1.3253
+              1.331
             ],
             "turretLocal": false
           },
@@ -182848,12 +182848,12 @@
             "min": [
               -0.95,
               0.46,
-              -3.3849
+              -3.3838
             ],
             "max": [
               0.95,
               1.44,
-              -1.7645
+              -1.7534
             ],
             "turretLocal": false
           },
@@ -182863,12 +182863,12 @@
             "min": [
               -0.817,
               0.5572,
-              -3.2553
+              -3.2534
             ],
             "max": [
               0.817,
               1.2628,
-              -2.7044
+              -2.699
             ],
             "turretLocal": false
           },
@@ -182878,12 +182878,12 @@
             "min": [
               -0.95,
               0.46,
-              -1.6925
+              -1.6809
             ],
             "max": [
               0.95,
               1.04,
-              -0.8642
+              -0.8476
             ],
             "turretLocal": false
           },
@@ -183288,13 +183288,13 @@
             "name": "driver",
             "min": [
               -0.6297,
-              0.5345,
-              1.3575
+              0.5331,
+              1.3952
             ],
             "max": [
               -0.1703,
-              1.3125,
-              2.956
+              1.3111,
+              2.9937
             ],
             "turretLocal": false
           },
@@ -183308,7 +183308,7 @@
             ],
             "max": [
               0.8365,
-              -0.0504,
+              -0.0604,
               0.9328
             ],
             "turretLocal": true
@@ -183345,17 +183345,17 @@
           }
         ]
       },
-      "geometryHash": "27d2e9b7",
-      "metadataHash": "d8786b54",
+      "geometryHash": "299f86de",
+      "metadataHash": "1fdbbf49",
       "presentationAnchor": {
-        "xM": -0.0003,
-        "zM": -0.0398
+        "xM": -0.0004,
+        "zM": -0.026
       },
-      "presentationHash": "4910dbfa",
+      "presentationHash": "6cc1bfbb",
       "presentationProjection": {
         "centerYM": 2.23,
-        "topHalfM": 8.4762,
-        "sideHalfM": 4.2381
+        "topHalfM": 8.4614,
+        "sideHalfM": 4.2307
       },
       "appearance": {
         "version": 1,
@@ -183405,15 +183405,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23838,
-          "sha256": "6d0add6e2c6c7e3ee77d6e9915b82160f27e11b36cca063fe2a852d4bb95e982",
+          "bytes": 24522,
+          "sha256": "1fae2040fab8165353815944ac219ee286f221c08c58a2286e1e73fb56886523",
           "thumbnail": {
             "file": "thumbs/ee_t4_osorio_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10354,
-            "sha256": "25b3f69aaa663ab68755fecfd2f0bc952fbcada25d81e78521956c3c3927cf92"
+            "bytes": 10464,
+            "sha256": "0725550d3b96a858324f28815aece689ecb9051b2e339edbac3edb1c8eba98dd"
           }
         },
         "top": {
@@ -183421,56 +183421,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7264,
-          "sha256": "61344abcb1e27c597148da6fbf8b023bb22e05033231a56a06e9e830cd28cb1f"
+          "bytes": 8844,
+          "sha256": "feb916786c46798433c4aee250009010af0237c4a92ec39444d594f6d9803966"
         },
         "side": {
           "file": "ee_t4_osorio_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7434,
-          "sha256": "92984d6fea73ab4760d827481e5052c3058918986c19584159087b19bc26fd09"
+          "bytes": 7840,
+          "sha256": "64ab155d50549ed870f17dc633920bd82b7de2d6f874670409949e7d12d0dc16"
         },
         "topSilhouette": {
           "file": "ee_t4_osorio_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1137,
-          "sha256": "7f252dc194ad357742b804990c6847a5334f77fe66244b36d2a7917a6470f588"
+          "bytes": 1361,
+          "sha256": "b0a07b2f5dfc34baf1d39a79d86b2341152412c86961ace3d6c0e29e8366e184"
         },
         "sideSilhouette": {
           "file": "ee_t4_osorio_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3768,
-          "sha256": "d82dce34399a6162c9569c6a67e322809b44a474668873d01895550be134b9c7"
+          "bytes": 3771,
+          "sha256": "f4a20e8e28a719061c04ae0c876719286b9a80d9d6deeafd95405fcfbe69f628"
         },
         "armorSide": {
           "file": "ee_t4_osorio_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18558,
-          "sha256": "d827341b0f57b98de1f6fb76201dec8e63dcb173c9a34e65e9c2912996b6ee09"
+          "bytes": 19208,
+          "sha256": "e4e1cd6cd20820712a44c59814b3b1c7e4da809af18ee9ee7eb56759eae9ee4d"
         },
         "modulesSide": {
           "file": "ee_t4_osorio_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17804,
-          "sha256": "dd8bd1736211cfa0123d37dcad0e5d6d5820f7838f5934b2424f6f67b963fb1c"
+          "bytes": 18768,
+          "sha256": "887168285046e87a48b6c974415d3515add6584a94ecfcb7171e6835de17f58b"
         },
         "crewSide": {
           "file": "ee_t4_osorio_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15946,
-          "sha256": "1c9e4c99f24145a5391dc1eadf1bcc834c842797107c3169c2ad283182cce3c1"
+          "bytes": 16650,
+          "sha256": "16e0d37986681693645ae3f36a4373b7ca6ce0d4d6c71d67347b9fa6d32feb15"
         },
         "markings": {
           "file": "ee_t4_osorio_markings.png",
@@ -183483,8 +183483,8 @@
         "technicalLabels": {
           "file": "ee_t4_osorio_technical.json",
           "mime": "application/json",
-          "bytes": 5565,
-          "sha256": "f3951f2f8f6232f03c09ebb5bd3d32b94528496d7925ba9ecd2250dcfc7ecf6b"
+          "bytes": 5554,
+          "sha256": "ff3049a1a7a0825a1597d6c0f6a8848285085ec56bd161e5ed2d3f9d606f324b"
         }
       }
     },
