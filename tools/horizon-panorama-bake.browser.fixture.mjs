@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { buildHorizonRing } from '../src/world/maps/horizon.ts';
 import { getMapConfig } from '../src/world/maps/index.ts';
+import { loadMapKits } from '../src/world/worldKits.ts';
 import { createHeightField } from '../src/world/terrain.ts';
 import { HORIZON_PANORAMA, horizonPanoramaHaze } from '../src/world/horizonPanorama.ts';
 import { HAZE_EXT_CHROMA, hazeLayerInverseScale, hazeSigma } from '../src/engine/hazeLaw.ts';
@@ -36,6 +37,10 @@ const quantile = (values, q) => {
  */
 export async function measureHorizonPanoramaBake(spec) {
   const cfg = getMapConfig(spec.map);
+  // (266, main's reds: "Architecture style dalmatian is not loaded") in the browser each kit is its own chunk since the
+  // lazy kit registries (e9f3ee43d4); the ring's border hamlets build the map's styles, so they load first, as
+  // map.ts createMapAsync does
+  await loadMapKits(cfg);
   const hf = createHeightField(1337, cfg);
   const ring = buildHorizonRing(null, cfg, 1337, hf);
   const pano = ring.userData.horizonPanorama;
