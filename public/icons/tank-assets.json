@@ -2135669,8 +2135669,8 @@
             "volumeId": "M03",
             "name": "autoloader",
             "min": [
-              -0.8212,
-              0.5522,
+              -0.1941,
+              0.6061,
               -0.3438
             ],
             "max": [
@@ -2135684,9 +2135684,9 @@
             "volumeId": "M04",
             "name": "engine",
             "min": [
-              -1.2747,
-              0.43,
-              -3.4199
+              -0.7348,
+              0.6075,
+              -2.7385
             ],
             "max": [
               1.2747,
@@ -2135700,11 +2135700,11 @@
             "name": "transmission",
             "min": [
               -1.0963,
-              0.5184,
-              -3.2872
+              0.748,
+              -3.1981
             ],
             "max": [
-              1.0963,
+              1.0666,
               1.1785,
               -2.7231
             ],
@@ -2135714,8 +2135714,8 @@
             "volumeId": "M06",
             "name": "fuelTank",
             "min": [
-              -1.2747,
-              0.43,
+              -0.6449,
+              0.63,
               -1.6872
             ],
             "max": [
@@ -2135729,8 +2135729,8 @@
             "volumeId": "M07",
             "name": "ammoRack",
             "min": [
-              -1.1406,
-              0.43,
+              -0.2814,
+              0.5985,
               -0.5812
             ],
             "max": [
@@ -2135745,8 +2135745,8 @@
             "name": "radio",
             "min": [
               -0.904,
-              0.0208,
-              -1.976
+              0.137,
+              -1.6818
             ],
             "max": [
               -0.1507,
@@ -2136048,8 +2136048,8 @@
           }
         ]
       },
-      "geometryHash": "ad903009",
-      "metadataHash": "a164e219",
+      "geometryHash": "2581c7c2",
+      "metadataHash": "a1877686",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0854
@@ -2136107,15 +2136107,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26084,
-          "sha256": "7ec71de2313108d42760e47eec84c57fcf4deee872572faa092b8c90a8eeaa9e",
+          "bytes": 26060,
+          "sha256": "2b8cf6c834ab5d1a61c5f8dae34913f2f85d20152e0c50dea4895463bdf70fb2",
           "thumbnail": {
             "file": "thumbs/t84bm_oplot_m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10768,
-            "sha256": "b6e346e7a66fdc9064a9a5132e6d76399a964ff6d88b22c3b0cad8cede76772a"
+            "bytes": 10762,
+            "sha256": "511df8eb9e9833aa3f248e037de5a7537bfb4d919bd9ff640316c2b237fc0226"
           }
         },
         "top": {
@@ -2136123,16 +2136123,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12926,
-          "sha256": "0a831f877a4ac5ba66d4e97e72f44b64306b17ac619b4fb23d1a60483c8ea7ba"
+          "bytes": 12932,
+          "sha256": "79fddb67a1754fa7967bc5892623e8bc4cc9c011615fe4bf57f40ac58f180f20"
         },
         "side": {
           "file": "t84bm_oplot_m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9224,
-          "sha256": "aa5d6a5043f1675bb3cff667648be84bd0a9bbb948eb4f11ca5e1e72821a2e3c"
+          "bytes": 9184,
+          "sha256": "8e571970ebbcfa98c9466bf9978d58e02d0aa20fae68e4efbed4ad2fc5809b23"
         },
         "topSilhouette": {
           "file": "t84bm_oplot_m_top_silhouette.png",
@@ -2136147,32 +2136147,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3956,
-          "sha256": "3c33af9806a764594ef55b3adb2e5fe692226098051da21682d666d301bb8c63"
+          "bytes": 3957,
+          "sha256": "c891e9350567e2cb057b39fe4bc3d2391e25815887cf95a34d8ca2d686057870"
         },
         "armorSide": {
           "file": "t84bm_oplot_m_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24902,
-          "sha256": "e91bf4a45e4af74a77f5bc665a8a42241b354a4601695f7d9b1a577232454c9b"
+          "bytes": 24924,
+          "sha256": "7f4ce64e075e989cfa8c0e52a25fddb4236531d20af87bd3c9df02595a6eb50f"
         },
         "modulesSide": {
           "file": "t84bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23664,
-          "sha256": "44f00411d384fd9edf4847feb2fd6e02579f06f5df7dd7d4a3846752ae0be697"
+          "bytes": 22058,
+          "sha256": "083678a54b0995e3c3585197101646f3808c4258ba835cdccf1cf1614f417a53"
         },
         "crewSide": {
           "file": "t84bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20710,
-          "sha256": "0c1d68fa9ea27627ecf8a54e187dcbd1dda3929c9430ab5c6f029666dbd7f9c6"
+          "bytes": 20434,
+          "sha256": "9e4900f861a8885e9dfb5b2f63005422e41d23ff358058c2ab77a52df39ecfab"
         },
         "markings": {
           "file": "t84bm_oplot_m_markings.png",
@@ -2136185,8 +2136185,8 @@
         "technicalLabels": {
           "file": "t84bm_oplot_m_technical.json",
           "mime": "application/json",
-          "bytes": 5319,
-          "sha256": "4052059d0307aa0b487b334d275fe721b5e529212d1f86e7882bd3640878fca5"
+          "bytes": 5317,
+          "sha256": "34cd68c2640f54fc1d81510ac11cb343dfa55812a34814155ee6a0d92a1f8847"
         }
       }
     },

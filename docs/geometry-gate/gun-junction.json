@@ -236,7 +236,7 @@
   "t80u_zoria": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d019be6dc9f529cc","gun":"b61fe635655510bf"}},
   "t80uk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"44a2e67d2453a8d6","gun":"fba414a0d77f7ffd"}},
   "t84": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"664be80767038cad","gun":"d7525b0801887392"}},
-  "t84bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3b1aed871bc75b77","gun":"f1b746bae0639ee5"}},
+  "t84bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5b259315c25ab345","gun":"f1b746bae0639ee5"}},
   "t90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"41c0defaf693b0d7","gun":"ad7f948f7c0c73a6"}},
   "t90_1992": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"47a577d151e4f804","gun":"64267ec5c9a386c2"}},
   "t90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6463a223c657e900","gun":"edc55e67606ef60e"}},
