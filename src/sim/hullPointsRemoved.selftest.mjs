@@ -3,7 +3,8 @@
 // stamps hpRemoved where each hit resolves (sim/damage.ts settleHullPoints), the authority carries it over the wire and
 // totals it, and every readout reads it through game/hullPointsRemoved.ts. Cases through the real resolution: a
 // penetration, a non-penetration, a ricochet, module damage with no hull points, an overkill, an ammo-rack kill, a crew
-// kill and a direct HE penetration.
+// kill and a direct HE penetration. Its browser half, tools/shot-damage-figures.browser.mjs (run by hand against a served
+// checkout), reads the figures the card, the float, the log and the end report show for the same cases.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
