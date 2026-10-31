@@ -12,7 +12,7 @@
 //   read the lane's tank ids; the whole suite is manual.
 //
 // docs/TEST-AUDIT.md records the 266 audit of every receipt (decision, reason, where its coverage lives); regenerate it
-// with `node tools/test-audit.mjs --write`.
+// with `node tools/test-audit.mjs --write` after any tier change, never by hand (selftest-tiers.selftest compares its counts).
 
 /** Default-tier receipts that may never move to a manual suite or retire: the invariants a deploy must re-prove. */
 export const MUST_KEEP = Object.freeze({
