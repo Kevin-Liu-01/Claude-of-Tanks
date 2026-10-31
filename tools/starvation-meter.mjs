@@ -2,7 +2,9 @@
  * Starvation meter: a harness that measures host time (tick rate, tick cost, stalls, round trips) on a shared machine
  * also measures the machine. Every `periodMs` the meter reads the wall clock and this thread's CPU clock; between two
  * samples the thread either ran (CPU), idled until the next timer (at most the period), or was runnable and did not run.
- * Wall time beyond CPU plus the period (and `slackMs` of timer noise) is that last part: the interval is starved by it.
+ * Wall time beyond CPU plus the period is that last part: the interval is starved by it. (267, load 70-150: a 2 ms slack
+ * per interval for timer noise hid seconds of fine-grained preemption, and timer lateness this thread's own CPU does not
+ * explain is the machine's anyway, its scheduling or its timer coalescing; `slackMs` stays for a receipt that drives it.)
  * A gate then takes out of each measurement the starvation inside its own span (`starvedIn`): a round trip, a second of
  * ticks, a frame in flight is judged on the time the thread had. A stall the code causes itself spends CPU, is never
  * starved and stays judged (mp-soak's planted stall).
@@ -23,7 +25,7 @@ export function threadCpuMs() {
  * `onInterval(interval)` runs after every sample with `{ startMs, endMs, wallMs, cpuMs, starvedMs }`; the timer seams
  * (`now`, `cpuNow`, `sample()` without `start()`) let a receipt drive it by hand.
  */
-export function createStarvationMeter({ periodMs = 5, slackMs = 2, now = () => performance.now(), cpuNow = threadCpuMs, onInterval = null } = {}) {
+export function createStarvationMeter({ periodMs = 5, slackMs = 0, now = () => performance.now(), cpuNow = threadCpuMs, onInterval = null } = {}) {
   // starved intervals only, in time order (a quiet run keeps none)
   const starved = [];
   let last = null;

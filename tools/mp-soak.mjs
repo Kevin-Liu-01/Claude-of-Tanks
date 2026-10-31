@@ -79,7 +79,10 @@ const TICK_BUDGET_MS = 6;
 // (267) the planted stall: 400 ms of CPU drops the ticks beyond the loop's catch-up window (server/match/loop.ts
 // maxCatchUpTicks, the actor keeps its default 6), 16 at least with rounding; and the least ticks the cost gate judges for a verdict
 const PLANT_STALL_CPU_MS = 400;
-const PLANT_MIN_DROPPED = Math.floor(PLANT_STALL_CPU_MS / TICK_MS) - 6 - 2;
+const LOOP_CATCH_UP_TICKS = 6;
+// a tick's wall time against its interval's CPU: the clocks' own disagreement, not preemption
+const TICK_WALL_TOLERANCE_MS = 1;
+const PLANT_MIN_DROPPED = Math.floor(PLANT_STALL_CPU_MS / TICK_MS) - LOOP_CATCH_UP_TICKS - 2;
 const MIN_JUDGED_TICKS = 300;
 // The snapshot interval is the server's choice and rides the WELCOME (P3b, 2026-09-29): every client reads its own
 // (`client.intervalTicks`, this default until it is welcomed) for its sampler, its gap counting and the gates.
@@ -568,18 +571,19 @@ async function main() {
       // a tick's cost is judged when the CPU this thread had over the interval covers the wall time of its ticks
       let wall = 0;
       for (const cost of ticksSince) wall += cost;
-      if (wall <= interval.cpuMs + meter.slackMs) judged.tickCosts.push(...ticksSince);
+      if (wall <= interval.cpuMs + TICK_WALL_TOLERANCE_MS) judged.tickCosts.push(...ticksSince);
       else judged.ticksUnjudged += ticksSince.length;
       ticksSince.length = 0;
-      // a stall drops the ticks its gap held beyond the catch-up window; the starved ms of that gap (the longer of this
-      // interval and the last: the loop and the meter wake in either order after it) account for a tick per TICK_MS
+      // a stall drops the ticks its gap held beyond the catch-up window. The server's share is what the thread's own time
+      // in that gap (the longer of this interval and the last: the loop and the meter wake in either order after it) would
+      // have dropped on its own, its CPU and idling past the window; the rest is the machine's. (267, load1 248: crediting
+      // the machine a tick per starved TICK_MS took the catch-up of a second, starved gap in the same interval out of the
+      // planted stall's share: 15 ticks of its 18.)
       if (loop.stats.stalls > stallsSeen) {
         const gap = previousInterval && previousInterval.wallMs > interval.wallMs ? previousInterval : interval;
         const dropped = loop.stats.droppedTicks - droppedSeen;
-        judged.stalls.push({
-          startMs: gap.startMs, atMs: interval.endMs, dropped,
-          droppedAfter: loop.stats.droppedTicks, machineTicks: Math.min(dropped, Math.ceil(gap.starvedMs / TICK_MS)),
-        });
+        const serverTicks = Math.min(dropped, Math.max(0, Math.floor((gap.cpuMs + meter.periodMs) / TICK_MS) - LOOP_CATCH_UP_TICKS));
+        judged.stalls.push({ startMs: gap.startMs, atMs: interval.endMs, dropped, droppedAfter: loop.stats.droppedTicks, machineTicks: dropped - serverTicks });
       }
       stallsSeen = loop.stats.stalls;
       droppedSeen = loop.stats.droppedTicks;
