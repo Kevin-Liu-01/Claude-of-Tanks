@@ -1,4 +1,5 @@
 import { weaponHitKind } from '../game/weaponHitKind.ts';
+import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { shouldShowShotReadout, keepMissileDirectHit, MissileBlastLedger } from './shotReadoutPolicy.ts';
 import { BattleKillLedger, FiredRoundLedger } from '../game/battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -6,9 +7,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // mod class). Everything rendered here traces 1:1 to RESOLVED sim events on
 // the bus (shell:hit / shell:fired / tank:destroyed / battle:ended) — no
 // number is ever recomputed in the UI:
-//   1. SHOT CARD  — after every player shot that connects: result badge,
-//      shell, distance, impact angle, nominal vs effective armor, pen roll,
-//      damage dealt vs damage roll, module/crew glyphs, and a mini armor
+//   1. SHOT CARD  — after every player shot that connects: result badge and
+//      the hull points it took off, shell, impact angle, nominal vs effective
+//      armor, pen roll, and a mini armor
 //      diagram (top + side silhouette renders from public/icons/ with the
 //      hull-local hit point + shell-path arrow from the event payload).
 //   2. SHOT LOG   — collapsible last-6-shots + per-battle received-damage log
@@ -384,11 +385,14 @@ const SI_CSS = `
 .cot-si-badge svg{width:12px;height:12px;flex:0 0 auto;}
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
-/* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
-   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis; from 210 px both
-   fit, and the 900x700 card's 220 kept neither glyph in either script, r12) */
+/* (a longer outcome ends in an ellipsis beside the figure, which keeps its width: the narrow card's PENETRATION alone lost
+   its glyph at 900x700, gauntlet r8) */
 @container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* the hull points the shot took off, beside the outcome (owner 2026-10-31): in the plate's ink beside the outcome's tone (an
+   amber figure by an orange title read as two oranges in one row, gauntlet r7) */
+.cot-si-dmg{flex:0 0 auto;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-20);line-height:1;
+  letter-spacing:0;color:var(--ink-1);white-space:nowrap;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:var(--s1);overflow:hidden;white-space:nowrap;}
@@ -758,6 +762,7 @@ function setShotCardTrace(
   card.dataset.weapon = weaponHitKind(ev);
   card.dataset.kind = ev.kind;
   card.dataset.damage = String(Math.round(ev.damage || 0));
+  card.dataset.removed = String(Math.round(hullPointsRemoved(ev)));
   card.dataset.dmgroll = String(Math.round(ev.dmgRoll || 0));
   card.dataset.eff = String(Math.round(ev.effectiveMm || 0));
   card.dataset.pen = String(Math.round(ev.penRollMm || 0));
@@ -783,8 +788,6 @@ function appendShotCardHeader(
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
-  // (the damage dealt is the floating number over the hit, never the card's figure as well: UI-LOCKDOWN B16, the
-  // registry's ruling; the card keeps the penetration, the angle, the armour and the outcome)
 }
 
 /** The round's type chip classes: a missile's chip carries its own class (class names, not copy). */
@@ -1336,8 +1339,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!missileSplash) kv('angle', t('shotInfo.angle'), `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
     if (!missileSplash) kv('armor', t('killcam.stat.armor'), armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
-    // (no damage row: the damage dealt is the floating number over the hit at the same moment, and a blocked hit's
-    // outcome says what its 0 would; the roll stays on card.dataset.dmgroll for traces: UI-LOCKDOWN B16)
+    // (no damage row: the hull points taken off stand beside the outcome, paintShotDamage; the roll stays on
+    // card.dataset.dmgroll for traces)
     if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier
@@ -1358,12 +1361,29 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function clearCardTimers(): void {
     clearTimeout(primaryFadeTimer); clearTimeout(primaryRemoveTimer);
   }
+  /**
+   * The card's figure, beside the outcome: the hull points the shot took off (owner 2026-10-31, "should show the amount u
+   * took off the enemy"; the registry's shot-damage, the shot's record beside the float's live cue). A missile's adds its
+   * blast's, whose line names the vehicles it reached. A shot that took none shows its outcome alone, never −0.
+   */
+  function paintShotDamage(card: HTMLDivElement, ev: ShotHitEvent): void {
+    const group = missileBlasts.get(ev);
+    // (a splash card's own hit is in its blast group already)
+    const removed = Math.round((ev.kind === 'he_splash' && group ? 0 : hullPointsRemoved(ev)) + (group?.damage ?? 0));
+    card.dataset.shown = String(removed);
+    const header = card.querySelector<HTMLDivElement>('.cot-si-hd');
+    let figure = header?.querySelector<HTMLSpanElement>('.cot-si-dmg') ?? null;
+    if (!header || removed <= 0) { figure?.remove(); return; }
+    figure ??= markDatum(el('span', 'cot-si-dmg', header), 'shot-damage');
+    figure.textContent = t('shotInfo.damageAmount', { amount: formatNumber(removed) });
+  }
   function showMissileBlast(card: HTMLDivElement, ev: ShotHitEvent): void {
     const group = missileBlasts.get(ev); if (!group) return;
     let line = card.querySelector<HTMLDivElement>('.cot-si-missile-blast');
     if (!line) line = el('div', 'cot-si-missile-blast', card);
-    line.textContent = t('shotInfo.missileBlast', { targets: group.targets, damage: Math.round(group.damage) });
+    line.textContent = t('shotInfo.missileBlast', { targets: group.targets });
     card.style.setProperty('--cot-si-blast-space', '30px');
+    paintShotDamage(card, ev);
   }
   function showCard(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     if (!shouldShowShotReadout(ev)) return;
@@ -1371,13 +1391,14 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (isTouchBattleLayout() || logOpen) return;
     if (keepMissileDirectHit(currentPrimary, ev)) {
       const card = cardHost.querySelector<HTMLDivElement>('.cot-si-card');
-      if (card) showMissileBlast(card, ev);
+      if (card && currentPrimary) showMissileBlast(card, currentPrimary);
       return;
     }
     currentPrimary = ev;
     clearCardTimers();
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
+    paintShotDamage(card, ev);
     cardHost.appendChild(card);
     showMissileBlast(card, ev);
     // The existing battle layout still owns this single, bounded panel.
@@ -1396,7 +1417,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
         `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
-        `<span class="d">${(it.ev.damage || 0) > 0 ? `−${formatNumber(Math.round(it.ev.damage))}` : '·'}</span>` +
+        `<span class="d">${hullPointsRemoved(it.ev) > 0 ? `−${formatNumber(Math.round(hullPointsRemoved(it.ev)))}` : '·'}</span>` +
         `<span class="n">${escapeHtml(it.ev.targetName || it.ev.targetId || '')}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}\u202fm</span>`;
     }
@@ -1492,7 +1513,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function showToast(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     const previous = latestToast?.element.parentNode === toastHost ? latestToast : null;
     const group = appendIncomingHit(previous?.group ?? null, ev.attackerId,
-      ev.damage || 0, cls, performance.now());
+      hullPointsRemoved(ev), cls, performance.now());
     const attacker = ev.attackerId ? combatants.get(ev.attackerId) : null;
     const source = killSourceIdentity(ev.attackerSource);
     const name = attackerLabel(ev) || attacker?.name || t('hud.enemy');
@@ -1614,7 +1635,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function bestShot(): ShotEntry | null {
     let best: ShotEntry | null = null;
     for (const shot of allShots) {
-      if (shot.ev.damage > 0 && (!best || shot.ev.damage > best.ev.damage)) best = shot;
+      if (hullPointsRemoved(shot.ev) > 0 && (!best || hullPointsRemoved(shot.ev) > hullPointsRemoved(best.ev))) best = shot;
     }
     return best;
   }
@@ -1690,7 +1711,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       },
       kills,
       bestShot: best ? {
-        damage: best.ev.damage,
+        damage: hullPointsRemoved(best.ev),
         shellType: best.ev.shellType || '',
         shellName: shellDisplayName(best.ev),
         targetName: best.ev.targetName || '',
@@ -1734,7 +1755,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const aircraft = killSourceIdentity(ev.attackerSource)?.source === 'ac130';
     const attacker = combatant(ev.attackerId, attackerLabel(ev), aircraft ? null : ev.attackerSpecId);
     if (aircraft) { attacker.aircraft = true; attacker.name = attackerLabel(ev) ?? attacker.name; }
-    attacker.dmg += ev.damage || 0;
+    attacker.dmg += hullPointsRemoved(ev);
     const target = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
     if (ev.destroyed) target.dead = true;
     if (ev.kind !== 'he_splash') linkOpposed(ev.attackerId, ev.targetId);
@@ -1742,9 +1763,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   function recordSpottingAssist(ev: ShotHitEvent): void {
     const spottedAt = spotWindow.get(ev.targetId);
-    if (ev.attackerId === playerId || ev.targetId === playerId || ev.damage <= 0) return;
+    if (ev.attackerId === playerId || ev.targetId === playerId || hullPointsRemoved(ev) <= 0) return;
     if (spottedAt === undefined || (ev.timeS || 0) - spottedAt > ASSIST_WINDOW_S) return;
-    if (ev.attackerId != null && sideOf(ev.attackerId) === 'ally') stats.assist += ev.damage;
+    if (ev.attackerId != null && sideOf(ev.attackerId) === 'ally') stats.assist += hullPointsRemoved(ev);
   }
 
   function recordOutgoingHit(ev: ShotHitEvent): void {
@@ -1753,16 +1774,18 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const round = firedRounds.hit(ev.shellId, outcome.penetrated);
     if (round.hit) stats.hits += 1;
     if (round.pen) stats.pens += 1;
-    stats.dealt += ev.damage || 0;
+    // (every damage figure and total is the hull points taken off, the card's and the float's: a kill reads what was left)
+    const removed = hullPointsRemoved(ev);
+    stats.dealt += removed;
     const shell = perShell(ev.shellType || '—');
     if (round.hit) shell.hits += 1;
     if (round.pen) shell.pens += 1;
-    shell.dmg += ev.damage || 0;
-    if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
+    shell.dmg += removed;
+    if (removed > 0) stats.timeline.push({ t: ev.timeS || 0, d: removed });
     stats.modulesDestroyed += (ev.modulesHit || [])
       .filter((module) => module.newState === 'red').length;
     const target = perTarget(ev);
-    target.dmg += ev.damage || 0;
+    target.dmg += removed;
     target.hits += 1;
     if (outcome.penetrated) target.pens += 1;
     if (ev.zone) target.lastZone = ev.zone;
@@ -1785,14 +1808,15 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function recordIncomingHit(ev: ShotHitEvent): void {
     if (ev.targetId !== playerId) return;
     const outcome = hitOutcomeFor(ev);
-    stats.received += ev.damage || 0;
-    if ((ev.damage || 0) <= 0 && outcome.blocked) stats.blocked += ev.dmgRoll || 0;
+    const removed = hullPointsRemoved(ev);
+    stats.received += removed;
+    if (removed <= 0 && outcome.blocked) stats.blocked += ev.dmgRoll || 0;
     const knocked = (ev.modulesHit || []).filter((module) => module.newState === 'red');
     for (const module of knocked) beatLog.loss(module.module, ev.timeS);
     const mods = knocked.map((module) => moduleName(module.module)).join(', ');
     receivedLog.push({
       t: ev.timeS || 0,
-      dmg: ev.damage || 0,
+      dmg: removed,
       kind: ev.kind,
       aid: ev.attackerId,
       attacker: attackerLabel(ev) || 'Enemy',

@@ -2470,6 +2470,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
+    // 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off the
+    // enemy"), stamped where the hit resolves and carried over the wire
+    'src/sim/hullPointsRemoved.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
     'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',

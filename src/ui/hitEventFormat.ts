@@ -6,12 +6,15 @@ import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { GUNSHIP_WEAPONS } from '../sim/matchRuleset.ts';
 import { t } from './i18n.ts';
+import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 
 export interface HitEventPresentation {
   readonly caliberMm?: number;
   readonly guided?: boolean;
   readonly kind?: string;
   readonly damage?: number;
+  /** The hull points the target lost (sim/damage.ts settleHullPoints): the figure every damage readout shows. */
+  readonly hpRemoved?: number;
   readonly modulesHit?: readonly { readonly newState?: string }[];
   readonly crewHit?: readonly RuntimeValue[];
   readonly zone?: string;
@@ -156,7 +159,7 @@ function resolveHitOutcome(
 export function incomingHitFeedbackFor(
   ev: HitEventPresentation,
 ): IncomingHitFeedbackPresentation {
-  const damage = Number.isFinite(ev.damage) ? Math.max(0, Math.round(ev.damage || 0)) : 0;
+  const damage = Math.round(hullPointsRemoved(ev));
   const outcome = hitOutcomeFor(ev);
   const kind: IncomingHitArcKind = ev.kind === 'he_splash'
     ? 'he'

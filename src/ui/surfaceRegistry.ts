@@ -225,11 +225,19 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'battle', owner: 'src/ui/vehicleStatus.ts', surface: '.cot-vehicle-status' },
     ],
   },
-  /** The damage the player's hits deal: the numbers floating over them (UI-LOCKDOWN B16: the shot card keeps the
-   *  penetration, the angle, the armour and the outcome). */
+  /** The damage the player's hits deal, live at the hit: the numbers floating over them (UI-LOCKDOWN B16). Every damage
+   *  figure is the hull points the hit took off (game/hullPointsRemoved.ts). */
   'damage-dealt': {
     places: [
       { screen: 'battle', owner: HUD, surface: '.cot-dmgnum' },
+    ],
+  },
+  /** One shot's record on its card, beside the outcome: the hull points it took off (owner 2026-10-31, "should show the
+   *  amount u took off the enemy"; Main's ruling: the float is the live cue at the hit, the card the shot's record, two
+   *  rows). The same figure as the float's for that hit, held the card's 7 s. */
+  'shot-damage': {
+    places: [
+      { screen: 'battle', owner: 'src/ui/shotInfo.ts', surface: '.cot-si-dmg' },
     ],
   },
   /** The battle's toasts, the kit's notices in one region: the pointer lock's notice, a networked battle's banner and the

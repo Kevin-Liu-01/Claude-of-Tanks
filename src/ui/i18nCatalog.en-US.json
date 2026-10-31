@@ -4617,7 +4617,7 @@
   "shotInfo.machineGunSummary": "{hits} hits · {pens} penetrations · {blocked} blocked · {damage} damage",
   "shotInfo.missileImpact": "Missile impact",
   "shotInfo.range": "Range",
-  "shotInfo.missileBlast": "Blast · {targets} vehicles · {damage} damage",
+  "shotInfo.missileBlast": "Blast · {targets} vehicles",
   "media.site50.title.s01MainStreetPush": "A Leopard 2A6 pushes up the main street of burning Steinburg",
   "media.site50.short.s01MainStreetPush": "Leopard 2A6, main street",
   "media.site50.title.s02FactoryRoad": "An M1A2 Abrams TUSK rolls past the factory under fire",

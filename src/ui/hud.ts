@@ -1,4 +1,5 @@
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
+import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { botCallsign, PLAYER_CALLSIGN } from './botCallsigns.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
@@ -919,10 +920,10 @@ const HIT_MARK_BOX_PX = 96;
 
 /** Exact value printed on an incoming direction arc. */
 export function directionalHitAmount(
-  hit: Pick<HudHitEvent, 'damage' | 'dmgRoll'>,
+  hit: Pick<HudHitEvent, 'damage' | 'hpRemoved' | 'dmgRoll'>,
   blocked = false,
 ): number {
-  const raw = blocked ? hit.dmgRoll : hit.damage;
+  const raw = blocked ? hit.dmgRoll : hullPointsRemoved(hit);
   return Number.isFinite(raw) ? Math.max(0, Math.round(raw || 0)) : 0;
 }
 
@@ -8071,7 +8072,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintDamageNumber(number: LiveDamageNumber, hit: HudHitEvent, rapid: boolean): void {
     const d = number.element;
-    const damage = number.burst?.damage ?? hit.damage;
+    const damage = number.burst?.damage ?? hullPointsRemoved(hit);
     d.textContent = `-${damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage)}`;
     if (number.burst?.critical) el('span', 'crit', d).textContent = t('hud.dmg.crit');
     clearTimeout(number.timer);
@@ -8088,9 +8089,11 @@ export function initHud(bus: EventBus): HudRuntime {
   function pushDamageNumber(hit: HudHitEvent): void {
     if (!lastCamera || mode === 'hidden') return;
     const rapid = isRapidFireHit(hit);
+    // (the hull points the hit took off, as the shot card and the totals read them: a kill reads what the hull had left)
+    const removed = hullPointsRemoved(hit);
     // Automatic fire confirms blocks at the reticle, never as a cloud of zeroes.
-    if (rapid && !(hit.damage > 0)) return;
-    if (!(hit.damage > 0) && !document.body.classList.contains('cot-touch-layout')) return;
+    if (rapid && !(removed > 0)) return;
+    if (!(removed > 0) && !document.body.classList.contains('cot-touch-layout')) return;
     project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
     if (!_sVisible) return;
     const now = performance.now();
@@ -8100,7 +8103,7 @@ export function initHud(bus: EventBus): HudRuntime {
       number = { x: _sx, y: _sy, element: el('div', 'cot-dmgnum', dmgLayer) };
       liveNums.push(number);
     }
-    if (hit.damage > 0) {
+    if (removed > 0) {
       number.burst = accumulateDamage(number.burst, hit, now) ?? undefined;
       paintDamageNumber(number, hit, rapid);
     } else {
@@ -8202,7 +8205,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // visual language tiers (drawHitIndicators): red damage wedge / thin
     // steel deflect arc / amber splash wedge; crits ride the damage wedge
     // as a hot core flash
-    const dmg = Number.isFinite(hit.damage) ? Math.max(0, hit.damage || 0) : 0;
+    const dmg = hullPointsRemoved(hit);
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
     // it keeps the red wedge (+ crit flash), never the deflect read
     const outcome = hitOutcomeFor(hit);
@@ -8626,7 +8629,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
-      killRibbon.damage(hit.targetId, hit.damage);
+      killRibbon.damage(hit.targetId, hullPointsRemoved(hit));
       // Zero-damage and pass-through outcomes use the steel confirmation;
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.

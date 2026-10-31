@@ -2001,7 +2001,8 @@ export function createAuthoritativeMatch({
     target: AuthoritativeEntity | null | undefined,
     hit: HitEvent,
   ): void {
-    if (shooter && hit.damage > 0) shooter.damage += hit.damage;
+    // (the scoreboard's damage is the hull points the hits took off, the figure every readout shows: hpRemoved)
+    if (shooter && hit.hpRemoved > 0) shooter.damage += hit.hpRemoved;
     if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
       ...hit,
       targetId: target?.id || null,
@@ -2044,6 +2045,8 @@ export function createAuthoritativeMatch({
       targetSpecId: target?.specId,
       targetMaxHp: target?.combat.maxHp || 0,
       damage: Math.max(0, Math.round(hit.damage || 0)),
+      // (free event JSON as attackerSource: an inline payload key, so the wire layout and an older peer stand)
+      hpRemoved: Math.max(0, Math.round(hit.hpRemoved || 0)),
       targetHp: Math.max(0, Math.round(target?.combat.hp || 0)),
     });
   }

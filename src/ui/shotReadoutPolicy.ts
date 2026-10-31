@@ -1,5 +1,6 @@
 import { isRapidFireHit, weaponHitKind, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
-interface ReadoutHit extends WeaponHitIdentity {
+import { hullPointsRemoved, type HullPointsHit } from '../game/hullPointsRemoved.ts';
+interface ReadoutHit extends WeaponHitIdentity, HullPointsHit {
   readonly shellId?: number;
   readonly targetId: string;
   readonly attackerId?: string | null;
@@ -18,7 +19,7 @@ export function keepMissileDirectHit(current: ReadoutHit | null, next: ReadoutHi
     && current.attackerId === next.attackerId && current.kind !== 'he_splash' && next.kind === 'he_splash';
 }
 
-/** Bounded missile blast receipts; damage remains distinct from the direct impact. */
+/** Bounded missile blast receipts: the splash's hull points, apart from the direct impact's. */
 export class MissileBlastLedger {
   private groups = new Map<string, { targets: Set<string>; damage: number }>();
   private key(hit: ReadoutHit): string | null {
@@ -33,7 +34,7 @@ export class MissileBlastLedger {
       group = { targets: new Set(), damage: 0 }; this.groups.set(key, group);
       if (this.groups.size > 8) this.groups.delete(this.groups.keys().next().value!);
     }
-    group.targets.add(hit.targetId); group.damage += Math.max(0, hit.damage);
+    group.targets.add(hit.targetId); group.damage += hullPointsRemoved(hit);
   }
   get(hit: ReadoutHit): { targets: number; damage: number } | null {
     const key = this.key(hit), group = key ? this.groups.get(key) : null;
