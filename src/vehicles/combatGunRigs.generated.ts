@@ -117,7 +117,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "type10_tk_x": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type10b": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type59": {"turretPivot":[0,1.42,-0.08],"gunPivot":[0,0.32,0.62],"lengthM":4.88,"radiusM":0.0765},
-  "type74": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.29,1.18],"lengthM":3.91},
+  "type74": {"turretPivot":[0,1.6,0.5],"gunPivot":[0,0.29,1.18],"lengthM":4.27},
   "type90_kyumaru": {"turretPivot":[0,1.4,-0.2],"gunPivot":[0,0.286,1.5],"lengthM":4.6594},
   "type90a": {"turretPivot":[0,1.4,-0.2],"gunPivot":[0,0.286,1.5],"lengthM":4.6594},
   "type96_72_long": {"turretPivot":[0,1.475,0.065591],"gunPivot":[0,0.2602,1.75],"lengthM":4.9221,"radiusM":0.1105},

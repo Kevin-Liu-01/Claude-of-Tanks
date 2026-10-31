@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-29T09:44:14.074Z",
+ "generatedAt": "2026-10-31T06:54:37.190Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -2167,15 +2167,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 297,
-   "seeThroughPx": 3,
+   "insideOutPx": 352,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 70656,
+   "tris": 85266,
    "frame": [
     0,
-    1.45,
-    1.45,
-    5.2
+    1.6,
+    0.8,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "owner-directed pair of 200 L fuel drums on a welded stern shelf, 0.73 m aft of the stern plate",
+     "by": "kevinliu",
+     "date": "2026-10-30",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 3,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.45,
+       5.2
+      ]
+     },
+     "to": [
+      0,
+      1.6,
+      0.8,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "strv103a": {
