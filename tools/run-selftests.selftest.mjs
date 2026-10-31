@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles } from './selftest-tiers.mjs';
-import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
@@ -452,17 +452,18 @@ assert.deepEqual(timings, [
 ], 'execution and FIFO time stay separate, and the files after a failure are still measured');
 
 for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
-  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: SELFTEST_GRAPH_GUARD },
-    'respect caller opt-out, explicit cache and coverage (only the graph guard is added)');
+  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: `${SELFTEST_GRAPH_GUARD} ${SELFTEST_OBSERVER}` },
+    'respect caller opt-out, explicit cache and coverage (only the graph guard and the observer are added)');
 }
 const capped = { NODE_OPTIONS: '--max-old-space-size=4096' };
-assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD}`, 'the heap cap is kept');
-assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the guard is added once');
+assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD} ${SELFTEST_OBSERVER}`, 'the heap cap is kept');
+assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the preloads are added once');
 assert.equal(capped.NODE_OPTIONS, '--max-old-space-size=4096', 'never mutate parent environment');
-assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'the guard never keys a proof');
+assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'neither preload keys a proof');
 assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
 assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`,
   'assert-graph-guard.selftest spells the same flag');
+assert.equal(SELFTEST_OBSERVER, `--import=${new URL('./selftest-observe.mjs', import.meta.url).href}`);
 // every declared-input receipt names all the code it runs: each declared file's relative imports, and every repository
 // path a receipt joins onto the checkout, are declared too (a missed edge would reuse a PASS the code no longer earns)
 {
@@ -580,6 +581,29 @@ try {
   const realLog = join(logFixture, 'speaks.log');
   assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
   assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  // 266: with an observe directory the child and every process it starts record what they read, listed and probed
+  // (tools/selftest-observe.mjs); the result carries the merged checkout paths and the directory is gone. Without one
+  // nothing is recorded.
+  const observeRoot = join(logFixture, 'checkout'), observeDir = join(logFixture, 'observe');
+  mkdirSync(join(observeRoot, 'data', 'pages'), { recursive: true });
+  for (const name of ['a.json', 'b.json']) writeFileSync(join(observeRoot, 'data', 'pages', name), '{}');
+  writeFileSync(join(observeRoot, 'child.mjs'), "import { readFileSync } from 'node:fs'; readFileSync('data/pages/' + ['b', 'json'].join('.'));\n");
+  writeFileSync(join(observeRoot, 'observed.mjs'), [
+    "import { existsSync, readdirSync, readFileSync } from 'node:fs';",
+    "import { readFile } from 'node:fs/promises';",
+    "import { spawnSync } from 'node:child_process';",
+    "const name = ['a', 'json'].join('.');",
+    "readFileSync(`data/pages/${name}`); await readFile(new URL('./data/pages/a.json', import.meta.url));",
+    "readdirSync('data/pages'); existsSync('data/missing.json'); readFileSync('/etc/hosts');",
+    "process.exitCode = spawnSync(process.execPath, ['child.mjs'], { stdio: 'inherit' }).status;",
+  ].join('\n'));
+  const observedRun = await runSelftestFile('observed.mjs', { cwd: observeRoot, observeDir, logFile: join(logFixture, 'observed.log') });
+  assert.equal(observedRun.status, 0, readFileSync(join(logFixture, 'observed.log'), 'utf8'));
+  assert.deepEqual(observedRun.observed, { reads: ['child.mjs', 'data/pages/a.json', 'data/pages/b.json', 'observed.mjs'],
+    lists: ['data/pages'], probes: ['data/missing.json'] }, 'computed, promise and spawned reads, the listing and the probe; nothing outside the checkout');
+  assert.equal(existsSync(observeDir), false, 'the observe directory is removed');
+  assert.equal('observed' in await runSelftestFile('observed.mjs', { cwd: observeRoot, logFile: join(logFixture, 'observed.log') }), false,
+    'without an observe directory nothing is observed');
   // test-speed R9a: the runner sets the run directory on its own environment after it built the cache, and every child
   // it launches then reads it (a judge finds its shards' records there), with or without a preset compile cache
   const runDirProbe = join(logFixture, 'run-dir-probe.mjs');
