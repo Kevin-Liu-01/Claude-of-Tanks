@@ -205,7 +205,7 @@
   "t84": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"664be80767038cad","gun":"d7525b0801887392"}},
   "t84bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e3274100290c16cf","gun":"f1b746bae0639ee5"}},
   "t90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"41c0defaf693b0d7","gun":"ad7f948f7c0c73a6"}},
-  "t90_1992": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5df683a5b7fb0b43","gun":"4ed7d7f008343e7e"}},
+  "t90_1992": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f649ceb8c3c22ba1","gun":"4ed7d7f008343e7e"}},
   "t90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2472399b24eef0ee","gun":"edc55e67606ef60e"}},
   "t90a_2004": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ef8721da76b890ba","gun":"423f67caf1aeed09"}},
   "t90a_2006": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5855159ac330fe3e","gun":"0522287ab74a0994"}},
