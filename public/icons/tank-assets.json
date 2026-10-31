@@ -267288,7 +267288,7 @@
         "caliberMm": 120,
         "shells": [
           {
-            "name": "DM53 APFSDS",
+            "name": "DM53A1 APFSDS",
             "type": "APFSDS",
             "pen100Mm": 855,
             "pen1000Mm": 778,
@@ -269308,7 +269308,7 @@
         ]
       },
       "geometryHash": "c57ebe98",
-      "metadataHash": "9dd89e70",
+      "metadataHash": "8d83af42",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": 0.0793

@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **240 saved vehicle records**: **240 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **246 saved vehicle records**: **246 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -229,25 +229,31 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 219 | PROD | `leo1a3dk` | Leopard 1A3 DK | Denmark | I | Cold War | Production |
 | 220 | PROD | `leo1a5dk` | Leopard 1A5 DK | Denmark | I | Cold War | Production |
 | 221 | PROD | `leo1a5dk1` | Leopard 1A5 DK-1 | Denmark | I | Cold War | Production |
-| 222 | PROD | `leo2a5dk` | Leopard 2A5 DK | Denmark | IX | Modern | Production |
-| 223 | PROD | `christian2` | Christian II | Denmark | VIII | Modern | Production |
-| 224 | PROD | `griffin_viper` | Griffin Viper | USA | III | Modern | Production |
-| 225 | PROD | `puma_s1` | Puma S1 | Germany | VI | Modern | Production |
-| 226 | PROD | `type89` | Type 89 | Japan | VI | Modern | Production |
-| 227 | PROD | `amx10p` | AMX-10P | France | III | Cold War | Production |
-| 228 | PROD | `amx10p_25` | AMX-10P 25 | France | IV | Cold War | Production |
-| 229 | PROD | `marder2` | Marder 2 | Germany | V | Modern | Production |
-| 230 | PROD | `m6_linebacker` | M6 Linebacker | USA | V | Modern | Production |
-| 231 | PROD | `t80u_zoria` | T-80U Zoria | Ukraine | VII | Modern | Production |
-| 232 | PROD | `t72b3m_hetman` | T-72B3M Hetman | Ukraine | VII | Modern | Production |
-| 233 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II | Ukraine | VII | Modern | Production |
-| 234 | PROD | `t72b3_sich` | T-72B3 Sich | Ukraine | VII | Modern | Production |
-| 235 | PROD | `t80u_yun` | T-80U Yun | China | VII | Modern | Production |
-| 236 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun | China | VII | Modern | Production |
-| 237 | PROD | `t72b3_qilin` | T-72B3 Qilin | China | VII | Modern | Production |
-| 238 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | VIII | Modern | Production |
-| 239 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | VIII | Modern | Production |
-| 240 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | VIII | Modern | Production |
+| 222 | PROD | `cv9035dk` | CV9035 DK | Denmark | V | Modern | Production |
+| 223 | PROD | `leo2a5dk` | Leopard 2A5 DK | Denmark | IX | Modern | Production |
+| 224 | PROD | `christian2` | Christian II | Denmark | VIII | Modern | Production |
+| 225 | PROD | `m41a3` | M41A3 Walker Bulldog | USA | I | Cold War | Production |
+| 226 | PROD | `m41_bw` | M41 (Bundeswehr) | Germany | I | Cold War | Production |
+| 227 | PROD | `m41_jgsdf` | M41 (JGSDF) | Japan | I | Cold War | Production |
+| 228 | PROD | `m41dk1` | M41 DK-1 | Denmark | II | Cold War | Production |
+| 229 | PROD | `t49` | T49 | USA | II | Cold War | Production |
+| 230 | PROD | `griffin_viper` | Griffin Viper | USA | III | Modern | Production |
+| 231 | PROD | `puma_s1` | Puma S1 | Germany | VI | Modern | Production |
+| 232 | PROD | `type89` | Type 89 | Japan | VI | Modern | Production |
+| 233 | PROD | `amx10p` | AMX-10P | France | III | Cold War | Production |
+| 234 | PROD | `amx10p_25` | AMX-10P 25 | France | IV | Cold War | Production |
+| 235 | PROD | `marder2` | Marder 2 | Germany | V | Modern | Production |
+| 236 | PROD | `m6_linebacker` | M6 Linebacker | USA | V | Modern | Production |
+| 237 | PROD | `t80u_zoria` | T-80U Zoria | Ukraine | VII | Modern | Production |
+| 238 | PROD | `t72b3m_hetman` | T-72B3M Hetman | Ukraine | VII | Modern | Production |
+| 239 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II | Ukraine | VII | Modern | Production |
+| 240 | PROD | `t72b3_sich` | T-72B3 Sich | Ukraine | VII | Modern | Production |
+| 241 | PROD | `t80u_yun` | T-80U Yun | China | VII | Modern | Production |
+| 242 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun | China | VII | Modern | Production |
+| 243 | PROD | `t72b3_qilin` | T-72B3 Qilin | China | VII | Modern | Production |
+| 244 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | VIII | Modern | Production |
+| 245 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | VIII | Modern | Production |
+| 246 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | VIII | Modern | Production |
 
 ## Policy ownership
 

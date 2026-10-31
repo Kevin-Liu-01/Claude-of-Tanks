@@ -170,12 +170,17 @@ assert.equal(concepts.length, 6);
 const ifvBatchIds = new Set(['puma_s1', 'cv9040c', 'type89', 'dardo', 'lrmv_lynx', 'borsuk']);
 assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map(({spec}) => spec.id).sort(),
   ['borsuk', 'puma_s1', 'type89'], 'the CV9040C, Dardo and LRMV carry no guided channel');
-assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)).length, 23,
+// 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
+  "the T49 carries the M551's one guided channel");
+assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
+  && spec.id !== 't49').length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 38, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+assert.equal(guidedRounds.length, 39, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+// (+ the T49's Shillelagh, 266)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -214,10 +219,13 @@ const laterChannelCounts = {
   challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
   // 265: the Danish Leopards' three rounds each (an APFSDS, a HEAT and an HE round)
   leo1a3dk: 3, leo1a5dk: 3, leo1a5dk1: 3, leo2a5dk: 3,
+  // 266: the M41 family's three rounds each, the CV9035 DK's three, and the T49's one (the M551's Shillelagh)
+  m41a3: 3, m41_bw: 3, m41_jgsdf: 3, m41dk1: 3, cv9035dk: 3, t49: 1,
 };
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
-const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1',
+  'cv9035dk', 't49'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
