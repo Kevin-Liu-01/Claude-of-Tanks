@@ -60,6 +60,9 @@ assert.ok(state.steps.gunLines.rowTables.includes('geometryLedger'), 'gun lines 
 assert.deepEqual(state.steps.gunLines.foreignTables, [], 'gun lines reach no table whole (the fleet ledger is covered, keyed per id)');
 assert.equal(normalizedNodeOptions('--max-old-space-size=4096 --import=file:///w/tools/assert-graph-guard.mjs --x'), '--x',
   'the heap cap and the runner\'s assert guard never key the toolchain');
+assert.equal(normalizedNodeOptions('--import=file:///w/tools/assert-graph-guard.mjs --import=file:///w/tools/selftest-observe.mjs'), '',
+  'nor does the runner\'s read observer (a receipt computes the same toolchain key as the command line)');
+assert.equal(normalizedNodeOptions('--import=file:///w/tools/other.mjs'), '--import=file:///w/tools/other.mjs', 'another preload still keys it');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');
