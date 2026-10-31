@@ -331,6 +331,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         }
       }
       P.add('hullDark', cylX(0.025, 1.90, 12), 0, armY, armEnd + 0.03);
+      // the cradle's floor across the arms from the rear plate (the EE-T4's in two, to the faces of its cage's rails):
+      // with the drums across the stern the plan gaps between the plate and the drums and between the two drums were
+      // enclosed, and the contiguity scan read them as holes (tank-standard-check B2, 2026-10-31)
+      const trays: readonly (readonly [number, number])[] = t4 ? [[plateZ, cageZ + 0.0175], [cageZ - 0.0175, armEnd]] : [[plateZ, armEnd]];
+      for (const [z0, z1] of trays) P.add('hullDark', box(1.94, 0.02, z0 - z1), 0, armY + 0.035, (z0 + z1) / 2);
     }
   };
   buildOsorioHullFittings();
