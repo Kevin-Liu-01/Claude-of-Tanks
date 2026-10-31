@@ -273,10 +273,12 @@ ee_t3_osorio.armor = osorioArmor(5.645, 0.104, {
   glacis: [430, 430, 530], lower: [160, 160, 190], side: [70, 70, 80], skirt: [80, 80, 200], rear: 35, roof: 40,
   cheek: [620, 620, 760], tSide: [260, 260, 340], tRear: 50, tRoof: 45, mantlet: [350, 350, 430],
 });
+// (2026-10-31, the fuel drums raised over the deck line: from 166 deg to the rear the gun clears them at +2.7 to +2.9 deg,
+// re-measured over the whole traverse, the front as published)
 ee_t3_osorio.gunPitchByYawDeg = [[0, -9.9], [15, -9.7], [17, -9.4], [30, -8.5], [38, -8.2], [42, -7.4], [45, -7.4],
   [52, -8.4], [55, -8.4], [56, -8.5], [61, -9.1], [65, -9], [69, -9.5], [73, -9.5], [75, -10], [104, -10], [107, -9.2],
   [108, -9], [114, -8.8], [115, -8.5], [123, -8.1], [124, -7.8], [126, -7.6], [133, -7.1], [147, -4.2], [157, -2.5],
-  [159, -0.8], [160, -0.5], [162, -0.5], [163, -0.7], [165, -2.2], [167, -2], [176, -2.1], [180, -2.5]];
+  [159, -0.8], [160, -0.5], [162, -0.5], [163, -0.7], [164, -1.4], [165, 1.7], [166, 2.7], [167, 2.9], [180, 2.9]];
 ee_t3_osorio.visual = {
   ...osorio_p2.visual,
   // a NATO-style three-tone (the Army's Leopard 1A5BR coat): green the field, brown masses and broad black blotches
@@ -302,10 +304,12 @@ ee_t4_osorio.armor = osorioArmor(6.60, 0.140, {
   cheek: [660, 660, 800], tSide: [320, 320, 400], tRear: 60, tRoof: 50, mantlet: [440, 440, 520],
 });
 // (measured 2026-10-31 on the c4 build: the 130 mm's thicker barrel holds the gun level over the engine deck at 160)
+// (2026-10-31, the fuel drums raised over the deck line: from 166 deg to the rear the gun clears them at +2.7 to +3.3 deg,
+// re-measured from 140 deg, the front as published)
 ee_t4_osorio.gunPitchByYawDeg = [[0, -8.7], [12, -8.4], [15, -8], [27, -7.2], [30, -6.6], [40, -6.3], [42, -6],
   [45, -6], [55, -6.5], [70, -8.4], [72, -8.4], [78, -9.7], [103, -9.4], [107, -8.2], [108, -8], [116, -7.2],
   [118, -6.8], [125, -5.8], [134, -5.4], [150, -2.8], [157, -2], [158, -0.9], [159, -0.1], [160, 0.1], [162, 0.1],
-  [163, -0.1], [164, -0.6], [165, -1.5], [174, -1.4], [178, -1.6], [180, -1.9]];
+  [163, -0.1], [164, -0.6], [165, 1.2], [166, 2.7], [167, 3.3], [180, 3.3]];
 ee_t4_osorio.visual = {
   ...osorio_p2.visual,
   // a two-scale digital woodland in the Army's tones (olive, a light olive, brown and black), the 1998 arms (the light

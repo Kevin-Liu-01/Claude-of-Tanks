@@ -8,7 +8,11 @@
     "drums": {
       "date": "2026-10-31",
       "request": "add two big fuel barrels on the backs here",
-      "scope": "Both marks carry two 200 L fuel drums across the stern (the owner chose the EE-T3 and EE-T4 the same day); the envelopes are re-measured with them."
+      "scope": "Both marks carry two 200 L fuel drums across the stern (the owner chose the EE-T3 and EE-T4 the same day); the envelopes are re-measured with them.",
+      "raised": {
+        "request": "raise the drums on the eet3 and eet4 so theyre visible in the hero images a lil more!!! just rule of cool type stuf",
+        "scope": "The drums stand 31 cm over the deck line; the gun's depression over the stern is re-measured against them."
+      }
     }
   },
   "comparisonPurpose": "owner-authored-concept",
@@ -41,7 +45,7 @@
       "hullLengthM": 7.13,
       "hullWidthM": 3.4,
       "widthM": 3.49,
-      "overallLengthM": 11.274,
+      "overallLengthM": 11.224,
       "tallestM": 4.46,
       "specDimensions": {
         "hullLengthM": 7.13,
@@ -49,7 +53,7 @@
         "widthM": 3.4,
         "heightM": 2.95
       },
-      "silhouette": "Fictional Brazilian modernization of the surviving Osório P.2 (tier IX): the P.2's low welded hull and wedge turret under a bolted composite nose module and five composite skirt modules a side, wedge appliqué swept forward of the turret cheeks, three bolted side packs a side, a PERI-pattern commander's panoramic sight, a deeper rear basket with stowage, set-in nose lamps, the 120 mm L/47 in a canvas boot, the roof 7.62 mm, two 200 L fuel drums across the stern in a cradle off the lower rear plate and a three-tone blotch coat."
+      "silhouette": "Fictional Brazilian modernization of the surviving Osório P.2 (tier IX): the P.2's low welded hull and wedge turret under a bolted composite nose module and five composite skirt modules a side, wedge appliqué swept forward of the turret cheeks, three bolted side packs a side, a PERI-pattern commander's panoramic sight, a deeper rear basket with stowage, set-in nose lamps, the 120 mm L/47 in a canvas boot, the roof 7.62 mm, two 200 L fuel drums across the stern in a cradle off the rear plate, standing over the deck line and a three-tone blotch coat."
     },
     "ee_t4_osorio": {
       "id": "ee_t4_osorio",
@@ -84,7 +88,7 @@
         "widthM": 3.43,
         "heightM": 2.98
       },
-      "silhouette": "Fictional Brazilian modernization of the Osório P.2 (tier X), the EE-T3's kit heavier and full length: a nose module carried down a bolted lower-glacis slab with the lamps set in its face, thicker skirt modules, long swept wedges flaring to sharp tips past the mantlet, a bolted block mantlet, thicker side packs, a hard-kill active protection system (four radar panels on the turret corners, two drum launchers on pedestals), laser-warning heads, a slat cage over the rear plate with two 200 L fuel drums in a cradle behind it, the 130 mm L/51 and a three-tone digital coat."
+      "silhouette": "Fictional Brazilian modernization of the Osório P.2 (tier X), the EE-T3's kit heavier and full length: a nose module carried down a bolted lower-glacis slab with the lamps set in its face, thicker skirt modules, long swept wedges flaring to sharp tips past the mantlet, a bolted block mantlet, thicker side packs, a hard-kill active protection system (four radar panels on the turret corners, two drum launchers on pedestals), laser-warning heads, a slat cage over the rear plate with two 200 L fuel drums in a cradle behind it, standing over the deck line, the 130 mm L/51 and a three-tone digital coat."
     }
   }
 }
