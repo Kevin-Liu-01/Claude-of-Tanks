@@ -176,5 +176,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // family's six beside the Longwei family.
 // 265: the Leopard 1A2A1 drawn on its 1A5's node at I.
 // Re-pinned 2026-10-30 at integ/265 79f8a35382 (every other tree check passes): + the Leopard 1A2A1 on its 1A5's node.
-assert.equal(digest, 'e4b62fac00fccc2c', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-30 re-pin (265, merging 262 and 263): the fourth batch's Leopard 2A3 (leo2a3_b4) beside the 2A3 OTCO at IV in
+// the Germany tree (Leopard side line, lane 2: lanes 4 and 5 put it on the 2A2's connectors to the A4 and A4 V).
+// Re-pinned 2026-10-30 at integ/265 (leo2a4-family-265 ca927a900a merged; every other tree check passes): + the fourth
+// batch's Leopard 2A3 beside the 2A3 OTCO.
+assert.equal(digest, '91c37a404c7a4380', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

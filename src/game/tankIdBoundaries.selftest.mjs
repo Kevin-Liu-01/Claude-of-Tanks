@@ -24,7 +24,7 @@ const fixture = createTankIdResolver({
   }],
 });
 const NAME = {
-  leo2a4_otco: 'Leopard 2A4 OTCO', leo2a6m: 'Leopard 2A6M', leo2a3: 'Leopard 2A3',
+  leo2a4_otco: 'Leopard 2A4 OTCO', leo2a6m: 'Leopard 2A6M', leo2a3: 'Leopard 2A3 OTCO',
   t90am: 'T-90AM', t90m: 'T-90M', t14_armata: 'T-14 Armata', m1a2_sepv2: 'M1A2 Abrams SEPv2', m1a3: 'M1E3 Abrams',
 };
 const shown = (id) => NAME[id] ?? `unknown:${id}`;

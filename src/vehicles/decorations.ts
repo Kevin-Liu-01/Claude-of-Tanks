@@ -2754,36 +2754,69 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type74: () => [
-    { kit: 'aamg', p: 1, v: { v: 'm2' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
-    { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
-    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+  // --- Modern ---
+  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) go out loaded (the owner,
+  // 2026-10-28: "a lot of the equipment and decorations and stuff! add a lot on our tanks"): over the fleet's seven-piece
+  // field cargo, packs and rolls in the basket, a tow cable down the hull's side, tools and a long bin on the fenders,
+  // cans, rations and a tarp on the engine deck, shackles on the bow; the profile draws the radios' whips, so no decor
+  // antenna. The 2A3 OTCO the heaviest: its tall cage packed, both cables, a drape and drums on the stern.
+  leo2a2: () => [
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  leo2a3_b4: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['rearDeck', {}] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  // --- Modern ---
-  leo2a2: () => [
-    // The family profile owns the complete hull-and-turret ghillie suit.
-    // Keep normal stowage here, but do not layer the old rectangular side
-    // veils or tied rolls over its shaped, cut-out carrier meshes.
-    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
-  ],
-  leo2a4: () => [
-    { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+  leo2a3: () => [
+    { kit: 'packs', p: 1, v: { n: 5 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
-    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
     { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+  ],
+  // 264: the Leopard 2A4 on the release construction. Its kit (profiles/leopard2A4Kit.ts) draws the bustle rack and its
+  // load, the bow shackles and the wall crosses, and carries the spare links on the glacis as the photographed 2A4s do,
+  // so the decor keeps the standing whips and the field load the kit does not (a second basket leaned off the bustle's
+  // corner and four links on the turret wall hid the cross; no 2A4 photograph shows either)
+  leo2a4: () => [
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
+    // on the deck's back corners as on the 262 family (the release hull's hullRearRack slot resolves under the bustle,
+    // which tipped them up its corner)
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1, back: true }] },
+  ],
+  // 264: the Stridsvagn 121 on the release construction. Its kit (profiles/leopard2A4Strv121Kit.ts) draws the radios'
+  // whips, the Swedish rear basket and its load, and the field suit dresses the hull, so the decor keeps the cans, tools
+  // and shackles (the fleet default hung four links on the turret wall, which no Strv 121 photograph shows)
+  strv121: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   xk2_black_panther: (s) => [
@@ -3028,6 +3061,18 @@ const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifes
   ],
 });
 
+// 262 (owner on the STB-1 and the Type 74: "we should upgrade the hulls and everything about the tanks too"): both now
+// carry their sourced equipment in their builders (the production tank's M2, smoke dischargers at the turret's front
+// corners, the gun-riding searchlight, the bow shackles, the fender lockers and mufflers; the prototype's remote gun,
+// rear-side smoke and silencer). No photograph shows a production Type 74 with jerry cans or a rear rack, so neither
+// takes the fleet's cargo pools: the Type 74 its crew packs in the bustle basket, the trials prototype nothing.
+const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[]>> = Object.freeze({
+  type74: (): DecorManifestRow[] => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+  ],
+  stb1: (): DecorManifestRow[] => [],
+});
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -3096,6 +3141,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  if (spec.id === 'type74' || spec.id === 'stb1') return JAPAN_74_DECOR[spec.id]();
   // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
   // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
@@ -3323,6 +3369,19 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
   // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  // Release 264: the Leopard 2A4's kit (profiles/leopard2A4Kit.ts) loads its bustle rack (bundles, cans, the ammunition
+  // box, the tarp, the bin) below the roof as the photographed 2A4s carry it; the fleet cargo piled over it and stood a
+  // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
+  // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
+  // bustle too).
+  if (spec.id === 'leo2a4') {
+    const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
+    return manifest.flatMap((row) => {
+      if (row.kit !== 'cargo' || row.slot[0] !== 'fleetCargo' || !row.slot[1].routes) return [row];
+      const routes = row.slot[1].routes.filter(([slot]) => !aloft.has(slot));
+      return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
+    });
+  }
   if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
     && row.slot[0] === 'fleetCargo' && row.slot[1].routes
     ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }

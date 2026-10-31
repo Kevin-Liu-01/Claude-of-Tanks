@@ -3576,6 +3576,9 @@ const LEO2A4_TURRET_ROOF_HOLES: readonly (readonly Point2[])[] = [
 export const GHILLIE_SUIT_CONFIGS = Object.freeze({
   leo2a2: {
     id: 'leo2a2', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
+    // 262: the 2A2 is rebuilt on the new Leopard construction (profiles/leopard2a3B4.ts) as the period tank, unsuited;
+    // this suit's carriers are authored to the retired build's hull and turret
+    disabled: true,
     light: 0x64794a, dark: 0x34462d, netColor: 'rgba(34,48,27,0.72)',
     // 248 (the coordinator): under its measured curve (turretScaleGunPitch.ts: -1.9 deg astern, -5.7 to -4 over the rear
     // quarter, -9 over the bow corners) the net, its drapes' rolls and its garnish lay 0-18 mm under the barrel; what the

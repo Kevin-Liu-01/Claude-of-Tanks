@@ -358,6 +358,21 @@ const HULL_LATERAL_CUTS = Object.freeze({
   t72b3_zubr_ii: [-1.104, 1.104],
 });
 
+// Release 262, the turret-front round (2026-10-28; Main: "the apertures are weak-spot cut-outs in the right plates (ask
+// yourself what a shell there hits)"): the early Leopard 2s' EMES 15 notch is a pocket in the right cheek's top inboard
+// corner, and one convex cell a slice closes over a pocket. The notch's own lateral band, 1 cm inside its walls (0.50 and
+// 0.94 m right of the bore: leopard2a3B4Armor.ts sightInnerX, sightOuterX), is its own cell, so the shell meets the
+// notch's sill and the sight housing's front, and the turret_front_sight_notch plate takes that face.
+const TURRET_LATERAL_CUTS = Object.freeze({
+  leo2a2: [-.93, -.51],
+  leo2a3_b4: [-.93, -.51],
+  leo2a3: [-.93, -.51],
+});
+// Their turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme points
+// drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill and
+// the notch over it would be one face and take one plate.
+const TURRET_PLATE_FIT_IDS = new Set(Object.keys(TURRET_LATERAL_CUTS));
+
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
   seatedUnderside = false) {
   if (!envelope) return [];
@@ -697,7 +712,8 @@ function receiptFor(id) {
         PLATE_FIT_IDS.has(id),
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
-        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, null, PLATE_FIT_IDS.has(id),
+        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, TURRET_LATERAL_CUTS[id] ?? null,
+        PLATE_FIT_IDS.has(id) || TURRET_PLATE_FIT_IDS.has(id),
         seatedTurret,
       ) : []),
       hullStructures,

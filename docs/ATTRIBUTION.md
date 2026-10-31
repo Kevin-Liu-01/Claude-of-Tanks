@@ -1055,6 +1055,19 @@ of real-world fidelity. Its pinned SHA-256 is
 `ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7`.
 
 
+## STB-1 owner oracle (2026-10-27)
+
+- **STB_1** by [reverie outbreak](https://sketchfab.com/pyaesone), licensed
+  [CC-BY-NC-4.0](http://creativecommons.org/licenses/by-nc/4.0/), source
+  [Sketchfab model b0f59399010542ae90a2aa9bd5b21e53](https://sketchfab.com/3d-models/stb-1-b0f59399010542ae90a2aa9bd5b21e53)
+  (the `stb1_pyaesone` candidate recorded in §5.248 batch A). Owner-supplied file SHA-256:
+  `8dfb864cac84e5e1353a066f08deafe0a61060b028e45e4a1df9fcc42e2dc6a3`, kept at the ignored path
+  `public/models/community-candidates/stb_1_owner_20261027.glb`.
+  The owner asked for the STB-1 and the Type 74 to be based on it (262). It is a local-only authoring and comparison
+  instrument: its stations were measured by rays and rebuilt from primitives (`src/vehicles/profiles/type74Family.ts`;
+  the measurements in `docs/references/tanks/stb1.md`, "Owner model"). No source mesh, material, texture or derived
+  payload byte ships; `stb1` and `type74` remain original first-party procedural geometry attributed to Kevin B. Liu.
+
 ## Challenger 3 TD oracle (2026-10-27, owner drop for release 262)
 
 - `challenger_3_td_mbt.glb` — "Challenger 3 TD MBT" by Jeyhun1985 (https://sketchfab.com/Jeyhun1985),

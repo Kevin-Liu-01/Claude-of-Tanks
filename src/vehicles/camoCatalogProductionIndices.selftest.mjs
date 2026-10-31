@@ -47,6 +47,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // service_challenger_3 -> desert, Factory 24af537fcedf03bc -> ac6d88a92bedf83a. The Mk 2 (schema-1 challenger1) rides
 // the Mk 3's build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 ->
 // 24af537fcedf03bc. Selections and every other row are unchanged.
+// Re-pinned 2026-10-30 (release 265, the owner's 2A4-era Leopards rebuilt): one row moved. The 2A4 OTCO (schema-1
+// leo2a6m) wears its own 'OTCO' number for the old build's 'A6M'; scheme, colours, pattern and seed are unchanged.
+// 9372f3913461afc9 -> 53cc9f3ea41f25d5. The 2A6M (schema-1 leo2a6m_x), cloned from it, keeps 'A6M'
+// (sourceXFleetSpecs.ts PRODUCTION_NUMBERS), so its row is production's.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -105,17 +109,25 @@ const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't
   centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
+// release 262: the fourth batch's Leopard 2A3 wears the 2A3 OTCO's coat (it carries that build's paint and combat data)
+const ADDED_WEARING_PRODUCTION_PAINT = { leo2a3_b4: 'leo2a3' };
 // Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's
 // summer, the Magach 3 the IDF service coat, the German M48s the Bundeswehr's).
 const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', magach3: 'service_merkava2d', m48a2ga2: 'service_leo2a6m',
   m48_super: 'service_leo2a6m' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
-  + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length,
+  + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
+  + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length,
   'the same fleet, plus the tanks added since');
 for (const id of ADDED_WITH_SIGNATURE) assert.equal(now.tanks[id]?.stock, `sig_${id}`, `${id} wears its own Signature`);
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
 for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);
 for (const [id, stock] of Object.entries(ADDED_IN_EXISTING_COAT)) assert.equal(now.tanks[id]?.stock, stock, `${id} wears ${stock}`);
+for (const [id, donor] of Object.entries(ADDED_WEARING_PRODUCTION_PAINT)) {
+  // its own factory coat (its number) and its own per-id map picks; the stock and the selection are the donor's
+  assert.deepEqual([now.tanks[id]?.selection, now.tanks[id]?.stock], [now.tanks[donor].selection, now.tanks[donor].stock],
+    `${id} wears ${donor}'s production camouflage`);
+}
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
 const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');

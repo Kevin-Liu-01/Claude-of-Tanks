@@ -77,7 +77,8 @@ const rearCorners=[[1.02,.16,.24],[1.31,.20,-.72],[1.22,.56,-.86],[.96,.45,.12],
 for(const points of [lowerCorners,rearCorners]) {
   const old=orientedSlab(...points);assert.ok(properSurfaceCrossings(shellPart(old)).length>0,'legacy Leopard 1A5 stock crossing is detected');old.dispose();
 }
-for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a4_otco']) {
+// (264: the 2A4 OTCO left the A6M build and its thermal skin for the 2A4 turret, profiles/leopard2A4Family.ts)
+for(const quality of ['high','low'])for(const id of ['leo1a5']) {
   const repaired=[];
   const visual=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,partCensus(bucket,g,source){
     if(source==='add'&&['leo1a5-lower-bow','leo1a5-rear-applique','leo2a6m-thermal-skin'].includes(g.userData.primaryStockRole))repaired.push(g);

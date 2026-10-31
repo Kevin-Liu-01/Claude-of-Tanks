@@ -6385,143 +6385,6 @@ export function buildLeo2A5(...args: Parameters<typeof buildLeo2A5Steps>): void 
 }
 withBuildSteps(buildLeo2A5, buildLeo2A5Steps);
 
-// Leopard 2A5/A5NL — owner-directed Tier X field-modernized A5. The base
-// A5 geometry remains intact; this package adds a physically backed skirt
-// ERA course, compact roof RWS, modern optical heads and service lighting.
-// Every attachment is seated on the inherited hull/turret rather than being
-// stretched into the certified A5 silhouette as anonymous filler.
-function buildLeo2A5A5NL(builder: object) {
-  const P = requireTankBuilderPort(builder);
-  const { box, cylX, cylY, cylZ, torus, sph } = KIT;
-  buildLeo2A5(P);
-  P.clearDecals('turret');
-
-  // The A5 donor's rear basket is deliberately an open rail frame.  The
-  // A5NL field package carries a shallow service/stowage tray between those
-  // rails instead: it closes the two plan-view pockets beside the centre
-  // stubs and is parked wholly above the sprocket/shoe sweep.  Its forward
-  // edge overlaps the existing low rail while the end tabs meet the raised
-  // corner rails, so this is supported bodywork rather than a floating cap.
-  P.add('hullDetail', box(2.72, 0.045, 0.22), 0, 1.585, -3.82);
-  for (const side of [-1, 1] as const) {
-    P.add('hullDetail', box(0.12, 0.12, 0.08), side * 1.295, 1.535, -3.88);
-  }
-
-  const skirtEraSeats: Array<Readonly<Record<string, number | string>>> = [];
-  for (const side of [-1, 1] as const) {
-    const suffix = side > 0 ? 'R' : 'L';
-    const sector = `a5nl_skirt_era_${suffix}`;
-    // Continuous backing and upper tie rail bridge the cassettes into the
-    // A5's now-closed fender/skirt shoulder. The inner carrier face remains
-    // outside the track envelope inherited from leoHullV3.
-    P.add('hull', box(0.11, 0.63, 6.18), side * 1.92, 1.13, 0.02);
-    P.add('hullDetail', box(0.26, 0.045, 6.20), side * 1.735, 1.58, 0.02);
-    P.eraCluster(sector, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 10; station++) {
-          const y = 0.88 + row * 0.205;
-          const z = -2.92 + station * 0.65;
-          place(
-            side * 1.9307, y, z,
-            0, side * Math.PI / 2, 0,
-            1.72, 1.28, 1.38,
-          );
-          skirtEraSeats.push(Object.freeze({ side, row, station, y, z, sector }));
-        }
-      }
-    });
-    // Cassette dividers and four visible load paths prevent the field kit
-    // from reading as a floating wall when viewed from above or behind.
-    for (let station = 0; station <= 10; station++) {
-      // 2026-10-19 (owner float sweep): the two end dividers stood 72 mm past the end cassettes; they now close them.
-      const z = station === 0 ? -3.170 : station === 10 ? 3.180 : -3.245 + station * 0.65;
-      P.add('hullDark', box(0.045, 0.66, 0.025), side * 1.9675, 1.13, z);
-    }
-    for (const z of [-2.72, -0.78, 1.16, 2.78]) {
-      P.add('hullDark', cylX(0.022, 0.25, 10), side * 1.865, 1.43, z);
-    }
-
-    // Three-lens forward lighting block and a guarded IR marker on each
-    // shoulder. These sit immediately above the skirt carrier, not inside
-    // the live idler envelope.
-    P.addEquipment('hull', box(0.34, 0.18, 0.18), side * 1.43, 1.66, 3.34);
-    for (let lamp = 0; lamp < 3; lamp++) {
-      P.addEquipment('hullGlass', cylZ(0.038, 0.024, 12),
-        side * (1.34 + lamp * 0.09), 1.67, 3.444);
-    }
-    P.addEquipment('hullDark', box(0.025, 0.22, 0.22), side * 1.61, 1.66, 3.35);
-    // 2026-10-19 (owner float sweep): the block hung 120 mm ahead of the tie rail's 3.12 end over the idler; a bracket
-    // runs from the rail end to the block's side plate.
-    P.addEquipment('hullDark', box(0.05, 0.045, 0.16), side * 1.63, 1.58, 3.19);
-
-    // Modern side-awareness pod, recessed glass, and paired smoke bank.
-    const podX = side * 1.35;
-    P.addEquipment('turret', box(0.18, 0.28, 0.40), podX, 0.58, 0.04, 0, 0, side * 0.18);
-    P.addEquipment('turretGlass', box(0.012, 0.17, 0.20),
-      side * 1.445, 0.60, 0.08, 0, 0, side * 0.18);
-    for (let launcher = 0; launcher < 4; launcher++) {
-      P.addEquipment('turretDark', cylZ(0.037, 0.22, 10),
-        side * 1.42, 0.42 + launcher * 0.085, -0.35 - launcher * 0.08,
-        -0.36, side * 0.18, 0);
-    }
-  }
-
-  // Low-profile panoramic day/thermal head on a buried bearing.
-  // 2026-10-19 (owner float sweep): the head stood 66 mm over the A5 roof and its windows 9 mm ahead of it; the
-  // windows are set into the head and the group drops onto the roof.
-  P.snapGroup('a5nl-panoramic-head', () => {
-    P.addEquipment('turret', cylY(0.20, 0.22, 0.07, P.q ? 20 : 14), 0.48, 0.895, -0.72);
-    P.addEquipment('turretDark', torus(0.19, 0.018, P.q ? 20 : 14), 0.48, 0.936, -0.72);
-    P.addEquipment('turret', box(0.35, 0.27, 0.31), 0.48, 1.055, -0.72);
-    P.addEquipment('turretGlass', box(0.23, 0.12, 0.016), 0.48, 1.07, -0.559);
-    P.addEquipment('turretGlass', box(0.08, 0.07, 0.017), 0.61, 1.13, -0.559);
-  }, { reachM: 0.10, mode: 'down' });
-
-  // 2026-10-08 (the owner's field standard in main 6763d7cc0; the coordinator's ruling on the lane's audit): no
-  // open-yoke tower. A 2A4M carries no RWS, and the tower stood 0.98 m from the loader's gun, which is now the hull's
-  // working station (buildLeo2A5's leo2a4m branch, the owner's 2A5M precedent).
-
-  // Roof electronics, warning beacons and whip bases add the requested
-  // modern-service density while remaining attached to broad roof stations.
-  // 2026-10-19 (owner float sweep): the box, beacons and whip bases stood 66-133 mm over the falling A5 roof (the
-  // box lid 2.5 mm over the box); each station drops onto the roof as one group.
-  P.snapGroup('a5nl-roof-electronics', () => {
-    P.addEquipment('turret', box(0.46, 0.14, 0.32), 0.06, 0.91, -1.73);
-    P.addEquipment('turretDark', box(0.40, 0.025, 0.27), 0.06, 0.991, -1.73);
-    P.addEquipment('turretDark', cylZ(0.024, 0.30, 10), 0.02, 0.94, -2.04);
-    P.addEquipment('turretGlass', box(0.08, 0.08, 0.012), 0.02, 0.94, -1.882);
-  }, { reachM: 0.10, mode: 'down' });
-  for (const side of [-1, 1] as const) {
-    P.snapGroup(`a5nl-beacon-${side}`, () => {
-      P.addEquipment('turret', cylY(0.055, 0.065, 0.08, 12), side * 0.92, 0.91, -1.96);
-      P.addEquipment('turretGlass', sph(0.048, 10), side * 0.92, 0.985, -1.96);
-    }, { reachM: 0.16, mode: 'down' });
-    P.snapGroup(`a5nl-whip-${side}`, () => {
-      P.addEquipment('turretDark', cylY(0.020, 0.025, 0.07, 10), side * 1.08, 0.92, -2.13);
-      P.addEquipment('turretDark', cylY(0.010, 0.012, 1.18, 8), side * 1.08, 1.53, -2.13);
-    }, { reachM: 0.26, mode: 'down' });
-  }
-
-  P.decal('turret', 'crossgrey', null, 0.30, [1.46, 0.39, -0.92], Math.PI / 2);
-  P.decal('turret', 'number', 'A5NL', 0.18, [-1.46, 0.39, -0.92], -Math.PI / 2);
-  // `topY` is a turret-local framing hint; the inherited A5 value already
-  // excludes whip antennas and remains correct for the compact A5NL station.
-  if (P.geometryReceipt) {
-    P.turretG.userData.leopard2A5A5NLReceipt = Object.freeze({
-      architecture: 'a5-field-modernization',
-      skirtEraSectors: Object.freeze(['a5nl_skirt_era_R', 'a5nl_skirt_era_L']),
-      skirtEraTilesPerSide: 30,
-      skirtEraSeats: Object.freeze(skirtEraSeats),
-      roofWeapon: 'leo2a5_loader_machine_gun',
-      panoramicSight: true,
-      awarenessPodsPerSide: 1,
-      smokeLaunchersPerSide: 4,
-      forwardLampCount: 6,
-      equipmentOwned: true,
-    });
-  }
-}
-
 // ---------------------------------------------------------------------------
 // FLW 200-class REMOTE WEAPON STATION (owner order §5.09-5, 2026-08-07:
 // "put a huge automated turret crows system on the revolution and other
@@ -14913,15 +14776,8 @@ function buildLeo2A4M(...args: Parameters<typeof buildLeo2A4MSteps>): void {
 withBuildSteps(buildLeo2A4M, buildLeo2A4MSteps);
 
 export const LEOPARD_PROFILES = {
-  // Restore the detailed first-party 2A4 profile.  Leaving this id out of the
-  // family map silently selected modern2.ts's early box prototype after the
-  // source-backed wrapper was retired, erasing the authored hull, seven-wheel
-  // course, pre-wedge turret and service geometry preserved above.
-  leo2a2: { build: buildLeo2A4 },
-  leo2a4: { build: buildLeo2A6 },
-  leo2a4_v: { build: buildLeo2A5 },
-  leo2a4m: { build: buildLeo2A5A5NL },
-  leo2_improved: { build: buildLeo2A7V },
+  // 264: leo2a4, leo2a4_v, leo2a4m, leo2a4m_can, leo2a4_otco, leo2_improved and strv121 are built on the release's
+  // construction (profiles/leopard2A4Family.ts); leo2a6_ua has its own profile (profiles/leopardA6Ua.ts)
   leopard2_proto: { build: buildLeo2Proto },
   // Preserve the original authored model as Proto while the proper
   // Revolution has its independent source-based construction.
@@ -14936,9 +14792,4 @@ export const LEOPARD_PROFILES = {
   leo1a5: { build: buildLeo1A5ArticulatedProfile },
   // release 263: the bare cast-turret Leopard 1A2A1 on the 1A5's pre-262 hull
   leo1a2a1: { build: buildLeo1A2A1 },
-  // §5.248 germany-leopards ground-up builds (owner order — the
-  // profiles/germany.js donor-wrapper builders are retired; these rows must
-  // stay ahead of any legacy same-key row in the profiledProcedurals merge).
-  leo2a4m_can: { build: buildLeo2A4M },
-  leo2a4_otco: { build: buildLeo2A6M },
 } satisfies VehicleProfileRecord;

@@ -858,6 +858,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   olifant_mk2: 'paint_olifant_mk2',
   // the Australian Mk 5/1 wears the RAAC's plain olive drab of Vietnam (centurionAusSpecs.ts)
   centurion5_1_aus: 'paint_centurion5_1_aus',
+  // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A3 OTCO
+  leo2a3_b4: 'sig_leo2a4_otco',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -877,12 +877,12 @@
    "take": "s87-leo2a4-otco-polders",
    "map": "polders",
    "title": {
-    "en": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
-    "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M Proryv"
+    "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+    "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv"
    },
    "short": {
-    "en": "Leopard 2A3, Tidegate Polders",
-    "zh": "Leopard 2A3，潮闸圩田"
+    "en": "Leopard 2A3 OTCO, Tidegate Polders",
+    "zh": "Leopard 2A3 OTCO，潮闸圩田"
    },
    "loop": "/media/site50-r14/fleet/leo2a4_otco.webm",
    "poster": "/media/site50-r14/fleet/leo2a4_otco.jpg",

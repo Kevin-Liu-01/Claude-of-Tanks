@@ -182,6 +182,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
     // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
     'src/vehicles/strv103GunPort.selftest.mjs',
+    // 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets"):
+    // each gun pitches in its own shield, seated in a channel cut into its own turret front, clear of it and filling it
+    // over the whole travel
+    'src/vehicles/japaneseMantlet.selftest.mjs',
+    // 262 (owner: "we should upgrade the hulls and everything about the tanks too"): the STB-1's and the Type 74's guns
+    // keep off their rebuilt hulls at every yaw on their source travel and published curves
+    'src/vehicles/japaneseGunHull.selftest.mjs',
     'src/vehicles/challengerXGunPort.selftest.mjs',
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
@@ -193,6 +200,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // 262: the Challenger 3 TD's deep mantlet and tube clear its two cheeks and every turret fitting through the gun's
     // whole travel, in battery and at full recoil (a rod across the slot fails)
     'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
+    // release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, its gun
+    // clear of its hull at its published stops
+    'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
+    // release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wedge
+    // split, each one's gun forward, the ring on the deck and the 2A4 turret's roof, at both qualities
+    'src/vehicles/profiles/leopard2A4Family.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -704,8 +717,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/k2XReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sourceK2Equipment.selftest.mjs',
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4SideSkirt.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4GunSeat.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
     'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
     'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
@@ -1904,7 +1915,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/merkavaFamily.selftest.mjs',
     'src/vehicles/profiles/merkavaFamilyGunClearance.selftest.mjs',
     'src/vehicles/profiles/swedishSiegeLine.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4Ghillie.selftest.mjs',
     'src/vehicles/profiles/t72JaguarRedesign.selftest.mjs',
     'src/vehicles/profiles/challenger2Geometry.selftest.mjs',
     'src/vehicles/profiles/challenger2Family.selftest.mjs',

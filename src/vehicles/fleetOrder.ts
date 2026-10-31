@@ -38,7 +38,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     ...NATIVE_VARIANT_FAMILIES.t90_1992,
   ]),
   leopard: Object.freeze([
-    'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can',
+    'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can',
     'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco',
     'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved',
   ]),
