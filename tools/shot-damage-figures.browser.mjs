@@ -32,6 +32,13 @@ const CASES = [
   ], 845, [610, 140, 95]],
 ];
 const digits = (text) => Number(String(text ?? '').replace(/[^\d]/g, '')) || 0;
+/** WCAG contrast of two sRGB byte triples. */
+function contrast(a, b) {
+  const lum = (rgb) => rgb.slice(0, 3).map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; })
+    .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 const lock = createCaptureLock();
 await lock.acquire(Number(arg('lock-timeout', String(45 * 60 * 1000))), { lockClass: 'render', holdCapMinutes: 12 });
@@ -66,17 +73,29 @@ try {
         for (let i = 0; i < 2; i++) f.hud.update(f.frame);
         const text = (selector) => [...document.querySelectorAll(selector)]
           .filter((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })).map((el) => el.textContent);
+        // a computed colour as sRGB bytes (a token in oklch reads back as oklch)
+        const rgba = (css) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = css;
+          c.fillRect(0, 0, 1, 1); return [...c.getImageData(0, 0, 1, 1).data]; };
+        const ink = (selector) => { const el = [...document.querySelectorAll(selector)].find((e) => /\d/.test(e.textContent));
+          return el ? rgba(getComputedStyle(el).color) : null; };
+        const plate = document.querySelector('.cot-si-card');
         const result = { card: text('.cot-si-dmg'), shown: document.querySelector('.cot-si-card')?.dataset.shown ?? null,
-          blast: text('.cot-si-missile-blast'), floats: text('.cot-dmgnum') };
+          blast: text('.cot-si-missile-blast'), floats: text('.cot-dmgnum'),
+          ink: { card: ink('.cot-si-dmg'), float: ink('.cot-dmgnum'),
+            plate: plate ? getComputedStyle(plate).backgroundColor : null } };
         f.bus.emit('ui:shotLog', {});
         result.log = text('.cot-si-log.open .cot-si-lrow .d');
+        result.ink.log = ink('.cot-si-log.open .cot-si-lrow .d.dealt');
         f.bus.emit('ui:shotLog', {});
         return result;
       }, { events, missile: name.startsWith('missile') });
       const problems = [];
       const expect = (ok, what) => { if (!ok) problems.push(what); };
       // (a touch window's zero-damage hit floats its outcome's word, no figure)
-      const figures = seen.floats.filter((text) => /\d/.test(text)).map(digits);
+      const numeric = seen.floats.filter((text) => /\d/.test(text));
+      // (the float prints the card's true minus: one datum, one glyph)
+      expect(numeric.every((text) => text.startsWith('\u2212')), `floats ${JSON.stringify(numeric)} print a true minus`);
+      const figures = numeric.map(digits);
       expect(figures.sort().join() === floats.slice().sort().join(),
         `floats ${JSON.stringify(seen.floats)} read ${floats.join(', ') || 'none'}`);
       if (!touch) {
@@ -85,6 +104,18 @@ try {
         expect(Number(seen.shown) === card, `card.dataset.shown ${seen.shown} is ${card}`);
         const logged = digits(seen.log[0]);
         expect(logged === (events[0].hpRemoved || 0), `log row ${JSON.stringify(seen.log[0])} reads ${events[0].hpRemoved}`);
+        // one damage-dealt colour (owner 2026-10-31, "make the -xxxxx number be colored"): the card's figure, the float and
+        // the log's figure share it, and it holds 4.5:1 on the card's plate even over a white battlefield
+        if (card) {
+          const same = (a, b) => a && b && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 1);
+          expect(same(seen.ink.card, seen.ink.float) && same(seen.ink.card, seen.ink.log),
+            `one colour: card ${seen.ink.card}, float ${seen.ink.float}, log ${seen.ink.log}`);
+          const m = /rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)(?:[, /]+([\d.]+))?/.exec(seen.ink.plate || '');
+          const alpha = m && m[4] !== undefined ? Number(m[4]) : 1;
+          const overWhite = m ? [1, 2, 3].map((i) => Number(m[i]) * alpha + 255 * (1 - alpha)) : [255, 255, 255];
+          const ratio = seen.ink.card ? contrast(seen.ink.card, overWhite) : 0;
+          expect(ratio >= 4.5, `the figure's contrast on the plate over white is ${ratio.toFixed(2)}:1, under 4.5`);
+        }
         if (name.startsWith('missile')) expect(seen.blast.length === 1 && !/\d{3}/.test(seen.blast[0]),
           `the blast line ${JSON.stringify(seen.blast)} names the vehicles, its damage on the figure`);
       }

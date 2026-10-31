@@ -389,10 +389,11 @@ const SI_CSS = `
    its glyph at 900x700, gauntlet r8) */
 @container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* the hull points the shot took off, beside the outcome (owner 2026-10-31): in the plate's ink beside the outcome's tone (an
-   amber figure by an orange title read as two oranges in one row, gauntlet r7) */
+/* the hull points the shot took off, beside the outcome (owner 2026-10-31, "make the -xxxxx number be colored"): the
+   damage dealt's one colour, as the float and the log carry it; yellow beside the outcome's orange (an amber figure by an
+   orange title read as two oranges in one row, gauntlet r7) */
 .cot-si-dmg{flex:0 0 auto;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-20);line-height:1;
-  letter-spacing:0;color:var(--ink-1);white-space:nowrap;}
+  letter-spacing:0;color:var(--battle-damage-dealt);white-space:nowrap;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:var(--s1);overflow:hidden;white-space:nowrap;}
@@ -492,6 +493,8 @@ const SI_CSS = `
   font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
 .cot-si-lrow .d{font-weight:700;color:var(--accent-hi);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
+/* (a shot's own figure in the damage dealt's colour, the card's and the float's; the received rows keep theirs) */
+.cot-si-lrow .d.dealt{color:var(--battle-damage-dealt);}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
@@ -1417,7 +1420,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
         `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
-        `<span class="d">${hullPointsRemoved(it.ev) > 0 ? `−${formatNumber(Math.round(hullPointsRemoved(it.ev)))}` : '·'}</span>` +
+        `<span class="d dealt">${hullPointsRemoved(it.ev) > 0
+          ? t('shotInfo.damageAmount', { amount: formatNumber(Math.round(hullPointsRemoved(it.ev))) }) : '·'}</span>` +
         `<span class="n">${escapeHtml(it.ev.targetName || it.ev.targetId || '')}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}\u202fm</span>`;
     }

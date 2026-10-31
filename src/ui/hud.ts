@@ -1875,7 +1875,7 @@ body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-specta
 body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
-  letter-spacing:-.02em;color:var(--accent-hi);white-space:nowrap;text-transform:uppercase;
+  letter-spacing:-.02em;color:var(--battle-damage-dealt);white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
   animation:cotFloat calc(var(--dur-stage) * 2.4) cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
 .cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
@@ -8073,7 +8073,9 @@ export function initHud(bus: EventBus): HudRuntime {
   function paintDamageNumber(number: LiveDamageNumber, hit: HudHitEvent, rapid: boolean): void {
     const d = number.element;
     const damage = number.burst?.damage ?? hullPointsRemoved(hit);
-    d.textContent = `-${damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage)}`;
+    // (the card's and the log's formatter: one datum, one glyph, the true minus; a burst's fraction keeps one decimal)
+    const shown = damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage);
+    d.textContent = t('shotInfo.damageAmount', { amount: formatNumber(shown) });
     if (number.burst?.critical) el('span', 'crit', d).textContent = t('hud.dmg.crit');
     clearTimeout(number.timer);
     d.classList.remove('burst-ending');
