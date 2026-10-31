@@ -16,7 +16,7 @@ import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
-import { CircleGeometry } from 'three';
+import { CircleGeometry, Vector3 } from 'three';
 import type { BufferGeometry } from 'three';
 
 type Vec3Tuple = [number, number, number];
@@ -603,7 +603,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // envelope (floor 0.18, an undercut chamfer to the 1.49 face at 0.32, the face to 0.50, the roof falling to the crown)
   // and runs unbroken from a rear facet to the cheek, which sweeps in at about the shell's own cheek angle to a short
   // front face beside the nose plate. The twelve smoke tubes stand on the two cheeks as 2x3 clusters (buildRoofSystems).
-  const flankOuterX = 1.49, flankFloorY = 0.18, flankChamferY = 0.32, flankFaceTopY = 0.50;
+  const flankOuterX = 1.49, flankFloorY = 0.18, flankChamferY = 0.32, flankFaceTopY = 0.56;     // 267 r2: face to 0.56 (Sonnet: "a loaf, not a welded box")
   const cheekZ = 1.20, cheekNoseX = 1.012, tailZ = -1.86, tailX = 1.12, rearFacetZ = -1.30;
   const cheekNoseZ = (s: number): number => (s < 0 ? 1.93 : 1.95);              // the left stops short of the camera box's sweep
   const flankOuterXAt = (s: number, z: number): number => {
@@ -659,20 +659,24 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 (Opus, round 3: "raised walls/boxes on the turret roof ... stand proud of the roof like fences"; the real roof is
   // low and flat apart from the cupola, the commander's sight and the sight heads): the right rear roof shoulder block,
   // the rear service hump and pot, and the lower cheek ties under the old cassettes are gone.
-  P.add('turret', xformWithScale(cylY(0.48, 0.50, 0.060, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.620, -0.162); // broad, flat collar physically bridges the crown to the dominant annulus
-  P.add('turretDetail', xformWithScale(cylY(0.49, 0.50, 0.014, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.657, -0.162); // low-contrast outer well lip
-  P.add('turretDark', xformWithScale(torus(0.39, 0.010, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.667, -0.162); // thin inner drainage seam, not a raised black rim
-  P.add('turret', xformWithScale(cylY(0.36, 0.39, 0.030, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.65]), -0.80, 0.677, -0.162); // second stepped seat
-  P.add('turret', xformWithScale(cylY(0.31, 0.325, 0.080, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.730, -0.162); // low commander cupola, deliberately subordinate to its annulus
-  P.add('turret', xformWithScale(cylY(0.285, 0.30, 0.035, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.787, -0.162);
-  P.add('turretDark', xformWithScale(torus(0.285, 0.010, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.808, -0.162);
-  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.615, 0.780, -0.162);          // asymmetric hatch hinge closes the source cupola shoulder
-  P.add('turretDetail', box(0.18, 0.12, 0.10), -0.82, 0.86, 0.00);             // broad, low source hatch/periscope peak, fully seated on the main lid
-  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.885, 0.056);
-  // 266: the cupola's hatch-handle and periscope-shoulder blocks (a box cluster on the lid to the critics) are gone.
-  for (let k = 0; k < 7; k++) {                                                 // episcope ring
-    const a = (k / 7) * Math.PI * 2 - 0.45;
-    P.add('turretDark', box(0.070, 0.038, 0.045), -0.80 + Math.cos(a) * 0.315, 0.696, -0.162 + Math.sin(a) * 0.185, 0, -a, 0);
+  // 267 round 2 (Opus, critic1: "the commander's cupola is about half the real size; the real cupola is a large drum with
+  // vision blocks, about a third of the turret width"): the drum is 1.2 times the old plan and rounder (plan z-scale 0.82,
+  // was 0.62), 0.12 m tall with eight vision blocks round it, on the same broad annulus.
+  const cupolaZ = 0.82;
+  const cupola = (g: BufferGeometry): BufferGeometry => xformWithScale(g, 0, 0, 0, 0, 0, 0, [1, 1, cupolaZ]);
+  P.add('turret', cupola(cylY(0.50, 0.52, 0.060, 26)), -0.80, 0.620, -0.162);   // annulus collar bridging the crown
+  P.add('turretDetail', cupola(cylY(0.51, 0.52, 0.014, 26)), -0.80, 0.657, -0.162); // outer well lip
+  P.add('turretDark', cupola(torus(0.43, 0.010, 26)), -0.80, 0.667, -0.162);      // drainage seam
+  P.add('turret', cupola(cylY(0.42, 0.45, 0.030, 24)), -0.80, 0.677, -0.162);    // stepped seat
+  P.add('turret', cupola(cylY(0.37, 0.39, 0.120, 24)), -0.80, 0.750, -0.162);    // drum
+  P.add('turret', cupola(cylY(0.34, 0.36, 0.035, 24)), -0.80, 0.8275, -0.162);   // lid
+  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.846, -0.162);
+  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.82, -0.162);            // hatch hinge on the drum's shoulder
+  P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.88, 0.00);             // hatch/periscope peak seated on the lid
+  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.89, 0.052);
+  for (let k = 0; k < 8; k++) {                                                 // vision blocks round the drum
+    const a = (k / 8) * Math.PI * 2 + 0.2;
+    P.add('turretDark', box(0.085, 0.050, 0.030), -0.80 + Math.sin(a) * 0.385, 0.765, -0.162 + Math.cos(a) * 0.385 * cupolaZ, 0, a, 0);
   }
   P.add('turretDark', cylY(0.17, 0.19, 0.075, 14), -0.15, 0.615, 0.24);       // panoramic sight turntable embeds into the crown
   // 266 (critics round 1: "a clump of near-black cuboids in place of the tall sight"): the plinth, faceted head, optic
@@ -682,10 +686,14 @@ function buildAMX40(P: FranceBuilderPort): void {
   // boxy head): the column is as broad as the head now, and the head's dark cap plate (a floating dash in side view) is
   // its own painted top. The 0.84 m "receiver course" wall across the front roof and the raised left shoulder block
   // (fences to both critics) are gone.
-  P.add('turret', cylY(0.150, 0.165, 0.26, 20), -0.15, 0.73, 0.24);           // sight column
-  P.add('turretDetail', box(0.30, 0.16, 0.30), -0.15, 0.93, 0.25);            // sight head (painted detail: the camouflage's black patch made it a black cube)
-  P.add('turretDark', box(0.20, 0.085, 0.014), -0.15, 0.935, 0.403);          // window frame
-  P.add('turretGlass', box(0.17, 0.06, 0.012), -0.15, 0.935, 0.410);          // window
+  // 267 round 2 (both photo critics, critic1: "the roof sight is a black box on a pedestal; the real one is a tan
+  // cylindrical tower with a head, standing about half a turret height above the cupola"): a round column to a round
+  // head with its window band and cap, in the turret's paint (the print's own head stands at 3.09 m).
+  P.add('turret', cylY(0.150, 0.165, 0.40, 20), -0.15, 0.80, 0.24);           // column 0.60..1.00
+  P.add('turretDetail', cylY(0.175, 0.170, 0.13, 20), -0.15, 1.055, 0.24);    // head 0.99..1.12
+  P.add('turretDetail', cylY(0.160, 0.175, 0.025, 20), -0.15, 1.132, 0.24);   // cap
+  P.add('turretDark', box(0.20, 0.06, 0.03), -0.15, 1.06, 0.40);              // window frame
+  P.add('turretGlass', box(0.17, 0.045, 0.012), -0.15, 1.06, 0.418);          // window
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown
   P.add('turretDark', torus(0.205, 0.012, 18), 0.62, 0.666, -0.72);            // loader hatch well
   P.add('turret', cylY(0.185, 0.195, 0.030, 18), 0.62, 0.681, -0.72);          // loader hatch RIGHT-REAR
@@ -699,20 +707,33 @@ function buildAMX40(P: FranceBuilderPort): void {
     // are 2x3 clusters of forward-angled tubes on the cheek faces"): each welded cheek carries three rows of two tubes on
     // a bracket plate, square to the cheek and raised 17 degrees; the twelve launch sockets keep their count. Fittings
     // sit in the turret's final frame (the 1.20 section scale below does not reach them), the plate in the bucket frame.
-    const tubeLen = 0.24, tubePitch = -0.30, embed = 0.02;
+    // 267 round 2 (both critics, critic1: "they point straight out sideways; the real clusters face forward and outward,
+    // so the muzzles show from the front"): the tubes turn 0.5 rad off the cheek's normal toward the bow (about 30
+    // degrees off the bow), on a bracket block square to them whose inner edge is buried in the cheek.
+    const tubeLen = 0.22, tubePitch = -0.30, standoff = 0.09;
     for (const s of [-1, 1]) {
       const zc = 1.58, xo = flankOuterXAt(s, zc);
       const ex = -(flankOuterX - cheekNoseX), ez = cheekNoseZ(s) - cheekZ, el = Math.hypot(ex, ez);
       const nx = s * ez / el, nz = -ex / el;                                     // the cheek's outward normal in plan
-      const yaw = Math.atan2(nx, nz);
-      P.add('turretDetail', box(0.30, 0.25, 0.03), s * xo + nx * 0.012, 0.42, zc + nz * 0.012, 0, yaw, 0);
+      const yaw = Math.atan2(nx, nz) - s * 0.50;
+      const bx = s * xo + nx * standoff, bz = zc + nz * standoff;
+      P.add('turretDetail', box(0.27, 0.25, 0.20), bx - Math.sin(yaw) * 0.08, 0.42, bz - Math.cos(yaw) * 0.08, 0, yaw, 0);
       const dx = Math.sin(yaw) * Math.cos(tubePitch), dy = -Math.sin(tubePitch), dz = Math.cos(yaw) * Math.cos(tubePitch);
-      const reach = tubeLen / 2 - embed;
+      const reach = 0.02 + tubeLen / 2 - 0.02;
       for (const [row, y] of [[0, 0.405], [1, 0.505], [2, 0.605]]) {
         const bank = FITTINGS.smokeBank({ mats: P.mats, count: 2, r: 0.045, len: tubeLen, splay: yaw, arc: 0.06, pitch: tubePitch,
           spacing: 0.115, base: false, seed: 5 + row + (s > 0 ? 3 : 0) });
-        bank.position.set(s * xo + nx * 0.03 + dx * reach, y + dy * reach, zc + nz * 0.03 + dz * reach);
+        bank.position.set(bx + dx * reach, y + dy * reach, bz + dz * reach);
         P.turretG.add(bank);
+      }
+      // the tube guard hoop over each cluster (Sonnet, critic1: "the wire-loop grab rails at the turret front corners are
+      // absent"): from the flank's roof edge out over the cluster and back into the cheek top beside the nose
+      const hoop: Vec3Tuple[] = [[s * 1.40, 0.52, 1.12], [s * 1.60, 0.62, 1.30], [s * 1.60, 0.62, 1.74], [s * 1.30, 0.62, 2.02], [s * 1.10, 0.53, 1.92]];
+      for (let i = 0; i < hoop.length - 1; i++) {
+        const [ax, ay, az] = hoop[i], [cx, cy, cz] = hoop[i + 1];
+        const len = Math.hypot(cx - ax, cy - ay, cz - az);
+        const seg = cylZ(0.017, len + 0.02, 10).lookAt(new Vector3(cx - ax, cy - ay, cz - az));
+        P.add('turretDetail', seg, (ax + cx) / 2, (ay + cy) / 2, (az + cz) / 2);
       }
     }
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
@@ -730,15 +751,11 @@ function buildAMX40(P: FranceBuilderPort): void {
     // masts live in the filed normalize plan — seats documented in the
     // packet). base:false + hand pots so the whole stack stays ≤ 2.398
     // world and heightM p95 keeps the roof plateau.
-    for (const [x, z] of [[-1.00, -1.41], [0.72, 0.97], [1.00, 0.97]]) {
-      P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), x, 0.66, z);      // roof socket bridges each antenna pot to the welded crown
-    }
+    // 267 round 2 (Opus, critic1: "four antennas; the photos show two"): the paired receiver masts on the right front roof
+    // are gone; the aft mast and the fleet whip (decorations.ts) are the two.
+    P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), -1.00, 0.66, -1.41); // roof socket bridges the antenna pot to the welded crown
     P.add('turretDetail', antennaPart(cylY(0.006, 0.006, 0.52, 6)), -1.00, 0.850, -1.38);   // source Object_24 aft mast peak, centered on the print's single side-profile station
-    P.add('turretDetail', antennaPart(cylY(0.007, 0.007, 0.43, 6)), 0.72, 0.987, 0.97);
-    P.add('turretDetail', antennaPart(cylY(0.007, 0.007, 0.34, 6)), 1.00, 0.942, 0.97);      // spike-exempt paired receiver masts
-    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), -1.00, 0.762, -1.41);    // whip base pots at the source seats
-    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.72, 0.762, 0.97);
-    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 1.00, 0.762, 0.97);
+    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), -1.00, 0.762, -1.41);    // whip base pot at the source seat
   }
   };
   buildRoofSystems();
@@ -756,11 +773,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     [-0.90, 0.60, -1.80], [0.90, 0.60, -1.80], [0.80, 0.585, -2.20], [-0.80, 0.585, -2.20]));
   P.add('turretDark', box(1.50, 0.014, 0.010), 0, 0.545, -2.198);               // lid seam
   for (const vx of [-0.50, 0, 0.50]) P.add('turretDetail', box(0.050, 0.060, 0.020), vx, 0.50, -2.205); // latches
-  for (const y of [0.33, 0.52]) P.add('turretDetail', cylX(0.017, 1.50, 10), 0, y, -2.32);   // guard rails
-  for (const s of [-1, 1]) {
-    P.add('turretDetail', cylY(0.017, 0.017, 0.21, 10), s * 0.75, 0.425, -2.32);  // end uprights
-    for (const y of [0.33, 0.52]) P.add('turretDetail', box(0.024, 0.024, 0.15), s * 0.66, y, -2.26); // standoffs into the bin
-  }
+  // 267 round 2 (Sonnet, critic1: "a stray outline frame at the turret rear, a floating ring"): the guard is two rails
+  // close on the bin's back on short standoffs, without the end uprights.
+  for (const y of [0.33, 0.50]) P.add('turretDetail', cylX(0.017, 1.40, 10), 0, y, -2.245);
+  for (const s of [-1, 1]) for (const y of [0.33, 0.50]) P.add('turretDetail', box(0.024, 0.024, 0.06), s * 0.60, y, -2.215);
   P.decal('turret', 'number', '02', 0.22, [1.495, 0.47, -0.35], Math.PI / 2, 0, 0.02);
   P.decal('turret', 'number', '02', 0.22, [-1.495, 0.47, -0.35], -Math.PI / 2, 0, -0.02);
   };
@@ -825,17 +841,20 @@ function buildAMX40(P: FranceBuilderPort): void {
   // chamfered octagonal plate with a lug-and-bar latch, and a separate large round aperture to its right"): the face is
   // upright, the door sits on a raised octagonal plate with its hinge lug over it, and the aperture beside it is its own
   // dark round port.
+  // 267 round 2 (both critics, critic1: "the box shows two thin slits; the real box has a large round armoured door with a
+  // hinge and handle, and a round port beside it"): the box stands 0.335 m tall (it grows upward only, so its lower edge
+  // and the depression it allows are unchanged), the door is 0.25 m across with a heavy rim, and the port is larger.
   P.addGunExtra(slab(
     [-1.06, -0.115, 0.40], [-0.28, -0.115, 0.40], [-0.28, -0.115, 1.00], [-1.06, -0.115, 1.00],
-    [-1.06, 0.115, 0.40], [-0.28, 0.115, 0.40], [-0.28, 0.115, 0.985], [-1.06, 0.115, 0.985]));
-  P.addGunExtra(xform(cylZ(0.124, 0.016, 8), 0, 0, 0, 0, 0, Math.PI / 8), -0.68, -0.005, 1.006); // octagonal cover plate
-  P.addGunExtra(cylZ(0.098, 0.026, 20), -0.68, -0.005, 1.025);                 // round armoured door
-  P.addGunExtraDark(torus(0.098, 0.007, 20, 6), -0.68, -0.005, 1.026);          // door rim seam
-  P.addGunExtraDark(box(0.090, 0.022, 0.020), -0.68, -0.035, 1.044);            // latch bar
-  for (const sx of [-1, 1]) P.addGunExtra(box(0.018, 0.075, 0.020), -0.68 + sx * 0.035, 0.105, 1.020); // hinge lug
-  P.addGunExtra(box(0.088, 0.018, 0.020), -0.68, 0.140, 1.020);
-  P.addGunExtraDark(cylZ(0.074, 0.012, 18), -0.42, -0.005, 1.002);              // aperture port
-  P.addGunExtraDark(torus(0.078, 0.008, 18, 6), -0.42, -0.005, 1.004);
+    [-1.06, 0.22, 0.40], [-0.28, 0.22, 0.40], [-0.28, 0.22, 0.985], [-1.06, 0.22, 0.985]));
+  P.addGunExtra(xform(cylZ(0.158, 0.016, 8), 0, 0, 0, 0, 0, Math.PI / 8), -0.70, 0.045, 1.006); // octagonal cover plate
+  P.addGunExtra(cylZ(0.125, 0.030, 22), -0.70, 0.045, 1.027);                  // round armoured door
+  P.addGunExtraDark(torus(0.125, 0.014, 22, 6), -0.70, 0.045, 1.030);           // door rim
+  P.addGunExtraDark(box(0.11, 0.026, 0.022), -0.70, 0.005, 1.048);              // latch bar
+  for (const sx of [-1, 1]) P.addGunExtra(box(0.020, 0.080, 0.022), -0.70 + sx * 0.04, 0.19, 1.022); // hinge lug
+  P.addGunExtra(box(0.10, 0.020, 0.022), -0.70, 0.225, 1.022);
+  P.addGunExtraDark(cylZ(0.088, 0.012, 20), -0.41, 0.03, 1.002);                // aperture port
+  P.addGunExtraDark(torus(0.092, 0.012, 20, 6), -0.41, 0.03, 1.005);
   // 20mm F2 coax on the RIGHT (print Object_2: x +0.34..+0.44, r ~0.05,
   // to z_w 2.81) — the France-lane visible second barrel
   P.addGunExtra(box(0.14, 0.18, 0.30), 0.39, -0.02, 0.90);                      // coax housing slot
@@ -879,7 +898,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     }),
     roof: Object.freeze({
       supportedParts: 10,
-      antennaSockets: 3,
+      antennaSockets: 1,
       minimumContactEmbedM: 0.01,
       maxSupportGapM: 0,
     }),

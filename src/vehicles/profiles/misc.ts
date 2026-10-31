@@ -1,6 +1,7 @@
 import { buildT80UK } from './t80ukRenewal.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
@@ -241,21 +242,23 @@ function leclercGalixHousing(P: MiscBuilderPort, side: number, count: number, zF
     [sx(xIn), yBase, zFront], [sx(xOut), yBase, zFront - chamfer], [sx(xOut), yOut, zFront - chamfer], [sx(xIn), yIn, zFront],
     [sx(xIn), yBase, zRear], [sx(xOut), yBase, zRear], [sx(xOut), yOut, zRear], [sx(xIn), yIn, zRear]));
   const slope = new THREE.Vector2(xIn - xOut, yIn - yOut).normalize();
+  // 267 round 2 (Sonnet, critic1: "raised studs that read as teeth; the photos show flat round holes"): the mouths are
+  // flush round holes in two staggered rows along the top, the tubes sunk under them (their sockets ride the tubes)
+  const normal = new THREE.Vector3(side * -slope.y, -slope.x, 0);
+  const faceTurn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
   const dir = new THREE.Vector3(side * 0.40, 0.80, 0.45).normalize();
   const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
-  const rows = 3, pitch = 0.09, z0 = zFront - chamfer - 0.07;
+  const lower = Math.ceil(count / 2), pitch = 0.072, z0 = zFront - chamfer - 0.05;
   for (let k = 0; k < count; k++) {
-    const row = k % rows, col = Math.floor(k / rows);
-    const u = 0.06 + row * 0.10;
-    const at = new THREE.Vector3(sx(xOut + slope.x * u), yOut + slope.y * u, z0 - col * pitch - (row % 2) * pitch / 2);
-    // the tube's mouth stands 2 cm proud of the housing top along its own axis; the tube sits in the housing behind it
-    const mouth = at.clone().addScaledVector(dir, 0.02);
-    const tube = markSmokeTube(cylZ(0.034, 0.20, 12)).applyQuaternion(turn);
-    const centre = mouth.clone().addScaledVector(dir, -0.10);
+    const row = k < lower ? 0 : 1, col = row ? k - lower : k;
+    const u = row ? 0.19 : 0.08;
+    const at = new THREE.Vector3(sx(xOut + slope.x * u), yOut + slope.y * u, z0 - col * pitch - row * pitch / 2);
+    const hole = new THREE.CircleGeometry(0.034, 12).applyQuaternion(faceTurn);
+    const holeAt = at.clone().addScaledVector(normal, 0.003);
+    P.add('turretDark', hole, holeAt.x, holeAt.y, holeAt.z);
+    const tube = markSmokeTube(cylZ(0.032, 0.20, 12)).applyQuaternion(turn);
+    const centre = at.clone().addScaledVector(dir, -0.022 - 0.10);
     P.add('turret', tube, centre.x, centre.y, centre.z);
-    const lip = cylZ(0.029, 0.006, 12).applyQuaternion(turn);
-    const lipAt = mouth.clone().addScaledVector(dir, 0.0035);
-    P.add('turretDark', lip, lipAt.x, lipAt.y, lipAt.z);
   }
 }
 
@@ -886,7 +889,7 @@ withBuildSteps(buildAriete, buildArieteSteps);
 
 function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' = 's2'): TankProfileBuild {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan,
+    fenders, headlight, liftEye, periscope, towCable, stowage,
     shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -1664,7 +1667,8 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     P.add('turretDark', box(0.20, 0.15, 0.02), 0.60, 0.28, 1.452);               // lens frame
     P.add('turretGlass', box(0.15, 0.11, 0.016), 0.60, 0.28, 1.462);             // lens
     P.add('turret', box(0.12, 0.40, 0.10), 0.74, 0.235, 2.00);                   // shutter housing (face 1.95w plan line)
-    for (let k = 0; k < 3; k++) P.add('turretDark', box(0.10, 0.010, 0.006), 0.74, 0.16 + k * 0.075, 2.047); // shutter slat lines (photo read 4 — 3 mm INSET from the priced 1.952 face, mask-free)
+    // 267 round 2 (Opus, critic1: "a ladder-like stack of small boxes beside the mantlet"): the shutter's three slat lines
+    // are gone; the shutter is a plain armoured housing.
     P.add('turret', slab(                                                        // hood: thin visor at the rake TOP over the bay opening (plan-frontmost
       [0.46, 0.315, 1.914], [0.84, 0.315, 1.914], [0.84, 0.315, 1.874], [0.46, 0.315, 1.874],
       [0.46, 0.42, 1.736], [0.84, 0.42, 1.736], [0.84, 0.42, 1.696], [0.46, 0.42, 1.696])); // point z_l 1.914 = z_w 1.814 < the bay floor edge 1.841 — col 0.623 keeps its priced owner (the loop-1 low seat printed 2.025 on it, +0.08)
@@ -1741,16 +1745,21 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       // flank): the basket is the Saumur Leclercs' closed side rack now, a box from the wall out to the old rail
       // line with four dark mesh bays on its face; the turret wall falls 0.2-0.4 m inboard aft, so the old open
       // frame showed daylight through it.
-      P.add('turret', box(0.295, 0.33, 1.28), s * 1.3975, 0.185, -0.79);
-      P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.35, -0.79);     // rack frame rails
-      P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.02, -0.79);
+      // 267 round 2 (both critics, critic1: "the perforated rack is too short; the real one runs the bustle in two tiers"):
+      // the rack stands 0.42 m tall in two tiers and runs aft to the GALIX housing (the XLR's side modules cover it)
+      const rackTop = variant === 'xlr' ? 0.35 : 0.44, rackRear = variant === 'xlr' ? -1.43 : -1.48;
+      P.add('turret', box(0.295, rackTop - 0.02, -0.15 - rackRear), s * 1.3975, (rackTop + 0.02) / 2, (rackRear - 0.15) / 2);
+      for (const y of variant === 'xlr' ? [rackTop, 0.02] : [rackTop, 0.23, 0.02]) {
+        P.add('turretDetail', box(0.045, 0.045, -0.15 - rackRear), s * 1.53, y, (rackRear - 0.15) / 2); // rack frame rails
+      }
       // 267 (both photo critics, round 3: "the turret side has only flat dark panels; the real bustle sides carry long racks
       // of perforated baskets"): each of the four bays is a perforated plate, three rows of five holes, between the
       // rack's frame rails (straps and bay posts read as a picket fence in the Gallery views).
+      const holeRows = variant === 'xlr' ? [0.11, 0.185, 0.26] : [0.085, 0.155, 0.30, 0.37];
       for (let k = 0; k < 4; k++) {
         const zb = -0.31 - k * 0.32;
-        for (let row = 0; row < 3; row++) for (let col = 0; col < 5; col++) {
-          P.add('turretDark', new THREE.CircleGeometry(0.019, 8), s * 1.5465, 0.11 + row * 0.075, zb - 0.10 + col * 0.05, 0, s * Math.PI / 2, 0);
+        for (const y of holeRows) for (let col = 0; col < 5; col++) {
+          P.add('turretDark', new THREE.CircleGeometry(0.019, 8), s * 1.5465, y, zb - 0.10 + col * 0.05, 0, s * Math.PI / 2, 0);
         }
       }
     }
@@ -1890,9 +1899,13 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // bases only"): the rear sensor post is gone.
     // crosswind mast + whip base: TWO spike columns at x ±1.05, tops 2.54,
     // plus the sensor base block at x -1.14 (ref front -1.149: 2.45)
-    for (const [mx, mt] of [[-1.11, 0.905], [0.99, 0.915]]) {
+    // 267 round 2 (both critics, critic1, on the S1 and SXXI: "no whip antennas, only two stubs; the photos show two long
+    // whips"): each mast carries its whip (the fleet's roof whips seat under the SXXI's roof net and never stood on the
+    // S1; decorations.ts leaves the Leclercs' decor whips off so the S2 has no doubles)
+    for (const [mx, mt, whip] of [[-1.11, 0.905, 2.10], [0.99, 0.915, 1.70]]) {
       P.add('turretDetail', box(0.014, 0.46, 0.014), mx, 0.69, -0.83);
       P.add('turretDark', box(0.016, 0.05, 0.016), mx, mt, -0.83);
+      P.add('turretDetail', antennaPart(cylY(0.005, 0.009, whip, 6)), mx, mt + 0.02 + whip / 2, -0.83);
     }
     P.add('turretDetail', box(0.06, 0.44, 0.036), 0.97, 0.68, -0.83);           // right mast bracket broad enough to read at both source-station columns
     P.add('turretDetail', box(0.115, 0.10, 0.05), -1.1175, 0.745, -0.95);       // source-height sensor base remains broad enough to carry the left mast
@@ -1986,8 +1999,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     }
     // 267 (Sonnet, round 3, S1: "box with three small hooks and a drooping plate ... the plates overhang the turret rear
     // with no support"): the corner cage bars, the two cloth bundles and the ammunition can on that quarter are gone with
-    // the bin; the jerrycan stays in the cage.
-    jerryCan(P, 'turretCloth', 0.80, 0.42, -1.88, -0.2);
+    // the bin. 267 round 2 (both critics, critic1: "a tan block juts alone from the turret rear corner"): so is the jerrycan.
     P.add('turretDetail', box(0.10, 0.03, 0.16), -0.95, 0.625, 0.30);            // flush lifting lugs (on the mid roof)
     P.add('turretDetail', box(0.10, 0.03, 0.16), 0.95, 0.625, 0.30);
     P.decal('turret', 'number', tacticalNumber, 0.30, [1.30, 0.35, -1.0], Math.PI / 2);
@@ -2104,7 +2116,7 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
     P.add('hullDark', box(0.032, 0.18, 0.90), s * 1.18, 1.28, 2.66, -0.10, 0, 0);
     for (let k = 0; k < 7; k++) {
       const z = -2.54 + k * 0.70;
-      const depth = k === 6 ? 0.46 : 0.62;
+      const depth = k === 6 ? 0.46 : 0.69;                                       // 267: butted (8 cm gaps made each module its own box)
       // 266 (the AMX 56's skirt-ERA fix): each module was a 40 mm card 72 mm off the 1.70 skirt face; it is solid to it now.
       // 267 (Opus, round 3: "staircased skirt tops"): each module runs up to the skirt's single top line (1.585)
       P.add('hull', box(0.112, 0.795, depth), s * 1.756, 1.1875, z, 0, 0, 0);

@@ -37,8 +37,8 @@ try {
   assert.equal(receipt?.sidePanels.maxSupportGapM, 0,
     'flank panels permit no authored air gap');
 
-  assert.equal(receipt?.roof.antennaSockets, 3,
-    'all three marked antenna pots have roof-to-pot sockets');
+  assert.equal(receipt?.roof.antennaSockets, 1,
+    'the aft antenna pot has its roof-to-pot socket (267: the paired receiver masts are gone)');
   assert.ok(receipt?.roof.supportedParts >= 10,
     'marked roof optics, receiver course, sight brow, and antenna pots are supported');
   assert.ok(receipt?.roof.minimumContactEmbedM >= 0.01,
