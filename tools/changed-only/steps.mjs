@@ -199,6 +199,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/browser-launch.mjs': {
     pin: '87d9d82caf048471',
     reads: [],
+    // 266: the capture lock it imports (to release a killed browser's holds) only schedules, so a lock edit re-runs no
+    // step (tools/capture-lock.mjs's own declaration)
+    scheduleOnly: ['tools/capture-lock.mjs'],
     note: 'runs ps over the launched browser\'s process tree for its memory watchdog: process state, never a file a step keys',
   },
   'tools/capture-lock.mjs': {

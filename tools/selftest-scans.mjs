@@ -234,6 +234,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/genHeroCards.mjs': outside('its own output directory (--out, .qa-dev/hero-cards by default): the layers it wrote, for tank-layers.json'),
   'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),
   'tools/changed-only/resolver.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),
@@ -303,6 +304,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/test-diff.mjs': cli('changedPaths lists the diff and fleetPartition runs computeState only when test:lane or test:recommend run as commands; the tiers receipt imports its pure helpers'),
   'tools/test-heavy.mjs': cli('npm run test:heavy reads the id-scoped closures; the tiers receipt imports idScopedSelection'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
+  'tools/selftest-process-groups.selftest.mjs': none('runSelftestFile from run-selftests.mjs on its fixture receipts under tmpdir: it lists nothing through it'),
   'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) and of ' +
     'tools/destruction-slab-check.mjs from selftest-cache.mjs: the closures of fixed files, for its pass fingerprint and its maps\' listings'),
 });

@@ -175,6 +175,8 @@ for (const name of ['icons', 'centering']) {
   const files = state.steps[name].toolFiles;
   assert.ok(files.includes('tools/browser-id-chunks.mjs') && files.includes('tools/browser-launch.mjs') && !files.includes(capsTable),
     `${name}: keys tools/browser-id-chunks.mjs and tools/browser-launch.mjs, never ${capsTable}`);
+  // (266) nor the capture lock the launcher imports: it only schedules (browser-launch.mjs scheduleOnly)
+  assert.ok(!files.includes('tools/capture-lock.mjs'), `${name}: never keys tools/capture-lock.mjs`);
 }
 assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
 assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),

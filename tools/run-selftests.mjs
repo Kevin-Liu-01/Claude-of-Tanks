@@ -164,8 +164,15 @@ export function selftestWorkerCount(env = process.env, availableCpus = available
 // `observeDir` (the runner's, per receipt) turns the observer on for this child and every process it starts; the
 // result then carries `observed` ({ reads, lists, probes }: checkout paths relative to `cwd`) and the directory is
 // removed.
+// Every receipt leads its own process group (266, Main: three `for (;;) {}` burners a receipt left behind ran 17.5 h).
+// The runner's SIGINT, SIGTERM, SIGHUP and SIGALRM reach the whole group (an outer alarm no longer ends the runner with
+// the group running), and once the receipt's own process has closed, however it ended, whatever is left in its group is
+// SIGKILLed, as it is when the runner exits. `killGroup` (pid, signal) is the group kill; a launch without a pid (a
+// test double) is signalled through child.kill.
+const SELFTEST_FORWARDED_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGALRM'];
 export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv(),
-  cwd = process.cwd(), logFile = null, nice = 0, observeDir = null } = {}) {
+  cwd = process.cwd(), logFile = null, nice = 0, observeDir = null,
+  killGroup = (pid, signal) => process.kill(-pid, signal) } = {}) {
   return new Promise((resolveResult) => {
     let output = null;
     if (logFile) {
@@ -176,7 +183,7 @@ export function runSelftestFile(file, { spawnProcess = spawn, signals = process,
     let child;
     try {
       child = spawnProcess(process.execPath, [file], {
-        cwd, env, stdio: output === null ? 'inherit' : ['inherit', output, output],
+        cwd, env, stdio: output === null ? 'inherit' : ['inherit', output, output], detached: true,
       });
     } finally {
       if (output !== null) closeSync(output); // the child holds its own descriptor
@@ -184,17 +191,26 @@ export function runSelftestFile(file, { spawnProcess = spawn, signals = process,
     // CPU work under nice (229): never raise a child above the runner's own niceness
     if (nice && child?.pid) { try { setPriority(child.pid, Math.max(nice, getPriority(child.pid))); } catch { /* exited */ } }
     let error, interruptedBy;
-    const interrupt = () => { interruptedBy ??= 'SIGINT'; child.kill('SIGINT'); };
-    const terminate = () => { interruptedBy ??= 'SIGTERM'; child.kill('SIGTERM'); };
+    const send = (signal) => {
+      if (child.pid) { try { killGroup(child.pid, signal); return; } catch { /* the group is gone */ } }
+      child.kill(signal);
+    };
+    const sweep = () => { if (child.pid) { try { killGroup(child.pid, 'SIGKILL'); } catch { /* nothing left */ } } };
+    // SIGINT stays SIGINT; the rest end the receipt with SIGTERM (it may clean up) and keep their own exit status.
+    const handlers = SELFTEST_FORWARDED_SIGNALS.map((signal) => [signal, () => {
+      interruptedBy ??= signal;
+      send(signal === 'SIGINT' ? 'SIGINT' : 'SIGTERM');
+    }]);
     // Repeated signals must keep reaching surviving children while they drain.
     // Removing a one-shot handler early could terminate the parent and release
     // its resource lease before the last child has actually closed.
-    signals.on('SIGINT', interrupt);
-    signals.on('SIGTERM', terminate);
+    for (const [signal, handler] of handlers) signals.on(signal, handler);
+    signals.on('exit', sweep);
     child.once('error', (failure) => { error = failure; });
     child.once('close', (status, signal) => {
-      signals.removeListener('SIGINT', interrupt);
-      signals.removeListener('SIGTERM', terminate);
+      for (const [name, handler] of handlers) signals.removeListener(name, handler);
+      signals.removeListener('exit', sweep);
+      sweep();
       const exitSignal = interruptedBy || signal;
       // A child may clean up and exit zero after SIGTERM. The requested suite
       // interruption must still stop subsequent tests with the normal code.
