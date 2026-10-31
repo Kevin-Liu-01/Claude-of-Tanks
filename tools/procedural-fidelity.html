@@ -90,14 +90,22 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
   // hull/turret/whole comparisons strict and disable only the dishonest
   // isolated-gun component mask.
+  // 262 (the owner's file of 2026-10-27, md5 464b7e95…, is this print): Hull_0, Tracks_1 and Turret_2 share one node
+  // frame whose +Z (the hull's axis, and the gun's within 0.2 deg) sits at raw bearing -115.63 deg, not -90: the PI/2
+  // registration skewed the hull 25.6 deg, nearly doubled the box width and normalizeReferenceWidth halved the oracle (the
+  // cast turret's lopsided plan pulls a principal-axis fit 4.9 deg off, so read the node frame, not the shell). Its
+  // dark camo falls under the mask threshold: mask floor.
   stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb_1_owner.glb',
-    turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI / 2,
-    gunComponentMasks:false } },
+    turretNode:'^Turret_2$', autoPivot:true, yawOffset:115.63 * Math.PI / 180,
+    gunComponentMasks:false, maskFloorOracle:true } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
-  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // The recovered Centurion oracles' Turret trees (centurion3.glb, centurion5.glb) carry a 36-vertex basket drum down
+  // to 23 % of the model's height inside the hull (the Type 10 class, below). The tree stays mandatory for yaw and
+  // ownership; only its isolated turret mask is suppressed. Hull, cannon, tracks and every whole view stay mandatory.
+  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here
@@ -136,25 +144,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
   // (orchestrator owns corrections).
-  // Owner-authoritative 2026-08-10 source rebuild. The nested OBJ preserves
-  // 102 semantic names while the convenient loose GLB merges them by
-  // material. The bake therefore emits this deterministic, locally ignored
-  // articulation oracle without altering any source triangle.
-  // The repaired oracle's Turret mesh descends to y=.789 while its visible
-  // deck is ~1.70 m: it includes the hidden internal basket. A direct mask
-  // therefore compares exposed source internals against our exterior-only
-  // authored turret. Keep every exterior, gun, track and yaw gate instead.
-  leo2a2: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
-  // Owner-authoritative 2026-08-10 nested source rebuild. The deterministic
-  // local oracle restores semantic Hull/Turret/Gun ownership without
-  // altering any source triangle.
-  // The neutral oracle bake intentionally merged many roof/turret fittings
-  // into its HullDetail mesh before export.  Whole-vehicle, gun and running-
-  // gear masks remain valid, but independent hull/turret component masks do
-  // not.  Disabling those two misleading cells keeps the comparison honest.
-  leo2_improved: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb',
-    turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false,
-    trackComponentMasks:true } },
+  // 262 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a2 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a4_otco_repaired.glb shows a Leopard 2A4 OTCO (fleet id leo2a4_otco): re-register it there later.
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2_improved is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leopard_2a7v_repaired.glb shows a Leopard 2A7V (fleet id leo2a7v): re-register it there later.
   // ZTZ-99 Longwei: the game's own ZTZ-99-lineage design (owner, 2026-10-28), docs/references/concepts/ztz99-longwei-20261028.json.
   // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull but uses
   // an independent low integrated-chevron turret. Keep the A2 print as the
@@ -193,16 +184,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
     componentMasks:false } },
   m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
-  // §5.248 germany round _vlo shell-isolation audit (real-vertex scans,
-  // docs/references/tanks/leo2a6m.md): the chassis_vlo pair (Object_9/10)
-  // is a benign-REQUIRED running-gear LOD pair (y<=0.495, the print's ONLY
-  // full wheel train), but the chassis.0 detail shells Object_5/7 bake the
-  // FULL GUN TUBE (x 4.31..7.964) and an at-rest TURRET BAND (tops mirror
-  // Object_6's 1.636..1.847 across the works span), and the Slat_Armor
-  // shell parks turret-height cage panels hull-side — hull/turret mask
-  // decomposition is structurally dishonest (marder1a3/t72m1_jaguar class).
-  // componentMasks:false keeps the honest rows: whole views, dims, floaters.
-  leo2a4_otco: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2, componentMasks:false } },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_otco is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6m_arrafi.glb shows a Leopard 2A6M (fleet id leo2a6m): re-register it there later.
   // §5.248 germany round row addition: fused whole-shell pairs (Object_3/4
   // both carry hull+turret+gun; Object_5 = vlo running-gear band) — NO
   // usable split, whole-view instrument only (jaguar class). Audit in
@@ -241,9 +223,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
     ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
-  strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): strv121 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle strv122_vavtrudner.glb shows a Stridsvagn 122 (fleet id strv122): re-register it there later.
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
-  ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
+  // ztz85_iii (265): qualified by photographs (docs/references/photos/ztz85-iii-20261028.json); its fused print is retired
   // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
   // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
@@ -263,7 +245,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t90ms_2011: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
   t90_1992: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak_proto: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
-  centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // (the recovered Centurion oracles' basket drum: see centurion3)
+  centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc_s2: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
@@ -307,9 +290,13 @@ const LOCAL_REFERENCE_OVERRIDES = {
     ],
     gunNode:'^Object_(?:6|16)$', componentMasks:true, directGunComponentMasks:true,
   } },
-  merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
-  merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
-  merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
+  // Merkava family 262 (owner 2026-10-27: the supplied Mk 1B, 2B, 2D, 3C, 3D and 4B models, "need to match the geometry
+  // of these"): source-world oracles baked from those OBJs at unit scale (source-x-oracle, identity axes); fused,
+  // their flattened WT group names carry no turret/gun hierarchy. The recovered prints were these ids' earlier oracles
+  // (the 1B, 3C and 3D prints' guns 0.45-0.78 m longer than the supplied models'); docs/references/tanks/<id>.md.
+  merkava2b: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava2b_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
+  merkava2d: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava2d_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
+  merkava4b: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava4b_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
   t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   // The recovered B87 file exposes a nominal Gun node, but it contains only
   // a partial fused subassembly rather than the complete barrel silhouette.
@@ -479,12 +466,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // oracles. These entries keep the gate/board loadable for graduates —
   // without them a gate run writes a FALSE 0 row (leo2a4 incident,
   // repaired). Configs are the retired registrations verbatim.
-  leo2a4: {
-    source:'glb',
-    glb:{ path:'/models/tanks/leo2a6_buh.glb',
-      turretNode:'^turret$', gunNode:'^gun$', autoPivot:true,
-      yawOffset:Math.PI },
-  },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
   // kf51_evo (graduated 2026-08-03): retired source-model registration —
   // measurement-only.
   kf51_evo: {
@@ -522,16 +504,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?:_turret2?|_0[124]|_04_2|_[lr])?(?!_body)|ex_era_turret(?:_[23])?|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
       paintUntextured:true },
   },
-  // merkava1b (graduated 2026-08-04, the 16th): retired userdrops5
-  // registration — measurement-only.
-  merkava1b: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/merkava1b.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true,
-      turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
-      gunFollowers:'vehicle#gun_barrel_' },
-  },
+  merkava1b: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava1b_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
   // t72b3m_2022 (graduated 2026-08-04, the 15th) — RE-ORACLED 2026-08-06 to
   // the obr_2022 print (owner override "and build the t72 b3m"; batch-45
   // roof-cluster normalize applied in repair_oracles.py; the recovered
@@ -577,14 +550,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/t84.glb',
       turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
   },
-  // leo2a4_v (graduated 2026-08-04, the 21st): retired userdrops5
-  // registration — measurement-only.
-  leo2a4_v: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/leo2a5.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true },
-  },
+  // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_v is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle recovered/leo2a5.glb shows a Leopard 2A5 (fleet id leo2a5): re-register it there later.
   // m47_patton (graduated 2026-08-04, the 20th — the patton family's first):
   // retired userdrops6 registration — measurement-only.
   m47_patton: {
@@ -592,16 +558,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/m47_patton.glb',
       turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
   },
-  // merkava3_baz (graduated 2026-08-03, the 13th): retired userdrops5
-  // registration — measurement-only.
-  merkava3_baz: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/merkava3d.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true,
-      turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
-      gunFollowers:'vehicle#gun_barrel_' },
-  },
+  merkava3_baz: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava3_baz_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
   merkava3b: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/merkava3b.glb',
@@ -610,14 +567,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|1[0-3]|1[78])|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
       gunFollowers:'vehicle#gun_barrel_' },
   },
-  merkava3c: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/merkava3c.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true,
-      turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|1[01]|13|1[5-7])|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
-      gunFollowers:'vehicle#gun_barrel_' },
-  },
+  merkava3c: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava3c_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
   // m60a1 / m60a3: retired configs RECOVERED (205a095~1 / 5acc7ec) and
   // LOAD-PROVEN via tmp-m60probe (2026-08-02): the ref RENDERS through
   // these entries (board 42.9, hull masks aligned at yaw -PI/2 — probe

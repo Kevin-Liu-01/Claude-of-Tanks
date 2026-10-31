@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PausableClock, ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs } from './clock.ts';
+import { ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs } from './clock.ts';
 
 // ------------------------------------------------------------ offset filter
 {
@@ -104,23 +104,4 @@ import { PausableClock, ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs 
   assert.equal(empty.rttSpreadMs, 0);
 }
 
-// a solo match's paused clock: it stands still while paused and goes on from where it stopped
-{
-  let wall = 1_000;
-  const clock = new PausableClock(() => wall);
-  wall += 40;
-  assert.equal(clock.now(), 1_040);
-  clock.pause();
-  clock.pause();
-  wall += 5_000;
-  assert.equal(clock.now(), 1_040, 'paused: the clock stands still');
-  assert.equal(clock.paused, true);
-  clock.resume();
-  assert.equal(clock.now(), 1_040, 'resumed where it stopped');
-  wall += 16;
-  assert.equal(clock.now(), 1_056);
-  clock.resume();
-  assert.equal(clock.now(), 1_056, 'a resume without a pause changes nothing');
-}
-
-console.log('mp clock: median-of-16 with outlier rejection, 50 ms/s slew with a 250 ms window, hard resync, tick mapping, u32 unwrap, the paused clock pass');
+console.log('mp clock: median-of-16 with outlier rejection, 50 ms/s slew with a 250 ms window, hard resync, tick mapping, u32 unwrap pass');

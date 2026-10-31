@@ -96,6 +96,22 @@ function componentOf(name) {
 }
 
 /**
+ * Per column (x,z) and body component (1 hull, 2 turret): the lowest and highest shell voxel (32767 / -1 where the
+ * column has none). deepInterior's span test; tools/interior-fill-exposure.mjs reads the same spans alone.
+ */
+export function columnSpans(grid) {
+  const { shell, nx, ny, nz, groups } = grid;
+  const comp = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) comp[g + 1] = componentOf(groups[g]);
+  const minY = [null, new Int16Array(nx * nz).fill(32767), new Int16Array(nx * nz).fill(32767)];
+  const maxY = [null, new Int16Array(nx * nz).fill(-1), new Int16Array(nx * nz).fill(-1)];
+  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+    const g = shell[(z * ny + y) * nx + x]; if (!g) continue; const c = comp[g]; if (!c) continue;
+    const k = z * nx + x; if (y < minY[c][k]) minY[c][k] = y; if (y > maxY[c][k]) maxY[c][k] = y;
+  }
+  return { comp, minY, maxY };
+}
+
+/**
  * Deep interior: a body shell exists in every axis direction from the voxel AND the voxel lies inside the
  * vertical shell span of one body component (hull or turret) at its own column AND real body geometry roofs its
  * whole footprint (coverAbove, below). The second test drops exterior pockets that distant shells enclose in every
@@ -104,15 +120,8 @@ function componentOf(name) {
  * grazes in voxel space.
  */
 export function deepInterior(grid) {
-  const { shell, nx, ny, nz, groups } = grid; const N = shell.length;
-  const comp = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) comp[g + 1] = componentOf(groups[g]);
-  // per column (x,z) and component: lowest / highest shell voxel
-  const minY = [null, new Int16Array(nx * nz).fill(32767), new Int16Array(nx * nz).fill(32767)];
-  const maxY = [null, new Int16Array(nx * nz).fill(-1), new Int16Array(nx * nz).fill(-1)];
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const g = shell[(z * ny + y) * nx + x]; if (!g) continue; const c = comp[g]; if (!c) continue;
-    const k = z * nx + x; if (y < minY[c][k]) minY[c][k] = y; if (y > maxY[c][k]) maxY[c][k] = y;
-  }
+  const { shell, nx, ny, nz } = grid; const N = shell.length;
+  const { comp, minY, maxY } = columnSpans(grid);
   const deep = new Uint8Array(N).fill(1); // cleared when any direction is open
   const scan = (count, stride, lineStarts) => {
     for (const start of lineStarts) {

@@ -20,6 +20,8 @@
 //             where a ruled period stands as bands on the screen. A map without a land use has no field poses.
 // `noland` adds the same frame with the land use's strength at 0 (the material's uLandA.x, through the renderer's own
 // uniforms of the terrain program): the A/B that names the land use as the term drawing a band, or clears it.
+// `u:<uniform>[.x|y|z|w]=<number>[,…]` sets any terrain-program uniforms the same way (`u:uRippleNear=0`,
+// `u:uReduxA.y=0`): the A/B for a term outside the land use. A job's optional "poses" (["chase", "field2"]) keeps those.
 // The field points are found again on every build (the land use's layout is the same on both sides of a pair).
 // Frames land in <out>/<job>/frames/<map>-<pose>-<variant>.png; every map's receipt in <out>/<job>/manifest-<tag>.json
 // (a run resumes). (2026-10-28, at load ~450 with 50 GB compressed: three map pages in one browser passed the guard's
@@ -66,10 +68,17 @@ function parse(argv) {
     job.variants ??= ['base'];
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
-    for (const v of job.variants) if (v !== 'base' && v !== 'noland') throw new Error(`${job.name}: unknown variant ${v}`);
+    for (const v of job.variants) if (v !== 'base' && v !== 'noland' && !uniformVariant(v)) throw new Error(`${job.name}: unknown variant ${v}`);
     if (!existsSync(path.join(job.dist, 'index.html'))) throw new Error(`${job.dist} has no build: npm run build first`);
   }
   return out;
+}
+
+/** `u:name[.c]=v,…` as [[name, component | null, value], …]; null for any other variant. */
+function uniformVariant(variant) {
+  if (!variant.startsWith('u:')) return null;
+  const sets = variant.slice(2).split(',').map((item) => /^(u[A-Za-z0-9]+)(?:\.([xyzw]))?=(-?[0-9.]+)$/.exec(item));
+  return sets.every(Boolean) ? sets.map(([, name, c, v]) => [name, c ?? null, Number(v)]) : null;
 }
 
 function stamp() { return new Date().toISOString().slice(11, 19); }
@@ -155,18 +164,30 @@ function chasePoseScript(yaw) {
   })()`;
 }
 
-/** The terrain program's land-use strength (uLandA.x) on every material that has one; null restores it. */
-function pageSetLandStrength(value) {
+/** Terrain-program uniforms ([[name, component | null, value], …]) on every material that has them; null restores
+ * every uniform this page set. */
+function pageSetUniforms(sets) {
   const D = window.__DEBUG, props = D.renderer.properties;
   let n = 0;
   D.scene.traverse((o) => {
     const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
     for (const m of mats) {
-      const u = props.get(m)?.uniforms?.uLandA;
-      if (!u) continue;
-      if (u.value.__base == null) u.value.__base = u.value.x;
-      u.value.x = value == null ? u.value.__base : value;
-      n++;
+      const uniforms = props.get(m)?.uniforms;
+      if (!uniforms) continue;
+      for (const u of Object.values(uniforms)) {
+        if (!u?.__base) continue;
+        for (const [key, base] of Object.entries(u.__base)) { if (key === '_') u.value = base; else u.value[key] = base; }
+        delete u.__base;
+      }
+      let hit = false;
+      for (const [name, c, v] of sets ?? []) {
+        const u = uniforms[name];
+        if (!u) continue;
+        u.__base ??= {};
+        if (c) { u.__base[c] ??= u.value[c]; u.value[c] = v; } else { u.__base._ ??= u.value; u.value = v; }
+        hit = true;
+      }
+      if (hit) n++;
     }
   });
   return n;
@@ -215,7 +236,8 @@ async function shootMap(entry, options, frames, reference) {
   await sleep(1500);
   const points = reference?.fields
     ?? (stage.landUse ? await page.evaluate(pageFieldPoints, { player: stage.player, buildings: stage.buildings, groups: FIELD_GROUPS }) : []);
-  const poses = [{ name: 'chase', kind: 'chase' }, ...points.map((pt, i) => ({ name: `field${i + 1}`, kind: 'field', pt }))];
+  const poses = [{ name: 'chase', kind: 'chase' }, ...points.map((pt, i) => ({ name: `field${i + 1}`, kind: 'field', pt }))]
+    .filter((pose) => !options.poses || options.poses.includes(pose.name));
   const receipt = { player: stage.player, landUse: stage.landUse, fields: points, poses: {}, preset: null };
   receipt.preset = await page.evaluate(() => window.__DEBUG.quality?.preset ?? window.__DEBUG.preset ?? null).catch(() => null);
   for (const pose of poses) {
@@ -229,13 +251,14 @@ async function shootMap(entry, options, frames, reference) {
     await sleep(400);
     const shots = { grassSettled: settled };
     for (const variant of options.variants) {
-      const n = await page.evaluate(pageSetLandStrength, variant === 'noland' ? 0 : null);
+      const sets = variant === 'noland' ? [['uLandA', 'x', 0]] : uniformVariant(variant);
+      const n = await page.evaluate(pageSetUniforms, sets);
       await sleep(700);
-      const file = path.join(frames, `${mapId}-${pose.name}-${variant}.png`);
+      const file = path.join(frames, `${mapId}-${pose.name}-${variant.replace(/[^A-Za-z0-9.=-]+/g, '_')}.png`);
       await page.screenshot({ path: file, type: 'png' });
-      shots[variant] = { file: path.basename(file), landMaterials: n };
+      shots[variant] = { file: path.basename(file), materials: n };
     }
-    await page.evaluate(pageSetLandStrength, null);
+    await page.evaluate(pageSetUniforms, null);
     receipt.poses[pose.name] = { resolved, crop: pose.pt?.crop ?? null, shots };
   }
   receipt.errors = entry.errors.splice(0);
@@ -317,7 +340,7 @@ async function main(argv) {
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
+          const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants, poses: job.poses ?? null }, job.frames, null);
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);

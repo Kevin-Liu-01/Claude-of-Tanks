@@ -50,9 +50,12 @@ function ownerAndContact(tank){
   yaw.rotation.y=.3;tank.root.updateMatrixWorld(true);
   assert.ok(before.distanceTo(local.clone().applyMatrix4(mesh.matrixWorld))>.4,'AA physical owner follows turret yaw');
 }
+// 264 (owner 2026-10-28: the T-72s' roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the T-72B3
+// carries the library NSVT; the traced body stays on the T-64BV mod. 2017 / T-64BV1 (t64bvK1.ts builds the whole B3,
+// kept as it was), which this receipt now measures.
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t64bv1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{tank.root.updateMatrixWorld(true);const meshes=visible(tank.root);stockAndReceiver(meshes);boreAndAir(meshes);ownerAndContact(tank);}
   finally{tank.dispose();}
 }
-console.log('t72b3XMachineGunBody: high/low source stock/receiver and separate gas tube, real axial air, deep12.7mm bore and actual AA owner pass');
+console.log('t72b3XMachineGunBody (on the T-64BV1): high/low source stock/receiver and separate gas tube, real axial air, deep12.7mm bore and actual AA owner pass');

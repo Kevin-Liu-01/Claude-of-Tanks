@@ -548,10 +548,10 @@
     },
     "s87-leo2a4-otco-polders": {
       "map": "polders",
-      "en": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
-      "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M Proryv",
-      "shortEn": "Leopard 2A3, Tidegate Polders",
-      "shortZh": "Leopard 2A3，潮闸圩田",
+      "en": "A Leopard 2A3 OTCO knocks out a T-90M Proryv at Tidegate Polders at sunset",
+      "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M Proryv",
+      "shortEn": "Leopard 2A3 OTCO, Tidegate Polders",
+      "shortZh": "Leopard 2A3 OTCO，潮闸圩田",
       "fleet": true
     },
     "s88-leo2a4m-ruinspires": {
@@ -1684,7 +1684,9 @@
     ],
     "chapterLoops": [
       "s226-church-duel",
-      "s227-oasis-duel"
+      "s227-oasis-duel",
+      "s29-fjord-road-kill",
+      "s01-main-street-push"
     ],
     "figures": {
       "docs.graphics.figClose": {

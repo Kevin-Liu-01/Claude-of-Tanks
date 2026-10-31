@@ -130,6 +130,8 @@ const GROUP_LOADERS = Object.freeze({
   type10X: () => import('./profiles/type10X.ts').then((mod) => registerProfiles(mod.TYPE10_X_PROFILES)),
   type90X: () => import('./profiles/type90X.ts').then((mod) => registerProfiles(mod.TYPE90_X_PROFILES)),
   christian2: () => import('./profiles/christian2.ts').then((mod) => registerProfiles(mod.CHRISTIAN2_PROFILES)),
+  leopard2a3B4: () => import('./profiles/leopard2a3B4.ts').then((mod) => registerProfiles(mod.LEOPARD2A3B4_PROFILES)),
+  leopard2a4Family: () => import('./profiles/leopard2A4Family.ts').then((mod) => registerProfiles(mod.LEOPARD2A4_FAMILY_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),
@@ -227,7 +229,6 @@ const GROUP_LOADERS = Object.freeze({
     })),
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
-  germany: () => import('./profiles/germany.ts').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
   sheridan: () => import('./profiles/sheridan.ts').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();

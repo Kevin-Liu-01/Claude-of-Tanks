@@ -5,6 +5,7 @@ import { SECOND_WAVE_X_IDS } from '../vehicles/sourceXSecondWaveSpecs.ts';
 import { ABRAMS_SOURCE_X_IDS } from '../vehicles/abramsSourceXSpecs.ts';
 import { SUPPLIED_SOURCE_IDS } from '../vehicles/suppliedSourceFleetSpecs.ts';
 import { NATIONAL_MODERNIZATION_IDS } from '../vehicles/nationalModernizationConfig.ts';
+import { LONGWEI_FAMILY } from '../vehicles/longweiFamilyConfig.ts';
 import {
   firstAvailableAmmunitionSlot,
   hasAmmunition,
@@ -212,9 +213,29 @@ const laterChannelCounts = {
   // 263 (integrator): the release's other new tanks, three rounds each (their lanes did not list them here)
   christian2: 3, bm_oplot_m: 3, bm_oplot_t: 3, t64bm1m: 3, t64bv: 3, t64b1v_2022: 3, pt64_tur: 3,
   challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
+  // (release 265 CN) the Longwei-family concepts, each firing its host's three rounds
+  ztz99a2_qinglong: 3, vt4a1_baihu: 3, t72b3_zhuque: 3, t72b3m_xuanwu: 3,
+  // 265 (integration, pattons-m48-266): the four new M48s, three rounds each
+  m48a3_patton: 3, magach3: 3, m48a2ga2: 3, m48_super: 3,
+  // the Centurion family (262, merged on 264c): the L7 marks' and the Olifant's three rounds, the AVRE's one 165 mm HESH
+  shot_kal: 3, centurion13: 3, strv105: 3, olifant_mk2: 3, centurion5_avre: 1, centurion5_1_aus: 3,
+  // (release 265) the Leopard 1A2A1 carries its 1A5's three rounds, DM23 in place of DM63
+  leo1a2a1: 3,
+  // release 265 (the 262 Leopard 2A3 of the fourth batch, with the 2A4-era Leopards): its three rounds
+  leo2a3_b4: 3,
+  // 262 (the PT-84 Polish concepts on the Oplot-M base): the K2PL's K279, K280 and K281 each, the Falarick owed
+  pt84_orzel: 3, pt84_sokol: 3, pt84_zbik: 3,
 };
+const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
+for (const m of LONGWEI_FAMILY) {
+  assert.deepEqual(TANK_SPECS[m.id].gun.shells, TANK_SPECS[m.host].gun.shells,
+    `${m.id}: the concept keeps its host's (${m.host}) ammunition, no invented rounds`);
+}
+const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']
+  .reduce((n, id) => n + laterChannelCounts[id], 0);
+const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
@@ -264,8 +285,13 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three,
-// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262).
-assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels, 560,
+// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265), and the
+// four new M48s' three each (265 integration), and the Centurion family's six marks (262, merged in 265),
+// and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
+// three each (262, merged in 265).
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
+  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
+  - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

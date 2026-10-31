@@ -24,7 +24,8 @@ import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry }
 import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
-  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
+  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry,
+  noteFarLodBuild, parkDraws,
   type FarHull, type FarWheel,
 } from './farLod.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
@@ -2412,6 +2413,20 @@ function installProceduralShadowProxies(
       'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG,
     ['turret', ...(additionalSources?.turret ?? [])]), PROC_SHADOW_BODY_INSET_M);
+  // (264c) a merged part flagged rangeSilhouette (an equipment box that is a major silhouette piece: the Challenger 1's
+  // TOGS barbette) casts with its owner's proxy as a hull of its own, joined into that proxy's one draw: a hull over the
+  // shell and the box together would bridge from the box's top across the roof. Without one the proxy is unchanged.
+  const silhouetteHulls = (owner: THREE.Group): (THREE.BufferGeometry | null)[] => {
+    const hulls: (THREE.BufferGeometry | null)[] = [];
+    owner.traverse((object) => {
+      if (object.userData.rangeSilhouette && isVehicleMesh(object)) {
+        hulls.push(authoredShadowHull(owner, [object], PROC_SHADOW_BODY_INSET_M));
+      }
+    });
+    return hulls;
+  };
+  const hullCaster = joinShadowHulls([hullGeo, ...silhouetteHulls(hullG)]);
+  const turretCaster = joinShadowHulls([turretGeo, ...silhouetteHulls(turretG)]);
   // Mantlet + barrel share gun pitch, in gunG coordinates; recoil travel is
   // deliberately omitted from the shadow proxy to preserve the three-draw
   // budget during the short firing kick. 243: each is its own convex hull,
@@ -2458,8 +2473,8 @@ function installProceduralShadowProxies(
     parent.add(mesh);
     sources.push(mesh);
   };
-  if (hullGeo) add(hullG, hullGeo, 'hull');
-  if (turretGeo) add(turretG, turretGeo, 'turret');
+  if (hullCaster) add(hullG, hullCaster, 'hull');
+  if (turretCaster) add(turretG, turretCaster, 'turret');
   if (gunGeo) add(gunG, gunGeo, 'gun');
   return sources;
 }
@@ -6008,10 +6023,18 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
     return index;
   };
+  // (local-fps-266) the same segment findTrackSegment(distance) finds from 0, searched from a nearby one: the segments'
+  // ends (c0 + l, cumulative and strictly increasing) walk back to the first end past the distance, then forward as before.
+  // A shoe's two chord samples sit half a pitch either side of its own segment; from 0 they walked half the loop each.
+  const findTrackSegmentNear = (distance: number, hint: number): number => {
+    let index = hint;
+    while (index > 0 && distance < segsT[index - 1].c0 + segsT[index - 1].l) index--;
+    return findTrackSegment(distance, index);
+  };
   const chordA=new THREE.Vector2(),chordB=new THREE.Vector2();
   const sampleLiveShoeCourse=(attribute:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,
-    distance:number,out:THREE.Vector2):void=>{
-    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
+    distance:number,out:THREE.Vector2,hint:number):void=>{
+    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegmentNear(d,hint),segment=segsT[index];
     const base=index*24,t=(d-segment.c0)/segment.l;
     const y0=cfg.trackCarrierFromOuterFace?attribute.getY(base+2)+(bandBasePos[(base+6)*3+1]-bandBasePos[(base+2)*3+1])/2:(attribute.getY(base+2)+attribute.getY(base+6))/2;
     const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
@@ -6028,6 +6051,28 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     segmentIndex: number,
     progress: number,
   ): void => {
+    // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
+    // ground ribbon carry the read) — collapse that side's pads to zero
+    const broken = side < 0 ? brokenL : brokenR;
+    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
+    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
+    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
+    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
+    // A real rigid shoe spans two pins. On a rounded loaded-run transition
+    // a tangent at its centre puts its corners below the ground; the chord
+    // of those live pin stations does not. Both samples come from this
+    // same deformed carrier, without a world-floor clamp or detached layer.
+    // (local-fps-266) the chord sets the whole pose, so the centre tangent below is not computed for it.
+    if(cfg.rigidLinkChords !== false) {
+      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
+      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA,segmentIndex);
+      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB,segmentIndex);
+      _v.set(side * (xcForSide(side) + shoeOutboardOffset),(chordA.y+chordB.y)/2,(chordA.x+chordB.x)/2);
+      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
+      _m.compose(_v, _q, _s);
+      for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
+      return;
+    }
     const vertexBase = segmentIndex * 24;
     // Recover this LIVE belt segment's f0/f1 centerline directly from the
     // deformed outer/inner face vertices. The visible casting belt is the
@@ -6055,29 +6100,11 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
     _v.set(side * (xcForSide(side) + shoeOutboardOffset),
       y + tangentZ * rOut, z - tangentY * rOut);
-    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
-    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
-    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
-    if(cfg.rigidLinkChords !== false) {
-      // A real rigid shoe spans two pins. On a rounded loaded-run transition
-      // a tangent at its centre puts its corners below the ground; the chord
-      // of those live pin stations does not. Both samples come from this
-      // same deformed carrier, without a world-floor clamp or detached layer.
-      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
-      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA);
-      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB);
-      _v.y=(chordA.y+chordB.y)/2;_v.z=(chordA.x+chordB.x)/2;
-      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
-    }
       // The shoe stays on this exact deformed belt normal. A historical
       // hull-local floor clamp moved only the gray shoe layer upward on
       // slopes / turn roll, creating the visibly detached second course.
       // Ground clearance now comes from the measured shoe underside in
       // contactGeom, so no post-course transform is permitted here.
-      // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
-      // ground ribbon carry the read) — collapse that side's pads to zero
-    const broken = side < 0 ? brokenL : brokenR;
-    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
     _m.compose(_v, _q, _s);
     for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
   };
@@ -6134,6 +6161,27 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     detached[side] = kit;
     return kit;
   }
+  // (local-fps-266) layers over the same wheel entries, in the same order (one set's tires, dishes and insets; the return
+  // rollers' tires and dishes), get the same matrices bit for bit from update(): the first such layer computes them and
+  // each later one copies its array. Profile dressing may add layers after the build, so a new layer count re-reads them.
+  let layerSources: Int16Array = new Int16Array(0), layerSourcesFor = -1;
+  const wheelLayerSources = (): Int16Array => {
+    if (layerSourcesFor === made.length) return layerSources;
+    layerSources = new Int16Array(made.length).fill(-1);
+    for (let layer = 1; layer < made.length; layer++) {
+      const list = made[layer].list, size = made[layer].im.instanceMatrix.array.length;
+      for (let source = 0; source < layer; source++) {
+        const other = made[source].list;
+        if (layerSources[source] >= 0 || other.length !== list.length
+          || made[source].im.instanceMatrix.array.length !== size) continue;
+        let same = true;
+        for (let i = 0; i < list.length && same; i++) same = list[i] === other[i];
+        if (same) { layerSources[layer] = source; break; }
+      }
+    }
+    layerSourcesFor = made.length;
+    return layerSources;
+  };
   // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
   const conformWheels: WheelEntry[] = [];
   const conformDevs: number[] = [];
@@ -6328,7 +6376,14 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       this.update(0, 0, 0);
     },
     update(l, r, _dt = SIM_STEP) {
-      for (const { im, list } of made) {
+      const copyFrom = wheelLayerSources();
+      for (let layer = 0; layer < made.length; layer++) {
+        const { im, list } = made[layer];
+        if (copyFrom[layer] >= 0) {
+          im.instanceMatrix.array.set(made[copyFrom[layer]].im.instanceMatrix.array);
+          im.instanceMatrix.needsUpdate = true;
+          continue;
+        }
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
           const suspensionEntry = e.suspensionSource || e;
@@ -8357,6 +8412,9 @@ function* buildTankCoreSteps(
     // receipts (and therefore shell hit volumes) can never grow around an MG,
     // sight, antenna, stowage box, or other roof equipment. Cupolas continue
     // to use P.add('hull'/'turret') because they are structural hit surfaces.
+    // (264c) A box that is a major silhouette piece opts in with
+    // geo.userData.rangeSilhouette = true: it keeps the equipment bucket's
+    // hit role, stays past LOD1 and casts with its owner's shadow proxy.
     addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
@@ -8974,6 +9032,8 @@ function* buildTankCoreSteps(
           min: box.min.toArray(),
           max: box.max.toArray(),
           module: moduleVisualParts.get(part) || null,
+          // a hatch whose anatomy structure's front face stands on a named main plate (gen-combat-anatomy frontPlate)
+          ...(part.userData.structureFrontPlate ? { frontPlate: part.userData.structureFrontPlate as string } : {}),
         });
       }
     }
@@ -9128,6 +9188,19 @@ function* buildTankCoreSteps(
     }
     return ranges;
   };
+  // 2026-10-30 (owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): the merged mesh
+  // keeps the vertex spans of its missile-rack stock (weaponAssembly's parts), so the decor keeps its pieces off every
+  // launcher (decorations.ts launcherKeepOut). A smoke bank shares the 'launcher' seat role, so the role cannot say it.
+  const missileRackRangesFor = (list: THREE.BufferGeometry[]): Array<{ start: number; count: number }> => {
+    const ranges: Array<{ start: number; count: number }> = [];
+    let vertexOffset = 0;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      if (part.userData.weaponStock?.module === 'missileRack' && count) ranges.push({ start: vertexOffset, count });
+      vertexOffset += count;
+    }
+    return ranges;
+  };
   const combatHitboxRoleForBucket = (bucket: string): string => {
     if (bucket === 'hull' || bucket === 'turret' || bucket === 'hullGun'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
@@ -9209,6 +9282,7 @@ function* buildTankCoreSteps(
     if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
+    const rackRanges = missileRackRangesFor(list);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -9229,6 +9303,7 @@ function* buildTankCoreSteps(
       : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
+    if (rackRanges.length) mesh.userData.missileRackRanges = rackRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>
@@ -9265,7 +9340,10 @@ function* buildTankCoreSteps(
       if (eraBoundParts.has(part)) eraPartSpans.set(part, { mesh, start: spanStart, built: merged.getAttribute('position') });
       spanStart += part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
     }
-    if (LOD0_KEEP.has(bucket)) parent.add(mesh);
+    // (264c) a part flagged rangeSilhouette merges apart (the grouping key below) and stays past LOD1 like the shells;
+    // installProceduralShadowProxies joins its hull into its owner's proxy
+    if (list.every((part) => part.userData.rangeSilhouette)) mesh.userData.rangeSilhouette = true;
+    if (LOD0_KEEP.has(bucket) || mesh.userData.rangeSilhouette) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
@@ -9274,6 +9352,9 @@ function* buildTankCoreSteps(
   };
   // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
   const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
+  // (264c) an opt-in silhouette part (userData.rangeSilhouette) merges in a mesh of its own, so the parts beside it in its
+  // bucket keep their LOD and their shadow
+  const rangeSilhouetteKey=(part:THREE.BufferGeometry):string=>part.userData.rangeSilhouette?':range-silhouette':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -9290,7 +9371,7 @@ function* buildTankCoreSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part)+issueDrabKey(part);
+      const key=stationKey(part)+issueDrabKey(part)+rangeSilhouetteKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);
@@ -10262,6 +10343,10 @@ export function* createTankRuntimeSteps(
   let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[] } | null = null;
   let farLodActive = false;
   let unparkFarLod: (() => void) | null = null;
+  // (local-fps-265) the far LOD's running gear alone, nearer in (GEAR_LOD_ENTER_M): its wheel stations stand in for the
+  // wheel layers while the rest keeps its detail
+  let gearLodActive = false;
+  let unparkGearLod: (() => void) | null = null;
   const buildFarLod = (): NonNullable<typeof farLod> => {
     const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
     for (const cluster of destructibleClusters.values()) {
@@ -10421,9 +10506,39 @@ export function* createTankRuntimeSteps(
       unparkFarLod?.();
       unparkFarLod = null;
       if (farLod) for (const mesh of farLod.meshes) mesh.visible = false;
+      // (the gear stage keeps its wheel stations; the wheel layers go back under its own park, whichever stage parked
+      // them first: a vehicle that went far in one step had them parked by the far LOD, whose undo just restored them)
+      if (farLod?.gear && gearLodActive) {
+        unparkGearLod?.();
+        unparkGearLod = parkDraws(farLod.gearParked);
+        farLod.gear.visible = true;
+      }
       gearForceUpdate = true;
     }
     farLodActive = on;
+  };
+  /** (local-fps-265) Show the far LOD's wheel stations for the wheel layers (building the far LOD the first time, one
+   *  vehicle at a time, as setFarLod) or the wheels again. The full far LOD parks the same layers on top of this. */
+  const setGearLod = (on: boolean): void => {
+    if (on) {
+      if (!farLod) {
+        const startedAt = performance.now();
+        if (!claimFarLodBuild(startedAt)) return;
+        farLod = buildFarLodAtRange();
+        const endedAt = performance.now();
+        noteFarLodBuild(startedAt, endedAt);
+        (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((endedAt - startedAt) * 10) / 10;
+      }
+      if (!farLod.gear) return;
+      unparkGearLod = parkDraws(farLod.gearParked);
+      farLod.gear.visible = true;
+    } else {
+      unparkGearLod?.();
+      unparkGearLod = null;
+      if (farLod?.gear && !farLodActive) farLod.gear.visible = false;
+      gearForceUpdate = true;
+    }
+    gearLodActive = on;
   };
   let battleDetailsAttached = true;
   function setBattleDetailsAttached(attached: boolean): void {
@@ -10951,6 +11066,11 @@ export function* createTankRuntimeSteps(
           const far = viewDistM !== undefined && !destroyed
             && (farLodActive ? viewDistM >= FAR_LOD_RETURN_M : viewDistM >= FAR_LOD_ENTER_M);
           if (far !== farLodActive) setFarLod(far);
+          // (local-fps-265) the wheel stations alone from GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M), under the same
+          // terms: never in an inspection view or on a wreck
+          const gearFar = viewDistM !== undefined && !destroyed
+            && (gearLodActive ? viewDistM >= GEAR_LOD_RETURN_M : viewDistM >= GEAR_LOD_ENTER_M);
+          if (gearFar !== gearLodActive) setGearLod(gearFar);
         }
         root.position.copy(renderState.pos);
       };
@@ -11139,7 +11259,7 @@ export function* createTankRuntimeSteps(
       const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
       // (perf-255) a far-LOD'd vehicle's gear rests: its stand-in draws (the bands hold their last pose)
-      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive;
+      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive && !gearLodActive;
       const syncFromStateAssemblyStage6 = (): void => {
         if (gearVisible !== gearWasVisible) {
           if (gearVisible) gearForceUpdate = true;
@@ -11484,6 +11604,7 @@ export function* createTankRuntimeSteps(
       if (destroyed) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
@@ -11717,6 +11838,7 @@ export function* createTankRuntimeSteps(
       // (perf-250) the parts, never the far copies, in the Garage
       if (farMergeRuns.length) applyFarMerge(false);
       if (farLodActive) setFarLod(false);
+      if (gearLodActive) setGearLod(false);
     },
 
     setVisible(v) { root.visible = v; },

@@ -49,10 +49,11 @@ try {
 
   // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent; the coordinator's ruling on the
   // tank-accessories lane's audit): the A5NL's working roof weapon is its loader's MAG, activated on its pintle, and the
-  // open-yoke tower that stood 0.98 m from it is gone
-  assert.equal(receipt.roofWeapon, 'leo2a5_loader_machine_gun');
+  // open-yoke tower that stood 0.98 m from it is gone (264, the 2A4-family rebuild: the station is the 2A4 turret's
+  // own loader gun, leo2a4mRemoteMag)
+  assert.equal(receipt.roofWeapon, 'leo2a4mRemoteMag');
   assert.equal(receipt.auxiliaryOpenYokeRws, undefined, 'no open-yoke tower beside the loader\'s station');
-  const loaderStation = tank.root.getObjectByName('leo2a5_loader_machine_gun');
+  const loaderStation = tank.root.getObjectByName('leo2a4mRemoteMag');
   assert.ok(loaderStation?.userData.remoteControlled && loaderStation.userData.firingAxis === '+Z'
     && loaderStation.userData.caliberMm === 7.62, 'the loader\'s MAG is the working remote station');
 
@@ -65,9 +66,20 @@ try {
   assert.equal(finish.maximumDrawBuckets, 1,
     'static skirt protection remains one merged hull draw bucket');
 
-  const closure = hullRig.userData.leopardFenderSkirtClosure;
-  assert.ok(closure && closure.courses.length === 2,
-    'A5NL retains the sealed A5 fender-to-skirt carriers under its ERA package');
+  // 264 (the 2A4-family rebuild): the release hull publishes no leopardFenderSkirtClosure; the package's own backing
+  // carrier (leopard2A4A5nlKit.ts) is the seal: a side sightline between two cassette rows, at every station, lands on
+  // the hull's external armour no further in than the carrier's outer face
+  const hullArmor = hullRig.getObjectByName('hullExternalArmor');
+  assert.ok(hullArmor?.isMesh, 'A5NL merges its skirt package into the hull external-armor bucket');
+  const rowYs = [...new Set(receipt.skirtEraSeats.map(({ y }) => y))].sort((a, b) => a - b);
+  for (const seat of receipt.skirtEraSeats.filter(({ row }) => row < rowYs.length - 1)) {
+    const y = (rowYs[seat.row] + rowYs[seat.row + 1]) / 2;
+    const origin = hullRig.localToWorld(new THREE.Vector3(seat.side * 2.4, y, seat.z));
+    const direction = new THREE.Vector3(-seat.side, 0, 0).transformDirection(hullRig.matrixWorld);
+    const hit = new THREE.Raycaster(origin, direction, 0, 1.2).intersectObject(hullArmor, false)[0];
+    assert.ok(hit && Math.abs(hullRig.worldToLocal(hit.point.clone()).x) >= 1.88 - 1e-4,
+      `A5NL's skirt carrier seals the side between its cassette rows (side ${seat.side}, z ${seat.z})`);
+  }
 } finally {
   tank.dispose();
 }

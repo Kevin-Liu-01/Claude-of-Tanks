@@ -19,6 +19,7 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     { id: 'export', name: 'Export Leopard 2' },
     { id: 'rheinmetall', name: 'Revolution and Panther' },
     { id: 'marder', name: 'Marder, Puma and Lynx' },
+    { id: 'm48', name: 'M48' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -34,8 +35,13 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({ id: 'leo2a7v', tier: 10, line: 'leopard2', lane: 3, parents: ['leo2a6m'], slot: 'line' }),
     node({ id: 'kf51_panther', tier: 10, line: 'leopard2', lane: 1, parents: ['leo2a7v'], slot: 'line' }),
     // Leopard 1 and 2 variants
-    node({ id: 'leo1a5', tier: 1, line: 'leopard_side', lane: 5, parents: ['jpz_e100'], slot: 'line' }),
+    // release 263: the bare cast-turret Leopard 1A2A1 drawn on its 1A5's node
+    node({
+      id: 'leo1a5', tier: 1, line: 'leopard_side', lane: 5, parents: ['jpz_e100'], slot: 'line', builds: ['leo1a2a1'],
+    }),
     node({ id: 'leo2a3', tier: 4, line: 'leopard_side', lane: 3, parents: ['leo2a2'], slot: 'line' }),
+    // 262: the fourth batch's Leopard 2A3 beside the 2A3 OTCO (Main: a 2A2 variant never above a 2A3)
+    node({ id: 'leo2a3_b4', tier: 4, line: 'leopard_side', lane: 2, parents: ['leo2a3'], slot: 'line' }),
     node({ id: 'leo2a6', tier: 9, line: 'leopard_side', lane: 0, parents: ['leo2a5'], slot: 'line' }),
     node({ id: 'leo2_improved', tier: 8, line: 'leopard_side', lane: 0, parents: ['leo2a4'], slot: 'line' }),
     node({
@@ -60,6 +66,9 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({
       id: 'puma_s1', tier: 6, line: 'marder', lane: 7, parents: ['kf41_lynx'], slot: 'line', builds: ['spz_wotan'],
     }),
+    // M48 (release 266: the Bundeswehr's Wegmann rebuild and Rheinmetall's demonstrator on the M48A5's castings)
+    node({ id: 'm48a2ga2', tier: 1, line: 'm48', lane: 0, parents: ['jpz_e100'], slot: 'line' }),
+    node({ id: 'm48_super', tier: 2, line: 'm48', lane: 0, parents: ['m48a2ga2'], slot: 'line' }),
     // Special
     node({ id: 'leo2a4_otco', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

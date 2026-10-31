@@ -502,7 +502,10 @@ body[data-cot-panels='overlay'] .cot-country-step{grid-column:2;}
 .cot-facet-toggle:hover,.cot-facet-toggle:focus-visible{color:var(--ink-2);border-color:var(--line-control);}
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:var(--s2);pointer-events:auto;max-width:96vw;}
-.cot-car-arrow{width:34px;border:1px solid var(--line-3);cursor:pointer;
+/* the arrows keep their width: the strip between them takes the whole squeeze, so its width never follows its own cards
+   or end pad (265, owner 10-30: Japan and Israel "constant layout shifting back and forth"; shrinking by flex weight,
+   the arrows handed the strip pixels whenever its end pad came or went, and it re-fit and re-padded every frame) */
+.cot-car-arrow{width:34px;flex:none;border:1px solid var(--line-3);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   background:var(--scrim);color:var(--ink-3);
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast);outline:none;}

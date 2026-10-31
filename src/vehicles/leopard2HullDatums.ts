@@ -1,7 +1,7 @@
 // The release-262 Leopard 2-pattern hull (profiles/leopard2Hull.ts draws it): the datums measured from the Christian II
 // concept model's proportions (docs/references/tanks/christian2.md) and the combat envelope on them, shared by the
-// Christian II and the Leopard 2A3 (4th batch) that ride it. Boot-light: plain data and the shared plate helpers, no
-// geometry. Hull metres (+Z forward, y from the ground; the world's right of a +Z hull is -X).
+// Christian II and the early production Leopard 2s (2A2, 2A3, 2A3 OTCO) that ride it. Boot-light: plain data and the
+// shared plate helpers, no geometry. Hull metres (+Z forward, y from the ground; the world's right of a +Z hull is -X).
 import {
   frontPlate as fr, rearPlate as rr, rightSidePlate as sR, leftSidePlate as sL, roofPlate as rf,
   moduleBox as mbox, crewBox as cbox, type ArmorPlate, type CrewBox, type ModuleBox,
@@ -45,8 +45,8 @@ export interface Leopard2HullProtection {
   readonly skirtAft: number;
 }
 
-/** The hull's plates, its modules and the driver (right front) on the drawn hull. */
-export function leopard2HullArmor(A: Leopard2HullProtection): {
+/** The hull's plates, its modules and the driver (right front) on the drawn hull; `foreSkirtDropM` as the builder's. */
+export function leopard2HullArmor(A: Leopard2HullProtection, foreSkirtDropM = 0): {
   hullPlates: ArmorPlate[];
   /** The power pack, the transmission and the fuel; the radio; the tracks (a vehicle orders its own list round them). */
   power: ModuleBox[]; radio: ModuleBox; tracks: ModuleBox[];
@@ -62,8 +62,8 @@ export function leopard2HullArmor(A: Leopard2HullProtection): {
       sL('hull_side_upper_L', A.side, hw - 0.01, Hd.sponsonFloorY, hw - 0.01, deckMid, rear + 0.10, 3.20),
       sR('hull_side_lower_R', A.side, tw, 0.54, tw, Hd.sponsonFloorY, -3.40, 2.45),
       sL('hull_side_lower_L', A.side, tw, 0.54, tw, Hd.sponsonFloorY, -3.40, 2.45),
-      sR('skirt_fore_R', A.skirtFore.ke, 1.818, Hd.skirtTopY - 0.46, 1.818, Hd.skirtTopY, 1.42, 3.16, { kind: 'spaced', ceMm: A.skirtFore.ce }),
-      sL('skirt_fore_L', A.skirtFore.ke, 1.818, Hd.skirtTopY - 0.46, 1.818, Hd.skirtTopY, 1.42, 3.16, { kind: 'spaced', ceMm: A.skirtFore.ce }),
+      sR('skirt_fore_R', A.skirtFore.ke, 1.818, Hd.skirtTopY - 0.46 - foreSkirtDropM, 1.818, Hd.skirtTopY, 1.42, 3.16, { kind: 'spaced', ceMm: A.skirtFore.ce }),
+      sL('skirt_fore_L', A.skirtFore.ke, 1.818, Hd.skirtTopY - 0.46 - foreSkirtDropM, 1.818, Hd.skirtTopY, 1.42, 3.16, { kind: 'spaced', ceMm: A.skirtFore.ce }),
       sR('skirt_R', A.skirtAft, 1.72, Hd.skirtTopY - 0.46, 1.72, Hd.skirtTopY, -2.82, 1.40, { kind: 'spaced' }),
       sL('skirt_L', A.skirtAft, 1.72, Hd.skirtTopY - 0.46, 1.72, Hd.skirtTopY, -2.82, 1.40, { kind: 'spaced' }),
       sR('track_R', 20, trackOut, 0.08, trackOut, 1.30, -3.55, 3.45, { kind: 'external', moduleLink: 'trackR' }),

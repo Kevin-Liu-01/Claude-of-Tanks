@@ -352,7 +352,7 @@ function sourceFurniture(all, frame) {
   // source tests. The starboard housing is not relabelled an unmeasured TOGS aperture.
   for (const [x, z, y, tolerance] of [[1.5, 0, 2.43372635, .0001],
     [1.8, 0, 2.37359240, .0001], [-1.3, -1.3, 1.942620, .0006],
-    [-.35805, .70, 2.80820, .0002], [-1.25055, .673825, 4.102651, .0001],
+    [-.35805, .70, 2.81010, .0002], [-1.25055, .673825, 4.102651, .0001], // 264: the true-scale L37 barrel's crown
     [1.01390, .747445, 4.249091, .0001]]) {
     const hit = cast([x, 5, z], [0, -1, 0]);
     near(hit?.point.clone().applyMatrix4(inverse).y, y, tolerance, 'source-owned variant fixture crown');

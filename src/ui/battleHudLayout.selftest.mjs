@@ -119,7 +119,13 @@ try {
   const visibleNodes=[special];
   const viewport={height:768,width:1366,addEventListener:(type,fn)=>listeners.set(`viewport:${type}`,fn)};
   // documentElement.clientWidth is the layout viewport a pinch leaves alone
-  globalThis.document={body,documentElement:{clientWidth:1366},querySelector:()=>null,querySelectorAll:()=>visibleNodes};
+  // (local-fps-265) the side panels' lane heights live on their own rule (battleHudLayout.ts PANEL_VARS): its style element
+  // as ensureStyle leaves it, the layer order and the layer block holding the one rule
+  const panelProperties=new Map();
+  const panelStyle={tagName:'STYLE',sheet:{cssRules:[{},{cssRules:[{style:{getPropertyValue:key=>panelProperties.get(key)||'',
+    setProperty:(key,value)=>{writes++;panelProperties.set(key,value);},removeProperty:key=>{writes++;panelProperties.delete(key);}}}]}]}};
+  globalThis.document={body,head:{},documentElement:{clientWidth:1366},querySelector:()=>null,querySelectorAll:()=>visibleNodes,
+    getElementById:id=>id==='cot-hud-panel-vars'?panelStyle:null};
   globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,document:globalThis.document,
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});
@@ -178,9 +184,14 @@ try {
   Object.assign(viewport,{scale:1,width:1366,height:768});
   assert.equal(listeners.has('viewport:resize'),false,'no direct visual viewport listener: cot:layoutchange carries real changes');
   // (the right column's report dock is held only while a report shows: the left lane's height carries the change)
-  const before=properties.get('--hud-left-height');
+  const before=panelProperties.get('--hud-left-height');
   viewport.height=420;listeners.get('cot:layoutchange')();flush();
-  assert.notEqual(properties.get('--hud-left-height'),before,'virtual keyboard changes available space');
+  assert.notEqual(panelProperties.get('--hud-left-height'),before,'virtual keyboard changes available space');
+  // (local-fps-265) a body custom property restyles every element under the body: the lane heights only the side panels
+  // read are written on the panels' rule, the rest of the layout on the body as before
+  assert.ok(panelProperties.has('--hud-left-height')&&panelProperties.has('--hud-chat-height'),'the panels\' lane heights are on their rule');
+  assert.equal(properties.has('--hud-left-height')||properties.has('--hud-chat-height'),false,'the body never carries the panels\' lane heights');
+  assert.ok(properties.has('--hud-left-top')&&properties.has('--hud-chat-top')&&!panelProperties.has('--hud-left-top'),'every other lane variable stays on the body');
   const late=node({class:'cot-room-chat quiet'});visibleNodes.push(late);
   callbacks.mutation([{type:'childList',target:body}]);
   assert.equal(frames.size,1,'late-added chat/panels still trigger discovery');flush();

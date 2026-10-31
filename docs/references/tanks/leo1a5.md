@@ -450,3 +450,11 @@ photo-class source. If the §E outlier-strip lands, re-extract and
 re-evaluate as a real leo1a5-family oracle candidate (the 1A4/1A5
 turret differences — B&V add-on armor, EMES-18 vs the 1A4's EMES-12A1 —
 must be priced as parity deviations, never chased).
+
+## 263 mantlet: ends in a line (owner 2026-10-28)
+
+The owner, verbatim: "the correct mantlet (which the 1a5 should also have this kind of mantlet that ends in a line)".
+
+The B&V mask's brow and chin now meet in a horizontal line ±2 cm at the gun. Before, they stopped at a ridge band
+0.26 m deep. The block, its width, the searchlight and the receiver are unchanged. `leopard1A5Source.selftest.mjs`
+asserts the line.

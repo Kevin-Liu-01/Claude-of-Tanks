@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {readPhotoReference} from './photo-reference-record.mjs';
 import {readFileSync} from 'node:fs';
+import {readPhotoReference} from './photo-reference-record.mjs';
 import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 import {ALL_TANK_IDS} from '../src/vehicles/specs.ts';
 import {firstPartyConcept} from './first-party-concept-policy.mjs';
@@ -13,7 +13,7 @@ import {ABRAMS_X_REFERENCE_OVERRIDES} from './abrams-x-reference-overrides.ts';
 import {T90_X_REFERENCE_OVERRIDES} from './t90-x-reference-overrides.ts';
 import {LEOPARD_X_REFERENCE_OVERRIDES} from './leopard-x-reference-overrides.ts';
 import {WEST_X_REFERENCE_OVERRIDES} from './west-x-reference-overrides.ts';
-import {PHOTO_REFERENCE_IDS,PHOTO_REFERENCES,photoTarget,photoReceiptPassed,isPhotoReference,stageARoute,stageAPassed,
+import {PHOTO_REFERENCE_IDS,photoReferencePacket,photoTarget,photoReceiptPassed,isPhotoReference,stageARoute,stageAPassed,
   assertNoPhotoOverride} from './photo-reference-policy.mjs';
 import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
 import {tankReleaseSteps} from './tank-release-plan.mjs';
@@ -44,8 +44,42 @@ for(const id of PHOTO_REFERENCE_IDS){
   assert.equal(roofEquipmentVerdict(id,{...census,mg:target.roofMachineGuns+1},config,receipt).passed,false);
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'photo targets cannot waive unexplained holes');
   const steps=tankReleaseSteps(id,true,'node');
-  assert.equal(steps.length,18,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18 227 gun-gaps: + the gun-junction ledger; 266: + the id-scoped tanks receipts)
+  assert.equal(steps.length,19,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18 227 gun-gaps: + the gun-junction ledger; 266: + the id-scoped tanks receipts) 265 integration: + the id-scoped fill exposure beside the id-scoped tanks step (19).
   assert.equal(steps.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,'do not fabricate 3D scores');
+}
+// Per-id packets (265): each id reads the packet registered to it, which holds exactly that packet's ids, and the fixture
+// its target names; a packet never qualifies an id registered to another one.
+const IFVS='docs/references/photos/ifvs-20260925.json',ZTZ='docs/references/photos/ztz85-iii-20261028.json';
+assert.equal(new Set(PHOTO_REFERENCE_IDS).size,PHOTO_REFERENCE_IDS.length,'an id has one packet');
+for(const id of ['marder2','cv9040c','dardo','lrmv_lynx','borsuk','amx10p','amx10p_25'])assert.equal(photoReferencePacket(id),IFVS);
+assert.equal(photoReferencePacket('ztz85_iii'),ZTZ);
+for(const id of ['type59','__proto__','toString'])assert.equal(photoReferencePacket(id),null);
+const ztz=readPhotoReference('ztz85_iii'),marder=readPhotoReference('marder2');
+assert.equal(ztz.packetPath,ZTZ);assert.equal(marder.packetPath,IFVS);
+assert.equal(ztz.target.test,'src/vehicles/profiles/ztz85iii.selftest.mjs','the fixture is the one the packet names');
+assert.equal(photoTarget('ztz85_iii',marder.packet),null,'the IFV packet cannot qualify the ZTZ-85-III');
+assert.equal(photoTarget('marder2',ztz.packet),null,"the ZTZ-85-III's packet cannot qualify an IFV");
+assert.throws(()=>readPhotoReference('ztz85_iii',()=>readFileSync(IFVS)),/no complete explicit photographic target/);
+assert.throws(()=>readPhotoReference('marder2',()=>readFileSync(ZTZ)),/no complete explicit photographic target/);
+{
+  const {target,packet,packetSha256}=ztz;
+  const dimensions=['high','low'].map(quality=>({quality,fillLoaded:true,
+    bounds:{min:[-target.widthM/2,0,-target.overallLengthM/2],max:[target.widthM/2,target.tallestM,target.overallLengthM/2]}}));
+  const report={id:'ztz85_iii',passed:true,comparisonPurpose:'photographic-reference',numerical3DComparison:'unverified',score:null,
+    packetSha256,packetPath:ZTZ,startedAt:new Date(2000).toISOString(),test:{path:target.test,exitCode:0},
+    inputSha256Before:'a'.repeat(64),inputSha256After:'a'.repeat(64),dimensions};
+  assert(photoReceiptPassed('ztz85_iii',report,packet,packetSha256,1000));
+  assert.equal(photoReceiptPassed('ztz85_iii',{...report,packetPath:IFVS},packet,packetSha256,1000),false,'a report naming another packet');
+  const config={id:'ztz85_iii',comparisonPurpose:'photographic-reference',roofMachineGuns:1,packetSha256};
+  const census={mg:1,invalidWeaponMarkers:0};
+  assert(roofEquipmentVerdict('ztz85_iii',census,config,{id:'ztz85_iii',verified:true,path:ZTZ,sha256:packetSha256}).passed);
+  assert.equal(roofEquipmentVerdict('ztz85_iii',census,config,{id:'ztz85_iii',verified:true,path:IFVS,sha256:packetSha256}).passed,false);
+  // The fixture: present in the packet, shaped as a src/vehicles selftest, present in the checkout and naming the id.
+  const withTest=test=>{const t={...target};if(test===undefined)delete t.test;else t.test=test;return {...packet,targets:{ztz85_iii:t}};};
+  for(const test of [undefined,'skip.mjs','src/vehicles/../../skip.selftest.mjs','tools/photo-reference-policy.selftest.mjs'])
+    assert.equal(photoTarget('ztz85_iii',withTest(test)),null,`${test}: not a vehicle fixture`);
+  assert.throws(()=>readPhotoReference('ztz85_iii',()=>JSON.stringify(withTest('src/vehicles/profiles/missing.selftest.mjs'))),/is missing or does not name it/);
+  assert.throws(()=>readPhotoReference('ztz85_iii',()=>JSON.stringify(withTest('src/vehicles/profiles/marder2.selftest.mjs'))),/is missing or does not name it/);
 }
 const mixed=tankReleaseSteps('cv9040c,puma_s1,type89,borsuk',true,'node');
 assert(mixed.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args.includes('--ids=puma_s1,type89'));
@@ -71,16 +105,17 @@ for(const map of Object.values(OVERRIDES))for(const id of Object.keys(map))regis
 // the census reads the registry, not an empty parse: a comparison id, an override id and the T-64s' siblings' own prints
 for(const id of ['leo2a6','t64bv1','t64bv_donbas',Object.keys(SUPPLIED_SOURCE_REFERENCE_OVERRIDES)[0]])
   assert(registered.has(id),`${id}: registered (registry census)`);
-// (a) every photo id is unregistered, so its packet is its stage A route; each packet holds exactly its table rows
+// (a) every photo id is unregistered, so its packet is its stage A route; each packet holds exactly its registered ids
 for(const id of PHOTO_REFERENCE_IDS){
   assert.equal(registered.has(id),false,`${id}: a photo id keeps no registered 3D oracle`);
   assert.equal(stageARoute(id),'photo');
 }
-for(const packet of new Set(Object.values(PHOTO_REFERENCES).map(row=>row.packet))){
+const PACKETS=new Set(PHOTO_REFERENCE_IDS.map(photoReferencePacket));
+for(const packet of PACKETS){
   // the packet's keys in today's ids, as photoTarget reads them
   const {targets,tankIdSchema}=JSON.parse(readFileSync(packet,'utf8'));
   assert.deepEqual(Object.keys(targets).map(key=>resolveTankId(key,tankIdSchema)).sort(),
-    PHOTO_REFERENCE_IDS.filter(id=>PHOTO_REFERENCES[id].packet===packet).sort(),`${packet}: exactly its members`);
+    PHOTO_REFERENCE_IDS.filter(id=>photoReferencePacket(id)===packet).sort(),`${packet}: exactly its members`);
 }
 // the T-64s' borrowed prints are deregistered (Main 2026-10-31); their siblings keep their own
 for(const id of ['t64bm1m','t64bv','t64b1v_2022'])assert.equal(registered.has(id)||!isPhotoReference(id),false,id);
@@ -91,7 +126,7 @@ assert.ok(bare,'the fleet has a procedural-only id to control with');
 assert.equal(stageARoute(bare),'none');
 assert.equal(stageAPassed('none',{forceGate:true}),false);
 assert.equal(stageAPassed('none',{forceGate:false}),true);
-assert.throws(()=>readPhotoReference(bare),/no complete explicit photographic target/);
+assert.throws(()=>readPhotoReference(bare),/no photographic packet/);
 // (c) control: a registered oracle measures and the packet never overrides it: the route stays the oracle's, a photo
 // receipt cannot pass it, and the geometry gate refuses a packet beside a registered oracle
 assert.equal(stageARoute('t64bv1',{registered:true}),'oracle');
@@ -104,6 +139,6 @@ assert.throws(()=>assertNoPhotoOverride(['t64bv'],new Set(['t64bv'])),/cannot ov
 assert.equal(stageAPassed('photo',{forceGate:true,photoProof:true}),true);
 assert.equal(stageAPassed('photo',{forceGate:true,photoProof:false}),false);
 assert.equal(stageAPassed('photo',{forceGate:true,gateApplicable:true,exactGatePassed:true}),false);
-console.log(`photo qualification: ${PHOTO_REFERENCE_IDS.length} photo ids on ${new Set(Object.values(PHOTO_REFERENCES).map(r=>r.packet)).size} packets, `
-  +`explicit membership, unchanged 3% dimensions, fresh physical proof, unverified 3D scores; stage A's photo route against `
+console.log(`photo qualification: ${PHOTO_REFERENCE_IDS.length} photo ids on ${PACKETS.size} packets, `
+  +`explicit per-id packets, packet-named fixtures, unchanged 3% dimensions, fresh physical proof, unverified 3D scores; stage A's photo route against `
   +`${registered.size} registered oracles (no packet overrides one; no packet and no oracle fails a forced gate) and negative controls PASS`);

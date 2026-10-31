@@ -166,7 +166,8 @@ const SEEDED = {
   '../fx/projectileTracers.ts': /SOVIET_DESIGN\.test\(tankSeedId\(String\(shooter\?\.id \?\? ''\)\)\)/,
   // Gates on the `_x` suffix and names built from an id (hit zones, ERA clusters) keep their schema-1 spelling.
   'additionalFleetSpecs.ts': /const prefix = tankSeedId\(idPrefix\);[\s\S]*merkava_\$\{tankSeedId\(id\)\}_turret_era_R/,
-  'profiles/merkava.ts': /const sector = `merkava_\$\{tankSeedId\(id\)\}_turret_era_/,
+  // (262: the Merkava family builder names its removable turret packages, profiles/merkavaFamilyDetails.ts)
+  'profiles/merkavaFamilyDetails.ts': /const sector = `merkava_\$\{tankSeedId\(P\.spec\.id\)\}_turret_era_/,
   'profiles/chineseFrontline.ts': /visualEraCluster\(`\$\{tankSeedId\(variant\)\}-integrated-chevron-front`/,
 };
 assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /\/_x\$\/\.test\(tankSeedId\(spec\.id\)\)/,
@@ -183,7 +184,8 @@ for (const [file, pattern] of Object.entries({
   'sourceXOtherAuxArmor.ts': /`\$\{tankSeedId\(id\)\}_\$\{side\}_installed_course`/,
   'arieteModernSpecs.ts': /surfaceGroup: `ariete_c2_x:.*tank-ids:keep/,
   'leclercClassicXKitArmor.ts': /AMX56_KIT_SURFACE_GROUP = 'amx56:fieldKit';.*tank-ids:keep/,
-  'profiles/merkava.ts': /`\$\{tankSeedId\(id\)\}RearClosureReceipt`/,
+  // (262: the Merkava family builder publishes no id-built receipt names; its rear-closure receipt retired with the old
+  // merkava.ts pile)
 })) assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file}: roof-gun names keep their schema-1 spelling`);
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);

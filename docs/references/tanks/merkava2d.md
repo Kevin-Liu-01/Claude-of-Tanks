@@ -1,165 +1,93 @@
-# Merkava Mk.2D (`merkava2d`) — reference packet
+# Merkava Mk 2D (`merkava2d`) — reference packet (release 262 family rebuild)
 
-Exact variant: Merkava Mk.2D (Dor-Dalet) — the last Mk.2 fit: FIRST WEDGE
-composite modules on the small turret's front cheeks (visually bulkier turret
-front than 2B), deeper skirts, rear basket + ball-and-chain curtain; front
-engine, 6 wheels, FRONT sprocket, 105 mm M64 gun.
+**Exact variant.** Merkava Siman 2 Bet Dor Dalet (from 1999, WP-RU): Mk 2B tanks retrofitted with fourth-generation
+bolt-on armour on hull and turret: boxes on the turret's sides and front, plates on the sponson sides above the skirts
+and on the left of the glacis, belly armour (BTVT, WP-HE-2).
 
-## Corroborated real dimensions
-- Hull length 7.45 m; overall gun-forward 8.30–8.78 m; width 3.70 m; height
-  2.65 m; ~63 t. Sources: https://en.wikipedia.org/wiki/Merkava ,
-  https://www.armyrecognition.com/military-products/army/main-battle-tanks/main-battle-tanks/merkava-2-israel-uk ,
-  http://www.army-guide.com/eng/product1392.html
-- Gun: M64 105 mm rifled (L/52 → tube ≈ 5.5 m), bore evacuator.
-- Reference links: https://commons.wikimedia.org/wiki/Category:Merkava_Mark_II ,
-  https://www.primeportal.net/tanks/lior_bar/merkava_2/
+The supplied Mk.2D carries the Dor Dalet boxes (30 turret `ex_armor` plates; the turret mesh itself includes the side modules, half-width to 1.56 m) and the 12.7 mm M2 with its side ammunition box over the gun (`bone_mg_twin`).
 
-## Local GLB oracle (public/models/tanks/community/recovered/merkava2d.glb)
-Width-normalized to 3.70. Same sculpt family as 2B (centered, nose +3.49):
-whole z −3.62..+4.51.
-- Hull: nose +3.49 (toe y ≈ 1.0), tail −3.55; deck 1.68–1.73; upper glacis
-  (3.43, 1.11) → (1.3, 1.73); lower glacis (3.43, 0.95) → (2.1, 0.02); skirt
-  bottom ≈ 0.29–0.35 with wheel scallops; belly 0.45; rear slope to
-  (−3.5, 1.44).
-- Turret: front cheek z ≈ +1.3 (wedge modules); roof plateau 2.40–2.46 over
-  z 0.5..−0.6; cupola 2.6–2.8; bustle 2.6 to −1.6; basket top 2.44 to −2.9;
-  chains to −3.3; front-view flat top ≈ ±0.85, shoulders to ±1.25.
-- Gun: axis y 1.98, tip +4.51, r ≈ 0.075; mantlet band 1.86..2.11 at
-  z 1.9–2.4.
+Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
+packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
+[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
 
-## Mismatch log (before → after per fidelity iteration)
+## Supplied source (the approved target, owner 2026-10-27)
 
-| Iter | total | minView | hull | turret | gun | tracks | change |
-|---|---|---|---|---|---|---|---|
-| 0 (generic MERKAVA profile) | 76.6 | — | 88 | 40 | 84 | 86 | baseline |
-| 1 (bespoke rebuild + wedge cheek kit) | 79.0 | — | 91 | 47 | 74 | 90 | |
-| 2 (bustle fill, rotor length, roof raise) | 82.2 | 86.3 | 90 | 53 | 89 | 89 | |
-| 3 (shaded-parity r2: wedge-module recess seams, cloth bustle kit, gunmetal basket/chains/MG, dished wheels, deck/glacis/tail furniture, skirt bolts + hem, front fender boards) | 82.6 | — | 90 | 53 | 91 | 90 | material/furniture pass — silhouette pinned |
+| Item | Value |
+|---|---|
+| Archive | `~/Downloads/Claude of Tanks Models/merkava-mk2d.zip`, SHA-256 `c16e94a6823c98cda64fc27e08bd9aac07aea1afad5cd79565f3c2b54393cadb` |
+| Member | `source/Merkava Mk_2D.zip` → `Merkava Mk.2D.obj` (Wavefront OBJ + MTL, game-extracted, flattened groups) |
+| OBJ | SHA-256 `5686170353cee2f34bbe88406e17e39048040e1088060ab777857ed22a46a010`, 27,924,880 bytes, 219 groups, 259,381 triangles |
+| Bounds (m) | -1.992, -0.020, -4.033 .. 1.992, 5.197, 4.723 (antennas included) |
+| Frame | identity: metres, +Y up, +Z the bow, +X the vehicle's left, ground y 0 |
+| Canonical oracle | `public/models/community-candidates/merkava2d_supplied_x_source.glb` (ignored), SHA-256 `c76f1d522eb81314004c714c6fe98bcae19a06dd83f5ebaf5f3a54d76260c725`; `tools/source-world-registration.mjs` (fused) |
+| Licence | none recorded in the archive; owner-supplied, reference-only, never redistributed or loaded |
 
-Remaining gaps: partial follower skirt capture in the ref turret mask
-(smaller than 2B's but present: front sections + rows).
-| 4 (r3 turret reconstruction: as 2B (shared small-turret rebuild) + cheek applique wedges rebuilt as proud overlays ON the beak planes — the detached standing-plate sliver and the floating apex box are DELETED; low 2D thermal sight box on the plateau; open basket + coil + chains; skirt scallops) | 82.3 | — | 91 | 52 | 91 | 90 | turret comp ~52 cap: 12 rear-half skirt panels ride the ref turret mask (see 2B note) |
-| 5 (r5 FROM-SCRATCH curve rebuild: shared 2-series loft (see 2B r5) with the 2D deltas measured from docs/references/profiles/merkava2d.json — wedge-module cheek face at z 1.31 (2B: 1.15), roof (0.90,2.30)→(−1.35,2.42), basket to −3.00 + vane to −3.46, tail −3.55, tip 4.51 | 83.7 | 86.8 | 92 | 55 | 94 | 90 | +1.2 over r4 82.5; T 52 → 55 |
+## Sources
 
-## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
-- front: wedge cheeks + dome match; ref smoke/fitting clutter is finer grained.
-- side L/R: face at 1.31 with the rising roof and mantlet-evac line tracks the
-  print closely.
-- rear: basket + chains + marker rods align; ref rear band slightly busier.
-- quarters: same-vehicle read at every angle.
-- top: near-identical (97.8).
-- CURVE FINDINGS vs r4: same rising-roof/dome anatomy as 2B (r4 plateau was
-  mis-seated); the wedge front face sits 0.16 further forward than 2B's.
+| Key | Source |
+|---|---|
+| WP-EN | Wikipedia, "Merkava": https://en.wikipedia.org/wiki/Merkava |
+| WP-RU | Russian Wikipedia, "Меркава": https://ru.wikipedia.org/wiki/Меркава |
+| WP-HE-M / -1..-4 | Hebrew Wikipedia, "מרכבה (טנק)" and the mark articles: https://he.wikipedia.org/wiki/מרכבה_(טנק) |
+| BTVT | btvt.narod.ru, «Основной боевой танк Меркава»: http://btvt.narod.ru/4/morkova/merkava.htm |
+| GS-1..4, GS-SPEC | GlobalSecurity Merkava pages: https://www.globalsecurity.org/military/world/israel/merkava-specs.htm |
+| MT-1..4 | Military-Today (Wayback): https://web.archive.org/web/20220411174453/http://www.military-today.com/tanks/merkava_mk1.htm |
+| AR-3 / AT-4 | Army Recognition (Mk 3), Army Technology (Mk 4): https://www.army-technology.com/projects/merkava4/ |
+| HOW | History of War: https://historyofwar.org/articles/weapons_merkava.html |
+| IMI / WP-IMI | IMI 120 mm L44 MG251/3 (Wayback 2016-12-31); https://en.wikipedia.org/wiki/IMI_120_mm_gun |
+| WP-M68 | https://en.wikipedia.org/wiki/M68_tank_gun |
+| LAT | Yad La-Shiryon (Latrun) placards, read from Commons photos |
+| KM | Kitmaker "Merkava variants reference": https://forums.kitmaker.net/t/merkava-variants-reference/35527 |
+| BP-1..4 | Wikimedia Commons 3-views (the-blueprints.com, CC BY-SA 4.0, uploaded by Dr Dan Saranga): File:Merkava Mk I blueprint.jpg, File:Idf merkava mk ii-63717.jpg, File:Merkava Mk III blueprint.jpg, File:Merkava Mk IV blueprint.jpg |
+| X-3D / X-4 | The repo's measured Merkava 3D X and Mk 4 X source studies: docs/references/tanks/merkava3d_x.source-measurements.json, merkava4_x.source-measurements.json |
 
-### Certified caps + standing (2026-07-31, geometry gate v8)
-Standing: hull 61.1 / whole 47 / turret 0 / stations 71.8 / dims 95.4 /
-floaters 100.
-- turretCurves CAP: same unrepaired rig class as merkava1b (root-level gun
-  absent from the reference turret mask; cheek-applique wedges ride the HULL
-  node - front hull trace tops 2.34-2.48 at center). Observed ceiling ~0-15
-  until an oracle re-rig; matching the wedge split would break articulation.
-- hullCurves residue: the hull-node wedges (above) cost side/front hull rows
-  a few points; reproduced partially with the hull deck pack.
+### Photographs (Wikimedia Commons; local copies in `~/cot-lanes/merkava-family-262/refs/merkava2d/`, not redistributed)
 
-### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
-The defect-mimic packs tuned to the BROKEN oracles are deleted from
-`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
-y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
-turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
-crate, and the oracle-matching rear stacks/rod reads listed per mark below.
-Whips are seated on the measured reference trace columns (a half-column
-offset costs two worst-list columns per whip per view). MEASUREMENT
-MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
-box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
-width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
-gaps) so every slice window catches an end cap; that alone moved 1b
-stations 60 -> 77-79.
-Removed here: ringFloor; deckPack (its 2.34 band was the stranded turret
-kit, absorbed in 86d1071 — the repaired deck reads 1.72 FLAT); the old
-rearPack tall-center-pack read (the 2.26 stack was the absorbed
-ex_decor_10 trailing stowage, now turret-side); pod-guard tower.
-Re-lined: marker rods at z -3.50 both ~0.9 tall (post-repair front trace:
-L 2.55 / R 2.51 — the old per-side [0.75/0.34] was a broken read);
-glacis bracket post at (-0.60, 2.85); wedge-face casting deepened
-(shellRear -2.55, stow to +-1.40); whips stay LEFT (-2.94/-2.19).
-- RE-CERTIFIED dome/pot stature residual (as 2B).
-- RE-CERTIFIED short-gun cap: oracle tip ~+4.03 vs published +4.50.
-- OBSOLETE: the v8 "cheek wedges ride the HULL node" hullCurves residue
-  (absorbed under Gun in 86d1071).
-Standing (gate v10): hull 73.3 / whole 56.8 / turret 39.6 / stations 71.7
-/ dims 99.4 / floaters 100 (was 40.6/28.5/7.9/71.8/100/100 at v10 start).
+| Photo | Commons page | Author, licence | Shows | Identification |
+|---|---|---|---|---|
+| mk2d_gaza_2012_front34.jpg | https://commons.wikimedia.org/wiki/File:Flickr_-_Israel_Defense_Forces_-_IDF_Forces_in_Staging_Areas_Around_Gaza_Strip_(1).jpg | Israel Defense Forces (Flickr account 45644610@N03), IDF Spokesperson's Unit, CC BY-SA 3.0 | front-left 3/4, staging area near Gaza Nov 2012, with mine plough | Merkava Mk 2D (Dor Dalet add-on armour) (medium-high) |
+| mk2d_7bde_2009_side_left.jpg | https://commons.wikimedia.org/wiki/File:Flickr_-_Israel_Defense_Forces_-_Pushing_Through.jpg | Israel Defense Forces, CC BY-SA 2.0 | left side, wading, 7th Brigade (77th Bn) exercise March 2009 | Merkava Mk 2 series, probably Mk 2D (medium-low) |
+| mk2d_7bde_2009_front34.jpg | https://commons.wikimedia.org/wiki/File:Flickr_-_Israel_Defense_Forces_-_7th_Brigade_Batallion_Exercise,_March_2009.jpg | Israel Defense Forces, CC BY 2.0 | front-right 3/4, coloured smoke, 7th Brigade exercise March 2009 | Merkava Mk 2 series, probably Mk 2D (medium-low) |
 
-### Round-3 note (2026-07-31): same rig-split wall as 2B
-See merkava2b round-3: side dAlong -0.545 from the print's short hull-body
-mask; reconstruction attempts reverted, r2 caps stand. Standing min 37.0
-(hull 73.3 / whole 56.4 / turret 37.0 / stations 73.7 / dims 96.2).
-Batch-8 forensics with 2B.
+## Published facts
 
-## SLOPE-MASS + NO-MYSTERY-BOXES round (2026-08-05, merkava family agent)
-Owner §B1 c1ad424 + §B3 ff50bf5. Baseline: min 34.9 (hull 75.1 / whole
-57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100).
+| Fact | Value | Source |
+|---|---|---|
+| Hull, running gear, gun | as Mk 2B | WP-RU, GS-2, WP-EN |
+| Turret | Dor Dalet bolt-on boxes on the sides and front (and roof) | BTVT, WP-HE-2, PHOTO (Gaza 2012) |
+| Hull | appliqué on the sponson sides above the skirts; left glacis plate; belly armour | BTVT, WP-HE-2 |
+| Basket / chains | as Mk 2 | PHOTO (2009) |
 
-### Findings at 1x
-- §B3: same bare olive stow crate class as 2B behind the small turret;
-  §B4 clip 35/292. §B1: the 2D beak + kit appliqué wedges already read as
-  raked casting planes (merkava2dKit slabs); the flat commander drum is
-  the documented dims-governed stand-in.
+## Measured datums (source; hull frame: ground 0, hull centre 0, +Z the bow)
 
-### Landed
-- stowTell (§B3): tarp crowns under the certified top + straps + strap
-  tails; stow re-bucketed olive -> sand camo (3B/3C recipe).
-- §B4 (r12 recipe): keel.hwClamp 1.13 — clip 35/292 -> 0/284.
+| Datum | Value | From |
+|---|---|---|
+| Hull (structural) | z -3.80 .. 3.77, half-width 1.938, deck 1.70 | `vehicle#root` and sponsons |
+| Road wheels | six a side at z -2.515, -1.55, -0.575, 0.39, 1.21, 2.175; r 0.396, axles 0.452 | `wheel_l/r_01..06` |
+| Sprocket / idler | z 3.04 y 0.86 r 0.372 / z -3.365 y 0.829 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
+| Return rollers | 5 a side | `wheel_*_top_*` |
+| Track | centre +-1.532, width 0.637 | `track_l/r` |
+| Turret | ring centre z -1.049 at the deck; 48 stations at 0.1 m (smoothed), crown 2.78, half-width to 1.75; gun slot from z 0.40, half-width 0.227 | `bone_turret` / `turret` |
+| Gun (M64) | bore 2.082; barrel z 1.035 .. muzzle 4.725 (24 radial stations; muzzle r 0.076, evacuator r 0.139); gun mask z -0.17 .. 1.62 | `gun_barrel`, `bone_gun` |
+| Trunnion | y 2.082, z 1.180 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
+| Over the gun | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | `mg_twin` / `bone_gun` |
+| Detail parts | 996 pieces (turret armour 154, hull armour 498): each connected source piece over 6 cm, a box or two-station loft | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
-### Done-gates (official rigs)
-- geometry-gate x2: min 34.9 BOTH runs — every component IDENTICAL to
-  baseline (75.1 / 57.3 / 34.9 / 72.6 / 96.2 / 100): the tells live under
-  certified lines. standard-check contig PASS, holes 0.
+## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
-### Honest residuals
-- Rear clip 284: same rack-vs-wrap class as 2B (dedicated §B4 lane).
-- Parent audit stranded 1 (unnamed, 26%): pre-existing at HEAD — the
-  b5-round adjudicated audit-artifact class (AABB-coarse tool); verified
-  unchanged by this round's A/B.
-- turretCurves 34.9 pinned by the certified 2B/2D oracle defects.
+| Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
+|---|---|---|---|
+| Gun | muzzle 0.57 m past an oracle nose at +3.49; trunnion-to-muzzle 4.21 m (the stubbiest of the six) | muzzle z 4.725, round tube 24 stations, evacuator r 0.139 | the measured round profile as one solid of revolution, steps chamfered, muzzle at z 4.725; the gun mask riding in the slot; only the barrel recoils |
+| Over the gun | none | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
+| Turret shell | oracle-fit casting | 48 stations, crown 2.78 | lofted through the smoothed stations, the gun slot open where the source has it; roof kit kept off the shell |
+| Turret armour | 15 cells a side on wedge modules | 154 `ex_armor` pieces | each piece at its measured attitude, the spec's two removable packages over the permanent shell |
+| Running gear | oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
+| Depression | blocked above +7.6 deg at yaw 7-11 and above +12.3 deg at yaw 147-153 | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 
-## §B3.1 GUN-RUN round (2026-08-06, merkava family agent)
-Same M64 canvas grammar as merkava2b (shared m.canvas path on the legacy
-branch — rings at local taper +3 mm, seat seam, shoulder-band creases;
-see merkava2b.md §B3.1 for mechanics).
+## Build route (release 262)
 
-### Done-gates (official rigs, x2 at close)
-- geometry-gate x2 IDENTICAL to baseline: min 34.9 — hull 75.1 /
-  whole 57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100
-  (zero cost).
-- npm test green. Track-clip rear 284/204 pre-existing. Contig 0 holes.
-- Turret-parent: stranded 1 (unnamed, 26%) — PRE-EXISTING: this round's
-  edits are all rig_gun-bucket (canvas rings/creases); gun-bucket
-  content cannot strand hull-side. The flag belongs to the 2D rebuild
-  lane's backlog (34.9 row).
-- Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava2d).
-
-## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
-- §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented; F-vs-D 12->2; gate HELD x2 EXACT 34.9; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
-
-## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
-Same class as 2B (see merkava2b.md for the full mechanism): the rising
-roof panel floated over the 2.11 shell cap — see-through band 4663/4550
-enclosed px per side (y ~2.3, z +0.13..-1.98). p.roofSolid: true (no rear
-underfill needed — the 2D shell runs to -2.55 and its wider stow covers
-the lean zone; probe-verified). After: y0-right 4663 -> 409, y0-left
-4550 -> ~430; remainder = basket rail/chain air (legit open-frame class),
-verified at yaw 0/30/60/90. Evidence
-shots/merkava-roofgap/{before,after}/merkava2d/ + pairs/merkava2d-*.png.
-
-### Done-gates
-- geometry-gate x2 EXACT the ledger row: min 34.9 — hull 75.1 / whole
-  57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100, both
-  runs (mask-neutral; the roofSolid deepening moves existing slab corners
-  only — verts 76507 unchanged, hash 24396b0d -> 38aec0e0).
-- winding-audit rev 0 / deficit 0 / m1+m2 clean (mode-2 28px
-  rig_hull/mesh#19 candidate pre-existing at baseline, §J
-  candidate-not-defect). npm test green.
-
-### Honest residuals
-- turretCurves 34.9 stays pinned by the certified 2B/2D oracle defects
-  (rebuild lane); basket density note as 2B.
+`src/vehicles/profiles/merkava.ts` (the stepped builder) over `merkavaFamilyMarks.ts` (this mark's record, built from
+`merkavaFamilySource.ts`, the lane fit's measurements of the supplied model), `merkavaFamilyHull.ts`,
+`merkavaFamilyTurret.ts`, `merkavaFamilyGun.ts` and `merkavaFamilyDetails.ts`. Receipts:
+`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`. The pre-262 packet is in
+git history (`git show b93941ce9d:docs/references/tanks/merkava2d.md`).

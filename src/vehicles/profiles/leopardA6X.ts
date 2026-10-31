@@ -7,6 +7,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addLeopardA6XFittings } from './leopardA6XFittings.ts';
 import { LEOPARD_2_RUNNING_GEAR as G, leopardA6WheelSolids } from './leopardA6XWheels.ts';
@@ -460,9 +461,10 @@ function weapons(P: TankBuilderPort): void {
   movingMantlet(P);
   const mg = sourceMachineGun(P, D.turretPivot);
   mg.add('turretDetail', box(.19, .10, .25), .8823, 2.577, -.1265);
-  mg.add('turretDark', box(.08, .055, .18), .9349, 2.6331, -.155);
-  mg.add('turretDark', cylZ(.01985, .31484, 20), .9349, 2.63313, -.007705);
-  mg.add('turretDark', cylZ(.006, .007, 16), .9349, 2.63313, .150);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // loader's MG3 is the fleet's MG3 in its crew form at true length (libraryRoofMg.ts libraryStationGun: grips, sight
+  // and its belt box) on the drawn bore, in place of the drawn 18 cm receiver and 31 cm rod
+  libraryStationGun(mg, { cls: 'mg3', x: .9349, boreY: 2.63313, pivotZ: -.075, crew: true });
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(mg.finish(), { name: 'leopardA6XLoaderMg', caliberMm: 7.62 });
 }

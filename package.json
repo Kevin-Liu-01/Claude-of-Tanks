@@ -66,7 +66,7 @@
     "tank:controls:update": "node tools/vehicle-controls-inventory.mjs",
     "tank:controls:check": "node tools/vehicle-controls-inventory.mjs --check",
     "tank:anatomy:update": "node tools/gen-combat-anatomy.mjs && node tools/gen-vehicle-marking-seats.mjs && node tools/genIcons.mjs --views armorSide,modulesSide,crewSide && node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --update --quiet",
-    "tank:anatomy:check": "node tools/gen-combat-anatomy.mjs --check && node tools/gen-vehicle-marking-seats.mjs --check && node src/vehicles/fleetPassDefault.selftest.mjs && node tools/module-hit-probe.mjs && node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore && node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet",
+    "tank:anatomy:check": "node tools/gen-combat-anatomy.mjs --check && node tools/gen-vehicle-marking-seats.mjs --check && node src/vehicles/fleetPassDefault.selftest.mjs && node tools/module-hit-probe.mjs && node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore && node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet && node tools/interior-fill-exposure.mjs --all --check --jobs=4",
     "tank:modules:check": "node tools/module-hit-probe.mjs",
     "tank:marking-seats:update": "node tools/gen-vehicle-marking-seats.mjs",
     "tank:marking-seats:check": "node tools/gen-vehicle-marking-seats.mjs --check",

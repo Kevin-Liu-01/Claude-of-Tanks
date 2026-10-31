@@ -123,10 +123,12 @@ for (const id of ['merkava3_baz', 'merkava3d']) {
     [round.pen100Mm, round.pen1000Mm, round.pen2000Mm, round.dmg]),
   [[830, 755, 680, 560]], `${id}: Tier-IX M322 gameplay row`);
 }
-for (const id of ['merkava4', 'merkava4b']) {
+// 265 (FAIRNESS-265 P12): the rebuilt Mk 4B carries the Mk 4M's 2,850 HP on the same hull; the cycle and fire control
+// stay the Mk 4's
+for (const [id, hp] of [['merkava4', 2550], ['merkava4b', 2850]]) {
   const spec = TANK_SPECS[id];
   assert.deepEqual([spec.hp, spec.gun.reloadS, spec.gun.baseAccuracy, spec.gun.aimTimeS],
-    [2550, 6.5, ...roleTunedAim(id, 0.31, 1.9)], `${id}: common baseline Mk 4 balance envelope`);
+    [hp, 6.5, ...roleTunedAim(id, 0.31, 1.9)], `${id}: common baseline Mk 4 balance envelope`);
 }
 
 const reversed = applyNativeFamilyOrder([...ALL_TANK_IDS].reverse());

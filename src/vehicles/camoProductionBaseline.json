@@ -445,7 +445,7 @@
   "sig_object695_x": "a42cb9e572b23871",
   "sig_pt91m": "58f5fc14023ddbd5",
   "sig_t72m1_jaguar": "ed8276f0ad86a912",
-  "sig_pt91_twardy": "915d912d3b53bba7",
+  "sig_pt91_twardy": "340718aa1aa386b0",
   "sig_pl01_105": "d024ea563acf8394",
   "sig_bwp1": "cfe88c8d41c10507",
   "sig_upior": "e80176d60aa202f7",
@@ -981,7 +981,7 @@
   "leo2a6m": {
    "selection": "factory",
    "stock": "service_leo2a6m",
-   "factory": "9372f3913461afc9",
+   "factory": "53cc9f3ea41f25d5",
    "auto": "amoeba pinkdesert merdcwinter berlin autumn merdc digitaldesert urbanblock urbanblock dpm amoeba amoeba"
   },
   "leo2_revolution_proto": {
@@ -1353,7 +1353,7 @@
   "pt91_twardy": {
    "selection": "factory",
    "stock": "sig_pt91_twardy",
-   "factory": "278844347910ac03",
+   "factory": "3747fd7810affd87",
    "auto": "summer pinkdesert merdcwinter berlin autumn summer chocchip urbanblock urbanblock flecktarn summer summer"
   },
   "pl01": {
@@ -1646,8 +1646,8 @@
   },
   "challenger1_x": {
    "selection": "factory",
-   "stock": "service_challenger_3",
-   "factory": "24af537fcedf03bc",
+   "stock": "desert",
+   "factory": "ac6d88a92bedf83a",
    "auto": "dpm desert winter urbanblock oakleaf summer desert urban urban dpm dpm dpm"
   },
   "t72bu_x": {

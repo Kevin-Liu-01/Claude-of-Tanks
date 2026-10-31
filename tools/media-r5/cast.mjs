@@ -50,7 +50,7 @@ export const CAST_NAMES = {
   m6_linebacker: ['M6 Linebacker', 'USA'], t90a_burlak_x: ['T-90A Burlak', 'Russia'], pl_t80u_modern: ['T-80U Husarz', 'Poland'], pl01_105: ['PL-01 105', 'Poland'],
   ua_t72b3m_hetman_ii: ['T-72B3M Hetman II', 'Ukraine'], leo2a6_ua: ['Leopard 2A6 UA', 'Ukraine'], ua_challenger2: ['Challenger 2 UA', 'Ukraine'],
   challenger_3: ['Challenger 3 Prototype', 'UK'], challenger2e: ['Challenger 2E', 'UK'], tos1a_tagil: ['TOS-1A Tagil', 'Russia'],
-  m551a1_tts: ['M551A1 TTS', 'USA'], m1a3: ['M1A3 Abrams', 'USA'], vt4a1: ['VT-4A1', 'China'], type96_72m_lei: ['Type 96-72M Léi', 'China'],
+  m551a1_tts: ['M551A1 TTS', 'USA'], m1a3: ['M1E3 Abrams', 'USA'], vt4a1: ['VT-4A1', 'China'], type96_72m_lei: ['Type 96-72M Léi', 'China'],
   leo2_revolution: ['Leopard 2 Revolution', 'Germany'], mbt70: ['MBT-70', 'Germany'], strv103: ['Stridsvagn 103B', 'Sweden'],
 };
 

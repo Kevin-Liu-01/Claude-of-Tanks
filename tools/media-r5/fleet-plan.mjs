@@ -16,7 +16,9 @@
 //   node tools/media-r5/fleet-plan.mjs --append [--only=<hero,...>]   a take for each production vehicle the roster and the
 //     site takes lack (2026-10-27: the Type 10 Dozer, added after the roster): its set 150 m from the map's takes, each map's
 //     count kept, numbered on after every take number in use (225-252 are the combat round's and the duels'); the
-//     roster's takes and their motion plans stay as they are
+//     roster's takes and their motion plans stay as they are; an --only hero the roster already holds is planned again
+//     against the rest, keeping its number (two lanes appending at once each miss the other's takes: 265's Centurion
+//     Mk 5/1 Aust on the Qinglong's copper_mesa set, an eighth take there)
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,15 +44,18 @@ if (existsSync(OUT) && !process.argv.includes('--fresh') && !arg('only') && !APP
   console.log(`[fleet-plan] ${OUT} exists; --fresh plans every take again (and voids their motion plans); fleet-replan.mjs moves single takes; --append adds the vehicles it lacks`);
   process.exit(0);
 }
-const prior = APPEND && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : [];
-const FIRST_N = APPEND ? Math.max(...[...SHOTS, ...OWNER_NINE, ...COMBAT, ...DUELS].map((s) => s[0]), ...prior.map((r) => r.n)) + 1 : 60;
+const existing = APPEND && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : [];
+const only = arg('only')?.split(',');
+const replanned = new Map(existing.filter((r) => only?.includes(r.hero)).map((r) => [r.hero, r.n]));
+const prior = existing.filter((r) => !replanned.has(r.hero));
+const FIRST_N = APPEND ? Math.max(...[...SHOTS, ...OWNER_NINE, ...COMBAT, ...DUELS].map((s) => s[0]), ...existing.map((r) => r.n)) + 1 : 60;
 
 // --- who ------------------------------------------------------------------------------------------------------------
 const siteHeroes = [...SHOTS, ...OWNER_NINE].map((shot) => [siteScene(shot).actors[0].id, siteScene(shot).meta.id, shot[0] > 50]);
 // a vehicle is led as fleet.selftest counts it: by the hero of a take's scene read in today's ids (the roster and the
 // site takes keep the ids they were written in); --append counts the roster's takes too
-const led = new Set([...SHOTS, ...OWNER_NINE, ...(APPEND ? FLEET : [])].map((shot) => sceneInCurrentTankIds(siteScene(shot)).actors[0].id));
-const only = arg('only')?.split(',');
+const standing = APPEND ? FLEET.filter(([n]) => ![...replanned.values()].includes(n)) : [];
+const led = new Set([...SHOTS, ...OWNER_NINE, ...standing].map((shot) => sceneInCurrentTankIds(siteScene(shot)).actors[0].id));
 const heroes = PRODUCTION_TANK_IDS.filter((id) => !led.has(id) && (!only || only.includes(id)));
 // The roster writes ids as the take scenes are read (schema 1, sceneInCurrentTankIds), and FOES and CAST_NAMES are in
 // that spelling: today's specs and paints are read through the alias layer (asToday), and today's ids are written back in
@@ -191,12 +196,12 @@ for (const [k, id] of order.entries()) {
   const unit = paintOf(id);
   let enemy = paintOf(foes[0]);
   if (enemy === unit) enemy = paintOf(foes[0], false);
-  const name = nameOf(id), n = FIRST_N + roster.length;
+  const name = nameOf(id), n = replanned.get(id) ?? FIRST_N + roster.filter((r) => !replanned.has(r.hero)).length;
   roster.push({ n, id: `${id.replace(/_/g, '-')}-${map.replace(/_/g, '-')}`, hero: id, nation: spec(id).nation, era: spec(id).era, map, time,
     anchor: [spot[0], spot[1]], heading: spot[2], template, action, lineup, foes, paint: [unit, enemy],
     ...titles(action, name, nameOf(foes[0]), map, time, zhNameOf(id), zhNameOf(foes[0])) });
 }
-writeFileSync(OUT, `${JSON.stringify([...prior, ...roster], null, 1)}\n`);
+writeFileSync(OUT, `${JSON.stringify([...prior, ...roster].sort((p, q) => p.n - q.n), null, 1)}\n`);
 // every production vehicle's own take, for wherever the site shows that tank (site-media.mjs builds fleet/index.json from
 // it): its fleet take, else its take among the owner's nine, else the first of the fifty it leads
 const TAKES_FILE = join(HERE, 'vehicle-takes.json');

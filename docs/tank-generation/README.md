@@ -102,21 +102,24 @@ unrelated scaffold stubs out of a scoped handbook update.
 
 ## Photographic qualification
 
-A photo-class tank (built from photographs and published dimensions, with no
-3D model it follows) passes the release check's stage A through its packet in
-`docs/references/photos` (Main, 2026-10-31; it ends per-batch exemptions).
-`PHOTO_REFERENCES` in `tools/photo-reference-policy.mjs` is the plain table of
-id → packet and the native fixture the packet names: a lane adds its ids' rows
-with its packet, and a packet holds exactly the ids the table gives it (the
-[IFV packet](../references/photos/ifvs-20260925.json): the CV9040C route and the
-supplied photographic additions; the [T-64 packet](../references/photos/t64-20261031.json):
-the true T-64s, whose borrowed prints were deregistered). `stageARoute` and
-`stageAPassed` state the rule:
+Each photographic ID is registered to one packet in
+`tools/photo-reference-policy.mjs`. A packet is an approved, dated document
+under `docs/references/photos/` that holds exactly the IDs registered to it, and
+each target names the native fixture test that proves it. The fixture must
+exist and name its ID. A packet never qualifies an ID registered to another one.
+A lane registers its IDs with their packet (Main, 2026-10-31: the photo route
+ends per-batch exemptions). The [IFV packet](../references/photos/ifvs-20260925.json)
+records the owner's approved CV9040C route and the three supplied photographic
+additions. The [ZTZ-85-III packet](../references/photos/ztz85-iii-20261028.json)
+qualifies the release 263 rebuild, whose registered print was a fused,
+low-confidence conversion. The [T-64 packet](../references/photos/t64-20261031.json)
+holds the true T-64s, whose borrowed prints were deregistered. `stageARoute` and
+`stageAPassed` state stage A's rule:
 
 - a registered 3D oracle always measures, and a packet never overrides it (the
-  geometry gate refuses an id with both);
-- an owner concept proves its design record; a photo-class id proves its packet;
-- an id with no packet, no oracle and no concept still fails a forced gate.
+  geometry gate refuses an ID with both);
+- an owner concept proves its design record; a photo-class ID proves its packet;
+- an ID with no packet, no oracle and no concept still fails a forced gate.
 
 `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
 configuration and dimension receipts (the packet's width, length and tallest,

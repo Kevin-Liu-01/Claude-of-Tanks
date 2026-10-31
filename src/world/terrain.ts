@@ -485,8 +485,9 @@ interface SplatConfig {
    * are white limestone gravel). */
   soilTint?: ColorTriple;
   /** Ground lane (wave 83): a turned field's tone over the darkened soil (default 1) — a loam's plough a mid brown
-   * (Frontier 1.3), a chernozem's the near-black of its soil (1). */
-  ploughLift?: number;
+   * (Frontier 1.3), a chernozem's the near-black of its soil (1). A triple lifts each channel (264b: Ironworks' brownfield
+   * plots, turned over the works' dark red-brown dirt layer, a coal-dusted loam's brown, not black or maroon). */
+  ploughLift?: number | ColorTriple;
   marshGloss?: number;
   microAmp?: number;
   strata?: number;
@@ -4502,6 +4503,7 @@ function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number
 }
 const SPLAT_COMMON_FRAG = /* glsl */`
 #define MID_SWARD_GAIN 0.5
+#define SWARD_DAP_RELIEF 0.4
 // 2026-10-14 (the engine-cs lane): the terrain's snow cover rides the scene alpha to the aerial pass (engine/sceneAlpha.ts)
 #define COT_SNOW_COVER 1
 float cotSnowCover = 0.0;
@@ -4538,7 +4540,7 @@ vec4 maskAt(vec2 uv) {
 uniform vec4 uMeanG, uMeanD, uMeanR, uMeanM;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform vec3 uSoilTint; // ground lane (wave 79): the land's soil where the dirt layer is drawn as soil (SplatConfig soilTint)
-uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift)
+uniform vec3 uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift, per channel)
 uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the boundary's half-width m, -); x < -1e8 = one formation
 uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminance (rgb) and the share it takes (w)
@@ -4889,6 +4891,35 @@ vec2 sandWaves(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, ve
       float s2 = sin(d * k.y + h1 * 6.2832 + warp * 0.4);
       slopeV += w * (s1 * amp.x + s2 * amp.y) * wt;
       tone += s1 * wt;
+    }
+  }
+  return slopeV;
+}
+// (264b, Main's flags from 264's blind critics: the Desert's and Mars's chase frames, "regular parallel ripple stripes")
+// sandWaves' cells drew every crest of a 22 m cell straight, at one spacing and one strength — a ruled sheet at the chase
+// camera. The ripples' own trains: each cell its own spacing (±12 %); the crests bend with the caller's phase field (ph,
+// metres: a crest wanders half a spacing along its run) and stand sharp over broad troughs (a second harmonic); the
+// caller fades them in patches, so crests end and begin again. The megaripples take a breath of the bend.
+vec2 sandRipples(vec2 p, vec2 w0, float cellM, float swing, vec2 ph, vec2 k, vec2 amp) {
+  vec2 g = p / cellM - 0.5;
+  vec2 c0 = floor(g);
+  vec2 f = g - c0;
+  vec2 bl = f * f * (3.0 - 2.0 * f);
+  vec2 slopeV = vec2(0.0);
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < 2; i++) {
+      vec2 c = c0 + vec2(float(i), float(j));
+      float h1 = fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
+      float h2 = fract(sin(dot(c, vec2(269.5, 183.3))) * 43758.5453);
+      float ang = (h1 - 0.5) * 2.0 * swing;
+      float ca = cos(ang), sa = sin(ang);
+      vec2 w = vec2(w0.x * ca - w0.y * sa, w0.x * sa + w0.y * ca);
+      float d = dot(p - (c + 0.5) * cellM, w);
+      float wt = (i == 0 ? 1.0 - bl.x : bl.x) * (j == 0 ? 1.0 - bl.y : bl.y);
+      float a1 = d * k.x * (0.88 + 0.24 * fract(h2 * 7.13 + h1 * 3.1)) + h2 * 6.2832 + ph.x;
+      float s1 = sin(a1) - 0.35 * sin(2.0 * a1);
+      float s2 = sin(d * k.y + h1 * 6.2832 + ph.y);
+      slopeV += w * (s1 * amp.x + s2 * amp.y) * wt;
     }
   }
   return slopeV;
@@ -5838,7 +5869,15 @@ void splatCompute() {
     // ground the rock layer is its slag, mottled by a 3 m field, the photo's relief halved
     if (uLandE.w > 1.5) {
       aR.rgb = worksSlag(n1h, n2, 0.5) * (0.84 + 0.32 * nz(uv, 0.31, vec2(0.13, 0.57)).r);
-      if (nrmOn) nR = mix(nR, NRM_MEAN, 0.5);
+      // (264b, Main's flag from 264's critics on Ironworks' field beside the slag tip, "a crumpled tarp slope"; this lane's
+      // critics: "a quilted diamond grid") the borrowed photo's relief, halved, still drew its pattern's joints as a net of
+      // creases over the tip: the slag's relief is its own tipped clinker, the slag lot's two octaves of the noise (~0.7
+      // and ~2 m, gone as the footprint outgrows them)
+      if (nrmOn) {
+        nR = NRM_MEAN;
+        if (uLandTier > 0.5 && gFootM < 0.2)
+          nR.xy += (nz(uv, 0.53, vec2(0.37, 0.19)).rg * 0.6 + nz(uv, 1.37, vec2(0.83, 0.47)).rg * 0.4 - 0.5) * 0.5 * tileVis(0.8);
+      }
     }
     // round 73: the rock border is a height transition too — the outcrop's high faces clear the turf or the snow,
     // its seams stay buried
@@ -6291,6 +6330,19 @@ void splatCompute() {
         // (round 10, Foundry's turned field ~0.01 linear, "an unlit void") no turned earth darker than black earth's own
         // albedo (LAND_CROP_ALBEDO's plough, 0.03–0.05), its patches kept
         cropCol = max(cropCol, vec3(0.034, 0.029, 0.024) * bright * (0.85 + 0.30 * clodP));
+        // (264b, the critics on Ironworks', Reservoir's and Delta's turned fields: "a flat, untextured olive-brown fill",
+        // "smooth clay or a rubber mat") past its furrows' patches a turned field drew its mean and its metre patches only,
+        // ±3/255 across Ironworks' plot under the works' haze. Turned earth is clods: lit crowns and shaded crumbs a hand's
+        // breadth to a spade's across — two near reads of the noise (~0.1 and ~0.4 m), their tone here and their tilt
+        // below, each gone as its features near ~3 px of the pixel's footprint (High and Medium; the far field as it was).
+        // A dark soil takes the grain strongest (a damp clod's dry crown pales furthest from its shade; on Ironworks' and
+        // Reservoir's plots ±50 % still read flat) and a pale one a little under half (Coastal's at ±75 % read as blotches)
+        float clodVis = uLandTier > 0.5 ? 1.0 - smoothstep(0.03, 0.09, gFootM) : 0.0;
+        float clodK = mix(0.75, 0.45, smoothstep(0.03, 0.12, reduxLuma(cropCol)));
+        vec4 clodS = clodVis > 0.0 ? nz(uv, 1.7, vec2(0.29, 0.83)) : vec4(0.5);
+        vec4 clodL = clodVis > 0.0 ? nz(uv, 0.47, vec2(0.61, 0.07)) : vec4(0.5);
+        float clodSv = 1.0 - smoothstep(0.012, 0.03, gFootM);
+        cropCol *= 1.0 + clodK * clodVis * ((smoothstep(0.30, 0.70, clodS.r) - 0.5) * clodSv + smoothstep(0.28, 0.72, clodL.g) - 0.5);
         // (2026-10-28, the owner: "weird parallel lines on ground … on all maps") the lands were crisp square bands of ±9 %
         // from 40 m on (bandAA), and the turned fields carried ruled stripes at battle range. A land is the light on its
         // furrow slices turned one way or the other: a soft swell of tone, each land its own width by the tractor's line
@@ -6312,6 +6364,7 @@ void splatCompute() {
         // (2026-10-06, the land use's far field: the slice's relief weighs furrowVis, exactly zero once a furrow is under two
         // pixels, so past that it is skipped, the result unchanged: the soil's flat relief)
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere);
+        if (nrmOn && clodVis > 0.0) n.xy += ((clodS.rg - 0.5) * clodSv + (clodL.rg - 0.5) * 0.6) * 0.5 * clodVis * soilHere;
         if (nrmOn && furrowVis > 0.0) {
           float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
           n.xy += acrossDir * ridge * 0.09 * furrowVis * soilHere;
@@ -6982,13 +7035,26 @@ void splatCompute() {
     // turned the candidate terms off one at a time in the game's renderer and the bands went with uMidRelief alone)
     // the dapple is a field in plan: on a slope seen at a grazing angle its 1–5 m spots foreshorten into long bands
     // across the face, lit and shaded by a low sun — a ladder of terraces. On a slope the relief fades as the view
-    // grazes it (flat ground keeps all of it)
-    float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), smoothstep(0.01, 0.08, slope));
+    // grazes it (flat ground keeps all of it). (264b, Main's flags from item 264's blind critics: Blackglass's meadow "dark
+    // pocked dimples … rippled water", Monsoon's and Mangrove's phone chase "a grazing smear", the pasture strip behind
+    // Steinburg's field2) a vegetated map's sward fades the same way on the flat: seen low over it, its 1–5 m spots
+    // stretch into the same smear, and the detail normal (DK_RANGE_GAIN) and the sward's gain stacked them to ×3. The fade
+    // runs on all of a vegetated map's open ground, not the meadow alone: Blackglass's phone frame kept "a scaly patch" on
+    // the dry ground before its crater, where the meadow layer is thin (fields, arid and snow maps as they were)
+    float vegGround = dapField * (1.0 - step(0.5, uReduxD.y));
+    float vegSward = meadowG * vegGround;
+    float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), max(smoothstep(0.01, 0.08, slope), vegGround));
     // ground lane (2026-10-05, local contrast, step 2 (b''): the dapple at twice its map's scale was the second ground
     // term, +11 % on Verdant's establishing view): a vegetated map's sward carries more of it — its tussocks' and hollows'
     // roll — where a field (dapField) and an arid or snow map (the leopard spots under a low sun) keep their own
-    float swardGain = 1.0 + MID_SWARD_GAIN * meadowG * dapField * (1.0 - step(0.5, uReduxD.y));
-    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardGain * (1.0 - fMs) * midGraze;
+    float swardGain = 1.0 + MID_SWARD_GAIN * vegSward;
+    // (264b) the sward keeps the gain in its tone and gives up most of the relief: the roll it lent the tussocks read as
+    // pits; in 264b's tuning stills 0.6 left faint pocks on Blackglass's phone frame and 0.25 left the meadow flat. The
+    // cut spans all of a vegetated map's open ground: the graze fade spares a slope that faces the camera, and on the dry
+    // ground's lighter patch before Blackglass's crater the full relief still read as "rows of dimples … rippled water"
+    // (the critics' f4 phone frame), as on Longleaf's track ("dark leopard-spot patches on brown soil")
+    float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegGround);
+    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardRelief * (1.0 - fMs) * midGraze;
     float midN2 = nz(uv, 0.0089, vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
                  + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * swardGain * (1.0 - fMs) * dapField;
@@ -6998,8 +7064,15 @@ void splatCompute() {
     // partially-steep slope.
     // terrain v2: only on rock inside the mid band (three rock-normal taps ran under every fragment at weight zero)
     float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock);
+    // (264b, Ironworks' slag tip beside its turned plot: "a crumpled tarp slope"; this lane's critics: "a quilted diamond
+    // grid") on a paved map (Steinburg, the railyard, Ironworks) the rock layer's tile is its cobbles: this coarse tap laid
+    // their joints, a few metres apart at its 24 m period, over the hillsides, tips and banks the material draws as its
+    // bare ground (uPavedRock, above) — at range their relief is the bare ground's too
+    bool pavedR = uPavedRock > 0.5;
     if (rockRelW > 0.002) {
-    vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
+    vec2 tRa;
+    if (pavedR) tRa = texture2D(uNrmD, uv * 0.041).xy; else tRa = texture2D(uNrmR, uv * 0.041).xy;
+    vec3 dnRa = vec3(tRa * 2.0 - 1.0, 0.0);
     vec3 dnR = dnRa;
     // (ground lane, 2026-10-07, with the strata's gates: the wall-plane tap where it has weight — at steepW 0 the mix
     // below returned dnRa exactly)
@@ -7022,8 +7095,8 @@ void splatCompute() {
         vec2 nzv = wallCragTilt(gWallUVz, phz);
         dnRb = vec3(-gWallSigns.y * nzv.x * gWallW, gWallSigns.x * nxv.x * (1.0 - gWallW), -mix(nxv.y, nzv.y, gWallW));
       } else {
-        dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
-                               texture2D(uNrmR, gWallUVz * 0.041).xy);
+        if (pavedR) dnRb = wallNormalDelta(texture2D(uNrmD, gWallUVx * 0.041).xy, texture2D(uNrmD, gWallUVz * 0.041).xy);
+        else dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy, texture2D(uNrmR, gWallUVz * 0.041).xy);
       }
       dnR = mix(dnRa, dnRb, steepW);
     }
@@ -7288,8 +7361,14 @@ void splatCompute() {
     // their trains; a green map's dune band keeps a trace of them
     if (uReduxD.y < 0.5) { nearRip *= 0.25; megaRip *= 0.4; }
     if (rw * max(nearRip, megaRip) > 0.0005) {
-      float rTone;
-      vec2 rSlope = sandWaves(uv, wind0, 22.0, 0.6, sinuosity, vec2(16.5, 0.55), vec2(nearRip, megaRip), rTone);
+      // (264b) the crests bend along their run (n1h, 2–5 m, and the ripples' own read, 1–4 m: a crest wanders up to half
+      // a spacing within a few metres) and stand in patches — strong and faint stretches of 10–20 m (n1), and within them
+      // crests that end and begin again every metre or two (the ripples' own read). The noise texture's channels hold
+      // 4–9 (R) and 2–5 (G) cycles a tile and sit within about ±0.12 of their middle: the windows below are that narrow
+      vec4 ripN = nz(uv, 0.11, vec2(0.37, 0.71));
+      nearRip *= (0.35 + 0.65 * smoothstep(0.40, 0.60, n1)) * (0.2 + 0.8 * smoothstep(0.42, 0.58, ripN.r));
+      vec2 ripPh = vec2(sinuosity + (n1h - 0.5) * 22.0 + (ripN.g - 0.5) * 9.0, sinuosity * 0.4 + (n1h - 0.5) * 2.0);
+      vec2 rSlope = sandRipples(uv, wind0, 22.0, 0.6, ripPh, vec2(16.5, 0.55), vec2(nearRip, megaRip));
       rSlope *= rw;
       float rLen = length(rSlope);
       if (rLen > 0.12) rSlope *= 0.12 / rLen;
@@ -8430,7 +8509,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTintC = { value: new THREE.Vector3(...tintC) };
     shader.uniforms.uRoadTint = { value: new THREE.Vector3(...roadTint) };
     shader.uniforms.uSoilTint = { value: new THREE.Vector3(...(S.soilTint ?? [1, 1, 1])) };
-    shader.uniforms.uPloughLift = { value: S.ploughLift ?? 1 };
+    const ploughLift = S.ploughLift ?? 1;
+    shader.uniforms.uPloughLift = { value: typeof ploughLift === 'number' ? new THREE.Vector3(ploughLift, ploughLift, ploughLift) : new THREE.Vector3(...ploughLift) };
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)

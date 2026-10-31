@@ -59,6 +59,15 @@ function turretFront(registry: TankSpecRegistry, id: string, factor: number): vo
   }
 }
 
+/** Scales a hull's frontal main plates (the glacis, the lower front and the forward hatch faces), KE and CE. */
+function hullFront(registry: TankSpecRegistry, id: string, factor: number): void {
+  for (const plate of spec(registry, id).armor.hullPlates) {
+    if (plate.kind !== 'main' || !/glacis|lower_front|front/i.test(plate.name) || /side/i.test(plate.name)) continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 /** Gives a vehicle drawn on another's shell that shell's main plates (KE and CE, by plate name); add-on plates stay. */
 function mainArmorFrom(registry: TankSpecRegistry, id: string, shellId: string): void {
   const shell = spec(registry, shellId).armor;
@@ -88,7 +97,8 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     });
     Object.assign(tank.gun, { reloadS: 21, baseAccuracy: 0.25, aimTimeS: 1.45 });
     Object.assign(tank.gun.autoloader!, { intraClipS: 2.5, fullReloadS: 21 });
-    primary(registry, 'm1a3', { damage: 570, pen100: 930, pen1000: 846, pen2000: 760 });
+    // Main 2026-10-29: the SEPv3's M829A4 on the demonstrator's 120 mm (was 570 / 930-846-760 on the 130 mm XM1301).
+    primary(registry, 'm1a3', { damage: 540, pen100: 916, pen1000: 833, pen2000: 750 });
     Object.assign(tank.gun.shells[1], {
       dmg: 600, pen100Mm: 950, pen1000Mm: 950, reloadS: 3, count: 4,
     });
@@ -148,15 +158,17 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'chieftain_mk9', { damage: 510, pen100: 700, pen1000: 640, pen2000: 580 });
     armor(registry, 'chieftain_mk9', 1.5);
   }
-  {
-    const tank = spec(registry, 'centurion5_2');
+  // release 262: the Sho't Kal (shotKalSpecs.ts), the Mk 13 (centurion13Specs.ts) and the Strv 105 (strv105Specs.ts) are the
+  // Mk 5/2's hull, turret and L7 and share its package
+  for (const id of ['centurion5_2', 'shot_kal', 'centurion13', 'strv105']) {
+    const tank = spec(registry, id);
     Object.assign(tank, {
       hp: 1900, enginePowerHp: 850, topSpeedKmh: 48, reverseSpeedKmh: 15,
       hullTraverseDegS: 32, turretTraverseDegS: 30,
     });
     Object.assign(tank.gun, { reloadS: 6.6, baseAccuracy: 0.3, aimTimeS: 2 });
-    primary(registry, 'centurion5_2', { pen100: 570, pen1000: 525, pen2000: 480 });
-    armor(registry, 'centurion5_2', 1.12);
+    primary(registry, id, { pen100: 570, pen1000: 525, pen2000: 480 });
+    armor(registry, id, 1.12);
   }
   {
     const tank = spec(registry, 'fv4034');
@@ -187,7 +199,10 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank, { hp: 1600, enginePowerHp: 1100 });
     tank.gun.reloadS = 8.1;
     primary(registry, 'merkava1b', { damage: 490, pen100: 560, pen1000: 515, pen2000: 470 });
-    armor(registry, 'merkava1b', 0.35);
+    // 265 (FAIRNESS-265 P10): the Tier VII ceiling comes off the frontal arc only. The whole-armour x0.35 left a 16 mm
+    // roof that a head-on 12.7 mm volley defeated (roofStations); the roof, sides and rear keep their own thickness.
+    turretFront(registry, 'merkava1b', 0.35);
+    hullFront(registry, 'merkava1b', 0.35);
   }
   {
     const tank = spec(registry, 't62_1975');
@@ -201,6 +216,27 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank, { hp: 2050, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 18 });
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.3, aimTimeS: 1.8 });
     primary(registry, 'm48a5_patton', { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
+  }
+  // release 266: the M48s on the A5's castings (m48VariantSpecs.ts) share its package; each mark's own deltas follow
+  for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {
+    const tank = spec(registry, id);
+    Object.assign(tank, { hp: 2050, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 18 });
+    Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.3, aimTimeS: 1.8 });
+    primary(registry, id, { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
+  }
+  {
+    // the M48A3's 90 mm M41: the M47's round and cadence
+    const tank = spec(registry, 'm48a3_patton');
+    tank.gun.reloadS = 6.8;
+    primary(registry, 'm48a3_patton', { damage: 440, pen100: 570, pen1000: 530, pen2000: 480 });
+  }
+  {
+    // the M48 Super: the spaced armour over the turret and the skirts, a stabilised fire control, the MTU's 1,000 hp
+    // carrying the weight it adds
+    const tank = spec(registry, 'm48_super');
+    Object.assign(tank, { hp: 2150, enginePowerHp: 1050, topSpeedKmh: 50 });
+    Object.assign(tank.gun, { baseAccuracy: 0.29, aimTimeS: 1.75 });
+    armor(registry, 'm48_super', 1.25);
   }
   Object.assign(spec(registry, 'm60a1'), {
     hp: 2100, enginePowerHp: 900, topSpeedKmh: 52, reverseSpeedKmh: 18,
@@ -401,6 +437,18 @@ function cannonReload(registry: TankSpecRegistry, id: string, reloadS: number): 
 }
 
 /**
+ * 265: a build drawn on another vehicle's tech-tree node takes that vehicle's tier footing after the same-tier pass. The
+ * Leopard 1A2A1, on the 1A5's node at I, is the 1A5's spec with the DM23 round; at I hits to kill decide, so it takes the
+ * 1A5's HP and round damage, whatever applySameTierFairness gives the 1A5. Runs after that pass and before the tactical
+ * role balance (fleetRegistration.ts).
+ */
+export function applyBuildFootings(registry: TankSpecRegistry): void {
+  const sibling = spec(registry, 'leo1a5');
+  spec(registry, 'leo1a2a1').hp = sibling.hp;
+  primary(registry, 'leo1a2a1', { damage: sibling.gun.shells[0].dmg });
+}
+
+/**
  * 2026-10-25 (owner: "properly label next gen vs modern"; taxonomy.ts): the IFVs relabelled modern leave the
  * next-generation envelope for their modern Tier X peers (balanceAudit.ts). The KF41 Lynx, the CV90 Mk IV and the Type 89
  * took the Raijū's next-generation cannon package by combat-donor synchronization: they keep its rounds at the modern
@@ -429,6 +477,13 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
   primary(registry, 'bmpt_terminator2', { pen100: 125, pen1000: 112, pen2000: 100 });
   primary(registry, 'marder1a3', { pen100: 76, pen1000: 68, pen2000: 60 });
   spec(registry, 'centurion5_2').enginePowerHp = 880;
+  // the Sho't Kal's AVDS-1790-2A diesel (750 hp against the Meteor's 650): the same shown-tier step over the Mk 5/2
+  spec(registry, 'shot_kal').enginePowerHp = 960;
+  spec(registry, 'shot_kal').reverseSpeedKmh = 17;
+  // the Mk 13 keeps the Mk 5/2's Meteor and its shown-tier engine
+  spec(registry, 'centurion13').enginePowerHp = 880;
+  // the Strv 105's AVDS-1790-2DC (the Strv 104's 750 hp diesel): the Sho't Kal's step
+  spec(registry, 'strv105').enginePowerHp = 960;
   spec(registry, 'merkava2b').enginePowerHp = 1060;
   const t80bv = spec(registry, 't80bv');
   t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;
@@ -453,6 +508,9 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   IV's Soviet-pattern mantlets eased and the Leopard 2A3's trim undone; VI's Soviet-pattern line and the C1's gun
  *   face; 262's VIII levers with the Challenger 1 marks and the K1A1; the new Tier X Oplots and ZTZ-20s. Armour levers
  *   only where a donor holds the gun and hull (sourceXSecondWave).
+ * - 265 (FAIRNESS-265, the next release's new and rebuilt tanks): the CN concepts' box cheeks, the Leopard 2A5's
+ *   wedge read, the Leclerc's magazine cycle, the ZTZ-100's footing, the M1E3's lighter armour and the rebuilt
+ *   Merkavas' glacis and round.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
@@ -489,6 +547,29 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // 263: 260's turret-front trim (x0.9) is undone, the 2A3's package reads true again; on the fixed gun face it was IV's
   // weakest (0.22). 2,400 HP, the Leopard 2's weight class at IV, lifts it to 0.37
   spec(registry, 'leo2a3').hp = 2400;
+  // 262: the fourth batch's Leopard 2A3 (leopard2a3B4Specs.ts) carries the 2A3's combat data, these trims included
+  // (265, merging 263: the 2A3's 2,400 HP in place of 260's turret-front trim)
+  cannonReload(registry, 'leo2a3_b4', 6.4);
+  spec(registry, 'leo2a3_b4').hp = 2400;
+  // 264 (a balance trim, not fidelity): the 2A4-era Leopards on the release construction (leopard2A4FamilySpecs.ts)
+  // keep their old builds' plates, but the square 2A4 front stands its wide flat mantlet where the old 2A6-look builds'
+  // spaced wedges stood ahead of a narrow one (the range's aim point lands on it), and the CAN's MEXAS cheeks stand
+  // near vertical where the old build's swept back 40 degrees. VIII round robin (balance range, 120 m): leo2a4 0.497 ->
+  // 0.167, leo2a4_v 0.724 -> 0.121, leo2a4m_can 0.493 -> 0.157; these bring each back to its old standing.
+  // 265 (FAIRNESS-265 P3): the 2A4's and the CAN's lines stay as named balance trims on the 27-degree rebuild (in band at
+  // 0.61 and 0.55); at the published 2A4 turret read (590-690 mm KE) the square 2A4 falls to 0.18 at VIII, a tier
+  // question the owner sees first.
+  mantlet(registry, 'leo2a4', 2.45);
+  // 265 (P2): the Ukrainian-service 2A4 under Kontakt-1 carries the 2A4's main plates, its ERA kit its own, in place of
+  // 264's own x2.2 mantlet (0.85 -> 0.645 at VIII on the rebuild)
+  mainArmorFrom(registry, 'leo2a4_v', 'leo2a4');
+  // 265 (P13): the CAN's pair holds both of its reviewed matchups (balanceScenarios leopard-tier9-peer, v m1a1, and
+  // tier9-rifled-peers, challenger1_mk2 v it). 264's x1.33 turret front shut out the M1A1 on the 27-degree rebuild (0.917):
+  // the M1A1 pierced the trimmed cheeks 24 times in 86. x1.23-1.24 is the only window where both pass on their seeds and
+  // on 24 (0.75 and 0.75; 0.74 and 0.76). Both sit at 9 of 12 games, one game from red, so any change to the m1a1, the
+  // challenger1_mk2 or the CAN can flip one; 266 revisits the pair with the M1A1's deferred mantlet raise.
+  mantlet(registry, 'leo2a4m_can', 1.28);
+  turretFront(registry, 'leo2a4m_can', 1.24);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
@@ -530,7 +611,12 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   spec(registry, 'stb1').hp = 1850;
   cannonReload(registry, 'stb1', 6.6);
   cannonReload(registry, 'type74', 6.2);
-  primary(registry, 'ztz85_iii', { damage: 460 });
+  // 265 (FAIRNESS-265 P14, INTERIM pending the owner's re-tier): the ZTZ-85-III, a 125 mm composite-armour MBT, still
+  // topped I at 0.961 with no pair in band once the STB-1/Type 74 rebuild took its last even pairs; both sides pierce
+  // every hit, so its footing decided. The Type 74's 1,950 HP and the 105 mm peers' 430 damage bring it to 0.78 (6 of
+  // 15 in band); no stat lever brings its pairs in, so its tier is the owner's question (Main's 266 recommendation)
+  primary(registry, 'ztz85_iii', { damage: 430 });
+  spec(registry, 'ztz85_iii').hp = 1950;
   spec(registry, 'm60a3').hp = 2100;
   cannonReload(registry, 'm60a3', 6.8);
 
@@ -547,8 +633,12 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
 
   // Tier VIII (263, 262's VIII v2 on the merged fleet): the gun face decides the range, and its slope sets how strong
   // it reads. The steep faces read 1,200-1,700 mm and are trimmed; the upright ones read 350-470 mm and are raised.
-  for (const id of ['vt4a1', 'leo2_improved']) mantlet(registry, id, 0.7);
+  // 265 (FAIRNESS-265 P1, re-measured on the rebuilt 27-degree fronts): the wedge three's sloped wedge mantlet reads
+  // 1,300-1,690 mm on the range against the published Leopard 2A5-standard 850-930 mm turret front; 263's trims bring it
+  // there (leo2a4m 0.93 -> 0.53, leo2a4_otco 0.96 -> 0.59, leo2_improved 0.90 -> 0.58)
   for (const id of ['leo2a4m', 'leo2a4_otco']) mantlet(registry, id, 0.55);
+  mantlet(registry, 'leo2_improved', 0.7);
+  mantlet(registry, 'vt4a1', 0.7);
   for (const id of ['leo2_revolution', 'leo2_revolution_proto']) mantlet(registry, id, 1.7);
   mantlet(registry, 'm1a1', 1.5);
   mantlet(registry, 'm1a1ha', 2.0);
@@ -593,6 +683,32 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   mainArmorFrom(registry, 'leo2a6_ua', 'leo2a6');
   spec(registry, 'leo2a6_ua').hp = spec(registry, 'leo2a6').hp;
   cannonReload(registry, 'leo2a6_ua', spec(registry, 'leo2a6').gun.reloadS);
+
+  // 265 (FAIRNESS-265, Main's rulings 2026-10-30): the next release's new and rebuilt tanks. Mantlet raises wait for
+  // 266's per-hit gun-face split; these are reductions, non-armour steps and new concepts' faces.
+  // Tier VII: the CN concepts' flat box cheeks read ~600 mm, which every VII round pierces (the T-72B3M Hetman's sloped
+  // cheeks read ~925); x1.25 holds their rows (Zhuque 0.12 -> 0.56, Xuanwu 0.21 -> 0.55)
+  for (const id of ['t72b3_zhuque', 't72b3m_xuanwu']) turretFront(registry, id, 1.25);
+  // Tier IX: the Leopard 2A5's sloped wedge mantlet reads ~1,300 mm against the 2A5's published 850-930 mm turret front;
+  // x0.7 brings it there (0.84 -> 0.71)
+  mantlet(registry, 'leo2a5', 0.7);
+  // Tier IX and X: the Leclerc's 3-round clip was still refilling when it died (16.5 s; the real loader is rated about
+  // 12 rounds a minute); the Type 90's 9 s magazine cycle (263). Its armour reads true (602 mm against 620-700). The
+  // AMX 56 keeps its S2 donor's gun (sourceXSecondWave), so it moves with it.
+  for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'amx56']) autoloaderCycle(registry, id, 9);
+  // Tier X: the ZTZ-100, the ZTZ-20's prototype, takes the ZTZ-20 prototype's footing (263: a 430 round needed a hit more)
+  spec(registry, 'ztz100').hp = 2750;
+  primary(registry, 'ztz100', { damage: 480 });
+  // the M1E3 on the 120 mm shut out the AbramsX (nextgen-abrams-peer 0.917): the published "about 25 % lighter" comes out
+  // of passive armour, x0.75 on its 0.88 (the pair 0.75; its row 0.83 -> 0.55)
+  armor(registry, 'm1a3', 0.75);
+  // Tier III: the rebuilt Merkava 2B and 2D's sloped upper glacis read 1,055-1,850 mm on the range (the Mk 3's published
+  // glacis is 760); x0.5 brings them into the band (0.92 / 0.82 -> 0.73 / 0.67)
+  for (const id of ['merkava2b', 'merkava2d']) hullFront(registry, id, 0.5);
+  // Tier IX: the rebuilt Merkava 4B fires the Mk 4M's M338 and carries its 2,850 HP: the same 65 t hull and MG253
+  // (0.11 -> 0.25). Its flat 481 mm gun notch is a raise for 266's per-hit gun-face split.
+  primary(registry, 'merkava4b', { damage: 550, pen100: 900, pen1000: 820, pen2000: 740 });
+  spec(registry, 'merkava4b').hp = 2850;
 }
 
 /** Sets an autoloader's full magazine cycle, which the gun's headline reload repeats (fleetBalance.selftest). */

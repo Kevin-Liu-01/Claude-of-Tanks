@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m48_super": {
+      "name": "M48 Super",
+      "authority": "Main ruled on 2026-10-29 (~11:00, owner's blanket approval; DECISIONS) that a photo-built id with no oracle qualifies stage A through a per-id photo packet plus a shaded blind photo-critic PASS. M48 Super is a release-266 build on the M48A5's measured castings from photographs (the owner, 2026-10-28: \"also add the m48 super to germany\"); its blind photo critic passed at 8/10. Numerical 3D comparison remains unverified: no owner model exists for this mark.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/M48_Patton",
+        "https://wiki.warthunder.com/unit/germ_mkpz_super_m48",
+        "https://wikiwiki.jp/warthunder/M48%20Super"
+      ],
+      "widthM": 3.797,
+      "overallLengthM": 9.241,
+      "tallestM": 3.727,
+      "envelopeBasis": "As built. Width over the skirts (no published figure; the 3.75 m in the spec is over the tracks and skirts as War Thunder gives it). Length from the stern plate to the L7A3's muzzle (published 9.30 m). Tallest is the tips of the two whip antennas on the bustle, as built rather than published; the published 3.16 m height is to the cupola. docs/references/tanks/m48_super.md records the sources and the owner's photographs of the 1994 demonstrator.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/pattonCastProportions.selftest.mjs"
+    }
+  }
+}

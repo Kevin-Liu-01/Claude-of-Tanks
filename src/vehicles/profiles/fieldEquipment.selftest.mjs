@@ -90,7 +90,9 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_chal
    assert.deepEqual(weapon.scale.toArray(),Array(3).fill(.7),'requested weapon reduction');
   }
   const cage=turret.userData.modernFieldCage;
-  if(['ua_challenger2','m1a3','challenger3','challenger1_mk3'].includes(id)){
+  // (2026-10-28, m1e3-264: the m1a3, rebuilt as the M1E3, carries its own integrated flank and basket slat cage)
+  // (264: the leo2a6_ua, rebuilt on the source-measured 2A6 with its photo-sourced kit, left this loop)
+  if(['ua_challenger2','challenger3','challenger1_mk3'].includes(id)){
    assert.equal(cage.panels,6);assert.equal(cage.anchors.length,12);
    for(const anchor of cage.anchors){
     const [x,y,z]=anchor.map(v=>v*(VEHICLE_SIZE_FACTORS[id]??1));

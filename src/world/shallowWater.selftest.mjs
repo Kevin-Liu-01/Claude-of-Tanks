@@ -287,6 +287,9 @@ assert.match(shader.fragmentShader, /\* smoothstep\(-0\.1 \* hl, 0\.7 \* hl, alo
   'the contact foam is a moving hull\'s bow and fore flanks, never a frame round a hull at rest');
 assert.doesNotMatch(shader.fragmentShader, /step\(0\.001, behindStern\)/, 'no wave or wash cut square at the stern line');
 assert.match(shader.fragmentShader, /float sternIn = smoothstep\(0\.0, 2\.2, behindStern\);/, 'they rise behind the stern over a couple of metres');
+assert.match(shader.fragmentShader, /float lane = exp\(-acrossN \* acrossN \* 1\.6\) \* smoothstep\(0\.0, 2\.2, behindStern - 1\.4 \* acrossN \* acrossN\);/,
+  'the wash lane is soft across and rises from its middle out: no pale box with straight sides and front behind the hull');
+assert.doesNotMatch(shader.fragmentShader, /smoothstep\(laneHalf, laneHalf \+ 1\.2, abs\(across\)\)/, 'no plateau lane with straight sides');
 {
   // the same terms in JS, for a T-84U's plan (half 3.65 x 2.13 m): a metre off its side and a metre off its corner, along the
   // diagonal, stand at the same distance from the plan — a ring there traced the rectangle — and at different distances

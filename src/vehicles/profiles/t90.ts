@@ -2488,9 +2488,11 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   P.add('turretDark', box(0.30, 0.014, 0.07), -0.90, 0.627, -0.59);
   // Two compact forward heads complete the hierarchy without rebuilding a
   // continuous roof wall; both feet penetrate the long carrier.
-  P.add('turret', box(0.22, 0.26, 0.30), -0.76, 0.65, 0.76);
+  // 264 (Main, false roofs): their feet stopped at 0.52-0.53 over a 28 cm well down to the cheek course, seen from the
+  // front-left; both bodies now stand on the turret at 0.24 (tops 0.78 and 0.75 kept).
+  P.add('turret', box(0.22, 0.78 - 0.24, 0.30), -0.76, (0.78 + 0.24) / 2, 0.76);
   P.add('turretDark', box(0.19, 0.014, 0.26), -0.76, 0.787, 0.76);
-  P.add('turret', box(0.18, 0.22, 0.24), -0.75, 0.64, 1.02);
+  P.add('turret', box(0.18, 0.75 - 0.24, 0.24), -0.75, (0.75 + 0.24) / 2, 1.02);
   P.add('turretDark', box(0.15, 0.014, 0.20), -0.75, 0.757, 1.02);
   P.add('turretGlass', box(0.14, 0.09, 0.016), -0.75, 0.65, 1.148);
   // rTAIL r13: center-right sight-cluster deck — ref FRONT carries a

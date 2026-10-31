@@ -248,8 +248,12 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
   let frame = new Float64Array(0), out = new Float64Array(0);
   const views = () => {
     if (frame.buffer === w.memory.buffer) return;
-    frame = new Float64Array(w.memory.buffer, w.sampling_frame_ptr(), FRAME_LEN);
-    out = new Float64Array(w.memory.buffer, w.sampling_out_ptr(), OUT_LEN);
+    // (fix-detached-buffer-265) the pointers before the buffer: their first call allocates the sampler (cot-sim-wasm
+    // sampling()), and an allocation that grows the memory detaches a buffer read before it (live 264c on Desert: the
+    // page's first step threw "Cannot perform Construct on a detached ArrayBuffer")
+    const framePtr = w.sampling_frame_ptr(), outPtr = w.sampling_out_ptr();
+    frame = new Float64Array(w.memory.buffer, framePtr, FRAME_LEN);
+    out = new Float64Array(w.memory.buffer, outPtr, OUT_LEN);
   };
   const copy = (to: Float64Array, from: number, count: number) => { for (let k = 0; k < count; k++) to[k] = out[from + k]; };
   return {
@@ -261,7 +265,11 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
     beginHull(x, z, bellyY, pose) {
       count = w.support_query(x, z);
-      if (flags.buffer !== w.memory.buffer) flags = new Uint8Array(w.memory.buffer, w.record_flags_ptr(), records.length);
+      if (flags.buffer !== w.memory.buffer) {
+        // (the pointer before the buffer, as views())
+        const flagsAt = w.record_flags_ptr();
+        flags = new Uint8Array(w.memory.buffer, flagsAt, records.length);
+      }
       // (the candidates' buffer moves when it grows, and the memory when the kernel allocates: the view follows both)
       const at = w.support_candidates_ptr();
       if (ids.buffer !== w.memory.buffer || ids.byteOffset !== at || ids.length < count) ids = new Uint32Array(w.memory.buffer, at, count);

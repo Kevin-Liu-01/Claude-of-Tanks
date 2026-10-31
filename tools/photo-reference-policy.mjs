@@ -1,46 +1,40 @@
 // Explicit photographic targets only. Missing/failed 3D references never opt in.
 import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
-const IFVS='docs/references/photos/ifvs-20260925.json';
-const T64S='docs/references/photos/t64-20261031.json';
-/**
- * Each photo-class id's packet (docs/references/photos) and the native fixture its packet must name. A packet holds
- * exactly the ids this table assigns it. Stage A takes the photo route only for an id with no registered 3D oracle: a
- * registered oracle always measures and the packet never overrides it (stageARoute; geometry-gate refuses the pair). A
- * lane adds its ids' rows here with their packet (Main 2026-10-31: the photo route ends per-batch exemptions).
- */
-export const PHOTO_REFERENCES=Object.freeze({
-  marder2:Object.freeze({packet:IFVS,test:'src/vehicles/profiles/marder2.selftest.mjs'}),
-  cv9040c:Object.freeze({packet:IFVS,test:'src/vehicles/ifvReplicas.selftest.mjs'}),
-  dardo:Object.freeze({packet:IFVS,test:'src/vehicles/europePhotoIfvs.selftest.mjs'}),
-  lrmv_lynx:Object.freeze({packet:IFVS,test:'src/vehicles/europePhotoIfvs.selftest.mjs'}),
-  borsuk:Object.freeze({packet:IFVS,test:'src/vehicles/europePhotoIfvs.selftest.mjs'}),
-  amx10p:Object.freeze({packet:IFVS,test:'src/vehicles/amx10p.selftest.mjs'}),
-  amx10p_25:Object.freeze({packet:IFVS,test:'src/vehicles/amx10p.selftest.mjs'}),
+// Each packet is an approved, dated document under docs/references/photos that holds exactly the ids registered to it
+// here. Each of its targets names the fixture test that proves it: read from the packet, never inferred from the id.
+const PHOTO_REFERENCE_PACKETS=Object.freeze({
+  'docs/references/photos/ifvs-20260925.json':Object.freeze(['marder2','cv9040c','dardo','lrmv_lynx','borsuk','amx10p','amx10p_25']),
+  // 265 (Main 2026-10-28, option (a)): the ground-up ZTZ-85-III of 263, whose registered print was fused and ~9% tall
+  'docs/references/photos/ztz85-iii-20261028.json':Object.freeze(['ztz85_iii']),
   // 266 (Main 2026-10-31): the true T-64s on their published dimensions; the prints they were measured against (the
   // T-64BV1 and Donbas prints, and the BM1M print the build departs from) are deregistered
-  t64bm1m:Object.freeze({packet:T64S,test:'src/vehicles/profiles/t64Foundation.selftest.mjs'}),
-  t64bv:Object.freeze({packet:T64S,test:'src/vehicles/profiles/t64Foundation.selftest.mjs'}),
-  t64b1v_2022:Object.freeze({packet:T64S,test:'src/vehicles/profiles/t64Foundation.selftest.mjs'}),
+  'docs/references/photos/t64-20261031.json':Object.freeze(['t64bm1m','t64bv','t64b1v_2022']),
 });
-export const PHOTO_REFERENCE_IDS=Object.freeze(Object.keys(PHOTO_REFERENCES));
-export function isPhotoReference(id){return Object.hasOwn(PHOTO_REFERENCES,id);}
-export function photoReferencePacket(id){return isPhotoReference(id)?PHOTO_REFERENCES[id].packet:null;}
+export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
+/** The packet holding an id's photographic target; null for an id with none. */
+export function photoReferencePacket(id){
+  return Object.keys(PHOTO_REFERENCE_PACKETS).find(file=>PHOTO_REFERENCE_PACKETS[file].includes(id))??null;
+}
+export function isPhotoReference(id){return PHOTO_REFERENCE_IDS.includes(id);}
+// A fixture under src/vehicles that npm test runs (photo-reference-record.mjs also requires it to exist and name the id)
+const PHOTO_FIXTURE=/^src\/vehicles\/[A-Za-z0-9_/]+\.selftest\.mjs$/;
 export function photoTarget(id,packet){
-  if(!isPhotoReference(id)||packet?.schemaVersion!==1
+  const packetPath=photoReferencePacket(id),ids=packetPath?PHOTO_REFERENCE_PACKETS[packetPath]:[];
+  if(!packetPath||packet?.schemaVersion!==1
     ||packet.comparisonPurpose!=='photographic-reference'
-    ||packet.numerical3DComparison!=='unverified'||packet.dimensionToleranceFraction!==.03)return null;
+    ||packet.numerical3DComparison!=='unverified'||packet.dimensionToleranceFraction!==.03
+    ||Object.keys(packet.targets??{}).length!==ids.length)return null;
   // The packet keeps the ids it was written under (docs/references, unstamped = schema 1): read its targets in
-  // today's ids (tankIdAliases.ts, SSOT 2.19). It holds exactly its members, never a transplanted target.
-  const members=PHOTO_REFERENCE_IDS.filter(key=>PHOTO_REFERENCES[key].packet===PHOTO_REFERENCES[id].packet);
+  // today's ids (tankIdAliases.ts, SSOT 2.19).
   const targets=Object.fromEntries(Object.entries(packet.targets??{}).map(([key,value])=>[resolveTankId(key,packet.tankIdSchema),value]));
-  if(Object.keys(targets).length!==members.length||!members.every(key=>Object.hasOwn(targets,key)))return null;
+  if(!ids.every(key=>Object.hasOwn(targets,key)))return null;
   const target=targets[id];
   if(!target.authority||!target.envelopeBasis||!target.sources?.length
     ||!target.sources.every(url=>typeof url==='string'&&url.startsWith('https://'))
     ||!['widthM','overallLengthM','tallestM','caliberMm','crew'].every(k=>Number.isFinite(target[k])&&target[k]>0)
     ||!['launcherTubes','roofMachineGuns'].every(k=>Number.isInteger(target[k])&&target[k]>=0)
-    ||typeof target.unmannedTurret!=='boolean')return null;
-  return target.test===PHOTO_REFERENCES[id].test?target:null;
+    ||typeof target.unmannedTurret!=='boolean'||typeof target.test!=='string'||!PHOTO_FIXTURE.test(target.test))return null;
+  return target;
 }
 /**
  * Stage A's route (Main 2026-10-31): a registered 3D oracle always measures (a packet never overrides it), an owner
@@ -88,11 +82,10 @@ export function photoReceiptPassed(id,report,packet,packetHash,startedAt){
       row.quality===quality&&photoDimensionsPassed(row,target))));
 }
 export function photoEquipmentVerdict(id,census,configuration,receipt){
-  const packetPath=photoReferencePacket(id);
   const valid=isPhotoReference(id)&&configuration?.id===id&&configuration?.comparisonPurpose==='photographic-reference'
-    &&receipt?.id===id&&receipt?.verified===true&&receipt.path===packetPath
+    &&receipt?.id===id&&receipt?.verified===true&&receipt.path===photoReferencePacket(id)
     &&/^[a-f0-9]{64}$/.test(receipt.sha256??'')&&configuration.packetSha256===receipt.sha256
     &&Number.isInteger(configuration.roofMachineGuns)&&configuration.roofMachineGuns>=0;
   return {passed:Boolean(valid&&census?.invalidWeaponMarkers===0&&census.mg===configuration.roofMachineGuns),
-    required:configuration?.roofMachineGuns,observed:census?.mg,authority:packetPath};
+    required:configuration?.roofMachineGuns,observed:census?.mg,authority:photoReferencePacket(id)};
 }

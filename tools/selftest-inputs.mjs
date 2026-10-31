@@ -6,7 +6,7 @@ import ts from 'typescript-compiler-api';
 // the list to `git ls-tree`; 266: site/, api/ and crates/ came after it, so 'site/home.html' named no input) and the
 // untracked roots receipts read (shots/, tests/, node_modules/).
 export const SELFTEST_ROOT_DIRS = Object.freeze(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'site', 'api', 'crates',
-  'cloudflare', 'LICENSES', '.github', '.agents', '.agent-docs', '.cargo', 'shots', 'tests', 'node_modules']);
+  'release', 'cloudflare', 'LICENSES', '.github', '.agents', '.agent-docs', '.cargo', 'shots', 'tests', 'node_modules']);
 const FILE_LITERAL = new RegExp(`^(?:\\.{1,2}/|/?(?:${SELFTEST_ROOT_DIRS.map(name => name.replace(/\./g, '\\.')).join('|')})/)`
   + '|^[\\w.-]+\\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js)$');
 const URL_PATH = /\/(?:src|tools|public|docs)\/[\w./-]+\.[\w]+/g;
