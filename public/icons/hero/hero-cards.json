@@ -6,6 +6,7 @@
  "flagPolicyKey": "2f2e1eaf451f",
  "flags": {
   "au": {"in":["cbb2206c5e59","2f2e1eaf451f"],"sha":["059b9dbeeacb","4cd937623118","64c5496afb9f"],"bytes":[4122,6690,10602]},
+  "br": {"in":["b0a912826c3f","2f2e1eaf451f"],"sha":["9395d17301ac","805035a80cc5","c0b688684ed3"],"bytes":[3661,6330,9780]},
   "cn": {"in":["981da9bdf82d","2f2e1eaf451f"],"sha":["d41c25a4ed35","5d789937d018","acfa9b6dbfd3"],"bytes":[2403,3908,7464]},
   "de": {"in":["efd480af5a15","2f2e1eaf451f"],"sha":["274f075b8ed7","8840c665219f","5088fbc7bd51"],"bytes":[1900,3100,5136]},
   "dk": {"in":["d2847c0bd7a1","2f2e1eaf451f"],"sha":["57355fb95efd","759ee01ec098","311e79221790"],"bytes":[2228,3661,6782]},
