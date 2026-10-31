@@ -1225,32 +1225,32 @@
    "uncovered": [],
    "hostSweep": []
   },
-  "leo1a3dk": {
-   "inputHash": "81c247bc5d86e123",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
   "leo1a2a1": {
    "inputHash": "8ba80ed8c4a10f8a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
+  "leo1a3dk": {
+   "inputHash": "f606820b03f90fff",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "leo1a5": {
-   "inputHash": "c01ae91da7225165",
+   "inputHash": "c8649e2f77a9e01e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo1a5dk": {
-   "inputHash": "d5d0fe53497e1d90",
+   "inputHash": "b45fbb21e4e412cc",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo1a5dk1": {
-   "inputHash": "be526cac2541609f",
+   "inputHash": "dd192ca7c71f2aa9",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2304,6 +2304,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "olifant_mk2": {
+   "inputHash": "1b0ff0caefe1214f",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "osorio_p1": {
    "inputHash": "cb27cf2d14ad4dbb",
    "runs": [],
@@ -2312,12 +2318,6 @@
   },
   "osorio_p2": {
    "inputHash": "82d660ae731eb57d",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
-  "olifant_mk2": {
-   "inputHash": "1b0ff0caefe1214f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
