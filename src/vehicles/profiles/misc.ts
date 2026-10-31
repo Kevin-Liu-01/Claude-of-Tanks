@@ -886,7 +886,7 @@ withBuildSteps(buildAriete, buildArieteSteps);
 
 function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' = 's2'): TankProfileBuild {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
+    fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan,
     shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -1514,9 +1514,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     P.add('turretDark', box(0.05, 0.05, 0.05), 0.50, 0.695, 0.24);               // wiper motor pot
     // roof-edge chamfer AFT SECTION (unchanged geometry aft of the high
     // riser; ref front tops 2.35 @ x1.0 -> 2.22 @ x1.40 still owned here)
+    // 267: the outer bottom edge sits at 0.50 (it was 0.56, 5 mm under the right side's 0.565 outer top, which folded the
+    // rear end face into a reversed sliver; the old GALIX wedge hid it, the flush housing behind it does not)
     for (const s of [-1, 1]) {
       P.add('turret', slab(
-        [s * 0.98, 0.56, -0.02], [s * 1.40, 0.56, -0.06], [s * 1.40, 0.56, -1.30], [s * 0.98, 0.56, -1.30],
+        [s * 0.98, 0.56, -0.02], [s * 1.40, 0.50, -0.06], [s * 1.40, 0.50, -1.30], [s * 0.98, 0.56, -1.30],
         [s * 0.98, LH, -0.02], [s * 1.36, s > 0 ? 0.565 : 0.615, -0.06], [s * 1.36, s > 0 ? 0.565 : 0.615, -1.30], [s * 0.98, LH, -1.30]));
     }
   };
@@ -2199,7 +2201,7 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
 // pitchable gun-owned package.
 function buildAMX56(P: MiscBuilderPort): void {
   buildLeclerc(P, 'leclerc_s1');
-  const { box, cylY, cylZ, torus, periscope } = KIT;
+  const { box, cylY, cylZ, periscope } = KIT;
   const slab = orientedSlab;
 
   // Glacis ERA: broken rows follow the raked plate; the central driver path

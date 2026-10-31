@@ -3457,8 +3457,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
   // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
   // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  // 267 (both photo critics, round 3, S1: "a stack of tan boxes perched on the extreme rear corner of the deck"): the
+  // rear-deck corner bin stays off too.
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
     && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && !(row.kit === 'bin' && row.slot[0] === 'rearDeck')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
