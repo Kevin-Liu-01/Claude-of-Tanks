@@ -26,7 +26,7 @@ import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankId
   fleetPartition, laneReadOf, receiptRunTimes, roman, TOOLS_ROOT, withBaseSources } from './test-diff.mjs';
 import { simulateWall } from './test-audit.mjs';
 
-const READS = new Set(['named', 'scan']);
+const READS = new Set(['named', 'scan', 'observed']);
 /** An entry page's HTML: it counts only for a receipt that names the page itself. */
 export const ENTRY_HTML = /^[^/]+\.html$/;
 /** Whether `file` reads `path` on purpose: any path but an entry page, or a page the receipt's own source names. */

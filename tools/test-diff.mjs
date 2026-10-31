@@ -222,6 +222,9 @@ export const rel = (root, path) => relative(root, path);
  * imports and reads stay outside the receipt's closure (tank-id-rekey-assets.selftest runs tank-id-rekey-assets.mjs
  * --check, which reads public/icons/tank-assets.json: the centurion-family-262 proof's red lane mode first missed). The
  * cache's run set (runSetOf: imports plus the modules a spawning file names) supplies the tools; no second resolver.
+ * Last, 'observed': a path the receipt's latest PASS on this machine read, or a file of a directory it listed
+ * (tools/selftest-observe.mjs). That covers paths computed from data, which no closure can name (266: the boot-closure
+ * receipts walk src/main.ts's imports; the page receipts read site/ by slug).
  */
 export function laneReadOf(cache, readOne, root) {
   const tools = new Map();
@@ -244,6 +247,9 @@ export function laneReadOf(cache, readOne, root) {
       const through = readOne(tool, path);
       if (through === 'named' || through === 'scan') return through;
     }
+    // what its latest PASS on this machine read or listed (tools/selftest-observe.mjs): a path computed from data
+    const observed = cache.observedOf?.(file);
+    if (observed?.reads.has(path) || observed?.lists.has(dirname(path))) return 'observed';
     return read;
   };
 }
