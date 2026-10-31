@@ -3945,6 +3945,9 @@ export function makeBurnUniforms(seed: number) {
  */
 export const ARMOR_PAINT_ZONE_TEXELS = 8;
 export const ARMOR_PAINT_ZONE_EDGES = 6;
+/** (267) Zone sets after the footprints, a texel each (up to four zones; -1 unused): a panel split between them names its
+ * set. */
+export const ARMOR_PAINT_SET_SLOTS = 64;
 
 /**
  * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, the tyres' rubber,
@@ -4025,6 +4028,9 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  * The paint, per fragment (the notes in order of the code, kept out of the shader string, which ships in the boot chunk):
  * - (263) a baked panel (game/armorPaintPanels.ts) takes its cluster's one zone, so a border falls on a part's edge;
  *   below 0 a bare panel; 0 the per-point score. One value a triangle, so the branch is the same across a pixel quad.
+ *   (267) A baked panel only reads its colour: none of the per-point terms below runs for it. A panel the bake found split
+ *   between up to four zones (below ARMOR_PAINT_PANEL_BARE: its set, after the footprints in the table) keeps the
+ *   per-point score and its borders, scoring those zones alone instead of every zone of its frame, in their frame.
  * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
  * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
  *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
@@ -4053,95 +4059,109 @@ float apLine = 0.0;
 float apFlat = 0.0;
 int apBaked = int( floor( vApZone + 0.5 ) );
 bool apPanel = apBaked > 0;
-if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
-  vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
-  int apHullN = int( uApCounts.x + 0.5 );
-  int apZoneN = int( uApCounts.x + uApCounts.y + 0.5 );
-  int apFootN = int( uApCounts.z + 0.5 );
-  int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
-  bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
-  bool apOverFoot = false;
-  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
-    vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
-    vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-    if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
-  }
-  apTurret = apTurret || apOverFoot;
-  mat4 apInv = apTurret ? uApTurInv : uApHullInv;
-  vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
-  vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
-  vec3 apNs = mat3( apInv ) * vApN;
-  vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
-  if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
-  vec3 apH = max( apTurret ? uApTurH : uApHullH, vec3( 0.05 ) );
-  vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
-  vec3 apBox = apQ * apQ * apQ / apH;
-  apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
-  vec3 apLean = apN + 3.0 * apBox;
-  apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
-  vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
-  bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
-    || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
-    || !apTurret && uApHullH.y > 0.0
-      && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
-  int apFrom = apTurret ? apHullN : 0;
-  int apTo = apGear || apPanel ? apFrom : apTurret ? apZoneN : apHullN;
-  float apBest = -1e9;
-  float apSecond = -1e9;
-  int apBestK = -1;
-  int apSecondK = -1;
-  for ( int k = apFrom; k < apTo; k++ ) {
-    vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
-    float apFacing = dot( apPl.xyz, apN );
-    if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
-    float apGapOut = 0.0;
-    for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
-      vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
-      apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
+if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
+  int apZone = apBaked - 1;
+  int apOther = -1;
+  float apPx = 1e3;
+  float apBlendPx = 1e3;
+  if ( !apPanel ) {
+    int apHullN = int( uApCounts.x + 0.5 );
+    int apZoneN = int( uApCounts.x + uApCounts.y + 0.5 );
+    int apFootN = int( uApCounts.z + 0.5 );
+    int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
+    bool apSetted = apBaked < ${ARMOR_PAINT_PANEL_BARE};
+    vec4 apSet = apSetted ? texelFetch( uApZones, ivec2( apFoot0 + 2 * apFootN - apBaked - 2, 0 ), 0 ) : vec4( -1.0 );
+    vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
+    bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
+    bool apOverFoot = false;
+    for ( int f = 0; f < apFootN; f++ ) {
+      vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+      vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+      if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
     }
-    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
-      - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
-    if ( apScore > apBest ) {
-      apSecond = apBest;
-      apSecondK = apBestK;
-      apBest = apScore;
-      apBestK = k;
-    } else if ( apScore > apSecond ) {
-      apSecond = apScore;
-      apSecondK = k;
+    apTurret = apSetted ? int( apSet.x + 0.5 ) >= apHullN : apTurret || apOverFoot;
+    mat4 apInv = apTurret ? uApTurInv : uApHullInv;
+    vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
+    vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
+    vec3 apNs = mat3( apInv ) * vApN;
+    vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
+    if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
+    vec3 apH = max( apTurret ? uApTurH : uApHullH, vec3( 0.05 ) );
+    vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
+    vec3 apBox = apQ * apQ * apQ / apH;
+    apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
+    vec3 apLean = apN + 3.0 * apBox;
+    apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
+    vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
+    bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
+      || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
+      || !apTurret && uApHullH.y > 0.0
+        && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
+    int apFrom = apTurret ? apHullN : 0;
+    int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
+    int apCount = apGear ? 0 : apSetted ? 4 : apTo - apFrom;
+    float apBest = -1e9;
+    float apSecond = -1e9;
+    int apBestK = -1;
+    int apSecondK = -1;
+    for ( int i = 0; i < apCount; i++ ) {
+      int k = apSetted ? int( floor( ( i == 0 ? apSet.x : i == 1 ? apSet.y : i == 2 ? apSet.z : apSet.w ) + 0.5 ) ) : apFrom + i;
+      if ( k < 0 ) continue;
+      vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+      float apFacing = dot( apPl.xyz, apN );
+      if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+      float apGapOut = 0.0;
+      for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+        vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+        apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
+      }
+      float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
+        - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
+      if ( apScore > apBest ) {
+        apSecond = apBest;
+        apSecondK = apBestK;
+        apBest = apScore;
+        apBestK = k;
+      } else if ( apScore > apSecond ) {
+        apSecond = apScore;
+        apSecondK = k;
+      }
     }
+    int apFootK = -1;
+    float apFootIn = -1e3;
+    for ( int f = 0; f < apFootN; f++ ) {
+      vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+      int apFk = int( apFa.w + 0.5 );
+      if ( apFk < apFrom || apFk >= apTo ) continue;
+      vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+      vec3 apIn3 = min( apP - apFa.xyz, apFb - apP );
+      float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
+      if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
+    }
+    bool apForced = apFootK >= 0 && apFootIn > 0.0;
+    apZone = apForced ? apFootK : apBestK;
+    float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
+    float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
+    float apMarginW = fwidth( apMargin );
+    float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
+    float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
+    apOther = apForced ? apBestK : apSecondK;
+    apPx = apForced ? 1e3 : apMarginPx;
+    if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
+    if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
   }
-  int apFootK = -1;
-  float apFootIn = -1e3;
-  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
-    vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
-    int apFk = int( apFa.w + 0.5 );
-    if ( apFk < apFrom || apFk >= apTo ) continue;
-    vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-    vec3 apIn3 = min( apP - apFa.xyz, apFb - apP );
-    float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
-    if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
-  }
-  bool apForced = apPanel || apFootK >= 0 && apFootIn > 0.0;
-  int apZone = apPanel ? apBaked - 1 : apForced ? apFootK : apBestK;
-  float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
-  float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
-  float apMarginW = fwidth( apMargin );
-  float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
-  float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
   if ( apZone >= 0 ) {
     vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
     vec3 apOwn = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
     apColor = apOwn;
-    int apOther = apForced ? apBestK : apSecondK;
-    float apPx = apForced ? 1e3 : apMarginPx;
-    if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
-    vec4 apNext = texelFetch( uApZones, ivec2( max( apOther, 0 ) * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
-    vec3 apNextC = apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 );
-    if ( !apForced && apSecondK >= 0 && apMarginPx < 1.5 ) apColor = mix( apNextC, apOwn, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
+    if ( apOther >= 0 ) {
+      vec4 apNext = texelFetch( uApZones, ivec2( apOther * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
+      vec3 apNextC = apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 );
+      if ( apBlendPx < 1.5 ) apColor = mix( apNextC, apOwn, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apBlendPx ) );
+      apLine = ( 1.0 - smoothstep( 0.6, 1.8, apPx ) ) * clamp( 6.0 * distance( apNextC, apOwn ), 0.0, 1.0 );
+    }
     apFlat = step( 3.5, uApPaint );
     apMix = 0.45;
-    apLine = apOther >= 0 && !apPanel ? ( 1.0 - smoothstep( 0.6, 1.8, apPx ) ) * clamp( 6.0 * distance( apNextC, apOwn ), 0.0, 1.0 ) : 0.0;
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.1 ), 0.75 * ( 1.0 - apFlat ) );
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );

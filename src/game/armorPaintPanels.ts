@@ -11,13 +11,22 @@
 // or external part outside the cells (a skirt, a box, the hull's rubber) takes the zone of the first main plate behind
 // it, from the authority's own ray inward along its normal (264, Main): the shell meets that plate through it.
 //
+// (267; the owner, 2026-10-31: "not highlight stuff that wouldnt actually lead to the enemy tank taking damage like drone
+// cages, props, machine guns etc.") The paint shows only what a round's damage reads. Gear stays bare whole: equipment
+// (sights, launchers, roof stations), machine guns and their ammunition, the running gear, a camouflage suit. A part
+// other than armour (the hull's and the turret's own, and its add-on ERA and applique) is armour only where it lies on
+// what the authority traces: within FLUSH_M of the cells (a bolt, a boot, a link of track) or within LAYER_REACH_M of a
+// plate the sim traces a round through (ERA, a spaced skirt or screen, external armour; never a drone screen, which the
+// sim traces for drones only), a compact solid touching such a plate being that layer whole. A cage, a stowage box, a
+// rack, a fender or a net standing off it is bare (a solid mostly off, whole), as it is air to the round.
+//
 // Baked in slices once the overlay primes a vehicle (the battle visual streamer's staging, else the overlay's own frames),
 // once per geometry: copies of a spec share it. Each geometry is judged at one pose, its frames taken as it starts. Every
 // painted geometry gets the attribute (zeros where it bakes nothing), so the draws a far LOD merges keep one vertex
 // layout; a draw without it reads 0 (the hook's defaultAttributeValues).
 
 import * as THREE from 'three';
-import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type TankArmorPose } from '../sim/armor.ts';
+import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type ArmorPlate, type TankArmorPose } from '../sim/armor.ts';
 import { zoneAt, type ZonePlate } from '../sim/armorZones.ts';
 import { gunFaceSplitPlate } from '../sim/gunFaceSplit.ts';
 import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
@@ -37,6 +46,9 @@ export interface PanelTemplate {
   readonly turretHalf: THREE.Vector3;
   readonly barrelFrom: number;
   readonly barrelRadius: number;
+  /** (267) The index of a set of up to four zones in the template's table (-1: it is full): a panel split between them
+   * names it. */
+  zoneSet?(zones: readonly number[]): number;
 }
 
 /** (264) The authority the bake asks what lies behind a spaced or external part: the vehicle's pose as the sim reads it. */
@@ -79,6 +91,12 @@ export interface PanelBakeStats {
   /** (264) Triangles of spaced or external parts that took the plate behind them, and the authority rays cast. */
   standoff: number;
   standoffRays: number;
+  /** (267) Triangles left bare as gear (by role), and as parts standing off the armour; per-point ones naming a zone set;
+   * far-LOD stand-ins given their sources' values. */
+  gear: number;
+  offArmour: number;
+  sets: number;
+  farStands: number;
   /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
   wholeParts: number;
   creaseParts: number;
@@ -225,6 +243,23 @@ function insideCell(cell: ArmorCollisionCell, p: THREE.Vector3): boolean {
   return true;
 }
 
+/** (267) How far a frame-local point stands outside the union of convex cells (<= 0 inside): per cell its farthest face
+ * plane (a lower bound of the distance outside it), the least over the cells; a cell whose bounds lie farther than
+ * FLUSH_M is passed over. */
+function cellGap(cells: readonly ArmorCollisionCell[], p: THREE.Vector3): number {
+  let best = Infinity;
+  for (const cell of cells) {
+    const dx = Math.max(cell.min[0] - p.x, 0, p.x - cell.max[0]);
+    const dy = Math.max(cell.min[1] - p.y, 0, p.y - cell.max[1]);
+    const dz = Math.max(cell.min[2] - p.z, 0, p.z - cell.max[2]);
+    if (dx * dx + dy * dy + dz * dz > FLUSH_M * FLUSH_M) continue;
+    let d = -Infinity;
+    for (const face of cell.faces) d = Math.max(d, face.normal[0] * p.x + face.normal[1] * p.y + face.normal[2] * p.z + face.constant);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
 /** The face a segment (o + d·t, t in [0, 1]) enters a convex cell by, and where (sim/armor.ts intersectConvexCell). */
 let _entryFace: ArmorCollisionCell['faces'][number] | null = null;
 function enterCell(cell: ArmorCollisionCell, o: THREE.Vector3, d: THREE.Vector3): number {
@@ -287,6 +322,113 @@ const STANDOFF_RAY_COST = 12;
  * behind its largest face; a larger one (a merged side's whole assembly) answers face by face. */
 const SOLID_PART_M = 2;
 
+/** (267) A part standing farther than FLUSH_M (m) off the cells, and farther than LAYER_REACH_M off every layer plate (a
+ * skirt's or an ERA tile's visible face stands up to that far off the plate the sim traces for it), is bare. */
+const FLUSH_M = 0.08;
+const LAYER_REACH_M = 0.15;
+/** behindZone's verdict besides a zone: the part is no standoff (its own vote decides). */
+const BEHIND_VOTE = -1;
+/** (267) Where a judged part stands: on the armour (the cells), at a layer plate, or off both. */
+const ON_ARMOUR = 0;
+const AT_LAYER = 1;
+const OFF_ARMOUR = 2;
+/** A camouflage suit's draws (ghillieSuit.ts: `<id>_ghillie_<owner>_net|leaves`). */
+const SUIT_MESH = /_ghillie_(?:hull|turret|gun)_(?:net|leaves)$/;
+
+/** (267) A draw of gear no round's damage reads: equipment (combatHitboxRole), a machine gun or its ammunition, the
+ * running gear, a suit. */
+function gearDraw(mesh: THREE.Object3D): boolean {
+  if (SUIT_MESH.test(mesh.name)) return true;
+  for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
+    const data = node.userData;
+    if (data.appearanceRole === 'machineGun' || data.appearanceRole === 'ammoBox' || data.runningGear === true) return true;
+    if (data.combatHitboxRole) return data.combatHitboxRole === 'equipment' && node.name !== 'turretPermanentMarkingSurface';
+  }
+  return false;
+}
+/** (267) Whether a draw is armour: the hull's or the turret's own (the cells are hulled from it) or its add-on armour (ERA,
+ * applique: what stands in front of the cells takes the plate behind it, as 264 has it). Never judged standing off. */
+function armourDraw(mesh: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
+    const role = node.userData.combatHitboxRole;
+    if (role) return role === 'armor' || role === 'externalArmor';
+  }
+  return false;
+}
+
+/** (267) The plates besides the cells a round meets (ERA, spaced, external), per frame, frame-local: fan triangles (nine
+ * numbers each) and their box grown by LAYER_REACH_M. */
+interface LayerPlates { readonly tris: Float64Array; readonly boxes: Float64Array; readonly count: number }
+const layersOf = new WeakMap<object, readonly [LayerPlates, LayerPlates, LayerPlates]>();
+function layerPlatesOf(model: ArmorModel): readonly [LayerPlates, LayerPlates, LayerPlates] {
+  let layers = layersOf.get(model);
+  if (layers) return layers;
+  const lists: number[][][][] = [[], [], []];
+  const take = (plates: readonly ArmorPlate[] | undefined, frame: number): void => {
+    for (const plate of plates ?? []) {
+      if ((plate.kind || 'main') === 'main' || !(plate.verts?.length >= 3)) continue;
+      lists[plate.gunFollow ? 2 : frame].push(plate.verts as unknown as number[][]);
+    }
+  };
+  take(model.hullPlates, 0);
+  take(model.turretPlates, 1);
+  layers = lists.map((plates) => {
+    const triangles = plates.reduce((sum, verts) => sum + verts.length - 2, 0);
+    const tris = new Float64Array(triangles * 9), boxes = new Float64Array(triangles * 6);
+    let at = 0;
+    for (const verts of plates) {
+      for (let k = 1; k + 1 < verts.length; k++, at++) {
+        const corners = [verts[0], verts[k], verts[k + 1]];
+        for (let axis = 0; axis < 3; axis++) {
+          let lo = Infinity, hi = -Infinity;
+          for (let c = 0; c < 3; c++) {
+            tris[at * 9 + c * 3 + axis] = corners[c][axis];
+            lo = Math.min(lo, corners[c][axis]); hi = Math.max(hi, corners[c][axis]);
+          }
+          boxes[at * 6 + axis] = lo - LAYER_REACH_M; boxes[at * 6 + 3 + axis] = hi + LAYER_REACH_M;
+        }
+      }
+    }
+    return { tris, boxes, count: triangles };
+  }) as unknown as readonly [LayerPlates, LayerPlates, LayerPlates];
+  layersOf.set(model, layers);
+  return layers;
+}
+/** The squared distance from a point to one of a list's triangles (Ericson, Real-Time Collision Detection 5.1.5). */
+function triangleDistanceSq(tris: Float64Array, k: number, px: number, py: number, pz: number): number {
+  const o = k * 9;
+  const ax = tris[o], ay = tris[o + 1], az = tris[o + 2];
+  const abx = tris[o + 3] - ax, aby = tris[o + 4] - ay, abz = tris[o + 5] - az;
+  const acx = tris[o + 6] - ax, acy = tris[o + 7] - ay, acz = tris[o + 8] - az;
+  const apx = px - ax, apy = py - ay, apz = pz - az;
+  const d1 = abx * apx + aby * apy + abz * apz, d2 = acx * apx + acy * apy + acz * apz;
+  let u = 0, v = 0;
+  if (d1 <= 0 && d2 <= 0) { u = 0; v = 0; } else {
+    const bpx = apx - abx, bpy = apy - aby, bpz = apz - abz;
+    const d3 = abx * bpx + aby * bpy + abz * bpz, d4 = acx * bpx + acy * bpy + acz * bpz;
+    const cpx = apx - acx, cpy = apy - acy, cpz = apz - acz;
+    const d5 = abx * cpx + aby * cpy + abz * cpz, d6 = acx * cpx + acy * cpy + acz * cpz;
+    const vc = d1 * d4 - d3 * d2, vb = d5 * d2 - d1 * d6, va = d3 * d6 - d5 * d4;
+    if (d3 >= 0 && d4 <= d3) { u = 1; v = 0; } else if (d6 >= 0 && d5 <= d6) { u = 0; v = 1; }
+    else if (vc <= 0 && d1 >= 0 && d3 <= 0) { u = d1 / (d1 - d3); v = 0; }
+    else if (vb <= 0 && d2 >= 0 && d6 <= 0) { u = 0; v = d2 / (d2 - d6); }
+    else if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) { const w = (d4 - d3) / ((d4 - d3) + (d5 - d6)); u = 1 - w; v = w; }
+    else { const denominator = 1 / (va + vb + vc); u = vb * denominator; v = vc * denominator; }
+  }
+  const qx = ax + abx * u + acx * v - px, qy = ay + aby * u + acy * v - py, qz = az + abz * u + acz * v - pz;
+  return qx * qx + qy * qy + qz * qz;
+}
+/** Whether a frame-local point lies within LAYER_REACH_M of a layer plate of that frame. */
+function nearLayer(layers: LayerPlates, p: THREE.Vector3): boolean {
+  const { tris, boxes, count } = layers;
+  for (let k = 0; k < count; k++) {
+    const b = k * 6;
+    if (p.x < boxes[b] || p.y < boxes[b + 1] || p.z < boxes[b + 2] || p.x > boxes[b + 3] || p.y > boxes[b + 4] || p.z > boxes[b + 5]) continue;
+    if (triangleDistanceSq(tris, k, p.x, p.y, p.z) <= LAYER_REACH_M * LAYER_REACH_M) return true;
+  }
+  return false;
+}
+
 /** A cluster with no majority under this area (m²: a dome, a hatch, a lamp's casing) takes its plurality as one part;
  * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
 const SMALL_PART_M2 = 0.5;
@@ -296,6 +438,10 @@ const PLURALITY = 0.4;
  * authority's shell meets them (the 264 agreement census: panels lost the IFVs' flat sides). Its flat faces vote on up to
  * LARGE_FLAT_POINTS points a triangle, spread by area. */
 const LARGE_MAJORITY = 0.85;
+/** (267) A split piece names the zones holding at least SET_MEMBER of its area, at most four, when they and the area no
+ * zone faces hold SET_SHARE of it: the paint scores those zones alone. */
+const SET_MEMBER = 0.01;
+const SET_SHARE = 0.98;
 const LARGE_FLAT_POINTS = 16;
 const LARGE_FLAT_POINT_M2 = 0.05;
 /** Adjacent triangles whose faces turn more than ~30° apart lie on two sides of a crease. */
@@ -424,22 +570,61 @@ export function* bakePaintPanelSteps(
     hull: tracedCollisionCells(model.collisionShells?.hull) ?? [], turret: tracedCollisionCells(model.collisionShells?.turret) ?? [],
   };
   const byPlate = zoneByPlateOf(template);
+  const layers = layerPlatesOf(model);
   // the spaced parts' answers, by frame, cell and facing (one vehicle's bake)
   const behindCache = new Map<string, number>();
   const split = frameZonesOf(template);
   const barrel = !!frames.gun && Number.isFinite(template.barrelFrom) && template.barrelRadius > 0;
   const users = new Map<THREE.BufferGeometry, THREE.Mesh[]>();
+  const farStands: THREE.Mesh[] = [];
+  const farOwners = new Set<THREE.Object3D>();
   root.traverse((object) => {
     const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean };
-    if (!mesh.isMesh || mesh.isInstancedMesh || mesh.isBatchedMesh || Array.isArray(mesh.material) || !mesh.material) return;
+    if (!mesh.isMesh || mesh.isBatchedMesh || Array.isArray(mesh.material) || !mesh.material) return;
     if (armorPaintMode(mesh.material) < 1 || !mesh.geometry?.getAttribute('position')) return;
+    // (267) an instanced draw is never baked; gear (a suspension joint's bosses) is bare at every instance
+    if (mesh.isInstancedMesh) {
+      if (gearDraw(mesh) && !mesh.geometry.getAttribute(PANEL_ZONE_ATTRIBUTE)) {
+        const count = mesh.geometry.getAttribute('position').count;
+        mesh.geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(count).fill(PANEL_BARE), 1, false));
+        stats.gear += Math.floor((mesh.geometry.index ? mesh.geometry.index.count : count) / 3);
+      }
+      return;
+    }
+    // (267) a far-LOD stand-in (vehicles/farLod.ts) merges its owner's parts with no part's role: it takes, vertex by
+    // vertex, what its sources baked (each of its vertices is one of theirs, in the owner's frame), after them
+    if (mesh.userData.farLod && mesh.parent) { farStands.push(mesh); farOwners.add(mesh.parent); return; }
     const list = users.get(mesh.geometry);
     if (list) list.push(mesh); else users.set(mesh.geometry, [mesh]);
   });
+  // (267) the far owners' sources' baked values, by owner, owner-frame position (0.1 mm) and normal band (the far
+  // clustering's: each axis in five), the first of each as the clustering keeps it, and by position alone
+  const nearValues = new Map<THREE.Object3D, Map<string, number>>();
+  const ownerKey = (x: number, y: number, z: number): string => `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+  const band = (value: number): number => Math.max(0, Math.min(4, Math.round((value + 1) * 2)));
+  const bandKey = (n: THREE.Vector3): string => `|${band(n.x) * 25 + band(n.y) * 5 + band(n.z)}`;
+  const recordNear = (mesh: THREE.Mesh, values: Int8Array): void => {
+    if (!mesh.parent || !farOwners.has(mesh.parent)) return;
+    let byPosition = nearValues.get(mesh.parent);
+    if (!byPosition) nearValues.set(mesh.parent, byPosition = new Map());
+    mesh.updateMatrix();
+    _normalWorld.getNormalMatrix(mesh.matrix);
+    const position = mesh.geometry.getAttribute('position'), normal = mesh.geometry.getAttribute('normal');
+    for (let v = 0; v < position.count; v++) {
+      _t.fromBufferAttribute(position, v).applyMatrix4(mesh.matrix);
+      const key = ownerKey(_t.x, _t.y, _t.z);
+      if (!byPosition.has(key)) byPosition.set(key, values[v]);
+      if (!normal) continue;
+      const banded = key + bandKey(_n.fromBufferAttribute(normal, v).applyMatrix3(_normalWorld).normalize());
+      if (!byPosition.has(banded)) byPosition.set(banded, values[v]);
+    }
+  };
   const pose: PanelPose = { hullInv: new THREE.Matrix4(), turretInv: new THREE.Matrix4(), gunInv: new THREE.Matrix4() };
   // a tally of one cluster's votes by area (VOTE_LIVE .. the last zone), and the slots it touched
   const tally = new Float64Array(template.zones.length + 3);
   const touched: number[] = [];
+  // (267) a split piece's zone set
+  const members: number[] = [];
   let sliceStarted = performance.now(), sliceWork = 0, rayWork = 0;
   const yieldSlice = (): void => {
     const took = performance.now() - sliceStarted;
@@ -459,11 +644,23 @@ export function* bakePaintPanelSteps(
     stats.draws += meshes.length;
     const position = geometry.getAttribute('position');
     const was = bakedBy.get(geometry);
-    if (was === armor || (was === null && geometry.getAttribute(PANEL_ZONE_ATTRIBUTE))) continue;
+    if (was === armor || (was === null && geometry.getAttribute(PANEL_ZONE_ATTRIBUTE))) {
+      // baked before (a copy of this spec): its values still stand for this vehicle's far stand-ins
+      const done = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
+      if (done?.array instanceof Int8Array) for (const mesh of meshes) recordNear(mesh, done.array);
+      continue;
+    }
     stats.geometries++;
     const values = new Int8Array(position.count);
     const sharedElsewhere = meshes.length > 1 || (was !== undefined && was !== armor);
-    if (sharedElsewhere) {
+    if (meshes.every(gearDraw)) {
+      // (267) gear, wherever it is drawn: bare whole
+      const triangles = Math.floor((geometry.index ? geometry.index.count : position.count) / 3);
+      values.fill(PANEL_BARE);
+      stats.triangles += triangles;
+      stats.bare += triangles;
+      stats.gear += triangles;
+    } else if (sharedElsewhere) {
       stats.shared++;
       stats.perPoint += Math.floor((geometry.index ? geometry.index.count : position.count) / 3);
     } else {
@@ -483,6 +680,8 @@ export function* bakePaintPanelSteps(
       stats.triangles += triangles;
       const mode = armorPaintMode(mesh.material as THREE.Material);
       const owner = ownerOf(mesh, frames);
+      // (267) armour (its own and its add-on) is never air; every other part standing off it is judged
+      const judgeStandoff = !armourDraw(mesh);
       const p = plain(position)!, n = plain(geometry.getAttribute('normal'));
       const m = mesh.matrixWorld.elements;
       _normalWorld.getNormalMatrix(mesh.matrixWorld);
@@ -551,24 +750,54 @@ export function* bakePaintPanelSteps(
         return !!box && Math.hypot(box[3] - box[0], box[4] - box[1], box[5] - box[2]) <= SOLID_PART_M;
       };
       if (spend(triangles >> 3)) { yield; sliceStarted = performance.now(); }
-      // the zone of the first main plate behind a part standing outside every cell of its frame, or -1
+      // the zone of the first main plate behind a part standing outside every cell of its frame, or BEHIND_VOTE
       const behindZone = (x: number, y: number, z: number, nx: number, ny: number, nz: number, area: number): number => {
         const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (!(length > 1e-9) || !authority) return -1;
+        if (!(length > 1e-9) || !authority) return BEHIND_VOTE;
         nx /= length; ny /= length; nz /= length;
         const local = _p.set(x, y, z).applyMatrix4(owner === 'hull' ? pose.hullInv : pose.turretInv);
         // inside a cell (its convex faces, not its bounds: a slice's box spans the air beside a sloped side): no standoff
-        for (const cell of owner === 'hull' ? cellsOf.hull : cellsOf.turret) if (insideCell(cell, local)) return -1;
+        for (const cell of owner === 'hull' ? cellsOf.hull : cellsOf.turret) if (insideCell(cell, local)) return BEHIND_VOTE;
         const ln = _n.set(nx, ny, nz).transformDirection(owner === 'hull' ? pose.hullInv : pose.turretInv);
         const key = `${owner === 'hull' ? 'h' : 't'}${Math.round(local.x / STANDOFF_CELL_M)},${Math.round(local.y / STANDOFF_CELL_M)},${Math.round(local.z / STANDOFF_CELL_M)}`
           + `|${Math.round(ln.x * 2)},${Math.round(ln.y * 2)},${Math.round(ln.z * 2)}`;
         const known = behindCache.get(key);
         if (known !== undefined) return known;
-        if (area < STANDOFF_MIN_M2) return -1;
+        if (area < STANDOFF_MIN_M2) return BEHIND_VOTE;
         const zone = castBehind(x, y, z, nx, ny, nz);
         behindCache.set(key, zone);
         return zone;
       };
+      // (267) where a world point stands: ON_ARMOUR within FLUSH_M of a cell of either frame, AT_LAYER within
+      // LAYER_REACH_M of a layer plate (in the frame each rides), else OFF_ARMOUR
+      const standing = (x: number, y: number, z: number): number => {
+        const h = _t.set(x, y, z).applyMatrix4(pose.hullInv);
+        if (cellGap(cellsOf.hull, h) <= FLUSH_M) return ON_ARMOUR;
+        if (nearLayer(layers[0], h)) return AT_LAYER;
+        const t = _t.set(x, y, z).applyMatrix4(pose.turretInv);
+        if (cellGap(cellsOf.turret, t) <= FLUSH_M) return ON_ARMOUR;
+        if (nearLayer(layers[1], t)) return AT_LAYER;
+        return nearLayer(layers[2], _t.set(x, y, z).applyMatrix4(pose.gunInv)) ? AT_LAYER : OFF_ARMOUR;
+      };
+      // (267) a judged draw's parts standing off the armour: a cluster whose centre does, and a solid most of whose area
+      // does (a cage, a net, a rack), bare whole; a compact solid any of whose clusters lies at a layer plate is that
+      // layer (an ERA brick, a thick skirt section: the plate runs through it), painted whole
+      let offCluster: Uint8Array | null = null;
+      const solidOff = new Map<number, number>(), solidLayer = new Set<number>();
+      if (judgeStandoff && authority && owner !== 'gun' && (cellsOf.hull.length || cellsOf.turret.length)) {
+        offCluster = new Uint8Array(triangles);
+        for (let t = 0; t < triangles; t++) {
+          const a = faceArea[t];
+          if (roots[t] !== t || !(a > 0)) continue;
+          const where = standing(faceSum[t * 6] / a, faceSum[t * 6 + 1] / a, faceSum[t * 6 + 2] / a);
+          const s = find(solid, t);
+          if (where === OFF_ARMOUR) {
+            offCluster[t] = 1;
+            solidOff.set(s, (solidOff.get(s) ?? 0) + a);
+          } else if (where === AT_LAYER) solidLayer.add(s);
+          if (spend(2)) { yield; sliceStarted = performance.now(); }
+        }
+      }
       // the authority's own test (sim/armor.ts intersectConvexCell): the segment from outside the part to as far behind it,
       // against every cell of both frames, the plate of the face it enters first; that entry must lie behind the part
       const castBehind = (x: number, y: number, z: number, nx: number, ny: number, nz: number): number => {
@@ -592,8 +821,8 @@ export function* bakePaintPanelSteps(
           }
         }
         // the part stands at the segment's middle: the plate must lie behind it, never in front of it
-        if (!bestPlate || bestT < 0.5 - CELL_SLACK_M / (2 * STANDOFF_REACH_M)) return -1;
-        return byPlate.get(String(bestPlate.name ?? '')) ?? -1;
+        if (!bestPlate || bestT < 0.5 - CELL_SLACK_M / (2 * STANDOFF_REACH_M)) return BEHIND_VOTE;
+        return byPlate.get(String(bestPlate.name ?? '')) ?? BEHIND_VOTE;
       };
       const cast = (t: number, weight: number): void => {
         const slot = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
@@ -668,18 +897,30 @@ export function* bakePaintPanelSteps(
             tally[slot] += area;
             voted += area;
           }
-          let top = VOTE_NONE, topArea = -1;
+          let top = VOTE_NONE, topArea = -1, setArea = 0, noneArea = 0;
+          members.length = 0;
           for (const slot of touched) {
             const key = slot - 3, area = tally[slot];
             if (area > topArea || (area === topArea && key > top)) { top = key; topArea = area; }
+            if (key >= 0 && area >= SET_MEMBER * voted) { members.push(key); setArea += area; }
+            else if (key === VOTE_NONE) noneArea += area;
             tally[slot] = 0;
           }
           // a piece is never baked bare here: a collar round the bore whose barrel share wins keeps the per-point score,
           // which leaves only the barrel's cylinder bare (the round-5 critic: the ZTZ-99A's collar untinted)
           let value = voted > 0 && topArea >= (voted >= SMALL_PART_M2 ? LARGE_MAJORITY : PANEL_MAJORITY) * voted && top >= 0 && top < 127 ? top + 1 : 0;
           if (value === 0 && voted < SMALL_PART_M2 && top >= 0 && top < 127 && topArea >= PLURALITY * voted) value = top + 1;
+          // (267) a piece split between a few zones keeps the per-point borders on its face, naming the zones: the paint
+          // scores those alone; one no zone faces anywhere is bare
+          if (value === 0 && voted > 0 && template.zoneSet && setArea + noneArea >= SET_SHARE * voted) {
+            if (!members.length) value = PANEL_BARE;
+            else if (members.length <= 4) {
+              const set = template.zoneSet(members);
+              if (set >= 0) { value = PANEL_BARE - 1 - set; stats.sets += first[piece + 1] - first[piece]; }
+            }
+          }
           const kept = first[piece + 1] - first[piece];
-          if (value !== 0) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }
+          if (value > 0 || value === PANEL_BARE) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }
           if (value > 0) stats.baked += kept; else if (value === PANEL_BARE) stats.bare += kept;
           else {
             stats.perPoint += kept;
@@ -700,6 +941,22 @@ export function* bakePaintPanelSteps(
         const cluster = roots[order[start]];
         let end = start;
         while (end < triangles && roots[order[end]] === cluster) end++;
+        if (offCluster) {
+          const s = find(solid, cluster);
+          if (!(solidLayer.has(s) && compact(s)) && (offCluster[cluster] || (solidOff.get(s) ?? 0) > 0.5 * (solidArea.get(s) ?? Infinity))) {
+            for (let k = start; k < end; k++) {
+              const t = order[k];
+              values[corner(t, 0)] = PANEL_BARE; values[corner(t, 1)] = PANEL_BARE; values[corner(t, 2)] = PANEL_BARE;
+            }
+            stats.clusters++;
+            stats.bare += end - start;
+            stats.offArmour += end - start;
+            const kept = end - start;
+            start = end;
+            if (spend(kept)) { yield; sliceStarted = performance.now(); }
+            continue;
+          }
+        }
         const first = order[start];
         let flat = true, total = 0, cx = 0, cy = 0, cz = 0;
         for (let k = start; k < end; k++) {
@@ -833,6 +1090,29 @@ export function* bakePaintPanelSteps(
       seeded.needsUpdate = true;
     } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
     bakedBy.set(geometry, sharedElsewhere ? null : armor);
+    for (const mesh of meshes) recordNear(mesh, values);
+  }
+  // (267) the far stand-ins: each vertex its source's value (0, the per-point paint, where none matches)
+  for (const stand of farStands) {
+    const geometry = stand.geometry, position = geometry.getAttribute('position');
+    const byPosition = nearValues.get(stand.parent!), normal = geometry.getAttribute('normal');
+    const values = new Int8Array(position.count);
+    stand.updateMatrix();
+    _normalWorld.getNormalMatrix(stand.matrix);
+    for (let v = 0; v < position.count; v++) {
+      _t.fromBufferAttribute(position, v).applyMatrix4(stand.matrix);
+      const key = ownerKey(_t.x, _t.y, _t.z);
+      const banded = normal ? byPosition?.get(key + bandKey(_n.fromBufferAttribute(normal, v).applyMatrix3(_normalWorld).normalize())) : undefined;
+      values[v] = banded ?? byPosition?.get(key) ?? 0;
+    }
+    const seeded = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
+    if (seeded && seeded.count === position.count && seeded.array instanceof Int8Array) {
+      seeded.array.set(values);
+      seeded.needsUpdate = true;
+    } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
+    bakedBy.set(geometry, armor);
+    stats.farStands++;
+    if (spend(position.count >> 2)) { yield; sliceStarted = performance.now(); }
   }
   const took = performance.now() - sliceStarted;
   stats.sliceMs = Math.max(stats.sliceMs, Math.round(took * 10) / 10);
@@ -842,7 +1122,7 @@ export function* bakePaintPanelSteps(
 
 /** An empty tally for bakePaintPanelSteps. */
 export function panelBakeStats(): PanelBakeStats {
-  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
+  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, gear: 0, offArmour: 0, sets: 0, farStands: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
     disagreeArea: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
 }
 

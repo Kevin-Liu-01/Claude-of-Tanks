@@ -169,11 +169,103 @@ function hullScene() {
   const plain = skirtScene();
   bakePaintPanels(plain.root, tmpl, { hull: plain.hull, turret: null, gun: null }, armor);
   assert.deepEqual(faceValues(plain.skirt.geometry, [1, 0, 0]), [1], 'without the authority, the skirt takes the zone where it sits: the upper side');
-  const asked = skirtScene();
   const pose = tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
-  const stats = bakePaintPanels(asked.root, tmpl, { hull: asked.hull, turret: null, gun: null }, armor, { pose });
+  // (267) with the authority, a skirt the sim traces (its spaced plate at it) takes the plate the shell meets through it;
+  // one it does not trace is air to the round: bare
+  const skirtPlate = { name: 'skirt_R', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10,
+    verts: [[1.31, 1.3, 0.5], [1.31, 1.3, -0.5], [1.31, 1.7, -0.5], [1.31, 1.7, 0.5]] };
+  const spaced = { ...armor, hullPlates: [...armor.hullPlates, skirtPlate] };
+  const asked = skirtScene();
+  const stats = bakePaintPanels(asked.root, tmpl, { hull: asked.hull, turret: null, gun: null }, spaced, { pose });
   assert.deepEqual(faceValues(asked.skirt.geometry, [1, 0, 0]), [2], 'with it, the plate the shell meets through it: the lower side');
   assert.ok(stats.standoff > 0 && stats.standoffRays > 0, `the skirt's ray (${stats.standoffRays})`);
+  // a thick skirt section (0.2 m) with its plate through its middle: its big faces lie 10 cm off the plate, its edges at it
+  const thick = skirtScene();
+  thick.skirt.geometry.dispose();
+  thick.skirt.geometry = box(0.2, 0.4, 1, 1.31, 1.5, 0);
+  thick.root.updateMatrixWorld(true);
+  bakePaintPanels(thick.root, tmpl, { hull: thick.hull, turret: null, gun: null }, spaced, { pose });
+  assert.ok([...thick.skirt.geometry.getAttribute('apZone').array].every((v) => v > 0), 'a thick traced skirt section is painted whole');
+  const air = skirtScene();
+  const airStats = bakePaintPanels(air.root, tmpl, { hull: air.hull, turret: null, gun: null }, armor, { pose });
+  assert.deepEqual(faceValues(air.skirt.geometry, [1, 0, 0]), [-1], 'a skirt the sim does not trace stands off the armour: bare');
+  assert.ok(airStats.offArmour > 0, `the skirt counted off the armour (${airStats.offArmour})`);
+
+  // (267) what a round's damage reads: a box standing on the roof is bare whole (its flush underside too), a plate flush
+  // on the roof is painted, the hull's own armour standing off the side is painted (the cells are hulled from it)
+  const roofScene = () => {
+    const root = new THREE.Group(), hull = new THREE.Group();
+    root.add(hull);
+    const add = (geometry, role) => { const mesh = new THREE.Mesh(geometry, paint); if (role) mesh.userData.combatHitboxRole = role; hull.add(mesh); return mesh; };
+    const meshes = {
+      stowage: add(box(0.6, 0.4, 0.6, -0.4, 2.2, 0), 'nonArmor'),
+      flush: add(box(0.4, 0.03, 0.4, 0.5, 2.015, 0.5), 'nonArmor'),
+      armour: add(box(0.1, 0.4, 0.4, 1.3, 1.0, -0.5), 'armor'),
+      applique: add(box(0.1, 0.4, 0.4, 1.3, 1.0, 0.5), 'externalArmor'),
+    };
+    root.updateMatrixWorld(true);
+    return { root, hull, meshes };
+  };
+  const roof = roofScene();
+  const roofStats = bakePaintPanels(roof.root, tmpl, { hull: roof.hull, turret: null, gun: null }, armor, { pose });
+  assert.deepEqual([...new Set(roof.meshes.stowage.geometry.getAttribute('apZone').array)], [-1], 'a stowage box on the roof: bare whole');
+  assert.ok(faceValues(roof.meshes.flush.geometry, [0, 1, 0]).every((v) => v > 0), 'a plate flush on the roof: painted');
+  assert.ok(faceValues(roof.meshes.armour.geometry, [1, 0, 0]).every((v) => v > 0), 'the hull\'s own armour off the cells: painted');
+  assert.ok(faceValues(roof.meshes.applique.geometry, [1, 0, 0]).every((v) => v > 0), 'add-on armour the sim does not trace: the plate behind it');
+  assert.ok(roofStats.offArmour >= 12, `the box's twelve triangles off the armour (${roofStats.offArmour})`);
+  // negative control: without the authority the box's flush underside takes the zone where it sits (above the cells, its
+  // top and sides were bare before 267 too: the hull's gear rule)
+  const roofPlain = roofScene();
+  bakePaintPanels(roofPlain.root, tmpl, { hull: roofPlain.hull, turret: null, gun: null }, armor);
+  assert.ok(faceValues(roofPlain.meshes.stowage.geometry, [0, -1, 0]).every((v) => v > 0), 'the control: no authority, the box\'s underside is painted');
+}
+
+// ---- (267) gear is bare whole wherever it is drawn: equipment, a machine gun, the running gear (instanced too), a suit
+{
+  const root = new THREE.Group(), hull = new THREE.Group();
+  root.add(hull);
+  const add = (mesh, data = {}, name = '') => { Object.assign(mesh.userData, data); mesh.name = name; hull.add(mesh); return mesh; };
+  const gear = [
+    add(new THREE.Mesh(box(0.3, 0.3, 0.3, 0, 2.1, 0), paint), { combatHitboxRole: 'equipment' }),
+    add(new THREE.Mesh(box(0.1, 0.1, 1, 0.5, 2.05, 0), paint), { appearanceRole: 'machineGun' }),
+    add(new THREE.InstancedMesh(box(0.1, 0.1, 0.1, 0, 0.3, 0), paint, 2), { runningGear: true }),
+    add(new THREE.Mesh(box(1, 0.01, 1, 0, 2.01, 0), paint), {}, 'x_ghillie_hull_net'),
+  ];
+  const marking = add(new THREE.Mesh(box(0.4, 0.02, 0.4, -0.5, 2.0, -0.5), paint), { combatHitboxRole: 'equipment' }, 'turretPermanentMarkingSurface');
+  const kit = add(new THREE.Mesh(box(0.3, 0.3, 0.04, 0.5, 1.5, 1.03), paint), { combatHitboxRole: 'nonArmor' });
+  root.updateMatrixWorld(true);
+  const stats = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, {});
+  for (const mesh of gear) {
+    assert.deepEqual([...new Set(mesh.geometry.getAttribute('apZone').array)], [-1], `${mesh.name || Object.keys(mesh.userData)[0]}: gear, bare whole`);
+  }
+  assert.ok(faceValues(marking.geometry, [0, 1, 0]).every((v) => v > 0), 'the marking surface is painted (the turret\'s own face)');
+  assert.ok(faceValues(kit.geometry, [0, 0, 1]).every((v) => v > 0), 'the control: other kit is judged by where it sits');
+  assert.ok(stats.gear >= 12 * 3, `gear counted (${stats.gear})`);
+}
+
+// ---- (267) a large face a few zones share keeps the per-point border, naming them: the paint scores those alone
+{
+  const root = new THREE.Group(), hull = new THREE.Group();
+  root.add(hull);
+  const front = new THREE.Mesh(box(1.6, 1.6, 0.02, 0, 1, 1.01), paint);
+  hull.add(front);
+  root.updateMatrixWorld(true);
+  const sets = [];
+  const zoneSet = (zones) => {
+    const key = [...zones].sort((a, b) => a - b).join(','), at = sets.indexOf(key);
+    return at >= 0 ? at : sets.push(key) - 1;
+  };
+  const tmpl = { ...template(), zoneSet };
+  const stats = bakePaintPanels(root, tmpl, { hull, turret: null, gun: null }, {});
+  assert.deepEqual(faceValues(front.geometry, [0, 0, 1]), [-2], 'the face across the upper/lower border names set 0');
+  assert.equal(sets[0], `${UPPER},${LOWER}`, 'set 0: the upper and the lower front');
+  assert.ok(stats.sets > 0 && stats.sets <= stats.perPoint, `the set's triangles are per-point ones (${stats.sets} of ${stats.perPoint})`);
+  // the control: a template without set slots keeps the full per-point score
+  const plain = new THREE.Mesh(box(1.6, 1.6, 0.02, 0, 1, 1.01), paint);
+  const plainRoot = new THREE.Group(), plainHull = new THREE.Group();
+  plainRoot.add(plainHull); plainHull.add(plain); plainRoot.updateMatrixWorld(true);
+  bakePaintPanels(plainRoot, template(), { hull: plainHull, turret: null, gun: null }, {});
+  assert.deepEqual(faceValues(plain.geometry, [0, 0, 1]), [0], 'the control: no pair slots, the per-point score');
 }
 
 // ---- the slices equal the whole, the same answer twice
@@ -270,7 +362,8 @@ function hullScene() {
   await settle(baked, state, 10);
   await overlay.bakePanels({ id: 'panels', state, combat: null, visual: baked, spec }, async () => {});
   const stats = baked.root.userData.armorPaintPanels;
-  assert.ok(stats.baked > 0.5 * stats.triangles, `t72b3: most painted triangles bake (${stats.baked} of ${stats.triangles})`);
+  assert.ok(stats.baked + stats.bare > 0.5 * stats.triangles, `t72b3: most painted triangles bake a zone or bare (${stats.baked} + ${stats.bare} of ${stats.triangles})`);
+  assert.ok(stats.gear > 0 && stats.offArmour > 0, `t72b3: its gear and the parts standing off its armour are bare (${stats.gear}, ${stats.offArmour})`);
   await settle(plain, state, 10);
   assert.equal(draws(baked.root, 10).count, draws(plain.root, 10).count, 't72b3: the same draws near');
   // (the far LOD admits one build at a time: each is built here, as the streamer's slice does)
@@ -279,10 +372,29 @@ function hullScene() {
   const far = draws(baked.root, 200), farPlain = draws(plain.root, 200);
   assert.equal(far.count, farPlain.count, 't72b3: the same draws far');
   assert.ok(far.panels > 0 && far.panels < far.stand + 1, `t72b3: the far stand-ins carry the panels (${far.panels} of ${far.stand})`);
+  // (267) a far stand-in built before the bake takes its sources' values vertex by vertex: the same paint as one built
+  // after it (whose clustering copied them); never judged on its own, with no part's role
+  const early = build();
+  await settle(early, state, 10);
+  early.prepareFarLod();
+  await settle(early, state, 200);
+  await overlay.bakePanels({ id: 'panels-early', state, combat: null, visual: early, spec }, async () => {});
+  const stands = (root) => { const list = []; root.traverse((o) => { if (o.isMesh && o.userData.farLod && o.geometry.getAttribute('apZone')) list.push(o); }); return list; };
+  const after = stands(baked.root), before = stands(early.root);
+  assert.equal(before.length, after.length, 't72b3: the same far stand-ins either way');
+  let same = 0, total = 0;
+  for (let k = 0; k < after.length; k++) {
+    const x = after[k].geometry.getAttribute('apZone').array, y = before[k].geometry.getAttribute('apZone').array;
+    assert.equal(x.length, y.length, `t72b3: far stand-in ${k} has one layout either way`);
+    for (let v = 0; v < x.length; v++) { total++; if (x[v] === y[v]) same++; }
+  }
+  assert.ok(same >= 0.99 * total, `t72b3: a far stand-in baked before or after its sources paints the same (${same} of ${total} vertices)`);
+  assert.ok(early.root.userData.armorPaintPanels.farStands > 0, 't72b3: the early far stand-ins were given their sources\' values');
+  early.dispose();
   overlay.dispose();
   plain.dispose(); baked.dispose();
-  console.log(`armorPaintPanels.selftest: t72b3 ${stats.baked}/${stats.triangles} baked, ${stats.votes} votes, slice ${stats.sliceMs} ms`);
+  console.log(`armorPaintPanels.selftest: t72b3 ${stats.baked}/${stats.triangles} baked, ${stats.bare} bare (${stats.gear} gear, ${stats.offArmour} off the armour), ${stats.sets} per-point naming a zone set, ${stats.votes} votes, slice ${stats.sliceMs} ms`);
 }
 
 restoreCanvas();
-console.log('armorPaintPanels.selftest: panels on parts\' edges, gear bare, parts in their own rig\'s frame, no-majority clusters by part, the disagreement measure, shared and unpainted left out, slices = whole, the hook\'s default, a battle build\'s draws unchanged');
+console.log('armorPaintPanels.selftest: panels on parts\' edges, gear bare, parts in their own rig\'s frame, no-majority clusters by part, the disagreement measure, shared and unpainted left out, slices = whole, the hook\'s default, a battle build\'s draws unchanged; (267) only what a round\'s damage reads: gear bare by role, parts standing off the armour bare, a traced skirt painted, split faces naming their zones');
