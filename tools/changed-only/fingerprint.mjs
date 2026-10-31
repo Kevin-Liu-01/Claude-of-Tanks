@@ -22,7 +22,7 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { AGGREGATES, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS, stepDefinition } from './steps.mjs';
-import { expandGlobs } from './globs.mjs';
+import { expandGlobs, declaredNotInput } from './globs.mjs';
 import { computeWorldState } from './world.mjs';
 
 export const SCHEMA = 1;
@@ -83,11 +83,12 @@ function readRows(root, env, tableModule = null) {
   return JSON.parse(out);
 }
 
-/** NODE_OPTIONS minus heap-size flags and the self-test runner's assert guard (it decides only failing asserts in
- *  receipts; tools/run-selftests.mjs SELFTEST_GRAPH_GUARD), neither of which can change what a tool writes. */
+/** NODE_OPTIONS minus heap-size flags and the self-test runner's preloads (the assert guard decides only failing asserts
+ *  in receipts, the observer only records reads; tools/run-selftests.mjs SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER), none
+ *  of which can change what a tool writes. */
 export function normalizedNodeOptions(value = '') {
   return value.split(/\s+/).filter((flag) => flag && !/^--max-old-space-size(=|$)/.test(flag)
-    && !/^--import=\S*\/tools\/assert-graph-guard\.mjs$/.test(flag)).sort().join(' ');
+    && !/^--import=\S*\/tools\/(?:assert-graph-guard|selftest-observe)\.mjs$/.test(flag)).sort().join(' ');
 }
 
 /**
@@ -223,7 +224,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const perIdTables = new Set();
     const skip = (from, to) => {
       const declaration = DECLARED_DYNAMIC[rel(from)];
-      if ([...(declaration?.covered ?? []), ...(declaration?.modeOnly ?? [])].includes(rel(to))) return true;
+      if (declaredNotInput(declaration, rel(to))) return true;
       const accessor = ACCESSORS[rel(from)];
       const names = [...(tableFiles.get(to) ?? [])];
       if (!accessor || !names.length || !names.every((name) => accessor.tables.includes(name))) return false;

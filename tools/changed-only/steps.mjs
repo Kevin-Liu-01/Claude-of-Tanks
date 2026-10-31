@@ -71,7 +71,8 @@ export const AGGREGATES = Object.freeze([
  * chain never runs (a --check audit): the edge to them is dropped. `covered` names paths the file reads that the fleet keys
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
  * name files the tool reads in the chain's mode whose contents reach only its verdicts (printed problems), never a
- * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them.
+ * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them. `namesOnly` globs
+ * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266).
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
@@ -229,6 +230,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // dev server, browser or git call.
     modeOnly: ['index.html'],
     note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
+  },
+  // 266: the public route table names every page (index.html, 404.html, home.html, ...) as a route string. It has no file
+  // access and reads none of them, yet the mention put the pages into the wreckPlan, collision, trenches, centering and
+  // icons keys, so a document-head edit re-ran them on every map and id. A step that serves or reads a page names it in
+  // its own closure, which stays keyed.
+  'src/ui/localeRouting.ts': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    namesOnly: ['*.html'],
+    note: 'route strings for the public pages; no file access, so it reads none of them',
   },
   'tools/viteI18nStudioCatalog.ts': {
     pin: '525a21e40aa0d260',
@@ -398,6 +409,19 @@ export const PRE_AGGREGATES = Object.freeze([
 ]);
 export const POST_AGGREGATES = Object.freeze([
   ['tools/generate-manual-reference.mjs'],
+]);
+
+/**
+ * Pages built from a step's outputs, run after it (266: the Field Manual's fleet chapter tiles come from the icons
+ * step's public/icons/tank-assets.json, so every lane that regenerated icons left src/docs/topics red, and the 265
+ * bootstrap left it stale for 209 ids). A dependent runs only when a step in `after` ran in this chain (or an earlier
+ * dependent in `after` wrote); it runs its own check first and writes only when that finds its output stale, then
+ * checks again. A chain where none of them ran touches none. The public shell inlines the symbols the prerendered
+ * chapters reference, so it follows a prerender write.
+ */
+export const DEPENDENTS = Object.freeze([
+  { name: 'docsPrerender', tool: 'tools/docs-prerender.mjs', check: [], write: ['--write'], after: ['icons'] },
+  { name: 'publicShell', tool: 'tools/public-shell.mjs', check: [], write: ['--write'], after: ['docsPrerender'] },
 ]);
 
 /** Fields of a step that decide what it writes. Scheduling fields (gb, timeouts, chunking, report paths) are not keyed. */

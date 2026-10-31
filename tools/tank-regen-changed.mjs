@@ -23,7 +23,8 @@
 // missionDockSeats feeds the spare-track dock keep-out); the geometry ledger; the manual reference; then centering and
 // icons under the capture lock in holds of at most 20 minutes. Centering moves the presentation anchors every build
 // reads, so the CPU fixpoint (and the ledger) runs again for any id they moved, and the GPU steps repeat until stable.
-// Then the world steps, per map (tools/changed-only/world.mjs): the wreck bake plan, the collision shards and the
+// Then the pages built from what ran (steps.mjs DEPENDENTS: after icons the Field Manual prerender, after a prerender
+// write the public shell), each checked and rewritten only when stale. Then the world steps, per map (tools/changed-only/world.mjs): the wreck bake plan, the collision shards and the
 // assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
 // settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
@@ -66,7 +67,7 @@ if (value('ids') !== undefined) {
 const TABLE_PRESENT = existsSync(resolve(root, MANIFEST_PATH));
 if (!TABLE_PRESENT && !ALL && !CHECK && !IDS) refuse('no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap');
 const table = await loadTable(value('table') ?? null);
-const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, WORLD_STEPS, stepByName } = table;
+const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
 /** A world step's resolver view is the state's per-map half; a tank step's is the state itself. */
 const viewOf = (definition, state) => (definition.universe === 'maps' ? state.world : state);
@@ -75,7 +76,7 @@ mkdirSync(qaDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const logPath = join(qaDir, `${stamp}.log`);
 const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : IDS ? 'ids' : 'changed', ...(IDS ? { ids: IDS } : {}), dryRun: DRY,
-  runs: [], passes: 0, final: null, verify: [], resolveSeconds: [] };
+  runs: [], passes: 0, final: null, verify: [], dependents: [], resolveSeconds: [] };
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
 // The summary is rewritten after every step, so a chain stopped part-way still records what it ran.
 const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
@@ -278,6 +279,32 @@ async function aggregates(list, label) {
   }
 }
 
+/**
+ * The pages built from the steps this chain ran (steps.mjs DEPENDENTS): a dependent whose `after` step ran (or whose
+ * earlier dependent wrote) runs its check, and when that finds its output stale its write and the check again. In a dry
+ * run each one that would be checked is listed.
+ */
+async function dependents() {
+  const moved = new Set(summary.runs.filter((run) => run.code === 0 || run.dryRun).map((run) => run.step));
+  for (const dependent of DEPENDENTS) {
+    const after = dependent.after.filter((name) => moved.has(name));
+    if (!after.length) continue;
+    const entry = { step: dependent.name, after };
+    summary.dependents.push(entry);
+    if (DRY) { log(`[regen] ${dependent.name}: would check ${dependent.tool} (after ${after.join(', ')})`); entry.dryRun = true; moved.add(dependent.name); continue; }
+    const check = () => runChild([dependent.tool, ...dependent.check], { niced: true, timeoutS: 900, label: `${dependent.name}-check` });
+    if ((await check()).code === 0) { log(`[regen] ${dependent.name}: current (after ${after.join(', ')})`); entry.wrote = false; continue; }
+    const write = await runChild([dependent.tool, ...dependent.write], { niced: true, timeoutS: 900, label: dependent.name });
+    if (write.code !== 0) throw new Error(`${dependent.name} failed (exit ${write.code}); output in ${write.out}`);
+    const recheck = await check();
+    if (recheck.code !== 0) throw new Error(`${dependent.name}: still stale after ${dependent.write.join(' ')}; output in ${recheck.out}`);
+    log(`[regen] ${dependent.name}: rewritten (after ${after.join(', ')})`);
+    entry.wrote = true;
+    moved.add(dependent.name);
+    saveSummary();
+  }
+}
+
 async function cpuFixpoint(firstPassFull) {
   if (IDS) {
     // the fixpoint over the ids alone: one pass without a table (nothing to resolve against)
@@ -353,10 +380,15 @@ async function checkAll() {
     log(`[regen] ${definition.name} --check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
   }
   await aggregates(POST_AGGREGATES, 'post');
+  for (const dependent of DEPENDENTS) {
+    const run = await runChild([dependent.tool, ...dependent.check], { niced: true, timeoutS: 900, label: `${dependent.name}-check` });
+    summary.dependents.push({ step: dependent.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
+    log(`[regen] ${dependent.name} check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
+  }
   const state = fresh();
   summary.final = { ...resolveChanged(state, readManifest(root)),
     ...(state.world && !NO_WORLD ? resolveChanged(state.world, readManifest(root), { steps: WORLD_NAMES.filter(selected) }) : {}) };
-  const failed = summary.runs.filter((run) => run.check === 'fail');
+  const failed = [...summary.runs, ...summary.dependents].filter((run) => run.check === 'fail');
   if (failed.length) throw new Error(`--check failed: ${failed.map((run) => run.step).join(', ')}`);
 }
 
@@ -403,6 +435,7 @@ try {
       }
       if (!ran || DRY || IDS) break;
     }
+    await dependents();
     // The world steps last: a wreck donor's build reads the fleet's settled rows. A pass that moves nothing ends it (a
     // wreck plan whose donors changed re-keys its own map and its collision shards once more).
     if (!NO_WORLD && WORLD_NAMES.some(selected)) for (let pass = 1; pass <= MAX_PASSES; pass++) {
