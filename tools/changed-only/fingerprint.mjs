@@ -11,7 +11,9 @@
 //                      (specs, the factory, kits, materials, generated spec data, the index/loader maps)
 //   group(g)         = the files fleetFactory GROUP_LOADERS[g] reaches beyond the core
 //   rowsKey          = the rows of every per-id table the fleet reaches, for every id on the spec chain, minus the
-//                      step's own rows of this id
+//                      step's own rows of this id; with the balance pass out of the core (steps.mjs BALANCE), each id's
+//                      registered spec without its combat leaves (SPEC_REST), and the leaves too (SPEC_COMBAT) for a step
+//                      whose rowReads name them
 // An id is changed when its row is missing, its inKey moved or its outKey moved (an output edited outside the chain).
 // Anything the graph cannot see fails closed: an undeclared dynamic read or a computed import makes the step run on
 // every id; a roster change, a missing manifest or a frame edit of an output file runs the step on the whole fleet.
@@ -20,10 +22,11 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
-import { AGGREGATES, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS, stepDefinition } from './steps.mjs';
+import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
+  MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
+  stepDefinition } from './steps.mjs';
 import { expandGlobs, declaredNotInput } from './globs.mjs';
-import { computeWorldState } from './world.mjs';
+import { computeWorldState, tokenPin } from './world.mjs';
 
 export const SCHEMA = 1;
 // A receipt a fleet record only names (docs/references/concepts/*.json lists its receipts) is no build input either: no
@@ -97,7 +100,7 @@ export function normalizedNodeOptions(value = '') {
  */
 export const DEFAULT_CONFIG = Object.freeze({
   tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
-  groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS,
+  groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS, balance: BALANCE,
   world: Object.freeze({ registryFile: MAP_REGISTRY_FILE, outputs: WORLD_OUTPUTS, fleetApiUsers: FLEET_API_USERS,
     fleetApiTokens: FLEET_API_TOKENS }),
 });
@@ -106,7 +109,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
-    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS } = { ...DEFAULT_CONFIG, ...config };
+    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS, balance: BALANCE_PASS } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
@@ -150,9 +153,22 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     [group, modules.map((module) => resolve(dirname(abs(GROUP_LOADERS_FILE)), module))]));
   const allGroupEntries = new Set([...groupEntryFiles.values()].flat());
   const loaderFiles = new Set(LOADER_FILES.map(abs));
+  // The balance pass (steps.mjs BALANCE) leaves the core when its pinned importers are the only files importing it: what
+  // it does to the registered specs is keyed per id by the spec rows. A stale pin keeps it in the core.
+  const balanceEntries = new Set((BALANCE_PASS?.entries ?? []).map(abs).filter((file) => existsSync(file)));
+  const balanceImporters = new Set();
+  let balanceReason = null;
+  if (balanceEntries.size) {
+    const stale = Object.entries(BALANCE_PASS.importers).flatMap(([file, declaration]) => {
+      const pin = existsSync(abs(file)) ? tokenPin(readFileSync(abs(file), 'utf8'), BALANCE_PASS.tokens) : 'missing';
+      return pin === declaration.pin ? [] : [`${file} (now ${pin})`];
+    });
+    if (stale.length) balanceReason = `importer pin stale: ${stale.join(', ')}`;
+    else for (const file of Object.keys(BALANCE_PASS.importers)) balanceImporters.add(abs(file));
+  }
   const coreClosure = graph.closure(FLEET_ENTRIES, {
     stop: tableStop,
-    skip: (from, to) => loaderFiles.has(from) && allGroupEntries.has(to),
+    skip: (from, to) => (loaderFiles.has(from) && allGroupEntries.has(to)) || (balanceImporters.has(from) && balanceEntries.has(to)),
   });
   // A file only named (never imported) by fleet code is hashed as an input, except data no fleet module can read:
   // fleet sources run in Node tools without file access (checked below) and the playable fleet never loads a source
@@ -176,6 +192,17 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     groupFiles[group] = new Set([...closure.files].filter((file) => !coreSet.has(file) && !tableStop.has(file) && !fleetData(file, closure)));
     reach(closure.stopped);
   }
+  // The balance closure beyond the core: executed (checked below like any fleet module), keyed only through the spec rows.
+  // An entry another fleet module imports is in the core already.
+  const balanceRoots = [...balanceEntries].filter((file) => !coreSet.has(file));
+  const balanceFiles = new Set();
+  if (balanceImporters.size && balanceRoots.length) {
+    const closure = graph.closure(balanceRoots.map(rel), { stop: new Set([...coreSet, ...tableStop]) });
+    for (const file of closure.expanded) executed.add(file);
+    for (const file of closure.files) if (!coreSet.has(file) && !tableStop.has(file) && !fleetData(file, closure)) balanceFiles.add(file);
+    reach(closure.stopped);
+  } else if (balanceEntries.size && !balanceReason) balanceReason = 'another fleet module imports it';
+  const specRows = balanceFiles.size > 0;
   const buildReadTables = [...reachedTables].sort();
 
   // Dynamic reads: declared and pinned, or fail closed.
@@ -274,8 +301,10 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
       foreignTables: [...foreignTables].map(rel).sort(),
-      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs)
-      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(step.rowReads ?? [])])].sort(),
+      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
+      // rows when the balance pass is out of the core (the combat row only where rowReads names it)
+      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
+        ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT)])].sort(),
     };
   }
 
@@ -312,9 +341,12 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 
   // The world steps' per-map keys (tools/changed-only/world.mjs): null for a tree or fixture without world rows.
   const worldConfig = { ...DEFAULT_CONFIG.world, ...(config.world ?? {}) };
+  // Every map reads the fleet's specs (wreck casts, donors): the balance pass reaches the world through every spec row.
+  const specsKey = specRows ? [`specs:${H(...[SPEC_COMBAT, SPEC_REST].flatMap((table) =>
+    Object.keys(data.rows[table] ?? {}).sort().map((id) => `${table}:${id}:${data.rows[table][id]}`)))}`] : [];
   const world = computeWorldState({
     root, graph, world: data.world, steps: worldSteps, toolchain, schema: SCHEMA, fleetEntries: [...FLEET_ENTRIES.map(abs)],
-    fleetKey: H(`core:${core}`, `roster:${roster}`), builderKey, chainOf, rowOf, buildReadTables, dynamicProblem,
+    fleetKey: H(`core:${core}`, `roster:${roster}`, ...specsKey), builderKey, chainOf, rowOf, buildReadTables, dynamicProblem,
     environmentOf, envRows,
     config: { ...worldConfig, declared: DECLARED_DYNAMIC, expandGlobs, stepDefinition },
   });
@@ -323,12 +355,14 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   return {
     world,
     root, schema: SCHEMA, toolchain, toolchainParts, roster, core, groups, groupChain, chainOf, buildReadTables,
-    tableNames: Object.keys(TABLES),
+    tableNames: [...Object.keys(TABLES), ...(specRows ? [SPEC_COMBAT, SPEC_REST] : [])],
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
     inKey, outKey, builderKey, rowsKey, fileHash,
     partition: {
       core: [...coreSet].map(rel).sort(),
       groups: Object.fromEntries(Object.entries(groupFiles).map(([group, files]) => [group, [...files].map(rel).sort()])),
+      // the balance pass's files out of the core (keyed through the spec rows), or why it stays in the core
+      balance: [...balanceFiles].map(rel).sort(), balanceReason,
     },
   };
 }

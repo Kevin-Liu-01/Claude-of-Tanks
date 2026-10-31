@@ -5,6 +5,11 @@
 //
 //   node tools/changed-only/trace-check.mjs --root=<scratch tree> [--steps=controls,fills] [--ids=kf51_u,mbt70] [--json=out]
 //
+// --combat (266): instead, each step runs on the ids plain twice and once with every registered spec's combat leaves moved
+// (steps.mjs BALANCE.combat, combat-perturb.mjs). A step whose rows follow the moved leaves must name SPEC_COMBAT in its
+// rowReads, or the balance pass's levers would not re-run it; rows that differ between the two plain runs fail too (not
+// judged). The GPU steps render in a browser the preload never reaches: they key SPEC_COMBAT without this proof.
+//
 // Covered (an fs read, stat or directory listing): the shared core, the groups on the ids' spec chains, the step's tool
 // closure (directories it names cover what lies under them), every per-id table and index map, the step's own outputs
 // and `writes`, its declared `reads`, directories that hold covered files, node_modules (the lockfiles are keyed) and
@@ -14,13 +19,13 @@
 // without running them for other ids; tools/changed-only/closure-trace.mjs proves each group builds alone to the same
 // ledger digest. Reads outside the repository (the Node install, temporary directories, the browser) are listed, not
 // failed.
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { computeState } from './fingerprint.mjs';
 import { expandGlobs } from './globs.mjs';
-import { AGGREGATES, DECLARED_DYNAMIC, STEPS, TABLES } from './steps.mjs';
+import { AGGREGATES, DECLARED_DYNAMIC, SPEC_COMBAT, STEPS, TABLES } from './steps.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -28,6 +33,45 @@ const root = resolve(value('root') ?? process.cwd());
 const ids = (value('ids') ?? 'kf51_u,mbt70').split(',').filter(Boolean);
 const names = value('steps')?.split(',') ?? STEPS.filter((step) => step.device === 'cpu').map((step) => step.name);
 const trace = join(import.meta.dirname, 'trace-reads.mjs');
+
+if (args.includes('--combat')) {
+  const perturb = join(import.meta.dirname, 'combat-perturb.mjs');
+  const rowsNow = () => JSON.parse(execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root],
+    { cwd: root, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024, timeout: 1_800_000, env: { ...process.env, NODE_OPTIONS: '' } })).rows;
+  const report = { root, ids, combat: {} };
+  let failures = 0;
+  for (const name of names) {
+    const step = STEPS.find((entry) => entry.name === name);
+    const out = mkdtempSync(join(tmpdir(), `cot-combat-${name}-`));
+    const run = (label, moved) => new Promise((done) => {
+      const runArgs = [step.tool, ...step.flags, ...step.scoped(ids), ...(step.report ? [`${step.report}=${join(out, `${label}.report.json`)}`] : []),
+        ...(step.json ? [`${step.json}=${join(out, `${label}.run.json`)}`] : [])];
+      execFile('nice', ['-n', '10', process.execPath, ...runArgs], {
+        cwd: root, maxBuffer: 256 * 1024 * 1024, timeout: 3_600_000,
+        env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=4096${moved ? ` --import=${perturb}` : ''}`, COT_COMBAT_PERTURB: moved ? '1' : '' },
+      }, (error, stdout, stderr) => done(error ? `${label} exit ${error.code ?? 1}: ${String(stderr).trim().split('\n').slice(-2).join(' / ')}` : null));
+    });
+    const rowsOf = () => { const all = rowsNow(); return step.outputs.flatMap((table) => ids.map((id) => [`${table}[${id}]`, all[table]?.[id] ?? 'absent'])); };
+    const differ = (a, b) => a.filter(([key, row], index) => row !== b[index][1]).map(([key]) => key);
+    const started = Date.now();
+    const errors = [];
+    errors.push(await run('plain1', false)); const plain1 = rowsOf();
+    errors.push(await run('plain2', false)); const plain2 = rowsOf();
+    errors.push(await run('moved', true)); const moved = rowsOf();
+    const unstable = differ(plain1, plain2), follows = differ(plain2, moved);
+    if (follows.length) errors.push(await run('restore', false)); // the plain rows back for the next step
+    const keys = step.rowReads?.includes(SPEC_COMBAT) ?? false;
+    const problems = [...errors.filter(Boolean), ...unstable.map((key) => `${key} differs between two plain runs`),
+      ...(keys ? [] : follows.map((key) => `${key} follows the combat leaves, but rowReads lacks ${SPEC_COMBAT}`))];
+    report.combat[name] = { keysCombat: keys, follows, unstable, problems, seconds: Math.round((Date.now() - started) / 1000) };
+    if (problems.length) failures++;
+    console.log(`[trace-check --combat] ${name}: ${follows.length ? `rows follow the combat leaves (${follows.join(', ')})` : 'rows ignore the combat leaves'}; ${keys ? 'keys' : 'does not key'} ${SPEC_COMBAT}; ${problems.length ? `FAIL: ${problems.join('; ')}` : 'ok'} (${report.combat[name].seconds} s)`);
+  }
+  if (value('json')) writeFileSync(value('json'), `${JSON.stringify(report, null, 1)}\n`);
+  console.log(`[trace-check --combat] ${failures ? `FAIL (${failures})` : 'PASS'}: ${names.length} step(s) on ${ids.join(',')}`);
+  process.exit(failures ? 1 : 0);
+}
+
 const state = computeState({ root, steps: STEPS });
 const rel = (path) => relative(root, path);
 const insideRoot = (path) => path === root || path.startsWith(root + sep);
@@ -41,7 +85,8 @@ for (const name of names) {
   const step = STEPS.find((entry) => entry.name === name);
   const s = state.steps[name];
   // Files the step's key holds for these ids.
-  const keyed = new Set([...state.partition.core, ...groups.flatMap((group) => state.partition.groups[group] ?? []),
+  // the balance pass is keyed through the spec rows (steps.mjs BALANCE)
+  const keyed = new Set([...state.partition.core, ...state.partition.balance, ...groups.flatMap((group) => state.partition.groups[group] ?? []),
     ...s.toolFiles, ...s.foreignTables, ...tableFiles, ...AGGREGATES, ...s.outputFiles, ...step.files,
     ...expandGlobs(root, [...(step.writes ?? []), ...(step.reads ?? [])]), step.tool, ...(step.entries ?? []),
     ...Object.entries(DECLARED_DYNAMIC).filter(([file]) => s.toolFiles.includes(file) || file === step.tool)
