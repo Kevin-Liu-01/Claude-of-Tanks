@@ -6,8 +6,7 @@
 // On the HUD layout fixture (tools/fixtures/battle-hud-layout.html), at touch and desktop windows:
 // - status: four statuses up (fire, tracks, engine, crew), the strip shows every chip its room fits (its damage panel less
 //   --status-room-inset, at a chip's own width). On touch it hugs its chips, so a capacity read from its own width held
-//   two and a "+3" whatever the room. The strip also stays where the dock puts it, on the panel and clear of the joystick
-//   by the dock's 8 px.
+//   two and a "+3" whatever the room. Wider, it still keeps the dock's 8 px off the joystick and covers no control.
 // - bars: the hull bars over the tanks (?state=markers) keep their widths across four relabels back to their names and a
 //   short-band toggle. The vehicle line stretched to the bar read back the width it had been given, 14 px more at every
 //   measure, up to 280.
@@ -65,13 +64,21 @@ const statusProblems = async () => {
   const room = panel.clientWidth - inset;
   const fits = Math.max(2, Math.min(4, Math.floor((room + gap) / (chip + gap))));
   if (chips.length !== fits) problems.push(`${chips.length} chips show where the room (${room} px) fits ${fits} of ${chip} px`);
-  const s = strip.getBoundingClientRect(), p = panel.getBoundingClientRect();
+  const s = strip.getBoundingClientRect();
   if (s.right - s.left > room + 0.5) problems.push(`the strip (${Math.round(s.width)} px) is wider than its room (${room} px)`);
   const joy = document.querySelector('.cot-touch.on .joy')?.getBoundingClientRect();
   if (joy?.width && s.left < joy.right + 8 && s.right > joy.left - 8 && s.bottom > joy.top - 8 && s.top < joy.bottom + 8) {
     problems.push(`the strip comes within 8 px of the joystick (strip left ${Math.round(s.left)}, joystick right ${Math.round(joy.right)})`);
   }
-  if (s.bottom > p.top + 0.5 || s.bottom < p.top - 40) problems.push(`the strip left its seat over the panel (bottom ${Math.round(s.bottom)}, panel top ${Math.round(p.top)})`);
+  // (the dock lifts it over what stands above the panel, battleHudLayout.ts statusDockBottom: wider, it must still cover
+  // no control)
+  for (const control of document.querySelectorAll('.cot-vehicle-controls, .cot-drive, .cot-touch.on :is(button, .joy)')) {
+    const c = control.getBoundingClientRect();
+    if (!c.width || !control.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+    if (s.left < c.right && s.right > c.left && s.top < c.bottom && s.bottom > c.top) {
+      problems.push(`the strip covers ${control.className.toString().split(' ').slice(0, 2).join('.') || control.tagName.toLowerCase()}`);
+    }
+  }
   return problems;
 };
 
