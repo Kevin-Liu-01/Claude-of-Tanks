@@ -15,6 +15,7 @@ import {beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {buildT72B3X,t72b3XCastingContains} from './t72b3X.ts';
+import {withSeatRole} from '../spareTrackSeat.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -222,14 +223,18 @@ function drawaSight(P:TankBuilderPort):void {
   for(const dx of [-.14,.14])P.addEquipment('turretDetail',box(.016,.10,.14),...at(.255,.20,dx));
 }
 
-function crosswindMast(P:TankBuilderPort):void {
-  // Drawa's crosswind sensor on its mast over the turret rear, between the roof whips.
+function crosswindMast(P0:TankBuilderPort):void {
+  // Drawa's crosswind sensor on its mast over the turret rear, between the roof whips. The mast, its pot and its head
+  // carry the antenna seat role, as the whips do: the geometry gate's body leaves them out (tools/body-height-parts.mjs,
+  // Main's ruling 2026-10-30).
   const x=.08,z=-1.02,base=roofAt(x,z);
   const at=(dy:number)=>[x-YAW[0],base+dy-YAW[1],z-YAW[2]] as const;
-  P.addEquipment('turretDetail',cylY(.06,.07,.05,12),...at(.01));
-  P.addEquipment('turretDetail',cylY(.018,.022,.52,8),...at(.29));
-  P.addEquipment('turretDetail',box(.10,.09,.13),...at(.59));
-  P.addEquipment('turretDark',cylY(.012,.012,.10,6),...at(.685));
+  withSeatRole(P0,'antenna',(P)=>{
+    P.addEquipment('turretDetail',cylY(.06,.07,.05,12),...at(.01));
+    P.addEquipment('turretDetail',cylY(.018,.022,.52,8),...at(.29));
+    P.addEquipment('turretDetail',box(.10,.09,.13),...at(.59));
+    P.addEquipment('turretDark',cylY(.012,.012,.10,6),...at(.685));
+  });
 }
 
 export function buildPT91Twardy(P:TankBuilderPort):void {

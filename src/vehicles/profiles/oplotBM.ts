@@ -50,6 +50,7 @@ import { DRUM_ISSUE_PAINTS, fabricRollParts, fuelDrumParts, place } from '../acc
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { OPLOT_BM_AUTHORING, OPLOT_BM_ERA, OPLOT_BM_SCALE } from '../oplotFlankLayout.ts';
 import { resizeAuthoredVehicle } from './vehicleSize.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type OplotBMVariant = 'm' | 't' | 'u' | 'pl' | 'pls' | 'plz';
@@ -759,12 +760,16 @@ function buildRoof(P: TankBuilderPort, variant: OplotBMVariant): void {
     P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, ROOF_Y + 0.008, ez);
     P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, ROOF_Y + 0.016, ez);
   }
-  // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner
-  P.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
-  P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+  // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner. The
+  // whips and their pots carry the antenna seat role: the geometry gate's body leaves them out (tools/body-height-parts.mjs,
+  // Main's ruling 2026-10-30) and the spare-track seats keep clear of them.
   const whipLift = fit?.rearSlats ? ORZEL_BUSTLE_TOP - 0.66 : 0;
-  P.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68 + whipLift, -1.90);
-  P.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30 + whipLift, -1.90);
+  withSeatRole(P, 'antenna', (W) => {
+    W.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
+    W.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+    W.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68 + whipLift, -1.90);
+    W.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30 + whipLift, -1.90);
+  });
 }
 
 function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
