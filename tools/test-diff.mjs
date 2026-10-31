@@ -40,7 +40,9 @@ export async function fleetPartition(root, { world = false } = {}) {
   const { STEPS, TABLES, WORLD_STEPS } = await import(pathToFileURL(join(root, 'tools/changed-only/steps.mjs')).href);
   const state = computeState({ root, steps: STEPS, worldSteps: world ? WORLD_STEPS ?? [] : [] });
   return {
-    ids: [...state.ids], core: new Set(state.partition.core), groups: state.partition.groups,
+    // the balance pass is keyed per id through the spec rows in the chain; here it stays fleet-wide (its duels are chosen
+    // from balanceInputs, which compares the specs themselves)
+    ids: [...state.ids], core: new Set([...state.partition.core, ...(state.partition.balance ?? [])]), groups: state.partition.groups,
     // a JSON table file -> the key path of its per-id rows (steps.mjs TABLES kind 'json')
     jsonRows: new Map(Object.values(TABLES ?? {}).filter((table) => table.kind === 'json')
       .flatMap((table) => table.files.map((file) => [file, table.path]))),
