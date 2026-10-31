@@ -23,7 +23,8 @@ const meshNames = (root) => {
 };
 
 // 2026-10-01: the owner's September renewal rebuilt all three vehicles on detailed source studies (4c34b3e8b,
-// cdbfe54dc, fleet-renewal-publication-20260930.md): t72b3m_2022 is the obr. 2022 on t72b3m_2016 with the T-90SM X turret,
+// cdbfe54dc, fleet-renewal-publication-20260930.md): t72b3m_2022 is the obr. 2022 on t72b3m_2016 (since 266 its whole build
+// with the 2022 package, t72b3m2022Kit.ts; until then under the T-90SM X turret),
 // t72bu_1989 the T-72BU 1989 on t72bu, bmpt_terminator2 the T-80U X hull with its reshaped station. The legacy builders'
 // cleanup receipts (single-crown skin, raised casting, centered turntable) left with them; the cleanups themselves
 // remain the law and are checked on the actual rebuilds: a seated articulated turret at the combat datum, reactive

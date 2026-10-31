@@ -107,7 +107,11 @@ export function synchronizeFleetRenewalMetadata():void{
     target.dims.heightM=upper.dims.heightM-upper.armor.turretPivot[1]+pivot[1];
     target.dims.overallLengthM=lower.dims.hullLengthM/2+pivot[2]+target.armor.gunPivot[2]+target.armor.gunBarrel.lengthM;
   };
-  transplant('t72b3m_2022','t90sm',[.008,1.545,.114315]);
+  // 266 (the owner, 2026-10-30: "also completley redesign the t72b3 (2022)"): the T-72B3M obr. 2022 is the T-72B3M's
+  // own build with its 2022 package (t72b3m2022Kit.ts), no longer the T-90SM turret transplant. It keeps the 2016's
+  // physical frame copied above (its cast turret, crew, modules and pivots) and its own step on the line: the 2022 gun
+  // (Svinets-2 and the faster fire control) it carried before.
+  TANK_SPECS.t72b3m_2022.gun=structuredClone(donors.t90sm.gun);
   // 247: the transplanted turret sits on the T-62's deck (t62Modernization.ts), 90 mm over the T-62 dome's own seat
   transplant('t62mv1','t72b_1987',[0,1.570,.676]);
   // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
@@ -135,7 +139,6 @@ export function synchronizeFleetRenewalMetadata():void{
     TANK_SPECS[id].armor.gunPivot=[0,.33,1.30];
     TANK_SPECS[id].armor.gunBarrel.lengthM=4.95;
   }
-  TANK_SPECS.t72b3m_2022.dims.widthM=4.10;
   const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t80u;
   bmpt.dims={...hull.dims,overallLengthM:hull.dims.hullLengthM,heightM:3.33};stripSilhouetteDimensions(bmpt.dims);
   bmpt.armor.hullPlates=structuredClone(hull.armor.hullPlates);

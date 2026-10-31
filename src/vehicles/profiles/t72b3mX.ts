@@ -11,6 +11,8 @@ import {T72B3M_X_SOURCE_DATUMS} from '../t72b3mXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addT72B3MSideMounts,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
 import {barkLog} from '../accessoryPrimitives.ts';
+import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
+import {loft,type V3} from './eraModuleKit.ts';
 
 const T72B3M_X_DATUMS=T72B3M_X_SOURCE_DATUMS;
 const YAW=T72B3M_X_DATUMS.turretPivot,GUN=T72B3M_X_DATUMS.trunnion;
@@ -47,11 +49,18 @@ function fenders(P:TankBuilderPort,side:number):void {
   ],.019));
   const ringRows:readonly(readonly[number,number,number,number])[]=[
     [3.06,1.02,1.897,1.42328],[3.23,1.006,1.933,1.42328],[3.43,1.026,1.955,1.399],
-    [3.59,1.08,1.951,1.302],[3.73,1.13,1.91,1.155],[3.835,1.19,1.78,.915],
+    [3.59,1.08,1.951,1.302],[3.73,1.13,1.91,1.155],
   ];
-  P.addMudguard('t72b3m-x-rounded-front','hull',roofSheet(ringRows.map(([z,inner,outer,y])=>{
+  const sheet=(rows:readonly(readonly[number,number,number,number])[])=>roofSheet(rows.map(([z,inner,outer,y])=>{
     const l=Math.min(side*inner,side*outer),r=Math.max(side*inner,side*outer);return[z,l,r,y,y] as const;
-  }),.015));
+  }),.015);
+  P.addMudguard('t72b3m-x-rounded-front','hull',sheet([...ringRows,[3.835,1.19,1.78,.915]]));
+  // (266; blind critics: "the front mudguards are flat plates that flare out like wings") the guard's outer edge is
+  // turned down 10 cm, a 12 mm flange from the skirt's front to the guard's last station, so it reads as a pressed
+  // mudguard; outboard of the track (x > 1.88 against its 1.75)
+  const lip=ringRows.slice(1).map(([z,,outer,y])=>({z,ring:(side>0?[[outer-.012,y-.115],[outer,y-.115],[outer,y-.010],[outer-.012,y-.010]]:
+    [[-outer,y-.115],[-outer+.012,y-.115],[-outer+.012,y-.010],[-outer,y-.010]]) as SectionPoint[]}));
+  P.addMudguard('t72b3m-x-rounded-front-lip','hullDetail',sectionSolid([{z:3.19,ring:lip[0].ring},...lip]));
   P.addMudguard('t72b3m-x-rear-leaf','hullRubber',roofSheet([
     [-3.475,Math.min(side*1.145,side*1.935),Math.max(side*1.145,side*1.935),1.043,1.043],
     [-3.155,a,b,1.3207,1.3207],
@@ -88,21 +97,78 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
       }
     });
     const lane=side<0?-1.962:1.958;
-    for(const [a,b,top,low]of [[-3.153,-2.559,1.53164,.79919],[-2.217,-1.73,1.53257,.79949],
-      [-1.389,-.795,1.53164,.79919],[-.785,-.19,1.53164,.79919],[-.18,.415,1.53164,.79919],
-      [.423,1.018,1.53164,.79919],[1.029,1.624,1.53164,.79919],[1.637,2.232,1.52077,.79884],
-      [2.242,3.182,1.47615,.7984]]){
+    for(const [a,b,top,low]of SKIRT_SPANS){
       if(nativeEra){
       P.addEquipment('hullDetail',box(.009,top-low,b-a),lane-side*.014,(low+top)/2,(a+b)/2);
       P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
-        for(const [y,h]of [[(top+1.24)/2,(top-1.24)],[(low+1.203)/2,1.203-low]])P.addExternalArmor('hull',
-          markEraHitFaces(box(.018,h,b-a),[side,0,0]),lane,y,(a+b)/2);
+        for(const [y0,y1]of [[1.24,top],[low,1.203]]){
+          P.addExternalArmor('hull',markEraHitFaces(reliktContainer(side,lane-side*.009,y0,y1,a,b),[side,0,0]));
+          // two cover bolts at the container's upper corners go with it
+          for(const z of [a+.035,b-.035])P.addExternalArmor('hull',markEraFurniture(box(.008,.020,.020)),side*(skirtFaceX(a)+.003),y1-.032,z);
+        }
       });
       }
-      if(a> -1.4&&b<2.24)P.addMudguard('t72b3m-x-lower-curtain','hullRubber',box(.003,.277,b-a-.006),lane-side*.009,.6591,(a+b)/2);
+      else if(a> -1.4&&b<2.24)P.addMudguard('t72b3m-x-lower-curtain','hullRubber',box(.003,.277,b-a-.006),lane-side*.009,.6591,(a+b)/2);
     }
-    P.addMudguard('t72b3m-x-front-curtain','hullRubber',box(.004,.17,.935),lane-side*.009,.7146,2.712);
-    P.addMudguard('t72b3m-x-rear-curtain','hullRubber',box(.004,.14,.825),lane-side*.009,.730,-2.143);
+    if(nativeEra)skirtFlapsAndHangers(P,side,lane);
+    else {
+      P.addMudguard('t72b3m-x-front-curtain','hullRubber',box(.004,.17,.935),lane-side*.009,.7146,2.712);
+      P.addMudguard('t72b3m-x-rear-curtain','hullRubber',box(.004,.14,.825),lane-side*.009,.730,-2.143);
+    }
+  }
+}
+
+// The nine side-skirt cassette spans a side: [rear z, front z, top, bottom] (source stations).
+const SKIRT_SPANS:readonly(readonly[a:number,b:number,top:number,low:number])[]=[[-3.153,-2.559,1.53164,.79919],
+  [-2.217,-1.73,1.53257,.79949],[-1.389,-.795,1.53164,.79919],[-.785,-.19,1.53164,.79919],[-.18,.415,1.53164,.79919],
+  [.423,1.018,1.53164,.79919],[1.029,1.624,1.53164,.79919],[1.637,2.232,1.52077,.79884],[2.242,3.182,1.47615,.7984]];
+/** Outer face of a skirt cassette's Relikt containers (266; they were 18 mm slabs to x 1.967): the six over the fighting
+ * compartment stand 61 mm deep from their 1.949 inner face, the three over the engine bay 26 mm, so the forward skirt
+ * reads as the B3M's deep Relikt boxes and the rear as its thinner screens. */
+const skirtFaceX=(a:number)=>a> -.8?2.010:1.975;
+
+/** 266 (shared-base follow-up; blind critics: "flat, thin, toy-like skirts"): one 4S23 container of the skirt, a closed box
+ * from the source cassette's inner face out to skirtFaceX with 10 mm chamfers round its outer face, so each row reads
+ * as boxes standing proud of the skirt, not a sheet. */
+function reliktContainer(side:number,inner:number,y0:number,y1:number,a:number,b:number):THREE.BufferGeometry {
+  const xi=Math.abs(inner),xo=skirtFaceX(a),c=.010;
+  const full:SectionPoint[]=[[xi,y0],[xo-c,y0],[xo,y0+c],[xo,y1-c],[xo-c,y1],[xi,y1]];
+  const end:SectionPoint[]=[[xi,y0],[xo-2*c,y0],[xo-c,y0+c],[xo-c,y1-c],[xo-2*c,y1],[xi,y1]];
+  const ring=(r:SectionPoint[])=>{const m=r.map(([x,y])=>[side*x,y] as const);return side<0?m.reverse():m;};
+  return sectionSolid([{z:a,ring:ring(end)},{z:a+c,ring:ring(full)},{z:b-c,ring:ring(full)},{z:b,ring:ring(end)}]);
+}
+
+/** 266: the rubber-fabric hem under the skirt's lower containers, one flap per cassette (two under the long front and
+ * rear spans), each its own segment (a 12 mm slot to the next) cut with deep chamfered lower corners (30 % of its width,
+ * 55 % of its height) so the hem reads as the B3M's row of trapezoid teeth, hung 6 degrees outboard from a bolted hinge
+ * bar under the container (its top edge tucked 13 mm into the container's foot), alternate flaps 10 mm further out.
+ * Bottoms .50 under the fighting compartment, .62 front, .65 rear: above the belly pan (.4526); every flap lies outboard
+ * of the track (x > 1.95 against the track's 1.75). Steel hangers clip each cassette seam at the row gap and at the
+ * skirt top. */
+function skirtFlapsAndHangers(P:TankBuilderPort,side:number,lane:number):void {
+  const hingeY=.812,lean=.105,t=.014;
+  const flaps:(readonly[a:number,b:number,bottom:number])[]=[];
+  for(const [a,b]of SKIRT_SPANS)if(a> -1.4&&b<2.24)flaps.push([a,b,.50]);
+  flaps.push([2.245,2.712,.62],[2.712,3.180,.62],[-2.556,-2.143,.65],[-2.143,-1.731,.65]);
+  flaps.forEach(([a,b,bottom],i)=>{
+    const h=hingeY-bottom,w=b-a-.012,cx=w*.30,cy=h*.55;
+    const outline:SectionPoint[]=[[-w/2,0],[-w/2,-(h-cy)],[-w/2+cx,-h],[w/2-cx,-h],[w/2,-(h-cy)],[w/2,0]];
+    // outline in (along-hull, height); extruded through the flap's thickness and turned so the outline lies in the y-z plane
+    const g=sectionSolid([{z:-t/2,ring:outline},{z:t/2,ring:outline}]).rotateY(-Math.PI/2).rotateZ(side*lean);
+    const x0=Math.abs(lane)-.009+t/2+(i%2?.010:0),z=(a+b)/2;
+    P.addMudguard('t72b3m-x-rubber-flap','hullRubber',g,side*x0,hingeY,z);
+    // hinge bar and its three bolts along the flap's top edge
+    const sx=x0+t/2+.007;
+    P.addEquipment('hullDetail',box(.016,.044,w-.03),side*sx,hingeY-.018,z);
+    for(const dz of [-w*.35,0,w*.35])P.addEquipment('hullDetail',box(.009,.016,.016),side*(sx+.0115),hingeY-.018,z+dz);
+  });
+  // the hangers: a clip over each seam between cassettes at the gap between the two container rows, and a hook over the
+  // skirt's top edge at each seam (4 mm over it), both standing 4 mm proud of the containers' faces
+  for(let i=0;i+1<SKIRT_SPANS.length;i++){
+    const z=(SKIRT_SPANS[i][1]+SKIRT_SPANS[i+1][0])/2,top=Math.min(SKIRT_SPANS[i][2],SKIRT_SPANS[i+1][2]);
+    const face=Math.max(skirtFaceX(SKIRT_SPANS[i][0]),skirtFaceX(SKIRT_SPANS[i+1][0])),xi=1.949;
+    P.addEquipment('hullDetail',box(face+.004-xi,.054,.046),side*(face+.004+xi)/2,1.2215,z);
+    P.addEquipment('hullDetail',box(face+.004-1.959,.050,.040),side*(face+.004+1.959)/2,top-.021,z);
   }
 }
 
@@ -181,7 +247,7 @@ function turret(P:TankBuilderPort):void {
 }
 
 type Cheek=readonly[x:number,y:number,z:number,nx:number,ny:number,nz:number,width:number,length:number];
-function cheekCassettes(P:TankBuilderPort):void {
+function cheekCassettes(P:TankBuilderPort,finish=false):void {
   const cells:readonly Cheek[]=[
     [-.59824,1.93354,1.54708,-.14365,.857658,.493748,.2792,.4429],
     [-.93060,1.93236,1.43514,-.26352,.857646,.441591,.2792,.4429],
@@ -194,14 +260,44 @@ function cheekCassettes(P:TankBuilderPort):void {
     [.86297,1.93439,1.49783,.250223,.854002,.456146,.239,.381],
   ];
   for(const cell of cells){
-    const [x,y,z,nx,ny,nz,w,d]=cell,normal=new THREE.Vector3(nx,ny,nz).normalize();
-    const yaw=Math.atan2(nx,nz),pitch=Math.acos(normal.y);
-    const g=markEraHitFaces(box(w,.167,d),[0,1,0]).rotateX(pitch).rotateY(yaw);
-    const center=new THREE.Vector3(x,y,z).addScaledVector(normal,-.0835);
+    if(!finish){
+      // the measured cassettes (national concepts fit their own kits against these)
+      const [x,y,z,nx,ny,nz,w,d]=cell,normal=new THREE.Vector3(nx,ny,nz).normalize();
+      const yaw=Math.atan2(nx,nz),pitch=Math.acos(normal.y);
+      const g=markEraHitFaces(box(w,.167,d),[0,1,0]).rotateX(pitch).rotateY(yaw);
+      const center=new THREE.Vector3(x,y,z).addScaledVector(normal,-.0835);
+      P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',g,center.x-YAW[0],center.y-YAW[1],center.z-YAW[2]));
+      topPart(P,'turretDetail',beamBetween([x*.78,1.66,z*.78],[center.x,center.y-.067,center.z],.017),0,0,0);
+      continue;
+    }
+    // 266 (familyFinish; blind critics over three rounds: "a fan of small separate bricks hanging down over the turret
+    // front", "too thin, droop too low", "the real cassettes are thick wedges whose tops meet the roof line"): each
+    // cassette keeps its measured plan station and heading but stands CHEEK_LIFT higher, at CHEEK_TILT of its measured
+    // tilt, CHEEK_DEPTH deep, 12 % wider and 20 % longer, so each cheek's fan closes into one thick brow whose rear edge
+    // meets the roof's front; t72b3mXGeometry's covers receipt pins the new exposed planes (cheekCellPlane).
+    const [x,,,,,,w0,d0]=cell,w=w0*1.12,d=d0*1.2,{point,normal,yaw,pitch}=cheekCellPlane(cell);
+    const g=markEraHitFaces(box(w,CHEEK_DEPTH,d),[0,1,0]).rotateX(pitch).rotateY(yaw);
+    const center=point.clone().addScaledVector(normal,-CHEEK_DEPTH/2);
     P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',g,center.x-YAW[0],center.y-YAW[1],center.z-YAW[2]));
-    topPart(P,'turretDetail',beamBetween([x*.78,1.66,z*.78],[center.x,center.y-.067,center.z],.017),0,0,0);
+    // the cassette's container body: a vertical prism from its underside (6 mm up into it) down to CHEEK_BODY_BASE_Y,
+    // 5 mm wider a side, so the pack's front reads as tall, near-vertical faces on a solid block, not tiles on struts
+    // (the support beam it hid went with it). ERA furniture: it leaves with its cassette and adds no hit face.
+    const frame=new THREE.Matrix4().makeRotationY(yaw).multiply(new THREE.Matrix4().makeRotationX(pitch)).setPosition(center);
+    const under=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([sx,sz])=>new THREE.Vector3(sx*(w/2+.005),-CHEEK_DEPTH/2+.006,sz*d/2).applyMatrix4(frame));
+    const local=(p:THREE.Vector3):V3=>[p.x-YAW[0],p.y-YAW[1],p.z-YAW[2]];
+    const body=loft([under.map(p=>local(new THREE.Vector3(p.x,CHEEK_BODY_BASE_Y,p.z))),under.map(local)]);
+    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraFurniture(body)));
   }
 }
+const CHEEK_LIFT=.10,CHEEK_TILT=.6,CHEEK_DEPTH=.20;
+/** A cheek cassette's exposed plane (266): the measured station (x, z) and heading, CHEEK_LIFT higher, at CHEEK_TILT of
+ * the measured tilt (t72b3mXGeometry's covers receipt pins three of them). */
+function cheekCellPlane(cell:Cheek):{point:THREE.Vector3;normal:THREE.Vector3;yaw:number;pitch:number} {
+  const [x,y,z,nx,ny,nz]=cell,measured=new THREE.Vector3(nx,ny,nz).normalize();
+  const yaw=Math.atan2(nx,nz),pitch=Math.acos(measured.y)*CHEEK_TILT;
+  return {point:new THREE.Vector3(x,y+CHEEK_LIFT,z),normal:new THREE.Vector3(Math.sin(pitch)*Math.sin(yaw),Math.cos(pitch),Math.sin(pitch)*Math.cos(yaw)),yaw,pitch};
+}
+const CHEEK_BODY_BASE_Y=1.65;
 
 function roofCassettes(P:TankBuilderPort):void {
   const rows:readonly(readonly[number,number,number,number])[]=[
@@ -225,7 +321,7 @@ function roofCassettes(P:TankBuilderPort):void {
   }
 }
 
-function bustle(P:TankBuilderPort):void {
+function bustle(P:TankBuilderPort,boxes=false):void {
   const cases:readonly(readonly[number,number,number,number])[]=[
     [-1.57548,.18880,-1.96081,1.93334],[-1.47929,-.12408,-1.96081,1.93334],[-1.34719,-.43498,-1.96081,1.93334],
     [-1.21581,-.72725,-1.96081,1.93334],[-1.06794,-1.01019,-1.96081,1.93334],
@@ -234,13 +330,42 @@ function bustle(P:TankBuilderPort):void {
     [.92650,-1.13733,1.96203,1.93334],[1.14576,-.88737,1.96203,1.93334],
     [1.26361,-.60051,1.96203,1.93334],[1.38204,-.31420,1.96203,1.93334],
   ];
-  for(const [x,z,yaw,y]of cases){
-    const g=boxSections([[-.193,.15478,.29573,-.263],[-.176,.15478,.290,-.29573],
-      [.180,.15478,.166,-.265],[.193,.15478,.146,-.262]]).rotateY(yaw);
-    topPart(P,'turretDetail',g,x,y,z);
-    topPart(P,'turretDetail',box(.026,.48,.397).rotateY(yaw),x,y-.025,z);
-    topPart(P,'turretDetail',beamBetween([x*.76,1.75,z*.76],[x,y-.22,z],.017),0,0,0);
+  if(!boxes){
+    // the fourteen measured cases (national concepts dock their own flank packs and cage feet against these)
+    for(const [x,z,yaw,y]of cases){
+      const g=boxSections([[-.193,.15478,.29573,-.263],[-.176,.15478,.290,-.29573],
+        [.180,.15478,.166,-.265],[.193,.15478,.146,-.262]]).rotateY(yaw);
+      topPart(P,'turretDetail',g,x,y,z);
+      topPart(P,'turretDetail',box(.026,.48,.397).rotateY(yaw),x,y-.025,z);
+      topPart(P,'turretDetail',beamBetween([x*.76,1.75,z*.76],[x,y-.22,z],.017),0,0,0);
+    }
+    return;
   }
+  // 266 (familyFinish; blind critics: "a ring of narrow bricks, from behind it reads as a crown, not a bin"):
+  // the fourteen measured case stations now carry five continuous stowage boxes, two a side and the rear bin, each a
+  // closed loft through its stations' sections, in the cases' own envelope (inner and outer faces .193 either side of
+  // each station, bottoms .265 under its datum, a flat-topped section with a chamfered outer edge whose tops stay within
+  // the old cases' 2.08-2.27 band), so what stands on them (the 2022 canopy posts, the snorkel, the whip) keeps its seat.
+  // Runs are separated by 2 cm seams; a latch on each station's outer face. The radial fins and the support beams of the
+  // separate cases went with them.
+  const half=.155,seam=.010;
+  const station=(k:number,t=0)=>{const [x,z,yaw,y]=cases[k];
+    const R=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)),T=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+    return {p:new THREE.Vector3(x,0,z).addScaledVector(T,t),R,T,y,yaw};};
+  const ring=({p,R,y}:{p:THREE.Vector3;R:THREE.Vector3;y:number}):V3[]=>([[-.193,-.265],[.193,-.262],[.193,.19],[.163,.22],
+    [-.193,.27]] as const).map(([u,v])=>[p.x+R.x*u-YAW[0],y+v-YAW[1],p.z+R.z*u-YAW[2]] as const);
+  for(const [k0,k1]of [[0,2],[3,4],[5,9],[10,11],[12,13]]){
+    // the run's open ends lie half a case past its end stations, away from its neighbours, less half a seam
+    const end=(k:number,next:number)=>{const s=station(k),n=station(next).p;
+      const t=s.p.clone().addScaledVector(s.T,half).distanceTo(n)>s.p.clone().addScaledVector(s.T,-half).distanceTo(n)?1:-1;
+      return station(k,t*(half-seam));};
+    const rings=[end(k0,k0+1)];
+    for(let k=k0;k<=k1;k++)rings.push(station(k));
+    rings.push(end(k1,k1-1));
+    P.addEquipment('turretDetail',loft(rings.map(ring)));
+  }
+  for(let k=0;k<cases.length;k++){const s=station(k);
+    topPart(P,'turretDetail',box(.05,.06,.022).rotateY(s.yaw),s.p.x+s.R.x*.199,s.y+.05,s.p.z+s.R.z*.199);}
 }
 
 function roofEquipment(P:TankBuilderPort,antennaMasts=true):void {
@@ -289,11 +414,15 @@ function mainGun(P:TankBuilderPort,chinLift=0):void {
   P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565+c,1.85],
     [1.334,.337,.337,2.108,1.566+c,1.86],[1.50,.300,.300,2.081,1.61+c,1.85],
     [1.791,.1606,.1606,1.98264,1.66135+c,1.82199]],GUN));
+  // 266 (shared-base follow-up; blind critics: "the thermal sleeve reads too thin and plain"): the 2A46M-5's fume
+  // extractor stands proud of the sleeve (r .1475, 295 mm, against the 243 mm sleeve; it was 252 mm, under the sleeve's
+  // own 258 mm root), with short conical ends; the sleeve segments keep their measured radii.
   for(const [a,b,ra,rb]of [[1.791,2.302,.12879,.11855],[2.3013,3.1700,.12129,.12129],
-    [3.170,3.987,.11571,.11140],[3.987,4.0365,.1222,.12607],[4.0365,4.962,.12607,.12607],
-    [4.962,5.0073,.12258,.09258],[5.0067,5.84385,.102544,.102544]]){
+    [3.170,3.987,.11571,.11140],[3.987,4.050,.1200,.1475],[4.050,4.905,.1475,.1475],
+    [4.905,5.0073,.1475,.1025],[5.0067,5.84385,.102544,.102544]]){
     P.add('gun',KIT.cylY(rb,ra,b-a,32).rotateX(Math.PI/2),0,0,(a+b)/2-GUN[2]);
   }
+  sleeveHardware(P);
   // Scalar axial profile. Owner 2026-09-22 ("the point of adding holes instead of carving them
   // into the barrel is that we save on triangles"): the tube is closed at the source tip. Until
   // then the profile turned into the measured 125 mm bore (radius .0625) down to the source floor
@@ -307,6 +436,37 @@ function mainGun(P:TankBuilderPort,chinLift=0):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
+// The thermal sleeve's joints, seam and muzzle reference (266): a flat clamp band at every sleeve joint (the three
+// measured clamp rings at z 2.325, 3.142 and 3.963 keep their 135 mm beads on the bands, t72b3mXGeometry's bore receipt),
+// two more at the extractor's front and the sleeve's front end, a tightening lug with its bolt on top of each, the
+// sleeve's raised seam strip along the top of each segment, and the muzzle reference mirror's saddle and shroud 30 cm
+// behind the muzzle ring. All of it lies inside the measured tube's length (the metal tip stays the source muzzle).
+function sleeveHardware(P:TankBuilderPort):void {
+  const at=(z:number)=>z-GUN[2];
+  const bands:readonly(readonly[z:number,r:number,w:number])[]=[[2.325,.1335,.085],[3.142,.1335,.085],[3.963,.1285,.070],
+    [4.996,.1160,.070],[5.815,.1160,.070]];
+  for(const [z,r,w]of bands){
+    P.add('gun',KIT.cylY(r,r,w,32).rotateX(Math.PI/2),0,0,at(z));
+    P.add('gun',box(.052,.030,.044),0,r+.012,at(z));
+    P.add('gun',cylX(.0085,.080,10),0,r+.019,at(z));
+  }
+  for(const z of [4.996,5.815])P.add('gun',torus(.110,.008,32,6).rotateX(Math.PI/2),0,0,at(z));
+  // the extractor's end lips
+  for(const z of [4.062,4.893])P.add('gun',KIT.cylY(.1505,.1505,.020,32).rotateX(Math.PI/2),0,0,at(z));
+  // seam strips: [from, to, sleeve radius at each end], seated 2 mm into the sleeve's top
+  for(const [a,b,ra,rb]of [[1.800,2.292,.1284,.1189],[2.358,3.109,.12129,.12129],[3.175,3.933,.1157,.1116],
+    [5.023,5.788,.102544,.102544]]){
+    const strip=(y:number)=>[[-.012,y-.002],[.012,y-.002],[.012,y+.008],[-.012,y+.008]] as const;
+    P.add('gun',sectionSolid([{z:at(a),ring:strip(ra)},{z:at(b),ring:strip(rb)}]));
+  }
+  // muzzle reference: a saddle clamp on the bare tube under the whole of the mirror's shroud, its window facing the turret
+  P.add('gun',KIT.cylY(.1085,.1085,.190,32).rotateX(Math.PI/2),0,0,at(6.218));
+  P.add('gun',sectionSolid([{z:at(6.125),ring:[[-.058,.100],[.058,.100],[.058,.155],[-.058,.155]]},
+    {z:at(6.190),ring:[[-.058,.100],[.058,.100],[.058,.197],[-.058,.197]]},
+    {z:at(6.310),ring:[[-.058,.100],[.058,.100],[.058,.197],[-.058,.197]]}]));
+  P.add('gunDark',box(.090,.006,.050).rotateX(-.574),0,.177,at(6.157));
+}
+
 /** Options for carrying the T-72B3M hull under a national package. Each defaults to the T-72B3M's own output.
  * `nativeEra: false` drops its Relikt glacis sheet and straps and its side-skirt Relikt boxes with their backing
  * strips (the rubber curtains stay: under a national hull's own fitted skirt banks their top edges tuck into the banks'
@@ -316,17 +476,18 @@ function mainGun(P:TankBuilderPort,chinLift=0):void {
  * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
  * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
-interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean }
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean;
+}
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
   hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
-export function buildT72B3MX(P:TankBuilderPort):void {
+export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={},hullOptions:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.topY=T72B3M_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3MXHull(P);buildT72B3MXTurret(P);
+  buildT72B3MXHull(P,hullOptions);buildT72B3MXTurret(P,{familyFinish:true,...turretOptions});
 }
 
 /** Options for reusing the T-72B3M turret on another hull. A vehicle whose own
@@ -338,12 +499,21 @@ export interface T72B3MXTurretOptions {
   /** false drops the nine Relikt cheek cells with their nine support beams and the 33 roof cassettes (a national
    * concept that fits its own frontal package on this turret, release 227). */
   reliktEra?:boolean;
+  /** false drops only the nine Relikt cheek cells and their beams, keeping the roof cassettes: the T-72B3M obr. 2022
+   * (t72b3m2022Kit.ts, 266) lays its own boxed cheek containers. */
+  cheekEra?:boolean;
   /** Metres the cast mantlet's underside is raised at each of its four stations (default 0, the T-72B3M's own). Release
    * 230 (UA/PL round 11; the gun-depression lane's census, 2026-10-21: the mantlet's underside passes 6-18 mm over the
    * driver's hatch and periscope at yaw 0-25, and over the right deck cover at yaw -48..-133, at every pitch, which no
    * depression stop cures): a concept whose gun must clear its hull by 20 mm takes a shallower chin. The trunnion boss
    * (radius .238, 19 mm over the stock underside) stays inside the lifted mantlet for a lift up to .016. */
   mantletChinLift?:number;
+  /** true (the T-72B3M family's own build, buildT72B3MX: t72b3m_2016 and t72b3m_2022; 266) lays the family finish: five
+   * continuous stowage boxes on the fourteen measured case stations, and the cheek cassettes raised, flattened and
+   * deepened into a solid brow over container bodies (cheekCellPlane). Omitted, the turret keeps the fourteen measured
+   * cases and the measured cheek cassettes, which the national concepts on this turret (nationalDonorTurrets.ts:
+   * t72b3m_hetman, t72b3m_hetman_ii, t72b3_zubr, t72b3_zubr_ii) dock their own flank packs and roof-cage feet against. */
+  familyFinish?:boolean;
 }
 
 /** The complete T-72B3M (2016) turret in its own turret frame (the turret ring
@@ -353,13 +523,14 @@ export interface T72B3MXTurretOptions {
 export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOptions={}):void {
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   turret(P);
-  if(options.reliktEra!==false){cheekCassettes(P);roofCassettes(P);}
-  bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
+  const finish=options.familyFinish===true;
+  if(options.reliktEra!==false){if(options.cheekEra!==false)cheekCassettes(P,finish);roofCassettes(P);}
+  bustle(P,finish);roofEquipment(P,options.antennaMasts!==false);smoke(P);
   if(options.mantletChinLift!==undefined&&!(options.mantletChinLift>=0&&options.mantletChinLift<=.016))
     throw new RangeError(`mantletChinLift ${options.mantletChinLift}: 0 to .016 m (the trunnion boss stays inside)`);
   if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0);
 }
-export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
+export const T72B3M_X_PROFILES={t72b3m_2016:{build:(P:TankBuilderPort):void=>buildT72B3MX(P)}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3MXRunningGear(P:TankBuilderPort):void { runningGear(P); }
