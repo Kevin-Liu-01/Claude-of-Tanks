@@ -8463,7 +8463,9 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
     }
     P.add('turretDetail', box(0.012, bs - bf - 0.04, 0.018), side * (bw + 0.004), (bf + bs) / 2, zf - 0.03);
   }
-  const panelZ = (zf + zk) / 2, panelL = zf - zk - 0.16;
+  // 1.39 m long: a lid piece over 1.4 m is no lid to the field net (ghillieSuit.ts lidPieces), so the panels at 1.43 m
+  // were neither cut round nor read as blow-off panels the net may cover (ghillieSuit.selftest's lid rule)
+  const panelZ = (zf + zk) / 2, panelL = zf - zk - 0.20;
   for (const x of [-0.56, 0.56]) P.addHatch('turret', box(1.02, 0.022, panelL), x, br + 0.008, panelZ);
   P.add('turretDetail', box(0.018, 0.026, panelL + 0.04), 0, br + 0.015, panelZ);
   // The autoloader's service plate on the rear face (behind the basket) and a
