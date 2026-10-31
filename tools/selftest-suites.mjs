@@ -1636,6 +1636,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
+    'tools/starvation-meter.selftest.mjs', // 267: the soak's starvation meter on driven clocks
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',

@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1486 | 144.9 |
+| KEEP | 1487 | 144.9 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 662 | 1122.5 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2149 | 1267.8 | 212.4 |
-| After: the default tier | 1486 | 144.9 | 20.5 |
+| Before: every receipt (npm test without the tiers) | 2150 | 1267.8 | 212.3 |
+| After: the default tier | 1487 | 144.9 | 20.5 |
 
-Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
+Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -808,7 +808,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1486)
+## KEEP (1487)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1361,6 +1361,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/engine/blackWorldGuard.selftest.mjs` | 1.2 | KEEP | renderer contract, 1.2 s: 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allo | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/padInput.selftest.mjs` | 1.2 | KEEP | contract, 1.2 s: The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the wheel angle from deviceorientati | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/starvation-meter.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: 267: the soak's starvation meter on driven clocks | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/keybindingCensus.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnosti | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/qr.selftest.mjs` | 1.1 | KEEP | contract, 1.1 s: The pairing link's QR encoder (src/pad/qr.ts). Known answers: each matrix below was decoded back to its text b | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/i18nFormat.selftest.mjs` | 1.1 | KEEP | interface contract, 1.1 s: 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the sin | default tier (npm test, the release gate; lane mode by its closure) |
