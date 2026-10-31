@@ -7,7 +7,7 @@
   "targets": {
     "ee_t4_osorio": {
       "name": "EE-T4 Osório",
-      "authority": "A fictional development (concept facet): the owner asked on 2026-10-30 for \"a super modernized hypotehtical version a tier 9 and a tier 10\" and Main ruled the same day (DECISIONS): EE-T4 Osório, tier X, continuing Engesa's numbering as the Challenger 1's fictional FV4030/5 and /6 continue Vickers'. No such vehicle was built; the base is the surviving P.2, whose photographs these are, under the EE-T3's kit heavier and full length, a hard-kill active protection system (four radar panels, two launchers), laser-warning heads, slat armour over the rear plate and a 130 mm L/51.",
+      "authority": "A fictional development (concept facet): the owner asked on 2026-10-30 for \"a super modernized hypotehtical version a tier 9 and a tier 10\" and Main ruled the same day (DECISIONS): EE-T4 Osório, tier X, continuing Engesa's numbering as the Challenger 1's fictional FV4030/5 and /6 continue Vickers'. No such vehicle was built; the base is the surviving P.2, whose photographs these are, under the EE-T3's kit heavier and full length, a hard-kill active protection system (four radar panels, two launchers), laser-warning heads, slat armour over the rear plate with two 200 L fuel drums behind it (the owner, 2026-10-31) and a 130 mm L/51.",
       "sources": [
         "https://www.forte.jor.br/2015/12/27/engesa-ee-t1-osorio/",
         "http://www.forte.jor.br/wp-content/uploads/2015/12/osorio-caracteristicasII.jpg",
@@ -19,9 +19,9 @@
         "https://commons.wikimedia.org/wiki/File:EE-T1_Os%C3%B3rio.jpg"
       ],
       "widthM": 3.51,
-      "overallLengthM": 11.792,
+      "overallLengthM": 12.425,
       "tallestM": 4.46,
-      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared Osório build (profiles/osorio.ts, mark t4): the P.2's 7.13 m hull and 2.37 m roof, the kit's widths over the composite skirt modules (3.51 m), the 6.6 m gun forward (11.792 m with its muzzle at hull z 7.85, including the rear slat armour), the tallest the turret's whips (Box3 of the build at both qualities).",
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared Osório build (profiles/osorio.ts, mark t4): the P.2's 7.13 m hull and 2.37 m roof, the kit's widths over the composite skirt modules (3.51 m), the 6.6 m gun forward (12.425 m with its muzzle at hull z 7.85, including the rear slat armour and the two fuel drums behind it), the tallest the turret's whips (Box3 of the build at both qualities).",
       "caliberMm": 130,
       "launcherTubes": 0,
       "roofMachineGuns": 1,

@@ -257,7 +257,8 @@ const osorioModernShells = (base: typeof osorio_p2.gun.shells, pen: readonly [nu
     : { ...shell, caliberMm: cal, dmg: Math.round(shell.dmg * (cal > 120 ? 1.15 : 1.05)) });
 
 // The EE-T3 (tier IX, the 2000s): a 120 mm L/55, the nose module, composite modules on the front three skirt panels, the
-// cheeks' wedge modules and side boxes, a stabilised panoramic sight with its thermal channel, the remote 12.7 mm.
+// cheeks' wedge modules and side boxes, a stabilised panoramic sight with its thermal channel, the remote 12.7 mm, two
+// 200 L fuel drums across the stern.
 const ee_t3_osorio = brazilian('ee_t3_osorio', 'amx40', 'EE-T3 Osório', 'modern');
 Object.assign(ee_t3_osorio.dims, { hullLengthM: 7.13, overallLengthM: 10.46, widthM: 3.40, heightM: 2.95 });
 Object.assign(ee_t3_osorio, { ...osorioMobility, hp: 2500, weightTons: 55, enginePowerHp: 1300, topSpeedKmh: 66,
@@ -285,7 +286,7 @@ ee_t3_osorio.visual = {
 };
 
 // The EE-T4 (tier X, the 2030s): a 130 mm L/51, the kit heavier and full length, a hard-kill active protection system,
-// laser-warning heads, slat armour over the rear plate, a hybrid pack's power.
+// laser-warning heads, slat armour over the rear plate with the two fuel drums behind it, a hybrid pack's power.
 const ee_t4_osorio = brazilian('ee_t4_osorio', 'amx40', 'EE-T4 Osório', 'modern');
 Object.assign(ee_t4_osorio.dims, { hullLengthM: 7.45, overallLengthM: 11.73, widthM: 3.43, heightM: 2.98 });
 Object.assign(ee_t4_osorio, { ...osorioMobility, hp: 2700, weightTons: 58, enginePowerHp: 1500, topSpeedKmh: 68,

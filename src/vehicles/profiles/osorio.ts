@@ -18,13 +18,15 @@
 //   tier 9 and a tier 10"; Main's ruling the same day), continuing Engesa's numbering as the Challenger 1's fictional
 //   FV4030/5 and /6 continue Vickers': the P.2's hull and turret under a bolted armour kit. The EE-T3 (tier IX): a nose
 //   module on the glacis, composite modules on the front three skirt panels, wedge modules on the cheeks and side armour
-//   boxes, a stabilised panoramic sight, the ARES-type remote 12.7 mm station, a 120 mm L/55. The EE-T4 (tier X): the
-//   EE-T3's kit heavier and full length, a hard-kill active protection system (four radar panels and two launchers),
-//   laser-warning heads, slat armour over the rear plate, a 130 mm L/51.
+//   boxes, a stabilised panoramic sight, the ARES-type remote 12.7 mm station, a 120 mm L/55, two 200 L fuel drums
+//   across the stern. The EE-T4 (tier X): the EE-T3's kit heavier and full length, a hard-kill active protection system
+//   (four radar panels and two launchers), laser-warning heads, slat armour over the rear plate with the drums behind
+//   it, a 130 mm L/51.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
+import { DRUM_ISSUE_PAINTS, fuelDrumParts, place } from '../accessoryPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -291,6 +293,31 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
         const x = -sx + (2 * sx) * k / 28;
         P.add('hullOpenLattice', box(0.022, sy1 - sy0, 0.022), x, (sy0 + sy1) / 2, sz);
       }
+    }
+    if (modern) {
+      // two 200 L fuel drums across the stern (owner 2026-10-31: "add two big fuel barrels on the backs"), laid
+      // transverse in a cradle off the lower rear plate (the T-72/T-80 stowage, the Challenger 1's Op Granby fit): their
+      // crowns 9 cm under the deck line, so the gun keeps its depression over the stern; the EE-T3's behind the tow hooks,
+      // the EE-T4's behind its slat cage, the cradle's arms under the cage's lower rail
+      const r = 0.29, len = 0.88, yc = 1.22, cageZ = H.sternZ - 0.32;
+      const zc = t4 ? cageZ - 0.06 - r : H.sternZ - 0.185 - r;
+      const armY = yc - r - 0.06, armEnd = zc - 0.22;
+      const plateZ = H.sternZ + (H.rearPlateY - armY) / (H.rearPlateY - H.bellyY) * (H.rearBellyZ - H.sternZ);
+      for (const s of [-1, 1] as const) {
+        const x = s * 0.52;
+        const drum = fuelDrumParts({ r, len, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
+          detail: P.q === false ? 0 : 1, bold: true, paint: DRUM_ISSUE_PAINTS[s > 0 ? 1 : 2], seed: (t4 ? 26640 : 26630) + (s > 0 ? 1 : 0) });
+        P.add('hullBark', place(drum.body, -len / 2, 0, 0, 0, 0, -Math.PI / 2), x, yc, zc);
+        for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', place(part, -len / 2, 0, 0, 0, 0, -Math.PI / 2), x, yc, zc);
+        // the cradle: two arms from the lower rear plate under each drum, two saddles across them
+        for (const ax of [0.14, 0.92]) P.add('hullDark', box(0.05, 0.05, plateZ - armEnd), s * ax, armY, (plateZ + armEnd) / 2);
+        for (const dz of [-0.15, 0.15]) P.add('hullDark', box(len - 0.02, 0.085, 0.05), x, armY + 0.0675, zc + dz);
+        // two hold-down bars on the drum's straps, from the rear plate's fittings (the EE-T4's: the cage's top rail) onto
+        // its front crown
+        const [fy, fz] = t4 ? [1.48, cageZ - 0.02] : [1.50, H.sternZ - 0.02];
+        for (const dx of [-0.308, 0.308]) bar('hullDark', [x + dx, fy, fz], [x + dx, yc + r * 0.87 + 0.005, zc + r * 0.5], 0.012);
+      }
+      P.add('hullDark', cylX(0.025, 1.90, 12), 0, armY, armEnd + 0.03);
     }
   };
   buildOsorioHullFittings();
