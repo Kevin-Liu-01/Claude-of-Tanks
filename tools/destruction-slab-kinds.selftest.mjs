@@ -130,6 +130,7 @@ if (!isMainThread) {
   // the destruction code's hash (each entry's import closure, as the selftest cache reads it) and the passed fingerprints
   const { createSelftestCache, REPO_ROOT } = await import('./selftest-cache.mjs');
   const { resolveSelftestCacheDir } = await import('./selftest-cache-dir.mjs');
+  const { selftestCacheEnv } = await import('./run-selftests.mjs');
   const useCache = process.env.COT_SELFTEST_CACHE !== '0' && !process.argv.includes('--all') && !process.env.COT_SLAB_KINDS_FROM;
   const CODE = ['src/fx/structureStages.ts', 'src/fx/fractureStages.ts', 'src/fx/structureDebris.ts', 'src/fx/rubbleBodies.ts', 'src/fx/structureMask.ts',
     'src/sim/structureDamage.ts', 'src/sim/matchRuleset.ts', 'src/game/studioDestruction.ts', 'src/world/structureDamageSeam.ts',
@@ -146,7 +147,9 @@ if (!isMainThread) {
   };
   let store = emptyStore();
   if (useCache) {
-    const cache = createSelftestCache({ root: REPO_ROOT, env: { ...process.env, COT_SELFTEST_CACHE: '1' } });
+    // (perf 265: the runner's NODE_OPTIONS carries its graph guard by this checkout's path, so each worktree hashed its own
+    // salt and no lane met another's passes) the environment as the runner keys a receipt
+    const cache = createSelftestCache({ root: REPO_ROOT, env: { ...selftestCacheEnv(process.env), COT_SELFTEST_CACHE: '1' } });
     const h = createHash('sha1');
     for (const f of CODE) {
       // (the detector and this file by their own bytes: their dynamic imports of the world build are the fingerprint's)
