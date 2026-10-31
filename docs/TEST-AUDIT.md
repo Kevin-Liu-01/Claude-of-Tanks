@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1478 | 143.5 |
+| KEEP | 1479 | 143.6 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 662 | 1121.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2141 | 1265.0 | 212.0 |
-| After: the default tier | 1478 | 143.5 | 20.3 |
+| Before: every receipt (npm test without the tiers) | 2142 | 1265.1 | 212.0 |
+| After: the default tier | 1479 | 143.6 | 20.3 |
 
-Default tier: 11.3 % of the whole registry's CPU; 15.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.6 min pool, 2.5 min browser receipts.
+Default tier: 11.4 % of the whole registry's CPU; 15.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.6 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -808,7 +808,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1478)
+## KEEP (1479)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -875,10 +875,10 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/rosterPlanning.selftest.mjs` | 25 | KEEP | game flow, 25 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/droneRecallWire.selftest.mjs` | 25 | KEEP | the client only asks; the authority decides (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/eventPayload.selftest.mjs` | 25 | KEEP | binary event payloads (must-keep: wire) | default tier (npm test, the release gate; lane mode by its closure) |
+| `server/rooms/localPadService.selftest.mjs` | 23 | KEEP | server service, 23 s: The LAN helper's phone-controller pairing over real sockets (docs/PHONE-CONTROLLER.md): /pad/new hands out a c | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/waveFormationSplit.selftest.mjs` | 23 | KEEP | game flow, 23 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/interactionRegistry.selftest.mjs` | 23 | KEEP | interface contract, 23 s: 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and syst | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-p2p-headless-crash.selftest.mjs` | 23 | KEEP | a crashed host tab (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
-| `server/rooms/localPadService.selftest.mjs` | 23 | KEEP | server service, 23 s: The LAN helper's phone-controller pairing over real sockets (docs/PHONE-CONTROLLER.md): /pad/new hands out a c | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/matchBuild.selftest.mjs` | 22 | KEEP | same-wire build check (must-keep: wire) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/moduleArticulation.selftest.mjs` | 22 | KEEP | module damage articulation (must-keep: damage sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/articulated-shadow-batch.browser.selftest.mjs` | 22 | KEEP | GPU regression, 22 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1078,6 +1078,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/sim/honestHunt.selftest.mjs` | 7.7 | KEEP | simulation rule, 7.7 s: The honest hunt (gameplay-modes-228; the coordinator: "spotting-respecting, no cheating"). The Horde's zombies | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/vehicleFacets.selftest.mjs` | 7.6 | KEEP | vehicle rule, 7.6 s: 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/vehicleActions.selftest.mjs` | 7.5 | KEEP | game flow, 7.5 s: 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/gunFaceSplit.selftest.mjs` | 7.4 | KEEP | vehicle rule, 7.4 s: 265 (FAIRNESS-265 §3, release 266): a forward turret face only partly over the gun reads, point by point, the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/accessibilityPreferences.selftest.mjs` | 7.3 | KEEP | interface contract, 7.3 s: 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/thermalFireGain.selftest.mjs` | 7.0 | KEEP | effects contract, 7.0 s: thermalFireGain.selftest.mjs — (lane ac130-fx-228 r3, the r5 blind critic's MAJOR "the 152 mm burst has essent | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.colliderStop.selftest.mjs` | 7.0 | KEEP | game flow, 7.0 s: 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1352,14 +1353,14 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/hot-path-alloc.selftest.mjs` | 1.3 | KEEP | tool contract, 1.3 s: hot-path-alloc.selftest.mjs — the receipt that keeps marked hot paths allocation-free (2026-10-24, lockdown-25 | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/docs/docsPrint.selftest.mjs` | 1.2 | KEEP | site, manual or app contract, 1.2 s: 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page b | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/blackWorldGuard.selftest.mjs` | 1.2 | KEEP | renderer contract, 1.2 s: 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allo | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/padInput.selftest.mjs` | 1.2 | KEEP | contract, 1.2 s: The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the wheel angle from deviceorientati | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/keybindingCensus.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnosti | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/qr.selftest.mjs` | 1.1 | KEEP | contract, 1.1 s: The pairing link's QR encoder (src/pad/qr.ts). Known answers: each matrix below was decoded back to its text b | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/i18nFormat.selftest.mjs` | 1.1 | KEEP | interface contract, 1.1 s: 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the sin | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/badgeColours.selftest.mjs` | 1.1 | KEEP | interface contract, 1.1 s: 261 (owner: consumables "represented uniquely but as cool-y as eqquipment"): the item badge's category hues, o | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/worldAssemblySteps.selftest.mjs` | 1.1 | KEEP | world rule, 1.1 s: battle-spikes-253: the world's assembly paced in steps, the seal per grass mesh | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/battle-spike-census.selftest.mjs` | 1.1 | KEEP | tool contract, 1.1 s: battle-spikes-253: the streamed trace's splitter, the census's arguments | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/pad/qr.selftest.mjs` | 1.1 | KEEP | contract, 1.1 s: The pairing link's QR encoder (src/pad/qr.ts). Known answers: each matrix below was decoded back to its text b | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/battlePacingRun.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s: the shards' partition, report check, merge and hand-over, on fixtures | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestLoader.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/githubStars.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2175,11 +2176,11 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/decorKitTextureSelection.selftest.mjs` | 0.9 | KEEP | vehicle rule, 0.9 s: decorKitTextureSelection.selftest.mjs — a tank's decoration kit takes its own camo entry (UI-LOCKDOWN E, 2026- | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/tank-voxel-body.selftest.mjs` | 0.9 | KEEP | tool contract, 0.9 s: 2026-10-08: deep interior needs exact body cover over a voxel's whole footprint (or a narrow slot) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cameraDestinationWarm.selftest.mjs` | 0.8 | KEEP | renderer contract, 0.8 s: perf-245 (2026-10-24): a camera hop's destination warmed on the way (batches alone and uncull'd, the terrain f | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/padProtocol.selftest.mjs` | 0.8 | KEEP | contract, 0.8 s: 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/teamNations.selftest.mjs` | 0.8 | KEEP | simulation rule, 0.8 s: TEAM NATIONS (gameplay-modes-228; owner 2026-10-18: "make the allied/enemy tank country enforcement work prope | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/battlefieldFacts.selftest.mjs` | 0.8 | KEEP | interface contract, 0.8 s: The battlefield picker's facts (src/ui/battlefieldFacts.ts): every map has a name, a landscape, at least one h | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/garageHotspots.selftest.mjs` | 0.8 | KEEP | interface contract, 0.8 s: 2026-10-23: the Garage's numbered hotspots (the Premiere direction's 05-garage page) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-freshness.selftest.mjs` | 0.8 | KEEP | tool contract, 0.8 s: media-freshness.selftest.mjs — every media URL the site names is on a current round (brand-ui SPEC 8.1, 8.3; S | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/pad/padProtocol.selftest.mjs` | 0.8 | KEEP | contract, 0.8 s: 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/inputPointerLockFocus.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim poin | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/liveCombatWarm.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: liveCombatWarm.selftest.mjs — the combat warms that run between a revealed battle's frames restore everything | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/watchController.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig | default tier (npm test, the release gate; lane mode by its closure) |

@@ -185,15 +185,39 @@ const distance = (a: readonly number[], b: readonly number[]): number => {
   return Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
 };
 
+/** A convex outline's area (m²): its fan's cross products. */
+function pieceArea(points: readonly (readonly number[])[]): number {
+  let x = 0, y = 0, z = 0;
+  for (let index = 1; index + 1 < points.length; index++) {
+    const u = sub(points[index], points[0]), v = sub(points[index + 1], points[0]);
+    x += u[1] * v[2] - u[2] * v[1]; y += u[2] * v[0] - u[0] * v[2]; z += u[0] * v[1] - u[1] * v[0];
+  }
+  return Math.sqrt(x * x + y * y + z * z) / 2;
+}
+
 /** A cell face as a sample candidate: its centroid, its area and its plate. */
 interface FaceSite { centroid: number[]; area: number; plate: unknown }
 
 /** The outward faces of a frame's cells (the slice caps two cells share are left out) as sample candidates. */
 function faceSites(cells: readonly ArmorCollisionCell[] | undefined): FaceSite[] {
   const sites: FaceSite[] = [];
+  const splits = new Set<unknown>();
   for (const cell of cells || []) {
     for (const face of cell.faces) {
       if (face.internal || face.indices.length < 3) continue;
+      // (265) a plane only partly over the gun: a site per piece, each the plate a round meets there
+      if (face.gunSplit) {
+        if (splits.has(face.gunSplit)) continue;
+        splits.add(face.gunSplit);
+        for (const piece of face.gunSplit.pieces) {
+          const area = pieceArea(piece.points);
+          if (!(area > 1e-6)) continue;
+          const centroid = [0, 0, 0];
+          for (const point of piece.points) for (let axis = 0; axis < 3; axis++) centroid[axis] += point[axis] / piece.points.length;
+          sites.push({ centroid, area, plate: piece.plate });
+        }
+        continue;
+      }
       const [a, b, c] = face.indices.map((index) => cell.vertices[index]);
       const u = sub(b, a), v = sub(c, a);
       const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];

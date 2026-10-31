@@ -437,7 +437,11 @@ export default defineConfig({
             // 2026-10-25 (integrator 253): the UI canvas primitive (canvas-ui-253) and the vehicle eras table (equipment-rules-253)
             // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
             // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-30 (gunface-span-265, release 266): the gun-face split (sim/gunFaceSplit.ts: the authority's per-point read,
+            // the anatomy's cut) and the cell facets it is cut from (sim/convexCellFacets.ts, shared with the armour skin) are
+            // leaves the trace, the anatomy and the Gallery load at boot on the same three pages; on their own they were two
+            // more boot requests on each.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
