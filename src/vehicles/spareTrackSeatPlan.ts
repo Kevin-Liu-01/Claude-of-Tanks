@@ -9,7 +9,7 @@ export type SeatPlanEntry = number | readonly number[];
 export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, SeatPlanEntry>>>> = {
   "amx40_proto": {
     "amx40-rear-links@hull(1.19,1.22,-3.37)": [-1.716, -0.047, -4.06, 0.5, 0.5, 0.5, -0.5, 0],
-    "fitting@hull(-1.08,1.70,1.62)": -1,
+    "fitting@hull(-1.08,1.70,1.62)": [-0.7, 1.54154, 2.83085, 0.00744, 0.70707, 0.00744, 0.70707, 0],
   },
   "bmp2": {
     "fitting@hull(1.38,1.27,-2.60)": [0.745, 0.86963, -3.12336, 0.51656, -0.48287, 0.51656, -0.48287, 1],
