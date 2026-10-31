@@ -24,7 +24,7 @@ import { createElement as el, escapeHtml, markDatum } from './dom.ts';
 import { NoticeQueue } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
-  hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
+  damageFigureMarkup, hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
   type HitEventPresentation,
   type HitOutcomePresentation,
 } from './hitEventFormat.ts';
@@ -492,9 +492,12 @@ const SI_CSS = `
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
 .cot-si-lrow .d{font-weight:700;color:var(--accent-hi);width:36px;flex:0 0 auto;text-align:right;
-  font-family:${FONT_COND};letter-spacing:-.01em;}
-/* (a shot's own figure in the damage dealt's colour, the card's and the float's; the received rows keep theirs) */
+  font-family:${FONT_COND};letter-spacing:0;}
+/* (a shot's own figure in the damage dealt's colour, the card's and the float's; the received rows keep theirs; every
+   figure untracked, as the card's: at -.01em the true minus touched a 4, critic r2) */
 .cot-si-lrow .d.dealt{color:var(--battle-damage-dealt);}
+/* the damage figure's minus a hair off its number (damageFigureMarkup; the float's too, hud.ts: this sheet is the page's) */
+.cot-minus{margin-right:max(1px,.07em);}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
@@ -1378,7 +1381,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     let figure = header?.querySelector<HTMLSpanElement>('.cot-si-dmg') ?? null;
     if (!header || removed <= 0) { figure?.remove(); return; }
     figure ??= markDatum(el('span', 'cot-si-dmg', header), 'shot-damage');
-    figure.textContent = t('shotInfo.damageAmount', { amount: formatNumber(removed) });
+    figure.innerHTML = damageFigureMarkup(removed);
   }
   function showMissileBlast(card: HTMLDivElement, ev: ShotHitEvent): void {
     const group = missileBlasts.get(ev); if (!group) return;
@@ -1418,10 +1421,11 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
+      // (rounded before the test, as the card's: an autocannon's 0.4 printed "−0")
+      const removed = Math.round(hullPointsRemoved(it.ev));
       r.innerHTML =
         `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
-        `<span class="d dealt">${hullPointsRemoved(it.ev) > 0
-          ? t('shotInfo.damageAmount', { amount: formatNumber(Math.round(hullPointsRemoved(it.ev))) }) : '·'}</span>` +
+        `<span class="d dealt">${removed > 0 ? damageFigureMarkup(removed) : '·'}</span>` +
         `<span class="n">${escapeHtml(it.ev.targetName || it.ev.targetId || '')}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}\u202fm</span>`;
     }

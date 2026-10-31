@@ -30,6 +30,10 @@ const CASES = [
     { kind: 'he_splash', damage: 140, hpRemoved: 140, target: 9, targetHpAfter: 1660 },
     { kind: 'he_splash', damage: 95, hpRemoved: 95, target: 10, targetHpAfter: 1705 },
   ], 845, [610, 140, 95]],
+  // an autocannon's burst: forty 0.4-point penetrations sum on one float ("−16"); the card and the log round each to 0 and
+  // show no figure, never −0
+  ['autocannon burst', Array.from({ length: 40 }, () => ({ kind: 'pen', damage: 0.4, hpRemoved: 0.4, caliberMm: 30,
+    shellType: 'AP' })), 0, [16]],
 ];
 const digits = (text) => Number(String(text ?? '').replace(/[^\d]/g, '')) || 0;
 /** WCAG contrast of two sRGB byte triples. */
@@ -69,7 +73,8 @@ try {
           effectiveMm: 350, nominalMm: 220 };
         events.forEach(({ target, ...event }, i) => f.bus.emit('shell:hit', { ...base, ...event,
           ...(target ? { targetId: f.tanks[target].id, targetName: 'T-90AM', targetSpecId: 't90am' } : {}),
-          pos: [i * 6, 1, 50] }));
+          // (a blast victim stands apart from the direct hit; a burst's rounds strike one spot, as its float sums them)
+          pos: [target ? i * 6 : 0, 1, 50] }));
         for (let i = 0; i < 2; i++) f.hud.update(f.frame);
         const text = (selector) => [...document.querySelectorAll(selector)]
           .filter((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })).map((el) => el.textContent);
@@ -103,7 +108,8 @@ try {
           : seen.card.length === 0, `card figure ${JSON.stringify(seen.card)} reads ${card ? `−${card}` : 'nothing'}`);
         expect(Number(seen.shown) === card, `card.dataset.shown ${seen.shown} is ${card}`);
         const logged = digits(seen.log[0]);
-        expect(logged === (events[0].hpRemoved || 0), `log row ${JSON.stringify(seen.log[0])} reads ${events[0].hpRemoved}`);
+        expect(logged === Math.round(events[0].hpRemoved || 0) && !/−0(?![\d.,])/.test(seen.log[0] ?? ''),
+          `log row ${JSON.stringify(seen.log[0])} reads ${Math.round(events[0].hpRemoved || 0) || 'its dot'}`);
         // one damage-dealt colour (owner 2026-10-31, "make the -xxxxx number be colored"): the card's figure, the float and
         // the log's figure share it, and it holds 4.5:1 on the card's plate even over a white battlefield
         if (card) {

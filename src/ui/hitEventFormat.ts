@@ -5,7 +5,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { GUNSHIP_WEAPONS } from '../sim/matchRuleset.ts';
-import { t } from './i18n.ts';
+import { formatNumber, t } from './i18n.ts';
 import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 
 export interface HitEventPresentation {
@@ -111,6 +111,16 @@ const HIT_OUTCOME_LABEL_KEYS: Readonly<Record<HitOutcomeId, string>> = Object.fr
   no_damage: 'hud.hitOutcome.no_damage',
   module_hit: 'hud.hitOutcome.module_hit',
 });
+
+/**
+ * A damage-dealt figure's markup, the one formatter for the shot card, the float and the shot log: the catalog's
+ * "−{amount}" over the locale's number, its true minus in a span (.cot-minus) that keeps it off a 4's arm in the
+ * condensed figures (untracked, "−420" read as one bar on the float and in the log, critic r2).
+ */
+export function damageFigureMarkup(amount: number): string {
+  const text = t('shotInfo.damageAmount', { amount: formatNumber(amount) });
+  return text.replace('\u2212', '<span class="cot-minus">\u2212</span>');
+}
 
 /** Resolve the localized label for one outcome id. */
 function hitOutcomeLabel(id: HitOutcomeId): string {

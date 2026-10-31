@@ -1293,7 +1293,7 @@ import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
 import { plateObstacles, sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap, worldPlateGap,
   worldPlateSink } from './sightFurniture.ts';
-import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
+import { damageFigureMarkup, hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   guidedMissileSlot,
@@ -1874,8 +1874,9 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
+/* (the figure untracked, as the card's: at -.02em the true minus ran into a 4, "−420" read as one bar, critic r2) */
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
-  letter-spacing:-.02em;color:var(--battle-damage-dealt);white-space:nowrap;text-transform:uppercase;
+  letter-spacing:0;color:var(--battle-damage-dealt);white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
   animation:cotFloat calc(var(--dur-stage) * 2.4) cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
 .cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
@@ -8074,8 +8075,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const d = number.element;
     const damage = number.burst?.damage ?? hullPointsRemoved(hit);
     // (the card's and the log's formatter: one datum, one glyph, the true minus; a burst's fraction keeps one decimal)
-    const shown = damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage);
-    d.textContent = t('shotInfo.damageAmount', { amount: formatNumber(shown) });
+    d.innerHTML = damageFigureMarkup(damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage));
     if (number.burst?.critical) el('span', 'crit', d).textContent = t('hud.dmg.crit');
     clearTimeout(number.timer);
     d.classList.remove('burst-ending');
