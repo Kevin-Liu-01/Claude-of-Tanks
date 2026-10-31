@@ -15,7 +15,6 @@ import {addT90MSAntennaSeat} from './t90msXMast.ts';
 import {addT90MSSideAssembly} from './t90msXSideAssembly.ts';
 import {addT90MSOpticalHead} from './t90msXOpticalHead.ts';
 import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './t90msXHullEnds.ts';
-import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addShtoraEyes} from './shtora.ts';
@@ -116,7 +115,7 @@ function engineDeck(P:TankBuilderPort):void{
 }
 function rearAndHullCages(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',cylX(.105,3.35,28),-.008,1.0115,-3.213);
-  addT90MSRearCradles(P);addT90CradleDrums(P,1.5075,-3.60,[[-.79880,-.37350],[.36355,.80275]]);addT90MSRearCase(P);addT90MSHullCages(P);
+  addT90MSRearCradles(P);addT90MSRearCase(P);addT90MSHullCages(P);
   for(const side of [-1,1]){
     P.addEquipment('hullDetail',torus(.06,.024,20,8).rotateX(Math.PI/2),side*.967,.94,-3.177);
   }

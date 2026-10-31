@@ -37,7 +37,6 @@ import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addShtoraEyes } from './shtora.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { addT90CradleDrums } from './t90CradleDrums.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY=(radius:number,height:number,segments=24): THREE.BufferGeometry => KIT.cylY(radius,radius,height,segments);
@@ -972,8 +971,6 @@ function smRearFixtures(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.0245,.0947,.20),x,1.2164,-3.4521);
     P.addEquipment('hullDetail',box(.1116,.0907,.1137),x,1.2473,-3.5268);
   }
-  // 2026-10-30 (Main's ruling A): the empty cradles read as tusks; two drums ride them (t90CradleDrums.ts)
-  addT90CradleDrums(P,1.5335,-3.86,[[-.8059,-.3655],[.3736,.8001]]);
   P.addEquipment('hullDetail',box(.4013,.3689,.2337),.0018,.855,-3.2142);
   for(const side of [-1,1]) {
     P.snapGroup('t90sm-tow-eye',()=>P.addEquipment('hullDark',torus(.10,.018,16,6),side*.839,1.057,-3.466,0,Math.PI/2),{reachM:.07});

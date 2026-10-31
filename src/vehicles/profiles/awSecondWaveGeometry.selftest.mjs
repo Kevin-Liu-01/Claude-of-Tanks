@@ -180,20 +180,13 @@ function historicalEmptyT90Mount(t){
 function equipment(t,id){
   const mg=roofWeapon(t,id);
   if(id==='t90')emptyT90Mount(t);
-  if(id==='t90a_burlak'){
+  // 2026-10-31 (lane t90-family-266; Main: the gate measures against what the build follows): the source builds keep
+  // their references' empty cradles; the earlier marks carry their drums in their own kits (t90CradleDrums.ts).
+  if(id==='t90'||id==='t90a_burlak'){
     const details=t.root.getObjectByName('hullDetail');
     for(const x of [-.6,.6]){
       const air=new THREE.Raycaster(new THREE.Vector3(x,1.77,-3.53),new THREE.Vector3(0,-1,0),0,.35).intersectObject(details,false);
       assert.equal(air.length,0,'source genuinely empty rear drum cradles');
-    }
-  }
-  // 2026-10-30 (lane t90-family-266, Main's ruling A: the empty cradles read as tusks): the T-90's rear cradles carry
-  // two 200 L drums (t90CradleDrums.ts); each drum's crown stands over its cradle pair.
-  if(id==='t90'){
-    const details=t.root.getObjectByName('hullDetail');
-    for(const x of [-.6,.6]){
-      const top=new THREE.Raycaster(new THREE.Vector3(x,2.4,-3.53),new THREE.Vector3(0,-1,0),0,1).intersectObject(details,false)[0];
-      near(top?.point.y,1.5075+Math.sqrt(.2925**2-.07**2),.002,'a 200 L drum rides each rear cradle pair');
     }
   }
   if(id==='t90a_burlak'){

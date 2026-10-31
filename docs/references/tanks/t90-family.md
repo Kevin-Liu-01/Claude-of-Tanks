@@ -55,8 +55,12 @@ retired with the move (Main: the X proportions are measured; owner commit 245aa4
    and carries at least 12 of its own.
 
 Main's polish ruling on the shared X builders (2026-10-30): the four empty rear drum cradles of the T-90, T-90MS and
-T-90SM builds read as hooks or tusks, so two 200 L drums now ride each pair (`t90CradleDrums.ts`); the T-90A Vladimir's
+T-90SM builds read as hooks or tusks, so two 200 L drums ride each pair (`t90CradleDrums.ts`); the T-90A Vladimir's
 732 mm drums became 585 mm 200 L drums. The T-90A obr. 2004 sheds its birch garnish.
+2026-10-31 (Main: the gate measures against what the build follows): with the certified source oracles restored, the
+drums lengthened the T-90, T-90MS and T-90SM hulls past their references (geometry gate: T-90 94.4 -> 55.4, Tagil 92.2
+-> 55.2, SM 92.2 -> 75.7). The source-X builds keep their references' empty cradles again; the drums ride the earlier
+marks in their own kits (obr. 1992, MS 2011, SM 2013, AM), each with its cradle mounting plates.
 
 ## Measured datums (builder frame, before the 1.05 installed scale)
 

@@ -6,6 +6,7 @@
 // set with the wading snorkel stowed on it, rubber flaps under the stern screens and at the bow, caged headlights.
 import type * as THREE from 'three';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {KIT} from './kit.ts';
 import {beamBetween,type Point3} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -102,5 +103,8 @@ function headlightGuards(P:TankBuilderPort):void{
 }
 
 export function addT90MarkMS2011Kit(P:TankBuilderPort):void{
+  // the mark's rear drums: two 200 L drums on each pair of the source build's cradles (t90CradleDrums.ts). The source-X
+  // twin keeps its reference's empty cradles (Main 10-31: the gate measures against what the build follows)
+  addT90CradleDrums(P,1.5075,-3.60,[[-.79880,-.37350],[.36355,.80275]]);
   warningHeads(P);bustleBins(P);wadingSnorkel(P);sternFlaps(P);bowFlaps(P);headlightGuards(P);
 }

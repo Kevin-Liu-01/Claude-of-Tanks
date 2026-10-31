@@ -13,6 +13,7 @@
 // cage, the hot-climate kit (with the air conditioner and sight hood here) and a flat crown plate with its roof line.
 import type * as THREE from 'three';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {beamBetween} from './measuredPrimitives.ts';
@@ -101,6 +102,9 @@ function flankCase(P:TankBuilderPort):void{
 }
 
 export function addT90MarkSM2013Kit(P:TankBuilderPort):void{
+  // the mark's rear drums: two 200 L drums on each pair of the source build's cradles (t90CradleDrums.ts). The source-X
+  // twin keeps its reference's empty cradles (Main 10-31: the gate measures against what the build follows)
+  addT90CradleDrums(P,1.5335,-3.86,[[-.8059,-.3655],[.3736,.8001]]);
   airConditioner(P);dustSkirts(P);rearFlaps(P);sightHood(P);flankCase(P);
   addT90MarkSM2013Turret(P);
 }

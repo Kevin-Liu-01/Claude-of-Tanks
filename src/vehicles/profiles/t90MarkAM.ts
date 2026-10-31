@@ -16,6 +16,7 @@ import {latheY,moldedBox,roundBar,sweptTube} from '../accessoryPrimitives.ts';
 import {addPintleBarrel,addPintleFeed,addPintleReceiver,createPintleLayout,MG_AMMO_CAN_SLOT,MG_CLASSES,
   pintleFeedTrayZ} from '../machineGunGeometry.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addT90CradleDrums} from './t90CradleDrums.ts';
 
 type Point=readonly[number,number,number];
 const {box,cylX,cylY}=KIT;
@@ -275,5 +276,8 @@ function twinPktMount(P:TankBuilderPort):void{
 }
 
 export function addT90MarkAMKit(P:TankBuilderPort):void{
+  // the mark's rear drums: two 200 L drums on each pair of the source build's cradles (t90CradleDrums.ts). The source-X
+  // twin keeps its reference's empty cradles (Main 10-31: the gate measures against what the build follows)
+  addT90CradleDrums(P,1.5335,-3.86,[[-.8059,-.3655],[.3736,.8001]]);
   sternCage(P);stowageDeck(P);rearFlaps(P);frontFlaps(P);fenderBox(P);twinPktMount(P);
 }
