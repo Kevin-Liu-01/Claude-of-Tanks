@@ -734,6 +734,12 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.match(mapSource, /horizonPanorama\.prepareBake\(panoramaRenderer\)/, 'the world prepares the bake when it assembles');
 }
 
+// (266, main's reds: under a loaded suite the 10 ms timer ran twice in the 35 ms these blocks slept, "the poll ran on (2)")
+// the two compile-poll blocks below wait for the poll's own rounds and for the release itself, capped, never wall time
+const settle = async (done, capMs = 10_000) => {
+  for (const end = Date.now() + capMs; !done() && Date.now() < end;) await new Promise((resolve) => setTimeout(resolve, 5));
+};
+
 // --- 2026-10-14 (the engine-cs lane): the Studio's "Cannot read properties of undefined (reading 'isReady')", on main too ----
 // three's compileAsync (WebGLRenderer, r18x) polls every material it compiled from a 10 ms timer its promise does not guard:
 // properties.get(material).currentProgram.isReady(). A material disposed meanwhile has its properties removed, the next poll
@@ -771,10 +777,10 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.prepareBake(renderer), true);
   // the world is covered and the bake draws at once, the driver still linking
   assert.equal(handle.ensureBaked(renderer), true);
-  await new Promise((resolve) => setTimeout(resolve, 35));
+  await settle(() => polls >= 3);
   const early = disposedEarly, pollsWhileLinking = polls;
   linked = true;
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await settle(() => disposed >= 5);
   // (the handler off before any assert: an assertion thrown under it would be swallowed as an uncaught exception)
   process.off('uncaughtException', onError);
   assert.deepEqual(thrown, [], 'no isReady of an undefined program from the poll\'s timer');
@@ -793,7 +799,7 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   const renderer = recordingRenderer();
   const properties = new WeakMap();
   const getProps = (m) => { let p = properties.get(m); if (!p) { p = {}; properties.set(m, p); } return p; };
-  let linked = false, disposedEarly = 0, disposed = 0;
+  let linked = false, polls = 0, disposedEarly = 0, disposed = 0;
   renderer.compileAsync = (scene) => {
     const materials = new Set();
     scene.traverse((o) => {
@@ -805,6 +811,7 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
     });
     return new Promise((resolve) => {
       function checkMaterialsReady() {
+        polls++;
         materials.forEach((material) => { if (getProps(material).currentProgram.isReady()) materials.delete(material); });
         if (materials.size === 0) { resolve(scene); return; }
         setTimeout(checkMaterialsReady, 10);
@@ -818,10 +825,10 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.prepareBake(renderer), true);
   // the map switches before the bake ever drew: the world tears the panorama down, the driver still linking
   handle.dispose();
-  await new Promise((resolve) => setTimeout(resolve, 35));
+  await settle(() => polls >= 3);
   const early = disposedEarly;
   linked = true;
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await settle(() => disposed >= 5);
   process.off('uncaughtException', onError);
   assert.deepEqual(thrown, [], 'no isReady of an undefined program when the map switches mid-compile');
   assert.equal(early, 0, 'the teardown holds the prepared materials until the parallel compile settles');
