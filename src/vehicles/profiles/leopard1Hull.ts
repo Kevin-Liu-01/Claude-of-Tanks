@@ -153,6 +153,23 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
         [m(0.80), 1.10, upperGlacisFrontZ], [m(1.64), fenderY, 3.42],
         [m(sponsonX), fenderY - 0.02, upperGlacisRearZ], [m(deckEdgeX), upperGlacisRearY - 0.025, upperGlacisRearZ]));
     }
+    // 266 (Main 2026-10-31, the roof-pocket census: the 1A5's pockets grew 656 -> 1780 cm2 with the 263 hull, the Danish
+    // builds' stood at 4116): the wedge under the upper glacis was hollow. In front of the tub it ran from the lower glacis
+    // to the plate, open at its ends under the cheeks; over the tub it was open through the slit where the cheeks' tops
+    // meet the plate. The bow is solid under the plate: one fill over the tub inside the cheeks (their inner edges, 1.05 low
+    // and 1.30 high at the break, 0.80 at the nose; 4 cm clear of the track's inner edge), one from the tub to the nose.
+    const underGlacisY = (z: number): number => upperGlacisY(z) - 0.005;
+    const cheekInnerX = (z: number, high: boolean): number => {
+      const t = (z - upperGlacisRearZ) / (upperGlacisFrontZ - upperGlacisRearZ);
+      return high ? deckEdgeX + (0.80 - deckEdgeX) * t : 1.05 + (0.80 - 1.05) * t;
+    };
+    const overTubZ = [upperGlacisRearZ + 0.005, 3.21];
+    P.add('hull', convexSlab(
+      ...overTubZ.flatMap((z) => [-1, 1].map((s) => [s * (cheekInnerX(z, false) - 0.015), fenderY - 0.02, z])),
+      ...overTubZ.flatMap((z) => [-1, 1].map((s) => [s * (cheekInnerX(z, true) - 0.02), underGlacisY(z), z]))));
+    // (down to the lower glacis's foot at 0.74 and 1-2 cm behind its face to the nose, over the lower bow's back slope)
+    P.add('hull', convexSlab(...[-1, 1].flatMap((s) => [
+      [s * 0.79, 0.74, 3.20], [s * 0.79, underGlacisY(3.20), 3.20], [s * 0.79, 0.74, 3.29], [s * 0.79, 1.045, 3.52]])));
     // Rear plate from the belly rise to the stern deck, and its deck lip.
     P.add('hull', box(2.58, 1.64 - 0.94, 0.15), 0, (1.64 + 0.94) / 2, -3.47);
     // lower rear plate: the belly rises from its rear edge (z -3.26) to the rear plate's foot (z -3.395) (owner
