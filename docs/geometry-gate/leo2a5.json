@@ -1087,6 +1087,7 @@
    "pintleMG:sourceMachineGun_yawSupport"
   ],
   "reference": [
+   "node:vehicle#ammo_110",
    "node:vehicle#antenna_01_109",
    "node:vehicle#antenna_02_108",
    "node:vehicle#bone_mg_aa_h_01_45",

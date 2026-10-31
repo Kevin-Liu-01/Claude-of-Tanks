@@ -1036,8 +1036,10 @@
   {
    "name": "hullLengthM",
    "actual": 7.396031427848326,
-   "published": 6.356300116,
-   "pct": 16.35749245431517
+   "published": 7.193154389603283,
+   "pct": 2.820418237349034,
+   "method": "donor frame: donor silhouette",
+   "ownOracleHullSpan": 7.52315071801447
   },
   {
    "name": "overallLengthM",
@@ -1075,7 +1077,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {

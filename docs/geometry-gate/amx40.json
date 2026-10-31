@@ -1,6 +1,6 @@
 {
  "id": "amx40",
- "geoMin": 91.9,
+ "geoMin": 91.8,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -112,11 +112,11 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 91.90833237189719,
+ "rawGeoMin": 91.84282823998132,
  "rawComponents": {
   "hullCurves": 94.75269642623628,
   "stations": 98.30236396326079,
-  "turretCurves": 91.90833237189719,
+  "turretCurves": 91.84282823998132,
   "wholeCurves": 94.93749999815627,
   "dims": 100,
   "floaters": 100
@@ -124,7 +124,7 @@
  "components": {
   "hullCurves": 94.8,
   "stations": 98.3,
-  "turretCurves": 91.9,
+  "turretCurves": 91.8,
   "wholeCurves": 94.9,
   "dims": 100,
   "floaters": 100
@@ -241,7 +241,7 @@
    ]
   },
   "side_whole": {
-   "score": 95.16688680014086,
+   "score": 95.12540084992749,
    "meanPct": 0.34,
    "p95Pct": 1.35,
    "coverPct": 0,
@@ -783,7 +783,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 91.90833237189719,
+   "score": 91.84282823998132,
    "meanPct": 0.46,
    "p95Pct": 2.18,
    "coverPct": 0.87,
@@ -1214,7 +1214,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 163767,
+     "area": 163816,
      "minX": 149,
      "minY": 246,
      "maxX": 977,
@@ -1228,7 +1228,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 157302,
+     "area": 157276,
      "minX": 269,
      "minY": 246,
      "maxX": 1023,
@@ -1242,7 +1242,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 161892,
+     "area": 161941,
      "minX": 269,
      "minY": 246,
      "maxX": 1023,
@@ -1256,7 +1256,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 161085,
+     "area": 161134,
      "minX": 153,
      "minY": 246,
      "maxX": 977,
@@ -1270,7 +1270,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 164391,
+     "area": 164440,
      "minX": 171,
      "minY": 246,
      "maxX": 977,

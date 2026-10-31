@@ -1,6 +1,6 @@
 {
  "id": "type74",
- "geoMin": 58.4,
+ "geoMin": 67.5,
  "requiredMinimum": 90,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,15 +9,15 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 58.42342706050913,
+ "rawGeoMin": 67.54210842584838,
  "rawComponents": {
   "wholeCurves": 88.47096494380847,
-  "dims": 58.42342706050913,
+  "dims": 67.54210842584838,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 88.5,
-  "dims": 58.4,
+  "dims": 67.5,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -813,15 +813,17 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.9341357665961088,
+   "actual": 2.504750044655215,
+   "roofFittingsTop": 2.9443592361661306,
    "published": 2.83,
-   "pct": 3.6797090670003065
+   "method": "interval: body top to roof-fittings top",
+   "pct": 0
   },
   {
    "name": "hullLengthM",
-   "actual": 6.757713385784069,
+   "actual": 6.870171551054304,
    "published": 6.7,
-   "pct": 0.8613938176726754
+   "pct": 2.5398738963328995
   },
   {
    "name": "overallLengthM",
@@ -847,8 +849,20 @@
   "len": 6.87
  },
  "proceduralBodyExtent": {
-  "h": 2.934,
-  "len": 6.758
+  "h": 2.505,
+  "len": 6.87,
+  "roofFittingsTop": 2.944
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [

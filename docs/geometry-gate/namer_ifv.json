@@ -987,6 +987,8 @@
    "pintleMG:browningDerivedMachineGunMount"
   ],
   "reference": [
+   "node:ammo2_namer-ifv-turret_4_0",
+   "node:ammo3_namer-ifv-turret_4_0",
    "node:weapon2_namer-ifv-turret_4_0",
    "node:weapon3_namer-ifv-turret_4_0",
    "node:weapon4_namer-ifv-turret_4_0"

@@ -1,6 +1,6 @@
 {
  "id": "t90a_vladimir",
- "geoMin": 94.5,
+ "geoMin": 93.5,
  "requiredMinimum": 92,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,14 +9,14 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 94.52847097709159,
+ "rawGeoMin": 93.50705225192235,
  "rawComponents": {
-  "wholeCurves": 94.52847097709159,
+  "wholeCurves": 93.50705225192235,
   "dims": 95.69541041744594,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 94.5,
+  "wholeCurves": 93.5,
   "dims": 95.7,
   "floaters": 100
  },
@@ -132,13 +132,13 @@
    ]
   },
   "side_whole": {
-   "score": 89.23299331049209,
-   "meanPct": 0.68,
+   "score": 89.05667745694957,
+   "meanPct": 0.7,
    "p95Pct": 4.28,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 0.003415087547251971
+    "dy": 0.0036680569951965613
    },
    "worst": [
     {
@@ -225,9 +225,9 @@
      "at": 0.43,
      "refTop": 0.93,
      "refBot": -1.9,
-     "procTop": 0.85,
+     "procTop": 0.84,
      "procBot": -1.89,
-     "errM": 0.04
+     "errM": 0.046
     },
     {
      "at": -2.12,
@@ -564,13 +564,13 @@
    ]
   },
   "front_whole": {
-   "score": 82.06620679284055,
-   "meanPct": 1.34,
-   "p95Pct": 3.15,
+   "score": 82.13452756756887,
+   "meanPct": 1.33,
+   "p95Pct": 3.14,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 0.024581271784159912
+    "dy": 0.024826638380916498
    },
    "worst": [
     {
@@ -769,18 +769,18 @@
    "refW": 3.778,
    "procW": 3.778,
    "refTop": 0.901,
-   "procTop": 0.901,
+   "procTop": 0.829,
    "wPct": 0,
-   "topPct": 0
+   "topPct": 1.8984503440802898
   },
   {
    "i": 10,
    "refW": 3.778,
    "procW": 3.778,
    "refTop": 0.841,
-   "procTop": 0.841,
+   "procTop": 0.853,
    "wPct": 0,
-   "topPct": 0
+   "topPct": 0.3164083906800478
   },
   {
    "i": 11,
@@ -857,12 +857,10 @@
   "procedural": [
    "antennaSpans:turretDark",
    "pintleMG:sourceMachineGun_turretDark",
-   "pintleMG:sourceMachineGun_turretDetail",
    "pintleMG:sourceMachineGun_yawSupport"
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -871,7 +869,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 136169,
+     "area": 136106,
      "minX": 153,
      "minY": 324,
      "maxX": 933,
@@ -885,7 +883,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 132680,
+     "area": 132403,
      "minX": 227,
      "minY": 324,
      "maxX": 988,
@@ -899,7 +897,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 130578,
+     "area": 130476,
      "minX": 227,
      "minY": 324,
      "maxX": 988,
@@ -913,7 +911,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 132445,
+     "area": 132382,
      "minX": 155,
      "minY": 324,
      "maxX": 933,
@@ -927,7 +925,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 136553,
+     "area": 136490,
      "minX": 163,
      "minY": 324,
      "maxX": 933,

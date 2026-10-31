@@ -104,7 +104,7 @@
    ]
   },
   "actual": {
-   "heightM": 2.8440732428804045,
+   "heightM": 2.9582930518314248,
    "hullLengthM": 8.041074550151826,
    "overallLengthM": 10.816615907661618,
    "widthM": 3.8606295425444848
@@ -114,12 +114,12 @@
  "gatePassed": false,
  "rawGeoMin": 0,
  "rawComponents": {
-  "wholeCurves": 85.18194283171442,
+  "wholeCurves": 83.8273337122564,
   "dims": 0,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 85.2,
+  "wholeCurves": 83.8,
   "dims": 0,
   "floaters": 100
  },
@@ -235,9 +235,9 @@
    ]
   },
   "side_whole": {
-   "score": 75.04481112931788,
-   "meanPct": 1.69,
-   "p95Pct": 7.77,
+   "score": 69.20626869643885,
+   "meanPct": 2.1,
+   "p95Pct": 9.32,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -245,100 +245,100 @@
    },
    "worst": [
     {
-     "at": 0.79,
-     "refTop": 1.09,
-     "refBot": -2.38,
-     "procTop": 0.94,
-     "procBot": -1.7,
-     "errM": 0.417
-    },
-    {
-     "at": -0.06,
-     "refTop": 0.69,
-     "refBot": -2.38,
-     "procTop": 0.59,
-     "procBot": -1.7,
-     "errM": 0.394
-    },
-    {
-     "at": 0.06,
-     "refTop": 0.69,
-     "refBot": -2.38,
-     "procTop": 0.61,
-     "procBot": -1.7,
-     "errM": 0.383
-    },
-    {
-     "at": 1.16,
-     "refTop": 1.09,
-     "refBot": -2.38,
-     "procTop": 1.01,
-     "procBot": -1.7,
-     "errM": 0.383
-    },
-    {
-     "at": 0.55,
+     "at": 0.67,
      "refTop": 0.75,
      "refBot": -2.38,
-     "procTop": 0.81,
+     "procTop": 1.23,
      "procBot": -1.7,
-     "errM": 0.371
+     "errM": 0.583
     },
     {
      "at": 0.43,
      "refTop": 0.76,
      "refBot": -2.38,
-     "procTop": 0.81,
+     "procTop": 1.22,
      "procBot": -1.7,
-     "errM": 0.366
+     "errM": 0.571
+    },
+    {
+     "at": 0.55,
+     "refTop": 0.75,
+     "refBot": -2.38,
+     "procTop": 1.19,
+     "procBot": -1.7,
+     "errM": 0.565
     },
     {
      "at": 0.31,
      "refTop": 0.84,
      "refBot": -2.38,
-     "procTop": 0.81,
+     "procTop": 1.19,
      "procBot": -1.7,
-     "errM": 0.36
-    },
-    {
-     "at": 0.67,
-     "refTop": 0.75,
-     "refBot": -2.38,
-     "procTop": 0.71,
-     "procBot": -1.7,
-     "errM": 0.36
-    },
-    {
-     "at": 0.18,
-     "refTop": 0.69,
-     "refBot": -2.38,
-     "procTop": 0.67,
-     "procBot": -1.7,
-     "errM": 0.354
-    },
-    {
-     "at": 0.91,
-     "refTop": 1.14,
-     "refBot": -2.38,
-     "procTop": 1.15,
-     "procBot": -1.7,
-     "errM": 0.348
+     "errM": 0.52
     },
     {
      "at": 1.28,
      "refTop": 1,
      "refBot": -2.38,
-     "procTop": 1.01,
+     "procTop": 1.21,
      "procBot": -1.7,
-     "errM": 0.348
+     "errM": 0.445
     },
     {
-     "at": 1.4,
-     "refTop": 1,
+     "at": 1.16,
+     "refTop": 1.09,
      "refBot": -2.38,
-     "procTop": 1.01,
+     "procTop": 1.23,
      "procBot": -1.7,
-     "errM": 0.348
+     "errM": 0.411
+    },
+    {
+     "at": 0.91,
+     "refTop": 1.14,
+     "refBot": -2.38,
+     "procTop": 1.26,
+     "procBot": -1.7,
+     "errM": 0.405
+    },
+    {
+     "at": 0.79,
+     "refTop": 1.09,
+     "refBot": -2.38,
+     "procTop": 1.21,
+     "procBot": -1.7,
+     "errM": 0.4
+    },
+    {
+     "at": 1.04,
+     "refTop": 1.15,
+     "refBot": -2.38,
+     "procTop": 1.24,
+     "procBot": -1.7,
+     "errM": 0.388
+    },
+    {
+     "at": -0.06,
+     "refTop": 0.69,
+     "refBot": -2.38,
+     "procTop": 0.74,
+     "procBot": -1.7,
+     "errM": 0.366
+    },
+    {
+     "at": 0.06,
+     "refTop": 0.69,
+     "refBot": -2.38,
+     "procTop": 0.74,
+     "procBot": -1.7,
+     "errM": 0.366
+    },
+    {
+     "at": 0.18,
+     "refTop": 0.69,
+     "refBot": -2.38,
+     "procTop": 0.74,
+     "procBot": -1.7,
+     "errM": 0.366
     }
    ]
   },
@@ -404,9 +404,9 @@
      "at": -1.64,
      "refTop": 4.77,
      "refBot": -2.71,
-     "procTop": 4.93,
+     "procTop": 4.87,
      "procBot": -2.7,
-     "errM": 0.086
+     "errM": 0.057
     },
     {
      "at": -1.52,
@@ -477,14 +477,6 @@
      "errM": 0.257
     },
     {
-     "at": -1.64,
-     "refTop": 4.77,
-     "refBot": -2.71,
-     "procTop": 4.93,
-     "procBot": -2.7,
-     "errM": 0.086
-    },
-    {
      "at": -0.06,
      "refTop": 5.25,
      "refBot": -5.41,
@@ -499,6 +491,14 @@
      "procTop": 5.11,
      "procBot": -5.41,
      "errM": 0.063
+    },
+    {
+     "at": -1.64,
+     "refTop": 4.77,
+     "refBot": -2.71,
+     "procTop": 4.87,
+     "procBot": -2.7,
+     "errM": 0.057
     },
     {
      "at": -1.52,
@@ -541,15 +541,15 @@
      "errM": 0.04
     },
     {
-     "at": -0.67,
-     "refTop": 5.41,
+     "at": 1.64,
+     "refTop": 4.93,
      "refBot": -2.71,
-     "procTop": 5.35,
-     "procBot": -2.71,
-     "errM": 0.029
+     "procTop": 4.87,
+     "procBot": -2.7,
+     "errM": 0.034
     },
     {
-     "at": 0.67,
+     "at": -0.67,
      "refTop": 5.41,
      "refBot": -2.71,
      "procTop": 5.35,
@@ -667,9 +667,9 @@
    ]
   },
   "front_whole": {
-   "score": 73.101953125,
-   "meanPct": 1.69,
-   "p95Pct": 11.02,
+   "score": 71.168359375,
+   "meanPct": 1.84,
+   "p95Pct": 11.29,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -693,20 +693,20 @@
      "errM": 0.726
     },
     {
+     "at": 0.03,
+     "refTop": 0.77,
+     "refBot": -2.39,
+     "procTop": 0.89,
+     "procBot": -1.39,
+     "errM": 0.562
+    },
+    {
      "at": -0.03,
      "refTop": 1,
      "refBot": -2.39,
      "procTop": 0.91,
      "procBot": -1.39,
      "errM": 0.539
-    },
-    {
-     "at": 0.03,
-     "refTop": 0.77,
-     "refBot": -2.39,
-     "procTop": 0.71,
-     "procBot": -1.39,
-     "errM": 0.527
     },
     {
      "at": -1.64,
@@ -749,28 +749,28 @@
      "errM": 0.144
     },
     {
-     "at": -0.78,
+     "at": -0.46,
+     "refTop": 1.02,
+     "refBot": -1.36,
+     "procTop": 1.26,
+     "procBot": -1.39,
+     "errM": 0.131
+    },
+    {
+     "at": -0.51,
      "refTop": 1.09,
      "refBot": -1.36,
-     "procTop": 0.94,
+     "procTop": 1.26,
      "procBot": -1.39,
-     "errM": 0.088
+     "errM": 0.098
     },
     {
-     "at": -1.26,
-     "refTop": 0.89,
-     "refBot": -1.68,
-     "procTop": 0.73,
-     "procBot": -1.7,
-     "errM": 0.086
-    },
-    {
-     "at": -0.83,
-     "refTop": 1.06,
+     "at": -0.56,
+     "refTop": 1.09,
      "refBot": -1.36,
-     "procTop": 0.93,
+     "procTop": 1.25,
      "procBot": -1.39,
-     "errM": 0.081
+     "errM": 0.091
     }
    ]
   }
@@ -836,36 +836,36 @@
    "refW": 3.861,
    "procW": 3.861,
    "refTop": 3.543,
-   "procTop": 3.542,
+   "procTop": 3.653,
    "wPct": 0.0000018525142102655193,
-   "topPct": 0.002745964094463118
+   "topPct": 2.3160967309382
   },
   {
    "i": 6,
    "refW": 3.861,
    "procW": 3.861,
    "refTop": 3.235,
-   "procTop": 3.318,
+   "procTop": 3.623,
    "wPct": 0.0000018525142102655193,
-   "topPct": 1.741131278049637
+   "topPct": 8.125211838350097
   },
   {
    "i": 7,
    "refW": 3.861,
    "procW": 3.861,
    "refTop": 3.091,
-   "procTop": 3.04,
+   "procTop": 3.127,
    "wPct": 0.0000018525142102655193,
-   "topPct": 1.0576767886384513
+   "topPct": 0.7523284398972665
   },
   {
    "i": 8,
    "refW": 3.861,
    "procW": 3.861,
    "refTop": 2.857,
-   "procTop": 2.857,
+   "procTop": 3.192,
    "wPct": 0.0000018525142102655193,
-   "topPct": 0.000002884362310751171
+   "topPct": 7.010263512393504
   },
   {
    "i": 9,
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.8440732428804045,
+   "actual": 2.9582930518314248,
    "published": 3.529392096586526,
-   "pct": 19.41747572815534,
+   "pct": 16.18122977346278,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -977,11 +977,15 @@
  "proceduralBodyExtent": {
   "h": 2.707,
   "len": 8.167,
-  "roofFittingsTop": 2.844
+  "roofFittingsTop": 2.958
  },
  "roofFittingsExcluded": {
   "procedural": [
-   "antennaSpans:turretDetail"
+   "antennaSpans:turretDetail",
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "pintleMG:browningDerivedMachineGunMount"
   ],
   "reference": []
  },
@@ -998,7 +1002,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139190,
+     "area": 142804,
      "minX": 155,
      "minY": 345,
      "maxX": 942,
@@ -1012,7 +1016,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 136200,
+     "area": 136872,
      "minX": 224,
      "minY": 345,
      "maxX": 953,
@@ -1026,7 +1030,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 137569,
+     "area": 140712,
      "minX": 224,
      "minY": 345,
      "maxX": 955,
@@ -1040,7 +1044,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 135298,
+     "area": 138982,
      "minX": 160,
      "minY": 345,
      "maxX": 942,
@@ -1054,7 +1058,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 140282,
+     "area": 142634,
      "minX": 174,
      "minY": 345,
      "maxX": 942,

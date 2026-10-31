@@ -12,18 +12,18 @@
  "rawGeoMin": 0,
  "rawComponents": {
   "hullCurves": 46.28156582552229,
-  "stations": 36.33938628305131,
-  "turretCurves": 11.429378763016427,
+  "stations": 27.8612736170492,
+  "turretCurves": 0.4477117977631089,
   "wholeCurves": 0,
-  "dims": 0,
+  "dims": 46.67753417429806,
   "floaters": 100
  },
  "components": {
   "hullCurves": 46.3,
-  "stations": 36.3,
-  "turretCurves": 11.4,
+  "stations": 27.9,
+  "turretCurves": 0.4,
   "wholeCurves": 0,
-  "dims": 0,
+  "dims": 46.7,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -138,9 +138,9 @@
    ]
   },
   "side_whole": {
-   "score": 9.19611864659214,
-   "meanPct": 6.48,
-   "p95Pct": 13.13,
+   "score": 3.3528030604031294,
+   "meanPct": 6.95,
+   "p95Pct": 13.39,
    "coverPct": 3.45,
    "reg": {
     "dAlong": 0.23272834335454262,
@@ -170,6 +170,14 @@
      "procTop": 0.4,
      "procBot": -0.73,
      "errM": 0.495
+    },
+    {
+     "at": 0.18,
+     "refTop": 0.32,
+     "refBot": -1.43,
+     "procTop": 1.22,
+     "procBot": -1.35,
+     "errM": 0.486
     },
     {
      "at": 3.1,
@@ -204,44 +212,36 @@
      "errM": 0.322
     },
     {
+     "at": 1.23,
+     "refTop": 0.76,
+     "refBot": -1.43,
+     "procTop": 1.31,
+     "procBot": -1.35,
+     "errM": 0.314
+    },
+    {
+     "at": 1.35,
+     "refTop": 0.76,
+     "refBot": -1.43,
+     "procTop": 1.31,
+     "procBot": -1.35,
+     "errM": 0.314
+    },
+    {
+     "at": 1.46,
+     "refTop": 0.76,
+     "refBot": -1.43,
+     "procTop": 1.31,
+     "procBot": -1.35,
+     "errM": 0.313
+    },
+    {
      "at": -2.16,
      "refTop": 0.27,
      "refBot": 0.1,
      "procTop": 0.4,
      "procBot": -0.38,
      "errM": 0.311
-    },
-    {
-     "at": -1.81,
-     "refTop": 0.26,
-     "refBot": -0.5,
-     "procTop": 0.4,
-     "procBot": -0.97,
-     "errM": 0.308
-    },
-    {
-     "at": 1.35,
-     "refTop": 0.76,
-     "refBot": -1.43,
-     "procTop": 1.23,
-     "procBot": -1.35,
-     "errM": 0.275
-    },
-    {
-     "at": 1.46,
-     "refTop": 0.76,
-     "refBot": -1.43,
-     "procTop": 1.23,
-     "procBot": -1.35,
-     "errM": 0.275
-    },
-    {
-     "at": 2.28,
-     "refTop": 0.49,
-     "refBot": -1.44,
-     "procTop": 0.95,
-     "procBot": -1.35,
-     "errM": 0.275
     }
    ]
   },
@@ -571,7 +571,7 @@
   },
   "front_whole": {
    "score": 0,
-   "meanPct": 7.53,
+   "meanPct": 7.69,
    "p95Pct": 18.46,
    "coverPct": 0,
    "reg": {
@@ -655,17 +655,17 @@
      "at": -0.35,
      "refTop": 0.74,
      "refBot": -0.99,
-     "procTop": 1.47,
+     "procTop": 1.48,
      "procBot": -1.05,
-     "errM": 0.397
+     "errM": 0.401
     },
     {
      "at": -0.52,
      "refTop": 0.75,
      "refBot": -0.99,
-     "procTop": 1.41,
+     "procTop": 1.42,
      "procBot": -1.05,
-     "errM": 0.362
+     "errM": 0.363
     },
     {
      "at": 1.1,
@@ -680,9 +680,9 @@
  },
  "turretRows": {
   "side": {
-   "score": 11.429378763016427,
-   "meanPct": 6.16,
-   "p95Pct": 9.5,
+   "score": 0.4477117977631089,
+   "meanPct": 7,
+   "p95Pct": 10.87,
    "coverPct": 6,
    "reg": {
     "dAlong": 0.23272834335454262,
@@ -698,6 +698,78 @@
      "errM": 0.473
     },
     {
+     "at": 0.18,
+     "refTop": 0.32,
+     "refBot": 0.06,
+     "procTop": 1.22,
+     "procBot": 0.07,
+     "errM": 0.454
+    },
+    {
+     "at": 1.23,
+     "refTop": 0.76,
+     "refBot": 0.05,
+     "procTop": 1.31,
+     "procBot": 0.02,
+     "errM": 0.29
+    },
+    {
+     "at": 1.35,
+     "refTop": 0.76,
+     "refBot": 0.05,
+     "procTop": 1.31,
+     "procBot": 0.02,
+     "errM": 0.29
+    },
+    {
+     "at": 1.46,
+     "refTop": 0.76,
+     "refBot": 0.05,
+     "procTop": 1.31,
+     "procBot": 0.02,
+     "errM": 0.29
+    },
+    {
+     "at": 1.11,
+     "refTop": 0.78,
+     "refBot": 0.05,
+     "procTop": 1.31,
+     "procBot": 0.02,
+     "errM": 0.279
+    },
+    {
+     "at": 1,
+     "refTop": 0.74,
+     "refBot": 0.04,
+     "procTop": 1.27,
+     "procBot": 0.02,
+     "errM": 0.274
+    },
+    {
+     "at": 0.53,
+     "refTop": 0.73,
+     "refBot": 0.06,
+     "procTop": 1.22,
+     "procBot": 0.02,
+     "errM": 0.268
+    },
+    {
+     "at": 0.65,
+     "refTop": 0.73,
+     "refBot": 0.06,
+     "procTop": 1.22,
+     "procBot": 0.02,
+     "errM": 0.268
+    },
+    {
+     "at": 0.76,
+     "refTop": 0.73,
+     "refBot": 0.05,
+     "procTop": 1.22,
+     "procBot": 0.02,
+     "errM": 0.263
+    },
+    {
      "at": 2.75,
      "refTop": 0.42,
      "refBot": 0.05,
@@ -706,84 +778,12 @@
      "errM": 0.26
     },
     {
-     "at": 2.86,
-     "refTop": 0.4,
-     "refBot": 0.14,
-     "procTop": 0.69,
-     "procBot": 0.36,
-     "errM": 0.254
-    },
-    {
-     "at": 0.65,
+     "at": 0.3,
      "refTop": 0.73,
      "refBot": 0.06,
-     "procTop": 1.19,
-     "procBot": 0.02,
-     "errM": 0.252
-    },
-    {
-     "at": 1.35,
-     "refTop": 0.76,
-     "refBot": 0.05,
      "procTop": 1.23,
-     "procBot": 0.02,
-     "errM": 0.252
-    },
-    {
-     "at": 1.46,
-     "refTop": 0.76,
-     "refBot": 0.05,
-     "procTop": 1.23,
-     "procBot": 0.02,
-     "errM": 0.252
-    },
-    {
-     "at": 2.28,
-     "refTop": 0.49,
-     "refBot": 0.05,
-     "procTop": 0.95,
-     "procBot": 0.08,
-     "errM": 0.247
-    },
-    {
-     "at": 0.53,
-     "refTop": 0.73,
-     "refBot": 0.06,
-     "procTop": 1.18,
-     "procBot": 0.02,
-     "errM": 0.245
-    },
-    {
-     "at": 2.51,
-     "refTop": 1.06,
-     "refBot": 0.05,
-     "procTop": 1.51,
-     "procBot": 0.09,
-     "errM": 0.245
-    },
-    {
-     "at": 1.7,
-     "refTop": 0.76,
-     "refBot": 0.05,
-     "procTop": 1.22,
-     "procBot": 0.02,
-     "errM": 0.243
-    },
-    {
-     "at": 0.76,
-     "refTop": 0.73,
-     "refBot": 0.05,
-     "procTop": 1.18,
-     "procBot": 0.02,
-     "errM": 0.241
-    },
-    {
-     "at": 1.23,
-     "refTop": 0.76,
-     "refBot": 0.05,
-     "procTop": 1.21,
-     "procBot": 0.02,
-     "errM": 0.241
+     "procBot": 0.07,
+     "errM": 0.259
     }
    ]
   },
@@ -956,36 +956,36 @@
    "refW": 3.517,
    "procW": 3.462,
    "refTop": 0.767,
-   "procTop": 1.139,
+   "procTop": 1.17,
    "wPct": 1.5452538631346573,
-   "topPct": 13.952551130334893
+   "topPct": 15.115263724529463
   },
   {
    "i": 7,
    "refW": 3.54,
    "procW": 3.656,
    "refTop": 0.798,
-   "procTop": 1.151,
+   "procTop": 1.229,
    "wPct": 3.2894736842105323,
-   "topPct": 13.22585575896328
+   "topPct": 16.132637244449718
   },
   {
    "i": 8,
    "refW": 3.653,
    "procW": 3.656,
    "refTop": 0.767,
-   "procTop": 1.1,
+   "procTop": 1.174,
    "wPct": 0.10626992561106768,
-   "topPct": 12.499160387591669
+   "topPct": 15.260602798803788
   },
   {
    "i": 9,
    "refW": 3.653,
    "procW": 3.656,
    "refTop": 0.732,
-   "procTop": 0.526,
+   "procTop": 1.151,
    "wPct": 0.10626992561106768,
-   "topPct": 7.7029709365390495
+   "topPct": 15.696620021626753
   },
   {
    "i": 10,
@@ -1027,17 +1027,19 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.4751343810883117,
+   "actual": 2.310855550485105,
    "roofFittingsTop": 2.8803554965762213,
    "published": 2.1625991879,
    "method": "interval: body top to roof-fittings top",
-   "pct": 14.451831617110706
+   "pct": 6.8554711115502585
   },
   {
    "name": "hullLengthM",
    "actual": 7.710153116310493,
-   "published": 6.34341572519,
-   "pct": 21.545764148692243
+   "published": 7.573092477768661,
+   "pct": 1.809837116662484,
+   "method": "donor frame: donor silhouette",
+   "ownOracleHullSpan": 6.88875896329446
   },
   {
    "name": "overallLengthM",
@@ -1063,14 +1065,17 @@
   "len": 6.889
  },
  "proceduralBodyExtent": {
-  "h": 2.475,
+  "h": 2.311,
   "len": 7.71,
   "roofFittingsTop": 2.88
  },
  "roofFittingsExcluded": {
   "procedural": [
-   "pintleMG:sourceMachineGun_turretDark",
-   "pintleMG:sourceMachineGun_turretDetail"
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
   ],
   "reference": [
    "node:mount2"
@@ -1084,7 +1089,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131567,
+     "area": 131806,
      "minX": 153,
      "minY": 361,
      "maxX": 946,
@@ -1098,7 +1103,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 128611,
+     "area": 128832,
      "minX": 223,
      "minY": 361,
      "maxX": 1022,
@@ -1112,7 +1117,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 127749,
+     "area": 128093,
      "minX": 223,
      "minY": 361,
      "maxX": 1022,
@@ -1126,7 +1131,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 127125,
+     "area": 127364,
      "minX": 155,
      "minY": 361,
      "maxX": 946,
@@ -1140,7 +1145,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 132891,
+     "area": 133130,
      "minX": 163,
      "minY": 361,
      "maxX": 946,

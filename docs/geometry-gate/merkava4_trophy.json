@@ -988,6 +988,7 @@
    "pintleMG:fitting_pintleMG_detail"
   ],
   "reference": [
+   "node:ammobelt_merkava-iv-turret_3_0",
    "node:antenna2_merkava-iv-turret_3_0",
    "node:antenna3_merkava-iv-turret_3_0",
    "node:antenna4_merkava-iv-turret_3_0",
