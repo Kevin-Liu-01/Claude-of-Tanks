@@ -962,6 +962,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       });
     });
   }
+  // a pairing live when this tab reloaded resumes by itself (src/pad/padReceiver.ts keeps its token for the tab under
+  // this key): the one way the card's code loads without the button, and never without a pairing
+  try {
+    if (sessionStorage.getItem('cot.pad.desk')) {
+      void import('../pad/padConnectCard.ts').then((module) => { padCard = module; module.resumePadReceiver(padPorts()); }).catch(() => {});
+    }
+  } catch { /* storage blocked */ }
 
   function renderControls() {
     body.textContent = '';

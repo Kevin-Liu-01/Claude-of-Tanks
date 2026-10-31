@@ -59,6 +59,41 @@ export function steerFromAngle(angleDeg: number, centreDeg: number, curve: Steer
   return Math.sign(d) * Math.min(1, past) ** curve.curve;
 }
 
+// ---- the locked frame (phone side) -------------------------------------------------------------------------
+// The controller is laid out once in the landscape the phone is held in and glued to the phone from then on: when the
+// system turns the page, the frame turns back by the same angle (padPage.ts). Angles are screen.orientation's, degrees
+// from the device's natural orientation; a frame's turn is CSS rotate(), clockwise on the viewport.
+
+const quarter = (deg: number): number => ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
+
+/** The angle a controller locks to: the system's own when it shows landscape, else the quarter turn from portrait most
+ *  phones are turned into (the top to the left). */
+export function lockAngle(screenDeg: number, wide: boolean): number {
+  return quarter(wide ? screenDeg : screenDeg + 90);
+}
+
+/** How far the frame turns on the viewport to stay where it was on the phone: the system's turn, undone. */
+export function frameTurn(lockDeg: number, screenDeg: number): number {
+  return quarter(lockDeg - screenDeg);
+}
+
+/** A movement on the viewport (dx, dy) in the axes of a frame turned by `turnDeg`. */
+export function frameDelta(turnDeg: number, dx: number, dy: number): [number, number] {
+  switch (quarter(turnDeg)) {
+    case 90: return [dy, -dx];
+    case 180: return [-dx, -dy];
+    case 270: return [-dy, dx];
+    default: return [dx, dy];
+  }
+}
+
+/** The viewport's safe-area insets (top, right, bottom, left) on a turned frame's own sides: its side i lies on the
+ *  viewport's side i + turn / 90. */
+export function frameInsets(turnDeg: number, insets: readonly number[]): number[] {
+  const k = quarter(turnDeg) / 90;
+  return [0, 1, 2, 3].map((side) => insets[(side + k) % 4] ?? 0);
+}
+
 /** A spring lever or stick axis: −1..1 from an offset and the travel, with a small dead zone. */
 export function leverValue(offset: number, travel: number, deadzone = 0.06): number {
   if (!(travel > 0)) return 0;
@@ -93,6 +128,8 @@ export interface PadInputMapper {
 
 /** How far behind the newest frame a frame may arrive and still count as late rather than a restarted stream. */
 const PAD_LATE_FRAMES = 64;
+/** The longest the stale fail-safe waits, however slowly a throttled phone's heartbeat comes. */
+const PAD_STALE_MAX_MS = 1500;
 
 /** The aim pad's drag in phone px, scaled to the mouse's units (the touch HUD's aim drag uses 1.18). */
 export const PAD_AIM_GAIN = 1.25;
@@ -108,6 +145,18 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
   let lastAt = -Infinity;
   let lastPhoneT = 0;
   let moving = false;
+  /** The last eight gaps between frames: their median is the phone's usual gap, which a throttled phone (low power)
+   *  stretches; one long pause or one burst does not move it. */
+  const gaps = new Float64Array(8);
+  let gapCount = 0;
+  const sorted = new Float64Array(8);
+  const usualGap = (): number => {
+    const n = Math.min(gapCount, 8);
+    if (!n) return 0;
+    sorted.set(gaps);
+    sorted.subarray(0, n).sort();
+    return sorted[n >> 1]!;
+  };
 
   const press = (action: PadHoldAction): void => { if (!pressed.has(action)) { pressed.add(action); input.pressVirtual(action); } };
   const release = (action: PadHoldAction): void => { if (pressed.delete(action)) input.releaseVirtual(action); };
@@ -128,6 +177,7 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
         const dy = ((axes.aimY - aimY) | 0) / PAD_AIM_SCALE;
         if (dx !== 0 || dy !== 0) input.addVirtualAim(dx * PAD_AIM_GAIN, dy * PAD_AIM_GAIN);
       }
+      if (haveFrame) gaps[gapCount++ % 8] = Math.min(2000, nowMs - lastAt);
       haveFrame = true;
       seq = axes.seq; aimX = axes.aimX; aimY = axes.aimY;
       lastAt = nowMs; lastPhoneT = axes.t;
@@ -152,7 +202,8 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
       }
     },
     tick(nowMs, staleMs) {
-      if (!haveFrame || nowMs - lastAt <= staleMs) return;
+      // four of the phone's usual gaps, never less than the link's own window nor more than the cap
+      if (!haveFrame || nowMs - lastAt <= Math.min(PAD_STALE_MAX_MS, Math.max(staleMs, usualGap() * 4))) return;
       if (moving || pressed.size) mapper.releaseAll();
     },
     releaseAll() {

@@ -6,7 +6,7 @@
  * (src/pad/qr.ts), dark on light so every camera reads it.
  */
 import { formatPadCode, padPageUrl } from './padProtocol.ts';
-import { startPadReceiver } from './padReceiver.ts';
+import { startPadReceiver, storedDeskResume } from './padReceiver.ts';
 import type { PadReceiver, PadReceiverPorts, PadReceiverView } from './padReceiver.ts';
 import { padServiceUrl } from './padEndpoint.ts';
 import { encodeQr, qrSvgPath } from './qr.ts';
@@ -49,6 +49,15 @@ let detach: (() => void) | null = null;
 let countdown: ReturnType<typeof setInterval> | null = null;
 
 /** Render the card into `host` (the Controls tab's card body); `connect` starts pairing at once (the button's press). */
+/** The pairing this tab held before it reloaded resumes at boot (settings.ts), so the phone comes back without a new code
+ *  inside the pairing's grace; the card shows it when it opens. */
+export function resumePadReceiver(ports: PadReceiverPorts): void {
+  const url = padServiceUrl();
+  const resume = storedDeskResume();
+  if (!url || !resume || (receiver && receiver.view.state.kind !== 'ended')) return;
+  receiver = startPadReceiver(url, ports, resume);
+}
+
 export function renderPadCard(host: HTMLElement, ports: PadReceiverPorts, connect = false): void {
   ensureStyle('cot-pad-card-style', CARD_CSS, 'surfaces');
   detach?.();

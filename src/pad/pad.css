@@ -1,14 +1,23 @@
-/* The phone controller's page (/pad, docs/PHONE-CONTROLLER.md "Controls"): landscape, two thumbs. Token colours and type
-   only; the controls move by transform alone (the lever's knob, the wheel's turn, the reload's fill). */
+/* The phone controller's page (/pad, docs/PHONE-CONTROLLER.md "Controls"): a tank's control panel held sideways. Its
+   metal, rubber, glass and lamps are the surface-pad tokens; the controls move by transform alone (a key's travel, the
+   throttle's handle, the needles, the reload ring), and a press shows at once, with no transition. */
+@import url('../ui/tokens/surface-pad.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--surface-page);color:var(--ink-1);
-  font-family:var(--font-ui);-webkit-text-size-adjust:100%;}
-.pad-page{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none;}
+html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--surface-scene);color:var(--ink-1);
+  font-family:var(--font-ui);-webkit-text-size-adjust:100%;touch-action:none;}
+.pad-page{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
 .pad{position:fixed;inset:0;padding:max(var(--s3),env(safe-area-inset-top)) max(var(--s4),env(safe-area-inset-right))
-  max(var(--s3),env(safe-area-inset-bottom)) max(var(--s4),env(safe-area-inset-left));box-sizing:border-box;}
+  max(var(--s3),env(safe-area-inset-bottom)) max(var(--s4),env(safe-area-inset-left));box-sizing:border-box;
+  background:var(--pad-brush),var(--pad-panel);}
+/* locked: laid out once for the landscape the phone is held in, then only turned and scaled (padPage.ts lockFrame) */
+.pad[data-lock]{inset:auto;left:50%;top:50%;width:var(--pad-w);height:var(--pad-h);padding:var(--pad-pt) var(--pad-px) var(--pad-pb);
+  transform:translate(-50%,-50%) rotate(var(--pad-turn,0deg)) scale(var(--pad-scale,1));}
+.pad-probe{position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
 .pad [hidden]{display:none;}
-.pad button{font:inherit;color:inherit;touch-action:none;}
+.pad :is(.pad-key,.pad-guard,.pad-gauge,.pad-fire){font:inherit;touch-action:none;}
+.pad img,.pad svg{pointer-events:none;}
 
 /* the join and end screens */
 .pad-join,.pad-end{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s4);text-align:center;}
@@ -16,104 +25,145 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-title .cot-i{color:var(--accent);}
 .pad-form{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--s3);}
 .pad-form label{flex-basis:100%;font-size:var(--fs-13);color:var(--ink-3);}
-.pad-code{width:9ch;padding:var(--s2) var(--s3);border:1px solid var(--line-control);border-radius:var(--control-radius);
-  background:var(--surface-raised);color:var(--ink-1);font-family:var(--font-mono);font-size:var(--fs-28);text-align:center;
-  text-transform:uppercase;-webkit-user-select:text;user-select:text;touch-action:manipulation;}
+.pad-code{width:9ch;padding:var(--s2) var(--s3);border:0;border-radius:var(--r2);background:var(--pad-well);box-shadow:var(--pad-well-shadow);
+  color:var(--ink-1);font-family:var(--font-mono);font-size:var(--fs-28);text-align:center;text-transform:uppercase;
+  -webkit-user-select:text;user-select:text;touch-action:manipulation;}
 .pad-code:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .pad-hint,.pad-end-msg{max-width:46ch;margin:0;font-size:var(--fs-14);line-height:var(--lh-body);color:var(--ink-2);}
 .pad-error{min-height:1.4em;margin:0;font-size:var(--fs-13);color:var(--text-danger);}
 
-/* the controller: the tank in the hand. Three zones across the full width (drive, the tank, the gun), no boxes; the
-   left-handed layout mirrors them. */
-.pad-ctl{height:100%;display:grid;grid-template-columns:minmax(104px,20%) 1fr minmax(184px,38%);grid-template-rows:auto minmax(0,1fr);
-  grid-template-areas:'top top top' 'drive tank gun';column-gap:var(--s4);row-gap:var(--s2);}
-.pad-ctl[data-hand='left']{grid-template-columns:minmax(184px,38%) 1fr minmax(104px,20%);grid-template-areas:'top top top' 'gun tank drive';}
+/* the panel: the switch row across the top, then drive, instruments and the gun; left-handed mirrors the hands */
+.pad-ctl{height:100%;container:pad/inline-size;display:grid;grid-template-columns:minmax(88px,16%) minmax(0,1fr) minmax(188px,39%);
+  grid-template-rows:auto minmax(0,1fr);grid-template-areas:'top top top' 'drive mid gun';gap:var(--s2) var(--s4);}
+.pad-ctl[data-hand='left']{grid-template-columns:minmax(188px,39%) minmax(0,1fr) minmax(88px,16%);grid-template-areas:'top top top' 'gun mid drive';}
+
+/* a push-button: a cap standing on the panel, 48 px at least, that drops 2 px under the thumb */
+.pad-key{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--s1);min-width:48px;min-height:48px;
+  padding:0 var(--s2);border:0;border-radius:var(--r2);background:var(--pad-key);box-shadow:var(--pad-key-shadow);color:var(--ink-2);
+  text-shadow:var(--pad-engrave);}
+.pad-key.is-down{transform:translateY(2px);box-shadow:var(--pad-key-down);}
+.pad-key:focus-visible,.pad-guard:focus-visible,.pad-gauge:focus-visible,.pad-fire:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+
 .pad-top{grid-area:top;display:flex;align-items:center;gap:var(--s2);min-width:0;}
-.pad-link{flex:none;display:inline-flex;align-items:center;gap:var(--s1);font-size:var(--fs-12);color:var(--ink-3);white-space:nowrap;}
-.pad-link::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--ink-4);}
-.pad-link[data-tone='ok']{color:var(--text-ok);}
-.pad-link[data-tone='ok']::before{background:var(--ok);}
-.pad-link[data-tone='warn']{color:var(--text-warn);}
-.pad-link[data-tone='warn']::before{background:var(--warn);}
-.pad-ammo,.pad-cons{display:flex;gap:var(--s1);}
+.pad-link{flex:none;display:inline-flex;align-items:center;gap:var(--s2);font-size:var(--fs-13);color:var(--ink-3);white-space:nowrap;}
+.pad-link::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--pad-led-off);}
+.pad-link[data-tone='ok']::before{color:var(--ok);background:var(--pad-led-ok);box-shadow:var(--pad-led-glow);}
+.pad-link[data-tone='warn']::before{color:var(--warn);background:var(--pad-led-warn);box-shadow:var(--pad-led-glow);}
+.pad-ammo,.pad-cons{display:flex;gap:var(--s2);}
 .pad-ammo{margin-left:auto;}
-.pad-cons{margin-left:var(--s3);}
-.pad-tool{display:inline-flex;align-items:center;justify-content:center;gap:var(--s1);min-width:var(--target-min);min-height:var(--target-min);
-  padding:0 var(--s2);border:1px solid transparent;border-radius:var(--control-radius);background:var(--fill-soft);font-size:var(--fs-13);
-  font-weight:var(--fw-medium);}
-.pad-tool b{font-weight:var(--fw-semibold);}
-.pad-tool[aria-pressed='true']{color:var(--text-accent);background:var(--accent-wash);border-color:var(--accent);}
-.pad-tool:active,.pad-hold.is-down{background:var(--surface-hover);}
-.pad-tool[data-empty]{color:var(--ink-4);}
-.pad-shell{padding:0 var(--s3);}
-.pad-shell[aria-pressed='true']{transform:translateY(-2px);}
+.pad-cons{margin-left:var(--s2);}
+/* the ammunition selector: the loaded shell's lamp lit, its rounds on a counter drum */
+.pad-shell{padding:var(--s1) var(--s2) 0;gap:6px;}
+.pad-lamp{position:absolute;left:var(--s2);right:var(--s2);top:5px;height:3px;border-radius:2px;background:var(--pad-lamp-off);}
+.pad-shell[aria-pressed='true']{color:var(--accent-hi);}
+.pad-shell[aria-pressed='true'] .pad-lamp{background:var(--pad-lamp-on);box-shadow:var(--pad-lamp-glow);}
+.pad-type{font-size:var(--fs-15);font-weight:var(--fw-semibold);}
+.pad-count{min-width:2.4ch;padding:1px var(--s1);border-radius:var(--r1);background:var(--pad-counter);color:var(--ink-1);
+  font-family:var(--font-mono);font-size:var(--fs-16);font-weight:var(--fw-medium);text-align:center;}
+.pad-shell[data-empty]{color:var(--ink-4);}
+/* a guarded switch: the red cover lifts on its hinge and the bat flips under it while the thumb holds it */
+.pad-guard{position:relative;width:48px;height:48px;padding:0;border:0;border-radius:var(--r2);background:var(--pad-well);
+  box-shadow:var(--pad-well-shadow);perspective:140px;}
+.pad-bat{position:absolute;left:50%;top:calc(50% - 16px);width:6px;height:16px;margin-left:-3px;border-radius:3px;background:var(--pad-bat);
+  transform-origin:50% 100%;transition:transform var(--dur-instant) var(--ease-move);}
+.pad-cover{position:absolute;inset:4px;display:flex;align-items:center;justify-content:center;border-radius:var(--r2);
+  background:var(--pad-guard);box-shadow:var(--pad-guard-shadow);color:var(--ink-1);transform-origin:50% 0;
+  transition:transform var(--dur-instant) var(--ease-move);}
+.pad-guard.is-down .pad-cover{transform:rotateX(64deg);}
+.pad-guard.is-down .pad-bat{transform:rotate(180deg);}
+.pad-sq{width:48px;padding:0;}
 
-/* drive: the throttle is a track tread; the grip rides it with the thumb and springs back to neutral */
-.pad-drive{grid-area:drive;display:flex;flex-direction:column;gap:var(--s3);min-height:0;}
-.pad-lever{position:relative;flex:1 1 auto;min-height:120px;border-radius:var(--plate-radius);overflow:hidden;touch-action:none;
-  background:var(--surface-plate);}
-.pad-tread{position:absolute;inset:0 var(--s3);overflow:hidden;opacity:.55;}
-.pad-tread-strip{position:absolute;left:0;right:0;top:-18px;bottom:-18px;
-  background:repeating-linear-gradient(to bottom,var(--line-3) 0 7px,transparent 7px 18px);}
-.pad-lever::after{content:'';position:absolute;left:0;right:0;top:50%;border-top:2px solid var(--line-2);}
-.pad-knob{position:absolute;left:var(--s2);right:var(--s2);top:50%;height:44px;margin-top:-22px;border-radius:var(--control-radius);
-  background:var(--accent);box-shadow:var(--e2);transform:translate(0,0);}
+/* drive: the throttle's T-handle rides its gate over a scale, neutral at the notch, and springs back there */
+.pad-drive{grid-area:drive;display:flex;flex-direction:column;gap:var(--s2);min-height:0;}
+.pad-lever{position:relative;flex:1 1 auto;min-height:96px;border-radius:6px;background:var(--pad-well);box-shadow:var(--pad-well-shadow);
+  touch-action:none;}
+/* the scale and, across its middle, the neutral notch (both under the handle, which is painted after) */
+.pad-lever::before{content:'';position:absolute;inset:var(--s3) var(--s2);background:linear-gradient(var(--accent-lo),var(--accent-lo)) center/100% 2px no-repeat,
+  repeating-linear-gradient(180deg,var(--line-3) 0 1px,transparent 1px 12px);}
+.pad-gate{position:absolute;top:var(--s3);bottom:var(--s3);left:50%;width:10px;margin-left:-5px;border-radius:5px;background:var(--pad-well);
+  box-shadow:var(--pad-well-shadow);}
+.pad-knob{position:absolute;left:var(--s2);right:var(--s2);top:50%;height:40px;margin-top:-20px;border-radius:var(--r2);
+  background:var(--pad-rubber);box-shadow:var(--pad-rubber-shadow);}
+.pad-knob::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:var(--accent);}
+.pad-lever.is-stick .pad-gate{inset:var(--s3);width:auto;margin:0;border-radius:0;box-shadow:none;background:linear-gradient(var(--surface-scene),var(--surface-scene)) center/10px 100% no-repeat,
+  linear-gradient(var(--surface-scene),var(--surface-scene)) center/100% 10px no-repeat;}
 .pad-lever.is-stick .pad-knob{left:50%;right:auto;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;}
-.pad-lever.is-stick::before{content:'';position:absolute;top:var(--s3);bottom:var(--s3);left:50%;border-left:2px solid var(--line-2);}
-.pad-hold{display:flex;align-items:center;justify-content:center;min-height:60px;border:0;border-radius:var(--control-radius);
-  background:var(--fill-soft);color:var(--ink-1);}
+.pad-lever.is-stick .pad-knob::after{left:50%;right:auto;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;}
+.pad-brake{flex:none;background:var(--pad-rubber);box-shadow:var(--pad-rubber-shadow);}
 
-/* the tank: its plan view turns with the wheel; the ring carries the gun's bearing */
-.pad-mid{grid-area:tank;display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-items:center;gap:var(--s2);
-  min-width:0;min-height:0;}
-/* the tank sizes from its grid area, never the viewport unit (iOS measures vh with its toolbars hidden) */
-.pad-tank{position:relative;height:100%;max-height:300px;max-width:100%;aspect-ratio:1;padding:0;border:0;border-radius:50%;
-  background:transparent;color:var(--ink-4);}
-.pad .pad-tank{color:var(--line-3);}
-.pad-tank:focus-visible{outline:none;box-shadow:var(--focus-ring);}
-.pad-bearing,.pad-hull{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.pad-bearing{transition:transform var(--dur-fast) linear;}
-.pad-bearing svg{width:100%;height:100%;}
-.pad-bearing path{color:var(--accent);}
-.pad-hull{inset:12%;transform:rotate(0deg);}
+/* the instruments: turned bezels over glass. The speedometer's needle sweeps 240°; the repeater carries the tank, its
+   hull turning with the wheel, and the gun's bearing on its rim */
+.pad-mid{grid-area:mid;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);grid-template-rows:minmax(0,1fr) auto;
+  gap:var(--s1) var(--s3);min-width:0;min-height:0;}
+.pad-cell{container-type:size;display:grid;place-items:center;min-width:0;min-height:0;}
+.pad-gauge{position:relative;box-sizing:border-box;width:min(100cqw,100cqh);height:min(100cqw,100cqh);padding:0;border:0;border-radius:50%;
+  background:var(--pad-bezel);box-shadow:var(--pad-bezel-shadow);color:var(--ink-3);}
+.pad-gauge::before{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--pad-glass);box-shadow:var(--pad-glass-shadow);}
+.pad-face{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);}
+.pad-needle{position:absolute;left:50%;top:14%;width:3px;height:36%;margin-left:-1.5px;border-radius:2px;background:var(--accent);
+  transform-origin:50% 100%;transform:rotate(-120deg);transition:transform var(--dur-base) linear;}
+.pad-speedo::after{content:'';position:absolute;left:50%;top:50%;width:14%;height:14%;border-radius:50%;background:var(--pad-bezel);
+  transform:translate(-50%,-50%);}
+.pad-readout{position:absolute;left:0;right:0;bottom:15%;display:flex;flex-direction:column;align-items:center;line-height:1;
+  font-size:var(--fs-11);color:var(--ink-3);}
+.pad-kmh{font-family:var(--font-mono);font-size:var(--fs-18);font-weight:var(--fw-medium);color:var(--ink-1);}
+.pad-hull,.pad-bearing{position:absolute;display:flex;align-items:center;justify-content:center;}
+.pad-hull{inset:22%;transform:rotate(0deg);}
+.pad-bearing{inset:0;transition:transform var(--dur-fast) linear;}
+.pad-bearing svg{width:100%;height:100%;fill:var(--accent);}
 .pad-plan{width:100%;height:100%;object-fit:contain;}
 .pad-plan-glyph{color:var(--ink-4);}
 .pad-hull.is-stick{opacity:.75;}
 .pad-ctl[data-state='down'] .pad-hull,.pad-ctl[data-state='idle'] .pad-hull{opacity:.35;}
-.pad-msg{min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
+.pad-msg{grid-column:1/-1;min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
 
-/* the gun: the sight pad, the trigger that fills as the gun loads, scope and zoom beside it */
+/* the gun: the gunner's sight under the right thumb, the fire button in its collar, the reload ring filling around it */
 .pad-right{grid-area:gun;position:relative;min-width:0;min-height:0;}
-.pad-aim{position:absolute;inset:0;padding-bottom:120px;border-radius:var(--plate-radius);background:var(--fill-faint);touch-action:none;
-  display:flex;align-items:center;justify-content:center;}
-.pad-reticle{width:96px;height:96px;color:var(--ink-3);transform:translate(0,0);}
+.pad-aim{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-bottom:var(--s7);border-radius:6px;
+  background:var(--pad-sight);box-shadow:var(--pad-well-shadow);touch-action:none;overflow:hidden;}
+.pad-reticle{width:128px;height:128px;color:var(--accent-hi);transform:translate(0,0);}
 .pad-reticle svg{width:100%;height:100%;}
-.pad-fire{position:absolute;right:var(--s3);bottom:var(--s3);width:108px;height:108px;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;border:0;border-radius:50%;background:var(--fill-soft);color:var(--ink-on-accent);box-shadow:var(--e3);}
-/* the fill sits under the glyph by paint order (the glyph is positioned after it) */
-.pad-reload-fill{position:absolute;inset:0;background:var(--btn-danger-edge);transform-origin:center bottom;transform:scaleY(1);}
-.pad-fire .cot-i{position:relative;}
-.pad-ctl[data-state='loading'] .pad-fire{color:var(--ink-2);}
-.pad-fire.is-down{transform:scale(.94);}
-.pad-scope{position:absolute;right:calc(var(--s3) + 116px);bottom:var(--s3);min-width:56px;min-height:56px;border-radius:50%;}
-.pad-zoom{position:absolute;right:var(--s3);bottom:calc(var(--s3) + 116px);display:flex;gap:var(--s1);}
-.pad-look{position:absolute;left:var(--s3);bottom:var(--s3);min-width:60px;}
-.pad-ctl[data-hand='left'] .pad-fire{right:auto;left:var(--s3);}
-.pad-ctl[data-hand='left'] .pad-scope{right:auto;left:calc(var(--s3) + 116px);}
-.pad-ctl[data-hand='left'] .pad-zoom{right:auto;left:var(--s3);}
-.pad-ctl[data-hand='left'] .pad-look{left:auto;right:var(--s3);}
+.pad-trigger{position:absolute;right:var(--s2);bottom:var(--s2);width:104px;height:104px;border-radius:50%;background:var(--pad-bezel);
+  box-shadow:var(--pad-bezel-shadow);}
+.pad-ring{position:absolute;inset:5px;border-radius:50%;background:var(--pad-well);box-shadow:var(--pad-well-shadow);}
+.pad-ring-half{position:absolute;inset:0;clip-path:inset(0 0 0 50%);}
+.pad-ring-half+.pad-ring-half{clip-path:inset(0 50% 0 0);}
+.pad-ring-half i{position:absolute;inset:0;box-sizing:border-box;border:6px solid var(--accent);border-radius:50%;clip-path:inset(0 50% 0 0);
+  transform:rotate(180deg);}
+.pad-ring-half+.pad-ring-half i{clip-path:inset(0 0 0 50%);}
+.pad-fire{position:absolute;inset:13px;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;
+  background:var(--pad-fire);box-shadow:var(--pad-fire-glow);color:var(--ink-1);}
+.pad-ctl:is([data-state='loading'],[data-state='down'],[data-state='idle']) .pad-fire{background:var(--pad-fire-dim);box-shadow:var(--pad-fire-shade);
+  color:var(--ink-3);}
+.pad-fire.is-down{transform:scale(.95);box-shadow:var(--pad-fire-shade);}
+.pad-scope{position:absolute;right:calc(var(--s2) + 112px);bottom:var(--s2);width:52px;height:52px;padding:0;border-radius:50%;}
+.pad-scope::after{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:var(--pad-lamp-glow);opacity:0;}
+.pad-scope[aria-pressed='true']{color:var(--accent-hi);}
+.pad-scope[aria-pressed='true']::after{opacity:1;}
+.pad-zoom{position:absolute;right:var(--s2);top:var(--s2);display:flex;gap:3px;padding:3px;border-radius:28px;background:var(--pad-well);
+  box-shadow:var(--pad-well-shadow);}
+.pad-zoom .pad-key{border-radius:24px;}
+.pad-look{position:absolute;left:var(--s2);bottom:var(--s2);}
+.pad-ctl[data-hand='left'] .pad-trigger{right:auto;left:var(--s2);}
+.pad-ctl[data-hand='left'] .pad-scope{right:auto;left:calc(var(--s2) + 112px);}
+.pad-ctl[data-hand='left'] .pad-zoom{right:auto;left:var(--s2);}
+.pad-ctl[data-hand='left'] .pad-look{left:auto;right:var(--s2);}
 
-.pad-rotate{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:var(--s6);background:var(--surface-page);
-  font-size:var(--fs-18);color:var(--ink-2);text-align:center;}
-@media (orientation:portrait){.pad[data-screen='controller'] .pad-rotate{display:flex;}}
-
-.pad-opts{max-width:min(92vw,420px);padding:var(--s4);border:1px solid var(--line-control);border-radius:var(--card-radius);
-  background:var(--surface-menu);color:var(--ink-1);}
+/* the options: a native modal in the top layer, outside the frame, so it turns with the frame's variables */
+/* two columns, so the options fit the short side whole: the page never scrolls (touch-action none) */
+.pad-opts{max-width:min(640px,calc(var(--pad-w,100vw) - 32px));max-height:calc(var(--pad-h,100vh) - 16px);overflow:hidden;padding:var(--s3) var(--s4);
+  border:0;border-radius:6px;background:var(--pad-panel);box-shadow:var(--pad-bezel-shadow);color:var(--ink-1);
+  transform:rotate(var(--pad-turn,0deg)) scale(var(--pad-scale,1));}
+.pad-opts[open]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5);}
 .pad-opts::backdrop{background:var(--scrim);}
 .pad-opts .row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s2) 0;font-size:var(--fs-14);}
+.pad-opts .row>.pad-key{min-width:72px;}
+.pad-opts .pad-key[aria-pressed='true']{color:var(--accent-hi);}
 .pad-step{display:flex;align-items:center;gap:var(--s2);}
 .pad-step b{min-width:4ch;text-align:center;font-weight:var(--fw-semibold);}
-.pad-opts .end{display:flex;justify-content:space-between;gap:var(--s3);margin-top:var(--s3);}
+.pad-opts .end{grid-column:1/-1;display:flex;justify-content:space-between;gap:var(--s3);margin-top:var(--s2);}
 
-@media (max-height:360px){.pad-fire{width:92px;height:92px;}.pad-scope{right:calc(var(--s3) + 100px);}.pad-zoom{bottom:calc(var(--s3) + 100px);}}
+/* a narrow panel keeps every control at 48 px: the ammunition keys drop their glyphs, the link its words */
+@container pad (max-width:720px){.pad-shell .cot-i{display:none;}}
+@container pad (max-width:600px){.pad-type{display:none;}.pad-ctl .pad-trigger{width:92px;height:92px;}.pad-ctl .pad-scope{right:calc(var(--s2) + 100px);}}
 }

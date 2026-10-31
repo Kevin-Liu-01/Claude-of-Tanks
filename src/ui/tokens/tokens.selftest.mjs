@@ -147,7 +147,7 @@ assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root bloc
 // none.
 const sheetPaths = Object.keys(first).filter((path) => path.endsWith('.css') && path !== TOKENS_CSS);
 assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(),
-  ['src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-print.css'],
+  ['src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-pad.css', 'src/ui/tokens/surface-print.css'],
   'the landing, the manual, the Gallery, the technical diagrams, the item badges (and their paper hues) and Deploy each have their own token sheet');
 const sheetDecls = new Map();
 for (const path of sheetPaths) {

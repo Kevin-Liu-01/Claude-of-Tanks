@@ -96,31 +96,82 @@ allowance (1,000 GB a month), and a controller uses well under 50 MB an hour.
 - The desktop applies only the newest `axes` seq, takes aim as the difference of totals, and releases every held control
   and zeroes the stick when no frame arrives for 400 ms (a phone that sleeps never leaves the tank driving).
 
-## Controls: the tank in the hand
+## Controls: a tank's control panel in the hand
 
-Underneath its features the controller is not a remote: it is the tank itself, held in two hands. The screen makes that
-literal, with the game's own material and no text labels.
+Underneath its features the controller is the tank's own control panel, held in two hands like a yoke (owner
+2026-10-30: "make it look more realistic"). Its material is the `surface-pad` tokens (`src/ui/tokens/tokens.json`):
+brushed gunmetal, rubber grips, turned bezels over glass, amber and red lamps. Every control moves by transform alone
+and shows a press at once, with no transition.
 
-- The tank. The centre is the vehicle on the field, its plan view (`/icons/<spec>_top.webp`, sent by the desktop),
-  nose up. It turns as the phone turns, so the tank is the steering's readout. Tapping it re-centres the wheel.
-- The gun's bearing. A ring around the tank carries a tick at the turret's bearing off the hull (the desktop's
-  turretYaw), so the gunner sees where the gun points while the hull turns.
-- Steering: tilt like a wheel. The phone's up vector comes from `deviceorientation` (β, γ), rotated into the screen's
-  frame (`screen.orientation.angle`); the wheel angle is its angle in the screen plane, so how far the phone leans back
-  does not matter. A 3° dead zone, a 1.6 power curve, full lock at 35° (25 to 60 in options). iOS asks permission from
-  the Start tap over HTTPS. With no sensor (a laptop, the simulator, a refusal) the grip becomes a stick that steers too.
-- Throttle: a track tread under the left thumb. The grip rides it and springs back to neutral; the tread rolls at the
-  throttle's speed and direction (one compositor animation, still under reduced motion). Brake (the handbrake and the
-  neutral turn) sits under it.
-- The gun: the right side is the sight. A drag aims; the reticle leans toward the drag and settles on release. The
-  trigger fills from the bottom as the gun reloads and stands full when it is ready; hold it for full-auto, as on
-  every device. Scope sits beside it, zoom appears while scoped, Look holds free-look.
-- The ready rack: ammunition 1 to 3 with the game's shell glyphs, codes and rounds left, the loaded one raised;
-  consumables, pause and options beside it. A dot and the round trip show the link.
-- Options: tilt on or off, the fire hand (a left-handed mirror), steering lock and aim speed.
-- Screen Wake Lock keeps the phone awake; `navigator.vibrate` ticks on fire and slot changes where supported.
+- The ammunition selector: three illuminated keys, the loaded shell's lamp lit, its rounds on a counter drum that rolls
+  one on when a round is spent.
+- Consumables: guarded switches. A press lifts the red cover on its hinge and throws the switch under it.
+- Throttle: a rubber T-handle in a gate over a scale, neutral at the notch, spring-loaded back to it. With no tilt (a
+  refusal, no sensor, tilt off) the gate becomes a cross and the handle a stick that steers too. The brake is a rubber
+  pad under it.
+- The repeater: the tank on the field (its plan view, `/icons/<spec>_top.webp`) under glass, its hull turning as the
+  phone turns, so the dial is the steering's readout, and the gun's bearing as a pointer on the rim. A tap re-centres the
+  wheel. Beside it, the speedometer: a needle over a 240° sweep to the tank's top speed, and the km/h on a counter.
+- The gun: the gunner's sight under the right thumb, a dark optic with a stadia reticle that leans toward the drag. The
+  fire button sits in a turned collar; the ring around it fills as the gun loads (two half rings turned by transform),
+  and the button lights red when the gun is ready. Scope is a latching key that lights while the sight is engaged, zoom
+  a rocker beside it while scoped, Look a held key.
+- Steering: tilt like a wheel. The phone's up vector from `deviceorientation` (β, γ) is taken in the locked frame (below),
+  and the wheel angle is its angle in the screen plane, so how far the phone leans back does not matter. A 3° dead zone,
+  a 1.6 power curve, full lock at 35° (25 to 60 in options). Level is the centre.
+- Options (a native modal, two columns so it fits the short side whole): tilt on or off, the fire hand (a left-handed
+  mirror), steering lock and aim speed.
+- Screen Wake Lock keeps the phone awake. Each press ticks a haptic: `navigator.vibrate` where it exists, and on iOS 18
+  Safari a hidden switch control toggled under the thumb (unverified on hardware: the simulator has no haptics).
 
 Every button goes through input actions, so the hold-or-toggle Accessibility setting applies to the phone as to keys.
+
+### Locked landscape
+
+iOS Safari has no orientation lock (`screen.orientation.lock` is unsupported and the manifest's orientation is ignored),
+and a phone turned hard as a wheel tips past the system's threshold, so before 266's round the page re-laid out mid-turn
+and the steering read the new screen angle: a 20° turn read as −70°, full left lock. Now the page locks itself
+(`src/pad/padPage.ts`, the pure maths in `src/pad/padInput.ts`):
+
+- At the Start tap the controller is laid out once, in the landscape the phone is in (or the quarter turn from portrait,
+  the top to the left, until the system first shows a landscape). That is the frame's lock angle.
+- When the system turns the page, the frame turns back by the same angle (`frameTurn`) and scales to fit, a transform
+  and nothing else. A resize that is no rotation (the keyboard leaving, Safari's bars) lays it out again.
+- The wheel angle reads β and γ against the lock angle, never the screen's, so the system's rotation never reaches the
+  steering. Touch movements are turned into the frame's axes (`frameDelta`), and the safe areas onto its own sides
+  (`frameInsets`). The options modal sits in the top layer and turns with the frame's variables.
+- On Android, where full screen is offered, the Start tap also asks `screen.orientation.lock` for the landscape in use.
+- Proof, iOS Simulator with rotation lock off (`sim/after/` in the evidence folder): at 90°, 0°, 270° and 180° the panel
+  stays where it was on the phone, and a fixed 20° wheel pose read 0.36 steer at every one. In Safari's portrait the panel
+  shrinks to fit between Safari's own bars (scale 0.82 on an iPhone 16); from the Home Screen it does not.
+- One gap is WebKit's: a flip from one landscape straight to the other that passes through upside-down portrait (the
+  simulator's 270 → 180 → 90) reports no event and leaves `screen.orientation.angle` stale, so the panel shows upside down
+  until the next reported rotation (any turn through portrait) puts it back. The steering is unaffected.
+
+### Presses (what "the buttons don't work" was)
+
+Measured on the Simulator with two fingers against the build before this round (`sim/desk-before-buttons.log`):
+
+- Every tap control (scope, the ammunition keys, consumables, zoom, pause, options) acted on `click`, and iOS sends no
+  click for a touch while another finger is down. The throttle thumb is always down, so with a thumb on the throttle a
+  scope tap and an ammunition tap did nothing. Fire, brake and look already worked (pointer events).
+- A tap that slid a few pixels or lasted long lost its click.
+
+Now every control acts on its own finger's `pointerdown`, with the pointer captured: a hold lasts until its last finger
+lifts (two fingers on one control count once), sliding off keeps a hold and presses nothing else, and a lost capture or a
+cancelled pointer lets go. After the fix, on the Simulator: throttle plus scope, throttle plus an ammunition key, throttle
+plus a guarded switch, aim drag plus fire held, a slide from fire across the sight onto a key (fire held to the lift, the
+key untouched), fast double taps (two press-release pairs), and a long press on the dial (no callout). Every target is
+48 px or more.
+
+### Nothing zooms
+
+Owner 2026-10-30: "when u click in sessions like it zooms in". The viewport is `width=device-width, initial-scale=1,
+maximum-scale=1, user-scalable=no, viewport-fit=cover`; `touch-action: none` on the whole page; the controller cancels
+`touchstart` (outside the options modal), `contextmenu`, iOS's `gesturestart`/`gesturechange`/`gestureend`, `dblclick`
+and a double tap's second `touchend`; no selection, callout or tap highlight; the one input is 28 px (iOS zooms in on
+focus below 16 px). Simulator: `visualViewport.scale` stayed 1 through focusing the code field, double taps, rapid taps
+on every control and two-finger pinches on the join screen and the panel.
 
 ## Desktop side
 
@@ -129,6 +180,31 @@ address and the countdown; once paired the card shows the phone's state and roun
 working at the same time (the stick yields to the keyboard when centred, as the touch HUD's does). The card's state is
 one datum (`phone-link`, `src/ui/surfaceRegistry.ts`).
 
+## Edge cases
+
+Owner 2026-10-30: "fix a lot more edge cases". The rule under every row: an input never outlives its finger or its link.
+The phone lets every control go when the link leaves live or the page is hidden, blurred or left (`releaseControls`);
+the desktop lets go on away, on ended and when no frame arrives inside the stale window, and ignores the phone outside
+a battle, while paused and while its tab is hidden (the pause button still works, to close the menu it opened).
+
+| Case | Handling | Tested |
+|---|---|---|
+| Phone locked, app backgrounded, an incoming call | the page hides: every control lets go, the desktop's stale window stops the tank; on return the link reconnects with its resume token (and a link that gave up while hidden resumes by itself when shown) | Simulator: Home mid-drive, the desktop logged `move 0 0`; back in Safari the link was live again (round trip 1 ms) |
+| A notification banner over the pad | no hide; a touch the system takes is a `pointercancel`, which lets go | by construction (`pointercancel` and `lostpointercapture` release) |
+| Desktop tab hidden or minimised, focus lost, the laptop sleeps | hidden: the phone reads Paused and the desktop ignores it; focus lost: the input layer clears itself; asleep: the phone reads Computer away (amber lamp), and the pairing waits 60 s for it | Simulator: the desktop process stopped, the phone showed Computer away with every control released |
+| Wi-Fi drops, Wi-Fi ↔ cellular | the signalling socket reconnects with the resume token (backoff to 8 s, for 60 s); a dead data channel falls back to the relay; the lamp shows Linking, Relay or Computer away | `padLink.selftest` (relay without WebRTC, resume); pad e2e (relay path) |
+| A reload on either side mid-battle | phone: the tab's resume token, one Start tap; desktop: the tab keeps its token (`cot.pad.desk`) and the game's boot resumes the pairing inside its grace, with no new code | pad e2e: a desktop reload comes back live on both sides by itself |
+| A code expired, wrong or used; two phones on one code | refused alike ("That code didn't work"); a code is single-use and lives 120 s | `padActor.selftest`; Simulator: an expired code ended on that screen |
+| Motion access refused, or no sensor | the throttle becomes a stick that steers (a cross gate) and the dial dims | Simulator: before motion access was allowed the gate showed as the stick; `padInput.selftest` maps the stick to steering |
+| Battle over, Garage, map change, respawn, pause menu, killcam | the desktop drives only in a battle, unpaused, tab shown; the phone dims the dial and reads the state (Start a battle, Paused, Destroyed) | pad e2e: pause from the phone opens and closes the menu |
+| Low-power mode, throttled timers | presses and tilt go on their own events; the heartbeat may run late, so the desktop's stale window is four of the phone's usual gaps (a median of eight), 400 ms to 1.5 s | `padInput.selftest`: a 1 s heartbeat holds, a 100 ms one keeps 400 ms |
+| Notch, Dynamic Island, home indicator | the safe areas are measured once and laid onto the locked frame's own sides | Simulator: 59 px clear of the island, 20 px over the home bar, in every rotation |
+| A very long session | no allocation per frame on the phone beyond one key string per event, bounded rings (the debug trace), one heartbeat timer, ping timers cleared on each state; a pairing lives 6 h, the relay 12,000 frames | by construction; the relay budget in `padActor.selftest` |
+| Android Chrome | the same page; full screen and `screen.orientation.lock` at Start | pad e2e runs Chromium with touch emulation (CDP touch points) |
+| Several fingers on one control | the control holds until its last finger lifts | pad e2e: two fingers on fire, one lifts (held), the last lifts (released) |
+| A disconnect while firing | the phone vanishes with the throttle and the trigger held: the desktop lets both go | pad e2e: throttle and fire held, the phone closed, both released within 700 ms |
+| Several thumbs at once | every control on its own pointer | pad e2e: throttle held, a scope tap, fire held and an aim drag together; Simulator: two-finger pairs |
+
 ## Proof
 
 - Receipts: `src/pad/padProtocol.selftest.mjs` (codes, routes, frame codec), `src/pad/padActor.selftest.mjs` (a code
@@ -136,8 +212,11 @@ one datum (`phone-link`, `src/ui/surfaceRegistry.ts`).
   steering model and the action mapping), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
   sockets), `cloudflare/rooms/test/pad.test.ts` (the Worker route and the DO).
 - `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic orientation and touch events drive a tank
-  in a solo battle, the network log shows zero requests before pairing, and the latency is measured on one clock.
-- iOS Simulator for the pad page (layout, touch, pairing, WebRTC); a real phone on the preview by the owner.
+  in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
+  pairing, the latency is measured on one clock, and a desktop reload resumes the pairing.
+- iOS Simulator for the pad page: the locked frame at every rotation, two-finger presses against a Node desktop that logs
+  every input (`desk.mjs` in the evidence folder, which also replays a fixed tilt and reports the screen angle, the
+  viewport and its scale), zoom, backgrounding and the desktop vanishing; a real phone on the preview by the owner.
 
 ## Measured
 

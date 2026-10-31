@@ -347,7 +347,8 @@ try {
   await desktop.waitForFunction((a) => window.__DEBUG.game.player.combat.ammo[window.__DEBUG.game.player.combat.shellSlot] < a, { timeout: 5000 }, ammo0).catch(() => {});
   const ammo1 = await player('p.combat.ammo[p.combat.shellSlot]');
   check('fire from the phone shoots', ammo1 === ammo0 - 1, `rounds ${ammo0} → ${ammo1}`);
-  await phone.waitForFunction(() => getComputedStyle(document.querySelector('.pad-reload-fill')).transform !== 'none', { timeout: 3000 }).catch(() => {});
+  await phone.waitForFunction(() => document.querySelector('.pad-ctl')?.dataset.state === 'loading', { timeout: 3000 }).catch(() => {});
+  check('the phone shows the gun loading: the fire button dark, its ring refilling', await phone.$eval('.pad-ctl', (el) => el.dataset.state === 'loading'));
 
   report.step = 'pause';
   // pause: the phone's pause opens the menu (the battle stands still), again resumes
@@ -368,6 +369,64 @@ try {
   await desktop.keyboard.up('KeyW');
   report.checks.keyboardBesidePhone = { ok: true, detail: `W with no pointer lock reads ${keyThrottle} (the page's own lock gate; the phone stick is centred so the keyboard path is the one read)` };
 
+  report.step = 'multi-touch';
+  // ---- several thumbs at once, as the phone is held -------------------------------------------------------------------
+  // The throttle held while another thumb taps the scope, holds fire and drags in the sight: iOS sends no click for a
+  // touch while another finger is down, so every control acts on its own pointer (owner 2026-10-30: "make the buttons
+  // work properly"). CDP's touch points are the touch screen's own, one id per finger.
+  const cdp = await phone.createCDPSession();
+  const touches = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id]) => ({ x, y, id, radiusX: 6, radiusY: 6, force: 1 })) });
+  const centre = async (selector) => { const b = await box(selector); return [b.x + b.width / 2, b.y + b.height / 2]; };
+  const inputHeld = (action) => desktop.evaluate((a) => !!window.__DEBUG.input.getState()[a], action);
+  const [lx, ly] = await centre('.pad-lever');
+  const [sx, sy] = await centre('.pad-scope');
+  const [fx, fy] = await centre('.pad-fire');
+  const aimBox = await box('.pad-aim');
+  await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.reload.t <= 0, { timeout: 20_000 }).catch(() => {});
+  const together0 = { rounds: await player('p.combat.ammo[p.combat.shellSlot]'), yaw: await player('p.state.turretYaw'), mode: await desktop.evaluate(() => window.__DEBUG.rig.mode) };
+  const lever = [lx, ly, 1];
+  await touches('touchStart', [lever]);
+  for (let i = 1; i <= 6; i++) { lever[1] = ly - 140 * i / 6; await touches('touchMove', [lever]); await sleep(16); }
+  await touches('touchStart', [lever, [sx, sy, 2]]);
+  await sleep(60);
+  await touches('touchEnd', [lever]);
+  await desktop.waitForFunction((m) => window.__DEBUG.rig.mode !== m, { timeout: 5000 }, together0.mode).catch(() => {});
+  const fire = [fx, fy, 3];
+  const aim = [aimBox.x + aimBox.width * 0.3, aimBox.y + aimBox.height * 0.35, 4];
+  await touches('touchStart', [lever, fire]);
+  await touches('touchStart', [lever, fire, aim]);
+  for (let i = 1; i <= 8; i++) { aim[0] += 20; await touches('touchMove', [lever, fire, aim]); await sleep(16); }
+  await sleep(250);
+  // the throttle over a short window (a desktop main thread stalled past the stale window lets go until the next frame)
+  let held = 0;
+  for (let i = 0; i < 6; i++) { held = Math.max(held, await player('p.input.throttle')); await sleep(50); }
+  const together = { throttle: held, fire: await inputHeld('fire'), mode: await desktop.evaluate(() => window.__DEBUG.rig.mode),
+    phone: await phone.evaluate(() => { const d = window.__COT_PAD_PHONE; return { state: d.state, throttle: d.throttle, held: d.held, released: d.released }; }),
+    desktopLink: await desktop.evaluate(() => window.__COT_PAD?.state) };
+  await desktop.waitForFunction((r) => window.__DEBUG.game.player.combat.ammo[window.__DEBUG.game.player.combat.shellSlot] < r, { timeout: 5000 }, together0.rounds).catch(() => {});
+  together.rounds = await player('p.combat.ammo[p.combat.shellSlot]');
+  together.yaw = await player('p.state.turretYaw');
+  await phone.screenshot({ path: resolve(outDir, 'phone-multi-touch.png') });
+  await touches('touchEnd', []);
+  await sleep(300);
+  check('three thumbs at once: the throttle held, a scope tap, fire held and an aim drag all reach the battle',
+    together.throttle > 0.5 && together.mode !== together0.mode && together.fire && together.rounds < together0.rounds && Math.abs(together.yaw - together0.yaw) > 0.02,
+    `throttle ${together.throttle.toFixed(2)}, rig ${together0.mode} → ${together.mode}, fire ${together.fire}, rounds ${together0.rounds} → ${together.rounds}, turret ${(together0.yaw * 57.3).toFixed(1)}° → ${(together.yaw * 57.3).toFixed(1)}°; phone ${JSON.stringify(together.phone)}, desktop link ${together.desktopLink}`);
+  check('lifting every finger lets every control go', Math.abs(await player('p.input.throttle')) < 0.01 && !(await inputHeld('fire')));
+  // two fingers on one control: it lets go only when the last one lifts
+  await touches('touchStart', [[fx - 8, fy, 5]]);
+  await touches('touchStart', [[fx - 8, fy, 5], [fx + 8, fy, 6]]);
+  await touches('touchEnd', [[fx + 8, fy, 6]]);
+  await sleep(200);
+  const oneLeft = { phone: await phone.evaluate(() => document.querySelector('.pad-fire').classList.contains('is-down')), desktop: await inputHeld('fire') };
+  await touches('touchEnd', []);
+  await sleep(200);
+  const noneLeft = { phone: await phone.evaluate(() => document.querySelector('.pad-fire').classList.contains('is-down')), desktop: await inputHeld('fire') };
+  check('two fingers on fire: one lifting keeps it held, the last lets go', oneLeft.phone && oneLeft.desktop && !noneLeft.phone && !noneLeft.desktop,
+    `one left ${JSON.stringify(oneLeft)}, none ${JSON.stringify(noneLeft)}`);
+  if (await desktop.evaluate(() => window.__DEBUG.rig.mode === 'SNIPER')) await phone.tap('.pad-scope');
+  check('no tap, double tap or drag zooms the page', await phone.evaluate(() => (window.visualViewport?.scale ?? 1) === 1));
+
   // the signaling socket while live: no input frames over it
   const liveFrames = socketFrames.desktopReceived.filter((f) => f.data.startsWith('{"t":"relay"'));
   report.network.signalingFramesDesktop = { sent: socketFrames.desktopSent.length, received: socketFrames.desktopReceived.length,
@@ -375,15 +434,20 @@ try {
   console.log('signaling', JSON.stringify(report.network.signalingFramesDesktop));
 
   report.step = 'fail-safe';
-  // the fail-safe: the phone vanishes mid-drive, the desktop lets go within the stale window
-  const releaseHeld = await touchDrag('.pad-lever', 0, -140, 0);
+  // the fail-safe: the phone vanishes mid-drive with the trigger held, the desktop lets go of both within the stale window
+  const heldLever = [lx, ly, 7];
+  await touches('touchStart', [heldLever]);
+  for (let i = 1; i <= 6; i++) { heldLever[1] = ly - 140 * i / 6; await touches('touchMove', [heldLever]); await sleep(16); }
+  await touches('touchStart', [heldLever, [fx, fy, 8]]);
   await sleep(300);
   const heldThrottle = await player('p.input.throttle');
+  const heldFire = await inputHeld('fire');
   await phone.close();
-  void releaseHeld;
   await sleep(700);
   const afterClose = await player('p.input.throttle');
-  check('a phone that vanishes mid-drive stops the tank (stale fail-safe)', heldThrottle > 0.5 && Math.abs(afterClose) < 0.01, `throttle ${heldThrottle.toFixed(2)} → ${afterClose}`);
+  const fireAfter = await inputHeld('fire');
+  check('a phone that vanishes mid-drive and mid-fire stops the tank and lets the trigger go (stale fail-safe)',
+    heldThrottle > 0.5 && heldFire && Math.abs(afterClose) < 0.01 && !fireAfter, `throttle ${heldThrottle.toFixed(2)} → ${afterClose}, fire ${heldFire} → ${fireAfter}`);
   deadline();
 
   report.step = 'relay';
@@ -408,6 +472,19 @@ try {
   const relay = await steerSamples(Math.min(20, samples), 'relay');
   check('steering latency over the relay (loopback): recorded', relay.n > 0, `p50 ${relay.p50} ms, p95 ${relay.p95} ms (15 Hz cap)`);
   await phone.screenshot({ path: resolve(outDir, 'phone-live-relay.png') });
+
+  report.step = 'desktop reload';
+  // a reload of the desktop tab mid-pairing: the tab kept its resume token, so the game's boot resumes the same pairing
+  // inside its grace (no new code), and the phone, shown the desktop away meanwhile, comes back live by itself
+  const reloadedAt = Date.now();
+  await desktop.reload({ waitUntil: 'domcontentloaded', timeout: 240_000 });
+  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'away', { timeout: 30_000 }).catch(() => {});
+  const phoneSawAway = await phone.evaluate(() => document.querySelector('.pad-link')?.textContent ?? '');
+  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'live', { timeout: 240_000, polling: 500 }).catch(() => {});
+  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 }).catch(() => {});
+  const resumed = { desktop: await desktop.evaluate(() => window.__COT_PAD?.state ?? 'none'), phone: await phone.evaluate(() => window.__COT_PAD_PHONE?.state) };
+  check('a desktop reload resumes the pairing: no new code, the phone back live by itself', resumed.desktop === 'live' && resumed.phone === 'live',
+    `phone showed "${phoneSawAway}" meanwhile; ${JSON.stringify(resumed)} after ${Math.round((Date.now() - reloadedAt) / 1000)} s`);
 
   report.network.desktopRequestsTotal = desktopRequests.length;
   check('no page errors on either page', !report.errors.desktop.length && !report.errors.phone.length,

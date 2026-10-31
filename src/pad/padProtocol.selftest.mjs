@@ -38,6 +38,8 @@ assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: 'A
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: [{ type: 'AP', icon: '"><img>', count: 1 }] } })), null,
   'a glyph id is a sprite id, never markup');
 assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, spec: 'm1a1_abrams_hc', turret: 0.4 } })).s.spec, 'm1a1_abrams_hc');
+assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, kmh: -12, topKmh: 68 } })).s.kmh, -12, 'the speedometer reads reverse too');
+assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, kmh: 'fast' } })), null);
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, spec: '../x' } })), null, 'a spec id is an id, never a path');
 
 // --- the axes frame ---------------------------------------------------------------------------------------------

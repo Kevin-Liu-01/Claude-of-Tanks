@@ -4,7 +4,10 @@
 // taps, pause and the stale fail-safe. Every action the phone names is a real input action.
 import assert from 'node:assert/strict';
 import { ACTION_DEFS } from '../game/input.ts';
-import { DEFAULT_STEERING, PAD_AIM_GAIN, createPadInputMapper, leverValue, steerFromAngle, wheelAngleDeg, wrapDeg } from './padInput.ts';
+import {
+  DEFAULT_STEERING, PAD_AIM_GAIN, createPadInputMapper, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
+  wheelAngleDeg, wrapDeg,
+} from './padInput.ts';
 import { PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, decodePadAxes, encodePadAxes } from './padProtocol.ts';
 
 const near = (a, b, eps, label) => assert.ok(Math.abs(a - b) <= eps, `${label}: ${a} vs ${b}`);
@@ -34,6 +37,37 @@ for (const screen of [90, 270, 0]) {
     }
   }
 }
+// The locked frame (owner 2026-10-30: "make it so it must be horizontal and just stays that way"): the controller locks to
+// the landscape it starts in, or the quarter turn from portrait, and from then on the frame turns back whatever the
+// system does, so it never moves on the phone, a finger's movement reads in the frame's own axes, and the island and the
+// home bar land on the frame's own sides.
+assert.equal(lockAngle(90, true), 90);
+assert.equal(lockAngle(-90, true), 270, 'window.orientation reads -90 for 270');
+assert.equal(lockAngle(0, false), 90, 'started in portrait: the top to the left');
+for (const lock of [0, 90, 270]) {
+  for (const screen of [0, 90, 180, 270]) {
+    const turn = frameTurn(lock, screen);
+    assert.equal((screen + turn) % 360, lock, `lock ${lock}, system ${screen}: the frame sits where it was on the phone`);
+    // CSS rotate(turn) carries the frame's axes onto the viewport; frameDelta brings a movement there back
+    const t = turn * DEG, fx = 3, fy = -7;
+    const [bx, by] = frameDelta(turn, fx * Math.cos(t) - fy * Math.sin(t), fx * Math.sin(t) + fy * Math.cos(t));
+    near(bx, fx, 1e-9, `turn ${turn} x`);
+    near(by, fy, 1e-9, `turn ${turn} y`);
+  }
+}
+// locked at 90 while the system shows portrait (Safari: top 59 is the island, bottom 34 the home bar): the frame's left is
+// the island's side and its right the home bar's
+assert.deepEqual(frameInsets(frameTurn(90, 0), [59, 0, 34, 0]), [0, 34, 0, 59]);
+assert.deepEqual(frameInsets(frameTurn(90, 90), [0, 59, 20, 59]), [0, 59, 20, 59]);
+// The wheel reads the device's own axes in the locked frame, so the system's rotation never reaches the steering. Read
+// through the system's angle instead (the controller before this), the same hold swung a quarter turn when iOS turned
+// the page to portrait: a 20° turn read as -70°, full left lock.
+for (const lock of [90, 270]) {
+  const pose = orientationFor(lock, 20, 30);
+  near(wheelAngleDeg(pose.beta, pose.gamma, lock), 20, 0.01, `locked at ${lock}`);
+  near(Math.abs(wrapDeg(wheelAngleDeg(pose.beta, pose.gamma, (lock + 270) % 360) - 20)), 90, 0.01, `read through portrait at ${lock}`);
+}
+
 const flat = orientationFor(90, 20, 85);
 assert.equal(wheelAngleDeg(flat.beta, flat.gamma, 90), null, 'a phone lying flat is no wheel');
 assert.equal(wheelAngleDeg(NaN, 0, 90), null, 'no sensor reading, no angle');
@@ -144,6 +178,21 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   assert.equal(restart.aim[0], 0, 'and its new aim total is a baseline, not a swing back');
   assert.equal(rm.applyAxes(frame(2, { steer: 0.5, aimX: 8 }), 48), true);
 
+  // a phone whose timers are throttled (low power) sends its heartbeat a second apart: the window widens to four of its
+  // gaps, to the cap, so a steady hold does not stutter; a phone that streams at its usual rate keeps the short window
+  const slow = port();
+  const sm = createPadInputMapper(slow);
+  for (let i = 0; i < 6; i++) sm.applyAxes(frame(i + 1, { throttle: 1, held: FIRE }), i * 1000);
+  sm.tick(5000 + 1400, 400);
+  assert.ok(slow.held.has('fire') && slow.move[1] === 1, 'a slow heartbeat holds through its own gap');
+  sm.tick(5000 + 1501, 400);
+  assert.ok(!slow.held.has('fire') && slow.move[1] === 0, 'and lets go past the 1.5 s cap');
+  const fast = port();
+  const fm = createPadInputMapper(fast);
+  for (let i = 0; i < 20; i++) fm.applyAxes(frame(i + 1, { throttle: 1 }), i * 100);
+  fm.tick(1900 + 401, 400);
+  assert.equal(fast.move[1], 0, 'a phone at its usual 100 ms keeps the 400 ms window');
+
   // an idle mapper does not keep writing the stick (keyboard keeps working when the phone is centred)
   const idle = port();
   const im = createPadInputMapper(idle);
@@ -152,4 +201,4 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   assert.equal(idle.calls.filter((c) => c[0] === 'move').length, 1, 'a centred, idle phone is not re-zeroed every frame');
 }
 
-console.log('padInput: PASS — wheel angle in every landscape and lean, steering curve, lever, mapper (frames, aim, holds, taps, pause, fail-safe)');
+console.log('padInput: PASS — wheel angle in every landscape and lean, the locked frame, steering curve, lever, mapper (frames, aim, holds, taps, pause, fail-safe, throttled heartbeat)');

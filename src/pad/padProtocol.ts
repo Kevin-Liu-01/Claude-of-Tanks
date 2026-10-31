@@ -199,6 +199,9 @@ export interface PadStatus {
    *  (+ is the gun to the hull's left, the sim's turretYaw). */
   spec?: string;
   turret?: number;
+  /** The hull's speed in whole km/h (negative in reverse) and its top speed, for the phone's speedometer. */
+  kmh?: number;
+  topKmh?: number;
 }
 
 export type PadCtlMessage =
@@ -244,7 +247,8 @@ function isStatus(value: unknown): value is PadStatus {
       Number.isFinite((shell as PadShell).count)) &&
     Number.isFinite(s.reloadS) && Number.isFinite(s.reloadTotalS) &&
     (s.spec === undefined || (typeof s.spec === 'string' && /^[a-z0-9_]{1,48}$/.test(s.spec))) &&
-    (s.turret === undefined || Number.isFinite(s.turret));
+    (s.turret === undefined || Number.isFinite(s.turret)) &&
+    (s.kmh === undefined || Number.isFinite(s.kmh)) && (s.topKmh === undefined || Number.isFinite(s.topKmh));
 }
 
 // ---- The `axes` frame (binary, 24 bytes) -------------------------------------------------------------------------

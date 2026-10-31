@@ -5700,7 +5700,7 @@
   "pad.ended.unreachable": "无法连接配对服务。",
   "pad.ended.relaySpent": "直连失败且中继额度已用完。请将两台设备连到同一 Wi-Fi 后重新配对。",
   "pad.ended.again": "重新配对",
-  "pad.rotate": "请横置手机",
+  "pad.kmh": "km/h",
   "pad.ms": "{ms} 毫秒",
   "pad.fire": "开火",
   "pad.scope": "瞄准镜",

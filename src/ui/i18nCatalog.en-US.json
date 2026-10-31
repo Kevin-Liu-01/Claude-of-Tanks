@@ -5700,7 +5700,7 @@
   "pad.ended.unreachable": "Can’t reach the pairing service.",
   "pad.ended.relaySpent": "The direct link failed and the relay limit is reached. Put both on the same Wi-Fi and pair again.",
   "pad.ended.again": "Pair Again",
-  "pad.rotate": "Turn your phone sideways",
+  "pad.kmh": "km/h",
   "pad.ms": "{ms} ms",
   "pad.fire": "Fire",
   "pad.scope": "Scope",

@@ -15,8 +15,8 @@ import { shellIconId } from '../ui/shellIcons.ts';
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
 interface PadPlayer {
   combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
-  spec: { id?: string; gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
-  state?: { turretYaw: number } | null;
+  spec: { id?: string; topSpeedKmh?: number; gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
+  state?: { turretYaw: number; speed?: number } | null;
 }
 
 /** What the composition root hands over (main.ts): the raw facts, so the mapping rides in this lazy chunk. The shell
@@ -50,6 +50,9 @@ export function padStatusOf(source: PadStatusSource | null): PadStatus | null {
     ...(player.spec.id && /^[a-z0-9_]{1,48}$/.test(player.spec.id) ? { spec: player.spec.id } : {}),
     // a tenth of a degree is the bearing's grain: the readout changes (and is sent) only when the gun moves
     ...(player.state ? { turret: Math.round(player.state.turretYaw * 573) / 573 } : {}),
+    // whole km/h: the speedometer's grain, so a cruising tank sends no status
+    ...(player.state && Number.isFinite(player.state.speed) ? { kmh: Math.round(player.state.speed! * 3.6) } : {}),
+    ...(Number.isFinite(player.spec.topSpeedKmh) ? { topKmh: Math.round(player.spec.topSpeedKmh!) } : {}),
   };
 }
 
@@ -89,7 +92,17 @@ interface PadDebug {
   trace: Array<[number, number]>;
 }
 
-export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): PadReceiver {
+/** The pairing this tab holds (code and resume token), so a reload resumes it (settings.ts reads the same key). */
+const DESK_RESUME_KEY = 'cot.pad.desk';
+const forgetDeskResume = (): void => { try { sessionStorage.removeItem(DESK_RESUME_KEY); } catch { /* storage blocked */ } };
+export function storedDeskResume(): { code: string; token: string } | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(DESK_RESUME_KEY) || 'null') as { code?: unknown; token?: unknown } | null;
+    return value && typeof value.code === 'string' && typeof value.token === 'string' ? { code: value.code, token: value.token } : null;
+  } catch { return null; }
+}
+
+export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, resume?: { code: string; token: string }): PadReceiver {
   const listeners = new Set<(view: PadReceiverView) => void>();
   let view: PadReceiverView = { state: { kind: 'connecting' }, rttMs: null };
   const mapper = createPadInputMapper(ports.input, ports.togglePause);
@@ -100,6 +113,9 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
   let applyMs = 0;
   let pendingApplyAt = -1;
   let frames = 0;
+  /** The phone drives only in a battle, unpaused, with this tab shown: anywhere else its holds are let go and its
+   *  frames and presses wait (its pause button still works, to close the menu it opened). */
+  let driving = false;
   const debug: PadDebug | null = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]padDebug\b/.test(location.search))
     ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0, trace: [] } : null;
   if (debug) (globalThis as { __COT_PAD?: PadDebug }).__COT_PAD = debug;
@@ -125,13 +141,15 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
   const link: PadLink = createPadLink({
     role: 'desktop',
     serviceUrl,
+    ...(resume ? { resume } : {}),
+    onToken(code, token) { try { sessionStorage.setItem(DESK_RESUME_KEY, JSON.stringify({ code, token })); } catch { /* storage blocked */ } },
     onState(state) {
       if (state.kind === 'away' || state.kind === 'ended') mapper.releaseAll();
-      if (state.kind === 'ended') stop();
+      if (state.kind === 'ended') { forgetDeskResume(); stop(); }
       publish({ state, ...(state.kind === 'live' ? {} : { rttMs: null }) });
     },
     onAxes(bytes) {
-      if (!decodePadAxes(bytes, axes)) return;
+      if (!driving || !decodePadAxes(bytes, axes)) return;
       const now = performance.now();
       if (!mapper.applyAxes(axes, now)) return;
       frames++;
@@ -145,7 +163,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
     onCtl(message) {
       if (message.k === 'ping') link.sendCtl({ k: 'pong', t: message.t, d: performance.now(), apply: Math.round(applyMs * 10) / 10 });
       else if (message.k === 'pong') publish({ rttMs: Math.max(0, performance.now() - message.t) });
-      else if (message.k !== 'status') mapper.applyCtl(message);
+      else if (message.k === 'pause' || (driving && message.k !== 'status')) mapper.applyCtl(message);
     },
   });
 
@@ -153,9 +171,15 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
     const now = performance.now();
     const relay = view.state.kind === 'live' && view.state.path === 'relay';
     mapper.tick(now, relay ? 1000 : PAD_STALE_MS);
+    // a hidden tab (minimised, another tab, a sleeping laptop's last moments) is a paused game to the phone
+    const source = ports.source();
+    const hidden = typeof document !== 'undefined' && document.hidden;
+    const nowDriving = !!source?.battle && !source.paused && !hidden;
+    if (driving && !nowDriving) mapper.releaseAll();
+    driving = nowDriving;
     if (view.state.kind !== 'live') return;
     // the phone's readout: on change, at most 5 a second (one on the billed relay), and a heartbeat every 2 s
-    const status = JSON.stringify(padStatusOf(ports.source()) ?? IDLE_STATUS);
+    const status = JSON.stringify(padStatusOf(source && hidden ? { ...source, paused: true } : source) ?? IDLE_STATUS);
     const gap = now - lastStatusAt;
     if ((status !== lastStatus && gap >= (relay ? 1000 : 200)) || gap >= 2000) {
       if (link.sendCtl({ k: 'status', s: JSON.parse(status) as PadStatus })) { lastStatus = status; lastStatusAt = now; }
@@ -175,6 +199,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
       return () => listeners.delete(listener);
     },
     disconnect() {
+      forgetDeskResume();
       stop();
       link.end();
     },
