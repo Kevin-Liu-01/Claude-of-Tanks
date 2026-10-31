@@ -5,20 +5,23 @@
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
+import {sectionSolid} from './sectionSolid.ts';
+import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type Point=readonly[number,number,number];
 type Plan=readonly(readonly[number,number])[];
-const {box,cylY}=KIT;
+const {box,cylX,cylY}=KIT;
 
 // Turret frame. The canopy deck stands at y 1.16, 5 cm over the tallest roof fitting it spans (the gunner's sight head,
 // 1.10) and under the commander's Kord at any traverse (its barrel 1.45-1.50, 1.24 at 10 degrees down at 1.2 m).
 const CANOPY_Y=1.16;
-// The plan (x, z): the bustle, the side boxes and the right half of the roof, open over the front-left quarter so the
-// commander's hatch and Kord station (x -1.25..-0.35, z -0.85..0.5) keep their own air.
-const CANOPY:Plan=[[1.30,.40],[1.55,-.05],[1.55,-.75],[1.25,-1.20],[.90,-1.95],[-.90,-1.95],[-1.25,-1.20],[-1.55,-.90],
-  [-.30,-.90],[-.30,.40]];
-// Posts on the cast dome, the side boxes and the bustle box (their roofs measured at y .54-.72).
-const POSTS:Plan=[[1.15,.30],[1.40,-.40],[1.20,-1.00],[.70,-1.65],[-.75,-1.62],[-1.20,-1.00],[-1.40,-.80],[-.40,-.85],[-.35,.30]];
+// The plan (x, z): centred over the roof from the brow to the bustle's end, following the turret's plan, with an opening
+// round the commander's hatch and Kord station (x -1.45..-0.28, z -0.88..0.52) so it keeps its own air.
+const CANOPY:Plan=[[1.30,.70],[1.55,0],[1.55,-.75],[1.25,-1.20],[.90,-1.95],[-.90,-1.95],[-1.25,-1.20],[-1.55,-.75],
+  [-1.55,0],[-1.30,.70]];
+const HATCH:Plan=[[-1.45,.52],[-.28,.52],[-.28,-.88],[-1.45,-.88]];
+// Posts on the cast dome, the side boxes and the bustle box (their roofs measured at y .44-.72).
+const POSTS:Plan=[[1.15,.55],[1.40,-.40],[1.20,-1.00],[.70,-1.65],[-.75,-1.62],[-1.20,-1.00],[-.32,-.90],[-.28,.52],[-1.22,.60]];
 const SEATS=['turret','turretDetail','turretEquipment','turretDark'] as const;
 
 function stock(P:TankBuilderPort,buckets:readonly string[]):{meshes:THREE.Mesh[];dispose:()=>void}{
@@ -46,6 +49,13 @@ function spans(plan:Plan,axis:0|1,at:number):[number,number][]{
 
 // The factory anti-drone canopy of the 2022-23 deliveries: a welded tube frame on eight posts with a bar grid over the
 // bustle and the roof, the T-72B3M's own "visor".
+// The spans of `outer` less those of `hole`, on one line.
+function minus(outer:[number,number][],hole:[number,number][]):[number,number][]{
+  let out=outer;
+  for(const [h0,h1]of hole)out=out.flatMap(([a,b]):[number,number][]=>b<=h0||a>=h1?[[a,b]]:[...(a<h0?[[a,h0] as [number,number]]:[]),...(b>h1?[[h1,b] as [number,number]]:[])]);
+  return out;
+}
+
 function canopy(P:TankBuilderPort):void{
   const bar=(a:Point,b:Point,r:number)=>P.addEquipment('turretOpenLattice',beamBetween(a,b,r,8));
   const {meshes,dispose}=stock(P,SEATS);
@@ -56,12 +66,12 @@ function canopy(P:TankBuilderPort):void{
       bar([x,foot.y+.01,z],[x,CANOPY_Y,z],.022);
     }
   }finally{dispose();}
-  for(let i=0;i<CANOPY.length;i++){
-    const [ax,az]=CANOPY[i],[bx,bz]=CANOPY[(i+1)%CANOPY.length];
+  for(const plan of [CANOPY,HATCH])for(let i=0;i<plan.length;i++){
+    const [ax,az]=plan[i],[bx,bz]=plan[(i+1)%plan.length];
     bar([ax,CANOPY_Y,az],[bx,CANOPY_Y,bz],.024);
   }
-  for(let z=-1.95;z<.40;z+=.15)for(const [a,b]of spans(CANOPY,1,z))bar([a,CANOPY_Y+.012,z],[b,CANOPY_Y+.012,z],.009);
-  for(let x=-1.35;x<1.40;x+=.30)for(const [a,b]of spans(CANOPY,0,x))bar([x,CANOPY_Y-.012,a],[x,CANOPY_Y-.012,b],.012);
+  for(let z=-1.95;z<.70;z+=.15)for(const [a,b]of minus(spans(CANOPY,1,z),spans(HATCH,1,z)))bar([a,CANOPY_Y+.012,z],[b,CANOPY_Y+.012,z],.009);
+  for(let x=-1.45;x<1.50;x+=.29)for(const [a,b]of minus(spans(CANOPY,0,x),spans(HATCH,0,x)))bar([x,CANOPY_Y-.012,a],[x,CANOPY_Y-.012,b],.012);
 }
 
 // A Volnorez-type anti-drone jammer on the canopy's rear: a box on two rails with four stub antennas (2023-24 fit).
@@ -98,13 +108,48 @@ function engineBaySlat(P:TankBuilderPort):void{
   }finally{dispose();}
 }
 
-// Rubber mud flaps hung from the rounded front guards' tips (y .915 at z 3.835), the road-march fitting of the fleet.
-function bowFlaps(P:TankBuilderPort):void{
+// Turret frame. The boxed Relikt cheeks: four flat-topped containers a side in a V from the mantlet's flanks (x .70,
+// z 1.57) back to the side boxes (x 1.69, z .42), 46 cm deep, their tops falling from the roofline (y .68) to a short outer
+// face (y .34): the forward-swept arrowhead of the B3M's front. They replace the 2016 build's nine shingled cells (buildT72B3MX cheekEra: false).
+function cheekContainers(P:TankBuilderPort):void{
+  const N=4,D=.46,yb=.08,yt=.68,yf=.34,Y=new THREE.Vector3(0,1,0);
   for(const side of [-1,1]){
-    const x=side*1.48;
-    P.addEquipment('hullRubber',box(.56,.36,.014),x,.915-.17,3.83);
-    P.addEquipment('hullDark',box(.58,.04,.03),x,.905,3.83);
+    const a=new THREE.Vector3(side*.70,0,1.57),b=new THREE.Vector3(side*1.69,0,.42),len=a.distanceTo(b);
+    const u=b.clone().sub(a).normalize(),n=new THREE.Vector3(-u.z,0,u.x);
+    if(n.z<0)n.negate();
+    const basis=new THREE.Matrix4().makeBasis(n,Y,n.clone().cross(Y)),L=len/N-.012;
+    for(let i=0;i<N;i++){
+      const c=a.clone().addScaledVector(u,len*(i+.5)/N).addScaledVector(n,-D/2);
+      const ring:readonly(readonly[number,number])[]=[[-D/2,yb],[D/2,yb],[D/2,yf],[-D/2,yt]];
+      const g=markEraHitFaces(sectionSolid([{z:-L/2,ring},{z:L/2,ring}]),[1,0,0]).applyMatrix4(basis);
+      P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('turret',g,c.x,0,c.z));
+    }
   }
+}
+
+// The OPVT snorkel canister stowed across the bustle box's top, on two saddles with straps (the Army-2022 tank's own).
+function snorkel(P:TankBuilderPort):void{
+  const x=.05,z=-1.70,r=.17,{meshes,dispose}=stock(P,SEATS);
+  try{
+    const top=hit(meshes,new THREE.Vector3(x,1.10,z),new THREE.Vector3(0,-1,0),'the snorkel saddle',P.spec.id).y;
+    P.addEquipment('turretDetail',cylX(r,1.40,24),x,top+r+.04,z);
+    for(const dx of [-.71,.71])P.addEquipment('turretDark',cylX(r+.012,.03,24),x+dx,top+r+.04,z);
+    for(const dx of [-.42,.42]){
+      P.addEquipment('turretDark',box(.06,.06,.30),x+dx,top+.03,z);
+      P.addEquipment('turretDark',cylX(r+.008,.035,24),x+dx,top+r+.04,z);
+    }
+  }finally{dispose();}
+}
+
+// Hull frame. The raised Relikt block rows of the glacis package, laid in chevrons on the 2016 build's glacis cover (top
+// y 1.4934 at z 2.00 falling .382 a metre, .04 thick): ERA furniture of the same glacis clusters, so they go with them.
+function glacisChevrons(P:TankBuilderPort):void{
+  for(const side of [-1,1])P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
+    for(const z of [2.16,2.47,2.78,3.08])for(const x of [.30,.74]){
+      const y=1.4934-(z-2)*.382+.04+.022;
+      P.addExternalArmor('hull',markEraFurniture(box(.40,.044,.25)),side*x,y,z,.365,side*.26,0);
+    }
+  });
 }
 
 // A rear whip on its own base for the added radio, on the bustle's right rear clear of the canopy rails.
@@ -146,5 +191,5 @@ function sternSlat(P:TankBuilderPort):void{
 
 export function addT72B3M2022Kit(P:TankBuilderPort):void{
   sternSlat(P);
-  canopy(P);jammer(P);radioMast(P);engineBaySlat(P);bowFlaps(P);
+  cheekContainers(P);glacisChevrons(P);snorkel(P);canopy(P);jammer(P);radioMast(P);engineBaySlat(P);
 }

@@ -349,10 +349,10 @@ export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}
   hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
-export function buildT72B3MX(P:TankBuilderPort):void {
+export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.topY=T72B3M_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3MXHull(P);buildT72B3MXTurret(P);
+  buildT72B3MXHull(P);buildT72B3MXTurret(P,turretOptions);
 }
 
 /** Options for reusing the T-72B3M turret on another hull. A vehicle whose own
@@ -364,6 +364,9 @@ export interface T72B3MXTurretOptions {
   /** false drops the nine Relikt cheek cells with their nine support beams and the 33 roof cassettes (a national
    * concept that fits its own frontal package on this turret, release 227). */
   reliktEra?:boolean;
+  /** false drops only the nine Relikt cheek cells and their beams, keeping the roof cassettes: the T-72B3M obr. 2022
+   * (t72b3m2022Kit.ts, 266) lays its own boxed cheek containers. */
+  cheekEra?:boolean;
   /** Metres the cast mantlet's underside is raised at each of its four stations (default 0, the T-72B3M's own). Release
    * 230 (UA/PL round 11; the gun-depression lane's census, 2026-10-21: the mantlet's underside passes 6-18 mm over the
    * driver's hatch and periscope at yaw 0-25, and over the right deck cover at yaw -48..-133, at every pitch, which no
@@ -379,13 +382,13 @@ export interface T72B3MXTurretOptions {
 export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOptions={}):void {
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   turret(P);
-  if(options.reliktEra!==false){cheekCassettes(P);roofCassettes(P);}
+  if(options.reliktEra!==false){if(options.cheekEra!==false)cheekCassettes(P);roofCassettes(P);}
   bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
   if(options.mantletChinLift!==undefined&&!(options.mantletChinLift>=0&&options.mantletChinLift<=.016))
     throw new RangeError(`mantletChinLift ${options.mantletChinLift}: 0 to .016 m (the trunnion boss stays inside)`);
   if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0);
 }
-export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
+export const T72B3M_X_PROFILES={t72b3m_2016:{build:(P:TankBuilderPort):void=>buildT72B3MX(P)}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3MXRunningGear(P:TankBuilderPort):void { runningGear(P); }
