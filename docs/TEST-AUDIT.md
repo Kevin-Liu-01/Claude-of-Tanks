@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1456 | 114.1 |
+| KEEP | 1457 | 114.3 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 668 | 1114.0 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2125 | 1228.4 | 207.4 |
-| After: the default tier | 1456 | 114.1 | 16.6 |
+| Before: every receipt (npm test without the tiers) | 2126 | 1228.7 | 207.5 |
+| After: the default tier | 1457 | 114.3 | 16.7 |
 
-Default tier: 9.3 % of the whole registry's CPU; 12.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 13.9 min pool, 2.5 min browser receipts.
+Default tier: 9.3 % of the whole registry's CPU; 12.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 14.0 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -814,7 +814,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1456)
+## KEEP (1457)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -941,6 +941,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/equipmentDamage.selftest.mjs` | 15 | KEEP | equipment damage on real builds (must-keep: damage sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/cloud-history.browser.selftest.mjs` | 15 | KEEP | GPU regression, 15 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/visual-census.selftest.mjs` | 15 | KEEP | tool contract, 15 s: 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/brazil.selftest.mjs` | 15 | KEEP | vehicle rule, 15 s: release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilia | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/match/snapshotBudget.selftest.mjs` | 14 | KEEP | match authority, 14 s: mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.patrolNoRoute.selftest.mjs` | 14 | KEEP | game flow, 14 s: 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold). | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/hostFleet.selftest.mjs` | 14 | KEEP | multiplayer wire, session or host, 14 s: 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot. | default tier (npm test, the release gate; lane mode by its closure) |
