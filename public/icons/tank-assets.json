@@ -269168,7 +269168,7 @@
           }
         ]
       },
-      "geometryHash": "9de46d5e",
+      "geometryHash": "497d34a5",
       "metadataHash": "1843b6cc",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -269188,7 +269188,7 @@
           "wheelTire": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
-          "tireRubber": 2,
+          "tireRubber": 1,
           "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -269196,6 +269196,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 11,
           "gunmetal": 9,
+          "hullRubber": 1,
           "opticGlass": 3,
           "unclassified": 16,
           "gearShadow": 1,
@@ -269229,39 +269230,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20086,
-          "sha256": "c5754986c1e2dea1d0dc1fd8ea1b1df12362f83db58adfdf9145a2474eae9ef4"
+          "bytes": 20008,
+          "sha256": "db637d2b7fdd593a923109f553aeee164f7048a5ffbfe3b6f822e61e37d3c208"
         },
         "modulesSide": {
           "file": "leo2a5m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21248,
-          "sha256": "3c6332ec59e2d0aae6d9738b37e61d1a949c6565405f991e3edff5b1a32b8d2a"
+          "bytes": 21250,
+          "sha256": "b264d0d41a444aeec7f8b0be0d87776a25cdedab5e5ff5ebee1dd9300d716893"
         },
         "crewSide": {
           "file": "leo2a5m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18510,
-          "sha256": "046792e70de72ae5bed14476f368ee68720b64d35d609af030bb63c774f096a8"
+          "bytes": 18486,
+          "sha256": "a461170526df06481c48cc3a8d702167d5c7da7c8ec47c2f62300ecdadfaa9dd"
         },
         "angle": {
           "file": "leo2a5m_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26992,
-          "sha256": "00bdd0d87a3f3123cf87c6fbbe7473808b7b103234c7467a0bd96a888e2a5659",
+          "bytes": 26918,
+          "sha256": "e85c95a6d1e89de24852da49296912d3590f431053493a853e9abad04a1b48f7",
           "thumbnail": {
             "file": "thumbs/leo2a5m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11054,
-            "sha256": "f3c5c2a180780c7ada7c9198ee11db7a7fd39fc749ab831ba4985e2f72529778"
+            "bytes": 11050,
+            "sha256": "a6026e373a49df5083f43750aa651f5a57cc9d9da3b27bb48ed462cd9bc53f88"
           }
         },
         "top": {
@@ -269269,16 +269270,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13150,
-          "sha256": "589c0e59e57a5178c3f2407f6b56b4241722cd296e9e64b722c38808445ef343"
+          "bytes": 12994,
+          "sha256": "563d04ba906e98159f673ac4be055164ebd22b0fa25b5ff8ef219381eab6ac4b"
         },
         "side": {
           "file": "leo2a5m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12718,
-          "sha256": "02060fa75f3915270a79c85648f9f7c02f35721ce69dcae64724bcc0bde9a671"
+          "bytes": 12682,
+          "sha256": "b384af17d1662ab70d7cdd9ffb4784ffabc8213c73c40acfdb6b612f80bb83ab"
         },
         "topSilhouette": {
           "file": "leo2a5m_top_silhouette.png",
@@ -269293,16 +269294,16 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5149,
-          "sha256": "faf9e9a020f5badf954e055eefa4ff2da50ef007a092dddaaa06880ad15f42f6"
+          "bytes": 5107,
+          "sha256": "8a1284ffec7b5ec155fafa9c57170df81ce2c7320cb8328dc6da14895b6faf83"
         },
         "markings": {
           "file": "leo2a5m_markings.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 32982,
-          "sha256": "cced4daa57784be3020ca77819db018eba0ad63fb6a0437c8f70cba38b17f94a"
+          "bytes": 33270,
+          "sha256": "f1749959f45fa4556a87616edd6cf95ff0056ac4d13c25840d76f7145e334e7f"
         },
         "technicalLabels": {
           "file": "leo2a5m_technical.json",
@@ -280244,7 +280245,7 @@
           }
         ]
       },
-      "geometryHash": "4ff15d6e",
+      "geometryHash": "b8187f58",
       "metadataHash": "5e845343",
       "presentationAnchor": {
         "xM": 0.0004,
@@ -280270,7 +280271,7 @@
           "trackPadSimplified": 1,
           "fittingPaint": 4,
           "armorPaint": 14,
-          "tireRubber": 1,
+          "hullRubber": 1,
           "gunmetal": 9,
           "opticGlass": 2,
           "unclassified": 19,
@@ -280304,39 +280305,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18450,
-          "sha256": "a133738b9a85aed145adc89c8141a2375d5a4b88bdb5cade6247fbad2ccf327a"
+          "bytes": 18428,
+          "sha256": "27e8171440caaf83f6216d44d500224a949db0cdac7e9df2150c1e71a9d9db72"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18576,
-          "sha256": "d11d2ea4cf752d332cedf07747060cb09d1aea33183547a9e295d8122d2fc140"
+          "bytes": 18502,
+          "sha256": "18c34a75e543e7375a53c2b36d2e4b4a9f47cc372b06332ef22ed8c70e8d9945"
         },
         "crewSide": {
           "file": "leo2a6m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16048,
-          "sha256": "d01dc2980bdb91b8fc9517c566856e00b273874e49239fe9b3675307d79fcb51"
+          "bytes": 16038,
+          "sha256": "ad79fbf15d36c5c74f2f495a87864f0bf3dd2b2c318ba10e1dacd14ab06de616"
         },
         "angle": {
           "file": "leo2a6m_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31666,
-          "sha256": "8e7e3c7c9046cb59d036f88004854b6946666cea08c7433f3fa77631c46ad7b8",
+          "bytes": 31664,
+          "sha256": "a53063cc2e1d0a581f70c0f0e43433ce4e88263b36d568fae684de113625cfe6",
           "thumbnail": {
             "file": "thumbs/leo2a6m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11510,
-            "sha256": "620743fffbf6000d7d28e1d19c9fe73be91457fe962fcc45d11a3cbae123d219"
+            "bytes": 11498,
+            "sha256": "95206b184879c92ba1b75de6b976ea74b6e9bac676e35de36e09c1b6bf59de30"
           }
         },
         "top": {
@@ -280344,16 +280345,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12294,
-          "sha256": "cb001461ee7f10024fbe71fca6a593d1ff9e3aaf873c7221686e49af2d7d424d"
+          "bytes": 12274,
+          "sha256": "4c77da9cd5455c465cad2df3050633f2ec359ec63c9bc75b4ccf4bc80c113d08"
         },
         "side": {
           "file": "leo2a6m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10896,
-          "sha256": "a460670f840666f48b9de70a2c6c27785debbd4caba9c20df50dccc2a5c0daf8"
+          "bytes": 10892,
+          "sha256": "91d6720bae55a30aa722c589a4d408f2b5420202263769209f1c31aeae115341"
         },
         "topSilhouette": {
           "file": "leo2a6m_top_silhouette.png",
@@ -280376,8 +280377,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 33954,
-          "sha256": "17b1adc6b52b74e1148d014ea267de8eb7282e8470b2324dae29ba2cf26b2360"
+          "bytes": 34116,
+          "sha256": "05fecf85f6bb73bf8f37acaa1544ed305534880d21c294fe2170940ee27997a5"
         },
         "technicalLabels": {
           "file": "leo2a6m_technical.json",
@@ -282401,17 +282402,17 @@
           }
         ]
       },
-      "geometryHash": "0a00a714",
+      "geometryHash": "bec413c0",
       "metadataHash": "9455b29b",
       "presentationAnchor": {
-        "xM": 0.0052,
-        "zM": -0.0941
+        "xM": 0.0055,
+        "zM": -0.0932
       },
-      "presentationHash": "33bbae55",
+      "presentationHash": "b1f0ca02",
       "presentationProjection": {
         "centerYM": 2.7884,
-        "topHalfM": 7.5739,
-        "sideHalfM": 3.787
+        "topHalfM": 7.5729,
+        "sideHalfM": 3.7865
       },
       "appearance": {
         "version": 1,
@@ -282421,7 +282422,7 @@
           "wheelTire": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
-          "tireRubber": 2,
+          "tireRubber": 1,
           "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -282430,6 +282431,7 @@
           "fittingPaint": 21,
           "armorPaint": 16,
           "gunmetal": 11,
+          "hullRubber": 1,
           "opticGlass": 3,
           "canvas": 4,
           "unclassified": 20,
@@ -282464,39 +282466,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23770,
-          "sha256": "63edaf2a43f4a358fc76e63b63647afcbeddd37ae06c3e1a606ea89dcf430c59"
+          "bytes": 23354,
+          "sha256": "9c75f97758b9d6b924556539d6118c9472eb324d3722f0d594635620f5312c1d"
         },
         "modulesSide": {
           "file": "leo2a7v_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23478,
-          "sha256": "a85ac53771604a31b61808da02abf0b300686241fbdd4b5871462ffa60643775"
+          "bytes": 23288,
+          "sha256": "05a7c01438be2cf486062ec6e6d3828340188fd84f89709d44658adc4a16f534"
         },
         "crewSide": {
           "file": "leo2a7v_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21694,
-          "sha256": "6e9fe97a1cd01535cdbe8fa7a181decc6e681c38675f752861ece22afd1bc551"
+          "bytes": 21324,
+          "sha256": "5926347c6a6452b84d24bb4ec56b4461cf74698ebcb6a1ca9a662a26c2a7a6e1"
         },
         "angle": {
           "file": "leo2a7v_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31424,
-          "sha256": "d0030051378e68dadd032e6ebb7bb5eb63a3dd2eed6fd32f651b90e14f7b8e7e",
+          "bytes": 30564,
+          "sha256": "6b306036798067f395a012cc39476041395e6f2dfe18a9061faefcb3bf24e00f",
           "thumbnail": {
             "file": "thumbs/leo2a7v_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12090,
-            "sha256": "84262ea240ff7ad0d8d14a1b0137a452694a6386510291a68b833de9a56d1ae6"
+            "bytes": 11790,
+            "sha256": "fded27d44a0526c7cd21155ef1ee48f01e4b45fc66533673113c605516f80cee"
           }
         },
         "top": {
@@ -282504,32 +282506,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16094,
-          "sha256": "7c484d04a8e6b3bcd4463f7969ebf9232070848508b4e573866dafe7726cb23a"
+          "bytes": 14904,
+          "sha256": "5584c0de74244e8dc947ab4ed97760e4a81a95b7bea2825d42ad5d6c5d0f54b4"
         },
         "side": {
           "file": "leo2a7v_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12966,
-          "sha256": "6db34786e4cd1661cb15bed931ad5002a135661a40d3a7e9250fc66efd824439"
+          "bytes": 11532,
+          "sha256": "8fc93b7a6b06b46215bd165dcc7c4e54c38e316bbf2dcb751cff5f43a8fbde1d"
         },
         "topSilhouette": {
           "file": "leo2a7v_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1640,
-          "sha256": "744034f7ef5e19f70f571d33ca607f3794e1a18a7f6ad55914e51d5faf96f3fc"
+          "bytes": 1628,
+          "sha256": "6683aebe57a667b799796913e7a3a10beb6d9749307ab12d581010427545d912"
         },
         "sideSilhouette": {
           "file": "leo2a7v_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5075,
-          "sha256": "c4542996ae1fa08eaf0dc557ec24c32a29b1bad820191c782bbc21229de90e49"
+          "bytes": 5060,
+          "sha256": "f312ce0ec7937dbbde66c33a762cd87f048586f8d292a3b1b1e6c6bb28b33540"
         },
         "markings": {
           "file": "leo2a7v_markings.png",
