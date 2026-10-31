@@ -1,4 +1,5 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
@@ -491,7 +492,7 @@ function buildK21Turret(P: TankBuilderPort): void {
             [.02955, .1436], [.01465, .1704], [0, .1704],
         ].map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 16 : 10), x, 2.50638, -1.61571);
         const bottom = 2.6728;
-        equipment(P, 'turret', 'Dark', cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6), x, (bottom + tip) / 2, -1.61599);
+        equipment(P, 'turret', 'Dark', antennaPart(cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6)), x, (bottom + tip) / 2, -1.61599);
     }
     addBasket(P);
     weaponAssembly(P, () => addK21Launcher(P));

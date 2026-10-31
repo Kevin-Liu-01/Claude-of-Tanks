@@ -121,6 +121,47 @@ pixel columns with > 0.35 m of band — skirts and fenders count toward
 width (published widths include them); whip antennas don't. Score:
 `100 − Σ max(0, pct − 1)·8` — 1% grace per dim, then 8 points per percent.
 
+**The body (Main's rulings 2026-10-30, owner-delegated).** Every dims row
+measures the body: hull and turret without radio whips and antennas, pintle
+and roof weapons and their mounts, or other thin roof fittings, on the build
+and the oracle alike (`tools/body-height-parts.mjs`; every other mask keeps
+them). The build names them by tags, never by shape: `antennaWhip` and the
+roof-gun fitting roots, working auxiliary stations (not a primary-weapon RWS),
+and parts drawn into ordinary buckets under the `antenna` seat role
+(`antennaPart()` or `withSeatRole(P, 'antenna', …)`; the merge keeps their
+spans and the gate cuts them). The oracle names them by node: War Thunder
+`antenna*`, `bone_mg_aa_*`, `mg_aa*`, `bone_mg_[hv]_*`, `mg_NN`,
+`mg_mount_*` (never `mg_twin`, the coaxial), Sketchfab `*Pintle`/`AmmoCan`, or
+a registration's `roofFittingNodes`. An oracle node named `ammo*` goes with a
+named roof gun it touches (within 0.1 m), as the build's ammunition rides in
+its gun's fitting; any other ammo box stays body. A new whip or mast drawn as a
+raw rod needs `antennaPart()`, or it counts as body.
+- A published `heightM` is an interval target, since sources measure to the
+  cupola or the roof gun: it passes anywhere from the body top (the p95 roof)
+  to the roof-fittings top (the highest column with the roof weapons back and
+  the whips still out), and the error outside it is the distance to the
+  nearer end. An oracle comparison (the source ruler, the preservation
+  baseline) stays body against body. `spec.dims.heightM` itself is the sim's
+  and is not changed by the gate.
+- `hullLengthM` is the full side span of the hull's own trace (no turret, no
+  gun, even where a casemate hangs the gun on the hull's rig), never a band
+  threshold that barrel columns can cross once the whips stop raising it;
+  fenders and mudguards count, as in published hull lengths. A fused oracle
+  has no hull trace, so both sides use the whole-body extent there. That span
+  is a silhouette, so its target is the spec's `silhouetteHullLengthM` when
+  there is one. A build on a donor's frame (`FLEET_RENEWAL_DONORS`, else
+  `variantOf`, when its hull length is the donor's own number) lost the
+  donor's silhouette in the copy. It is built on that hull by design, so it
+  is held to the donor's silhouette, never to the donor's structural datum;
+  the row's `method` says so, and `ownOracleHullSpan` carries its own
+  oracle's hull span for information (legacy oracles carry scale error).
+- The source ruler keeps its whole-source frame; its physical envelopes are
+  the bodies'. An oracle comparison drops a kind of roof fitting (antennas,
+  roof weapons) from both models only where the oracle names that kind: a
+  source that fuses its roof gun into the turret keeps the build's gun beside
+  it, and one that names nothing (a fused export) is whole against whole. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
+  leaves the height unchanged, a raised hull moves it).
+
 This is the anti-gaming anchor: a build that "matches" a defective oracle
 (sunken hull, sky-high fused turret) still fails dims, and a build that
 matches dims but not the curves fails the curves. You cannot satisfy both
@@ -149,6 +190,21 @@ node tools/geometry-gate.mjs --ids=<family ids>
    means readability/material work, not silhouette work — fix and re-run
    BOTH (any geometry edit invalidates the previous critic verdict).
 4. Family commit only when both gates pass (or a defect cap is certified).
+
+### Re-pinning after a merge
+
+When a merge moves the geometry of ids that have rows (an integrator taking family heads), re-pin those rows:
+
+```
+npm run gate:repin -- --ids=<ids> [--chunk=10]
+```
+
+It runs the gate on 10 ids at a time, each chunk under one render capture ticket, with `--repin`: an id whose
+registered oracle file is not in this checkout stops the run before anything is measured or written (an unavailable
+row would replace its measured one; the file to restore is named). An id the page cannot measure (a source-datum or
+registration error) keeps its previous row, marked `repinError` with the error, and the run exits 1 naming it: its
+owner fixes it and the next run clears the mark. Ids without a registration are skipped and named. It ends with each
+id's height interval and hull-length row, marked moved or unchanged; commit `docs/geometry-gate/`.
 
 ### Top-down fill & circularity review (owner directive 2026-08-02)
 

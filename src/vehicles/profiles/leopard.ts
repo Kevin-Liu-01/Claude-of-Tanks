@@ -1,4 +1,5 @@
 import { tankSeedId } from '../tankIdAliases.ts';
+import { antennaPart } from './antennaPart.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
@@ -3012,7 +3013,7 @@ function* wedgeTurretV3Steps(P: TankBuilderPort, T: LeopardWedgeV3Config): TankP
     P.add('turretDark', box(0.04, 0.035, 0.10), T.mastX ?? -0.85, mTop - 0.017, T.mastZ);
     for (const w of T.whips ?? []) {
       P.add('turretDetail', box(0.06, 0.12, 0.06), w.x, w.baseY, w.z);
-      P.add('turretDetail', box(0.026, w.top - w.baseY - 0.05, 0.026), w.x, (w.baseY + w.top) / 2, w.z);
+      P.add('turretDetail', antennaPart(box(0.026, w.top - w.baseY - 0.05, 0.026)), w.x, (w.baseY + w.top) / 2, w.z);
     }
     // antenna base pots / small roof stacks (measured 1-col elements riding
     // inside existing spike columns — they must NOT add new p95 spike cols)
@@ -10723,10 +10724,10 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
     // from the −2.30w col (still held by the L rod, 3.524 vs ref 3.535) onto
     // the R rod's −2.19w col which now reads ~3.542 vs ref 3.434 — a priced
     // +0.11 x 1-col trade for the 4-mast forest collapse (gate-verified).
-    P.add('turretDetail', cylY(0.011, 0.011, 0.613, 8), -1.038, 1.5485, -2.76);  // L rod: front col −1.0328 (authored −1.038 = col/s), top 3.565 → world 3.5474 under the ref box lid 3.5524
-    P.add('turretDetail', cylY(0.011, 0.011, 0.615, 8), -1.038, 1.5475, -2.88);  // L rear rod: side col −2.42 (ref 3.546; capped ~3.524) — pale twin
-    P.add('turretDetail', cylY(0.011, 0.011, 0.88, 8), 0.998, 1.30, -2.64);      // R rod: side col −2.18 reads 3.434 = ref; front col +0.9929
-    P.add('turretDark', box(0.022, 1.375, 0.04), 0.998, 1.1675, -2.647);         // R front spike folded onto the R rod (front col +0.9929; top 3.565)
+    P.add('turretDetail', antennaPart(cylY(0.011, 0.011, 0.613, 8)), -1.038, 1.5485, -2.76);  // L rod: front col −1.0328 (authored −1.038 = col/s), top 3.565 → world 3.5474 under the ref box lid 3.5524
+    P.add('turretDetail', antennaPart(cylY(0.011, 0.011, 0.615, 8)), -1.038, 1.5475, -2.88);  // L rear rod: side col −2.42 (ref 3.546; capped ~3.524) — pale twin
+    P.add('turretDetail', antennaPart(cylY(0.011, 0.011, 0.88, 8)), 0.998, 1.30, -2.64);      // R rod: side col −2.18 reads 3.434 = ref; front col +0.9929
+    P.add('turretDark', antennaPart(box(0.022, 1.375, 0.04)), 0.998, 1.1675, -2.647);         // R front spike folded onto the R rod (front col +0.9929; top 3.565)
     P.add('turretDetail', box(0.04, 0.045, 0.10), 1.03, 1.135, -2.52);           // R base pot 2.87w @ z −2.07w
     // 2026-10-19 (owner float sweep): the stem stopped 30 mm over the shelf and 1 mm outboard of it; it now runs into it.
     P.add('turretDetail', box(0.018, 0.292, 0.018), 1.05, 0.974, -2.52);         // pot stem onto the shelf (floater guard)
@@ -12389,7 +12390,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       P.addEquipment('turret', box(0.04, binWallH + 0.02, 0.04), s * (bustleWidth / 2), binWallY, bustleRearZ);
       for (const y of [0.30, 0.50]) P.addEquipment('turret', box(0.012, 0.03, bustleDepth), wallX + s * 0.016, y, bustleCenterZ);
       P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.60, castRoofY - 0.04, -1.42);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.60, castRoofY + 0.66, -1.42, 0, 0, s * 0.025);
+      P.addEquipment('turret', antennaPart(cylY(0.014, 0.016, 2.62, 8)), s * 0.60, castRoofY + 0.66, -1.42, 0, 0, s * 0.025);
     }
     stowage(P, 'turretCloth', rng, [
       [-0.62, 0.58, -2.33, 0.46, 0.26, 0.20], [0, 0.58, -2.34, 0.52, 0.25, 0.20],

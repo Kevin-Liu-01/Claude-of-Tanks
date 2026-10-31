@@ -1,4 +1,5 @@
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 // New first-party Armata X: authored from scalar source measurements and
 // neutral source views, not the old T-14 builder or source topology.
 import * as THREE from 'three';
@@ -528,7 +529,7 @@ function addRoofEquipment(P: TankBuilderPort): void {
   P.turretG.add(weapon);
   for (const [x, z, height] of [[-.712, .156, .760], [.815, -2.346, 1.128]]) {
     P.addEquipment('turretDetail', cylY(.044, .055, .09, 14), x, localY(2.60), localZ(z));
-    P.addEquipment('turretDark', cylY(.009, .013, height, 10), x, localY(2.64 + height / 2), localZ(z));
+    P.addEquipment('turretDark', antennaPart(cylY(.009, .013, height, 10)), x, localY(2.64 + height / 2), localZ(z));
   }
   P.addEquipment('turretDetail', cylY(.031, .040, .44, 12), .703, localY(2.771), localZ(.232));
   P.addEquipment('turretDark', box(.05, .060, .045), .703, localY(3.018), localZ(.232));

@@ -1,6 +1,6 @@
 {
  "id": "merkava2b",
- "geoMin": 93,
+ "geoMin": 94.8,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -104,7 +104,7 @@
    ]
   },
   "actual": {
-   "heightM": 3.1119183033518496,
+   "heightM": 2.8625954719260336,
    "hullLengthM": 7.784412847850472,
    "overallLengthM": 8.754001636728646,
    "widthM": 3.933760229162872
@@ -112,15 +112,15 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 93.02061122007052,
+ "rawGeoMin": 94.78441246031159,
  "rawComponents": {
   "wholeCurves": 94.78441246031159,
-  "dims": 93.02061122007052,
+  "dims": 100,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 94.8,
-  "dims": 93,
+  "dims": 100,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 3.1119183033518496,
-   "published": 3.1119183033518496,
-   "pct": 0,
+   "actual": 2.8625954719260336,
+   "published": 2.853361292984337,
+   "pct": 0.3236245954692513,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -947,36 +947,66 @@
    "actual": 3.931999921798706,
    "published": 3.94965398311615,
    "pct": 0.44697741607013797,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
-   "actual": 5.314684420856713,
-   "published": 5.217000080272555,
-   "pct": 1.8724235974911858,
-   "method": "full visible physical envelope, no raster filtering"
+   "actual": 3.204721511158227,
+   "published": 3.2266999017447233,
+   "pct": 0.681141452745955,
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 8.75550024986267,
    "published": 8.755369663238525,
    "pct": 0.0014915032622040184,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
-  "heightM": 3.1119183033518496,
+  "heightM": 2.853361292984337,
   "hullLengthM": 7.784412847850472,
   "overallLengthM": 8.754001636728646,
   "widthM": 3.9245260502211754
  },
  "referenceBodyExtent": {
-  "h": 3.112,
+  "h": 2.863,
   "len": 7.785
  },
  "proceduralBodyExtent": {
-  "h": 3.195,
-  "len": 7.785
+  "h": 3.121,
+  "len": 7.785,
+  "roofFittingsTop": 3.195
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
+  ],
+  "reference": [
+   "node:vehicle#ammo_01_45_0",
+   "node:vehicle#ammo_41_0",
+   "node:vehicle#antenna_01_4_0",
+   "node:vehicle#antenna_02_3_0",
+   "node:vehicle#mg_01_40_0",
+   "node:vehicle#mg_aa_01_43_0",
+   "node:vehicle#mg_aa_mount_h_42_0",
+   "node:vehicle#mg_aa_mount_v_44_0",
+   "node:vehicle#mg_aa_mount_v_44_1",
+   "node:vehicle#mg_mount_h_38_0",
+   "node:vehicle#mg_mount_v_39_0",
+   "node:vehicle#mg_mount_v_39_1"
+  ]
+ },
+ "oracleComparison": {
+  "antennasDropped": true,
+  "roofWeaponsDropped": true,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [

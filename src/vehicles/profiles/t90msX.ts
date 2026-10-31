@@ -1,4 +1,5 @@
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent T-90MS Tagil X source-scalar construction. No existing vehicle
 // builder, source mesh, texture, vertex table, or source rig is used at runtime.
@@ -215,7 +216,7 @@ function antenna(P:TankBuilderPort):void{
   addT90MSAntennaSeat(P);
   const rows=[[0,0],[.0129,0],[.0185,.0694],[.0115,.1385],[.012,.5989],[.0094,.6042],[.0093,.7922],
     [.0064,.7986],[.0086,.8041],[.0082,1.0165],[.0078,1.2289],[.0074,1.4414],[.007,1.6538],[.0066,1.8662],[.0062,2.0786],[.0058,2.291],[0,2.291]];
-  top(P,'turretDetail',new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6),.55525,2.45610,-1.42175);
+  top(P,'turretDetail',antennaPart(new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6)),.55525,2.45610,-1.42175);
 }
 function aps(P:TankBuilderPort):void{
   for(const side of [-1,1]){

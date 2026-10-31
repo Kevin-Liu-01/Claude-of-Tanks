@@ -3,6 +3,8 @@ import {
   QUALITY_GATE_FLOORS,
   requiredMinimumForQualityBar,
   unavailableOracleReport,
+  missingOraclesError,
+  mergeLedgerRow,
   geometryReceiptPassed,
   evaluateGeometryGate,
 } from './geometry-gate-policy.mjs';
@@ -22,6 +24,26 @@ assert.equal(missing.requiredMinimum, 92, 'missing exemplar keeps its strict flo
 assert.equal(missing.gatePassed, false, 'missing registered oracle fails closed');
 assert.equal(missing.components.oracleAvailability, 0,
   'missing-oracle reason remains machine-readable');
+const stop = missingOraclesError(['merkava2b', 'stb1'], { merkava2b: '/models/community-candidates/merkava2b_supplied_x_source.glb' });
+assert.match(stop.message, /missing for 2 id\(s\); nothing was measured or written/, 'a re-pin stops before it writes');
+assert.match(stop.message, /merkava2b: public\/models\/community-candidates\/merkava2b_supplied_x_source\.glb/, 'it names the file to restore');
+assert.match(stop.message, /stb1: public \(no path\)/);
+// a re-pin keeps a measured row the page could not re-measure, marked; a plain run records the failure (negative control)
+const measured = { id: 't80u', geoMin: 94.1, requiredMinimum: 92, qualityBar: 'exemplar', gatePassed: true, components: { dims: 95.3 } };
+const pageError = { id: 't80u', geoMin: 0, gatePassed: false, error: 'procedural: turret differs from the independent source datum' };
+const kept = new Map([['t80u', measured]]);
+mergeLedgerRow(kept, pageError, { repin: true });
+assert.deepEqual(kept.get('t80u'), { ...measured, repinError: pageError.error }, 'a re-pin never writes a page error over a measured row');
+const plain = new Map([['t80u', measured]]);
+mergeLedgerRow(plain, pageError);
+assert.equal(plain.get('t80u').geoMin, 0, 'outside a re-pin the failure is the row');
+assert.equal(plain.get('t80u').repinError, undefined);
+const fresh = new Map();
+mergeLedgerRow(fresh, { ...pageError, id: 'stb1' }, { repin: true });
+assert.deepEqual(fresh.get('stb1'), { id: 'stb1', geoMin: 0, requiredMinimum: 90, qualityBar: 'fleet', gatePassed: false,
+  components: undefined, repinError: pageError.error }, 'an id with no previous row gets its zero row, marked');
+mergeLedgerRow(kept, measured, { repin: true });
+assert.equal(kept.get('t80u').repinError, undefined, 'a later measurement clears the mark');
 const exact={qualityBar:'exemplar',requiredMinimum:92,geoMin:92,gatePassed:true};
 assert.equal(geometryReceiptPassed(exact),true);
 assert.equal(geometryReceiptPassed({...exact,gatePassed:false}),false,'rounded 91.99 does not become a pass');

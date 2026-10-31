@@ -1,6 +1,6 @@
 {
  "id": "warrior_tes_h",
- "geoMin": 92.3,
+ "geoMin": 88.2,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -104,31 +104,31 @@
    ]
   },
   "actual": {
-   "heightM": 3.1245687655638905,
+   "heightM": 3.0530683361459525,
    "hullLengthM": 6.713890322344378,
    "overallLengthM": 6.771090665878728,
    "widthM": 4.225675378600136
   }
  },
  "qualityBar": "exemplar",
- "gatePassed": true,
- "rawGeoMin": 92.31781528121162,
+ "gatePassed": false,
+ "rawGeoMin": 88.21060522370398,
  "rawComponents": {
-  "wholeCurves": 92.31781528121162,
-  "dims": 98.51724137931039,
+  "wholeCurves": 92.23191082587957,
+  "dims": 88.21060522370398,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 92.3,
-  "dims": 98.5,
+  "wholeCurves": 92.2,
+  "dims": 88.2,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
  "stationMethod": "exact-triangle-slab-intersections",
  "curveRows": {
   "side_hull": {
-   "score": 10.694330580258827,
-   "meanPct": 6.67,
+   "score": 9.724527761784634,
+   "meanPct": 6.75,
    "p95Pct": 15.45,
    "coverPct": 0,
    "reg": {
@@ -235,8 +235,8 @@
    ]
   },
   "side_whole": {
-   "score": 86.51854353577845,
-   "meanPct": 0.97,
+   "score": 86.03962856369243,
+   "meanPct": 1.01,
    "p95Pct": 3.05,
    "coverPct": 0,
    "reg": {
@@ -667,8 +667,8 @@
    ]
   },
   "front_whole": {
-   "score": 83.72909780735527,
-   "meanPct": 1.22,
+   "score": 83.6395126610778,
+   "meanPct": 1.23,
    "p95Pct": 2.74,
    "coverPct": 0,
    "reg": {
@@ -845,9 +845,9 @@
    "refW": 4.227,
    "procW": 4.225,
    "refTop": 3.131,
-   "procTop": 3.13,
+   "procTop": 3.058,
    "wPct": 0.037861766869667864,
-   "topPct": 0.036396760646823456
+   "topPct": 1.8434146918991767
   },
   {
    "i": 7,
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 3.1245687655638905,
+   "actual": 3.0530683361459525,
    "published": 3.1245687655638905,
-   "pct": 0,
+   "pct": 2.2883295194508007,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -947,21 +947,21 @@
    "actual": 4.224999904632568,
    "published": 4.230499982833862,
    "pct": 0.13001012229314884,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
    "actual": 3.9849999827891587,
    "published": 3.984460045932792,
    "pct": 0.013551067149429743,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 6.7667694091796875,
    "published": 6.779299974441528,
    "pct": 0.1848356808089625,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
@@ -975,8 +975,20 @@
   "len": 6.641
  },
  "proceduralBodyExtent": {
-  "h": 3.12,
-  "len": 6.719
+  "h": 3.048,
+  "len": 6.794,
+  "roofFittingsTop": 3.084
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDetail"
+  ],
+  "reference": []
+ },
+ "oracleComparison": {
+  "antennasDropped": false,
+  "roofWeaponsDropped": false,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -986,7 +998,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 230435,
+     "area": 229898,
      "minX": 79,
      "minY": 253,
      "maxX": 962,
@@ -1000,7 +1012,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 230564,
+     "area": 230354,
      "minX": 79,
      "minY": 253,
      "maxX": 962,
@@ -1014,7 +1026,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 230746,
+     "area": 230229,
      "minX": 79,
      "minY": 253,
      "maxX": 962,
@@ -1028,7 +1040,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 228542,
+     "area": 228051,
      "minX": 79,
      "minY": 253,
      "maxX": 962,
@@ -1042,7 +1054,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 231303,
+     "area": 230766,
      "minX": 79,
      "minY": 253,
      "maxX": 962,

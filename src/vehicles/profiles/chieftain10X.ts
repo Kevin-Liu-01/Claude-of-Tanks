@@ -1,4 +1,5 @@
 import { markOpenSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Original Chieftain Mk10 solids from the owner's local scalar study.
 // The supplied mesh, textures and topology are never runtime dependencies.
 import * as THREE from 'three';
@@ -367,7 +368,7 @@ function antennaStations(P: TankBuilderPort): void {
       [.017, h * .84], [.00728, h + .0037], [0, h + .0037]];
     equipment(P, 'turretDetail', new THREE.LatheGeometry(profile.map(([r, y]) =>
       new THREE.Vector2(r, y)), 20), x, bottom, z);
-    equipment(P, 'turretDetail', cylY(.00015, .00728, 1.77893, 12),
+    equipment(P, 'turretDetail', antennaPart(cylY(.00015, .00728, 1.77893, 12)),
       x, top + 1.77893 / 2, z);
   }
 }

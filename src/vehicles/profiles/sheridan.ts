@@ -1,4 +1,5 @@
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import { antennaPart } from './antennaPart.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party procedural M551 Sheridan. The hull proportions were measured
@@ -813,7 +814,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   // 42 mm so the base beds 2 mm into it
   P.add('turretDark', cylY(0.050, 0.070, 0.50, P.q ? 16 : 10),
     -0.96, 1.058, -1.48);
-  P.add('turretDetail', cylY(0.014, 0.014, 1.42, P.q ? 12 : 8),
+  P.add('turretDetail', antennaPart(cylY(0.014, 0.014, 1.42, P.q ? 12 : 8)),
     -0.96, 1.998, -1.48);
 
   P.turretG.add(sheridanTtsAutocannon(P));
@@ -1768,7 +1769,7 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
   for (const antenna of antennaStages) P.snapGroup('m551-antenna', () => {
     for (const [minY, maxY, radius, bucket] of antenna.stages) {
       P.add(bucket === 'detail' ? 'turretDetail' : 'turretDark',
-        cylY(radius, radius, maxY - minY, P.q ? 14 : 10),
+        antennaPart(cylY(radius, radius, maxY - minY, P.q ? 14 : 10)),
         antenna.x, turretY((minY + maxY) * 0.5), antenna.z);
     }
   }, { reachM: 0.12 });
