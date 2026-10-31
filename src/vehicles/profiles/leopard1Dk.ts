@@ -113,7 +113,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', tyreBands: true, denseGrilles: mark === 'a5dk1' });
+    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
