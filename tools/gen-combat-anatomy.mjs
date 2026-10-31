@@ -719,8 +719,10 @@ function receiptFor(id) {
   }
 }
 
-/** A module sketch with this share of its box outside its armour is reported as a data fix. */
+/** A module sketch with this share of its box outside its armour, or keeping less than DATA_FIX_KEPT_SHARE of it once
+ *  placed, is reported as a data fix. */
 const DATA_FIX_OUTSIDE_SHARE = 0.3;
+const DATA_FIX_KEPT_SHARE = 0.1;
 
 /**
  * The internal placement of one measured row (266, tools/crew-seat-fit.mjs): the authored spec finalized against that
@@ -734,9 +736,10 @@ function seatsFor(id, calibration) {
   const crewSeats = fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null, ring);
   const drawn = new Set((calibration.moduleShapes || []).map((receipt) => `${receipt.module}|${!!receipt.turretLocal}`));
   const { seats: moduleSeats, report } = placeModules(probe, crewSeats, { drawn, ring, hitShapes: moduleHitShapes });
-  // a sketch that lies largely outside its armour is wrong data: the pass keeps the part inside, and says so
+  // a sketch that lies largely outside its armour, or has almost no room, is wrong data: the pass keeps what fits, and
+  // says so
   for (const entry of report) {
-    if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.unplaced) {
+    if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.kept < DATA_FIX_KEPT_SHARE || entry.unplaced) {
       console.log(`[combat-anatomy] data fix: ${id} ${entry.module} (${entry.frame}) sketch ${entry.sketchedL} L, `
         + `${Math.round(entry.outside * 100)}% outside its armour, ${Math.round(entry.kept * 100)}% kept${entry.unplaced ? ', UNPLACED' : ''}`);
     }

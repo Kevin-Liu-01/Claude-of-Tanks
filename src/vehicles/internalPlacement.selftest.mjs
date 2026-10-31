@@ -9,7 +9,7 @@
 //     turret's own armour where it hangs below the deck), hull crew under the deck outside it where a basket turns (2 cm
 //     tolerance); trimmed stations (no posture fits; pinned in crewSeats.selftest) are held there, not here;
 //   - overlap: no crew hit shape inside a module's hit shapes, no module's inside another's (2 cm tolerance), except the
-//     carousel autoloader inside the ammunition it carries;
+//     carousel autoloader inside the ammunition it carries and a crew member at the drawn sight he uses;
 //   - negative controls: the checks flag a mirrored M1A2 crew (3 of 3), a module shape planted in a gunner, a turret
 //     crew member slid out past the ring and a module planted in another; a sketch drawn left-at--x comes out of
 //     finalizeCombatAnatomy mirrored back (crew and sketched modules; tracks and the gun stay), one drawn the right way
@@ -34,6 +34,10 @@ const TOL_M = 0.02;
 /** Modules whose volumes are measured or pass through the crew by construction (the ring is a slab across the race). */
 const UNCHECKED = new Set(['trackL', 'trackR', 'turretRing', 'gun', 'gunMount', 'roofGun']);
 const NESTED = new Set(['ammoRack|autoloader', 'autoloader|ammoRack']);
+/** Overlaps the placement pass could not resolve because the authored sketch has no room: data fixes, pinned. */
+const DATA_FIXES = Object.freeze({
+  'aft10: missileRack ∩ radio': 'the 2.5 L radio is sketched 95 % inside the eight-canister launcher',
+});
 
 const add = (p, d) => p.map((value, axis) => value + d[axis]);
 const shift = (shape, d) => (shape.kind === 'capsule'
@@ -89,7 +93,9 @@ function overlaps(id, armor) {
     .map((box) => ({ name: box.module, shapes: hullShapes(armor, box) })).filter((entry) => entry.shapes.length);
   const crew = (armor.crew || []).map((volume) => ({ name: volume.crew, shapes: hullShapes(armor, volume) }));
   const out = [];
+  // a crew member's head at the drawn sight he looks through is not an overlap (optics are measured from the model)
   for (const person of crew) for (const module of modules) {
+    if (module.name === 'optics') continue;
     if (intersects(person.shapes, module.shapes)) out.push(`${id}: ${person.name} ∩ ${module.name}`);
   }
   for (let i = 0; i < modules.length; i++) for (let j = i + 1; j < modules.length; j++) {
@@ -114,7 +120,8 @@ for (const id of ALL_TANK_IDS) {
 assert.ok(sided > 600, `the fleet names a side for most stations (${sided})`);
 assert.deepEqual(wrong, [], 'every side-named crew station sits on its own side');
 assert.deepEqual(rings, [], 'turret crew stay inside the ring under the deck; hull crew outside it');
-assert.deepEqual(overlapping, [], 'no crew or module hit shape inside another module');
+assert.deepEqual(overlapping.filter((line) => !DATA_FIXES[line]), [], 'no crew or module hit shape inside another module');
+assert.deepEqual(Object.keys(DATA_FIXES).filter((line) => !overlapping.includes(line)), [], 'every pinned data fix still overlaps (unpin it once fixed)');
 
 // families, as built
 const side = (id, role) => Math.sign(centreX(getSpec(id).armor.crew.find((entry) => entry.crew === role).shapes));

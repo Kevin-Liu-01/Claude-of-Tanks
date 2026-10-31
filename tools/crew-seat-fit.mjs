@@ -881,7 +881,7 @@ const CREW_PAD_M = 0.01;
 /** How far one hit shape may reach into another before they count as overlapping (the receipt allows 2 cm). */
 const PLACE_TOL_M = 0.01;
 const SETTLE_SCALE = 0.94;
-const SETTLE_STEPS = 14;
+const SETTLE_STEPS = 24;
 
 /** A shape's surface samples and its core (centre, or a capsule's axis ends and middle). */
 function samplesOf(shape) {
@@ -903,6 +903,31 @@ function placeable(box, drawn) {
     && !drawn.has(moduleKey(box));
 }
 
+/** Steps from each free voxel to the nearest blocked one or the grid's edge (six-neighbour, breadth first). */
+function voxelClearance(free, n) {
+  const at = (i, j, k) => (i * n[1] + j) * n[2] + k;
+  const depth = new Int32Array(free.length).fill(-1);
+  let frontier = [];
+  for (let i = 0; i < n[0]; i++) for (let j = 0; j < n[1]; j++) for (let k = 0; k < n[2]; k++) {
+    const edge = i === 0 || j === 0 || k === 0 || i === n[0] - 1 || j === n[1] - 1 || k === n[2] - 1;
+    if (!free[at(i, j, k)] || edge) { depth[at(i, j, k)] = 0; frontier.push(i, j, k); }
+  }
+  const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  for (let d = 1; frontier.length; d++) {
+    const next = [];
+    for (let f = 0; f < frontier.length; f += 3) {
+      for (const [di, dj, dk] of steps) {
+        const i = frontier[f] + di, j = frontier[f + 1] + dj, k = frontier[f + 2] + dk;
+        if (i < 0 || j < 0 || k < 0 || i >= n[0] || j >= n[1] || k >= n[2] || depth[at(i, j, k)] >= 0) continue;
+        depth[at(i, j, k)] = d;
+        next.push(i, j, k);
+      }
+    }
+    frontier = next;
+  }
+  return depth;
+}
+
 /** The ellipsoid inscribed in a box. */
 const inscribed = (box) => ({
   kind: 'ellipsoid',
@@ -915,7 +940,7 @@ const inscribed = (box) => ({
  * ellipsoid holds no blocked voxel. `blocked(p)` names what holds a point inside the armour: 0 (nothing), 1 (crew) or 2
  * (a module); a column outside `column`'s intervals is outside the armour. Also returns the sketch's blocked shares.
  */
-function growFreeBox(part, column, blocked) {
+function growFreeBox(part, column, blocked, deepest = false) {
   const n = [0, 1, 2].map((axis) => Math.max(1, Math.ceil((part.max[axis] - part.min[axis]) / VOXEL_M - 1e-9)));
   const step = [0, 1, 2].map((axis) => (part.max[axis] - part.min[axis]) / n[axis]);
   const free = new Uint8Array(n[0] * n[1] * n[2]);
@@ -935,10 +960,13 @@ function growFreeBox(part, column, blocked) {
   }
   const total = n[0] * n[1] * n[2];
   const shares = { outside: outside / total, crew: crew / total, modules: modules / total };
+  // the seed: the free voxel nearest the part's centre, or (`deepest`) the one farthest from anything blocked
+  const clearance = deepest ? voxelClearance(free, n) : null;
   let seed = null, best = Infinity;
   for (let i = 0; i < n[0]; i++) for (let j = 0; j < n[1]; j++) for (let k = 0; k < n[2]; k++) {
     if (!free[at(i, j, k)]) continue;
-    const d = ((i + 0.5 - n[0] / 2) * step[0]) ** 2 + ((j + 0.5 - n[1] / 2) * step[1]) ** 2 + ((k + 0.5 - n[2] / 2) * step[2]) ** 2;
+    const d = deepest ? -clearance[at(i, j, k)]
+      : ((i + 0.5 - n[0] / 2) * step[0]) ** 2 + ((j + 0.5 - n[1] / 2) * step[1]) ** 2 + ((k + 0.5 - n[2] / 2) * step[2]) ** 2;
     if (d < best - 1e-12) { best = d; seed = [i, j, k]; }
   }
   if (!seed) return { box: null, shares };
@@ -982,6 +1010,7 @@ function growFreeBox(part, column, blocked) {
   const edge = (axis, index) => (index === n[axis] ? part.max[axis] : part.min[axis] + index * step[axis]);
   return {
     box: { min: [0, 1, 2].map((axis) => ROUND(edge(axis, grown.lo[axis]))), max: [0, 1, 2].map((axis) => ROUND(edge(axis, grown.hi[axis]))) },
+    seed: [0, 1, 2].map((axis) => part.min[axis] + (seed[axis] + 0.5) * step[axis]),
     shares,
   };
 }
@@ -1023,21 +1052,31 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
     let sketched = 0, kept = 0, outside = 0, crew = 0, moduleShare = 0, settled = 0;
     for (const part of box.parts?.length ? box.parts : [box]) {
       const size = part.min.reduce((product, value, axis) => product * (part.max[axis] - value), 1);
-      const { box: grown, shares } = growFreeBox(part, column, blocked);
+      const { box: grown, seed, shares } = growFreeBox(part, column, blocked);
       sketched += size;
       outside += shares.outside * size;
       crew += shares.crew * size;
       moduleShare += shares.modules * size;
-      // settle: shrink about the centre until the runtime's hit shapes clear the crew and the earlier modules
-      let settledBox = grown, fitted = grown ? partShapes(grown) : [];
-      for (let step = 0; settledBox && step < SETTLE_STEPS && shapesIntersect(fitted, obstacles, PLACE_TOL_M); step++) {
-        const centre = settledBox.min.map((value, axis) => (value + settledBox.max[axis]) / 2);
-        const half = settledBox.min.map((value, axis) => (settledBox.max[axis] - value) / 2 * SETTLE_SCALE);
-        settledBox = { min: centre.map((value, axis) => ROUND(value - half[axis])), max: centre.map((value, axis) => ROUND(value + half[axis])) };
-        fitted = partShapes(settledBox);
-        settled++;
+      // settle: shrink about a point until the runtime's hit shapes clear the crew and the earlier modules; first about
+      // the box's centre, then toward its free seed, then from the free voxel deepest from anything blocked
+      const settle = (start, about) => {
+        let at = start, fitted = partShapes(start);
+        for (let step = 0; step < SETTLE_STEPS && shapesIntersect(fitted, obstacles, PLACE_TOL_M); step++) {
+          const pivotPoint = about ?? at.min.map((value, axis) => (value + at.max[axis]) / 2);
+          const toward = (value, axis) => ROUND(pivotPoint[axis] + (value - pivotPoint[axis]) * SETTLE_SCALE);
+          at = { min: at.min.map(toward), max: at.max.map(toward) };
+          fitted = partShapes(at);
+          settled++;
+        }
+        return shapesIntersect(fitted, obstacles, PLACE_TOL_M) ? null : { box: at, fitted };
+      };
+      let result = grown ? settle(grown, null) ?? settle(grown, seed) : null;
+      if (!result && grown) {
+        const deep = growFreeBox(part, column, blocked, true);
+        if (deep.box) result = settle(deep.box, deep.seed);
       }
-      if (!settledBox || shapesIntersect(fitted, obstacles, PLACE_TOL_M)) continue;
+      if (!result) continue;
+      const { box: settledBox, fitted } = result;
       parts.push(settledBox);
       shapes.push(...fitted);
       kept += settledBox.min.reduce((product, value, axis) => product * (settledBox.max[axis] - value), 1);
