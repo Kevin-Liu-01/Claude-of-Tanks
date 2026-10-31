@@ -3,9 +3,14 @@
 // run time, decision, reason and where its coverage lives. First-party tooling: Kevin B. Liu.
 //
 //   node tools/test-audit.mjs            # the summary: counts, CPU-minutes and simulated wall time per tier
-//   node tools/test-audit.mjs --write    # rewrite docs/TEST-AUDIT.md
+//   node tools/test-audit.mjs --write    # rewrite docs/TEST-AUDIT.md (each receipt keeps the run time the page states)
+//   node tools/test-audit.mjs --write --retime   # ... with every run time read again
 //
-// Run times are tools/selftest-durations.json's, else this machine's latest observation (the runner's runtime index).
+// The page's counts (decisions, suites, sections, each receipt's decision) are held to the tiers by
+// tools/selftest-tiers.selftest.mjs (auditCounts): a stale page fails it with "run node tools/test-audit.mjs --write".
+// Run times are tools/selftest-durations.json's, else this machine's latest observation (the runner's runtime index). A
+// --write keeps the times the page already states (a receipt new to it takes the current one), so a lane that adds a
+// receipt moves only that row and the totals, not every time its own machine's load changed; --retime re-reads them all.
 // Wall time is the runner's schedule replayed on them (the exclusive CPU receipts alone and first, the rest longest-first
 // on the pool, the judge and the browser receipts alone and last), on an otherwise idle machine.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -63,17 +68,22 @@ function headerOf(file) {
   return { text, header: line.replace(/^\s*(\/\/|\/\*\*?|\*\/?)\s?/gm, ' ').replace(/\s+/g, ' ').trim() };
 }
 
-export async function auditRows() {
+/** Every receipt's audit row. `details: false` leaves out what only the reasons hold (receipt headers, registry notes, the
+ *  ids a pin names), for a count check that needs no fleet load; `runMsOf` replaces the run-time index. */
+export async function auditRows({ runMsOf = null, details = true } = {}) {
   const registered = Object.values(SELFTEST_SUITES).flat();
-  const runMsOf = await receiptRunTimes();
-  const notes = registryNotes();
-  await import('../src/vehicles/fleetRegistration.ts');
-  const idSet = new Set((await import('../src/vehicles/specs.ts')).ALL_TANK_IDS);
+  runMsOf ??= await receiptRunTimes();
+  const notes = details ? registryNotes() : new Map();
+  let idSet = new Set();
+  if (details) {
+    await import('../src/vehicles/fleetRegistration.ts');
+    idSet = new Set((await import('../src/vehicles/specs.ts')).ALL_TANK_IDS);
+  }
   const rows = [];
   for (const file of registered) {
     const ms = runMsOf(file);
     const suite = manualSuiteOf(file);
-    const { text, header } = headerOf(file);
+    const { text, header } = details ? headerOf(file) : { text: '', header: '' };
     const what = cell((notes.get(file) || header).slice(0, 110));
     const ids = [...namedIds(text, idSet)];
     let decision = 'KEEP', reason, coverage;
@@ -118,11 +128,11 @@ export function summary({ rows, registered, runMsOf }) {
     unknown: rows.filter((row) => row.ms === null || row.ms === undefined).length };
 }
 
-function documentText({ rows }, s) {
+export function documentText({ rows }, s) {
   const lines = [];
   lines.push('# Receipt audit, release 266 (2026-10-30)', '',
     'The owner, 2026-10-30: "pick apart and cut down this testing suitte SIGNIFICANTLY and make super strenuous suites like balance and other testing to be not for every deploy annd manually recommended annd triggered by ME".', '',
-    'Every receipt registered at ccb2041c41 (2,122) has one decision; this lane adds one, `tools/selftest-tiers.selftest.mjs` (default tier: the tiers, their callers, lane mode and the recommender, with negative controls). The tiers live in `tools/selftest-tiers.mjs`; this page is generated from it (`node tools/test-audit.mjs --write`) and records the audit, not later edits.', '',
+    'Every receipt registered at ccb2041c41 (2,122) has one decision; this lane adds one, `tools/selftest-tiers.selftest.mjs` (default tier: the tiers, their callers, lane mode and the recommender, with negative controls). The tiers live in `tools/selftest-tiers.mjs`; this page is generated from it (`node tools/test-audit.mjs --write`, never by hand): `tools/selftest-tiers.selftest.mjs` fails when its counts or decisions differ from the tiers (run times, which differ by machine, are not compared).', '',
     '- **KEEP**: the default tier. `npm test`, the release gate (`tools/gate.mjs`) and tank:release:check\'s embedded suite run it; lane mode (`npm run test:lane`) runs the part a diff reaches.',
     '- **MANUAL**: a named suite, run only by `npm run test:heavy -- <suite>`. `npm run test:recommend` says which suites a diff warrants and why; Main relays it and the owner triggers the run. `tanks` is id-scoped: lane mode and tank:release:check run the receipts naming or reading their ids.',
     '- **MERGE**: folded into a named receipt with no coverage lost.',
@@ -131,7 +141,7 @@ function documentText({ rows }, s) {
   lines.push('## Summary', '', '| Decision | Receipts | CPU-min |', '|---|---:|---:|');
   for (const row of s.decisions) lines.push(`| ${row.decision} | ${row.count} | ${minutes(row.cpuMs)} |`);
   lines.push('', '| Suite run | Receipts | CPU-min | Simulated wall (min) |', '|---|---:|---:|---:|',
-    `| Before: every receipt (npm test at ccb2041c41) | ${s.beforeReceipts} | ${minutes(s.before.cpuMs)} | ${minutes(s.before.wallMs)} |`,
+    `| Before: every receipt (npm test without the tiers) | ${s.beforeReceipts} | ${minutes(s.before.cpuMs)} | ${minutes(s.before.wallMs)} |`,
     `| After: the default tier | ${s.afterReceipts} | ${minutes(s.after.cpuMs)} | ${minutes(s.after.wallMs)} |`);
   lines.push('', `Default tier: ${(100 * s.after.cpuMs / s.before.cpuMs).toFixed(1)} % of the whole registry's CPU; ${(100 * s.after.cpuMs / (916 * 60_000)).toFixed(1)} % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: ${minutes(s.after.exclusiveMs)} min exclusive receipts, ${minutes(s.after.poolMs)} min pool, ${minutes(s.after.lastMs)} min browser receipts.`, '');
   lines.push('## Manual suites', '', '| Suite | Receipts | CPU-min | What it covers |', '|---|---:|---:|---|');
@@ -148,14 +158,47 @@ function documentText({ rows }, s) {
   return lines.join('\n') + '\n';
 }
 
+/**
+ * The lines of an audit page that hold counts and decisions, sorted: each decision's and each suite's receipt count, the
+ * before and after receipt counts, each section's count and each receipt's decision. Run times (CPU-minutes, wall,
+ * seconds, the share line and the reasons that quote them) are left out: they differ by machine (266, Main: two lanes
+ * hand-edited the same count lines, MANUAL 667->668 and ui 4->5, for two receipts; identical hunks merge as one).
+ */
+export function auditCounts(text) {
+  const out = [];
+  for (const line of text.split('\n')) {
+    let match;
+    if ((match = /^\| (KEEP|MERGE|MANUAL|RETIRE) \| (\d+) \|/.exec(line))) out.push(`decision ${match[1]}: ${match[2]}`);
+    else if ((match = /^\| (Before|After)\b[^|]*\| (\d+) \|/.exec(line))) out.push(`${match[1].toLowerCase()}: ${match[2]}`);
+    else if ((match = /^\| `([a-z]+)` \| (\d+) \|/.exec(line))) out.push(`suite ${match[1]}: ${match[2]}`);
+    else if ((match = /^## (KEEP|MERGE|MANUAL|RETIRE) \((\d+)\)$/.exec(line))) out.push(`section ${match[1]}: ${match[2]}`);
+    else if ((match = /^\| `([^`]+)` \| [^|]* \| ([A-Z]+(?: \([a-z]+\))?) \|/.exec(line))) out.push(`receipt ${match[1]}: ${match[2]}`);
+  }
+  return out.sort();
+}
+
+/** file -> run time in ms, as an audit page's receipt rows state it ('n/a' rows are absent). */
+function pageRunTimes(text) {
+  const out = new Map();
+  for (const line of text.split('\n')) {
+    const match = /^\| `([^`]+)` \| ([\d.]+) \| [A-Z]/.exec(line);
+    if (match) out.set(match[1], Number(match[2]) * 1000);
+  }
+  return out;
+}
+
 if (process.argv[1] && process.argv[1].endsWith('test-audit.mjs')) {
-  const audit = await auditRows();
+  const page = join(TOOLS_ROOT, 'docs/TEST-AUDIT.md');
+  let stated = new Map();
+  if (process.argv.includes('--write') && !process.argv.includes('--retime')) { try { stated = pageRunTimes(readFileSync(page, 'utf8')); } catch {} }
+  const observed = await receiptRunTimes();
+  const audit = await auditRows({ runMsOf: (file) => stated.get(file) ?? observed(file) });
   const s = summary(audit);
   for (const row of s.decisions) console.log(`${row.decision.padEnd(7)} ${String(row.count).padStart(5)} receipts ${minutes(row.cpuMs).padStart(7)} CPU-min`);
   console.log(`before: ${s.beforeReceipts} receipts, ${minutes(s.before.cpuMs)} CPU-min, ~${minutes(s.before.wallMs)} min wall; after (default tier): ${s.afterReceipts} receipts, ${minutes(s.after.cpuMs)} CPU-min, ~${minutes(s.after.wallMs)} min wall (${minutes(s.after.exclusiveMs)} exclusive + ${minutes(s.after.poolMs)} pool + ${minutes(s.after.lastMs)} browser)`);
   for (const suite of s.suites) console.log(`  ${suite.name.padEnd(8)} ${String(suite.receipts).padStart(4)} ${minutes(suite.cpuMs).padStart(7)} CPU-min ~${minutes(suite.wall.wallMs)} min wall`);
   if (process.argv.includes('--write')) {
-    writeFileSync(join(TOOLS_ROOT, 'docs/TEST-AUDIT.md'), documentText(audit, s));
+    writeFileSync(page, documentText(audit, s));
     console.log('wrote docs/TEST-AUDIT.md');
   }
 }
