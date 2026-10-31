@@ -350,6 +350,20 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'T-84BM Oplot-T', shortName: 'Oplot-T',
     searchAliases: ['BM Oplot-T', 'Object 478DU9-T', 'Oplot T', 'Royal Thai Army Oplot', 'Thai Oplot'],
   },
+  // Release 262 (owner 2026-10-28): the Polish concept on the Oplot-M's base (Orzeł, "eagle")
+  pt84_orzel: {
+    displayName: 'PT-84 Orzeł', shortName: 'PT-84 Orzeł',
+    searchAliases: ['PT-84 Orzel', 'Polish Oplot', 'Oplot PL', 'Orzel', 'T-84 Poland'],
+  },
+  // the light hunter (Sokół, "falcon") and the assault tank (Żbik, "wildcat") on the same base
+  pt84_sokol: {
+    displayName: 'PT-84 Sokół', shortName: 'PT-84 Sokół',
+    searchAliases: ['PT-84 Sokol', 'Sokol', 'Polish Oplot hunter', 'PT-84 mast'],
+  },
+  pt84_zbik: {
+    displayName: 'PT-84 Żbik', shortName: 'PT-84 Żbik',
+    searchAliases: ['PT-84 Zbik', 'Zbik', 'Polish Oplot assault', 'PT-84 dozer'],
+  },
   ua_m1a1: { displayName: 'M1A1 SA (Ukraine)', shortName: 'M1A1 SA UA', searchAliases: ['M1A1 Abrams UA', 'M1A1 Abrams (Ukraine)'] },
 });
 

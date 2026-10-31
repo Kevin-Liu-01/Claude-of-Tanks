@@ -8,13 +8,15 @@
  *   mono     IBM Plex Mono 400/500     IBM; the split Latin1 WOFF2 of the IBM/plex release @ibm/plex-mono@2.5.0
  * Plex carries the Reserved Font Name "Plex", so its files ship exactly as IBM built them (never re-subset here).
  * Chinese text uses the system CJK faces after the Latin face.
- * The accented letters the Plex Latin1 subsets lack (ā ē ī ō ū, ć ń ś ź and their capitals: Type 90 Kyū-maru, Raijū,
- * Type 96-80 Fēng, T-72 Ryś) come from 'Cot Accents', a 2 KB-per-weight OFL Modified Version under its own name, built
- * from Plex's own base glyphs and accents by tools/type/cot-accents.py. Chakra Petch composes them from its own
- * combining marks, so only the Plex weights need it.
- * The arrows and math marks those subsets lack (← ↑ → ↓ ≤ ≥ ∞) come from 'Cot Symbols', a 1 KB first-party face drawn
- * from Chakra Petch's own outlines (tools/type/cot-symbols.py; OFL 1.1, Chakra Petch has no Reserved Font Name). Its
- * unicode-range keeps it out of every download but a page that prints one of those marks.
+ * The accented letters the Plex Latin1 subsets lack (ā ē ī ō ū, ć ń ś ź, ł ż and their capitals: Type 90 Kyū-maru,
+ * Raijū, Type 96-80 Fēng, T-72 Ryś, PT-84 Orzeł, PT-84 Żbik) come from 'Cot Accents', a 2 KB-per-weight OFL Modified
+ * Version under its own name, built from Plex's own base glyphs and accents by tools/type/cot-accents.py. Chakra Petch
+ * composes the macron and acute letters from its own combining marks; ł Ł ż Ż it cannot, so the marks face below
+ * carries Chakra Petch's own.
+ * The arrows and math marks those subsets lack (← ↑ → ↓ ≤ ≥ ∞), and Chakra Petch's ł Ł ż Ż, come from 'Cot Symbols', a
+ * 1 KB first-party face drawn from Chakra Petch's own outlines (tools/type/cot-symbols.py; OFL 1.1, Chakra Petch has no
+ * Reserved Font Name). Its unicode-range keeps it out of every download but a page that prints one of them; the Plex
+ * stacks name 'Cot Accents' first, so their ł and ż stay Plex's.
  *
  * 'Cot UI' is the shell's weight-voiced family, so the game's existing weight hierarchy picks its voice with no
  * call-site churn and every weight it asks for is a real face:
@@ -47,30 +49,32 @@ interface TypeFace {
 
 /**
  * The marks face: Medium (drawn from Chakra Petch Medium) for weights up to 549, Bold above. Each stack names it right
- * after its Latin face, so ←/→ match Chakra Petch's own ↑/↓ and the shell's arrows never fall to Arial.
+ * after its Latin face, so ←/→ match Chakra Petch's own ↑/↓ and the shell's arrows never fall to Arial. It also
+ * carries Chakra Petch's ł Ł ż Ż for the display voice (the Polish names), which its Latin subsets cannot compose.
  */
 export const TYPE_SYMBOLS = Object.freeze({
   family: 'Cot Symbols',
   dir: 'cot-symbols',
-  range: 'U+2190-2193,U+221E,U+2264-2265',
+  range: 'U+0141-0142,U+017B-017C,U+2190-2193,U+221E,U+2264-2265',
   faces: Object.freeze([
-    { weight: '100 549', file: 'cot-symbols/CotSymbols-Medium.woff2', bytes: 1012, sha256: '3060840eaa05482b94ac1b8def6cd0b4e22315e287853da8bb423e838fe33429' },
-    { weight: '550 1000', file: 'cot-symbols/CotSymbols-Bold.woff2', bytes: 1004, sha256: 'b1d14c781a161f102245d70547e484f3e69481bd6a6cb1c5e63096b39cd04b27' },
+    { weight: '100 549', file: 'cot-symbols/CotSymbols-Medium.woff2', bytes: 1168, sha256: '2433d5a878d31983ec416cf984c67e6bffd8e6b0f927d68dc720d1f5ca4a019e' },
+    { weight: '550 1000', file: 'cot-symbols/CotSymbols-Bold.woff2', bytes: 1188, sha256: '025c30f513c9b062307905abff883a8f7e22943c79b10bc0aa0ff7bb2c1ee885' },
   ]),
 });
 
 /**
- * The accents face: Plex Sans Regular, Medium and SemiBold letters with macron or acute, per weight. Each Plex-backed stack
- * names it right after its Latin face; its unicode-range keeps it out of every download but a page that prints one.
+ * The accents face: Plex Sans Regular, Medium and SemiBold letters with macron, acute, stroke or dot, per weight. Each
+ * Plex-backed stack names it right after its Latin face; its unicode-range keeps it out of every download but a page
+ * that prints one.
  */
 export const TYPE_ACCENTS = Object.freeze({
   family: 'Cot Accents',
   dir: 'cot-accents',
   range: 'U+0100-017F',
   faces: Object.freeze([
-    { weight: '100 449', file: 'cot-accents/CotAccents-Regular.woff2', bytes: 1912, sha256: '8acdd0ffbab47f476b52277f7931a5ae24d0dabc2bbbffa41e10c71b71d972c3' },
-    { weight: '450 549', file: 'cot-accents/CotAccents-Medium.woff2', bytes: 1864, sha256: '25fdc466218ea5ebc90741920540217f7af27623cf7fa869b1f55a5178f50ad1' },
-    { weight: '550 1000', file: 'cot-accents/CotAccents-SemiBold.woff2', bytes: 1900, sha256: 'f66464bb044ebfc789eb0f755719a4a654f29d895b921e86771b12535107ff3d' },
+    { weight: '100 449', file: 'cot-accents/CotAccents-Regular.woff2', bytes: 2032, sha256: '56defb63d59f884741fdffb7ef2e039919d8b9e0c56768f3aeeb3ccea9e2c6e9' },
+    { weight: '450 549', file: 'cot-accents/CotAccents-Medium.woff2', bytes: 2020, sha256: 'ee4e5fe29e17af29769dc96fa9d8de5d81fe017171344aa2853139532516acb0' },
+    { weight: '550 1000', file: 'cot-accents/CotAccents-SemiBold.woff2', bytes: 2048, sha256: 'ebc73b984f1826a376ca931b5dde63e86a17ded29864b6e448c824b678857246' },
   ]),
 });
 

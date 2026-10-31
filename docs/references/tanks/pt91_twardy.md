@@ -1,6 +1,46 @@
-# pt91_twardy — PT-91A Twardy — oracle packet
+# pt91_twardy — PT-91A Twardy — packet
 
-## Source
+## Release 262: the serial PT-91 on the T-72B3 study
+
+Owner 2026-10-28, verbatim: "also we should update the twardy to be beter and based off an actual tnak". The PT-91 is
+Bumar-Łabędy's T-72M1 modernization, so the 262 build (`buildPT91Twardy`, profiles/pt91Twardy.ts) stands on the fleet's
+measured T-72 hull and cast turret, the T-72B3 study (profiles/t72b3X.ts, as the T-72M1 Jaguar and the T-64BVs do),
+without the study's Kontakt-5, its 902A grenade bank or its Sosna-U housing (the turret options `kontakt5`, `smoke`,
+`sosna`), under the PT-91's own fit. The ghillie suit and the turret-roof drone-dock receiver of the retired build went
+with its dome; the dock seat generator now seats the drone on the new roof.
+
+Sources for the fit: Wikipedia, PT-91 Twardy (394 ERAWA tiles over 9 m2: 108 on the turret, 118 on the hull, 84 on each
+side's steel anti-HEAT screen, which replaces the T-72's rubber skirt; 24 grenade launchers; SKO-1M Drawa-T fire control;
+45.9 t; the PT-91A's 1,000 hp S-1000), and the Wikimedia Commons photographs PT91 MSPO15 DSC02773, POL PT91 Twardy, Polish
+PT-91 Twardy tank Saber Strike 18 and PT-91 Twardy NTW 5 93 6 for the layout:
+
+- Turret: square tiles (0.18 m) shingled in three courses round the cheeks and flanks, upright, then 21 and 45 degrees,
+  from the gun's clearance (|x| 0.40) back to the grenade bank, each laid along the chord of its own footprint on the
+  faceted casting; a field of tiles over the front half of the dome where it lies within 40 degrees of level, clear of
+  the gunner's sight, the cupola and the hatches. Each tile is seated on the study's casting
+  (`t72b3XCastingContains`), let 4 mm into it.
+- Glacis: five courses of eight 0.20 m tiles on the upper glacis plate from its top edge to the nose (Polish PT-91
+  Twardy tank Saber Strike 18), the corner tiles stopping short of the headlights, and two courses of three either side
+  of the driver on the plate behind it.
+- Side screens: a steel screen closing the study's open course between its fender edge and its lower skirt, on four
+  hinges; three courses of tiles over its forward half (16 columns, from the bow panel back over the third road wheel),
+  the rear half bare (Twardy.JPG, Commons, 2007: the published 84 per screen does not match the serial tanks).
+- Two 12-tube 81 mm grenade banks, four rows of three on brackets sloping up toward the rear, on the turret flanks
+  behind the cheek tiles; the tubes fan 22 degrees out and 40 up.
+- The Drawa gunner's sight head ahead of the gunner's hatch, its window under a hood; Drawa's crosswind sensor on its
+  mast over the turret rear; the self-entrenching blade on the lower nose plate.
+- Finish: the Polish Army's green, sand and black (the `sig_pt91_twardy` signature, `nato` scheme), number PT-91.
+
+Combat frame: the study's (fleetRenewalSpecs.ts `FLEET_RENEWAL_DONORS`): its dims, rig, track and the six ERA sectors
+(glacis, skirt and turret, each L/R) the tiles are clustered into; the spec keeps the PT-91A's 1,000 hp, Pronit rounds and
+cadence at the published 45.9 t.
+
+The print below (pt91a_manako.glb) stays the gitignored measurement oracle for the fidelity tool; no geometry is taken
+from it.
+
+## Oracle history (the retired pre-262 build)
+
+### Source
 `public/models/community-candidates/pt91a_manako.glb` — WT-style part
 naming (chassis_vlo, wheel_big/small_N, track_1, misc_a/b), EXTRACTION-
 SUSPECT per docs/ATTRIBUTION.md; LOCAL-ONLY quarantine (§5.248 batch B).
@@ -8,7 +48,7 @@ Owner identity brief: "ERAWA-1/2 ERA coverage, the distinctive Polish
 turret bins, PCO sights — misc_a/b print split usable after the _vlo
 audit."
 
-## _vlo AUDIT (this round — REQUIRED before metric use; verdict: POLLUTED)
+### _vlo AUDIT (this round — REQUIRED before metric use; verdict: POLLUTED)
 `chassis_vlo` is a whole-vehicle LOD shell riding the top-level HULL
 side of the scene (sibling of `chassis`): it bakes the at-rest TURRET and
 the FULL GUN into every hull mask. Receipts (baseline workorder + gate):
@@ -25,7 +65,7 @@ ORIENTATION: gun +z as loaded (no yawOffset needed — harness renders
 confirm; the raw accessor min/max of this print LIE, see census hazard in
 pl01.md).
 
-## Measured lines (honest rows only: whole/plan + turret plan, absolute)
+### Measured lines (honest rows only: whole/plan + turret plan, absolute)
 - rear rack/drums 1.31-1.40 to -3.71; engine stack tops 1.45-1.56 over z
   -3.15..-2.03; bustle 2.04-2.07 z -1.58..-1.14; met-mast spike 3.52 @
   -1.02 (1 col); dome band 2.13-2.29 z -0.8..-0.13; cupola crest 2.46-2.60
@@ -37,7 +77,7 @@ pl01.md).
   ±1.50-1.52, ERAWA-2 wedge tips at plan 1.72 @ |x| 0.5-0.6; evacuator col
   +0.18 to 4.71.
 
-## Published dims (spec true-up applied this round, with sources)
+### Published dims (spec true-up applied this round, with sources)
 hull 6.95 / overall 9.67 / width 3.59 / height 2.19 — the landed §5.248
 REG bracket (Bumar-Łabędy PT-91 data; the old spec's 6.86 was the T-72M1
 donor's hull figure). Gate dims 100 (heightM 2.20 / hull 6.89 / overall
@@ -45,7 +85,7 @@ donor's hull figure). Gate dims 100 (heightM 2.20 / hull 6.89 / overall
 polluted-registration counterweight), rear drums -3.42, muzzle 6.25 (the
 print's own muzzle = rear + 9.67 exactly).
 
-## Certified oracle-defect caps (pre-repair; dims never covered)
+### Certified oracle-defect caps (pre-repair; dims never covered)
 1. chassis_vlo hull-mask bake: hullCurves, stations, front_hull/side_hull
    rows AND the side/front registration of whole+turret rows — capped at
    ~0-10 until the excision lands. plan rows register clean (dy 0.04).
@@ -53,7 +93,7 @@ print's own muzzle = rear + 9.67 exactly).
    — plan/side residuals vs the published-first build (bow cover ~4 cols,
    crest columns ~0.25) certified against the normalize recipe below.
 
-## Reported normalize plan (orchestrator lane; warp law v2, COUPLED)
+### Reported normalize plan (orchestrator lane; warp law v2, COUPLED)
 1. DELETE node `chassis_vlo` (LOD shell; the true hull is `chassis` with
    its 3 primitives + wheels + track) — the §E LOD-delete coupled class:
    land together with a poland re-gate (this build will NOT mirror the
@@ -66,14 +106,14 @@ print's own muzzle = rear + 9.67 exactly).
    satisfiable, side/front registration de-poisons, whole/turret side rows
    release toward the plan rows' quality.
 
-## Gate close (round 1, ×2 bit-identical)
+### Gate close (round 1, ×2 bit-identical)
 hull 0 (capped) | whole 4 (capped registration) | turret 0.6 (capped) |
 stations 0 (capped) | dims 100 | floaters 100. The two components the vlo
 bake cannot touch — dims and floaters — are both 100. Audits: track-clip
 --exact --strict 0/0+0/0; turret-parent 0/0/0; standard-check contig 0
 holes (fender-slot floor plates, strict-sweep-proven), census mg1+6d.
 
-## Build notes (ground-up §5.248 rebuild)
+### Build notes (ground-up §5.248 rebuild)
 buildPT91Twardy in src/vehicles/profiles/poland.ts — fresh loftHull to
 the published envelope with the print's engine-stack cadence (NOT
 buildPT91M; russia grammar reused), ERAWA-1 glacis field + armored
@@ -86,7 +126,7 @@ asymmetric smoke banks (6L/3R), rear transverse drum train + rack +
 unditching log at -3.42, 2A46MS via ruBoot + tubeGun + muzzleBore.
 Rig: turretPivot [0,1.38,0.02], gunPivot [0,0.32,0.50], barrel 5.73.
 
-## §5.267 fix round (8.9 -> ordered list, on landed base d7ba844f)
+### §5.267 fix round (8.9 -> ordered list, on landed base d7ba844f)
 Delivered per-order: (1) turret-front/roof ERAWA carpet — two ringSkin-
 seated cassette arcs on the bare upper-nose band above the wedge tops
 (y 0.58 r 1.048 x7, y 0.688 r 0.845 x5, seams on the tile FACES after a
@@ -104,7 +144,7 @@ cluster (2.213 lug), arc seams (2.202), and finally the whip stubs' AA-
 faded tips (2.2016-2.2124 phase-dependent) — stubs now end under the 2.19
 crown; heightM reads 2.19 pct 0.05 with real margin.
 
-## §E EXECUTED — batch 59 (2026-08-17, §5.248 §E round; COUPLED plan landed)
+### §E EXECUTED — batch 59 (2026-08-17, §5.248 §E round; COUPLED plan landed)
 Both filed steps LANDED in one recipe (repair_oracles.py batch 59):
 (1) chassis_vlo excision (_detach_child_node on the 8794v mesh node) and
 (2) the axis rescale — WITH the batch's key finding: the vlo shell OWNED

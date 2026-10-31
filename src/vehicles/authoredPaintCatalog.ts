@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 27 entries over 88 vehicles.
+// 30 entries over 91 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -24,6 +24,9 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_marder2',
   'paint_object695_x',
   'paint_pl_t80u_modern',
+  'paint_pt84_orzel',
+  'paint_pt84_sokol',
+  'paint_pt84_zbik',
   'paint_ru_t80u_modern',
   'paint_strv81',
   'paint_t72b3m',
@@ -52,7 +55,7 @@ export interface AuthoredPaintEntry {
 export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.freeze([
   {id: 'paint_amx40',lead: 'amx40_proto',sourceTankIds: ['amx40_proto','amx40'],nation: 'France',label: 'French Plain Khaki',tags: ['fr','desert','geometric','signature'],visual: {scheme: 'solid',base: '#96835a',weather: '#a4916a',patches: []}},
   {id: 'paint_ares_apc_x',lead: 'ares_apc',sourceTankIds: ['ares_apc'],nation: 'UK',label: 'British Three-Tone Woodland',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4e5940',weather: '#60694f',patches: ['#252a22','#544233','#72745d'],camoScale: 0.44}},
-  {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Plain Olive',tags: ['ua','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#66704c',weather: '#77805a',patches: []}},
+  {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Digital Woodland',tags: ['ua','woodland','digital','signature'],visual: {scheme: 'digital',base: '#68693f',weather: '#7a7b52',patches: ['#39442c','#6f563a','#9a9268'],camoScale: 0.5}},
   {id: 'paint_bm_oplot_t',lead: 'bm_oplot_t',sourceTankIds: ['bm_oplot_t'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Desert',tags: ['ua','desert','organic','signature'],visual: {scheme: 'nato',base: '#b39466',weather: '#c3a578',patches: ['#7e4c37','#5c4232','#a17f58'],camoScale: 0.58}},
   {id: 'paint_bmpt_terminator2',lead: 'bmpt_terminator2',sourceTankIds: ['bmpt_terminator2'],nation: 'Russia',label: 'Russian Digital Woodland',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#35452f',weather: '#3f4d36',patches: ['#243128','#4d4a37','#5a523e'],camoScale: 0.5,solidWeatheringIntensity: 0.03}},
   {id: 'paint_challenger3_td',lead: 'challenger3_td',sourceTankIds: ['challenger3_td'],nation: 'UK',label: 'British Digital Woodland',tags: ['uk','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a3e',weather: '#626a4d',patches: ['#1c201b','#8a7f5c','#3a4632'],camoScale: 0.44}},
@@ -69,6 +72,9 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_marder2',lead: 'marder2',sourceTankIds: ['marder2'],nation: 'Germany',label: 'Bundeswehr Three-Tone Woodland',tags: ['de','woodland','organic','signature'],visual: {scheme: 'nato',base: '#48533f',weather: '#73705b',patches: ['#302e27','#242c24'],camoScale: 0.5}},
   {id: 'paint_object695_x',lead: 'object695',sourceTankIds: ['object695'],nation: 'Russia',label: 'Russian Digital Woodland III',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a44',weather: '#5c6647',patches: ['#7d8664','#33402c','#6f7570'],camoScale: 0.34}},
   {id: 'paint_pl_t80u_modern',lead: 't80u_husarz',sourceTankIds: ['t80u_husarz','t72b3m_wilk','t72b3_zubr','t72b3_zubr_ii','pt64_tur'],nation: 'Poland',label: 'Polish Three-Tone Woodland',tags: ['pl','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4a563b',weather: '#4a5c42',patches: ['#29342d','#827458']}},
+  {id: 'paint_pt84_orzel',lead: 'pt84_orzel',sourceTankIds: ['pt84_orzel'],nation: 'Poland',label: 'Polish Blotch Desert',tags: ['pl','desert','organic','signature'],visual: {scheme: 'blotch',base: '#ad9a70',weather: '#bcab82',patches: ['#7b6b47','#56573a','#3a3326'],camoScale: 0.52}},
+  {id: 'paint_pt84_sokol',lead: 'pt84_sokol',sourceTankIds: ['pt84_sokol'],nation: 'Poland',label: 'Polish Digital Woodland',tags: ['pl','woodland','digital','signature'],visual: {scheme: 'digital',base: '#55604a',weather: '#606a52',patches: ['#2f3a2c','#7d8466','#9a9c8a'],camoScale: 0.48}},
+  {id: 'paint_pt84_zbik',lead: 'pt84_zbik',sourceTankIds: ['pt84_zbik'],nation: 'Poland',label: 'Polish Three-Tone Urban',tags: ['pl','urban','organic','signature'],visual: {scheme: 'nato',base: '#5d625d',weather: '#6c706a',patches: ['#3a3d3a','#8a8d87','#24262a'],camoScale: 0.5}},
   {id: 'paint_ru_t80u_modern',lead: 't80u_bars_m',sourceTankIds: ['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m'],nation: 'Russia',label: 'Russian Woodland',tags: ['ru','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#586145',weather: '#4a5c42',patches: ['#29342d','#827458']}},
   {id: 'paint_strv81',lead: 'strv81',sourceTankIds: ['strv81'],nation: 'Sweden',label: 'Swedish Woodland',tags: ['se','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#39483b',weather: '#4f5948',patches: ['#263129','#62634a','#74664c'],camoScale: 0.55}},
   {id: 'paint_t72b3m',lead: 't72b3m_2022',sourceTankIds: ['t72b3m_2022','t72b3m_2016'],nation: 'Russia',label: 'Russian Plain Deep Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#293a28',weather: '#2e422d',patches: [],solidWeatheringIntensity: 0.03}},

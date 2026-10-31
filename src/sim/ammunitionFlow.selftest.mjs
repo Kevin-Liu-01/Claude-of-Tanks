@@ -212,9 +212,12 @@ const laterChannelCounts = {
   // 263 (integrator): the release's other new tanks, three rounds each (their lanes did not list them here)
   christian2: 3, bm_oplot_m: 3, bm_oplot_t: 3, t64bm1m: 3, t64bv: 3, t64b1v_2022: 3, pt64_tur: 3,
   challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
+  // 262 (the PT-84 Polish concepts on the Oplot-M base): the K2PL's K279, K280 and K281 each, the Falarick owed
+  pt84_orzel: 3, pt84_sokol: 3, pt84_zbik: 3,
 };
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
@@ -264,8 +267,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three,
-// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262).
-assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels, 560,
+// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the three
+// PT-84s' three each (release 262).
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels - pt84Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

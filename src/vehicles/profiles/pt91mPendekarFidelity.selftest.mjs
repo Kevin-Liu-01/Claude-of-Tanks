@@ -13,14 +13,14 @@ import {createTankState} from '../../sim/movement.ts';
 // in docs/references/tanks/pt91m.legacy-fidelity-selftest.txt. Owner 2026-10-06
 // explicitly replaced that target with the actual T-72BU and a refitted PT91 kit.
 const restore=installCanvasFixture();
-// The independent Twardy still clones Pendekar's combat balance, but must
-// retain its own pre-rebuild spatial armor and narrow track envelope.
-const twardy=getSpec('pt91a_twardy');
-assert.equal(twardy.visual.trackWidthM,.50);
-assert.deepEqual(twardy.armor.hullPlates.find(p=>p.era)?.verts,
- [[-1.2841,1.1692,2.669],[-1.0519,1.1692,2.669],[-1.0519,1.2365,2.4558],[-1.2841,1.2365,2.4558]]);
-assert.deepEqual(twardy.armor.turretPlates.find(p=>p.era)?.verts,
- [[.6004,.3902,1.1899],[.4102,.4195,1.3346],[.4102,.2341,1.3722],[.6004,.2048,1.2275]]);
+// The independent Twardy clones Pendekar's combat balance; since 262 it stands on the T-72B3 study (pt91Twardy.ts) and
+// takes the study's frame, track and protection planes, never the Pendekar's T-72BU spatial armor.
+// (Plates are then fitted to each build's own surfaces, so the check is the study's track and ERA sectors, not its verts.)
+const twardy=getSpec('pt91a_twardy'),study=getSpec('t72b3'),pendekar=getSpec('pt91m');
+const eraNames=s=>[...new Set([...s.armor.hullPlates,...s.armor.turretPlates].filter(p=>p.era).map(p=>p.name))].sort();
+assert.equal(twardy.visual.trackWidthM,study.visual.trackWidthM);
+assert.deepEqual(eraNames(twardy),eraNames(study));
+assert.notDeepEqual(twardy.armor.hullPlates,pendekar.armor.hullPlates);
 const near=(a,b,tol=1e-6,label='datum')=>assert.ok(Math.abs(a-b)<=tol,`${label}: ${a} vs ${b}`);
 function geometryBytes(root,names){const h=crypto.createHash('sha256');for(const name of names){const o=root.getObjectByName(name);assert.ok(o?.geometry,name);for(const key of['position','normal']){const a=o.geometry.attributes[key]?.array;if(a)h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));}const a=o.geometry.index?.array;if(a)h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));if(o.isInstancedMesh){const a=o.instanceMatrix.array;h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));}}return h.digest('hex');}
 function triangles(mesh){const p=mesh.geometry.attributes.position,idx=mesh.geometry.index,result=[];for(let i=0;i<(idx?.count??p.count);i+=3){const v=[0,1,2].map(k=>new T.Vector3().fromBufferAttribute(p,idx?idx.getX(i+k):i+k).applyMatrix4(mesh.matrixWorld));const t=new T.Triangle(...v);if(t.getArea()<1e-10)continue;result.push({t,b:new T.Box3().setFromPoints(v)});}return result;}

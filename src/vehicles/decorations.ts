@@ -3206,6 +3206,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
+  // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
+  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
+  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
   // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
@@ -3763,7 +3767,7 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
   't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
 ]);
 

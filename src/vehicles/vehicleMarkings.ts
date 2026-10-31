@@ -374,6 +374,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
   bm_oplot_m: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
   bm_oplot_t: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
+  // the Orzeł's flank carries its Krata grid and the housing its Tellur bank: the checker goes on the right bin's face
+  pt84_orzel: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_sokol: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
+  pt84_zbik: anchor('turret', 'right', 0.16, 0.46, 0.34, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use

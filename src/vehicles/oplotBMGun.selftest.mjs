@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
 
 const DEG = Math.PI / 180;
-for (const id of ['bm_oplot_m', 'bm_oplot_t', 't84bm_oplot_m']) {
+// (the PT-84 Orzeł, Sokół and Żbik, the Polish concepts on the same base, lay their 120 mm KBM2 over the same range)
+for (const id of ['bm_oplot_m', 'bm_oplot_t', 't84bm_oplot_m', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik']) {
   const probe = gunHullProbe(id);
   try {
     assert.equal(probe.spec.gunDepressionDeg, 5, `${id}: the KBA-3 depresses to -5 degrees (source range)`);
@@ -30,4 +31,4 @@ for (const id of ['bm_oplot_m', 'bm_oplot_t', 't84bm_oplot_m']) {
     probe.dispose();
   }
 }
-console.log('oplotBMGun.selftest: the Oplot-M, the Oplot-T and the T-84U keep their KBA-3 clear of the hull over -5..+14 at every yaw');
+console.log('oplotBMGun.selftest: the Oplot-M, the Oplot-T, the T-84U and the three PT-84s keep their guns clear of the hull over -5..+14 at every yaw');

@@ -26,7 +26,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   m551a1_tts: 4, m60a1: 1, m60a2: 2, m60a3: 1, m6_linebacker: 5, marder1a3: 2, marder2: 5, mbt70: 3, merkava1b: 1,
   merkava2b: 3, merkava2d: 3, merkava3_baz: 8, merkava3c: 8, merkava3d: 8, merkava4: 9, merkava4_barak: 9,
   merkava4_trophy: 9, merkava4b: 9, namer_ifv: 4, object148_proto: 10, object695: 10, pl01: 10, pl01_105: 10,
-  pt64_tur: 4, pt91a_twardy: 5, pt91m: 4, puma_s1: 6, raiju_ifv: 10, sabra_mk2: 2, spz_puma: 4, spz_wotan: 6, stb1: 1, strv103a: 2,
+  pt64_tur: 4, pt84_orzel: 10, pt84_sokol: 9, pt84_zbik: 10, pt91a_twardy: 5, pt91m: 4, puma_s1: 6, raiju_ifv: 10, sabra_mk2: 2, spz_puma: 4, spz_wotan: 6, stb1: 1, strv103a: 2,
   strv103b: 2, strv121: 9, strv122: 9, strv81: 2, t14_armata: 10, t62_1975: 1, t62mv1: 2, t64b1v_2022: 4, t64bm1m: 4, t64bv: 3, t64bv1: 3, t64bv_donbas: 4,
   t72_rys: 5, t72b3: 6, t72b3_bastion_m: 8, t72b3_qilin: 7, t72b3_sich: 7, t72b3_zubr: 6, t72b3_zubr_ii: 6,
   t72b3m_2016: 6, t72b3m_2022: 6, t72b3m_bulat_m: 8, t72b3m_hetman: 7, t72b3m_hetman_ii: 7, t72b3m_kunlun: 7,
