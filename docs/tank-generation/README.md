@@ -102,15 +102,31 @@ unrelated scaffold stubs out of a scoped handbook update.
 
 ## Photographic qualification
 
-The scoped [IFV photographic packet](../references/photos/ifvs-20260925.json)
-records the owner's approved CV9040C route and the three supplied photographic
-additions. `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
-configuration and dimension receipts. `tools/photo-reference-policy.mjs`
-limits that route to the declared IDs. `tank-standard-check` consumes those
+A photo-class tank (built from photographs and published dimensions, with no
+3D model it follows) passes the release check's stage A through its packet in
+`docs/references/photos` (Main, 2026-10-31; it ends per-batch exemptions).
+`PHOTO_REFERENCES` in `tools/photo-reference-policy.mjs` is the plain table of
+id → packet and the native fixture the packet names: a lane adds its ids' rows
+with its packet, and a packet holds exactly the ids the table gives it (the
+[IFV packet](../references/photos/ifvs-20260925.json): the CV9040C route and the
+supplied photographic additions; the [T-64 packet](../references/photos/t64-20261031.json):
+the true T-64s, whose borrowed prints were deregistered). `stageARoute` and
+`stageAPassed` state the rule:
+
+- a registered 3D oracle always measures, and a packet never overrides it (the
+  geometry gate refuses an id with both);
+- an owner concept proves its design record; a photo-class id proves its packet;
+- an id with no packet, no oracle and no concept still fails a forced gate.
+
+`tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
+configuration and dimension receipts (the packet's width, length and tallest,
+3 %, as the build's whole bounding box). `tank-standard-check` consumes those
 receipts while retaining strict track sweep, continuity, equipment and all
 release steps. Numerical 3D fidelity remains **unverified**. This is not a
-fallback for a missing or failed registered model; adding a registered 3D
-reference requires resolving its qualification route explicitly.
+fallback for a missing or failed registered model: an id leaves the 3D route
+only when its print is deregistered as not the reference its build follows.
+`tools/photo-reference-policy.selftest.mjs` holds the rule against the live
+registry with controls.
 
 Published body dimensions and inferred antenna/weapon envelopes must be
 identified separately in the packet. Native physical tests are not proof that

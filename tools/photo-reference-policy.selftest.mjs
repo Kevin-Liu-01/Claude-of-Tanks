@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import {readPhotoReference} from './photo-reference-record.mjs';
-import {PHOTO_REFERENCE_IDS,photoTarget,photoReceiptPassed} from './photo-reference-policy.mjs';
+import {readFileSync} from 'node:fs';
+import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
+import {ALL_TANK_IDS} from '../src/vehicles/specs.ts';
+import {firstPartyConcept} from './first-party-concept-policy.mjs';
+import {PHOTO_REFERENCE_IDS,PHOTO_REFERENCES,photoTarget,photoReceiptPassed,isPhotoReference,stageARoute,stageAPassed,
+  assertNoPhotoOverride} from './photo-reference-policy.mjs';
 import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
 import {tankReleaseSteps} from './tank-release-plan.mjs';
 import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
@@ -27,7 +32,7 @@ for(const id of PHOTO_REFERENCE_IDS){
   assert(roofEquipmentVerdict(id,census,config,receipt).passed);
   assert.equal(roofEquipmentVerdict(id,census,config,{...receipt,verified:false}).passed,false);
   assert.equal(roofEquipmentVerdict(id,census,config).passed,false);
-  assert.equal(roofEquipmentVerdict(id,{...census,mg:1},config,receipt).passed,false);
+  assert.equal(roofEquipmentVerdict(id,{...census,mg:target.roofMachineGuns+1},config,receipt).passed,false);
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'photo targets cannot waive unexplained holes');
   const steps=tankReleaseSteps(id,true,'node');
   assert.equal(steps.length,18,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18 227 gun-gaps: + the gun-junction ledger; 266: + the id-scoped tanks receipts)
@@ -35,4 +40,50 @@ for(const id of PHOTO_REFERENCE_IDS){
 }
 const mixed=tankReleaseSteps('cv9040c,puma_s1,type89,borsuk',true,'node');
 assert(mixed.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args.includes('--ids=puma_s1,type89'));
-console.log('photo qualification: explicit membership, unchanged 3% dimensions, fresh physical proof, unverified 3D scores and negative controls PASS');
+// --- stage A's photo route (Main 2026-10-31): (a) a photo-class id passes through its packet; (b) an id with no packet and
+// no oracle still fails a forced gate; (c) a registered oracle measures and a packet never overrides it ----------------
+// The 3D registry as the fidelity page builds it: MODEL_SOURCE's glb entries and every override map it spreads.
+const page=readFileSync(new URL('./procedural-fidelity.html',import.meta.url),'utf8');
+const imports=Object.fromEntries([...page.matchAll(/^import \{ ([A-Z0-9_]+) \} from '\/tools\/([^']+)';/gm)].map(m=>[m[1],m[2]]));
+const spread=[...page.match(/const LOCAL_REFERENCE_OVERRIDES = \{([\s\S]*?)\n\}/)[1].matchAll(/\.\.\.([A-Z0-9_]+)/g)].map(m=>m[1]);
+const registered=new Set([...page.matchAll(/^ {2}([a-z0-9_]+): ?\{ ?source: ?'glb'/gm)].map(m=>m[1]));
+for(const name of spread)for(const id of Object.keys((await import(`./${imports[name]}`))[name]))registered.add(id);
+// the census reads the registry, not an empty parse: a comparison id, an override id and the T-64s' siblings' own prints
+for(const id of ['leo2a6','t64bv1','t64bv_donbas',...Object.keys((await import(`./${imports[spread[0]]}`))[spread[0]]).slice(0,1)])
+  assert(registered.has(id),`${id}: registered (registry census)`);
+// (a) every photo id is unregistered, so its packet is its stage A route; each packet holds exactly its table rows
+for(const id of PHOTO_REFERENCE_IDS){
+  assert.equal(registered.has(id),false,`${id}: a photo id keeps no registered 3D oracle`);
+  assert.equal(stageARoute(id),'photo');
+}
+for(const packet of new Set(Object.values(PHOTO_REFERENCES).map(row=>row.packet))){
+  // the packet's keys in today's ids, as photoTarget reads them
+  const {targets,tankIdSchema}=JSON.parse(readFileSync(packet,'utf8'));
+  assert.deepEqual(Object.keys(targets).map(key=>resolveTankId(key,tankIdSchema)).sort(),
+    PHOTO_REFERENCE_IDS.filter(id=>PHOTO_REFERENCES[id].packet===packet).sort(),`${packet}: exactly its members`);
+}
+// the T-64s' borrowed prints are deregistered (Main 2026-10-31); their siblings keep their own
+for(const id of ['t64bm1m','t64bv','t64b1v_2022'])assert.equal(registered.has(id)||!isPhotoReference(id),false,id);
+assertNoPhotoOverride([...PHOTO_REFERENCE_IDS,'t64bv1','t64bv_donbas'],registered);
+// (b) control: no packet and no oracle is procedural-only: a forced gate fails it (N/A outside --gate, as before)
+const bare=ALL_TANK_IDS.find(id=>!registered.has(id)&&!isPhotoReference(id)&&!firstPartyConcept(id));
+assert.ok(bare,'the fleet has a procedural-only id to control with');
+assert.equal(stageARoute(bare),'none');
+assert.equal(stageAPassed('none',{forceGate:true}),false);
+assert.equal(stageAPassed('none',{forceGate:false}),true);
+assert.throws(()=>readPhotoReference(bare),/no complete explicit photographic target/);
+// (c) control: a registered oracle measures and the packet never overrides it: the route stays the oracle's, a photo
+// receipt cannot pass it, and the geometry gate refuses a packet beside a registered oracle
+assert.equal(stageARoute('t64bv1',{registered:true}),'oracle');
+assert.equal(stageARoute('t64bv',{registered:true}),'oracle','a packet never overrides a registered oracle');
+assert.equal(stageAPassed('oracle',{forceGate:true,gateApplicable:false,photoProof:true}),false,'no fresh oracle packet');
+assert.equal(stageAPassed('oracle',{forceGate:true,gateApplicable:true,exactGatePassed:false,photoProof:true}),false,'a failing oracle');
+assert.equal(stageAPassed('oracle',{forceGate:true,gateApplicable:true,exactGatePassed:true}),true);
+assert.throws(()=>assertNoPhotoOverride(['t64bv'],new Set(['t64bv'])),/cannot override a registered 3D target/);
+// the photo route passes on its own fresh receipt only, never on a gate packet
+assert.equal(stageAPassed('photo',{forceGate:true,photoProof:true}),true);
+assert.equal(stageAPassed('photo',{forceGate:true,photoProof:false}),false);
+assert.equal(stageAPassed('photo',{forceGate:true,gateApplicable:true,exactGatePassed:true}),false);
+console.log(`photo qualification: ${PHOTO_REFERENCE_IDS.length} photo ids on ${new Set(Object.values(PHOTO_REFERENCES).map(r=>r.packet)).size} packets, `
+  +`explicit membership, unchanged 3% dimensions, fresh physical proof, unverified 3D scores; stage A's photo route against `
+  +`${registered.size} registered oracles (no packet overrides one; no packet and no oracle fails a forced gate) and negative controls PASS`);
