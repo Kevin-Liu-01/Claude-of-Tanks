@@ -1173,7 +1173,7 @@
    "openViews": 0,
    "insideOutPx": 36,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4265,
+   "netSeeThroughPx": 3052,
    "tris": 148877,
    "frame": [
     0,
@@ -1189,6 +1189,16 @@
      "date": "2026-10-20",
      "from": {
       "openPx": 6
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "266 cleanup (owner 10-30), the turret net now ends at the bustle box and its face drape is gone, so less declared net shows through, 4265 -> 3052 px",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4265
      }
     }
    ]

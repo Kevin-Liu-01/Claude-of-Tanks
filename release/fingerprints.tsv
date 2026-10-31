@@ -405,7 +405,7 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/cv90105TmlSourceX.generated.t
 file	marking	src/vehicles/vehicleMarkingSeatGroups/cv9040CSourceX.generated.ts	33152eb8622e5588
 file	marking	src/vehicles/vehicleMarkingSeatGroups/cv90MkivSourceX.generated.ts	7ffafb8ea03b2a58
 file	marking	src/vehicles/vehicleMarkingSeatGroups/dardo.generated.ts	30c33c520d1400a9
-file	marking	src/vehicles/vehicleMarkingSeatGroups/franceCore.generated.ts	68020d9b817abeff
+file	marking	src/vehicles/vehicleMarkingSeatGroups/franceCore.generated.ts	d77018748cfafbec
 file	marking	src/vehicles/vehicleMarkingSeatGroups/fv510MilanX.generated.ts	eafad81a692acde1
 file	marking	src/vehicles/vehicleMarkingSeatGroups/griffin50X.generated.ts	e6bcc6753ca37cd6
 file	marking	src/vehicles/vehicleMarkingSeatGroups/griffinViper.generated.ts	84456ab165b8807c
@@ -560,6 +560,47 @@ group	type96bX	ef196d7fa039a1ce
 group	uk	6bff6f921f407fa0
 group	ukraine	026784d84f8eee0d
 group	xk2	4bac51c17da18cb9
+key	wreckPlan	coastal	48106cb1189e2f5f	efff6dea56dddcb2
+key	spareTrack	leclerc_sxxi	360e2e0a79155f96	ff02feef32044ef5
+key	spareTrack	leclerc_s2	f4fddb48308f5d88	386b1171252b387a
+key	spareTrack	leclerc_s1	cdb1c1984c0169f7	24f2c0ed95c5075a
+key	spareTrack	amx40_proto	6fd7db5aa791e5eb	40ea06ac58b8a27a
+key	seats	leclerc_sxxi	28dc8c665abfea30	6ea99456a53a1dfe
+key	seats	leclerc_s2	305dc95843ce3948	a1af61ed4fae15c6
+key	seats	leclerc_s1	c6f52532966dd81c	a4c1150722349928
+key	seats	amx40_proto	d285af2688e76a59	b44808b72bee26a1
+key	marking	leclerc_sxxi	8c9f0ddea954d43b	786ad584134f17af
+key	marking	leclerc_s2	8dbecc53fd4b122e	53985a915843b199
+key	marking	leclerc_s1	6aa814b9cbe3e350	4b90886156779793
+key	marking	amx40_proto	c2a2f0e6b1fd6c6f	3b65eb58a2fc4978
+key	ledger	leclerc_sxxi	b8c0765dfe1b7843	eb88a47565f44ad6
+key	ledger	leclerc_s2	f8450b08cf47385f	ea7ab460f9953a3d
+key	ledger	leclerc_s1	9fdae9f350079c58	cdffd86b6ff96337
+key	ledger	amx40_proto	854853cfee6d5b44	bda12c358f7e8748
+key	icons	leclerc_sxxi	62271d0f75da82ff	e9387f7dbc91ea15
+key	icons	leclerc_s2	73d900b462dc883f	25f3866528d77b8d
+key	icons	leclerc_s1	2b99154b19f8222a	8ffc11268ff70b9c
+key	icons	amx40_proto	09f216dc562fe3cf	3babd7943d6507bf
+key	gunLines	leclerc_sxxi	5373f8eaa6091013	98e60f6c0d26343d
+key	gunLines	leclerc_s2	e58b6d9c6e5cf9fb	3204917aae10d367
+key	gunLines	leclerc_s1	ac8625110f548fc4	8cc4b003a54ba806
+key	gunLines	amx40_proto	a2e71582271cfd2f	5879ac26adeca905
+key	fills	leclerc_sxxi	660bc2523207976e	6130eeadec48af0b
+key	fills	leclerc_s2	fd00a0c179a6f943	198c58819188d2fd
+key	fills	leclerc_s1	ef41ed7db77fa82e	4d80ffb5e22eb9d8
+key	fills	amx40_proto	442c1b683181379b	a0afcfca359a6cba
+key	controls	leclerc_sxxi	8cb7cbeb1dfd7a36	84a59077a4c52dae
+key	controls	leclerc_s2	1ccd92ef6e7a2507	52142de7c5387acc
+key	controls	leclerc_s1	a952640b736992b3	b484f2f99097ee04
+key	controls	amx40_proto	cd71d83c1a821049	e8b9b6836deaf40b
+key	centering	leclerc_sxxi	3d9788cef74ff50a	e09f25678f06817d
+key	centering	leclerc_s2	c5887dbd3e18f79a	3c3cf97279757d21
+key	centering	leclerc_s1	560f753dd90b35a1	7ee5e0111c490e3b
+key	centering	amx40_proto	06b2ec25f0f2299a	f2352d4956ba435b
+key	anatomy	leclerc_sxxi	d64cc01ca9c26911	96e03c6a9e893d40
+key	anatomy	leclerc_s2	28e618ccea3998c2	1dac37568d9cb673
+key	anatomy	leclerc_s1	bd2e455d2eba8e19	fbda9e37b5e34c40
+key	anatomy	amx40_proto	5863ce482b4e6c50	e723c4b355af7f28
 key	wreckPlan	titan_gorge	4087570803141200	9ad58647f0859dd9
 key	wreckPlan	skybridge	be993172cc791c6b	96df2b6e16860c64
 key	wreckPlan	orchard	b3358fe54fcfb5f3	957de5523cd0ed41
@@ -3276,7 +3317,7 @@ row	auxiliaryInventory	amx30	05d8db0f4ce53c39
 row	auxiliaryInventory	amx30b	2fad16febd6127c6
 row	auxiliaryInventory	amx30b2	bd0fd49863196d68
 row	auxiliaryInventory	amx40	52f7b2e76d5e4546
-row	auxiliaryInventory	amx40_proto	85dd675fdcb81749
+row	auxiliaryInventory	amx40_proto	54f0ccd3f77886bb
 row	auxiliaryInventory	amx56	217c7ff9699d1e2f
 row	auxiliaryInventory	ares_apc	ad13fee7a65c0a1c
 row	auxiliaryInventory	bm_oplot_m	17c79df40407c10f
@@ -3340,7 +3381,7 @@ row	auxiliaryInventory	kf51_panther	0825bcdfbc60bf94
 row	auxiliaryInventory	kf51_u	0a6e6a287c509e8f
 row	auxiliaryInventory	kurganets25	0c2573b27473b4a1
 row	auxiliaryInventory	kv2	685c2f9a88629d6e
-row	auxiliaryInventory	leclerc_s1	1c8e6ffec179b925
+row	auxiliaryInventory	leclerc_s1	030998a0ad34a1a7
 row	auxiliaryInventory	leclerc_s2	f2663785013a5b43
 row	auxiliaryInventory	leclerc_sxxi	02b2620f9291ed5e
 row	auxiliaryInventory	leclerc_xlr	43567e664674e64d
@@ -3806,9 +3847,9 @@ row	combatAnatomy	kf51_panther	fe5effdac03db322
 row	combatAnatomy	kf51_u	f225e074678f48bd
 row	combatAnatomy	kurganets25	4cffd5f689d989e6
 row	combatAnatomy	kv2	bc19d419e99329bc
-row	combatAnatomy	leclerc_s1	851a054aa814d6ba
-row	combatAnatomy	leclerc_s2	7d07d70ed2e723a4
-row	combatAnatomy	leclerc_sxxi	cf26531caf0ff928
+row	combatAnatomy	leclerc_s1	8e36755650ada17f
+row	combatAnatomy	leclerc_s2	efb21a727d64d13a
+row	combatAnatomy	leclerc_sxxi	7b1154aee5ccc5a5
 row	combatAnatomy	leclerc_xlr	93b5f3cda5265f4b
 row	combatAnatomy	leo1a2a1	9dc90ed392128b70
 row	combatAnatomy	leo1a5	289238d5c4a44aee
@@ -4454,9 +4495,9 @@ row	geometryLedger	kf51_panther	d606fba0482a1273
 row	geometryLedger	kf51_u	a38a6abfa4525b42
 row	geometryLedger	kurganets25	ebec0c204ddab81f
 row	geometryLedger	kv2	7f02a75ba464e91b
-row	geometryLedger	leclerc_s1	43f6b54ea12b913c
-row	geometryLedger	leclerc_s2	810081bc599cfbd6
-row	geometryLedger	leclerc_sxxi	5aa716a199c1ba40
+row	geometryLedger	leclerc_s1	38b5ce4efa296fbf
+row	geometryLedger	leclerc_s2	75b0447fabb90b2a
+row	geometryLedger	leclerc_sxxi	015d3090ca327e3a
 row	geometryLedger	leclerc_xlr	b485739a2c7da256
 row	geometryLedger	leo1a2a1	9feccf8e5b8fa382
 row	geometryLedger	leo1a5	85c56cea692521b1
@@ -4711,9 +4752,9 @@ row	gunJunction	kf51_panther	b92ab12b2d842e30
 row	gunJunction	kf51_u	ed12d65f43118afc
 row	gunJunction	kurganets25	eaf2e4785b893982
 row	gunJunction	kv2	4853335be55093e4
-row	gunJunction	leclerc_s1	eb547f7498cfbe76
-row	gunJunction	leclerc_s2	9eecbb172a6dc667
-row	gunJunction	leclerc_sxxi	ae72d636be26ca55
+row	gunJunction	leclerc_s1	c86904c5e2cac6e7
+row	gunJunction	leclerc_s2	ea126c693273fe78
+row	gunJunction	leclerc_sxxi	01dfcda2b57bb441
 row	gunJunction	leclerc_xlr	77e39a83d8d122fb
 row	gunJunction	leo1a2a1	c6e3b240666a1185
 row	gunJunction	leo1a5	b103544a37c32e1c
@@ -4968,9 +5009,9 @@ row	interiorFills	kf51_panther	0689b6b1be958b96
 row	interiorFills	kf51_u	6af220de407cf6e7
 row	interiorFills	kurganets25	e5be8df6c2ec7e48
 row	interiorFills	kv2	146b0bc94c95cc9c
-row	interiorFills	leclerc_s1	62eca387136f7824
-row	interiorFills	leclerc_s2	6cb9c220406ff6ea
-row	interiorFills	leclerc_sxxi	c87e978e332c7469
+row	interiorFills	leclerc_s1	5809529d57bd5235
+row	interiorFills	leclerc_s2	d2215f0bddd2759a
+row	interiorFills	leclerc_sxxi	2d03a481a073db15
 row	interiorFills	leclerc_xlr	4763d5ee35b8f101
 row	interiorFills	leo1a2a1	dbbdb60c9db6fbb8
 row	interiorFills	leo1a5	027f2f09639d926a
@@ -5161,7 +5202,7 @@ row	markingSeats	amx30	994e635d64fc159b
 row	markingSeats	amx30b	27d4f22b48bb3c26
 row	markingSeats	amx30b2	a1efdefd89a0f493
 row	markingSeats	amx40	e761ace1d5b7b3ef
-row	markingSeats	amx40_proto	746b108ace989887
+row	markingSeats	amx40_proto	65878395a542f54b
 row	markingSeats	amx56	a1f36480c6045939
 row	markingSeats	ares_apc	d0ab3be561d64896
 row	markingSeats	bm_oplot_m	a49f0fcc85b1af48
@@ -5225,9 +5266,9 @@ row	markingSeats	kf51_panther	28eac732cbff8fb0
 row	markingSeats	kf51_u	e042d39cf7d4b370
 row	markingSeats	kurganets25	f6e47f8987809de4
 row	markingSeats	kv2	2b66a83b1c62d1f7
-row	markingSeats	leclerc_s1	5e41200a4401c3e0
-row	markingSeats	leclerc_s2	1f5f8bba7d6d49af
-row	markingSeats	leclerc_sxxi	8eb4eef5528136ca
+row	markingSeats	leclerc_s1	65940f34d6fe76c0
+row	markingSeats	leclerc_s2	c8bf464dff63067d
+row	markingSeats	leclerc_sxxi	6da8053fb9e9163e
 row	markingSeats	leclerc_xlr	872c4afa38baf591
 row	markingSeats	leo1a2a1	503ecee0a0e7cff3
 row	markingSeats	leo1a5	0205da198e6d5edc
@@ -5482,9 +5523,9 @@ row	missionAttachmentSeats	kf51_panther	76881fe770596fc8
 row	missionAttachmentSeats	kf51_u	9236029a72c6b645
 row	missionAttachmentSeats	kurganets25	952fc5950cfcfd6f
 row	missionAttachmentSeats	kv2	3ff3ee306d970512
-row	missionAttachmentSeats	leclerc_s1	b1d8fc8dbdd6cbad
-row	missionAttachmentSeats	leclerc_s2	08fa5a5feea2c3e0
-row	missionAttachmentSeats	leclerc_sxxi	b993fb2ba5d98952
+row	missionAttachmentSeats	leclerc_s1	0428536507250516
+row	missionAttachmentSeats	leclerc_s2	32709e1f34b2d60f
+row	missionAttachmentSeats	leclerc_sxxi	13936fd822297673
 row	missionAttachmentSeats	leclerc_xlr	5355d1e3b1a61b65
 row	missionAttachmentSeats	leo1a2a1	65ffcb248caf7d1e
 row	missionAttachmentSeats	leo1a5	e505c938a7581e05
@@ -5937,7 +5978,7 @@ row	presentationAnchors	amx30	bc5e4d7c421dce9a
 row	presentationAnchors	amx30b	3bcae0bdb5edcb0d
 row	presentationAnchors	amx30b2	873d4bef0dddc871
 row	presentationAnchors	amx40	76a8a695264c4ec1
-row	presentationAnchors	amx40_proto	ba53b264e0d90743
+row	presentationAnchors	amx40_proto	66306035a37aae3f
 row	presentationAnchors	amx56	aa1effc5d5cd509f
 row	presentationAnchors	ares_apc	ed39db3b50338d1b
 row	presentationAnchors	bm_oplot_m	799f7dccadf8d43a
@@ -6001,9 +6042,9 @@ row	presentationAnchors	kf51_panther	83071dc59d4829ba
 row	presentationAnchors	kf51_u	0d71f510f7500971
 row	presentationAnchors	kurganets25	9f0c883004e40174
 row	presentationAnchors	kv2	0df7dbf7a05031b0
-row	presentationAnchors	leclerc_s1	6fd3410f93badf34
-row	presentationAnchors	leclerc_s2	45135c769831dc60
-row	presentationAnchors	leclerc_sxxi	434fd9f33494e399
+row	presentationAnchors	leclerc_s1	d16eb2fe55b54883
+row	presentationAnchors	leclerc_s2	7c4a195714d2c3c4
+row	presentationAnchors	leclerc_sxxi	059bf445b5a66046
 row	presentationAnchors	leclerc_xlr	a522f25902bf2804
 row	presentationAnchors	leo1a2a1	20b3af1df15af1e9
 row	presentationAnchors	leo1a5	4255711f6304ae46
@@ -6194,7 +6235,7 @@ row	presentationProjections	amx30	4f5a3efc02737757
 row	presentationProjections	amx30b	f16c2b606cd76599
 row	presentationProjections	amx30b2	fc56ac903943afda
 row	presentationProjections	amx40	4643721984516f76
-row	presentationProjections	amx40_proto	78ecb507657e9655
+row	presentationProjections	amx40_proto	20c0a6389a599e2d
 row	presentationProjections	amx56	7ee85f7193dba98e
 row	presentationProjections	ares_apc	4a575d50cad905f3
 row	presentationProjections	bm_oplot_m	632c0c9f17c3a21d
@@ -6258,9 +6299,9 @@ row	presentationProjections	kf51_panther	dbaa434be7114106
 row	presentationProjections	kf51_u	a1e1f116176c41b0
 row	presentationProjections	kurganets25	8571e8e0cd34f2fe
 row	presentationProjections	kv2	69aeb715bc0c99da
-row	presentationProjections	leclerc_s1	8b478d10b0a24e83
-row	presentationProjections	leclerc_s2	4a723521cd75bdf4
-row	presentationProjections	leclerc_sxxi	1d73225300130b12
+row	presentationProjections	leclerc_s1	add2ea281effcaba
+row	presentationProjections	leclerc_s2	e6500d326bd6efd9
+row	presentationProjections	leclerc_sxxi	5819d3ef33014f5a
 row	presentationProjections	leclerc_xlr	3d8465038932907d
 row	presentationProjections	leo1a2a1	5b35173ec545f8bf
 row	presentationProjections	leo1a5	0d2bd245b2a05dbc
@@ -6515,9 +6556,9 @@ row	spareTrackLedger	kf51_panther	b1e88a03cbf4cc30
 row	spareTrackLedger	kf51_u	32f0d3792098d2d4
 row	spareTrackLedger	kurganets25	c98fdf4f047218ba
 row	spareTrackLedger	kv2	85d26f8307472788
-row	spareTrackLedger	leclerc_s1	ba7c15e2de635f12
-row	spareTrackLedger	leclerc_s2	4e2354cecb6aa5ef
-row	spareTrackLedger	leclerc_sxxi	3afc9e83950525ab
+row	spareTrackLedger	leclerc_s1	9ab62ec607ced91b
+row	spareTrackLedger	leclerc_s2	88b82caf4fd680ed
+row	spareTrackLedger	leclerc_sxxi	cc22d437c2fc7e56
 row	spareTrackLedger	leclerc_xlr	c5c6e040665b1d60
 row	spareTrackLedger	leo1a2a1	62789316ef7bc34b
 row	spareTrackLedger	leo1a5	1c4ec3abc0149a34
@@ -7313,9 +7354,9 @@ row	tankAssets	kf51_panther	46fbe3996fddc54e
 row	tankAssets	kf51_u	32b9b2e5cecda3e6
 row	tankAssets	kurganets25	9256beae5fa2f095
 row	tankAssets	kv2	377293bb38d9317d
-row	tankAssets	leclerc_s1	cc1927074d4d941b
-row	tankAssets	leclerc_s2	8ce729f8662ca0ee
-row	tankAssets	leclerc_sxxi	fa8104ddc00cbdb0
+row	tankAssets	leclerc_s1	ede85c0d62bb1be6
+row	tankAssets	leclerc_s2	7e79afc256f31752
+row	tankAssets	leclerc_sxxi	a502fc3870a7976a
 row	tankAssets	leclerc_xlr	f17a7695df29b1c0
 row	tankAssets	leo1a2a1	f4747afaa0760c5f
 row	tankAssets	leo1a5	f2d669f58cbba2ab

@@ -241,6 +241,7 @@ put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt
 put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.45 };\n");
 assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a kit edit still marks every id');
 put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+
 // 265: a key the committed manifest holds reads the same in every checkout. A route in the app (`/docs/${topic}`) names
 // no directory, so docs/ edits never re-key the GPU steps (the same string in a tool still does); a file under
 // public/models/ (gitignored whole) is a row by its path, the same with any bytes or none.

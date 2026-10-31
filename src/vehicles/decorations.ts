@@ -2959,9 +2959,10 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
   // packing, six of the Leclerc's seven loads now ride its turret (the bustle, the roof and the side ledges).
+  // 266 (owner: "clean up the leclercs"; both photo critics): the fleet basket hung under the bustle onto the engine
+  // deck like a free-standing fence, and its packs (a cooler box, a drum and a duffel) sat on the roof as the bulkiest
+  // things there. The builder's own bustle rack and side racks carry the Leclercs' stowage, so both rows are gone.
   leclerc_s2: () => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
@@ -2971,8 +2972,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   leclerc_sxxi: (s) => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
@@ -3378,6 +3377,16 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
   // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
   if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
+  // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
+  // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
+  // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
+  // the turret flanks as stand-off slabs. The cargo, the roof lamp, the packs and every turret-hung tarp, net and link
+  // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
+  // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
+  // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
+    && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
   // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
