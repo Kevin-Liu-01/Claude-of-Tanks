@@ -166,8 +166,11 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     groupsOfFile.get(file).push(group);
   }
   const jsonRows = partition.jsonRows ?? new Map();
+  // a file that holds one id's rows is that row whole, with no diff to read (a jsonRow table's <id>.json, steps.mjs
+  // TABLES: 266's tank asset manifest, public/icons/tank-assets/tanks/)
+  const own = (path) => partition.fileIds[path]?.length === 1;
   const diffs = root ? tableDiffs(root, mergeBase, head, changed.filter((path) => !partition.core.has(path) && partition.fileIds[path]?.length
-    && !jsonRows.has(path))) : new Map();
+    && !jsonRows.has(path) && !own(path))) : new Map();
   for (const path of changed) {
     if (partition.core.has(path)) { core.push(path); continue; }
     for (const group of groupsOfFile.get(path) ?? []) {
@@ -175,7 +178,7 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     }
     const tableIds = partition.fileIds[path];
     if (tableIds?.length) {
-      const moved = !root ? null : jsonRows.has(path) ? jsonRowIds(root, mergeBase, head, path, jsonRows.get(path), new Set(tableIds))
+      const moved = own(path) ? new Set(tableIds) : !root ? null : jsonRows.has(path) ? jsonRowIds(root, mergeBase, head, path, jsonRows.get(path), new Set(tableIds))
         : hunkIds(root, path, new Set(tableIds), diffs.get(path));
       for (const id of moved ?? tableIds) mark(id, moved ? `${path} row` : `${path} (rows unresolved)`);
     }
@@ -253,8 +256,9 @@ export const rel = (root, path) => relative(root, path);
  * A receipt's read of a changed path for selection: the cache's own read (selftestReadOf), and when that is none or only
  * the broad fallback, the reads of the tools it spawns. A child-process user names a tool as a file, so the tool's own
  * imports and reads stay outside the receipt's closure (tank-id-rekey-assets.selftest runs tank-id-rekey-assets.mjs
- * --check, which reads public/icons/tank-assets.json: the centurion-family-262 proof's red lane mode first missed). The
- * cache's run set (runSetOf: imports plus the modules a spawning file names) supplies the tools; no second resolver.
+ * --check, which reads the tank asset manifest, public/icons/tank-assets/: the centurion-family-262 proof's red lane
+ * mode first missed). The cache's run set (runSetOf: imports plus the modules a spawning file names) supplies the tools;
+ * no second resolver.
  * Last, 'observed': a path the receipt's latest PASS on this machine read, or a file of a directory it listed
  * (tools/selftest-observe.mjs). That covers paths computed from data, which no closure can name (266: the boot-closure
  * receipts walk src/main.ts's imports; the page receipts read site/ by slug).

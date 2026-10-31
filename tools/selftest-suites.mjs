@@ -1894,6 +1894,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduces
     // the browser generator's id-bearing fields byte for byte.
     'tools/tank-id-rekey-assets.selftest.mjs',
+    // 2026-10-30 (266): the tank asset manifest is a row file per tank: every file under the 5 MB cap, canonical, named
+    // for its row, joined and re-split byte for byte in the pinned id order; negative controls on fixtures.
+    'tools/tank-assets-layout.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',

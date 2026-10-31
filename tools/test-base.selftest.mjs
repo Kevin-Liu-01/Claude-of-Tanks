@@ -3,7 +3,7 @@
 // picked main's commit, so the suggestion fell back to origin/main and 2,903 paths). A fixture repository with an
 // origin: the lane's newest merge base that origin/main does not contain is integ's, and a lane that never merged integ
 // gets no suggestion (the negative control). And a JSON table's moved ids, resolved row by row (tools/test-diff.mjs
-// changedTankIds). First-party tooling: Kevin B. Liu.
+// changedTankIds), and a one-id row file (a jsonRow table's <id>.json) as that id's row. First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -64,7 +64,13 @@ try {
   assert.deepEqual(moved(), ['a', 'b', 'c'], 'an edit outside the rows marks every id (negative control)');
   writeFileSync(join(work, 'assets.json'), JSON.stringify(table, null, 2));
   assert.deepEqual(moved(), [], 'reformatting alone moves no row');
-  console.log('test-base.selftest: criss-cross history suggests integ\'s own merge base; a lane without integ commits gets none; JSON tables resolve row by row');
+  // a jsonRow table's file holds one id's row (266: public/icons/tank-assets/tanks/<id>.json): that id's row, no diff read
+  const rowFiles = { ...partition, fileIds: { 'rows/b.json': ['b'], 'assets.json': ['a', 'b', 'c'] }, jsonRows: new Map() };
+  const marked = (paths) => changedTankIds(rowFiles, paths, {}).ids;
+  assert.deepEqual([...marked(['rows/b.json']).keys()], ['b'], 'a one-id row file marks its id alone');
+  assert.equal(marked(['rows/b.json']).get('b')[0], 'rows/b.json row', 'as a resolved row, with no diff');
+  assert.deepEqual([...marked(['assets.json']).keys()].sort(), ['a', 'b', 'c'], 'a many-id table with no diff marks every id (negative control)');
+  console.log('test-base.selftest: criss-cross history suggests integ\'s own merge base; a lane without integ commits gets none; JSON tables resolve row by row; a one-id row file is its id\'s row');
 } finally {
   rmSync(dir, { recursive: true, force: true }); // this receipt's own fixture
 }

@@ -139,6 +139,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-r5/motion-type.selftest.mjs': lists('tools/media-r5/**/*.{mjs,json,md}'),
   'tools/native-interior-fill-policy.selftest.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   'tools/spare-track-placement-check.mjs': lists('src/vehicles/profiles/*.ts'),
+  // the tank asset manifest (266): the store lists its row files, and its layout check the whole directory
+  'tools/tank-assets-store.mjs': lists('public/icons/tank-assets/**'),
   'tools/vercel-config.selftest.mjs': lists('api/*.ts'),
   'tools/viteGlslMinify.selftest.mjs': lists('src/**/*.ts'),
   'vite.config.ts': lists('server/world-collision-manifests/*.json', 'server/world-collision-manifests-228/*.json'),

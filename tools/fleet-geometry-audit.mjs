@@ -5,8 +5,9 @@
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
 //   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -40,7 +41,7 @@ const server = await createServer({
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.ts');
-const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const tankAssets = readTankAssets(resolve(root, 'public/icons'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
@@ -129,7 +130,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   sourceRevision: process.env.GIT_COMMIT || null,
   method: 'visible geometry traversal; indexed topology and InstancedMesh/BatchedMesh multiplicity included',
-  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets.json',
+  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets/',
   rosterCount: ids.length,
   playableRosterCount: ALL_TANK_IDS.length,
   modes,

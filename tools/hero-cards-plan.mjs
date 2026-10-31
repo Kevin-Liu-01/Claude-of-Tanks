@@ -1,6 +1,6 @@
 // Tank hero cards, changed-only planner (CPU only): which ids need a new GPU tank layer and which
 // nations a new flag layer, and why. A card is fingerprinted by what it shows:
-//   - geometry: the tank's geometryHash in public/icons/tank-assets.json, which the combat-anatomy
+//   - geometry: the tank's geometryHash in its tank-asset row (public/icons/tank-assets/), which the combat-anatomy
 //     procedure keeps current for every geometry or profile change (genIcons). Since 244 it is the exterior
 //     fingerprint (tankAssets.ts exteriorFingerprint: only meshes a colour camera draws), so interior-only work
 //     (crew seats, fills, shadow proxies, hidden parts) never stales a card. Both keys are written by the pages in the
@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { flagIconCode } from '../src/ui/flagCodes.ts';
 import { tierNumeral } from '../src/techTree/tiers.ts';
 import {
@@ -30,7 +31,7 @@ import {
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const HERO_DIR = resolve(ROOT, 'public', HERO_PUBLIC_DIR);
 export const HERO_MANIFEST_PATH = resolve(HERO_DIR, HERO_MANIFEST_FILE);
-const TANK_ASSETS = resolve(ROOT, 'public/icons/tank-assets.json');
+const ICONS_DIR = resolve(ROOT, 'public/icons');
 export const FLAG_SVG_DIR = resolve(ROOT, 'node_modules/flag-icons/flags/4x3');
 
 export const sha = (bytes, n = 12) => createHash('sha256').update(bytes).digest('hex').slice(0, n);
@@ -39,7 +40,7 @@ let records = null;
 /** The fleet as the tank-asset manifest records it: id -> { name, nation, flag, tier, geometryHash, lookSha }. */
 export function fleetRecords() {
   if (records) return records;
-  const manifest = JSON.parse(readFileSync(TANK_ASSETS, 'utf8'));
+  const manifest = readTankAssets(ICONS_DIR);
   records = new Map();
   for (const [id, row] of Object.entries(manifest.tanks)) {
     records.set(id, Object.freeze({

@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1489 | 145.1 |
+| KEEP | 1490 | 145.3 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 652 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2142 | 1264.2 | 211.9 |
-| After: the default tier | 1489 | 145.1 | 20.5 |
+| Before: every receipt (npm test without the tiers) | 2143 | 1264.4 | 211.9 |
+| After: the default tier | 1490 | 145.3 | 20.5 |
 
-Default tier: 11.5 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
+Default tier: 11.5 % of the whole registry's CPU; 15.9 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -798,7 +798,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1489)
+## KEEP (1490)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -956,7 +956,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/railCutting.selftest.mjs` | 14 | KEEP | world rule, 14 s: Receipt of the railway cutting (round 63, 2026-09-24) and its open line past the edge (the map-borders lane, 2 | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/wreckBakeWire.selftest.mjs` | 14 | KEEP | world rule, 14 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/resolved-depth-copy.browser.selftest.mjs` | 14 | KEEP | GPU regression, 14 s | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/vehicles/profiles/t90XTwins.selftest.mjs` | 13 | KEEP | vehicle rule, 13 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/droneRecallReturn.selftest.mjs` | 13 | KEEP | effects contract, 13 s: The recalled drone's landing, as drawn (owner 2026-10-14: "if we do [recall it], show the landing animation"). | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/missileLooks.selftest.mjs` | 13 | KEEP | effects contract, 13 s: missileLooks.selftest.mjs — every guided round and rocket in the fleet takes a look of its own family; the loo | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.stalls.selftest.mjs` | 13 | KEEP | game flow, 13 s: Bots that never get stuck (bots lane, 2026-10-02): each section reproduces a stall the maps lane's battles fou | default tier (npm test, the release gate; lane mode by its closure) |
@@ -967,6 +966,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/mp/room/roomClient.selftest.mjs` | 13 | KEEP | multiplayer wire, session or host, 13 s: RoomClient receipt over real sockets against the in-process room service (server/rooms): create, join, readine | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/nationIndex.selftest.mjs` | 13 | KEEP | simulation rule, 13 s: The light nation index (gameplay-modes-228 TEAM NATIONS): src/sim/nationIndex.generated.ts must equal what too | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/killFeedSource.selftest.mjs` | 13 | KEEP | interface contract, 13 s: killFeedSource.selftest.mjs — (lane ac130-fx-228 r3, the engineering critic's m1: killSurfaces' text checks le | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/t90XTwins.selftest.mjs` | 13 | KEEP | vehicle rule, 13 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/rosterPolicy.selftest.mjs` | 13 | KEEP | vehicle rule, 13 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/spareTrackSeat.selftest.mjs` | 13 | KEEP | vehicle rule, 13 s: 2026-10-15 (VEH-13): one seat solver for every spare-track run; the Strv 103 family builds clean; the fleet le | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/maps/clutterKit.selftest.mjs` | 13 | KEEP | world rule, 13 s: 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1042,6 +1042,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/maps/periodFreight.selftest.mjs` | 9.0 | KEEP | world rule, 9.0 s: the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/trackSurface.selftest.mjs` | 9.0 | KEEP | world rule, 9.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-r5/fleet.selftest.mjs` | 9.0 | KEEP | tool contract, 9.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/tank-assets-layout.selftest.mjs` | 9.0 | KEEP | tool contract, 9.0 s: 2026-10-30 (266): the tank asset manifest is a row file per tank: every file under the 5 MB cap, canonical, na | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/denmark.selftest.mjs` | 8.8 | KEEP | vehicle rule, 8.8 s: release 265 (owner: "add a bunch more denmark tanks"): the Danish Leopards within their photo packets at both | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/roof-pocket-census.selftest.mjs` | 8.8 | KEEP | tool contract, 8.8 s: release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/maps/vehicleFarForm.selftest.mjs` | 8.6 | KEEP | world rule, 8.6 s: (229) the parked vehicles' far form: inside the body's box, tagged, a black livery dark far off | default tier (npm test, the release gate; lane mode by its closure) |

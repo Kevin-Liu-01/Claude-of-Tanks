@@ -1,0 +1,4336 @@
+{
+  "id": "t90sm_2013",
+  "name": "T-90SM obr. 2013",
+  "label": {
+    "id": "t90sm_2013",
+    "displayName": "T-90SM obr. 2013",
+    "shortName": "T-90SM obr. 2013",
+    "searchAliases": ["T-90SM obr. 2013","t90sm_2013","t90sm 2013"],
+    "noteKey": null
+  },
+  "markings": {
+    "schemaVersion": 1,
+    "countryCode": "ru",
+    "countryLabel": "Russia",
+    "filterLabel": "RU",
+    "insignia": "ru-star",
+    "tacticalNumber": "527",
+    "designation": "RU-527",
+    "markingCode": "RU:ru-star:527"
+  },
+  "nation": "Russia",
+  "countryCode": "ru",
+  "era": "modern",
+  "tier": 9,
+  "tierNumeral": "IX",
+  "dimensionsM": {
+    "hullLength": 7.203,
+    "overallLength": 11.694,
+    "width": 3.969,
+    "height": 2.4038
+  },
+  "gun": {
+    "caliberMm": 125,
+    "shells": [
+      {
+        "name": "3BM60 Svinets-2",
+        "type": "APFSDS",
+        "pen100Mm": 855,
+        "pen1000Mm": 800,
+        "pen2000Mm": 720
+      },
+      {
+        "name": "3BK31 HEAT",
+        "type": "HEAT",
+        "pen100Mm": 800,
+        "pen1000Mm": 800,
+        "pen2000Mm": null
+      },
+      {
+        "name": "3OF82 HE-Frag",
+        "type": "HE",
+        "pen100Mm": 55,
+        "pen1000Mm": 55,
+        "pen2000Mm": null
+      }
+    ]
+  },
+  "armor": {
+    "schemaVersion": 3,
+    "turretPivot": [0.0084,1.6086,0.377],
+    "plates": [
+      {
+        "hitboxId": "H01",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.936,1.2163,3.0091],
+          [-0.936,0.9863,3.6187],
+          [-0.0024,0.9863,3.6187],
+          [-0.0024,0.9863,3.6187]
+        ]
+      },
+      {
+        "hitboxId": "H02",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.936,1.2163,3.0091],
+          [-0.0024,0.9863,3.6187],
+          [-0.0024,1.2163,3.0091],
+          [-0.0024,1.2163,3.0091]
+        ]
+      },
+      {
+        "hitboxId": "H03",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.5861,1.4601,2.343],
+          [-0.5861,1.217,2.9899],
+          [-0.3029,1.217,2.9899],
+          [-0.3029,1.217,2.9899]
+        ]
+      },
+      {
+        "hitboxId": "H04",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.5861,1.4601,2.343],
+          [-0.3029,1.217,2.9899],
+          [-0.3029,1.4601,2.343],
+          [-0.3029,1.4601,2.343]
+        ]
+      },
+      {
+        "hitboxId": "H05",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.2746,1.4601,2.343],
+          [-0.2746,1.217,2.9899],
+          [0.0085,1.217,2.9899],
+          [0.0085,1.217,2.9899]
+        ]
+      },
+      {
+        "hitboxId": "H06",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.2746,1.4601,2.343],
+          [0.0085,1.217,2.9899],
+          [0.0085,1.4601,2.343],
+          [0.0085,1.4601,2.343]
+        ]
+      },
+      {
+        "hitboxId": "H07",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9097,1.5146,2.2785],
+          [-0.9097,1.1455,2.9567],
+          [-0.6006,1.1455,2.9567],
+          [-0.6006,1.1455,2.9567]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9097,1.5146,2.2785],
+          [-0.6006,1.1455,2.9567],
+          [-0.6006,1.5146,2.2785],
+          [-0.6006,1.5146,2.2785]
+        ]
+      },
+      {
+        "hitboxId": "H09",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0087,1.22,3.0108],
+          [-0.0087,0.9824,3.6172],
+          [0.9249,0.9824,3.6172],
+          [0.9249,0.9824,3.6172]
+        ]
+      },
+      {
+        "hitboxId": "H10",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0087,1.22,3.0108],
+          [0.9249,0.9824,3.6172],
+          [0.9249,1.22,3.0108],
+          [0.9249,1.22,3.0108]
+        ]
+      },
+      {
+        "hitboxId": "H11",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0288,1.4612,2.347],
+          [0.0288,1.218,2.9941],
+          [0.312,1.218,2.9941],
+          [0.312,1.218,2.9941]
+        ]
+      },
+      {
+        "hitboxId": "H12",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0288,1.4612,2.347],
+          [0.312,1.218,2.9941],
+          [0.312,1.4612,2.347],
+          [0.312,1.4612,2.347]
+        ]
+      },
+      {
+        "hitboxId": "H13",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.3402,1.4612,2.347],
+          [0.3402,1.218,2.9941],
+          [0.6234,1.218,2.9941],
+          [0.6234,1.218,2.9941]
+        ]
+      },
+      {
+        "hitboxId": "H14",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.3402,1.4612,2.347],
+          [0.6234,1.218,2.9941],
+          [0.6234,1.4612,2.347],
+          [0.6234,1.4612,2.347]
+        ]
+      },
+      {
+        "hitboxId": "H15",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6379,1.5131,2.2809],
+          [0.6379,1.144,2.9591],
+          [0.9486,1.144,2.9591],
+          [0.9486,1.144,2.9591]
+        ]
+      },
+      {
+        "hitboxId": "H16",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6379,1.5131,2.2809],
+          [0.9486,1.144,2.9591],
+          [0.9486,1.5131,2.2809],
+          [0.9486,1.5131,2.2809]
+        ]
+      },
+      {
+        "hitboxId": "H17",
+        "name": "upper_glacis",
+        "physicalMm": 500,
+        "keMm": 560,
+        "ceMm": 760,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5569,0.9608,4.1601],
+          [1.5569,0.9608,4.1601],
+          [1.5569,1.6527,2.3965],
+          [-1.5569,1.6527,2.3965]
+        ]
+      },
+      {
+        "hitboxId": "H18",
+        "name": "lower_front",
+        "physicalMm": 80,
+        "keMm": 130,
+        "ceMm": 160,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5569,0.4325,3.8074],
+          [1.5569,0.4325,3.8074],
+          [1.5569,0.9608,4.1601],
+          [-1.5569,0.9608,4.1601]
+        ]
+      },
+      {
+        "hitboxId": "H19",
+        "name": "hull_side_upper_R",
+        "physicalMm": 70,
+        "keMm": 90,
+        "ceMm": 110,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.8984,1.1495,2.4553],
+          [1.8984,1.1495,-3.7762],
+          [1.8984,1.6527,-3.7762],
+          [1.8984,1.6527,2.4553]
+        ]
+      },
+      {
+        "hitboxId": "H20",
+        "name": "hull_side_upper_L",
+        "physicalMm": 70,
+        "keMm": 90,
+        "ceMm": 110,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.8984,1.1495,-3.7762],
+          [-1.8984,1.1495,2.4553],
+          [-1.8984,1.6527,2.4553],
+          [-1.8984,1.6527,-3.7762]
+        ]
+      },
+      {
+        "hitboxId": "H21",
+        "name": "hull_side_lower_R",
+        "physicalMm": 70,
+        "keMm": 90,
+        "ceMm": 110,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.3158,0.4325,3.7486],
+          [1.3158,0.4325,-3.6587],
+          [1.3158,1.1495,-3.6587],
+          [1.3158,1.1495,3.7486]
+        ]
+      },
+      {
+        "hitboxId": "H22",
+        "name": "hull_side_lower_L",
+        "physicalMm": 70,
+        "keMm": 90,
+        "ceMm": 110,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.3158,0.4325,-3.6587],
+          [-1.3158,0.4325,3.7486],
+          [-1.3158,1.1495,3.7486],
+          [-1.3158,1.1495,-3.6587]
+        ]
+      },
+      {
+        "hitboxId": "H23",
+        "name": "skirt_rubber_R",
+        "physicalMm": 8,
+        "keMm": 8,
+        "ceMm": 8,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.995,0.4526,0.21],
+          [1.995,0.4526,-3.465],
+          [1.995,1.056,-3.465],
+          [1.995,1.056,0.21]
+        ]
+      },
+      {
+        "hitboxId": "H24",
+        "name": "skirt_rubber_L",
+        "physicalMm": 8,
+        "keMm": 8,
+        "ceMm": 8,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [-1.995,0.4526,-3.465],
+          [-1.995,0.4526,0.21],
+          [-1.995,1.056,0.21],
+          [-1.995,1.056,-3.465]
+        ]
+      },
+      {
+        "hitboxId": "H25",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.68,0.1207,3.6015],
+          [1.68,0.1207,-3.6015],
+          [1.68,1.0058,-3.6015],
+          [1.68,1.0058,3.6015]
+        ]
+      },
+      {
+        "hitboxId": "H26",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.68,0.1207,-3.6015],
+          [-1.68,0.1207,3.6015],
+          [-1.68,1.0058,3.6015],
+          [-1.68,1.0058,-3.6015]
+        ]
+      },
+      {
+        "hitboxId": "H27",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.575,0.5029,-3.78],
+          [-1.575,0.5029,-3.78],
+          [-1.575,1.3075,-3.78],
+          [1.575,1.3075,-3.78]
+        ]
+      },
+      {
+        "hitboxId": "H28",
+        "name": "hull_rear",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.5569,0.4325,-3.8115],
+          [-1.5569,0.4325,-3.8115],
+          [-1.5569,1.6527,-3.8115],
+          [1.5569,1.6527,-3.8115]
+        ]
+      },
+      {
+        "hitboxId": "H29",
+        "name": "hull_roof",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5569,1.6527,2.3965],
+          [1.5569,1.6527,2.3965],
+          [1.5569,1.6527,-3.7762],
+          [-1.5569,1.6527,-3.7762]
+        ]
+      },
+      {
+        "hitboxId": "H30",
+        "name": "hull_hatch_01_front",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.5934,2.1578],
+          [0.336,1.5934,2.1578],
+          [0.336,1.6406,2.1578],
+          [-0.336,1.6406,2.1578]
+        ]
+      },
+      {
+        "hitboxId": "H31",
+        "name": "hull_hatch_01_rear",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [0.336,1.5934,1.6432],
+          [-0.336,1.5934,1.6432],
+          [-0.336,1.6406,1.6432],
+          [0.336,1.6406,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "H32",
+        "name": "hull_hatch_01_right",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [0.336,1.5934,2.1578],
+          [0.336,1.5934,1.6432],
+          [0.336,1.6406,1.6432],
+          [0.336,1.6406,2.1578]
+        ]
+      },
+      {
+        "hitboxId": "H33",
+        "name": "hull_hatch_01_left",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.5934,1.6432],
+          [-0.336,1.5934,2.1578],
+          [-0.336,1.6406,2.1578],
+          [-0.336,1.6406,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "H34",
+        "name": "hull_hatch_01_top",
+        "physicalMm": 40,
+        "keMm": 40,
+        "ceMm": 40,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.6406,2.1578],
+          [0.336,1.6406,2.1578],
+          [0.336,1.6406,1.6432],
+          [-0.336,1.6406,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "T01",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.8937,0.6279,1.0595],
+          [0.6701,0.6279,1.3089],
+          [1.0173,0.3937,1.6201],
+          [1.0173,0.3937,1.6201]
+        ]
+      },
+      {
+        "hitboxId": "T02",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.8937,0.6279,1.0595],
+          [1.0173,0.3937,1.6201],
+          [1.2409,0.3937,1.3707],
+          [1.2409,0.3937,1.3707]
+        ]
+      },
+      {
+        "hitboxId": "T03",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.2409,0.3937,1.3707],
+          [1.0173,0.3937,1.6201],
+          [1.0173,0.377,1.6201],
+          [1.0173,0.377,1.6201]
+        ]
+      },
+      {
+        "hitboxId": "T04",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.0173,0.377,1.6201],
+          [1.2409,0.377,1.3707],
+          [1.2409,0.3937,1.3707],
+          [1.2409,0.3937,1.3707]
+        ]
+      },
+      {
+        "hitboxId": "T05",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.9788,0.1512,1.1422],
+          [0.7518,0.1512,1.3956],
+          [1.1044,0.4473,1.7117],
+          [1.1044,0.4473,1.7117]
+        ]
+      },
+      {
+        "hitboxId": "T06",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.9788,0.1512,1.1422],
+          [1.1044,0.4473,1.7117],
+          [1.3314,0.4473,1.4583],
+          [1.3314,0.4473,1.4583]
+        ]
+      },
+      {
+        "hitboxId": "T07",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7518,0.1344,1.3956],
+          [0.9788,0.1344,1.1422],
+          [1.3314,0.4305,1.4583],
+          [1.3314,0.4305,1.4583]
+        ]
+      },
+      {
+        "hitboxId": "T08",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7518,0.1344,1.3956],
+          [1.3314,0.4305,1.4583],
+          [1.1044,0.4305,1.7117],
+          [1.1044,0.4305,1.7117]
+        ]
+      },
+      {
+        "hitboxId": "T09",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.3314,0.4473,1.4583],
+          [1.1044,0.4473,1.7117],
+          [1.1044,0.4305,1.7117],
+          [1.1044,0.4305,1.7117]
+        ]
+      },
+      {
+        "hitboxId": "T10",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.1044,0.4305,1.7117],
+          [1.3314,0.4305,1.4583],
+          [1.3314,0.4473,1.4583],
+          [1.3314,0.4473,1.4583]
+        ]
+      },
+      {
+        "hitboxId": "T11",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.1079,0.6279,0.818],
+          [0.8843,0.6279,1.0674],
+          [1.2315,0.3937,1.3786],
+          [1.2315,0.3937,1.3786]
+        ]
+      },
+      {
+        "hitboxId": "T12",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.1079,0.6279,0.818],
+          [1.2315,0.3937,1.3786],
+          [1.4551,0.3937,1.1292],
+          [1.4551,0.3937,1.1292]
+        ]
+      },
+      {
+        "hitboxId": "T13",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4551,0.3937,1.1292],
+          [1.2315,0.3937,1.3786],
+          [1.2315,0.377,1.3786],
+          [1.2315,0.377,1.3786]
+        ]
+      },
+      {
+        "hitboxId": "T14",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.2315,0.377,1.3786],
+          [1.4551,0.377,1.1292],
+          [1.4551,0.3937,1.1292],
+          [1.4551,0.3937,1.1292]
+        ]
+      },
+      {
+        "hitboxId": "T15",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.193,0.1512,0.9007],
+          [0.966,0.1512,1.1541],
+          [1.3186,0.4473,1.4702],
+          [1.3186,0.4473,1.4702]
+        ]
+      },
+      {
+        "hitboxId": "T16",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.193,0.1512,0.9007],
+          [1.3186,0.4473,1.4702],
+          [1.5456,0.4473,1.2168],
+          [1.5456,0.4473,1.2168]
+        ]
+      },
+      {
+        "hitboxId": "T17",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.966,0.1344,1.1541],
+          [1.193,0.1344,0.9007],
+          [1.5456,0.4305,1.2168],
+          [1.5456,0.4305,1.2168]
+        ]
+      },
+      {
+        "hitboxId": "T18",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.966,0.1344,1.1541],
+          [1.5456,0.4305,1.2168],
+          [1.3186,0.4305,1.4702],
+          [1.3186,0.4305,1.4702]
+        ]
+      },
+      {
+        "hitboxId": "T19",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5456,0.4473,1.2168],
+          [1.3186,0.4473,1.4702],
+          [1.3186,0.4305,1.4702],
+          [1.3186,0.4305,1.4702]
+        ]
+      },
+      {
+        "hitboxId": "T20",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.3186,0.4305,1.4702],
+          [1.5456,0.4305,1.2168],
+          [1.5456,0.4473,1.2168],
+          [1.5456,0.4473,1.2168]
+        ]
+      },
+      {
+        "hitboxId": "T21",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.3221,0.6279,0.5765],
+          [1.0985,0.6279,0.8259],
+          [1.4457,0.3937,1.1371],
+          [1.4457,0.3937,1.1371]
+        ]
+      },
+      {
+        "hitboxId": "T22",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.3221,0.6279,0.5765],
+          [1.4457,0.3937,1.1371],
+          [1.6693,0.3937,0.8877],
+          [1.6693,0.3937,0.8877]
+        ]
+      },
+      {
+        "hitboxId": "T23",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.6693,0.3937,0.8877],
+          [1.4457,0.3937,1.1371],
+          [1.4457,0.377,1.1371],
+          [1.4457,0.377,1.1371]
+        ]
+      },
+      {
+        "hitboxId": "T24",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4457,0.377,1.1371],
+          [1.6693,0.377,0.8877],
+          [1.6693,0.3937,0.8877],
+          [1.6693,0.3937,0.8877]
+        ]
+      },
+      {
+        "hitboxId": "T25",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4072,0.1512,0.6592],
+          [1.1802,0.1512,0.9126],
+          [1.5328,0.4473,1.2287],
+          [1.5328,0.4473,1.2287]
+        ]
+      },
+      {
+        "hitboxId": "T26",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4072,0.1512,0.6592],
+          [1.5328,0.4473,1.2287],
+          [1.7598,0.4473,0.9753],
+          [1.7598,0.4473,0.9753]
+        ]
+      },
+      {
+        "hitboxId": "T27",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.1802,0.1344,0.9126],
+          [1.4072,0.1344,0.6592],
+          [1.7598,0.4305,0.9753],
+          [1.7598,0.4305,0.9753]
+        ]
+      },
+      {
+        "hitboxId": "T28",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.1802,0.1344,0.9126],
+          [1.7598,0.4305,0.9753],
+          [1.5328,0.4305,1.2287],
+          [1.5328,0.4305,1.2287]
+        ]
+      },
+      {
+        "hitboxId": "T29",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.7598,0.4473,0.9753],
+          [1.5328,0.4473,1.2287],
+          [1.5328,0.4305,1.2287],
+          [1.5328,0.4305,1.2287]
+        ]
+      },
+      {
+        "hitboxId": "T30",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5328,0.4305,1.2287],
+          [1.7598,0.4305,0.9753],
+          [1.7598,0.4473,0.9753],
+          [1.7598,0.4473,0.9753]
+        ]
+      },
+      {
+        "hitboxId": "T31",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5363,0.6279,0.335],
+          [1.3127,0.6279,0.5844],
+          [1.6599,0.3937,0.8956],
+          [1.6599,0.3937,0.8956]
+        ]
+      },
+      {
+        "hitboxId": "T32",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5363,0.6279,0.335],
+          [1.6599,0.3937,0.8956],
+          [1.8835,0.3937,0.6462],
+          [1.8835,0.3937,0.6462]
+        ]
+      },
+      {
+        "hitboxId": "T33",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.8835,0.3937,0.6462],
+          [1.6599,0.3937,0.8956],
+          [1.6599,0.377,0.8956],
+          [1.6599,0.377,0.8956]
+        ]
+      },
+      {
+        "hitboxId": "T34",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.6599,0.377,0.8956],
+          [1.8835,0.377,0.6462],
+          [1.8835,0.3937,0.6462],
+          [1.8835,0.3937,0.6462]
+        ]
+      },
+      {
+        "hitboxId": "T35",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5842,0.1524,0.4479],
+          [1.4124,0.1524,0.6397],
+          [1.4056,0.1699,0.6912],
+          [1.4056,0.1699,0.6912]
+        ]
+      },
+      {
+        "hitboxId": "T36",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.5842,0.1524,0.4479],
+          [1.4056,0.1699,0.6912],
+          [1.6348,0.1699,0.4356],
+          [1.6348,0.1699,0.4356]
+        ]
+      },
+      {
+        "hitboxId": "T37",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.6348,0.1699,0.4356],
+          [1.4056,0.1699,0.6912],
+          [1.719,0.4198,0.9721],
+          [1.719,0.4198,0.9721]
+        ]
+      },
+      {
+        "hitboxId": "T38",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.6348,0.1699,0.4356],
+          [1.719,0.4198,0.9721],
+          [1.9482,0.4198,0.7164],
+          [1.9482,0.4198,0.7164]
+        ]
+      },
+      {
+        "hitboxId": "T39",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.9482,0.4198,0.7164],
+          [1.719,0.4198,0.9721],
+          [1.7695,0.4373,0.9598],
+          [1.7695,0.4373,0.9598]
+        ]
+      },
+      {
+        "hitboxId": "T40",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.9482,0.4198,0.7164],
+          [1.7695,0.4373,0.9598],
+          [1.9414,0.4373,0.768],
+          [1.9414,0.4373,0.768]
+        ]
+      },
+      {
+        "hitboxId": "T41",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4124,0.1356,0.6397],
+          [1.5842,0.1356,0.4479],
+          [1.6348,0.1531,0.4356],
+          [1.6348,0.1531,0.4356]
+        ]
+      },
+      {
+        "hitboxId": "T42",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4124,0.1356,0.6397],
+          [1.6348,0.1531,0.4356],
+          [1.4056,0.1531,0.6912],
+          [1.4056,0.1531,0.6912]
+        ]
+      },
+      {
+        "hitboxId": "T43",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4056,0.1531,0.6912],
+          [1.6348,0.1531,0.4356],
+          [1.9482,0.403,0.7164],
+          [1.9482,0.403,0.7164]
+        ]
+      },
+      {
+        "hitboxId": "T44",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.4056,0.1531,0.6912],
+          [1.9482,0.403,0.7164],
+          [1.719,0.403,0.9721],
+          [1.719,0.403,0.9721]
+        ]
+      },
+      {
+        "hitboxId": "T45",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.719,0.403,0.9721],
+          [1.9482,0.403,0.7164],
+          [1.9414,0.4205,0.768],
+          [1.9414,0.4205,0.768]
+        ]
+      },
+      {
+        "hitboxId": "T46",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.719,0.403,0.9721],
+          [1.9414,0.4205,0.768],
+          [1.7695,0.4205,0.9598],
+          [1.7695,0.4205,0.9598]
+        ]
+      },
+      {
+        "hitboxId": "T47",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.9482,0.403,0.7164],
+          [1.9482,0.4198,0.7164],
+          [1.9414,0.4373,0.768],
+          [1.9414,0.4373,0.768]
+        ]
+      },
+      {
+        "hitboxId": "T48",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.9482,0.403,0.7164],
+          [1.9414,0.4373,0.768],
+          [1.9414,0.4205,0.768],
+          [1.9414,0.4205,0.768]
+        ]
+      },
+      {
+        "hitboxId": "T49",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.719,0.4198,0.9721],
+          [1.719,0.403,0.9721],
+          [1.7695,0.4205,0.9598],
+          [1.7695,0.4205,0.9598]
+        ]
+      },
+      {
+        "hitboxId": "T50",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.719,0.4198,0.9721],
+          [1.7695,0.4205,0.9598],
+          [1.7695,0.4373,0.9598],
+          [1.7695,0.4373,0.9598]
+        ]
+      },
+      {
+        "hitboxId": "T51",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.9414,0.4373,0.768],
+          [1.7695,0.4373,0.9598],
+          [1.7695,0.4205,0.9598],
+          [1.7695,0.4205,0.9598]
+        ]
+      },
+      {
+        "hitboxId": "T52",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.7695,0.4205,0.9598],
+          [1.9414,0.4205,0.768],
+          [1.9414,0.4373,0.768],
+          [1.9414,0.4373,0.768]
+        ]
+      },
+      {
+        "hitboxId": "T53",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6856,0.5754,1.3356],
+          [0.4001,0.5754,1.3356],
+          [0.4001,0.608,1.364],
+          [0.4001,0.608,1.364]
+        ]
+      },
+      {
+        "hitboxId": "T54",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6856,0.5754,1.3356],
+          [0.4001,0.608,1.364],
+          [0.6867,0.608,1.364],
+          [0.6867,0.608,1.364]
+        ]
+      },
+      {
+        "hitboxId": "T55",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.608,1.364],
+          [0.4001,0.608,1.364],
+          [0.3969,0.4431,1.7609],
+          [0.3969,0.4431,1.7609]
+        ]
+      },
+      {
+        "hitboxId": "T56",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.608,1.364],
+          [0.3969,0.4431,1.7609],
+          [0.6846,0.4431,1.7609],
+          [0.6846,0.4431,1.7609]
+        ]
+      },
+      {
+        "hitboxId": "T57",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6846,0.4431,1.7609],
+          [0.3969,0.4431,1.7609],
+          [0.3979,0.4315,1.7924],
+          [0.3979,0.4315,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T58",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6846,0.4431,1.7609],
+          [0.3979,0.4315,1.7924],
+          [0.6846,0.4315,1.7924],
+          [0.6846,0.4315,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T59",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.5502,1.364],
+          [0.6867,0.608,1.364],
+          [0.6846,0.4431,1.7609],
+          [0.6846,0.4431,1.7609]
+        ]
+      },
+      {
+        "hitboxId": "T60",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.5502,1.364],
+          [0.6846,0.4431,1.7609],
+          [0.6846,0.3854,1.7609],
+          [0.6846,0.3854,1.7609]
+        ]
+      },
+      {
+        "hitboxId": "T61",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.3854,1.7609],
+          [0.6846,0.3854,1.7609],
+          [0.6846,0.4169,1.7924],
+          [0.6846,0.4169,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T62",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.3854,1.7609],
+          [0.6846,0.4169,1.7924],
+          [0.3979,0.4169,1.7924],
+          [0.3979,0.4169,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T63",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.4431,1.7609],
+          [0.3969,0.3854,1.7609],
+          [0.3979,0.4169,1.7924],
+          [0.3979,0.4169,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T64",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.4431,1.7609],
+          [0.3979,0.4169,1.7924],
+          [0.3979,0.4315,1.7924],
+          [0.3979,0.4315,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T65",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6846,0.4315,1.7924],
+          [0.3979,0.4315,1.7924],
+          [0.3979,0.4169,1.7924],
+          [0.3979,0.4169,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T66",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3979,0.4169,1.7924],
+          [0.6846,0.4169,1.7924],
+          [0.6846,0.4315,1.7924],
+          [0.6846,0.4315,1.7924]
+        ]
+      },
+      {
+        "hitboxId": "T67",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6804,0.1984,1.4574],
+          [0.3927,0.1984,1.4574],
+          [0.3927,0.2142,1.4868],
+          [0.3927,0.2142,1.4868]
+        ]
+      },
+      {
+        "hitboxId": "T68",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6804,0.1984,1.4574],
+          [0.3927,0.2142,1.4868],
+          [0.6804,0.2142,1.4868],
+          [0.6804,0.2142,1.4868]
+        ]
+      },
+      {
+        "hitboxId": "T69",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6804,0.2142,1.4868],
+          [0.3927,0.2142,1.4868],
+          [0.3969,0.4473,1.8889],
+          [0.3969,0.4473,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T70",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6804,0.2142,1.4868],
+          [0.3969,0.4473,1.8889],
+          [0.6856,0.4473,1.8889],
+          [0.6856,0.4473,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T71",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6856,0.4473,1.8889],
+          [0.3969,0.4473,1.8889],
+          [0.3969,0.4032,1.9204],
+          [0.3969,0.4032,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T72",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6856,0.4473,1.8889],
+          [0.3969,0.4032,1.9204],
+          [0.6856,0.4032,1.9204],
+          [0.6856,0.4032,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T73",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3927,0.1418,1.4868],
+          [0.6804,0.1418,1.4868],
+          [0.6856,0.3749,1.8889],
+          [0.6856,0.3749,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T74",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3927,0.1418,1.4868],
+          [0.6856,0.3749,1.8889],
+          [0.3969,0.3749,1.8889],
+          [0.3969,0.3749,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T75",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3927,0.2142,1.4868],
+          [0.3927,0.1418,1.4868],
+          [0.3969,0.3749,1.8889],
+          [0.3969,0.3749,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T76",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3927,0.2142,1.4868],
+          [0.3969,0.3749,1.8889],
+          [0.3969,0.4473,1.8889],
+          [0.3969,0.4473,1.8889]
+        ]
+      },
+      {
+        "hitboxId": "T77",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.3749,1.8889],
+          [0.6856,0.3749,1.8889],
+          [0.6856,0.3906,1.9204],
+          [0.6856,0.3906,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T78",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.3749,1.8889],
+          [0.6856,0.3906,1.9204],
+          [0.3969,0.3906,1.9204],
+          [0.3969,0.3906,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T79",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6856,0.4032,1.9204],
+          [0.3969,0.4032,1.9204],
+          [0.3969,0.3906,1.9204],
+          [0.3969,0.3906,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T80",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.3969,0.3906,1.9204],
+          [0.6856,0.3906,1.9204],
+          [0.6856,0.4032,1.9204],
+          [0.6856,0.4032,1.9204]
+        ]
+      },
+      {
+        "hitboxId": "T81",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.799,0.1927,1.4038],
+          [0.7896,0.19,1.4038],
+          [0.6783,0.1958,1.469],
+          [0.6783,0.1958,1.469]
+        ]
+      },
+      {
+        "hitboxId": "T82",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.799,0.1927,1.4038],
+          [0.6783,0.1958,1.469],
+          [0.8631,0.2475,1.469],
+          [0.8631,0.2475,1.469]
+        ]
+      },
+      {
+        "hitboxId": "T83",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.8631,0.2475,1.469],
+          [0.6783,0.1958,1.469],
+          [0.6835,0.3413,1.723],
+          [0.6835,0.3413,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T84",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.8631,0.2475,1.469],
+          [0.6835,0.3413,1.723],
+          [1.0993,0.4402,1.723],
+          [1.0993,0.4402,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T85",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.0993,0.4402,1.723],
+          [0.6835,0.3413,1.723],
+          [0.6867,0.4381,1.8921],
+          [0.6867,0.4381,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T86",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.0993,0.4402,1.723],
+          [0.6867,0.4381,1.8921],
+          [0.7717,0.4402,1.8921],
+          [0.7717,0.4402,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T87",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7717,0.4402,1.8921],
+          [0.6867,0.4381,1.8921],
+          [0.6982,0.3952,1.9278],
+          [0.6982,0.3952,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T88",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7717,0.4402,1.8921],
+          [0.6982,0.3952,1.9278],
+          [0.7056,0.3952,1.9278],
+          [0.7056,0.3952,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T89",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6783,0.1254,1.469],
+          [0.8631,0.1772,1.469],
+          [1.0993,0.3698,1.723],
+          [1.0993,0.3698,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T90",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6783,0.1254,1.469],
+          [1.0993,0.3698,1.723],
+          [0.6835,0.271,1.723],
+          [0.6835,0.271,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T91",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6783,0.1958,1.469],
+          [0.6783,0.1254,1.469],
+          [0.6835,0.271,1.723],
+          [0.6835,0.271,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T92",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6783,0.1958,1.469],
+          [0.6835,0.271,1.723],
+          [0.6835,0.3413,1.723],
+          [0.6835,0.3413,1.723]
+        ]
+      },
+      {
+        "hitboxId": "T93",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6835,0.271,1.723],
+          [1.0993,0.3698,1.723],
+          [0.7717,0.3698,1.8921],
+          [0.7717,0.3698,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T94",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6835,0.271,1.723],
+          [0.7717,0.3698,1.8921],
+          [0.6867,0.3677,1.8921],
+          [0.6867,0.3677,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T95",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.0993,0.3698,1.723],
+          [1.0993,0.4402,1.723],
+          [0.7717,0.4402,1.8921],
+          [0.7717,0.4402,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T96",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.0993,0.3698,1.723],
+          [0.7717,0.4402,1.8921],
+          [0.7717,0.3698,1.8921],
+          [0.7717,0.3698,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T97",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6835,0.3413,1.723],
+          [0.6835,0.271,1.723],
+          [0.6867,0.3677,1.8921],
+          [0.6867,0.3677,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T98",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6835,0.3413,1.723],
+          [0.6867,0.3677,1.8921],
+          [0.6867,0.4381,1.8921],
+          [0.6867,0.4381,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T99",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.3677,1.8921],
+          [0.7717,0.3698,1.8921],
+          [0.7056,0.3879,1.9278],
+          [0.7056,0.3879,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T100",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.3677,1.8921],
+          [0.7056,0.3879,1.9278],
+          [0.6982,0.3879,1.9278],
+          [0.6982,0.3879,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T101",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7717,0.3698,1.8921],
+          [0.7717,0.4402,1.8921],
+          [0.7056,0.3952,1.9278],
+          [0.7056,0.3952,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T102",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7717,0.3698,1.8921],
+          [0.7056,0.3952,1.9278],
+          [0.7056,0.3879,1.9278],
+          [0.7056,0.3879,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T103",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.4381,1.8921],
+          [0.6867,0.3677,1.8921],
+          [0.6982,0.3879,1.9278],
+          [0.6982,0.3879,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T104",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6867,0.4381,1.8921],
+          [0.6982,0.3879,1.9278],
+          [0.6982,0.3952,1.9278],
+          [0.6982,0.3952,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T105",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.7056,0.3952,1.9278],
+          [0.6982,0.3952,1.9278],
+          [0.6982,0.3879,1.9278],
+          [0.6982,0.3879,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T106",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.6982,0.3879,1.9278],
+          [0.7056,0.3879,1.9278],
+          [0.7056,0.3952,1.9278],
+          [0.7056,0.3952,1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T107",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6512,0.6646,1.2774],
+          [-0.8748,0.6646,1.028],
+          [-1.222,0.4305,1.3392],
+          [-1.222,0.4305,1.3392]
+        ]
+      },
+      {
+        "hitboxId": "T108",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6512,0.6646,1.2774],
+          [-1.222,0.4305,1.3392],
+          [-0.9984,0.4305,1.5886],
+          [-0.9984,0.4305,1.5886]
+        ]
+      },
+      {
+        "hitboxId": "T109",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.9984,0.4305,1.5886],
+          [-1.222,0.4305,1.3392],
+          [-1.222,0.4137,1.3392],
+          [-1.222,0.4137,1.3392]
+        ]
+      },
+      {
+        "hitboxId": "T110",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.222,0.4137,1.3392],
+          [-0.9984,0.4137,1.5886],
+          [-0.9984,0.4305,1.5886],
+          [-0.9984,0.4305,1.5886]
+        ]
+      },
+      {
+        "hitboxId": "T111",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.7339,0.1922,1.3683],
+          [-0.961,0.1922,1.1149],
+          [-1.3136,0.4882,1.431],
+          [-1.3136,0.4882,1.431]
+        ]
+      },
+      {
+        "hitboxId": "T112",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.7339,0.1922,1.3683],
+          [-1.3136,0.4882,1.431],
+          [-1.0865,0.4882,1.6844],
+          [-1.0865,0.4882,1.6844]
+        ]
+      },
+      {
+        "hitboxId": "T113",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.961,0.1753,1.1149],
+          [-0.7339,0.1753,1.3683],
+          [-1.0865,0.4714,1.6844],
+          [-1.0865,0.4714,1.6844]
+        ]
+      },
+      {
+        "hitboxId": "T114",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.961,0.1753,1.1149],
+          [-1.0865,0.4714,1.6844],
+          [-1.3136,0.4714,1.431],
+          [-1.3136,0.4714,1.431]
+        ]
+      },
+      {
+        "hitboxId": "T115",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0865,0.4882,1.6844],
+          [-1.3136,0.4882,1.431],
+          [-1.3136,0.4714,1.431],
+          [-1.3136,0.4714,1.431]
+        ]
+      },
+      {
+        "hitboxId": "T116",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3136,0.4714,1.431],
+          [-1.0865,0.4714,1.6844],
+          [-1.0865,0.4882,1.6844],
+          [-1.0865,0.4882,1.6844]
+        ]
+      },
+      {
+        "hitboxId": "T117",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.8654,0.6646,1.0359],
+          [-1.089,0.6646,0.7865],
+          [-1.4362,0.4305,1.0977],
+          [-1.4362,0.4305,1.0977]
+        ]
+      },
+      {
+        "hitboxId": "T118",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.8654,0.6646,1.0359],
+          [-1.4362,0.4305,1.0977],
+          [-1.2126,0.4305,1.3471],
+          [-1.2126,0.4305,1.3471]
+        ]
+      },
+      {
+        "hitboxId": "T119",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.2126,0.4305,1.3471],
+          [-1.4362,0.4305,1.0977],
+          [-1.4362,0.4137,1.0977],
+          [-1.4362,0.4137,1.0977]
+        ]
+      },
+      {
+        "hitboxId": "T120",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.4362,0.4137,1.0977],
+          [-1.2126,0.4137,1.3471],
+          [-1.2126,0.4305,1.3471],
+          [-1.2126,0.4305,1.3471]
+        ]
+      },
+      {
+        "hitboxId": "T121",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.9481,0.1922,1.1268],
+          [-1.1752,0.1922,0.8734],
+          [-1.5278,0.4882,1.1895],
+          [-1.5278,0.4882,1.1895]
+        ]
+      },
+      {
+        "hitboxId": "T122",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.9481,0.1922,1.1268],
+          [-1.5278,0.4882,1.1895],
+          [-1.3007,0.4882,1.4429],
+          [-1.3007,0.4882,1.4429]
+        ]
+      },
+      {
+        "hitboxId": "T123",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.1752,0.1753,0.8734],
+          [-0.9481,0.1753,1.1268],
+          [-1.3007,0.4714,1.4429],
+          [-1.3007,0.4714,1.4429]
+        ]
+      },
+      {
+        "hitboxId": "T124",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.1752,0.1753,0.8734],
+          [-1.3007,0.4714,1.4429],
+          [-1.5278,0.4714,1.1895],
+          [-1.5278,0.4714,1.1895]
+        ]
+      },
+      {
+        "hitboxId": "T125",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3007,0.4882,1.4429],
+          [-1.5278,0.4882,1.1895],
+          [-1.5278,0.4714,1.1895],
+          [-1.5278,0.4714,1.1895]
+        ]
+      },
+      {
+        "hitboxId": "T126",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.5278,0.4714,1.1895],
+          [-1.3007,0.4714,1.4429],
+          [-1.3007,0.4882,1.4429],
+          [-1.3007,0.4882,1.4429]
+        ]
+      },
+      {
+        "hitboxId": "T127",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0796,0.6646,0.7944],
+          [-1.3032,0.6646,0.545],
+          [-1.6504,0.4305,0.8562],
+          [-1.6504,0.4305,0.8562]
+        ]
+      },
+      {
+        "hitboxId": "T128",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0796,0.6646,0.7944],
+          [-1.6504,0.4305,0.8562],
+          [-1.4268,0.4305,1.1056],
+          [-1.4268,0.4305,1.1056]
+        ]
+      },
+      {
+        "hitboxId": "T129",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.4268,0.4305,1.1056],
+          [-1.6504,0.4305,0.8562],
+          [-1.6504,0.4137,0.8562],
+          [-1.6504,0.4137,0.8562]
+        ]
+      },
+      {
+        "hitboxId": "T130",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.6504,0.4137,0.8562],
+          [-1.4268,0.4137,1.1056],
+          [-1.4268,0.4305,1.1056],
+          [-1.4268,0.4305,1.1056]
+        ]
+      },
+      {
+        "hitboxId": "T131",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.1623,0.1922,0.8853],
+          [-1.3894,0.1922,0.6319],
+          [-1.742,0.4882,0.948],
+          [-1.742,0.4882,0.948]
+        ]
+      },
+      {
+        "hitboxId": "T132",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.1623,0.1922,0.8853],
+          [-1.742,0.4882,0.948],
+          [-1.5149,0.4882,1.2014],
+          [-1.5149,0.4882,1.2014]
+        ]
+      },
+      {
+        "hitboxId": "T133",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3894,0.1753,0.6319],
+          [-1.1623,0.1753,0.8853],
+          [-1.5149,0.4714,1.2014],
+          [-1.5149,0.4714,1.2014]
+        ]
+      },
+      {
+        "hitboxId": "T134",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3894,0.1753,0.6319],
+          [-1.5149,0.4714,1.2014],
+          [-1.742,0.4714,0.948],
+          [-1.742,0.4714,0.948]
+        ]
+      },
+      {
+        "hitboxId": "T135",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.5149,0.4882,1.2014],
+          [-1.742,0.4882,0.948],
+          [-1.742,0.4714,0.948],
+          [-1.742,0.4714,0.948]
+        ]
+      },
+      {
+        "hitboxId": "T136",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.742,0.4714,0.948],
+          [-1.5149,0.4714,1.2014],
+          [-1.5149,0.4882,1.2014],
+          [-1.5149,0.4882,1.2014]
+        ]
+      },
+      {
+        "hitboxId": "T137",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.2938,0.6646,0.5529],
+          [-1.5174,0.6646,0.3035],
+          [-1.8646,0.4305,0.6147],
+          [-1.8646,0.4305,0.6147]
+        ]
+      },
+      {
+        "hitboxId": "T138",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.2938,0.6646,0.5529],
+          [-1.8646,0.4305,0.6147],
+          [-1.641,0.4305,0.8641],
+          [-1.641,0.4305,0.8641]
+        ]
+      },
+      {
+        "hitboxId": "T139",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.641,0.4305,0.8641],
+          [-1.8646,0.4305,0.6147],
+          [-1.8646,0.4137,0.6147],
+          [-1.8646,0.4137,0.6147]
+        ]
+      },
+      {
+        "hitboxId": "T140",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.8646,0.4137,0.6147],
+          [-1.641,0.4137,0.8641],
+          [-1.641,0.4305,0.8641],
+          [-1.641,0.4305,0.8641]
+        ]
+      },
+      {
+        "hitboxId": "T141",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.4068,0.1897,0.6221],
+          [-1.5832,0.1897,0.4253],
+          [-1.6345,0.2078,0.4121],
+          [-1.6345,0.2078,0.4121]
+        ]
+      },
+      {
+        "hitboxId": "T142",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.4068,0.1897,0.6221],
+          [-1.6345,0.2078,0.4121],
+          [-1.3992,0.2078,0.6746],
+          [-1.3992,0.2078,0.6746]
+        ]
+      },
+      {
+        "hitboxId": "T143",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3992,0.2078,0.6746],
+          [-1.6345,0.2078,0.4121],
+          [-1.9449,0.465,0.6904],
+          [-1.9449,0.465,0.6904]
+        ]
+      },
+      {
+        "hitboxId": "T144",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.3992,0.2078,0.6746],
+          [-1.9449,0.465,0.6904],
+          [-1.7097,0.465,0.9528],
+          [-1.7097,0.465,0.9528]
+        ]
+      },
+      {
+        "hitboxId": "T145",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.7097,0.465,0.9528],
+          [-1.9449,0.465,0.6904],
+          [-1.9374,0.4831,0.7428],
+          [-1.9374,0.4831,0.7428]
+        ]
+      },
+      {
+        "hitboxId": "T146",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.7097,0.465,0.9528],
+          [-1.9374,0.4831,0.7428],
+          [-1.761,0.4831,0.9397],
+          [-1.761,0.4831,0.9397]
+        ]
+      },
+      {
+        "hitboxId": "T147",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.5832,0.1729,0.4253],
+          [-1.4068,0.1729,0.6221],
+          [-1.3992,0.191,0.6746],
+          [-1.3992,0.191,0.6746]
+        ]
+      },
+      {
+        "hitboxId": "T148",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.5832,0.1729,0.4253],
+          [-1.3992,0.191,0.6746],
+          [-1.6345,0.191,0.4121],
+          [-1.6345,0.191,0.4121]
+        ]
+      },
+      {
+        "hitboxId": "T149",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.6345,0.191,0.4121],
+          [-1.3992,0.191,0.6746],
+          [-1.7097,0.4482,0.9528],
+          [-1.7097,0.4482,0.9528]
+        ]
+      },
+      {
+        "hitboxId": "T150",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.6345,0.191,0.4121],
+          [-1.7097,0.4482,0.9528],
+          [-1.9449,0.4482,0.6904],
+          [-1.9449,0.4482,0.6904]
+        ]
+      },
+      {
+        "hitboxId": "T151",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.9449,0.4482,0.6904],
+          [-1.7097,0.4482,0.9528],
+          [-1.761,0.4663,0.9397],
+          [-1.761,0.4663,0.9397]
+        ]
+      },
+      {
+        "hitboxId": "T152",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.9449,0.4482,0.6904],
+          [-1.761,0.4663,0.9397],
+          [-1.9374,0.4663,0.7428],
+          [-1.9374,0.4663,0.7428]
+        ]
+      },
+      {
+        "hitboxId": "T153",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.7097,0.4482,0.9528],
+          [-1.7097,0.465,0.9528],
+          [-1.761,0.4831,0.9397],
+          [-1.761,0.4831,0.9397]
+        ]
+      },
+      {
+        "hitboxId": "T154",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.7097,0.4482,0.9528],
+          [-1.761,0.4831,0.9397],
+          [-1.761,0.4663,0.9397],
+          [-1.761,0.4663,0.9397]
+        ]
+      },
+      {
+        "hitboxId": "T155",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.9449,0.465,0.6904],
+          [-1.9449,0.4482,0.6904],
+          [-1.9374,0.4663,0.7428],
+          [-1.9374,0.4663,0.7428]
+        ]
+      },
+      {
+        "hitboxId": "T156",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.9449,0.465,0.6904],
+          [-1.9374,0.4663,0.7428],
+          [-1.9374,0.4831,0.7428],
+          [-1.9374,0.4831,0.7428]
+        ]
+      },
+      {
+        "hitboxId": "T157",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.761,0.4831,0.9397],
+          [-1.9374,0.4831,0.7428],
+          [-1.9374,0.4663,0.7428],
+          [-1.9374,0.4663,0.7428]
+        ]
+      },
+      {
+        "hitboxId": "T158",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.9374,0.4663,0.7428],
+          [-1.761,0.4663,0.9397],
+          [-1.761,0.4831,0.9397],
+          [-1.761,0.4831,0.9397]
+        ]
+      },
+      {
+        "hitboxId": "T159",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.4505,0.6237,1.2968],
+          [-0.6279,0.6237,1.2968],
+          [-0.629,0.6563,1.3262],
+          [-0.629,0.6563,1.3262]
+        ]
+      },
+      {
+        "hitboxId": "T160",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.4505,0.6237,1.2968],
+          [-0.629,0.6563,1.3262],
+          [-0.3223,0.6563,1.3262],
+          [-0.3223,0.6563,1.3262]
+        ]
+      },
+      {
+        "hitboxId": "T161",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3223,0.6563,1.3262],
+          [-0.629,0.6563,1.3262],
+          [-0.6373,0.4662,1.7304],
+          [-0.6373,0.4662,1.7304]
+        ]
+      },
+      {
+        "hitboxId": "T162",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3223,0.6563,1.3262],
+          [-0.6373,0.4662,1.7304],
+          [-0.3307,0.4662,1.7304],
+          [-0.3307,0.4662,1.7304]
+        ]
+      },
+      {
+        "hitboxId": "T163",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3307,0.4662,1.7304],
+          [-0.6373,0.4662,1.7304],
+          [-0.5082,0.4483,1.7619],
+          [-0.5082,0.4483,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T164",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3307,0.4662,1.7304],
+          [-0.5082,0.4483,1.7619],
+          [-0.3318,0.4483,1.7619],
+          [-0.3318,0.4483,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T165",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3223,0.5975,1.3262],
+          [-0.3223,0.6563,1.3262],
+          [-0.3307,0.4662,1.7304],
+          [-0.3307,0.4662,1.7304]
+        ]
+      },
+      {
+        "hitboxId": "T166",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3223,0.5975,1.3262],
+          [-0.3307,0.4662,1.7304],
+          [-0.3307,0.4064,1.7304],
+          [-0.3307,0.4064,1.7304]
+        ]
+      },
+      {
+        "hitboxId": "T167",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.4064,1.7304],
+          [-0.3307,0.4064,1.7304],
+          [-0.3318,0.4368,1.7619],
+          [-0.3318,0.4368,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T168",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.4064,1.7304],
+          [-0.3318,0.4368,1.7619],
+          [-0.5082,0.4368,1.7619],
+          [-0.5082,0.4368,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T169",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3307,0.4064,1.7304],
+          [-0.3307,0.4662,1.7304],
+          [-0.3318,0.4483,1.7619],
+          [-0.3318,0.4483,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T170",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3307,0.4064,1.7304],
+          [-0.3318,0.4483,1.7619],
+          [-0.3318,0.4368,1.7619],
+          [-0.3318,0.4368,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T171",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.4662,1.7304],
+          [-0.6373,0.4064,1.7304],
+          [-0.5082,0.4368,1.7619],
+          [-0.5082,0.4368,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T172",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.4662,1.7304],
+          [-0.5082,0.4368,1.7619],
+          [-0.5082,0.4483,1.7619],
+          [-0.5082,0.4483,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T173",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3318,0.4483,1.7619],
+          [-0.5082,0.4483,1.7619],
+          [-0.5082,0.4368,1.7619],
+          [-0.5082,0.4368,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T174",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.5082,0.4368,1.7619],
+          [-0.3318,0.4368,1.7619],
+          [-0.3318,0.4483,1.7619],
+          [-0.3318,0.4483,1.7619]
+        ]
+      },
+      {
+        "hitboxId": "T175",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.4641,0.2321,1.4018],
+          [-0.6395,0.2321,1.4018],
+          [-0.6405,0.2478,1.4322],
+          [-0.6405,0.2478,1.4322]
+        ]
+      },
+      {
+        "hitboxId": "T176",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.4641,0.2321,1.4018],
+          [-0.6405,0.2478,1.4322],
+          [-0.3328,0.2478,1.4322],
+          [-0.3328,0.2478,1.4322]
+        ]
+      },
+      {
+        "hitboxId": "T177",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3328,0.2478,1.4322],
+          [-0.6405,0.2478,1.4322],
+          [-0.6405,0.4641,1.8585],
+          [-0.6405,0.4641,1.8585]
+        ]
+      },
+      {
+        "hitboxId": "T178",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3328,0.2478,1.4322],
+          [-0.6405,0.4641,1.8585],
+          [-0.3318,0.4641,1.8585],
+          [-0.3318,0.4641,1.8585]
+        ]
+      },
+      {
+        "hitboxId": "T179",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3318,0.4641,1.8585],
+          [-0.6405,0.4641,1.8585],
+          [-0.5082,0.4126,1.8921],
+          [-0.5082,0.4126,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T180",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3318,0.4641,1.8585],
+          [-0.5082,0.4126,1.8921],
+          [-0.3328,0.4126,1.8921],
+          [-0.3328,0.4126,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T181",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.1733,1.4322],
+          [-0.3328,0.1733,1.4322],
+          [-0.3318,0.3896,1.8585],
+          [-0.3318,0.3896,1.8585]
+        ]
+      },
+      {
+        "hitboxId": "T182",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.1733,1.4322],
+          [-0.3318,0.3896,1.8585],
+          [-0.6405,0.3896,1.8585],
+          [-0.6405,0.3896,1.8585]
+        ]
+      },
+      {
+        "hitboxId": "T183",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.3896,1.8585],
+          [-0.3318,0.3896,1.8585],
+          [-0.3328,0.4053,1.8921],
+          [-0.3328,0.4053,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T184",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.3896,1.8585],
+          [-0.3328,0.4053,1.8921],
+          [-0.5082,0.4053,1.8921],
+          [-0.5082,0.4053,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T185",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3318,0.3896,1.8585],
+          [-0.3318,0.4641,1.8585],
+          [-0.3328,0.4126,1.8921],
+          [-0.3328,0.4126,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T186",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3318,0.3896,1.8585],
+          [-0.3328,0.4126,1.8921],
+          [-0.3328,0.4053,1.8921],
+          [-0.3328,0.4053,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T187",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.4641,1.8585],
+          [-0.6405,0.3896,1.8585],
+          [-0.5082,0.4053,1.8921],
+          [-0.5082,0.4053,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T188",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6405,0.4641,1.8585],
+          [-0.5082,0.4053,1.8921],
+          [-0.5082,0.4126,1.8921],
+          [-0.5082,0.4126,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T189",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.3328,0.4126,1.8921],
+          [-0.5082,0.4126,1.8921],
+          [-0.5082,0.4053,1.8921],
+          [-0.5082,0.4053,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T190",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.5082,0.4053,1.8921],
+          [-0.3328,0.4053,1.8921],
+          [-0.3328,0.4126,1.8921],
+          [-0.3328,0.4126,1.8921]
+        ]
+      },
+      {
+        "hitboxId": "T191",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.756,0.2372,1.345],
+          [-0.7655,0.2401,1.345],
+          [-0.8306,0.2954,1.4133],
+          [-0.8306,0.2954,1.4133]
+        ]
+      },
+      {
+        "hitboxId": "T192",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.756,0.2372,1.345],
+          [-0.8306,0.2954,1.4133],
+          [-0.6373,0.2345,1.4133],
+          [-0.6373,0.2345,1.4133]
+        ]
+      },
+      {
+        "hitboxId": "T193",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.2345,1.4133],
+          [-0.8306,0.2954,1.4133],
+          [-1.0794,0.4911,1.6706],
+          [-1.0794,0.4911,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T194",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.2345,1.4133],
+          [-1.0794,0.4911,1.6706],
+          [-0.6384,0.3656,1.6706],
+          [-0.6384,0.3656,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T195",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6384,0.3656,1.6706],
+          [-1.0794,0.4911,1.6706],
+          [-0.7308,0.4892,1.8564],
+          [-0.7308,0.4892,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T196",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6384,0.3656,1.6706],
+          [-0.7308,0.4892,1.8564],
+          [-0.6395,0.4604,1.8564],
+          [-0.6395,0.4604,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T197",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6395,0.4604,1.8564],
+          [-0.7308,0.4892,1.8564],
+          [-0.6615,0.4177,1.8931],
+          [-0.6615,0.4177,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T198",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6395,0.4604,1.8564],
+          [-0.6615,0.4177,1.8931],
+          [-0.6542,0.4177,1.8931],
+          [-0.6542,0.4177,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T199",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.8306,0.225,1.4133],
+          [-0.6373,0.1641,1.4133],
+          [-0.6384,0.2953,1.6706],
+          [-0.6384,0.2953,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T200",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.8306,0.225,1.4133],
+          [-0.6384,0.2953,1.6706],
+          [-1.0794,0.4207,1.6706],
+          [-1.0794,0.4207,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T201",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.1641,1.4133],
+          [-0.6373,0.2345,1.4133],
+          [-0.6384,0.3656,1.6706],
+          [-0.6384,0.3656,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T202",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6373,0.1641,1.4133],
+          [-0.6384,0.3656,1.6706],
+          [-0.6384,0.2953,1.6706],
+          [-0.6384,0.2953,1.6706]
+        ]
+      },
+      {
+        "hitboxId": "T203",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0794,0.4207,1.6706],
+          [-0.6384,0.2953,1.6706],
+          [-0.6395,0.3901,1.8564],
+          [-0.6395,0.3901,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T204",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0794,0.4207,1.6706],
+          [-0.6395,0.3901,1.8564],
+          [-0.7308,0.4189,1.8564],
+          [-0.7308,0.4189,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T205",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6384,0.2953,1.6706],
+          [-0.6384,0.3656,1.6706],
+          [-0.6395,0.4604,1.8564],
+          [-0.6395,0.4604,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T206",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6384,0.2953,1.6706],
+          [-0.6395,0.4604,1.8564],
+          [-0.6395,0.3901,1.8564],
+          [-0.6395,0.3901,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T207",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0794,0.4911,1.6706],
+          [-1.0794,0.4207,1.6706],
+          [-0.7308,0.4189,1.8564],
+          [-0.7308,0.4189,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T208",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.0794,0.4911,1.6706],
+          [-0.7308,0.4189,1.8564],
+          [-0.7308,0.4892,1.8564],
+          [-0.7308,0.4892,1.8564]
+        ]
+      },
+      {
+        "hitboxId": "T209",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.7308,0.4189,1.8564],
+          [-0.6395,0.3901,1.8564],
+          [-0.6542,0.4103,1.8931],
+          [-0.6542,0.4103,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T210",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6395,0.3901,1.8564],
+          [-0.6395,0.4604,1.8564],
+          [-0.6542,0.4177,1.8931],
+          [-0.6542,0.4177,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T211",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6395,0.3901,1.8564],
+          [-0.6542,0.4177,1.8931],
+          [-0.6542,0.4103,1.8931],
+          [-0.6542,0.4103,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T212",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.7308,0.4892,1.8564],
+          [-0.7308,0.4189,1.8564],
+          [-0.6615,0.4103,1.8931],
+          [-0.6615,0.4103,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T213",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.7308,0.4892,1.8564],
+          [-0.6615,0.4103,1.8931],
+          [-0.6615,0.4177,1.8931],
+          [-0.6615,0.4177,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T214",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6542,0.4177,1.8931],
+          [-0.6615,0.4177,1.8931],
+          [-0.6615,0.4103,1.8931],
+          [-0.6615,0.4103,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T215",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6615,0.4103,1.8931],
+          [-0.6542,0.4103,1.8931],
+          [-0.6542,0.4177,1.8931],
+          [-0.6542,0.4177,1.8931]
+        ]
+      },
+      {
+        "hitboxId": "T216",
+        "name": "turret_cheek_R",
+        "physicalMm": 650,
+        "keMm": 700,
+        "ceMm": 900,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [0.2938,0.0733,1.3726],
+          [1.4477,0.0733,0.5653],
+          [1.4477,0.7562,0.4703],
+          [0.2938,0.7562,1.2776]
+        ]
+      },
+      {
+        "hitboxId": "T217",
+        "name": "turret_cheek_L",
+        "physicalMm": 650,
+        "keMm": 700,
+        "ceMm": 900,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.4645,0.0733,0.5653],
+          [-0.3106,0.0733,1.3726],
+          [-0.3106,0.7562,1.2776],
+          [-1.4645,0.7562,0.4703]
+        ]
+      },
+      {
+        "hitboxId": "T218",
+        "name": "mantlet",
+        "physicalMm": 300,
+        "keMm": 400,
+        "ceMm": 500,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.3106,0.1513,1.4438],
+          [0.2938,0.1513,1.4438],
+          [0.2938,0.5416,1.4082],
+          [-0.3106,0.5416,1.4082]
+        ]
+      },
+      {
+        "hitboxId": "T219",
+        "name": "turret_side_R",
+        "physicalMm": 300,
+        "keMm": 350,
+        "ceMm": 500,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.5026,0.0733,0.589],
+          [1.5026,0.0733,-0.7762],
+          [1.5026,0.7562,-0.7762],
+          [1.5026,0.7562,0.589]
+        ]
+      },
+      {
+        "hitboxId": "T220",
+        "name": "turret_side_L",
+        "physicalMm": 300,
+        "keMm": 350,
+        "ceMm": 500,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.5194,0.0733,-0.7762],
+          [-1.5194,0.0733,0.589],
+          [-1.5194,0.7562,0.589],
+          [-1.5194,0.7562,-0.7762]
+        ]
+      },
+      {
+        "hitboxId": "T221",
+        "name": "turret_bustle",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.2966,0.0733,-1.9278],
+          [-1.3134,0.0733,-1.9278],
+          [-1.3134,0.6391,-1.9278],
+          [1.2966,0.6391,-1.9278]
+        ]
+      },
+      {
+        "hitboxId": "T222",
+        "name": "turret_roof",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.4507,0.7952,1.0045],
+          [1.4339,0.7952,1.0045],
+          [1.4339,0.7952,-0.7762],
+          [-1.4507,0.7952,-0.7762]
+        ]
+      },
+      {
+        "hitboxId": "T223",
+        "name": "turret_cupola_01_front",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.9086,0.792,-0.4587],
+          [-0.1477,0.792,-0.4587],
+          [-0.1477,0.8323,-0.4587],
+          [-0.9086,0.8323,-0.4587]
+        ]
+      },
+      {
+        "hitboxId": "T224",
+        "name": "turret_cupola_01_rear",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.1477,0.792,-1.0135],
+          [-0.9086,0.792,-1.0135],
+          [-0.9086,0.8323,-1.0135],
+          [-0.1477,0.8323,-1.0135]
+        ]
+      },
+      {
+        "hitboxId": "T225",
+        "name": "turret_cupola_01_right",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.1477,0.792,-0.4587],
+          [-0.1477,0.792,-1.0135],
+          [-0.1477,0.8323,-1.0135],
+          [-0.1477,0.8323,-0.4587]
+        ]
+      },
+      {
+        "hitboxId": "T226",
+        "name": "turret_cupola_01_left",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.9086,0.792,-1.0135],
+          [-0.9086,0.792,-0.4587],
+          [-0.9086,0.8323,-0.4587],
+          [-0.9086,0.8323,-1.0135]
+        ]
+      },
+      {
+        "hitboxId": "T227",
+        "name": "turret_cupola_01_top",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.9086,0.8323,-0.4587],
+          [-0.1477,0.8323,-0.4587],
+          [-0.1477,0.8323,-1.0135],
+          [-0.9086,0.8323,-1.0135]
+        ]
+      },
+      {
+        "hitboxId": "T228",
+        "name": "turret_cupola_02_front",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [0.3386,0.7779,-0.037],
+          [1.1155,0.7779,-0.037],
+          [1.1155,0.881,-0.037],
+          [0.3386,0.881,-0.037]
+        ]
+      },
+      {
+        "hitboxId": "T229",
+        "name": "turret_cupola_02_rear",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.1155,0.7779,-0.8438],
+          [0.3386,0.7779,-0.8438],
+          [0.3386,0.881,-0.8438],
+          [1.1155,0.881,-0.8438]
+        ]
+      },
+      {
+        "hitboxId": "T230",
+        "name": "turret_cupola_02_right",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.1155,0.7779,-0.037],
+          [1.1155,0.7779,-0.8438],
+          [1.1155,0.881,-0.8438],
+          [1.1155,0.881,-0.037]
+        ]
+      },
+      {
+        "hitboxId": "T231",
+        "name": "turret_cupola_02_left",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [0.3386,0.7779,-0.8438],
+          [0.3386,0.7779,-0.037],
+          [0.3386,0.881,-0.037],
+          [0.3386,0.881,-0.8438]
+        ]
+      },
+      {
+        "hitboxId": "T232",
+        "name": "turret_cupola_02_top",
+        "physicalMm": 45,
+        "keMm": 45,
+        "ceMm": 45,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [0.3386,0.881,-0.037],
+          [1.1155,0.881,-0.037],
+          [1.1155,0.881,-0.8438],
+          [0.3386,0.881,-0.8438]
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "volumeId": "M01",
+        "name": "gun",
+        "min": [-0.2557,0.1221,-0.1826],
+        "max": [0.2389,0.5611,1.0639],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M02",
+        "name": "turretRing",
+        "min": [-0.8454,1.5251,-0.6224],
+        "max": [0.8622,1.7767,1.3764],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M03",
+        "name": "autoloader",
+        "min": [-0.5062,0.6412,-0.169],
+        "max": [0.5062,0.9431,0.8468],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M04",
+        "name": "engine",
+        "min": [-1.0044,0.4576,-3.6587],
+        "max": [1.0044,1.6527,-1.7774],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M05",
+        "name": "transmission",
+        "min": [-0.8638,0.5849,-3.5082],
+        "max": [0.8638,1.4454,-2.8685],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M06",
+        "name": "fuelTank",
+        "min": [0.6027,0.4576,-1.7187],
+        "max": [1.2556,1.2124,-0.1314],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M07",
+        "name": "ammoRack",
+        "min": [-0.7031,0.4576,-0.3665],
+        "max": [0.7031,1.0866,1.0444],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M08",
+        "name": "radio",
+        "min": [-0.8326,0.1221,-1.073],
+        "max": [-0.1458,0.5611,-0.5388],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M09",
+        "name": "optics",
+        "min": [-1.0204,0.7841,-1.994],
+        "max": [0.9839,1.2936,0.1733],
+        "parts": [
+          {
+            "min": [-0.0007,0.8027,-1.994],
+            "max": [0.1099,0.8552,-1.9877]
+          },
+          {
+            "min": [0.4607,1.0605,-1.2731],
+            "max": [0.6833,1.2936,-1.2668]
+          },
+          {
+            "min": [-1.0204,0.7841,-1.1659],
+            "max": [-0.8839,0.8587,-1.1554]
+          },
+          {
+            "min": [0.8474,0.7841,-1.1608],
+            "max": [0.9839,0.8587,-1.1503]
+          },
+          {
+            "min": [-0.8515,0.8327,0.1606],
+            "max": [-0.6206,0.9691,0.1733]
+          }
+        ],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M10",
+        "name": "trackL",
+        "min": [-1.7353,0.0457,-3.2438],
+        "max": [-1.2219,1.3045,3.8597],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M11",
+        "name": "trackR",
+        "min": [1.2183,0.0457,-3.2438],
+        "max": [1.7317,1.3045,3.8597],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M12",
+        "name": "roofGun",
+        "min": [-0.246,-0.504,-0.2195],
+        "max": [0.194,0.15,0.872],
+        "parts": [
+          {
+            "min": [-0.1207,-0.104,-0.1955],
+            "max": [0.1786,0.15,0.872]
+          },
+          {
+            "min": [-0.246,-0.504,-0.2195],
+            "max": [0.194,0.0861,0.4195]
+          }
+        ],
+        "turretLocal": false
+      }
+    ],
+    "crew": [
+      {
+        "volumeId": "C01",
+        "name": "driver",
+        "min": [-0.2297,0.8941,1.8133],
+        "max": [0.2297,1.3196,3.673],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "C02",
+        "name": "gunner",
+        "min": [-0.7906,-0.5218,-0.0273],
+        "max": [-0.3312,0.516,0.5964],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "C03",
+        "name": "commander",
+        "min": [0.385,-0.493,-0.1932],
+        "max": [0.8444,0.6326,0.5249],
+        "turretLocal": true
+      }
+    ]
+  },
+  "geometryHash": "b28a4813",
+  "metadataHash": "6226f171",
+  "presentationAnchor": {
+    "xM": 0.001,
+    "zM": -0.1529
+  },
+  "presentationHash": "08125806",
+  "presentationProjection": {
+    "centerYM": 1.6537,
+    "topHalfM": 8.0729,
+    "sideHalfM": 4.0365
+  },
+  "appearance": {
+    "version": 1,
+    "issues": [],
+    "roles": {
+      "wheelTire": 2,
+      "wheelDish": 10,
+      "wheelInset": 2,
+      "suspensionLink": 1,
+      "suspensionJoint": 1,
+      "trackHardware": 4,
+      "trackBand": 2,
+      "trackPad": 1,
+      "trackPadSimplified": 1,
+      "armorPaint": 16,
+      "gunmetal": 10,
+      "opticGlass": 3,
+      "hullRubber": 1,
+      "unclassified": 18,
+      "gearShadow": 1,
+      "fittingPaint": 2,
+      "canvasPale": 1
+    }
+  },
+  "muzzleBore": {
+    "tagged": 1,
+    "rims": 0,
+    "physicalRims": 1,
+    "physicalFloors": 1,
+    "discs": 0,
+    "authored": 0,
+    "fallback": 1
+  },
+  "vehicleMarkings": {
+    "total": 2,
+    "insignia": 1,
+    "designation": 1,
+    "verifiedInsignia": 1,
+    "verifiedDesignation": 1,
+    "minimumVisibilityRatio": 0.8888889,
+    "codes": ["RU:ru-star:527"]
+  },
+  "assets": {
+    "angle": {
+      "file": "t90sm_2013_angle.webp",
+      "width": 512,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 29494,
+      "sha256": "dbf062afdb7637f03cb674cf6821bbf3ad5c790c07a8f7920b2e4cb6a1ef6367",
+      "thumbnail": {
+        "file": "thumbs/t90sm_2013_angle.webp",
+        "width": 256,
+        "height": 256,
+        "mime": "image/webp",
+        "bytes": 11522,
+        "sha256": "7f289c620ae24916d20651d0fbda8d411b662a9d1269cb28992d9d662a5f0744"
+      }
+    },
+    "top": {
+      "file": "t90sm_2013_top.webp",
+      "width": 512,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 12764,
+      "sha256": "657e5c207f117bf6ac1475211b36e81fe39544b39a360b70927268e10dd8b445"
+    },
+    "side": {
+      "file": "t90sm_2013_side.webp",
+      "width": 512,
+      "height": 256,
+      "mime": "image/webp",
+      "bytes": 11012,
+      "sha256": "6a6134a01c8500611f8d523fee94d63dfad22698219d1f51c2f2e13c3c648713"
+    },
+    "topSilhouette": {
+      "file": "t90sm_2013_top_silhouette.png",
+      "width": 128,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 1296,
+      "sha256": "c1104d7c33f9135c33120f955847de6a05b8754b156741cdbd77be5177ee081b"
+    },
+    "sideSilhouette": {
+      "file": "t90sm_2013_side_silhouette.png",
+      "width": 256,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 4119,
+      "sha256": "b78ce18aa43418a9ce42a85ff5d4010da5213ea689943518ac2bb4aba0ed80a6"
+    },
+    "armorSide": {
+      "file": "t90sm_2013_armor_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 26578,
+      "sha256": "a3abd7c08534d5e015f1ae6b50aedbc96fdcc0f8ad277e2cbec70c3bc9fca646"
+    },
+    "modulesSide": {
+      "file": "t90sm_2013_modules_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 24898,
+      "sha256": "dd59f3657ba3c2af1fd17de461ea4322f4848205124936441c07df2feff97e62"
+    },
+    "crewSide": {
+      "file": "t90sm_2013_crew_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 22620,
+      "sha256": "f5b188585957218a8f24c213e03d308f87f972017bfa5632faa9179c4291e615"
+    },
+    "markings": {
+      "file": "t90sm_2013_markings.png",
+      "width": 256,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 35762,
+      "sha256": "ac81aadb198cadb244c0495dc9056c758d2596b924bf27dcb3f5d87f2bfba9c4"
+    },
+    "technicalLabels": {
+      "file": "t90sm_2013_technical.json",
+      "mime": "application/json",
+      "bytes": 4938,
+      "sha256": "a1689704700295b9da6ac79b813633a93d9ca14b887d43d1ee97ddca5fd83c84"
+    }
+  }
+}

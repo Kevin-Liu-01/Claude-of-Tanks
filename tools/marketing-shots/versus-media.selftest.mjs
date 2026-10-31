@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from '../tank-assets-store.mjs';
 import { PROJECT_COPYRIGHT, PROJECT_CREATOR } from '../../src/authorship.ts';
 import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 
@@ -17,7 +18,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const VERSUS = join(ROOT, 'tools/media-r5/versus');
 const PICKS = JSON.parse(readFileSync(join(VERSUS, 'picks.json'), 'utf8'));
 const DIR = join(ROOT, 'public/media', PICKS.collection);
-const TANKS = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks;
+const TANKS = readTankAssets(join(ROOT, 'public/icons')).tanks;
 const MAX_BYTES = 600 * 1024;
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 function webpSize(buffer) {

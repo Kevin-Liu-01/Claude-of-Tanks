@@ -1,0 +1,5586 @@
+{
+  "id": "t90a_burlak_proto",
+  "name": "T-90A Burlak Prototype",
+  "label": {
+    "id": "t90a_burlak_proto",
+    "displayName": "T-90A Burlak Prototype",
+    "shortName": "T-90A Burlak Prototype",
+    "searchAliases": ["T-90A Burlak Prototype","t90a_burlak_proto","t90a burlak proto"],
+    "noteKey": null
+  },
+  "markings": {
+    "schemaVersion": 1,
+    "countryCode": "ru",
+    "countryLabel": "Russia",
+    "filterLabel": "RU",
+    "insignia": "ru-star",
+    "tacticalNumber": "059",
+    "designation": "RU-059",
+    "markingCode": "RU:ru-star:059"
+  },
+  "nation": "USSR/Russia",
+  "countryCode": "ru",
+  "era": "modern",
+  "tier": 9,
+  "tierNumeral": "IX",
+  "dimensionsM": {
+    "hullLength": 7.203,
+    "overallLength": 10.248,
+    "width": 3.969,
+    "height": 2.415
+  },
+  "gun": {
+    "caliberMm": 125,
+    "shells": [
+      {
+        "name": "3BM42M Lekalo",
+        "type": "APFSDS",
+        "pen100Mm": 830,
+        "pen1000Mm": 770,
+        "pen2000Mm": 675
+      },
+      {
+        "name": "3BK29M HEAT",
+        "type": "HEAT",
+        "pen100Mm": 720,
+        "pen1000Mm": 720,
+        "pen2000Mm": null
+      },
+      {
+        "name": "3OF26 HE-Frag",
+        "type": "HE",
+        "pen100Mm": 50,
+        "pen1000Mm": 50,
+        "pen2000Mm": null
+      }
+    ]
+  },
+  "armor": {
+    "schemaVersion": 3,
+    "turretPivot": [0.0105,1.5414,-0.0041],
+    "plates": [
+      {
+        "hitboxId": "H01",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4763,1.1701,3.1497],
+          [-0.474,1.1599,3.1477],
+          [-0.474,1.1763,3.1412],
+          [-0.474,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H02",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.1599,3.1477],
+          [-0.4689,1.1649,3.1362],
+          [-0.474,1.1763,3.1412],
+          [-0.474,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H03",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.1763,3.1412],
+          [-0.4689,1.1649,3.1362],
+          [-0.474,1.4415,2.5352],
+          [-0.474,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H04",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4689,1.1649,3.1362],
+          [-0.4689,1.43,2.5302],
+          [-0.474,1.4415,2.5352],
+          [-0.474,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H05",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.4415,2.5352],
+          [-0.4689,1.43,2.5302],
+          [-0.4763,1.4434,2.5249],
+          [-0.4763,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H06",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4689,1.43,2.5302],
+          [-0.474,1.435,2.5187],
+          [-0.4763,1.4434,2.5249],
+          [-0.4763,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H07",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.4434,2.5249],
+          [-0.892,1.435,2.5187],
+          [-0.892,1.4415,2.5352],
+          [-0.892,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.435,2.5187],
+          [-0.8972,1.43,2.5302],
+          [-0.892,1.4415,2.5352],
+          [-0.892,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H09",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.4415,2.5352],
+          [-0.8972,1.43,2.5302],
+          [-0.892,1.1763,3.1412],
+          [-0.892,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H10",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8972,1.43,2.5302],
+          [-0.8972,1.1649,3.1362],
+          [-0.892,1.1763,3.1412],
+          [-0.892,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H11",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1763,3.1412],
+          [-0.8972,1.1649,3.1362],
+          [-0.8897,1.1701,3.1497],
+          [-0.8897,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H12",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8972,1.1649,3.1362],
+          [-0.892,1.1599,3.1477],
+          [-0.8897,1.1701,3.1497],
+          [-0.8897,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H13",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.4434,2.5249],
+          [-0.892,1.4415,2.5352],
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H14",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.4415,2.5352],
+          [-0.8795,1.4462,2.5372],
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H15",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4462,2.5372],
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H16",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.4462,2.5372],
+          [-0.4865,1.4462,2.5372],
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H17",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4462,2.5372],
+          [-0.4763,1.4434,2.5249],
+          [-0.4763,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H18",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.4462,2.5372],
+          [-0.474,1.4415,2.5352],
+          [-0.4763,1.4434,2.5249],
+          [-0.4763,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H19",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.4415,2.5352],
+          [-0.892,1.1763,3.1412],
+          [-0.8795,1.4462,2.5372],
+          [-0.8795,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H20",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1763,3.1412],
+          [-0.8795,1.181,3.1433],
+          [-0.8795,1.4462,2.5372],
+          [-0.8795,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H21",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.4462,2.5372],
+          [-0.8795,1.181,3.1433],
+          [-0.4865,1.4462,2.5372],
+          [-0.4865,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H22",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.181,3.1433],
+          [-0.4865,1.181,3.1433],
+          [-0.4865,1.4462,2.5372],
+          [-0.4865,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H23",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.4462,2.5372],
+          [-0.4865,1.181,3.1433],
+          [-0.474,1.4415,2.5352],
+          [-0.474,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H24",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.181,3.1433],
+          [-0.474,1.1763,3.1412],
+          [-0.474,1.4415,2.5352],
+          [-0.474,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H25",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1763,3.1412],
+          [-0.8897,1.1701,3.1497],
+          [-0.8795,1.181,3.1433],
+          [-0.8795,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H26",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.1701,3.1497],
+          [-0.8795,1.1713,3.1527],
+          [-0.8795,1.181,3.1433],
+          [-0.8795,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H27",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.181,3.1433],
+          [-0.8795,1.1713,3.1527],
+          [-0.4865,1.181,3.1433],
+          [-0.4865,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H28",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1713,3.1527],
+          [-0.4865,1.1713,3.1527],
+          [-0.4865,1.181,3.1433],
+          [-0.4865,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H29",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.181,3.1433],
+          [-0.4865,1.1713,3.1527],
+          [-0.474,1.1763,3.1412],
+          [-0.474,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H30",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1713,3.1527],
+          [-0.4763,1.1701,3.1497],
+          [-0.474,1.1763,3.1412],
+          [-0.474,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H31",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.1701,3.1497],
+          [-0.892,1.1599,3.1477],
+          [-0.8795,1.1713,3.1527],
+          [-0.8795,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H32",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1599,3.1477],
+          [-0.8795,1.1578,3.1524],
+          [-0.8795,1.1713,3.1527],
+          [-0.8795,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H33",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1713,3.1527],
+          [-0.8795,1.1578,3.1524],
+          [-0.4865,1.1713,3.1527],
+          [-0.4865,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H34",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1578,3.1524],
+          [-0.4865,1.1578,3.1524],
+          [-0.4865,1.1713,3.1527],
+          [-0.4865,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H35",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1713,3.1527],
+          [-0.4865,1.1578,3.1524],
+          [-0.4763,1.1701,3.1497],
+          [-0.4763,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H36",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1578,3.1524],
+          [-0.474,1.1599,3.1477],
+          [-0.4763,1.1701,3.1497],
+          [-0.4763,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H37",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4763,1.4434,2.5249],
+          [-0.474,1.435,2.5187],
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H38",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.435,2.5187],
+          [-0.4865,1.4371,2.514],
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H39",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.4465,2.5237],
+          [-0.4865,1.4371,2.514],
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H40",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.4371,2.514],
+          [-0.8795,1.4371,2.514],
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H41",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.4465,2.5237],
+          [-0.8795,1.4371,2.514],
+          [-0.8897,1.4434,2.5249],
+          [-0.8897,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H42",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.4371,2.514],
+          [-0.892,1.435,2.5187],
+          [-0.8897,1.4434,2.5249],
+          [-0.8897,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H43",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.1599,3.1477],
+          [-0.474,1.1249,3.1324],
+          [-0.4689,1.1649,3.1362],
+          [-0.4689,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H44",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.1249,3.1324],
+          [-0.4689,1.1299,3.1209],
+          [-0.4689,1.1649,3.1362],
+          [-0.4689,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H45",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.474,1.1249,3.1324],
+          [-0.4763,1.1164,3.1262],
+          [-0.4689,1.1299,3.1209],
+          [-0.4689,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H46",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4763,1.1164,3.1262],
+          [-0.474,1.1184,3.1159],
+          [-0.4689,1.1299,3.1209],
+          [-0.4689,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H47",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8972,1.1649,3.1362],
+          [-0.8972,1.1299,3.1209],
+          [-0.892,1.1599,3.1477],
+          [-0.892,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H48",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8972,1.1299,3.1209],
+          [-0.892,1.1249,3.1324],
+          [-0.892,1.1599,3.1477],
+          [-0.892,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H49",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8972,1.1299,3.1209],
+          [-0.892,1.1184,3.1159],
+          [-0.892,1.1249,3.1324],
+          [-0.892,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H50",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1184,3.1159],
+          [-0.8897,1.1164,3.1262],
+          [-0.892,1.1249,3.1324],
+          [-0.892,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H51",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.1164,3.1262],
+          [-0.892,1.1184,3.1159],
+          [-0.8795,1.1134,3.1274],
+          [-0.8795,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H52",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1184,3.1159],
+          [-0.8795,1.1137,3.1139],
+          [-0.8795,1.1134,3.1274],
+          [-0.8795,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H53",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1134,3.1274],
+          [-0.8795,1.1137,3.1139],
+          [-0.4865,1.1134,3.1274],
+          [-0.4865,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H54",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1137,3.1139],
+          [-0.4865,1.1137,3.1139],
+          [-0.4865,1.1134,3.1274],
+          [-0.4865,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H55",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1134,3.1274],
+          [-0.4865,1.1137,3.1139],
+          [-0.4763,1.1164,3.1262],
+          [-0.4763,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H56",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1137,3.1139],
+          [-0.474,1.1184,3.1159],
+          [-0.4763,1.1164,3.1262],
+          [-0.4763,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H57",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1599,3.1477],
+          [-0.892,1.1249,3.1324],
+          [-0.8795,1.1578,3.1524],
+          [-0.8795,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H58",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1249,3.1324],
+          [-0.8795,1.1228,3.1371],
+          [-0.8795,1.1578,3.1524],
+          [-0.8795,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H59",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1578,3.1524],
+          [-0.8795,1.1228,3.1371],
+          [-0.4865,1.1578,3.1524],
+          [-0.4865,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H60",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1228,3.1371],
+          [-0.4865,1.1228,3.1371],
+          [-0.4865,1.1578,3.1524],
+          [-0.4865,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H61",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1578,3.1524],
+          [-0.4865,1.1228,3.1371],
+          [-0.474,1.1599,3.1477],
+          [-0.474,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H62",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1228,3.1371],
+          [-0.474,1.1249,3.1324],
+          [-0.474,1.1599,3.1477],
+          [-0.474,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H63",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.892,1.1249,3.1324],
+          [-0.8897,1.1164,3.1262],
+          [-0.8795,1.1228,3.1371],
+          [-0.8795,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H64",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8897,1.1164,3.1262],
+          [-0.8795,1.1134,3.1274],
+          [-0.8795,1.1228,3.1371],
+          [-0.8795,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H65",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1228,3.1371],
+          [-0.8795,1.1134,3.1274],
+          [-0.4865,1.1228,3.1371],
+          [-0.4865,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H66",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8795,1.1134,3.1274],
+          [-0.4865,1.1134,3.1274],
+          [-0.4865,1.1228,3.1371],
+          [-0.4865,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H67",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1228,3.1371],
+          [-0.4865,1.1134,3.1274],
+          [-0.474,1.1249,3.1324],
+          [-0.474,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H68",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4865,1.1134,3.1274],
+          [-0.4763,1.1164,3.1262],
+          [-0.474,1.1249,3.1324],
+          [-0.474,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H69",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0016,1.1701,3.1497],
+          [0.0039,1.1599,3.1477],
+          [0.0039,1.1763,3.1412],
+          [0.0039,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H70",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.1599,3.1477],
+          [0.0091,1.1649,3.1362],
+          [0.0039,1.1763,3.1412],
+          [0.0039,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H71",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.1763,3.1412],
+          [0.0091,1.1649,3.1362],
+          [0.0039,1.4415,2.5352],
+          [0.0039,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H72",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0091,1.1649,3.1362],
+          [0.0091,1.43,2.5302],
+          [0.0039,1.4415,2.5352],
+          [0.0039,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H73",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.4415,2.5352],
+          [0.0091,1.43,2.5302],
+          [0.0016,1.4434,2.5249],
+          [0.0016,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H74",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0091,1.43,2.5302],
+          [0.0039,1.435,2.5187],
+          [0.0016,1.4434,2.5249],
+          [0.0016,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H75",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.4434,2.5249],
+          [-0.4546,1.435,2.5187],
+          [-0.4546,1.4415,2.5352],
+          [-0.4546,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H76",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.435,2.5187],
+          [-0.4597,1.43,2.5302],
+          [-0.4546,1.4415,2.5352],
+          [-0.4546,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H77",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.4415,2.5352],
+          [-0.4597,1.43,2.5302],
+          [-0.4546,1.1763,3.1412],
+          [-0.4546,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H78",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4597,1.43,2.5302],
+          [-0.4597,1.1649,3.1362],
+          [-0.4546,1.1763,3.1412],
+          [-0.4546,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H79",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1763,3.1412],
+          [-0.4597,1.1649,3.1362],
+          [-0.4523,1.1701,3.1497],
+          [-0.4523,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H80",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4597,1.1649,3.1362],
+          [-0.4546,1.1599,3.1477],
+          [-0.4523,1.1701,3.1497],
+          [-0.4523,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H81",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.4434,2.5249],
+          [-0.4546,1.4415,2.5352],
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H82",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.4415,2.5352],
+          [-0.4421,1.4462,2.5372],
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H83",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4462,2.5372],
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H84",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.4462,2.5372],
+          [-0.0086,1.4462,2.5372],
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H85",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4462,2.5372],
+          [0.0016,1.4434,2.5249],
+          [0.0016,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H86",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.4462,2.5372],
+          [0.0039,1.4415,2.5352],
+          [0.0016,1.4434,2.5249],
+          [0.0016,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H87",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.4415,2.5352],
+          [-0.4546,1.1763,3.1412],
+          [-0.4421,1.4462,2.5372],
+          [-0.4421,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H88",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1763,3.1412],
+          [-0.4421,1.181,3.1433],
+          [-0.4421,1.4462,2.5372],
+          [-0.4421,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H89",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.4462,2.5372],
+          [-0.4421,1.181,3.1433],
+          [-0.0086,1.4462,2.5372],
+          [-0.0086,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H90",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.181,3.1433],
+          [-0.0086,1.181,3.1433],
+          [-0.0086,1.4462,2.5372],
+          [-0.0086,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H91",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.4462,2.5372],
+          [-0.0086,1.181,3.1433],
+          [0.0039,1.4415,2.5352],
+          [0.0039,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H92",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.181,3.1433],
+          [0.0039,1.1763,3.1412],
+          [0.0039,1.4415,2.5352],
+          [0.0039,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H93",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1763,3.1412],
+          [-0.4523,1.1701,3.1497],
+          [-0.4421,1.181,3.1433],
+          [-0.4421,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H94",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.1701,3.1497],
+          [-0.4421,1.1713,3.1527],
+          [-0.4421,1.181,3.1433],
+          [-0.4421,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H95",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.181,3.1433],
+          [-0.4421,1.1713,3.1527],
+          [-0.0086,1.181,3.1433],
+          [-0.0086,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H96",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1713,3.1527],
+          [-0.0086,1.1713,3.1527],
+          [-0.0086,1.181,3.1433],
+          [-0.0086,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H97",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.181,3.1433],
+          [-0.0086,1.1713,3.1527],
+          [0.0039,1.1763,3.1412],
+          [0.0039,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H98",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1713,3.1527],
+          [0.0016,1.1701,3.1497],
+          [0.0039,1.1763,3.1412],
+          [0.0039,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H99",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.1701,3.1497],
+          [-0.4546,1.1599,3.1477],
+          [-0.4421,1.1713,3.1527],
+          [-0.4421,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H100",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1599,3.1477],
+          [-0.4421,1.1578,3.1524],
+          [-0.4421,1.1713,3.1527],
+          [-0.4421,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H101",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1713,3.1527],
+          [-0.4421,1.1578,3.1524],
+          [-0.0086,1.1713,3.1527],
+          [-0.0086,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H102",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1578,3.1524],
+          [-0.0086,1.1578,3.1524],
+          [-0.0086,1.1713,3.1527],
+          [-0.0086,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H103",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1713,3.1527],
+          [-0.0086,1.1578,3.1524],
+          [0.0016,1.1701,3.1497],
+          [0.0016,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H104",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1578,3.1524],
+          [0.0039,1.1599,3.1477],
+          [0.0016,1.1701,3.1497],
+          [0.0016,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H105",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0016,1.4434,2.5249],
+          [0.0039,1.435,2.5187],
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H106",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.435,2.5187],
+          [-0.0086,1.4371,2.514],
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H107",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.4465,2.5237],
+          [-0.0086,1.4371,2.514],
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H108",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.4371,2.514],
+          [-0.4421,1.4371,2.514],
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H109",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.4465,2.5237],
+          [-0.4421,1.4371,2.514],
+          [-0.4523,1.4434,2.5249],
+          [-0.4523,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H110",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.4371,2.514],
+          [-0.4546,1.435,2.5187],
+          [-0.4523,1.4434,2.5249],
+          [-0.4523,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H111",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.1599,3.1477],
+          [0.0039,1.1249,3.1324],
+          [0.0091,1.1649,3.1362],
+          [0.0091,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H112",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.1249,3.1324],
+          [0.0091,1.1299,3.1209],
+          [0.0091,1.1649,3.1362],
+          [0.0091,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H113",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0039,1.1249,3.1324],
+          [0.0016,1.1164,3.1262],
+          [0.0091,1.1299,3.1209],
+          [0.0091,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H114",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0016,1.1164,3.1262],
+          [0.0039,1.1184,3.1159],
+          [0.0091,1.1299,3.1209],
+          [0.0091,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H115",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4597,1.1649,3.1362],
+          [-0.4597,1.1299,3.1209],
+          [-0.4546,1.1599,3.1477],
+          [-0.4546,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H116",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4597,1.1299,3.1209],
+          [-0.4546,1.1249,3.1324],
+          [-0.4546,1.1599,3.1477],
+          [-0.4546,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H117",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4597,1.1299,3.1209],
+          [-0.4546,1.1184,3.1159],
+          [-0.4546,1.1249,3.1324],
+          [-0.4546,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H118",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1184,3.1159],
+          [-0.4523,1.1164,3.1262],
+          [-0.4546,1.1249,3.1324],
+          [-0.4546,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H119",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.1164,3.1262],
+          [-0.4546,1.1184,3.1159],
+          [-0.4421,1.1134,3.1274],
+          [-0.4421,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H120",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1184,3.1159],
+          [-0.4421,1.1137,3.1139],
+          [-0.4421,1.1134,3.1274],
+          [-0.4421,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H121",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1134,3.1274],
+          [-0.4421,1.1137,3.1139],
+          [-0.0086,1.1134,3.1274],
+          [-0.0086,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H122",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1137,3.1139],
+          [-0.0086,1.1137,3.1139],
+          [-0.0086,1.1134,3.1274],
+          [-0.0086,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H123",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1134,3.1274],
+          [-0.0086,1.1137,3.1139],
+          [0.0016,1.1164,3.1262],
+          [0.0016,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H124",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1137,3.1139],
+          [0.0039,1.1184,3.1159],
+          [0.0016,1.1164,3.1262],
+          [0.0016,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H125",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1599,3.1477],
+          [-0.4546,1.1249,3.1324],
+          [-0.4421,1.1578,3.1524],
+          [-0.4421,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H126",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1249,3.1324],
+          [-0.4421,1.1228,3.1371],
+          [-0.4421,1.1578,3.1524],
+          [-0.4421,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H127",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1578,3.1524],
+          [-0.4421,1.1228,3.1371],
+          [-0.0086,1.1578,3.1524],
+          [-0.0086,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H128",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1228,3.1371],
+          [-0.0086,1.1228,3.1371],
+          [-0.0086,1.1578,3.1524],
+          [-0.0086,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H129",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1578,3.1524],
+          [-0.0086,1.1228,3.1371],
+          [0.0039,1.1599,3.1477],
+          [0.0039,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H130",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1228,3.1371],
+          [0.0039,1.1249,3.1324],
+          [0.0039,1.1599,3.1477],
+          [0.0039,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H131",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4546,1.1249,3.1324],
+          [-0.4523,1.1164,3.1262],
+          [-0.4421,1.1228,3.1371],
+          [-0.4421,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H132",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4523,1.1164,3.1262],
+          [-0.4421,1.1134,3.1274],
+          [-0.4421,1.1228,3.1371],
+          [-0.4421,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H133",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1228,3.1371],
+          [-0.4421,1.1134,3.1274],
+          [-0.0086,1.1228,3.1371],
+          [-0.0086,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H134",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4421,1.1134,3.1274],
+          [-0.0086,1.1134,3.1274],
+          [-0.0086,1.1228,3.1371],
+          [-0.0086,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H135",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1228,3.1371],
+          [-0.0086,1.1134,3.1274],
+          [0.0039,1.1249,3.1324],
+          [0.0039,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H136",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.0086,1.1134,3.1274],
+          [0.0016,1.1164,3.1262],
+          [0.0039,1.1249,3.1324],
+          [0.0039,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H137",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8219,1.1334,3.1884],
+          [-0.8219,0.9381,3.601],
+          [-0.4702,1.1334,3.1884],
+          [-0.4702,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H138",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8219,0.9381,3.601],
+          [-0.4702,0.9381,3.601],
+          [-0.4702,1.1334,3.1884],
+          [-0.4702,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H139",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8219,0.9381,3.601],
+          [-0.8219,0.8868,3.5768],
+          [-0.4702,0.9381,3.601],
+          [-0.4702,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H140",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.8219,0.8868,3.5768],
+          [-0.4702,0.8868,3.5768],
+          [-0.4702,0.9381,3.601],
+          [-0.4702,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H141",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4623,1.1334,3.1884],
+          [-0.4623,0.9381,3.601],
+          [0.0078,1.1334,3.1884],
+          [0.0078,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H142",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4623,0.9381,3.601],
+          [0.0078,0.9381,3.601],
+          [0.0078,1.1334,3.1884],
+          [0.0078,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H143",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4623,0.9381,3.601],
+          [-0.4623,0.8868,3.5768],
+          [0.0078,0.9381,3.601],
+          [0.0078,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H144",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.4623,0.8868,3.5768],
+          [0.0078,0.8868,3.5768],
+          [0.0078,0.9381,3.601],
+          [0.0078,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H145",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9818,1.5787,2.1684],
+          [-0.9818,1.4726,2.4498],
+          [-0.6604,1.5787,2.1684],
+          [-0.6604,1.5787,2.1684]
+        ]
+      },
+      {
+        "hitboxId": "H146",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9818,1.4726,2.4498],
+          [-0.6604,1.4726,2.4498],
+          [-0.6604,1.5787,2.1684],
+          [-0.6604,1.5787,2.1684]
+        ]
+      },
+      {
+        "hitboxId": "H147",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9818,1.4726,2.4498],
+          [-0.9818,1.4275,2.4327],
+          [-0.6604,1.4726,2.4498],
+          [-0.6604,1.4726,2.4498]
+        ]
+      },
+      {
+        "hitboxId": "H148",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.9818,1.4275,2.4327],
+          [-0.6604,1.4275,2.4327],
+          [-0.6604,1.4726,2.4498],
+          [-0.6604,1.4726,2.4498]
+        ]
+      },
+      {
+        "hitboxId": "H149",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.6521,1.5514,2.2397],
+          [-0.6521,1.48,2.4298],
+          [-0.19,1.5514,2.2397],
+          [-0.19,1.5514,2.2397]
+        ]
+      },
+      {
+        "hitboxId": "H150",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.6521,1.48,2.4298],
+          [-0.19,1.48,2.4298],
+          [-0.19,1.5514,2.2397],
+          [-0.19,1.5514,2.2397]
+        ]
+      },
+      {
+        "hitboxId": "H151",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.6521,1.48,2.4298],
+          [-0.6521,1.4348,2.4128],
+          [-0.19,1.48,2.4298],
+          [-0.19,1.48,2.4298]
+        ]
+      },
+      {
+        "hitboxId": "H152",
+        "name": "glacis_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-0.6521,1.4348,2.4128],
+          [-0.19,1.4348,2.4128],
+          [-0.19,1.48,2.4298],
+          [-0.19,1.48,2.4298]
+        ]
+      },
+      {
+        "hitboxId": "H153",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4732,1.1701,3.1497],
+          [0.4755,1.1599,3.1477],
+          [0.4755,1.1763,3.1412],
+          [0.4755,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H154",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.1599,3.1477],
+          [0.4806,1.1649,3.1362],
+          [0.4755,1.1763,3.1412],
+          [0.4755,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H155",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.1763,3.1412],
+          [0.4806,1.1649,3.1362],
+          [0.4755,1.4415,2.5352],
+          [0.4755,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H156",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4806,1.1649,3.1362],
+          [0.4806,1.43,2.5302],
+          [0.4755,1.4415,2.5352],
+          [0.4755,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H157",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.4415,2.5352],
+          [0.4806,1.43,2.5302],
+          [0.4732,1.4434,2.5249],
+          [0.4732,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H158",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4806,1.43,2.5302],
+          [0.4755,1.435,2.5187],
+          [0.4732,1.4434,2.5249],
+          [0.4732,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H159",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.4434,2.5249],
+          [0.0235,1.435,2.5187],
+          [0.0235,1.4415,2.5352],
+          [0.0235,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H160",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.435,2.5187],
+          [0.0183,1.43,2.5302],
+          [0.0235,1.4415,2.5352],
+          [0.0235,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H161",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.4415,2.5352],
+          [0.0183,1.43,2.5302],
+          [0.0235,1.1763,3.1412],
+          [0.0235,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H162",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0183,1.43,2.5302],
+          [0.0183,1.1649,3.1362],
+          [0.0235,1.1763,3.1412],
+          [0.0235,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H163",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1763,3.1412],
+          [0.0183,1.1649,3.1362],
+          [0.0258,1.1701,3.1497],
+          [0.0258,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H164",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0183,1.1649,3.1362],
+          [0.0235,1.1599,3.1477],
+          [0.0258,1.1701,3.1497],
+          [0.0258,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H165",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.4434,2.5249],
+          [0.0235,1.4415,2.5352],
+          [0.036,1.4465,2.5237],
+          [0.036,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H166",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.4415,2.5352],
+          [0.036,1.4462,2.5372],
+          [0.036,1.4465,2.5237],
+          [0.036,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H167",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.4465,2.5237],
+          [0.036,1.4462,2.5372],
+          [0.463,1.4465,2.5237],
+          [0.463,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H168",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.4462,2.5372],
+          [0.463,1.4462,2.5372],
+          [0.463,1.4465,2.5237],
+          [0.463,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H169",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.4465,2.5237],
+          [0.463,1.4462,2.5372],
+          [0.4732,1.4434,2.5249],
+          [0.4732,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H170",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.4462,2.5372],
+          [0.4755,1.4415,2.5352],
+          [0.4732,1.4434,2.5249],
+          [0.4732,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H171",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.4415,2.5352],
+          [0.0235,1.1763,3.1412],
+          [0.036,1.4462,2.5372],
+          [0.036,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H172",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1763,3.1412],
+          [0.036,1.181,3.1433],
+          [0.036,1.4462,2.5372],
+          [0.036,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H173",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.4462,2.5372],
+          [0.036,1.181,3.1433],
+          [0.463,1.4462,2.5372],
+          [0.463,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H174",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.181,3.1433],
+          [0.463,1.181,3.1433],
+          [0.463,1.4462,2.5372],
+          [0.463,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H175",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.4462,2.5372],
+          [0.463,1.181,3.1433],
+          [0.4755,1.4415,2.5352],
+          [0.4755,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H176",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.181,3.1433],
+          [0.4755,1.1763,3.1412],
+          [0.4755,1.4415,2.5352],
+          [0.4755,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H177",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1763,3.1412],
+          [0.0258,1.1701,3.1497],
+          [0.036,1.181,3.1433],
+          [0.036,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H178",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.1701,3.1497],
+          [0.036,1.1713,3.1527],
+          [0.036,1.181,3.1433],
+          [0.036,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H179",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.181,3.1433],
+          [0.036,1.1713,3.1527],
+          [0.463,1.181,3.1433],
+          [0.463,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H180",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1713,3.1527],
+          [0.463,1.1713,3.1527],
+          [0.463,1.181,3.1433],
+          [0.463,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H181",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.181,3.1433],
+          [0.463,1.1713,3.1527],
+          [0.4755,1.1763,3.1412],
+          [0.4755,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H182",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1713,3.1527],
+          [0.4732,1.1701,3.1497],
+          [0.4755,1.1763,3.1412],
+          [0.4755,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H183",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.1701,3.1497],
+          [0.0235,1.1599,3.1477],
+          [0.036,1.1713,3.1527],
+          [0.036,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H184",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1599,3.1477],
+          [0.036,1.1578,3.1524],
+          [0.036,1.1713,3.1527],
+          [0.036,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H185",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1713,3.1527],
+          [0.036,1.1578,3.1524],
+          [0.463,1.1713,3.1527],
+          [0.463,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H186",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1578,3.1524],
+          [0.463,1.1578,3.1524],
+          [0.463,1.1713,3.1527],
+          [0.463,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H187",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1713,3.1527],
+          [0.463,1.1578,3.1524],
+          [0.4732,1.1701,3.1497],
+          [0.4732,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H188",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1578,3.1524],
+          [0.4755,1.1599,3.1477],
+          [0.4732,1.1701,3.1497],
+          [0.4732,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H189",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4732,1.4434,2.5249],
+          [0.4755,1.435,2.5187],
+          [0.463,1.4465,2.5237],
+          [0.463,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H190",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.435,2.5187],
+          [0.463,1.4371,2.514],
+          [0.463,1.4465,2.5237],
+          [0.463,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H191",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.4465,2.5237],
+          [0.463,1.4371,2.514],
+          [0.036,1.4465,2.5237],
+          [0.036,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H192",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.4371,2.514],
+          [0.036,1.4371,2.514],
+          [0.036,1.4465,2.5237],
+          [0.036,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H193",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.4465,2.5237],
+          [0.036,1.4371,2.514],
+          [0.0258,1.4434,2.5249],
+          [0.0258,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H194",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.4371,2.514],
+          [0.0235,1.435,2.5187],
+          [0.0258,1.4434,2.5249],
+          [0.0258,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H195",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.1599,3.1477],
+          [0.4755,1.1249,3.1324],
+          [0.4806,1.1649,3.1362],
+          [0.4806,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H196",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.1249,3.1324],
+          [0.4806,1.1299,3.1209],
+          [0.4806,1.1649,3.1362],
+          [0.4806,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H197",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4755,1.1249,3.1324],
+          [0.4732,1.1164,3.1262],
+          [0.4806,1.1299,3.1209],
+          [0.4806,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H198",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4732,1.1164,3.1262],
+          [0.4755,1.1184,3.1159],
+          [0.4806,1.1299,3.1209],
+          [0.4806,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H199",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0183,1.1649,3.1362],
+          [0.0183,1.1299,3.1209],
+          [0.0235,1.1599,3.1477],
+          [0.0235,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H200",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0183,1.1299,3.1209],
+          [0.0235,1.1249,3.1324],
+          [0.0235,1.1599,3.1477],
+          [0.0235,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H201",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0183,1.1299,3.1209],
+          [0.0235,1.1184,3.1159],
+          [0.0235,1.1249,3.1324],
+          [0.0235,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H202",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1184,3.1159],
+          [0.0258,1.1164,3.1262],
+          [0.0235,1.1249,3.1324],
+          [0.0235,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H203",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.1164,3.1262],
+          [0.0235,1.1184,3.1159],
+          [0.036,1.1134,3.1274],
+          [0.036,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H204",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1184,3.1159],
+          [0.036,1.1137,3.1139],
+          [0.036,1.1134,3.1274],
+          [0.036,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H205",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1134,3.1274],
+          [0.036,1.1137,3.1139],
+          [0.463,1.1134,3.1274],
+          [0.463,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H206",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1137,3.1139],
+          [0.463,1.1137,3.1139],
+          [0.463,1.1134,3.1274],
+          [0.463,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H207",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1134,3.1274],
+          [0.463,1.1137,3.1139],
+          [0.4732,1.1164,3.1262],
+          [0.4732,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H208",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1137,3.1139],
+          [0.4755,1.1184,3.1159],
+          [0.4732,1.1164,3.1262],
+          [0.4732,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H209",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1599,3.1477],
+          [0.0235,1.1249,3.1324],
+          [0.036,1.1578,3.1524],
+          [0.036,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H210",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1249,3.1324],
+          [0.036,1.1228,3.1371],
+          [0.036,1.1578,3.1524],
+          [0.036,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H211",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1578,3.1524],
+          [0.036,1.1228,3.1371],
+          [0.463,1.1578,3.1524],
+          [0.463,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H212",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1228,3.1371],
+          [0.463,1.1228,3.1371],
+          [0.463,1.1578,3.1524],
+          [0.463,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H213",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1578,3.1524],
+          [0.463,1.1228,3.1371],
+          [0.4755,1.1599,3.1477],
+          [0.4755,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H214",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1228,3.1371],
+          [0.4755,1.1249,3.1324],
+          [0.4755,1.1599,3.1477],
+          [0.4755,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H215",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0235,1.1249,3.1324],
+          [0.0258,1.1164,3.1262],
+          [0.036,1.1228,3.1371],
+          [0.036,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H216",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0258,1.1164,3.1262],
+          [0.036,1.1134,3.1274],
+          [0.036,1.1228,3.1371],
+          [0.036,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H217",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1228,3.1371],
+          [0.036,1.1134,3.1274],
+          [0.463,1.1228,3.1371],
+          [0.463,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H218",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.036,1.1134,3.1274],
+          [0.463,1.1134,3.1274],
+          [0.463,1.1228,3.1371],
+          [0.463,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H219",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1228,3.1371],
+          [0.463,1.1134,3.1274],
+          [0.4755,1.1249,3.1324],
+          [0.4755,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H220",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.463,1.1134,3.1274],
+          [0.4732,1.1164,3.1262],
+          [0.4755,1.1249,3.1324],
+          [0.4755,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H221",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9171,1.1701,3.1497],
+          [0.9194,1.1599,3.1477],
+          [0.9194,1.1763,3.1412],
+          [0.9194,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H222",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.1599,3.1477],
+          [0.9245,1.1649,3.1362],
+          [0.9194,1.1763,3.1412],
+          [0.9194,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H223",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.1763,3.1412],
+          [0.9245,1.1649,3.1362],
+          [0.9194,1.4415,2.5352],
+          [0.9194,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H224",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9245,1.1649,3.1362],
+          [0.9245,1.43,2.5302],
+          [0.9194,1.4415,2.5352],
+          [0.9194,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H225",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.4415,2.5352],
+          [0.9245,1.43,2.5302],
+          [0.9171,1.4434,2.5249],
+          [0.9171,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H226",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9245,1.43,2.5302],
+          [0.9194,1.435,2.5187],
+          [0.9171,1.4434,2.5249],
+          [0.9171,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H227",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.4434,2.5249],
+          [0.495,1.435,2.5187],
+          [0.495,1.4415,2.5352],
+          [0.495,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H228",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.435,2.5187],
+          [0.4898,1.43,2.5302],
+          [0.495,1.4415,2.5352],
+          [0.495,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H229",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.4415,2.5352],
+          [0.4898,1.43,2.5302],
+          [0.495,1.1763,3.1412],
+          [0.495,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H230",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4898,1.43,2.5302],
+          [0.4898,1.1649,3.1362],
+          [0.495,1.1763,3.1412],
+          [0.495,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H231",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1763,3.1412],
+          [0.4898,1.1649,3.1362],
+          [0.4973,1.1701,3.1497],
+          [0.4973,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H232",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4898,1.1649,3.1362],
+          [0.495,1.1599,3.1477],
+          [0.4973,1.1701,3.1497],
+          [0.4973,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H233",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.4434,2.5249],
+          [0.495,1.4415,2.5352],
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H234",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.4415,2.5352],
+          [0.5075,1.4462,2.5372],
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H235",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4462,2.5372],
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H236",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.4462,2.5372],
+          [0.9069,1.4462,2.5372],
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H237",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4462,2.5372],
+          [0.9171,1.4434,2.5249],
+          [0.9171,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H238",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.4462,2.5372],
+          [0.9194,1.4415,2.5352],
+          [0.9171,1.4434,2.5249],
+          [0.9171,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H239",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.4415,2.5352],
+          [0.495,1.1763,3.1412],
+          [0.5075,1.4462,2.5372],
+          [0.5075,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H240",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1763,3.1412],
+          [0.5075,1.181,3.1433],
+          [0.5075,1.4462,2.5372],
+          [0.5075,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H241",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.4462,2.5372],
+          [0.5075,1.181,3.1433],
+          [0.9069,1.4462,2.5372],
+          [0.9069,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H242",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.181,3.1433],
+          [0.9069,1.181,3.1433],
+          [0.9069,1.4462,2.5372],
+          [0.9069,1.4462,2.5372]
+        ]
+      },
+      {
+        "hitboxId": "H243",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.4462,2.5372],
+          [0.9069,1.181,3.1433],
+          [0.9194,1.4415,2.5352],
+          [0.9194,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H244",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.181,3.1433],
+          [0.9194,1.1763,3.1412],
+          [0.9194,1.4415,2.5352],
+          [0.9194,1.4415,2.5352]
+        ]
+      },
+      {
+        "hitboxId": "H245",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1763,3.1412],
+          [0.4973,1.1701,3.1497],
+          [0.5075,1.181,3.1433],
+          [0.5075,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H246",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.1701,3.1497],
+          [0.5075,1.1713,3.1527],
+          [0.5075,1.181,3.1433],
+          [0.5075,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H247",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.181,3.1433],
+          [0.5075,1.1713,3.1527],
+          [0.9069,1.181,3.1433],
+          [0.9069,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H248",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1713,3.1527],
+          [0.9069,1.1713,3.1527],
+          [0.9069,1.181,3.1433],
+          [0.9069,1.181,3.1433]
+        ]
+      },
+      {
+        "hitboxId": "H249",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.181,3.1433],
+          [0.9069,1.1713,3.1527],
+          [0.9194,1.1763,3.1412],
+          [0.9194,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H250",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1713,3.1527],
+          [0.9171,1.1701,3.1497],
+          [0.9194,1.1763,3.1412],
+          [0.9194,1.1763,3.1412]
+        ]
+      },
+      {
+        "hitboxId": "H251",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.1701,3.1497],
+          [0.495,1.1599,3.1477],
+          [0.5075,1.1713,3.1527],
+          [0.5075,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H252",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1599,3.1477],
+          [0.5075,1.1578,3.1524],
+          [0.5075,1.1713,3.1527],
+          [0.5075,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H253",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1713,3.1527],
+          [0.5075,1.1578,3.1524],
+          [0.9069,1.1713,3.1527],
+          [0.9069,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H254",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1578,3.1524],
+          [0.9069,1.1578,3.1524],
+          [0.9069,1.1713,3.1527],
+          [0.9069,1.1713,3.1527]
+        ]
+      },
+      {
+        "hitboxId": "H255",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1713,3.1527],
+          [0.9069,1.1578,3.1524],
+          [0.9171,1.1701,3.1497],
+          [0.9171,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H256",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1578,3.1524],
+          [0.9194,1.1599,3.1477],
+          [0.9171,1.1701,3.1497],
+          [0.9171,1.1701,3.1497]
+        ]
+      },
+      {
+        "hitboxId": "H257",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9171,1.4434,2.5249],
+          [0.9194,1.435,2.5187],
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H258",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.435,2.5187],
+          [0.9069,1.4371,2.514],
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H259",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.4465,2.5237],
+          [0.9069,1.4371,2.514],
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H260",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.4371,2.514],
+          [0.5075,1.4371,2.514],
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4465,2.5237]
+        ]
+      },
+      {
+        "hitboxId": "H261",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.4465,2.5237],
+          [0.5075,1.4371,2.514],
+          [0.4973,1.4434,2.5249],
+          [0.4973,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H262",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.4371,2.514],
+          [0.495,1.435,2.5187],
+          [0.4973,1.4434,2.5249],
+          [0.4973,1.4434,2.5249]
+        ]
+      },
+      {
+        "hitboxId": "H263",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.1599,3.1477],
+          [0.9194,1.1249,3.1324],
+          [0.9245,1.1649,3.1362],
+          [0.9245,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H264",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.1249,3.1324],
+          [0.9245,1.1299,3.1209],
+          [0.9245,1.1649,3.1362],
+          [0.9245,1.1649,3.1362]
+        ]
+      },
+      {
+        "hitboxId": "H265",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9194,1.1249,3.1324],
+          [0.9171,1.1164,3.1262],
+          [0.9245,1.1299,3.1209],
+          [0.9245,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H266",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9171,1.1164,3.1262],
+          [0.9194,1.1184,3.1159],
+          [0.9245,1.1299,3.1209],
+          [0.9245,1.1299,3.1209]
+        ]
+      },
+      {
+        "hitboxId": "H267",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4898,1.1649,3.1362],
+          [0.4898,1.1299,3.1209],
+          [0.495,1.1599,3.1477],
+          [0.495,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H268",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4898,1.1299,3.1209],
+          [0.495,1.1249,3.1324],
+          [0.495,1.1599,3.1477],
+          [0.495,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H269",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4898,1.1299,3.1209],
+          [0.495,1.1184,3.1159],
+          [0.495,1.1249,3.1324],
+          [0.495,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H270",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1184,3.1159],
+          [0.4973,1.1164,3.1262],
+          [0.495,1.1249,3.1324],
+          [0.495,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H271",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.1164,3.1262],
+          [0.495,1.1184,3.1159],
+          [0.5075,1.1134,3.1274],
+          [0.5075,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H272",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1184,3.1159],
+          [0.5075,1.1137,3.1139],
+          [0.5075,1.1134,3.1274],
+          [0.5075,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H273",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1134,3.1274],
+          [0.5075,1.1137,3.1139],
+          [0.9069,1.1134,3.1274],
+          [0.9069,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H274",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1137,3.1139],
+          [0.9069,1.1137,3.1139],
+          [0.9069,1.1134,3.1274],
+          [0.9069,1.1134,3.1274]
+        ]
+      },
+      {
+        "hitboxId": "H275",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1134,3.1274],
+          [0.9069,1.1137,3.1139],
+          [0.9171,1.1164,3.1262],
+          [0.9171,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H276",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1137,3.1139],
+          [0.9194,1.1184,3.1159],
+          [0.9171,1.1164,3.1262],
+          [0.9171,1.1164,3.1262]
+        ]
+      },
+      {
+        "hitboxId": "H277",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1599,3.1477],
+          [0.495,1.1249,3.1324],
+          [0.5075,1.1578,3.1524],
+          [0.5075,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H278",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1249,3.1324],
+          [0.5075,1.1228,3.1371],
+          [0.5075,1.1578,3.1524],
+          [0.5075,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H279",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1578,3.1524],
+          [0.5075,1.1228,3.1371],
+          [0.9069,1.1578,3.1524],
+          [0.9069,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H280",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1228,3.1371],
+          [0.9069,1.1228,3.1371],
+          [0.9069,1.1578,3.1524],
+          [0.9069,1.1578,3.1524]
+        ]
+      },
+      {
+        "hitboxId": "H281",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1578,3.1524],
+          [0.9069,1.1228,3.1371],
+          [0.9194,1.1599,3.1477],
+          [0.9194,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H282",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1228,3.1371],
+          [0.9194,1.1249,3.1324],
+          [0.9194,1.1599,3.1477],
+          [0.9194,1.1599,3.1477]
+        ]
+      },
+      {
+        "hitboxId": "H283",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.495,1.1249,3.1324],
+          [0.4973,1.1164,3.1262],
+          [0.5075,1.1228,3.1371],
+          [0.5075,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H284",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4973,1.1164,3.1262],
+          [0.5075,1.1134,3.1274],
+          [0.5075,1.1228,3.1371],
+          [0.5075,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H285",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1228,3.1371],
+          [0.5075,1.1134,3.1274],
+          [0.9069,1.1228,3.1371],
+          [0.9069,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H286",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.5075,1.1134,3.1274],
+          [0.9069,1.1134,3.1274],
+          [0.9069,1.1228,3.1371],
+          [0.9069,1.1228,3.1371]
+        ]
+      },
+      {
+        "hitboxId": "H287",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1228,3.1371],
+          [0.9069,1.1134,3.1274],
+          [0.9194,1.1249,3.1324],
+          [0.9194,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H288",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.9069,1.1134,3.1274],
+          [0.9171,1.1164,3.1262],
+          [0.9194,1.1249,3.1324],
+          [0.9194,1.1249,3.1324]
+        ]
+      },
+      {
+        "hitboxId": "H289",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0141,1.1334,3.1884],
+          [0.0141,0.9381,3.601],
+          [0.4838,1.1334,3.1884],
+          [0.4838,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H290",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0141,0.9381,3.601],
+          [0.4838,0.9381,3.601],
+          [0.4838,1.1334,3.1884],
+          [0.4838,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H291",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0141,0.9381,3.601],
+          [0.0141,0.8868,3.5768],
+          [0.4838,0.9381,3.601],
+          [0.4838,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H292",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.0141,0.8868,3.5768],
+          [0.4838,0.8868,3.5768],
+          [0.4838,0.9381,3.601],
+          [0.4838,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H293",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4902,1.1334,3.1884],
+          [0.4902,0.9381,3.601],
+          [0.8479,1.1334,3.1884],
+          [0.8479,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H294",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4902,0.9381,3.601],
+          [0.8479,0.9381,3.601],
+          [0.8479,1.1334,3.1884],
+          [0.8479,1.1334,3.1884]
+        ]
+      },
+      {
+        "hitboxId": "H295",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4902,0.9381,3.601],
+          [0.4902,0.8868,3.5768],
+          [0.8479,0.9381,3.601],
+          [0.8479,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H296",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.4902,0.8868,3.5768],
+          [0.8479,0.8868,3.5768],
+          [0.8479,0.9381,3.601],
+          [0.8479,0.9381,3.601]
+        ]
+      },
+      {
+        "hitboxId": "H297",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6604,1.5787,2.1684],
+          [0.6604,1.4726,2.4498],
+          [0.9818,1.5787,2.1684],
+          [0.9818,1.5787,2.1684]
+        ]
+      },
+      {
+        "hitboxId": "H298",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6604,1.4726,2.4498],
+          [0.9818,1.4726,2.4498],
+          [0.9818,1.5787,2.1684],
+          [0.9818,1.5787,2.1684]
+        ]
+      },
+      {
+        "hitboxId": "H299",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6604,1.4726,2.4498],
+          [0.6604,1.4275,2.4327],
+          [0.9818,1.4726,2.4498],
+          [0.9818,1.4726,2.4498]
+        ]
+      },
+      {
+        "hitboxId": "H300",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.6604,1.4275,2.4327],
+          [0.9818,1.4275,2.4327],
+          [0.9818,1.4726,2.4498],
+          [0.9818,1.4726,2.4498]
+        ]
+      },
+      {
+        "hitboxId": "H301",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.19,1.5514,2.2397],
+          [0.19,1.48,2.4298],
+          [0.6521,1.5514,2.2397],
+          [0.6521,1.5514,2.2397]
+        ]
+      },
+      {
+        "hitboxId": "H302",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.19,1.48,2.4298],
+          [0.6521,1.48,2.4298],
+          [0.6521,1.5514,2.2397],
+          [0.6521,1.5514,2.2397]
+        ]
+      },
+      {
+        "hitboxId": "H303",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.19,1.48,2.4298],
+          [0.19,1.4348,2.4128],
+          [0.6521,1.48,2.4298],
+          [0.6521,1.48,2.4298]
+        ]
+      },
+      {
+        "hitboxId": "H304",
+        "name": "glacis_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [0.19,1.4348,2.4128],
+          [0.6521,1.4348,2.4128],
+          [0.6521,1.48,2.4298],
+          [0.6521,1.48,2.4298]
+        ]
+      },
+      {
+        "hitboxId": "H305",
+        "name": "upper_glacis",
+        "physicalMm": 500,
+        "keMm": 448,
+        "ceMm": 608,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5741,0.9378,3.9711],
+          [1.5741,0.9378,3.9711],
+          [1.5741,1.5561,2.2957],
+          [-1.5741,1.5561,2.2957]
+        ]
+      },
+      {
+        "hitboxId": "H306",
+        "name": "lower_front",
+        "physicalMm": 80,
+        "keMm": 104,
+        "ceMm": 128,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5741,0.4657,3.636],
+          [1.5741,0.4657,3.636],
+          [1.5741,0.9378,3.9711],
+          [-1.5741,0.9378,3.9711]
+        ]
+      },
+      {
+        "hitboxId": "H307",
+        "name": "hull_side_upper_R",
+        "physicalMm": 70,
+        "keMm": 72,
+        "ceMm": 88,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.9194,1.1064,2.3516],
+          [1.9194,1.1064,-3.568],
+          [1.9194,1.5561,-3.568],
+          [1.9194,1.5561,2.3516]
+        ]
+      },
+      {
+        "hitboxId": "H308",
+        "name": "hull_side_upper_L",
+        "physicalMm": 70,
+        "keMm": 72,
+        "ceMm": 88,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.9194,1.1064,-3.568],
+          [-1.9194,1.1064,2.3516],
+          [-1.9194,1.5561,2.3516],
+          [-1.9194,1.5561,-3.568]
+        ]
+      },
+      {
+        "hitboxId": "H309",
+        "name": "hull_side_lower_R",
+        "physicalMm": 70,
+        "keMm": 72,
+        "ceMm": 88,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.3304,0.4657,3.5802],
+          [1.3304,0.4657,-3.4563],
+          [1.3304,1.1064,-3.4563],
+          [1.3304,1.1064,3.5802]
+        ]
+      },
+      {
+        "hitboxId": "H310",
+        "name": "hull_side_lower_L",
+        "physicalMm": 70,
+        "keMm": 72,
+        "ceMm": 88,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.3304,0.4657,-3.4563],
+          [-1.3304,0.4657,3.5802],
+          [-1.3304,1.1064,3.5802],
+          [-1.3304,1.1064,-3.4563]
+        ]
+      },
+      {
+        "hitboxId": "H311",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.9876,0.7439],
+          [1.9845,1.5098,0.7439],
+          [1.9845,1.5098,1.4705],
+          [1.9845,1.5098,1.4705]
+        ]
+      },
+      {
+        "hitboxId": "H312",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.9876,0.7439],
+          [1.9845,1.5098,1.4705],
+          [1.9388,0.9876,1.4705],
+          [1.9388,0.9876,1.4705]
+        ]
+      },
+      {
+        "hitboxId": "H313",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.9686,1.5174],
+          [1.9845,1.4908,1.5174],
+          [1.9845,1.4908,2.244],
+          [1.9845,1.4908,2.244]
+        ]
+      },
+      {
+        "hitboxId": "H314",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.9686,1.5174],
+          [1.9845,1.4908,2.244],
+          [1.9388,0.9686,2.244],
+          [1.9388,0.9686,2.244]
+        ]
+      },
+      {
+        "hitboxId": "H315",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.8396,2.2867],
+          [1.9845,1.3617,2.2867],
+          [1.9845,1.3617,3.0133],
+          [1.9845,1.3617,3.0133]
+        ]
+      },
+      {
+        "hitboxId": "H316",
+        "name": "skirt_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [1.9388,0.8396,2.2867],
+          [1.9845,1.3617,3.0133],
+          [1.9388,0.8396,3.0133],
+          [1.9388,0.8396,3.0133]
+        ]
+      },
+      {
+        "hitboxId": "H317",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.5098,0.7439],
+          [-1.9388,0.9876,0.7439],
+          [-1.9388,0.9876,1.4705],
+          [-1.9388,0.9876,1.4705]
+        ]
+      },
+      {
+        "hitboxId": "H318",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.5098,0.7439],
+          [-1.9388,0.9876,1.4705],
+          [-1.9845,1.5098,1.4705],
+          [-1.9845,1.5098,1.4705]
+        ]
+      },
+      {
+        "hitboxId": "H319",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.4908,1.5174],
+          [-1.9388,0.9686,1.5174],
+          [-1.9388,0.9686,2.244],
+          [-1.9388,0.9686,2.244]
+        ]
+      },
+      {
+        "hitboxId": "H320",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.4908,1.5174],
+          [-1.9388,0.9686,2.244],
+          [-1.9845,1.4908,2.244],
+          [-1.9845,1.4908,2.244]
+        ]
+      },
+      {
+        "hitboxId": "H321",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.3617,2.2867],
+          [-1.9388,0.8396,2.2867],
+          [-1.9388,0.8396,3.0133],
+          [-1.9388,0.8396,3.0133]
+        ]
+      },
+      {
+        "hitboxId": "H322",
+        "name": "skirt_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": false,
+        "verts": [
+          [-1.9845,1.3617,2.2867],
+          [-1.9388,0.8396,3.0133],
+          [-1.9845,1.3617,3.0133],
+          [-1.9845,1.3617,3.0133]
+        ]
+      },
+      {
+        "hitboxId": "H323",
+        "name": "skirt_rubber_R",
+        "physicalMm": 8,
+        "keMm": 6,
+        "ceMm": 6,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.995,0.4873,0.21],
+          [1.995,0.4873,-3.465],
+          [1.995,1.1371,-3.465],
+          [1.995,1.1371,0.21]
+        ]
+      },
+      {
+        "hitboxId": "H324",
+        "name": "skirt_rubber_L",
+        "physicalMm": 8,
+        "keMm": 6,
+        "ceMm": 6,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [-1.995,0.4873,-3.465],
+          [-1.995,0.4873,0.21],
+          [-1.995,1.1371,0.21],
+          [-1.995,1.1371,-3.465]
+        ]
+      },
+      {
+        "hitboxId": "H325",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.68,0.13,3.6015],
+          [1.68,0.13,-3.6015],
+          [1.68,1.083,-3.6015],
+          [1.68,1.083,3.6015]
+        ]
+      },
+      {
+        "hitboxId": "H326",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.68,0.13,-3.6015],
+          [-1.68,0.13,3.6015],
+          [-1.68,1.083,3.6015],
+          [-1.68,1.083,-3.6015]
+        ]
+      },
+      {
+        "hitboxId": "H327",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 8,
+        "ceMm": 8,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.575,0.5415,-3.78],
+          [-1.575,0.5415,-3.78],
+          [-1.575,1.4078,-3.78],
+          [1.575,1.4078,-3.78]
+        ]
+      },
+      {
+        "hitboxId": "H328",
+        "name": "hull_rear",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [1.5741,0.4657,-3.6015],
+          [-1.5741,0.4657,-3.6015],
+          [-1.5741,1.5561,-3.6015],
+          [1.5741,1.5561,-3.6015]
+        ]
+      },
+      {
+        "hitboxId": "H329",
+        "name": "hull_roof",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-1.5741,1.5561,2.2957],
+          [1.5741,1.5561,2.2957],
+          [1.5741,1.5561,-3.568],
+          [-1.5741,1.5561,-3.568]
+        ]
+      },
+      {
+        "hitboxId": "H330",
+        "name": "hull_hatch_01_front",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.5409,2.1578],
+          [0.336,1.5409,2.1578],
+          [0.336,1.5881,2.1578],
+          [-0.336,1.5881,2.1578]
+        ]
+      },
+      {
+        "hitboxId": "H331",
+        "name": "hull_hatch_01_rear",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [0.336,1.5409,1.6432],
+          [-0.336,1.5409,1.6432],
+          [-0.336,1.5881,1.6432],
+          [0.336,1.5881,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "H332",
+        "name": "hull_hatch_01_right",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [0.336,1.5409,2.1578],
+          [0.336,1.5409,1.6432],
+          [0.336,1.5881,1.6432],
+          [0.336,1.5881,2.1578]
+        ]
+      },
+      {
+        "hitboxId": "H333",
+        "name": "hull_hatch_01_left",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.5409,1.6432],
+          [-0.336,1.5409,2.1578],
+          [-0.336,1.5881,2.1578],
+          [-0.336,1.5881,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "H334",
+        "name": "hull_hatch_01_top",
+        "physicalMm": 40,
+        "keMm": 32,
+        "ceMm": 32,
+        "kind": "main",
+        "turretLocal": false,
+        "verts": [
+          [-0.336,1.5881,2.1578],
+          [0.336,1.5881,2.1578],
+          [0.336,1.5881,1.6432],
+          [-0.336,1.5881,1.6432]
+        ]
+      },
+      {
+        "hitboxId": "T01",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.294,0.0541,1.071],
+          [1.155,0.0541,0.336],
+          [1.155,0.7364,0.252],
+          [0.294,0.7364,0.987]
+        ]
+      },
+      {
+        "hitboxId": "T02",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-1.155,0.0541,0.336],
+          [-0.294,0.0541,1.071],
+          [-0.294,0.7364,0.987],
+          [-1.155,0.7364,0.252]
+        ]
+      },
+      {
+        "hitboxId": "T03",
+        "name": "turret_cheek_R",
+        "physicalMm": 650,
+        "keMm": 560,
+        "ceMm": 720,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [0.3999,0.0438,1.5835],
+          [1.9269,0.0438,0.3486],
+          [1.9269,0.5849,0.2034],
+          [0.3999,0.5849,1.4383]
+        ]
+      },
+      {
+        "hitboxId": "T04",
+        "name": "turret_cheek_L",
+        "physicalMm": 650,
+        "keMm": 560,
+        "ceMm": 720,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.9269,0.0438,0.3486],
+          [-0.3999,0.0438,1.5835],
+          [-0.3999,0.5849,1.4383],
+          [-1.9269,0.5849,0.2034]
+        ]
+      },
+      {
+        "hitboxId": "T05",
+        "name": "mantlet",
+        "physicalMm": 300,
+        "keMm": 320,
+        "ceMm": 400,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.3999,0.1056,1.6925],
+          [0.3999,0.1056,1.6925],
+          [0.3999,0.4148,1.638],
+          [-0.3999,0.4148,1.638]
+        ]
+      },
+      {
+        "hitboxId": "T06",
+        "name": "turret_side_R",
+        "physicalMm": 300,
+        "keMm": 280,
+        "ceMm": 400,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.9996,0.0438,0.385],
+          [1.9996,0.0438,-1.7035],
+          [1.9996,0.5849,-1.7035],
+          [1.9996,0.5849,0.385]
+        ]
+      },
+      {
+        "hitboxId": "T07",
+        "name": "turret_side_L",
+        "physicalMm": 300,
+        "keMm": 280,
+        "ceMm": 400,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.9996,0.0438,-1.7035],
+          [-1.9996,0.0438,0.385],
+          [-1.9996,0.5849,0.385],
+          [-1.9996,0.5849,-1.7035]
+        ]
+      },
+      {
+        "hitboxId": "T08",
+        "name": "turret_bustle",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [1.7269,0.0438,-3.465],
+          [-1.7269,0.0438,-3.465],
+          [-1.7269,0.4921,-3.465],
+          [1.7269,0.4921,-3.465]
+        ]
+      },
+      {
+        "hitboxId": "T09",
+        "name": "turret_roof",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-1.9087,0.6158,1.0206],
+          [1.9087,0.6158,1.0206],
+          [1.9087,0.6158,-1.7035],
+          [-1.9087,0.6158,-1.7035]
+        ]
+      },
+      {
+        "hitboxId": "T10",
+        "name": "turret_cupola_01_front",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.6718,0.7106,-0.2461],
+          [-0.2942,0.7106,-0.2461],
+          [-0.2942,0.8149,-0.2461],
+          [-0.6718,0.8149,-0.2461]
+        ]
+      },
+      {
+        "hitboxId": "T11",
+        "name": "turret_cupola_01_rear",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.2942,0.7106,-0.5993],
+          [-0.6718,0.7106,-0.5993],
+          [-0.6718,0.8149,-0.5993],
+          [-0.2942,0.8149,-0.5993]
+        ]
+      },
+      {
+        "hitboxId": "T12",
+        "name": "turret_cupola_01_right",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.2942,0.7106,-0.2461],
+          [-0.2942,0.7106,-0.5993],
+          [-0.2942,0.8149,-0.5993],
+          [-0.2942,0.8149,-0.2461]
+        ]
+      },
+      {
+        "hitboxId": "T13",
+        "name": "turret_cupola_01_left",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.6718,0.7106,-0.5993],
+          [-0.6718,0.7106,-0.2461],
+          [-0.6718,0.8149,-0.2461],
+          [-0.6718,0.8149,-0.5993]
+        ]
+      },
+      {
+        "hitboxId": "T14",
+        "name": "turret_cupola_01_top",
+        "physicalMm": 45,
+        "keMm": 36,
+        "ceMm": 36,
+        "kind": "main",
+        "turretLocal": true,
+        "verts": [
+          [-0.6718,0.8149,-0.2461],
+          [-0.2942,0.8149,-0.2461],
+          [-0.2942,0.8149,-0.5993],
+          [-0.6718,0.8149,-0.5993]
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "volumeId": "M01",
+        "name": "gun",
+        "min": [-0.3272,0.0824,-0.7954],
+        "max": [0.3272,0.4303,1.1114],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M02",
+        "name": "turretRing",
+        "min": [-0.8527,1.4418,-0.9535],
+        "max": [0.8737,1.6666,0.9453],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M03",
+        "name": "autoloader",
+        "min": [-0.5118,0.6543,-0.1413],
+        "max": [0.5118,0.9241,0.8237],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M04",
+        "name": "engine",
+        "min": [-1.0156,0.4882,-3.4563],
+        "max": [1.0156,1.5561,-1.6693],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M05",
+        "name": "transmission",
+        "min": [-0.8734,0.5977,-3.3133],
+        "max": [0.8734,1.3666,-2.7057],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M06",
+        "name": "fuelTank",
+        "min": [0.6093,0.4882,-1.6134],
+        "max": [1.2694,1.1626,-0.1056],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M07",
+        "name": "ammoRack",
+        "min": [-0.7109,0.4882,-0.329],
+        "max": [0.7109,1.0502,1.0113],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M08",
+        "name": "radio",
+        "min": [-1.0907,0.0824,-2.1575],
+        "max": [-0.1818,0.4303,-1.3403],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M09",
+        "name": "optics",
+        "min": [-0.8611,0.4909,-0.6204],
+        "max": [0.5358,0.8927,0.5107],
+        "parts": [
+          {
+            "min": [0.2993,0.7495,-0.6204],
+            "max": [0.4988,0.8927,-0.5892]
+          },
+          {
+            "min": [-0.8611,0.7015,-0.2768],
+            "max": [-0.7769,0.7301,-0.2482]
+          },
+          {
+            "min": [-0.4411,0.7015,-0.2768],
+            "max": [-0.3569,0.7301,-0.2482]
+          },
+          {
+            "min": [-0.723,0.824,-0.2656],
+            "max": [-0.6589,0.8799,-0.2583]
+          },
+          {
+            "min": [-0.3582,0.7942,-0.2455],
+            "max": [-0.2727,0.8469,-0.2339]
+          },
+          {
+            "min": [-0.651,0.7015,-0.1943],
+            "max": [-0.567,0.7301,-0.1838]
+          },
+          {
+            "min": [0.4512,0.7015,-0.0757],
+            "max": [0.5358,0.7301,-0.0503]
+          },
+          {
+            "min": [0.1467,0.7015,-0.0442],
+            "max": [0.2313,0.7301,-0.0188]
+          },
+          {
+            "min": [0.2785,0.4909,0.4784],
+            "max": [0.4775,0.5444,0.5107]
+          }
+        ],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M10",
+        "name": "trackL",
+        "min": [-1.8289,0.0452,-3.2592],
+        "max": [-1.2334,1.2004,3.6936],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M11",
+        "name": "trackR",
+        "min": [1.2601,0.0452,-3.2592],
+        "max": [1.8556,1.2004,3.6936],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "M12",
+        "name": "roofGun",
+        "min": [-0.1636,-0.0792,-0.2484],
+        "max": [0.1636,0.0931,0.7022],
+        "parts": [
+          {
+            "min": [-0.1636,-0.0672,-0.072],
+            "max": [0.1636,0.0931,0.2064]
+          },
+          {
+            "min": [-0.1149,-0.0394,-0.2484],
+            "max": [0.0677,0.0826,0.7022]
+          },
+          {
+            "min": [-0.1361,-0.0792,-0.1099],
+            "max": [-0.0363,0.0792,0.0811]
+          }
+        ],
+        "turretLocal": false
+      }
+    ],
+    "crew": [
+      {
+        "volumeId": "C01",
+        "name": "driver",
+        "min": [-0.2297,0.8815,1.9802],
+        "max": [0.2297,1.357,3.0974],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "C02",
+        "name": "gunner",
+        "min": [-0.6932,-0.9098,-0.2916],
+        "max": [-0.2338,-0.1498,0.38],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "C03",
+        "name": "commander",
+        "min": [0.231,-0.8996,-0.5483],
+        "max": [0.6904,-0.1496,0.0969],
+        "turretLocal": true
+      }
+    ]
+  },
+  "geometryHash": "32a84f3c",
+  "metadataHash": "60fe4619",
+  "presentationAnchor": {
+    "xM": 0.0004,
+    "zM": -0.1271
+  },
+  "presentationHash": "ab68d733",
+  "presentationProjection": {
+    "centerYM": 2.2968,
+    "topHalfM": 6.9228,
+    "sideHalfM": 3.4614
+  },
+  "appearance": {
+    "version": 1,
+    "issues": [],
+    "roles": {
+      "wheelTire": 2,
+      "wheelDish": 10,
+      "wheelInset": 2,
+      "suspensionLink": 1,
+      "suspensionJoint": 1,
+      "trackHardware": 4,
+      "trackBand": 2,
+      "trackPad": 1,
+      "trackPadSimplified": 1,
+      "armorPaint": 12,
+      "hullRubber": 1,
+      "gunmetal": 11,
+      "opticGlass": 3,
+      "unclassified": 17,
+      "gearShadow": 1,
+      "machineGun": 4,
+      "fittingPaint": 3
+    }
+  },
+  "muzzleBore": {
+    "tagged": 1,
+    "rims": 0,
+    "physicalRims": 1,
+    "physicalFloors": 1,
+    "discs": 0,
+    "authored": 0,
+    "fallback": 1
+  },
+  "vehicleMarkings": {
+    "total": 2,
+    "insignia": 1,
+    "designation": 1,
+    "verifiedInsignia": 1,
+    "verifiedDesignation": 1,
+    "minimumVisibilityRatio": 1,
+    "codes": ["RU:ru-star:059"]
+  },
+  "assets": {
+    "angle": {
+      "file": "t90a_burlak_proto_angle.webp",
+      "width": 512,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 28398,
+      "sha256": "81039c154ec3f771c684171767e802dbb26745edb6463c151b446334cff473cb",
+      "thumbnail": {
+        "file": "thumbs/t90a_burlak_proto_angle.webp",
+        "width": 256,
+        "height": 256,
+        "mime": "image/webp",
+        "bytes": 11168,
+        "sha256": "4b5df0eb217ea0d191638596d2302028ad42e4fa62ed0ff4d8cb968479094861"
+      }
+    },
+    "top": {
+      "file": "t90a_burlak_proto_top.webp",
+      "width": 512,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 14968,
+      "sha256": "834af7be57683093f5bfb8eddb48a27bab4b31eb64f07d7ce3b05630472b9c66"
+    },
+    "side": {
+      "file": "t90a_burlak_proto_side.webp",
+      "width": 512,
+      "height": 256,
+      "mime": "image/webp",
+      "bytes": 11622,
+      "sha256": "a9ddad77c5ac6642c2b74b2a183d9393af43905c562e73bab273f6b18f05a19a"
+    },
+    "topSilhouette": {
+      "file": "t90a_burlak_proto_top_silhouette.png",
+      "width": 128,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 1287,
+      "sha256": "173f8f24c2ef21c0f136e94219b53a0fcfb496073ddbb09ddb4bdd61feae46dd"
+    },
+    "sideSilhouette": {
+      "file": "t90a_burlak_proto_side_silhouette.png",
+      "width": 256,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 4270,
+      "sha256": "cee1079211ad5ffc151da76b49bc8e9e541f6535c05280c4a145e9c46210ec4f"
+    },
+    "armorSide": {
+      "file": "t90a_burlak_proto_armor_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 26740,
+      "sha256": "0d3dcc63378743f65f16ff6756cdf4872ec68924d83a191c6828950b6c64c780"
+    },
+    "modulesSide": {
+      "file": "t90a_burlak_proto_modules_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 25838,
+      "sha256": "ac3def96635ee321a3ca373e05497c87460e1188bb3f620f8ca3977f749b5546"
+    },
+    "crewSide": {
+      "file": "t90a_burlak_proto_crew_side.webp",
+      "width": 1024,
+      "height": 512,
+      "mime": "image/webp",
+      "bytes": 24202,
+      "sha256": "8565c8c688f7c0027968af1a942fe3f6c90fdc491ea2e8d2d973225cd6294eea"
+    },
+    "markings": {
+      "file": "t90a_burlak_proto_markings.png",
+      "width": 256,
+      "height": 128,
+      "mime": "image/png",
+      "bytes": 36858,
+      "sha256": "6ddd31699f56f5c18478318bb87d04f99ad3ee5e551d6c77f3c902c834cdabde"
+    },
+    "technicalLabels": {
+      "file": "t90a_burlak_proto_technical.json",
+      "mime": "application/json",
+      "bytes": 5240,
+      "sha256": "c1375678f94ec698a85942bd210965f2f1c3353a631bba949f79e94efa96f18f"
+    }
+  }
+}

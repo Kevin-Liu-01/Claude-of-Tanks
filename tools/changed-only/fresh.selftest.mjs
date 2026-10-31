@@ -55,5 +55,23 @@ assert.deepEqual([output.mode, output.ids, output.reasons[other]], ['ids', [othe
   `${step}: a hand-edited output row is caught`);
 // (4) no manifest at all: every step whole-fleet (the state the assertion at the top refuses).
 assert.ok(Object.values(resolveChanged(state, null)).every((entry) => entry.mode === 'full'), 'no manifest marks every step full');
+// (5) the tank asset manifest is a file per tank (266): the manifest records each row file and the index, a stale row
+// file marks its own id alone (named as an outside edit), and the same file's bytes moved without its row (a format
+// edit) is named by its path and runs the step whole-fleet.
+const assets = STEPS.find((entry) => entry.outputs.includes('tankAssets')).name;
+const rowFile = `public/icons/tank-assets/tanks/${other}.json`;
+const recordedFiles = Object.keys(manifest.files[assets] ?? {});
+assert.ok(recordedFiles.includes(rowFile) && recordedFiles.includes('public/icons/tank-assets/index.json')
+  && !recordedFiles.includes('public/icons/tank-assets.json'), `${assets}: the manifest records the per-tank row files and the index`);
+assert.deepEqual(state.fileIds[rowFile], [other], `${rowFile} holds ${other}'s row alone`);
+const staleFile = (file) => (name) => (name === file ? `${state.fileHash(name)}~stale` : state.fileHash(name));
+const staleRow = resolveChanged(view({ fileHash: staleFile(rowFile),
+  outKey: (name, tankId) => (name === assets && tankId === other ? `${state.outKey(name, tankId)}~stale` : state.outKey(name, tankId)) }),
+manifest)[assets];
+assert.deepEqual([staleRow.mode, staleRow.ids, staleRow.reasons[other]], ['ids', [other], ['output edited outside chain']],
+  `${assets}: a stale ${rowFile} marks ${other} alone`);
+const reformatted = resolveChanged(view({ fileHash: staleFile(rowFile) }), manifest)[assets];
+assert.deepEqual([reformatted.mode, reformatted.reasons['*']], ['full', [`output file edited: ${rowFile}`]],
+  `${assets}: ${rowFile} edited without its row is named`);
 console.log(`changed-only fresh.selftest: PASS (${STEPS.length} steps x ${state.ids.length} ids current for ${MANIFEST_PATH}; `
-  + `negative controls: an edited ${step} generator, a moved input and a hand-edited output caught)`);
+  + `negative controls: an edited ${step} generator, a moved input, a hand-edited output and a stale ${rowFile} caught)`);

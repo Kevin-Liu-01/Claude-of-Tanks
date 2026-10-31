@@ -16,6 +16,7 @@ import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 import { presentationReceiptErrors } from './presentation-receipt.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets, tankAssetIndexPath, tankAssetsLayoutProblems } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
@@ -54,7 +55,6 @@ function opt(name, fallback = '') {
 const selected = opt('tanks') || opt('ids');
 const onlyTanks = selected ? uniqueIds(selected.split(',').map((id) => id.trim()).filter(Boolean), 'tank-assets-check --ids') : [];
 const outDir = resolve(opt('out', 'public/icons'));
-const manifestPath = resolve(outDir, 'tank-assets.json');
 const skipBore = args.includes('--skip-bore');
 const skipGeometry = args.includes('--skip-geometry');
 const liveOnly = args.includes('--live-only');
@@ -104,12 +104,15 @@ function imageDimensions(buffer, ext) {
   return null;
 }
 
-if (!liveOnly && !existsSync(manifestPath)) {
-  console.error(`[tank-assets-check] missing ${manifestPath}; run npm run tank:assets`);
+if (!liveOnly && !existsSync(tankAssetIndexPath(outDir))) {
+  console.error(`[tank-assets-check] missing ${tankAssetIndexPath(outDir)}; run npm run tank:assets`);
   process.exit(2);
 }
 
-const manifest = liveOnly ? null : JSON.parse(readFileSync(manifestPath, 'utf8'));
+// The per-tank rows reassembled (266, tools/tank-assets-store.mjs).
+const manifest = liveOnly ? null : readTankAssets(outDir);
+// The split layout itself: each file under the size cap, in its canonical text, named for its row (266).
+if (manifest) failures.push(...tankAssetsLayoutProblems(outDir));
 if (manifest && manifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
   failures.push(`manifest schema ${manifest.schemaVersion} != ${TANK_ASSET_SCHEMA_VERSION}`);
 }

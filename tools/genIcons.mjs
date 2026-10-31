@@ -15,13 +15,14 @@
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, technicalLabelsFile } from '../src/vehicles/tankAssets.ts';
 import { uniqueIds } from './id-list.mjs';
+import { compareTankIds, readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
@@ -43,7 +44,6 @@ let selectedViews = metadataOnly ? [] : opt('views')
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
 const authoringViews = new Set(['front']);
-const manifestPath = resolve(outDir, 'tank-assets.json');
 mkdirSync(outDir, { recursive: true });
 
 if (portraitOnly && (metadataOnly
@@ -56,12 +56,8 @@ function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function readManifest() {
-  if (!existsSync(manifestPath)) return null;
-  return JSON.parse(readFileSync(manifestPath, 'utf8'));
-}
-
-let startingManifest = readManifest();
+// The manifest is a directory of per-tank rows beside the icons (266, tools/tank-assets-store.mjs).
+let startingManifest = readTankAssets(outDir);
 const priorManifest = startingManifest;
 for (const view of selectedViews) {
   if (!TANK_ASSET_VIEWS[view] && !(allowPartial && authoringViews.has(view))) {
@@ -217,7 +213,7 @@ try {
       tanks[id] = { ...record, assets };
       delete tanks[id].requiredFiles;
     }
-    const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => a.localeCompare(b)));
+    const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => compareTankIds(a, b)));
     const manifest = {
       schemaVersion: TANK_ASSET_SCHEMA_VERSION,
       partial: onlyTanks.length ? (previous ? !!previous.partial : true) : false,
@@ -255,9 +251,12 @@ try {
         }
       }
     }
-    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    // A full generation is the whole fleet: it also retires the rows of tanks that left it. A selective one writes the
+    // rows it generated (and the header) and leaves every other row file untouched.
+    const { changed, removed } = writeTankAssets(outDir, manifest, { prune: !onlyTanks.length });
     console.log(`[tank-assets] ${Object.keys(generated.tanks).length} tanks, ${Object.keys(generated.files).length} files -> ${outDir}`);
-    console.log(`[tank-assets] manifest ${manifestPath}`);
+    console.log(`[tank-assets] manifest ${tankAssetsDir(outDir)}: ${changed.length} files rewritten`
+      + `${removed.length ? `, ${removed.length} retired rows removed (${removed.join(', ')})` : ''}`);
   }
 } catch (error) {
   failed = true;

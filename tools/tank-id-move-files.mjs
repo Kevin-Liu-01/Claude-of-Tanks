@@ -7,7 +7,7 @@
 // public/icons/<id>_<view>.<ext>, the thumbnail public/icons/thumbs/<id>_angle.webp
 // and the geometry gate record docs/geometry-gate/<id>.json. The bytes do not
 // change, so the manifest's hashes stay valid; `genIcons --metadata-only` then
-// re-keys public/icons/tank-assets.json. Source studies, references and source
+// re-keys the manifest rows (public/icons/tank-assets/). Source studies, references and source
 // models keep their schema-1 names (tools read them through tankSeedId).
 //
 // The map has swaps (one vehicle's new id is an id another gave up), so every
