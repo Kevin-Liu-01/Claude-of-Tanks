@@ -238,8 +238,11 @@ function galixBank(
     const tx = r < 0 ? -0.02 + 0.06 + (tz - shift / 2) * Math.tan(0.55) : k * 0.02 - r * 0.06;
     const at = new THREE.Vector3(x + side * tx, y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + tz);
     const turn = new THREE.Euler(-0.42 + r * 0.08, side * (r < 0 ? 0.9 + k * 0.12 : 0.95 + k * 0.14), 0);
-    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), at.x, at.y, at.z, turn.x, turn.y, 0);
+    // in a casing the tubes take the casing's paint and a dark mouth disc, so the bank reads as round holes in it
+    P.add(casing ? 'turret' : 'turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), at.x, at.y, at.z, turn.x, turn.y, 0);
     if (!casing) continue;
+    const mouth = at.clone().add(new THREE.Vector3(0, 0, 0.123).applyEuler(turn));
+    P.add('turretDark', cylZ(0.04, 0.006, 12), mouth.x, mouth.y, mouth.z, turn.x, turn.y, 0);
     const sleeve = cylZ(0.06, 0.12, 8).translate(0, 0, -0.06)
       .applyMatrix4(new THREE.Matrix4().compose(at, new THREE.Quaternion().setFromEuler(turn), new THREE.Vector3(1, 1, 1)));
     const p = sleeve.getAttribute('position');
@@ -1229,8 +1232,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // line — the first seat on the 1.60 outer fender topped the front_hull
     // cols at x 1.44-1.60 by 30 mm, -0.46 row pts, gate-in-loop find).
     shovelTool(P, 1.03, 1.5905, -2.62, 0.85);
-    P.add('hullWood', box(0.035, 0.025, 0.90), -1.03, 1.5905, -2.50);            // pick haft
-    P.add('hullDark', box(0.10, 0.028, 0.16), -1.03, 1.592, -2.88);              // pick head
+    // 266 (critics: "a pale stick lying loose on the deck"): the pick on the engine deck is gone; the shovel stays.
     // §B3.2: rear convoy light + guard, FLUSH-mounted on the rear plate
     // (rear face -3.381 — the first 35 mm-proud seat read -3.3955 and moved
     // the col-0.623 rear line; inside the 1.245..1.545 plate band).
@@ -1994,6 +1996,10 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     trunnionRoll(P, 0.21, 0.68);
     gunHousing('turret', box(0.92, 0.62, 0.85), 0, 0.34, 1.05);                 // complete marked backplate, restored and pitch-owned
     P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
+    // 266 (both photo critics: "no canvas sock around the barrel root"): the Saumur Leclercs' gun sock, canvas from the
+    // housing face 0.38 m out along the tube, gathered in two folds.
+    P.add('gunMountCloth', cylZ(0.17, 0.38, 16, 0.20), 0, 0, 1.175);
+    for (const z of [1.08, 1.25]) P.add('gunMountDark', cylZ(0.193 - (z - 0.99) * 0.08, 0.012, 16), 0, 0, z);
     P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
     P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
     // 2026-10-07 (tank-accessories round 4, wave 217: "the coax root shows daylight through the mantlet"): the coax
@@ -2219,7 +2225,7 @@ function buildAMX56(P: MiscBuilderPort): void {
     // face to the same 1.846 outer face, a seam strip on its face.
     for (let k = 0; k < 7; k++) {
       const z = -2.48 + k * 0.68;
-      P.add('hull', box(0.146, 0.48, 0.57), s * 1.773, 1.04, z);
+      P.add('hull', box(0.146, 0.48, 0.655), s * 1.773, 1.04, z);              // 25 mm seams: one ERA course, not separate slabs
       P.add('hullDark', box(0.016, 0.36, 0.018), s * 1.849, 1.04, z + 0.22);
     }
     });
