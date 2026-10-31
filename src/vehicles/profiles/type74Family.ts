@@ -634,8 +634,12 @@ export function buildType74Family(P: TankBuilderPort, variant: Type74Variant): v
   // (profiles/japaneseMantlets.ts); the tube's root inside the collar
   P.gunG.position.set(...TRUNNION);
   if (proto) addSTB1Mantlet(P, shell); else addType74Mantlet(P, shell);
-  const len = proto ? 4.10 : 3.91;
-  KIT.buildGun(P, { len, r: 0.062, sleeve: false, evac: proto ? 0.50 : 0.445, evacR: 1.75, collar: false, baseR: 0.105 });
+  // the tube ahead of the trunnion. 266 (Main, from the height-gate lane): the Type 74 read 9.06 m overall against its
+  // published 9.42 (en.wikipedia 9.41, militaryfactory 9.42; docs/references/tanks/type74.md), its 3.91 m tube 0.36 m
+  // short, so it reaches 4.27 m (the STB-1's 4.10 makes its 9.25 against 9.20); its fume extractor keeps its place,
+  // 1.74 m out
+  const len = proto ? 4.10 : 4.27;
+  KIT.buildGun(P, { len, r: 0.062, sleeve: false, evac: proto ? 0.50 : 1.74 / 4.27, evacR: 1.75, collar: false, baseR: 0.105 });
   P.add('gun', KIT.cylZ(0.068, 0.09, 10), 0, 0, len - 0.06);
   muzzleBore(P, { z: len - 0.015, r: 0.062 });
   P.topY = CROWN + 0.40;

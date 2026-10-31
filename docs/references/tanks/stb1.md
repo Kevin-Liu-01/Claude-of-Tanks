@@ -95,7 +95,7 @@ than the model.
 | Rear sponsons | mesh-topped boxes flush with the deck, outer face at ±1.53, z −1.25..−2.55; mesh cylinders behind them | the same (STB-1) |
 | Running gear | five road wheels 0.84 m (centres 0.49) on a 1.01 m pitch at +2.00/+0.98/0.00/−1.01/−2.05; idler +3.02, sprocket −2.92 (both raised) | five 0.84 m wheels at +2.00/+0.99/0.00/−1.01/−2.02; idler (+3.00, 0.75), sprocket (−2.95, 0.79) |
 | Turret | ring datum 1.59 at z +0.49; 18-station plan ±1.33, +1.49/−2.12; full belt at 0.08–0.27, sides rolling in above; crown flat at 0.71–0.72; bustle undercut from 0.6 of the plan at the foot | the same plan and ten rings (refined to 36 × 19); pivot (0, 1.60, 0.50), crown 2.31 |
-| Gun | bore 1.90 (0.29 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.29, 1.18) in the turret frame; tube 4.10 (STB-1), 3.91 (Type 74) |
+| Gun | bore 1.90 (0.29 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.29, 1.18) in the turret frame; tube 4.10 (STB-1), 4.27 (Type 74; 3.91 before 266, 0.36 m short of the published 9.42 overall) |
 | Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | 263: the turret's own nose inside a 0.475 m channel (the cast shell's wedge round the trunnion, flush with the cheeks, rolling back toward the crown, its top a tongue pitching under a lip of the crown), two ports on its face, a thick collar |
 | Searchlight | a six-lens box beside the mask's +x edge, x +0.38..+0.94 in the render frame (263, re-read at the fixed registration; 262 read +0.14..+0.73), 1.80..2.33 high, its face at z 2.29 | 0.56 × 0.53 × 0.28 at (+0.66, bore +0.175), its face 0.61 ahead of the trunnion, riding the gun |
 
