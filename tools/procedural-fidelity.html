@@ -331,15 +331,16 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80uk: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
-  t90a_2004: { source:'glb', glb:{ path:'/models/tanks/community/variants/t90a_xarchenko_variant.glb', turretNode:'TurretPivot', gunNode:'GunPivot', autoPivot:true, paintUntextured:true } },
-  t90a_2006: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
+  // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
+  // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
+  // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered
+  // t90a_vladimir and t90sm) retired with the builds that followed them.
   // Main_barrel contains only the forward tube in this source.  The thermal
   // sleeve/root meshes are turret siblings (see references/tanks/t90m.md),
   // so an independent gun-node mask compares a partial source against our
   // complete cannon and is not a valid component measurement.  The full gun
   // remains mandatory in all nine whole silhouettes and in yaw evidence.
   t90am: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true, gunComponentMasks:false } },
-  t90sm_2013: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
   type90_kyumaru: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   c1_ariete_preserie: {
