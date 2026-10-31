@@ -2126,10 +2126,12 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   // Full-width protected bustle termination and supported cage returns.
   P.add('turret', box(1.70, 0.34, 0.34), 0, 0.34, -2.18);
   P.add('turretDark', box(1.58, 0.025, 0.28), 0, 0.53, -2.18);
-  for (const x of [-0.76, -0.38, 0, 0.38, 0.76]) {
-    P.add('turretDetail', box(0.025, 0.30, 0.42), x, 0.43, -2.39);
-  }
-  for (const y of [0.29, 0.55]) P.add('turretDetail', box(1.82, 0.025, 0.025), 0, y, -2.39);
+  // 266 (owner: "clean up the leclercs"): the five returns were 42 cm plates running aft off the box with both rails at
+  // its face, a comb of fins from behind. The cage is a slat panel at the returns' tail (z -2.58) now, its rails and
+  // eleven vertical slats on four stand-off brackets back to the box.
+  for (const x of [-0.76, -0.25, 0.25, 0.76]) for (const y of [0.31, 0.53]) P.add('turretDetail', box(0.035, 0.035, 0.24), x, y, -2.46);
+  for (const y of [0.31, 0.53]) P.add('turretDetail', box(1.62, 0.03, 0.03), 0, y, -2.585);
+  for (let k = 0; k < 11; k++) P.add('turretDark', box(0.02, 0.30, 0.02), -0.78 + k * 0.156, 0.42, -2.605);
 
   // Compact roof RWS: the complete stack is centered on the marked left
   // roof pad. Its shoe bottoms exactly on the 0.752 m plateau; the body then
