@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-31T14:13:55.919Z",
+ "generatedAt": "2026-10-31T16:08:50.158Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 47,
+ "passed": 45,
  "total": 166,
  "rows": [
   {
@@ -1182,6 +1182,32 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t72b_1987",
+   "geoMin": 71.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 93.3,
+    "dims": 71.1,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t80u",
+   "geoMin": 74.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 92.4,
+    "dims": 74.6,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "m1a1_abrams_hc",
    "geoMin": 76,
    "gatePassed": false,
@@ -1927,20 +1953,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t72b_1987",
-   "geoMin": 93.4,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.4,
-    "dims": 95.5,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity",
-   "repinError": "Waiting failed: 150000ms exceeded"
-  },
-  {
    "id": "t90a_vladimir",
    "geoMin": 93.5,
    "requiredMinimum": 92,
@@ -1991,20 +2003,6 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t80u",
-   "geoMin": 94.1,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 94.1,
-    "dims": 95.3,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity",
-   "repinError": "procedural: turret differs from the independent source datum; procedural: gun differs from the independent source datum"
   },
   {
    "id": "t14_armata",

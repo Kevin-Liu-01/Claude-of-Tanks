@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1485 | 144.9 |
+| KEEP | 1486 | 144.9 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1120.6 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2147 | 1265.8 | 212.1 |
-| After: the default tier | 1485 | 144.9 | 20.5 |
+| Before: every receipt (npm test without the tiers) | 2148 | 1265.8 | 212.1 |
+| After: the default tier | 1486 | 144.9 | 20.5 |
 
 Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
 
@@ -807,7 +807,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1485)
+## KEEP (1486)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2234,6 +2234,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/frontend-budget.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: frontend-budget.selftest.mjs — the frontend budget receipt's scoring (UI-LOCKDOWN E, 2026-10-25). Fixture runs | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/oplot-bm-x-reference.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 262: the T-84BM Oplot-M's registered comparison oracle | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/surface-element-resets.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the prim | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/reference-override-registry.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 266: the gate page's reference table names each id once; certified ids register their private local oracle | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/docs/chapters/controls.selftest.mjs` | 0.3 | KEEP | site, manual or app contract, 0.3 s: controls.selftest.mjs — the manual's controls chapter keeps to the game: its key tables cover every action the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cameraLens.selftest.mjs` | 0.3 | KEEP | renderer contract, 0.3 s: battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/uprightPlates.selftest.mjs` | 0.3 | KEEP | effects contract, 0.3 s: destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn | default tier (npm test, the release gate; lane mode by its closure) |

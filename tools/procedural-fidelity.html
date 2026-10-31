@@ -54,7 +54,7 @@ import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-referenc
 import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
 import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
-import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
+import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
 
@@ -63,6 +63,10 @@ const failFidelity = (message) => {
   window.__FIDELITY_ERROR = message;
   throw new Error(message);
 };
+// Fail closed: an error the page does not catch (a loader's refusal, a module that throws) is its named failure, not
+// a page the gate waits 150 s on. The first message stands.
+addEventListener('error', (event) => { window.__FIDELITY_ERROR ??= String(event.error?.message || event.message); });
+addEventListener('unhandledrejection', (event) => { window.__FIDELITY_ERROR ??= String(event.reason?.message || event.reason); });
 
 const SIZE = 384;
 const params = new URLSearchParams(location.search);
@@ -322,7 +326,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // a partial fused subassembly rather than the complete barrel silhouette.
   // Judge the authored gun in the full nine-view masks; do not compare two
   // semantically different node fragments as a standalone component.
-  t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966, gunComponentMasks:false } },
   t72bu_1989: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   // These recovered comparison prints expose a Turret node but no honest
   // independent gun subtree: their cannon is partly fused into the turret
@@ -935,7 +938,8 @@ if (sourceWorldCertificate) {
       turret:datum('rig_turret'), gun:datum('rig_gun') };
   };
   sourceWorldRegistration = validateSourceWorldFrame(sourceWorldCertificate,
-    await hashLocalOracle(source.glb.path), {reference:frame(reference),procedural:frame(procedural)});
+    await hashLocalOracle(source.glb.path), {reference:frame(reference),procedural:frame(procedural)},
+    SOURCE_WORLD_BUILD_OFFSETS[id]);
   if (!sourceWorldRegistration.passed) failFidelity(sourceWorldRegistration.failures.join('; '));
 }
 referenceBox.copy(visibleBox(reference.root));
@@ -2099,7 +2103,8 @@ if (params.get('geo')) {
     const actual=measure(procedural,reference);
     // the ruler stays framed by the whole source; the physical envelopes are the bodies'
     dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
-      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired')));
+      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired'),
+      SOURCE_WORLD_BUILD_OFFSETS[id]));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};

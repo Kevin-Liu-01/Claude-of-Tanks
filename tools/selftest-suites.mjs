@@ -326,6 +326,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',
     'tools/source-world-registration.selftest.mjs',
+    // 266: the gate page's reference table names each id once; certified ids register their private local oracle
+    'tools/reference-override-registry.selftest.mjs',
     'tools/source-dimension-frame.selftest.mjs',
     // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
     'tools/body-height-parts.selftest.mjs',
