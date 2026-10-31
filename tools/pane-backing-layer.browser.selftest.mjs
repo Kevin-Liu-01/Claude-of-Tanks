@@ -3,8 +3,8 @@
 // (local-fps-266) A regional wall cut by three openings (house.ts holedPolygon, the room's dark at the back of each
 // reveal) with a unit in each (openings.ts windowUnit: a lit curtain, plain glass, the facade craft's leaning glass), built
 // by the regional sink, drawn on the GPU at 300-700 m with the battle camera's depth (near 0.5 m, far 4000 m; a 4x MSAA
-// 24-bit depth, the scene target's) in one draw order and in its reverse. With the backing's offset
-// (src/world/paneBacking.ts) the two orders draw the same pixels and no backing shows through a pane; without it the
+// 24-bit depth, the scene target's) with the backing drawn before and after the rest (the rest in its order and reversed). With the backing's offset
+// (src/world/paneBacking.ts) the backing's place in the order changes no pixel and no backing shows through a pane; without it the
 // order decides, which the receipt must see (else it could not see the fight); at 20 m the offset changes nothing.
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
@@ -134,21 +134,28 @@ function renderStacks({ draws, views, width, height }) {
     const out = new Uint8Array(width * height * 4); gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, out);
     return out;
   };
-  const forward = draws.map((_, i) => i), reversed = [...forward].reverse();
-  // the backing first (its pane after: three's order happened to give the curtain this) and last (the program order's)
-  const backingFirst = [...forward].sort((a, b) => (draws[b].name === 'backing') - (draws[a].name === 'backing'));
-  const backingLast = [...backingFirst].reverse();
+  // the rest in its order and reversed, the backing drawn first (its pane after it: three's order happened to give the
+  // curtain this) and last (the program order's): only the backing's place in the order changes between a pair
+  const rest = draws.map((_, i) => i).filter((i) => draws[i].name !== 'backing'), backing = draws.map((_, i) => i).filter((i) => draws[i].name === 'backing');
+  const orders = [[...backing, ...rest], [...rest, ...backing], [...backing, ...[...rest].reverse()], [...[...rest].reverse(), ...backing]];
   const differing = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
   const blue = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i + 2] > 0) n++; return n; };
+  // which draws' colours a pixel shows in two shots (exact colours only: an MSAA edge mixes them)
+  const names = new Map(draws.map((d) => [d.colour.join(','), d.name]));
+  const pairs = (a, b) => { const out = {}; for (let i = 0; i < a.length; i += 4) {
+    if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) continue;
+    const k = [names.get(`${a[i]},${a[i + 1]},${a[i + 2]}`) ?? 'edge', names.get(`${b[i]},${b[i + 1]},${b[i + 2]}`) ?? 'edge'].sort().join(' / ');
+    out[k] = (out[k] ?? 0) + 1; } return out; };
   const rows = views.map((view) => {
     const row = { distance: view.distance, yawDeg: view.yawDeg };
     for (const layered of [true, false]) {
-      const shots = [forward, reversed, backingFirst, backingLast].map((order) => draw(view, order, layered));
-      row[layered ? 'layered' : 'control'] = { ordersDiffer: Math.max(...shots.slice(1).map((s) => differing(shots[0], s))), backingShows: Math.max(...shots.map(blue)), shots };
+      const shots = orders.map((order) => draw(view, order, layered));
+      row[layered ? 'layered' : 'control'] = { backingOrder: Math.max(differing(shots[0], shots[1]), differing(shots[2], shots[3])),
+        backingShows: Math.max(...shots.map(blue)), restOrder: pairs(shots[0], shots[2]), shots };
     }
     // up close the offset changes nothing: the layered frame equals the control's with the backing drawn first
-    row.nearSame = differing(row.layered.shots[2], row.control.shots[2]);
-    row.paneCover = row.layered.shots[0].reduce((n, v, i) => n + (i % 4 === 0 && v === 255 ? 1 : 0), 0);
+    row.nearSame = differing(row.layered.shots[0], row.control.shots[0]);
+    row.paneCover = row.layered.shots[1].reduce((n, v, i) => n + (i % 4 === 0 && v === 255 ? 1 : 0), 0);
     delete row.layered.shots; delete row.control.shots;
     return row;
   });
@@ -171,14 +178,14 @@ try {
   for (const r of rows) {
     const at = `${r.distance} m, ${r.yawDeg} deg`;
     assert.ok(r.paneCover > 0, `${at}: the curtain is in the frame`);
-    assert.equal(r.layered.ordersDiffer, 0, `${at}: with the backing's offset every draw order draws the same pixels`);
+    assert.equal(r.layered.backingOrder, 0, `${at}: with the backing's offset its place in the draw order changes no pixel`);
     assert.equal(r.layered.backingShows, 0, `${at}: no backing shows through a pane`);
     if (r.distance <= 20) {
       assert.equal(r.nearSame, 0, `${at}: up close the offset changes no pixel`);
       assert.equal(r.control.backingShows, 0, `${at}: up close the depth buffer tells them apart unaided`);
     }
   }
-  assert.ok(rows.some((r) => r.distance >= 300 && (r.control.ordersDiffer > 0 || r.control.backingShows > 0)),
+  assert.ok(rows.some((r) => r.distance >= 300 && r.control.backingOrder > 0 && r.control.backingShows > 0),
     'without the offset the order decides somewhere at 300-700 m (the receipt sees the fight it guards)');
   assert.deepEqual(report.errors, []);
 } catch (error) {
@@ -194,6 +201,6 @@ report.ok = report.errors.length === 0 && report.rows.length === views.length &&
 console.log(JSON.stringify(report, null, 1));
 if (!report.ok) process.exitCode = 1;
 else {
-  const fights = report.rows.filter((r) => r.control.ordersDiffer > 0 || r.control.backingShows > 0);
-  console.log(`pane-backing-layer.browser.selftest: a regional wall's three panes (curtain, glass, leaning glass) over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, four draw orders: with the backing ${units} depth steps back every order draws the same pixels and no backing shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.backingShows))} backing px); at 20 m the offset changes nothing (${report.renderer}) PASS`);
+  const fights = report.rows.filter((r) => r.control.backingOrder > 0 || r.control.backingShows > 0);
+  console.log(`pane-backing-layer.browser.selftest: a regional wall's three panes (curtain, glass, leaning glass) over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the backing drawn first and last: ${units} depth steps back, its place changes no pixel and no backing shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.backingShows))} backing px); at 20 m the offset changes nothing (${report.renderer}) PASS`);
 }
