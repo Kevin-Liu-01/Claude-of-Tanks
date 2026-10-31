@@ -242,13 +242,15 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const firstSkirt = Math.min(...skirts.map((p) => p.birth));
     assert.ok(firstSkirt - firstLobe < 0.5, 'the skirt comes with the bloom');
     assert.ok(at60.puffs.every((p) => !(p.heat === 0 && p.cool < 0)), 'in the open no puff asks for a wider feather');
-    // by a house's wall (the smoke-collision staging: x 10..18, z -4..4, walls to 5 m; a Leopard 8 m short of it)
+    // by a house's wall (the smoke-collision staging: x 10..18, z -4..4, walls to 5 m; a tank 8 m short of it)
     const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
     const UP = new THREE.Vector3(0, 1, 0);
     const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => UP, maxY: 0, minY: 0 };
     const box = { b: [10, 0, -4, 18, 5, 4], k: 'structure' };
     const world = createHeadlessCollisionWorld({ heightField: flat, manifest: { obstacles: [box], colliders: [box] } });
-    const t = { id: 'leo2a4', team: 'player', spec: { id: 'leo2a4', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+    // (release 265: the Merkava 3D's clusters meet the wall, as smokeCollision.selftest's salvo; the rebuilt 2A4's lob
+    // the salvo's centre onto the roof, and the Leopard 1A5's own launchers since the Leopard 1 merge miss the corner)
+    const t = { id: 'merkava3d', team: 'player', spec: { id: 'merkava3d', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
       state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} };
     assert.ok(requestAuxiliary(t, 'smoke', 3, () => 0, world), 'a salvo at a house');
     const walled = run(t.combat.auxiliary.smoke, 1 / 60);

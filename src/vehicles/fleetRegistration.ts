@@ -19,8 +19,11 @@
 import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
 import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
-import { applyFleetBalancePass, applyModernEraFold, applySameTierFairness, applyShownTierFloors } from './fleetBalancePass.ts';
+import {
+  applyBuildFootings, applyFleetBalancePass, applyModernEraFold, applySameTierFairness, applyShownTierFloors,
+} from './fleetBalancePass.ts';
 import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
+import { applyCenturionGunPitch } from './centurionGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
 import { applyT90MarkSourceFrames } from './t90MarkFrames.ts';
 
@@ -30,6 +33,7 @@ import './modern2Specs.generated.ts';
 import './chineseFrontlineSpecs.ts';
 import './russianFrontlineSpecs.ts';
 import './kf51Specs.ts';
+import './leo1a2a1Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
 import './modern3Specs.ts';
@@ -55,6 +59,15 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
 import './christian2Specs.ts';
+import './m48VariantSpecs.ts';
+import './shotKalSpecs.ts';
+import './centurion13Specs.ts';
+import './strv105Specs.ts';
+import './olifantMk2Specs.ts';
+import './centurionAvreSpecs.ts';
+import './centurionAusSpecs.ts';
+import './leopard2a3B4Specs.ts';
+import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
@@ -64,6 +77,8 @@ import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';
 import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
+// release 264: the Longwei family clones the national concepts' hulls, so it registers and synchronizes after them
+import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
@@ -78,12 +93,17 @@ synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 synchronizeFleetRenewalMetadata();
 synchronizeNationalModernizationMetadata();
+synchronizeLongweiFamilyMetadata();
+// 264: the 2A4-era Leopards' plates move onto the release's construction after every registration-time copy of them
+applyLeopard2A4FamilyEnvelopes(TANK_SPECS);
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);
+applyBuildFootings(TANK_SPECS);
 applyTacticalRoleBalance(TANK_SPECS);
 applyM1A1GunLimits(TANK_SPECS);
 applyTurretScaleGunPitch(TANK_SPECS);
+applyCenturionGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyT90MarkSourceFrames(TANK_SPECS);
 applyVehicleSizePolicy(TANK_SPECS);

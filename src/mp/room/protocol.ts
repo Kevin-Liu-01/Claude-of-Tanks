@@ -23,12 +23,6 @@ export const ROOM_MAX_TEAM_SIZE = 14;
  * well formed up to it, and the modes' own sizes are their room rules (src/sim/matchRuleset.ts roomSizeRulesFor).
  */
 export const ROOM_DEV_MAX_TEAM_SIZE = 32;
-/**
- * The largest side a solo battle's room in the page seats (room/inPageRoom.ts, RUST-ENGINE-DECISION §7 step 5): the
- * player and the wire's 41 other bots (roomBots.ts's 42 a match). Only a room whose host allows it (the policy guards'
- * `maxTeamSize`, read as the dev override is) seats more than ROOM_MAX_TEAM_SIZE; a client reads up to ROOM_DEV_MAX_TEAM_SIZE.
- */
-export const ROOM_SOLO_MAX_TEAM_SIZE = 21;
 export const ROOM_MIN_TEAM_SIZE = 1;
 /** Co-op modes (Horde, Frontline) keep the sim's allied cap. */
 /** The co-op modes' commanders (their room rules' maxHumans, src/sim/matchRuleset.ts; roomSizeRules.selftest holds the two equal). */

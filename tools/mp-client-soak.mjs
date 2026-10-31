@@ -12,9 +12,6 @@
  *   node tools/mp-client-soak.mjs --clients=1 --bots=31 --world=dedicated --kernels --rtt=0 --jitter=0 --loss=0
  *                                                       a solo battle on a local host (RUST-ENGINE-DECISION §7 step 5):
  *                                                       the actor on the map's world and its kernels, 16 a side
- *   node tools/mp-client-soak.mjs --clients=1 --pause-at=20 --pause-for=10
- *                                                       a solo match paused (MatchActor.pause, the client on a
- *                                                       PausableClock): the gates hold across it, no stall
  *
  * Gates (exit 1 when any fails): no hard snaps; remote and own presented pose
  * steps ≤ 0.5 m per frame; correction release ≤ 0.25 m per frame; input ack
@@ -33,7 +30,7 @@
  */
 import { fileURLToPath } from 'node:url';
 import { createLoopbackPair } from '../src/mp/transport/index.ts';
-import { HeadlessMatchClientDriver, MatchClient, PausableClock } from '../src/mp/match/index.ts';
+import { HeadlessMatchClientDriver, MatchClient } from '../src/mp/match/index.ts';
 import { RecordingPresentation, bindMatchPresentation, createPredictionWorld } from '../src/mp/presentation/index.ts';
 import { ScriptedMatchServer } from '../src/mp/match/scriptedServer.test-support.ts';
 import { MESSAGE_TYPE, NO_ENTITY, TEAM, TICK_HZ, decodeMessage, encodeMessage } from '../src/mp/wire/index.ts';
@@ -236,9 +233,6 @@ export async function runClientSoak({
   bots: botCount = undefined,
   world: worldKind = 'terrain',
   kernels = false,
-  /** A solo match's pause: at `pauseAtS` of the run for `pauseForS` (the actor's MatchActor.pause, the client's clock). */
-  pauseAtS = null,
-  pauseForS = 0,
   onProgress = null,
 } = {}) {
   let nowMs = 100_000;
@@ -252,13 +246,12 @@ export async function runClientSoak({
   // the actor's share of each frame's thread CPU (a host's Worker); the rest of the frame is the clients' (the page)
   let actorCpuMs = 0;
   const cpuMs = (since) => { const used = process.threadCpuUsage(since); return (used.user + used.system) / 1000; };
-  // the links and the actor run on the real clock; each client's frame on its own (PausableClock: a solo pause)
-  const pump = () => {
-    for (const pair of pairs) pair.pump(nowMs);
+  const pump = (t) => {
+    for (const pair of pairs) pair.pump(t);
     const before = process.threadCpuUsage();
-    world.advance(nowMs);
+    world.advance(t);
     actorCpuMs += cpuMs(before);
-    for (const pair of pairs) pair.pump(nowMs);
+    for (const pair of pairs) pair.pump(t);
   };
   const clients = seats.map((seat, index) => {
     const pair = createLoopbackPair({ clock, clientToServer: link, serverToClient: link, random: mulberry(seed + index * 7919) });
@@ -282,37 +275,24 @@ export async function runClientSoak({
       }
       return best;
     };
-    const clientClock = new PausableClock(clock);
     client = new MatchClient({
-      transport: pair.client, token: seat.token, clock: clientClock.now, controls: controlsFor(index, aimAt), clientBuild: 'soak',
+      transport: pair.client, token: seat.token, clock, controls: controlsFor(index, aimAt), clientBuild: 'soak',
     });
     client.enablePrediction(world.predictionFor(client, presentation, seat));
     bindMatchPresentation(client, presentation);
     const driver = new HeadlessMatchClientDriver({ client, advanceClock: () => nowMs, pump, warmupFrames: 180 });
     client.connect();
-    return { seat, client, driver, presentation, pair, clientClock };
+    return { seat, client, driver, presentation, pair };
   });
 
   const startedAt = performance.now();
   const frames = Math.round(seconds * 60);
   const actorFrames = [], clientFrames = [];
-  const pauseFrom = pauseAtS === null ? Infinity : Math.round(pauseAtS * 60), pauseTo = pauseFrom + Math.round(pauseForS * 60);
-  let pause = null;
   for (let frame = 0; frame < frames; frame++) {
     nowMs += 1000 / 60;
-    if (frame === pauseFrom) {
-      const paused = world.actor?.pause() ?? false;
-      for (const entry of clients) entry.clientClock.pause();
-      pause = { paused, tick: world.actor?.tick ?? null, resumedTick: null, ticksWhilePaused: 0 };
-    }
-    if (frame === pauseTo && pause) {
-      pause.resumedTick = world.actor?.tick ?? null;
-      world.actor?.resume();
-      for (const entry of clients) entry.clientClock.resume();
-    }
     actorCpuMs = 0;
     const before = process.threadCpuUsage();
-    for (const entry of clients) entry.driver.step(entry.clientClock.now());
+    for (const entry of clients) entry.driver.step(nowMs);
     const frameMs = cpuMs(before);
     // past the countdown and the clients' warm-up
     if (frame >= 300) { actorFrames.push(actorCpuMs); clientFrames.push(frameMs - actorCpuMs); }
@@ -326,7 +306,6 @@ export async function runClientSoak({
       p95: round(sorted[Math.floor(sorted.length * 0.95)] ?? 0) };
   };
   const cpu = { actorMsPerFrame: summary(actorFrames), clientsMsPerFrame: summary(clientFrames) };
-  if (pause) pause.ticksWhilePaused = (pause.resumedTick ?? 0) - (pause.tick ?? 0);
 
   const rows = clients.map((entry) => {
     const gates = entry.driver.gates();
@@ -384,8 +363,7 @@ export async function runClientSoak({
   });
   const report = {
     server: serverKind, mapId: serverKind === 'actor' ? mapId : 'fixture', clients: clientCount, seconds, rttMs, jitterMs, loss, seed,
-    world: worldKind, kernels, wallMs: Math.round(wallMs), cpu, pause, serverStats: world.stats(), rows,
-    pass: rows.every((row) => row.failures.length === 0) && (!pause || (pause.paused && pause.ticksWhilePaused === 0)),
+    world: worldKind, kernels, wallMs: Math.round(wallMs), cpu, serverStats: world.stats(), rows, pass: rows.every((row) => row.failures.length === 0),
   };
   for (const entry of clients) entry.client.dispose();
   world.dispose();
@@ -407,10 +385,6 @@ export function formatReport(report) {
   const { actorMsPerFrame: actor, clientsMsPerFrame: page } = report.cpu;
   lines.push(`  thread CPU a frame (world ${report.world}${report.kernels ? ', kernels' : ''}): the actor (a host's Worker) mean ${actor.mean} ms ` +
     `p50 ${actor.p50} p95 ${actor.p95}; the clients (the page) mean ${page.mean} ms p50 ${page.p50} p95 ${page.p95}`);
-  if (report.pause) {
-    lines.push(`  pause: ${report.pause.paused ? 'taken' : 'REFUSED'} at tick ${report.pause.tick}, resumed at tick ${report.pause.resumedTick} ` +
-      `(${report.pause.ticksWhilePaused} ticks while paused)`);
-  }
   lines.push(report.pass ? 'mp client soak: PASS' : 'mp client soak: FAIL');
   return lines.join('\n');
 }
@@ -427,7 +401,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     ...(process.argv.some((entry) => entry.startsWith('--snapshot-hz=')) ? { snapshotHz: number('snapshot-hz', 20) } : {}),
     loss: number('loss', 0.03), server: args.get('server') ?? 'actor', mapId: args.get('map') ?? 'verdant', seed: number('seed', 0x50ac),
     ...(args.has('bots') ? { bots: number('bots', 0) } : {}), world: args.get('world') ?? 'terrain', kernels: args.has('kernels'),
-    ...(args.has('pause-at') ? { pauseAtS: number('pause-at', 0), pauseForS: number('pause-for', 10) } : {}),
     onProgress: json ? null : (elapsed) => process.stderr.write(`  ${elapsed.toFixed(0)} s\r`),
   });
   console.log(json ? JSON.stringify(report, null, 2) : formatReport(report));

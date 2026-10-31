@@ -84,6 +84,95 @@
   ],
   "capped": true
  },
+ "media/site50-r14/loops/s01-main-street-push-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.mp4",
+  "crf": 39,
+  "kbps": 1972,
+  "vmaf": {
+   "mean": 90.41,
+   "harmonic": 90.2,
+   "min": 79.29
+  },
+  "bytes": 1482967,
+  "tried": [
+   [
+    42,
+    1796,
+    88.54,
+    74.94
+   ],
+   [
+    39,
+    1972,
+    90.41,
+    79.29
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s01-main-street-push.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.mp4",
+  "crf": 40,
+  "kbps": 6278,
+  "vmaf": {
+   "mean": 94.18,
+   "harmonic": 94.01,
+   "min": 79.72
+  },
+  "bytes": 4777409,
+  "tried": [
+   [
+    40,
+    6278,
+    94.18,
+    79.72
+   ],
+   [
+    42,
+    5691,
+    92.95,
+    77.61
+   ]
+  ]
+ },
  "media/site50-r14/loops/s04-column-under-fire.webm": {
   "settings": {
    "codec": "vp9",
@@ -975,6 +1064,107 @@
    ]
   ],
   "rebuilt": "from the 2026-10-14 12:01 run log"
+ },
+ "media/site50-r14/loops/s29-fjord-road-kill-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.mp4",
+  "crf": 36,
+  "kbps": 1919,
+  "vmaf": {
+   "mean": 90.85,
+   "harmonic": 90.7,
+   "min": 80.25
+  },
+  "bytes": 1443080,
+  "tried": [
+   [
+    42,
+    1504,
+    87.86,
+    75.84
+   ],
+   [
+    39,
+    1736,
+    89.59,
+    78.04
+   ],
+   [
+    36,
+    1919,
+    90.85,
+    80.25
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s29-fjord-road-kill.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.mp4",
+  "crf": 36,
+  "kbps": 5436,
+  "vmaf": {
+   "mean": 93.48,
+   "harmonic": 93.39,
+   "min": 82.78
+  },
+  "bytes": 4156004,
+  "tried": [
+   [
+    40,
+    4302,
+    91.21,
+    79.37
+   ],
+   [
+    38,
+    4778,
+    92.32,
+    81.67
+   ],
+   [
+    36,
+    5436,
+    93.48,
+    82.78
+   ]
+  ]
  },
  "media/site50-r14/loops/s33-water-tower.webm": {
   "settings": {

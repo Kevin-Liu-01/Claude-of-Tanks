@@ -15,6 +15,45 @@ import { stationDepression, stationProbe } from '../../tools/roof-station-arcs.m
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
+// §8's head-on rule (Main's 262 ruling): the armour a station 100 m ahead of a target at `yaw` (turret dead ahead) can
+// strike, without the roof structures' box faces (combatAnatomy appendStructurePlates) whose line to the station meets
+// main armour first.
+const STRUCTURE_FACE = /_(?:hatch|cupola|roof_structure)_\d\d_(?:front|rear|right|left|top)$/;
+function exposedArmour(armour, yaw) {
+  const dir = [Math.sin(yaw), 0, -Math.cos(yaw)], pivot = armour.turretPivot || [0, 0, 0];
+  const hullFrame = (plate, turret) => plate.verts.map((v) => (turret ? [v[0] + pivot[0], v[1] + pivot[1], v[2] + pivot[2]] : v));
+  const main = (plate) => (plate.kind || 'main') === 'main' && plate.verts?.length >= 3 && !STRUCTURE_FACE.test(plate.name || '');
+  const occluders = [...armour.hullPlates.filter(main).map((p) => hullFrame(p, false)),
+    ...armour.turretPlates.filter(main).map((p) => hullFrame(p, true))];
+  const hidden = (plate, turret) => {
+    const v = hullFrame(plate, turret), from = [0, 1, 2].map((k) => v.reduce((s, p) => s + p[k], 0) / v.length + dir[k] * .01);
+    return occluders.some((polygon) => rayMeetsPolygon(from, dir, polygon));
+  };
+  const keep = (turret) => (plate) => !STRUCTURE_FACE.test(plate.name || '') || !hidden(plate, turret);
+  return { ...armour, hullPlates: armour.hullPlates.filter(keep(false)), turretPlates: armour.turretPlates.filter(keep(true)) };
+}
+/** Whether the ray from `o` along `d` meets the planar polygon (Newell normal, crossing number in its dominant plane). */
+function rayMeetsPolygon(o, d, polygon) {
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i], b = polygon[(i + 1) % polygon.length];
+    nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const along = nx * d[0] + ny * d[1] + nz * d[2];
+  if (Math.abs(along) < 1e-12) return false;
+  const t = (nx * (polygon[0][0] - o[0]) + ny * (polygon[0][1] - o[1]) + nz * (polygon[0][2] - o[2])) / along;
+  if (t <= 0) return false;
+  const p = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
+  const drop = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz) ? 0 : Math.abs(ny) >= Math.abs(nz) ? 1 : 2;
+  const [u, w] = [[1, 2], [0, 2], [0, 1]][drop];
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    if ((a[w] > p[w]) !== (b[w] > p[w]) && p[u] < ((b[u] - a[u]) * (p[w] - a[w])) / (b[w] - a[w]) + a[u]) inside = !inside;
+  }
+  return inside;
+}
+
 const ID = 'm551a1_tts', kit = AUXILIARY_INVENTORY[ID];
 const [cannon, mg] = kit.guns;
 assert.equal(kit.guns.length, 2, 'the TTS has two remote roof stations');
@@ -170,8 +209,20 @@ function run({ shooter, context }, seconds = 12, each = () => {}) {
   const bmp2Rear = at(TANK_SPECS.bmp2, 0), bmp2Front = at(TANK_SPECS.bmp2, Math.PI);
   assert.ok(bmp2Rear >= heavy.engageShare, `the BMP-2's rear (${(bmp2Rear * 100).toFixed(0)} % defeatable) is engaged at 100 m`);
   if (bmp2Front < heavy.engageShare) assert.equal(duel('bmp2', 100, Math.PI)[0], 0, 'a BMP-2 head-on is not engaged');
-  const headOn = Object.values(TANK_SPECS).filter((spec) => spec.role === 'mbt' && at(spec, Math.PI) >= heavy.engageShare).map((spec) => spec.id);
+  // Main's 262 ruling (2026-10-30, the rebuilt Merkava Mk 1B): the share counts every plate turned towards the station,
+  // and a roof structure's box (combatAnatomy appendStructurePlates: <frame>_<kind>_NN_<side>) behind the hull's main
+  // armour turns faces to it that no round reaches (the rear doors' fronts inside the hull); the sim's ray walk occludes
+  // them. The head-on rule reads the share over the exposed faces: a structure face is dropped when the line from its
+  // centre to the station meets main armour, never when it stands proud (the negative control).
+  const exposedAt = (spec, yaw) => at({ ...spec, armor: exposedArmour(spec.armor, yaw) }, yaw);
+  const headOn = Object.values(TANK_SPECS).filter((spec) => spec.role === 'mbt' && exposedAt(spec, Math.PI) >= heavy.engageShare).map((spec) => spec.id);
   assert.deepEqual(headOn, [], 'no MBT is engaged head-on by a 12.7 mm station at 100 m');
+  const proud = structuredClone(TANK_SPECS.merkava1b.armor), front = Math.max(...proud.hullPlates.flatMap((p) => (p.verts || []).map((v) => v[2]))) + .5;
+  proud.hullPlates.push({ name: 'hull_hatch_99_front', verts: [[-1.5, .6, front], [1.5, .6, front], [1.5, 2.4, front], [-1.5, 2.4, front]],
+    physicalMm: 16, keMm: 16, ceMm: 16, kind: 'main', era: null, moduleLink: null, gunFollow: false });
+  assert.ok(exposedArmour(proud, Math.PI).hullPlates.some((p) => p.name === 'hull_hatch_99_front')
+    && at({ ...TANK_SPECS.merkava1b, armor: exposedArmour(proud, Math.PI) }, Math.PI) >= heavy.engageShare,
+  'a 16 mm structure face standing proud of the main armour is still counted (the filter only drops hidden faces)');
   // a turret traversed broadside shows the turret's flank: the turret plates follow the turret's yaw
   assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) >= at(TANK_SPECS.bmp2, Math.PI) - 1e-9, 'turret plates follow the turret');
   // 2026-10-19 (owner: "Make roof guns hold fire where their rounds cannot hurt"): the share picks the target, each

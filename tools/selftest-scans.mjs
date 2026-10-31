@@ -180,6 +180,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),
   'src/vehicles/vehicleNightLighting.selftest.mjs': tracked('src/vehicles/**'),
   'tools/attribution-audit.mjs': tracked('**'),
+  // 265: the core's roots are every module under src/sim (git ls-files)
+  'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),

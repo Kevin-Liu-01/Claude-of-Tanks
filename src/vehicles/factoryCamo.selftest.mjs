@@ -93,7 +93,7 @@ for (const id of ALL_TANK_IDS) {
   assert.ok(presetRecipes.some((visual) => nearRecipe(visual, authored)), `${id}: the authored paint is a selectable preset (within one shade)`);
 }
 // 263 (christian2-262): the Christian II's Danish Army tri-tone names its nation too
-const NATION_WORDS = /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|Danish|IDF|Ukrainian|Atlantean|Wehrmacht) /;
+const NATION_WORDS = /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|Danish|IDF|Ukrainian|Atlantean|Wehrmacht|SANDF|RAAC) /;
 for (const patternId of CAMO_PATTERN_IDS) {
   if (!patternId.startsWith('paint_')) continue;
   paints += 1;

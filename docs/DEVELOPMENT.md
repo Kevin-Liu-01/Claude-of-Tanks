@@ -109,10 +109,10 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
   A missing Worker install fails with the `npm ci --prefix cloudflare/<name>` to run; `--install`
   runs it.
 - **receipts** is `tools/run-selftests.mjs all` with one log per receipt (`--logs`).
-- **fills** (2026-10-29) is `tools/interior-fill-exposure.mjs --all --check --jobs=4`: no committed interior fill of
-  any tank stands outside its current body (a skin moved without a fills regen draws its old fills as stair-stepped
-  slabs: the owner's "voxel blocks"). It builds and voxelises the whole fleet, about 20 s a tank, so it runs here once
-  per integration round; `tank:release:check` runs the scoped `--lane` form (below).
+- The fleet-wide fill exposure (`tools/interior-fill-exposure.mjs --all --check --jobs=4`, 2026-10-29: no committed
+  interior fill of any tank stands outside its current body, the owner's "voxel blocks") builds and voxelises the whole
+  fleet, about 20 s a tank: since 265 it is a command of the manual `fleet` suite (`npm run test:heavy -- fleet`), not a
+  gate step; `tank:release:check` runs the scoped `--lane` form (below).
 - **preflight** runs `tools/shared-main-preflight.mjs` for the validated HEAD with `--base`
   (default: the merge-base with `origin/main`) and `--reviewed-main` passed through; in place when
   the checkout is clean, otherwise in a reusable detached worktree of HEAD. HEAD moving or a tracked
@@ -621,8 +621,8 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
   hull, turret or gun digest at the geometry ledger's HIGH build differs from the base's ledger row, or its fill
   record line differs from the base's. A shared builder's edit reaches exactly the tanks it moved this way; the
   import-graph partition would not narrow it (on 2026-10-29, 39 of 51 live branches touched a shared core file such
-  as `decorations.ts` or `camoPolicy.ts`). When the checker's own inputs moved, every tank runs. The whole fleet runs
-  once per integration round in the release gate's `fills` step.
+  as `decorations.ts` or `camoPolicy.ts`). When the checker's own inputs moved, every tank runs. The whole-fleet form
+  (`interior-fill-exposure --all --check`) is the manual `fleet` suite's command beside `gen-combat-anatomy --check`.
 - **Where the dropped work still runs:** the integrator mode runs both. The release gate
   (`tools/gate.mjs`) runs the default receipt tier (`run-selftests.mjs all`, the same run as `npm test`) and
   `npm run build`. `npm run build` runs build:private's commands (`vite build` and the localized

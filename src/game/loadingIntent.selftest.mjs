@@ -143,10 +143,10 @@ const commonPlayPreload = playSurfaceComposition.slice(
   playSurfaceComposition.indexOf('preloadCommon:'),
   playSurfaceComposition.indexOf('preloadNetworkPresentation:'),
 );
-assert.doesNotMatch(commonPlayPreload, /multiplayerV2\.preload|preloadBattleClientRuntime/,
+assert.doesNotMatch(commonPlayPreload, /onlineMatch\.preload|preloadBattleClientRuntime/,
   'solo intent must never transfer the multiplayer composition or the battle client runtime');
 const networkPlayPreload = playSurfaceComposition.slice(playSurfaceComposition.indexOf('preloadNetworkPresentation:'));
-assert.match(networkPlayPreload, /multiplayerV2\.preload\(\)/,
+assert.match(networkPlayPreload, /onlineMatch\.preload\(\)/,
   'network intent must acquire its isolated orchestration graph');
 assert.match(networkPlayPreload, /preloadBattleClientRuntime\(\)/,
   'network intent should still overlap the shared battle client transfer');
@@ -166,7 +166,7 @@ assert.doesNotMatch(main, /function preloadPlayMode\(/,
   'mode preload and retry policy must not return to the composition root');
 assert.match(playSurface, /export interface PlaySurfaceRuntime/,
   'play intent should cross a stable typed interface');
-assert.match(main, /preloadPresentation: \(\) => multiplayerV2\.preload\(\)/,
+assert.match(main, /preloadPresentation: \(\) => onlineMatch\.preload\(\)/,
   'a joined waiting room should keep the composition warm');
 assert.match(browserComposition,
   /await Promise\.all\(\[\s*load\.loadModules\(\),\s*load\.ensureBattleVisuals\(\),\s*load\.loadWorld\(active\.mapId/,

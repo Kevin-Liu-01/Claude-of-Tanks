@@ -14,9 +14,9 @@
    "src": "/media/docs-r1/banner-1280.webp",
    "width": 1280,
    "height": 540,
-   "bytes": 78960,
-   "sha256": "c0c4800e7ce9a7273d2f9453accb26a58fd2de58a5e938c78bf89a96dee9e674",
-   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+   "bytes": 56918,
+   "sha256": "44cb2ea90edc3a91c8f4c0e942ca8f650617f9332df7134a524948179d21f0e2",
+   "shows": "The Field Manual index banner: an M1A2 Abrams SEPv3 firing from the low ground at Copper Mesa at golden hour, red cliffs behind (21:9)."
   },
   {
    "id": "banner-1920",
@@ -24,9 +24,9 @@
    "src": "/media/docs-r1/banner-1920.webp",
    "width": 1920,
    "height": 810,
-   "bytes": 141908,
-   "sha256": "bbece3475db9ef4d10e2d7f1f96514c8c7778b098f6c799d50d9bd1c5110cb8f",
-   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+   "bytes": 92512,
+   "sha256": "cff1e6b575e5301f418fd9cf9dd85472484e4c81cd3c6c9da5d17c7794abadb0",
+   "shows": "The Field Manual index banner: an M1A2 Abrams SEPv3 firing from the low ground at Copper Mesa at golden hour, red cliffs behind (21:9)."
   },
   {
    "id": "banner-2560",
@@ -34,9 +34,9 @@
    "src": "/media/docs-r1/banner-2560.webp",
    "width": 2560,
    "height": 1080,
-   "bytes": 216070,
-   "sha256": "202da529a8224300a868b1f12e5d5f543df8a83c83469f7b2f9b0e38fa642676",
-   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+   "bytes": 133488,
+   "sha256": "647bb74185f34f564be6d3594174f472eb4168f8071733368660cdb91980d1b9",
+   "shows": "The Field Manual index banner: an M1A2 Abrams SEPv3 firing from the low ground at Copper Mesa at golden hour, red cliffs behind (21:9)."
   },
   {
    "id": "combat-armor-1920",

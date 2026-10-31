@@ -94,19 +94,20 @@ function checkGearAndMachineGun(tank){
     near(point.y,0.423799991607666,.000002,'actual source road-wheel rest height (source .395 before the datum)');
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-point.z)<.000002),'actual source axle station');
   }
-  const gunMesh=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gunMesh.parent;
-  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
-  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
-  // two scene graphs made node inspect both whole and ran the process past 40 GB)
-  assert.ok(ridesUnder(group,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
-  assert.deepEqual(group.userData.barrelAxisLocal,[0,0,1]);
-  const axis=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
-  near(axis.distanceTo(new THREE.Vector3(0,0,-1)),0,.000002,'authentic aft stock and declared fitting axis agree');
-  near(new THREE.Box3().setFromObject(gunMesh).min.z,-2.2026498318,.00002,'independently measured source aft-pointing AA muzzle end');
+  // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the commander's
+  // NSVT is the library NSVT on its own working station on the cupola's rear rim, pointing aft as the source's gun lies.
+  // 2026-10-16 (226 gate): it rides the turret (an ancestor test: assert.equal on two scene graphs made node inspect both
+  // whole and ran the process past 40 GB)
+  const station=tank.root.getObjectByName('t72b3CommanderNsvtStation');
+  assert.ok(station&&ridesUnder(station,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
+  let fit=null;station.traverse(o=>{if(!fit&&o.userData?.fittingRoot&&o.userData.fitting==='pintleMG')fit=o;});
+  assert.ok(fit&&/browningDerived/.test(fit.name),`the fleet's NSVT (${fit?.name})`);
+  const axis=new THREE.Vector3(0,0,1).transformDirection(fit.matrixWorld);
+  near(axis.distanceTo(new THREE.Vector3(0,0,-1)),0,.000002,'the gun lies aft along its declared +Z, as the source stock did');
 }
 for(const quality of ['high','low']){
   const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);checkFrames(tank);checkBore(tank);checkCassettePlanes(tank);checkGearAndMachineGun(tank);}
   finally{tank.dispose();}
 }
-console.log('t72b3XGeometry: actual high/low source frames, true bore, cassette faces/backing, six axles and coherent aft AA stock pass; full visual gates remain separate');
+console.log('t72b3XGeometry: actual high/low source frames, true bore, cassette faces/backing, six axles and the aft-lying library AA gun pass; full visual gates remain separate');

@@ -139,15 +139,12 @@ function measuredWhipsAndWeapon(tank,quality) {
     const rod=hit(tank.root.getObjectByName('turretDark'),v(x,2.30,z),v(0,1,0))?.point.y;
     assert.ok(base-rod>0&&base-rod<.021,`${quality}: measured whip physically seats on insulator ${base-rod}`);
   }
-  for(const [x,z,y]of[[-.224478,.836727,3.002408],[-.224478,.36171,2.950278],
-    [-.246,.36171,2.982153],[-.224478,.55,2.948460],[-.311927,.22,2.938328]])
-    near(hit(tank.root,v(x,3.10,z),v(0,-1,0))?.point.y,y,.003,
-      `${quality}: actual source weapon sight/receiver/grip crown`);
-  assert.ok(!hit(tank.root,v(-.225,2.88,.22),v(0,0,1),.055),
-    `${quality}: true air between the two separate rear grips`);
-  assert.ok(!hit(tank.root,v(-.224478,2.9795,1),v(0,0,-1),.68),
-    `${quality}: actual forward sight hoop and rear notch remain open`);
+  // 264 (owner 2026-10-28: "... actual machine guns of current dimensions"): the remote M2 is the fleet's M2 construction
+  // (libraryRoofMg.ts libraryStationGun) in place of the traced receiver, grips and sights: its muzzle device's face
+  // stands on the published muzzle and its bore is open 70 mm behind it
   const weapon=tank.root.getObjectByName('type10RemoteM2');
+  near(hit(weapon,v(-.224478,2.905,2.4),v(0,0,-1))?.point.z,1.8175,.001,`${quality}: the M2's muzzle device face on the published muzzle`);
+  near(hit(weapon,v(-.224478,2.887,2.4),v(0,0,-1))?.point.z,1.8175-.07,.005,`${quality}: the M2's bore open 70 mm behind its muzzle`);
   const foot=hit(weapon,v(-.31,2.35,.50),v(0,1,0))?.point.y;
   const roof=hit(tank.root.getObjectByName('turretDetail'),v(-.31,2.44,.50),v(0,-1,0))?.point.y;
   assert.ok(roof-foot>.02&&roof-foot<.04,`${quality}: actual weapon foot engages retained cupola ${roof-foot}`);

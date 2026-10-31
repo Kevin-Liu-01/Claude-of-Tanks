@@ -114,6 +114,9 @@ function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }
 //   render) stay exclusive: nothing else holds while one runs, and one at the head waits for running renders to end;
 // - `render` holds (deterministic stills: genIcons, genHeroCards, genDrawings, the anatomy render sets, gauntlet
 //   captures, owner sheets) share the lock, RENDER_SLOTS at once, each browser under launchGuardedBrowser's caps.
+//   tank-standard-check's stage holds are renders too (2026-10-29): the geometry gate, the concept and photo checks,
+//   the track-clip audit and its own census/contiguity render measure silhouettes, voxels and rasters, never frame time
+//   (standard-check-page's `ms` is informational), so a lane's gate no longer waits for an empty lock.
 // FIFO between the classes: a render takes a slot only when every ready ticket ahead of it is a render and a slot is
 // free for it, so renders queued behind a timing ticket wait for it and a stream of renders cannot starve it. A ticket
 // or a hold of an older copy of this module (no class) is exclusive, as every hold was, and older copies keep their
@@ -128,7 +131,7 @@ const LOCK_CLASSES = ['timing', 'render'];
 const RENDER_SLOTS = 2;
 const DEFAULT_HOLD_CAP_MS = 20 * 60 * 1000;
 const TIMING_SCRIPTS = /perf|census|timing|sortie/i;
-const RENDER_SCRIPTS = /genIcons|genHeroCards|genDrawings|anatomy-render|gauntlet|sheet/i;
+const RENDER_SCRIPTS = /genIcons|genHeroCards|genDrawings|anatomy-render|gauntlet|sheet|tank-standard-check|geometry-gate|track-clip-audit|first-party-concept-check|photo-reference-check/i;
 
 /**
  * The lock class a command line implies: { lockClass, from }. Only its script names count (a path after its last

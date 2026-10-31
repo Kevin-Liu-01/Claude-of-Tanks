@@ -1,8 +1,13 @@
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {PHOTO_REFERENCE_PACKET,photoTarget} from './photo-reference-policy.mjs';
+import {photoReferencePacket,photoTarget} from './photo-reference-policy.mjs';
 export function readPhotoReference(id,read=readFileSync){
-  const bytes=read(PHOTO_REFERENCE_PACKET),packet=JSON.parse(bytes),target=photoTarget(id,packet);
+  const packetPath=photoReferencePacket(id);
+  if(!packetPath)throw new Error(`${id}: no photographic packet`);
+  const bytes=read(packetPath),packet=JSON.parse(bytes),target=photoTarget(id,packet);
   if(!target)throw new Error(`${id}: no complete explicit photographic target`);
-  return {packet,target,packetPath:PHOTO_REFERENCE_PACKET,packetSha256:createHash('sha256').update(bytes).digest('hex')};
+  // The packet's fixture, resolved in this checkout rather than the working directory: it exists and names the id it proves.
+  const test=new URL(`../${target.test}`,import.meta.url);
+  if(!existsSync(test)||!readFileSync(test,'utf8').includes(`'${id}'`))throw new Error(`${id}: fixture ${target.test} is missing or does not name it`);
+  return {packet,target,packetPath,packetSha256:createHash('sha256').update(bytes).digest('hex')};
 }

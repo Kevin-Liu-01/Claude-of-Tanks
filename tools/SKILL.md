@@ -36,6 +36,11 @@ ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI ga
 1920x1080, 1440x900, 1280x720, 1024x600, 900x700, 390x844 and 844x390 touch). It fails on any two visible instruments that intersect, unless the pair is in its ALLOWED list with a
 reason. A new HUD instrument joins its INSTRUMENTS list and a new HUD state the fixture's `state()`. The full
 Playwright regression (`battle-hud-layout.browser.mjs`) covers more windows and locales.
+`garage-roster-settle.browser.selftest.mjs` (Puppeteer, the capture lock; `--url=` a served game, else its own vite
+server; the manual `ui` suite) is the Garage roster's settle pass. At each window it chooses every nation and checks the strip where the window puts it. At three windows it
+also steps the carousel's width across its whole range. It fails when the card strip or the nation rail keeps changing
+once it has had four frames to settle. `--negative-control` makes the carousel arrows shrink again, the 265 loop (the
+strip's width followed its own end pad), and the run must then find the loop.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments

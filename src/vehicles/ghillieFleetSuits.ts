@@ -182,25 +182,35 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 2.08, hemFloorM: 0.85,
     // 245: under its measured curve (turretScaleGunPitch.ts) the hull net lay 9.9 mm under the barrel at yaw 138
     clothClearsGunStops: true,
+    // 262: the family rebuild's curve (-7.7 ahead) brings the barrel within 2.4 mm of the bow deck's leaves at yaw 7:
+    // the cards and the field clear the gun's whole envelope
+    cardsClearGunStops: true,
+    conservativeGunEnvelope: true,
+    // 262: re-seated on the family rebuild's turret (its ring 0.70 m further aft, its roof 0.95-1.37 m over the ring) and
+    // hull (its stern at -3.80): the roof net follows the measured roof, the drapes the walls, the basket's load its rails
     turret: {
       top: [
         laid({
-          x0: -1.94, x1: 1.92, z0: -1.66, z1: 2.15, nx: 48, nz: 48, y: 0.75,
-          holes: [rect(0.23, 0.67, 0.80, 1.24), rect(-1.08, -0.16, -0.73, 0.19), rect(0.30, 1.10, -1.40, -0.60),
-            rect(0.39, 0.89, -0.40, 0.06), rect(0.47, 0.93, 0.11, 0.59), rect(-0.95, -0.55, -1.36, -0.94), rect(-0.25, 0.25, -1.40, -1.00)],
+          x0: -1.70, x1: 1.70, z0: -0.96, z1: 2.30, nx: 44, nz: 42,
+          yAt: (_x, z) => (z <= -0.6 ? 1.07 : z <= 0.6 ? 1.07 + (z + 0.6) * 0.27 : z <= 1.3 ? 1.39 : Math.max(0.84, 1.39 - (z - 1.3) * 0.55)),
+          holes: [rect(0.23, 0.67, 1.50, 1.94), rect(-1.08, -0.16, -0.03, 0.89), rect(0.30, 1.10, -0.70, 0.10),
+            rect(0.39, 0.89, 0.30, 0.76), rect(0.47, 0.93, 0.81, 1.29), rect(-0.95, -0.55, -0.66, -0.24), rect(-0.25, 0.25, -0.70, -0.30)],
           garnishRiseM: 0.12, seed: 11,
         }),
-        laid({ x0: -1.36, x1: 1.36, z0: -3.40, z1: -1.62, nx: 28, nz: 22, y: 0.55, garnishRiseM: 0.14, seed: 13 }),
+        laid({ x0: -1.10, x1: 1.10, z0: -2.52, z1: -2.04, nx: 22, nz: 8, y: 0.66, garnishRiseM: 0.14, seed: 13 }),
       ],
       side: [
-        ...flanks(-1.55, 0.42, 0.84, 0.40, 1.92, 17),
-        ...flanks(-3.30, -1.72, 0.62, 0.32, 1.34, 19),
+        ...flanks(-0.85, 1.12, 1.02, 0.40, 1.80, 17),
+        ...flanks(-2.50, -1.10, 0.94, 0.32, 1.32, 19),
       ],
-      face: [face({ z: -3.42, x0: -1.24, x1: 1.24, y0: 0.24, y1: 0.58, nx: 25, ny: 6, seed: 23 })],
+      face: [face({ z: -2.58, x0: -1.12, x1: 1.12, y0: 0.40, y1: 0.80, nx: 23, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.75, x1: 1.75, z0: -4.10, z1: -0.55, nx: 35, nz: 36, y: 1.76, garnishRiseM: 0.10, seed: 31 }),
+        // 265: the two stern rows over the rear plate's recess (x -0.95..-0.45, top 1.572) were cut off from the deck net
+        // and hung 1.7 cm over the plate (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.75, x1: 1.75, z0: -3.70, z1: -0.55, nx: 35, nz: 32, y: 1.76, holes: [rect(-0.98, -0.46, -3.75, -3.55)],
+          garnishRiseM: 0.10, seed: 31 }),
         // 2026-10-12 (cam-netting): the front engine deck netted to the bow (the fix round left it bare): the driver's
         // hatch and periscopes open (the builder), the cloth flat under the gun, no bough in its sweep
         laid({ x0: -1.72, x1: 1.72, z0: 0.72, z1: 3.15, nx: 34, nz: 25, yAt: (_x, z) => 1.76 - Math.max(0, z - 1.0) * 0.17,
@@ -224,31 +234,40 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     clothClearsGunStops: true,
     // 247: the front stop near -2 degrees on the cut mask brings the barrel over the bow deck's leaves
     cardsClearGunStops: true,
+    // 262: at the family rebuild's full 8 degrees ahead the barrel comes within 23 mm of the bow deck's leaves at yaw -5
+    // (merkavaFamilyGunClearance): the cards and the field clear the gun's whole envelope, as the Mk 4B's
+    conservativeGunEnvelope: true,
+    // 262: re-seated on the family rebuild's turret (its ring 0.17 m further forward, its roof 0.62-0.93 m over the ring)
+    // and hull (its stern at -3.70): the roof net follows the measured roof, the drapes the walls, the basket its rails
     turret: {
       top: [
         laid({
-          x0: -1.51, x1: 1.51, z0: -1.80, z1: 2.06, nx: 38, nz: 48, y: 0.81,
-          holes: [rect(0.71, 1.52, -0.80, 0.08), rect(-1.20, -0.41, -1.36, -0.54), rect(-0.20, 0.30, -0.15, 0.32),
-            rect(-1.01, -0.55, 0.54, 1.02), rect(-1.30, -0.98, 0.70, 1.10)],
+          x0: -1.40, x1: 1.40, z0: -1.97, z1: 1.89, nx: 36, nz: 46,
+          yAt: (_x, z) => (z <= 0.3 ? 0.95 : Math.max(0.64, 0.95 - (z - 0.3) * 0.2)),
+          holes: [rect(0.71, 1.52, -0.97, -0.09), rect(-1.20, -0.41, -1.53, -0.71), rect(-0.20, 0.30, -0.32, 0.15),
+            rect(-1.01, -0.55, 0.37, 0.85), rect(-1.30, -0.98, 0.53, 0.93)],
           garnishRiseM: 0.12, seed: 11,
         }),
-        laid({ x0: -1.12, x1: 1.12, z0: -3.10, z1: -1.76, nx: 23, nz: 17, y: 0.62, garnishRiseM: 0.14, seed: 13 }),
+        // 265: the basket's front rows at x -0.85..-0.65 were cut off from its net by the load and hung 2.1 cm over it
+        // (ghillieSuit's 15 mm): left open
+        laid({ x0: -1.05, x1: 1.05, z0: -3.10, z1: -2.38, nx: 21, nz: 10, y: 0.57, holes: [rect(-0.90, -0.60, -2.70, -2.35)],
+          garnishRiseM: 0.14, seed: 13 }),
       ],
       side: [
-        ...flanks(-1.70, 0.02, 0.86, 0.40, 1.48, 17),
-        ...flanks(-3.00, -1.84, 0.70, 0.30, 1.15, 19),
+        ...flanks(-1.87, -0.15, 0.90, 0.40, 1.42, 17),
+        ...flanks(-3.10, -2.38, 0.66, 0.30, 1.15, 19),
       ],
-      face: [face({ z: -3.12, x0: -1.00, x1: 1.00, y0: 0.32, y1: 0.66, nx: 20, ny: 6, seed: 23 })],
+      face: [face({ z: -3.17, x0: -1.00, x1: 1.00, y0: 0.27, y1: 0.61, nx: 20, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.72, x1: 1.72, z0: -4.45, z1: -1.10, nx: 34, nz: 34, y: 1.68, garnishRiseM: 0.10, seed: 31 }),
+        laid({ x0: -1.72, x1: 1.72, z0: -3.60, z1: -1.10, nx: 34, nz: 26, y: 1.68, garnishRiseM: 0.10, seed: 31 }),
         // 2026-10-12 (cam-netting): the front engine deck netted to the bow, as the Mk 4B's
         laid({ x0: -1.70, x1: 1.70, z0: 0.92, z1: 2.68, nx: 34, nz: 18, yAt: (_x, z) => 1.70 - Math.max(0, z - 1.2) * 0.2,
           garnishRiseM: 0.1, seed: 37 }),
       ],
       side: [
-        ...flanks(-4.30, -2.26, 1.72, 0.56, 1.85, 41),
+        ...flanks(-3.55, -2.26, 1.72, 0.56, 1.85, 41),
         ...flanks(-1.90, 0.16, 1.72, 0.52, 1.85, 47),
         ...flanks(0.52, 2.50, 1.72, 0.56, 1.85, 53),
       ],
@@ -449,7 +468,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   strv121: {
     id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.45, foliageKind: 'spruce',
     light: 0x5f7148, dark: 0x2c3a28, netColor: 'rgba(36,50,30,0.82)', netTextureSeed: 1220,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
+    fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
@@ -461,8 +480,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.72, x1: 1.72, z0: -3.70, z1: -0.60, nx: 34, nz: 31, y: 1.86, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.72, x1: 1.72, z0: -0.60, z1: 3.85, nx: 34, nz: 45, y: 1.69, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      // the cassettes' tops stand at 1.49: the drapes start just under them
-      side: skirts(-3.40, 3.50, 1.46, 0.48, 1.90, 41),
+      // four drapes a side over the 2A4 skirts (release 265), their gaps over the skirts' two open seams (the aft run's
+      // rear end at z -2.82 and its step to the fore blocks at 1.40-1.42): a drape column over either seam was laid
+      // through it onto the road wheels' tops, inside the track's sweep (28 voxels, the strict track clip)
+      side: [...flanks(-3.40, -2.92, 1.46, 0.51, 1.90, 41), ...flanks(-2.76, -0.05, 1.46, 0.44, 1.90, 47),
+        ...flanks(0.15, 1.33, 1.46, 0.51, 1.90, 53), ...flanks(1.49, 3.50, 1.46, 0.44, 1.90, 59)],
     },
   },
   // C2 Ariete: the roof netted round both hatches and their MGs, the commander's and gunner's sights, drapes down the
@@ -818,23 +840,32 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.30, 3.10, 1.54, 0.55, 2.05, 41),
     },
   },
-  // M1A3: the wide turret roof and bustle netted round the sights, the hatches and the roof station (the builder),
-  // drapes down the flanks behind the front smoke banks, a rear drape; the long engine deck short of the exhaust, the
-  // front deck round the three crew hatches and their periscopes, four drapes a side.
+  // M1E3 (the m1a3, rebuilt 2026-10-28; the owner: "it needs all the extra decorations ... we had on the m1a3 ... make
+  // it feel really used and lived in"): the turret roof and bustle netted round the station, the sights, the APS heads
+  // and the bustle cage (the builder), drapes down the flanks outside the field cage, a rear drape over the basket; the
+  // engine deck to the stern rack, the front deck round the hatches and periscopes, four drapes a side over the slab
+  // skirts and the flank cages.
   m1a3: {
     id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    // m1e3-264 (nationalGunClearance.selftest): at 3 cm the cut left the front-deck leaves 1 mm under the bore
+    // evacuator at the measured front-quarter stops (m1a1GunLimits.ts)
+    fieldClearanceM: 0.06, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
-      top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 2.45, nx: 49, nz: 72, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-3.05, 0.55, 0.74, 0.44, 1.80, 17),
-      face: [face({ z: -3.38, x0: -1.40, x1: 1.40, y0: 0.40, y1: 0.74, nx: 28, ny: 6, seed: 23 })],
+      top: [laid({ x0: -1.75, x1: 1.75, z0: -2.98, z1: 1.90, nx: 44, nz: 61, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.90, -0.20, 0.86, 0.46, 1.82, 17),
+      face: [face({ z: -3.30, x0: -1.45, x1: 1.45, y0: 0.40, y1: 0.80, nx: 29, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.62, garnishRiseM: 0.12, seed: 37 }),
+        // the bore evacuator's path kept bare: over the engine deck where the gun lies level astern (164-180), and over
+        // the front shoulders at the front-quarter stops (18-41); the suit's swept-gun cut left cloth 21 mm under it
+        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.73, garnishRiseM: 0.14, seed: 31,
+          holes: [rect(-1.05, 1.05, -3.25, -2.55)] }),
+        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.50, garnishRiseM: 0.12, seed: 37,
+          holes: pair(0.80, 1.92, 2.50, 3.45) }),
       ],
-      side: skirts(-3.70, 3.50, 1.62, 0.55, 2.16, 41),
+      side: skirts(-3.70, 3.50, 1.44, 0.55, 2.06, 41),
     },
   },
   // Griffin Viper: the long flat hull roof netted bow to stern round the Viper station's sweep, the driver's hatch

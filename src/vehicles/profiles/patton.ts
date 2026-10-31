@@ -50,7 +50,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, conve
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
-import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps } from './pattonCast.ts';
+import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps, buildM48VariantCastSteps } from './pattonCast.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -175,6 +175,9 @@ interface PattonBuilderPort {
     ...rotation: number[]
   ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+  /** A consumable ERA plate's own authored parts (the Magach 3's Blazer, pattonCast.ts): external armour inside it. */
+  destructibleCluster(plateName: string, fill: () => void): void;
+  addExternalArmor(owner: 'hull' | 'turret', geometry: THREE.BufferGeometry, ...transform: number[]): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
@@ -1463,7 +1466,9 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
 
   for (const side of [-1, 1]) {
     const frontCells: EraCell[] = [];
-    const frontZ = [1.56, 1.34, 1.12];
+    // (the columns stand 6 cm back from the needle nose: at 1.56 the right cheek's upper cassette spanned the nose's
+    // compound curve and its corner-supported seat sank it 6 cm into the casting)
+    const frontZ = [1.50, 1.28, 1.06];
     const frontHeights = [0.38, 0.62];
     for (let row = 0; row < frontHeights.length; row++) {
       for (let column = 0; column < frontZ.length; column++) {
@@ -3264,6 +3269,11 @@ export const PATTON_PROFILES = {
   m46_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM46CastSteps(P, M46_M47_TRACK_FINISH)) },
   m47_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM47CastSteps(P, M46_M47_TRACK_FINISH)) },
   m48a5_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48A5CastSteps(P)) },
+  // release 266: the M48s of the USA, Israel and Germany on the A5's castings (pattonCast.ts M48_VARIANTS)
+  m48a3_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a3')) },
+  magach3: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'magach3')) },
+  m48a2ga2: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a2ga2')) },
+  m48_super: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48super')) },
   m60a2: {
     // FIRST BUILD (r2): the triage 'easiest single win' — A1-family hull
     // re-authored in this print's own extract frame + the Starship tower

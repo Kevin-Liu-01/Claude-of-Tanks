@@ -18,6 +18,12 @@ const restoreCanvas = installCanvasFixture();
 const { battleStaticDrawMerge, createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
 const { ABRAMS_SOURCE_X_IDS } = await import('./abramsSourceXSpecs.ts');
 const { FAR_MERGE_ENTER_M, FAR_MERGE_RETURN_M } = await import('./tankFactoryCore.ts');
+const { GEAR_LOD_RETURN_M } = await import('./farLod.ts');
+// the copies' saving is measured past the merge's entry and short of the far LOD's wheel stations (local-fps-265's gear
+// LOD: from GEAR_LOD_ENTER_M a dual build draws them and parks its wheel layers, which an identity build, with no far
+// LOD, never does); the wreck and the Garage reset below still sync at 100 m, past both
+const FAR_M = (FAR_MERGE_ENTER_M + GEAR_LOD_RETURN_M) / 2;
+assert.ok(FAR_M > FAR_MERGE_ENTER_M && FAR_M < GEAR_LOD_RETURN_M);
 const { getSpec } = await import('./specs.ts');
 const { createTankState } = await import('../sim/movement.ts');
 
@@ -109,7 +115,7 @@ for (const [label, dist] of [['8 m (the chase camera)', 8], ['under the threshol
   assert.deepEqual(b, a, `near (${label}): the identity build's draws to the byte`);
 }
 const near = pair(10).identity.length;
-const farPair = pair(100);
+const farPair = pair(FAR_M);
 const saved = farPair.identity.length - farPair.dual.length;
 assert.ok(saved >= minSaved, `${ID} far: ${minSaved}+ fewer draws (${farPair.identity.length} -> ${farPair.dual.length})`);
 assert.equal(saved, dual.root.userData.staticMergeFarSavedDraws, 'the saving the build records');
@@ -126,7 +132,7 @@ dual.setDestroyed({ ageS: 30 });
 identity.resetDestroyed();
 dual.resetDestroyed();
 { const { identity: a, dual: b } = pair(10); assert.deepEqual(b, a, 'a reset wreck is the identity build near'); }
-{ const { identity: a, dual: b } = pair(100); assert.equal(b.length, a.length - saved, 'and takes its copies far'); }
+{ const { identity: a, dual: b } = pair(FAR_M); assert.equal(b.length, a.length - saved, 'and takes its copies far'); }
 // the Garage's reset draws the parts
 pair(100);
 dual.resetForGaragePresentation?.();

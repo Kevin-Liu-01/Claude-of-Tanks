@@ -72,8 +72,8 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'kf41_lynx', 'kf51_evo', 'kf51_u', 'puma_s1', 'spz_wotan', 'marder2', 'mbt70', 'leo2_improved',
   ]),
   China: Object.freeze([
-    'vt4a1', 'ztz99a2', 'ztz99a',
-    't72b3_qilin', 't72b3m_kunlun', 't80u_yun',
+    'vt4a1', 'ztz99a2', 'ztz99a', 'ztz99a2_qinglong', 'vt4a1_baihu',
+    't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 't72b3_zhuque', 't72b3m_xuanwu',
     'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10',
     'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long',
     'ztz99_longwei', 'ztz85_iii', 'type59',
@@ -322,13 +322,6 @@ export function horizontalRailEndPad(maxScroll: number, stops: readonly number[]
   let next = Infinity;
   for (const stop of stops) if (stop >= maxScroll - 0.5 && stop < next) next = stop;
   return Number.isFinite(next) ? Math.max(0, Math.round((next - maxScroll) * 10) / 10) : 0;
-}
-
-/** The end padding a rail keeps: `next` differing from the `current` pad by under a pixel is the rail's own rounding (its
- * scrollWidth is whole pixels, the pad is not), and written back it flips the pad on every layout, each flip a resize
- * that measures the rail again (15 to 27 a second, all through a battle's entry, in the release-259 Garage). */
-export function settledRailEndPad(current: number, next: number): number {
-  return Math.abs(next - current) < 1 ? current : next;
 }
 
 /** Convert either a mouse wheel or a two-axis trackpad gesture into one

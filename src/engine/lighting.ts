@@ -98,6 +98,11 @@ declare global {
     __SHADOW_DEBUG?: ShadowDebugOptions;
   }
 }
+// (local-fps-266) the shadow hooks read __SHADOW_DEBUG on every caster's draw (guardDoubleSidedDepth, the caster proxies'
+// cull switch): thousands of reads a frame. A name the window does not carry goes on to the browser's named-element
+// lookup at every read (no inline cache through it); an own property holding undefined is a plain load. A probe that
+// sets its switches overwrites it as before.
+if (typeof window !== 'undefined' && !Object.hasOwn(window, '__SHADOW_DEBUG')) window.__SHADOW_DEBUG = undefined;
 
 type MaterialCompileHook = THREE.Material['onBeforeCompile'];
 

@@ -18,6 +18,7 @@ import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addShtoraEyes} from './shtora.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 const T90MS_X_DATUMS=T90MS_X_SOURCE_DATUMS;
 const YAW=T90MS_X_DATUMS.turretPivot,GUN=T90MS_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
@@ -250,10 +251,11 @@ function remoteWeapon(P:TankBuilderPort):void{
   top(P,'turretDetail',box(.1201,.3027,.1162),-.708,2.81694,-1.37851);
   station.mark('yaw');
   const mg=sourceMachineGun(P,YAW);
-  mg.add('turretDark',box(.1045,.1622,.2656),-.5796,2.86869,-1.52451);
-  mg.add('turretDetail',box(.125,.0826,.7422),-.58005,2.88699,-1.44731);
-  mg.add('turretDark',cylZ(.02055,.5591,24),-.582,2.91609,-.99496);
-  mg.add('turretDetail',box(.0393,.07,.3701),-.494,2.90,-1.51816);station.attachPitch(mg.finish());
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // remote gun is the fleet's Kord construction (libraryRoofMg.ts libraryStationGun) on the station's bore and muzzle,
+  // in place of the traced receiver block, cover, rod and side bar.
+  libraryStationGun(mg,{cls:'kord',x:-.582,boreY:2.91609,pivotZ:-1.52451,muzzleZ:-.71541});
+  station.attachPitch(mg.finish());
 }
 function smoke(P:TankBuilderPort):void{
   const stocks:readonly(readonly[number,number,number,number,number,number])[]=[

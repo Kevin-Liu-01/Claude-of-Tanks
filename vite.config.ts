@@ -27,8 +27,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 import { expandTypeMarkers } from './src/ui/typeFaces.ts';
-import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
-import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
+import { localizeEntryDocument } from './src/presentation/localizedHtml.ts';
+import { resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { resolveMatchBuild } from './tools/matchBuild.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
@@ -293,16 +293,9 @@ export default defineConfig({
     {
       name: 'cot-locale-documents',
       enforce: 'post',
+      // the request's route on the dev server, the entry's own in the build (it has no request URL)
       transformIndexHtml(html, ctx) {
-        const original = ctx?.originalUrl || '';
-        const requestUrl = new URL(original || '/', 'http://vite.local');
-        const requestedLocale = requestUrl.searchParams.get('_cot_locale');
-        const localePath = resolveLocalePath(requestUrl.pathname);
-        const sourceHtml = resolve(ctx?.filename || '').split('/').at(-1) || '';
-        const route = localePath.route ?? publicRouteForEntry(sourceHtml);
-        if (!route) return html;
-        const locale = requestedLocale === 'zh-CN' || localePath.locale === 'zh-CN' ? 'zh-CN' : 'en-US';
-        return localizeHtmlDocument(html, route, locale);
+        return localizeEntryDocument(html, ctx?.filename || '', ctx?.originalUrl);
       },
     },
     // FE-P3 + 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document loads its own catalogs. The game keeps the full
@@ -492,7 +485,14 @@ export default defineConfig({
             // they were one more game, cn and Gallery boot request.
             // 2026-10-29 (integrator 264): the 2A6 UA's shell dimensions and dock seat (leopardA6UaLayout.ts, leo2a6-ua-264b), a
             // table germany.ts (boot) and the mission receiver read; alone it was one more game, cn and Gallery boot request.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-30 (integrator 265): the T-62M-V1 X study's ERA zones (t62mv1XArmor.ts), a table the specs' fleet (fleetFactory
+            // at boot) and its lazy builder both read; leopard1-263's graph change split it out of fleetFactory, one more game, cn
+            // and Gallery boot request. It reads the specs' plate helper, which every page that boots this chunk loads anyway.
+            // 2026-10-31 (integrator 265): the 2A4 family's Kontakt-1 plates (leopard2A4Kontakt1.ts) and the fourth-batch 2A3's
+            // armour (leopard2a3B4Armor.ts), with the plate tables both read (leopard2A4FamilyArmor.ts, leopard2CheekFrontDatums.ts):
+            // the boot fleet reads them beside leopard2HullDatums; leo2a4-family-265 split them into two more game, cn and Gallery
+            // boot requests.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more

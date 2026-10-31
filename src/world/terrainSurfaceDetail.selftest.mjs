@@ -47,8 +47,10 @@ for (const detail of [
 assert.match(source,
   /n\.xy -= \(ga \* 1\.1 \* dapField \+ gb \* 1\.55\)[^;]+\(1\.0 - fMs\) \* midGraze;/, // relief pass 2 (2026-09-12): ~80 % of the 1049e4e 1.4 / 2.0, still waterline-gated
   'mid-distance soil relief is bounded and cannot hammer the water surface (and fades on a slope seen at a grazing angle: hold 27\'s terraces)');
-assert.match(source, /float midGraze = mix\(1\.0, smoothstep\(0\.15, 0\.55, saturate\(dot\(normalize\(cameraPosition - wp\), wn\)\)\), smoothstep\(0\.01, 0\.08, slope\)\);/,
-  'the mid relief fades as the view grazes a slope; flat ground keeps all of it');
+// (264b, 2026-10-29: a vegetated map's open ground fades on the flat too — Blackglass's pocked meadow, the phone smears;
+// fields, arid and snow maps keep their flat ground's relief, groundTrainIrregularity's (c))
+assert.match(source, /float midGraze = mix\(1\.0, smoothstep\(0\.15, 0\.55, saturate\(dot\(normalize\(cameraPosition - wp\), wn\)\)\), max\(smoothstep\(0\.01, 0\.08, slope\), vegGround\)\);/,
+  'the mid relief fades as the view grazes a slope (and a vegetated map\'s open ground); a field\'s, an arid or a snow map\'s flat ground keeps all of it');
 // ground lane (farmland): the fine octave stands down on a sown or turned field (dapField ≤ 1), never up
 assert.match(source, /float dapField = 1\.0 - 0\.9 \* max\(gCropW, gSoilW\);/, 'the dapple\'s fine octave only ever stands down');
 // ground lane (farmland): on turned earth the clod octave is a near read; both its terms stay off the carriageway

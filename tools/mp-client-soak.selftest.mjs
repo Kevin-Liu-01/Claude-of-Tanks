@@ -27,17 +27,4 @@ assert.equal(report.serverStats.rejectedInputs, 0, 'the real input buffer reject
 assert.equal(report.serverStats.droppedSnapshots, 0, 'no backpressure drops');
 assert.ok(report.serverStats.lagComp.rewoundShots > 0, 'the client\'s interpDelayMs fed lag compensation');
 assert.equal(report.pass, true);
-// A solo match on a local host, paused (RUST-ENGINE-DECISION §7 step 5): the actor holds its tick through 8 s of pause, the
-// client's PausableClock rests with it, and every gate holds across the resume — no stall, no snap, no rejected input.
-const solo = await runClientSoak({ clients: 1, seconds: 20, rttMs: 0, jitterMs: 0, loss: 0, server: 'actor', mapId: 'verdant', seed: 0x50ad,
-  pauseAtS: 6, pauseForS: 8 });
-assert.equal(solo.pause?.paused, true, 'the solo match paused');
-assert.equal(solo.pause.ticksWhilePaused, 0, 'no tick ran while paused');
-assert.deepEqual(solo.rows[0].failures, [], solo.rows[0].failures.join('; '));
-assert.equal(solo.rows[0].phase, 'live');
-assert.equal(solo.rows[0].stalls, 0, 'the pause is no stall');
-assert.equal(solo.serverStats.rejectedInputs, 0, 'no input refused across the resume');
-assert.ok(solo.serverStats.ticks > 11 * 60 && solo.serverStats.ticks < 12.5 * 60, `${solo.serverStats.ticks} ticks in 12 s of play`);
-assert.equal(solo.pass, true);
-
-console.log(`mp client soak receipt: 4 clients × 20 s on the real MatchActor pass (down ${(report.rows[0].bytesInPerS / 1024).toFixed(1)} KB/s, ack lag p50 ${report.rows[0].ackLagP50} ticks, misprediction ≤ ${Math.max(...report.rows.map((row) => row.maxMispredictionM))} m); a solo match paused 8 s resumes on its tick with no stall`);
+console.log(`mp client soak receipt: 4 clients × 20 s on the real MatchActor pass (down ${(report.rows[0].bytesInPerS / 1024).toFixed(1)} KB/s, ack lag p50 ${report.rows[0].ackLagP50} ticks, misprediction ≤ ${Math.max(...report.rows.map((row) => row.maxMispredictionM))} m)`);

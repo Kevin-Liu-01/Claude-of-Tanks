@@ -374,6 +374,12 @@ const LAYOUTS = Object.freeze({
     ['loader', 'turret', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'wetHullRacks' } }) },
   westernManualHullAmmo: { confidence: 'platform-inferred', sources: ['britishChallenger'], crew: FOUR_MAN_TURRET, systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
+  // 262 (Main: the STB-1's kit stands on the sides the owner's model shows it, profiles/type74Family.ts): the gunner's
+  // sight and the commander's station at -x, the loader's and the driver's hatches at +x, each crewman under his own
+  stb1ModelSides: { confidence: 'owner-directed', sources: [], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
+    ['loader', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
   starship: { confidence: 'platform-inferred', sources: ['usArmySheridan'], crew: FOUR_MAN_TURRET, systems: systems({
     ammoRack: { placement: 'hull', form: 'mixed152mmStowage' },
     missileRack: { placement: 'hull', form: 'gunLaunchedRounds' },
@@ -526,11 +532,11 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3'],
+  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3'],
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
   merkava: [
@@ -544,12 +550,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   // release 263: the rebuilt ZTZ-85-III carries the 85-IIM's T-72-derived carousel autoloader and a crew of three
   // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader
-  sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
-  sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t'],
+  sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
+  sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik'],
   bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
+  stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
   armata: ['object148_proto', 't14_armata'],
   kf51_evo: ['kf51_evo', 'kf51_u', 'kf51_panther'],

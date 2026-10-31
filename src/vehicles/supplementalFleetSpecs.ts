@@ -3,7 +3,7 @@
 // inputs are attribution and offline comparison evidence, never playable
 // geometry; retained candidate metadata is procedural-only.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
-import { reactivePlate, shell, type ArmorEnvelope } from './specHelpers.ts';
+import { LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG, reactivePlate, shell, type ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
@@ -90,6 +90,7 @@ function make(
   credit: SourceCredit | null = null,
 ): FleetTankSpec {
   const s = copy(requireFleetSpec(baseId));
+  if (baseId === 'leo1a5') s.gunPitchByYawDeg = LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG;
   s.id = id; s.name = name; s.nation = nation; s.variantOf = baseId;
   if (credit && !credit.quarantine) {
     // shippable class: the credit line renders on the nation-tab/garage card

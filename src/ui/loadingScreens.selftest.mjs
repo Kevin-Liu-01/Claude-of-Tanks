@@ -758,6 +758,6 @@ assert.match(intentCoverSource, /coverRendering\(\);\s*resetRoundState\(game\);\
   'the intent cover presents the boot-critical veil synchronously');
 const roomStartBody = mainSource.slice(mainSource.indexOf('function beginMultiplayerV2Battle('), mainSource.indexOf('function loadMultiplayerV2Composition('));
 assert.ok(roomStartBody.indexOf('networkBattleIntentCover.show(request);') >= 0 &&
-  roomStartBody.indexOf('networkBattleIntentCover.show(request);') < roomStartBody.indexOf('multiplayerV2.preload()'),
+  roomStartBody.indexOf('networkBattleIntentCover.show(request);') < roomStartBody.indexOf('onlineMatch.preload()'),
   'a room start shows its boot-critical veil before its first lazy import');
 console.log('loading screen featured-capture selftest: PASS');

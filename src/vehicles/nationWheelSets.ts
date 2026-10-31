@@ -38,7 +38,7 @@ type WheelDonorId =
   | 'challenger3_proto' | 'challenger2e' | 'warrior_tes_h'
   | 't90_1992' | 't90am' | 'object148_proto' | 'bmp3m_dragun125' | 't64bm1m'
   | 'kf51_evo' | 'leo2a4' | 'kf41_lynx'
-  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3'
+  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3' | 'm48a3_patton'
   | 'type59';
 
 /** Road-wheel face constructions; nationWheelConstructions.ts builds the ones a non-donor hull consumes. */
@@ -54,7 +54,7 @@ export type WheelConstructionId =
   | 'challenger-hollow-paired' | 'warrior-plain-web'
   | 't90-pressed-source-face' | 't14-armoured-hub' | 'dragun-rolled-lip' | 't64-steel-tyred-dual'
   | 'kf51-forged-face' | 'leo2a6-paired-dish' | 'lynx-stamped-web'
-  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke'
+  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke' | 'm48-dished-disc'
   | 't54-starfish-spoke';
 
 interface NationWheelDonor {
@@ -133,6 +133,8 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
   // T54_STARFISH_WHEELS holds (no self ids, so both hulls draw it through the one standard path)
   type59: Object.freeze({ donor: 'type59', self: [], pattern: 'christie-six', construction: 't54-starfish-spoke',
     note: 'The T-54/T-55 family cast dished wheel with its windows between the arms, on its thick tyre (t54Family.ts), the period exception the Type 59 and the T-55A draw.' }),
+  m48a3_patton: Object.freeze({ donor: 'm48a3_patton', self: [], pattern: 'deep-dish-eight', construction: 'm48-dished-disc',
+    note: 'Release 266 (owner 2026-10-28: "FIX THE ISSUES WITH TRACKS" on the new M48s): the M48 road wheel as photographed at Latrun, Munster and Kubinka, a dished solid disc with its hub and eight nuts, not the five-spoke cast wheel; the four new M48 marks draw it by exception.' }),
 });
 
 export const WHEEL_DONOR_IDS = Object.freeze(Object.keys(WHEEL_DONORS) as WheelDonorId[]);
@@ -214,6 +216,10 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'ussr/russia': 'russia',
   ussr: 'russia',
   ukraine: 'russia',
+  // release 262: South Africa's one hull is the Olifant Mk 2, a Centurion: the UK set its family draws
+  'south africa': 'uk',
+  // and Australia's, the Mk 5/1
+  australia: 'uk',
 });
 
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
@@ -229,6 +235,11 @@ export const T54_STARFISH_WHEELS = true;
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
   pt91m: { donor: 't90_1992', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
   sabra_mk2: { donor: 'm60a3', reason: 'owner 2026-09-22: "sabra uses the m60a3 wheels" (Magach/M60 hull under Israeli armour)' },
+  // release 266: the M48s of Israel and Germany ride the M48A5's cast running gear (pattonCast.ts), as the Sabra does
+  m48a3_patton: { donor: 'm48a3_patton', reason: 'release 266: the M48A3 Mod B: the M48 dished disc road wheel' },
+  magach3: { donor: 'm48a3_patton', reason: 'release 266: the Magach 3 is an M48 hull: the M48 dished disc road wheel' },
+  m48a2ga2: { donor: 'm48a3_patton', reason: 'release 266: the Bundeswehr M48A2GA2 is an M48 hull: the M48 dished disc road wheel' },
+  m48_super: { donor: 'm48a3_patton', reason: 'release 266: the M48 Super is an M48A2G hull: the M48 dished disc road wheel' },
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
@@ -240,6 +251,9 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   t84bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84U Oplot base hull → Russia older T-series donor' },
   bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84BM Oplot-M (T-80UD hull) → Russia older T-series donor' },
   bm_oplot_t: { donor: 't90_1992', reason: 'Ukraine: T-84BM Oplot-T (T-80UD hull) → Russia older T-series donor' },
+  pt84_orzel: { donor: 't90_1992', reason: 'Poland: PT-84 Orzeł (the Oplot\'s T-80UD hull) → Russia older T-series donor' },
+  pt84_sokol: { donor: 't90_1992', reason: 'Poland: PT-84 Sokół (the Oplot\'s T-80UD hull) → Russia older T-series donor' },
+  pt84_zbik: { donor: 't90_1992', reason: 'Poland: PT-84 Żbik (the Oplot\'s T-80UD hull) → Russia older T-series donor' },
   ua_m2a3_bradley: { donor: 'm551a1_tts', reason: 'Ukraine: Bradley base hull → USA light donor' },
   bmp3_rok: { donor: 'bmp3m_dragun125', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
   k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
@@ -256,6 +270,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
     type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
     t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },
   } : {}),
+  // release 262 (the owner: the new Sho't "with proper equipment geometries"): the IDF kept the Centurion's running gear
+  shot_kal: { donor: 'challenger2e', reason: 'release 262: the Sho\'t Kal is a Centurion hull on its own Horstmann bogies -> the UK wheel the Mk 3 and Mk 5/2 draw, not the Merkava\'s' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

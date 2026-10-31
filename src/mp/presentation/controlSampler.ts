@@ -1,7 +1,6 @@
 /**
  * The viewer's controls for the match wire, sampled from the own actor's input record (the rig writes its aim point every
- * frame) with the HUD's action presses queued between ticks. Shared by the multiplayer composition and the solo sim
- * Worker's battle (src/game/soloSimBattleRuntime.ts): no room or session reaches it.
+ * frame) with the HUD's action presses queued between ticks (the online driver: mp/session/browserComposition.ts).
  */
 import type { ControlSample } from '../match/inputStream.ts';
 import { ACTION_BITS } from '../wire/index.ts';

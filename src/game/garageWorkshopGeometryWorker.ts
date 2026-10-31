@@ -14,6 +14,7 @@ import {
 import { T90_PROFILES } from '../vehicles/profiles/t90.ts';
 import { ABRAMS_PROFILES } from '../vehicles/profiles/abrams.ts';
 import { LEOPARD_PROFILES } from '../vehicles/profiles/leopard.ts';
+import { LEOPARD2A4_FAMILY_PROFILES } from '../vehicles/profiles/leopard2A4Family.ts';
 import { MODERN3_BUILDERS } from '../vehicles/modern3.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 
@@ -26,6 +27,8 @@ registerProfiledBuilders(createProfileBuilders({
   ...T90_PROFILES,
   ...ABRAMS_PROFILES,
   ...LEOPARD_PROFILES,
+  // 264: the 2A4-era Leopards (the teardown bay's leo2a4m among them) left LEOPARD_PROFILES for their own family
+  ...LEOPARD2A4_FAMILY_PROFILES,
 }, {
   buildDonorVariant,
   buildProfile,

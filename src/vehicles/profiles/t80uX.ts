@@ -8,8 +8,7 @@ import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
-import {sourceMachineGun} from './sourceMachineGun.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import {machinedRing} from '../machineGunGeometry.ts';
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -219,19 +218,10 @@ function smoke(P:TankBuilderPort):void {
 }
 
 function machineGun(P:TankBuilderPort):void {
-  const gun=sourceMachineGun(P,YAW);
-  gun.add('turretDetail',cylY(.035,.273,20),-.955,2.1735,.251);
-  gun.add('turretDetail',box(.110,.040,.150),-.955,2.314,.252);
-  for(const x of [-.975,-.935])gun.add('turretDetail',box(.016,.142,.069),x,2.342,.2575);
-  gun.add('turretDark',box(.045,.080,.610),-.955,2.4566,.424);
-  gun.add('turretDetail',box(.094,.061,.174),-.968,2.355,.278);
-  gun.add('turretDark',box(.265,.279,.075),-1.1105,2.3515,.4445);
-  gun.add('turretDark',cylZ(.012,.477,20),-.955,2.475,.9665);
-  gun.add('turretDark',cylZ(.018,.769,20),-.955,2.432,1.1125);
-  gun.add('turretDark',blindTube(.025,.012,.130,.110,20),-.955,2.432,1.552);
-  gun.add('turretDetail',box(.022,.053,.017),-.955,2.458,1.14);
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
-  stationFromDrawnGun(gun.finish(),{name:'t80uXRoofNsvt',caliberMm:12.7});
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its own pintle standing
+  // where the traced post stood on the roof (2.16 there) ahead of the cupola, in place of the post, boxes and rods.
+  libraryRoofMg(P,{station:'t80uCommanderNsvtStation',cls:'nsvt',seat:[-.955-YAW[0],2.16-YAW[1],.251-YAW[2]]});
 }
 
 function mainGun(P:TankBuilderPort):void {
