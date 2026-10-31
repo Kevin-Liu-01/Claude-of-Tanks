@@ -546,12 +546,20 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   Every selected receipt prints its reason. A negative control runs every time: a receipt reading a file is selected
   when that file changes, and every changed receipt file is selected, or the run exits 2 before anything runs. The
   uncommitted and untracked files count as changed. A branch carrying an integration tree beyond the base
-  (an origin/integ/* commit not on origin/main) gets the suggested base printed first; `--base=integ` takes it.
+  (an origin/integ/* commit not on origin/main) gets the suggested base printed first; `--base=integ` takes it. On
+  criss-cross history (a lane that merged integ, then main after integ had merged main) it is the newest of
+  `git merge-base --all` that origin/main does not contain (`tools/test-base.selftest.mjs`).
   Speed (266 follow-up): each receipt's reads are computed once per diff from the cache's closure and listings
   (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt) and the changed tables' rows come from one git
-  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. test:lane and
+  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. A JSON table (steps.mjs
+  TABLES kind 'json') is compared row by row instead of diffed: the M60 lane's icon regen rewrote the 55 MB
+  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s), and
+  each batched diff of the other tables stops at 2 minutes (its files then mark every id they hold). test:lane and
   test:recommend stop their children and exit on SIGTERM, SIGINT, SIGHUP or SIGALRM, or when their parent dies
-  (`tools/test-commands-exit.selftest.mjs`, with an unguarded control that orphans).
+  (`tools/test-commands-exit.selftest.mjs`, with an untracked control that orphans). Their signal listeners are attached
+  only while a tracked child runs: a listener holds a signal until the event loop runs, and the selection is one
+  synchronous loop (the M60 lane's 2,904-path dry run ignored its alarm for 11 minutes). Otherwise the default action
+  ends the command at once, and the selection checks for a dead parent once per receipt.
 - `node tools/run-selftests.mjs all --heavy=<suite>[,<suite>]` selects manual receipts (`test:heavy` passes it);
   `--only` matching only another tier's receipts names that tier; `--only-from=<file>` reads one glob per line;
   `--write-durations` still times every tier.
@@ -1160,12 +1168,27 @@ to their exact call sites: editing such a call turns `tools/changed-only/fleet-p
 step runs on every id until the declaration is reviewed and re-pinned. A change to the shared core (for example
 `tankFactoryCore.ts` or `profiles/kit.ts`) marks every id: changed-only then means one ordered pass, not a skip.
 
+The balance pass is not core (266). `fleetRegistration.ts` applies `fleetBalancePass.ts` to the registered specs and
+nothing else imports it, so its levers reach a tool only through those specs. Each id's registered spec is keyed as two
+rows (`steps.mjs` `BALANCE`, `SPEC_COMBAT` and `SPEC_REST`): its combat leaves (armour ke/ce, hp, mobility, gun cadence,
+accuracy and rounds) and everything else. Every step keys the rest; seats, anatomy, centering and icons key the combat
+row too (`rowReads`). A one-id lever on armour, hp or the gun then re-runs that id on those four steps; a lever on any
+other field re-runs it on every step; the world steps still take every spec. A second importer, or a new use of the
+pass in its importer (a stale pin in `BALANCE.importers`), puts it back in the core. Proofs:
+`node tools/changed-only/trace-check.mjs --combat --root=<scratch tree> --ids=<ids>` runs each CPU step plain twice and
+once with every combat leaf moved (`combat-perturb.mjs`) and fails a step whose rows follow without `SPEC_COMBAT`.
+On five ids (kf51_u, mbt70, t80b, fv510_milan, c2_ariete) only the seats' rows followed; anatomy's did not, but its code
+reads the plates and the gun's cadence, so it stays keyed. Centering and icons render in a browser the preload never
+reaches and are keyed unproven. `closure-trace.mjs --combat` builds every id with the leaves moved: all 236 ledger digests
+held. `balance-keys.selftest.mjs` (fleet suite) applies a one-id lever to a copy of the tree.
+
 Proofs: `tools/changed-only/resolver.selftest.mjs` (fixture: skips, shared kits, tool/flag/toolchain/roster edits,
 undeclared reads, hand-edited rows), `fleet-partition.selftest.mjs` (the real fleet decomposes, pins hold, the demand
 loaders match the eager factory, the Ukrainian donor kit marks all of national modernization, seats after fills and
 controls) and `chain.selftest.mjs` (the real chain on a fixture fleet: changed-only outputs and manifest byte-identical
 to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 child-minutes) loads each builder group
-alone and fails on any module outside its keyed closure; `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
+alone and fails on any module outside its keyed closure (a module a table imports, such as the roof-gun table's decoder,
+is keyed through the rows it decodes: `partition.tableImports`); `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
 --base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
 covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (about 15 s, no builds):
 once a release commits `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs and

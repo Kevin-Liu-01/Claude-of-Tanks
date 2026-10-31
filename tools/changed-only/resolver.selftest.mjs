@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
+import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
+import { tokenPin } from './world.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-'));
@@ -261,5 +263,60 @@ head('t3');
 assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m8)), { sizes: 'all:a1,a2,b1', other: 'none:' }, 'control: a tool reading the page itself keeps it keyed');
 put('tools/gen-sizes.mjs', genSizes);
 put('tools/gen-other.mjs', genOther);
+
+// 14. The balance pass is keyed per id through the spec rows, not the core (266, Main: a balance merge re-keyed every
+// step on every id). Its registration import leaves it out of the core; a lever on one id's combat leaves marks that id on
+// the steps that read them (rowReads SPEC_COMBAT) alone, a lever on any other field marks it on every step. Controls: the
+// same edit through the core (no balance declaration), a second importer and a stale importer pin each mark every id.
+const registration = read('src/vehicles/fleetRegistration.ts');
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length;\n');
+put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\n");
+const tokens = ['balance.ts', 'applyBalance'];
+const balanced = { ...config, balance: { entries: ['src/vehicles/balance.ts'], tokens, combat: ['hp'],
+  importers: { 'src/vehicles/fleetRegistration.ts': { pin: tokenPin(read('src/vehicles/fleetRegistration.ts'), tokens) } } } };
+const readers = () => { const steps = baseSteps(); steps[1].rowReads = [SPEC_COMBAT]; return steps; };
+const specRows = (moved = {}) => { const rows = rowsData(); rows.rows[SPEC_COMBAT] = { a1: 'c1', a2: 'c2', b1: 'c3', ...moved.combat };
+  rows.rows[SPEC_REST] = { a1: 'x1', a2: 'x2', b1: 'x3', ...moved.rest }; return rows; };
+const lever = (rows, cfg = balanced) => changed(resolveChanged(state({ steps: readers(), rows, cfg }), bootstrap(state({ steps: readers(), rows: specRows(), cfg }))));
+const s9 = state({ steps: readers(), rows: specRows(), cfg: balanced });
+assert.deepEqual([s9.partition.balance, s9.partition.balanceReason, s9.partition.core.includes('src/vehicles/balance.ts')],
+  [['src/vehicles/balance.ts'], null, false], 'the registration import leaves the pass out of the core');
+assert.deepEqual([s9.steps.sizes.rowTables, s9.steps.other.rowTables], [['anchors', SPEC_REST], ['anchors', SPEC_COMBAT, SPEC_REST]]);
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length + 1;\n'); // the lever's own edit: no key reads the file
+assert.deepEqual(lever(specRows({ combat: { a2: 'c2b' } })), { sizes: 'none:', other: 'ids:a2' }, 'a combat lever marks its id on the reader alone');
+assert.ok(resolveChanged(state({ steps: readers(), rows: specRows({ combat: { a2: 'c2b' } }), cfg: balanced }),
+  bootstrap(s9)).other.reasons.a2.includes(`row ${SPEC_COMBAT}[a2]`));
+assert.deepEqual(lever(specRows({ rest: { a2: 'x2b' } })), { sizes: 'ids:a2', other: 'ids:a2' }, 'negative control: a non-combat lever marks its id on every step');
+assert.deepEqual(lever(specRows()), { sizes: 'none:', other: 'none:' }, 'an edit that moves no spec marks nothing');
+const unbalanced = { ...config, balance: null }, m9 = bootstrap(state({ steps: readers(), rows: specRows(), cfg: unbalanced }));
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length + 2;\n');
+assert.deepEqual(changed(resolveChanged(state({ steps: readers(), rows: specRows({ combat: { a2: 'c2b' } }), cfg: unbalanced }), m9)),
+  { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'control: through the core, the same lever marks every id on every step');
+put('src/vehicles/kit.ts', "import './balance.ts';\nexport const KIT = { wheel: 0.4 };\n");
+const imported = state({ steps: readers(), rows: specRows(), cfg: balanced });
+assert.deepEqual([imported.partition.balance, imported.partition.balanceReason, imported.partition.core.includes('src/vehicles/balance.ts')],
+  [[], 'another fleet module imports it', true], 'control: a second importer keeps the pass in the core');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\nexport const TOTAL = applyBalance(ALL_TANK_IDS);\n");
+assert.match(state({ steps: readers(), rows: specRows(), cfg: balanced }).partition.balanceReason, /importer pin stale: src\/vehicles\/fleetRegistration\.ts \(now [0-9a-f]{16}\)/,
+  'control: a new use of the pass in its importer keeps it in the core until reviewed');
+put('src/vehicles/fleetRegistration.ts', registration);
+
+// 15. A module a table imports (266: auxiliaryRoofGuns.generated.ts decodes its rows with auxiliaryRoofGunsCodec.ts) is
+// keyed through the rows it decodes: the partition names it for the runtime traces, outside the core. Controls: one a
+// core module imports too is core; one that reads files ends the mention rule like any executed fleet module.
+const anchors = read('src/vehicles/anchors.generated.ts');
+put('src/vehicles/anchorsCodec.ts', 'export const decode = (rows) => rows;\n');
+put('src/vehicles/anchors.generated.ts', "import { decode } from './anchorsCodec.ts';\nexport const ANCHORS = decode({ a1: 1, a2: 2, b1: 3 });\n");
+const decoded = state();
+assert.deepEqual([decoded.partition.tableImports, decoded.partition.core.includes('src/vehicles/anchorsCodec.ts'), decoded.globalReasons],
+  [['src/vehicles/anchorsCodec.ts'], false, []], 'a table\'s decoder is named apart, outside the core');
+put('src/vehicles/kit.ts', "import { decode } from './anchorsCodec.ts';\nexport const KIT = decode({ wheel: 0.4 });\n");
+assert.deepEqual([state().partition.tableImports, state().partition.core.includes('src/vehicles/anchorsCodec.ts')], [[], true],
+  'control: a decoder the core imports is core');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+put('src/vehicles/anchorsCodec.ts', "import { readFileSync } from 'node:fs';\nexport const decode = (rows) => (readFileSync('x'), rows);\n");
+assert.match(state().globalReasons.join(), /anchorsCodec\.ts can read files/, 'control: a decoder that reads files fails closed');
+put('src/vehicles/anchors.generated.ts', anchors);
 
 console.log('changed-only resolver.selftest: PASS');
