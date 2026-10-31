@@ -280,8 +280,9 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
   // off it, clear of the door's ring and handle, and the tail lamps move out onto the sponsons' rear faces beside them.
   // Then (owner: "raise em a little higher!!", and 266: "raise the drums on the stb1 so theyre visible in the hero images
   // a lil more!!!") the saddles stand 23.5 cm tall, so the drums' tops (1.73 m) stand 15 cm over the deck in the hero's
-  // three-quarter view: the shelf stays under the plate's foot rail, and the gun's curve rides up over them from about
-  // 167 degrees round (japan.ts STB1_GUN_PITCH_BY_YAW_DEG, re-swept). Higher, the level gun would meet them astern.
+  // three-quarter view: the shelf stays under the plate's foot rail, and the gun's curve rides up over them from 166
+  // degrees round to -1.1 astern (japan.ts STB1_GUN_PITCH_BY_YAW_DEG, re-swept). Higher, the level gun would meet
+  // them astern.
   // The whole pair (shelf, gussets, saddles, drums, straps) is one owner-kit group (Main 266: set aside from the owner's
   // model's comparison, which has no drums; tools/owner-kit-targets.mjs)
   const rz = -3.41, rake = 0.41 / (STERN_FOOT_Y - BELLY);
