@@ -1355,8 +1355,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     rz = 0,
     scale: GeometryScale = 1,
   ): void => {
-    // FSP-06: 'turretCloth' is the canvas mantlet boot — silhouette skin on the gun mount (gunMountCanvasSkin).
-    const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : bucket === 'turretCloth' ? 'gunMountCanvasSkin' : 'gunMount';
+    const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : 'gunMount';
     P.add(movingBucket, geo, x, y - P.gunG.position.y, z - P.gunG.position.z,
       rx, ry, rz, scale);
   };
