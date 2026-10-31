@@ -11,6 +11,7 @@
 // stairs and plinths stay structural.
 import * as THREE from 'three';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../../../engine/nightEmissionMaterial.ts';
+import { paneBackingTriangles } from '../../paneBacking.ts';
 
 export type Vec3 = readonly [number, number, number];
 export type Rgb = readonly [number, number, number];
@@ -644,8 +645,31 @@ export class PartSink {
     }
   }
 
+  /**
+   * (local-fps-266) The dark a pane stands in front of (an opening's backing behind its unit's glass or curtain) into
+   * geometries of their own, userData.paneBacking: props.ts draws them a few depth steps behind (paneBacking.ts).
+   */
+  private splitPaneBackings(): void {
+    const panes: number[][] = [];
+    for (const [key, g] of this.groups) {
+      const bucket = key.slice(0, key.indexOf('|'));
+      if ((bucket === 'glass' || bucket === 'curtain') && g.pos.length) panes.push(g.pos);
+    }
+    if (!panes.length) return;
+    for (const [key, g] of [...this.groups]) {
+      if (!key.startsWith('dark|') || !g.pos.length) continue;
+      const backing = paneBackingTriangles(g.pos, panes);
+      if (!backing.includes(true)) continue;
+      const kept = emptyLike(g), moved = emptyLike(g);
+      backing.forEach((isBacking, t) => copyTriangle(g, t, isBacking ? moved : kept));
+      this.groups.set(key, kept);
+      this.groups.set(`${key}|b`, moved);
+    }
+  }
+
   /** Finish: one geometry per (bucket, role), handed to the props bucket set. */
   finish(): RegionalParts {
+    this.splitPaneBackings();
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
@@ -666,6 +690,7 @@ export class PartSink {
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
       if (rest.includes('m')) geometry.userData.phoneOnly = true;
+      if (rest.includes('b')) geometry.userData.paneBacking = true;
       if (piece) geometry.userData.damagePiece = piece;
       if (tag) geometry.userData.partTag = tag;
       geometry.userData.uvJitter = 'none';
@@ -674,6 +699,21 @@ export class PartSink {
     }
     this.groups.clear();
     return parts;
+  }
+}
+
+/** An accumulator's per-vertex lists and their widths (a triangle is three vertices of each). */
+const ACCUMULATOR_WIDTHS = [['pos', 3], ['nor', 3], ['uv', 2], ['col', 3], ['mask', 1], ['shade', 1], ['tint', 3]] as const;
+
+function emptyLike(g: Accumulator): Accumulator {
+  return { pos: [], nor: [], uv: [], col: g.col ? [] : null, mask: g.mask ? [] : null, shade: g.shade ? [] : null, tint: g.tint ? [] : null };
+}
+
+function copyTriangle(from: Accumulator, t: number, to: Accumulator): void {
+  for (const [name, width] of ACCUMULATOR_WIDTHS) {
+    const src = from[name], dst = to[name];
+    if (!src || !dst) continue;
+    for (let i = t * 3 * width; i < (t + 1) * 3 * width; i++) dst.push(src[i]);
   }
 }
 

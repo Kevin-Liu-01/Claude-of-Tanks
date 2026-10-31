@@ -912,6 +912,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/opaqueProgramOrder.selftest.mjs',
+    // local-fps-266: the dark behind a regional pane set apart and drawn a few depth steps behind it
+    'src/world/paneBacking.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
@@ -2644,6 +2646,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
+    // local-fps-266: a regional window's panes beat their reveal's dark at 300-700 m in any draw order
+    'tools/pane-backing-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)

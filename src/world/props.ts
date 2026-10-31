@@ -297,6 +297,7 @@ import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
+import { paneBackingMaterial } from './paneBacking.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -11657,6 +11658,14 @@ ${snowCap ? `
     /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
     const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list' | 'near'>; near?: true }> }> = [];
     group.userData.fineDetail = fineDetail;
+    // (local-fps-266) the dark a regional pane stands in front of (geometry.ts PartSink: userData.paneBacking) draws in
+    // its own mesh a few depth steps behind, so the pane wins at every range in any draw order (paneBacking.ts)
+    if (buckets.dark?.some((g) => g.userData.paneBacking === true)) {
+      buckets.paneBacking = buckets.dark.filter((g) => g.userData.paneBacking === true);
+      buckets.dark = buckets.dark.filter((g) => g.userData.paneBacking !== true);
+      mats.paneBacking = paneBackingMaterial(mats.dark, (material) => engineCtx.setupShadowMaterial(material, null));
+      retainedSurfaceMaterials.push(mats.paneBacking);
+    }
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
