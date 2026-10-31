@@ -51,6 +51,12 @@ import { resolveTankId } from './tankIdAliases.ts';
 // leo2a6m) wears its own 'OTCO' number for the old build's 'A6M'; scheme, colours, pattern and seed are unchanged.
 // 9372f3913461afc9 -> 53cc9f3ea41f25d5. The 2A6M (schema-1 leo2a6m_x), cloned from it, keeps 'A6M'
 // (sourceXFleetSpecs.ts PRODUCTION_NUMBERS), so its row is production's.
+// Re-pinned 2026-10-31 (266; the owner's pick from the Challenger 1 camo sheet, "mix of 1980s and stone"): two rows moved.
+// The Mk 2 (schema-1 challenger1) wears the 1980s BAOR green with large black patches, its own authored paint: stock
+// service_challenger_3 -> paint_challenger1_mk1, Factory 24af537fcedf03bc -> 469cd9bcaa3f2824. The Op Granby Mk 3
+// (schema-1 challenger1_x) wears the Gulf tanks' plain stone: stock desert -> paint_challenger1_x, Factory
+// ac6d88a92bedf83a -> 87eaa3d45551ed6a. Selections, AUTO and every other row are unchanged; the Mk 1, FV4030/5 and
+// FV4030/6 still wear the Mk 2's stock (ADDED_IN_DONOR_COAT), now the BAOR paint.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -64,14 +70,16 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   ...RELEASE_265_SIGNATURES,
-  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats (266), append, after GT');
+  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
+  'paint_challenger1_mk1', 'paint_challenger1_x'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats and the Challenger 1 paints (266), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   ...RELEASE_265_SIGNATURES,
-  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk']);
+  'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
+  'paint_challenger1_mk1', 'paint_challenger1_x']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -111,7 +119,7 @@ const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
-// 263 (integrator): the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 wear the Mk 2's British service coat, the ZTZ-20 and its prototype
+// 263 (integrator): the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 wear the Mk 2's stock coat (266: the BAOR two-tone), the ZTZ-20 and its prototype
 // the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here). Release 265: the Leopard 1A2A1 wears
 // the Leopard 1A5's three-tone.
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',

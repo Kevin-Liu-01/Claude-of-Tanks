@@ -140407,15 +140407,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22146,
-          "sha256": "b3374b771ffd0f5b9018852a2c93fdc4ef5bda7e7c617809c1425871fcd269d2",
+          "bytes": 21698,
+          "sha256": "35b29a847891f4d91372f183f659f3a600d865a6d409887f47bd9d4cd5dc855a",
           "thumbnail": {
             "file": "thumbs/challenger_x_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9510,
-            "sha256": "7e539d1da5903cbe9da6f220715e8b37aef90b5b093ee090698266215e378f63"
+            "bytes": 9326,
+            "sha256": "ef749b1afe9be3189371cd26c771231612b8cfb6e288d240eb19f93af973cb63"
           }
         },
         "top": {
@@ -140423,16 +140423,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9598,
-          "sha256": "2aa608a0415142e1243ad37ba95c3aa8154a1511d83b66d1cb3915cdca8c12ce"
+          "bytes": 9314,
+          "sha256": "6bd699d2cbba6b5e51cfdeabeb6a58a098a95e7c8bb318c301663219f89071e1"
         },
         "side": {
           "file": "challenger_x_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7982,
-          "sha256": "79c5463546e6c8e075d97d6b8525b022ffc469478c6fc1d8a0bf0938f0c2242e"
+          "bytes": 8140,
+          "sha256": "43dcb43bf424e5efac306218f5a696e5ee8ffaeeaac3d65d755eb26ba78ab142"
         },
         "topSilhouette": {
           "file": "challenger_x_top_silhouette.png",
@@ -140455,24 +140455,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19628,
-          "sha256": "2a219a681b0338b9245931a18541f08bd805da39d54fe792acb2336c111fb88c"
+          "bytes": 19444,
+          "sha256": "b5e4d03b77391897c41aacd05764119edf31fb8797841c5353dfc9aae77ec5e1"
         },
         "modulesSide": {
           "file": "challenger_x_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20882,
-          "sha256": "6ecefaffa6cbaa79232ad356985a1e357ec9dc8ca59c2b77e9f259a92f783711"
+          "bytes": 20804,
+          "sha256": "4b140509a0add485e4e961c4520b087e5b8afc2f35e81d21e65c131c123559a2"
         },
         "crewSide": {
           "file": "challenger_x_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16430,
-          "sha256": "f9b90eb8234cb1ee5a1f27beff5399f2ed52e70684608220c71dfcb3db5c97a3"
+          "bytes": 16308,
+          "sha256": "83c324d55f1738bc57e54d9378fb8b278b53ad48197d68e58d34e92acc51ed6d"
         },
         "markings": {
           "file": "challenger_x_markings.png",
@@ -141770,15 +141770,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20728,
-          "sha256": "1d86a11705a390acab73df483c094f6da48bc4cf57701c30585d057b158c032f",
+          "bytes": 20588,
+          "sha256": "8a9f9893dde718ce656c356464624b99d6abfc99ffdc2d0500d7e084e8faf5a8",
           "thumbnail": {
             "file": "thumbs/challenger_x_sleek_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9080,
-            "sha256": "25b0caed334a7eb8f1953f2d9d3bb1e6b0a5d0e62aeb5da1f62e8ee28e9fc7da"
+            "bytes": 8968,
+            "sha256": "4d1b0290ae8ae8d2bcdd4bc9625ad6f5afe9fa7cc98b063243c3432dac32f890"
           }
         },
         "top": {
@@ -141786,16 +141786,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8112,
-          "sha256": "0ed9ad7cffeb30f3cde5ace5ad27b098ded97397fafbed0c405fd544ad85d62b"
+          "bytes": 7622,
+          "sha256": "4c9d0cf831c5f6f9e0fe90d500edd058cd13d7c6f127820dfcce2bda6015ff31"
         },
         "side": {
           "file": "challenger_x_sleek_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7928,
-          "sha256": "a210fa1c3c5abb35eab7aca6bd308206a8e1b7920573e9bce607d305c1e49c12"
+          "bytes": 8106,
+          "sha256": "930c8dbb8d443fc710c08f6a81d2ca76acdd837e4dc698e6bef6511ac73258b7"
         },
         "topSilhouette": {
           "file": "challenger_x_sleek_top_silhouette.png",
@@ -141818,24 +141818,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19430,
-          "sha256": "a9fd95cbe7ab93a9e48533cf8f8758393fb8e7956c99c77e6e350d7fd90d9136"
+          "bytes": 19474,
+          "sha256": "ebaa9c24f43e38e258e44438e45b24363f1dcbac786842b1d640916ed2da4de0"
         },
         "modulesSide": {
           "file": "challenger_x_sleek_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19976,
-          "sha256": "6cdb97f404a06ed2204483c3cb7c5372b89edabe85a341ed29638958a69d6ff0"
+          "bytes": 20506,
+          "sha256": "536960590abff4b163d8415965a504dc684334c6c09873dfea96226b6c15017d"
         },
         "crewSide": {
           "file": "challenger_x_sleek_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16182,
-          "sha256": "0cf2b3638cd2b2a0e56d3894630404f912e34644b2cdcb63580218c32e9af15c"
+          "bytes": 16384,
+          "sha256": "be2f7c1084b0b8e8ce71490e24a97a97e72104189a3ee7d06867db6bb19581c1"
         },
         "markings": {
           "file": "challenger_x_sleek_markings.png",
@@ -143026,13 +143026,13 @@
             "name": "optics",
             "min": [
               -1.0698,
-              0.8322,
+              0.8171,
               -1.2121
             ],
             "max": [
               0.518,
               1.2717,
-              0.1478
+              0.387
             ],
             "parts": [
               {
@@ -143170,13 +143170,13 @@
               {
                 "min": [
                   -0.8675,
-                  0.8322,
-                  0.1403
+                  0.8171,
+                  0.3795
                 ],
                 "max": [
                   -0.4368,
-                  0.9098,
-                  0.1478
+                  0.8948,
+                  0.387
                 ]
               }
             ],
@@ -143329,17 +143329,17 @@
           }
         ]
       },
-      "geometryHash": "17eb75f4",
-      "metadataHash": "f4398fcd",
+      "geometryHash": "54058c7f",
+      "metadataHash": "312d4ec6",
       "presentationAnchor": {
-        "xM": 0.0015,
-        "zM": 0.143
+        "xM": 0.0028,
+        "zM": 0.1435
       },
-      "presentationHash": "8666a7f3",
+      "presentationHash": "2de6f5ee",
       "presentationProjection": {
         "centerYM": 2.0055,
-        "topHalfM": 7.083,
-        "sideHalfM": 3.5415
+        "topHalfM": 7.0825,
+        "sideHalfM": 3.5413
       },
       "appearance": {
         "version": 1,
@@ -143355,9 +143355,9 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 12,
+          "gunmetal": 6,
           "opticGlass": 2,
           "unclassified": 11,
-          "gunmetal": 5,
           "gearShadow": 1,
           "machineGun": 4,
           "canvas": 1,
@@ -143390,15 +143390,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22102,
-          "sha256": "085e251e087900b5c4bb105d9ca2058a00b72fe87b8c2d4f53ce387cbb316bfd",
+          "bytes": 22006,
+          "sha256": "7b53fab53d3981c74427b43654976c48f10332c909c19a4dbe0292b198e6bac0",
           "thumbnail": {
             "file": "thumbs/challenger1_mk1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9568,
-            "sha256": "c7d34b6152d2c262cc1d5edc24fb8341c014205a5da331f61455d175eb65728d"
+            "bytes": 9556,
+            "sha256": "81955a6ab559e09b51a607cf71b4552db88fdae4a0dcc12809a4c5a8545f8530"
           }
         },
         "top": {
@@ -143406,32 +143406,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7848,
-          "sha256": "186d0fc8f9891ebbf5b90fb1b53045803e93ed6ec3e5e80fee90aba77d7ffbc4"
+          "bytes": 7490,
+          "sha256": "5606c267b1066131f4ac1838241cdd062248dcf9316250860d95e89afdd9cdc2"
         },
         "side": {
           "file": "challenger1_mk1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9146,
-          "sha256": "befe5df1b0a90ddf58983bc3639ae76b1b8caf5780bb552dfa8ea5d47fb9daad"
+          "bytes": 9168,
+          "sha256": "020d35f62b592a9c09e1038ca4976c0b62e0abd59736980ffa04c85d97d9ae0c"
         },
         "topSilhouette": {
           "file": "challenger1_mk1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1242,
-          "sha256": "f577a85e43c84607efb2dfd2f6ecacde8f3ee30974b897d5fdbeda6ddf0f7987"
+          "bytes": 1230,
+          "sha256": "06ed4ce6fa9f8a16c2412bf2a9079a62bb1e132b4d4ebf9af8e18e29e9c57f75"
         },
         "sideSilhouette": {
           "file": "challenger1_mk1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4287,
-          "sha256": "65232984b95347f4fae48ec1892427a2a050bf6105536016ef3d242f2cb269c9"
+          "bytes": 4225,
+          "sha256": "4eb5feb1ff75b0751844933aa1bb7c678fb066f634a30f229f91b0b089a21cc0"
         },
         "armorSide": {
           "file": "challenger1_mk1_armor_side.webp",
@@ -143439,23 +143439,23 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 22542,
-          "sha256": "b4e677819ddebad268a581123a94d76df26778b5d876ac7424ed63810de1f1ee"
+          "sha256": "33d63724377a5fab393aa6a25c53e052a06e42f2e44996955a4ebc45f3b00b6c"
         },
         "modulesSide": {
           "file": "challenger1_mk1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22336,
-          "sha256": "e74901d24cbd162cca71c881b2def31f264f0a52550f4b9fb083788e1970d98d"
+          "bytes": 22296,
+          "sha256": "86c2e439425ad6e08db878c8b5046fb7b3f516a711cc4d2f48666ba9c1f95d10"
         },
         "crewSide": {
           "file": "challenger1_mk1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17664,
-          "sha256": "88d3514f9b70d93cbba1742ff3cbc98812ef009df35b403410e53a1ef93941ec"
+          "bytes": 18520,
+          "sha256": "f147677bd4f15dd1f0197da4f09f06c4f2e4985155a0710bd0f813ae7b785a86"
         },
         "markings": {
           "file": "challenger1_mk1_markings.png",
@@ -143468,8 +143468,8 @@
         "technicalLabels": {
           "file": "challenger1_mk1_technical.json",
           "mime": "application/json",
-          "bytes": 5505,
-          "sha256": "6019f5bc1d8d6c9384a9c97b492ae3e7202c69143f42d1ebdc02fc9e9672c383"
+          "bytes": 5509,
+          "sha256": "b6e3f0f9f0522347385bedb3c2860a37ddcf3dcaae0bc8d894dae8786b5ed0e7"
         }
       }
     },
@@ -144645,14 +144645,14 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              -1.2695,
-              0.5484,
+              -1.0698,
+              0.8171,
               -1.2121
             ],
             "max": [
               0.518,
               1.2717,
-              1.3759
+              0.387
             ],
             "parts": [
               {
@@ -144790,25 +144790,13 @@
               {
                 "min": [
                   -0.8675,
-                  0.8322,
-                  0.1403
+                  0.8171,
+                  0.3795
                 ],
                 "max": [
                   -0.4368,
-                  0.9098,
-                  0.1478
-                ]
-              },
-              {
-                "min": [
-                  -1.2695,
-                  0.5484,
-                  1.3693
-                ],
-                "max": [
-                  -1.0605,
-                  0.6694,
-                  1.3759
+                  0.8948,
+                  0.387
                 ]
               }
             ],
@@ -144961,8 +144949,8 @@
           }
         ]
       },
-      "geometryHash": "65657c8f",
-      "metadataHash": "3725e71f",
+      "geometryHash": "191a2b7d",
+      "metadataHash": "f3392796",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0146
@@ -144987,9 +144975,9 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 12,
+          "gunmetal": 6,
           "opticGlass": 2,
           "unclassified": 19,
-          "gunmetal": 5,
           "gearShadow": 1,
           "machineGun": 4,
           "canvas": 1,
@@ -145022,15 +145010,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22744,
-          "sha256": "a6024793e13f081b9981cbe4b624e14533078206af5687416bfb17cd2ec71089",
+          "bytes": 22798,
+          "sha256": "a135a00a23cb8583bc0e05ec15a2c1f481672e0b23d9d379c39bb12c4c9d25b6",
           "thumbnail": {
             "file": "thumbs/challenger1_mk2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9784,
-            "sha256": "c8e7c1033b8a3724de5b6dd8ac82b6c2c6a486100e923bbeb3b79ea969ba1e78"
+            "bytes": 9786,
+            "sha256": "667600f14c2afe122f19453de041345228e8f5a79e3c2637fd93aa4064dcd2f7"
           }
         },
         "top": {
@@ -145038,16 +145026,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8598,
-          "sha256": "8aa9f605f6a466f9ef0053ae1787c1e11134e0d49d670905a8e339f821df33bb"
+          "bytes": 8500,
+          "sha256": "d2cca7a174f556208df32f72593592cdb48f1486362f7eda850dc632cc7d1a32"
         },
         "side": {
           "file": "challenger1_mk2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9224,
-          "sha256": "8c726632af4d926a1f0000f1af6c6ebe2eae49ec6a82581d8946bf1ec5cdd2bf"
+          "bytes": 9566,
+          "sha256": "95b09361af99e0519f8907d62491bf6e20ead01a2cb389d810f31807696e24bc"
         },
         "topSilhouette": {
           "file": "challenger1_mk2_top_silhouette.png",
@@ -145062,32 +145050,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4473,
-          "sha256": "74a076e79e4829bd0d9d292fd5a1dea7d536d0ab7f87cd659b1fd4730fb0f2a8"
+          "bytes": 4425,
+          "sha256": "434b292608cf7f89c9d5c046a10fbf4822099b6791e1686740f0e3c11906dfdc"
         },
         "armorSide": {
           "file": "challenger1_mk2_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21886,
-          "sha256": "5c48f1046ce8b8df6f3fe9ac353a5e22774840a16655180da42f998eb1667c8c"
+          "bytes": 21866,
+          "sha256": "9e656722e5799fe8a768f9c8617cfbcbe5c26f3c02a49887a9a57c52168a6eb1"
         },
         "modulesSide": {
           "file": "challenger1_mk2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22146,
-          "sha256": "8356630ae43e191959d1c2db6604182942612e094288ed3db7862364c87ea3c2"
+          "bytes": 22182,
+          "sha256": "665cd723844387dffe4e19596603cf1ad4fdff9cad96e3ad1b12bbaf6ab7b8f3"
         },
         "crewSide": {
           "file": "challenger1_mk2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18440,
-          "sha256": "f805e7ab243d4801d499b29d27e78ead5b8a172cd1504cf6e00d79e0757b6441"
+          "bytes": 18888,
+          "sha256": "711b389d5b228b9950e0181264b069764932a128f9589390f165ba8b468b2c7a"
         },
         "markings": {
           "file": "challenger1_mk2_markings.png",
@@ -150783,14 +150771,14 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              -1.2695,
-              0.5484,
+              -1.0698,
+              0.8171,
               -1.2121
             ],
             "max": [
               0.518,
               1.2717,
-              1.3759
+              0.387
             ],
             "parts": [
               {
@@ -150928,25 +150916,13 @@
               {
                 "min": [
                   -0.8675,
-                  0.8322,
-                  0.1403
+                  0.8171,
+                  0.3795
                 ],
                 "max": [
                   -0.4368,
-                  0.9098,
-                  0.1478
-                ]
-              },
-              {
-                "min": [
-                  -1.2695,
-                  0.5484,
-                  1.3693
-                ],
-                "max": [
-                  -1.0605,
-                  0.6694,
-                  1.3759
+                  0.8948,
+                  0.387
                 ]
               }
             ],
@@ -151099,8 +151075,8 @@
           }
         ]
       },
-      "geometryHash": "7fe553c6",
-      "metadataHash": "7d6cacfb",
+      "geometryHash": "ea002890",
+      "metadataHash": "08ba6eda",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": 0.1455
@@ -151125,9 +151101,9 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 12,
+          "gunmetal": 6,
           "opticGlass": 2,
           "unclassified": 17,
-          "gunmetal": 5,
           "gearShadow": 1,
           "machineGun": 4,
           "canvas": 1,
@@ -151160,39 +151136,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25894,
-          "sha256": "40dc509f518c12a825ef794cae48935a7cc98baea798e57cfafca27ba388cb25"
+          "bytes": 23512,
+          "sha256": "aefd9dd036b6e65e4df6fd2f0026e3c1d8894546638d9cca1eee9256b11e0717"
         },
         "modulesSide": {
           "file": "challenger1_mk3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25900,
-          "sha256": "1340be57b791e214cb51c207c172a4ce28d998eda3f7410ab982fcc0f07d6405"
+          "bytes": 23572,
+          "sha256": "51a118520575aafa7f5ffade4d1bbb430343800a21fa90a050c5682fdad07c23"
         },
         "crewSide": {
           "file": "challenger1_mk3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23908,
-          "sha256": "a6943a93e602cf93988912ba9ec8cd1667b2819372b7b8d8bed7becbeb7ed248"
+          "bytes": 21356,
+          "sha256": "0cbee9dfef7ee66482a14c97f42634b3021bc2bdd35b56fcb6af7a040ccf00a0"
         },
         "angle": {
           "file": "challenger1_mk3_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27776,
-          "sha256": "e2bb9a45ade9967b894253a84572d226f9c4d306dc8b4b8c463d983770687794",
+          "bytes": 24802,
+          "sha256": "db36427c7d95efe5ddab702b9d6c22d9e762b45d5be292a4e9bd66dd53fdc1e9",
           "thumbnail": {
             "file": "thumbs/challenger1_mk3_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11696,
-            "sha256": "4d2f480e9c67d47b317f57e9d18cb55092c630f36375240327da0ce80738d82a"
+            "bytes": 10422,
+            "sha256": "31e72a962f59fb39f80fbb57db0e2aff4e1a77f0bf912fcbd973f6c4f96c9fb5"
           }
         },
         "top": {
@@ -151200,16 +151176,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12110,
-          "sha256": "27cda4fc68aa0f796b899a216a545aef485f04f1cd6e4f06713c5062e488accb"
+          "bytes": 8962,
+          "sha256": "95d9eabe484e628984c5892a4c0b3ee95b01ae9b494e3bdde92fbed8683ad3b0"
         },
         "side": {
           "file": "challenger1_mk3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12442,
-          "sha256": "f131ddd2f499819a62d8d4c83035491ca744338baea66b511693097ac3c0f670"
+          "bytes": 11318,
+          "sha256": "1a5631a84fb8e86ffccba4c346315c04dbe4532e2742c2f4479159418ed71c87"
         },
         "topSilhouette": {
           "file": "challenger1_mk3_top_silhouette.png",
@@ -151224,8 +151200,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4346,
-          "sha256": "db29a481dd85a964085278efaed48e0e264e459e82f2818bad8a862123c77b4d"
+          "bytes": 4329,
+          "sha256": "bfe1bfe8b5cb0f6b7e241562b57cae853cddc1c6609032c27639d1cd5d0fbe6d"
         },
         "markings": {
           "file": "challenger1_mk3_markings.png",
@@ -151239,7 +151215,7 @@
           "file": "challenger1_mk3_technical.json",
           "mime": "application/json",
           "bytes": 5554,
-          "sha256": "779812f280d7609d59c23bc4aa9a44ec42bd3eb32b94e6c812fc2e1f6880b0ca"
+          "sha256": "166eb0f26b543272c7d27a0b2109e20cb761abae2a7bf961981ce387feeb780e"
         }
       }
     },

@@ -63,9 +63,13 @@ function rearBin(P:TankBuilderPort):void{
     [p(-w,0,0)[0],p(0,lo,0)[1]],[p(w,0,0)[0],p(0,lo,0)[1]],
     [p(w,0,0)[0],p(0,hi,0)[1]],[p(-w,0,0)[0],p(0,hi,0)[1]],
   ]})));P.addEquipment('turretDetail',local(g));
+  // each strap lies on the lid's slope, over its rear edge and down the rear face (release 265, the minors pass: flat
+  // 2.5-in boxes on the 17-degree lid stood out of it at the back as dark fins)
+  const slope=Math.atan2(87.5-85.6,138.307-132),run=Math.hypot(87.5-85.6,138.307-132);
   for(const x of[-24.5,-.4,24.1]){
-    caseBox(P,x,86.0,-133.8,1.4,2.5,9.7);
-    caseBox(P,x,83.3,-138.0,1.5,4.3,1.0);
+    equipment(P,box(m(1.4),m(.3),m(run)).rotateX(-slope),x,(85.6+87.5)/2+.15*Math.cos(slope),(-138.307-132)/2-.15*Math.sin(slope));
+    caseBox(P,x,87.65,-130.48,1.4,.3,3.05);
+    caseBox(P,x,83.375,-138.46,1.5,4.45,.3);
   }
   // release 264 (the Mk 2's critic: "a thin black rod sticks straight back from the bustle"): the tie bar that stood
   // 15 cm behind the bin on two crossed stays is gone; the bin's straps stay on its face
@@ -133,7 +137,11 @@ function leftBasket(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
 function cupola(P:TankBuilderPort):void{
   const c=p(-20.807,99.626,-53.898);
   P.addCupola('turret',cylY(m(20.57),m(20.57),m(8.386),40),c[0]-D.turretPivot[0],c[1]-D.turretPivot[1],c[2]-D.turretPivot[2]);
-  equipment(P,cylY(m(9.9213),m(9.9213),m(3.5039),32),-20.04,105.4134,-57.01);
+  // the hatch is a low dome on a rim, not a flat disc (release 265, the minors pass: the cupola read as one flat drum)
+  equipment(P,new THREE.LatheGeometry(([[0,0],[9.92,0],[9.92,1.75],[9.3,2.55],[7.3,3.6],[4.2,4.35],[0,4.6]] as const)
+    .map(([r,y])=>new THREE.Vector2(m(r),m(y))),32),-20.04,103.66,-57.01);
+  // its seal ring lies flat round the hatch (KIT.torus lies flat; turned upright it stood over the dome as a hoop)
+  equipment(P,KIT.torus(m(10.15),m(.55),32,8),-20.04,104.0,-57.01,'turretDark');
   caseBox(P,-20.32,105.1,-68.0,11.81,3.9,2.68);
   for(const [x,z,yaw]of [[-8,-49,-.64],[-12,-43,-.64],[-30,-44,.60],[-25,-35,0]]){
     equipment(P,box(m(6.4),m(1.3),m(9.2)).rotateY(yaw),x,103.5,z);
@@ -165,7 +173,7 @@ function cupola(P:TankBuilderPort):void{
  *  sur le flanc droit de la tourelle"), its top 0.2 m over the roof, its foot buried in the cheek's fall and its front's
  *  top edge chamfered; the right smoke bank stands inboard of and below it. The Mk 1s were
  *  delivered with it mostly empty, its port blanked (en Wikipedia, Haynes 2015 p. 110); the Mk 2 and Mk 3 carry the
- *  sight behind an armoured door hinged on the port's top edge, propped open.
+ *  sight behind an armoured door hinged on the port's top edge, closed as every reference photo shows it.
  *  The box is turret equipment, not the turret shell (release 264c): in the shell bucket each of its slices' convex
  *  hit cell bridged from its top to the far cheek, so the turret front over both cheeks read as sloped 50 mm roof and
  *  the barbette as main armour (the Mk 1's tier-8 strength with C2 0.349, against 0.509 without the box in the shell).
@@ -185,12 +193,14 @@ function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
     at(P,box(.26,.19,.02),dx,dy,front+.01);
     for(const ox of[-.10,0,.10])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
   }else{
-    at(P,box(.26,.19,.03),dx,dy,front+.005,'turretDark');
-    lens(P,box(.19,.11,.006),dx,dy,front+.024);
-    const a=55*Math.PI/180,h=.24,hy=dy+.10;
-    // the door is armour plate, 45 mm (the Mk 2's critic: a thinner flap read edge-on as a stick)
-    at(P,box(.27,.045,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
-    at(P,cylX(.024,.29,10),dx,hy,front+.02,'turretDark');
+    // the door is 50 mm armour plate over nearly the whole front face, closed in a dark seam and hung from a hinge along
+    // its top edge (release 265, the minors pass: propped open on stays, both blind critics read a see-through frame on
+    // struts; the Bovington and drawing references show it shut and flush; round 2 read the bare plate as no door, its
+    // two knuckles as stub pins; round 3 a port-sized door as a small square where the references' fills the face)
+    const w=.32,hy=2.10,h=hy-1.56,t=.05;
+    at(P,box(w+.03,h+.03,.02),dx,hy-h/2,front+.01,'turretDark');
+    at(P,box(w,h,t),dx,hy-h/2,front+t/2+.005,'turretDetail');
+    at(P,cylX(.016,w-.02,10),dx,hy+.006,front+t+.004,'turretDark');
   }
 }
 function roof(P:TankBuilderPort):void{
@@ -214,15 +224,16 @@ function roof(P:TankBuilderPort):void{
   lens(P,box(.12,.045,.006),.41,2.18,.48);
 }
 function optics(P:TankBuilderPort):void{
-  const x=-26.1;
-  caseBox(P,x,95.8,-17.4,24,1.1,13.1);
-  for(const dx of[-11.4,11.4])caseBox(P,x+dx,95.4,-16,1.1,7.7,12.0);
-  caseBox(P,x,99.0,-16.5,24.8,1.0,13.0);
-  // the sight hood's back wall (release 264, the Mk 3's critic: base, cheeks and roof without it read as an open
-  // bench), so the window sits recessed in a hood that opens forward
-  caseBox(P,x,97.4,-23.4,24.8,4.2,1.0);
-  equipment(P,box(m(19),m(4.6),m(.6)),x,96,-21.4,'turretDark');
-  equipment(P,box(m(17.2),m(3.1),m(.3)),x,96,-21.0,'turretGlass');
+  // The gunner's sight housing (release 265, the minors pass: a roof, a shelf and two thin cheeks over the roof read as a
+  // table): one closed body from its foot, buried in the roof (91.6 at its front, 94.4 at its back), to a chamfered top,
+  // the window in its front face under a short brow.
+  const x=-26.1,w=12.4;
+  P.addEquipment('turretDetail',local(sectionSolid(([[-24.2,99.5],[-13.6,99.5],[-12.0,98.2]] as const)
+    .map(([z,top]):SolidSection=>({z:p(0,0,z)[2],ring:([[x-w,90.8],[x+w,90.8],[x+w,top],[x-w,top]] as const)
+      .map(([sx,sy]):[number,number]=>[p(sx,0,0)[0],p(0,sy,0)[1]])})))));
+  caseBox(P,x,99.0,-11.2,25.6,1.0,3.0);
+  equipment(P,box(m(19),m(4.6),m(.6)),x,95.4,-11.85,'turretDark');
+  equipment(P,box(m(17.2),m(3.1),m(.3)),x,95.4,-11.45,'turretGlass');
   // seated on the roof (release 262: it stood 16 mm over it, the hull-contact census)
   caseBox(P,-.6,90.05,15.5,2.55,4.72,5.3);
 }

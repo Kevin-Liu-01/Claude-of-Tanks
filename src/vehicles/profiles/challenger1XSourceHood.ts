@@ -99,8 +99,10 @@ function add(P: TankBuilderPort, name: string, g: THREE.BufferGeometry): void {
 }
 function canopyEnd(): THREE.BufferGeometry {
   const rows = [1.650, 1.80, 1.92, 2.04, 2.18, 2.213];
+  // The end wall runs down to the cheek (release 265, the minors pass: it stopped at the canopy's underside, so the
+  // hood's inboard side stood open over the L8 bank and the canopy read as a blade).
   return sectionSolid(rows.map((z): SolidSection => {
-    const floor = Math.max(evaluate(core, [.5149, z]) - .003, evaluate(height(BOTTOM[2]), [.5149, z]));
+    const floor = evaluate(core, [.5149, z]) - .003;
     const top = 1.93426;
     return { z, ring: [[.513145, Math.min(floor, top - .001)], [.516730, Math.min(floor, top - .001)], [.516730, top], [.513145, top]] };
   }));
@@ -120,6 +122,27 @@ function outerReturn(): THREE.BufferGeometry {
   }
   return geometry(vertices);
 }
+/** The pocket's back wall (release 265, the minors pass): a plate behind the left L8 bank's base, parallel to it, from
+ *  the cheek to the canopy's underside between the end wall and the basket. Open, the pocket showed the interior fill's
+ *  grey steps behind the tubes. The bank's base plate faces (sin .35, 0, cos .35) through (.7153, 1.5827, 2.054). */
+function pocketBack(): THREE.BufferGeometry {
+  const n = [Math.sin(.35), Math.cos(.35)], back = n[0] * .7153 + n[1] * 2.054 - .023 - .004, t = .012;
+  // the canopy's underside: field(BOTTOM), max(max(h0, h1), min(h2, h3))
+  const under = (x: number, z: number): number => {
+    const h = BOTTOM.map(plane => evaluate(height(plane), [x, z]));
+    return Math.max(h[0], h[1], Math.min(h[2], h[3]));
+  };
+  const at = (x: number, shift: number): [Vertex, Vertex] => {
+    const z = (back - shift - n[0] * x) / n[1];
+    return [[x, evaluate(core, [x, z]) - .003, z], [x, under(x, z) - .0015, z]];
+  };
+  const xs = [.5167, .62, .72, .82, .918], vertices: number[] = [];
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const [b0, t0] = at(xs[i], 0), [b1, t1] = at(xs[i + 1], 0), [c0, u0] = at(xs[i], t), [c1, u1] = at(xs[i + 1], t);
+    prism(vertices, [b0, t0, t1, b1], [c0, u0, u1, c1]);
+  }
+  return geometry(vertices);
+}
 function caps(P: TankBuilderPort): void {
   // The source upper edging is rounded/chamfered stock, not a broad lid.
   add(P, 'diagonal-cap', beamBetween([.537, 1.906, 2.220], [1.328, 1.906, 1.794], .0145, 8));
@@ -131,6 +154,6 @@ function caps(P: TankBuilderPort): void {
   add(P, 'outboard-return-seat', beamBetween([1.330, 1.557, 1.8845], [1.334, 1.906, 1.794], .0100, 8));
 }
 export function addChallenger1SourceHood(P: TankBuilderPort): void {
-  add(P, 'canopy', canopy()); add(P, 'inboard-end', canopyEnd());
+  add(P, 'canopy', canopy()); add(P, 'inboard-end', canopyEnd()); add(P, 'pocket-back', pocketBack());
   add(P, 'outer-return', outerReturn()); caps(P);
 }

@@ -115,9 +115,12 @@ const nationWord = (nation, era) => {
   if (nation === 'USSR') return 'Soviet';
   return NATION_WORD[nation] || nation || 'Fleet';
 };
+// a NATO coat with one patch colour besides its base (the 1980s BAOR green and black) is two-tone
+const isTwoToneNato = (recipe) => recipe.scheme === 'nato'
+  && new Set(recipe.patches.map((c) => String(c).toLowerCase()).filter((c) => c !== String(recipe.base).toLowerCase())).size === 1;
 const nameParts = (recipe, nation, env, era) => ({
   who: nationWord(nation, era),
-  word: PATTERN_WORD[recipe.scheme] || 'Livery',
+  word: isTwoToneNato(recipe) ? 'Two-Tone' : PATTERN_WORD[recipe.scheme] || 'Livery',
   envWord: ENV_WORD[env] || 'Woodland',
   tone: recipe.scheme === 'solid' ? toneWord(recipe.base) : null,
 });
@@ -131,7 +134,7 @@ const NATION_ZH = {
   Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', SANDF: '南非国防军', RAAC: '澳大利亚皇家装甲兵', Danish: '丹麦',
 };
 const PATTERN_ZH = {
-  Plain: '单色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
+  Plain: '单色', 'Two-Tone': '双色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
   Woodland: '林地', Blotch: '斑块', Amoeba: '变形虫', Chip: '碎块', Caunter: '考恩特', Hex: '六角', Livery: '涂装',
 };
 const ENV_ZH = { Woodland: '林地', Desert: '沙漠', Winter: '冬季', Urban: '城市' };

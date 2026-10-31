@@ -3135,8 +3135,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 262 (owner 2026-10-28: "CHALLENGER 1 MK. 1 AND MK2 NEED TO LOOK A LOT DIFERENT FROM MK 3", and "the turrets
   // and decorations and equipmennt and optics and machine guns all need to be updated for all 3"): each Challenger 1
   // mark carries its own period load in place of the fleet cargo. The Mk 1 is the clean 1983 delivery fit; the Mk 2 the
-  // BAOR exercise fit, nets rolled on the bustle and the turret side, crew kit and cans; the Mk 3 the Op Granby desert
-  // load of water cans, bedrolls and ration boxes.
+  // BAOR exercise fit, a net rolled on the bustle, crew kit and cans; the Mk 3 the Op Granby desert load of water cans,
+  // bedrolls and ration boxes. The turret sides carry the build's own bins, carrier and basket, so a roll on the
+  // turretSide slot found no wall and never seated (the 264 critics); those rows stay at p 0 only to keep the draw order
+  // of the rows after them.
   if (spec.id === 'challenger1_mk1') return [
     { kit: 'tarp', p: 1, v: { v: 'slim', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: -0.25, along: true }] },
@@ -3146,7 +3148,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     // and fell off the tank when it went)
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretRear', { low: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] },
+    { kit: 'camonet', p: 0, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.2 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.25, along: true }] },
@@ -3155,7 +3157,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', {}] },
     { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 0, v: { v: 'roll', len: 1.1 }, slot: ['turretSide', { side: -1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
   ];
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each

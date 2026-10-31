@@ -31,6 +31,17 @@ for (const configuredId of configuredIds) {
   }
 }
 
+// The Challenger 1s are a turret repair: every hull bucket and the turret's shell, ring and cupola bound fill; the
+// hood, bins, baskets and smoke banks around exterior air do not.
+const c1Names = ['hull', 'hullDetail', 'hullFixedPaintedBodywork', 'turret', 'turretSeatRace', 'turretSeatCollar',
+  'turretCupola', 'turretDetail', 'turretDark', 'turretFittingPaint', 'turretEquipment', 'gun', 'gunMount'];
+const c1Triangles = c1Names.map((name, mesh) => ({ mesh, identity: name }));
+for (const c1 of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) {
+  assert.deepEqual(interiorFillBoundaryTriangles(c1, c1Triangles, c1Names).map(row => row.identity),
+    ['hull', 'hullDetail', 'hullFixedPaintedBodywork', 'turret', 'turretSeatRace', 'turretSeatCollar', 'turretCupola',
+      'gun', 'gunMount'], `${c1}: the hull whole, the turret by its shell, ring and cupola`);
+}
+
 const launcherIds = ['object695', 'type100', 'ztz100_prototype'];
 const launcherBuckets = new Set(['gunMount', 'gunMountDark']);
 for (const launcherId of launcherIds) {
