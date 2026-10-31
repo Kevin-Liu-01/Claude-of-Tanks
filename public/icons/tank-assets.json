@@ -816523,17 +816523,17 @@
           }
         ]
       },
-      "geometryHash": "60219191",
+      "geometryHash": "f9b0620b",
       "metadataHash": "b4e254e1",
       "presentationAnchor": {
         "xM": -0.0001,
-        "zM": 0.2651
+        "zM": 0.27
       },
-      "presentationHash": "672b5f5b",
+      "presentationHash": "a6470bb0",
       "presentationProjection": {
         "centerYM": 1.9936,
-        "topHalfM": 6.7441,
-        "sideHalfM": 3.372
+        "topHalfM": 6.7389,
+        "sideHalfM": 3.3694
       },
       "appearance": {
         "version": 1,
@@ -816584,15 +816584,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28496,
-          "sha256": "4b544ce4138b17195fc9520c304fee794810bb06a1c1318d40a7c6428af7516e",
+          "bytes": 28600,
+          "sha256": "72e9de6b3c58d217232188ecf4b1e81ea30167a4ce13ce6ef314bc1fef911330",
           "thumbnail": {
             "file": "thumbs/pt84_zbik_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11426,
-            "sha256": "31da1d02035faf33155192aedc2cece2c5e783978eaf8fb6706979d5e576bed0"
+            "bytes": 11482,
+            "sha256": "394f061e30b466cd8d96c98e1b0d029da5fcfa46e7f1ace3a893d0978634c6e2"
           }
         },
         "top": {
@@ -816600,56 +816600,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12538,
-          "sha256": "57676162045f90c1209507171e1777a70ab652ffcad18c30dce3ec466d31e8b6"
+          "bytes": 12266,
+          "sha256": "6ce5b73d820e452994e70470957f5131f1a1428655a55a3918e42d2c41714ca2"
         },
         "side": {
           "file": "pt84_zbik_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10416,
-          "sha256": "a474e61259a773dab31998f5a9c1f8d333e48268c2b45f60bd77c84a6201aabe"
+          "bytes": 10460,
+          "sha256": "d5f974b9b9ae23fb26ba544bde41e218bb252b6119b30929f53facd993a0ec9a"
         },
         "topSilhouette": {
           "file": "pt84_zbik_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1196,
-          "sha256": "5a65351e6d3afef33a75c289645dffe0061423886eec2576bf7227e6c7433816"
+          "bytes": 1179,
+          "sha256": "dbffe57910e681e6908d3895ef8c036e36d388ec231eaeeb2dd3a3132cb36f9b"
         },
         "sideSilhouette": {
           "file": "pt84_zbik_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4555,
-          "sha256": "562ddf170878ca819b283335ca27b7dedf8f4810e39bf36c057baa146d676a03"
+          "bytes": 4640,
+          "sha256": "a995503fa256f03cf95cb316b23ada4a728690281581f1dfac85a8d2e9efe4dc"
         },
         "armorSide": {
           "file": "pt84_zbik_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26812,
-          "sha256": "9af4a057359873086ae9ba316f754ab8c9f881e28cc9fe69519def0631faefea"
+          "bytes": 26264,
+          "sha256": "e3510c6589bdccb51eb66513eb9a7efb73e067d833053b1925f978ded69700a5"
         },
         "modulesSide": {
           "file": "pt84_zbik_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24440,
-          "sha256": "a66256749414fac22c8b0df76c2b87c0fef761c5afa1939a513b3f2b111ae3ec"
+          "bytes": 24734,
+          "sha256": "7e9a29b8c0c3b67f04bff1d127c16dcb39bffcda98afc3cdf84ea4d2cb8dc3a6"
         },
         "crewSide": {
           "file": "pt84_zbik_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21086,
-          "sha256": "01d37e73f67a2cca3af2aef676003ee34800764f5895c9168f0fca03330f9445"
+          "bytes": 21278,
+          "sha256": "a3c71a81bde0d322bfc2cc3875b50b7f63e22d498db52a9d8608143c03159856"
         },
         "markings": {
           "file": "pt84_zbik_markings.png",
@@ -816662,8 +816662,8 @@
         "technicalLabels": {
           "file": "pt84_zbik_technical.json",
           "mime": "application/json",
-          "bytes": 5447,
-          "sha256": "bde321df33f3bc28fba6b8ebc7127a151cfec9f56559322939d59523f3e35f2d"
+          "bytes": 5437,
+          "sha256": "6e8197640a336a90a4c5f7f23cd09fccfef3d62b377d6e135dbfa01827f6d4b2"
         }
       }
     },
