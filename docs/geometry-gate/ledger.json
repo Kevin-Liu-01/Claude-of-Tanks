@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-31T16:57:47.627Z",
+ "generatedAt": "2026-10-31T17:43:13.597Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 45,
+ "passed": 43,
  "total": 166,
  "rows": [
   {
@@ -440,8 +440,14 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "oracleAvailability": 0
-   }
+    "hullCurves": 0,
+    "stations": 27.2,
+    "turretCurves": 29.1,
+    "wholeCurves": 0,
+    "dims": 0,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t90ms_2011",
@@ -525,7 +531,7 @@
    "qualityBar": "exemplar",
    "gatePassed": false,
    "components": {
-    "wholeCurves": 89.8,
+    "wholeCurves": 89.9,
     "dims": 0,
     "floaters": 100
    },
@@ -886,7 +892,33 @@
     "dims": 87,
     "floaters": 100
    },
-   "comparisonPurpose": "source-fidelity"
+   "comparisonPurpose": "source-without-owner-kit",
+   "comparisonScope": {
+    "numericScope": "Registered print against the build without the owner-directed kit parts named in ownerKit",
+    "ownerDecision": "Owner: \"raise the drums on the stb1 so theyre visible in the hero images a lil more!!! just rule of cool type stuf\". Main (266): exempt the kit from the source comparison; do not trim it.",
+    "decisionDate": "2026-10-31",
+    "ownerKit": [
+     {
+      "reference": "owner-kit:stb1:stb1KitSternDrums",
+      "group": "stb1KitSternDrums",
+      "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "part": "the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps",
+      "ownerWords": "raise the drums on the stb1"
+     }
+    ],
+    "retained": "everything else on the STB-1, the roof M2 included, compared as built",
+    "rawSourceComparison": "?comparison=raw-source",
+    "fullVehicleQualification": false
+   },
+   "rawSourceComparison": {
+    "file": "stb1.raw-source.json",
+    "gatePassed": false,
+    "rawGeoMin": 0,
+    "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+   }
   },
   {
    "id": "strv81",
@@ -900,6 +932,22 @@
     "turretCurves": 57.5,
     "wholeCurves": 31.5,
     "dims": 98.7,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "m60a2",
+   "geoMin": 32.8,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 78.6,
+    "stations": 92.8,
+    "turretCurves": 80.8,
+    "wholeCurves": 76.3,
+    "dims": 32.8,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1179,17 +1227,46 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "type74",
-   "geoMin": 67.5,
+   "id": "m60a3",
+   "geoMin": 64.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "wholeCurves": 88.5,
-    "dims": 67.5,
+    "hullCurves": 75.3,
+    "stations": 93.7,
+    "turretCurves": 64.9,
+    "wholeCurves": 76.1,
+    "dims": 81.1,
     "floaters": 100
    },
-   "comparisonPurpose": "source-fidelity"
+   "comparisonPurpose": "source-without-owner-kit",
+   "comparisonScope": {
+    "numericScope": "Registered print against the build without the owner-directed kit parts named in ownerKit",
+    "ownerDecision": "Owner: \"the m60a3 should have more decorations like wheels and bags and fuel tanks annd fuel barrels and tech annd more\". Main (266): exempt the kit from the source comparison; do not trim it.",
+    "decisionDate": "2026-10-31",
+    "ownerKit": [
+     {
+      "reference": "owner-kit:m60a3:m60a3KitRackLoad",
+      "group": "m60a3KitRackLoad",
+      "geometryPoseSha256": "23fed4598f3223be7747ac0440859e1d948cc607bd6f1e829df190e7f16e9689",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "part": "the bustle rack's field load: two spare road wheels tipped up on its rear corners, three packs under a bedroll",
+      "ownerWords": "wheels and bags"
+     }
+    ],
+    "retained": "the decoration load (decorations.ts TANK_MANIFESTS.m60a3): absent from the measured builds",
+    "rawSourceComparison": "?comparison=raw-source",
+    "fullVehicleQualification": false
+   },
+   "rawSourceComparison": {
+    "file": "m60a3.raw-source.json",
+    "gatePassed": false,
+    "rawGeoMin": 45.69189058948835,
+    "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+   }
   },
   {
    "id": "leo2a5",
@@ -1232,6 +1309,22 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "m60a1",
+   "geoMin": 77.7,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 88.6,
+    "stations": 93.2,
+    "turretCurves": 77.7,
+    "wholeCurves": 86.7,
+    "dims": 79.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "strv103b",
@@ -1367,6 +1460,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "type74",
+   "geoMin": 84.3,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 89,
+    "dims": 84.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "leo2a4m_can",
    "geoMin": 84.4,
    "requiredMinimum": 90,
@@ -1433,19 +1539,6 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "m60a2",
-   "geoMin": 86.3,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 88.1,
-    "wholeCurves": 86.3,
-    "turretCurves": 91.2,
-    "stations": 89.6,
-    "dims": 97.9,
-    "floaters": 100
-   }
   },
   {
    "id": "amx30b",
@@ -1609,19 +1702,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "m60a3",
-   "geoMin": 90,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 91.6,
-    "wholeCurves": 90,
-    "turretCurves": 91.5,
-    "stations": 92.3,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "xk2_black_panther",
    "geoMin": 90.1,
    "gatePassed": true,
@@ -1693,19 +1773,6 @@
     "turretCurves": 92.2,
     "stations": 93.4,
     "dims": 92.2,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m60a1",
-   "geoMin": 90.7,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 91.6,
-    "wholeCurves": 90.7,
-    "turretCurves": 91.3,
-    "stations": 92.4,
-    "dims": 100,
     "floaters": 100
    }
   },
