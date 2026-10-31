@@ -623,17 +623,20 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   leclerc_sxxi: {
     id: 'leclerc_sxxi', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.86,
+    // 266 (owner: "clean up the leclercs"; both photo critics: "a hump of net over the turret rear with daylight through
+    // it", "a stiff vertical panel"): the roof net ran on over the open bustle cage to z -2.63 and its drape hung off the
+    // cage's tail; the net now ends at the bustle box's rear face (-2.35) and the cage stays bare, no drape. The skirt
+    // drapes hang to the hem floor over the raised (0.70) skirt foot.
     turret: {
-      top: [laid({ x0: -1.68, x1: 1.58, z0: -2.63, z1: 1.99, nx: 41, nz: 58, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
+      top: [laid({ x0: -1.68, x1: 1.58, z0: -2.35, z1: 1.99, nx: 41, nz: 54, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),
-      face: [face({ z: -2.63, x0: -1.20, x1: 1.20, y0: 0.30, y1: 0.70, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.30, 2.42, 1.40, 0.42, 1.83, 41),
+      side: skirts(-3.30, 2.42, 1.40, 0.50, 1.83, 41),
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each

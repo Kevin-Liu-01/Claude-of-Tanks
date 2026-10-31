@@ -219,6 +219,7 @@ function galixBank(
   topShift = 0,
   topLift = 0,
   tail = 0,
+  casing = false,
 ): void {
   const { box, cylZ } = KIT;
   const housing: THREE.Vector3[] = [];
@@ -238,20 +239,22 @@ function galixBank(
     const at = new THREE.Vector3(x + side * tx, y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + tz);
     const turn = new THREE.Euler(-0.42 + r * 0.08, side * (r < 0 ? 0.9 + k * 0.12 : 0.95 + k * 0.14), 0);
     P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), at.x, at.y, at.z, turn.x, turn.y, 0);
+    if (!casing) continue;
     const sleeve = cylZ(0.06, 0.12, 8).translate(0, 0, -0.06)
       .applyMatrix4(new THREE.Matrix4().compose(at, new THREE.Quaternion().setFromEuler(turn), new THREE.Vector3(1, 1, 1)));
     const p = sleeve.getAttribute('position');
     for (let i = 0; i < p.count; i++) housing.push(new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i)));
     sleeve.dispose();
   }
+  if (!casing) return;
   // 266 (owner: "goofy parts ... smoothed out"; both photo critics: "stacked logs"): each 0.24 m tube stood half out
   // of the 9 cm box like a log. One casing now wraps the bank's tubes to their mid-length, so the bank reads as the
   // GALIX casing with its row of short round mouths; the tubes, their mouths and the smoke sockets are unchanged.
-  const casing = new ConvexGeometry(housing);
-  const cp = casing.getAttribute('position'), uv: number[] = [];
+  const shell = new ConvexGeometry(housing);
+  const cp = shell.getAttribute('position'), uv: number[] = [];
   for (let i = 0; i < cp.count; i++) uv.push(cp.getX(i), cp.getZ(i));
-  casing.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  P.add('turret', casing);
+  shell.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  P.add('turret', shell);
 }
 
 // Rubber corner mud flap over a track run.
@@ -1893,11 +1896,14 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // decor fan bank on each front cheek (a "loose grey slab" to the critics, launchers the real tank does not have)
     // for 12 of their 30 launch sockets. Those 12 now ride each GALIX wedge as an upper row of six in the bank's own
     // form, so the smoke salvo keeps its count and every launcher stands at the rear sides, where the GALIX are.
-    const galixTop = variant === 'leclerc_s1' ? 0 : 6;
+    // 266 (both photo critics on the S1: the decor fan on its cheeks "reads like a grin", five tubes one side, a stub the
+    // other): the S1's six-a-side decor bank rides its GALIX wedges as the upper row too, as on the S2 and the XLR, so its
+    // 30 launch sockets keep their count (decorations.ts drops its decor pair).
+    const galixTop = 6;
     // the left (+X) row sits two pitches aft: the side box ahead of that bank owns the turret side forward of z -1.30;
     // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
-    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0);
-    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop, 0, 0, galixTop ? 0.16 : 0);
+    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0, 0, true);
+    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop, 0, 0, galixTop ? 0.16 : 0, true);
     // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
     // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
     // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat

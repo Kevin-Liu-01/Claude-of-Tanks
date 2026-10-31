@@ -685,9 +685,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     [0.93, 0.55, -1.25], [1.29, 0.55, -1.25], [1.24, 0.55, -1.54], [0.93, 0.55, -1.54],
     [0.99, 0.82, -1.27], [1.20, 0.82, -1.27], [1.16, 0.78, -1.50], [0.99, 0.78, -1.50]));
   // 266: the "low service blade" (1.8 cm thick, 0.58 m tall, standing 0.2 m over the crown like a fin) is gone.
-  P.add('turretDetail', slab(                                                   // aft service ridge reproduces the source's unequal rear roof peaks
-    [-0.40, 0.70, -1.18], [-0.18, 0.70, -1.18], [-0.18, 0.70, -1.70], [-0.40, 0.70, -1.70],
-    [-0.36, 0.74, -1.18], [-0.20, 0.74, -1.18], [-0.20, 0.87, -1.55], [-0.36, 0.87, -1.55]));
+  // 266 (both photo critics: "a black triangular fin on the rear roof"): the aft service ridge rose to 0.87 at its tail
+  // like a fin; it is a low flat service hump on the crown now.
+  P.add('turretDetail', box(0.20, 0.07, 0.48), -0.29, 0.72, -1.44);
   for (const s of [-1, 1]) P.add('turretDetail', slab(                         // lower cheek ties follow the source's rising rear notch instead of forming a level hanging block
     [s * 1.14, 0.00, -0.39], [s * 1.26, 0.00, -0.39], [s * 1.26, 0.12, -0.55], [s * 1.14, 0.12, -0.55],
     [s * 1.14, 0.18, -0.39], [s * 1.26, 0.18, -0.39], [s * 1.26, 0.28, -0.55], [s * 1.14, 0.28, -0.55]));
@@ -805,12 +805,8 @@ function buildAMX40(P: FranceBuilderPort): void {
     [0.62, 0.31, -1.83], [1.05, 0.31, -1.83], [1.00, 0.31, -1.98], [0.67, 0.31, -1.98],
     [0.68, 0.58, -1.85], [0.99, 0.58, -1.85], [0.95, 0.55, -1.96], [0.72, 0.55, -1.96]));
   for (const vx of [0.72, 0.96]) P.add('turretDetail', box(0.030, 0.15, 0.115), vx, 0.44, -1.92);
-  for (let k = 0; k < 3; k++) {
-    P.add('turretDetail', box([0.31, 0.25, 0.34][k], 0.020, 0.105), -0.90 + k * 0.025, 0.39 + k * 0.075, -1.895);
-    P.add('turretDetail', box([0.25, 0.31, 0.22][k], 0.020, 0.105), 0.82 - k * 0.018, 0.38 + k * 0.070, -1.965);
-  }
-  P.add('turretDark', box(0.035, 0.22, 0.105), -1.01, 0.46, -1.897, 0, 0, -0.28); // unequal diagonal service-face breaks
-  P.add('turretDark', box(0.035, 0.18, 0.105), 0.95, 0.45, -1.968, 0, 0, 0.34);
+  // 266 (Opus: "three short horizontal tabs stick out of the turret like ladder rungs"): the stacked service-face slats
+  // and their diagonal breaks, 5 cm proud of both bins' rear faces, are gone; the bins keep their latches.
   P.decal('turret', 'number', '02', 0.22, [1.28, 0.40, -0.35], Math.PI / 2, 0, 0.02);
   P.decal('turret', 'number', '02', 0.22, [-1.28, 0.40, -0.35], -Math.PI / 2, 0, -0.02);
   };

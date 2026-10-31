@@ -3303,8 +3303,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
   // the turret flanks as stand-off slabs. The cargo, the roof lamp, the packs and every turret-hung tarp, net and link
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
+  // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts).
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
-    && row.kit !== 'light' && row.kit !== 'packs'
+    && row.kit !== 'light' && row.kit !== 'packs' && !(spec.id === 'leclerc_s1' && row.kit === 'smoke')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
