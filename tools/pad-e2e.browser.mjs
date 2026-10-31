@@ -76,7 +76,7 @@ try {
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
-  browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600_000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, timeout: 120_000, protocolTimeout: 600_000,
     args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-angle=metal', '--enable-gpu', '--use-fake-ui-for-media-stream'] }, { label: 'pad-e2e' });
 
@@ -149,7 +149,7 @@ try {
   // ---- the phone: an emulated landscape phone opens the QR's link -----------------------------------------------------
   report.step = 'phone browser';
   // the phone's page draws no WebGL: its browser takes no GPU beside the desktop's (one Metal device for both crashed it)
-  phoneBrowser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 300_000,
+  phoneBrowser = await launchGuardedBrowser(puppeteer, { headless: true, timeout: 120_000, protocolTimeout: 300_000,
     args: ['--no-sandbox', '--disable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] }, { label: 'pad-e2e-phone' });
   phoneBrowser.on('disconnected', () => report.errors.phone.push(`browser disconnected at step: ${report.step}`));
   async function openPhone({ rtc = true } = {}) {
