@@ -13,11 +13,12 @@
 //
 // (267; the owner, 2026-10-31: "not highlight stuff that wouldnt actually lead to the enemy tank taking damage like drone
 // cages, props, machine guns etc.") The paint shows only what a round's damage reads. Gear stays bare whole: equipment
-// (sights, launchers, roof stations), machine guns and their ammunition, a camouflage suit. A part other than the hull's
-// and the turret's own armour that stands off the cells is armour only where a plate the authority traces a round through
-// lies at it (ERA, a spaced skirt or screen, external armour; never a drone screen, which the sim traces for drones only)
-// or the armour behind it is within FLUSH_M (a bolt, a boot, a link of track): a cage, a stowage box, a rack, a fender or
-// anything with no armour behind it is bare, as it is air to the round.
+// (sights, launchers, roof stations), machine guns and their ammunition, the running gear, a camouflage suit. A part
+// other than the hull's and the turret's own armour is armour only where it lies on what the authority traces: within
+// FLUSH_M of the cells (a bolt, a boot, a link of track) or within LAYER_REACH_M of a plate the sim traces a round through
+// (ERA, a spaced skirt or screen, external armour; never a drone screen, which the sim traces for drones only), a compact
+// solid touching such a plate being that layer whole. A cage, a stowage box, a rack, a fender or a net standing off it is
+// bare (a solid mostly off, whole), as it is air to the round.
 //
 // Baked in slices once the overlay primes a vehicle (the battle visual streamer's staging, else the overlay's own frames),
 // once per geometry: copies of a spec share it. Each geometry is judged at one pose, its frames taken as it starts. Every
@@ -319,8 +320,10 @@ const STANDOFF_RAY_COST = 12;
  * behind its largest face; a larger one (a merged side's whole assembly) answers face by face. */
 const SOLID_PART_M = 2;
 
-/** (267) A part standing off the cells whose armour behind lies farther than this (m), with no layer plate at it, is bare. */
+/** (267) A part standing farther than FLUSH_M (m) off the cells, and farther than LAYER_REACH_M off every layer plate (a
+ * skirt's or an ERA tile's visible face stands up to that far off the plate the sim traces for it), is bare. */
 const FLUSH_M = 0.08;
+const LAYER_REACH_M = 0.15;
 /** behindZone's verdict besides a zone: the part is no standoff (its own vote decides). */
 const BEHIND_VOTE = -1;
 /** (267) Where a judged part stands: on the armour (the cells), at a layer plate, or off both. */
@@ -350,7 +353,7 @@ function armourDraw(mesh: THREE.Object3D): boolean {
 }
 
 /** (267) The plates besides the cells a round meets (ERA, spaced, external), per frame, frame-local: fan triangles (nine
- * numbers each) and their box grown by FLUSH_M. */
+ * numbers each) and their box grown by LAYER_REACH_M. */
 interface LayerPlates { readonly tris: Float64Array; readonly boxes: Float64Array; readonly count: number }
 const layersOf = new WeakMap<object, readonly [LayerPlates, LayerPlates, LayerPlates]>();
 function layerPlatesOf(model: ArmorModel): readonly [LayerPlates, LayerPlates, LayerPlates] {
@@ -378,7 +381,7 @@ function layerPlatesOf(model: ArmorModel): readonly [LayerPlates, LayerPlates, L
             tris[at * 9 + c * 3 + axis] = corners[c][axis];
             lo = Math.min(lo, corners[c][axis]); hi = Math.max(hi, corners[c][axis]);
           }
-          boxes[at * 6 + axis] = lo - FLUSH_M; boxes[at * 6 + 3 + axis] = hi + FLUSH_M;
+          boxes[at * 6 + axis] = lo - LAYER_REACH_M; boxes[at * 6 + 3 + axis] = hi + LAYER_REACH_M;
         }
       }
     }
@@ -411,13 +414,13 @@ function triangleDistanceSq(tris: Float64Array, k: number, px: number, py: numbe
   const qx = ax + abx * u + acx * v - px, qy = ay + aby * u + acy * v - py, qz = az + abz * u + acz * v - pz;
   return qx * qx + qy * qy + qz * qz;
 }
-/** Whether a frame-local point lies within FLUSH_M of a layer plate of that frame. */
+/** Whether a frame-local point lies within LAYER_REACH_M of a layer plate of that frame. */
 function nearLayer(layers: LayerPlates, p: THREE.Vector3): boolean {
   const { tris, boxes, count } = layers;
   for (let k = 0; k < count; k++) {
     const b = k * 6;
     if (p.x < boxes[b] || p.y < boxes[b + 1] || p.z < boxes[b + 2] || p.x > boxes[b + 3] || p.y > boxes[b + 4] || p.z > boxes[b + 5]) continue;
-    if (triangleDistanceSq(tris, k, p.x, p.y, p.z) <= FLUSH_M * FLUSH_M) return true;
+    if (triangleDistanceSq(tris, k, p.x, p.y, p.z) <= LAYER_REACH_M * LAYER_REACH_M) return true;
   }
   return false;
 }
@@ -729,8 +732,8 @@ export function* bakePaintPanelSteps(
         behindCache.set(key, zone);
         return zone;
       };
-      // (267) where a world point stands: ON_ARMOUR within FLUSH_M of a cell of either frame, AT_LAYER within it of a
-      // layer plate (in the frame each rides), else OFF_ARMOUR
+      // (267) where a world point stands: ON_ARMOUR within FLUSH_M of a cell of either frame, AT_LAYER within
+      // LAYER_REACH_M of a layer plate (in the frame each rides), else OFF_ARMOUR
       const standing = (x: number, y: number, z: number): number => {
         const h = _t.set(x, y, z).applyMatrix4(pose.hullInv);
         if (cellGap(cellsOf.hull, h) <= FLUSH_M) return ON_ARMOUR;
