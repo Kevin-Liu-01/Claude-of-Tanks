@@ -22,7 +22,7 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { AGGREGATES, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS, stepDefinition } from './steps.mjs';
-import { expandGlobs } from './globs.mjs';
+import { expandGlobs, declaredNotInput } from './globs.mjs';
 import { computeWorldState } from './world.mjs';
 
 export const SCHEMA = 1;
@@ -223,7 +223,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const perIdTables = new Set();
     const skip = (from, to) => {
       const declaration = DECLARED_DYNAMIC[rel(from)];
-      if ([...(declaration?.covered ?? []), ...(declaration?.modeOnly ?? [])].includes(rel(to))) return true;
+      if (declaredNotInput(declaration, rel(to))) return true;
       const accessor = ACCESSORS[rel(from)];
       const names = [...(tableFiles.get(to) ?? [])];
       if (!accessor || !names.length || !names.every((name) => accessor.tables.includes(name))) return false;

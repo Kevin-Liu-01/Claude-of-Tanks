@@ -4266,6 +4266,110 @@ export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
     new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_KEEP_OUT_CLEAR));
 }
 
+/** Clearance kept round a missile launcher's stock (m), and how far its keep-out rises above the stock's top (m). */
+export const LAUNCHER_KEEP_OUT_CLEAR = 0.03;
+export const LAUNCHER_KEEP_OUT_HEAD = 1.5;
+/** Decor kept off the launchers: every piece but the smoke banks, a gameplay fitting always seated (FUNCTIONAL_KITS). */
+const LAUNCHER_KEEP_OUT_EXEMPT: ReadonlySet<string> = new Set(['smoke']);
+
+/** The largest pitch step (rad) between the poses a pitching launcher's keep-out is swept through: 5 degrees, so a point
+ *  1.5 m off the trunnion strays at most 1.4 mm outside the sampled boxes between two poses. */
+const LAUNCHER_SWEEP_STEP = (5 * Math.PI) / 180;
+
+/**
+ * The bounds, in the space `toSpace` maps `mesh` into, of each connected piece of a vertex span of its geometry (vertices
+ * welded on a 0.1 mm grid of the mesh's own coordinates; an exact numeric key within 10 m of its origin).
+ */
+function spanPieceBoxes(mesh: THREE.Mesh, start: number, count: number, toSpace: THREE.Matrix4): THREE.Box3[] {
+  const pos = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex();
+  const vertex = (i: number): number => (index ? index.getX(start + i) : start + i);
+  const parent = new Int32Array(count);
+  for (let i = 0; i < count; i++) parent[i] = i;
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const welded = new Map<number | string, number>();
+  for (let i = 0; i < count; i++) {
+    const vi = vertex(i);
+    const ix = Math.round(pos.getX(vi) * 1e4), iy = Math.round(pos.getY(vi) * 1e4), iz = Math.round(pos.getZ(vi) * 1e4);
+    const key = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz)) < 1e5
+      ? ((ix + 1e5) * 200001 + (iy + 1e5)) * 200001 + (iz + 1e5) : `${ix},${iy},${iz}`;
+    const at = welded.get(key);
+    if (at === undefined) welded.set(key, i); else parent[find(i)] = find(at);
+  }
+  for (let t = 0; t + 2 < count; t += 3) { parent[find(t + 1)] = find(t); parent[find(t + 2)] = find(t); }
+  const boxes = new Map<number, THREE.Box3>();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < count; i++) {
+    const r = find(i);
+    let box = boxes.get(r);
+    if (!box) boxes.set(r, box = new THREE.Box3());
+    box.expandByPoint(v.fromBufferAttribute(pos, vertex(i)).applyMatrix4(toSpace));
+  }
+  return [...boxes.values()];
+}
+
+/**
+ * The launchers' keep-out boxes in one decor frame, `group`-local (2026-10-30; the owner on the Griffin Viper: "dont allow
+ * decorations to be on the missile pods. theres likea bag and stuff on it"). Every connected piece of the frame's
+ * missile-rack stock (the factory's missileRackRanges: the pods, canisters, tubes, rails and mounts a profile builds in
+ * weaponAssembly, on the gun group or any launcher sub-group the frame carries), grown by LAUNCHER_KEEP_OUT_CLEAR and
+ * raised LAUNCHER_KEEP_OUT_HEAD over its top, so no decor piece seats on, in or over a launcher. A piece that rides the
+ * gun group pitches with it (the coordinator: a load on the turret roof under a pod is struck at full depression), so
+ * its box spans every pose from `elevationRad` up to `depressionRad` down: its box in the gun's own frame, corner by
+ * corner (a pitch turns the gun frame about its x axis, so a prism's y-z outline is its box's), at every pose. Read off
+ * the built geometry, never a per-vehicle list; the other frame and the decor are never read.
+ */
+export function launcherKeepOut(group: THREE.Object3D, elevationRad = 0, depressionRad = 0): THREE.Box3[] {
+  const out: THREE.Box3[] = [];
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const corner = new THREE.Vector3();
+  group.traverse((o) => {
+    const ranges = o.userData?.missileRackRanges as ReadonlyArray<{ start: number; count: number }> | undefined;
+    if (!ranges?.length || !(o instanceof THREE.Mesh) || !o.geometry?.getAttribute('position')) return;
+    // rig_gun's own pitch (gunPitch = -rotation.x) between the frame and the mesh, if the mesh rides it
+    let gun: THREE.Object3D | null = null;
+    for (let p: THREE.Object3D | null = o.parent; p && p !== group; p = p.parent) if (p.name === 'rig_gun') gun = p;
+    const swept = !!gun?.parent && elevationRad + depressionRad > 0;
+    const poses: THREE.Matrix4[] = [];
+    let toSpace = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    if (swept && gun?.parent) {
+      toSpace = new THREE.Matrix4().copy(gun.matrixWorld).invert().multiply(o.matrixWorld);
+      const toParent = new THREE.Matrix4().multiplyMatrices(inv, gun.parent.matrixWorld);
+      const steps = Math.ceil((elevationRad + depressionRad) / LAUNCHER_SWEEP_STEP);
+      for (const x of [gun.rotation.x, ...Array.from({ length: steps + 1 }, (_, k) => -elevationRad + (k / steps) * (elevationRad + depressionRad))]) {
+        const local = new THREE.Matrix4().compose(gun.position,
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(x, gun.rotation.y, gun.rotation.z, gun.rotation.order)), gun.scale);
+        poses.push(new THREE.Matrix4().multiplyMatrices(toParent, local));
+      }
+    }
+    for (const { start, count } of ranges) {
+      for (const piece of spanPieceBoxes(o, start, count, toSpace)) {
+        let b = piece;
+        if (swept) {
+          b = new THREE.Box3();
+          for (const pose of poses) {
+            for (let k = 0; k < 8; k++) {
+              corner.set(k & 1 ? piece.max.x : piece.min.x, k & 2 ? piece.max.y : piece.min.y, k & 4 ? piece.max.z : piece.min.z);
+              b.expandByPoint(corner.applyMatrix4(pose));
+            }
+          }
+        }
+        b.expandByScalar(LAUNCHER_KEEP_OUT_CLEAR);
+        b.max.y += LAUNCHER_KEEP_OUT_HEAD;
+        out.push(b);
+      }
+    }
+  });
+  return out;
+}
+
+/** Both decor frames' launcher keep-out boxes for a built vehicle, swept over its gun's pitch limits (the decor pass's). */
+export function launcherKeepOutVolumes(hullG: THREE.Object3D, turretG: THREE.Object3D,
+  spec: Pick<FleetTankSpec, 'gunElevationDeg' | 'gunDepressionDeg'>): Record<DecorFrame, THREE.Box3[]> {
+  const elevation = (spec.gunElevationDeg ?? 20) * D2R, depression = (spec.gunDepressionDeg ?? 8) * D2R;
+  return { hull: launcherKeepOut(hullG, elevation, depression), turret: launcherKeepOut(turretG, elevation, depression) };
+}
+
 function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
   const out: THREE.Box3[] = [];
   const rack = group.userData.rearFieldStowage as
@@ -5229,6 +5333,11 @@ function* decorationSteps(
     // record (dockKeepOut) — the cradle, the parked airframe and its launch column, 3 cm clear — out of every decor
     // piece's placed box, so stowage packs round the dock instead of through it (107 of 220 seats had loads inside).
     const dockVolumes: Record<DecorFrame, THREE.Box3[]> = { hull: dockKeepOut(spec.id, 'hull'), turret: dockKeepOut(spec.id, 'turret') };
+    // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher's
+    // stock (launcherKeepOut), swept over the gun's whole pitch range where it rides the gun, 3 cm clear and open above,
+    // out of every decor piece's placed box but the smoke banks', so a load turned away takes its next route or drops
+    // (the Viper's pods carried a soft bag and two cases)
+    const launcherVolumes = launcherKeepOutVolumes(hullG, turretG, spec);
     // VEH-13: every spare-link run the factory built (spareTrackSeatPass.ts), with a 10 cm lid: no rigid piece goes into
     // or onto a run (a load on the links read as "on softload", a rack through them as clipping); drapes still lie over
     const spareRuns: Record<DecorFrame, THREE.Box3[]> = { hull: spareRunVolumes(root, 'hull'), turret: spareRunVolumes(root, 'turret') };
@@ -5589,6 +5698,9 @@ function* decorationSteps(
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const dockMet = dockVolumes[frame].filter((box) => box.intersectsBox(bb));
       if (dockMet.length && placedPartsEnter(parts, pos, rot, dockMet)) return rejectCommit(name, parts, 'drone-dock');
+      if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && launcherVolumes[frame].some((box) => box.intersectsBox(bb))) {
+        return rejectCommit(name, parts, 'launcher');
+      }
       if (name !== 'tracks' && !parts.meta?.drape) {
         const runMet = spareRuns[frame].filter((box) => box.intersectsBox(bb));
         if (runMet.length && placedPartsEnter(parts, pos, rot, runMet)) return rejectCommit(name, parts, 'spare-track');

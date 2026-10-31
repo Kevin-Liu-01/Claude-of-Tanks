@@ -268,6 +268,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/interiorFillWreck.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     'src/vehicles/markingSeatStability.selftest.mjs',
     'src/vehicles/missionAttachmentReceiver.selftest.mjs',
     'src/vehicles/mudguardHangers.selftest.mjs',
@@ -792,6 +793,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/gallery/overlays.selftest.mjs',
     'src/ui/hudAmmoOutPaint.selftest.mjs',
     'tools/gallery-shell.selftest.mjs',
+    'tools/garage-roster-settle.browser.selftest.mjs',
     'tools/studio-snow-contact.selftest.mjs',
   ]),
   browser: suite('strenuous real-battle browser receipts (a GPU and the capture lock each)', [

@@ -11,7 +11,9 @@ import { selftestCommand, selftestReadOf, SELFTEST_DECLARED_INPUTS, SELFTEST_FIX
 import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
 import { laneControl, selectLane } from './test-lane.mjs';
 import { recommend, reportLines, tierList } from './test-recommend.mjs';
-import { balanceChanges, changedMaps, changedTankIds, laneReadOf } from './test-diff.mjs';
+import { balanceChanges, changedMaps, changedTankIds, createReadIndex, laneReadOf } from './test-diff.mjs';
+import { ENTRY_HTML, readsOnPurpose } from './test-recommend.mjs';
+import { SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
 import { simulateWall } from './test-audit.mjs';
 import { WORLD_STEPS } from './changed-only/steps.mjs';
@@ -159,10 +161,10 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const fake = { closureOf() {}, runSetOf: (file) => (file === abs('t/spawner.selftest.mjs') ? [abs('t/spawner.selftest.mjs')] : [file]),
     metadataOf: (file) => ({ spawns: file === abs('t/spawner.selftest.mjs') }), runEdgesOf: () => [abs('t/tool.mjs')] };
   const reads = { 't/tool.mjs': { 'src/vehicles/specs.ts': 'named' }, 't/spawner.selftest.mjs': { 'src/vehicles/specs.ts': 'broad' } };
-  const read = laneReadOf(fake, (cache, file, path) => reads[file]?.[path] ?? null, root);
+  const read = laneReadOf(fake, (file, path) => reads[file]?.[path] ?? null, root);
   assert.equal(read('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'named', 'a read of the tool it spawns selects the spawner');
   assert.equal(read('t/spawner.selftest.mjs', 'docs/x.md'), null);
-  assert.equal(laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }) }, (cache, file, path) => reads[file]?.[path] ?? null, root)
+  assert.equal(laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }) }, (file, path) => reads[file]?.[path] ?? null, root)
     ('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'broad', 'without a spawn, a broad match stays broad (negative control)');
 }
 
@@ -173,6 +175,16 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const self = 'tools/selftest-tiers.selftest.mjs';
   assert.ok(['named', 'scan'].includes(real(self, 'tools/test-diff.mjs')), 'this receipt reads tools/test-diff.mjs');
   assert.ok(selectLane({ defaults: [self], tanks: [], changed: ['tools/test-diff.mjs'], readOf: real }).selected.has(self));
+  // the read index equals selftestReadOf on the real cache (receipts with listings, broad closures and plain imports; files,
+  // directories, deleted paths and paths outside every closure)
+  const files = ['tools/selftest-tiers.selftest.mjs', 'src/ui/i18n.selftest.mjs', 'src/sim/movement.selftest.mjs', 'tools/tank-id-rekey-assets.selftest.mjs',
+    'src/vehicles/profiles/type99Armor.selftest.mjs', 'server/collisionManifestDrift.selftest.mjs', 'tools/run-selftests.selftest.mjs'];
+  const paths = ['tools/test-diff.mjs', 'src/sim/movement.ts', 'src/vehicles/tankFactoryCore.ts', 'index.html', 'src/ui/i18nCatalog.en-US.json',
+    'docs/DEPLOYS.md', 'public/icons/tank-assets.json', 'src/world/maps/verdant.ts', 'gone/deleted.ts', 'src/vehicles/profiles', 'package.json'];
+  const index = createReadIndex(cache, REPO_ROOT, paths, SELFTEST_BROAD_DIRS);
+  for (const file of files) for (const path of paths) {
+    assert.equal(index.readOf(file, path), selftestReadOf(cache, file, path, REPO_ROOT), `read index == selftestReadOf for ${file} x ${path}`);
+  }
   // (its own closure is broad: the changed-only step table names whole directories as data, so almost any change selects it)
   assert.equal(selectLane({ defaults: [self], tanks: [], changed: ['nowhere/never.ts'], readOf: real }).selected.has(self), false,
     'a path outside its closure does not select it');
@@ -242,6 +254,12 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.equal(ids.find((row) => row.suite === 'tanks').run, 'npm run test:heavy -- tanks --ids=leo2a4');
   assert.deepEqual(ids.filter((row) => row.warranted).map((row) => row.suite), ['fleet'], '...and the fleet ledgers may be stale');
 }
+
+// ---- entry pages: a root *.html counts as a heavy-suite trigger only for a receipt naming that page
+assert.ok(ENTRY_HTML.test('index.html') && ENTRY_HTML.test('404.html') && !ENTRY_HTML.test('src/ui/page.html'));
+assert.equal(readsOnPurpose('index.html', "import { build } from 'vite';"), false, 'a receipt reaching index.html through vite does not read it on purpose');
+assert.equal(readsOnPurpose('index.html', "readFileSync('index.html', 'utf8')"), true, 'one that names the page does');
+assert.equal(readsOnPurpose('src/world/terrain.ts', ''), true, 'any other path counts as the closure says');
 
 // ---- the id-scoped selection and the wall replay
 {

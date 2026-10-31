@@ -824,6 +824,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/run-selftests.selftest.mjs',
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
+    'tools/test-commands-exit.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
@@ -1131,6 +1132,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
@@ -2593,6 +2596,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
     // guard heals the owner's signature (a camera without layer 0) within half a second
     'tools/black-world.browser.selftest.mjs',
+    // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
+    'tools/garage-roster-settle.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)

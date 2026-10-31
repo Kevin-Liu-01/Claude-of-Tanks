@@ -9,7 +9,8 @@
 // or 1850-1880 px window the end pad flipped between none and a whole card every frame, the strip 5 px wider and
 // narrower with it.
 //
-// Against an already served game (--url=), at each window (--sizes, default the UI gauntlet's desktop windows and the
+// Against a served game (--url=; without it the receipt serves this checkout on its own vite server and optimizer cache),
+// at each window (--sizes, default the UI gauntlet's desktop windows and the
 // laptops at DPR 2) the receipt chooses every nation and checks the roster where the window puts it; at the --stepped
 // windows it then steps the carousel's width (its right inset, the one thing the strip's room follows) through --steps
 // widths spread over the window's whole range. At each, after four frames to settle (a strip writes its fit and pad in
@@ -18,21 +19,22 @@
 // callbacks on either rail or layout shifts, fail. A loop changes every frame; a settled roster never does.
 // --negative-control restores the arrows' flex shrink (the mechanism above), and the receipt must then find loops: it
 // exits 1 when it finds none.
-//   node tools/garage-roster-settle.browser.mjs --url=http://127.0.0.1:5173 [--out=<new dir>] [--negative-control]
+//   node tools/garage-roster-settle.browser.selftest.mjs [--url=http://127.0.0.1:5173] [--out=<new dir>] [--negative-control]
 //     [--sizes=1920x1080,1512x865@2] [--stepped=1920x1080,1512x865@2,1280x700] [--steps=24] [--nations=jp,il]
-// Takes the shared capture lock (render class) for the run. Exit 1 on any loop (or, under --negative-control, on none).
+// Takes the shared capture lock (render class) for the run: the manual `ui` suite's (npm run test:heavy -- ui), never the
+// default tier. Exit 1 on any loop (or, under --negative-control, on none).
 import puppeteer from 'puppeteer';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const base = option('url').replace(/\/$/, '');
-if (!base) throw new Error('Required: --url=http(s)://served-game');
+let base = option('url').replace(/\/$/, '');
 const negative = process.argv.includes('--negative-control');
-const out = resolve(option('out', `.qa-dev/garage-roster-settle/${negative ? 'negative-' : ''}${Date.now()}`));
-if (existsSync(out)) throw new Error(`${out} exists: the receipt never overwrites an earlier run`);
+const out = option('out') ? resolve(option('out')) : mkdtempSync(join(tmpdir(), `cot-roster-settle-${negative ? 'negative-' : ''}`));
+if (option('out') && existsSync(out)) throw new Error(`${out} exists: the receipt never overwrites an earlier run`);
 mkdirSync(out, { recursive: true });
 const size = (text) => {
   const [wh, dpr = '1'] = text.split('@');
@@ -131,6 +133,16 @@ const sweep = async ({ nations, widths, negative }) => {
 await acquireCaptureLock(60 * 60 * 1000, { lockClass: 'render', holdCapMinutes: 18 });
 const refresh = setInterval(() => refreshCaptureLock(), 30_000);
 refresh.unref();
+// no --url: this checkout on its own server and optimizer cache (a shared cache hangs beside another dev server)
+let server = null, cacheDir = null;
+if (!base) {
+  const { createServer } = await import('vite');
+  cacheDir = mkdtempSync(join(tmpdir(), 'cot-roster-settle-vite-'));
+  server = await createServer({ root: process.cwd(), logLevel: 'error', cacheDir,
+    server: { host: '127.0.0.1', port: 7400 + (process.pid % 90), strictPort: false, hmr: false, watch: null } });
+  await server.listen();
+  base = server.resolvedUrls.local[0].replace(/\/$/, '');
+}
 const report = { base, negative, sizes: [] };
 let failed = false;
 const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 900_000,
@@ -177,5 +189,8 @@ try {
   await browser.close();
   clearInterval(refresh);
   releaseCaptureLock();
+  await server?.close();
+  if (cacheDir) rmSync(cacheDir, { recursive: true, force: true });
 }
+console.log(`garage-roster-settle: report ${out}/report.json`);
 process.exit(failed ? 1 : 0);

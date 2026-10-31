@@ -266,4 +266,27 @@ put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
   assert.deepEqual(rows(), absent, 'other bytes, the same row');
 }
 
+// 13. Route strings are no input (266): a module that only names the public pages (src/ui/localeRouting.ts's route
+// table) declares them `namesOnly`, so a document-head edit marks no id. Controls: undeclared, the mention keys the step
+// (466cea1178 marked centering, icons and every map's world steps that way); a tool that reads a page itself still keys it.
+const read = (rel) => readFileSync(join(root, rel), 'utf8');
+const genSizes = read('tools/gen-sizes.mjs'), genOther = read('tools/gen-other.mjs');
+put('src/ui/routes.ts', "export const ROUTES = [{ path: '/', file: 'index.html' }, { path: '/404', file: '404.html' }];\n");
+put('index.html', '<!doctype html><html><head><title>t</title></head><body></body></html>\n');
+put('404.html', '<!doctype html><html><head><title>404</title></head></html>\n');
+put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nimport { ROUTES } from '../src/ui/routes.ts';\nexport default [createTank, ROUTES];\n");
+const routes = { ...config, declared: { 'src/ui/routes.ts': { pin: '', reads: [], namesOnly: ['*.html'] } } };
+const head = (title) => put('index.html', `<!doctype html><html><head><title>${title}</title><meta name="og" content="x"></head><body></body></html>\n`);
+const m6 = bootstrap(state({ cfg: routes })), m7 = bootstrap(state());
+assert.ok(!state({ cfg: routes }).steps.other.toolFiles.includes('index.html') && state().steps.other.toolFiles.includes('index.html'));
+head('t2');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m6)), { sizes: 'none:', other: 'none:' }, 'a document-head edit marks no id');
+assert.equal(resolveChanged(state(), m7).other.mode, 'all', 'control: undeclared, the route string keys the step');
+put('tools/gen-sizes.mjs', "import { readFileSync } from 'node:fs';\nimport { createTank } from '../src/vehicles/tankFactory.ts';\nimport { round } from './helper.mjs';\nexport const PAGE = readFileSync('index.html', 'utf8');\nexport default [createTank, round];\n");
+const m8 = bootstrap(state({ cfg: routes }));
+head('t3');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m8)), { sizes: 'all:a1,a2,b1', other: 'none:' }, 'control: a tool reading the page itself keeps it keyed');
+put('tools/gen-sizes.mjs', genSizes);
+put('tools/gen-other.mjs', genOther);
+
 console.log('changed-only resolver.selftest: PASS');
