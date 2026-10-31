@@ -656,11 +656,17 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // dead ahead: gun-depression sweep)
       const shield = (z: number, hw: number, bot: number, top: number): CastStation => ({ z: z - TRUNNION.z, hw,
         bot: bot - TRUNNION.y, top: top - TRUNNION.y, roof: 0.80, foot: 0.82, waist: 0.45, nUp: 3.4, nLo: 3.4 });
+      // c8 (c7 critics, both, on the scale model: still "a window set into a domed turret", its face a third as tall as
+      // wide): the shield the turret's whole nose, a broad convex block about three quarters of the front's width rising
+      // to just under the roof's front edge (0.74), its corners rounded; its underside where it was
+      // (its floor drawn in under the face, the casting curving down and under: the floor's half-width the c7 shield's, so
+      // its lower corners meet the deck no sooner at depression)
+      const block = (z: number, hw: number, bot: number, top: number): CastStation => ({ ...shield(z, hw, bot, top), nUp: 2.6, foot: 0.66 });
       P.addGunExtra(castSolid([
-        shield(0.83, 0.62, 0.08, 0.52), shield(0.97, 0.64, 0.07, 0.55), shield(1.12, 0.64, 0.095, 0.56),
-        shield(1.22, 0.62, 0.115, 0.55), shield(1.28, 0.56, 0.13, 0.51), shield(1.30, 0.48, 0.15, 0.48),
+        block(0.83, 0.74, 0.08, 0.66), block(0.97, 0.78, 0.07, 0.70), block(1.12, 0.78, 0.095, 0.70),
+        block(1.22, 0.74, 0.115, 0.67), block(1.28, 0.66, 0.13, 0.62), block(1.30, 0.56, 0.15, 0.58),
       ], P.q));
-      P.addGunExtraDark(castSolid([shield(0.945, 0.647, 0.066, 0.556), shield(0.952, 0.647, 0.066, 0.556)], P.q));
+      P.addGunExtraDark(castSolid([block(0.945, 0.786, 0.064, 0.706), block(0.952, 0.786, 0.064, 0.706)], P.q));
       const face = 1.30 - TRUNNION.z;
       P.addGunExtra(box(0.21, 0.19, 0.04), 0, 0, face + 0.01);
       P.addGunExtraDark(box(0.155, 0.145, 0.012), 0, 0, face + 0.031);
@@ -670,10 +676,11 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       P.addGunExtraDark(cylZ(0.014, 0.08, 10), 0.30, -0.02, face + 0.07);
       // the telescope's teardrop on the right, high and outboard, a raised boss (c6 critics, both: a small hole level with
       // the gun port)
-      P.addGunExtra(cylZ(0.08, 0.05, 18), -0.37, 0.03, face - 0.005);
-      P.addGunExtra(box(0.10, 0.10, 0.05).rotateZ(Math.PI / 4), -0.37, 0.085, face - 0.005);
-      P.addGunExtraDark(cylZ(0.05, 0.012, 16), -0.37, 0.03, face + 0.021);
-      P.addGunExtraDark(box(0.055, 0.055, 0.012).rotateZ(Math.PI / 4), -0.37, 0.068, face + 0.021);
+      // (c8: high in the block's upper corner on the gunner's side, about a sixth of its width)
+      P.addGunExtra(cylZ(0.10, 0.05, 20), -0.40, 0.12, face - 0.005);
+      P.addGunExtra(box(0.125, 0.125, 0.05).rotateZ(Math.PI / 4), -0.40, 0.185, face - 0.005);
+      P.addGunExtraDark(cylZ(0.064, 0.012, 18), -0.40, 0.12, face + 0.021);
+      P.addGunExtraDark(box(0.07, 0.07, 0.012).rotateZ(Math.PI / 4), -0.40, 0.165, face + 0.021);
     }
     if (dk) {
       // the DK-1's weathered canvas cover gathered round the nose and the tube's root, in folds
