@@ -71,7 +71,14 @@ receipts reach the locale runtime (`node src/ui/i18nChunkImport.selftest.mjs`).
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
 Consume canonical state rather than duplicating policy. Keep large/high-cost
-screens lazy. Preserve large touch targets and test desktop plus mobile. Baked
+screens lazy. Preserve large touch targets and test desktop plus mobile.
+Never measure a box to size what sizes it. A box that hugs its content, a flex
+item whose share follows its content, or a stretched line read back after a
+write measures its own output and loops or creeps (265: the Garage card strip;
+266: the touch status chips, the hull bars' vehicle line). Measure the room the
+thing may take, with your own writes off. A page at rest rewrites nothing: a
+`classList.remove` of an absent class still writes, so guard polls by state
+(`tools/hud-self-measure.browser.selftest.mjs`, manual `ui` suite). Baked
 minimap requests must pass through `minimapAssetRuntime.ts`; keep active-world
 and prepared-service checks at the asynchronous completion edge.
 Decorative metadata such as repository stars must render a stable-width loading

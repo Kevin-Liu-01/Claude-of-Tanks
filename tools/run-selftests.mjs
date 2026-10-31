@@ -33,6 +33,8 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/black-world.browser.selftest.mjs',
   // 2026-10-30 (garage-roster-thrash-265): the roster settle guard serves the checkout and takes the lock itself
   'tools/garage-roster-settle.browser.selftest.mjs',
+  // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard serves the checkout and takes the lock itself
+  'tools/hud-self-measure.browser.selftest.mjs',
   // 2026-09-26: part 2 of the Garage switch probe takes the capture lock itself (createCaptureLock in the receipt) —
   // under the runner's lease it deadlocked for 80 min (the runner refreshing its lease every 30 s while the child queued
   // on the same lock); it stays an exclusive-CPU file as well.

@@ -41,6 +41,11 @@ server; the manual `ui` suite) is the Garage roster's settle pass. At each windo
 also steps the carousel's width across its whole range. It fails when the card strip or the nation rail keeps changing
 once it has had four frames to settle. `--negative-control` makes the carousel arrows shrink again, the 265 loop (the
 strip's width followed its own end pad), and the run must then find the loop.
+`hud-self-measure.browser.selftest.mjs` (Puppeteer, the capture lock; `--url=` a served game, else its own vite server;
+the manual `ui` suite) checks on the HUD layout fixture that the battle HUD measures nothing it sets. With four statuses up,
+the touch status strip shows every chip its room fits and keeps clear of the joystick. The hull bars keep their widths
+across relabels and a short-band toggle. A page at rest rewrites no attribute. `--negative-control` puts back the
+stretched vehicle line and a 150 ms class sweep, and the run must then fail on both.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments

@@ -793,6 +793,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/ui/hudAmmoOutPaint.selftest.mjs',
     'tools/gallery-shell.selftest.mjs',
     'tools/garage-roster-settle.browser.selftest.mjs',
+    'tools/hud-self-measure.browser.selftest.mjs',
     'tools/studio-snow-contact.selftest.mjs',
   ]),
   browser: suite('strenuous real-battle browser receipts (a GPU and the capture lock each)', [

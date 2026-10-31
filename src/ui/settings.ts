@@ -746,8 +746,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     emit('ui:click', {});
   }
 
+  // (it writes only when the veil is up: updateGear's 150 ms sweep calls it in every state, and a classList.remove of an
+  // absent class still rewrites the attribute, 7 writes a second for as long as the page lived, 266)
   function hideResumeVeil() {
-    resume.classList.remove('show');
+    if (resume.classList.contains('show')) resume.classList.remove('show');
     if (relockRetry !== null) clearTimeout(relockRetry);
     relockRetry = null;
   }
