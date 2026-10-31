@@ -9,7 +9,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box}=KIT;
 
 export function buildT72B3M2022(P:TankBuilderPort):void {
-  buildT72B3MX(P,{cheekEra:false});addT72B3M2022Kit(P);
+  buildT72B3MX(P,{cheekEra:false},{bowGuardTip:false});addT72B3M2022Kit(P);
   P.hullG.userData.familyRebuild={donor:'t72b3m_2016',revision:3,features:['t72b3m-cast-turret','boxed-relikt-cheeks','anti-drone-canopy','engine-bay-slat','stern-slat']};
 }
 export function buildT72BU1989(P:TankBuilderPort):void {

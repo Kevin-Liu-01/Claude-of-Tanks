@@ -34,13 +34,13 @@ export function buildT72B3MXHullCore(P:TankBuilderPort):void {
   P.add('hull',cylY(1.318788,.026,48),YAW[0],1.512,YAW[2]);
 }
 
-function hull(P:TankBuilderPort,skirtEra=true):void {
+function hull(P:TankBuilderPort,skirtEra=true,bowTip=true):void {
   buildT72B3MXHullCore(P);
-  for(const side of [-1,1])fenders(P,side);
+  for(const side of [-1,1])fenders(P,side,bowTip);
   addT72B3MSideMounts(P,{skirtEra});
 }
 
-function fenders(P:TankBuilderPort,side:number):void {
+function fenders(P:TankBuilderPort,side:number,bowTip=true):void {
   const a=Math.min(side*1.128,side*1.764),b=Math.max(side*1.128,side*1.764);
   P.addMudguard('t72b3m-x-deck','hull',roofSheet([
     [-3.47,a,b,1.20,1.20],[-3.15,a,b,1.3324,1.3324],[-2.80,a,b,1.526,1.526],
@@ -48,7 +48,7 @@ function fenders(P:TankBuilderPort,side:number):void {
   ],.019));
   const ringRows:readonly(readonly[number,number,number,number])[]=[
     [3.06,1.02,1.897,1.42328],[3.23,1.006,1.933,1.42328],[3.43,1.026,1.955,1.399],
-    [3.59,1.08,1.951,1.302],[3.73,1.13,1.91,1.155],[3.835,1.19,1.78,.915],
+    [3.59,1.08,1.951,1.302],[3.73,1.13,1.91,1.155],...(bowTip?[[3.835,1.19,1.78,.915] as const]:[]),
   ];
   P.addMudguard('t72b3m-x-rounded-front','hull',roofSheet(ringRows.map(([z,inner,outer,y])=>{
     const l=Math.min(side*inner,side*outer),r=Math.max(side*inner,side*outer);return[z,l,r,y,y] as const;
@@ -342,17 +342,20 @@ function mainGun(P:TankBuilderPort,chinLift=0):void {
  * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
  * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
-interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean }
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean;
+  /** false ends the rounded bow guards at their z 3.73 station, without the steep 24 cm drop to y .915 ahead of the idler
+   * (the T-72B3M obr. 2022, 266: blind critics read the drop as a flat wing over the track). */
+  bowGuardTip?:boolean }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
+  hull(P,options.nativeEra!==false,options.bowGuardTip!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
-export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={}):void {
+export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={},hullOptions:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.topY=T72B3M_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3MXHull(P);buildT72B3MXTurret(P,turretOptions);
+  buildT72B3MXHull(P,hullOptions);buildT72B3MXTurret(P,turretOptions);
 }
 
 /** Options for reusing the T-72B3M turret on another hull. A vehicle whose own

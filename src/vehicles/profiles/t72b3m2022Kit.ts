@@ -74,24 +74,24 @@ function canopy(P:TankBuilderPort):void{
   for(let x=-1.45;x<1.50;x+=.29)for(const [a,b]of minus(spans(CANOPY,0,x),spans(HATCH,0,x)))bar([x,CANOPY_Y-.012,a],[x,CANOPY_Y-.012,b],.012);
 }
 
-// A Volnorez-type anti-drone jammer on the canopy's rear: a box on two rails with four stub antennas (2023-24 fit).
+// A Volnorez-type anti-drone jammer on the canopy's rear: a box on two rails with two stub antennas (2023-24 fit).
 function jammer(P:TankBuilderPort):void{
   const x=.35,z=-1.45,y=CANOPY_Y+.024;
   for(const dx of [-.16,.16])P.addEquipment('turretDark',box(.04,.03,.42),x+dx,y+.015,z);
   P.addEquipment('turretDetail',box(.44,.20,.34),x,y+.13,z);
   P.addEquipment('turretDark',box(.40,.02,.30),x,y+.24,z);
-  for(const [dx,dz]of [[-.17,-.12],[.17,-.12],[-.17,.12],[.17,.12]]){
+  for(const [dx,dz]of [[-.17,0],[.17,0]]){
     P.addEquipment('turretDark',cylY(.022,.026,.05,10),x+dx,y+.275,z+dz);
     P.addEquipment('turretDetail',cylY(.010,.014,.34,8),x+dx,y+.47,z+dz);
   }
   P.addEquipment('turretDark',beamBetween([x-.22,y+.10,z+.10],[x-.36,y-.01,z+.40],.012,6));
 }
 
-// Hull frame. Field slat over the engine bay on both sides, standing off the three rear Relikt cassettes (outer face
+// Hull frame. Field slat over the rear third on both sides, standing off the four rear Relikt cassettes (outer face
 // x 1.976) on welded arms; top 1.30 keeps the main gun's full depression over the rear quarters clear.
 function engineBaySlat(P:TankBuilderPort):void{
   const bar=(a:Point,b:Point,r:number)=>P.addEquipment('hullOpenLattice',beamBetween(a,b,r,8));
-  const X=2.075,low=.84,high=1.30,z0=-3.10,z1=-1.42;
+  const X=2.075,low=.84,high=1.30,z0=-3.10,z1=-.80;
   const {meshes,dispose}=stock(P,['hull','hullExternalArmor','hullDetail']);
   try{
     for(const side of [-1,1]){
@@ -108,18 +108,20 @@ function engineBaySlat(P:TankBuilderPort):void{
   }finally{dispose();}
 }
 
-// Turret frame. The boxed Relikt cheeks: four flat-topped containers a side in a V from the mantlet's flanks (x .70,
-// z 1.57) back to the side boxes (x 1.69, z .42), 46 cm deep, their tops falling from the roofline (y .68) to a short outer
+// Turret frame. The boxed Relikt cheeks: four containers a side in a V from ahead of the mantlet's flanks (x .66, z 1.80,
+// so the gun leaves a recess between the two packs; the inner one 30 cm deep keeps 10 cm off the mantlet) back to the
+// side boxes (x 1.69, z .42), up to 46 cm deep, their tops falling from the roofline (y .68) to a short outer
 // face (y .34): the forward-swept arrowhead of the B3M's front. They replace the 2016 build's nine shingled cells (buildT72B3MX cheekEra: false).
 function cheekContainers(P:TankBuilderPort):void{
-  const N=4,D=.46,yb=.08,yt=.68,yf=.34,Y=new THREE.Vector3(0,1,0);
+  const N=4,DEPTH=[.30,.40,.46,.46],yb=.08,yt=.68,yf=.34,Y=new THREE.Vector3(0,1,0);
   for(const side of [-1,1]){
-    const a=new THREE.Vector3(side*.70,0,1.57),b=new THREE.Vector3(side*1.69,0,.42),len=a.distanceTo(b);
+    // the left pack runs on to the front of the wider left stowage box (x -1.81, z .29)
+    const a=new THREE.Vector3(side*.66,0,1.80),b=side<0?new THREE.Vector3(-1.80,0,.32):new THREE.Vector3(1.69,0,.42),len=a.distanceTo(b);
     const u=b.clone().sub(a).normalize(),n=new THREE.Vector3(-u.z,0,u.x);
     if(n.z<0)n.negate();
     const basis=new THREE.Matrix4().makeBasis(n,Y,n.clone().cross(Y)),L=len/N-.012;
     for(let i=0;i<N;i++){
-      const c=a.clone().addScaledVector(u,len*(i+.5)/N).addScaledVector(n,-D/2);
+      const D=DEPTH[i],c=a.clone().addScaledVector(u,len*(i+.5)/N).addScaledVector(n,-D/2);
       const ring:readonly(readonly[number,number])[]=[[-D/2,yb],[D/2,yb],[D/2,yf],[-D/2,yt]];
       const g=markEraHitFaces(sectionSolid([{z:-L/2,ring},{z:L/2,ring}]),[1,0,0]).applyMatrix4(basis);
       P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('turret',g,c.x,0,c.z));
@@ -141,13 +143,14 @@ function snorkel(P:TankBuilderPort):void{
   }finally{dispose();}
 }
 
-// Hull frame. The raised Relikt block rows of the glacis package, laid in chevrons on the 2016 build's glacis cover (top
-// y 1.4934 at z 2.00 falling .382 a metre, .04 thick): ERA furniture of the same glacis clusters, so they go with them.
-function glacisChevrons(P:TankBuilderPort):void{
+// Hull frame. The raised Relikt block rows of the glacis package, three a side in four regular rows across the 2016 build's
+// glacis cover (top y 1.4934 at z 2.00 falling .382 a metre, .04 thick): ERA furniture of the same glacis clusters, so
+// they go with them.
+function glacisRows(P:TankBuilderPort):void{
   for(const side of [-1,1])P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
-    for(const z of [2.16,2.47,2.78,3.08])for(const x of [.30,.74]){
+    for(const z of [2.17,2.47,2.77,3.07])for(const x of [.19,.54,.89]){
       const y=1.4934-(z-2)*.382+.04+.022;
-      P.addExternalArmor('hull',markEraFurniture(box(.40,.044,.25)),side*x,y,z,.365,side*.26,0);
+      P.addExternalArmor('hull',markEraFurniture(box(.33,.044,.28)),side*x,y,z,.365);
     }
   });
 }
@@ -191,5 +194,5 @@ function sternSlat(P:TankBuilderPort):void{
 
 export function addT72B3M2022Kit(P:TankBuilderPort):void{
   sternSlat(P);
-  cheekContainers(P);glacisChevrons(P);snorkel(P);canopy(P);jammer(P);radioMast(P);engineBaySlat(P);
+  cheekContainers(P);glacisRows(P);snorkel(P);canopy(P);jammer(P);radioMast(P);engineBaySlat(P);
 }
