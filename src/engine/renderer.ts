@@ -17,6 +17,7 @@ import { t } from '../ui/i18n.ts';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss } from './quality.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
+import { installOpaqueProgramOrder } from './opaqueProgramOrder.ts';
 import { installContextResourceLifetime } from './contextResourceLifetime.ts';
 
 import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
@@ -127,6 +128,8 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
   routeShadowOnlyLayer(renderer);
+  // (local-fps-266) each render order's opaque draws program by program (opaqueProgramOrder.ts)
+  installOpaqueProgramOrder(renderer);
 
   renderer.domElement.dataset.battleCanvas = '';
   container.appendChild(renderer.domElement);

@@ -656,16 +656,18 @@ function validNightLightState(state, requirePlayerHeadlights = true) {
   const pool = state.nightLighting;
   if (state.phase === 'garage') return !!pool?.ownerAvailable && !pool.attached && pool.emitterCount === 0
     && pool.lights.every(light => light.intensity === 0);
-  // The current battle owner keeps the fixed pool prepared in daylight so
-  // manually toggling lamps cannot compile a new lighting shader mid-frame.
+  // (local-fps-266) A battle's lit set is decided under cover at its map load and holds for the battle, so toggling
+  // lamps never compiles a lighting shader mid-frame: a night battle's fixed pool joins the scene; a day battle's stays
+  // prepared but out of it (a daylight headlight lights its lenses only, no light).
   const spots = state.preset === 'mobile' ? 2 : 4, points = state.preset === 'mobile' ? 1 : 2;
-  if (!pool?.ownerAvailable || !pool.attached || pool.emitterCount <= 0
+  if (!pool?.ownerAvailable || pool.emitterCount <= 0
     || pool.lights.length !== spots + points
     || pool.lights.filter(light => light.kind === 'spot').length !== spots
     || pool.lights.filter(light => light.kind === 'point').length !== points
     || pool.lights.some(light => light.castShadow || light.shadowMap
       || !Number.isFinite(light.intensity) || light.intensity < 0)) return false;
-  if (state.weather?.timeOfDay !== 'night') return pool.lights.every(light => light.intensity === 0);
+  if (state.weather?.timeOfDay !== 'night') return !pool.attached && pool.lights.every(light => light.intensity === 0);
+  if (!pool.attached) return false;
   return !requirePlayerHeadlights || pool.playerCoverage?.headlights > 0
     && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
     && pool.materials.some(material => material.masked && material.intensity >= 3);

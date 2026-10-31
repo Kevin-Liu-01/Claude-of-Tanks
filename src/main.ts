@@ -1117,7 +1117,10 @@ let pendingCampaignOperationId: string | null = null;
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide(); }
+  if (active) {
+    battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
+    lighting.setBattleLitSet(false);
+  }
   garagePhasePresentation.setActive(active);
   garageLightsUp = active;
   killcamAccess.current?.setBattleLights(!active);
@@ -1994,6 +1997,9 @@ const nightLighting = createNightLightingAccess({
   isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
     : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
       || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+  // (local-fps-266) a battle's lit set is fixed with the night pool's: the hemisphere and the anti-sun fill leave it where
+  // they hold 0 (the Garage's switch, setGarageSpots, takes them back)
+  fixLitSet: () => lighting.setBattleLitSet(true),
 });
 const post = createPost(renderer, scene, camera);
 // transitions-249: the scene probes (the black-world watchdogs) draw in the scene target's format, so the GPU pipelines

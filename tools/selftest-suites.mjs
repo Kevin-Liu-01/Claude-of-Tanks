@@ -911,6 +911,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
     'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
+    'src/engine/opaqueProgramOrder.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
@@ -1350,6 +1351,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/nightLightingAccess.selftest.mjs',
+    'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',

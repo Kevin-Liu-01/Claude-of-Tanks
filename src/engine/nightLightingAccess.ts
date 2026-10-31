@@ -23,6 +23,8 @@ interface NightLightingAccessOptions {
   /** Strict spotting admission, not the retained visual's fade threshold. */
   isEntityVisible(entity: NightLightingEntity): boolean;
   getBudget?(): NightLightingBudget;
+  /** The rest of the battle's lit set, fixed with the pool's (main.ts: the zero hemisphere and fill leave it). */
+  fixLitSet?(): void;
 }
 
 type NightModule = Pick<typeof import('./nightLightingRuntime.ts'), 'createNightLightingRuntime'>;
@@ -67,7 +69,11 @@ export function createNightLightingAccess(
     const runtime = await owner.preload();
     if (disposed) { runtime.dispose(); return; }
     if (requested !== generation) return;
-    runtime.prepare(collectSources(), true);
+    // (local-fps-266, Main's ruling on the 266 ranking) the battle's lit set is decided here, once, under cover: a night
+    // battle's pool lights join it, a day battle's stay out (its headlights light their lenses), the rig's zero lights
+    // leave it (fixLitSet), and nothing changes it until the next prepare or the Garage's reset
+    options.fixLitSet?.();
+    runtime.prepare(collectSources(), true, { lightPool: options.isNight() });
     nightPrepared = true;
     // First night uniforms/light signature are warm while input is covered.
     runtime.update(options.getCameraPosition(), true, options.getCameraForward?.());

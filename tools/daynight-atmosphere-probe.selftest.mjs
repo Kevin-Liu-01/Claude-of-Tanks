@@ -130,7 +130,7 @@ const state = (timeOfDay, seed) => ({
   hemi: .4, hemiColor: [1, 1, 1], clouds: [1.1, 1], cloudDecks: [],
   fogColor: [.1, .2, .3], environmentIntensity: 1, cloudShadeAmp: .1,
   worldUuid: 'same-world', camera: [[1, 2, 3], [0, 0, 0, 1], 50], playerPose: [1], raster: [2360, 1640],
-  nightLighting: { ownerAvailable: true, uuid: 'pool', attached: true,
+  nightLighting: { ownerAvailable: true, uuid: 'pool', attached: timeOfDay === 'night',
     emitterCount: 3, playerCoverage: { headlights: 2, shtora: 0 },
     lights: ['spot', 'spot', 'point'].map((kind, index) => ({ kind, uuid: `lamp-${index}`,
       intensity: timeOfDay === 'night' ? 80 : 0, castShadow: false, shadowMap: false })),
@@ -217,7 +217,7 @@ for (const kind of ['shtora', 'streetlamp']) {
     row => { row.night.nightLighting.lights[2].castShadow = true; },
     row => { row.night.nightLighting.lights[0].intensity = NaN; },
     row => { row.night.nightLighting.lights.pop(); },
-    row => { row.restored.nightLighting.attached = false; },
+    row => { row.restored.nightLighting.attached = true; },
   ]) {
     const bad = structuredClone(row); mutate(bad);
     assert(Object.values(focusedChecks(bad)).some(value => !value), 'remote fixture still requires exact visible source, bounded pool and reset');
@@ -326,7 +326,8 @@ for (const mutate of [
   row => { row.restored.nightLighting.lights[0].uuid = 'reconstructed-light'; },
   row => { row.legacy[1].nightLighting.lights[0].uuid = 'replaced-legacy-light'; },
   row => { row.restored.nightLighting.lights[0].intensity = 80; },
-  row => { row.restored.nightLighting.attached = false; },
+  row => { row.restored.nightLighting.attached = true; },
+  row => { row.night.nightLighting.attached = false; row.day.nightLighting.attached = true; },
 ]) {
   const bad = structuredClone(good); mutate(bad);
   assert(Object.values(checks(bad, 'mobile')).some(value => !value), 'reject broken actual scenario/lighting/render receipt');

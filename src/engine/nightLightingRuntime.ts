@@ -431,7 +431,11 @@ export interface NightLightingRuntime {
   readonly group: THREE.Group;
   readonly lights: readonly (THREE.SpotLight | THREE.PointLight)[];
   readonly emitterCount: number;
-  prepare(roots: readonly NightLightingRoot[], night: boolean): void;
+  /**
+   * `lightPool` (default on): the pool's lights join the scene. Off, the emitters and their lenses run as at night and no
+   * light joins: a day battle's lit set without the pool (local-fps-266; Main: a daylight headlight lights its lenses).
+   */
+  prepare(roots: readonly NightLightingRoot[], night: boolean, options?: { readonly lightPool?: boolean }): void;
   /** Explicit visual-construction event only, never call from the frame loop. */
   appendRoot(source: NightLightingRoot): void;
   /** `forward`: the camera's view direction; a town's lamps are chosen round a point BUILDING_FOCUS_AHEAD_M ahead of it. */
@@ -458,7 +462,7 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
   const emitters: EmitterState[] = [], emissions = new Map<THREE.MeshStandardMaterial, EmissionState>();
   const emissionList: EmissionState[] = [];
   const seen = new Map<THREE.Object3D, number>();
-  let enabled = false, disposed = false, frame = 0;
+  let enabled = false, pooled = false, disposed = false, frame = 0;
 
   function darken(): void {
     for (const slot of spots) applyLight(slot, null);
@@ -466,16 +470,17 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
     for (const emission of emissionList) setEmission(emission, false);
   }
   function reset(): void {
-    enabled = false; darken(); group.removeFromParent();
+    enabled = false; pooled = false; darken(); group.removeFromParent();
     emitters.length = 0; emissions.clear(); emissionList.length = 0; seen.clear();
   }
-  function prepare(roots: readonly NightLightingRoot[], night: boolean): void {
+  function prepare(roots: readonly NightLightingRoot[], night: boolean, options?: { readonly lightPool?: boolean }): void {
     if (disposed) throw new Error('Night lighting is disposed');
     reset();
     if (!night) return;
     try {
       for (const source of roots) collectRoot(source, seen, emitters, emissions, emissionList);
-      enabled = true; scene.add(group);
+      enabled = true; pooled = options?.lightPool ?? true;
+      if (pooled) scene.add(group);
     } catch (error) { reset(); throw error; }
   }
   function appendRoot(source: NightLightingRoot): void {
@@ -492,6 +497,7 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
     for (const emission of emissionList) emission.active = false;
     for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame, _focus);
     for (const emission of emissionList) setEmission(emission, emission.active);
+    if (!pooled) return;
     updateSpots(spots, emitters);
     for (let index = 0; index < points.length; index++) {
       applyLight(points[index], chooseEmitter(emitters, points, index, 'building'));
