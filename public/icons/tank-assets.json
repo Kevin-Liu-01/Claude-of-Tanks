@@ -245016,8 +245016,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 420,
-            "ceMm": 500,
+            "keMm": 294,
+            "ceMm": 350,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -246144,7 +246144,7 @@
         ]
       },
       "geometryHash": "56e04a9e",
-      "metadataHash": "2cbca300",
+      "metadataHash": "aeaa2a88",
       "presentationAnchor": {
         "xM": -0.0006,
         "zM": -0.1653
@@ -246252,8 +246252,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28990,
-          "sha256": "8cf59263550fe70c8a94ef19de7657558b48fc7a6757317fc2923de9208f9beb"
+          "bytes": 28954,
+          "sha256": "ba07276c1d69d20cd93113af8b34d17748dc372fe2322fdde719ec839d40afa5"
         },
         "modulesSide": {
           "file": "leo2_improved_modules_side.webp",
@@ -259510,8 +259510,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 533,
-            "ceMm": 635,
+            "keMm": 293,
+            "ceMm": 349,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -264472,7 +264472,7 @@
         ]
       },
       "geometryHash": "555a1c24",
-      "metadataHash": "10da335f",
+      "metadataHash": "a9f835ac",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.1618
@@ -264582,8 +264582,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29032,
-          "sha256": "69afdb6f8c72244901fd60179aede386e6df6baaaf56a51bd3d6b3fbc378c010"
+          "bytes": 28974,
+          "sha256": "14f62bc1ee5de78afc6c05d891935fd9535bea8c4b8bc59207423e78de04b290"
         },
         "modulesSide": {
           "file": "leo2a4_otco_modules_side.webp",
@@ -264690,8 +264690,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 45,
-            "keMm": 120,
-            "ceMm": 150,
+            "keMm": 94,
+            "ceMm": 117,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -264721,8 +264721,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 600,
-            "keMm": 620,
-            "ceMm": 750,
+            "keMm": 484,
+            "ceMm": 585,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -264752,8 +264752,8 @@
             "hitboxId": "H03",
             "name": "hull_side_upper_R",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -264783,8 +264783,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_L",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -264814,8 +264814,8 @@
             "hitboxId": "H05",
             "name": "hull_side_lower_R",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -264845,8 +264845,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_L",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -265062,8 +265062,8 @@
             "hitboxId": "H13",
             "name": "hull_rear",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -265093,8 +265093,8 @@
             "hitboxId": "H14",
             "name": "hull_roof",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266612,8 +266612,8 @@
             "hitboxId": "H63",
             "name": "hull_hatch_01_front",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266643,8 +266643,8 @@
             "hitboxId": "H64",
             "name": "hull_hatch_01_rear",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266674,8 +266674,8 @@
             "hitboxId": "H65",
             "name": "hull_hatch_01_right",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266705,8 +266705,8 @@
             "hitboxId": "H66",
             "name": "hull_hatch_01_left",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266736,8 +266736,8 @@
             "hitboxId": "H67",
             "name": "hull_hatch_01_top",
             "physicalMm": 40,
-            "keMm": 40,
-            "ceMm": 40,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -266767,8 +266767,8 @@
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 700,
-            "keMm": 700,
-            "ceMm": 1000,
+            "keMm": 546,
+            "ceMm": 780,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266798,8 +266798,8 @@
             "hitboxId": "T02",
             "name": "turret_cheek_L",
             "physicalMm": 700,
-            "keMm": 700,
-            "ceMm": 1000,
+            "keMm": 546,
+            "ceMm": 780,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266829,8 +266829,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 924,
-            "ceMm": 1100,
+            "keMm": 804,
+            "ceMm": 956,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266860,8 +266860,8 @@
             "hitboxId": "T04",
             "name": "turret_side_R",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 273,
+            "ceMm": 390,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266891,8 +266891,8 @@
             "hitboxId": "T05",
             "name": "turret_side_L",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 273,
+            "ceMm": 390,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266922,8 +266922,8 @@
             "hitboxId": "T06",
             "name": "turret_rear",
             "physicalMm": 80,
-            "keMm": 80,
-            "ceMm": 80,
+            "keMm": 62,
+            "ceMm": 62,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266953,8 +266953,8 @@
             "hitboxId": "T07",
             "name": "turret_roof",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -266984,8 +266984,8 @@
             "hitboxId": "T08",
             "name": "turret_sight_recess",
             "physicalMm": 250,
-            "keMm": 300,
-            "ceMm": 350,
+            "keMm": 234,
+            "ceMm": 273,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -268937,8 +268937,8 @@
             "hitboxId": "T71",
             "name": "turret_hatch_01_front",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -268968,8 +268968,8 @@
             "hitboxId": "T72",
             "name": "turret_hatch_01_rear",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -268999,8 +268999,8 @@
             "hitboxId": "T73",
             "name": "turret_hatch_01_right",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269030,8 +269030,8 @@
             "hitboxId": "T74",
             "name": "turret_hatch_01_left",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269061,8 +269061,8 @@
             "hitboxId": "T75",
             "name": "turret_hatch_01_top",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269092,8 +269092,8 @@
             "hitboxId": "T76",
             "name": "turret_hatch_02_front",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269123,8 +269123,8 @@
             "hitboxId": "T77",
             "name": "turret_hatch_02_rear",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269154,8 +269154,8 @@
             "hitboxId": "T78",
             "name": "turret_hatch_02_right",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269185,8 +269185,8 @@
             "hitboxId": "T79",
             "name": "turret_hatch_02_left",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269216,8 +269216,8 @@
             "hitboxId": "T80",
             "name": "turret_hatch_02_top",
             "physicalMm": 45,
-            "keMm": 45,
-            "ceMm": 45,
+            "keMm": 35,
+            "ceMm": 35,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -269647,7 +269647,7 @@
         ]
       },
       "geometryHash": "2209b11a",
-      "metadataHash": "26bf3669",
+      "metadataHash": "7bf60cbb",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.216
@@ -269756,8 +269756,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27316,
-          "sha256": "2e300bca1b00f524f2fbc3ce82bf4a678e8309f5a3adfc24f90b45b9971d500b"
+          "bytes": 27564,
+          "sha256": "585f8ec037d8e82f566b30a7f4d469214900313f2d17e98a48e32b5bf81f3187"
         },
         "modulesSide": {
           "file": "leo2a4_v_modules_side.webp",
@@ -269786,8 +269786,8 @@
         "technicalLabels": {
           "file": "leo2a4_v_technical.json",
           "mime": "application/json",
-          "bytes": 4883,
-          "sha256": "27fea6971359f6eb6e94524e7f5d27ad713d3c38063c8091b6afa5212d636808"
+          "bytes": 4882,
+          "sha256": "3976af4fb003080686cb1e713c10fb673314f4c45686bbd5af3edce143d251c7"
         }
       }
     },
@@ -272377,8 +272377,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 524,
-            "ceMm": 624,
+            "keMm": 288,
+            "ceMm": 343,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -273605,7 +273605,7 @@
         ]
       },
       "geometryHash": "e2bffbde",
-      "metadataHash": "65b1f26d",
+      "metadataHash": "264479bc",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.238
@@ -273714,8 +273714,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28554,
-          "sha256": "4607a99dccc7a14d99552239899abc3502a65ec23daacdc3e15d95bd534b7c51"
+          "bytes": 28616,
+          "sha256": "640bce5013edf2e23c39e76686afd031d03c0abd028da4197f540063aba8243d"
         },
         "modulesSide": {
           "file": "leo2a4m_modules_side.webp",
@@ -274351,8 +274351,8 @@
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 600,
-            "keMm": 817,
-            "ceMm": 1363,
+            "keMm": 761,
+            "ceMm": 1271,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -274382,8 +274382,8 @@
             "hitboxId": "T02",
             "name": "turret_cheek_L",
             "physicalMm": 600,
-            "keMm": 817,
-            "ceMm": 1363,
+            "keMm": 761,
+            "ceMm": 1271,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -274413,8 +274413,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 871,
-            "ceMm": 1045,
+            "keMm": 812,
+            "ceMm": 975,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -275278,7 +275278,7 @@
         ]
       },
       "geometryHash": "899165cf",
-      "metadataHash": "dfadc01c",
+      "metadataHash": "731f03ba",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.262
@@ -276177,8 +276177,8 @@
             "hitboxId": "T04",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 420,
-            "ceMm": 500,
+            "keMm": 294,
+            "ceMm": 350,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -277481,7 +277481,7 @@
         ]
       },
       "geometryHash": "c9248022",
-      "metadataHash": "4605896d",
+      "metadataHash": "1897a42d",
       "presentationAnchor": {
         "xM": 0.002,
         "zM": 0.1389
@@ -277543,8 +277543,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25292,
-          "sha256": "107597fc1f2833a2f6f1fb73c0899e2bf66583cbb4f33ea7ae11bab87ca05f6d"
+          "bytes": 25362,
+          "sha256": "175ea9e561930a05ddab5fdbdfde354ba55ffafa4c9da8aba09ffe7a5c68a3f8"
         },
         "modulesSide": {
           "file": "leo2a5_modules_side.webp",
@@ -720866,8 +720866,8 @@
             "hitboxId": "H01",
             "name": "integrated_upper_glacis",
             "physicalMm": 260,
-            "keMm": 818,
-            "ceMm": 1126,
+            "keMm": 614,
+            "ceMm": 845,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -720897,8 +720897,8 @@
             "hitboxId": "H02",
             "name": "lower_glacis",
             "physicalMm": 125,
-            "keMm": 290,
-            "ceMm": 343,
+            "keMm": 218,
+            "ceMm": 257,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -720928,8 +720928,8 @@
             "hitboxId": "H03",
             "name": "glacis_nxra_face",
             "physicalMm": 48,
-            "keMm": 290,
-            "ceMm": 546,
+            "keMm": 218,
+            "ceMm": 410,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -720959,8 +720959,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_R",
             "physicalMm": 105,
-            "keMm": 145,
-            "ceMm": 220,
+            "keMm": 109,
+            "ceMm": 165,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -720990,8 +720990,8 @@
             "hitboxId": "H05",
             "name": "hull_side_upper_L",
             "physicalMm": 105,
-            "keMm": 145,
-            "ceMm": 220,
+            "keMm": 109,
+            "ceMm": 165,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721021,8 +721021,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_R",
             "physicalMm": 85,
-            "keMm": 92,
-            "ceMm": 128,
+            "keMm": 69,
+            "ceMm": 96,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721052,8 +721052,8 @@
             "hitboxId": "H07",
             "name": "hull_side_lower_L",
             "physicalMm": 85,
-            "keMm": 92,
-            "ceMm": 128,
+            "keMm": 69,
+            "ceMm": 96,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721083,8 +721083,8 @@
             "hitboxId": "H08",
             "name": "modular_skirt_R",
             "physicalMm": 42,
-            "keMm": 136,
-            "ceMm": 370,
+            "keMm": 102,
+            "ceMm": 278,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -721114,8 +721114,8 @@
             "hitboxId": "H09",
             "name": "modular_skirt_L",
             "physicalMm": 42,
-            "keMm": 136,
-            "ceMm": 370,
+            "keMm": 102,
+            "ceMm": 278,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -721145,8 +721145,8 @@
             "hitboxId": "H10",
             "name": "slat_cage_R",
             "physicalMm": 12,
-            "keMm": 11,
-            "ceMm": 202,
+            "keMm": 8,
+            "ceMm": 152,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -721176,8 +721176,8 @@
             "hitboxId": "H11",
             "name": "slat_cage_L",
             "physicalMm": 12,
-            "keMm": 11,
-            "ceMm": 202,
+            "keMm": 8,
+            "ceMm": 152,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -721269,8 +721269,8 @@
             "hitboxId": "H14",
             "name": "hybrid_powerpack_rear",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 88,
+            "keMm": 50,
+            "ceMm": 66,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721300,8 +721300,8 @@
             "hitboxId": "H15",
             "name": "hull_roof",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721331,8 +721331,8 @@
             "hitboxId": "H16",
             "name": "hull_hatch_01_front",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721362,8 +721362,8 @@
             "hitboxId": "H17",
             "name": "hull_hatch_01_rear",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721393,8 +721393,8 @@
             "hitboxId": "H18",
             "name": "hull_hatch_01_right",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721424,8 +721424,8 @@
             "hitboxId": "H19",
             "name": "hull_hatch_01_left",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721455,8 +721455,8 @@
             "hitboxId": "H20",
             "name": "hull_hatch_01_top",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721486,8 +721486,8 @@
             "hitboxId": "H21",
             "name": "hull_hatch_02_front",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721517,8 +721517,8 @@
             "hitboxId": "H22",
             "name": "hull_hatch_02_rear",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721548,8 +721548,8 @@
             "hitboxId": "H23",
             "name": "hull_hatch_02_right",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721579,8 +721579,8 @@
             "hitboxId": "H24",
             "name": "hull_hatch_02_left",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721610,8 +721610,8 @@
             "hitboxId": "H25",
             "name": "hull_hatch_02_top",
             "physicalMm": 55,
-            "keMm": 57,
-            "ceMm": 79,
+            "keMm": 43,
+            "ceMm": 59,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -721641,8 +721641,8 @@
             "hitboxId": "T01",
             "name": "integrated_cheek_R",
             "physicalMm": 720,
-            "keMm": 889,
-            "ceMm": 1214,
+            "keMm": 667,
+            "ceMm": 911,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721672,8 +721672,8 @@
             "hitboxId": "T02",
             "name": "integrated_cheek_L",
             "physicalMm": 720,
-            "keMm": 889,
-            "ceMm": 1214,
+            "keMm": 667,
+            "ceMm": 911,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721703,8 +721703,8 @@
             "hitboxId": "T03",
             "name": "gun_cradle",
             "physicalMm": 410,
-            "keMm": 832,
-            "ceMm": 1088,
+            "keMm": 624,
+            "ceMm": 816,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721734,8 +721734,8 @@
             "hitboxId": "T04",
             "name": "turret_side_R",
             "physicalMm": 330,
-            "keMm": 414,
-            "ceMm": 634,
+            "keMm": 311,
+            "ceMm": 476,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721765,8 +721765,8 @@
             "hitboxId": "T05",
             "name": "turret_side_L",
             "physicalMm": 330,
-            "keMm": 414,
-            "ceMm": 634,
+            "keMm": 311,
+            "ceMm": 476,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721796,8 +721796,8 @@
             "hitboxId": "T06",
             "name": "turret_cage_R",
             "physicalMm": 12,
-            "keMm": 11,
-            "ceMm": 202,
+            "keMm": 8,
+            "ceMm": 152,
             "kind": "spaced",
             "turretLocal": true,
             "verts": [
@@ -721827,8 +721827,8 @@
             "hitboxId": "T07",
             "name": "turret_cage_L",
             "physicalMm": 12,
-            "keMm": 11,
-            "ceMm": 202,
+            "keMm": 8,
+            "ceMm": 152,
             "kind": "spaced",
             "turretLocal": true,
             "verts": [
@@ -721858,8 +721858,8 @@
             "hitboxId": "T08",
             "name": "isolated_autoloader_bustle",
             "physicalMm": 85,
-            "keMm": 84,
-            "ceMm": 110,
+            "keMm": 63,
+            "ceMm": 83,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721889,8 +721889,8 @@
             "hitboxId": "T09",
             "name": "turret_roof",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721920,8 +721920,8 @@
             "hitboxId": "T10",
             "name": "turret_hatch_01_front",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721951,8 +721951,8 @@
             "hitboxId": "T11",
             "name": "turret_hatch_01_rear",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -721982,8 +721982,8 @@
             "hitboxId": "T12",
             "name": "turret_hatch_01_right",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722013,8 +722013,8 @@
             "hitboxId": "T13",
             "name": "turret_hatch_01_left",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722044,8 +722044,8 @@
             "hitboxId": "T14",
             "name": "turret_hatch_01_top",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722075,8 +722075,8 @@
             "hitboxId": "T15",
             "name": "turret_hatch_02_front",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722106,8 +722106,8 @@
             "hitboxId": "T16",
             "name": "turret_hatch_02_rear",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722137,8 +722137,8 @@
             "hitboxId": "T17",
             "name": "turret_hatch_02_right",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722168,8 +722168,8 @@
             "hitboxId": "T18",
             "name": "turret_hatch_02_left",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722199,8 +722199,8 @@
             "hitboxId": "T19",
             "name": "turret_hatch_02_top",
             "physicalMm": 65,
-            "keMm": 66,
-            "ceMm": 92,
+            "keMm": 50,
+            "ceMm": 69,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -722777,7 +722777,7 @@
         ]
       },
       "geometryHash": "88183bc6",
-      "metadataHash": "f2477f8b",
+      "metadataHash": "62048226",
       "presentationAnchor": {
         "xM": -0.001,
         "zM": -0.1178
@@ -722885,8 +722885,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32532,
-          "sha256": "0949e812f227ad65faaaa6cd9eabefb37c5a0b9c491568812bf389ecb6d5dda4"
+          "bytes": 32290,
+          "sha256": "9d757e9a2eccc6d28a0da3f74e9a0737ef222239bbd6221d293eb6628fa70ecc"
         },
         "modulesSide": {
           "file": "m1a3_modules_side.webp",
@@ -722915,8 +722915,8 @@
         "technicalLabels": {
           "file": "m1a3_technical.json",
           "mime": "application/json",
-          "bytes": 5535,
-          "sha256": "a650c687544884fb69e520135f4b5ab4716a33ca98552ee1ca13fa97363b079c"
+          "bytes": 5530,
+          "sha256": "98e05f0c4b8becd7ca6a361fbbd3f5e99ab217dc489600dcfd1a2d677f15cd4c"
         }
       }
     },
@@ -756904,8 +756904,8 @@
             "hitboxId": "H03",
             "name": "hull_side_upper_R",
             "physicalMm": 60,
-            "keMm": 35,
-            "ceMm": 35,
+            "keMm": 100,
+            "ceMm": 100,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -756935,8 +756935,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_L",
             "physicalMm": 60,
-            "keMm": 35,
-            "ceMm": 35,
+            "keMm": 100,
+            "ceMm": 100,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -756966,8 +756966,8 @@
             "hitboxId": "H05",
             "name": "hull_side_lower_R",
             "physicalMm": 60,
-            "keMm": 35,
-            "ceMm": 35,
+            "keMm": 100,
+            "ceMm": 100,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -756997,8 +756997,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_L",
             "physicalMm": 60,
-            "keMm": 35,
-            "ceMm": 35,
+            "keMm": 100,
+            "ceMm": 100,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757028,8 +757028,8 @@
             "hitboxId": "H07",
             "name": "skirt_R",
             "physicalMm": 40,
-            "keMm": 25,
-            "ceMm": 98,
+            "keMm": 70,
+            "ceMm": 280,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -757059,8 +757059,8 @@
             "hitboxId": "H08",
             "name": "skirt_L",
             "physicalMm": 40,
-            "keMm": 25,
-            "ceMm": 98,
+            "keMm": 70,
+            "ceMm": 280,
             "kind": "spaced",
             "turretLocal": false,
             "verts": [
@@ -757152,8 +757152,8 @@
             "hitboxId": "H11",
             "name": "hull_rear_door",
             "physicalMm": 60,
-            "keMm": 21,
-            "ceMm": 21,
+            "keMm": 60,
+            "ceMm": 60,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757183,8 +757183,8 @@
             "hitboxId": "H12",
             "name": "hull_roof",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757214,8 +757214,8 @@
             "hitboxId": "H13",
             "name": "hull_hatch_01_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757245,8 +757245,8 @@
             "hitboxId": "H14",
             "name": "hull_hatch_01_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757276,8 +757276,8 @@
             "hitboxId": "H15",
             "name": "hull_hatch_01_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757307,8 +757307,8 @@
             "hitboxId": "H16",
             "name": "hull_hatch_01_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757338,8 +757338,8 @@
             "hitboxId": "H17",
             "name": "hull_hatch_01_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757369,8 +757369,8 @@
             "hitboxId": "H18",
             "name": "hull_hatch_02_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757400,8 +757400,8 @@
             "hitboxId": "H19",
             "name": "hull_hatch_02_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757431,8 +757431,8 @@
             "hitboxId": "H20",
             "name": "hull_hatch_02_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757462,8 +757462,8 @@
             "hitboxId": "H21",
             "name": "hull_hatch_02_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757493,8 +757493,8 @@
             "hitboxId": "H22",
             "name": "hull_hatch_02_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757524,8 +757524,8 @@
             "hitboxId": "H23",
             "name": "hull_hatch_03_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757555,8 +757555,8 @@
             "hitboxId": "H24",
             "name": "hull_hatch_03_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757586,8 +757586,8 @@
             "hitboxId": "H25",
             "name": "hull_hatch_03_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757617,8 +757617,8 @@
             "hitboxId": "H26",
             "name": "hull_hatch_03_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757648,8 +757648,8 @@
             "hitboxId": "H27",
             "name": "hull_hatch_03_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757679,8 +757679,8 @@
             "hitboxId": "H28",
             "name": "hull_hatch_04_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757710,8 +757710,8 @@
             "hitboxId": "H29",
             "name": "hull_hatch_04_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757741,8 +757741,8 @@
             "hitboxId": "H30",
             "name": "hull_hatch_04_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757772,8 +757772,8 @@
             "hitboxId": "H31",
             "name": "hull_hatch_04_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757803,8 +757803,8 @@
             "hitboxId": "H32",
             "name": "hull_hatch_04_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757865,8 +757865,8 @@
             "hitboxId": "H34",
             "name": "hull_hatch_05_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757896,8 +757896,8 @@
             "hitboxId": "H35",
             "name": "hull_hatch_05_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757927,8 +757927,8 @@
             "hitboxId": "H36",
             "name": "hull_hatch_05_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -757958,8 +757958,8 @@
             "hitboxId": "H37",
             "name": "hull_hatch_05_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -758020,8 +758020,8 @@
             "hitboxId": "H39",
             "name": "hull_hatch_06_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -758051,8 +758051,8 @@
             "hitboxId": "H40",
             "name": "hull_hatch_06_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -758082,8 +758082,8 @@
             "hitboxId": "H41",
             "name": "hull_hatch_06_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -758113,8 +758113,8 @@
             "hitboxId": "H42",
             "name": "hull_hatch_06_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -758237,8 +758237,8 @@
             "hitboxId": "T04",
             "name": "trophy_R",
             "physicalMm": 30,
-            "keMm": 21,
-            "ceMm": 70,
+            "keMm": 60,
+            "ceMm": 200,
             "kind": "spaced",
             "turretLocal": true,
             "verts": [
@@ -758268,8 +758268,8 @@
             "hitboxId": "T05",
             "name": "trophy_L",
             "physicalMm": 30,
-            "keMm": 21,
-            "ceMm": 70,
+            "keMm": 60,
+            "ceMm": 200,
             "kind": "spaced",
             "turretLocal": true,
             "verts": [
@@ -758299,8 +758299,8 @@
             "hitboxId": "T06",
             "name": "turret_side_R",
             "physicalMm": 320,
-            "keMm": 122,
-            "ceMm": 175,
+            "keMm": 350,
+            "ceMm": 500,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -758330,8 +758330,8 @@
             "hitboxId": "T07",
             "name": "turret_side_L",
             "physicalMm": 320,
-            "keMm": 122,
-            "ceMm": 175,
+            "keMm": 350,
+            "ceMm": 500,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -758361,8 +758361,8 @@
             "hitboxId": "T08",
             "name": "turret_rear",
             "physicalMm": 60,
-            "keMm": 21,
-            "ceMm": 21,
+            "keMm": 60,
+            "ceMm": 60,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -758392,8 +758392,8 @@
             "hitboxId": "T09",
             "name": "turret_roof",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -758423,8 +758423,8 @@
             "hitboxId": "T10",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758454,8 +758454,8 @@
             "hitboxId": "T11",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758485,8 +758485,8 @@
             "hitboxId": "T12",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758516,8 +758516,8 @@
             "hitboxId": "T13",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758547,8 +758547,8 @@
             "hitboxId": "T14",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758578,8 +758578,8 @@
             "hitboxId": "T15",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758609,8 +758609,8 @@
             "hitboxId": "T16",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758640,8 +758640,8 @@
             "hitboxId": "T17",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758671,8 +758671,8 @@
             "hitboxId": "T18",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758702,8 +758702,8 @@
             "hitboxId": "T19",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758733,8 +758733,8 @@
             "hitboxId": "T20",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758764,8 +758764,8 @@
             "hitboxId": "T21",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758795,8 +758795,8 @@
             "hitboxId": "T22",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758826,8 +758826,8 @@
             "hitboxId": "T23",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758857,8 +758857,8 @@
             "hitboxId": "T24",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758888,8 +758888,8 @@
             "hitboxId": "T25",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758919,8 +758919,8 @@
             "hitboxId": "T26",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758950,8 +758950,8 @@
             "hitboxId": "T27",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -758981,8 +758981,8 @@
             "hitboxId": "T28",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759012,8 +759012,8 @@
             "hitboxId": "T29",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759043,8 +759043,8 @@
             "hitboxId": "T30",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759074,8 +759074,8 @@
             "hitboxId": "T31",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759105,8 +759105,8 @@
             "hitboxId": "T32",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759136,8 +759136,8 @@
             "hitboxId": "T33",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759167,8 +759167,8 @@
             "hitboxId": "T34",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759198,8 +759198,8 @@
             "hitboxId": "T35",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759229,8 +759229,8 @@
             "hitboxId": "T36",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759260,8 +759260,8 @@
             "hitboxId": "T37",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759291,8 +759291,8 @@
             "hitboxId": "T38",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759322,8 +759322,8 @@
             "hitboxId": "T39",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759353,8 +759353,8 @@
             "hitboxId": "T40",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759384,8 +759384,8 @@
             "hitboxId": "T41",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759415,8 +759415,8 @@
             "hitboxId": "T42",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759446,8 +759446,8 @@
             "hitboxId": "T43",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759477,8 +759477,8 @@
             "hitboxId": "T44",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759508,8 +759508,8 @@
             "hitboxId": "T45",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759539,8 +759539,8 @@
             "hitboxId": "T46",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759570,8 +759570,8 @@
             "hitboxId": "T47",
             "name": "merkava_merkava1b_turret_era_R",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759601,8 +759601,8 @@
             "hitboxId": "T48",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759632,8 +759632,8 @@
             "hitboxId": "T49",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759663,8 +759663,8 @@
             "hitboxId": "T50",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759694,8 +759694,8 @@
             "hitboxId": "T51",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759725,8 +759725,8 @@
             "hitboxId": "T52",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759756,8 +759756,8 @@
             "hitboxId": "T53",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759787,8 +759787,8 @@
             "hitboxId": "T54",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759818,8 +759818,8 @@
             "hitboxId": "T55",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759849,8 +759849,8 @@
             "hitboxId": "T56",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759880,8 +759880,8 @@
             "hitboxId": "T57",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759911,8 +759911,8 @@
             "hitboxId": "T58",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759942,8 +759942,8 @@
             "hitboxId": "T59",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -759973,8 +759973,8 @@
             "hitboxId": "T60",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760004,8 +760004,8 @@
             "hitboxId": "T61",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760035,8 +760035,8 @@
             "hitboxId": "T62",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760066,8 +760066,8 @@
             "hitboxId": "T63",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760097,8 +760097,8 @@
             "hitboxId": "T64",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760128,8 +760128,8 @@
             "hitboxId": "T65",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760159,8 +760159,8 @@
             "hitboxId": "T66",
             "name": "merkava_merkava1b_turret_era_L",
             "physicalMm": 10,
-            "keMm": 4,
-            "ceMm": 4,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "era",
             "turretLocal": true,
             "verts": [
@@ -760190,8 +760190,8 @@
             "hitboxId": "T67",
             "name": "turret_hatch_01_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760221,8 +760221,8 @@
             "hitboxId": "T68",
             "name": "turret_hatch_01_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760252,8 +760252,8 @@
             "hitboxId": "T69",
             "name": "turret_hatch_01_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760283,8 +760283,8 @@
             "hitboxId": "T70",
             "name": "turret_hatch_01_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760314,8 +760314,8 @@
             "hitboxId": "T71",
             "name": "turret_hatch_01_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760345,8 +760345,8 @@
             "hitboxId": "T72",
             "name": "turret_hatch_02_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760376,8 +760376,8 @@
             "hitboxId": "T73",
             "name": "turret_hatch_02_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760407,8 +760407,8 @@
             "hitboxId": "T74",
             "name": "turret_hatch_02_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760438,8 +760438,8 @@
             "hitboxId": "T75",
             "name": "turret_hatch_02_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760469,8 +760469,8 @@
             "hitboxId": "T76",
             "name": "turret_hatch_02_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760500,8 +760500,8 @@
             "hitboxId": "T77",
             "name": "turret_hatch_03_front",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760531,8 +760531,8 @@
             "hitboxId": "T78",
             "name": "turret_hatch_03_rear",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760562,8 +760562,8 @@
             "hitboxId": "T79",
             "name": "turret_hatch_03_right",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760593,8 +760593,8 @@
             "hitboxId": "T80",
             "name": "turret_hatch_03_left",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760624,8 +760624,8 @@
             "hitboxId": "T81",
             "name": "turret_hatch_03_top",
             "physicalMm": 45,
-            "keMm": 16,
-            "ceMm": 16,
+            "keMm": 45,
+            "ceMm": 45,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -760935,7 +760935,7 @@
         ]
       },
       "geometryHash": "08493390",
-      "metadataHash": "60e3bb01",
+      "metadataHash": "5a53ecc7",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": -0.2168
@@ -761044,8 +761044,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 44802,
-          "sha256": "397dad6387d434427a2e78446ee3b8b11d4d315d7ca165eb3b08a53e28cb76d6"
+          "bytes": 46426,
+          "sha256": "972a0e71437da9133d381b9432bdc2c046d988c4ed0a3de0815756d93bb66010"
         },
         "modulesSide": {
           "file": "merkava1b_modules_side.webp",
@@ -761074,8 +761074,8 @@
         "technicalLabels": {
           "file": "merkava1b_technical.json",
           "mime": "application/json",
-          "bytes": 4570,
-          "sha256": "b8cdad48b0aca0de0ecca345d3bb06bc8ebba9a91f8b1639286632d6dee869d0"
+          "bytes": 4580,
+          "sha256": "f5cd163cf2b6cc067034be782d9b177967c710ad7eb858e084683b3450f21c22"
         }
       }
     },
@@ -761151,8 +761151,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 520,
-            "keMm": 500,
-            "ceMm": 750,
+            "keMm": 250,
+            "ceMm": 375,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -761182,8 +761182,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 250,
-            "keMm": 250,
-            "ceMm": 350,
+            "keMm": 125,
+            "ceMm": 175,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -772143,7 +772143,7 @@
         ]
       },
       "geometryHash": "a3a29e68",
-      "metadataHash": "7d29367d",
+      "metadataHash": "c67681aa",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": -0.2131
@@ -772252,8 +772252,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 43466,
-          "sha256": "8d2b641d20c6c4b2149748fd57b24dccfbe8dc488186e76039ccea4bcba921af"
+          "bytes": 43430,
+          "sha256": "19633d4b4c687257af5649efc20707af92f939f2951dd744d9fbbefad29bc877"
         },
         "modulesSide": {
           "file": "merkava2b_modules_side.webp",
@@ -772283,7 +772283,7 @@
           "file": "merkava2b_technical.json",
           "mime": "application/json",
           "bytes": 4614,
-          "sha256": "3f871a738bd62e4aa15ca39dd02a53ee6ba4370ce38534bb9b0f8cb2512c7a94"
+          "sha256": "6cb1291944ff6c23d51535b8788b8b15a4593ea08540c80097c2fad3d1761db4"
         }
       }
     },
@@ -772359,8 +772359,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 520,
-            "keMm": 500,
-            "ceMm": 750,
+            "keMm": 250,
+            "ceMm": 375,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -772390,8 +772390,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 250,
-            "keMm": 250,
-            "ceMm": 350,
+            "keMm": 125,
+            "ceMm": 175,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -789980,7 +789980,7 @@
         ]
       },
       "geometryHash": "42963f42",
-      "metadataHash": "14946d9d",
+      "metadataHash": "a01434c8",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": -0.1771
@@ -790089,8 +790089,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 48140,
-          "sha256": "e18585862a7137e6c2a3655ec108894f3db3ffa1d89be6b4a14696279a5d42e3"
+          "bytes": 48256,
+          "sha256": "fb33a0125db2d1553890f2d3aba0df551dbadab31a2f1212ebfb65860a711b9a"
         },
         "modulesSide": {
           "file": "merkava2d_modules_side.webp",
@@ -790120,7 +790120,7 @@
           "file": "merkava2d_technical.json",
           "mime": "application/json",
           "bytes": 4703,
-          "sha256": "187543e6b8a0ca30595ef92e1a96432daa85b1be4e5468d29798a2859623705c"
+          "sha256": "1c7127336215ca0531c6853df440c4d70584f0c917c957928965d2040c71b30a"
         }
       }
     },
@@ -807588,9 +807588,9 @@
           {
             "name": "M322 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 794,
-            "pen1000Mm": 722,
-            "pen2000Mm": 650
+            "pen100Mm": 900,
+            "pen1000Mm": 820,
+            "pen2000Mm": 740
           },
           {
             "name": "M325 HEAT-MP",
@@ -833475,7 +833475,7 @@
         ]
       },
       "geometryHash": "dee7a46c",
-      "metadataHash": "d3af222b",
+      "metadataHash": "4ac5d2b9",
       "presentationAnchor": {
         "xM": 0.0045,
         "zM": -0.0214
@@ -1258232,8 +1258232,8 @@
             "hitboxId": "T05",
             "name": "turret_cheek_R",
             "physicalMm": 700,
-            "keMm": 600,
-            "ceMm": 850,
+            "keMm": 750,
+            "ceMm": 1063,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1258263,8 +1258263,8 @@
             "hitboxId": "T06",
             "name": "turret_cheek_upper_R",
             "physicalMm": 560,
-            "keMm": 490,
-            "ceMm": 690,
+            "keMm": 613,
+            "ceMm": 863,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1258418,8 +1258418,8 @@
             "hitboxId": "T11",
             "name": "turret_cheek_L",
             "physicalMm": 700,
-            "keMm": 600,
-            "ceMm": 850,
+            "keMm": 750,
+            "ceMm": 1063,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1258449,8 +1258449,8 @@
             "hitboxId": "T12",
             "name": "turret_cheek_upper_L",
             "physicalMm": 560,
-            "keMm": 490,
-            "ceMm": 690,
+            "keMm": 613,
+            "ceMm": 863,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1258480,8 +1258480,8 @@
             "hitboxId": "T13",
             "name": "mantlet",
             "physicalMm": 380,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 475,
+            "ceMm": 563,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1266375,7 +1266375,7 @@
         ]
       },
       "geometryHash": "ada472e2",
-      "metadataHash": "d6f62648",
+      "metadataHash": "f3308cfa",
       "presentationAnchor": {
         "xM": 0.0009,
         "zM": -0.0507
@@ -1266484,8 +1266484,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24888,
-          "sha256": "b21af7590bc500d515cebbb72025dabf0e37f1e7ad5031052bbe7d4eef939dbc"
+          "bytes": 24858,
+          "sha256": "1b07f50c4cbc0b1156d0f22f0a124d500ca67c523537719d485036007f4fadf1"
         },
         "modulesSide": {
           "file": "t72b3_zhuque_modules_side.webp",
@@ -1266515,7 +1266515,7 @@
           "file": "t72b3_zhuque_technical.json",
           "mime": "application/json",
           "bytes": 5363,
-          "sha256": "66f2344641915e1e4f3d35b68f7a538e5a638ca7837cfdca9f2c84062eaf1ef3"
+          "sha256": "36bca7ca43da8d58437c08480dcc3df3cf1351242015056ef668d8998251ebe0"
         }
       }
     },
@@ -1816037,8 +1816037,8 @@
             "hitboxId": "T09",
             "name": "turret_cheek_R",
             "physicalMm": 700,
-            "keMm": 600,
-            "ceMm": 850,
+            "keMm": 750,
+            "ceMm": 1063,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1816068,8 +1816068,8 @@
             "hitboxId": "T10",
             "name": "turret_cheek_upper_R",
             "physicalMm": 560,
-            "keMm": 490,
-            "ceMm": 690,
+            "keMm": 613,
+            "ceMm": 863,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1816347,8 +1816347,8 @@
             "hitboxId": "T19",
             "name": "turret_cheek_L",
             "physicalMm": 700,
-            "keMm": 600,
-            "ceMm": 850,
+            "keMm": 750,
+            "ceMm": 1063,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1816378,8 +1816378,8 @@
             "hitboxId": "T20",
             "name": "turret_cheek_upper_L",
             "physicalMm": 560,
-            "keMm": 490,
-            "ceMm": 690,
+            "keMm": 613,
+            "ceMm": 863,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1816409,8 +1816409,8 @@
             "hitboxId": "T21",
             "name": "mantlet",
             "physicalMm": 380,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 475,
+            "ceMm": 563,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -1824304,7 +1824304,7 @@
         ]
       },
       "geometryHash": "0e838b89",
-      "metadataHash": "f1228515",
+      "metadataHash": "b7470247",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.0066
@@ -1824413,8 +1824413,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23304,
-          "sha256": "335c35b30af32d2920d2f7d0991d3f5c347775b2bff5454e96c376e540a82c76"
+          "bytes": 23354,
+          "sha256": "a1690487182a7d77719b36c17446ff5a547ae9d00597d3f53987cdc2903e24fd"
         },
         "modulesSide": {
           "file": "t72b3m_xuanwu_modules_side.webp",
@@ -1824443,8 +1824443,8 @@
         "technicalLabels": {
           "file": "t72b3m_xuanwu_technical.json",
           "mime": "application/json",
-          "bytes": 5385,
-          "sha256": "1052f7c931790002d4dbc7dc3e75f384bde595b1b7436bf72ee8bc7b8b5cf383"
+          "bytes": 5386,
+          "sha256": "862eb933853046939a31d1a09bf3f5d7059ba640fe7d7cc34de9279b32372b6b"
         }
       }
     },
