@@ -62,7 +62,7 @@ Pass rule:
 5. Both sides receive a resume token (128 random bits, stored as a SHA-256 hash). A phone that locks its screen or
    changes network reconnects with `/pad/resume/<CODE>` and its token in the first message; the old phone socket is
    replaced (one phone per player seat). The desktop can resume the same way after a blip.
-6. Either side's Disconnect ends the pairing for both; the desktop leaving for more than 60 s ends it; a pairing lives
+6. Either side's Disconnect ends the pairing for both; the desktop leaving for more than 5 minutes ends it; a pairing lives
    at most 6 hours.
 
 Limits: the Worker rate-limits every `/pad` upgrade per client IP (`PAD_CONNECT_LIMITER`, 30 a minute, separate from the
@@ -191,9 +191,9 @@ a battle, while paused and while its tab is hidden (the pause button still works
 |---|---|---|
 | Phone locked, app backgrounded, an incoming call | the page hides: every control lets go, the desktop's stale window stops the tank; on return the link reconnects with its resume token (and a link that gave up while hidden resumes by itself when shown) | Simulator: Home mid-drive, the desktop logged `move 0 0`; back in Safari the link was live again (round trip 1 ms) |
 | A notification banner over the pad | no hide; a touch the system takes is a `pointercancel`, which lets go | by construction (`pointercancel` and `lostpointercapture` release) |
-| Desktop tab hidden or minimised, focus lost, the laptop sleeps | hidden: the phone reads Paused and the desktop ignores it; focus lost: the input layer clears itself; asleep: the phone reads Computer away (amber lamp), and the pairing waits 60 s for it | Simulator: the desktop process stopped, the phone showed Computer away with every control released |
+| Desktop tab hidden or minimised, focus lost, the laptop sleeps | hidden: the phone reads Paused and the desktop ignores it; focus lost: the input layer clears itself; asleep: the phone reads Computer away (amber lamp), and the pairing waits 5 minutes for it (`PAD_DESKTOP_GRACE_MS`, 60 s before this round) | Simulator: the desktop process stopped, the phone showed Computer away with every control released |
 | Wi-Fi drops, Wi-Fi ↔ cellular | the signalling socket reconnects with the resume token (backoff to 8 s, for 60 s); a dead data channel falls back to the relay; the lamp shows Linking, Relay or Computer away | `padLink.selftest` (relay without WebRTC, resume); pad e2e (relay path) |
-| A reload on either side mid-battle | phone: the tab's resume token, one Start tap; desktop: the tab keeps its token (`cot.pad.desk`) and the game's boot resumes the pairing inside its grace, with no new code | pad e2e: a desktop reload comes back live on both sides by itself |
+| A reload on either side mid-battle | phone: the tab's resume token, one Start tap; desktop: the tab keeps its token (`cot.pad.desk`) and the game's boot resumes the pairing inside its 5-minute grace, with no new code | pad e2e: a desktop reload comes back live on both sides by itself |
 | A code expired, wrong or used; two phones on one code | refused alike ("That code didn't work"); a code is single-use and lives 120 s | `padActor.selftest`; Simulator: an expired code ended on that screen |
 | Motion access refused, or no sensor | the throttle becomes a stick that steers (a cross gate) and the dial dims | Simulator: before motion access was allowed the gate showed as the stick; `padInput.selftest` maps the stick to steering |
 | Battle over, Garage, map change, respawn, pause menu, killcam | the desktop drives only in a battle, unpaused, tab shown; the phone dims the dial and reads the state (Start a battle, Paused, Destroyed) | pad e2e: pause from the phone opens and closes the menu |

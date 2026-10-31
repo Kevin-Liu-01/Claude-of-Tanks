@@ -10,9 +10,10 @@ export const PAD_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const PAD_CODE_LENGTH = 6;
 /** A waiting code's life; the desktop shows the countdown and draws a fresh one on request. */
 export const PAD_CODE_TTL_MS = 120_000;
-/** A pairing's longest life, and how long a desktop that dropped may take to come back. */
+/** A pairing's longest life, and how long a desktop that dropped may take to come back: a laptop's nap, or a reloaded
+ *  game's boot on a slow machine (the phone reads Computer away meanwhile). */
 export const PAD_PAIR_MAX_MS = 6 * 3600_000;
-export const PAD_DESKTOP_GRACE_MS = 60_000;
+export const PAD_DESKTOP_GRACE_MS = 5 * 60_000;
 /** The longest envelope either side may send (an SDP offer with candidates fits in a few KB). */
 export const PAD_MAX_MESSAGE_BYTES = 8192;
 /** Signals each side may relay in one window. */
