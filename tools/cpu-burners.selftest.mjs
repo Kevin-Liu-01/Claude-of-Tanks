@@ -16,12 +16,15 @@ const childMode = process.argv.find((a) => a.startsWith('--child='))?.slice(8);
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const RAW_BURNER = 'const end = Date.now() + 60000; for (;;) if (Date.now() > end) process.exit(0);';
 if (childMode) {
+  // (266) the raw burner still outlives its parent, the leak the control shows, but stops itself after 60 s, and so
+  // does this child: a proof ended from outside cannot leave either running for hours
   const pids = childMode === 'raw'
-    ? [spawn(process.execPath, ['-e', 'for (;;) {}'], { stdio: 'ignore' }).pid]
+    ? [spawn(process.execPath, ['-e', RAW_BURNER], { stdio: 'ignore' }).pid]
     : startCpuBurners(2).pids;
   process.stdout.write(JSON.stringify(pids) + '\n');
-  setInterval(() => {}, 1000);
+  setTimeout(() => process.exit(0), 60000);
 } else {
   /** Start a child in `mode`, read its burners' pids, end it with `signal`; resolve the pids. */
   const run = (mode, signal) => new Promise((resolve, reject) => {

@@ -330,6 +330,9 @@ for (const budget of [0, -1, NaN, Infinity]) {
   assert.equal(invalidBudget.events.length, 0, 'invalid scheduling options cannot acquire or run');
 }
 
+/** Listeners a finished receipt leaves on the runner's signals: none. */
+const listening = (emitter) => ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGALRM', 'exit']
+  .reduce((sum, name) => sum + emitter.listenerCount(name), 0);
 for (const signal of ['SIGINT', 'SIGTERM']) {
   const signals = new EventEmitter(), child = new EventEmitter(), kills = [];
   child.kill = (value) => { kills.push(value); return true; };
@@ -341,6 +344,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   assert.equal(launch[2].cwd, process.cwd());
   assert.deepEqual(launch[2].env, selftestChildEnv());
   assert.equal(launch[2].stdio, 'inherit');
+  assert.equal(launch[2].detached, true, 'every receipt leads its own process group');
   signals.emit(signal);
   assert.deepEqual(kills, [signal], 'forward termination only to the owned child');
   let finished = false;
@@ -350,7 +354,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   child.emit('close', 0);
   assert.deepEqual(await pending, { status: signal === 'SIGINT' ? 130 : 143, error: undefined },
     'graceful child cleanup cannot turn a requested interruption into suite success');
-  assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
+  assert.equal(listening(signals), 0);
 }
 for (const [signal, status] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGKILL', 137]]) {
   const signals = new EventEmitter(), child = new EventEmitter();
@@ -359,7 +363,31 @@ for (const [signal, status] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGKILL', 1
   child.emit('close', null, signal);
   assert.deepEqual(await pending, { status, error: undefined },
     'owned child signal termination propagates the customary exit status');
-  assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
+  assert.equal(listening(signals), 0);
+}
+// (266) an outer alarm or hangup ends the receipt with SIGTERM and keeps its own status; a launched receipt (it has a
+// pid) is signalled as a process group, and whatever is left of the group is SIGKILLed once it closes
+for (const [signal, status] of [['SIGHUP', 129], ['SIGALRM', 142]]) {
+  const signals = new EventEmitter(), child = new EventEmitter(), kills = [];
+  child.kill = (value) => { kills.push(value); return true; };
+  const pending = runSelftestFile('alarmed.mjs', { signals, spawnProcess: () => child });
+  signals.emit(signal);
+  assert.deepEqual(kills, ['SIGTERM'], `${signal} ends the receipt with SIGTERM`);
+  child.emit('close', 0);
+  assert.deepEqual(await pending, { status, error: undefined }, `${signal} keeps its own exit status`);
+  assert.equal(listening(signals), 0);
+}
+{
+  const signals = new EventEmitter(), child = Object.assign(new EventEmitter(), { pid: 4242 }), groups = [];
+  child.kill = () => assert.fail('a receipt with a pid is signalled as its group');
+  const pending = runSelftestFile('grouped.mjs', { signals, spawnProcess: () => child,
+    killGroup: (pid, signal) => { groups.push([pid, signal]); } });
+  signals.emit('SIGTERM');
+  signals.emit('exit');
+  child.emit('close', 0);
+  await pending;
+  assert.deepEqual(groups, [[4242, 'SIGTERM'], [4242, 'SIGKILL'], [4242, 'SIGKILL']],
+    'the group gets the signal, is swept when the runner exits, and again once the receipt has closed');
 }
 const spawnSignals = new EventEmitter(), failedChild = new EventEmitter();
 failedChild.kill = () => false;
@@ -368,11 +396,11 @@ const error = new Error('ENOENT');
 failedChild.emit('error', error);
 failedChild.emit('close', -2);
 assert.deepEqual(await failedLaunch, { status: -2, error });
-assert.equal(spawnSignals.listenerCount('SIGINT') + spawnSignals.listenerCount('SIGTERM'), 0);
+assert.equal(listening(spawnSignals), 0);
 await assert.rejects(runSelftestFile('bad-launch.mjs', {
   signals: spawnSignals, spawnProcess() { throw new Error('synchronous launch failure'); },
 }), /synchronous launch failure/);
-assert.equal(spawnSignals.listenerCount('SIGINT') + spawnSignals.listenerCount('SIGTERM'), 0);
+assert.equal(listening(spawnSignals), 0);
 
 assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/source-dimension-frame.browser.selftest.mjs',
