@@ -202,6 +202,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fleet-partition.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // computeState of this checkout against release/fingerprints.tsv (live: it reads the manifest no closure holds)
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
+  // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
+  'tools/changed-only/balance-keys.selftest.mjs': lists('src/**', 'tools/**', 'package.json', 'package-lock.json'),
 
   // this table's census: every module a registered receipt runs (and the fixture repository it writes under tmpdir)
   'tools/selftest-scans.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,cjs}', 'tools/**/*.{ts,mts,mjs,js,cjs}',
