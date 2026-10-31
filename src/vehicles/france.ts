@@ -683,7 +683,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // its own painted top. The 0.84 m "receiver course" wall across the front roof and the raised left shoulder block
   // (fences to both critics) are gone.
   P.add('turret', cylY(0.150, 0.165, 0.26, 20), -0.15, 0.73, 0.24);           // sight column
-  P.add('turret', box(0.30, 0.16, 0.30), -0.15, 0.93, 0.25);                  // sight head
+  P.add('turretDetail', box(0.30, 0.16, 0.30), -0.15, 0.93, 0.25);            // sight head (painted detail: the camouflage's black patch made it a black cube)
   P.add('turretDark', box(0.20, 0.085, 0.014), -0.15, 0.935, 0.403);          // window frame
   P.add('turretGlass', box(0.17, 0.06, 0.012), -0.15, 0.935, 0.410);          // window
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown

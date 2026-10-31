@@ -905,9 +905,10 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
   const buildLeclercHullStage1 = (): void => {
     // 267 (Opus, round 3, on all three Leclercs: "the lower front plate runs all the way down to the track-bottom line,
     // so the hull reads like a dozer blade; the real nose plate ends well above the floor, with tow hooks and a visible
-    // gap underneath"): the belly rises from 0.28 to 0.46 m (the published 0.50 m ground clearance, less the belly
-    // plates), the lower glacis keeps its 28.5-degree rake down to it and the stern wedges start from it.
-    P.add('hull', box(1.88, 0.75, 5.05), 0, 0.835, -0.075);                      // tub z -2.60..2.45 (belly 0.46)
+    // gap underneath"): the belly rises from 0.28 to the published 0.50 m ground clearance; the lower glacis keeps its
+    // 28.5-degree rake down to 0.72 and turns back under the nose in a steeper chamfer to the belly, as on the Saumur
+    // hulls, and the stern wedges start from the belly.
+    P.add('hull', box(1.88, 0.71, 5.05), 0, 0.855, -0.075);                      // tub z -2.60..2.45 (belly 0.50)
     // sponson band ends z 1.95 — past that its 1.49 top pokes ABOVE the raked
     // glacis surface and re-flattens the bow line (this round's 1.499 shelf)
     // Watertight pass 2026-09-13 ("pour water into the hull and it must not
@@ -964,17 +965,20 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // the nose underside. Front reach 3.46 = the existing nose tip:
     // hullLengthM anchors (front body 3.54 pads / mudguard 3.58) untouched.
     P.add('hull', slab(
-      [-0.94, 0.46, 3.053], [0.94, 0.46, 3.053], [0.94, 0.46, 2.42], [-0.94, 0.46, 2.42],
+      [-0.94, 0.72, 3.194], [0.94, 0.72, 3.194], [0.94, 0.72, 2.42], [-0.94, 0.72, 2.42],
       [-0.94, 1.21, 3.46], [0.94, 1.21, 3.46], [0.94, 1.24, 2.58], [-0.94, 1.24, 2.58]));
+    P.add('hull', slab(                                                          // 267: the bottom chamfer under the nose
+      [-0.94, 0.50, 2.95], [0.94, 0.50, 2.95], [0.94, 0.50, 2.42], [-0.94, 0.50, 2.42],
+      [-0.94, 0.72, 3.194], [0.94, 0.72, 3.194], [0.94, 0.72, 2.42], [-0.94, 0.72, 2.42]));
     // stern boat-tail wedge, same containment narrowing
     P.add('hull', slab(                                                          // 90-ladder r1: boat-tail bottom re-laid to the ref's measured rake — the old flat-0.26-to--2.72 + single rake under-ran the want line 0.07-0.14 on five stern cols (the center wedge, not the track, owned those bottoms)
-      [-0.94, 0.46, -2.44], [0.94, 0.46, -2.44], [0.94, 0.46, -2.52], [-0.94, 0.46, -2.52],
+      [-0.94, 0.50, -2.44], [0.94, 0.50, -2.44], [0.94, 0.50, -2.52], [-0.94, 0.50, -2.52],
       [-0.94, 1.05, -2.44], [0.94, 1.05, -2.44], [0.94, 1.05, -2.52], [-0.94, 1.05, -2.52]));
     P.add('hull', slab(
-      [-0.94, 0.46, -2.52], [0.94, 0.46, -2.52], [0.94, 0.48, -2.85], [-0.94, 0.48, -2.85],
+      [-0.94, 0.50, -2.52], [0.94, 0.50, -2.52], [0.94, 0.50, -2.85], [-0.94, 0.50, -2.85],
       [-0.94, 1.05, -2.52], [0.94, 1.05, -2.52], [0.94, 1.05, -2.85], [-0.94, 1.05, -2.85]));
     P.add('hull', slab(
-      [-0.94, 0.48, -2.85], [0.94, 0.48, -2.85], [0.94, 0.66, -2.98], [-0.94, 0.66, -2.98],
+      [-0.94, 0.50, -2.85], [0.94, 0.50, -2.85], [0.94, 0.66, -2.98], [-0.94, 0.66, -2.98],
       [-0.94, 1.05, -2.85], [0.94, 1.05, -2.85], [0.94, 1.05, -2.98], [-0.94, 1.05, -2.98]));
     P.add('hull', slab(
       [-0.94, 0.66, -2.98], [0.94, 0.66, -2.98], [0.94, 0.88, -3.28], [-0.94, 0.88, -3.28],
@@ -1069,17 +1073,23 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       const skirtTopY = 1.585;
       const blockTopAt = (z: number): number => skirtTopY - (z - 1.235) * (skirtTopY - 1.30) / (3.25 - 1.235);
       const buildLeclercHullCourse1 = (): void => {
-        for (let k = 0; k < 5; k++) {
-          const zc = k === 0 ? 1.3825 : 1.32 + 0.43 * k;
-          const zd = k === 0 ? 0.295 : 0.42;
-          const zr = zc - zd / 2, zf = zc + zd / 2;
-          P.add('hull', slab(
-            [s * 1.71, skirtFootY, zf], [s * 1.80, skirtFootY, zf], [s * 1.80, skirtFootY, zr], [s * 1.71, skirtFootY, zr],
-            [s * 1.71, blockTopAt(zf), zf], [s * 1.80, blockTopAt(zf), zf], [s * 1.80, blockTopAt(zr), zr], [s * 1.71, blockTopAt(zr), zr]));
+        // 267 (Opus, round 3: "the front heavy skirt module is no deeper and no more wedge-shaped than the rear panels; the
+        // real module is a thick, sloped block that hangs lower"; the Saumur photos): the five blocks are the two heavy
+        // modules, 0.16 m thick out to the 1.80 width line, hanging to 0.50 (the sheets aft keep the 0.70 foot), the
+        // front one's face raked back to its foot and chamfered at its outer edge. Each module is two butted pieces
+        // (station law: no course longer than ~0.5 m); the rear module's face stands 5 mm inside the front one's, so the
+        // joint reads without anything past the 1.80 width line.
+        const moduleFootY = 0.50, moduleInX = 1.64;
+        const moduleStations = [1.235, 1.74, 2.25, 2.75, 3.25];
+        for (let k = 0; k < moduleStations.length - 1; k++) {
+          const zr = moduleStations[k], zf = moduleStations[k + 1], nose = k === moduleStations.length - 2;
+          const outX = k < 2 ? 1.795 : 1.80;
+          P.add('hull', convexSlab(
+            [s * moduleInX, moduleFootY, zr], [s * outX, moduleFootY, zr], [s * outX, blockTopAt(zr), zr], [s * moduleInX, blockTopAt(zr), zr],
+            [s * moduleInX, moduleFootY, nose ? 3.08 : zf], [s * outX, moduleFootY, nose ? 3.02 : zf],
+            [s * outX, blockTopAt(zf), nose ? 3.17 : zf], [s * moduleInX, blockTopAt(zf), zf]));
         }
-        P.add('hull', box(0.012, 0.15, 2.0), s * 1.706, 0.855, 2.24);              // mounting lip bridges the raised blocks to the fender shoulder
-        P.add('hull', box(0.09, 0.315, 0.09), s * 1.725, 1.0825, 3.265);           // compact sixth block remains clear of the idler/shoe run
-        for (let k = 0; k < 3; k++) P.add('hullDark', box(0.07, 0.62, 0.016), s * 1.76, 1.04, 2.85 - k * 0.72);
+
         for (let k = 0; k < 10; k++) {
           // LAST course is the ref's short cut-high panel over the sprocket
           // (its side bottom reads 0.805 at -3.27, not the 0.48 sheet line)
@@ -1088,6 +1098,13 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
         }
         P.add('hull', box(0.035, skirtTopY - skirtFootY, 0.215), s * 1.6825, (skirtTopY + skirtFootY) / 2, 1.1325); // closes the sheet-to-block slot
         for (let k = 0; k < 5; k++) P.add('hullDark', box(0.03, 0.80, 0.016), s * 1.684, 1.125, 0.72 - k * 0.86);
+        // 267 (Sonnet, round 3: "the side skirt panels are one flat unbroken slab; real skirts show separate hinged panels
+        // with cut-outs"): the joint between the skirt row and the sponson-box row above it, and two hand-hold cut-outs
+        for (let z0 = -3.25; z0 < 1.235 - 1e-6; z0 += 0.45) {
+          const run = Math.min(0.45, 1.235 - z0);
+          P.add('hullDark', box(0.008, 0.016, run + 0.004), s * 1.7025, 1.17, z0 + run / 2);
+        }
+        for (const zh of [-1.62, 0.16]) P.add('hullDark', box(0.008, 0.08, 0.20), s * 1.7025, 0.86, zh);
       };
       buildLeclercHullCourse1();
       // The former 5.82 m gunmetal strip was a detached lower-skirt line, not a
@@ -1219,8 +1236,8 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // (Pre-§5.329 these sat at face 3.30 floating ~0.28 AHEAD of the old
     // recessed wall — the owner's screenshot fittings.)
     for (const s of [-1, 1]) {
-      P.add('hullDark', box(0.11, 0.13, 0.06), s * 0.55, 0.78, 3.237);
-      P.add('hullDetail', box(0.05, 0.05, 0.05), s * 0.55, 0.78, 3.282);
+      P.add('hullDark', box(0.11, 0.13, 0.06), s * 0.55, 0.84, 3.270);         // 267: on the plate above the bottom chamfer
+      P.add('hullDetail', box(0.05, 0.05, 0.05), s * 0.55, 0.84, 3.315);
     }
     liftEye(P, 'hullDetail', -1.30, 1.50, -0.95);
     liftEye(P, 'hullDetail', 1.30, 1.50, -0.95);
@@ -1729,15 +1746,13 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.35, -0.79);     // rack frame rails
       P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.02, -0.79);
       // 267 (both photo critics, round 3: "the turret side has only flat dark panels; the real bustle sides carry long racks
-      // of perforated baskets with straps"): each of the four bays is a perforated plate, three rows of five holes, with
-      // its two tie-down straps, and the bays are split by frame posts.
+      // of perforated baskets"): each of the four bays is a perforated plate, three rows of five holes, between the
+      // rack's frame rails (straps and bay posts read as a picket fence in the Gallery views).
       for (let k = 0; k < 4; k++) {
         const zb = -0.31 - k * 0.32;
         for (let row = 0; row < 3; row++) for (let col = 0; col < 5; col++) {
           P.add('turretDark', new THREE.CircleGeometry(0.019, 8), s * 1.5465, 0.11 + row * 0.075, zb - 0.10 + col * 0.05, 0, s * Math.PI / 2, 0);
         }
-        for (const dz of [-0.085, 0.085]) P.add('turretCloth', box(0.008, 0.33, 0.026), s * 1.549, 0.185, zb + dz);
-        if (k > 0) P.add('turretDetail', box(0.024, 0.33, 0.03), s * 1.552, 0.185, zb + 0.16);
       }
     }
   };
