@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 27 entries over 88 vehicles.
+// 29 entries over 93 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -10,6 +10,8 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_bm_oplot_m',
   'paint_bm_oplot_t',
   'paint_bmpt_terminator2',
+  'paint_challenger1_mk1',
+  'paint_challenger1_x',
   'paint_challenger3_td',
   'paint_challenger3_td_rws',
   'paint_chieftain5',
@@ -55,6 +57,8 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Plain Olive',tags: ['ua','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#66704c',weather: '#77805a',patches: []}},
   {id: 'paint_bm_oplot_t',lead: 'bm_oplot_t',sourceTankIds: ['bm_oplot_t'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Desert',tags: ['ua','desert','organic','signature'],visual: {scheme: 'nato',base: '#b39466',weather: '#c3a578',patches: ['#7e4c37','#5c4232','#a17f58'],camoScale: 0.58}},
   {id: 'paint_bmpt_terminator2',lead: 'bmpt_terminator2',sourceTankIds: ['bmpt_terminator2'],nation: 'Russia',label: 'Russian Digital Woodland',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#35452f',weather: '#3f4d36',patches: ['#243128','#4d4a37','#5a523e'],camoScale: 0.5,solidWeatheringIntensity: 0.03}},
+  {id: 'paint_challenger1_mk1',lead: 'challenger1_mk1',sourceTankIds: ['challenger1_mk1','challenger1_mk2','challenger_x','challenger_x_sleek'],nation: 'UK',label: 'British Two-Tone Woodland',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#414c38',weather: '#48543e',patches: ['#414c38','#1e201d'],camoScale: 0.8}},
+  {id: 'paint_challenger1_x',lead: 'challenger1_mk3',sourceTankIds: ['challenger1_mk3'],nation: 'UK',label: 'British Plain Sand',tags: ['uk','desert','geometric','signature'],visual: {scheme: 'solid',base: '#b59a70',weather: '#c7a97b',patches: []}},
   {id: 'paint_challenger3_td',lead: 'challenger3_td',sourceTankIds: ['challenger3_td'],nation: 'UK',label: 'British Digital Woodland',tags: ['uk','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a3e',weather: '#626a4d',patches: ['#1c201b','#8a7f5c','#3a4632'],camoScale: 0.44}},
   {id: 'paint_challenger3_td_rws',lead: 'challenger3_td_rws',sourceTankIds: ['challenger3_td_rws'],nation: 'UK',label: 'British Three-Tone Woodland II',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#475538',weather: '#596249',patches: ['#181b16','#7d7053'],camoScale: 0.46}},
   {id: 'paint_chieftain5',lead: 'chieftain3',sourceTankIds: ['chieftain3','chieftain_mk9','vickers_mk1','centurion3','centurion5_2','chieftain_mk10','chieftain5'],nation: 'UK',label: 'British Bands Woodland',tags: ['uk','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#3f4a36',weather: '#4a5540',patches: ['#1d1f1c','#33402c'],camoScale: 0.55}},

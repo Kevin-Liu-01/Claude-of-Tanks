@@ -220,6 +220,9 @@ for (const [id, donorId, name] of entries) {
   delete spec.label;
   delete spec.roster;
   if (PRODUCTION_NUMBERS[id]) spec.visual.number = PRODUCTION_NUMBERS[id];
+  // 266 (owner 2026-10-31, the Challenger 1 camo sheet): the Op Granby Mk 3 in plain light stone, as the Bovington Gulf
+  // tanks; its Mk 2 donor wears the 1980s BAOR green and black (additionalFleetSpecs.ts)
+  if (id === 'challenger1_mk3') Object.assign(spec.visual, { scheme: 'solid', base: '#b59a70', weather: '#c7a97b', patches: [] });
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   const previous = { ...spec.dims };

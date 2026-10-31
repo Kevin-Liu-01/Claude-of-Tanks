@@ -268,12 +268,20 @@ const challenger1Row = (hull: Challenger1HullFront): VariantPatch => ({
       },
       dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } });
 
+/** The owner's 266 pick from the Challenger 1 camo sheet (2026-10-31, "mix of 1980s and stone"): the 1980s BAOR NATO
+ *  green with large black patches for the Mk 1 and Mk 2 and the FV4030s built on them (the Op Granby Mk 3 goes plain
+ *  stone, sourceXSecondWaveSpecs.ts). camoScale 0.8 draws the period scheme's large patches. The shared paint's field
+ *  art gives a three-colour palette's first patch 18 % of the hull and its second 36 %: the base repeated as the first
+ *  patch leaves the black on about 30 %, the sparse patches of the sheet the owner picked from (a lone black patch
+ *  covered half the hull). */
+const challenger1BaorCoat = () => ({ scheme: 'nato', base: '#414c38', weather: '#48543e', patches: ['#414c38', '#1e201d'], camoScale: 0.8 });
+
 /** A real Challenger 1 mark on the supplied-file build (release 262; owner 2026-10-28: the Mk 3's turret "is what it is
  *  actually like"): the build's dimensions, turret ring, trunnion and muzzle, and its installed skirts as the spaced
  *  armour, as the Mk 3 takes them (sourceXSecondWaveSpecs.ts), without the Op Granby applique. */
 function onChallenger1SuppliedBuild(id: string, name: string): FleetTankSpec {
   const D = CHALLENGER1_SUPPLIED_DATUMS, row = challenger1Row('early');
-  const spec = make('challenger2', id, name, 'UK', { ...row, dims: { ...D.dims } });
+  const spec = make('challenger2', id, name, 'UK', { ...row, dims: { ...D.dims }, visual: challenger1BaorCoat() });
   stripSilhouetteDimensions(spec.dims);
   spec.armor.turretPivot = [...D.turretPivot];
   spec.armor.gunPivot = [D.trunnion[0] - D.turretPivot[0], D.trunnion[1] - D.turretPivot[1], D.trunnion[2] - D.turretPivot[2]];
@@ -289,8 +297,8 @@ const SPECS: FleetTankSpec[] = [
   // Release 262 (owner 2026-10-28: "use the weird turrets we invented to make nnew tanks like ... X variants"): the
   // fictional FV4030/5 (the wide wedge turret and an applique kit after the Op Granby fit) and FV4030/6
   // (the sleek turret) on the hull rebuilt from the Challenger 1's references, on the Challenger 1's combat row.
-  make('challenger2', 'challenger_x', 'FV4030/5', 'UK', challenger1Row('late')),
-  make('challenger2', 'challenger_x_sleek', 'FV4030/6', 'UK', challenger1Row('early')),
+  make('challenger2', 'challenger_x', 'FV4030/5', 'UK', { ...challenger1Row('late'), visual: challenger1BaorCoat() }),
+  make('challenger2', 'challenger_x_sleek', 'FV4030/6', 'UK', { ...challenger1Row('early'), visual: challenger1BaorCoat() }),
   make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },

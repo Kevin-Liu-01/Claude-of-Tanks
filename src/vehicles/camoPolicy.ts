@@ -124,9 +124,10 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 /** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
  * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
 // 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
-// it appends after GT too and no saved index moves.
+// it appends after GT too and no saved index moves. 266 (the owner's Challenger 1 camo pick, 2026-10-31): the 1980s BAOR
+// two-tone the Mk 1, Mk 2 and FV4030s wear and the Op Granby Mk 3's plain stone append after it.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
-  'paint_ua_t84_oplot_m'] as const);
+  'paint_ua_t84_oplot_m', 'paint_challenger1_mk1', 'paint_challenger1_x'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
@@ -808,8 +809,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
   // Release 262 (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"): the Mk 3 is the Op Granby
-  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87); the Mk 1 and Mk 2 keep the BAOR coat.
-  challenger1_mk3: 'desert',
+  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87). 266 (the owner's pick from the camo sheet,
+  // 2026-10-31, "mix of 1980s and stone"): the Mk 3 in the Gulf tanks' plain stone; the Mk 1, Mk 2 and the FV4030/5 and
+  // FV4030/6 built on them in the 1980s BAOR green with large black patches (their own authored paints).
+  challenger1_mk3: 'paint_challenger1_x',
+  challenger1_mk1: 'paint_challenger1_mk1',
+  challenger1_mk2: 'paint_challenger1_mk1',
+  challenger_x: 'paint_challenger1_mk1',
+  challenger_x_sleek: 'paint_challenger1_mk1',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
