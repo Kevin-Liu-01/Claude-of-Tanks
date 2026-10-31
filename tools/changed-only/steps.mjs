@@ -411,6 +411,19 @@ export const POST_AGGREGATES = Object.freeze([
   ['tools/generate-manual-reference.mjs'],
 ]);
 
+/**
+ * Pages built from a step's outputs, run after it (266: the Field Manual's fleet chapter tiles come from the icons
+ * step's public/icons/tank-assets.json, so every lane that regenerated icons left src/docs/topics red, and the 265
+ * bootstrap left it stale for 209 ids). A dependent runs only when a step in `after` ran in this chain (or an earlier
+ * dependent in `after` wrote); it runs its own check first and writes only when that finds its output stale, then
+ * checks again. A chain where none of them ran touches none. The public shell inlines the symbols the prerendered
+ * chapters reference, so it follows a prerender write.
+ */
+export const DEPENDENTS = Object.freeze([
+  { name: 'docsPrerender', tool: 'tools/docs-prerender.mjs', check: [], write: ['--write'], after: ['icons'] },
+  { name: 'publicShell', tool: 'tools/public-shell.mjs', check: [], write: ['--write'], after: ['docsPrerender'] },
+]);
+
 /** Fields of a step that decide what it writes. Scheduling fields (gb, timeouts, chunking, report paths) are not keyed. */
 const KEYED_FIELDS = ['name', 'device', 'tool', 'entries', 'flags', 'full', 'scoped', 'outputs', 'files', 'reads', 'excludeReads'];
 /** Keyed fields added after schema 1: part of the definition only when a step sets them (so adding one to the table does
