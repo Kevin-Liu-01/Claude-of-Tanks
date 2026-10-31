@@ -47,8 +47,11 @@ export interface PanelTemplate {
   readonly barrelFrom: number;
   readonly barrelRadius: number;
   /** (267) The index of a set of up to four zones in the template's table (-1: it is full): a panel split between them
-   * names it; `whole`, one zone a panel takes whole whose plate along the eye the paint tests. */
-  zoneSet?(zones: readonly number[], whole?: boolean): number;
+   * names it. */
+  zoneSet?(zones: readonly number[]): number;
+  /** (267) The index of a whole panel's row (-1: the table is full): its zone, taken whole, and the plates some level eye
+   * meets it through (coversAlongViews), the ones the shader tests along the eye. */
+  wholePanel?(zone: number, covers: readonly number[]): number;
 }
 
 /** (264) The authority the bake asks what lies behind a spaced or external part: the vehicle's pose as the sim reads it. */
@@ -233,32 +236,37 @@ function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barre
 
 /** A vehicle's traced cells by frame. */
 interface CellsByFrame { readonly hull: readonly ArmorCollisionCell[]; readonly turret: readonly ArmorCollisionCell[] }
-/** (267) The level views a baked panel is tested from: unit vectors back toward a gun, by bearing in the panel's frame. */
-const LEVEL_VIEWS = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 135, -135, 180]
-  .map((deg) => [Math.sin((deg * Math.PI) / 180), 0, Math.cos((deg * Math.PI) / 180)] as const);
+/** (267) The level views a baked panel is tested from: unit vectors back toward a gun, every 15 degrees in its frame. */
+const LEVEL_VIEWS = Array.from({ length: 24 }, (_, k) => [Math.sin((k * Math.PI) / 12), 0, Math.cos((k * Math.PI) / 12)] as const);
 /** A surface this nearly edge-on to a view (n·v) is not seen from it. */
 const VIEW_SEEN = 0.05;
 const _vp = new THREE.Vector3(), _vn = new THREE.Vector3();
 
 /**
- * (267) Whether some level view of a panel (its world centre and facing) meets it through another plate than its zone's: the authority reads the plate across a round's path where the face's own does not face the round
- * (sim/armor.ts plateAlongShot, sim/armorZones.ts zoneAlongShot), and the paint's shader takes that plate along the
- * eye's line, so such a panel is a whole panel (its zone, the plate along the eye tested per point). Only a panel at the
- * cells (within FLUSH_M), where rounds enter.
+ * (267) The plates some level view of a panel meets it through instead of its zone's (template zone indices, none: an
+ * empty list): the authority reads the plate across a round's path where the face's own does not face the round
+ * (sim/armor.ts plateAlongShot, sim/armorPlanes.ts zoneAlongShot), and the paint's shader takes that plate along the
+ * eye's line. Judged at the panel's sample points (world), facing its mean way (world); only a panel at the cells (within
+ * FLUSH_M), where rounds enter. Such a panel is a whole panel, naming those plates for the shader to test.
  */
-function readThroughAnother(template: PanelTemplate, split: FrameZones, pose: PanelPose, cells: CellsByFrame, zone: number,
-  centre: THREE.Vector3, normal: THREE.Vector3): boolean {
-  const turret = zone >= template.hullZones;
-  const zones = turret ? split.turret : split.hull, own = turret ? zone - template.hullZones : zone;
+function coversAlongViews(template: PanelTemplate, split: FrameZones, pose: PanelPose, cells: CellsByFrame, zone: number,
+  points: readonly THREE.Vector3[], normal: THREE.Vector3): number[] {
+  const turret = zone >= template.hullZones, base = turret ? template.hullZones : 0;
+  const zones = turret ? split.turret : split.hull, own = zone - base;
   const inverse = turret ? pose.turretInv : pose.hullInv;
-  const p = _vp.copy(centre).applyMatrix4(inverse), n = _vn.copy(normal).transformDirection(inverse);
-  // the authority reads it at the cells' faces: a part standing off them (a skirt) takes the plate behind it instead
-  if (!(cellGap(turret ? cells.turret : cells.hull, p) <= FLUSH_M)) return false;
-  for (const view of LEVEL_VIEWS) {
-    if (n.x * view[0] + n.y * view[1] + n.z * view[2] <= VIEW_SEEN) continue;
-    if (zoneAlongShot(zones, own, p.x, p.y, p.z, -view[0], -view[1], -view[2]) !== own) return true;
+  const n = _vn.copy(normal).transformDirection(inverse);
+  const covers: number[] = [];
+  for (const point of points) {
+    const p = _vp.copy(point).applyMatrix4(inverse);
+    // the authority reads it at the cells' faces: a part standing off them (a skirt) takes the plate behind it instead
+    if (!(cellGap(turret ? cells.turret : cells.hull, p) <= FLUSH_M)) continue;
+    for (const view of LEVEL_VIEWS) {
+      if (n.x * view[0] + n.y * view[1] + n.z * view[2] <= VIEW_SEEN) continue;
+      const cover = zoneAlongShot(zones, own, p.x, p.y, p.z, -view[0], -view[1], -view[2]);
+      if (cover !== own && !covers.includes(cover + base)) covers.push(cover + base);
+    }
   }
-  return false;
+  return covers;
 }
 
 function plateName(zone: ZonePlate | undefined): string {
@@ -339,6 +347,8 @@ const WELD_SPAN = 131072;
 const FLAT_DOT = 0.9995;
 /** A curved cluster votes on at most this many of its triangles (an even stride). */
 const MAX_VOTES = 32;
+/** (267) A panel's triangles (on a stride) the bake tests the level views at, beside its centre. */
+const COVER_POINTS = 8;
 /** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
 const FLAT_SAMPLED = 8;
 /** (264) A part's centre this far outside every cell of its frame (m) is a spaced or external part; its inward ray starts
@@ -867,9 +877,10 @@ export function* bakePaintPanelSteps(
       // casting) split at its creases, each piece voting on all its triangles and taking its majority, or its plurality
       // when it is small; a piece still split keeps the per-point score
       // (267) a panel some level view meets through another plate than its zone's is a whole panel (its zone, taken whole,
-      // with the plate along the eye tested per point: readThroughAnother): the panel as a whole, at its area-weighted centre facing its mean way, so a part
-      // reads one zone as ever (a dome faces up as a whole) and a bevel's piece faces its slope. The panel's zone + 1
+      // with the plates along the eye tested per point: coversAlongViews): the panel as a whole, facing its mean way, so a
+      // part reads one zone as ever (a dome faces up as a whole) and a bevel's piece faces its slope. The panel's zone + 1
       // in, its value out
+      const samplePoints: THREE.Vector3[] = Array.from({ length: COVER_POINTS + 1 }, () => new THREE.Vector3());
       const keepAlongShot = (value: number, count: number, triangle: (i: number) => number): number => {
         let area = 0, cx = 0, cy = 0, cz = 0, nx = 0, ny = 0, nz = 0;
         for (let i = 0; i < count; i++) {
@@ -880,10 +891,20 @@ export function* bakePaintPanelSteps(
           nx += faces[t * 3] * a; ny += faces[t * 3 + 1] * a; nz += faces[t * 3 + 2] * a;
         }
         const facing = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (!(area > 0) || !(facing > 1e-9) || !readThroughAnother(template, split, pose, cellsOf, value - 1, _centre.set(cx / area, cy / area, cz / area),
-          _normal.set(nx / facing, ny / facing, nz / facing))) return value;
+        if (!(area > 0) || !(facing > 1e-9)) return value;
+        // its centre and up to COVER_POINTS triangles' on a stride: a panel can span two plates' outlines
+        samplePoints[0].set(cx / area, cy / area, cz / area);
+        let used = 1;
+        const stride = Math.max(1, Math.ceil(count / COVER_POINTS));
+        for (let i = 0; i < count && used <= COVER_POINTS; i += stride) {
+          const t = triangle(i);
+          if (areas[t] > 0) samplePoints[used++].set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]);
+        }
+        const covers = coversAlongViews(template, split, pose, cellsOf, value - 1, samplePoints.slice(0, used),
+          _normal.set(nx / facing, ny / facing, nz / facing));
+        if (!covers.length) return value;
         stats.alongShot += count;
-        const set = template.zoneSet ? template.zoneSet([value - 1], true) : -1;
+        const set = template.wholePanel ? template.wholePanel(value - 1, covers) : -1;
         return set >= 0 ? PANEL_BARE - 1 - set : 0;
       };
       function* resolveParts(start: number, end: number, total: number): Generator<void, void, void> {

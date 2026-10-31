@@ -4097,8 +4097,9 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  *   (267) A baked panel only reads its colour: none of the per-point terms below runs for it. A panel the bake found split
  *   between up to four zones (below ARMOR_PAINT_PANEL_BARE: its set, after the footprints in the table) keeps the
  *   per-point score and its borders, scoring those zones alone instead of every zone of its frame, in their frame.
- *   A whole panel (a set naming one zone, [zone, -2]) takes that zone unscored, as a panel, and only the plate along the eye
- *   below is tested on it.
+ *   A whole panel ([zone, -2, cover, cover] in the sets' rows) takes that zone unscored, as a panel, and only the plate
+ *   along the eye below is tested on it, among the (at most two) plates the bake found some level eye meets it through
+ *   ([zone, -3]: every plate of its frame).
  * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
  * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
  *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
@@ -4118,7 +4119,8 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  * - (267) Where the zone's own plate does not face the eye (a bevel scored to the roof seen level, a front corner to a
  *   side; or a mantlet's or gun notch's off its footprint), the plate facing the eye whose outline the eye's line through
  *   the point crosses, nearest the point, as the authority reads a round there (sim/armorZones.ts zoneAlongShot): the
- *   eye stands in for the gun. Its border is where that line leaves the outline; the bake leaves such panels per-point.
+ *   eye stands in for the gun. Its border is where that line leaves the outline; the bake makes such panels whole panels.
+ *   An outline the line misses by more than 5 cm is left at its first edge that far off.
  * - The hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
  *   through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds). (263) The
  *   camo keeps a quarter of its light and shade (its blotches read as zone borders; every round preferred less of it),
@@ -4239,10 +4241,23 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
         float apReach = 1e9;
         float apCoverIn = -1e3;
         float apNearIn = -1e3;
-        for ( int k = apFrom; k < apTo; k++ ) {
+        bool apFew = apWhole && apSet.y > -2.5;
+        int apCandN = apFew ? 2 : apTo - apFrom;
+        for ( int i = 0; i < apCandN; i++ ) {
+          int k = apFew ? int( floor( ( i == 0 ? apSet.z : apSet.w ) + 0.5 ) ) : apFrom + i;
+          if ( k < 0 ) continue;
           vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
           float apAlong = dot( apPl.xyz, apD );
           if ( -apAlong < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+          float apS = -( dot( apPl.xyz, apP ) + apPl.w ) / apAlong;
+          vec3 apX = apP + apS * apD;
+          float apIn = 1e3;
+          for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+            vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+            apIn = min( apIn, -( dot( apEd.xyz, apX ) + apEd.w ) );
+            if ( apIn < -0.05 ) break;
+          }
+          if ( apIn < -0.05 ) continue;
           bool apKOff = false;
           for ( int f = 0; f < apFootN; f++ ) {
             vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
@@ -4250,15 +4265,8 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
             if ( int( apFa.w + 0.5 ) == k && !( all( greaterThanEqual( apP, apFa.xyz ) ) && all( lessThanEqual( apP, apFb ) ) ) ) apKOff = true;
           }
           if ( apKOff ) continue;
-          float apS = -( dot( apPl.xyz, apP ) + apPl.w ) / apAlong;
-          vec3 apX = apP + apS * apD;
-          float apIn = 1e3;
-          for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
-            vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
-            apIn = min( apIn, -( dot( apEd.xyz, apX ) + apEd.w ) );
-          }
-          if ( apIn >= -0.001 && abs( apS ) < apReach ) { apReach = abs( apS ); apCover = k; apCoverIn = apIn; }
           if ( apIn > apNearIn ) { apNearIn = apIn; apNearK = k; }
+          if ( apIn >= -0.001 && abs( apS ) < apReach ) { apReach = abs( apS ); apCover = k; apCoverIn = apIn; }
         }
         apCoverEdge = clamp( apCover >= 0 ? apCoverIn : apNearIn, -1.0, 1.0 );
       }

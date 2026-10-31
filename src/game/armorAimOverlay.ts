@@ -124,7 +124,8 @@ interface PaintTemplate {
   /** (267) The zone sets after the footprints (the bake adds them: zoneSet), by their zones. */
   readonly sets: Map<string, number>;
   readonly setBase: number;
-  zoneSet(zones: readonly number[], whole?: boolean): number;
+  zoneSet(zones: readonly number[]): number;
+  wholePanel(zone: number, covers: readonly number[]): number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
   /** Each frame's cells' bounds, centre and half extents: their rounded box stands in for the cells' surface. */
@@ -357,19 +358,31 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
   const sets = new Map<string, number>();
-  // a whole panel (267): one zone the panel takes as baked, whose plate along the eye the paint still tests ([zone, -2])
-  const zoneSet = (members: readonly number[], whole = false): number => {
-    const sorted = [...members].sort((a, b) => a - b), key = `${whole ? 'whole:' : ''}${sorted.join(',')}`;
+  const zoneSet = (members: readonly number[]): number => {
+    const sorted = [...members].sort((a, b) => a - b), key = sorted.join(',');
     let index = sets.get(key);
     if (index === undefined) {
-      if (sets.size >= SET_SLOTS || !sorted.length || sorted.length > (whole ? 1 : 4)) return -1;
+      if (sets.size >= SET_SLOTS || !sorted.length || sorted.length > 4) return -1;
       index = sets.size;
       sets.set(key, index);
-      table.set(whole ? [sorted[0], -2, -1, -1] : [0, 1, 2, 3].map((k) => sorted[k] ?? -1), (setBase + index) * 4);
+      table.set([0, 1, 2, 3].map((k) => sorted[k] ?? -1), (setBase + index) * 4);
     }
     return index;
   };
-  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, turretMin,
+  // (267) a whole panel: its zone, taken as baked, and the plates some level eye meets it through, which the shader tests
+  // along the eye ([zone, -2, cover, cover]); more than two, every plate of its frame ([zone, -3])
+  const wholePanel = (zone: number, covers: readonly number[]): number => {
+    const sorted = [...covers].sort((a, b) => a - b), key = `whole:${zone}:${sorted.join(',')}`;
+    let index = sets.get(key);
+    if (index === undefined) {
+      if (sets.size >= SET_SLOTS) return -1;
+      index = sets.size;
+      sets.set(key, index);
+      table.set(sorted.length <= 2 ? [zone, -2, sorted[0] ?? -1, sorted[1] ?? -1] : [zone, -3, -1, -1], (setBase + index) * 4);
+    }
+    return index;
+  };
+  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, wholePanel, turretMin,
     turretMax, hullCentre, turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
 }
 
