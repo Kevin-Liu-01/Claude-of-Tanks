@@ -1,14 +1,14 @@
 // The changed-only partition of the real fleet (no tank builds): every step decomposes per id, every dynamic read is
 // declared and pinned to its current call sites, the demand loaders and the eager tool factory register the same group
-// modules, a shared builder kit marks every id that uses it, and the chain runs seats after fills and controls.
-// First-party tooling: Kevin B. Liu.
+// modules, a shared builder kit marks every id that uses it, the chain runs seats after fills and controls, and the
+// balance pass is out of the core (keyed per id through the spec rows). First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
-import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  STEPS, WORLD_STEPS } from './steps.mjs';
+import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
+  SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -31,7 +31,20 @@ for (const [file, declaration] of Object.entries(FLEET_API_USERS)) {
   assert.equal(pin, declaration.pin, `${file}: its fleet uses changed; review that it builds only the map's donors and set pin: '${pin}'`);
 }
 
+// The balance pass's importers apply it to the registry and use it no other way (steps.mjs BALANCE).
+for (const [file, declaration] of Object.entries(BALANCE.importers)) {
+  const pin = tokenPin(readFileSync(join(root, file), 'utf8'), BALANCE.tokens);
+  assert.equal(pin, declaration.pin, `${file}: its uses of the balance pass changed; review that they only apply it to the registered specs and set pin: '${pin}'`);
+}
+
 const state = computeState({ root, steps: STEPS });
+// The pass is out of the core and keyed through the spec rows: every step keys SPEC_REST, the combat readers SPEC_COMBAT.
+assert.deepEqual([state.partition.balanceReason, BALANCE.entries.every((file) => state.partition.balance.includes(file) && !state.partition.core.includes(file))],
+  [null, true], 'the balance pass is out of the core');
+for (const [name, entry] of Object.entries(state.steps)) {
+  assert.ok(entry.rowTables.includes(SPEC_REST), `${name} keys each id's spec`);
+  assert.equal(entry.rowTables.includes(SPEC_COMBAT), Boolean(entry.step.rowReads?.includes(SPEC_COMBAT)), `${name}: the combat row only through rowReads`);
+}
 // Test-only tooling never keys a generator (266, Main's probe of 705417532f): the runner, the selftest tiers, scans and
 // suites, the test:* commands and the tank release plan are read by no generator, so an edit to them marks no id. The
 // control: each step's own generator is in its key.
@@ -45,6 +58,14 @@ for (const [label, files] of [['the fleet core', state.partition.core], ...Objec
 }
 assert.ok(TEST_ONLY.test('tools/test-lane.mjs') && TEST_ONLY.test('tools/run-selftests.mjs') && !TEST_ONLY.test('tools/gen-combat-anatomy.mjs'),
   'the test-only pattern names the harness and no generator');
+// No step key holds a public page (266): the route table only names them (steps.mjs namesOnly), and a document-head
+// edit re-ran the world steps on every map and centering and icons on every id. A step that really reads a page joins
+// PAGE_READERS with the reason.
+const PAGE_READERS = Object.freeze({});
+for (const [name, entry] of [...Object.entries(state.steps), ...Object.entries(state.world?.steps ?? {})]) {
+  const pages = entry.toolFiles.filter((file) => /^[^/]+\.html$/.test(file) && !PAGE_READERS[name]?.includes(file));
+  assert.deepEqual(pages, [], `${name}: public pages key this step; if it reads them, list them in PAGE_READERS`);
+}
 // The accessors take effect: seats key the roof-gun inventory per id, not the whole table.
 assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whole');
 assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
@@ -52,6 +73,9 @@ assert.ok(state.steps.gunLines.rowTables.includes('geometryLedger'), 'gun lines 
 assert.deepEqual(state.steps.gunLines.foreignTables, [], 'gun lines reach no table whole (the fleet ledger is covered, keyed per id)');
 assert.equal(normalizedNodeOptions('--max-old-space-size=4096 --import=file:///w/tools/assert-graph-guard.mjs --x'), '--x',
   'the heap cap and the runner\'s assert guard never key the toolchain');
+assert.equal(normalizedNodeOptions('--import=file:///w/tools/assert-graph-guard.mjs --import=file:///w/tools/selftest-observe.mjs'), '',
+  'nor does the runner\'s read observer (a receipt computes the same toolchain key as the command line)');
+assert.equal(normalizedNodeOptions('--import=file:///w/tools/other.mjs'), '--import=file:///w/tools/other.mjs', 'another preload still keys it');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');

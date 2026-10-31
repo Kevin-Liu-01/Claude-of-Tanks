@@ -16,16 +16,18 @@
 // A negative control runs on every invocation: a receipt whose closure holds a file is selected when that file changes,
 // and every changed receipt file is selected. A control that fails exits 2 before anything runs.
 // `--root=<dir>` evaluates another checkout's registry and closures (a report only: it implies --dry-run).
-import { spawnSync } from 'node:child_process';
+// A branch carrying an integration tree beyond the base (origin/integ/*) gets the suggested --base printed first;
+// `--base=integ` takes it. The command stops its children and exits on SIGTERM/SIGINT/SIGHUP/SIGALRM or its parent's exit.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
-import { changedPaths, changedTankIds, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming, TOOLS_ROOT } from './test-diff.mjs';
+import { changedPaths, changedTankIds, createReadIndex, exitWithParent, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming,
+  chooseBase, runTracked, TOOLS_ROOT } from './test-diff.mjs';
 
-const READS = new Set(['named', 'scan']);
-const say = (read, path) => `${read === 'scan' ? 'lists' : 'reads'} ${path}`;
+const READS = new Set(['named', 'scan', 'observed']);
+const say = (read, path) => `${read === 'scan' ? 'lists' : read === 'observed' ? 'was seen reading' : 'reads'} ${path}`;
 
 /**
  * The lane selection as data. `readOf(file, path)` is the cache's read ('scan', 'named', 'broad' or null), `core` the
@@ -96,10 +98,11 @@ export function laneControl({ defaults, tanks, changed, selected, readOf, closur
 }
 
 async function main(argv) {
+  exitWithParent();
   const value = (name) => argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const root = resolve(value('root') ?? TOOLS_ROOT);
   const dryRun = argv.includes('--dry-run') || root !== TOOLS_ROOT;
-  const base = value('base') ?? 'origin/main';
+  const base = chooseBase(root, value('base'), 'test:lane');
   const load = (path) => import(pathToFileURL(join(root, path)).href);
   const { SELFTEST_SUITES } = await load('tools/selftest-suites.mjs');
   const runner = await load('tools/run-selftests.mjs');
@@ -110,7 +113,9 @@ async function main(argv) {
   console.log(`[test:lane] ${root === TOOLS_ROOT ? '' : `${root}: `}base ${base} (merge base ${diff.mergeBase.slice(0, 10)}), ${diff.paths.length} changed paths`);
   const cache = createSelftestCache({ root, alwaysRun: runner.SELFTEST_FRESH_FILES, fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES,
     declaredInputs: runner.SELFTEST_DECLARED_INPUTS });
-  const readOf = laneReadOf(cache, runner.selftestReadOf, root);
+  const index = createReadIndex(cache, root, diff.paths, (await load('tools/selftest-cache.mjs')).SELFTEST_BROAD_DIRS);
+  const readOne = (file, path) => (index.has(path) ? index.readOf(file, path) : runner.selftestReadOf(cache, file, path, root));
+  const readOf = laneReadOf(cache, readOne, root);
   const partition = await fleetPartition(root);
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase, head: value('head') ?? 'HEAD' });
   const naming = receiptsNaming(root, [...defaults, ...tanks], new Set(idChanges.ids.keys()));
@@ -153,8 +158,8 @@ async function main(argv) {
       if (!files.length) continue;
       const list = join(dir, `${tier}.txt`);
       writeFileSync(list, files.join('\n') + '\n');
-      const child = spawnSync(process.execPath, ['tools/run-selftests.mjs', 'all', ...extra, `--only-from=${list}`], { cwd: root, stdio: 'inherit' });
-      if (child.status !== 0 && !status) status = child.status ?? 1;
+      const code = await runTracked(process.execPath, ['tools/run-selftests.mjs', 'all', ...extra, `--only-from=${list}`], { cwd: root, stdio: 'inherit' });
+      if (code !== 0 && !status) status = code;
     }
     console.log(`[test:lane] ${status ? 'FAIL' : 'PASS'}: ${rows.length} receipts; the manual suites are the owner's (npm run test:recommend)`);
     return status;
