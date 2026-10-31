@@ -5,12 +5,13 @@
 // changed file's tank ids come from the changed-only fleet partition (tools/changed-only/fingerprint.mjs computeState:
 // the shared core, each group's files, each table file's ids). This module adds only what those leave open: the
 // diff itself, the rows a changed table file moved (its hunks), and the spec fields balance reads, per id and tier.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { namedIds } from './selftest-tiers.mjs';
+import { scanPatternRegExp } from './selftest-scans.mjs';
 
 export const TOOLS_ROOT = resolve(import.meta.dirname, '..');
 const git = (root, args, options = {}) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 256 << 20, ...options });
@@ -76,10 +77,24 @@ export function changedMaps(world, changed, { ids = new Map(), core = [] } = {})
   return out;
 }
 
+/** The -U0 diff of each changed table file, from one git call per 200 files (a lane can change hundreds of tables). */
+function tableDiffs(root, mergeBase, head, paths) {
+  const out = new Map();
+  for (let index = 0; index < paths.length; index += 200) {
+    let text = '';
+    try { text = git(root, ['diff', '-U0', '--no-renames', mergeBase, ...(head === 'HEAD' ? [] : [head]), '--', ...paths.slice(index, index + 200)]); }
+    catch { continue; } // unreadable: those files resolve as every id they hold
+    for (const section of text.split(/^diff --git /m).slice(1)) {
+      const name = /^a\/(.+?) b\//.exec(section)?.[1];
+      if (name) out.set(name, section);
+    }
+  }
+  return out;
+}
+
 /** Ids whose rows one hunk of a changed per-id table moved: the ids its lines name, else the row key above it. */
-function hunkIds(root, mergeBase, head, path, tableIds) {
-  let diff = '';
-  try { diff = git(root, ['diff', '-U0', '--no-renames', mergeBase, ...(head === 'HEAD' ? [] : [head]), '--', path]); } catch { return null; }
+function hunkIds(root, path, tableIds, diff) {
+  if (diff === undefined) return null;
   const ids = new Set();
   const keyed = (line) => { const match = /^\s*['"]?([a-z0-9_]+)['"]?\s*:/.exec(line); return match && tableIds.has(match[1]) ? match[1] : null; };
   // the row key at or above each line of the new file, in one pass (a 50 MB table has a million lines and many hunks)
@@ -120,6 +135,7 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     if (!groupsOfFile.has(file)) groupsOfFile.set(file, []);
     groupsOfFile.get(file).push(group);
   }
+  const diffs = root ? tableDiffs(root, mergeBase, head, changed.filter((path) => !partition.core.has(path) && partition.fileIds[path]?.length)) : new Map();
   for (const path of changed) {
     if (partition.core.has(path)) { core.push(path); continue; }
     for (const group of groupsOfFile.get(path) ?? []) {
@@ -127,7 +143,7 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     }
     const tableIds = partition.fileIds[path];
     if (tableIds?.length) {
-      const moved = root ? hunkIds(root, mergeBase, head, path, new Set(tableIds)) : null;
+      const moved = root ? hunkIds(root, path, new Set(tableIds), diffs.get(path)) : null;
       for (const id of moved ?? tableIds) mark(id, moved ? `${path} row` : `${path} (rows unresolved)`);
     }
     const stem = basename(path).split('.')[0];
@@ -206,8 +222,11 @@ export const rel = (root, path) => relative(root, path);
  * imports and reads stay outside the receipt's closure (tank-id-rekey-assets.selftest runs tank-id-rekey-assets.mjs
  * --check, which reads public/icons/tank-assets.json: the centurion-family-262 proof's red lane mode first missed). The
  * cache's run set (runSetOf: imports plus the modules a spawning file names) supplies the tools; no second resolver.
+ * Last, 'observed': a path the receipt's latest PASS on this machine read, or a file of a directory it listed
+ * (tools/selftest-observe.mjs). That covers paths computed from data, which no closure can name (266: the boot-closure
+ * receipts walk src/main.ts's imports; the page receipts read site/ by slug).
  */
-export function laneReadOf(cache, selftestReadOf, root) {
+export function laneReadOf(cache, readOne, root) {
   const tools = new Map();
   const spawnedTools = (file) => {
     if (!tools.has(file)) {
@@ -222,12 +241,15 @@ export function laneReadOf(cache, selftestReadOf, root) {
     return tools.get(file);
   };
   return (file, path) => {
-    const read = selftestReadOf(cache, file, path, root);
+    const read = readOne(file, path);
     if (read === 'named' || read === 'scan') return read;
     for (const tool of spawnedTools(file)) {
-      const through = selftestReadOf(cache, tool, path, root);
+      const through = readOne(tool, path);
       if (through === 'named' || through === 'scan') return through;
     }
+    // what its latest PASS on this machine read or listed (tools/selftest-observe.mjs): a path computed from data
+    const observed = cache.observedOf?.(file);
+    if (observed?.reads.has(path) || observed?.lists.has(dirname(path))) return 'observed';
     return read;
   };
 }
@@ -239,4 +261,110 @@ export async function receiptRunTimes(root = TOOLS_ROOT) {
   const { createRuntimeIndex } = await import(pathToFileURL(join(root, 'tools/selftest-schedule.mjs')).href);
   const runtimes = createRuntimeIndex(resolveSelftestCacheDir(root, process.env).dir);
   return (file) => snapshot[file] ?? runtimes.runMsOf(file) ?? null;
+}
+
+/**
+ * selftestReadOf (run-selftests.mjs) for one diff's paths, each receipt's reads computed once: the same order and
+ * rules (a listing it runs, then its closure's file, then a directory above it, a broad fallback directory alone being
+ * 'broad'), from the cache's own closureOf and scanOf. Per call it was a path resolve, a pattern pass and a directory
+ * walk for every (receipt, path) pair: 1,454 receipts x 2,906 paths took over ten minutes. tools/selftest-tiers.selftest
+ * holds the two equal on the real cache.
+ */
+export function createReadIndex(cache, root, paths, broadDirs) {
+  const broad = new Set(broadDirs);
+  const rows = paths.map((path) => {
+    const absolute = resolve(root, path), ancestors = [];
+    for (let dir = dirname(absolute); dir.startsWith(root + sep); dir = dirname(dir)) ancestors.push([dir, broad.has(relative(root, dir))]);
+    return { path, absolute, rel: relative(root, absolute).split(sep).join('/'), ancestors };
+  });
+  const patternHits = new Map();
+  const hits = (pattern) => {
+    if (!patternHits.has(pattern)) {
+      const test = scanPatternRegExp(pattern);
+      patternHits.set(pattern, rows.filter((row) => test.test(row.rel)).map((row) => row.path));
+    }
+    return patternHits.get(pattern);
+  };
+  const memo = new Map();
+  const readsOf = (file) => {
+    if (memo.has(file)) return memo.get(file);
+    exitIfOrphaned();
+    const absolute = resolve(root, file), closure = cache.closureOf(absolute), { lists, tracked } = cache.scanOf(absolute);
+    const scanned = new Set([...lists, ...tracked].flatMap(hits)), out = new Map();
+    for (const row of rows) {
+      if (scanned.has(row.path)) { out.set(row.path, 'scan'); continue; }
+      if (closure.has(row.absolute)) { out.set(row.path, 'named'); continue; }
+      let read = null;
+      for (const [dir, isBroad] of row.ancestors) {
+        if (!closure.has(dir)) continue;
+        if (!isBroad) { read = 'named'; break; }
+        read = 'broad';
+      }
+      if (read) out.set(row.path, read);
+    }
+    memo.set(file, out);
+    return out;
+  };
+  const indexed = new Set(paths);
+  return { readsOf, has: (path) => indexed.has(path), readOf: (file, path) => readsOf(file).get(path) ?? null };
+}
+
+// The commands' children, and their exit with this process: a 600 s alarm on `npm run test:lane` killed npm and left the
+// node child running (Main, 266). On SIGTERM, SIGINT, SIGHUP or SIGALRM, or once the parent is gone, every tracked child
+// is stopped and this process exits.
+const children = new Set();
+const startPpid = process.ppid;
+const stopAll = (code) => { for (const child of children) { try { child.kill('SIGTERM'); } catch { /* gone */ } } process.exit(code); };
+export function exitIfOrphaned() { if (process.ppid !== startPpid) stopAll(129); }
+export function exitWithParent() {
+  for (const [signal, code] of [['SIGTERM', 143], ['SIGINT', 130], ['SIGHUP', 129], ['SIGALRM', 142]]) process.on(signal, () => stopAll(code));
+  setInterval(exitIfOrphaned, 2000).unref();
+}
+/** An async child this process stops when it stops; resolves with its exit status (the promise's `child` is the process). */
+export function runTracked(command, args, options) {
+  const child = spawn(command, args, options);
+  children.add(child);
+  const done = new Promise((resolveStatus) => {
+    child.on('close', (status, signal) => { children.delete(child); resolveStatus(status ?? (signal ? 128 : 1)); });
+    child.on('error', () => { children.delete(child); resolveStatus(1); });
+  });
+  return Object.assign(done, { child });
+}
+
+/**
+ * The integration tree a branch carries beyond `base` (an origin/integ/* tip whose merge base with HEAD is not in base),
+ * or null: diffing such a branch against main counts the whole integration as the lane's own change.
+ */
+export function suggestedBase(root, base, head = 'HEAD') {
+  let refs = [];
+  try {
+    refs = git(root, ['ls-remote', 'origin', 'refs/heads/integ/*'], { timeout: 20_000, stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n').filter(Boolean).map((line) => { const [sha, ref] = line.split('\t'); return { sha, name: ref.replace('refs/heads/', '') }; });
+  } catch { return null; }
+  const found = [];
+  for (const { sha, name } of refs) {
+    try {
+      try { git(root, ['cat-file', '-e', `${sha}^{commit}`], { stdio: 'ignore' }); }
+      catch { git(root, ['fetch', '-q', 'origin', `refs/heads/${name}`], { timeout: 120_000, stdio: 'ignore' }); }
+      const mergeBase = git(root, ['merge-base', head, sha]).trim();
+      try { git(root, ['merge-base', '--is-ancestor', mergeBase, base], { stdio: 'ignore' }); continue; } catch { /* beyond base */ }
+      found.push({ name, sha, mergeBase, at: Number(git(root, ['log', '-1', '--format=%ct', mergeBase]).trim()) });
+    } catch { /* an unreachable ref suggests nothing */ }
+  }
+  return found.sort((a, b) => b.at - a.at)[0] ?? null;
+}
+
+/** The base a command diffs against: the requested one, or origin/main with the integration suggestion printed (`integ` takes it). */
+export function chooseBase(root, requested, label) {
+  if (requested && requested !== 'integ') return requested;
+  const integration = suggestedBase(root, 'origin/main');
+  if (!integration) return 'origin/main';
+  const at = integration.mergeBase.slice(0, 10);
+  if (requested === 'integ') {
+    console.log(`[${label}] --base=integ: origin/${integration.name} at ${at}`);
+    return integration.mergeBase;
+  }
+  console.log(`[${label}] this branch carries origin/${integration.name} commits that are not on origin/main, so they count as `
+    + `its own here: run with --base=${at} (its merge base with origin/${integration.name}), or --base=integ`);
+  return 'origin/main';
 }
