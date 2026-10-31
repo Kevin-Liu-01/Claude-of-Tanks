@@ -166,6 +166,14 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.equal(read('t/spawner.selftest.mjs', 'docs/x.md'), null);
   assert.equal(laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }) }, (file, path) => reads[file]?.[path] ?? null, root)
     ('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'broad', 'without a spawn, a broad match stays broad (negative control)');
+  // 266: a path its latest PASS read or listed (tools/selftest-observe.mjs) selects it, whatever the closure says
+  const observedOf = (file) => (file === 't/spawner.selftest.mjs' ? { reads: new Set(['src/ui/hud.ts']), lists: new Set(['site']) } : null);
+  const seen = laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }), observedOf }, (file, path) => reads[file]?.[path] ?? null, root);
+  assert.equal(seen('t/spawner.selftest.mjs', 'src/ui/hud.ts'), 'observed', 'a computed read its run made selects it');
+  assert.equal(seen('t/spawner.selftest.mjs', 'site/new-page.html'), 'observed', 'a file in a directory its run listed selects it');
+  assert.equal(seen('t/spawner.selftest.mjs', 'docs/x.md'), null, 'negative control: a path it was never seen reading');
+  assert.ok(selectLane({ defaults: ['t/spawner.selftest.mjs'], tanks: [], changed: ['src/ui/hud.ts'], readOf: seen })
+    .selected.get('t/spawner.selftest.mjs').reasons[0].includes('was seen reading src/ui/hud.ts'), 'its reason says so');
 }
 
 // ---- the real closure: this receipt reads tools/test-diff.mjs through its imports, so a change to it selects it
@@ -238,7 +246,7 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const few = recommend({ readers: new Map([['fleet', new Map([['src/vehicles/fleetLazy.selftest.mjs', ['src/ui/hudAmmunitionPresentation.ts']]])]]),
     wallMs: { fleet: 6_000_000 }, subsetWallMs: () => 72_000 });
   assert.deepEqual([few.find((row) => row.suite === 'fleet').line, few.find((row) => row.suite === 'fleet').run],
-    ['fleet (~1 min): 1 of its 65 checks read the change (src/ui/hudAmmunitionPresentation.ts)', 'npm run test:heavy -- fleet --only=src/vehicles/fleetLazy.selftest.mjs'],
+    ['fleet (~1 min): 1 of its 66 checks read the change (src/ui/hudAmmunitionPresentation.ts)', 'npm run test:heavy -- fleet --only=src/vehicles/fleetLazy.selftest.mjs'],
     'a few readers: the command and its time name just them');
   const broken = recommend({ readers: none, balance: [{ id: 'leo2a4', tier: 8, classes: ['armour'] }], suites: { balance: { ...MANUAL_SUITES.balance } }, guards: {} });
   assert.equal(broken[0].warranted, true, 'a moved armour value alone warrants balance, even with no closure read');

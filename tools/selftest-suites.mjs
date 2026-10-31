@@ -836,6 +836,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
     'tools/test-commands-exit.selftest.mjs',
+    'tools/test-base.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
@@ -874,6 +875,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/chain.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
     'tools/changed-only/fresh.selftest.mjs',
+    // 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that id on
+    // the combat readers alone (manual: fleet suite).
+    'tools/changed-only/balance-keys.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',

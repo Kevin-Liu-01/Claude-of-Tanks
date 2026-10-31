@@ -26,8 +26,8 @@ import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
 import { changedPaths, changedTankIds, createReadIndex, exitWithParent, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming,
   chooseBase, runTracked, TOOLS_ROOT } from './test-diff.mjs';
 
-const READS = new Set(['named', 'scan']);
-const say = (read, path) => `${read === 'scan' ? 'lists' : 'reads'} ${path}`;
+const READS = new Set(['named', 'scan', 'observed']);
+const say = (read, path) => `${read === 'scan' ? 'lists' : read === 'observed' ? 'was seen reading' : 'reads'} ${path}`;
 
 /**
  * The lane selection as data. `readOf(file, path)` is the cache's read ('scan', 'named', 'broad' or null), `core` the
