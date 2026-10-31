@@ -3298,6 +3298,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke'
     && row.kit !== 'cargo' && row.kit !== 'light' && row.slot[0] !== 'turretSide' && row.slot[0] !== 'turretSidePlate'
     && !(row.kit === 'tarp' && row.slot[0] === 'rearDeck'));
+  // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
+  // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
+  // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
+  // the turret flanks as stand-off slabs. The cargo, the roof lamp, the packs and every turret-hung tarp, net and link
+  // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
+  if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
+    && row.kit !== 'light' && row.kit !== 'packs'
+    && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
   // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo

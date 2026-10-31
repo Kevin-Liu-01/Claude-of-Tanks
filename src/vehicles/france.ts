@@ -310,7 +310,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.add('hull', slab(                                                         // front panel: high plate ends at the measured shoulder; a separate low datum owns published width
       [s * 1.580, 0.65, 2.35], [s * 1.610, 0.65, 2.35], [s * 1.610, 1.14, 3.18], [s * 1.580, 1.14, 3.18],
       [s * 1.580, 1.33, 2.35], [s * 1.610, 1.33, 2.35], [s * 1.610, 1.33, 3.18], [s * 1.580, 1.33, 3.18]));
-    segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 3.20);                  // low i12/i13 published-width datum, continuous through both source stations
+    // 266 (both photo critics: "a thin rod sticks out from the front of each track run"): the low i12/i13 width datum ran
+    // on to z 3.20 under the raked front panel, a 3 cm rod in the air ahead of the hem; it ends with the 1.671 band
+    // (z 2.35) whose foot it rides, keeping the published width.
+    segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 2.35);
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.016), s * 1.640, 0.97, 1.85 - k * 1.04); // panel seams (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
@@ -643,7 +646,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const dz of [1.02, -1.02]) P.add('turretDark', box(0.010, 0.24, 0.016), s * 1.493, 0.36, dz); // compartment seams on the two long bins' outer walls
     // cheek-flank rail panels (print Object_6: x ±1.26-1.29, y 1.93..2.32,
     // z_w 1.07..1.38) — thin applique standing off the cheeks on brackets
-    P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.40), s * 1.272, s < 0 ? 0.62 : 0.52, 1.64);
+    // 266 (both photo critics: "tall boxes stand ~0.3 m above the roof line" at the front corners): the right panel was a
+    // 16 cm block to 0.80; it is the left's 32 mm plate now, its top at the tie it carries.
+    P.add('turret', box(0.032, s < 0 ? 0.28 : 0.36, 0.40), s * 1.272, s < 0 ? 0.58 : 0.52, 1.64);
     const cheekTieZ = s < 0 ? 1.70 : 1.65;
     const cheekTieOuterX = 1.26;
     const cheekTieInnerX = shellCrownXAt(s, cheekTieZ) - attachmentEmbedM;
@@ -653,7 +658,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     // (left 20 cm deep, right 28 cm). The cheek now stands solid under the tie, from the panel's foot (left 0.44, right
     // 0.34) to the tie, between the crown and the panel's inner face, flush with the panel's front; on the left the
     // well that ran on down inboard of the panel's foot is filled to the cheek course too. Outside faces are unchanged.
-    const panelInnerX = s < 0 ? 1.192 : 1.256, panelFootY = s < 0 ? 0.44 : 0.34, tieFootY = s < 0 ? 0.61 : 0.43;
+    const panelInnerX = 1.256, panelFootY = s < 0 ? 0.44 : 0.34, tieFootY = s < 0 ? 0.61 : 0.43;
     P.add('turret', box(panelInnerX + 0.003 - 0.79, tieFootY + 0.005 - panelFootY, 1.84 - 1.47),
       s * (panelInnerX + 0.003 + 0.79) / 2, (tieFootY + 0.005 + panelFootY) / 2, (1.84 + 1.47) / 2);
     if (s < 0) P.add('turret', box(1.045 - 0.79, panelFootY + 0.005 - 0.22, 1.93 - 1.60), -(1.045 + 0.79) / 2, (panelFootY + 0.005 + 0.22) / 2, (1.93 + 1.60) / 2);
@@ -854,18 +859,23 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.addGunExtra(cylZ(0.16, 0.16, P.q ? 18 : 12), -0.03, 0, 0.72);              // shorter left trunnion shoulder
   // LLLTV/thermal camera box on the mantlet LEFT (print Object_5:
   // x -0.91..-0.27, y 1.82..2.05, z_w 1.89..2.14) — §B3: lens + hood tells
-  P.addGunExtra(slab(                                                           // tapered LLLTV saddle: deep on the left, flush beside the mantlet
-    [-0.90, -0.115, 0.42], [-0.28, -0.115, 0.42], [-0.28, -0.115, 0.55], [-0.90, -0.115, 1.00],
-    [-0.90, 0.115, 0.42], [-0.28, 0.115, 0.42], [-0.28, 0.115, 0.55], [-0.90, 0.115, 1.00]));
-  P.addGunExtraDark(box(0.20, 0.16, 0.03), -0.70, 0.0, 0.925);                 // camera window
-  P.addGunExtraDark(cylZ(0.05, 0.05, 10), -0.78, 0.04, 0.94);                  // lens hood
-  P.addGunExtra(box(0.18, 0.16, 0.66), -0.97, 0.0, 0.72);                       // LEFT bracket wing to x -1.06
+  // 266 (both photo critics: a triangular "shark fin" and a loose wing box where the Saumur turret carries one armoured
+  // camera box with a round door): the tapered saddle and its bracket wing are one box over the same span and height
+  // (x -1.06..-0.28, the saddle's y band, so the elevation stops are untouched), its front face chamfered at the top,
+  // the round door and its latch on that face.
+  P.addGunExtra(slab(
+    [-1.06, -0.115, 0.40], [-0.28, -0.115, 0.40], [-0.28, -0.115, 1.00], [-1.06, -0.115, 1.00],
+    [-1.06, 0.115, 0.40], [-0.28, 0.115, 0.40], [-0.28, 0.115, 0.95], [-1.06, 0.115, 0.95]));
+  P.addGunExtra(cylZ(0.095, 0.024, 16), -0.66, -0.01, 1.008);                  // round armoured door
+  P.addGunExtraDark(box(0.035, 0.12, 0.016), -0.66, 0.02, 1.024);               // door latch
   // 20mm F2 coax on the RIGHT (print Object_2: x +0.34..+0.44, r ~0.05,
   // to z_w 2.81) — the France-lane visible second barrel
   P.addGunExtra(box(0.14, 0.18, 0.30), 0.39, -0.02, 0.90);                      // coax housing slot
-  P.addGunExtra(cylZ(0.030, 0.48, 10), 0.39, 0.0, 1.27);                        // 20mm barrel to z_w 2.81
-  P.addGunExtraDark(cylZ(0.036, 0.07, 10), 0.39, 0.0, 1.475);                   // muzzle ring
-  P.addGunExtraDark(cylZ(0.017, 0.02, 8), 0.39, 0.0, 1.505);                    // bore dot (§B3.1 pinhole)
+  // 266 (Opus: "a thin bar about 1 m long runs under the barrel root"): the 20 mm barrel stood 0.46 m out of its slot;
+  // the Saumur turret shows a short stub at the port, 0.2 m.
+  P.addGunExtra(cylZ(0.030, 0.22, 10), 0.39, 0.0, 1.14);
+  P.addGunExtraDark(cylZ(0.036, 0.07, 10), 0.39, 0.0, 1.215);                   // muzzle ring
+  P.addGunExtraDark(cylZ(0.017, 0.02, 8), 0.39, 0.0, 1.245);                    // bore dot (§B3.1 pinhole)
   // CN120-25: NO bore evacuator (compressed-air scavenging — the receipt
   // shows a clean sleeve run). Core tube + sleeve segments to the receipt
   // contour: sleeve A r 0.125 (z_w 2.93..4.62), bare gap r 0.070
