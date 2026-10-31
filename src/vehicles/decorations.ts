@@ -2905,9 +2905,10 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
   // packing, six of the Leclerc's seven loads now ride its turret (the bustle, the roof and the side ledges).
+  // 266 (owner: "clean up the leclercs"; both photo critics): the fleet basket hung under the bustle onto the engine
+  // deck like a free-standing fence, and its packs (a cooler box, a drum and a duffel) sat on the roof as the bulkiest
+  // things there. The builder's own bustle rack and side racks carry the Leclercs' stowage, so both rows are gone.
   leclerc_s2: () => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
@@ -2917,8 +2918,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   leclerc_sxxi: (s) => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
