@@ -149,12 +149,40 @@ function suitContact(tank, id) {
   return report;
 }
 
-for (const id of ids) {
-  const tank = createTank(id, null, {
+// (267, Main: the receipt stopped at its first failing tank, so each fix only revealed the next red: merkava4b, then
+// merkava3c, then m1a3) every per-id check runs for every suited id. A failure is collected with its section and id, the
+// id's tanks are disposed either way, and the receipt fails once after the fleet suits, naming them all (as
+// destruction-slab-kinds names every map). The checks themselves are unchanged.
+const failures = [];
+function checkSuited(section, id, body, into = failures) {
+  const built = [];
+  try { body((tank) => { built.push(tank); return tank; }); }
+  catch (error) { into.push(`${section} ${id}: ${error?.message ?? error}`); }
+  finally { for (const tank of built) tank.dispose(); }
+}
+// the negative control: two planted failures around a passing id are both named, the id after them still runs, and every
+// tank built is disposed whether its checks passed or not
+{
+  const planted = [], ran = [], disposed = [];
+  for (const id of ['planted_a', 'clean', 'planted_b']) {
+    checkSuited('control', id, (track) => {
+      ran.push(id);
+      track({ dispose: () => disposed.push(id) });
+      assert.ok(!id.startsWith('planted'), `${id} fails as planted`);
+    }, planted);
+  }
+  assert.deepEqual(ran, ['planted_a', 'clean', 'planted_b'], 'a failing id never stops the ids after it');
+  assert.deepEqual(disposed, ['planted_a', 'clean', 'planted_b'], "each id's tanks are disposed, failing or not");
+  assert.deepEqual(planted, ['control planted_a: planted_a fails as planted', 'control planted_b: planted_b fails as planted'],
+    'both planted failures are named');
+}
+
+for (const id of ids) checkSuited('suited', id, (track) => {
+  const tank = track(createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
     quality: 'high',
-  });
+  }));
   tank.root.updateMatrixWorld(true);
   const hullRig = tank.root.getObjectByName('rig_hull');
   const turretRig = tank.root.getObjectByName('rig_turret');
@@ -261,18 +289,16 @@ for (const id of ids) {
       `${id} gun shroud stops behind the live muzzle anchor`);
   }
 
-  tank.dispose();
-}
+});
 
 // the suits with their own field configs (the Ukrainian national rebuilds, push 3: nationalUkraineProtection.ts) are held
 // to the same contact rule (262: the old A4's suit retired with its build; the 2A2 now drives unsuited)
-for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
-  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) checkSuited('own contact', id, (track) => {
+  const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
   assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
-  tank.dispose();
-}
+});
 
 // 2026-10-08 (round 5; the lane lead on push 3b's field roof cage: "the turret-roof net must not pass through the cage
 // bars or legs"; "drape the net over the cage top and let it fall over the wing edges, the way Ukrainian crews hang nets
@@ -314,8 +340,8 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
     }
     return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
   };
-  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
-    const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) checkSuited('roof cage', id, (track) => {
+    const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret');
     const record = turret.userData.fieldRoofCage;
@@ -368,8 +394,7 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
       assert.deepEqual(crossings.slice(0, 8), [], `${id}: ${crossings.length} suit triangles pass into the cage`);
     }
     assert.ok(netted >= 1, `${id} drapes a net over its roof cage`);
-    tank.dispose();
-  }
+  });
 }
 
 // 2026-10-08 (round 5, the lane lead's integration rehearsal): the suit is laid after assembly through the port's
@@ -447,8 +472,8 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
 const POLISH_FIELD_SUITS = Object.fromEntries(Object.entries(NATIONAL_POLAND_GHILLIE_CONFIGS).filter(([, cfg]) => cfg.fieldClearanceM !== undefined));
 assert.deepEqual(Object.keys(POLISH_FIELD_SUITS), ['t80u_husarz', 't72b3_zubr', 't72b3_zubr_ii'],
   'the Husarz and both Zubrs wear the Polish field suit');
-for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) {
-  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) checkSuited('fleet', id, (track) => {
+  const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
   tank.root.updateMatrixWorld(true);
   const rigs = { hull: tank.root.getObjectByName('rig_hull'), turret: tank.root.getObjectByName('rig_turret'), gun: tank.root.getObjectByName('rig_gun') };
   const suit = { hull: [], turret: [], gun: [] };
@@ -551,8 +576,8 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
       }
     }
   }
-  tank.dispose();
-}
+});
+assert.deepEqual(failures, [], `${failures.length} suited-tank failure(s), every one:\n  ${failures.join('\n  ')}`);
 
 const twardy = GHILLIE_SUIT_CONFIGS.pt91a_twardy;
 const twardyTop = twardy.turret.top[0];

@@ -166,6 +166,14 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.equal(read('t/spawner.selftest.mjs', 'docs/x.md'), null);
   assert.equal(laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }) }, (file, path) => reads[file]?.[path] ?? null, root)
     ('t/spawner.selftest.mjs', 'src/vehicles/specs.ts'), 'broad', 'without a spawn, a broad match stays broad (negative control)');
+  // 266: a path its latest PASS read or listed (tools/selftest-observe.mjs) selects it, whatever the closure says
+  const observedOf = (file) => (file === 't/spawner.selftest.mjs' ? { reads: new Set(['src/ui/hud.ts']), lists: new Set(['site']) } : null);
+  const seen = laneReadOf({ ...fake, metadataOf: () => ({ spawns: false }), observedOf }, (file, path) => reads[file]?.[path] ?? null, root);
+  assert.equal(seen('t/spawner.selftest.mjs', 'src/ui/hud.ts'), 'observed', 'a computed read its run made selects it');
+  assert.equal(seen('t/spawner.selftest.mjs', 'site/new-page.html'), 'observed', 'a file in a directory its run listed selects it');
+  assert.equal(seen('t/spawner.selftest.mjs', 'docs/x.md'), null, 'negative control: a path it was never seen reading');
+  assert.ok(selectLane({ defaults: ['t/spawner.selftest.mjs'], tanks: [], changed: ['src/ui/hud.ts'], readOf: seen })
+    .selected.get('t/spawner.selftest.mjs').reasons[0].includes('was seen reading src/ui/hud.ts'), 'its reason says so');
 }
 
 // ---- the real closure: this receipt reads tools/test-diff.mjs through its imports, so a change to it selects it
