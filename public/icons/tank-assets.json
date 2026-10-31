@@ -2174539,16 +2174539,16 @@
           }
         ]
       },
-      "geometryHash": "aa0ee54b",
+      "geometryHash": "2b82ea6a",
       "metadataHash": "f17254b1",
       "presentationAnchor": {
-        "xM": 0.0013,
-        "zM": -0.0407
+        "xM": 0.001,
+        "zM": -0.0518
       },
-      "presentationHash": "26903451",
+      "presentationHash": "44052e55",
       "presentationProjection": {
         "centerYM": 2.085,
-        "topHalfM": 4.0496,
+        "topHalfM": 4.034,
         "sideHalfM": 2.231
       },
       "appearance": {
@@ -2174600,15 +2174600,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28930,
-          "sha256": "a1e152a0a96a00f024d588402870902654162afb75becc267102235137b8d8c1",
+          "bytes": 28790,
+          "sha256": "72beaddecbe129c9128e39f672e96243f002f7a130c5b9a425e0082314ac595a",
           "thumbnail": {
             "file": "thumbs/ua_cv9040c_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11624,
-            "sha256": "379555a0c2da2601b22c5ea00e80331f03f5298efa2fec08e91fd2057e5410e0"
+            "bytes": 11698,
+            "sha256": "d15c599c10e37fdbee66c520abf085780ef08727ac1560fda05880c7dd0f5108"
           }
         },
         "top": {
@@ -2174616,56 +2174616,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22004,
-          "sha256": "d15b11b7f685f15dadc2f007c92800c2cb366e31aa20a0de39a26dd89605a398"
+          "bytes": 21836,
+          "sha256": "bebdda76ed047ab46f95c70ce5b5f3ba5da47b2343b83de219a41f8c9a7ba656"
         },
         "side": {
           "file": "ua_cv9040c_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17918,
-          "sha256": "4ed530b48141a02b64a40f8f9d75474cc02a45d1d0c43f61bc234e7bf4fda8fd"
+          "bytes": 17978,
+          "sha256": "13c40c41777d55baf33747dcd7e3e6955956ac1e55e499a3e4c42375e311af06"
         },
         "topSilhouette": {
           "file": "ua_cv9040c_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1586,
-          "sha256": "2a11195e50deb31eb34aeeff7ba22dd546cac046f5b87c0c357c6b0bcc8471ca"
+          "bytes": 1417,
+          "sha256": "c9ba61873221ba0f77f2802744cbfe4910e4dbe8c171bf7b93a94bda835788d7"
         },
         "sideSilhouette": {
           "file": "ua_cv9040c_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5853,
-          "sha256": "f32e262e0980525384dd698af6a6cff66be7bf4eeb3d6c82fff532cf163b1a75"
+          "bytes": 5874,
+          "sha256": "bd9a4afb03c74b8f07a093f2b0db17effd660b938ac94f8b39e7691baebe5116"
         },
         "armorSide": {
           "file": "ua_cv9040c_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42328,
-          "sha256": "336113f14afaae00144a4c60c73c3428ba45fdb1c259c55d689ec3df5291fce0"
+          "bytes": 42090,
+          "sha256": "550d82f4620e7ff798ea1755a9f39e78472f00031a6d52cadc4570ffae1160bf"
         },
         "modulesSide": {
           "file": "ua_cv9040c_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 43220,
-          "sha256": "a72528a33e6b41c685321d4e679e9f5fba3f6762649f14c7acb19258c76b3673"
+          "bytes": 42862,
+          "sha256": "63139eeafe4412325fc78a4e64550560a1e72cd216568700b8000bccc8134c58"
         },
         "crewSide": {
           "file": "ua_cv9040c_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37974,
-          "sha256": "ab586e33b77b083f87bd57b87bf5bb98d2a5eedd41cd03f2fc355dc13657c68b"
+          "bytes": 37750,
+          "sha256": "0a5c5e864e552af9c4d48a30f28bd9e6fe9e0c32d6caa913a92a8da496036a9f"
         },
         "markings": {
           "file": "ua_cv9040c_markings.png",
@@ -2174679,7 +2174679,7 @@
           "file": "ua_cv9040c_technical.json",
           "mime": "application/json",
           "bytes": 5014,
-          "sha256": "2b18aed6d275ee3583e83abbb9665b66db2cdd51b25a414392449ca22518d4f2"
+          "sha256": "adde9c48da8d3f3d7c523f914cd446b69279d90051e9b63843b39bd6409c0b88"
         }
       }
     },

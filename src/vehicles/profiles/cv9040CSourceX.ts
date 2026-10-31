@@ -150,26 +150,32 @@ function gun(P: TankBuilderPort): void {
 function addUkrainianKit(P: TankBuilderPort): void {
   for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.72,[side*1.648,1.38,-.70],side*Math.PI/2);
   // the troop roof is raised to 1.94 from its rear edge (z -3.32) to -2.45, then steps down to the turret deck at 1.76
+  // (ua3, the ua2 critics, both: a stiff faceted cushion; lumps, its edges down over the rear plate and the rear corners,
+  // crossing cords, a duller grey-brown; its front tucked in, where a corner stood out as a beak)
   const RING: readonly [number, number, number][] = [ // x, height over the base, the lump's weight
-    [1.47, -.04, 0], [1.45, .12, .03], [1.15, .28, .04], [.62, .37, -.03], [.05, .32, .05], [-.56, .39, -.02],
-    [-1.08, .28, .04], [-1.45, .12, 0], [-1.47, -.04, 0], [0, -.03, 0],
+    [1.50, -.05, 0], [1.46, .10, .04], [1.20, .27, .06], [.78, .33, -.05], [.30, .38, .06], [-.18, .30, -.06],
+    [-.62, .39, .05], [-1.10, .26, -.05], [-1.46, .11, .04], [-1.50, -.05, 0], [0, -.03, 0],
   ];
-  const drape=(z: number, base: number, k: number, s=1): {z: number; ring: [number, number][]}=>({z,
-    ring:RING.map(([x,h,w])=>[x,base+(h>0?(h+w*k)*s:h)] as [number, number])});
-  const stations=[drape(-3.34,1.94,0),drape(-3.10,1.94,1),drape(-2.85,1.94,-1),drape(-2.62,1.94,.5),drape(-2.47,1.94,-.5),
-    drape(-2.30,1.77,.3,1.05),drape(-2.12,1.77,0,.54)];
+  const drape=(z: number, base: number, k: number, s=1, w=1): {z: number; ring: [number, number][]}=>({z,
+    ring:RING.map(([x,h,wt])=>[x*w,base+(h>0?(h+wt*k)*s:h)] as [number, number])});
+  const stations=[drape(-3.34,1.94,0),drape(-3.22,1.94,1),drape(-3.07,1.94,-1),drape(-2.92,1.94,.8),
+    drape(-2.77,1.94,-.7),drape(-2.62,1.94,1),drape(-2.47,1.94,-.6),drape(-2.30,1.77,.4,1.05,.94),drape(-2.12,1.77,0,.54,.88)];
   P.addEquipment('hullCanvasPale',sectionSolid(stations));
-  // its edge hanging over the roof's rear edge
-  P.addEquipment('hullCanvasPale',box(2.86,.07,.02),0,1.895,-3.335);
-  // webbing straps lying on it, across and down to its edges (no posts)
-  for(const st of [stations[1],stations[3]]) {
-    const top=st.ring.slice(1,8);
-    for(let i=0;i+1<top.length;i++) {
-      const [x0,y0]=top[i],[x1,y1]=top[i+1],len=Math.hypot(x1-x0,y1-y0);
-      P.addEquipment('hullCloth',box(len,.012,.045),(x0+x1)/2,(y0+y1)/2+.012,st.z,0,0,Math.atan2(y1-y0,x1-x0));
-    }
+  // its edge sloping down over the roof's rear edge and clear of the rear door below it
+  P.addEquipment('hullCanvasPale',box(2.90,.17,.02),0,1.86,-3.37,.52,0,0);
+  // crossing cords, laid over it station to station
+  const RIDGE=[1,2,3,4,5,6,7,8];
+  for(const dir of [1,-1]) for(let i=1;i+1<stations.length-1;i++) {
+    const j=dir>0?RIDGE[i-1]:RIDGE[RIDGE.length-i];
+    const k=dir>0?RIDGE[i]:RIDGE[RIDGE.length-i-1];
+    if(j===undefined||k===undefined)continue;
+    const [x0,y0]=stations[i].ring[j],[x1,y1]=stations[i+1].ring[k],z0=stations[i].z,z1=stations[i+1].z;
+    const len=Math.hypot(x1-x0,y1-y0,z1-z0);
+    const cord=box(.02,.012,len);
+    cord.lookAt(new THREE.Vector3(x1-x0,y1-y0,z1-z0));
+    P.addEquipment('hullCloth',cord,(x0+x1)/2,(y0+y1)/2+.014,(z0+z1)/2);
   }
-  P.mats.canvasPale.color.setHex(0x5a403c);
+  P.mats.canvasPale.color.setHex(0x4c3f3a);
 }
 
 /** The CV9040C (release 265: `ukrainian` builds the Ukrainian one, ukraineCv90Specs.ts). */
