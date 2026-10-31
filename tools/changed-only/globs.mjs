@@ -17,6 +17,16 @@ function toRegExp(pattern) {
   return new RegExp(`^${out}$`);
 }
 
+/**
+ * Whether a file's declaration (steps.mjs DECLARED_DYNAMIC) takes the edge to `path` out of a step's key: `covered` and
+ * `modeOnly` name exact paths, `namesOnly` globs (`*.html`) the paths the file only names and never reads.
+ */
+export function declaredNotInput(declaration, path) {
+  if (!declaration) return false;
+  if ([...(declaration.covered ?? []), ...(declaration.modeOnly ?? [])].includes(path)) return true;
+  return (declaration.namesOnly ?? []).some((pattern) => toRegExp(pattern).test(path));
+}
+
 function walk(base, dir, out) {
   let entries;
   try { entries = readdirSync(join(base, dir), { withFileTypes: true }); } catch { return; }

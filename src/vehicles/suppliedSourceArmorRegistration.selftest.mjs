@@ -7,6 +7,7 @@ const {SUPPLIED_SOURCE_IDS,synchronizeSuppliedSourceCombatMetadata}=await import
 const {ensureInteriorFills}=await import('./interiorFills.ts');
 const {stripActivatedEra}=await import('../game/eraActivation.ts');
 const {combatAnatomyCalibration}=await import('./combatAnatomy.ts');
+const {createType99Armor}=await import('./profiles/type99Armor.ts');
 
 const owners = ['hull', 'turret'];
 const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
@@ -46,9 +47,15 @@ const withoutOwnStructures = (id, owner, plates) => {
     `${id}/${owner}: calibrated structure plate ${name} is installed once`);
   return plates.filter(p => !own.includes(p.name));
 };
+// Release 233 (suppliedSourceFleetSpecs.ts structureFrame): the Type 96B is fitted from the Longwei's retired envelope,
+// frozen as createType99Armor('type96b_frame'), so the Longwei's 262 rebuild (its hull's sponson fronts, its turret)
+// stays off it. Its permanent protection is held to that frame, which carries no calibrated structures.
+const permanentFrames = {type96b: () => createType99Armor('type96b_frame')};
 for (const {id, spec, donor} of cases) {
+  const frame = permanentFrames[id]?.();
   for (const owner of owners) {
-    const permanent = withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]).filter(p => p.kind !== 'era');
+    const permanent = (frame ? frame[`${owner}Plates`] : withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]))
+      .filter(p => p.kind !== 'era');
     const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]);
     assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
       permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
