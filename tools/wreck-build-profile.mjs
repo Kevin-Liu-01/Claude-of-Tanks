@@ -32,8 +32,10 @@ const CALL_STAGES = new Map([
 ]);
 const FACTORY_STAGES = new Set(['boxUV', 'bakeDirt', 'mergeAll', 'buildRunningGear', 'batchMobileStaticChildren',
   'installCoplanarDepthLayers', 'fittedEraSurfaces', 'resolveTankPresentationSetup', 'createNonRenderingTankMaterials']);
-const PROFILE_STAGES = new Set(['buildT90MProryvNative2026', 'buildT90MProryv', 'replaceT90MProryvHull',
-  'replaceT90MProryvTurret', 'enhanceT90MProryvSurface2026', 'finishT90MProryvOwner2026', 'refineT90MProryvArmor2026']);
+// The profiled t90am builds on its source-X twin, the T-90SM (266: the Proryv stack it used to own was retired).
+const PROFILE_SOURCE = 'src/vehicles/profiles/t90X.ts';
+const PROFILE_STAGES = new Set(['buildT90SMX', 'buildT90SMXTurret', 'smFendersAndSkirts', 'modernCheeks', 'modernBins',
+  'modernRoof', 'sourceRoofArmor']);
 
 function identity() {
   assert.ok(ROOT && isAbsolute(ROOT), 'An explicit absolute pinned source root is required');
@@ -200,7 +202,7 @@ async function worker(mode) {
   ]);
   const constructorTargets = new Map([
     [pathToFileURL(join(ROOT, 'src/vehicles/tankFactoryCore.ts')).href, 'factory'],
-    [pathToFileURL(join(ROOT, 'src/vehicles/profiles/t90.ts')).href, 'profile'],
+    [pathToFileURL(join(ROOT, PROFILE_SOURCE)).href, 'profile'],
   ]);
   const hooks = {}, observedModules = new Set(), constructorStages = {};
   const loader = registerHooks({ load(url, context, nextLoad) {
@@ -315,7 +317,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       transform(geometrySource, mode, 'geometry');
     }
     transformConstructor(readFileSync(join(ROOT, 'src/vehicles/tankFactoryCore.ts'), 'utf8'), 'factory');
-    transformConstructor(readFileSync(join(ROOT, 'src/vehicles/profiles/t90.ts'), 'utf8'), 'profile');
+    transformConstructor(readFileSync(join(ROOT, PROFILE_SOURCE), 'utf8'), 'profile');
     console.log('wreck-build-profile: exact hooks and in-memory candidate syntax pass; no tank built');
   } else { console.error('Use --root=/absolute/pinned-source --out=/absolute/new-output (or --selftest instead of --out).'); process.exitCode = 2; }
 }

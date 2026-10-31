@@ -9,6 +9,14 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // 266 (Main 2026-10-31): the true T-64s on their published dimensions; the prints they were measured against (the
   // T-64BV1 and Donbas prints, and the BM1M print the build departs from) are deregistered
   'docs/references/photos/t64-20261031.json':Object.freeze(['t64bm1m','t64bv','t64b1v_2022']),
+  // 266 (Main 2026-10-31): the Brazil line's six real vehicles, built from photographs and published dimensions with no
+  // 3D model to follow; the fictional EE-T3 and EE-T4 prove their owner design records instead (first-party concepts)
+  'docs/references/photos/ccl-x1-pioneiro-20261029.json':Object.freeze(['x1_pioneiro']),
+  'docs/references/photos/ccl-x1a2-carcara-20261029.json':Object.freeze(['x1a2_carcara']),
+  'docs/references/photos/mb-3-tamoyo-1-20261029.json':Object.freeze(['tamoyo1']),
+  'docs/references/photos/mb-3-tamoyo-3-20261029.json':Object.freeze(['tamoyo3']),
+  'docs/references/photos/ee-t1-osorio-105-20261029.json':Object.freeze(['osorio_p1']),
+  'docs/references/photos/ee-t1-osorio-120-20261029.json':Object.freeze(['osorio_p2']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */
