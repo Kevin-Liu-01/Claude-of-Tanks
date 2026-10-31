@@ -407,22 +407,25 @@ function machineGun(P:TankBuilderPort):void {
   libraryRoofMg(P,{station:'t72b3mCommanderKordStation',cls:'kord',seat:[-.70-YAW[0],2.53-YAW[1],.05-YAW[2]]});
 }
 
-function mainGun(P:TankBuilderPort,chinLift=0):void {
+function mainGun(P:TankBuilderPort,chinLift=0,finish=false):void {
   const muzzle=T72B3M_X_DATUMS.muzzleZ,floor=T72B3M_X_DATUMS.boreFloorZ,c=chinLift;
   KIT.buildGun(P,{len:floor-GUN[2],r:.085,baseR:.13,sleeve:false,collar:false});
   P.add('gunMount',cylX(.238,.61,32),0,0,0);
   P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565+c,1.85],
     [1.334,.337,.337,2.108,1.566+c,1.86],[1.50,.300,.300,2.081,1.61+c,1.85],
     [1.791,.1606,.1606,1.98264,1.66135+c,1.82199]],GUN));
-  // 266 (shared-base follow-up; blind critics: "the thermal sleeve reads too thin and plain"): the 2A46M-5's fume
-  // extractor stands proud of the sleeve (r .1475, 295 mm, against the 243 mm sleeve; it was 252 mm, under the sleeve's
-  // own 258 mm root), with short conical ends; the sleeve segments keep their measured radii.
-  for(const [a,b,ra,rb]of [[1.791,2.302,.12879,.11855],[2.3013,3.1700,.12129,.12129],
-    [3.170,3.987,.11571,.11140],[3.987,4.050,.1200,.1475],[4.050,4.905,.1475,.1475],
-    [4.905,5.0073,.1475,.1025],[5.0067,5.84385,.102544,.102544]]){
-    P.add('gun',KIT.cylY(rb,ra,b-a,32).rotateX(Math.PI/2),0,0,(a+b)/2-GUN[2]);
-  }
-  sleeveHardware(P);
+  // 266 (shared-base follow-up; blind critics: "the thermal sleeve reads too thin and plain"): on the B3M family's own
+  // build (familyFinish) the 2A46M-5's fume extractor stands proud of the sleeve (r .1475, 295 mm, against the 243 mm
+  // sleeve; it was 252 mm, under the sleeve's own 258 mm root), with short conical ends, and the sleeve carries its
+  // clamp bands, seams and muzzle reference. The national concepts on this turret keep the measured sleeve their gun
+  // curves were swept for (nationalGunMantlet: the fatter sleeve took the Hetman II's barrel to 7.7 mm of its rear rack).
+  const sleeve:readonly(readonly[number,number,number,number])[]=finish?[[1.791,2.302,.12879,.11855],
+    [2.3013,3.1700,.12129,.12129],[3.170,3.987,.11571,.11140],[3.987,4.050,.1200,.1475],[4.050,4.905,.1475,.1475],
+    [4.905,5.0073,.1475,.1025],[5.0067,5.84385,.102544,.102544]]
+    :[[1.791,2.302,.12879,.11855],[2.3013,3.1700,.12129,.12129],[3.170,3.987,.11571,.11140],[3.987,4.0365,.1222,.12607],
+    [4.0365,4.962,.12607,.12607],[4.962,5.0073,.12258,.09258],[5.0067,5.84385,.102544,.102544]];
+  for(const [a,b,ra,rb]of sleeve)P.add('gun',KIT.cylY(rb,ra,b-a,32).rotateX(Math.PI/2),0,0,(a+b)/2-GUN[2]);
+  if(finish)sleeveHardware(P);
   // Scalar axial profile. Owner 2026-09-22 ("the point of adding holes instead of carving them
   // into the barrel is that we save on triangles"): the tube is closed at the source tip. Until
   // then the profile turned into the measured 125 mm bore (radius .0625) down to the source floor
@@ -528,7 +531,7 @@ export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOption
   bustle(P,finish);roofEquipment(P,options.antennaMasts!==false);smoke(P);
   if(options.mantletChinLift!==undefined&&!(options.mantletChinLift>=0&&options.mantletChinLift<=.016))
     throw new RangeError(`mantletChinLift ${options.mantletChinLift}: 0 to .016 m (the trunnion boss stays inside)`);
-  if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0);
+  if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0,finish);
 }
 export const T72B3M_X_PROFILES={t72b3m_2016:{build:(P:TankBuilderPort):void=>buildT72B3MX(P)}} as const;
 
