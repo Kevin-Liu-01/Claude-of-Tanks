@@ -193,14 +193,14 @@ function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
     at(P,box(.26,.19,.02),dx,dy,front+.01);
     for(const ox of[-.10,0,.10])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
   }else{
-    // the door is 50 mm armour plate, closed over the port in a dark seam and hung from a hinge along its top edge
-    // (release 265, the minors pass: propped open on stays, both blind critics read a see-through frame on struts; the
-    // Bovington and drawing references show it shut and flush; round 2 read the bare plate as no door, its two knuckles
-    // as stub pins)
-    const h=.24,hy=dy+.10,t=.05;
-    at(P,box(.30,h+.03,.02),dx,hy-h/2,front+.01,'turretDark');
-    at(P,box(.27,h,t),dx,hy-h/2,front+t/2+.005,'turretDetail');
-    at(P,cylX(.016,.25,10),dx,hy+.006,front+t+.004,'turretDark');
+    // the door is 50 mm armour plate over nearly the whole front face, closed in a dark seam and hung from a hinge along
+    // its top edge (release 265, the minors pass: propped open on stays, both blind critics read a see-through frame on
+    // struts; the Bovington and drawing references show it shut and flush; round 2 read the bare plate as no door, its
+    // two knuckles as stub pins; round 3 a port-sized door as a small square where the references' fills the face)
+    const w=.32,hy=2.10,h=hy-1.56,t=.05;
+    at(P,box(w+.03,h+.03,.02),dx,hy-h/2,front+.01,'turretDark');
+    at(P,box(w,h,t),dx,hy-h/2,front+t/2+.005,'turretDetail');
+    at(P,cylX(.016,w-.02,10),dx,hy+.006,front+t+.004,'turretDark');
   }
 }
 function roof(P:TankBuilderPort):void{
