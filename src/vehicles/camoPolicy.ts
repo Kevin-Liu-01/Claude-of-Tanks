@@ -136,11 +136,12 @@ const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_oli
  * and FV4030s wear and the Op Granby Mk 3's plain stone; then the Brazil line's own coats (brazilSpecs.ts): the Osório
  * P.2's Army two-tone bands, the Tamoyo 1's and the Tamoyo 3's 1980s three-tones and the X1A2's 6º RCB three-tone (the
  * Osório P.1's 1986 three-tone and the X1's olive drab sit within a shade of a named preset, so they paint their spec's
- * coat as Factory), the fictional EE-T3's three-tone and the EE-T4's digital woodland. They append after 265's saved
- * catalog indices. */
+ * coat as Factory), the fictional EE-T3's three-tone and the EE-T4's digital woodland; then the Danish line's M41 DK-1
+ * late-1980s three-tone and the CV9035 DK's lighter three-tone, and the Bundeswehr's and JGSDF's M41 period coats
+ * (Gelboliv, the JGSDF's 1961-80s olive drab). They append after 265's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_challenger1_mk1',
   'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara', 'paint_osorio_p1',
-  'paint_ee_t3_osorio', 'paint_ee_t4_osorio'] as const);
+  'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk', 'paint_m41_bw', 'paint_m41_jgsdf'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
@@ -899,6 +900,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // the fictional EE-T3 (a NATO-style three-tone) and EE-T4 (a digital woodland)
   ee_t3_osorio: 'paint_ee_t3_osorio',
   ee_t4_osorio: 'paint_ee_t4_osorio',
+  // release 266: the Danish M41 DK-1 and CV9035 DK in their own coats (the US M41's plain coat is near a named preset, so
+  // it paints its spec's coat as Factory)
+  m41dk1: 'paint_m41dk1',
+  cv9035dk: 'paint_cv9035dk',
+  // the Bundeswehr and JGSDF M41s in their own period coats (265 r2, the blind critics: the national presets read as a
+  // modern cool green and the Type 10's two-tone): Gelboliv, and the JGSDF's olive drab of 1961 to the 1980s
+  m41_bw: 'paint_m41_bw',
+  m41_jgsdf: 'paint_m41_jgsdf',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

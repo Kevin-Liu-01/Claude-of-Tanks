@@ -58,6 +58,13 @@ const CURVES = {
   leo1a5dk: [],
   leo1a5dk1: [],
   leo2a5dk: [],
+  cv9035dk: [], // the 35 mm on the CV90 Mk IV's mount (the owner 2026-10-30)
+  // 265: the M41 family (profiles/m41.ts), the gun shield the cast turret's own nose
+  m41a3: [],
+  m41_bw: [],
+  m41_jgsdf: [],
+  m41dk1: [],
+  t49: [], // the M551's turret and gun-launcher on the M41's hull (the owner 2026-10-30)
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

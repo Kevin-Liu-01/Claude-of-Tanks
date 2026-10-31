@@ -4732,6 +4732,96 @@
     5.9
    ]
   },
+  "t49": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 846,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82328,
+   "frame": [
+    0,
+    2.2,
+    0.1,
+    4.3
+   ]
+  },
+  "m41a3": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 11,
+   "netSeeThroughPx": 0,
+   "tris": 77414,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41_bw": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 78544,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41_jgsdf": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 78085,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41dk1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 492,
+   "seeThroughPx": 12,
+   "netSeeThroughPx": 0,
+   "tris": 82926,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "cv9035dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 649,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 56612,
+   "frame": [
+    -0.05,
+    1.9,
+    0.05,
+    4.3
+   ]
+  },
   "pt84_orzel": {
    "sealed": true,
    "openPx": 0,

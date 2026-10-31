@@ -51,6 +51,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "leopardA6X": () => import('./combatAnatomyGroups/leopardA6X.generated.ts'),
   "leopardX": () => import('./combatAnatomyGroups/leopardX.generated.ts'),
   "lrmvLynx": () => import('./combatAnatomyGroups/lrmvLynx.generated.ts'),
+  "m41": () => import('./combatAnatomyGroups/m41.generated.ts'),
   "m6Linebacker": () => import('./combatAnatomyGroups/m6Linebacker.generated.ts'),
   "marder2": () => import('./combatAnatomyGroups/marder2.generated.ts'),
   "merkava": () => import('./combatAnatomyGroups/merkava.generated.ts'),

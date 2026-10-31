@@ -230,6 +230,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
       { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
     ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
+  // release 265 (owner 2026-10-29: "use our tank generation procedure on this m41 as the basis"): "Low poly M41Walker
+  // Bulldog" by SIpriv (Sketchfab, CC-BY-4.0; sha256 127ca9ed9d1b2a36…), the M41A3's measurement print
+  // (docs/references/tanks/m41a3.md). Gun toward raw -Z; the turret is mesh_selection_45 (Object_94-97, the cupola and
+  // bustle box included), the barrel tube_47 with its collar tube_46. Scaled once on the published 5.82 m hull (x1.8484 of
+  // the raw file), so the hull-length anchor applies. The Bundeswehr, JGSDF and Danish DK-1 fits are photo-class
+  // derivatives on the same build: not registered here.
+  m41a3: { source:'glb', glb:{ path:'/models/community-candidates/m41_walker_bulldog_lowpoly.glb', turretNode:'^mesh_selection_45$',
+    gunNode:'^tube_47$', gunFollowers:'^tube_46$', autoPivot:true, yawOffset:Math.PI, fidelityScaleAnchor:'hullLength' } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): strv121 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle strv122_vavtrudner.glb shows a Stridsvagn 122 (fleet id strv122): re-register it there later.
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },

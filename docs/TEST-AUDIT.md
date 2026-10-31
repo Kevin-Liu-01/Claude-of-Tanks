@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1484 | 144.5 |
+| KEEP | 1485 | 144.9 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1120.6 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2146 | 1265.5 | 212.1 |
-| After: the default tier | 1484 | 144.5 | 20.4 |
+| Before: every receipt (npm test without the tiers) | 2147 | 1265.8 | 212.1 |
+| After: the default tier | 1485 | 144.9 | 20.5 |
 
-Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.7 min pool, 2.5 min browser receipts.
+Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
 
 ## Manual suites
 
@@ -807,7 +807,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1484)
+## KEEP (1485)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -883,6 +883,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/articulated-shadow-batch.browser.selftest.mjs` | 22 | KEEP | GPU regression, 22 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interior-fill-exposure.selftest.mjs` | 22 | KEEP | tool contract, 22 s: 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteGlslMinify.selftest.mjs` | 22 | KEEP | GLSL minify in the build (must-keep: build) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/m41.selftest.mjs` | 21 | KEEP | vehicle rule, 21 s: 265: the M41 family on its supplied print's datums, each mark's kit and tree | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/gallery/catalog.selftest.mjs` | 21 | KEEP | site, manual or app contract, 21 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleSeatPlan.selftest.mjs` | 21 | KEEP | game flow, 21 s: the load card's teams before the world are the seated battle's (2026-10-26) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/decorationsStaging.selftest.mjs` | 21 | KEEP | staged decorations (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |

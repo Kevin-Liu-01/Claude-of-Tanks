@@ -73,11 +73,13 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 266: the Danish Army line (the Christian II moved here from Sweden)
   denmark: Object.freeze([
-    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'christian2',
+    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'christian2',
   ]),
   // 266: the Brazilian Army line
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
+  // 265: the M41 Walker Bulldog family
+  m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   poland: Object.freeze([

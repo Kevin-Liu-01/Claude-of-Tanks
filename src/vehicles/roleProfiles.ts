@@ -34,6 +34,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv103a: { doctrine: 'precision', viewM: 415, still: 0.263, moving: 0.173 },
   strv103b: { doctrine: 'precision', viewM: 425, still: 0.260, moving: 0.170 },
   cv90: { doctrine: 'support', viewM: 445, still: 0.263, moving: 0.203 },
+  cv9035dk: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv90105_tml: { doctrine: 'scout', viewM: 465, still: 0.338, moving: 0.338 },
   strv121: { doctrine: 'precision', viewM: 410, still: 0.238, moving: 0.148 },
@@ -235,6 +236,13 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
+  // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
+  m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },
+  t49: { doctrine: 'scout', viewM: 470, still: 0.358, moving: 0.350 },
+  // the original M41s' optical sights see less far
+  m41a3: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_bw: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_jgsdf: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
   m551a1_tts: { doctrine: 'scout', viewM: 490, still: 0.355, moving: 0.355 },
   leo2a7v: { doctrine: 'flexible', viewM: 440, still: 0.174, moving: 0.114 },
   leo2a6m: { doctrine: 'flexible', viewM: 435, still: 0.176, moving: 0.116 },
