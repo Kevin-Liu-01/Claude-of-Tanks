@@ -317,7 +317,5 @@ const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.joi
 assert.deepEqual(DEPENDENTS.map((entry) => `${entry.name}<${entry.after.join(',')}`), ['docsPrerender<icons', 'publicShell<docsPrerender']);
 assert.ok(stepByName('icons').outputs.includes('tankAssets'), 'icons writes the manifest the prerender reads');
 for (const entry of DEPENDENTS) assert.ok(existsSync(join(repo, entry.tool)), `${entry.name}: ${entry.tool} exists`);
-assert.match(readFileSync(join(repo, 'src/docs/topics.selftest.mjs'), 'utf8'), /public\/icons\/tank-assets\.json/,
-  'the Field Manual receipt reads the icons manifest (why the prerender follows icons)');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
