@@ -167974,17 +167974,17 @@
           }
         ]
       },
-      "geometryHash": "e7414588",
+      "geometryHash": "14e1a68b",
       "metadataHash": "f34d97e1",
       "presentationAnchor": {
-        "xM": 0.0008,
-        "zM": -0.139
+        "xM": 0.0011,
+        "zM": -0.1399
       },
-      "presentationHash": "6dcfca65",
+      "presentationHash": "6d320b86",
       "presentationProjection": {
         "centerYM": 1.9331,
-        "topHalfM": 6.2596,
-        "sideHalfM": 3.1298
+        "topHalfM": 6.2606,
+        "sideHalfM": 3.1303
       },
       "appearance": {
         "version": 1,
@@ -168035,15 +168035,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29964,
-          "sha256": "987ca27d3dc85dd57dd2b0499609f54a34c314c8bfaa034c2a63a128b16d6c5c",
+          "bytes": 29934,
+          "sha256": "da2f81969966a22207d3473197e9053a469129527007acbcbd3d98c8b964ad3e",
           "thumbnail": {
             "file": "thumbs/christian2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11432,
-            "sha256": "e22764207ac5de0bbdfbdf9018fa455001e3c79dffe9fdb85022d0b1e880d670"
+            "bytes": 11348,
+            "sha256": "cbefb695797994d94734b01c13f2f6c3dc06c663322650ed0b2bd4bb43d96292"
           }
         },
         "top": {
@@ -168051,56 +168051,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19050,
-          "sha256": "a769b3ad73252164a3931bcee432fc319d4f2f0232689bb3ec12a081f2c5b809"
+          "bytes": 18858,
+          "sha256": "9f6a2453e0c8d1b8f56e8982ff1fb4350819c20de83dde7782bd3a98e8e2164e"
         },
         "side": {
           "file": "christian2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15502,
-          "sha256": "ac58750c740570d70f3604ab52c5321ca58186af76651e25c75d5c855eabce69"
+          "bytes": 15692,
+          "sha256": "e7f5fd7246791d53b5f07741b6737331ffeb8e80b0a071987fd155d8ebbd12ed"
         },
         "topSilhouette": {
           "file": "christian2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1409,
-          "sha256": "b3ec4a26d9bcc1bc6c57ab126d225bc63c69791fb6ea3c2372d01ce503fe3944"
+          "bytes": 1402,
+          "sha256": "1a2b3759f66f6c614f623e9262dada6ac84a8320d167531eb8e7a46b4a3dbd15"
         },
         "sideSilhouette": {
           "file": "christian2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4989,
-          "sha256": "4cc19b6260693799a5c91ed62166868bd8fcb0effd693d4cae6d0b62c6abc4e2"
+          "bytes": 5015,
+          "sha256": "62e1c128b480bfaa2adf34c4fbcdacf8054f4bfaaa157a0ffc1076d86e253b53"
         },
         "armorSide": {
           "file": "christian2_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36664,
-          "sha256": "728d47baf250973c55c8119a12c5ec9fade278a4a11157ea0dd344e7f16814f3"
+          "bytes": 36608,
+          "sha256": "4cbd7bbdcbbcc9446c0abaf6c739e1f3f3c48ddfb5cbfd5f94f2096b8200510b"
         },
         "modulesSide": {
           "file": "christian2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37004,
-          "sha256": "3d491365319fe0ea15426d831e119a638d0571a6c028f071c7bff6d9a99b52ac"
+          "bytes": 37094,
+          "sha256": "be8edb6ca90adae5e08e033857a1e14958def53fb6eda83b14075a4e2d85326b"
         },
         "crewSide": {
           "file": "christian2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34290,
-          "sha256": "e388346049f74dd2f51b0924cfedd9613df8e504bc2abb983c9dd2e67e8027fe"
+          "bytes": 34600,
+          "sha256": "6941ab4783623bcc5a526b5583aecbaf61be43a4820cde3752812f042e1be210"
         },
         "markings": {
           "file": "christian2_markings.png",
@@ -168113,8 +168113,8 @@
         "technicalLabels": {
           "file": "christian2_technical.json",
           "mime": "application/json",
-          "bytes": 5320,
-          "sha256": "da82088aecd361002bde4c49d25f8ed4ab212ce021c048775ca94f3d2f61d4cd"
+          "bytes": 5318,
+          "sha256": "6db100878fb49d5915561686e7de3e66adf0ebad67875bb93f1599f0e0e00e2b"
         }
       }
     },
