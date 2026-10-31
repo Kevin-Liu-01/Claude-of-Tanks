@@ -760,8 +760,9 @@ const withKit = (build: T90XBuild, kit: T90XBuild) => ({ build: (builder: TankBu
 // mark parks its roof gun on a bearing of its own (degrees, + toward the hull's left); the source-X twins keep theirs.
 // The station turns whole about its yaw axis once the rig is assembled, when its cradle and the stock captured into it
 // already hang from it, so the inventory reads the bearing as the station's rest and the battle parks the gun there
-// between targets (auxiliarySystems.ts parkStation) and aims from it.
-const ROOF_GUN_BEARING_DEG = Object.freeze({
+// between targets (auxiliarySystems.ts parkStation) and aims from it. A station a mark's kit adds itself (its second gun)
+// rests where the kit authored it: the kit marks its root userData.t90OwnBearing.
+export const ROOF_GUN_BEARING_DEG = Object.freeze({
   t90_1992: 35, t90a_2004: -30, t90a_2006: 60, t90ms_2011: -90, t90sm_2013: 25, t90am: 180, t90m_proryv: -45,
   t90a_burlak_proto: 15,
 });
@@ -777,7 +778,7 @@ const parkRoofGuns = (build: T90XBuild, id: T90MarkId): T90XBuild => (builder) =
     rig.turretG.traverse((node) => {
       let outer = node.parent;
       while (outer && !isRoofStation(outer)) outer = outer.parent;
-      if (isRoofStation(node) && !outer) stations.push(node);
+      if (isRoofStation(node) && !outer && node.userData.t90OwnBearing !== true) stations.push(node);
     });
     for (const station of stations) station.rotateY(THREE.MathUtils.degToRad(ROOF_GUN_BEARING_DEG[id]));
   };
