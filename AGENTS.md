@@ -169,7 +169,8 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
   `tools/selftest-scans.mjs`; `tools/selftest-scans.selftest.mjs` fails until it does (228p shipped a red its
   changed-file selection could not see).
 - Any playable tank addition or geometry/profile change regenerates with
-  `npm run tank:regen:changed`: every fleet generator (controls, fills, seats,
+  `npm run tank:regen:changed` (`-- --ids=<your ids>` while main has no
+  `release/fingerprints.tsv`: without it a plain run refuses): every fleet generator (controls, fills, seats,
   spare-track, anatomy, marking, ledger, gun lines, centering, icons) runs only
   on the ids whose inputs or outputs moved, in dependency order, then the world
   steps (wreck plan, collision and trench shards) only on the maps whose config,
