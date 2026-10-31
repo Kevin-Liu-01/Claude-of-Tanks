@@ -4,6 +4,15 @@ import {readFileSync} from 'node:fs';
 import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 import {ALL_TANK_IDS} from '../src/vehicles/specs.ts';
 import {firstPartyConcept} from './first-party-concept-policy.mjs';
+// the override maps the fidelity page spreads into its registry (held equal to the page's own list below)
+import {SUPPLIED_SOURCE_REFERENCE_OVERRIDES} from './supplied-source-reference-overrides.mjs';
+import {ARES_APC_X_REFERENCE_OVERRIDES} from './ares-apc-x-reference-overrides.ts';
+import {OPLOT_BM_X_REFERENCE_OVERRIDES} from './oplot-bm-x-reference-overrides.ts';
+import {SECOND_WAVE_X_REFERENCE_OVERRIDES} from './second-wave-x-reference-overrides.ts';
+import {ABRAMS_X_REFERENCE_OVERRIDES} from './abrams-x-reference-overrides.ts';
+import {T90_X_REFERENCE_OVERRIDES} from './t90-x-reference-overrides.ts';
+import {LEOPARD_X_REFERENCE_OVERRIDES} from './leopard-x-reference-overrides.ts';
+import {WEST_X_REFERENCE_OVERRIDES} from './west-x-reference-overrides.ts';
 import {PHOTO_REFERENCE_IDS,PHOTO_REFERENCES,photoTarget,photoReceiptPassed,isPhotoReference,stageARoute,stageAPassed,
   assertNoPhotoOverride} from './photo-reference-policy.mjs';
 import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
@@ -46,10 +55,21 @@ assert(mixed.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args.inc
 const page=readFileSync(new URL('./procedural-fidelity.html',import.meta.url),'utf8');
 const imports=Object.fromEntries([...page.matchAll(/^import \{ ([A-Z0-9_]+) \} from '\/tools\/([^']+)';/gm)].map(m=>[m[1],m[2]]));
 const spread=[...page.match(/const LOCAL_REFERENCE_OVERRIDES = \{([\s\S]*?)\n\}/)[1].matchAll(/\.\.\.([A-Z0-9_]+)/g)].map(m=>m[1]);
+const OVERRIDES={SUPPLIED_SOURCE_REFERENCE_OVERRIDES,ARES_APC_X_REFERENCE_OVERRIDES,OPLOT_BM_X_REFERENCE_OVERRIDES,
+  SECOND_WAVE_X_REFERENCE_OVERRIDES,ABRAMS_X_REFERENCE_OVERRIDES,T90_X_REFERENCE_OVERRIDES,LEOPARD_X_REFERENCE_OVERRIDES,
+  WEST_X_REFERENCE_OVERRIDES};
+const OVERRIDE_FILES={SUPPLIED_SOURCE_REFERENCE_OVERRIDES:'supplied-source-reference-overrides.mjs',
+  ARES_APC_X_REFERENCE_OVERRIDES:'ares-apc-x-reference-overrides.ts',OPLOT_BM_X_REFERENCE_OVERRIDES:'oplot-bm-x-reference-overrides.ts',
+  SECOND_WAVE_X_REFERENCE_OVERRIDES:'second-wave-x-reference-overrides.ts',ABRAMS_X_REFERENCE_OVERRIDES:'abrams-x-reference-overrides.ts',
+  T90_X_REFERENCE_OVERRIDES:'t90-x-reference-overrides.ts',LEOPARD_X_REFERENCE_OVERRIDES:'leopard-x-reference-overrides.ts',
+  WEST_X_REFERENCE_OVERRIDES:'west-x-reference-overrides.ts'};
+// the page spreads exactly these maps, from these files: a new override map on the page fails here until it is read
+assert.deepEqual([...spread].sort(),Object.keys(OVERRIDES).sort(),'the fidelity page spreads exactly the override maps read here');
+for(const name of spread)assert.equal(imports[name],OVERRIDE_FILES[name],`${name}: imported from ${OVERRIDE_FILES[name]}`);
 const registered=new Set([...page.matchAll(/^ {2}([a-z0-9_]+): ?\{ ?source: ?'glb'/gm)].map(m=>m[1]));
-for(const name of spread)for(const id of Object.keys((await import(`./${imports[name]}`))[name]))registered.add(id);
+for(const map of Object.values(OVERRIDES))for(const id of Object.keys(map))registered.add(id);
 // the census reads the registry, not an empty parse: a comparison id, an override id and the T-64s' siblings' own prints
-for(const id of ['leo2a6','t64bv1','t64bv_donbas',...Object.keys((await import(`./${imports[spread[0]]}`))[spread[0]]).slice(0,1)])
+for(const id of ['leo2a6','t64bv1','t64bv_donbas',Object.keys(SUPPLIED_SOURCE_REFERENCE_OVERRIDES)[0]])
   assert(registered.has(id),`${id}: registered (registry census)`);
 // (a) every photo id is unregistered, so its packet is its stage A route; each packet holds exactly its table rows
 for(const id of PHOTO_REFERENCE_IDS){
