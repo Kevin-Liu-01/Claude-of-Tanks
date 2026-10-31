@@ -167,7 +167,9 @@ function renderStacks({ draws, views, width, height }) {
   const covered = (a, i) => exact.has(`${a[i]},${a[i + 1]},${a[i + 2]}`);
   const differing = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if ((a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) && covered(a, i) && covered(b, i)) n++; return n; };
   const edges = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if ((a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) && !(covered(a, i) && covered(b, i))) n++; return n; };
-  const blue = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i + 2] > 0) n++; return n; };
+  // the dark through a pane: a fully covered pixel of its colour; an edge sample carrying some of it is a crossing's
+  const blue = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] === 0 && a[i + 1] === 0 && a[i + 2] === 255) n++; return n; };
+  const blueEdges = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i + 2] > 0 && !(a[i] === 0 && a[i + 1] === 0 && a[i + 2] === 255)) n++; return n; };
   // which groups' colours a pixel shows in two shots (exact colours only: an MSAA edge mixes them)
   const names = new Map(draws.map((d) => [d.colour.join(','), d.group === 'rest' ? d.name : d.group]));
   const pairs = (a, b) => { const out = {}; for (let i = 0; i < a.length; i += 4) {
@@ -184,7 +186,8 @@ function renderStacks({ draws, views, width, height }) {
         edgeSamples = Math.max(edgeSamples, edges(shots[0], s));
         if (n > worst) { worst = n; worstPairs = pairs(shots[0], s); }
       }
-      row[layered ? 'layered' : 'control'] = { stackOrder: worst, edgeSamples, pairs: worstPairs, darkShows: Math.max(...sets.flat().map(blue)), first: sets[0][0] };
+      row[layered ? 'layered' : 'control'] = { stackOrder: worst, edgeSamples: edgeSamples + Math.max(...sets.flat().map(blueEdges)), pairs: worstPairs,
+        darkShows: Math.max(...sets.flat().map(blue)), first: sets[0][0] };
     }
     // up close the layers change nothing: the layered frame equals the control's with the farther faces drawn first
     row.nearSame = differing(row.layered.first, row.control.first);
@@ -214,7 +217,7 @@ try {
     const at = `${wallName} wall, ${r.distance} m, ${r.yawDeg} deg`;
     assert.ok(r.paneCover > 0, `${at}: the panes are in the frame`);
     assert.equal(r.layered.stackOrder, 0, `${at}: with the stack's layers every order of its dark, panes and frames draws the same fully covered pixels (${JSON.stringify(r.layered.pairs)})`);
-    assert.equal(r.layered.darkShows, 0, `${at}: no dark shows through a pane`);
+    assert.equal(r.layered.darkShows, 0, `${at}: no dark shows through a pane (fully covered pixels)`);
     if (r.distance <= 20) {
       assert.equal(r.nearSame, 0, `${at}: up close the layers change no pixel`);
       assert.equal(r.control.darkShows, 0, `${at}: up close the depth buffer tells them apart unaided`);
