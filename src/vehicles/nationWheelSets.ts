@@ -262,6 +262,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
+  ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },
   t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
   t84: { donor: 't90_1992', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
@@ -276,6 +277,14 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
   griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
+  leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
+  // 265 (Main: the M41 family on the Pattons' running gear): the M41s, the M46 and M47's contemporaries, ride the US
+  // Patton-era wheel whoever fields them
+  m41a3: { donor: 'm60a3', reason: '265: the M41 family rides the US Patton-era wheel (its 1950s contemporaries)' },
+  m41_bw: { donor: 'm60a3', reason: '265: the Bundeswehr M41 keeps its US Patton-era wheel' },
+  m41_jgsdf: { donor: 'm60a3', reason: '265: the JGSDF M41 keeps its US Patton-era wheel' },
+  m41dk1: { donor: 'm60a3', reason: '265: the Danish M41 DK-1 keeps its US Patton-era wheel' },
+  t49: { donor: 'm60a3', reason: '265: the T49 rides the M41 hull\'s US Patton-era wheel' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
   // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type

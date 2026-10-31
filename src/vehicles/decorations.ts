@@ -3192,11 +3192,21 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 266: the M48 marks on the A5's castings author their own period equipment the same way (pattonCast.ts
   // M48_VARIANTS, docs/references/tanks/<id>.md), dischargers included where the mark carried them
   if (['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].includes(spec.id)) return [];
+  // Release 265 (the M41 family's blind critics, against the 1957, 1961 and Aalborg photographs): the fleet's field load
+  // read as clutter on a 1950s tank (a roof lamp, a turret-side roll, crates on the bustle roof, a third whip). The M41s
+  // carry the loads their build authors in the bustle rack and the DK-1's baskets. The US, Bundeswehr and JGSDF marks keep
+  // the functional smoke pair (it carries the smoke consumable; the fleet has no exhaust smoke system); the DK-1's own
+  // Wegmann banks carry it there, so it takes no decor pair beside them.
+  if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  if (spec.id === 'm41dk1') return [];
+  // the T49's M551 turret carries its own smoke banks and searchlight (profiles/m41.ts)
+  if (spec.id === 't49') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands
   // over the roof; the field load heaped bags on it and added a second roof lamp) and the 2A5 DK carries its own drab kit
-  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage). All build their own dischargers.
+  // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
+  // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
@@ -3433,6 +3443,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       const routes = row.slot[1].routes.filter(([slot]) => !aloft.has(slot));
       return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
     });
+  }
+  // 265 (the Ukrainian CV9040C, ua4; the ua3 blind critics, both: its turret net "a hollow hoop", daylight under it): the
+  // cans, crate, whip and M2 seated on its turret roof drew the net up into an arch over them, as the Ariete's cradle did.
+  // Its net lies on the bundled heap on the rear roof (profiles/cv9040CSourceX.ts); nothing else is stowed on that roof,
+  // nor on the troop roof, whose stowage is the tarpaulin load (the cargo turned away from the turret stood on it).
+  if (spec.id === 'ua_cv9040c') {
+    const kitRoof = (slot: string): boolean => slot === 'turretRoof' || slot === 'rearDeck';
+    return manifest
+      .filter((row) => !kitRoof(row.slot[0]))
+      .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !kitRoof(slot)) }] }
+        : row));
   }
   return manifest;
 }

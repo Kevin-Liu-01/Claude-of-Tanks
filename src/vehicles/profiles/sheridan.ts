@@ -1101,7 +1101,7 @@ function addSheridanHullProtectionAndFurniture(
   }
 }
 
-function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
+function addSheridanTurretShellAndStowage(P: SheridanBuilderPort, stowage = true): void {
   const { box, sph, torus } = KIT;
   // Low asymmetric cast turret. These are 24 equal-perimeter samples from
   // eight exact horizontal intersections through the five connected source
@@ -1201,7 +1201,7 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
   // aggregate bounds.
   // 2026-10-19 (owner float sweep): the base Sheridan's surveyed lugs stood 0.39-0.47 m clear of its casting too; both
   // marks seat them on the lower cheek
-  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan') {
+  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan' || P.spec.id === 't49') {
     // The donor's surveyed loose lugs sat below and ahead of the casting.
     // Seat each complete three-layer lug on the actual TTS lower cheek.
     // Points/normals are measured from the bare procedural shell, not bounds.
@@ -1230,70 +1230,74 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
         side > 0 ? 1.06295 : -1.19291, 0.04747, 1.72643);
     }
   }
-  // Object_3 is the Sheridan's broad rear canvas bank. Exact vertical-bin
-  // measurements show eight touching soft lobes, not a solid bustle plate:
-  // its scalloped plan outline runs X=-0.850..0.436, Z=-1.521..-0.962 m.
-  // Rebuild each lobe from its independent X/Y/Z envelope. Their slight
-  // overlaps provide a real connection path into the turret/stowage mass
-  // while retaining the source gaps and uneven rear edge in plan view.
-  for (const [x, minY, maxY, minZ, maxZ] of [
-    [-0.769, 1.794, 2.127, -1.290, -0.962],
-    [-0.609, 1.766, 2.186, -1.403, -0.965],
-    [-0.448, 1.748, 2.178, -1.448, -1.026],
-    [-0.287, 1.804, 2.186, -1.461, -1.060],
-    [-0.127, 1.823, 2.186, -1.463, -1.100],
-    [ 0.034, 1.837, 2.186, -1.493, -1.104],
-    [ 0.195, 1.823, 2.184, -1.521, -1.099],
-    [ 0.355, 1.797, 2.189, -1.486, -1.064],
-  ]) {
-    P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
-      0, 0, 0, [0.174, maxY - minY, maxZ - minZ]),
-    x, (minY + maxY) * 0.5 - 1.466, (minZ + maxZ) * 0.5);
-  }
-  // Object_11 contains two soft base rolls with five *rectangular* strapped
-  // pouches above them. The previous pass interpreted every major island as
-  // a canvas ellipsoid, erasing the Sheridan's characteristic stepped rear
-  // silhouette. Preserve the PCA-oriented envelopes of the two rolls first.
-  for (const [x, y, z, w, h, d, yaw] of [
-    [-0.51341, 0.48845, -1.21920, 0.68153, 0.40050, 0.34665, -0.43003],
-    [ 0.10144, 0.52368, -1.34468, 0.65813, 0.37303, 0.32435, -0.08357],
-  ]) {
-    P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
-      0, yaw, 0, [w, h, d]), x, y, z);
-  }
-  // Exact 3D PCA envelopes for connected components 0, 1, 2, 4 and 5.
-  // These packs are visibly pitched and rolled as well as yawed; treating
-  // them as flat boxes made the rear station 107 mm too tall in side view.
-  for (const [x, y, z, size, axisX, axisY] of [
-    [-0.372476, 0.564372, -1.511923, [0.392042, 0.262308, 0.194759],
-      [-0.972794, -0.231303, -0.013103], [-0.209713, 0.855135, 0.474093]],
-    [ 0.252804, 0.680867, -1.422393, [0.391982, 0.262421, 0.195335],
-      [-0.970368, 0.219579, -0.100849], [-0.013249, 0.368387, 0.929578]],
-    [-0.697080, 0.724782, -1.274923, [0.327308, 0.325603, 0.179982],
-      [0.825301, -0.115934, -0.552664], [0.487713, 0.639647, 0.594127]],
-    [ 0.059771, 0.772353, -1.238791, [0.266679, 0.227067, 0.158234],
-      [-0.726688, -0.151457, -0.670064], [0.679923, -0.297898, -0.670046]],
-    [-0.286688, 0.742240, -1.334852, [0.266792, 0.226982, 0.158259],
-      [-0.522162, 0.367820, 0.769451], [0.852712, 0.209174, 0.478673]],
-  ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
-    P.add('turretCloth', boxOnBasis(size, axisX, axisY), x, y, z);
-  }
-  // Five surveyed retaining bands cross those packs. Several source
-  // components are duplicate front/back faces of the same physical strap;
-  // use one shallow solid per band instead of stacking coincident geometry.
-  for (const [x, y, z, size, axisX, axisY] of [
-    [-0.298164, 0.682017, -1.199197, [0.590480, 0.140319, 0.023839],
-      [-0.040522, 0.338707, 0.940019], [-0.213590, 0.916109, -0.339299]],
-    [ 0.329340, 0.678940, -1.178247, [0.512282, 0.048514, 0.031253],
-      [-0.121298, 0.389667, 0.912933], [0.744946, 0.643567, -0.175716]],
-    [-0.459322, 0.693741, -1.133031, [0.546353, 0.059112, 0.052349],
-      [-0.592820, -0.283346, -0.753843], [-0.460585, -0.648574, 0.605981]],
-    [ 0.141117, 0.702991, -1.220663, [0.532128, 0.069869, 0.020701],
-      [0.047150, -0.323593, -0.945021], [-0.306591, -0.905096, 0.294625]],
-    [-0.686175, 0.709045, -1.048354, [0.515932, 0.093265, 0.023033],
-      [-0.586069, -0.308844, -0.749092], [0.192812, -0.951108, 0.241283]],
-  ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
-    P.add('turretDark', boxOnBasis(size, axisX, axisY), x, y, z);
+  // (the T49 goes without the rear stowage: buildSheridanTurret)
+  if (stowage) {
+    // Object_3 is the Sheridan's broad rear canvas bank. Exact vertical-bin
+    // measurements show eight touching soft lobes, not a solid bustle plate:
+    // its scalloped plan outline runs X=-0.850..0.436, Z=-1.521..-0.962 m.
+    // Rebuild each lobe from its independent X/Y/Z envelope. Their slight
+    // overlaps provide a real connection path into the turret/stowage mass
+    // while retaining the source gaps and uneven rear edge in plan view.
+    for (const [x, minY, maxY, minZ, maxZ] of [
+      [-0.769, 1.794, 2.127, -1.290, -0.962],
+      [-0.609, 1.766, 2.186, -1.403, -0.965],
+      [-0.448, 1.748, 2.178, -1.448, -1.026],
+      [-0.287, 1.804, 2.186, -1.461, -1.060],
+      [-0.127, 1.823, 2.186, -1.463, -1.100],
+      [ 0.034, 1.837, 2.186, -1.493, -1.104],
+      [ 0.195, 1.823, 2.184, -1.521, -1.099],
+      [ 0.355, 1.797, 2.189, -1.486, -1.064],
+    ]) {
+      P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
+        0, 0, 0, [0.174, maxY - minY, maxZ - minZ]),
+      x, (minY + maxY) * 0.5 - 1.466, (minZ + maxZ) * 0.5);
+    }
+    // Object_11 contains two soft base rolls with five *rectangular* strapped
+    // pouches above them. The previous pass interpreted every major island as
+    // a canvas ellipsoid, erasing the Sheridan's characteristic stepped rear
+    // silhouette. Preserve the PCA-oriented envelopes of the two rolls first.
+    for (const [x, y, z, w, h, d, yaw] of [
+      [-0.51341, 0.48845, -1.21920, 0.68153, 0.40050, 0.34665, -0.43003],
+      [ 0.10144, 0.52368, -1.34468, 0.65813, 0.37303, 0.32435, -0.08357],
+    ]) {
+      P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
+        0, yaw, 0, [w, h, d]), x, y, z);
+    }
+    // Exact 3D PCA envelopes for connected components 0, 1, 2, 4 and 5.
+    // These packs are visibly pitched and rolled as well as yawed; treating
+    // them as flat boxes made the rear station 107 mm too tall in side view.
+    for (const [x, y, z, size, axisX, axisY] of [
+      [-0.372476, 0.564372, -1.511923, [0.392042, 0.262308, 0.194759],
+        [-0.972794, -0.231303, -0.013103], [-0.209713, 0.855135, 0.474093]],
+      [ 0.252804, 0.680867, -1.422393, [0.391982, 0.262421, 0.195335],
+        [-0.970368, 0.219579, -0.100849], [-0.013249, 0.368387, 0.929578]],
+      [-0.697080, 0.724782, -1.274923, [0.327308, 0.325603, 0.179982],
+        [0.825301, -0.115934, -0.552664], [0.487713, 0.639647, 0.594127]],
+      [ 0.059771, 0.772353, -1.238791, [0.266679, 0.227067, 0.158234],
+        [-0.726688, -0.151457, -0.670064], [0.679923, -0.297898, -0.670046]],
+      [-0.286688, 0.742240, -1.334852, [0.266792, 0.226982, 0.158259],
+        [-0.522162, 0.367820, 0.769451], [0.852712, 0.209174, 0.478673]],
+    ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
+      P.add('turretCloth', boxOnBasis(size, axisX, axisY), x, y, z);
+    }
+    // Five surveyed retaining bands cross those packs. Several source
+    // components are duplicate front/back faces of the same physical strap;
+    // use one shallow solid per band instead of stacking coincident geometry.
+    for (const [x, y, z, size, axisX, axisY] of [
+      [-0.298164, 0.682017, -1.199197, [0.590480, 0.140319, 0.023839],
+        [-0.040522, 0.338707, 0.940019], [-0.213590, 0.916109, -0.339299]],
+      [ 0.329340, 0.678940, -1.178247, [0.512282, 0.048514, 0.031253],
+        [-0.121298, 0.389667, 0.912933], [0.744946, 0.643567, -0.175716]],
+      [-0.459322, 0.693741, -1.133031, [0.546353, 0.059112, 0.052349],
+        [-0.592820, -0.283346, -0.753843], [-0.460585, -0.648574, 0.605981]],
+      [ 0.141117, 0.702991, -1.220663, [0.532128, 0.069869, 0.020701],
+        [0.047150, -0.323593, -0.945021], [-0.306591, -0.905096, 0.294625]],
+      [-0.686175, 0.709045, -1.048354, [0.515932, 0.093265, 0.023033],
+        [-0.586069, -0.308844, -0.749092], [0.192812, -0.951108, 0.241283]],
+    ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
+      P.add('turretDark', boxOnBasis(size, axisX, axisY), x, y, z);
+    }
+
   }
 
   // Object_11 also carries the Sheridan's asymmetric right-roof equipment
@@ -1456,7 +1460,7 @@ function addTtsLowerCheekEra(P: SheridanBuilderPort, side: number): void {
   }, true);
 }
 
-function addSheridanTurretProtection(P: SheridanBuilderPort): void {
+function addSheridanTurretProtection(P: SheridanBuilderPort, era = true): void {
   const { box } = KIT;
   // Turret cheek ERA follows the cast tangent, with attachment rails buried
   // into the shell rather than suspended in front of it.
@@ -1475,6 +1479,7 @@ function addSheridanTurretProtection(P: SheridanBuilderPort): void {
       addTtsLowerCheekEra(P, side);
       continue;
     }
+    if (!era) continue;
     P.eraCluster(`sheridan_turret_era_${suffix}`, (put) => {
       // Custom applique sits on the lower cast cheek. The previous pass
       // accidentally treated the Object_10 smoke-tube envelopes as ERA
@@ -1833,6 +1838,18 @@ function buildSheridan(P: SheridanBuilderPort): void {
   addSheridanRoofStations(P, isTts);
   addSheridanSmokeAndAntenna(P);
   finishSheridan(P, isTts);
+}
+
+/** The M551's turret on another hull (release 265: the T49 seats it on the M41's ring, profiles/m41.ts; the owner
+ *  2026-10-30): the cast shell, the M81 gun-launcher, the cheek rails, both roof stations, the smoke banks and the
+ *  antennas, without the cheek ERA (the T49's armour carries no ERA sectors) or the rear stowage. */
+export function buildSheridanTurret(P: SheridanBuilderPort): void {
+  // (its rear canvas, rolls and packs left off: the c5 critics saw them float over the M41's lower engine deck)
+  addSheridanTurretShellAndStowage(P, false);
+  addSheridanM81Gun(P);
+  addSheridanTurretProtection(P, false);
+  addSheridanRoofStations(P, false);
+  addSheridanSmokeAndAntenna(P);
 }
 
 export const SHERIDAN_PROFILES = Object.freeze({

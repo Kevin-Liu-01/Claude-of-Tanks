@@ -11,6 +11,8 @@
 // drawn is what a round meets. Node-runnable; the per-hit read allocates nothing.
 // Copyright © 2026 Kevin B. Liu.
 
+import * as detMath from './detMath.ts';
+
 type Vec3 = readonly number[];
 
 /** One piece of a split face: its plate and its outline projected on the face's plane (u, v pairs, counter-clockwise). */
@@ -48,7 +50,7 @@ function polygonArea(points: readonly Vec3[]): number {
     const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
     x += uy * vz - uz * vy; y += uz * vx - ux * vz; z += ux * vy - uy * vx;
   }
-  return Math.hypot(x, y, z) / 2;
+  return detMath.hypot(x, y, z) / 2;
 }
 
 /** The part of a convex polygon on one side of an axis plane (keepAbove: coordinate >= value). */
@@ -168,7 +170,7 @@ export function gunFaceSplitPlate<P>(split: GunFaceSplit<P>, x: number, y: numbe
     for (let i = 0; i < uv.length; i += 2) {
       const j = (i + 2) % uv.length;
       const eu = uv[j] - uv[i], ev = uv[j + 1] - uv[i + 1];
-      const length = Math.hypot(eu, ev);
+      const length = detMath.hypot(eu, ev);
       if (!(length > 0)) continue;
       const side = (eu * (v - uv[i + 1]) - ev * (u - uv[i])) / length;
       if (side < margin) margin = side;

@@ -16,6 +16,7 @@ export const JAPAN_TREE: NationTree = Object.freeze({
   lines: Object.freeze([
     { id: 'type', name: 'STB-1 to Type 10' },
     { id: 'ifv', name: 'Hayate to Raijū' },
+    { id: 'm41', name: 'M41' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // STB-1 to Type 10
@@ -32,6 +33,8 @@ export const JAPAN_TREE: NationTree = Object.freeze({
       builds: ['type10_dozer'],
     }),
     // Hayate to Raijū
+    // M41: the JGSDF's M41, release 265
+    node({ id: 'm41_jgsdf', tier: 1, line: 'm41', lane: 2, parents: ['stb1'], slot: 'line' }),
     node({ id: 'hayate_ifv', tier: 2, line: 'ifv', lane: 2, parents: ['stb1'], slot: 'line' }),
     node({ id: 'type89', tier: 6, line: 'ifv', lane: 2, parents: ['hayate_ifv'], slot: 'line' }),
     node({ id: 'raiju_ifv', tier: 10, line: 'ifv', lane: 2, parents: ['type89'], slot: 'line' }),

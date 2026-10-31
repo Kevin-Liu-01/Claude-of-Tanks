@@ -5,12 +5,14 @@
 // published Danish figure exists, as each comment says.
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
-import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import {
+  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions,
+} from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const danishVariant = (id: string, donor: string, name: string, era: 'cold-war' | 'modern') => {
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donor, { name, nation: 'Denmark', era });
+  const spec = cloneFleetVariant(registries.tankSpecs, id, donor, { name, nation: 'Denmark', era, role: registries.tankSpecs[donor].role });
   delete spec.balancePeerOf;
   delete spec.publicVisualFallback;
   delete spec.label;
@@ -91,6 +93,11 @@ for (const spec of [leo1a3dk, leo1a5dk, leo1a5dk1]) spec.gunPitchByYawDeg = LEO1
 const leo2a5dk = danishVariant('leo2a5dk', 'leo2a5', 'Leopard 2A5 DK', 'modern');
 Object.assign(leo2a5dk.dims, { hullLengthM: 7.72, overallLengthM: 10.33, widthM: 3.80, heightM: 3.04 });
 Object.assign(leo2a5dk, { weightTons: 62.0 });
+// Denmark's 120 mm sabot is the DM53A1 (esut.de, May 2022: the Danish stock being brought to the DM73 standard)
+leo2a5dk.gun = {
+  ...leo2a5dk.gun,
+  shells: leo2a5dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, name: 'DM53A1 APFSDS' } : shell),
+};
 leo2a5dk.visual = {
   ...leo2a5dk.visual,
   // the Danish Army's three-tone of the 2010s (the Grafenwöhr side photograph): dark olive, a yellow-olive khaki and
@@ -112,5 +119,66 @@ leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -
 // The Leopard 2A7 DK is held from release 265 (the coordinator, 2026-10-30): its Barracuda cover is rebuilt as a reusable
 // fit on wip/denmark-2a7dk-265 and lands with its own critics.
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk'],
-  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk });
+// ------------------------------------------------------------------------------------------------- CV9035 DK --
+// armyvehicles.dk/cv9035.htm: 45 ordered (2007, DALO, BAE Systems Hägglunds), 6.87 m long, 3.19 m wide, 2.80 m, 31,750 kg,
+// the 755 hp Scania DI-16, 940 l and 500 km, three crew and seven dismounts, the 35/50 Bushmaster III with its ammunition
+// programmer, stabilised day/night sights for gunner and commander (hunter-killer), and a defensive aids suite whose
+// laser warning receivers cue the smoke dischargers. The 35 mm rounds and cycle sit at tier V's 35 mm footing (the KF41
+// Lynx's), a little under its damage so the group's median holds.
+const cv9035dk = danishVariant('cv9035dk', 'cv90', 'CV9035 DK', 'modern');
+{
+  const [sabot, he, second] = cv9035dk.gun.shells;
+  cv9035dk.gun = {
+    ...cv9035dk.gun,
+    // the fleet's 35 mm report (the KF41 Lynx's), not the donor CV90's 40 mm Bofors; every round on the 35 mm's cycle (they
+    // kept the 40 mm's 0.44 s until afvBalance.selftest's per-round check)
+    caliberMm: 35, reloadS: 0.55, baseAccuracy: 0.24, aimTimeS: 0.95, soundProfile: 'kde-35',
+    shells: [
+      { ...sabot, name: '35 mm APFSDS-T', caliberMm: 35, pen100Mm: 205, pen1000Mm: 188, pen2000Mm: 170, dmg: 115, velocityMps: 1440, reloadS: 0.55 },
+      { ...he, name: '35 mm programmable HE (ABM)', caliberMm: 35, pen100Mm: 20, pen1000Mm: 20, dmg: 118, velocityMps: 1050, reloadS: 0.55 },
+      { ...second, name: '35 mm FAPDS', caliberMm: 35, pen100Mm: 160, pen1000Mm: 145, pen2000Mm: 130, dmg: 105, velocityMps: 1385, reloadS: 0.55 },
+    ],
+  };
+}
+cv9035dk.visual = {
+  ...cv9035dk.visual,
+  // the Danish Army's three-tone on its CV90s (the Holstebro and Latvia photographs): a muted grey-green ground, a dark
+  // green and black (r3: no sand; the brown in the Latvia photograph is its cover's; r6 critics: a cool blue-grey against
+  // the Holstebro photograph's warmer olive-khaki ground): the ground warmer and lighter, a dark olive-brown third tone
+  // r7 (critics, both: four tones with the brown; the Holstebro coat greens and black on a cooler grey-olive): a dark green,
+  // black and a pale grey-green on a darker ground, its wash light so it stays its own paint
+  // r9 (r8 critics, both: the pale sage bright, small even blobs; the Holstebro coat darker, lower in contrast, fewer and
+  // larger fields): the light tone darker and warmer, the fields larger
+  // c4 (critics, both: too pale and cool, the Holstebro coat darker): the ground a darker olive, the third tone a dark
+  // grey-olive for the pale sage
+  scheme: 'nato', base: '#454a37', weather: '#50543f', patches: ['#2e3527', '#1b1d17', '#3d4234'], marking: 'number', number: '45',
+  camoScale: 0.45,
+};
+// the CV90 Mk IV under it (the owner 2026-10-30: "the cv9035 should be based on the cv90 mk 4"; profiles/denmark.ts
+// builds it on profiles/cv90MkivSourceX.ts with the Danish kit): the Mk IV's armour frame, pivots, modules and crew
+// seats and its size, the plates at this tier's own thicknesses; BAE's Mk IV figures, the 1,000 hp and 37 t; the 35 mm
+// barrel to its muzzle (2.42 m from the trunnion)
+{
+  const mk4 = registries.tankSpecs.cv90_mk4;
+  const own = new Map([...cv9035dk.armor.hullPlates, ...cv9035dk.armor.turretPlates].map((plate) => [plate.name, plate]));
+  const keep = (plate: typeof mk4.armor.hullPlates[number]) => {
+    const tier = own.get(plate.name);
+    return tier ? { ...structuredClone(plate), physicalMm: tier.physicalMm, keMm: tier.keMm, ceMm: tier.ceMm, kind: tier.kind } : structuredClone(plate);
+  };
+  cv9035dk.armor = {
+    ...structuredClone(mk4.armor),
+    hullPlates: mk4.armor.hullPlates.map(keep),
+    turretPlates: mk4.armor.turretPlates.map(keep),
+    gunBarrel: { lengthM: 2.42, radiusM: 0.05 },
+  };
+  Object.assign(cv9035dk.dims, { hullLengthM: 6.62, overallLengthM: 6.62, widthM: 3.30, heightM: 2.82 });
+  Object.assign(cv9035dk, { weightTons: 37, enginePowerHp: 1000 });
+}
+// its measured gun stops on the Mk IV (tools/gun-depression-sweep.mjs at 26 mm): the full 8 degrees over the bow but
+// over the corner lamp receivers, and almost none over the raised troop roof astern
+cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [14, -8], [15, -7.5], [16, -6.1], [17, -5.5], [24, -5.1], [26, -5.2],
+  [27, -5.4], [28, -5.9], [30, -8], [134, -8], [136, -2.1], [137, -1.8], [139, -1.7], [141, -0.3], [165, -0.2], [176, -0.3],
+  [178, -1.8], [180, -1.8]] as const);
+
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, cv9035dk });

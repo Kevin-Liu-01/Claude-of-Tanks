@@ -56,7 +56,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'magach6b', 'magach7c',
     'vickers_mk1',
     'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
-    'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
+    'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.
@@ -82,8 +82,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'leclerc_s1', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'm1a1_abrams_sa', 'm1a1_abrams_aim',
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
-    'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90',
+    'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'ua_cv9040c', 'bmpt_terminator2',
+    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),

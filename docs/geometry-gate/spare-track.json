@@ -813,6 +813,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "cv9035dk": {
+   "inputHash": "4c6aeb562641a66a",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "cv9040c": {
    "inputHash": "5e08c8b62d07772b",
    "runs": [],
@@ -1929,6 +1935,30 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "m41_bw": {
+   "inputHash": "0f7629c552fdb9d5",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41_jgsdf": {
+   "inputHash": "1faff9b9326a275e",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41a3": {
+   "inputHash": "5edee11d5486c061",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m41dk1": {
+   "inputHash": "4f19399b5f5e8969",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "m46_patton": {
    "inputHash": "094d11a10b02bcca",
    "runs": [],
@@ -2721,6 +2751,12 @@
   },
   "t14_armata": {
    "inputHash": "dab39b095222cb49",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "t49": {
+   "inputHash": "d8b2d525137568f5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3857,6 +3893,12 @@
   },
   "ua_challenger2": {
    "inputHash": "57ff021109a85df5",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "ua_cv9040c": {
+   "inputHash": "f50f0a6e148bc311",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

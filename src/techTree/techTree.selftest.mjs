@@ -112,6 +112,10 @@ const FAMILY_UPGRADES = Object.freeze({
   denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
   // 266: the Osório's two prototypes (the 105 mm P.1 before the 120 mm P.2)
   brazil: [['x1_pioneiro', 'x1a2_carcara'], ['tamoyo1', 'tamoyo3'], ['osorio_p1', 'osorio_p2'], ['ee_t3_osorio', 'ee_t4_osorio']],
+  // 265: the M41s (the Danish rebuild at II over the originals at I)
+  m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
+  // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
+  denmarkB: [['cv90', 'cv9035dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -205,5 +209,14 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-30 re-pin (266, the owner's ask and Main's ruling the same day): the fictional EE-T3 (IX) and EE-T4 (X) Osório
 // on from the P.2, lane 2.
 // Re-pinned 2026-10-31 at integ/266 (brazil-line-266 22327fcc1f merged; every other tree check passes): + the Brazil tree.
-assert.equal(digest, '2263d78472b37899', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
+// Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
+// off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
+// 265 (the owner 2026-10-30): the T49 at II off the M41A3 on the US M41 line (lane 10, clear of the M551's and M60A3's
+// connectors).
+// Re-pinned 2026-10-31 at integ/266 (wip/denmark-c-265 e7b231c694 merged; every other tree check passes): + the M41s, the T49 and
+// the CV9035 DK; the US M41A3 on lane 6 beside the M46, the Bundeswehr M41 a Germany special at I.
+// 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
+// Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
+assert.equal(digest, 'c285a4ac9b24e43d', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
