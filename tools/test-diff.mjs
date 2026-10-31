@@ -37,10 +37,13 @@ export function changedPaths(root, base = 'origin/main', { head = 'HEAD', worktr
  */
 export async function fleetPartition(root, { world = false } = {}) {
   const { computeState } = await import(pathToFileURL(join(root, 'tools/changed-only/fingerprint.mjs')).href);
-  const { STEPS, WORLD_STEPS } = await import(pathToFileURL(join(root, 'tools/changed-only/steps.mjs')).href);
+  const { STEPS, TABLES, WORLD_STEPS } = await import(pathToFileURL(join(root, 'tools/changed-only/steps.mjs')).href);
   const state = computeState({ root, steps: STEPS, worldSteps: world ? WORLD_STEPS ?? [] : [] });
   return {
     ids: [...state.ids], core: new Set(state.partition.core), groups: state.partition.groups,
+    // a JSON table file -> the key path of its per-id rows (steps.mjs TABLES kind 'json')
+    jsonRows: new Map(Object.values(TABLES ?? {}).filter((table) => table.kind === 'json')
+      .flatMap((table) => table.files.map((file) => [file, table.path]))),
     groupChain: (id) => state.groupChain(id), fileIds: state.fileIds ?? {}, errors: [...state.errors, ...state.globalReasons],
     world: state.world ? {
       maps: [...state.world.ids],
@@ -82,14 +85,39 @@ function tableDiffs(root, mergeBase, head, paths) {
   const out = new Map();
   for (let index = 0; index < paths.length; index += 200) {
     let text = '';
-    try { text = git(root, ['diff', '-U0', '--no-renames', mergeBase, ...(head === 'HEAD' ? [] : [head]), '--', ...paths.slice(index, index + 200)]); }
-    catch { continue; } // unreadable: those files resolve as every id they hold
+    try {
+      text = git(root, ['diff', '-U0', '--no-renames', mergeBase, ...(head === 'HEAD' ? [] : [head]), '--', ...paths.slice(index, index + 200)],
+        { timeout: 120_000 });
+    } catch { continue; } // unreadable or past 2 minutes: those files resolve as every id they hold
     for (const section of text.split(/^diff --git /m).slice(1)) {
       const name = /^a\/(.+?) b\//.exec(section)?.[1];
       if (name) out.set(name, section);
     }
   }
   return out;
+}
+
+/**
+ * Ids whose rows a JSON table moved, row by row (266: the icons step rewrote the 55 MB public/icons/tank-assets.json, a
+ * 2,055,741-line diff git took 182 s to write). Null when anything outside the rows moved: every id it holds.
+ */
+function jsonRowIds(root, mergeBase, head, path, rowPath, tableIds) {
+  const split = (text) => {
+    const whole = JSON.parse(text);
+    let rows = whole;
+    for (const key of rowPath.slice(0, -1)) rows = rows?.[key];
+    const own = rows?.[rowPath.at(-1)] ?? {};
+    if (rows) rows[rowPath.at(-1)] = null;
+    return { own, rest: JSON.stringify(whole) };
+  };
+  const at = (ref) => { try { return split(ref ? git(root, ['show', `${ref}:${path}`]) : readFileSync(join(root, path), 'utf8')); } catch { return null; } };
+  const before = at(mergeBase), after = at(head === 'HEAD' ? null : head);
+  if (!before || !after || before.rest !== after.rest) return null;
+  const ids = new Set();
+  for (const id of new Set([...Object.keys(before.own), ...Object.keys(after.own)])) {
+    if (tableIds.has(id) && JSON.stringify(before.own[id]) !== JSON.stringify(after.own[id])) ids.add(id);
+  }
+  return ids;
 }
 
 /** Ids whose rows one hunk of a changed per-id table moved: the ids its lines name, else the row key above it. */
@@ -135,7 +163,9 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     if (!groupsOfFile.has(file)) groupsOfFile.set(file, []);
     groupsOfFile.get(file).push(group);
   }
-  const diffs = root ? tableDiffs(root, mergeBase, head, changed.filter((path) => !partition.core.has(path) && partition.fileIds[path]?.length)) : new Map();
+  const jsonRows = partition.jsonRows ?? new Map();
+  const diffs = root ? tableDiffs(root, mergeBase, head, changed.filter((path) => !partition.core.has(path) && partition.fileIds[path]?.length
+    && !jsonRows.has(path))) : new Map();
   for (const path of changed) {
     if (partition.core.has(path)) { core.push(path); continue; }
     for (const group of groupsOfFile.get(path) ?? []) {
@@ -143,7 +173,8 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
     }
     const tableIds = partition.fileIds[path];
     if (tableIds?.length) {
-      const moved = root ? hunkIds(root, path, new Set(tableIds), diffs.get(path)) : null;
+      const moved = !root ? null : jsonRows.has(path) ? jsonRowIds(root, mergeBase, head, path, jsonRows.get(path), new Set(tableIds))
+        : hunkIds(root, path, new Set(tableIds), diffs.get(path));
       for (const id of moved ?? tableIds) mark(id, moved ? `${path} row` : `${path} (rows unresolved)`);
     }
     const stem = basename(path).split('.')[0];
@@ -240,7 +271,9 @@ export function laneReadOf(cache, readOne, root) {
     }
     return tools.get(file);
   };
+  let current = null;
   return (file, path) => {
+    if (file !== current) { current = file; exitIfOrphaned(); } // once per receipt: selection is one synchronous loop
     const read = readOne(file, path);
     if (read === 'named' || read === 'scan') return read;
     for (const tool of spawnedTools(file)) {
@@ -316,17 +349,24 @@ const children = new Set();
 const startPpid = process.ppid;
 const stopAll = (code) => { for (const child of children) { try { child.kill('SIGTERM'); } catch { /* gone */ } } process.exit(code); };
 export function exitIfOrphaned() { if (process.ppid !== startPpid) stopAll(129); }
+// A signal listener runs only when the event loop does, and while one is attached the signal's default action is off:
+// during a synchronous selection the command ignored its alarm (266: a 2,904-path dry run past 11 minutes, SIGKILLed).
+// So the listeners are attached only while a tracked child runs (the run phase awaits its children); otherwise the
+// default action ends this process at once, and the selection's loops check for a dead parent once per receipt.
+const STOP_SIGNALS = [['SIGTERM', 143], ['SIGINT', 130], ['SIGHUP', 129], ['SIGALRM', 142]].map(([signal, code]) => [signal, () => stopAll(code)]);
+const listen = (on) => { for (const [signal, stop] of STOP_SIGNALS) if (on) process.on(signal, stop); else process.removeListener(signal, stop); };
 export function exitWithParent() {
-  for (const [signal, code] of [['SIGTERM', 143], ['SIGINT', 130], ['SIGHUP', 129], ['SIGALRM', 142]]) process.on(signal, () => stopAll(code));
   setInterval(exitIfOrphaned, 2000).unref();
 }
 /** An async child this process stops when it stops; resolves with its exit status (the promise's `child` is the process). */
 export function runTracked(command, args, options) {
   const child = spawn(command, args, options);
+  if (!children.size) listen(true);
   children.add(child);
+  const untrack = () => { if (children.delete(child) && !children.size) listen(false); };
   const done = new Promise((resolveStatus) => {
-    child.on('close', (status, signal) => { children.delete(child); resolveStatus(status ?? (signal ? 128 : 1)); });
-    child.on('error', () => { children.delete(child); resolveStatus(1); });
+    child.on('close', (status, signal) => { untrack(); resolveStatus(status ?? (signal ? 128 : 1)); });
+    child.on('error', () => { untrack(); resolveStatus(1); });
   });
   return Object.assign(done, { child });
 }
