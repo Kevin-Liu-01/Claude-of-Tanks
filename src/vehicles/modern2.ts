@@ -349,8 +349,8 @@ const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.1
 /**
  * Leopard 1A5 (262 proportion rebuild): the main gun's depression by turret yaw, measured with
  * tools/gun-depression-sweep.mjs (the whole gun 26 mm off every hull mesh). The full 9 degrees to 151 degrees of yaw;
- * over the stern quarters the raised grille boxes (265) hold it to about -3.7 degrees at 158-161, and over the stern
- * the engine deck's exhaust bank to -4.4.
+ * over the stern quarters the raised grille boxes (265; 267's housings inside the fender edge re-swept: the curve holds)
+ * hold it to about -3.7 degrees at 158-161, and over the stern the engine deck's exhaust bank to -4.4.
  */
 const LEO1A5_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [151, -9], [152, -7.5], [153, -6.2], [155, -4.6], [158, -3.8],
   [161, -3.7], [165, -4.5], [166, -4.4], [180, -4.4]] as const);

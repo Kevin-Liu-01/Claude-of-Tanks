@@ -3,8 +3,8 @@
 // builds it with the defaults. Integration 266: leopard1-263's critic rounds on the German 1A5's hull (the raked front
 // mudguards, the painted skirts, the louvred engine outlets, bow headlights and mirrors, the grouser lattice, the clean
 // transom). 266 (Main 2026-10-31: a family shares one hull): that is the one build; the Danish builds ride it too, their
-// rear fuel cans their own stowage (rearCans). 267: the engine outlets flush in the side plates, their slats per mark
-// (outlets), the gun stops swept against them (modern2.ts, denmarkSpecs.ts).
+// rear fuel cans their own stowage (rearCans). 267: the engine outlets inside the fender's edge, their run and slats per
+// mark (outlets), the gun stops swept against them (modern2.ts, denmarkSpecs.ts).
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT, orientedSlab, convexSlab } from './kit.ts';
@@ -32,8 +32,8 @@ export interface Leo1HullOptions {
   /** The rear fuel cans' finish: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
   /** The engine's air outlets on the sloped rear side plates: the German A5's slats in three bays over 1 m behind its
-   * stern bin (Munster side, Cosford quarter), or the Danish tanks' continuous slats over 1.3 m behind their last fender
-   * bin (Krigsmuseet side). */
+   * stern bin (Munster side, Cosford quarter), or the Danish tanks' continuous slats from their last fender bin to the
+   * stern (Krigsmuseet side). */
   readonly outlets?: 'bays' | 'continuous';
 }
 
@@ -113,11 +113,11 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
   const frontIdler = { z: 3.17, y: 0.66, r: 0.28 };
   const rearSprocket = { z: -2.70, y: 0.73, r: 0.29 };
   // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the engine outlets' run on the
-  // sloped side plates (from the side's stern end; the German A5's ahead to its stern bin, the Danish to their last bin).
+  // sloped side plates (from the stern; the German A5's ahead to its stern bin, the Danish to their last fender bin).
   const frontGuard = { rearZ: 2.98, frontZ: 3.64, frontY: 1.02 };
   const frontGuardTopY = (z: number): number =>
     fenderY - (fenderY - frontGuard.frontY) * (z - frontGuard.rearZ) / (frontGuard.frontZ - frontGuard.rearZ);
-  const outletRun = { rearZ: -3.33, frontZ: outlets === 'bays' ? -2.37 : -2.04 };
+  const outletRun = { rearZ: -3.36, frontZ: outlets === 'bays' ? -2.40 : -1.97, topY: 1.655 };
 
   // ---------------------------------------------------------------- hull --
   // Lower tub between the tracks, from the 0.44 belly to the fender line.
@@ -237,41 +237,49 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
           P.addEquipment('hullWood', cylZ(0.022, 0.90, 8), s * (xAt(1.32) + 0.035), 1.32, z);
         }
       }
-      // The engine's air outlets over the sprockets (267, Main 2026-10-31: the photographs show them flush in the sloped
-      // side plate, where 263's grille box stood 10 cm proud of it and over the deck edge): a dark bed, a frame and eight
-      // slats lying in the plate from the fender shelf to the deck edge, inside the hull edge in the top view. The German
-      // A5's slats in three bays (Munster side, Cosford quarter), the Danish tanks' continuous (Krigsmuseet side). The
-      // gun's stops over the stern quarters follow them (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG, denmarkSpecs.ts).
-      // (a point t of the way up the plate from its foot to the deck edge, out metres off its face; parts loft along the
-      // run through the side's stations, so each follows the plate as the deck edge rises to the stern)
-      const onPlate = (z: number, t: number, out: number): readonly [number, number] => {
-        const footY = fenderY - 0.02, dx = deckEdgeX - sponsonX, dy = deckEdgeY(z) - footY, len = Math.hypot(dx, dy);
-        return [s * (sponsonX + dx * t + dy / len * out), footY + dy * t - dx / len * out];
+      // The engine's louvred air outlets over the sprockets (critics 265, round 3: "the large louvred boxes on each rear
+      // side, a Leopard 1 signature"): a grille housing on the sloped side from the fender to a level top over the deck
+      // edge (the photographs' top stands over the engine deck, near the bustle's underside), its face leaning in, framed
+      // by end plates and rails, eight slats over a dark backing. 267 (Main 2026-10-31; blind A/B o1: the housing's height
+      // wins over a panel flush in the plate on all four): its foot pulled in from 1.708 to 1.655, so nothing stands past
+      // the fender's edge in the top view; the slats per mark: the German A5's in three bays over 1 m behind its stern bin
+      // (Munster side, Cosford quarter), the Danish tanks' continuous from their last fender bin to the stern
+      // (Krigsmuseet side). The gun's stops over the stern quarters follow it (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG,
+      // denmarkSpecs.ts).
+      const { rearZ, frontZ, topY } = outletRun;
+      const outletFaceFrom = new THREE.Vector2(1.655, fenderY + 0.05);
+      const outletFaceTo = new THREE.Vector2(1.344, topY);
+      const outletLean = (outletFaceFrom.x - outletFaceTo.x) / (outletFaceTo.y - outletFaceFrom.y);
+      const outletRing = (outX: number, top: number): readonly (readonly [number, number])[] => {
+        const ring = [[1.24, fenderY], [outX, fenderY], [outX, outletFaceFrom.y],
+          [outX - outletLean * (top - outletFaceFrom.y), top], [1.24, top]] as const;
+        return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
       };
-      const onPlateSolid = (z0: number, z1: number, corners: readonly (readonly [number, number])[]): THREE.BufferGeometry => {
-        const zs = [z0, ...[-2.30].filter((z) => z > z0 + 0.01 && z < z1 - 0.01), z1];
-        const rings = zs.map((z) => corners.map(([t, out]) => onPlate(z, t, out)));
-        const [a, b, c] = rings[0];
-        const ccw = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0;
-        return sectionSolid(zs.map((z, i) => ({ z, ring: ccw ? rings[i] : [...rings[i]].reverse() })));
-      };
-      const band = (t0: number, t1: number, out: number): readonly (readonly [number, number])[] =>
-        [[t0, 0], [t1, 0], [t1, out], [t0, out]];
-      const { rearZ, frontZ } = outletRun;
-      P.add('hullDark', onPlateSolid(rearZ + 0.02, frontZ - 0.02, band(0.06, 0.96, 0.006)));
-      for (const [t0, t1] of [[0.045, 0.085], [0.935, 0.975]]) P.addEquipment('hull', onPlateSolid(rearZ, frontZ, band(t0, t1, 0.018)));
-      for (const z of [rearZ, frontZ - 0.03]) P.addEquipment('hull', onPlateSolid(z, z + 0.03, band(0.045, 0.975, 0.018)));
+      P.addEquipment('hull', sectionSolid([rearZ, frontZ].map((z) => ({ z, ring: outletRing(outletFaceFrom.x, topY) }))));
+      for (const [z0, z1] of [[rearZ - 0.02, rearZ], [frontZ, frontZ + 0.02]]) {
+        P.addEquipment('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: outletRing(outletFaceFrom.x + 0.02, topY + 0.015) }))));
+      }
+      const outletN = new THREE.Vector2(1, outletLean).normalize(), outletTilt = s * Math.atan(outletLean);
+      const outletFaceLength = outletFaceFrom.distanceTo(outletFaceTo);
+      const outletLength = frontZ - rearZ, outletZ = (rearZ + frontZ) / 2;
+      const onOutlet = (t: number, out: number): THREE.Vector2 =>
+        outletFaceFrom.clone().lerp(outletFaceTo, t).addScaledVector(outletN, out);
+      const backing = onOutlet(0.5, 0.003);
+      P.add('hullDark', box(0.006, outletFaceLength * 0.92, outletLength), s * backing.x, backing.y, outletZ, 0, 0, outletTilt);
+      for (const t of [0.02, 0.98]) {
+        const at = onOutlet(t, 0.016);
+        P.addEquipment('hull', box(0.026, 0.04, outletLength), s * at.x, at.y, outletZ, 0, 0, outletTilt);
+      }
       if (outlets === 'bays') {
-        for (const k of [1, 2]) {
-          const z = rearZ + (frontZ - rearZ) * k / 3;
-          P.addEquipment('hull', onPlateSolid(z - 0.015, z + 0.015, band(0.085, 0.935, 0.022)));
+        for (const bay of [-1, 1]) {
+          const at = onOutlet(0.5, 0.016);
+          P.addEquipment('hull', box(0.026, outletFaceLength * 0.92, 0.04), s * at.x, at.y, outletZ + bay * outletLength / 6,
+            0, 0, outletTilt);
         }
       }
-      // (each slat a blade from its lower edge 16 mm off the bed up and in to it, the bed showing dark between them)
       for (let k = 0; k < 8; k++) {
-        const t = 0.085 + k * 0.85 / 8;
-        P.addEquipment('hull', onPlateSolid(rearZ + 0.02, frontZ - 0.02,
-          [[t + 0.02, 0.016], [t + 0.05, 0.016], [t + 0.08, 0.006], [t + 0.05, 0.006]]));
+        const at = onOutlet(0.11 + k * 0.111, 0.014);
+        P.addEquipment('hull', box(0.022, 0.028, outletLength), s * at.x, at.y, outletZ, 0, 0, outletTilt);
       }
     }
     P.mats.rubber.color.setHex(0x34372d);

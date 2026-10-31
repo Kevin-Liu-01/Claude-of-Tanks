@@ -78,7 +78,8 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
     }
   }
   // (the engine's outlets on the sloped rear side plates behind the bins, the Krigsmuseet side view's last fifth of the
-  // hull side, are the family hull's flush panels with continuous slats: outlets 'continuous', profiles/leopard1Hull.ts.)
+  // hull side, are the family hull's grille housings, their slats continuous from the last bin to the stern: outlets
+  // 'continuous', profiles/leopard1Hull.ts.)
   // Dozer channels (armyvehicles.dk/leopard1a3.htm: "All Danish Leopard 1s had dozer attachment channels on the lower
   // front hull"): two channel brackets on the lower glacis, which leans back 28 degrees toward the belly.
   const lowerTilt = Math.atan2(3.54 - 3.24, 1.04 - 0.48);
