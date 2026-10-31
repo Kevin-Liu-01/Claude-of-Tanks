@@ -3429,10 +3429,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
       ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
       : row));
-  // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
-  // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
-  // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
-  // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  // (Release 240's per-id rule for the C2 Ariete prototype's twin-can cradle, under its roof net, is the placement's
+  // field-suit roof rule since 266: underRoofNet.)
   // Release 264: the Leopard 2A4's kit (profiles/leopard2A4Kit.ts) loads its bustle rack (bundles, cans, the ammunition
   // box, the tarp, the bin) below the roof as the photographed 2A4s carry it; the fleet cargo piled over it and stood a
   // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
@@ -3446,20 +3444,15 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
     });
   }
-  if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
-    && row.slot[0] === 'fleetCargo' && row.slot[1].routes
-    ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
-    : row));
-  // 265 (the Ukrainian CV9040C, ua4; the ua3 blind critics, both: its turret net "a hollow hoop", daylight under it): the
-  // cans, crate, whip and M2 seated on its turret roof drew the net up into an arch over them, as the Ariete's cradle did.
-  // Its net lies on the bundled heap on the rear roof (profiles/cv9040CSourceX.ts); nothing else is stowed on that roof,
-  // nor on the troop roof, whose stowage is the tarpaulin load (the cargo turned away from the turret stood on it).
+  // 265 (the Ukrainian CV9040C, ua4): its troop roof's stowage is the tarpaulin load (profiles/cv9040CSourceX.ts); the
+  // fleet cargo stood on it. Its turret roof, under the bundled net, is the placement's field-suit roof rule (266:
+  // underRoofNet; the ua3 critics' "hollow hoop" was the decor's roof loads under that net).
   if (spec.id === 'ua_cv9040c') {
-    const kitRoof = (slot: string): boolean => slot === 'turretRoof' || slot === 'rearDeck';
+    const troopRoof = (slot: string): boolean => slot === 'rearDeck';
     return manifest
-      .filter((row) => !kitRoof(row.slot[0]))
+      .filter((row) => !troopRoof(row.slot[0]))
       .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
-        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !kitRoof(slot)) }] }
+        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !troopRoof(slot)) }] }
         : row));
   }
   return manifest;
@@ -4923,6 +4916,8 @@ const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 
   'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
+/** How far under a load's foot a field suit's roof cloth still counts as lying on the plate the load stands on. */
+const ROOF_NET_FOOT_M = 0.08;
 /**
  * Camo-painted hard kit (bins, boxes, the smoke banks' own finish) rides the resident group with the working smoke
  * banks: it reads as part of the vehicle, it was resident before the 2026-10-05 retag, and sharing that draw keeps
@@ -5205,6 +5200,11 @@ function* decorationSteps(
     // and its hanging drapes (the net's triangles after its roof and deck carriers, owner frame): a load seated on a
     // wall, a fender or a bustle face under one would sit inside the cloth, so it takes another seat
     const suitDrapes: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
+    // 266 (the net-hoop class; the Ukrainian CV9040C's ua3 critics, both: "a hollow hoop, daylight through it", as the
+    // Ariete prototype's cradle in 240): and its roof and deck cloth (the net's leading triangles, on their carriers). A
+    // load stowed under it stood up through the cloth, and drawn up over it (ghillieDrape.ts) the net became an arch, open
+    // underneath; the decor stows nothing on a roof or deck a field net covers
+    const suitRoofs: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
     for (const [frame, group] of [['hull', hullG], ['turret', turretG]] as const) {
       group.updateWorldMatrix(true, true);
       const toFrame = new THREE.Matrix4().copy(group.matrixWorld).invert(), m = new THREE.Matrix4();
@@ -5215,8 +5215,8 @@ function* decorationSteps(
         if (!pos) return;
         m.multiplyMatrices(toFrame, mesh.matrixWorld);
         const top = Number(mesh.userData[GHILLIE_TOP_VERTICES]) || 0;
-        for (let i = top - (top % 3); i + 2 < pos.count; i += 3) {
-          suitDrapes[frame].push(new THREE.Triangle(
+        for (let i = 0; i + 2 < pos.count; i += 3) {
+          (i < top - (top % 3) ? suitRoofs : suitDrapes)[frame].push(new THREE.Triangle(
             new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 1).applyMatrix4(m),
             new THREE.Vector3().fromBufferAttribute(pos, i + 2).applyMatrix4(m)));
@@ -5227,6 +5227,13 @@ function* decorationSteps(
     const meetsDrape = (frame: DecorFrame, bb: THREE.Box3): boolean => suitDrapes[frame].some((t) => {
       triBox.setFromPoints([t.a, t.b, t.c]);
       return triBox.intersectsBox(bb) && bb.intersectsTriangle(t);
+    });
+    // the roof cloth over the load's footprint, from its foot (less ROOF_NET_FOOT_M: the cloth lies on the plate the load
+    // stands on) to its top: the load would stand up through the net
+    const underRoofNet = (frame: DecorFrame, bb: THREE.Box3): boolean => suitRoofs[frame].some((t) => {
+      triBox.setFromPoints([t.a, t.b, t.c]);
+      return triBox.max.x >= bb.min.x && triBox.min.x <= bb.max.x && triBox.max.z >= bb.min.z && triBox.min.z <= bb.max.z
+        && triBox.min.y < bb.max.y && triBox.max.y > bb.min.y - ROOF_NET_FOOT_M;
     });
     {
       turretG.updateWorldMatrix(true, false);
@@ -5737,6 +5744,7 @@ function* decorationSteps(
       if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && !launcherSweepOK(bb)) return rejectCommit(name, parts, 'launcher-sweep');
       // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('hull', bb)) return rejectCommit(name, parts, 'suit-roof');
       return true;
     }
 
@@ -5763,6 +5771,7 @@ function* decorationSteps(
         if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
       }
       if (!FUNCTIONAL_KITS.has(name) && meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && underRoofNet('turret', bb)) return rejectCommit(name, parts, 'suit-roof');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {

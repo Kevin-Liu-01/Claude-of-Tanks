@@ -463,7 +463,7 @@
    "hostSweep": []
   },
   "c2_ariete": {
-   "inputHash": "599c5b0eb7b92460",
+   "inputHash": "cd57a588d9771b83",
    "runs": [
     {
      "index": 0,
@@ -494,7 +494,7 @@
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "0bd56354bcd3604d",
+   "inputHash": "fb31e1a151606df3",
    "runs": [
     {
      "index": 0,
@@ -515,7 +515,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:322>"
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:323>"
      }
     }
    ],
@@ -748,7 +748,7 @@
    "hostSweep": []
   },
   "challenger3_td": {
-   "inputHash": "d74dfe1c11fc339b",
+   "inputHash": "b30a260c7fc83d32",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -796,13 +796,13 @@
    "hostSweep": []
   },
   "christian2": {
-   "inputHash": "ef0f53250fe67317",
+   "inputHash": "fefe3533957df37f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90": {
-   "inputHash": "f5bd3565fc166d64",
+   "inputHash": "9061fa602782f2cf",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -820,7 +820,7 @@
    "hostSweep": []
   },
   "cv9040c": {
-   "inputHash": "5e08c8b62d07772b",
+   "inputHash": "4af9340e54e7e608",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -930,7 +930,7 @@
    "hostSweep": []
   },
   "griffin_viper": {
-   "inputHash": "c436fcd5fc06017d",
+   "inputHash": "7246c867995b63cb",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1069,7 +1069,7 @@
    "hostSweep": []
   },
   "kf51_u": {
-   "inputHash": "00a2b2d4dbb824ce",
+   "inputHash": "1750f781410250d4",
    "runs": [
     {
      "index": 0,
@@ -1090,7 +1090,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<cutSlab@profiles/leopard.ts:1605>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1607>"
      }
     }
    ],
@@ -1191,7 +1191,7 @@
    "hostSweep": []
   },
   "leclerc_sxxi": {
-   "inputHash": "46cca533f208f4a9",
+   "inputHash": "d8a3b805a4115ccb",
    "runs": [
     {
      "index": 0,
@@ -1225,14 +1225,14 @@
    "uncovered": [],
    "hostSweep": []
   },
-  "leo1a3dk": {
-   "inputHash": "81c247bc5d86e123",
+  "leo1a2a1": {
+   "inputHash": "8ba80ed8c4a10f8a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
-  "leo1a2a1": {
-   "inputHash": "8ba80ed8c4a10f8a",
+  "leo1a3dk": {
+   "inputHash": "81c247bc5d86e123",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1256,7 +1256,7 @@
    "hostSweep": []
   },
   "leo2_improved": {
-   "inputHash": "173ca8ac0a3b9fd9",
+   "inputHash": "cbee8b6657b2e1d4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1274,25 +1274,25 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "30bfc6602c81d2f1",
+   "inputHash": "7db92fb939f15b88",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a3": {
-   "inputHash": "18505ba59f426e19",
+   "inputHash": "3586e852105c994b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a3_b4": {
-   "inputHash": "aee83b60d05a5651",
+   "inputHash": "3886504ea57f0225",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a4": {
-   "inputHash": "491daa84490ece5f",
+   "inputHash": "53c8239885c9d4ff",
    "runs": [
     {
      "index": 0,
@@ -1343,7 +1343,7 @@
    "hostSweep": []
   },
   "leo2a4_otco": {
-   "inputHash": "76a113efb7f1f7fd",
+   "inputHash": "7b96a55d00b763f3",
    "runs": [
     {
      "index": 0,
@@ -1372,7 +1372,7 @@
    "hostSweep": []
   },
   "leo2a4_v": {
-   "inputHash": "3538082e58292b12",
+   "inputHash": "f95796c786037027",
    "runs": [
     {
      "index": 0,
@@ -1467,7 +1467,7 @@
    "hostSweep": []
   },
   "leo2a4m": {
-   "inputHash": "649f8f4eb07b4a7e",
+   "inputHash": "c31325321133936c",
    "runs": [
     {
      "index": 0,
@@ -1613,7 +1613,7 @@
    "hostSweep": []
   },
   "leo2a5": {
-   "inputHash": "2a747b5f425c8a6c",
+   "inputHash": "0be37ba57f4720f6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1672,7 +1672,7 @@
    "hostSweep": []
   },
   "leo2a7v": {
-   "inputHash": "d8031e26142875ca",
+   "inputHash": "b294e5e0ab12ce9b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1684,7 +1684,7 @@
    "hostSweep": []
   },
   "lrmv_lynx": {
-   "inputHash": "41edc0a75dc726b3",
+   "inputHash": "6314fdfc8492d783",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1846,7 +1846,7 @@
    "hostSweep": []
   },
   "m1a3": {
-   "inputHash": "6308f8f3949f7d57",
+   "inputHash": "f9213a31ee9428f5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2304,6 +2304,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "olifant_mk2": {
+   "inputHash": "1b0ff0caefe1214f",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "osorio_p1": {
    "inputHash": "cb27cf2d14ad4dbb",
    "runs": [],
@@ -2312,12 +2318,6 @@
   },
   "osorio_p2": {
    "inputHash": "82d660ae731eb57d",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
-  "olifant_mk2": {
-   "inputHash": "1b0ff0caefe1214f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2496,7 +2496,7 @@
    "hostSweep": []
   },
   "spz_wotan": {
-   "inputHash": "17dc75d960217e56",
+   "inputHash": "c480fc2ff681ec44",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2508,7 +2508,7 @@
    "hostSweep": []
   },
   "strv103a": {
-   "inputHash": "94c00909c2bbcdd8",
+   "inputHash": "a20156b377573002",
    "runs": [
     {
      "index": 0,
@@ -2537,7 +2537,7 @@
    "hostSweep": []
   },
   "strv103b": {
-   "inputHash": "e5d36dfb7fdff275",
+   "inputHash": "75ba2982c3a2a7ad",
    "runs": [
     {
      "index": 0,
@@ -2558,7 +2558,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.909,
-      "host": "hull<loft@profiles/casemate.ts:157>"
+      "host": "hull<loft@profiles/casemate.ts:158>"
      }
     },
     {
@@ -2580,7 +2580,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.909,
-      "host": "hull<loft@profiles/casemate.ts:157>"
+      "host": "hull<loft@profiles/casemate.ts:158>"
      }
     }
    ],
@@ -2639,7 +2639,7 @@
    "hostSweep": []
   },
   "strv121": {
-   "inputHash": "cfcb5f4147ecfb6b",
+   "inputHash": "a94d246ddbba240c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3019,13 +3019,13 @@
    "hostSweep": []
   },
   "t72b3m_2016": {
-   "inputHash": "9db4551ebc382e69",
+   "inputHash": "259f907a5f87bbc5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3m_2022": {
-   "inputHash": "c6b45dc10cd16413",
+   "inputHash": "072f4a2898f6678f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3061,7 +3061,7 @@
    "hostSweep": []
   },
   "t72b3m_xuanwu": {
-   "inputHash": "07240e40f2bc4bde",
+   "inputHash": "23c6aa3f3e32d694",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3226,7 +3226,7 @@
    "hostSweep": []
   },
   "t84": {
-   "inputHash": "805b704a24eabf98",
+   "inputHash": "418d9c4395e4c4ab",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3316,7 +3316,7 @@
    "hostSweep": []
   },
   "t90a_burlak": {
-   "inputHash": "c7210aa3e4be0580",
+   "inputHash": "60a8daf7db7aad89",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3359,7 +3359,7 @@
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "08fe2b3c3591bb53",
+   "inputHash": "a9d17a165a7a99cf",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3758,7 +3758,7 @@
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "bc1cf13bb065aca8",
+   "inputHash": "e55c846f49f86744",
    "runs": [
     {
      "index": 0,
@@ -3779,7 +3779,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.911,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1748>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1749>"
      }
     },
     {
@@ -3801,7 +3801,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1723>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1724>"
      }
     }
    ],
@@ -3862,7 +3862,7 @@
    "hostSweep": []
   },
   "type90a": {
-   "inputHash": "5852f5888b931502",
+   "inputHash": "4c3471c834abee23",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3886,19 +3886,19 @@
    "hostSweep": []
   },
   "type96b": {
-   "inputHash": "6fbf598ff85bee38",
+   "inputHash": "72ee7cb28505623f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "ua_challenger2": {
-   "inputHash": "57ff021109a85df5",
+   "inputHash": "bcaafc3fbe65d277",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "ua_cv9040c": {
-   "inputHash": "f50f0a6e148bc311",
+   "inputHash": "9026977ad3ffbee0",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4171,7 +4171,7 @@
    "hostSweep": []
   },
   "ztz99a2": {
-   "inputHash": "b6cb1341be7d4284",
+   "inputHash": "9e2ce04f9d26057c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

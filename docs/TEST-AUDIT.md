@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1486 | 144.9 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 661 | 1120.6 |
+| MANUAL | 662 | 1122.5 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2148 | 1265.8 | 212.1 |
+| Before: every receipt (npm test without the tiers) | 2149 | 1267.8 | 212.4 |
 | After: the default tier | 1486 | 144.9 | 20.5 |
 
 Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.8 min pool, 2.5 min browser receipts.
@@ -37,7 +37,7 @@ Default tier: 11.4 % of the whole registry's CPU; 15.8 % of the 916 CPU-min the 
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 60 | 245.6 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
-| `tanks` | 418 | 292.0 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `tanks` | 419 | 294.0 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 6 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 4 | 24.7 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -141,7 +141,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (661)
+## MANUAL (662)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -225,6 +225,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/m1a1-fill-clearance.selftest.mjs` | 124 | MANUAL (tanks) | per-tank pin (m1a2_abrams, m1a1), 124 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/gallery-shell.selftest.mjs` | 122 | MANUAL (ui) | ui: heavy interface paint and layout sweeps, 122 s: 2026-10-24 (brand-ui 247, the public-site perf pass): the Gallery's nation and class rows ship in its first la | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `src/world/structureCollisionRaster.selftest.mjs` | 120 | MANUAL (world) | world: world-wide map builds, 120 s | test:heavy -- world; test:recommend flags it when its inputs change |
+| `src/vehicles/suitRoofDecor.selftest.mjs` | 117 | MANUAL (tanks) | per-tank pin (cv9040c, c2_ariete_proto), 117 s: 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/smokeLauncherFleet.selftest.mjs` | 116 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 116 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/launcherDecorKeepOut.selftest.mjs` | 115 | MANUAL (tanks) | per-tank pin (griffin_viper), 115 s: 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every laun | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/battleEraReceipt.selftest.mjs` | 108 | MANUAL (tanks) | per-tank pin (t64bv1, t80uk, t80bv, t90am, ...), 108 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -2233,8 +2234,8 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/destruction-slab-check.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 2026-10-17: the stray-slab detector's judgement (a room past the walls, a floating plate, a flattened matrix) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/frontend-budget.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: frontend-budget.selftest.mjs — the frontend budget receipt's scoring (UI-LOCKDOWN E, 2026-10-25). Fixture runs | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/oplot-bm-x-reference.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 262: the T-84BM Oplot-M's registered comparison oracle | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/surface-element-resets.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the prim | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/reference-override-registry.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 266: the gate page's reference table names each id once; certified ids register their private local oracle | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/surface-element-resets.selftest.mjs` | 0.4 | KEEP | tool contract, 0.4 s: 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the prim | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/docs/chapters/controls.selftest.mjs` | 0.3 | KEEP | site, manual or app contract, 0.3 s: controls.selftest.mjs — the manual's controls chapter keeps to the game: its key tables cover every action the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cameraLens.selftest.mjs` | 0.3 | KEEP | renderer contract, 0.3 s: battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/uprightPlates.selftest.mjs` | 0.3 | KEEP | effects contract, 0.3 s: destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn | default tier (npm test, the release gate; lane mode by its closure) |

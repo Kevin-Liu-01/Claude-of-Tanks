@@ -1170,6 +1170,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     // 2026-10-30 (266): the hull's turret-sweep guard knows the launchers riding the gun, swept over its pitch range
     'src/vehicles/launcherSweepGuard.selftest.mjs',
+    // 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull
+    'src/vehicles/suitRoofDecor.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
