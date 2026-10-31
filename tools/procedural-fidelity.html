@@ -1033,8 +1033,8 @@ function setPart(root, part) {
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
       || (part === 'turret' && isBelow(o, turret))
       || (part === 'gun' && isBelow(o, gun))
-      // the dims rows' hull: no turret and no gun, even where a casemate hangs the gun on the hull's rig
-      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !isBelow(o, gun));
+      // the dims rows' hull: no turret and no gun, even where a casemate draws its barrel into the hull's gun buckets
+      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !isBelow(o, gun) && !/^(gun|hullGun)/.test(o.name || ''));
     o.visible = base && allowed && !hiddenRoofFittings?.has(o);
   });
 }
@@ -2251,7 +2251,8 @@ if (params.get('geo')) {
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
-    ...(roofFittingsExcluded && oracleBodyMode === 'none' ? { oracleComparison:'whole against whole: the oracle names no roof fittings' } : {}),
+    ...(roofFittingsExcluded && oracleBodyMode === 'none' && (dimensionFrame || preservation)
+      ? { oracleComparison:'whole against whole: the oracle names no roof fittings' } : {}),
     floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');

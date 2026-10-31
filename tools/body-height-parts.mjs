@@ -15,7 +15,8 @@
 // The main gun's rig stays body, and so does a roof station that is the vehicle's primary weapon (ares_apc's RWS).
 // A supplied oracle names its own: the War Thunder exports' antenna* nodes and their roof guns' bones, mounts and guns
 // (bone_mg_aa_*, mg_aa*, bone_mg_h_/bone_mg_v_*, mg_NN, mg_mount_*; never mg_twin or bone_mg_twin, the coaxial and
-// over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, or the registration's
+// over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, the supplied sources'
+// numbered weapon2../mount2.. and mgbracket/mgbox (their bare weapon and mount are the main gun's), or the registration's
 // own roofFittingNodes pattern, so a gun-less oracle compares like for like. An oracle that names none (a fused export)
 // cannot drop its whips, so an oracle comparison is whole against whole there.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
@@ -27,7 +28,7 @@ export const ANTENNA_FITTING_TYPES = Object.freeze(['antennaWhip']);
 /** Seat roles cut from merged buckets (all antennas). */
 export const BODY_EXCLUDED_SEAT_ROLES = Object.freeze(['antenna']);
 /** Oracle node names: whips, masts and aerials, and the roof guns with their mounts (never the coaxial mg_twin). */
-export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan)/i;
+export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan|weapon[2-9]|mount[2-9]|mgbracket|mgbox)/i;
 
 const roofTypes = new Set(ROOF_FITTING_TYPES);
 const antennaTypes = new Set(ANTENNA_FITTING_TYPES);

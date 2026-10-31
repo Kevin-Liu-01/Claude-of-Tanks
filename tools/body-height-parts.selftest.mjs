@@ -79,10 +79,12 @@ const heightOf = (root, frame, options) => {
   assert.equal(roofFittingTag(logBody, root), null, 'other fittings stay body');
   for (const name of ['vehicle#antenna_04_163_0', 'vehicle#antenna01_24', 'vehicle#bone_mg_aa_v_105_0', 'Antenna',
     'vehicle#mg_aa_mount_v_44_0', 'vehicle#mg_aamount_h', 'vehicle#bone_mg_v_01_43_2', 'vehicle#mg_01_40_0',
-    'vehicle#mg_mount_h_42_0', 'M240Pintle', 'AmmoCan', 'vehicle#aerial_stowed'])
+    'vehicle#mg_mount_h_42_0', 'M240Pintle', 'AmmoCan', 'vehicle#aerial_stowed', 'co-antenna', 'weapon2', 'weapon2.001',
+    'mount3_merkava-iv-turret_3_0', 'mgbracket', 'mgbox'])
     assert.match(name, ORACLE_ROOF_FITTING_NODES, `${name}: an oracle roof fitting`);
   for (const name of ['vehicle#bone_turret_98_0', 'vehicle#mg_twin_101_0', 'vehicle#bone_mg_twin_0', 'vehicle#bone_mg_gun_twin_01',
-    'vehicle#ex_decor_antenna_mount', 'vehicle#hull', 'vehicle#ammo_body_01'])
+    'vehicle#ex_decor_antenna_mount', 'vehicle#hull', 'vehicle#ammo_body_01', 'weapon', 'mount', 'mount.001',
+    'weapon_merkava-iv-turret_3_0', 'Gun_Msh'])
     assert.doesNotMatch(name, ORACLE_ROOF_FITTING_NODES, `${name}: body`);
   const oracleWhip = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)); oracleWhip.name = 'vehicle#antenna_01_166_0';
   root.add(oracleWhip);
