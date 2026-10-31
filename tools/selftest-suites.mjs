@@ -504,7 +504,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteProportions.selftest.mjs',
     'src/vehicles/profiles/arieteTurretOwnership.selftest.mjs',
   'src/vehicles/vehicleSize.selftest.mjs',
-  'src/vehicles/fleetResize20261002.selftest.mjs',
   'src/vehicles/escortModernization.selftest.mjs',
   'src/vehicles/chineseMantletFit.selftest.mjs',
   'src/vehicles/aresFlanking.selftest.mjs',
@@ -812,6 +811,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
+    'tools/selftest-tiers.selftest.mjs',
+    'tools/test-commands-exit.selftest.mjs',
+    'tools/test-base.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
@@ -850,6 +853,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/chain.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
     'tools/changed-only/fresh.selftest.mjs',
+    // 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that id on
+    // the combat readers alone (manual: fleet suite).
+    'tools/changed-only/balance-keys.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
@@ -2207,8 +2213,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landscapeWoods.selftest.mjs',
     // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
     'src/world/riparianTrees.selftest.mjs',
-    // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
-    'src/world/skybridgeArmIsolation.selftest.mjs',
     // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
     'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',

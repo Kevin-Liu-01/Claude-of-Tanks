@@ -6,6 +6,10 @@ import { createCaptureLock } from './capture-lock.mjs';
 import { runCommand, runCapturedCommand } from './capture-command.mjs';
 // acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
+// (266, main's reds) a suite run inside a render hold exports COT_SHOTS_LOCK_CLASS=render, and two renders share the lock's
+// slots: the waiter below then took the second slot instead of timing out ("Missing expected rejection"). Its holds are the
+// exclusive class the command implies.
+delete process.env.COT_SHOTS_LOCK_CLASS;
 
 const root=mkdtempSync(join(tmpdir(),'cot-capture-command-'));
 const lockDir=join(root,'capture.lock'),queueDir=join(root,'capture.queue');
