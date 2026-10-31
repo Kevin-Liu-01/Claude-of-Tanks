@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1456 | 114.1 |
+| KEEP | 1457 | 114.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 668 | 1114.0 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2125 | 1228.4 | 207.4 |
-| After: the default tier | 1456 | 114.1 | 16.6 |
+| Before: every receipt (npm test without the tiers) | 2126 | 1228.5 | 207.5 |
+| After: the default tier | 1457 | 114.2 | 16.7 |
 
 Default tier: 9.3 % of the whole registry's CPU; 12.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 13.9 min pool, 2.5 min browser receipts.
 
@@ -178,7 +178,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/cnClearance.selftest.mjs` | 483 | MANUAL (tanks) | per-tank pin (type96b), 483 s: 2026-10-17 (release 227 CN M5): the moving-part clearances (main gun over the hull and the add-ons, the unders | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `server/battlePacingShard6.selftest.mjs` | 480 | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, 480 s: Shard 6 of 8 of the battlePacing core run (test-speed R9a, 2026-10-16): plays the core matches on the maps who | test:heavy -- pacing; test:recommend flags it when its inputs change |
 | `src/world/roadBuildingFrontage.selftest.mjs` | 453 | MANUAL (world) | world: world-wide map builds, 453 s | test:heavy -- world; test:recommend flags it when its inputs change |
-| `src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs` | 444 | MANUAL (tanks) | per-tank pin (pt91a_twardy, t72bu, pt91m), 444 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs` | 444 | MANUAL (tanks) | per-tank pin (pt91a_twardy, t72b3, pt91m, t72bu), 444 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/ringSpeciesStature.selftest.mjs` | 443 | MANUAL (world) | world: world-wide map builds, 443 s: 2026-10-15 (ground lane, the coordinator's ruling): the ring's trees at each species' own stature where a map | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/frontEraPackages.selftest.mjs` | 433 | MANUAL (tanks) | per-tank pin (t72b3m_hetman_ii, t72b3_zubr, t72b3_zubr_ii), 433 s: 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `server/battlePacingShard3.selftest.mjs` | 386 | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, 386 s: Shard 3 of 8 of the battlePacing core run (test-speed R9a, 2026-10-16): plays the core matches on the maps who | test:heavy -- pacing; test:recommend flags it when its inputs change |
@@ -238,7 +238,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/eraWholeFitReuse.selftest.mjs` | 101 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, challenger3, challenger2, leo2_revolution, ...), 101 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/treeSpacing.selftest.mjs` | 99 | MANUAL (world) | world: world-wide map builds, 99 s: trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/sourceXAuxArmorOptimization.selftest.mjs` | 98 | MANUAL (tanks) | per-tank pin (k1a1, amx30b, leclerc_xlr, amx56, ...), 98 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/ghilliePlacementDeterminism.selftest.mjs` | 97 | MANUAL (tanks) | per-tank pin (m1a1_abrams_fep, leo2a6_ua, pt91a_twardy, ua_m1a1, ...), 97 s: 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls und | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/ghilliePlacementDeterminism.selftest.mjs` | 97 | MANUAL (tanks) | per-tank pin (m1a1_abrams_fep, leo2a6_ua, t64bv_donbas, ua_m1a1, ...), 97 s: 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls und | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/source-dimension-frame.browser.selftest.mjs` | 97 | MANUAL (browser) | browser: strenuous real-battle browser receipts (a GPU and the capture lock each), 97 s: Real GPU regression for the source-only ruler. Supplementary to the Node regression; registered in npm test's | test:heavy -- browser; test:recommend flags it when its inputs change |
 | `tools/interior-fill-body-policy.selftest.mjs` | 96 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 96 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/world/horizonPanoramaRelight.selftest.mjs` | 95 | MANUAL (world) | world: world-wide map builds, 95 s: the nightsky lane (2026-10-08): the far country re-baked under a battle's sunset and night (the owner: "the fa | test:heavy -- world; test:recommend flags it when its inputs change |
@@ -289,7 +289,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/markingSeatStability.selftest.mjs` | 59 | MANUAL (tanks) | per-tank pin (type90a, cv90, merkava4b, pt91a_twardy, ...), 59 s: 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that st | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs` | 59 | MANUAL (tanks) | per-tank pin (t90a_2004, t90a_burlak_proto, bmpt_t90), 59 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/arieteModernSpecs.selftest.mjs` | 58 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 58 s: Surface groups keep their schema-1 names (arieteModernSpecs, sourceXWesternAuxArmor; SSOT 2.19), tank-ids:keep | test:heavy -- fleet; test:recommend flags it when its inputs change |
-| `src/vehicles/oplotBMGun.selftest.mjs` | 58 | MANUAL (tanks) | per-tank pin (bm_oplot_m, bm_oplot_t, t84bm_oplot_m), 58 s: 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, it | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/oplotBMGun.selftest.mjs` | 58 | MANUAL (tanks) | per-tank pin (bm_oplot_m, bm_oplot_t, t84bm_oplot_m, pt84_orzel, ...), 58 s: 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, it | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/ui/minimapLiquidWater.selftest.mjs` | 57 | MANUAL (world) | world: world-wide map builds, 57 s: 2026-10-14 (owner, Kestrel: "water spots by spawn even though you can't actually see any water"): the tactical | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/christian2.selftest.mjs` | 57 | MANUAL (tanks) | per-tank pin (christian2, type90), 57 s: release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec a | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/abramsSourceXUserSurfaces.selftest.mjs` | 56 | MANUAL (tanks) | per-tank pin (m1a2_abrams_tusk, m1a2_abrams_sepv2, m1a2_abrams_sepv3), 56 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -301,12 +301,12 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/chieftain10-collision.selftest.mjs` | 55 | MANUAL (tanks) | per-tank pin (chieftain_mk10), 55 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/weaponFinish.selftest.mjs` | 54 | MANUAL (tanks) | per-tank pin (m1a1, m1a1_abrams_hc, cv90, raiju_ifv, ...), 54 s: 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/foundryServiceCourt.selftest.mjs` | 54 | MANUAL (world) | world: world-wide map builds, 54 s | test:heavy -- world; test:recommend flags it when its inputs change |
-| `src/vehicles/missionAttachmentReceiver.selftest.mjs` | 53 | MANUAL (tanks) | per-tank pin (pt91a_twardy, leo2a6_ua, ua_m1a1, t80u_zoria), 53 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/missionAttachmentReceiver.selftest.mjs` | 53 | MANUAL (tanks) | per-tank pin (leo2a6_ua, ua_m1a1, t80u_zoria), 53 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t64GunClearance.selftest.mjs` | 53 | MANUAL (tanks) | per-tank pin (t64bm1m, t64bv, t64b1v_2022, pt64_tur), 53 s: 262: the T-64s' 2A46M-1 clears its own turret. The tube leaves the cast mask (gunMount, which pitches with it) | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/combatVisibility.selftest.mjs` | 52 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 52 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/sourceXOtherAuxArmor.selftest.mjs` | 52 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 52 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/sourceXSecondWave.selftest.mjs` | 52 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 52 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
-| `src/vehicles/accessoryMaterials.selftest.mjs` | 51 | MANUAL (tanks) | per-tank pin (pt91a_twardy, m1a1_abrams_fep, strv103b, leo2a4), 51 s: accessoryMaterials.selftest.mjs — vehicle accessories light like the vehicle (tank-accessories lane, 2026-10-0 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/accessoryMaterials.selftest.mjs` | 51 | MANUAL (tanks) | per-tank pin (t64bv_donbas, m1a1_abrams_fep, strv103b, leo2a4), 51 s: accessoryMaterials.selftest.mjs — vehicle accessories light like the vehicle (tank-accessories lane, 2026-10-0 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/track-lane-boxes.selftest.mjs` | 51 | MANUAL (tanks) | per-tank pin (jpz_e100, type10), 51 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/gallery/overlays.selftest.mjs` | 50 | MANUAL (ui) | ui: heavy interface paint and layout sweeps, 50 s | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/t90SMXSmoke.selftest.mjs` | 50 | MANUAL (tanks) | per-tank pin (t90sm), 50 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -814,7 +814,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1456)
+## KEEP (1457)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1086,6 +1086,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/sourcedTerrainPreparation.selftest.mjs` | 7.0 | KEEP | world rule, 7.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/terrainDiagonal.selftest.mjs` | 7.0 | KEEP | world rule, 7.0 s: 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the ove | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/worldNightFixtureInstances.selftest.mjs` | 7.0 | KEEP | world rule, 7.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/body-height-parts.selftest.mjs` | 7.0 | KEEP | tool contract, 7.0 s: 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/armorPanelsOnDemand.selftest.mjs` | 6.8 | KEEP | game flow, 6.8 s: 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/garageFacetFilter.selftest.mjs` | 6.8 | KEEP | interface contract, 6.8 s: Receipt: the Garage roster filter narrows the real fleet by class, role, era and facet search, its chip counts | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/gunFacePlates.selftest.mjs` | 6.8 | KEEP | vehicle rule, 6.8 s: 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate) | default tier (npm test, the release gate; lane mode by its closure) |
