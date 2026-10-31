@@ -213,7 +213,11 @@ try {
   // steering latency: phone event → desktop frame (one clock), over the data channel
   await desktop.evaluate(() => {
     window.__padWatch = { target: 0, hit: null, armed: false };
-    const loop = () => {
+    window.__padFrames = [];
+    let last = 0;
+    const loop = (at) => {
+      if (last) { window.__padFrames.push(at - last); if (window.__padFrames.length > 600) window.__padFrames.shift(); }
+      last = at;
       const w = window.__padWatch;
       if (w.armed && w.hit === null) {
         const steer = window.__DEBUG.game.player?.input?.steer ?? 0;
@@ -225,6 +229,8 @@ try {
   });
   async function steerSamples(count, label) {
     const values = [];
+    const parts = { send: [], link: [], apply: [] };
+    await desktop.evaluate(() => { window.__padFrames.length = 0; });
     for (let i = 0; i < count; i++) {
       deadline();
       const right = i % 2 === 0;
@@ -235,19 +241,38 @@ try {
         return at;
       }, orientation(right ? 30 : -30));
       const hit = await desktop.waitForFunction(() => window.__padWatch.hit, { timeout: 5000, polling: 'raf' }).then((h) => h.jsonValue()).catch(() => null);
-      if (hit) values.push(hit - sentAt);
+      if (hit) {
+        values.push(hit - sentAt);
+        // the split: the phone's send (event → frame stamp), the link (stamp → receipt), the desktop (receipt → its frame)
+        const sent32 = Math.round(sentAt) >>> 0;
+        const entry = await desktop.evaluate((from) => (window.__COT_PAD?.trace ?? []).find(([t]) => ((t - from) >>> 0) < 60_000) ?? null, sent32);
+        if (entry) {
+          const [stamp, receipt] = entry;
+          parts.send.push(((stamp - sent32) | 0));
+          parts.link.push(((receipt - stamp) | 0));
+          parts.apply.push(hit - (sentAt + ((receipt - sent32) | 0)));
+        }
+      }
       await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
       await desktop.waitForFunction(() => Math.abs(window.__DEBUG.game.player?.input?.steer ?? 0) < 0.05, { timeout: 5000 }).catch(() => {});
       await sleep(60 + Math.floor(Math.random() * 180));
     }
-    const result = { n: values.length, of: count, p50: pct(values, 0.5), p95: pct(values, 0.95), max: pct(values, 1), ms: values.map((v) => Math.round(v * 10) / 10) };
+    const frames = await desktop.evaluate(() => [...window.__padFrames]);
+    const split = Object.fromEntries(Object.entries(parts).map(([key, list]) => [key, { p50: pct(list, 0.5), p95: pct(list, 0.95) }]));
+    const result = { n: values.length, of: count, p50: pct(values, 0.5), p95: pct(values, 0.95), max: pct(values, 1),
+      split, desktopFrameMs: { p50: pct(frames, 0.5), p95: pct(frames, 0.95) }, load: (await import('node:os')).loadavg().map(Math.round),
+      ms: values.map((v) => Math.round(v * 10) / 10) };
     report.latency[label] = result;
-    console.log(`latency ${label}: n=${result.n}/${count} p50=${result.p50} ms p95=${result.p95} ms max=${result.max} ms`);
+    console.log(`latency ${label}: n=${result.n}/${count} p50=${result.p50} ms p95=${result.p95} ms max=${result.max} ms; `
+      + `send ${split.send.p50}/${split.send.p95}, link ${split.link.p50}/${split.link.p95}, desktop ${split.apply.p50}/${split.apply.p95} ms; `
+      + `desktop frame ${result.desktopFrameMs.p50}/${result.desktopFrameMs.p95} ms; load ${result.load.join(' ')}`);
     return result;
   }
   report.step = 'latency webrtc';
   const direct = await steerSamples(samples, 'webrtc');
-  check('steering latency over the data channel: p95 under 60 ms', direct.n === samples && direct.p95 < 60, `p50 ${direct.p50} ms, p95 ${direct.p95} ms`);
+  check('steering latency over the data channel: p95 under 60 ms', direct.n === samples && direct.p95 < 60,
+    `p50 ${direct.p50} ms, p95 ${direct.p95} ms; the phone's send ${direct.split.send.p95}, the link ${direct.split.link.p95}, `
+    + `the desktop's receipt to frame ${direct.split.apply.p95} ms p95 at a ${direct.desktopFrameMs.p50} ms frame`);
   const steerSign = await (async () => {
     await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(30));
     await sleep(200);

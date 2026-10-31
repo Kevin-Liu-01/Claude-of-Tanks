@@ -167,7 +167,6 @@ let tiltAngle: number | null = null;
 let tiltCentre = 0;
 let stickX = 0;
 let lastSentKey = '';
-let sendQueued = false;
 let lastSendAt = -Infinity;
 let rttMs: number | null = null;
 let status: PadStatus | null = null;
@@ -186,9 +185,9 @@ const steering = (): number => {
   return stickX;
 };
 
-/** Send the current frame now when it changed (the data channel is free; the relay counts only changed frames). */
+/** Send the current frame now when it changed: every sensor and touch event goes at once (the data channel is free; a
+ *  wait for the next animation frame cost up to one phone frame of latency), the relay keeps its own rate cap. */
 function send(force = false): void {
-  sendQueued = false;
   if (!link) return;
   axes.steer = steering();
   axes.flags = settings.tilt && tiltSeen ? PAD_FLAG_TILT : 0;
@@ -202,12 +201,6 @@ function send(force = false): void {
   lastSentKey = key;
   lastSendAt = now;
   if (debug) debug.sent++;
-}
-/** Coalesce input events into one frame per animation frame (no style writes here). */
-function queueSend(): void {
-  if (sendQueued) return;
-  sendQueued = true;
-  requestAnimationFrame(() => send());
 }
 setInterval(() => send(), HEARTBEAT_MS);
 
@@ -241,7 +234,7 @@ function onOrientation(event: DeviceOrientationEvent): void {
   if (debug) debug.tilt = true;
   applyMode();
   paintWheel();
-  queueSend();
+  send();
 }
 
 async function startTilt(): Promise<void> {
@@ -280,7 +273,7 @@ function leverMove(event: PointerEvent): void {
   lever.setAttribute('aria-valuenow', String(Math.round(axes.throttle * 100)));
   paintWheel();
   paintTread();
-  queueSend();
+  send();
 }
 function leverEnd(event: PointerEvent): void {
   if (event.pointerId !== leverPointer) return;
@@ -342,7 +335,7 @@ aimPad.addEventListener('pointermove', (event) => {
   axes.aimY += (event.clientY - aimLast.y) * settings.aim;
   aimLast = { x: event.clientX, y: event.clientY };
   leanReticle(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
-  queueSend();
+  send();
 });
 const aimEnd = (event: PointerEvent): void => { if (event.pointerId !== aimPointer) return; aimPointer = null; leanReticle(0, 0); };
 aimPad.addEventListener('pointerup', aimEnd);

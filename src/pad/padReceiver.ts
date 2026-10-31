@@ -85,6 +85,8 @@ interface PadDebug {
   /** Receipt of an axes frame to the next animation frame (when the game samples it), ms, smoothed. */
   applyMs: number;
   lastPhoneT: number;
+  /** The newest frames' phone stamps and receipt times (epoch ms, uint32): the e2e splits the latency with them. */
+  trace: Array<[number, number]>;
 }
 
 export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): PadReceiver {
@@ -99,7 +101,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
   let pendingApplyAt = -1;
   let frames = 0;
   const debug: PadDebug | null = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]padDebug\b/.test(location.search))
-    ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0 } : null;
+    ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0, trace: [] } : null;
   if (debug) (globalThis as { __COT_PAD?: PadDebug }).__COT_PAD = debug;
 
   const publish = (next: Partial<PadReceiverView>): void => {
@@ -133,7 +135,11 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts): P
       const now = performance.now();
       if (!mapper.applyAxes(axes, now)) return;
       frames++;
-      if (debug) { debug.frames = frames; debug.lastPhoneT = axes.t; }
+      if (debug) {
+        debug.frames = frames; debug.lastPhoneT = axes.t;
+        debug.trace.push([axes.t, Math.round(performance.timeOrigin + now) >>> 0]);
+        if (debug.trace.length > 128) debug.trace.shift();
+      }
       if (pendingApplyAt < 0) { pendingApplyAt = now; requestAnimationFrame(onFrame); }
     },
     onCtl(message) {
