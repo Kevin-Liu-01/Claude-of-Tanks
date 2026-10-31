@@ -17,8 +17,9 @@
 // (bone_mg_aa_*, mg_aa*, bone_mg_h_/bone_mg_v_*, mg_NN, mg_mount_*; never mg_twin or bone_mg_twin, the coaxial and
 // over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, the supplied sources'
 // numbered weapon2../mount2.. and mgbracket/mgbox (their bare weapon and mount are the main gun's), or the registration's
-// own roofFittingNodes pattern, so a gun-less oracle compares like for like. An oracle that names none (a fused export)
-// cannot drop its whips, so an oracle comparison is whole against whole there.
+// own roofFittingNodes pattern, so a gun-less oracle compares like for like. An oracle comparison drops a kind of roof
+// fitting (antennas, roof weapons) only where the oracle names that kind (pairedRoofFittings): a source that fuses its
+// roof gun into the turret keeps the build's gun beside it, and one that names nothing is compared whole against whole.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
 
 /** Fitting types that are roof fittings; the antenna ones never count toward any height. */
@@ -105,6 +106,16 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
     if (ranges.length && !o.isInstancedMesh) trimmed.set(o, bodyGeometryWithout(o.geometry, ranges));
   });
   return { nodes, trimmed };
+}
+
+/** The parts an oracle comparison leaves out of both models: every roof fitting the oracle names, and the build's roof
+ * fittings of the kinds the oracle names. `cutBuildSpans` says whether the build's antenna spans are cut too. */
+export function pairedRoofFittings(built, oracle) {
+  const named = { antenna: oracle.trimmed.size > 0, weapon: false };
+  for (const tag of oracle.nodes.values()) named[isAntennaTag(tag) ? 'antenna' : 'weapon'] = true;
+  const hidden = new Set(oracle.nodes.keys());
+  for (const [node, tag] of built.nodes) if (named[isAntennaTag(tag) ? 'antenna' : 'weapon']) hidden.add(node);
+  return { hidden, named, cutBuildSpans: named.antenna };
 }
 
 /** The gate's column trace: per column of a square mask (row 0 at the bottom), [along, top, bottom] in metres from the

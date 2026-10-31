@@ -147,8 +147,10 @@ needs `antennaPart()`, or it counts as body.
   fenders and mudguards count, as in published hull lengths. A fused oracle
   has no hull trace, so both sides use the whole-body extent there.
 - The source ruler keeps its whole-source frame; its physical envelopes are
-  the bodies'. An oracle that names no roof fittings (a fused export) cannot
-  drop its whips, so an oracle comparison is whole against whole there. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
+  the bodies'. An oracle comparison drops a kind of roof fitting (antennas,
+  roof weapons) from both models only where the oracle names that kind: a
+  source that fuses its roof gun into the turret keeps the build's gun beside
+  it, and one that names nothing (a fused export) is whole against whole. Receipt: `tools/body-height-parts.selftest.mjs` (a 1 m whip
   leaves the height unchanged, a raised hull moves it).
 
 This is the anti-gaming anchor: a build that "matches" a defective oracle

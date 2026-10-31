@@ -10,7 +10,7 @@ import '../src/vehicles/tankFactory.ts';
 import { createTank } from '../src/vehicles/tankFactoryCore.ts';
 import { FITTINGS } from '../src/vehicles/profiles/kit.ts';
 import { ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, isAntennaTag,
-  oracleRoofFittingTag, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
+  oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
 const visible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
@@ -114,6 +114,21 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   assert.equal(bodyExtent(whole, hull).h, bodyExtent(whole).h, 'the hull trace does not touch the height');
   assert.equal(bodyExtent(whole, Array(30).fill(null)).len, bodyExtent(whole).len, 'no hull trace: the whole-body span');
   assert.equal(bodyExtent(whole).hMax, 2.5);
+}
+
+// --- an oracle comparison drops a kind only where the oracle names it -------------------------------------------------
+{
+  const n = (name) => Object.assign(new THREE.Object3D(), { name });
+  const whip = n('whip'), gun = n('gun'), oWhip = n('vehicle#antenna_01'), oGun = n('vehicle#bone_mg_aa_v');
+  const built = { nodes: new Map([[whip, 'antennaWhip:whip'], [gun, 'pintleMG:gun']]), trimmed: new Map([[n('turretDark'), null]]) };
+  const both = pairedRoofFittings(built, { nodes: new Map([[oWhip, 'node:vehicle#antenna_01'], [oGun, 'node:vehicle#bone_mg_aa_v']]), trimmed: new Map() });
+  assert.deepEqual([both.hidden.has(whip), both.hidden.has(gun), both.hidden.has(oWhip), both.hidden.has(oGun), both.cutBuildSpans],
+    [true, true, true, true, true], 'an oracle naming both kinds: body against body');
+  const fusedGun = pairedRoofFittings(built, { nodes: new Map([[oWhip, 'node:vehicle#antenna_01']]), trimmed: new Map() });
+  assert.deepEqual([fusedGun.hidden.has(whip), fusedGun.hidden.has(gun), fusedGun.cutBuildSpans], [true, false, true],
+    'an oracle with its roof gun fused into the turret keeps the build\'s gun');
+  const fused = pairedRoofFittings(built, { nodes: new Map(), trimmed: new Map() });
+  assert.deepEqual([fused.hidden.size, fused.cutBuildSpans], [0, false], 'an oracle naming nothing: whole against whole');
 }
 
 // --- the merged-bucket cut keeps every other triangle and shares the attributes ---------------------------------------

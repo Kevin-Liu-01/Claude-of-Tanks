@@ -36,7 +36,7 @@ import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
 import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, isAntennaTag, columnTrace, bodyExtent, heightIntervalPct } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -772,6 +772,7 @@ const comparisonScope=ownerKit?{
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p === ancestor) return true; return false; };
+const onGunRig = (node) => { for (let p=node; p; p=p.parent) if (/^rig_(gun|recoil|muzzle)$/.test(p.name || '')) return true; return false; };
 const isRenderNode = (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry;
 const effectivelyVisible = (o) => {
   for (let p=o; p; p=p.parent) if (!p.visible) return false;
@@ -836,20 +837,23 @@ const roofFittings = [
 ];
 const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
 const antennaNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes].filter(([, tag]) => isAntennaTag(tag)).map(([node]) => node)));
+// An oracle comparison drops a kind of roof fitting only where the oracle names it too: a source that fuses its roof
+// gun into the turret (the T-90MS's) keeps the build's gun beside it, and one that names nothing (a fused export) is
+// compared whole against whole.
+const paired = pairedRoofFittings(roofFittings[0], roofFittings[1]);
 let hiddenRoofFittings = null;
 function withBodyOnly(measure, mode = 'body') {
-  if (mode === 'none') return measure();
   const swapped = [];
-  for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
-  hiddenRoofFittings = mode === 'roof' ? antennaNodes : roofFittingNodes;
+  for (const [i, { trimmed }] of roofFittings.entries()) {
+    if (mode === 'paired' && i === 0 && !paired.cutBuildSpans) continue;
+    for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
+  }
+  hiddenRoofFittings = mode === 'roof' ? antennaNodes : mode === 'paired' ? paired.hidden : roofFittingNodes;
   try { return measure(); } finally {
     hiddenRoofFittings = null;
     for (const [node, geometry] of swapped) node.geometry = geometry;
   }
 }
-// An oracle comparison drops what both models name; an oracle that names no roof fittings (a fused export) keeps its
-// whips, so the build keeps its own there too: whole against whole.
-const oracleBodyMode = roofFittings[1].nodes.size || roofFittings[1].trimmed.size ? 'body' : 'none';
 const roofFittingsExcluded = (() => {
   const [built, oracle] = roofFittings.map(({ nodes, trimmed }) => [...new Set([
     ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
@@ -1033,8 +1037,9 @@ function setPart(root, part) {
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
       || (part === 'turret' && isBelow(o, turret))
       || (part === 'gun' && isBelow(o, gun))
-      // the dims rows' hull: no turret and no gun, even where a casemate draws its barrel into the hull's gun buckets
-      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !isBelow(o, gun) && !/^(gun|hullGun)/.test(o.name || ''));
+      // the dims rows' hull: no turret and no gun, even where a casemate hangs its muzzle rig on the hull's rig or draws
+      // its barrel into the hull's gun buckets
+      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !onGunRig(o) && !/^(gun|hullGun)/.test(o.name || ''));
     o.visible = base && allowed && !hiddenRoofFittings?.has(o);
   });
 }
@@ -2044,8 +2049,8 @@ if (params.get('geo')) {
     whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hullBody'), cam),
   }), mode);
   const procSide = sideTraces(procedural, reference);
-  const procPairedSide = oracleBodyMode === 'body' ? procSide : sideTraces(procedural, reference, 'none');
-  const refSide = sideTraces(reference, procedural, oracleBodyMode);
+  const procPairedSide = sideTraces(procedural, reference, 'paired');
+  const refSide = sideTraces(reference, procedural, 'paired');
   const procExt = bodyExtent(procSide.whole, procSide.hull);
   const procPairedExt = bodyExtent(procPairedSide.whole, geometryComponentMasksAvailable ? procPairedSide.hull : null);
   const refExt = bodyExtent(refSide.whole, geometryComponentMasksAvailable ? refSide.hull : null);
@@ -2112,7 +2117,7 @@ if (params.get('geo')) {
     heightM:refExt?.h, hullLengthM:refExt?.len,
     overallLengthM:pixelSpanZ('whole', reference, procedural),
     widthM:measurePixelWidth(reference, procedural),
-  }), oracleBodyMode);
+  }), 'paired');
   let dimensionFrame = null;
   if (usesSourceDimensionFrame(id,sourceWorldRegistration)) {
     // A candidate-dependent union frame moves96-column percentile bins.
@@ -2127,12 +2132,12 @@ if (params.get('geo')) {
       return {heightM:body?.h,hullLengthM:body?.len,
         overallLengthM:pixelSpanZ('whole',visual,other,side),
         widthM:measurePixelWidth(visual,other,plan)};
-    },oracleBodyMode);
+    },'paired');
     referenceDimensions=measure(reference,procedural);
     const actual=measure(procedural,reference);
     // the ruler stays framed by the whole source; the physical envelopes are the bodies'
     dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
-      withBodyOnly(()=>visibleBox(reference.root),oracleBodyMode),withBodyOnly(()=>visibleBox(procedural.root),oracleBodyMode)));
+      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired')));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
@@ -2251,8 +2256,8 @@ if (params.get('geo')) {
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
-    ...(roofFittingsExcluded && oracleBodyMode === 'none' && (dimensionFrame || preservation)
-      ? { oracleComparison:'whole against whole: the oracle names no roof fittings' } : {}),
+    ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
+      roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');
