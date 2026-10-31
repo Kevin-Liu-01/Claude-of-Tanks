@@ -215,9 +215,20 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   main.ts's solo authority routing and the solo sim Worker's and the solo host's composition gone: game and cn -1,980 B,
   //   entry -1,806 B, Gallery -134 B, docs -2 B (the lane's build against its base 4a6261fb00 on one node_modules); requests
   //   unchanged.
-  game: { brotliBytes: 1132486, requests: 128, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1176313, requests: 129, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 702305, requests: 75 },
+  // 2026-10-31 (integrator 265, the single end re-pin at integ 88f37331ea's build; Node 24.22.1; requests unchanged at 128 /
+  //   129 / 75 after the 2A4 family's armour tables joined fleetLayouts): game +14,740 B brotli (boot chunks +15,029 B over
+  //   main's build in i265-runs/dist-main), cn +14,865 B, Gallery +16,058 B. By chunk and lane: fleetFactory +5,669 (the
+  //   fleet's new ids registered at boot: the Centurion family's six, the four M48s, the Longwei family's four, the Leopard
+  //   1A2A1, the fourth-batch 2A3, the three PT-84s; the 2A4 family's envelopes), fleetLayouts +4,158 (the 2A4 family's
+  //   Kontakt-1, 2A3 batch-4, family and cheek armour tables; the T-62M-V1 X study's ERA zones), decorations +1,986 (the
+  //   launcher keep-out and sweep guard, the Twardy's and T-84U's own banks, the Leopard 1s' kit filter), tankFactoryCore
+  //   +1,056 (local-fps-265/266: the gear LOD, the running gear's cheaper pass), specs +724, flags +720 (South Africa,
+  //   Australia, Poland's new hulls), camoPolicy +612 (the Centurion family's and the PT-84s' paints, the 265 Signatures),
+  //   vehicleMarkings +411, presentation anchors +320, roles/taxonomy/i18n +500; main -1,400 (core-two-drivers: the solo
+  //   routing gone). Inline CSS +6-16 B a page: the PT-84 font's ł/Ż (accepted, Main 21:40).
+  game: { brotliBytes: 1147226, requests: 128, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1191178, requests: 129, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 718363, requests: 75 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
   notFound: { brotliBytes: 18355, requests: 7 },
