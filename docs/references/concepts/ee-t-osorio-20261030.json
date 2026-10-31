@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "ownerDecision": {
+    "date": "2026-10-30",
+    "request": "now make a super modernized hypotehtical version a tier 9 and a tier 10",
+    "scope": "Two fictional Brazilian game designs on the surviving Osório P.2 of the 266 Brazil line (profiles/osorio.ts marks t3 and t4): the EE-T3 Osório (tier IX) and the EE-T4 Osório (tier X), continuing Engesa's numbering. No such vehicles were built; their photo packets (docs/references/photos/ee-t3-osorio-concept-20261030.json, ee-t4-osorio-concept-20261030.json) cite the P.2 photographs the base follows."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "ee_t3_osorio": {
+      "id": "ee_t3_osorio",
+      "test": "src/vehicles/profiles/brazil.selftest.mjs",
+      "ring": [
+        0,
+        1.6,
+        0.4
+      ],
+      "gunLocal": [
+        0,
+        0.28,
+        0.85
+      ],
+      "barrelLengthM": 5.645,
+      "barrelRadiusM": 0.104,
+      "pitchDeg": [
+        -10,
+        20
+      ],
+      "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.13,
+      "hullWidthM": 3.4,
+      "widthM": 3.49,
+      "overallLengthM": 10.701,
+      "tallestM": 4.46,
+      "specDimensions": {
+        "hullLengthM": 7.13,
+        "overallLengthM": 10.46,
+        "widthM": 3.4,
+        "heightM": 2.95
+      },
+      "silhouette": "Fictional Brazilian modernization of the surviving Osório P.2 (tier IX): the P.2's low welded hull and wedge turret under a bolted composite nose module and five composite skirt modules a side, wedge appliqué swept forward of the turret cheeks, three bolted side packs a side, a PERI-pattern commander's panoramic sight, a deeper rear basket with stowage, set-in nose lamps, the 120 mm L/47 in a canvas boot, the roof 7.62 mm and a three-tone blotch coat."
+    },
+    "ee_t4_osorio": {
+      "id": "ee_t4_osorio",
+      "test": "src/vehicles/profiles/brazil.selftest.mjs",
+      "ring": [
+        0,
+        1.6,
+        0.4
+      ],
+      "gunLocal": [
+        0,
+        0.28,
+        0.85
+      ],
+      "barrelLengthM": 6.6,
+      "barrelRadiusM": 0.14,
+      "pitchDeg": [
+        -10,
+        20
+      ],
+      "mainCaliberMm": 130,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.45,
+      "hullWidthM": 3.43,
+      "widthM": 3.51,
+      "overallLengthM": 11.792,
+      "tallestM": 4.46,
+      "specDimensions": {
+        "hullLengthM": 7.45,
+        "overallLengthM": 11.73,
+        "widthM": 3.43,
+        "heightM": 2.98
+      },
+      "silhouette": "Fictional Brazilian modernization of the Osório P.2 (tier X), the EE-T3's kit heavier and full length: a nose module carried down a bolted lower-glacis slab with the lamps set in its face, thicker skirt modules, long swept wedges flaring to sharp tips past the mantlet, a bolted block mantlet, thicker side packs, a hard-kill active protection system (four radar panels on the turret corners, two drum launchers on pedestals), laser-warning heads, a slat cage over the rear plate, the 130 mm L/51 and a three-tone digital coat."
+    }
+  }
+}
