@@ -179,6 +179,13 @@ function hullScene() {
   const stats = bakePaintPanels(asked.root, tmpl, { hull: asked.hull, turret: null, gun: null }, spaced, { pose });
   assert.deepEqual(faceValues(asked.skirt.geometry, [1, 0, 0]), [2], 'with it, the plate the shell meets through it: the lower side');
   assert.ok(stats.standoff > 0 && stats.standoffRays > 0, `the skirt's ray (${stats.standoffRays})`);
+  // a thick skirt section (0.2 m) with its plate through its middle: its big faces lie 10 cm off the plate, its edges at it
+  const thick = skirtScene();
+  thick.skirt.geometry.dispose();
+  thick.skirt.geometry = box(0.2, 0.4, 1, 1.31, 1.5, 0);
+  thick.root.updateMatrixWorld(true);
+  bakePaintPanels(thick.root, tmpl, { hull: thick.hull, turret: null, gun: null }, spaced, { pose });
+  assert.ok([...thick.skirt.geometry.getAttribute('apZone').array].every((v) => v > 0), 'a thick traced skirt section is painted whole');
   const air = skirtScene();
   const airStats = bakePaintPanels(air.root, tmpl, { hull: air.hull, turret: null, gun: null }, armor, { pose });
   assert.deepEqual(faceValues(air.skirt.geometry, [1, 0, 0]), [-1], 'a skirt the sim does not trace stands off the armour: bare');

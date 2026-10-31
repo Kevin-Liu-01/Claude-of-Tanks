@@ -323,6 +323,10 @@ const SOLID_PART_M = 2;
 const FLUSH_M = 0.08;
 /** behindZone's verdict besides a zone: the part is no standoff (its own vote decides). */
 const BEHIND_VOTE = -1;
+/** (267) Where a judged part stands: on the armour (the cells), at a layer plate, or off both. */
+const ON_ARMOUR = 0;
+const AT_LAYER = 1;
+const OFF_ARMOUR = 2;
 /** A camouflage suit's draws (ghillieSuit.ts: `<id>_ghillie_<owner>_net|leaves`). */
 const SUIT_MESH = /_ghillie_(?:hull|turret|gun)_(?:net|leaves)$/;
 
@@ -725,29 +729,33 @@ export function* bakePaintPanelSteps(
         behindCache.set(key, zone);
         return zone;
       };
-      // (267) whether a world point stands off the armour: farther than FLUSH_M from every cell of both frames and from
-      // every layer plate, in the frame each rides
-      const standsOff = (x: number, y: number, z: number): boolean => {
+      // (267) where a world point stands: ON_ARMOUR within FLUSH_M of a cell of either frame, AT_LAYER within it of a
+      // layer plate (in the frame each rides), else OFF_ARMOUR
+      const standing = (x: number, y: number, z: number): number => {
         const h = _t.set(x, y, z).applyMatrix4(pose.hullInv);
-        if (cellGap(cellsOf.hull, h) <= FLUSH_M || nearLayer(layers[0], h)) return false;
+        if (cellGap(cellsOf.hull, h) <= FLUSH_M) return ON_ARMOUR;
+        if (nearLayer(layers[0], h)) return AT_LAYER;
         const t = _t.set(x, y, z).applyMatrix4(pose.turretInv);
-        if (cellGap(cellsOf.turret, t) <= FLUSH_M || nearLayer(layers[1], t)) return false;
-        return !nearLayer(layers[2], _t.set(x, y, z).applyMatrix4(pose.gunInv));
+        if (cellGap(cellsOf.turret, t) <= FLUSH_M) return ON_ARMOUR;
+        if (nearLayer(layers[1], t)) return AT_LAYER;
+        return nearLayer(layers[2], _t.set(x, y, z).applyMatrix4(pose.gunInv)) ? AT_LAYER : OFF_ARMOUR;
       };
       // (267) a judged draw's parts standing off the armour: a cluster whose centre does, and a solid most of whose area
-      // does (a cage, a net, a rack), bare whole
+      // does (a cage, a net, a rack), bare whole; a compact solid any of whose clusters lies at a layer plate is that
+      // layer (an ERA brick, a thick skirt section: the plate runs through it), painted whole
       let offCluster: Uint8Array | null = null;
-      const solidOff = new Map<number, number>();
+      const solidOff = new Map<number, number>(), solidLayer = new Set<number>();
       if (judgeStandoff && authority && owner !== 'gun' && (cellsOf.hull.length || cellsOf.turret.length)) {
         offCluster = new Uint8Array(triangles);
         for (let t = 0; t < triangles; t++) {
           const a = faceArea[t];
           if (roots[t] !== t || !(a > 0)) continue;
-          if (standsOff(faceSum[t * 6] / a, faceSum[t * 6 + 1] / a, faceSum[t * 6 + 2] / a)) {
+          const where = standing(faceSum[t * 6] / a, faceSum[t * 6 + 1] / a, faceSum[t * 6 + 2] / a);
+          const s = find(solid, t);
+          if (where === OFF_ARMOUR) {
             offCluster[t] = 1;
-            const s = find(solid, t);
             solidOff.set(s, (solidOff.get(s) ?? 0) + a);
-          }
+          } else if (where === AT_LAYER) solidLayer.add(s);
           if (spend(2)) { yield; sliceStarted = performance.now(); }
         }
       }
@@ -896,7 +904,7 @@ export function* bakePaintPanelSteps(
         while (end < triangles && roots[order[end]] === cluster) end++;
         if (offCluster) {
           const s = find(solid, cluster);
-          if (offCluster[cluster] || (solidOff.get(s) ?? 0) > 0.5 * (solidArea.get(s) ?? Infinity)) {
+          if (!(solidLayer.has(s) && compact(s)) && (offCluster[cluster] || (solidOff.get(s) ?? 0) > 0.5 * (solidArea.get(s) ?? Infinity))) {
             for (let k = start; k < end; k++) {
               const t = order[k];
               values[corner(t, 0)] = PANEL_BARE; values[corner(t, 1)] = PANEL_BARE; values[corner(t, 2)] = PANEL_BARE;
