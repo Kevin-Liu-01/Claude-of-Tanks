@@ -265,8 +265,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   c2_ariete_proto: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
   k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
-  t90ms_2011: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
-  t90_1992: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak_proto: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
   centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
@@ -334,13 +332,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
   // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
   // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered
-  // t90a_vladimir and t90sm) retired with the builds that followed them.
-  // Main_barrel contains only the forward tube in this source.  The thermal
-  // sleeve/root meshes are turret siblings (see references/tanks/t90m.md),
-  // so an independent gun-node mask compares a partial source against our
-  // complete cannon and is not a valid component measurement.  The full gun
-  // remains mandatory in all nine whole silhouettes and in yaw evidence.
-  t90am: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true, gunComponentMasks:false } },
+  // t90a_vladimir and t90sm) retired with the builds that followed them. t90_1992, t90ms_2011 and t90am followed (Main
+  // 10-31: they draw their twins t90, t90ms_tagil and t90sm with their own kits): their legacy prints (t90_kojf,
+  // t90ms_kojf, and the T-90M t90m_minehffd for the AM) measured the marks' drums and roof kit, not the build's source.
   type90_kyumaru: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   c1_ariete_preserie: {
