@@ -74,7 +74,7 @@ Language selection lives under **Settings → Language → Language**. See the
 [localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
 the General Translation workflow, and release gates.
 
-The provenance gate currently reports **236 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
+The provenance gate currently reports **240 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage
 

@@ -17,9 +17,6 @@ export interface Leo1HullOptions {
   readonly deckTools?: boolean;
   /** The side skirts' hem: the German A5's black rubber, or the coat (the Danish tanks' skirts are painted over). */
   readonly skirtBucket?: 'hullRubber' | 'hull';
-  /** Release 265: broad black bands on the road wheels' outer tyres (the Danish Leopard 1s; r6 the UN-white 1A5 DK-1,
-   * whose white wheels read white-on-white with the style's thin tyre line, r7 all three: critics, pale wheels). */
-  readonly tyreBands?: boolean;
   /** Release 265, r8: close-set slats over the engine deck's dark beds (the UN-white DK-1, whose six slats a field read
    * as black zebra stripes). */
   readonly denseGrilles?: boolean;
@@ -45,7 +42,7 @@ export interface Leo1HullDatums {
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
   const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket = 'hullRubber', rearCanBucket = 'hullCloth',
-    tyreBands = false, denseGrilles = false } = options;
+    denseGrilles = false } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -291,15 +288,6 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       endRingSpan: 0.50, coveredTop: true, arms: true, paintedEnds: true,
       padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true,
     });
-    if (tyreBands) for (const z of roadWheelZs) for (const s of [-1, 1] as const) {
-      // (r7: proud of the disc's face, its outer edge 2 cm inside the tyre so the belt keeps its clearance)
-      // (the release gate's strict track clip: each band's foot lay inside the 4 cm band over the track's lower run, 174
-      // voxels a tank; the bands are 260 degree arcs open at the foot, which the lower run hides. In the two-sided
-      // 'hullRubber' bucket they also set the belly pan at their foot: each side's bands go in its own dark track trim)
-      const gap = 100 * Math.PI / 180, band = new THREE.TorusGeometry(roadWheelR - 0.052, 0.032, 6, P.q ? 20 : 12, 2 * Math.PI - gap);
-      band.rotateZ(-Math.PI / 2 + gap / 2).rotateY(Math.PI / 2);
-      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', band, s * (trackXc + 0.225 / 2 + 0.010), roadWheelY, z);
-    }
 
     P.hullG.userData.leopard1A5FinishReceipt = {
       revision: 'leo1a5-262-proportions',
