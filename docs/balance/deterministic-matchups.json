@@ -142,8 +142,8 @@
         ],
         "reloadS": 6.3,
         "sustainedDpm": 5190.48,
-        "accuracy": 0.316,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.63
       },
       "armorCeilingsMm": {
         "hullKe": 560,
@@ -176,8 +176,8 @@
         ],
         "reloadS": 6.3,
         "sustainedDpm": 5190.48,
-        "accuracy": 0.316,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.63
       },
       "armorCeilingsMm": {
         "hullKe": 560,
@@ -1371,6 +1371,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "leclerc_xlr",
+      "revision": "the Type 90's 9 s magazine cycle with the S2 and SXXI",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 27.52,
+      "speedKmh": [
+        71,
+        25
+      ],
+      "traverseDegS": [
+        50.6,
+        44.5
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          806,
+          733,
+          660
+        ],
+        "reloadS": 9,
+        "sustainedDpm": 6913.04,
+        "accuracy": 0.296,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 620
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo1a2a1",
       "revision": "the Leopard 1A5's tier I footing, its HP and round damage: the 1A5's spec with the DM23 round",
       "tier": 1,
@@ -1440,7 +1474,7 @@
     },
     {
       "id": "leo2_improved",
-      "revision": "a x0.7 mantlet: its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "a x0.7 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1457,9 +1491,9 @@
       "primary": {
         "damage": 530,
         "penetrationMm": [
-          891,
-          811,
-          730
+          855,
+          778,
+          700
         ],
         "reloadS": 6,
         "sustainedDpm": 5300,
@@ -1575,8 +1609,42 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo2a3_b4",
+      "revision": "the 2A3's cycle and 2,400 HP at IV (262: the fourth batch carries the 2A3's combat data; 263: the HP in place of 260's turret-front trim)",
+      "tier": 4,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 26.79,
+      "speedKmh": [
+        68,
+        31
+      ],
+      "traverseDegS": [
+        44.9,
+        36.7
+      ],
+      "primary": {
+        "damage": 500,
+        "penetrationMm": [
+          586,
+          533,
+          480
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4687.5,
+        "accuracy": 0.3,
+        "aimTimeS": 1.67
+      },
+      "armorCeilingsMm": {
+        "hullKe": 400,
+        "turretKe": 420
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo2a4",
-      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
+      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity; 264: a x2.45 mantlet, a named balance trim on the square 2A4 front",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1604,13 +1672,13 @@
       },
       "armorCeilingsMm": {
         "hullKe": 484,
-        "turretKe": 546
+        "turretKe": 804
       },
       "guidedWeapons": []
     },
     {
       "id": "leo2a4_otco",
-      "revision": "a x0.55 mantlet: its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1643,8 +1711,42 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo2a4_v",
+      "revision": "the Leopard 2A4's main plates under its own Kontakt-1, in place of 264's x2.2 mantlet trim",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 25.21,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        44.9,
+        40.8
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4968.75,
+        "accuracy": 0.27,
+        "aimTimeS": 1.57
+      },
+      "armorCeilingsMm": {
+        "hullKe": 484,
+        "turretKe": 804
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo2a4m",
-      "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope; 263: a x0.55 mantlet, its steep gun face read 1,200-1,700 mm at VIII",
+      "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope; 265: a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1678,7 +1780,7 @@
     },
     {
       "id": "leo2a4m_can",
-      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
+      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection; 264/265: balance trims, a x1.28 mantlet and a x1.24 turret front, held between its two reviewed matchups (the M1A1 and the Challenger 1 Mk 2)",
       "tier": 8,
       "era": "modern",
       "role": "mbt",
@@ -1706,7 +1808,7 @@
       },
       "armorCeilingsMm": {
         "hullKe": 586,
-        "turretKe": 614
+        "turretKe": 812
       },
       "guidedWeapons": []
     },
@@ -2628,7 +2730,7 @@
       "era": "modern",
       "role": "mbt",
       "hp": 2250,
-      "powerWeight": 21.05,
+      "powerWeight": 21.79,
       "speedKmh": [
         60,
         20
@@ -2650,8 +2752,8 @@
         "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
-        "hullKe": 486,
-        "turretKe": 518
+        "hullKe": 450,
+        "turretKe": 480
       },
       "guidedWeapons": []
     },
@@ -4494,15 +4596,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 2,
+      "aWins": 9,
       "bWins": 3,
-      "draws": 7,
-      "aScore": 0.458,
-      "averageDurationS": 79.52,
-      "averageAEndHp": 555.33,
-      "averageBEndHp": 783.33,
-      "averageADamage": 1745.83,
-      "averageBDamage": 1884.92
+      "draws": 0,
+      "aScore": 0.75,
+      "averageDurationS": 58.94,
+      "averageAEndHp": 1136.92,
+      "averageBEndHp": 315.58,
+      "averageADamage": 2395.33,
+      "averageBDamage": 1293.67
     },
     {
       "id": "nextgen-challengers",
@@ -4994,15 +5096,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 35.09,
-      "averageAEndHp": 617.33,
-      "averageBEndHp": 424.75,
-      "averageADamage": 2346.17,
-      "averageBDamage": 2185.17
+      "aScore": 0.417,
+      "averageDurationS": 34.09,
+      "averageAEndHp": 164.17,
+      "averageBEndHp": 417.08,
+      "averageADamage": 2295.67,
+      "averageBDamage": 2729.17
     },
     {
       "id": "leopard-tier9-peer",
@@ -5022,15 +5124,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 47.74,
-      "averageAEndHp": 617.92,
-      "averageBEndHp": 515.58,
-      "averageADamage": 1915.42,
-      "averageBDamage": 1984.5
+      "aScore": 0.75,
+      "averageDurationS": 46.59,
+      "averageAEndHp": 876.67,
+      "averageBEndHp": 170.83,
+      "averageADamage": 2320.83,
+      "averageBDamage": 1685.33
     },
     {
       "id": "ifv-nextgen-peer",
