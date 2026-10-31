@@ -86,6 +86,8 @@ try {
   const desktopRequests = [];
   desktop.on('request', (request) => desktopRequests.push(request.url()));
   desktop.on('pageerror', (error) => report.errors.desktop.push(String(error).slice(0, 300)));
+  desktop.on('error', (error) => report.errors.desktop.push(`renderer crash at step ${report.step}: ${String(error).slice(0, 200)}`));
+  browser.on('disconnected', () => report.errors.desktop.push(`browser disconnected at step: ${report.step}`));
   const desktopCdp = await desktop.target().createCDPSession();
   await desktopCdp.send('Network.enable');
   const socketFrames = { desktopSent: [], desktopReceived: [] };
@@ -145,13 +147,17 @@ try {
   await desktop.screenshot({ path: resolve(outDir, 'desktop-settings-qr.png') });
 
   // ---- the phone: an emulated landscape phone opens the QR's link -----------------------------------------------------
+  report.step = 'phone browser';
+  // the phone's page draws no WebGL: its browser takes no GPU beside the desktop's (one Metal device for both crashed it)
   phoneBrowser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 300_000,
-    args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] }, { label: 'pad-e2e-phone' });
+    args: ['--no-sandbox', '--disable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] }, { label: 'pad-e2e-phone' });
+  phoneBrowser.on('disconnected', () => report.errors.phone.push(`browser disconnected at step: ${report.step}`));
   async function openPhone({ rtc = true } = {}) {
     const phone = await phoneBrowser.newPage();
     const phoneRequests = [];
     phone.on('request', (request) => phoneRequests.push(request.url()));
     phone.on('pageerror', (error) => report.errors.phone.push(String(error).slice(0, 300)));
+    phone.on('error', (error) => report.errors.phone.push(`renderer crash at step ${report.step}: ${String(error).slice(0, 200)}`));
     await phone.emulate({
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
       viewport: { width: 844, height: 390, deviceScaleFactor: 3, isMobile: true, hasTouch: true, isLandscape: true },
@@ -173,10 +179,13 @@ try {
   report.network.phonePageRequests = phoneRequests.length;
   report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
   check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
+  report.step = 'desktop chip';
+  await desktop.bringToFront();
   await desktop.waitForFunction(() => /\d+ ms/.test(document.querySelector('[data-datum="phone-link"]')?.textContent ?? ''), { timeout: 10_000 });
   report.desktopChip = await desktop.$eval('[data-datum="phone-link"]', (el) => el.textContent);
   await (await desktop.$('.cot-settings.open .cot-set-card:has(.cot-pad-card)'))?.screenshot({ path: resolve(outDir, 'desktop-card-live.png') });
 
+  report.step = 'battle';
   // ---- a solo battle --------------------------------------------------------------------------------------------------
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 10_000 });
@@ -236,6 +245,7 @@ try {
     console.log(`latency ${label}: n=${result.n}/${count} p50=${result.p50} ms p95=${result.p95} ms max=${result.max} ms`);
     return result;
   }
+  report.step = 'latency webrtc';
   const direct = await steerSamples(samples, 'webrtc');
   check('steering latency over the data channel: p95 under 60 ms', direct.n === samples && direct.p95 < 60, `p50 ${direct.p50} ms, p95 ${direct.p95} ms`);
   const steerSign = await (async () => {
@@ -247,6 +257,7 @@ try {
   })();
   check('a clockwise wheel turns right (negative hull yaw input)', steerSign < -0.5, `steer ${steerSign.toFixed(3)}`);
 
+  report.step = 'throttle';
   // throttle: the lever forward, held; the hull moves; the keyboard is untouched
   const pos0 = await player('{ x: p.state.pos.x, z: p.state.pos.z }');
   const releaseLever = await touchDrag('.pad-lever', 0, -140, 0);
@@ -262,6 +273,7 @@ try {
   check('throttle lever drives the tank', throttle > 0.5 && moved > 2, `throttle ${throttle.toFixed(2)}, moved ${moved.toFixed(1)} m in 2.5 s`);
   check('releasing the lever centres the throttle', Math.abs(await player('p.input.throttle')) < 0.01);
 
+  report.step = 'aim';
   // aim: a drag on the aim pad turns the turret
   const yaw0 = await player('p.state.turretYaw');
   const releaseAim = await touchDrag('.pad-aim', 180, 0);
@@ -270,6 +282,7 @@ try {
   const yaw1 = await player('p.state.turretYaw');
   check('the aim pad traverses the turret', Math.abs(yaw1 - yaw0) > 0.05, `turret ${(yaw0 * 57.3).toFixed(1)}° → ${(yaw1 * 57.3).toFixed(1)}°`);
 
+  report.step = 'ammunition';
   // ammunition: slot 2 from the phone, shown back on the phone
   await phone.tap('.pad-shell[data-slot="1"]');
   await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.shellSlot === 1, { timeout: 5000 }).catch(() => {});
@@ -278,6 +291,7 @@ try {
   const shown = await phone.$eval('.pad-shell[data-slot="1"]', (el) => el.getAttribute('aria-pressed'));
   check('ammunition switches from the phone and the phone shows the current slot', slot === 1 && shown === 'true', `slot ${slot}`);
 
+  report.step = 'scope';
   // scope: the sight from the phone, the zoom buttons appear
   await phone.tap('.pad-scope');
   await desktop.waitForFunction(() => window.__DEBUG.rig.mode === 'SNIPER', { timeout: 5000 }).catch(() => {});
@@ -289,6 +303,7 @@ try {
   await phone.screenshot({ path: resolve(outDir, 'phone-live-scoped.png') });
   await desktop.screenshot({ path: resolve(outDir, 'desktop-scoped.png') });
 
+  report.step = 'fire';
   // fire: a tap once the gun is loaded spends one round
   await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.reload.t <= 0, { timeout: 20_000 }).catch(() => {});
   const ammo0 = await player('p.combat.ammo[p.combat.shellSlot]');
@@ -301,6 +316,7 @@ try {
   check('fire from the phone shoots', ammo1 === ammo0 - 1, `rounds ${ammo0} → ${ammo1}`);
   await phone.waitForFunction(() => getComputedStyle(document.querySelector('.pad-reload-fill')).transform !== 'none', { timeout: 3000 }).catch(() => {});
 
+  report.step = 'pause';
   // pause: the phone's pause opens the menu (the battle stands still), again resumes
   await phone.tap('[data-pause]');
   await desktop.waitForFunction(() => !!document.querySelector('.cot-settings.open'), { timeout: 5000 }).catch(() => {});
@@ -325,6 +341,7 @@ try {
     relayReceivedWhileLinking: liveFrames.length, kinds: [...new Set(socketFrames.desktopReceived.map((f) => /"t":"(\w+)"/.exec(f.data)?.[1] ?? f.data))] };
   console.log('signaling', JSON.stringify(report.network.signalingFramesDesktop));
 
+  report.step = 'fail-safe';
   // the fail-safe: the phone vanishes mid-drive, the desktop lets go within the stale window
   const releaseHeld = await touchDrag('.pad-lever', 0, -140, 0);
   await sleep(300);
@@ -336,6 +353,7 @@ try {
   check('a phone that vanishes mid-drive stops the tank (stale fail-safe)', heldThrottle > 0.5 && Math.abs(afterClose) < 0.01, `throttle ${heldThrottle.toFixed(2)} → ${afterClose}`);
   deadline();
 
+  report.step = 'relay';
   // ---- the relay path: a phone without WebRTC resumes the same pairing over the relay -------------------------------
   await desktop.waitForFunction(() => window.__COT_PAD?.state === 'away', { timeout: 10_000 }).catch(() => {});
   ({ phone, phoneRequests } = await openPhone({ rtc: false }));
