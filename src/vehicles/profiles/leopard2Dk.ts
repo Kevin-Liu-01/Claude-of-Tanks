@@ -85,7 +85,9 @@ function addDanishFlag(P: TankBuilderPort, pivot: Vec3, base: Vec3): void {
   P.addEquipment('turretDark', cylY(0.03, 0.035, 0.06, 10), x, y + 0.03, z);
   // (r4 critics: the Grafenwoehr rear photograph's pole is short, about 0.6 m to the cloth's top)
   P.addEquipment('turretDark', cylY(0.011, 0.013, 0.70, 8), x, y + 0.35, z);
-  P.addEquipment('turretCloth', box(0.012, 0.21, 0.30), x, y + 0.58, z - 0.165);
+  // (the release gate's sealed check: the decals' 0.36 m squares hung past a 0.30 x 0.21 m cloth as bare decal film, seen
+  // through in 17 views; the cloth is the decals' own square)
+  P.addEquipment('turretCloth', box(0.012, 0.36, 0.36), x, y + 0.58, z - 0.165);
   // the Dannebrog on both faces, its cross toward the pole on each (a plain quarter turn each way: the decal turns about
   // world Z last, so the old half turn swung the far face back to face +x, and the flag vanished from the right); a
   // 'cross' decal is the national insignia and was re-seated off the cloth

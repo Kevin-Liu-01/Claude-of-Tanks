@@ -293,8 +293,12 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     });
     if (tyreBands) for (const z of roadWheelZs) for (const s of [-1, 1] as const) {
       // (r7: proud of the disc's face, its outer edge 2 cm inside the tyre so the belt keeps its clearance)
-      P.add('hullRubber', torus(roadWheelR - 0.052, 0.032, P.q ? 28 : 16, 6), s * (trackXc + 0.225 / 2 + 0.010), roadWheelY, z,
-        0, 0, Math.PI / 2);
+      // (the release gate's strict track clip: each band's foot lay inside the 4 cm band over the track's lower run, 174
+      // voxels a tank; the bands are 260 degree arcs open at the foot, which the lower run hides. In the two-sided
+      // 'hullRubber' bucket they also set the belly pan at their foot: each side's bands go in its own dark track trim)
+      const gap = 100 * Math.PI / 180, band = new THREE.TorusGeometry(roadWheelR - 0.052, 0.032, 6, P.q ? 20 : 12, 2 * Math.PI - gap);
+      band.rotateZ(-Math.PI / 2 + gap / 2).rotateY(Math.PI / 2);
+      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', band, s * (trackXc + 0.225 / 2 + 0.010), roadWheelY, z);
     }
 
     P.hullG.userData.leopard1A5FinishReceipt = {
