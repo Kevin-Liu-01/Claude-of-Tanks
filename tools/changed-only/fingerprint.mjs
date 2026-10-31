@@ -203,6 +203,15 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     reach(closure.stopped);
   } else if (balanceEntries.size && !balanceReason) balanceReason = 'another fleet module imports it';
   const specRows = balanceFiles.size > 0;
+  // What the module tables and index maps execute beyond the fleet (a decoder: auxiliaryRoofGuns.generated.ts decodes its
+  // rows with auxiliaryRoofGunsCodec.ts). It runs whenever a table loads and reaches a build only through the table's
+  // exports, which the rows key; the runtime traces (closure-trace.mjs, trace-check.mjs) accept its loads. It is
+  // executed, so checked below like any fleet module; one a builder or tool imports itself is in that closure, keyed there.
+  const fleetFiles = new Set([...coreSet, ...Object.values(groupFiles).flatMap((files) => [...files]), ...balanceFiles]);
+  const tableModules = [...tableStop].filter((file) => graph.isFile(file) && !file.endsWith('.json'));
+  const tableClosure = graph.closure(tableModules.map(rel), { stop: fleetFiles });
+  const tableImports = new Set([...tableClosure.expanded].filter((file) => !fleetFiles.has(file) && !tableStop.has(file)));
+  for (const file of tableImports) executed.add(file);
   const buildReadTables = [...reachedTables].sort();
 
   // Dynamic reads: declared and pinned, or fail closed.
@@ -363,6 +372,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       groups: Object.fromEntries(Object.entries(groupFiles).map(([group, files]) => [group, [...files].map(rel).sort()])),
       // the balance pass's files out of the core (keyed through the spec rows), or why it stays in the core
       balance: [...balanceFiles].map(rel).sort(), balanceReason,
+      // modules the tables import (keyed through the rows they decode)
+      tableImports: [...tableImports].map(rel).sort(),
     },
   };
 }

@@ -10,7 +10,8 @@
 // rowReads, or the balance pass's levers would not re-run it; rows that differ between the two plain runs fail too (not
 // judged). The GPU steps render in a browser the preload never reaches: they key SPEC_COMBAT without this proof.
 //
-// Covered (an fs read, stat or directory listing): the shared core, the groups on the ids' spec chains, the step's tool
+// Covered (an fs read, stat or directory listing): the shared core, the groups on the ids' spec chains, what the tables
+// import (a decoder, keyed through the rows it decodes), the step's tool
 // closure (directories it names cover what lies under them), every per-id table and index map, the step's own outputs
 // and `writes`, its declared `reads`, directories that hold covered files, node_modules (the lockfiles are keyed) and
 // .qa-dev scratch. Paths a declaration marks `covered` must still be in that set when read (spare-track reads the source
@@ -85,8 +86,10 @@ for (const name of names) {
   const step = STEPS.find((entry) => entry.name === name);
   const s = state.steps[name];
   // Files the step's key holds for these ids.
-  // the balance pass is keyed through the spec rows (steps.mjs BALANCE)
-  const keyed = new Set([...state.partition.core, ...state.partition.balance, ...groups.flatMap((group) => state.partition.groups[group] ?? []),
+  // the balance pass is keyed through the spec rows (steps.mjs BALANCE), and what a table imports (a decoder) through the
+  // rows it decodes
+  const keyed = new Set([...state.partition.core, ...state.partition.balance, ...state.partition.tableImports,
+    ...groups.flatMap((group) => state.partition.groups[group] ?? []),
     ...s.toolFiles, ...s.foreignTables, ...tableFiles, ...AGGREGATES, ...s.outputFiles, ...step.files,
     ...expandGlobs(root, [...(step.writes ?? []), ...(step.reads ?? [])]), step.tool, ...(step.entries ?? []),
     ...Object.entries(DECLARED_DYNAMIC).filter(([file]) => s.toolFiles.includes(file) || file === step.tool)

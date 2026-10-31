@@ -302,4 +302,21 @@ assert.match(state({ steps: readers(), rows: specRows(), cfg: balanced }).partit
   'control: a new use of the pass in its importer keeps it in the core until reviewed');
 put('src/vehicles/fleetRegistration.ts', registration);
 
+// 15. A module a table imports (266: auxiliaryRoofGuns.generated.ts decodes its rows with auxiliaryRoofGunsCodec.ts) is
+// keyed through the rows it decodes: the partition names it for the runtime traces, outside the core. Controls: one a
+// core module imports too is core; one that reads files ends the mention rule like any executed fleet module.
+const anchors = read('src/vehicles/anchors.generated.ts');
+put('src/vehicles/anchorsCodec.ts', 'export const decode = (rows) => rows;\n');
+put('src/vehicles/anchors.generated.ts', "import { decode } from './anchorsCodec.ts';\nexport const ANCHORS = decode({ a1: 1, a2: 2, b1: 3 });\n");
+const decoded = state();
+assert.deepEqual([decoded.partition.tableImports, decoded.partition.core.includes('src/vehicles/anchorsCodec.ts'), decoded.globalReasons],
+  [['src/vehicles/anchorsCodec.ts'], false, []], 'a table\'s decoder is named apart, outside the core');
+put('src/vehicles/kit.ts', "import { decode } from './anchorsCodec.ts';\nexport const KIT = decode({ wheel: 0.4 });\n");
+assert.deepEqual([state().partition.tableImports, state().partition.core.includes('src/vehicles/anchorsCodec.ts')], [[], true],
+  'control: a decoder the core imports is core');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+put('src/vehicles/anchorsCodec.ts', "import { readFileSync } from 'node:fs';\nexport const decode = (rows) => (readFileSync('x'), rows);\n");
+assert.match(state().globalReasons.join(), /anchorsCodec\.ts can read files/, 'control: a decoder that reads files fails closed');
+put('src/vehicles/anchors.generated.ts', anchors);
+
 console.log('changed-only resolver.selftest: PASS');

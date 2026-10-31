@@ -1187,7 +1187,8 @@ undeclared reads, hand-edited rows), `fleet-partition.selftest.mjs` (the real fl
 loaders match the eager factory, the Ukrainian donor kit marks all of national modernization, seats after fills and
 controls) and `chain.selftest.mjs` (the real chain on a fixture fleet: changed-only outputs and manifest byte-identical
 to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 child-minutes) loads each builder group
-alone and fails on any module outside its keyed closure; `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
+alone and fails on any module outside its keyed closure (a module a table imports, such as the roof-gun table's decoder,
+is keyed through the rows it decodes: `partition.tableImports`); `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
 --base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
 covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (about 15 s, no builds):
 once a release commits `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs and

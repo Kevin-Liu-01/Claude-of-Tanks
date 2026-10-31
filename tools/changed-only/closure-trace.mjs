@@ -3,7 +3,8 @@
 // every builder group loads alone through the demand-loaded fleet in its own process, with only the groups of its ids'
 // spec chains, and builds each id at the geometry ledger's options. Two things must hold for every id:
 //   1. every repository module the process loaded is in the shared core, a group on the id's spec chain, a per-id
-//      table, an index map or the digest tool itself (the resolver's builder key covers all of them);
+//      table, an index map, a module a table imports (a decoder, keyed through the rows it decodes) or the digest tool
+//      itself (the resolver's builder key covers all of them);
 //   2. the build's ledger digest equals the eager tool factory's row in docs/references/fleet-geometry-ledger.json, so
 //      the tools' whole-fleet factory builds the id from exactly those modules.
 // A violation means a builder reaches code outside its group closure at run time: the resolver's per-group keys
@@ -42,9 +43,11 @@ async function worker() {
     if (!ids.length) continue;
     const loadIds = [...new Set(ids.flatMap((id) => state.chainOf(id)))];
     const allowedGroups = new Set(ids.flatMap((id) => state.groupChain(id)));
-    // the balance pass is keyed through the spec rows (steps.mjs BALANCE)
+    // the balance pass is keyed through the spec rows (steps.mjs BALANCE), and what a table imports (a decoder) through the
+    // rows it decodes (266: auxiliaryRoofGunsCodec.ts failed every group)
     const allowed = new Set([...core, ...[...allowedGroups].flatMap((name) => state.partition.groups[name] ?? []), ...tableFiles,
-      ...state.partition.balance, 'tools/fleet-geometry-digest.mjs', 'tools/changed-only/closure-trace-child.mjs']);
+      ...state.partition.balance, ...state.partition.tableImports, 'tools/fleet-geometry-digest.mjs',
+      'tools/changed-only/closure-trace-child.mjs']);
     const started = Date.now();
     let out;
     try {
