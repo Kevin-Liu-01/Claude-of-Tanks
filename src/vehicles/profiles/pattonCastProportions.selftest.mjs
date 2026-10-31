@@ -127,3 +127,28 @@ for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {
   tank.dispose?.();
 }
 console.log('pattonCastProportions: the four M48 marks hold their photo packets\' envelopes');
+
+// Release 266 (Main, 2026-10-31): the M60 batch's Israeli marks on the rebuilt M60A1's castings share one packet, the
+// Latrun museum tanks'. Each holds its envelope, its 105 mm gun and four crew, and its two roof guns as two working
+// stations, each under its own name (the commander's and the loader's, roofWeaponPolicy's census)
+const latrun = JSON.parse(readFileSync(new URL('../../../docs/references/photos/magach-latrun-20261031.json', import.meta.url), 'utf8'));
+for (const id of ['magach6b', 'magach7c']) {
+  const target = latrun.targets[id];
+  assert.equal(target.test, 'src/vehicles/profiles/pattonCastProportions.selftest.mjs', `${id}: the packet names this fixture`);
+  const spec = getSpec(id);
+  assert.equal(spec.gun.caliberMm, target.caliberMm, `${id}: the M68's calibre`);
+  assert.equal(spec.armor.crew.length, target.crew, `${id}: its crew`);
+  const tank = createTank(id, null, { quality: 'high', proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
+  tank.root.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(tank.root);
+  for (const [key, value] of [['widthM', b.max.x - b.min.x], ['overallLengthM', b.max.z - b.min.z], ['tallestM', b.max.y]]) {
+    assert.ok(Math.abs(value - target[key]) / target[key] <= latrun.dimensionToleranceFraction,
+      `${id}: ${key} ${value.toFixed(3)} m vs the packet's ${target[key]}`);
+  }
+  const stations = [];
+  tank.root.traverse((o) => { if (o.userData.crewServed && o.name.startsWith('fitting_')) stations.push(o.name); });
+  assert.equal(stations.length, target.roofMachineGuns, `${id}: ${target.roofMachineGuns} roof guns (${stations.join(', ')})`);
+  assert.equal(new Set(stations).size, stations.length, `${id}: each roof station under its own name (${stations.join(', ')})`);
+  tank.dispose?.();
+}
+console.log('pattonCastProportions: the Magach 6B and 7C hold their Latrun packet\'s envelopes, guns, crews and roof stations');

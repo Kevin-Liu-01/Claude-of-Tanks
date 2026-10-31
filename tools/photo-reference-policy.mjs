@@ -17,6 +17,9 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/mb-3-tamoyo-3-20261029.json':Object.freeze(['tamoyo3']),
   'docs/references/photos/ee-t1-osorio-105-20261029.json':Object.freeze(['osorio_p1']),
   'docs/references/photos/ee-t1-osorio-120-20261029.json':Object.freeze(['osorio_p2']),
+  // 266 (Main 2026-10-31): the M60 batch's two Israeli marks, built on the rebuilt M60A1's castings from the Latrun
+  // museum tanks' photographs, with no 3D model to follow
+  'docs/references/photos/magach-latrun-20261031.json':Object.freeze(['magach6b','magach7c']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

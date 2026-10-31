@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "magach6b": {
+      "name": "Magach 6B",
+      "authority": "Main ruled on 2026-10-31 that the Magach 6B takes stage A's photo route through this packet (the M60 batch, accepted for release 266 at 17fe8bb7d1). It is a release-266 build on the rebuilt M60A1's measured castings (profiles/pattonCast.ts) from the Yad la-Shiryon (Latrun) museum tank's photographs (the owner, 2026-10-28: \"for the m60 new variants, lets add the: * Magach Series (Israel)\"). Its latest shaded blind photo critic (round 18) scored 7/10, below the 8 pass mark; that round's items are the next round's work. Numerical 3D comparison remains unverified: no owner model exists for this mark.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:M60A1-Patton-Blazer-latrun-2.jpg",
+        "https://commons.wikimedia.org/wiki/File:M60A1-Patton-Blazer-latrun-3.jpg",
+        "https://commons.wikimedia.org/wiki/File:M60A1-Patton-Blazer-latrun-4.jpg",
+        "https://commons.wikimedia.org/wiki/File:7th_Armored_Brigade_memorial_100925_Patton.jpg",
+        "https://commons.wikimedia.org/wiki/File:Idf_m60_magach_6b_gal_1985-87585.jpg",
+        "https://commons.wikimedia.org/wiki/File:Blazer_ERA.jpg",
+        "https://en.wikipedia.org/wiki/Magach"
+      ],
+      "widthM": 3.693,
+      "overallLengthM": 9.595,
+      "tallestM": 5.17,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the sprocket and idler hubs (the published M60A1's 3.63 m is over the tracks). Length from the stern plate to the M68's muzzle (the published M60A1's 9.44 m with the gun forward). Tallest is the tips of the two whip antennas on the bustle, as built rather than published; the body stands 3.31 m tall at its roof guns. docs/references/tanks/magach6b.md records the sources and the Latrun photographs.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/pattonCastProportions.selftest.mjs"
+    },
+    "magach7c": {
+      "name": "Magach 7C",
+      "authority": "Main ruled on 2026-10-31 that the Magach 7C takes stage A's photo route through this packet (the M60 batch, accepted for release 266 at 17fe8bb7d1). It is a release-266 build on the rebuilt M60A1's measured castings (profiles/pattonCast.ts) from the Yad la-Shiryon (Latrun) museum tank's photographs (the owner, 2026-10-28: \"for the m60 new variants, lets add the: * Magach Series (Israel)\"). Its latest shaded blind photo critic (round 18) scored 7/10, below the 8 pass mark; that round's items are the next round's work. Numerical 3D comparison remains unverified: no owner model exists for this mark.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Magach-7-latrun-1.jpg",
+        "https://commons.wikimedia.org/wiki/File:Magach-7-latrun-2.jpg",
+        "https://commons.wikimedia.org/wiki/File:Magach-7-latrun-3.jpg",
+        "https://commons.wikimedia.org/wiki/File:Magach-7-latrun-4.jpg",
+        "https://commons.wikimedia.org/wiki/File:Magach-7-latrun-5.jpg",
+        "https://commons.wikimedia.org/wiki/File:Magach-7c-055.JPG",
+        "https://en.wikipedia.org/wiki/Magach"
+      ],
+      "widthM": 3.82,
+      "overallLengthM": 9.596,
+      "tallestM": 5.27,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the bolted side skirts (the published M60A1's 3.63 m is over the tracks). Length from the stern plate to the M68's muzzle (the published M60A1's 9.44 m with the gun forward). Tallest is the tips of the two whip antennas on the bustle, as built rather than published; the body stands 3.18 m tall at its roof fittings. docs/references/tanks/magach7c.md records the sources and the Latrun photographs.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/pattonCastProportions.selftest.mjs"
+    }
+  }
+}
