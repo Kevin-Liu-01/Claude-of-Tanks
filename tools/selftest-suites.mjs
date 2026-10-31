@@ -808,6 +808,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
     'tools/test-commands-exit.selftest.mjs',
+    'tools/test-base.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
