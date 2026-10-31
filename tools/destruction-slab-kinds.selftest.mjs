@@ -31,9 +31,10 @@
 // buildings — must fail the verdict. The guards read the worker's own clock, never the wall: on a loaded machine a run's wall
 // time is ten times its CPU and more, and a wall limit (the old 25 min a map) turned load into reds.
 //   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset);
-//   COT_SLAB_KINDS_RUN_CPU_S=<s> (a build's or run's CPU limit, default 240); COT_SLAB_KINDS_STALL_MIN=<min> (a build or run
-//   that takes no CPU this long has hung, default 10); COT_SLAB_KINDS_CPU_MIN=<min> (the receipt's CPU budget, default 90:
-//   the whole detector over every kind, uncached);
+//   COT_SLAB_KINDS_RUN_CPU_S=<s> (a build's or run's CPU limit, default 120: the longest run took 17 s, the longest build
+//   24 s); COT_SLAB_KINDS_STALL_MIN=<min> (a build or run that takes no CPU this long has hung, default 10);
+//   COT_SLAB_KINDS_CPU_MIN=<min> (the receipt's CPU budget, default 60: every kind uncached took 42 CPU min, the receipt
+//   before 265 45);
 //   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits);
 //   COT_SELFTEST_CACHE=0 or --all: every kind runs
 import assert from 'node:assert/strict';
@@ -167,9 +168,9 @@ if (!isMainThread) {
   const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));
   // the guards: a build's or run's CPU limit and its stall (a runaway or a hang is stopped and named, the rest finish), the
   // receipt's CPU budget
-  const RUN_CPU_S = Math.max(10, Number(process.env.COT_SLAB_KINDS_RUN_CPU_S ?? 240));
+  const RUN_CPU_S = Math.max(10, Number(process.env.COT_SLAB_KINDS_RUN_CPU_S ?? 120));
   const STALL_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_STALL_MIN ?? 10));
-  const CPU_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_CPU_MIN ?? 90));
+  const CPU_MIN = Math.max(1, Number(process.env.COT_SLAB_KINDS_CPU_MIN ?? 60));
   const runKey = (mapId, r) => `${mapId} #${r.id} ${r.face}`;
   // (what a run or a build took last time, CPU ms; a run never timed counts as the costliest known, a map never built as first)
   const knownRunMs = Object.values(store.costs);

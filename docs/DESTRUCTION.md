@@ -1543,8 +1543,9 @@ hash reads, most releases, ran all 681 runs again, with every map built every ti
 What changed (each judged against the base on the same input, call for call: the same findings). The judge reads each
 plan cell's samples by height, packed, a held share reading its band alone; a propagation reads each open piece's
 envelope once (its cells' ground and floor, and the owners in band round them) and each round only who of them has
-come to bear; clusters keep the presentation's samples in voxels of their own and skip voxel pairs of one owner. The
-arcology's two runs: 106 s of CPU to TBD. The detector builds the vegetation as the battle does (far grass deferred: on
+come to bear; clusters keep the presentation's samples in voxels of their own and skip voxel pairs of one owner. On the
+megatower and the arcology the judge's CPU is 88 s to 16 s and its intact readings 32 s to 6 s (a dual judge, the base's
+and this one on every call: the same findings); the arcology's two runs 105 s to 26 s, each in a 1 GB heap as before. The detector builds the vegetation as the battle does (far grass deferred: on
 all 33 maps the same spans, anatomy, enclosure and collision records, byte for byte, for 30 % less vegetation CPU). The
 receipt's pool takes builds and runs, not maps: a worker with no map left shares the heaviest map's runs, maps and runs
 go costliest first by last time, and every run's fingerprint as it starts must be its listing's (a set piece's kit
@@ -1552,8 +1553,8 @@ copied the anatomy's mound onto its plan at its first stage, so a run's fingerpr
 build: the copy is no longer read; a map's runs in reverse on a fresh build match them run for run on Copper Mesa and
 Polders). A run whose findings are all judged exceptions keeps them with its fingerprint (judged again against KNOWN
 each time), and a map listed from the same inputs (the detector's whole import closure, the receipt, the staging) with
-every run passed is not built. Guards on each worker's own clock: a build or run over 240 s of CPU, or whose clock stands
-still for 10 min, is stopped and named; the receipt fails over its CPU budget; a stray slab planted in a building of the
+every run passed is not built. Guards on each worker's own clock: a build or run over 120 s of CPU, or whose clock stands
+still for 10 min, is stopped and named; the receipt fails over its CPU budget (60 min); a stray slab planted in a building of the
 first map built must fail the verdict. A real defect fails it too: `ANCHORED_M` back at 0.4 m (landmarks/damage.ts)
 fails it on Whiteout #32 from its narrow back, its guy's 21.6 x 2.7 m debris plate on end with its top 19.9 m up, as
 world-reds 264 found it. Measured TBD.
