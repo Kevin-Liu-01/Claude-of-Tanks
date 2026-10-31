@@ -744,7 +744,7 @@ function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#ebe7db';
   // (r5, critics: round petals read as a generic flower): each petal drawn with the cherry blossom's notch in its tip
   for (let k = 0; k < 5; k++) {
-    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5, ux = Math.cos(t), uy = Math.sin(t), vx = -uy, vy = ux;
+    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5, ux = detMath.cos(t), uy = detMath.sin(t), vx = -uy, vy = ux;
     const at = (u: number, v: number): [number, number] => [cx + (ux * u + vx * v) * r, cy + (uy * u + vy * v) * r];
     ctx.beginPath();
     ctx.moveTo(...at(0.10, 0));
@@ -809,7 +809,7 @@ function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs):
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2;
       ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
+      ctx.arc(cx + detMath.cos(a) * rr, cy + detMath.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -870,7 +870,7 @@ function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterA
   ctx.lineWidth = radius * 0.08;
   ctx.beginPath();
   for (let k = 0; k <= 24; k++) {
-    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.40, y = cy + Math.sin(a) * radius * 0.66;
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.40, y = cy + detMath.sin(a) * radius * 0.66;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
@@ -894,7 +894,7 @@ function drawOsorioEmblem({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.lineWidth = radius * 0.09;
   ctx.beginPath();
   for (let k = 0; k <= 24; k++) {
-    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.20, y = ey + Math.sin(a) * radius * 0.40;
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.20, y = ey + detMath.sin(a) * radius * 0.40;
     if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
