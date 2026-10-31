@@ -5,6 +5,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { SOURCE_WORLD_FRAMES } from './source-world-registration.mjs';
+import { ABRAMS_X_REFERENCE_OVERRIDES } from './abrams-x-reference-overrides.ts';
+import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
+import { LEOPARD_X_REFERENCE_OVERRIDES } from './leopard-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
+import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from './second-wave-x-reference-overrides.ts';
+import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
+import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
+import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
+
+// the tables the page spreads into its own (a new spread fails here until it is listed)
+const SPREADS = { ABRAMS_X_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES,
+  OPLOT_BM_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
+  T90_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES };
 
 /** Each id defined by two of `sources` ([name, {id: registration}] in spread order), named with both sources. */
 function duplicateRegistrations(sources) {
@@ -30,9 +43,8 @@ let literal = null;
 for (const line of lines.slice(start + 1, end)) {
   const spread = /^ {2}\.\.\.([A-Z0-9_]+),/.exec(line);
   if (spread) {
-    const from = new RegExp(`^import \\{ ${spread[1]} \\} from '/tools/([^']+)';`, 'm').exec(page);
-    assert.ok(from, `${spread[1]}: the page imports it from tools/`);
-    sources.push([spread[1], (await import(`./${from[1]}`))[spread[1]]]);
+    assert.ok(SPREADS[spread[1]], `${spread[1]}: the page spreads a table this receipt does not know; import it here`);
+    sources.push([spread[1], SPREADS[spread[1]]]);
     continue;
   }
   const key = /^ {2}([a-z0-9_]+):/.exec(line);
