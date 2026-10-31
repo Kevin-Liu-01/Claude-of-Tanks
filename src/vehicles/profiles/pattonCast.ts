@@ -28,6 +28,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { moldedBox } from '../accessoryPrimitives.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { buildNationWheel } from '../nationWheelConstructions.ts';
 import { STANDARD_WHEEL_AXIAL_ENVELOPE, TRACK_WIDTH_WHEEL_CAP } from '../roadWheelGeometry.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
@@ -2717,8 +2718,10 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     P.add('turret', sideSolid([[0.24, 0.07], [0.66, 0.07], [0.66, 0.27], [0.52, top], [0.24, top]], 0.60, 0.012, P.q), px, L.y(b0), L.z(0));
     const mgY = 2.90;
     P.add('turretDark', box(0.13, 0.11, 0.02), -0.45, L.y(mgY), L.z(0.665));
-    P.add('turretDark', cylZ(0.034, 0.10, 10), -0.45, L.y(mgY), L.z(0.72));
-    P.add('turretDark', cylZ(0.025, 0.84, 10), -0.45, L.y(mgY), L.z(1.16));
+    // (round 18: the M85 the fleet's registered cupola gun, its mount and receiver inside the prow and only the barrel
+    // out of the port (bore 0.32 m over the fitting's base), so the M60 keeps its roof-gun station, as the old builders
+    // and the M48A5 do)
+    roofM2(P, T, -0.45, 0.40, mgY - 0.32, { cls: 'm2', barrel: 0.85, seed: 601, ring: false, elev: 0, ammo: false });
   }
   // the loader's hatch on the left, the gunner's periscope ahead of the cupola, the ventilator on the bustle roof
   const lid = loaderHatch(P, T, 0.47, 0.03, 0.30);
@@ -2883,7 +2886,7 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       const [el, sp] = [0.70, 0.35], [pitch, yaw] = [-el, side * sp];
       const mouth = [Math.sin(sp) * 0.165, Math.sin(el) * Math.cos(sp) * 0.165, Math.cos(el) * Math.cos(sp) * 0.165];
       for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
-        P.add('turret', KIT.xform(cylZ(0.055, 0.32, 12), 0, 0, 0, pitch, yaw, 0), bx + side * (c - 1) * 0.125,
+        P.add('turret', KIT.xform(markSmokeTube(cylZ(0.055, 0.32, 12)), 0, 0, 0, pitch, yaw, 0), bx + side * (c - 1) * 0.125,
           L.y(by + 0.01 + r * 0.12), L.z(bz + 0.02));
         P.add('turretDark', KIT.xform(cylZ(0.042, 0.02, 10), 0, 0, 0, pitch, yaw, 0), bx + side * ((c - 1) * 0.125 + mouth[0]),
           L.y(by + 0.01 + r * 0.12 + mouth[1]), L.z(bz + 0.02 + mouth[2]));
@@ -3683,9 +3686,9 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
     const [mx, mz] = [cx - 0.53, cz - 0.13];
     P.add('turret', moldedBox(0.55, 0.47, 0.55, 0.12, P.q ? 3 : 2, 0.03), mx, L.y(b0 + 0.42), L.z(mz));
     P.add('turretDark', box(0.14, 0.10, 0.04), mx, L.y(b0 + 0.40), L.z(mz + 0.28));
-    P.add('turretDark', cylZ(0.045, 0.18, 10), mx, L.y(b0 + 0.40), L.z(mz + 0.36));
-    P.add('turretDark', cylZ(0.024, 0.98, 10), mx, L.y(b0 + 0.40), L.z(mz + 0.94));
-    P.add('turretDark', cylZ(0.032, 0.08, 10), mx, L.y(b0 + 0.40), L.z(mz + 1.47));
+    // (round 18: the M85 the fleet's registered cupola gun inside its housing, only the barrel out of the port (bore 0.32 m
+    // over the fitting's base), so the Starship keeps its roof-gun station as its old builder's did)
+    roofM2(P, T, mx, mz + 0.10, b0 + 0.40 - 0.32, { cls: 'm2', barrel: 1.0, seed: 611, ring: false, elev: 0, ammo: false });
   }
   loaderHatch(P, T, 0.42, 0.62, 0.24);
   for (const x of [0.32, 0.52]) P.add('turretDark', box(0.05, 0.04, 0.26), x, L.y(frameTop(T, x, 0.62) + 0.075), L.z(0.62));
