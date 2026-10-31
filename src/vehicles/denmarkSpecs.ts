@@ -79,10 +79,12 @@ leo1a5dk1.visual = {
   scheme: 'solid', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
 };
 
-// The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the welded turret and its gun): the
-// full 9 degrees to yaw 151, then the engine deck's louvres, the exhaust grilles and the stern stowage over the rear quarter
-const LEO1_DK_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [151, -9], [155, -6.9], [156, -5.5], [159, -3.5],
-  [160, -2.9], [162, -2.8], [163, -2], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2],
+// The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the welded turret and its gun; 266:
+// re-swept on the family hull, one envelope over the three marks): the full 9 degrees to yaw 150, then the louvred engine
+// outlets over the stern quarters (profiles/leopard1Hull.ts; 151-163 shallower than on the 265 hull), the engine deck's
+// grilles and the stern stowage over the rear
+const LEO1_DK_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [150, -9], [151, -7.8], [152, -5.6], [153, -4], [156, -2.5],
+  [159, -2], [161, -2], [162, -2.4], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2],
   [173, -0.1], [175, -1.5], [176, -1.9], [177, -2.7], [180, -2.7]] as const);
 for (const spec of [leo1a3dk, leo1a5dk, leo1a5dk1]) spec.gunPitchByYawDeg = LEO1_DK_GUN_PITCH_BY_YAW_DEG;
 

@@ -77,18 +77,8 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
       for (const f of [0.25, 0.75]) P.addEquipment(fit, box(0.014, 0.06, 0.045), s * 1.678, top - 0.075, z0 + (z1 - z0) * f);
     }
   }
-  // The engine's exhaust grilles on the sloped rear side plates behind the bins (Krigsmuseet side view: the last fifth of
-  // the hull side): a dark recessed panel and seven louvres along the plate's slope.
-  for (const s of [-1, 1] as const) {
-    const z0 = -2.10, z1 = -3.20, zc = (z0 + z1) / 2, yTop = deckEdgeY(zc) - 0.05, yLow = fenderY + 0.05;
-    const tilt = Math.atan2(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow), slant = Math.hypot(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow);
-    const yc = (yTop + yLow) / 2;
-    P.addEquipment('hullDark', box(0.016, slant, z0 - z1), s * (slopeX(yc, zc) + 0.004), yc, zc, 0, 0, s * tilt);
-    for (let k = 0; k < 7; k++) {
-      const y = yLow + (yTop - yLow) * (k + 0.5) / 7;
-      P.addEquipment('hull', box(0.03, 0.022, z0 - z1 - 0.06), s * (slopeX(y, zc) + 0.018), y, zc, 0, 0, s * (tilt + 0.5));
-    }
-  }
+  // (266: the engine's outlets on the sloped rear side plates behind the bins, the Krigsmuseet side view's last fifth of
+  // the hull side, are the family hull's louvred boxes, profiles/leopard1Hull.ts.)
   // Dozer channels (armyvehicles.dk/leopard1a3.htm: "All Danish Leopard 1s had dozer attachment channels on the lower
   // front hull"): two channel brackets on the lower glacis, which leans back 28 degrees toward the belly.
   const lowerTilt = Math.atan2(3.54 - 3.24, 1.04 - 0.48);
@@ -113,7 +103,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    fit263: false, rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1' });
+    rearCans: true, rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
