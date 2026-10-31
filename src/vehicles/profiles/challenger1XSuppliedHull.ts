@@ -76,16 +76,18 @@ function engineRoof(P:TankBuilderPort):void{
   }
   seat(()=>caseBox(P,0,70.0,-182.5,27.8,2.0,3.0));
 }
-/** An engine-deck louvre panel: a dark throat under raised slats across the panel, in a frame (the fleet's deckGrille
- *  pattern, in this frame's units); low quality keeps every other slat. */
+/** An engine-deck louvre panel: dark louvres over a dark throat, in a body-colour frame split down its middle (the
+ *  fleet's deckGrille pattern, in this frame's units; round 2's critic read camo slats as wooden boards); low quality
+ *  keeps every other louvre. */
 function grille(P:TankBuilderPort,x:number,z0:number,z1:number,w:number):void{
   const z=(z0+z1)/2,d=z1-z0,y=69.2,n=Math.round(d/(P.q?2.2:4.4));
   equipment(P,box(m(w),m(.4),m(d)),x,y,z,'hullDark');
-  for(let i=0;i<n;i++)caseBox(P,x,y+.55,z0+1.4+(i+.5)*(d-2.8)/n,w-2.0,.7,.55);
+  for(let i=0;i<n;i++)equipment(P,box(m(w-2.0),m(.7),m(.55)),x,y+.55,z0+1.4+(i+.5)*(d-2.8)/n,'hullDark');
   for(const s of [-1,1]){
     caseBox(P,x,y+.6,z+s*(d/2-.5),w,.8,1.0);
     caseBox(P,x+s*(w/2-.5),y+.6,z,1.0,.8,d-2.0);
   }
+  caseBox(P,x,y+.6,z,1.0,.8,d-2.0);
 }
 function foreDeck(P:TankBuilderPort):void{
   // Lower central driver channel is preserved between the two shoulders.
