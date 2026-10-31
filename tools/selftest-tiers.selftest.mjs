@@ -4,6 +4,7 @@
 // reads this receipt's own imports.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { MANUAL_SUITES, MANUAL_SUITE_NAMES, MERGED_RECEIPTS, MUST_KEEP, RETIRED_RECEIPTS, STALE_GUARDS, defaultTierFiles,
   manualSuiteFiles, manualSuiteOf, namedIds, parseSuiteNames } from './selftest-tiers.mjs';
@@ -15,7 +16,7 @@ import { balanceChanges, changedMaps, changedTankIds, createReadIndex, laneReadO
 import { ENTRY_HTML, readsOnPurpose } from './test-recommend.mjs';
 import { SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
-import { simulateWall } from './test-audit.mjs';
+import { auditCounts, auditRows, documentText, simulateWall, summary } from './test-audit.mjs';
 import { WORLD_STEPS } from './changed-only/steps.mjs';
 
 const registered = Object.values(SELFTEST_SUITES).flat();
@@ -246,7 +247,7 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   const few = recommend({ readers: new Map([['fleet', new Map([['src/vehicles/fleetLazy.selftest.mjs', ['src/ui/hudAmmunitionPresentation.ts']]])]]),
     wallMs: { fleet: 6_000_000 }, subsetWallMs: () => 72_000 });
   assert.deepEqual([few.find((row) => row.suite === 'fleet').line, few.find((row) => row.suite === 'fleet').run],
-    ['fleet (~1 min): 1 of its 64 checks read the change (src/ui/hudAmmunitionPresentation.ts)', 'npm run test:heavy -- fleet --only=src/vehicles/fleetLazy.selftest.mjs'],
+    ['fleet (~1 min): 1 of its 65 checks read the change (src/ui/hudAmmunitionPresentation.ts)', 'npm run test:heavy -- fleet --only=src/vehicles/fleetLazy.selftest.mjs'],
     'a few readers: the command and its time name just them');
   const broken = recommend({ readers: none, balance: [{ id: 'leo2a4', tier: 8, classes: ['armour'] }], suites: { balance: { ...MANUAL_SUITES.balance } }, guards: {} });
   assert.equal(broken[0].warranted, true, 'a moved armour value alone warrants balance, even with no closure read');
@@ -277,6 +278,28 @@ assert.equal(readsOnPurpose('src/world/terrain.ts', ''), true, 'any other path c
   assert.deepEqual([...picked], [['a', 'names leo2a4'], ['b', 'reads src/vehicles/profiles/leopard.ts']]);
   const wall = simulateWall(['p1', 'p2', 'p3'], (file) => ({ p1: 60_000, p2: 30_000, p3: 30_000 })[file], { workers: 2 });
   assert.deepEqual([wall.wallMs, wall.cpuMs], [60_000, 120_000], 'longest-first on two workers');
+}
+
+// ---- docs/TEST-AUDIT.md's counts are the tiers' (266, Main: the garage-thrash and HUD lanes each hand-edited the same
+// count lines, MANUAL 667->668 and ui 4->5, for two receipts; identical hunks merge as one, so main read 668/5, not 669/6).
+// Run times differ by machine and are not compared. Controls: a hand-edited count is caught, a run-time edit is not.
+{
+  const audit = await auditRows({ runMsOf: () => null, details: false });
+  const fresh = documentText(audit, summary(audit));
+  const drift = (text) => {
+    const page = auditCounts(text), tiers = auditCounts(fresh);
+    return [...page.filter((line) => !tiers.includes(line)).map((line) => `page:  ${line}`),
+      ...tiers.filter((line) => !page.includes(line)).map((line) => `tiers: ${line}`)];
+  };
+  const page = readFileSync(join(REPO_ROOT, 'docs/TEST-AUDIT.md'), 'utf8');
+  assert.deepEqual(drift(page), [], 'docs/TEST-AUDIT.md differs from the tiers: run node tools/test-audit.mjs --write (never edit its counts by hand)');
+  const manual = audit.rows.filter((row) => row.decision === 'MANUAL').length;
+  assert.ok(manual > 0 && fresh.includes(`| MANUAL | ${manual} |`), 'control: the fresh page states the MANUAL count');
+  assert.deepEqual(drift(fresh.replace(`| MANUAL | ${manual} |`, `| MANUAL | ${manual - 1} |`)), [`page:  decision MANUAL: ${manual - 1}`, `tiers: decision MANUAL: ${manual}`],
+    'control: a hand-edited count is caught');
+  assert.deepEqual(drift(fresh.replace(/^(\| After: the default tier \| \d+ \| )[\d.]+ \| [\d.]+ \|$/m, '$1999.9 | 99.9 |')), [],
+    'control: a run-time edit is not compared');
+  assert.notEqual(fresh.replace(/^(\| After: the default tier \| \d+ \| )[\d.]+ \| [\d.]+ \|$/m, '$1999.9 | 99.9 |'), fresh, 'the run-time control edits the page');
 }
 
 console.log(`selftest-tiers.selftest: ${defaults.length} default-tier receipts (${defaultMinutes.toFixed(1)} snapshot CPU-min), `
