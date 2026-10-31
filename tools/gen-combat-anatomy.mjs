@@ -352,7 +352,11 @@ const PRIMARY_BUCKETS = { hull: ['hull'], turret: ['turret'] };
 // of these three hulls stood 5-29 cm in front of the plate and of the new frontal ERA laid on it. Their slices are also
 // cut at the glacis plate's edges (measured on the builds: the Zubrs' plate ends at |x| 1.105-1.110, Hetman II's at 1.125
 // back to z 2.9 and at 1.0 round its nose, where its fender sponsons run on 20 cm past the plate), each band its own convex cell; every other hull keeps one cell a slice.
+// Release 265 (Main: the Leopard 1A2A1's turret crew): the 1A2A1's old hull carries its 1.43 m sponson shoulders 35 cm
+// either side of the 1.70-1.75 m deck and ring race, and a slice's one convex cell kept one side's deck edge, leaning the
+// roof under the ring to 1.43 m on the other side; cut at the deck's edges (|x| 1.28), the deck is level in its own band.
 const HULL_LATERAL_CUTS = Object.freeze({
+  leo1a2a1: [-1.27, 1.27],
   t72b3m_hetman_ii: [-1.125, -.995, .995, 1.125],
   t72b3_zubr: [-1.104, 1.104],
   t72b3_zubr_ii: [-1.104, 1.104],
