@@ -107,9 +107,12 @@ function castSideAt(stations: readonly CastStation[], y: number, z: number): num
 // scaled once (x1.8484) to the published 5.82 m hull. Measured by raycasts (.qa-dev m41rays): the belly at 0.29, the
 // lower hull's sides at ±1.15, the sponsons at ±1.33 to a 1.44 deck, the fenders' outer edge at ±1.65, the 37 degree
 // glacis to a nose at 0.88, five 0.716 m road wheels on a 0.81 m pitch, three return rollers, the track 0.58 m wide on
-// ±1.43 (3.38 m over the tracks against the published 3.20: the print's width, recorded as a conflict).
+// ±1.43 (3.38 m over the tracks against the published 3.20: the print's width, recorded as a conflict). (The C gate,
+// 2026-10-31: the track's inner edge is at ±1.14, so the print's ±1.15 lower hull, its glacis tapering from the sponsons
+// and its full-width rear plate stood in the track's band (track-clip-audit --exact --strict, 109/254 + 564 voxels);
+// the lower hull, the glacis and the rear plate are ±1.09 between the tracks, the step strip still spanning the sponsons.)
 const H = Object.freeze({
-  noseZ: 2.86, sternZ: -2.68, bellyY: 0.29, lowerX: 1.15, sponsonX: 1.33, sponsonY: 1.22, fenderX: 1.65, fenderY: 1.33,
+  noseZ: 2.86, sternZ: -2.68, bellyY: 0.29, lowerX: 1.09, sponsonX: 1.33, sponsonY: 1.22, fenderX: 1.65, fenderY: 1.33,
   deckY: 1.44, trackXc: 1.43, trackW: 0.58, skirtX: 1.70,
 });
 const ROAD_WHEEL_ZS = [1.572, 0.764, -0.045, -0.854, -1.662];
@@ -177,29 +180,32 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       [-(H.sponsonX - 0.05), deckY(z)], [-H.sponsonX, deckY(z) - 0.03],
     ];
     P.add('hull', sectionSolid([-2.30, -2.00, 1.85, 1.95].map((z) => ({ z, ring: upper(z) }))));
-    // the rear deck falling to the rear plate, the sponsons' width
+    // the rear deck falling to the rear plate, between the tracks (it falls to 1.17 at the stern, inside the sprockets'
+    // arcs over the tracks; the fenders close the deck beside it)
     P.add('hull', slab(
-      [-H.sponsonX, deckY(H.sternZ) - 0.05, H.sternZ], [H.sponsonX, deckY(H.sternZ) - 0.05, H.sternZ],
-      [H.sponsonX, H.sponsonY, -2.30], [-H.sponsonX, H.sponsonY, -2.30],
-      [-H.sponsonX, deckY(H.sternZ), H.sternZ], [H.sponsonX, deckY(H.sternZ), H.sternZ],
-      [H.sponsonX, deckY(-2.30), -2.30], [-H.sponsonX, deckY(-2.30), -2.30]));
-    // the glacis from the step to the nose, the full width of the sponsons
+      [-H.lowerX, deckY(H.sternZ) - 0.05, H.sternZ], [H.lowerX, deckY(H.sternZ) - 0.05, H.sternZ],
+      [H.lowerX, H.sponsonY, -2.30], [-H.lowerX, H.sponsonY, -2.30],
+      [-H.lowerX, deckY(H.sternZ), H.sternZ], [H.lowerX, deckY(H.sternZ), H.sternZ],
+      [H.lowerX, deckY(-2.30), -2.30], [-H.lowerX, deckY(-2.30), -2.30]));
+    // the glacis from the step to the nose, between the tracks (the idlers' arcs run under the strip at its sides)
     P.add('hull', slab(
-      [-H.sponsonX, 1.27, 1.95], [H.sponsonX, 1.27, 1.95], [H.lowerX, 0.82, H.noseZ], [-H.lowerX, 0.82, H.noseZ],
-      [-H.sponsonX, 1.34, 1.95], [H.sponsonX, 1.34, 1.95], [H.lowerX, 0.88, H.noseZ], [-H.lowerX, 0.88, H.noseZ]));
+      [-H.lowerX, 1.27, 1.95], [H.lowerX, 1.27, 1.95], [H.lowerX, 0.82, H.noseZ], [-H.lowerX, 0.82, H.noseZ],
+      [-H.lowerX, 1.34, 1.95], [H.lowerX, 1.34, 1.95], [H.lowerX, 0.88, H.noseZ], [-H.lowerX, 0.88, H.noseZ]));
     P.add('hull', box(H.sponsonX * 2, 0.08, 0.22), 0, 1.30, 2.06);
-    // the rear plate
-    P.add('hull', box(H.sponsonX * 2, 0.40, 0.06), 0, 0.98, H.sternZ - 0.01);
+    // the rear plate, between the tracks (the sprockets' arcs beside it)
+    P.add('hull', box(H.lowerX * 2, 0.40, 0.06), 0, 0.98, H.sternZ - 0.01);
     // fenders over the tracks on brackets under their outer edge, sloping down over the idlers and the sprockets
+    // (the C gate: from the lower hull's edge, so they close the deck over the tracks beside the glacis, rear deck and
+    // plate between the tracks; under the sponsons they lie inside them)
     for (const s of [-1, 1] as const) {
-      P.add('hullDetail', box(H.fenderX - H.sponsonX + 0.02, 0.025, 4.90), s * (H.sponsonX + H.fenderX) / 2, H.fenderY - 0.0125, 0.0);
+      P.add('hullDetail', box(H.fenderX - H.lowerX, 0.025, 4.90), s * (H.lowerX + H.fenderX) / 2, H.fenderY - 0.0125, 0.0);
       P.add('hullDetail', box(0.012, 0.06, 4.90), s * (H.fenderX - 0.006), H.fenderY - 0.04, 0.0);
       for (const [za, zb] of [[2.45, 2.91], [-2.45, -2.91]] as const) {
         if (dk && za > 0) continue;
         const ya = H.fenderY, yb = 1.00;
         P.add('hullDetail', slab(
-          [s * (H.sponsonX - 0.02), ya - 0.025, za], [s * H.fenderX, ya - 0.025, za], [s * H.fenderX, yb - 0.025, zb], [s * (H.sponsonX - 0.02), yb - 0.025, zb],
-          [s * (H.sponsonX - 0.02), ya, za], [s * H.fenderX, ya, za], [s * H.fenderX, yb, zb], [s * (H.sponsonX - 0.02), yb, zb]));
+          [s * H.lowerX, ya - 0.025, za], [s * H.fenderX, ya - 0.025, za], [s * H.fenderX, yb - 0.025, zb], [s * H.lowerX, yb - 0.025, zb],
+          [s * H.lowerX, ya, za], [s * H.fenderX, ya, za], [s * H.fenderX, yb, zb], [s * H.lowerX, yb, zb]));
       }
       if (!dk) for (const z of [-2.0, -0.70, 0.60, 1.80]) {
         P.add('hullDetail', box(0.03, 0.10, 0.04), s * (H.fenderX - 0.03), H.fenderY - 0.07, z);
@@ -225,8 +231,9 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
       P.add('hullRunningGearDark', torus(roadWheelR * 0.3, 0.015, P.q ? 16 : 10), s * (H.trackXc + wheelW / 2 + 0.012), roadWheelY, z,
         0, 0, Math.PI / 2);
-      // the rubber tyre's outer band (the 1961 Fort Stewart photograph: black tyres round light dished discs)
-      P.add('hullRubber', torus(roadWheelR - 0.028, 0.024, P.q ? 28 : 16, 6), s * (H.trackXc + wheelW / 2 - 0.004), roadWheelY, z,
+      // the rubber tyre's outer band (the 1961 Fort Stewart photograph: black tyres round light dished discs), drawn as
+      // the running gear it is: it rides the track with the wheel
+      P.add('hullRunningGearDark', torus(roadWheelR - 0.028, 0.024, P.q ? 28 : 16, 6), s * (H.trackXc + wheelW / 2 - 0.004), roadWheelY, z,
         0, 0, Math.PI / 2);
     }
     for (const rl of rollers) for (const s of [-1, 1] as const) {
@@ -380,14 +387,15 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // cross above the exhaust deflectors)
       const text = 'Y-231 456';
       P.decal('hull', 'plate', text, 0.56, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
-      P.decal('hull', 'plate', text, 0.50, [0.32, 1.12, rearZ], Math.PI);
+      // (the C gate: the rear's square seat inside the plate's face and the rising deck behind it, between the deflectors)
+      P.decal('hull', 'plate', text, 0.38, [0.12, 1.07, rearZ], Math.PI);
       P.decal('hull', 'mlc', '24', 0.17, [0.52, deckY(2.50) + 0.006, 2.50], 0, glacisRx);
     } else if (mark === 'jgsdf') {
       // the JGSDF's registration numbers painted white straight onto the glacis and the rear plate (no plates)
       // (r4: a service number, not a placeholder; the rear's above the exhaust deflectors; r6, critics: the tracked
       // armour's 91- class)
       P.decal('hull', 'stencilWhite', '91-4087', 0.46, [0, deckY(2.36) + 0.006, 2.36], 0, glacisRx);
-      P.decal('hull', 'stencilWhite', '91-4087', 0.46, [0.32, 1.12, rearZ], Math.PI);
+      P.decal('hull', 'stencilWhite', '91-4087', 0.38, [0.12, 1.07, rearZ], Math.PI);
     } else if (mark === 'us') {
       // the US Army's bumper codes front and rear (unit left, vehicle right)
       // (r4: sized by their length so the letters match; r5, critics: dark stencils lost in the camouflage: white)

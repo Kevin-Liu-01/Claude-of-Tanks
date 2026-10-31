@@ -401,9 +401,11 @@ function buildCv9035DkCannon(P: TankBuilderPort): void {
 /** The CV9035 DK's Danish Army registration plate, black with white figures and the small yellow emblem at its end, on
  *  the nose's upper plate left of centre (the Holstebro photograph's "75.177"). */
 function addCv9035DkPlates(P: TankBuilderPort): void {
-  P.addEquipment('hullDark',box(.52,.12,.012),.38,1.05,3.236);
-  P.decal('hull','stencilWhite','75.145',.32,[.43,1.05,3.244],0);
-  P.decal('hull','mlc','',.07,[.17,1.05,3.244],0);
+  // (the C gate: its figures' square seat on the nose's upright face, which ends at 1.13 under the glacis; at 1.05 its top
+  // stood clear of the glacis's slope and showed the sky from below the bow)
+  P.addEquipment('hullDark',box(.52,.12,.012),.38,.96,3.236);
+  P.decal('hull','stencilWhite','75.145',.32,[.43,.96,3.244],0);
+  P.decal('hull','mlc','',.07,[.17,.96,3.244],0);
 }
 
 /** The CV90 Mk IV (release 265: `danish` builds the CV9035 DK on it, profiles/denmark.ts; the owner 2026-10-30: "the
