@@ -756,16 +756,42 @@ export { T90_FAMILY_RING_Y };
 type T90XBuild = (builder: TankBuilderPort) => void;
 // 2026-10-30 (the owner: "tone down that copying a lil"): each mark lays its own fittings (t90Mark*.ts) on its twin.
 const withKit = (build: T90XBuild, kit: T90XBuild) => ({ build: (builder: TankBuilderPort): void => { build(builder); kit(builder); } });
+// 2026-10-31 (the owner: "make all the variations' machine guns different or look in different directions"): each earlier
+// mark parks its roof gun on a bearing of its own (degrees, + toward the hull's left); the source-X twins keep theirs.
+// The station turns whole about its yaw axis once the rig is assembled, when its cradle and the stock captured into it
+// already hang from it, so the inventory reads the bearing as the station's rest and the battle parks the gun there
+// between targets (auxiliarySystems.ts parkStation) and aims from it.
+const ROOF_GUN_BEARING_DEG = Object.freeze({
+  t90_1992: 35, t90a_2004: -30, t90a_2006: 60, t90ms_2011: -90, t90sm_2013: 25, t90am: 180, t90m_proryv: -45,
+  t90a_burlak_proto: 15,
+});
+type T90MarkId = keyof typeof ROOF_GUN_BEARING_DEG;
+const isRoofStation = (node: THREE.Object3D): boolean =>
+  node.userData.remoteControlled === true && node.userData.firingAxis === '+Z' && !node.userData.primaryWeapon;
+const parkRoofGuns = (build: T90XBuild, id: T90MarkId): T90XBuild => (builder) => {
+  build(builder);
+  const before = builder.postAssemble;
+  builder.postAssemble = (rig) => {
+    before?.(rig);
+    const stations: THREE.Object3D[] = [];
+    rig.turretG.traverse((node) => {
+      let outer = node.parent;
+      while (outer && !isRoofStation(outer)) outer = outer.parent;
+      if (isRoofStation(node) && !outer) stations.push(node);
+    });
+    for (const station of stations) station.rotateY(THREE.MathUtils.degToRad(ROOF_GUN_BEARING_DEG[id]));
+  };
+};
 
 export const T90_PROFILES = {
-  t90a_2004: withKit(T90_X_PROFILES.t90a.build, addT90MarkA2004Kit),
-  t90_1992: withKit(T90_AW_X_PROFILES.t90.build, addT90Mark1992Kit),
-  t90ms_2011: withKit(buildT90MSXWithoutShtora, addT90MarkMS2011Kit),
-  t90a_burlak_proto: withKit(T90_X_PROFILES.t90a.build, (builder) => buildT90BurlakTurret(requireT90Builder(builder))),
+  t90a_2004: withKit(parkRoofGuns(T90_X_PROFILES.t90a.build, 't90a_2004'), addT90MarkA2004Kit),
+  t90_1992: withKit(parkRoofGuns(T90_AW_X_PROFILES.t90.build, 't90_1992'), addT90Mark1992Kit),
+  t90ms_2011: withKit(parkRoofGuns(buildT90MSXWithoutShtora, 't90ms_2011'), addT90MarkMS2011Kit),
+  t90a_burlak_proto: withKit(parkRoofGuns(T90_X_PROFILES.t90a.build, 't90a_burlak_proto'), (builder) => buildT90BurlakTurret(requireT90Builder(builder))),
   pt91m: {build:buildPT91MPendekar},
-  t90sm_2013: withKit(T90_X_PROFILES.t90sm.build, addT90MarkSM2013Kit),
-  t90a_2006: withKit(T90_X_PROFILES.t90a_vladimir.build, addT90MarkA2006Kit),
+  t90sm_2013: withKit(parkRoofGuns(T90_X_PROFILES.t90sm.build, 't90sm_2013'), addT90MarkSM2013Kit),
+  t90a_2006: withKit(parkRoofGuns(T90_X_PROFILES.t90a_vladimir.build, 't90a_2006'), addT90MarkA2006Kit),
   // 2026-10-09 (owner): the T-90AM's field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
-  t90am: withKit((builder) => { addVehicleGhillieSuit(builder); T90_X_PROFILES.t90sm.build(builder); }, addT90MarkAMKit),
-  t90m_proryv: withKit(T90_X_PROFILES.t90m.build, addT90MarkAM2Kit),
+  t90am: withKit(parkRoofGuns((builder) => { addVehicleGhillieSuit(builder); T90_X_PROFILES.t90sm.build(builder); }, 't90am'), addT90MarkAMKit),
+  t90m_proryv: withKit(parkRoofGuns(T90_X_PROFILES.t90m.build, 't90m_proryv'), addT90MarkAM2Kit),
 } satisfies VehicleProfileRecord;

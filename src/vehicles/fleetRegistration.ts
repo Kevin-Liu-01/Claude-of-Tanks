@@ -22,6 +22,7 @@ import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Spec
 import { applyFleetBalancePass, applyModernEraFold, applySameTierFairness, applyShownTierFloors } from './fleetBalancePass.ts';
 import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
+import { applyT90MarkSourceFrames } from './t90MarkFrames.ts';
 
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
@@ -84,5 +85,6 @@ applyTacticalRoleBalance(TANK_SPECS);
 applyM1A1GunLimits(TANK_SPECS);
 applyTurretScaleGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
+applyT90MarkSourceFrames(TANK_SPECS);
 applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();
