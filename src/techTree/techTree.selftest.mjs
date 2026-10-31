@@ -163,5 +163,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
-assert.equal(digest, 'a7ec2d078c2cbf3c', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-31 re-pin (266): the owner moved the Challenger 3 TD and its RWS build to tier X beside the Challenger 3.
+assert.equal(digest, '0f6f1f92e9ab75bd', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
