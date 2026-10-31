@@ -19,6 +19,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   ua_m2a3_bradley: 'M2A3 Bradley in Ukrainian service: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or '
     + 'roof machine gun.',
+  ua_cv9040c: 'CV9040C in Ukrainian service: the Swedish CV9040C\'s 40 mm Bofors and coaxial 7.62 mm machine gun; no roof '
+    + 'machine gun (the CV9040C\'s photograph packet, docs/references/photos/ifvs-20260925.json: roofMachineGuns 0).',
   fv510: 'FV510 Warrior: 30 mm L21A1 RARDEN and a coaxial 7.62 mm L94A1 chain gun; no pintle or roof machine gun.',
   fv510_milan: 'FV510 Warrior with the MILAN post: 30 mm RARDEN, a coaxial L94A1 chain gun and the dismountable MILAN '
     + 'firing post; no pintle or roof machine gun.',
