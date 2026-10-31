@@ -210,6 +210,12 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     infos.set(file, value);
     return value;
   };
+  // Gitignored scratch (.qa-dev, dist, .vercel, ...) a file names is never an input (266: map-probe-runtime names its
+  // receipt directory, .qa-dev/reports, and the world keys followed whatever reports a checkout had left there).
+  const scratch = (target) => {
+    const top = relative(root, target).split(sep)[0];
+    return top !== 'node_modules' && SKIP_DIRS.has(top);
+  };
   /** { exec, mention, flags } for one file: exec = executed imports; mention = named files and directories. */
   const edges = (file) => {
     if (edgeMap.has(file)) return edgeMap.get(file);
@@ -228,13 +234,15 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     for (const specifier of meta.specifiers) {
       if (meta.imports.includes(specifier)) continue;
       const target = resolveSpecifier(file, specifier);
-      if (target && target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) mention.add(target);
+      if (!target || target === file || scratch(target)) continue;
+      if (!(isDir(target) && target.includes(`${sep}node_modules`))) mention.add(target);
     }
     for (const segments of meta.joined) {
       if (!segments.some(hasWord)) continue; // `.join('')` names no file (see header)
       for (const base of [dirname(file), root]) {
         const target = resolve(base, ...segments);
-        if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) mention.add(target);
+        if (!inside(root, target) || target === root || target === file || scratch(target)) continue;
+        if (isFile(target) || isDir(target)) mention.add(target);
       }
     }
     for (const { prefix, suffix, execute } of meta.dynamic) {
@@ -247,6 +255,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
       const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
       if (!execute && appSource && dir && ROOT_DIRS.has(relative(root, dir))) continue; // an app route (see header)
       if (!dir || !isDir(dir)) { if (execute) flags.unresolved = true; else flags.broad = true; continue; }
+      if (!execute && scratch(dir)) continue;
       mention.add(dir);
       if (!execute) continue;
       const members = []; walk(dir, members);
