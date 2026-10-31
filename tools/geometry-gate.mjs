@@ -14,13 +14,15 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // Writes docs/geometry-gate/<id>.json (full deltas — the builder's work
 // order) and maintains docs/geometry-gate/ledger.json (tool-written only).
 //
-// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check]
+// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check] [--require-oracles]
+// --require-oracles: a requested registered id whose oracle file is missing stops the run before anything is measured
+// or written (a re-pin: npm run gate:repin), instead of recording an unavailable row over its measured one.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
-import { unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { missingOraclesError, unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 
@@ -29,6 +31,7 @@ const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
 const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'geometry-gate --ids') : null;
 const CHECK = args.includes('--check');
+const REQUIRE_ORACLES = args.includes('--require-oracles');
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -54,8 +57,10 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     const firstPartyOnly = requested.filter((id) => !registered.has(id));
     const unavailable = requested.filter((id) => registered.has(id) && !available.has(id));
     if (firstPartyOnly.length) {
-      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations`);
+      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations` +
+        ` (${firstPartyOnly.join(', ')})`);
     }
+    if (unavailable.length && REQUIRE_ORACLES) throw missingOraclesError(unavailable, referenceSources);
     if (unavailable.length) {
       for (const id of unavailable) {
         const qualityBar = referenceQualityBars[id] || 'fleet';

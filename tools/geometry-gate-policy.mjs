@@ -50,6 +50,13 @@ export function evaluateFidelityGate({ qualityBar, totalScore, wholeScores,
   return { gatePassed: failures.length === 0, requiredMinimum, failures };
 }
 
+/** A re-pin (geometry-gate.mjs --require-oracles) stops before measuring when a requested registered oracle is not on
+ *  disk: its unavailable row would replace the measured one. `sources` maps an id to its oracle's public path. */
+export function missingOraclesError(ids, sources) {
+  return new Error(`registered comparison oracle missing for ${ids.length} id(s); nothing was measured or written:\n`
+    + ids.map((id) => `  ${id}: public${sources[id] ?? ' (no path)'}`).join('\n'));
+}
+
 export function unavailableOracleReport(id, qualityBar = 'fleet') {
   const requiredMinimum = requiredMinimumForQualityBar(qualityBar);
   return {

@@ -3,6 +3,7 @@ import {
   QUALITY_GATE_FLOORS,
   requiredMinimumForQualityBar,
   unavailableOracleReport,
+  missingOraclesError,
   geometryReceiptPassed,
   evaluateGeometryGate,
 } from './geometry-gate-policy.mjs';
@@ -22,6 +23,10 @@ assert.equal(missing.requiredMinimum, 92, 'missing exemplar keeps its strict flo
 assert.equal(missing.gatePassed, false, 'missing registered oracle fails closed');
 assert.equal(missing.components.oracleAvailability, 0,
   'missing-oracle reason remains machine-readable');
+const stop = missingOraclesError(['merkava2b', 'stb1'], { merkava2b: '/models/community-candidates/merkava2b_supplied_x_source.glb' });
+assert.match(stop.message, /missing for 2 id\(s\); nothing was measured or written/, 'a re-pin stops before it writes');
+assert.match(stop.message, /merkava2b: public\/models\/community-candidates\/merkava2b_supplied_x_source\.glb/, 'it names the file to restore');
+assert.match(stop.message, /stb1: public \(no path\)/);
 const exact={qualityBar:'exemplar',requiredMinimum:92,geoMin:92,gatePassed:true};
 assert.equal(geometryReceiptPassed(exact),true);
 assert.equal(geometryReceiptPassed({...exact,gatePassed:false}),false,'rounded 91.99 does not become a pass');
