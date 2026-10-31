@@ -1010,11 +1010,12 @@ function ventilator(P: CastPort, T: TurretFrame, x: number, z: number, r: number
   }
 }
 
-/** The M48s' ventilator lid on its drum (top `yTop`, world): flush with the drum's 0.265 m top, a stepped cover and its
- * low dome to the drum's 0.117 m dome height, one closed lathe (266, as `ventilator`; no lip proud of the drum). */
+/** The M48s' ventilator lid on its drum (top `yTop`, world): a 1 cm lip round the drum's 0.265 m top, a sloped armoured
+ * side up to a flat top 0.34 m across, to the drum's 0.117 m dome height, one closed lathe (266, as `ventilator`; the blind
+ * critics' pick over a plain dome, a flat stepped lid and a peaked cap). */
 function ventilatorLid(P: CastPort, L: ReturnType<typeof tl>, x: number, yTop: number, z: number): void {
-  P.add('turret', KIT.lathe([[0.001, -0.01], [0.265, -0.01], [0.265, 0.026], [0.235, 0.036], [0.235, 0.058],
-    [0.17, 0.088], [0.09, 0.109], [0.001, 0.116]], P.q ? 22 : 12), x, L.y(yTop), L.z(z));
+  P.add('turret', KIT.lathe([[0.001, -0.01], [0.27, -0.01], [0.276, -0.002], [0.276, 0.014], [0.25, 0.024], [0.18, 0.100],
+    [0.17, 0.104], [0.10, 0.110], [0.001, 0.112]], P.q ? 22 : 12), x, L.y(yTop), L.z(z));
 }
 
 /** Browning M2 HB on a working mount (world base). */
