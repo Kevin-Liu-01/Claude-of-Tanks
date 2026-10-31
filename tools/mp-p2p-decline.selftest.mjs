@@ -19,8 +19,13 @@ import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { ROOM_MATCH_REPORT_STALE_AFTER_MS } from '../src/mp/room/protocol.ts';
 
 const SECRET = 'mp-p2p-decline-seat-secret-0123456789abcdef';
-/** The election must beat the report budget by a wide margin: it is immediate, the budget is 30 s. */
-const ELECTION_BUDGET_MS = 5_000;
+/** The election must beat the report budget: it follows the decline itself (reason `declined`), where a lapsed host is
+ *  replaced only after the 30 s report budget (reason `timeout`). (267, main's load class: a 5 s wall bound stood for
+ *  that and tripped at load; the reason proves the path, and the budget bounds the wait.) */
+const ELECTION_BUDGET_MS = ROOM_MATCH_REPORT_STALE_AFTER_MS;
+/** (267) Each wait below is for one event of the scenario; at load 280-600 a 10-20 s cap could lapse before it, so
+ *  every cap is this one bound on the work, there only to name a hang. */
+const EVENT_CAP_MS = 90_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs, describe = () => '') => {
   const started = Date.now();
@@ -80,15 +85,15 @@ async function runDeclineScenario({ name, url, steppedDown }) {
     await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await p2.headless.room.declineHost(true);
     await p3.headless.room.declineHost(true);
-    await until(() => p1.headless.room.room?.players.length === 3 && p1.headless.room.room.players.filter((player) => player.hostDeclined).length === 2, 'two declined seats in the room', 10_000,
+    await until(() => p1.headless.room.room?.players.length === 3 && p1.headless.room.room.players.filter((player) => player.hostDeclined).length === 2, 'two declined seats in the room', EVENT_CAP_MS,
       () => JSON.stringify({ p1: p1.headless.room.room?.players.map((player) => [player.id, player.team, player.hostDeclined, player.connected]), p1Stats: p1.headless.room.stats(), p2Sees: p2.headless.room.room?.players.map((player) => [player.id, player.hostDeclined]), p2Stats: p2.headless.room.stats(), p3Stats: p3.headless.room.stats() }));
     await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));
-    await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
+    await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', EVENT_CAP_MS);
     await p1.headless.room.start();
-    await until(() => sessions.every((entry) => entry.headless.session.round), 'every seat entered the match', 10_000);
+    await until(() => sessions.every((entry) => entry.headless.session.round), 'every seat entered the match', EVENT_CAP_MS);
     assert.equal(p1.headless.session.round.matchStart.hostId, 'p1', 'the willing admin hosts');
-    await until(() => sessions.every((entry) => entry.headless.session.match?.welcome), 'every seat welcomed', 20_000);
-    await until(() => p3.headless.session.match.retainedMigration().keyframe && p2.headless.session.match.retainedMigration().keyframe, 'sealed keyframes retained', 15_000);
+    await until(() => sessions.every((entry) => entry.headless.session.match?.welcome), 'every seat welcomed', EVENT_CAP_MS);
+    await until(() => p3.headless.session.match.retainedMigration().keyframe && p2.headless.session.match.retainedMigration().keyframe, 'sealed keyframes retained', EVENT_CAP_MS);
     await sleep(800);
     const keyframeTick2 = p2.headless.session.match.retainedMigration().keyframe.tick;
     const oldHostTick = cores[0].core.actor.tick;
@@ -107,9 +112,9 @@ async function runDeclineScenario({ name, url, steppedDown }) {
     assert.deepEqual({ hostId: election.hostId, reason: election.reason, secret: election.secret }, { hostId: 'p2', reason: 'declined', secret: true }, 'the last resort is elected at once with the secret, reason declined');
     assert.ok(facts.election.afterMs < ELECTION_BUDGET_MS, `elected ${facts.election.afterMs} ms after the decline — not the ${ROOM_MATCH_REPORT_STALE_AFTER_MS} ms report budget`);
     assert.deepEqual(await steppedDown(code), ['p1'], 'the departed host stepped down for this match: a decline never hands the match back to it');
-    await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', 20_000);
-    await until(() => p2.headless.session.match?.phase === 'live' && p2.headless.session.stats().p2p?.migrating === false, 'p2 live on its own actor', 15_000);
-    await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', 20_000);
+    await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', EVENT_CAP_MS);
+    await until(() => p2.headless.session.match?.phase === 'live' && p2.headless.session.stats().p2p?.migrating === false, 'p2 live on its own actor', EVENT_CAP_MS);
+    await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', EVENT_CAP_MS);
     const core2 = cores.find((entry) => entry.id === 'p2').core;
     assert.ok(core2.actor.tick >= keyframeTick2, `the resumed tick ${core2.actor.tick} continues past the keyframe's ${keyframeTick2}`);
     assert.ok(core2.actor.tick >= oldHostTick, `the resumed tick ${core2.actor.tick} never falls behind the old host's ${oldHostTick}`);
@@ -118,8 +123,8 @@ async function runDeclineScenario({ name, url, steppedDown }) {
 
     // ---- the old host re-enters the running match: a peer of p2 on the same seat token
     await p1.headless.session.enterMatch(p1.headless.room.matchStart);
-    await until(() => p1.headless.session.match?.welcome && p1.headless.session.role === 'peer' && p1.headless.session.stats().p2p?.hostId === 'p2', 'p1 welcomed as a peer of p2', 20_000);
-    await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', 10_000);
+    await until(() => p1.headless.session.match?.welcome && p1.headless.session.role === 'peer' && p1.headless.session.stats().p2p?.hostId === 'p2', 'p1 welcomed as a peer of p2', EVENT_CAP_MS);
+    await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', EVENT_CAP_MS);
     facts.rejoin = { role: p1.headless.session.role, hostId: p1.headless.session.stats().p2p.hostId, generation: p1.headless.session.stats().p2p.generation, peersOnP2: p2.headless.session.matchHost.peersConnected };
     for (const entry of sessions) assert.notEqual(entry.headless.session.stats().phase, 'lost', `${entry.id} ended in lost`);
     console.log(`mp-p2p-decline.selftest [${name}]: p1's Garage return → p2 elected (${election.reason}) ${facts.election.afterMs} ms after the decline, live ${facts.migration.p2LiveAfterMs} ms after it, resumed at tick ${facts.migration.resumedTick} (keyframe ${keyframeTick2}, old host ${oldHostTick}); p3 live on p2; p1 back as a peer`);
