@@ -11,13 +11,14 @@ import { checkoutReader, coreViolations, localDriverViolations, mainDriverViolat
 /**
  * Render-side modules the core reached when the rule was written (2026-10-29): world/terrain.ts's water, horizon and sourced
  * texture builders, the map catalog's i18n and the flag codes. Node-safe (every core receipt imports them in Node) but not
- * simulation; the world lane owns their split. Shrink-only: a module the core stops reaching must leave this list.
+ * simulation; the world lane owns their split. Shrink-only: a module the core stops reaching must leave this list. (267: the
+ * flag codes left with the spec registry's marking record.)
  */
 const CORE_RENDER_PIN = Object.freeze([
   'src/engine/atmosphere.ts', 'src/engine/cloudscapes.ts', 'src/engine/frameScheduler.ts', 'src/engine/fullscreenProgramWarm.ts',
   'src/engine/groundBounce.ts', 'src/engine/lightModel.ts', 'src/engine/lightModelCore.ts', 'src/engine/marsAtmosphere.ts',
   'src/engine/quality.ts', 'src/engine/resourceLifetime.ts', 'src/engine/simplexFast.ts',
-  'src/ui/flagCodes.ts', 'src/ui/i18n.ts', 'src/ui/i18nCatalogEnUS.ts', 'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nChunkImport.ts',
+  'src/ui/i18n.ts', 'src/ui/i18nCatalogEnUS.ts', 'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nChunkImport.ts',
   'src/ui/i18nDictionaries.ts', 'src/ui/i18nPseudo.ts', 'src/ui/localeRouting.ts',
   'src/world/edgeWater.ts', 'src/world/horizonAutumnGround.ts', 'src/world/horizonRingFinish.ts', 'src/world/horizonSeam.ts',
   'src/world/oceanFft.ts', 'src/world/proceduralTexture.ts', 'src/world/shallowWater.ts', 'src/world/sourcedBuildingDataSource.ts',
