@@ -150,7 +150,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 2,400 HP (+1); the rebuilt leo2_improved and leo2a4_otco drop 263's VIII mantlet entries, measured on the old builds (-2).
 // 117 -> 125 (265, FAIRNESS-265): the CN Zhuque and Xuanwu, the Leopard 2A5, the Leclerc XLR, the AMX 56, the ZTZ-100 and
 // the rebuilt Merkava 2D and 4B.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 125,
+// 125 -> 128 (265, FAIRNESS-265 P1/P2 on the rebuilt 2A4 family): leo2_improved and leo2a4_otco take their mantlet entries
+// back, re-measured on the 27-degree fronts, and leo2a4_v carries the 2A4's main plates.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 128,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

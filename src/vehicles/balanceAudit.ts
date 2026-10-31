@@ -68,9 +68,9 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   bmp3_rok: 'restore a complete Tier VIII cannon, missile and protection package',
   spz_wotan: 'remove the Tier X autocannon ceiling while retaining anti-armor utility',
   bmpt_t90: 'normalize guided-weapon cadence against other Tier X IFVs (load stays eight: one Ataka per tube, owner 2026-09-18)',
-  leo2a4m: 'trim the enhanced Leopard package to the Strv 122 peer envelope',
-  leo2a4: 'exchange excess stationary protection for its intended mobile Tier IX identity',
-  leo2a4m_can: 'replace a Tier VIII penetration holdover and realize Tier IX protection',
+  leo2a4m: 'trim the enhanced Leopard package to the Strv 122 peer envelope; 265: a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII',
+  leo2a4: 'exchange excess stationary protection for its intended mobile Tier IX identity; 264: a x2.45 mantlet, a named balance trim on the square 2A4 front',
+  leo2a4m_can: 'replace a Tier VIII penetration holdover and realize Tier IX protection; 264/265: balance trims, a x1.28 mantlet and a x1.24 turret front, held between its two reviewed matchups (the M1A1 and the Challenger 1 Mk 2)',
   m48a5_patton: 'restore the M48 baseline so M60 upgrades are meaningful rather than mandatory',
   m60a1: 'establish a mobile M60 sidegrade beneath the M60A3 fire-control package',
   m60a3: 'support the heavier fire-control variant with adequate engine output; 263: 2,100 HP and a 6.8 s cycle, the M60A1\'s, at I',
@@ -134,6 +134,9 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   ztz100: '2,750 HP and a 480-damage round, the ZTZ-20 prototype\'s footing',
   merkava2d: 'a x0.5 hull front: its sloped glacis read 1,055-1,850 mm at III',
   merkava4b: 'the Mk 4M\'s M338 round and 2,850 HP on the same hull: its flat gun notch read 481 mm at IX',
+  leo2_improved: 'a x0.7 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII',
+  leo2a4_otco: 'a x0.55 mantlet on the rebuild: its sloped wedge mantlet read 1,300-1,690 mm against the published 2A5-standard 850-930 at VIII',
+  leo2a4_v: 'the Leopard 2A4\'s main plates under its own Kontakt-1, in place of 264\'s x2.2 mantlet trim',
 } as const);
 
 interface FleetBalanceOutlier {

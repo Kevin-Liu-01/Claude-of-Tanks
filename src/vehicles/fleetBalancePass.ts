@@ -556,12 +556,20 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // spaced wedges stood ahead of a narrow one (the range's aim point lands on it), and the CAN's MEXAS cheeks stand
   // near vertical where the old build's swept back 40 degrees. VIII round robin (balance range, 120 m): leo2a4 0.497 ->
   // 0.167, leo2a4_v 0.724 -> 0.121, leo2a4m_can 0.493 -> 0.157; these bring each back to its old standing.
+  // 265 (FAIRNESS-265 P3): the 2A4's and the CAN's lines stay as named balance trims on the 27-degree rebuild (in band at
+  // 0.61 and 0.55); at the published 2A4 turret read (590-690 mm KE) the square 2A4 falls to 0.18 at VIII, a tier
+  // question the owner sees first.
   mantlet(registry, 'leo2a4', 2.45);
-  mantlet(registry, 'leo2a4_v', 2.2);
-  // the CAN's pair also holds both of its reviewed matchups (balanceScenarios: v m1a1 0.75, challenger1_mk2 v it 0.708):
-  // the turret front alone flips one or the other between x1.34 and x1.35
+  // 265 (P2): the Ukrainian-service 2A4 under Kontakt-1 carries the 2A4's main plates, its ERA kit its own, in place of
+  // 264's own x2.2 mantlet (0.85 -> 0.645 at VIII on the rebuild)
+  mainArmorFrom(registry, 'leo2a4_v', 'leo2a4');
+  // 265 (P13): the CAN's pair holds both of its reviewed matchups (balanceScenarios leopard-tier9-peer, v m1a1, and
+  // tier9-rifled-peers, challenger1_mk2 v it). 264's x1.33 turret front shut out the M1A1 on the 27-degree rebuild (0.917):
+  // the M1A1 pierced the trimmed cheeks 24 times in 86. x1.23-1.24 is the only window where both pass on their seeds and
+  // on 24 (0.75 and 0.75; 0.74 and 0.76). Both sit at 9 of 12 games, one game from red, so any change to the m1a1, the
+  // challenger1_mk2 or the CAN can flip one; 266 revisits the pair with the M1A1's deferred mantlet raise.
   mantlet(registry, 'leo2a4m_can', 1.28);
-  turretFront(registry, 'leo2a4m_can', 1.33);
+  turretFront(registry, 'leo2a4m_can', 1.24);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
@@ -620,8 +628,11 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
 
   // Tier VIII (263, 262's VIII v2 on the merged fleet): the gun face decides the range, and its slope sets how strong
   // it reads. The steep faces read 1,200-1,700 mm and are trimmed; the upright ones read 350-470 mm and are raised.
-  // 265 (Main, 2026-10-30): the rebuilt leo2_improved, leo2a4m and leo2a4_otco take none of 263's trims here (x0.7,
-  // x0.55): they were measured on the old builds' steep gun faces; the balance lane re-measures VIII on the rebuilt fronts
+  // 265 (FAIRNESS-265 P1, re-measured on the rebuilt 27-degree fronts): the wedge three's sloped wedge mantlet reads
+  // 1,300-1,690 mm on the range against the published Leopard 2A5-standard 850-930 mm turret front; 263's trims bring it
+  // there (leo2a4m 0.93 -> 0.53, leo2a4_otco 0.96 -> 0.59, leo2_improved 0.90 -> 0.58)
+  for (const id of ['leo2a4m', 'leo2a4_otco']) mantlet(registry, id, 0.55);
+  mantlet(registry, 'leo2_improved', 0.7);
   mantlet(registry, 'vt4a1', 0.7);
   for (const id of ['leo2_revolution', 'leo2_revolution_proto']) mantlet(registry, id, 1.7);
   mantlet(registry, 'm1a1', 1.5);
