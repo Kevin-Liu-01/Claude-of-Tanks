@@ -813,9 +813,11 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.42620595224517,
+   "actual": 2.0897992445809237,
+   "roofFittingsTop": 2.4465942375581546,
    "published": 2.7,
-   "pct": 10.140520287215923
+   "method": "interval: body top to roof-fittings top",
+   "pct": 9.385398608957242
   },
   {
    "name": "hullLengthM",
@@ -847,9 +849,22 @@
   "len": 6.85
  },
  "proceduralBodyExtent": {
-  "h": 2.426,
-  "len": 6.85
+  "h": 2.09,
+  "len": 6.85,
+  "roofFittingsTop": 2.447
  },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
+  ],
+  "reference": []
+ },
+ "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {

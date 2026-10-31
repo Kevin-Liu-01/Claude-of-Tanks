@@ -1027,9 +1027,11 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 3.369650863228311,
+   "actual": 3.3605190180705105,
+   "roofFittingsTop": 3.378782708386111,
    "published": 3.35,
-   "pct": 0.586592932188388
+   "method": "interval: body top to roof-fittings top",
+   "pct": 0.3140005394182199
   },
   {
    "name": "hullLengthM",
@@ -1061,9 +1063,19 @@
   "len": 6.333
  },
  "proceduralBodyExtent": {
-  "h": 3.37,
-  "len": 6.328
+  "h": 3.361,
+  "len": 6.328,
+  "roofFittingsTop": 3.379
  },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "auxiliaryWeapon:americanM2HBBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "pintleMG:americanM2HBMount"
+  ],
+  "reference": []
+ },
+ "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
