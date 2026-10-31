@@ -725728,8 +725728,8 @@
       "dimensionsM": {
         "hullLength": 5.82,
         "overallLength": 8.12,
-        "width": 3.33,
-        "height": 3.25
+        "width": 3.2,
+        "height": 2.72
       },
       "gun": {
         "caliberMm": 76,
@@ -727125,7 +727125,7 @@
         ]
       },
       "geometryHash": "ac6feb82",
-      "metadataHash": "b54d9379",
+      "metadataHash": "1b1fb840",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0575
