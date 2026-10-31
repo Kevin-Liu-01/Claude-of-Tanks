@@ -425,7 +425,9 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       // the rear arc)
       P.addGunExtra(box(0.46, 0.30, 0.30), 0, 0.035, 0.28);
       for (let k = 0; k < 7; k++) P.addGunExtraDark(box(0.88, 0.026, 0.07), 0, -0.10 + k * 0.04, 0.475);
-      P.addGunExtraDark(box(0.84, 0.27, 0.02), 0, 0.02, 0.445);
+      // (the boot's backing plate laps the mantlet's face and the tube's root: gun-junction census, 2026-10-30, 6 and 4 mm
+      // seams either side of a 2 cm plate)
+      P.addGunExtraDark(box(0.84, 0.27, 0.04), 0, 0.02, 0.445);
       // Royal Ordnance 105 mm L7A3 (barrel no. 001): the fume extractor 0.4 of the way out, a plain muzzle; the muzzle
       // on the published 8.9 m
       // (the tube runs back through the boot, its thick sleeved root and collar entering the boot's top: the round-9 critic

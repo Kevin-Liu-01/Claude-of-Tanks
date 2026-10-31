@@ -44,7 +44,7 @@ const T = Object.freeze({ hw: 1.145, roofY: 0.77, bevelY: 0.66, bevelX: 1.05, fl
   recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.46, cheekNoseX: 0.56, cheekFootZ: 1.00, roofEdgeZ: 0.87 });
 const TRUNNION = Object.freeze({ y: 0.28, z: 0.85 });
 /** Each mark's muzzle, hull metres ahead of the hull's centre with the gun ahead and level. */
-const OSORIO_MUZZLE_HULL_Z = Object.freeze({ p1: 5.795, p2: 6.535, t3: 6.895, t4: 7.45 });
+const OSORIO_MUZZLE_HULL_Z = Object.freeze({ p1: 5.795, p2: 6.535, t3: 6.895, t4: 7.85 });
 
 /** Hull deck height at z: the 15-degree upper glacis from the nose to its knee, then the flat deck. */
 function deckY(z: number): number {
@@ -259,7 +259,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     if (t4) {
       // the EE-T4's slat armour over the rear plate on six brackets: a frame and its vertical bars at 10 cm, in the coat,
       // the plate seen between them (blind critic, round c1: not a black board), down to the tow hooks' line (round c2)
-      const sz = H.sternZ - 0.32, sx = 1.40, sy0 = 0.82, sy1 = 1.58;
+      // (its top under the deck's edge, so from ahead it does not stand over the deck as a rail: round c3)
+      const sz = H.sternZ - 0.32, sx = 1.40, sy0 = 0.82, sy1 = 1.48;
       for (const x of [-1.20, -0.40, 0.40, 1.20]) bar('hullOpenLattice', [x, 1.30, H.sternZ - 0.04], [x, 1.30, sz], 0.02);
       for (const x of [-0.40, 0.40]) bar('hullOpenLattice', [x, 0.95, -3.40], [x, 0.95, sz], 0.02);
       for (const y of [sy0, 1.20, sy1]) P.add('hullOpenLattice', box(2 * sx + 0.03, 0.04, 0.03), 0, y, sz);
@@ -495,50 +496,59 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
       // the wedge modules on the cheeks (the Leopard 2A5 pattern): closed solids from just ahead of the gunner's sight,
       // their tops a hair proud of the roof and falling to an apex well past the cheeks' noses beside the mantlet, their
-      // outer faces carried down over the roof bevel (no fin stands over it); the EE-T4's a third longer, deeper and ending
-      // in a blunt face (blind critic, round c2: the tier X's frontal arc heavier in silhouette); dark trims along their top
-      // edges so the plan reads
+      // outer faces carried down over the roof bevel (no fin stands over it); the EE-T4's longer, broader and carried down
+      // to the mantlet's foot, ending in a tall blunt face (blind critics, rounds c2 and c3: the tier X's frontal outline
+      // heavier, the void under the horns filled); dark trims along their top edges so the plan reads
       const facetY = (z: number): number => z <= T.roofEdgeZ ? T.roofY
         : T.roofY - (z - T.roofEdgeZ) / (T.cheekNoseZ - T.roofEdgeZ) * (T.roofY - T.cheekNoseY);
       const cheekBot = (z: number): number => z <= T.cheekFootZ ? T.floorY
         : T.floorY + (z - T.cheekFootZ) / (T.cheekNoseZ - T.cheekFootZ) * (T.cheekNoseY - 0.02 - T.floorY);
       const bevel = (z: number): number => Math.min(T.roofY - T.bevelY, (facetY(z) - cheekBot(z)) * 0.3);
-      const xi = T.recessX + 0.025, wz0 = 0.88, tipZ = T.cheekNoseZ + (t4 ? 0.87 : 0.50), tipY = t4 ? 0.30 : 0.40;
-      const yt0 = T.roofY + (t4 ? 0.05 : 0.012), edge = t4 ? 0.14 : 0.03, tipW = t4 ? 0.10 : 0.03;
+      const xi = T.recessX + 0.025, wz0 = 0.88, tipZ = T.cheekNoseZ + (t4 ? 0.80 : 0.50), tipY = t4 ? 0.12 : 0.40;
+      const yt0 = T.roofY + (t4 ? 0.05 : 0.012), edge = t4 ? 0.44 : 0.03, tipW = t4 ? 0.22 : 0.03;
+      const noseFoot = t4 ? 0.20 : T.cheekNoseY - 0.03;
       const wedgeTop = (z: number): number => yt0 + (z - wz0) / (tipZ - wz0) * (tipY + edge - yt0);
-      // (in plan a straight edge from the wall's front corner to the apex, overhanging the cheeks' swept noses)
-      const wedgeX = (z: number): number => z <= T.frontZ ? T.hw + 0.006
-        : T.hw + 0.006 + (z - T.frontZ) / (tipZ - T.frontZ) * (xi + tipW - T.hw - 0.006);
+      // (in plan a straight edge from the wall's front corner to the apex, overhanging the cheeks' swept noses; the EE-T4's
+      // flaring 12 cm past the walls ahead of the side armour, so its outline grows head-on: round c3)
+      const flare = t4 ? 0.12 : 0, flareZ = 0.95;
+      const wedgeX = (z: number): number => z <= flareZ ? T.hw + 0.006
+        : z <= T.frontZ ? T.hw + 0.006 + (z - flareZ) / (T.frontZ - flareZ) * flare
+          : T.hw + 0.006 + flare + (z - T.frontZ) / (tipZ - T.frontZ) * (xi + tipW - T.hw - 0.006 - flare);
       for (const s of [-1, 1] as const) {
         const ringAt = (z: number, yb: number, yo: number): SectionPoint[] => s > 0
           ? [[xi, yb], [wedgeX(z), yo], [wedgeX(z), wedgeTop(z)], [xi, wedgeTop(z)]]
           : [[-wedgeX(z), yo], [-xi, yb], [-xi, wedgeTop(z)], [-wedgeX(z), wedgeTop(z)]];
         const behind = (z: number) => ({ z, ring: ringAt(z, facetY(z) - 0.03, facetY(z) - bevel(z) - 0.01) });
         const wedge = sectionSolid([
-          behind(wz0), behind(T.frontZ),
-          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseZ, T.cheekNoseY - 0.03, T.cheekNoseY - 0.03) },
+          behind(wz0), ...(t4 ? [behind(flareZ)] : []), behind(T.frontZ),
+          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseZ, noseFoot, noseFoot) },
           { z: tipZ, ring: ringAt(tipZ, tipY, tipY) },
         ]);
         wedge.userData.primaryStockRole = 'osorio-cheek-module';
         P.add('turret', wedge);
         const top = (x: number, z: number): [number, number, number] => [s * x, wedgeTop(z), z];
-        bar('turretDark', top(wedgeX(wz0), wz0), top(wedgeX(T.frontZ), T.frontZ), 0.011);
+        if (t4) {
+          bar('turretDark', top(wedgeX(wz0), wz0), top(wedgeX(flareZ), flareZ), 0.011);
+          bar('turretDark', top(wedgeX(flareZ), flareZ), top(wedgeX(T.frontZ), T.frontZ), 0.011);
+        } else bar('turretDark', top(wedgeX(wz0), wz0), top(wedgeX(T.frontZ), T.frontZ), 0.011);
         bar('turretDark', top(wedgeX(T.frontZ), T.frontZ), top(wedgeX(tipZ), tipZ), 0.011);
         bar('turretDark', top(xi, wz0), top(xi, tipZ), 0.011);
       }
     }
     if (t4) {
-      // the EE-T4's hard-kill active protection: four radar panels at the turret's corners, each a housing in the coat with
-      // its dark face turned 45 degrees out, forward ones ahead of the side armour, rear ones low on the walls, on brackets;
-      // two launchers on pedestals at the roof's sides standing over the roofline (blind critic, round c2)
+      // the EE-T4's hard-kill active protection: four radar housings at the turret's corners, all at one height, each in
+      // the coat under a hood with its dark face turned 45 degrees out, the front pair ahead of the side armour and the rear
+      // pair aft of the dischargers, on brackets; two launchers on pedestals at the roof's sides standing over the roofline
+      // (blind critics, rounds c2 and c3)
       for (const s of [-1, 1] as const) {
-        for (const [cx, cy, cz, ry, bx0, bx1, bz0, bz1] of [
-          [1.345, 0.40, 1.02, s * Math.PI / 4, 1.27, 1.33, 0.89, 1.01],
-          [1.315, 0.30, -2.20, s * Math.PI * 3 / 4, T.hw - 0.01, 1.26, -2.23, -2.17],
+        for (const [cx, cz, ry, bx0, bx1, bz0, bz1] of [
+          [1.40, 1.04, s * Math.PI / 4, 1.27, 1.40, 0.89, 1.06],
+          [1.36, -2.30, s * Math.PI * 3 / 4, T.hw - 0.01, 1.30, -2.33, -2.27],
         ] as const) {
-          const nx = Math.sin(ry), nz = Math.cos(ry);
-          P.addEquipment('turret', box(0.42, 0.30, 0.08), s * cx, cy, cz, 0, ry, 0);
-          P.add('turretDark', box(0.36, 0.24, 0.012), s * cx + nx * 0.042, cy, cz + nz * 0.042, 0, ry, 0);
+          const nx = Math.sin(ry), nz = Math.cos(ry), cy = 0.45;
+          P.addEquipment('turret', box(0.42, 0.32, 0.12), s * cx, cy, cz, 0, ry, 0);
+          P.addEquipment('turret', box(0.46, 0.03, 0.18), s * cx + nx * 0.02, cy + 0.175, cz + nz * 0.02, 0, ry, 0);
+          P.add('turretDark', box(0.36, 0.26, 0.012), s * cx + nx * 0.062, cy, cz + nz * 0.062, 0, ry, 0);
           P.addEquipment('turret', box(bx1 - bx0, 0.08, bz1 - bz0), s * (bx0 + bx1) / 2, cy, (bz0 + bz1) / 2);
         }
         const lx = s * 0.96, lz = -1.35, ly = T.roofY + 0.35, ay = s * 0.6;
@@ -642,7 +652,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     if (modern) {
       // the EE-T3's 120 mm L/55 and the EE-T4's 130 mm L/51: a smooth thermal sleeve in four lengths from a heavy root
       // collar, a muzzle reference sensor on top near the muzzle, a plain muzzle with its collar; the muzzle at hull z 6.895
-      // and 7.45 (0.36 m and 0.915 m past the P.2's; the 130 mm the thicker its whole length: blind critic, round c1)
+      // and 7.85 (0.36 m and 1.315 m past the P.2's; the 130 mm the thicker its whole length and clearly the longer: blind
+      // critics, rounds c1 and c3)
       const len = OSORIO_MUZZLE_HULL_Z[mark] - (RING.z + TRUNNION.z), r0 = t4 ? 0.150 : 0.118, r1 = t4 ? 0.140 : 0.104;
       const sleeveEnd = len - 0.30;
       P.add('gun', cylZ(r0 + 0.02, 0.12, seg, r0 + 0.014), 0, 0, 0.93);

@@ -287,7 +287,7 @@ ee_t3_osorio.visual = {
 // The EE-T4 (tier X, the 2030s): a 130 mm L/51, the kit heavier and full length, a hard-kill active protection system,
 // laser-warning heads, slat armour over the rear plate, a hybrid pack's power.
 const ee_t4_osorio = brazilian('ee_t4_osorio', 'amx40', 'EE-T4 Osório', 'modern');
-Object.assign(ee_t4_osorio.dims, { hullLengthM: 7.45, overallLengthM: 11.33, widthM: 3.43, heightM: 2.98 });
+Object.assign(ee_t4_osorio.dims, { hullLengthM: 7.45, overallLengthM: 11.73, widthM: 3.43, heightM: 2.98 });
 Object.assign(ee_t4_osorio, { ...osorioMobility, hp: 2700, weightTons: 58, enginePowerHp: 1500, topSpeedKmh: 68,
   reverseSpeedKmh: 40, turretTraverseDegS: 42 });
 // (at the tier X MBT medians, 2026-10-30, the 130 mm's round a step over in penetration and damage for its slower
@@ -296,7 +296,7 @@ ee_t4_osorio.gun = {
   ...osorio_p2.gun, caliberMm: 130, reloadS: 6.6, baseAccuracy: 0.29, aimTimeS: 1.68,
   shells: osorioModernShells(osorio_p2.gun.shells, [900, 840, 780], 560, 130),
 };
-ee_t4_osorio.armor = osorioArmor(6.20, 0.140, {
+ee_t4_osorio.armor = osorioArmor(6.60, 0.140, {
   glacis: [550, 550, 650], lower: [190, 190, 220], side: [80, 80, 90], skirt: [100, 100, 240], rear: 40, roof: 45,
   cheek: [660, 660, 800], tSide: [320, 320, 400], tRear: 60, tRoof: 50, mantlet: [440, 440, 520],
 });
@@ -308,9 +308,9 @@ ee_t4_osorio.gunPitchByYawDeg = [[0, -8.9], [13, -8.2], [27, -7.2], [30, -6.6], 
 ee_t4_osorio.visual = {
   ...osorio_p2.visual,
   // a two-scale digital woodland in the Army's tones (olive, a light olive, brown and black), the 1998 arms (the light
-  // olive laid first, under the others, and every tone a step darker: a medium olive field, woodland, not sand; blind
-  // critics, rounds c1 and c2)
-  scheme: 'digital', base: '#353d29', weather: '#3d4530', patches: ['#4b4c36', '#4f3e2c', '#1d1e1a'], marking: 'number',
+  // olive laid first, under the others, and every tone a step darker: a medium olive field, woodland, not sand; the black
+  // laid before the brown and softened, so no panel goes black: blind critics, rounds c1 to c3)
+  scheme: 'digital', base: '#353d29', weather: '#3d4530', patches: ['#4b4c36', '#26271f', '#4f3e2c'], marking: 'number',
   number: '41', camoScale: 0.48, patchK: 1.6, trackWidthM: 0.57, insignia: 'br-eb-arms',
 };
 
