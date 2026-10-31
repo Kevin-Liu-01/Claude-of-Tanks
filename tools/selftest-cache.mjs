@@ -6,22 +6,25 @@ import { closeSync, mkdirSync, openSync, readSync, readdirSync, readFileSync, re
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectSelftestInputs } from './selftest-inputs.mjs';
+import { collectSelftestInputs, SELFTEST_ROOT_DIRS } from './selftest-inputs.mjs';
 import { scanPatternBase, scanPatternFromRoot, scanPatternRegExp, SELFTEST_SCANS } from './selftest-scans.mjs';
 
 export const SELFTEST_CACHE_VERSION = 2;
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'shots', 'tests', 'cloudflare', 'node_modules']);
+const ROOT_DIRS = new Set(SELFTEST_ROOT_DIRS);
 const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json', '.tsx', '.jsx', '.html']);
 const MODULE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.tsx', '.jsx']);
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
-// assert-graph-guard.mjs: every child preloads it (run-selftests.mjs selftestChildEnv) and no receipt imports it.
-const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs', 'tools/assert-graph-guard.mjs'];
+// target: a cargo build's output under crates/
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment', 'target']);
+// assert-graph-guard.mjs, selftest-observe.mjs: every child preloads them (run-selftests.mjs selftestChildEnv) and no
+// receipt imports them.
+const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs', 'tools/assert-graph-guard.mjs',
+  'tools/selftest-observe.mjs'];
 const LEAF_FILE = /(?:^|\/)(?:package-lock\.json|\.package-lock\.json|[^/]+\.lock)$|\/node_modules\//;
 // The fallback a module gets when its reads cannot be named (a listing, a child process, a computed import): every
 // file under these is an input of its key. A match through one of them alone is not a named read; selection
 // (run-selftests.mjs selftestPlan) reports it as broad.
-export const SELFTEST_BROAD_DIRS = Object.freeze(['src', 'tools', 'server', 'public', 'docs', 'scripts', 'cloudflare']);
+export const SELFTEST_BROAD_DIRS = Object.freeze(['src', 'tools', 'server', 'public', 'docs', 'scripts', 'site', 'api', 'crates', 'cloudflare']);
 const BROAD_DIRS = SELFTEST_BROAD_DIRS;
 export const sha1 = text => createHash('sha1').update(text).digest('hex');
 const parserHash = sha1(readFileSync(new URL('./selftest-inputs.mjs', import.meta.url)));
@@ -109,6 +112,11 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
       if (entry.isDirectory() || (entry.isSymbolicLink() && isDir(full))) walk(full, out, seen);
     }
   };
+  const walks = new Map();
+  const membersUnder = dir => {
+    if (!walks.has(dir)) { const members = []; walk(dir, members); walks.set(dir, members); }
+    return walks.get(dir);
+  };
   const fingerprintDir = dir => {
     if (dirFingerprints.has(dir)) return dirFingerprints.get(dir);
     const files = []; walk(dir, files); files.sort();
@@ -172,14 +180,25 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
       addBroadDirectories(found);
       return;
     }
+    const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
+    const matches = member => relative(dir, member).startsWith(start) && member.endsWith(tail);
+    // A data path with a computed part reads what its pattern matches, not its whole directory (266: the Vite i18n
+    // plugin's `src/ui/i18nCatalog.${locale}.json` made all of src/ui an input of every capture tool, so a note in
+    // src/ui/components selected the world receipts). A member that appears or goes changes the closure, so the key.
+    // A pattern that matches the whole directory, or computes its first segment under a top-level one (`src/${path}`:
+    // the broad fallback, never a named read), keeps the directory.
+    const whole = !start && (!tail || BROAD_DIRS.includes(relative(root, dir)));
+    if (!execute && !whole) {
+      for (const member of membersUnder(dir)) if (matches(member) || (isDir(member) && matches(member + sep))) found.add(member);
+      return;
+    }
     found.add(dir);
     if (!execute) return;
-    const members = []; walk(dir, members);
-    const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
     // Follow each possible module's imports as well as directory membership.
     // Hashing just the directory missed helpers imported from outside it.
-    for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
-      && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
+    for (const member of membersUnder(dir)) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member)) && matches(member)) {
+      found.add(member); modules.add(member);
+    }
   };
   const dependenciesOf = file => {
     if (edges.has(file)) return edges.get(file);
@@ -313,11 +332,52 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     return { key: hash.digest('hex'), inputs: rows.length };
   };
   const atomicJson = (path, value) => {
-    mkdirSync(cacheDir, { recursive: true });
+    mkdirSync(dirname(path), { recursive: true });
     const temporary = `${path}.${process.pid}.tmp`;
     writeFileSync(temporary, JSON.stringify(value) + '\n'); renameSync(temporary, path);
   };
   const entryPath = (file, key) => join(cacheDir, `${sha1(file)}-${key}.json`);
+  // What a run observed (tools/selftest-observe.mjs, 266): the checkout paths its processes read, listed and probed.
+  // A path the closure covers (the path, or a directory holding it) is keyed already; the rest is kept beside the PASS
+  // as it stood after the run, and a PASS is reused only while all of it still holds. This only adds conditions.
+  const covered = (closure, absolute) => {
+    for (let path = absolute; path.startsWith(root + sep); path = dirname(path)) if (closure.has(path)) return true;
+    return false;
+  };
+  const listingOf = dir => { try { return sha1(readdirSync(dir).sort().join('\n')); } catch { return 'missing'; } };
+  const kindOf = path => (isDir(path) ? 'dir' : isFile(path) ? 'file' : 'missing');
+  const OBSERVED = { reads: hashFile, lists: listingOf, probes: kindOf };
+  const observedState = (receipt, observed) => {
+    const closure = closureOf(resolve(root, receipt)), state = {};
+    for (const [kind, read] of Object.entries(OBSERVED)) {
+      const rows = {};
+      for (const path of observed[kind] ?? []) {
+        const absolute = resolve(root, path);
+        if (path.split('/').some(segment => SKIP_DIRS.has(segment)) || covered(closure, absolute)) continue;
+        if (kind === 'reads') fileHashes.delete(absolute); // as the run left it, not as this process first hashed it
+        rows[path] = read(absolute);
+      }
+      if (Object.keys(rows).length) state[kind] = rows;
+    }
+    return state;
+  };
+  const observedChange = state => {
+    for (const [kind, rows] of Object.entries(state ?? {})) {
+      for (const [path, value] of Object.entries(rows)) if (OBSERVED[kind]?.(resolve(root, path)) !== value) return path;
+    }
+    return null;
+  };
+  // Each receipt's latest PASS observation, keyed or live, for lane mode (tools/test-diff.mjs laneReadOf).
+  const observedPath = receipt => join(cacheDir, 'observed', `${sha1(receipt)}.json`);
+  const observations = new Map();
+  const observedOf = receipt => {
+    if (!observations.has(receipt)) {
+      let record = null;
+      try { record = JSON.parse(readFileSync(observedPath(receipt), 'utf8')); } catch {}
+      observations.set(receipt, record?.file === receipt ? { reads: new Set(record.reads), lists: new Set(record.lists) } : null);
+    }
+    return observations.get(receipt);
+  };
   // Why a receipt is never keyed (it runs every time), or null when its inputs key it.
   const liveReason = receipt => {
     if (freshFiles.has(receipt)) return 'fresh environment/timing check';
@@ -339,14 +399,20 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     let record;
     try { record = JSON.parse(readFileSync(entryPath(receipt, key), 'utf8')); } catch {}
     if (record?.version === SELFTEST_CACHE_VERSION && record.key === key && record.file === receipt) {
+      const changed = observedChange(record.observed);
+      if (changed) return { skip: false, key, inputs, reason: `an input its last PASS read changed (${changed})` };
       return { skip: true, key, inputs, passedAt: record.passedAt, reason: 'identical inputs passed' };
     }
     return { skip: false, key, inputs, reason: 'no PASS for these inputs' };
   };
-  const recordPass = (receipt, key, { runMs } = {}) => {
+  const recordPass = (receipt, key, { runMs, observed } = {}) => {
     if (enabled && key) atomicJson(entryPath(receipt, key), { file: receipt, key,
       passedAt: new Date().toISOString(), version: SELFTEST_CACHE_VERSION,
-      ...(Number.isFinite(runMs) ? { runMs } : {}) });
+      ...(Number.isFinite(runMs) ? { runMs } : {}), ...(observed ? { observed: observedState(receipt, observed) } : {}) });
+  };
+  const recordObserved = (receipt, { reads = [], lists = [] }) => {
+    atomicJson(observedPath(receipt), { file: receipt, at: new Date().toISOString(), reads, lists });
+    observations.delete(receipt);
   };
   const persist = () => {
     if (!edgeStoreDirty) return;
@@ -359,6 +425,6 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     atomicJson(edgeStorePath, edgeStore); edgeStoreDirty = false;
   };
-  return { enabled, cacheDir, lookup, liveReason, recordPass, inputKey, closureOf, dependenciesOf, runSetOf, runEdgesOf, scanOf,
-    scanMatch, membersOf, metadataOf: file => metadata.get(file), persist };
+  return { enabled, cacheDir, lookup, liveReason, recordPass, recordObserved, observedOf, inputKey, closureOf, dependenciesOf,
+    runSetOf, runEdgesOf, scanOf, scanMatch, membersOf, metadataOf: file => metadata.get(file), persist };
 }

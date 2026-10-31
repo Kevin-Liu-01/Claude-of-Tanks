@@ -113,7 +113,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', tyreBands: true, denseGrilles: mark === 'a5dk1' });
+    rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -297,8 +297,10 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
         P.addEquipment('turretFittingPaint', box(0.025, 0.03, sd * 2 - 0.10), s * (sw + 0.008), lid + 0.10 + k * 0.08, zc);
       }
       P.decal('turret', 'stencil', 'UN', 0.50, [0, (roof + W.binLowY) / 2 + 0.02, z1 - 0.012], Math.PI);
-      P.addEquipment('turretDark', cylY(0.11, 0.12, 0.05, 16), 0.62, lid + 0.025, zc);
-      P.addEquipment('turret', xform(sph(0.085, 14, 7), 0, 0, 0, 0, 0, 0, [1, 0.55, 1]), 0.62, lid + 0.05, zc);
+      // the GPS antenna: a grey mushroom dome on a short post (r13 Sonnet: the white dome in a dark puck read as a hole in
+      // the lid from above, and as no GPS at all)
+      P.addEquipment('turretDark', cylY(0.018, 0.022, 0.12, 8), 0.62, lid + 0.06, zc);
+      P.addEquipment('turretFittingPaint', xform(sph(0.075, 14, 7), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), 0.62, lid + 0.12, zc);
       P.addEquipment('turretDark', cylY(0.012, 0.012, 0.14, 8), -0.62, lid + 0.07, zc);
     } else {
       // (r7 critics: a mound of bundles over the roof; the Krigsmuseet and Aalborg roofs are clear): one pack and the roll
@@ -408,8 +410,11 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       const lampY = (lamp.low + lamp.high) / 2;
       P.add('gunMount', box(lamp.halfWidth * 2, lamp.high - lamp.low, lamp.frontZ - lamp.rearZ), lamp.x, lampY, (lamp.rearZ + lamp.frontZ) / 2);
       P.add('gunMountDark', cylZ(0.095, 0.02, P.q ? 24 : 16), lamp.x, lampY, lamp.frontZ + 0.008);
-      P.add('gunMountGlass', markVehicleNightLens(cylZ(0.08, 0.008, P.q ? 24 : 16), 'headlight', { searchlight: true }),
+      // the clear lens over its silvered reflector, in the mount's pale paint, the bulb cap at its centre (r13 Sonnet: the
+      // tinted glass read as the EMES windows' dark green)
+      P.add('gunMount', markVehicleNightLens(cylZ(0.08, 0.008, P.q ? 24 : 16), 'headlight', { searchlight: true }),
         lamp.x, lampY, lamp.frontZ + 0.02);
+      P.add('gunMountDark', cylZ(0.022, 0.008, 12), lamp.x, lampY, lamp.frontZ + 0.026);
       // r4 (critics: a bare lens in a ring read as a camera): the lamp's rain hood over the lens (r6: its guard bars read
       // as a grille; gone)
       P.add('gunMountDark', box(lamp.halfWidth * 2 + 0.04, 0.02, 0.09), lamp.x, lamp.high + 0.01, lamp.frontZ + 0.03, -0.12, 0, 0);
