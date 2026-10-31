@@ -148,17 +148,21 @@ frame received, on one clock.
 |---|---|---|---|---|
 | Relay through the real Worker (cot-rooms-preview, Cloudflare) | two real `padLink`s in Node on this Mac, both ends behind the home connection; Node has no WebRTC so the link takes the relay (`cf/relay-latency.mjs` in the evidence folder) | 23.7 ms / 20.9 ms | 93.6 ms / 79.0 ms | 40 / 60 |
 | Edge round trip | TCP connect to cot-rooms from this Mac | ~16 to 21 ms typical | 86 to 134 ms spikes under load | 5 |
-| WebRTC data channel, phone event to the desktop frame that carries it | `tools/pad-e2e.browser.mjs` run 6, two headless browsers, loopback, load ~250 | 54 ms | 90 ms | 40 |
+| WebRTC data channel, phone event to the desktop frame that carries it | `tools/pad-e2e.browser.mjs` run 8 (PASS), two headless browsers, loopback, load 65 to 90 | 49 ms | 73 ms | 40 |
 | — the phone's send (event to frame stamp) | same | 0 ms | 1 ms | 40 |
-| — the link (stamp to receipt; mostly the busy desktop's main-thread wait) | same | 23 ms | 44 ms | 40 |
-| — the desktop (receipt to the frame that carries it), at a 33 ms (30 fps) frame | same | 33 ms | 58 ms | 40 |
+| — the link (stamp to receipt; mostly the busy desktop's main-thread wait) | same | 23 ms | 37 ms | 40 |
+| — the desktop (receipt to the frame that carries it), at a 25 ms (40 fps) frame | same | 26 ms | 36 ms | 40 |
+| Relay over the LAN helper, phone event to the desktop frame | run 8, a phone page without WebRTC (15 Hz cap, trailing edge) | 37 ms | 45 ms | 20 |
+| Run 6, same harness at load ~250 (30 fps desktop) | WebRTC end to end | 54 ms | 90 ms | 40 |
 
 Reading it against the pass rule (`pad-e2e` holds the controller's share, send plus link, to 60 ms p95; the end-to-end
 figure needs a player's desktop):
-- In the headless harness the desktop rendered the battle at 30 fps on a loaded Mac, and that, not the controller, is
-  what puts the end-to-end p95 at 90 ms: the phone's send is under a millisecond and the link's p95 is 44 ms with the
-  main-thread wait in it. At 60 fps both desktop shares roughly halve (an inference, p95 about 45 ms); the owner's real
-  machines settle it.
+- In the headless harness the desktop renders the battle at 30 to 40 fps on a shared Mac, and that, not the controller,
+  sets the end-to-end figure (p95 73 ms at 40 fps, 90 ms at 30 fps): the phone's send is under a millisecond, and the
+  link's share is mostly the desktop's main thread finishing its frame. At 60 fps both desktop shares shrink to about
+  a frame each (an inference, p95 about 40 to 45 ms); the owner's real machines settle it.
+- The relay's p95 fell from 480 ms (run 6) to 45 ms once a change capped by its rate went on the trailing edge instead
+  of being dropped.
 - Run 5 (before the phone sent on each event) was p50 72 / p95 131 ms; sending at once removed the phone's frame wait.
 - The relay through Cloudflare already meets the cellular bar (p95 under 120 ms) with both ends on one home connection; a
   phone on cellular adds its radio's one-way time (typically 15 to 40 ms on 4G/5G). It is the fallback, not the path.
