@@ -146,6 +146,10 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // One fused body/turret/cannon/fittings owner plus native track owner.
     // No fabricated disjoint turret or gun masks; whole views still gate92.
     fixedMount: true, componentMasks: false, geometryComponentMasks: false,
+    // Out of the gate since the T-62M-V1 became a T-62 chassis carrying the complete T-72B 1987 upper assembly
+    // (4c34b3e8ba, 2026-09-30; fleetRenewalSpecs.ts transplant, its turret 0.37 m aft of the source's): this source's
+    // T-62 turret cannot certify that turret. The certificate stays with the source file (266, Main's fallout item).
+    gateEligible: false,
   } },
   t72b_1987: { source: 'glb', qualityBar: 'exemplar', glb: {
     path: '/models/community-candidates/t72b_1987_x_source.glb',

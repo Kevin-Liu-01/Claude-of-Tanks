@@ -2,6 +2,7 @@ import { withOwnerSizeTargets } from './owner-size-targets.ts';
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
+import { T80U_X_RING_RAISE_M } from '../src/vehicles/t80uXArmor.ts';
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
@@ -236,13 +237,17 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   },
 }), griffin50mm: GRIFFIN_PROPORTION_REFERENCE.frame});
 export const SOURCE_WORLD_FRAMES = Object.freeze(withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
+// Declared departures of a build's turret and gun pivots from its certificate's source datums (the certificates stay
+// immutable). The T-80U seats its casting T80U_X_RING_RAISE_M over the source's ring on a machined race (owner
+// 2026-10-21, 31235a8c85: the gun mount stood in the deck); the build is held to the datums plus that raise only.
+export const SOURCE_WORLD_BUILD_OFFSETS = Object.freeze({ t80u: Object.freeze([0, T80U_X_RING_RAISE_M, 0]) });
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
 const distance = (a,b) => Math.hypot(...a.map((v,i)=>v-b[i]));
 
 /** Fail closed: no declaration alone can switch off registration. */
-export function validateSourceWorldFrame(certificate, measuredHash, frames) {
+export function validateSourceWorldFrame(certificate, measuredHash, frames, buildOffset = [0,0,0]) {
   const failures=[];
   if (!certificate || measuredHash !== certificate.sha256) failures.push('canonical oracle hash mismatch');
   for (const owner of ['reference','procedural']) {
@@ -256,8 +261,9 @@ export function validateSourceWorldFrame(certificate, measuredHash, frames) {
       // A fused oracle has no independent moving owners. Its empty rig nodes
       // stay at the origin; do not fabricate source articulation. Native
       // inferred articulation remains independently checked below.
+      const offset=owner==='procedural' && anchor!=='hull' ? buildOffset : [0,0,0];
       const expected=anchor==='hull' || (owner==='reference'&&certificate?.fused)
-        ? [0,0,0] : certificate?.[anchor];
+        ? [0,0,0] : certificate?.[anchor]?.map((v,i)=>v+offset[i]);
       const actual=frame?.[anchor];
       // Source datums are measured to millimetres; procedural pivots may use
       // rounded authoring coordinates, but never more than 12 mm departure.
