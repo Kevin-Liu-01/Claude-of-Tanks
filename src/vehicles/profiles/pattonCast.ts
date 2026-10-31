@@ -994,12 +994,27 @@ function roofScope(P: CastPort, T: TurretFrame, x: number, z: number, ry = 0, ta
   P.add('turretGlass', box(wide - 0.04, 0.035, 0.012), x + Math.sin(ry) * 0.092, L.y(y + tall * 0.7), L.z(z + Math.cos(ry) * 0.092), 0, ry, 0);
 }
 
-/** Roof ventilator dome (world). */
+/** Roof ventilator (world): the armoured mushroom cover, its base ring, a dark louvre band, the lipped cap and its low
+ * dome, one closed lathe. 266 (blind critics on the whole-sphere fix): crisp steps in place of a drum under a smooth dome
+ * (the old dome's wound-over facets had read as this cover's steps). */
 function ventilator(P: CastPort, T: TurretFrame, x: number, z: number, r: number): void {
   const L = tl(T);
-  const y = frameTop(T, x, z);
-  P.add('turret', KIT.cylY(r * 0.85, r, 0.05, P.q ? 18 : 10), x, L.y(y + 0.015), L.z(z));
-  P.add('turret', KIT.xform(ball(r * 0.85, P.q ? 16 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), x, L.y(y + 0.04), L.z(z));
+  const y = frameTop(T, x, z), seg = P.q ? 18 : 10;
+  P.add('turret', KIT.lathe([[0.001, -0.03], [r, -0.03], [r, 0.03], [r * 0.9, 0.036], [r * 0.9, 0.048], [r * 0.95, 0.052],
+    [r * 0.95, 0.068], [r * 0.78, 0.092], [r * 0.5, 0.115], [0.001, 0.125]], seg), x, L.y(y), L.z(z));
+  P.add('turretDark', KIT.cylY(r * 0.905, r * 0.905, 0.010, seg), x, L.y(y + 0.042), L.z(z));
+  // the louvre slots round the band, each a short dark vane standing a few mm proud of it
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    P.add('turretDark', KIT.box(0.012, 0.009, r * 0.16), x + Math.sin(a) * r * 0.9, L.y(y + 0.042), L.z(z + Math.cos(a) * r * 0.9), 0, a, 0);
+  }
+}
+
+/** The M48s' ventilator lid on its drum (top `yTop`, world): a lip 2 cm proud of the drum, a stepped cover and its low
+ * dome to the drum's 0.117 m dome height, one closed lathe (266, as `ventilator`). */
+function ventilatorLid(P: CastPort, L: ReturnType<typeof tl>, x: number, yTop: number, z: number): void {
+  P.add('turret', KIT.lathe([[0.001, -0.01], [0.28, -0.01], [0.285, 0], [0.285, 0.022], [0.25, 0.032], [0.25, 0.055],
+    [0.19, 0.085], [0.10, 0.108], [0.001, 0.116]], P.q ? 22 : 12), x, L.y(yTop), L.z(z));
 }
 
 /** Browning M2 HB on a working mount (world base). */
@@ -2040,7 +2055,7 @@ function m48A5Bustle(P: CastPort, T: TurretFrame, seat: CastSeat): void {
   ]);
   // the ventilator's drum and dome to the model's 2.57 m
   P.add('turret', cylY(0.265, 0.27, 0.24, P.q ? 22 : 12), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.10), L.z(-1.0));
-  P.add('turret', xform(ball(0.265, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.44, 1]), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.22), L.z(-1.0));
+  ventilatorLid(P, L, 0.68, seat.topAt(0.68, -1.0) + 0.22, -1.0);
   P.add('turretDetail', xform(box(0.165, 0.40, 0.26), 0, 0, 0, 0, 0.4, 0.47), 1.13, L.y(2.17), L.z(-0.68));
 }
 
@@ -2431,7 +2446,7 @@ function m48MarkBustle(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Varian
   }
   if (V.mark === 'm48super') return;
   P.add('turret', cylY(0.265, 0.27, 0.24, P.q ? 22 : 12), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.10), L.z(-1.0));
-  P.add('turret', xform(ball(0.265, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.44, 1]), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.22), L.z(-1.0));
+  ventilatorLid(P, L, 0.68, seat.topAt(0.68, -1.0) + 0.22, -1.0);
 }
 
 /** The flank fittings of the A5's other marks: the handrails (not under the Magach's boxes or the Super's armour), the

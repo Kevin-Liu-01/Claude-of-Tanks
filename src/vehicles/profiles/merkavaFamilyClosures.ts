@@ -26,29 +26,34 @@ const MK2D_LEFT_CHEEK: Closure = { owner: 'turret', stations: [
   [1.80, 0.438, 0.638, 0.167, 0.199], [1.84, 0.318, 0.638, 0.167, 0.219], [1.92, 0.218, 0.598, 0.167, 0.239],
   [1.96, 0.218, 0.598, 0.167, 0.259], [2.00, 0.218, 0.578, 0.167, 0.259],
 ] };
+// the Mk 3s' right cheek corner, inside its side plate: its front ramps up to the cheek's underside, a face turned down
+// and forward like the overhang ahead of it, not a block standing in it
 const MK3_RIGHT_CHEEK_CORNER: Closure = { owner: 'turret', stations: [
   [1.52, -0.902, -0.822, 0.12, 0.152], [1.56, -0.922, -0.742, 0.12, 0.152], [1.60, -0.922, -0.682, 0.12, 0.172],
-  [1.64, -0.902, -0.462, 0.12, 0.192], [1.68, -0.862, -0.460, 0.12, 0.192],
+  [1.64, -0.902, -0.462, 0.12, 0.192], [1.66, -0.882, -0.461, 0.12, 0.196], [1.70, -0.862, -0.460, 0.18, 0.198],
 ] };
 
 const CLOSURES: Readonly<Partial<Record<MerkavaMarkId, readonly Closure[]>>> = Object.freeze({
   merkava2b: [MK2_LEFT_CHEEK_2B],
   merkava2d: [
     MK2D_LEFT_CHEEK,
-    // the glacis lip over the add-on plates' top edge, and the stern lip's two seams
-    { owner: 'hull', stations: [[3.36, -0.654, 0.646, 0.829, 0.881], [3.40, -0.614, 0.626, 0.849, 0.881]] },
+    // the glacis lip's seam: a fairing from the lip's front edge down to the add-on plates' top edge (facing up and forward
+    // as the glacis does), and the stern lip's two seams
+    { owner: 'hull', stations: [[3.34, -0.644, 0.636, 0.829, 0.905], [3.40, -0.644, 0.636, 0.840, 0.897],
+      [3.455, -0.644, 0.636, 0.850, 0.862]] },
     { owner: 'hull', stations: [[-3.08, 0.546, 0.746, 0.429, 0.541], [-3.04, 0.546, 0.746, 0.429, 0.501], [-3.00, 0.546, 0.706, 0.429, 0.461]] },
     { owner: 'hull', stations: [[-3.08, -0.694, -0.554, 0.429, 0.521], [-3.04, -0.694, -0.554, 0.429, 0.501], [-3.00, -0.694, -0.554, 0.429, 0.461]] },
   ],
   merkava3c: [
     MK3_RIGHT_CHEEK_CORNER,
-    // under the left flank's fall to the ring, inside the bustle brackets
+    // under the left flank's fall to the ring, inside the bustle brackets (2 mm inboard of their inner faces), each end
+    // tapering to a sliver so no cap stands behind the canisters
     { owner: 'turret', stations: [
-      [-1.56, 0.918, 1.078, 0.26, 0.292], [-1.52, 0.838, 1.078, 0.24, 0.292], [-1.48, 0.798, 1.078, 0.22, 0.272],
-      [-1.44, 0.758, 1.078, 0.20, 0.272], [-1.40, 0.718, 1.078, 0.18, 0.252], [-1.36, 0.718, 1.078, 0.16, 0.252],
-      [-1.32, 0.658, 1.078, 0.14, 0.232], [-1.28, 0.638, 1.078, 0.12, 0.212], [-1.24, 0.638, 1.078, 0.12, 0.212],
-      [-1.20, 0.718, 1.078, 0.12, 0.192], [-1.16, 0.798, 1.078, 0.12, 0.172], [-1.12, 0.878, 1.068, 0.12, 0.172],
-      [-1.04, 0.938, 1.058, 0.12, 0.188],
+      [-1.60, 1.050, 1.058, 0.27, 0.30], [-1.56, 0.918, 1.058, 0.26, 0.292], [-1.52, 0.838, 1.058, 0.24, 0.292],
+      [-1.48, 0.798, 1.058, 0.22, 0.272], [-1.44, 0.758, 1.058, 0.20, 0.272], [-1.40, 0.718, 1.058, 0.18, 0.252],
+      [-1.36, 0.718, 1.058, 0.16, 0.252], [-1.32, 0.658, 1.058, 0.14, 0.232], [-1.28, 0.638, 1.058, 0.12, 0.212],
+      [-1.24, 0.638, 1.058, 0.12, 0.212], [-1.20, 0.718, 1.058, 0.12, 0.192], [-1.16, 0.798, 1.058, 0.12, 0.172],
+      [-1.12, 0.878, 1.058, 0.12, 0.172], [-1.04, 0.938, 1.058, 0.12, 0.188], [-1.00, 1.050, 1.058, 0.12, 0.18],
     ] },
   ],
   merkava3_baz: [MK3_RIGHT_CHEEK_CORNER],
