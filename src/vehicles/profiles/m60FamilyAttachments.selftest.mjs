@@ -38,7 +38,7 @@ for (const id of ['m60a1', 'm60a3']) {
     assert(worldGeometryCenter(lens).distanceTo(before) > 0.12, 'M60A1: the searchlight follows the gun\'s elevation');
     gun.rotation.x = 0;
   } else {
-    assert.equal(lens, undefined, 'M60A3: no searchlight over the gun (the owner\'s model), only its mounting studs');
+    assert.equal(Boolean(lens), false, 'M60A3: no searchlight over the gun (the owner\'s model), only its mounting studs');
   }
 
   const bands = [];
