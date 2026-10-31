@@ -216,5 +216,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // connectors).
 // Re-pinned 2026-10-31 at integ/266 (wip/denmark-c-265 e7b231c694 merged; every other tree check passes): + the M41s, the T49 and
 // the CV9035 DK; the US M41A3 on lane 6 beside the M46, the Bundeswehr M41 a Germany special at I.
-assert.equal(digest, '43bf9ef5cb6890a1', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
+// Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
+assert.equal(digest, 'c285a4ac9b24e43d', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

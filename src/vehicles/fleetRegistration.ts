@@ -75,6 +75,7 @@ import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
+import './ukraineCv90Specs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';

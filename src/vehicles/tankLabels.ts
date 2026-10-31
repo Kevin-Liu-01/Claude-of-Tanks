@@ -78,6 +78,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
   borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
   cv9040c: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
+  ua_cv9040c: {displayName:'CV9040C (Ukraine)',shortName:'CV9040C UA',searchAliases:['Ukrainian CV90','CV90 Ukraine','CV9040 UA']},
   type89: {displayName:'Type 89',shortName:'Type 89',searchAliases:['Japanese Type 89 IFV X']},
   cv90_mk4: {
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',

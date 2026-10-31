@@ -54,5 +54,54 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "maximumSurfaceErrorM": 0.0016069
       }
     ]
+  },
+  "ua_cv9040c": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.2,
+        "pos": [
+          -1.4537891,
+          1.4881984,
+          2.0918017
+        ],
+        "quaternion": [
+          -0.2007928,
+          -0.6133501,
+          -0.2376548,
+          0.7259505
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "ua_cv9040c",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.095776
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.2,
+        "pos": [
+          -1.0598823,
+          0.45515,
+          0.5694216
+        ],
+        "quaternion": [
+          0.087393,
+          -0.7121984,
+          0.0848325,
+          0.6913316
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "ua_cv9040c",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
   }
 });

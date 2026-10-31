@@ -173,7 +173,7 @@ const GROUP_LOADERS = Object.freeze({
   lrmvLynx: () => import('./profiles/lrmvLynx.ts').then(mod => registerProfiles({ lrmv_lynx: { build: mod.buildLrmvLynx } })),
   borsuk: () => import('./profiles/borsuk.ts').then(mod => registerProfiles({ borsuk: { build: mod.buildBorsuk } })),
   pumaS1SourceX: () => import('./profiles/pumaS1SourceX.ts').then(mod => registerProfiles({ puma_s1: { build: mod.buildPumaS1X } })),
-  cv9040CSourceX: () => import('./profiles/cv9040CSourceX.ts').then(mod => registerProfiles({ cv9040c: { build: mod.buildCv9040CX } })),
+  cv9040CSourceX: () => import('./profiles/cv9040CSourceX.ts').then(mod => registerProfiles({ cv9040c: { build: mod.buildCv9040CX }, ua_cv9040c: { build: (P: Parameters<typeof mod.buildCv9040CX>[0]) => mod.buildCv9040CX(P, { ukrainian: true }) } })),
   type89SourceX: () => import('./profiles/type89SourceX.ts').then(mod => registerProfiles({ type89: { build: mod.buildType89X } })),
   cv90MkivSourceX: () => import('./profiles/cv90MkivSourceX.ts').then(mod => registerProfiles({ cv90_mk4: { build: mod.buildCv90MkivX } })),
   cv90105TmlSourceX: () => import('./profiles/cv90105TmlSourceX.ts').then(mod => registerProfiles({ cv90105_tml: { build: mod.buildCv90105TmlX } })),

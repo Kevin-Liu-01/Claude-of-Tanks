@@ -4732,6 +4732,21 @@
     5.9
    ]
   },
+  "ua_cv9040c": {
+   "sealed": true,
+   "openPx": 20,
+   "openViews": 0,
+   "insideOutPx": 338,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 2411,
+   "tris": 53148,
+   "frame": [
+    0,
+    2.1,
+    0.05,
+    4.6
+   ]
+  },
   "t49": {
    "sealed": true,
    "openPx": 0,

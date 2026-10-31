@@ -238,6 +238,8 @@ const laterChannelCounts = {
   x1_pioneiro: 3, x1a2_carcara: 3, tamoyo1: 3, tamoyo3: 3, osorio_p1: 3, osorio_p2: 3, ee_t3_osorio: 3, ee_t4_osorio: 3,
   // 266: the M41 family's three rounds each, the CV9035 DK's three, and the T49's one (the M551's Shillelagh)
   m41a3: 3, m41_bw: 3, m41_jgsdf: 3, m41dk1: 3, cv9035dk: 3, t49: 1,
+  // 266: the Ukrainian CV9040C (the Swedish CV9040C's three rounds)
+  ua_cv9040c: 3,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -250,7 +252,7 @@ const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_
   .reduce((n, id) => n + laterChannelCounts[id], 0);
 const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1',
-  'cv9035dk', 't49'].reduce((n, id) => n + laterChannelCounts[id], 0);
+  'cv9035dk', 't49', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const brazil266Channels = ['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
   'ee_t4_osorio'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);

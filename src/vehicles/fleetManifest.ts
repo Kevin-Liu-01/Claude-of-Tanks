@@ -12,7 +12,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   lrmvLynx: Object.freeze(['lrmv_lynx']),
   borsuk: Object.freeze(['borsuk']),
   pumaS1SourceX: Object.freeze(['puma_s1']),
-  cv9040CSourceX: Object.freeze(['cv9040c']),
+  cv9040CSourceX: Object.freeze(['cv9040c', 'ua_cv9040c']),
   type89SourceX: Object.freeze(['type89']),
   griffinViper: Object.freeze(['griffin_viper']),
   tos1aTagil: Object.freeze(['tos1a_tagil']),

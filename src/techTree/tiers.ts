@@ -41,7 +41,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   t90am: 9, t90m: 10, t90m_proryv: 10, t90ms_2011: 9, t90ms_tagil: 9, t90sm: 9, t90sm_2013: 9, tamoyo1: 2, tamoyo3: 3, tos1a_tagil: 5,
   type10: 10, type100: 10, type10_dozer: 10, type10_tk_x: 9, type10b: 9, type59: 1, t55a: 1, type74: 1, type89: 6, type90: 8,
   type90_kyumaru: 8, type90a: 8, type96_72_long: 5, type96_72m_lei: 6, type96_80_feng: 6, type96b: 6,
-  ua_challenger2: 9, ua_m1a1: 9, ua_m1a2_abrams: 9, ua_m2a3_bradley: 4, ua_t80bv: 5, udes03: 1, upior: 10,
+  ua_challenger2: 9, ua_m1a1: 9, ua_m1a2_abrams: 9, ua_m2a3_bradley: 4, ua_cv9040c: 4, ua_t80bv: 5, udes03: 1, upior: 10,
   vickers_mk1: 2, vt4a1: 8, warrior_tes_h: 5, xk2_black_panther: 6, ztz100: 10, ztz100_prototype: 10, ztz20: 10, ztz20_prototype: 10, ztz85_iii: 1,
   ztz99_longwei: 6, ztz99a: 9, ztz99a2: 10, ztz99a2_qinglong: 9, vt4a1_baihu: 7, t72b3_zhuque: 7, t72b3m_xuanwu: 7,
   x1_pioneiro: 1, x1a2_carcara: 1,

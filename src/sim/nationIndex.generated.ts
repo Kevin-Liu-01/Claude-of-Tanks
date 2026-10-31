@@ -164,6 +164,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["bm_oplot_t","ukraine","modern",10],
   ["ua_m1a1","ukraine","modern",9],
   ["leo2a6_ua","ukraine","modern",9],
+  ["ua_cv9040c","ukraine","modern",4],
   ["t80u_husarz","poland","modern",7],
   ["t72b3m_wilk","poland","modern",7],
   ["t72b3_zubr","poland","modern",6],

@@ -220,7 +220,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'ajax', 'amx10p', 'amx10p_25', 'bmp2', 'bmp3', 'bmp3_rok', 'borsuk', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'hayate_ifv', 'k21', 'kf41_lynx',
     'kurganets25', 'lrmv_lynx', 'm2a2_bradley', 'm3a3_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'puma_s1',
-    'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
+    'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
   ]),
   apc: Object.freeze([
     'ares_apc',
@@ -290,7 +290,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
     'kf41_lynx', 'kurganets25', 'm2a2_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'object695', 'puma_s1',
-    'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_m2a3_bradley', 'upior',
+    'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior',
     'warrior_tes_h',
   ]),
 });
@@ -318,8 +318,8 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004',
     't90a_2006', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm',
     't90sm_2013', 'tos1a_tagil', 'type10', 'type100', 'type10_dozer', 'type59', 'type74', 'type89', 'type90',
-    'type96b', 'ua_challenger2', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1',
-    'warrior_tes_h', 'x1_pioneiro', 'x1a2_carcara', 'ztz99a', 'ztz99a2',
+    'type96b', 'ua_challenger2', 'ua_cv9040c', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv',
+    'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'x1_pioneiro', 'x1a2_carcara', 'ztz99a', 'ztz99a2',
   ]),
   // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form. (owner
   // 2026-10-25: the procedural Type 90 pair are the TK-X first-series prototypes STC-1 and STC-2, tankLabels.ts; the K2B

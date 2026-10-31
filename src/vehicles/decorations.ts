@@ -3450,6 +3450,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && row.slot[0] === 'fleetCargo' && row.slot[1].routes
     ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
     : row));
+  // 265 (the Ukrainian CV9040C, ua4; the ua3 blind critics, both: its turret net "a hollow hoop", daylight under it): the
+  // cans, crate, whip and M2 seated on its turret roof drew the net up into an arch over them, as the Ariete's cradle did.
+  // Its net lies on the bundled heap on the rear roof (profiles/cv9040CSourceX.ts); nothing else is stowed on that roof,
+  // nor on the troop roof, whose stowage is the tarpaulin load (the cargo turned away from the turret stood on it).
+  if (spec.id === 'ua_cv9040c') {
+    const kitRoof = (slot: string): boolean => slot === 'turretRoof' || slot === 'rearDeck';
+    return manifest
+      .filter((row) => !kitRoof(row.slot[0]))
+      .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !kitRoof(slot)) }] }
+        : row));
+  }
   return manifest;
 }
 
