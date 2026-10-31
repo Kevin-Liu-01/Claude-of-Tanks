@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { LEOPARD_A6_CHEEKS, leopardA6CheekFloor, leopardA6CheekOuter, leopardA6CheekRoof, leopardA6CheekStations,
+  type LeopardA6Cheek } from '../leopardXWedges.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addLeopardA6XFittings } from './leopardA6XFittings.ts';
@@ -283,34 +285,16 @@ function turretCheeks(P: TankBuilderPort): void {
   // Broad surfaces use independently measured plane normals. The leading
   // cheeks fall outward as well as forward; a level rectangular wedge would
   // erase that medium-scale form. Neither half crosses the real gun throat.
-  cheek(P, 1, .259, 1.393745, 1.176925);
-  cheek(P, -1, .196995, 1.491045, 1.274225);
+  // (Their numbers live in leopardXWedges.ts, which fits their wedge plates too.)
+  for (const c of LEOPARD_A6_CHEEKS) cheek(P, c);
 }
 
-function cheekRoof(side: number, x: number, z: number): number {
-  if (side > 0) return Math.min(
-    (2.41496517 - .02096949 * x - .02873983 * z) / .99936695,
-    (3.11507045 - .26781475 * x - .40417141 * z) / .87459747,
-    (2.23276603 - .86978401 * x - .03448941 * z) / .49222582);
-  return Math.min(
-    (2.43833975 + .02484870 * x - .03993549 * z) / .99889324,
-    (3.12201470 + .27490637 * x - .41942070 * z) / .86516632,
-    (2.31739595 + .86978401 * x - .03448941 * z) / .49222582);
-}
-
-function cheek(P: TankBuilderPort, side: number, inner: number, broad: number, shoulder: number): void {
-  const turn = side > 0 ? 1.904985 : 1.833575;
-  const stations = [1.095, 1.5634, turn, 2.24, 2.413, 2.616, 3.1427];
-  const sections = stations.map(z => {
-    let outer = broad;
-    if (z > 1.5634 && z <= turn) outer = THREE.MathUtils.lerp(broad, broad - .018,
-      (z - 1.5634) / (turn - 1.5634));
-    if (z > turn && z <= 2.413) outer = THREE.MathUtils.lerp(broad - .018, shoulder,
-      (z - turn) / (2.413 - turn));
-    if (z > 2.413) outer = THREE.MathUtils.lerp(shoulder, inner + .002,
-      (z - 2.413) / (3.1452 - 2.413));
+function cheek(P: TankBuilderPort, c: LeopardA6Cheek): void {
+  const { side, inner, shoulder } = c;
+  const sections = leopardA6CheekStations(c).map(z => {
+    const outer = leopardA6CheekOuter(c, z);
     const shoulderX = Math.min(shoulder, outer - .0003);
-    const floor = 1.69774 + Math.max(0, z - 1.905) * .229;
+    const floor = leopardA6CheekFloor(z);
     const xs = [inner, Math.min(.4777, outer - .0007), Math.min(.9707, outer - .0005), shoulderX, outer];
     // Corresponding narrow strips keep the port EMES floor recessed while
     // both adjacent armor reveals and the forward lip remain closed solids.
@@ -320,7 +304,7 @@ function cheek(P: TankBuilderPort, side: number, inner: number, broad: number, s
     const rows: SolidSection[] = sections.map(({ z, floor, xs }) => {
       const a = xs[strip], b = Math.max(a + .0001, xs[strip + 1]);
       const top = (value: number) => {
-        let y = cheekRoof(side, side * value, z);
+        let y = leopardA6CheekRoof(side, side * value, z);
         if (side < 0 && strip === 1 && z < 2.616) {
           y = Math.min(y, (2.60381611 - .10226206 * value - .15453040 * z) / .98268145);
         }

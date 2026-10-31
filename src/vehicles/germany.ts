@@ -3,6 +3,7 @@
 // first-party procedural work in profiles/leopard.ts and profiles/germany.ts.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
+import { leopardA6WedgePlates } from './leopardXWedges.ts';
 import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './profiles/leopardImprovedHull.ts';
 import { LEOPARD_A6_UA_SHELL_DIMS } from './leopardA6UaLayout.ts';
 import { applySourceXWesternAuxArmor } from './sourceXWesternAuxArmor.ts';
@@ -182,9 +183,18 @@ const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
 // 264b (Main's armour-truth audit, 2026-10-29): the UA's spaced and track plates sit on the 2A6 shell it is drawn on, as
 // leo2a6's do. The 2A6M donor's one-piece spaced wedge pair (turret_wedge_R/L) stood at the 2A6M turret's height, up to
 // 0.7 m over the 2A6 roof, where flank and top fire met it, and its template skirts covered y 0.45-1.15 m against the
-// 2A6's leaves and heavy panels at 0.88-1.33 m. The 2A6's main cells own its wedges, so no wedge pair returns; the skirts
+// 2A6's leaves and heavy panels at 0.88-1.33 m. That donor pair does not return (266: a pair fitted on the drawn cheeks
+// does, below); the skirts
 // take the 2A6's faces with the UA's own ratings (sourceXWesternAuxArmor.ts). Its Kontakt-1 stays seated on both.
 applySourceXWesternAuxArmor(leopard2A6UA, LEOPARD_2A6_UA_ID);
+// 266 (Main 2026-10-31): the wedge pair returns fitted on the 2A6 cheeks the UA is drawn with (leopardXWedges.ts), not the
+// donor's free-standing one: without it the wedges' hits fell to whichever main plate was nearest. Its donor's ratings.
+{
+  const ratings = registries.tankSpecs.leo2a4_otco?.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_L');
+  if (!ratings) throw new Error(`${LEOPARD_2A6_UA_ID}: no turret_wedge ratings on the leo2a4_otco donor to fit its wedge plates with`);
+  leopard2A6UA.armor.turretPlates = leopard2A6UA.armor.turretPlates.filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name))
+    .concat(leopardA6WedgePlates(leopard2A6UA.armor.turretPivot, ratings));
+}
 {
   // the track faces: the Leopard 2 template's, fitted from the 2A4's dimensions to the 2A6's, as leo2a6 takes them
   // (sourceXSecondWaveSpecs.ts fitArmorToDims)

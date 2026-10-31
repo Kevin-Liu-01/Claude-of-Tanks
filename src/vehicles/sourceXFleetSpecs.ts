@@ -6,6 +6,7 @@ import { k2SourceMetadata } from './xk2Specs.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { donorSpec } from './donorSpecs.ts';
+import { LEOPARD_X_WEDGES, leopardXWedgePlates, type LeopardXWedgeId } from './leopardXWedges.ts';
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
 import {
   LEOPARD_IMPROVED_AUTHORED_WIDTH_M,
@@ -93,6 +94,29 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
 }
 const specs: Record<string, FleetTankSpec> = {};
 
+/**
+ * The leopardX wedges' spaced turret_wedge_L/R plates fitted on the drawn wedge (leopardXWedges.ts, the stations the
+ * profile lofts), replacing the donors' pairs, which sat behind the cheeks (release 266, Main 2026-10-31). Each keeps its
+ * own pair's ratings; the 2A5M, whose donor (the 2A4M CAN) carries none, takes the 2A6M's.
+ * Measured on a 600 mm APFSDS grid at 0/±15/±30 deg (.qa-dev frontshots): every angle at or under the pre-fit build
+ * except the 2A5M at ±30 (about 16 and 14 % against 14.6 and 4.5 %). Its old -30 deg figure came from the proud wedge the
+ * owner had removed (its cell faces resolved to the cheeks); what still gets in is the front-top bevel, whose faces
+ * resolve by nearest plate to the 59 mm turret_roof (a 69.7 deg graze where the proud wedge gave 76.8): a fleet-wide
+ * anatomy item, not a rating to tune here.
+ */
+function fitSourceWedges(spec: FleetTankSpec, id: string, wedgeDonor: FleetTankSpec | undefined): void {
+  if (!(id in LEOPARD_X_WEDGES)) return;
+  const own = spec.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_L');
+  const ratings = own ?? wedgeDonor?.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_L');
+  if (!ratings) throw new Error(`${id}: no turret_wedge ratings to fit its wedge plates with`);
+  const ys = spec.armor.turretPlates.filter((plate) => plate.name === 'turret_roof').flatMap((plate) => plate.verts.map((v) => v[1]));
+  const xs = spec.armor.turretPlates.filter((plate) => /^turret_cheek_[LR]$/.test(plate.name))
+    .flatMap((plate) => plate.verts.map((v) => Math.abs(v[0])));
+  const plates = leopardXWedgePlates(id as LeopardXWedgeId, spec.armor.turretPivot, ratings,
+    { roofY: Math.max(...ys), cheekHalfWidth: Math.max(...xs) });
+  spec.armor.turretPlates = spec.armor.turretPlates.filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name)).concat(plates);
+}
+
 function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): void {
   let baseDimensions = donorDimensions;
   if (spec.id === 'leo2a7v') {
@@ -119,6 +143,7 @@ for (const [id, donorId, name] of entries) {
   Object.assign(spec.dims, dimensions[id]);
   fitSourceArmor(spec, baseDimensions);
   applySourceFrame(spec, id);
+  fitSourceWedges(spec, id, specs.leo2a6m);
   specs[id] = spec;
 }
 registerFleetSpecs(registries, SOURCE_X_IDS, specs);
@@ -139,5 +164,6 @@ export function synchronizeSourceXCombatMetadata(): void {
     target.armor = structuredClone(donor.armor);
     fitSourceArmor(target, donor.dims);
     applySourceFrame(target, id);
+    fitSourceWedges(target, id, registries.tankSpecs.leo2a6m);
   }
 }

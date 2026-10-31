@@ -4,6 +4,7 @@ import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 // This module is boot-light: combat donors supply rules, never visual geometry.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { leopardA6WedgePlates } from './leopardXWedges.ts';
 import { donorSpec } from './donorSpecs.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
@@ -209,6 +210,19 @@ function armorFitDimensions(id: string, dims: FleetDimensions): FleetDimensions 
 const PRODUCTION_NUMBERS: Readonly<Record<string, string>> = Object.freeze({ type90: '73' });
 
 const specs: Record<string, FleetTankSpec> = {};
+
+/**
+ * The source 2A6's wedge plates (release 266, Main 2026-10-31): spaced turret_wedge_L/R fitted on its swept cheeks
+ * (leopardXWedges.ts, the numbers the profile draws them from) with the family's pair's ratings (the 2A4 OTCO donor's,
+ * which the 2A6M carries); its 2A4 donor has none, so its wedges' hits fell to whichever main plate was nearest.
+ */
+function fitSourceA6Wedges(spec: FleetTankSpec, id: string): void {
+  if (id !== 'leo2a6') return;
+  const ratings = registries.tankSpecs.leo2a4_otco?.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_L');
+  if (!ratings) throw new Error('leo2a6: no turret_wedge ratings on the leo2a4_otco donor to fit its wedge plates with');
+  spec.armor.turretPlates = spec.armor.turretPlates.filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name))
+    .concat(leopardA6WedgePlates(spec.armor.turretPivot, ratings));
+}
 for (const [id, donorId, name] of entries) {
   // Registered donors first, then the unregistered templates (t72b_1987, t72b3,
   // jpz_e100 retired 2026-09-23).
@@ -226,6 +240,7 @@ for (const [id, donorId, name] of entries) {
   Object.assign(spec.dims, dimensions[id]);
   fitArmorToDims(spec.armor, previous, armorFitDimensions(id, spec.dims));
   applyAuthoredFrame(spec, id);
+  fitSourceA6Wedges(spec, id);
   specs[id] = spec;
 }
 registerFleetSpecs(registries, SECOND_WAVE_X_IDS, specs);
@@ -246,6 +261,7 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     // 262: the Mk 3 is the late Challenger 1, whose hull front the public estimates raise over the Mk 2's
     if (id === 'challenger1_mk3') rateChallenger1Armor(target.armor, 'late');
     applyAuthoredFrame(target, id);
+    fitSourceA6Wedges(target, id);
     restoreInstalledVehicleFrame(target);
   }
 }
