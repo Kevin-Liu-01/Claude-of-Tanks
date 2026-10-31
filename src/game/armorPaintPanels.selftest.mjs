@@ -218,6 +218,28 @@ function hullScene() {
   const roofPlain = roofScene();
   bakePaintPanels(roofPlain.root, tmpl, { hull: roofPlain.hull, turret: null, gun: null }, armor);
   assert.ok(faceValues(roofPlain.meshes.stowage.geometry, [0, -1, 0]).every((v) => v > 0), 'the control: no authority, the box\'s underside is painted');
+
+  // (267) a bevel at the cells (the box's front-top edge, sloped 27 degrees up) scores the roof, but a level round meets the
+  // front across it (sim/armorZones.ts zoneAlongShot): a whole panel naming the roof, whose plate along the eye the paint
+  // tests; a flat roof plate there faces no level eye and stays baked
+  const bevel = new THREE.BufferGeometry();
+  const corners = [[-0.5, 1.8, 1], [0.5, 1.8, 1], [0.5, 2, 0.6], [-0.5, 2, 0.6]];
+  bevel.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 2, 0, 2, 3].flatMap((i) => corners[i]), 3));
+  bevel.computeVertexNormals();
+  const bevelRoot = new THREE.Group(), bevelHull = new THREE.Group();
+  bevelRoot.add(bevelHull);
+  const bevelMesh = new THREE.Mesh(bevel, paint), roofTile = new THREE.Mesh(box(0.4, 0.02, 0.4, -0.5, 1.99, -0.5), paint);
+  bevelHull.add(bevelMesh, roofTile);
+  bevelRoot.updateMatrixWorld(true);
+  const calls = [];
+  const zoneSet = (members, whole = false) => calls.push([...members, whole]) - 1;
+  const bevelStats = bakePaintPanels(bevelRoot, { ...tmpl, zoneSet }, { hull: bevelHull, turret: null, gun: null }, armor, { pose });
+  const ROOF_ZONE = zones.findIndex((zone) => zone.plate === roofPlate);
+  const whole = calls.findIndex(([zone, flag]) => zone === ROOF_ZONE && flag === true);
+  assert.ok(whole >= 0, `the bevel is a whole panel naming the roof (${JSON.stringify(calls)})`);
+  assert.deepEqual([...new Set(bevel.getAttribute('apZone').array)], [-2 - whole], 'its every triangle names that whole panel');
+  assert.ok(bevelStats.alongShot >= 2, `counted (${bevelStats.alongShot})`);
+  assert.deepEqual(faceValues(roofTile.geometry, [0, 1, 0]), [ROOF_ZONE + 1], 'the control: a flat roof tile stays baked, the roof');
 }
 
 // ---- (267) gear is bare whole wherever it is drawn: equipment, a machine gun, the running gear (instanced too), a suit

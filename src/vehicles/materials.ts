@@ -4097,6 +4097,8 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  *   (267) A baked panel only reads its colour: none of the per-point terms below runs for it. A panel the bake found split
  *   between up to four zones (below ARMOR_PAINT_PANEL_BARE: its set, after the footprints in the table) keeps the
  *   per-point score and its borders, scoring those zones alone instead of every zone of its frame, in their frame.
+ *   A whole panel (a set naming one zone, [zone, -2]) takes that zone unscored, as a panel, and only the plate along the eye
+ *   below is tested on it.
  * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
  * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
  *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
@@ -4141,6 +4143,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
     bool apSetted = apBaked < ${ARMOR_PAINT_PANEL_BARE};
     vec4 apSet = apSetted ? texelFetch( uApZones, ivec2( apFoot0 + 2 * apFootN - apBaked - 2, 0 ), 0 ) : vec4( -1.0 );
+    bool apWhole = apSetted && apSet.y < -1.5;
     vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
     bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
     bool apOverFoot = false;
@@ -4163,13 +4166,13 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     vec3 apLean = apN + 3.0 * apBox;
     apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
     vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
-    bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
+    bool apGear = !apWhole && uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
       || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
       || !apTurret && uApHullH.y > 0.0
         && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
     int apFrom = apTurret ? apHullN : 0;
     int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
-    int apCount = apGear ? 0 : apSetted ? 4 : apTo - apFrom;
+    int apCount = apGear || apWhole ? 0 : apSetted ? 4 : apTo - apFrom;
     float apBest = -1e9;
     float apSecond = -1e9;
     int apBestK = -1;
@@ -4208,8 +4211,8 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
       float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
       if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
     }
-    bool apForced = apFootK >= 0 && apFootIn > 0.0;
-    apZone = apForced ? apFootK : apBestK;
+    bool apForced = !apWhole && apFootK >= 0 && apFootIn > 0.0;
+    apZone = apWhole ? int( apSet.x + 0.5 ) : apForced ? apFootK : apBestK;
     float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
     float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
     float apMarginW = fwidth( apMargin );
@@ -4219,6 +4222,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
     if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
+    if ( apWhole ) { apOther = -1; apPx = 1e3; apBlendPx = 1e3; }
     vec3 apD = normalize( apP - apEye );
     int apCover = -1;
     int apNearK = -1;

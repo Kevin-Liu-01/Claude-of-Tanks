@@ -47,8 +47,8 @@ export interface PanelTemplate {
   readonly barrelFrom: number;
   readonly barrelRadius: number;
   /** (267) The index of a set of up to four zones in the template's table (-1: it is full): a panel split between them
-   * names it. */
-  zoneSet?(zones: readonly number[]): number;
+   * names it; `whole`, one zone a panel takes whole whose plate along the eye the paint tests. */
+  zoneSet?(zones: readonly number[], whole?: boolean): number;
 }
 
 /** (264) The authority the bake asks what lies behind a spaced or external part: the vehicle's pose as the sim reads it. */
@@ -97,7 +97,7 @@ export interface PanelBakeStats {
   offArmour: number;
   sets: number;
   farStands: number;
-  /** (267) Triangles of panels some level view meets through another plate than their zone's, kept per-point. */
+  /** (267) Triangles of panels some level view meets through another plate than their zone's: whole panels. */
   alongShot: number;
   /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
   wholeParts: number;
@@ -243,7 +243,8 @@ const _vp = new THREE.Vector3(), _vn = new THREE.Vector3();
 /**
  * (267) Whether some level view of a panel (its world centre and facing) meets it through another plate than its zone's: the authority reads the plate across a round's path where the face's own does not face the round
  * (sim/armor.ts plateAlongShot, sim/armorZones.ts zoneAlongShot), and the paint's shader takes that plate along the
- * eye's line, so such a panel keeps the per-point paint. Only a panel at the cells (within FLUSH_M), where rounds enter.
+ * eye's line, so such a panel is a whole panel (its zone, the plate along the eye tested per point). Only a panel at the
+ * cells (within FLUSH_M), where rounds enter.
  */
 function readThroughAnother(template: PanelTemplate, split: FrameZones, pose: PanelPose, cells: CellsByFrame, zone: number,
   centre: THREE.Vector3, normal: THREE.Vector3): boolean {
@@ -865,8 +866,8 @@ export function* bakePaintPanelSteps(
       // a cluster with no majority, by part: a small one whole on its plurality (a dome, a hatch); a large one (a welded
       // casting) split at its creases, each piece voting on all its triangles and taking its majority, or its plurality
       // when it is small; a piece still split keeps the per-point score
-      // (267) a panel some level view meets through another plate than its zone's keeps the per-point paint, naming its
-      // one zone (readThroughAnother): the panel as a whole, at its area-weighted centre facing its mean way, so a part
+      // (267) a panel some level view meets through another plate than its zone's is a whole panel (its zone, taken whole,
+      // with the plate along the eye tested per point: readThroughAnother): the panel as a whole, at its area-weighted centre facing its mean way, so a part
       // reads one zone as ever (a dome faces up as a whole) and a bevel's piece faces its slope. The panel's zone + 1
       // in, its value out
       const keepAlongShot = (value: number, count: number, triangle: (i: number) => number): number => {
@@ -882,7 +883,7 @@ export function* bakePaintPanelSteps(
         if (!(area > 0) || !(facing > 1e-9) || !readThroughAnother(template, split, pose, cellsOf, value - 1, _centre.set(cx / area, cy / area, cz / area),
           _normal.set(nx / facing, ny / facing, nz / facing))) return value;
         stats.alongShot += count;
-        const set = template.zoneSet ? template.zoneSet([value - 1]) : -1;
+        const set = template.zoneSet ? template.zoneSet([value - 1], true) : -1;
         return set >= 0 ? PANEL_BARE - 1 - set : 0;
       };
       function* resolveParts(start: number, end: number, total: number): Generator<void, void, void> {
