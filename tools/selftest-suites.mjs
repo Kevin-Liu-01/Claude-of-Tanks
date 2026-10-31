@@ -2455,6 +2455,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // (local-fps-266) the HUD layout's queries skip the Garage, the icon sprite and the play screen, the document's order kept
+    'src/ui/hudQueryScope.selftest.mjs',
     // the security audit's receipt (item/security-audit-240)
     'src/ui/htmlEscape.selftest.mjs',
     // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
