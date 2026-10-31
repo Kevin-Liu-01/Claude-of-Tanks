@@ -358,7 +358,8 @@ server/match/           main.ts (env, drain) · service.ts (/healthz, /metrics, 
                         matchActor.ts (one room) · loop.ts · inputBuffer.ts · lagCompensation.ts · publisher.ts
                         entityRows.ts · seatToken.ts · localRoomService.ts · link.ts · chat.ts · log.ts · metrics.ts
                         Dockerfile (+ Dockerfile.dockerignore), README.md
-tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short is the core receipt)
+tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short --plant-stall is the core receipt)
+tools/starvation-meter.mjs  what the machine withheld from the soak's thread (wall time CPU and idling do not cover)
 src/mp/transport/       Transport contract · WebSocketTransport (backoff, resume token, backpressure) · LoopbackTransport pair
 src/mp/match/           MatchClient · clock · inputStream · snapshotStream · interpolation · prediction (+ movementCheckpoint)
                         events · recovery · headlessDriver · scriptedServer.test-support (README: src/mp/README.md)
@@ -433,6 +434,14 @@ after the shooter looked is missed live and hit rewound.
   stand-in): the pose-step gate is measured with linear interpolation, an adaptive 2–4 interval
   delay and one interval of extrapolation, not with `localTankPrediction`; on a loaded host the
   28-client soak process itself starves and the gate reads its own catch-ups (see the table).
+  (267: the soak now measures that starvation, `tools/starvation-meter.mjs`, and judges every gate net of it: a round
+  trip, an acknowledgement or a pose step without the starvation inside its own span; with the server in-process, its
+  dropped ticks only past those the starved gap accounts for and each second's rate on the loop's own timeline. An
+  acknowledgement's lead is taken over the server tick its acknowledging snapshot measured, so the client clock still
+  slewing out dropped ticks is the drops' (judged by the tick gates), not the input path's. The receipt plants 400 ms of
+  CPU in one server tick and must charge its drops to the server. The 265 default tier had failed four gates at
+  load1 22 under the old load1 skip; under 5.5 s of SIGSTOP the old receipt fails and the new one passes. The child
+  server's own thread is not measured.)
 - The simulation moves a pushed hull up to 1.1 m in one tick (tank–tank separation); the wire
   carries it faithfully and a client will show it as a jolt — a sim question, not netcode.
 - The full soak's tick-cost child (`npm run test:net:v2:soak` without `--no-tick-cost`) and a
