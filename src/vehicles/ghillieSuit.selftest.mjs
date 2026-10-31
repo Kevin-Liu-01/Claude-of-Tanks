@@ -557,8 +557,7 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
   // the rebuilt Mk 4B) keeps no seat and no dock to hold.
   if (Object.hasOwn(DRONE_DOCK_EXEMPT, id)) {
     assert.equal(MISSION_ATTACHMENT_SEATS[id], undefined, `${id}: a sealed dockless vehicle keeps no seat`);
-    tank.dispose();
-    continue;
+    return; // checkSuited disposes the tracked tank
   }
   const seat = MISSION_ATTACHMENT_SEATS[id];
   assert.ok(seat, `${id}: a suited hull keeps its native drone dock seat record`);
