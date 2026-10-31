@@ -24,6 +24,8 @@
 // drifts, so tank:release:check can make the anatomy pass mandatory.
 
 import { writeFileSync } from 'node:fs';
+import puppeteer from 'puppeteer';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
@@ -40,34 +42,42 @@ const MIN_VOLUME_DEPTH_M = 0.05;
 
 const pageErrors = [];
 const rows = [];
-await withIsolatedCaptureBrowser({
-  root: process.cwd(), logLevel: 'error',
-  // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
-  server: toolServerOptions(7300),
-}, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-}, async ({ server, browser }) => {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
-  page.setDefaultTimeout(45000);
-  page.on('pageerror', (e) => pageErrors.push(String(e)));
+/** `run(page)` on a ready game page of one isolated server and browser (`launchBrowser` defaults to the guarded one). */
+async function withGamePage(run, launchBrowser) {
+  return await withIsolatedCaptureBrowser({
+    root: process.cwd(), logLevel: 'error',
+    // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+    server: toolServerOptions(7300),
+  }, {
+    headless: 'new',
+    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+  }, async ({ server, browser }) => {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+    page.setDefaultTimeout(45000);
+    page.on('pageerror', (e) => pageErrors.push(String(e)));
 
-  // 180 s for the first navigation, 120 s for the game, one retry of a load that timed out (R4c)
-  await loadReadyPage(page, `${boundOrigin(server)}/?nosplash`, {
-    label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
-  });
+    // 180 s for the first navigation, 120 s for the game, one retry of a load that timed out (R4c)
+    await loadReadyPage(page, `${boundOrigin(server)}/?nosplash`, {
+      label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
+    });
+    return run(page);
+  }, { launchBrowser });
+}
 
-  const manifest = await page.evaluate(async () => {
-    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
-    return ALL_TANK_IDS
-      .filter((id) => TANK_SPECS[id] && TANK_SPECS[id].armor)
-      .map((id) => ({ id, source: (MODEL_SOURCE[id] && MODEL_SOURCE[id].source) || 'procedural' }));
-  });
-  const list = requested ? manifest.filter((r) => requested.includes(r.id)) : manifest;
-  console.log(`[mod-align] scanning ${list.length} vehicles (visual vs armor model)`);
+// The manifest from a short-lived game page (the page's module order is ALL_TANK_IDS's order; Node's differs), then a
+// fresh server and browser per chunk of it (tools/browser-id-chunks.mjs).
+const manifest = await withGamePage((page) => page.evaluate(async () => {
+  const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
+  return ALL_TANK_IDS
+    .filter((id) => TANK_SPECS[id] && TANK_SPECS[id].armor)
+    .map((id) => ({ id, source: (MODEL_SOURCE[id] && MODEL_SOURCE[id].source) || 'procedural' }));
+}));
+const list = requested ? manifest.filter((r) => requested.includes(r.id)) : manifest;
+console.log(`[mod-align] scanning ${list.length} vehicles (visual vs armor model)`);
 
-  for (const row of list) {
+await eachBrowserChunk('tools/module-visual-align-probe.mjs', list, (chunk, { launch }) => withGamePage(async (page) => {
+  for (const row of chunk) {
     try {
       await page.evaluate(async (id) => {
         if (window.__DEBUG.stagePedestalTank) {
@@ -427,7 +437,7 @@ await withIsolatedCaptureBrowser({
       console.error(`  ${row.id.padEnd(20)} ERROR ${String((e && e.message) || e).slice(0, 110)}`);
     }
   }
-});
+}, (options) => launch(puppeteer, options)));
 
 const drift = rows.filter((r) => r.flags && r.flags.length);
 console.log(`\n[mod-align] ${rows.length} scanned, ${drift.length} failing calibrated anatomy receipts`);

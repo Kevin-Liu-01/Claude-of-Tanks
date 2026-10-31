@@ -7,6 +7,8 @@
 // processes, computed imports) must be declared below and pinned to the exact call sites that make them, or the
 // resolver runs that step on every id.
 
+import { browserIdChunks } from '../browser-id-chunks.mjs';
+
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([
   'src/vehicles/tankFactory.ts',
@@ -72,7 +74,9 @@ export const AGGREGATES = Object.freeze([
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
  * name files the tool reads in the chain's mode whose contents reach only its verdicts (printed problems), never a
  * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them. `namesOnly` globs
- * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266).
+ * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266). `scheduleOnly`
+ * names modules the file loads whose values decide only how the work is scheduled (ids per browser), never what a run
+ * writes: the edge to them is dropped, and the read trace accepts the load (266).
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
@@ -198,7 +202,8 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'runs ps over the launched browser\'s process tree for its memory watchdog: process state, never a file a step keys',
   },
   'tools/capture-lock.mjs': {
-    pin: 'be03f207d16f52a7',
+    // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
+    pin: '8d9ee43203067ad3',
     reads: [],
     note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
   },
@@ -223,12 +228,21 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: ['src/world/props-models.bin.gz'],
     note: 'fetches new URL(\'./props-models.bin.gz\', import.meta.url)',
   },
+  // 266: the cap table splits a GPU step's ids into browsers; every id renders the same in any chunk (centering --update
+  // chunked and unchunked: byte for byte), so a re-measured cap re-runs no step.
+  'tools/browser-id-chunks.mjs': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    scheduleOnly: ['tools/browser-id-caps.mjs'],
+    note: 'loads tools/browser-launch.mjs (keyed: its launch flags reach the renders) when a chunk launches; the caps only place browser boundaries',
+  },
   'tools/map-probe-runtime.mjs': {
     pin: 'ae2caa4c871631f4',
     reads: [],
     // The world steps import it for isMainModule (wreck-bake-plan) and behind --headless (collision); neither runs its
-    // dev server, browser or git call.
-    modeOnly: ['index.html'],
+    // dev server, browser or git call. 266: nor its browser launcher, whose edge pulled browser-launch.mjs and
+    // capture-lock.mjs into every map's key, so a lock or guard edit re-ran the world steps on all of them.
+    modeOnly: ['index.html', 'tools/browser-launch.mjs'],
     note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
   },
   // 266: the public route table names every page (index.html, 404.html, home.html, ...) as a route string. It has no file
@@ -268,6 +282,7 @@ export const SCHEDULING_ENV = Object.freeze({
   COT_NAV_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to navigate',
   COT_READY_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to report ready',
   COT_NAV_RETRIES: 'presentation-centering: how often a page load that timed out is retried',
+  COT_BROWSER_ID_CAP: 'browser-id-chunks (266): lowers the ids per browser, so where a fresh browser starts, never what an id renders',
 });
 
 /**
@@ -297,8 +312,8 @@ export const PER_ID_ACCESSORS = Object.freeze({
  * on every step.
  *   entries   the balance modules; their closure beyond the core is checked like any executed fleet module
  *   importers the files whose imports of an entry apply it to the registry (any other import keeps it in the core)
- *   tokens    the importers' lines naming one are pinned (world.mjs tokenPin): a new use of the pass
- *             breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
+ *   tokens    the importers' lines naming one, or a name an entry exports, are pinned (world.mjs tokenPin): a new
+ *             use of the pass breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
  *   combat    leaf paths of a registered spec (`[]`: every item of an array): what the levers set (measured, every field
  *             the pass moved on the 266 fleet). tools/changed-only/trace-check.mjs --combat moves them all and fails a step
  *             whose rows follow without SPEC_COMBAT in its rowReads.
@@ -308,9 +323,10 @@ export const SPEC_REST = 'specRest';
 export const BALANCE = Object.freeze({
   entries: Object.freeze(['src/vehicles/fleetBalancePass.ts']),
   importers: Object.freeze({
-    'src/vehicles/fleetRegistration.ts': { pin: 'bc25e02d684ab734', note: 'applies the four passes (and integ 265: leopard1-263\'s applyBuildFootings) to TANK_SPECS, once each, at registration' },
+    'src/vehicles/fleetRegistration.ts': { pin: '205f9fbeb7ec9410', note: 'applies the five passes (applyBuildFootings since integ 265) to TANK_SPECS, once each, at registration' },
   }),
-  tokens: Object.freeze(['fleetBalancePass', 'applyFleetBalancePass', 'applyModernEraFold', 'applyShownTierFloors', 'applySameTierFairness']),
+  // with every name the entries export (fingerprint.mjs balanceTokens): a new pass is pinned without an edit here
+  tokens: Object.freeze(['fleetBalancePass']),
   combat: Object.freeze([
     'hp', 'enginePowerHp', 'topSpeedKmh', 'reverseSpeedKmh', 'hullTraverseDegS', 'turretTraverseDegS',
     'gun.reloadS', 'gun.aimTimeS', 'gun.baseAccuracy', 'gun.autoloader.intraClipS', 'gun.autoloader.fullReloadS',
@@ -326,21 +342,13 @@ const ids = (list) => `--ids=${list.join(',')}`;
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
  * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
  * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
- * killed. `maxIds` caps a chunk by renderer memory as well. Measured on this Mac (2026-10-31, RSS of the browser tree):
- * icons on the 60 heaviest ids by ledger vertices peaked at 3.0 GB renderer / 4.4 GB tree in 162 s, so 51 keeps half the
- * cap; centering on all 236 ids peaked at 4.45 GB / 5.7 GB, so 120 keeps it near half as the fleet grows.
+ * killed. The tool's own cap of ids per browser (tools/browser-id-chunks.mjs BROWSER_ID_CAPS, with its measurements)
+ * holds as well, so a chain chunk is one browser of the tool's own chunking too.
  */
-const ICONS_MAX_IDS = 51;
-const CENTERING_MAX_IDS = 120;
-
-/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within both caps, chunkS seconds of estimated
- *  work (perIdS each) and maxIds ids, split evenly (255 ids at 51: five of 51). */
+/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within chunkS seconds of estimated work
+ *  (perIdS each) and the tool's ids per browser, split evenly (255 icons ids at 51: five of 51). */
 export function gpuChunks(step, list) {
-  const cap = Math.max(1, Math.min(Math.floor(step.chunkS / step.perIdS), step.maxIds ?? Infinity));
-  const count = Math.ceil(list.length / cap), size = Math.ceil(list.length / Math.max(1, count));
-  const chunks = [];
-  for (let index = 0; index < list.length; index += size) chunks.push(list.slice(index, index + size));
-  return chunks;
+  return browserIdChunks(step.tool, list, Math.floor(step.chunkS / step.perIdS));
 }
 
 /**
@@ -353,8 +361,8 @@ export function gpuChunks(step, list) {
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
  *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
  *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
- *   chunkS, perIdS, maxIds  a GPU step's capture-lock holds: at most chunkS seconds of estimated work and maxIds ids per
- *           browser (gpuChunks); none of them is keyed
+ *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
+ *           BROWSER_ID_CAPS ids per browser (gpuChunks); none of them is keyed
  */
 export const STEPS = Object.freeze([
   {
@@ -441,7 +449,7 @@ export const STEPS = Object.freeze([
     rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100, maxIds: CENTERING_MAX_IDS,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
     // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
     // models excepted: no playable build loads one, AGENTS.md).
     reads: ['public/**'],
@@ -458,7 +466,7 @@ export const STEPS = Object.freeze([
     // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
     // into public/icons): not inputs of its own key.
     writes: ['public/icons/**'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
     reads: ['public/**'],
     // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
     excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],

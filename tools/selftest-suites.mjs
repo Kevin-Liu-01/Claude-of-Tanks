@@ -850,7 +850,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
-    // launch in the checkout goes through it
+    // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex

@@ -1,6 +1,7 @@
 // Live articulation gate for the complete garage roster. The static audit
 // proves source structure; this probe proves that the selected visual is
 // actually seated in the runtime hull/turret/gun/recoil hierarchy.
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -19,45 +20,37 @@ const server = await createServer({
   server: { port: 6500 + Math.floor(Math.random() * 250), strictPort: false, hmr: false, watch: null },
 });
 await server.listen();
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 // A complete-fleet run cold-builds every procedural profile in the browser.
 // Leave enough room for the first uncached vehicle on slower CI runners;
 // per-vehicle assertions below still fail immediately once the visual is ready.
 const VEHICLE_SWITCH_TIMEOUT_MS = 90000;
-page.setDefaultTimeout(VEHICLE_SWITCH_TIMEOUT_MS);
 const browserErrors = [];
-page.on('pageerror', (e) => browserErrors.push(String(e)));
-page.on('console', (m) => {
-  const msg = m.text();
-  if (m.type() === 'error' && !msg.includes('favicon')) browserErrors.push(msg);
-  if (msg.includes('glb swap failed')) browserErrors.push(msg);
-});
+const LAUNCH_OPTIONS = {
+  headless: 'new',
+  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+};
 
-try {
+/** A ready game page in `browser`. */
+async function openGame(browser) {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  page.setDefaultTimeout(VEHICLE_SWITCH_TIMEOUT_MS);
+  page.on('pageerror', (e) => browserErrors.push(String(e)));
+  page.on('console', (m) => {
+    const msg = m.text();
+    if (m.type() === 'error' && !msg.includes('favicon')) browserErrors.push(msg);
+    if (msg.includes('glb swap failed')) browserErrors.push(msg);
+  });
   await page.goto(`http://localhost:${server.config.server.port}/?nosplash`, {
     waitUntil: 'domcontentloaded', timeout: 90000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
-  const manifest = await page.evaluate(async () => {
-    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
-    return ALL_TANK_IDS.map((id) => ({
-      id,
-      turretless: TANK_SPECS[id].armor?.turretless === true,
-      gunElevationDeg: TANK_SPECS[id].gunElevationDeg,
-      gunDepressionDeg: TANK_SPECS[id].gunDepressionDeg,
-      source: MODEL_SOURCE[id]?.source || 'procedural',
-      cfg: MODEL_SOURCE[id]?.glb || null,
-    }));
-  });
-  const requested = process.argv.slice(2);
-  const rows = requested.length ? manifest.filter((r) => requested.includes(r.id)) : manifest;
-  check('complete manifest loaded', rows.length === (requested.length || manifest.length), `${rows.length} vehicles`);
+  return page;
+}
 
+/** One browser chunk of the manifest, each row staged on the pedestal of a fresh game page. */
+async function probeChunk(browser, rows) {
+  const page = await openGame(browser);
   for (const row of rows) {
     const errorStart = browserErrors.length;
     // The full manifest includes registered procedural variants that do not
@@ -221,8 +214,41 @@ try {
     check(`${row.id}: no load errors`, browserErrors.length === errorStart,
       browserErrors.slice(errorStart).join(' | '));
   }
+}
+
+try {
+  // The manifest from a short-lived game page (the page's module order is ALL_TANK_IDS's order; Node's differs), then a
+  // fresh browser per chunk of its rows (tools/browser-id-chunks.mjs).
+  const listing = await launchGuardedBrowser(puppeteer, LAUNCH_OPTIONS);
+  let manifest;
+  try {
+    manifest = await (await openGame(listing)).evaluate(async () => {
+      const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
+      return ALL_TANK_IDS.map((id) => ({
+        id,
+        turretless: TANK_SPECS[id].armor?.turretless === true,
+        gunElevationDeg: TANK_SPECS[id].gunElevationDeg,
+        gunDepressionDeg: TANK_SPECS[id].gunDepressionDeg,
+        source: MODEL_SOURCE[id]?.source || 'procedural',
+        cfg: MODEL_SOURCE[id]?.glb || null,
+      }));
+    });
+  } finally {
+    await listing.close();
+  }
+  const requested = process.argv.slice(2);
+  const rows = requested.length ? manifest.filter((r) => requested.includes(r.id)) : manifest;
+  check('complete manifest loaded', rows.length === (requested.length || manifest.length), `${rows.length} vehicles`);
+
+  await eachBrowserChunk('tools/model-rig-probe.mjs', rows, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, LAUNCH_OPTIONS);
+    try {
+      await probeChunk(browser, chunk);
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
-  await browser.close();
   await server.close();
 }
 

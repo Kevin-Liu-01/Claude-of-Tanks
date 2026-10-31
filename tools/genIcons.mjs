@@ -13,7 +13,7 @@
 // Angle generation atomically writes both the 512px source portrait and the
 // 256px Garage thumbnail through the same framing policy.
 
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
@@ -21,6 +21,9 @@ import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, technicalLabelsFile } from '../src/vehicles/tankAssets.ts';
+// the fleet's registered ids (what the page renders without --ids): specs.ts alone holds only the seed ids
+import '../src/vehicles/tankFactory.ts';
+import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
@@ -135,64 +138,73 @@ await server.listen();
 const url = `${boundOrigin(server)}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  // A full three-diagram fleet refresh renders hundreds of data-driven views
-  // in one deterministic page evaluation and can exceed Puppeteer's 180 s
-  // protocol default on shared CI/developer machines.
-  protocolTimeout: 15 * 60 * 1000,
-  // a 3 GB V8 heap per renderer (the capture-browser rule, 2026-10-23: a jetsam report showed a 14 GB renderer)
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--max-old-space-size=3072'],
-});
-const page = await browser.newPage();
 const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon') && !message.text().includes('404')) {
-    pageErrors.push(message.text());
-  }
-});
-
+const generated = { tanks: {}, files: {} };
 let failed = false;
 try {
-  // 180 s for the first load and one retry of a load that timed out (tools/tool-page-load.mjs)
-  await loadReadyPage(page, url, { label: 'tank-assets', ready: 'window.__ICONS_READY === true' });
-  // Metadata receipts are just as dependent on the real demand-loaded builder
-  // as rendered files. Auditing before this settle gate can fingerprint a
-  // lightweight fallback rig and silently poison an otherwise valid manifest.
-  await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
-  await page.waitForFunction(
-    () => {
-      window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
-      const stats = window.__GLB_STATS;
-      if (!stats) return window.__GLB_POLLS >= 10;
-      const settled = stats.started === stats.settled;
-      window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
-      return window.__GLB_SETTLE_STREAK >= 2;
-    },
-    { timeout: 120000, polling: 400 },
-  );
+  // One browser per chunk of ids (tools/browser-id-chunks.mjs): the whole fleet in one browser passed the 6 GB renderer
+  // guard (265). Each chunk writes its own images; the manifest below is written once from every chunk's rows.
+  await eachBrowserChunk('tools/genIcons.mjs', onlyTanks.length ? onlyTanks : DEVELOPMENT_TANK_IDS, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      // A full three-diagram fleet refresh renders hundreds of data-driven views
+      // in one deterministic page evaluation and can exceed Puppeteer's 180 s
+      // protocol default on shared CI/developer machines.
+      protocolTimeout: 15 * 60 * 1000,
+      // a 3 GB V8 heap per renderer (the capture-browser rule, 2026-10-23: a jetsam report showed a 14 GB renderer)
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--max-old-space-size=3072'],
+    });
+    try {
+      const page = await browser.newPage();
+      page.on('pageerror', (error) => pageErrors.push(String(error)));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && !message.text().includes('favicon') && !message.text().includes('404')) {
+          pageErrors.push(message.text());
+        }
+      });
+      // 180 s for the first load and one retry of a load that timed out (tools/tool-page-load.mjs)
+      await loadReadyPage(page, url, { label: 'tank-assets', ready: 'window.__ICONS_READY === true' });
+      // Metadata receipts are just as dependent on the real demand-loaded builder
+      // as rendered files. Auditing before this settle gate can fingerprint a
+      // lightweight fallback rig and silently poison an otherwise valid manifest.
+      await page.evaluate((ids) => window.__WARM(ids), chunk);
+      await page.waitForFunction(
+        () => {
+          window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
+          const stats = window.__GLB_STATS;
+          if (!stats) return window.__GLB_POLLS >= 10;
+          const settled = stats.started === stats.settled;
+          window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
+          return window.__GLB_SETTLE_STREAK >= 2;
+        },
+        { timeout: 120000, polling: 400 },
+      );
 
-  const generated = await page.evaluate((ids, views, auditOnly) => {
-    if (!auditOnly) return window.__GEN(ids, views);
-    const audited = window.__AUDIT(ids && ids.length ? ids : window.__FLEET_IDS);
-    return { ...audited, files: {} };
-  }, onlyTanks, selectedViews, metadataOnly);
-  for (const [name, dataUrl] of Object.entries(generated.files)) {
-    if (name.endsWith('.error')) {
-      failed = true;
-      console.error(`[tank-assets] ${name}: ${dataUrl}`);
-      continue;
+      const part = await page.evaluate((ids, views, auditOnly) => {
+        if (!auditOnly) return window.__GEN(ids, views);
+        return { ...window.__AUDIT(ids), files: {} };
+      }, chunk, selectedViews, metadataOnly);
+      Object.assign(generated.tanks, part.tanks);
+      for (const [name, dataUrl] of Object.entries(part.files)) {
+        generated.files[name] = true;
+        if (name.endsWith('.error')) {
+          failed = true;
+          console.error(`[tank-assets] ${name}: ${dataUrl}`);
+          continue;
+        }
+        const raw = Buffer.from(dataUrl.split(',')[1], 'base64');
+        const outputPath = resolve(outDir, name);
+        mkdirSync(dirname(outputPath), { recursive: true });
+        // the label sidecar is data, not a published image
+        const buffer = name.endsWith('.json') ? raw : await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
+          { type: name.endsWith('.png') ? 'image/png' : 'image/webp', quality: 90 });
+        writeFileSync(outputPath, buffer);
+        console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
+      }
+    } finally {
+      await browser.close();
     }
-    const raw = Buffer.from(dataUrl.split(',')[1], 'base64');
-    const outputPath = resolve(outDir, name);
-    mkdirSync(dirname(outputPath), { recursive: true });
-    // the label sidecar is data, not a published image
-    const buffer = name.endsWith('.json') ? raw : await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
-      { type: name.endsWith('.png') ? 'image/png' : 'image/webp', quality: 90 });
-    writeFileSync(outputPath, buffer);
-    console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
-  }
+  });
 
   if (!failed) {
     const previous = startingManifest;
@@ -268,7 +280,6 @@ try {
     console.error(`[tank-assets] page errors (${pageErrors.length}):`);
     for (const error of pageErrors.slice(0, 20)) console.error(`  ${error}`);
   }
-  await browser.close();
   await server.close();
   rmSync(viteCacheDir, { recursive: true, force: true });
 }

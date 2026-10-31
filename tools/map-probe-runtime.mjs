@@ -13,7 +13,6 @@
 // never run one beside `npm test` or `tank:release:check`. The server binds 127.0.0.1 on 5300 + (pid % 90) and
 // walks upward when busy (owner rule: probe servers live in 5300–5399, never on 5197–5199); vite serves the tree
 // live, so do not edit tracked source while a run is capturing.
-import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,6 +21,10 @@ import { fileURLToPath } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { i18nStudioCatalog } from './viteI18nStudioCatalog.ts';
+
+// 266: the launcher (and the capture lock it imports) loads only when a session opens its browser. The world steps import
+// this module for isMainModule and --headless and never open one, so neither file loads on their path (steps.mjs modeOnly).
+const guardedLaunch = async (options) => (await import('./browser-launch.mjs')).launchGuardedBrowser(puppeteer, options);
 
 export const MAP_PROBE_PORT_BASE = 5300;
 export const MAP_PROBE_PORT_SPAN = 90;
@@ -210,7 +213,7 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
     reportOptimizerReloads(server);
     await server.listen();
     const port = server.httpServer.address().port;
-    browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions(launch));
+    browser = await guardedLaunch(mapProbeLaunchOptions(launch));
     return await run({ server, browser, port, baseUrl: `http://127.0.0.1:${port}`, cacheDir: cache.dir });
   } catch (error) {
     primaryFailed = true;
@@ -243,7 +246,7 @@ export async function withDistProbeSession({ root, dist, launch = {} }, run) {
       preview: { host: '127.0.0.1', port: MAP_PROBE_PORT_BASE + (process.pid % MAP_PROBE_PORT_SPAN), strictPort: false },
     });
     const port = server.httpServer.address().port;
-    browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions(launch));
+    browser = await guardedLaunch(mapProbeLaunchOptions(launch));
     return await run({ server, browser, port, baseUrl: `http://127.0.0.1:${port}`, cacheDir: null });
   } catch (error) {
     primaryFailed = true;

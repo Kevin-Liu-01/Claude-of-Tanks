@@ -10,9 +10,12 @@
 //        0..7 cm past the bow and the side; the legacy raster flips, the anchored scan must not move)
 //   node tools/contig-phase-audit.mjs --report=<md> --from=<audit.jsonl>   (re-render the list, no browser)
 // Capture lock (NORMAL band) held per batch, released and re-queued every 15 minutes; resumes from audit.jsonl.
+// A fresh browser per hold and per chunk of ids (tools/browser-id-chunks.mjs).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import puppeteer from 'puppeteer';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { CONTIG_CELL_M } from './contig-grid.mjs';
@@ -55,7 +58,7 @@ function auditRow(id, standard) {
   return { id, anchored, legacy, gaps, interiorFillRecordLoaded: standard.interiorFillRecordLoaded };
 }
 
-async function withPage(run) {
+async function withPage(run, dependencies = {}) {
   return withIsolatedCaptureBrowser({
     root: process.cwd(), logLevel: 'error',
     server: { port: 7400 + Math.floor(Math.random() * 400), strictPort: false, hmr: false, watch: null },
@@ -79,7 +82,7 @@ async function withPage(run) {
       }
     };
     return run(scan);
-  });
+  }, dependencies);
 }
 
 async function locked(run) {
@@ -202,20 +205,23 @@ const ids = idArg ? uniqueIds(idArg.split(','), 'contig-phase-audit --ids') : aw
 if (ids.some((id) => !/^[a-z0-9_]+$/.test(id))) throw new Error('Expected tank ids');
 const jsonl = path.join(outDir, 'audit.jsonl');
 const done = new Set(readRows(jsonl).filter((r) => !r.error).map((r) => r.id));
-let queue = ids.filter((id) => !done.has(id));
+const queue = ids.filter((id) => !done.has(id));
 console.log(`[contig-audit] ${ids.length} ids, ${ids.length - queue.length} already in ${jsonl}, ${queue.length} to scan`);
-while (queue.length) {
-  await locked(() => withPage(async (scan) => {
-    const started = Date.now();
-    while (queue.length && Date.now() - started < HOLD_MS) {
-      const id = queue.shift();
-      const row = { ...auditRow(id, await scan(`id=${id}&quality=${quality}&legacy=1&neighbors=1`)), quality };
-      appendFileSync(jsonl, JSON.stringify(row) + '\n');
-      console.log(row.error ? `[contig-audit] ${id} ERROR ${row.error}`
-        : `[contig-audit] ${id.padEnd(22)} main raw ${String(row.legacy.holeCells).padStart(3)} | anchored ${String(row.anchored.holeCells).padStart(3)} +${row.anchored.phaseOnlyCells}φ | gaps ${row.gaps.length} hidden ${row.gaps.filter((g) => g.seenOnMain === false).length}`);
-    }
-  }));
-}
+await eachBrowserChunk('tools/contig-phase-audit.mjs', queue, async (chunk, { launch }) => {
+  const pending = [...chunk];
+  while (pending.length) {
+    await locked(() => withPage(async (scan) => {
+      const started = Date.now();
+      while (pending.length && Date.now() - started < HOLD_MS) {
+        const id = pending.shift();
+        const row = { ...auditRow(id, await scan(`id=${id}&quality=${quality}&legacy=1&neighbors=1`)), quality };
+        appendFileSync(jsonl, JSON.stringify(row) + '\n');
+        console.log(row.error ? `[contig-audit] ${id} ERROR ${row.error}`
+          : `[contig-audit] ${id.padEnd(22)} main raw ${String(row.legacy.holeCells).padStart(3)} | anchored ${String(row.anchored.holeCells).padStart(3)} +${row.anchored.phaseOnlyCells}φ | gaps ${row.gaps.length} hidden ${row.gaps.filter((g) => g.seenOnMain === false).length}`);
+      }
+    }, { launchBrowser: (options) => launch(puppeteer, options) }));
+  }
+});
 if (report) {
   writeFileSync(report, markdown(readRows(jsonl), meta(jsonl)));
   console.log(`[contig-audit] wrote ${report}`);

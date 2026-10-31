@@ -644,6 +644,92 @@ async function checkHoldCap() {
   assert.ok(records.some((r) => r.e === 'hold' && r.lockClass === 'render' && r.members === 1 && r.capMs === 600));
 }
 
+// Release priority (2026-10-31, item 266: 265's browser receipts waited 82 min behind lane holds): a release ticket is
+// named ahead of every waiting normal ticket (older copies, which order by name, agree) and behind earlier release
+// tickets; renders queued behind it cannot take a freed slot; while one waits, a normal hold's raised cap falls back to
+// the base cap at the grant and at checkpoint(). Controls: the same arrival as a normal ticket waits its turn; a raised
+// cap with only a normal waiter keeps its minutes; an unknown priority is refused.
+async function checkReleasePriority() {
+  const queued = (prefix, count) => until(`${count} tickets queue`, () => readdirSync(join(root, `${prefix}.queue`)).length === count);
+  /** acquire, note the order, release at once */
+  const pass = (lock, name, order, options) => lock.acquire(10_000, options).then(() => { order.push(name); lock.release(); });
+  const arrive = async (prefix, releaseLast) => {
+    const order = [], holder = classLock(prefix).lock;
+    await holder.acquire(5_000, { lockClass: 'timing' });
+    const runs = [];
+    for (const [index, [name, priority]] of [['n1', 'normal'], ['n2', 'normal'], ['r1', releaseLast], ['r2', releaseLast]].entries()) {
+      runs.push(pass(classLock(prefix).lock, name, order, { lockClass: 'timing', priority }));
+      await queued(prefix, index + 1);
+    }
+    const priorities = readdirSync(join(root, `${prefix}.queue`)).sort()
+      .map((name) => JSON.parse(readFileSync(join(root, `${prefix}.queue`, name), 'utf8')).priority ?? 'normal');
+    holder.release();
+    await Promise.all(runs);
+    return { order, priorities };
+  };
+  const ahead = await arrive('prio', 'release');
+  assert.deepEqual(ahead.order, ['r1', 'r2', 'n1', 'n2'], 'release tickets go first, in their own arrival order');
+  assert.deepEqual(ahead.priorities, ['release', 'release', 'normal', 'normal'], 'by name, so an older copy of this module orders them the same way');
+  assert.deepEqual((await arrive('prio-ctl', 'normal')).order, ['n1', 'n2', 'r1', 'r2'], 'control: as normal tickets they wait their turn');
+  process.env.COT_CAPTURE_PRIORITY = 'release';
+  const byEnv = classLock('prio-env').lock;
+  await byEnv.acquire(5_000, { lockClass: 'timing' });
+  assert.equal(readToken(join(root, 'prio-env.lock')).priority, 'release', 'COT_CAPTURE_PRIORITY marks a ticket release');
+  byEnv.release();
+  process.env.COT_CAPTURE_PRIORITY = 'urgent';
+  await assert.rejects(classLock('prio-env').lock.acquire(1_000), /not a priority/, 'an unknown priority is refused');
+  delete process.env.COT_CAPTURE_PRIORITY;
+
+  // two renders hold; a render queued before the release ticket cannot take the slot the first frees
+  const slots = [], renders = [classLock('prio-slots').lock, classLock('prio-slots').lock];
+  for (const render of renders) await render.acquire(5_000, { lockClass: 'render' });
+  const late = take(classLock('prio-slots').lock, 'n3', slots, { lockClass: 'render' });
+  await queued('prio-slots', 1);
+  const urgent = classLock('prio-slots').lock;
+  const first = take(urgent, 'release', slots, { lockClass: 'timing', priority: 'release' });
+  await queued('prio-slots', 2);
+  renders[0].release();
+  await settle(1_300);
+  assert.equal(late.held(), false, 'the queued render waits behind the release ticket');
+  renders[1].release();
+  await first.done;
+  urgent.release();
+  await late.done;
+  assert.deepEqual(slots, ['release', 'n3']);
+
+  // a normal hold granted while a release ticket warms (passed over, keeping its place) keeps the base cap
+  const warm = classLock('prio-warm').lock;
+  let warmed;
+  const warming = warm.acquire(10_000, { lockClass: 'timing', priority: 'release', prepare: () => new Promise((resolve) => { warmed = resolve; }) });
+  await until('the release ticket warms', () => readdirSync(join(root, 'prio-warm.queue')).some((name) => name.endsWith('.w')));
+  const jumper = classLock('prio-warm').lock;
+  await jumper.acquire(5_000, { lockClass: 'timing', holdCapMinutes: 45, holdCapReason: 'a whole-fleet proof' });
+  assert.equal(readToken(join(root, 'prio-warm.lock')).capMs, 20 * 60_000, 'its raised cap is refused while a release ticket waits');
+  assert.match(readToken(join(root, 'prio-warm.lock')).capReason, /raised cap refused: a release ticket waits/);
+  jumper.release();
+  warmed();
+  await warming;
+  warm.release();
+
+  // a running hold with a raised cap: a normal waiter leaves it alone; a release ticket brings the base cap back
+  const cpOrder = [];
+  const { lock: proof, logs } = classLock('prio-cp', { holdCapMs: 600 });
+  await proof.acquire(5_000, { lockClass: 'timing', holdCapMinutes: 45, holdCapReason: 'a whole-fleet proof' });
+  const normal = pass(classLock('prio-cp', { holdCapMs: 600 }).lock, 'normal', cpOrder, { lockClass: 'timing' });
+  await queued('prio-cp', 1);
+  await settle(700);
+  assert.equal((await proof.checkpoint()).yielded, false, 'control: past the base cap with a normal waiter, the raised cap holds');
+  const releasing = pass(classLock('prio-cp', { holdCapMs: 600 }).lock, 'release', cpOrder, { lockClass: 'timing', priority: 'release' });
+  await queued('prio-cp', 2);
+  const result = await proof.checkpoint({ afterResume: async () => { cpOrder.push('proof again'); } });
+  assert.equal(result.yielded, true, 'a waiting release ticket ends the raised cap at the next checkpoint');
+  assert.equal(result.capMs, 600);
+  await Promise.all([normal, releasing]);
+  assert.deepEqual(cpOrder, ['release', 'normal', 'proof again'], 'the release ticket goes first; the yielded hold re-queues at the back');
+  assert.ok(logs.some((line) => /a release ticket waits: its raised cap is off/.test(line)));
+  proof.release();
+}
+
 // Dead tickets and dead members: a dead timing ticket ahead of a render is removed; a live older copy's ticket (no
 // class) is exclusive; a dead member's slot is freed; a group whose members all died is reaped, also by a timing hold.
 async function checkDeadClassedCleanup() {
@@ -775,6 +861,7 @@ try {
   await checkTimingExclusion();
   await checkNoStarvation();
   await checkHoldCap();
+  await checkReleasePriority();
   await checkDeadClassedCleanup();
   await checkClassOverrideAndOlderHold();
 
@@ -813,7 +900,7 @@ try {
     'no perf ticket waiting: the lease keeps its place');
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
   console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, lock classes (shared renders, timing exclusion, no starvation, '
-    + 'the hold cap and its yield, dead classed tickets and members, the --lock-class override), the hold log and waiting() passed');
+    + 'the hold cap and its yield, release priority, dead classed tickets and members, the --lock-class override), the hold log and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

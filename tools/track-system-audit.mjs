@@ -9,7 +9,7 @@
 // --round settles each vehicle on a deterministic convex cylindrical course
 // and captures both sides for mandatory visual review of the complete shoe run.
 
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createServer } from 'vite';
 import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
@@ -50,20 +50,17 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
 
 const staticRows = [];
 const roundRows = [];
 const battleRows = [];
 let failed = false;
-try {
+/** Every pass over one browser chunk's ids; `entries` are [index in ids, id] pairs, so rows append in id order. */
+async function auditChunk(browser, entries) {
   if (!skipStatic) {
     const page = await browser.newPage();
     page.setDefaultTimeout(180000);
-    for (const [index, id] of ids.entries()) {
+    for (const [index, id] of entries) {
       await page.goto(
         `http://localhost:${port}/tools/track-system-audit.html?id=${encodeURIComponent(id)}`,
         { waitUntil: 'domcontentloaded' },
@@ -86,7 +83,7 @@ try {
     const roundPage = await browser.newPage();
     roundPage.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
     roundPage.setDefaultTimeout(180000);
-    for (const [index, id] of ids.entries()) {
+    for (const [index, id] of entries) {
       for (const view of ['left', 'right']) {
         await roundPage.goto(
           `http://localhost:${port}/tools/track-system-audit.html?id=${encodeURIComponent(id)}`
@@ -126,7 +123,7 @@ try {
     await battlePage.evaluate(() => {
       window.__DEBUG.flags.rosterExact = true;
     });
-    for (const [index, id] of ids.entries()) {
+    for (const [index, id] of entries) {
       const mapId = maps[index % maps.length];
       pageError = null;
       await battlePage.evaluate(async ({ tankId, battlefield }) => {
@@ -568,8 +565,22 @@ try {
     }
     await battlePage.close();
   }
+}
+
+try {
+  // A fresh browser per chunk of ids runs every pass for its ids (tools/browser-id-chunks.mjs).
+  await eachBrowserChunk('tools/track-system-audit.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      await auditChunk(browser, chunk.map((id) => [ids.indexOf(id), id]));
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
-  await browser.close();
   await server.close();
 }
 

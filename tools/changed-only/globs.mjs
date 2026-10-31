@@ -18,12 +18,14 @@ function toRegExp(pattern) {
 }
 
 /**
- * Whether a file's declaration (steps.mjs DECLARED_DYNAMIC) takes the edge to `path` out of a step's key: `covered` and
- * `modeOnly` name exact paths, `namesOnly` globs (`*.html`) the paths the file only names and never reads.
+ * Whether a file's declaration (steps.mjs DECLARED_DYNAMIC) takes the edge to `path` out of a step's key: `covered`,
+ * `modeOnly` and `scheduleOnly` name exact paths, `namesOnly` globs (`*.html`) the paths the file only names and never
+ * reads.
  */
 export function declaredNotInput(declaration, path) {
   if (!declaration) return false;
-  if ([...(declaration.covered ?? []), ...(declaration.modeOnly ?? [])].includes(path)) return true;
+  const exact = [...(declaration.covered ?? []), ...(declaration.modeOnly ?? []), ...(declaration.scheduleOnly ?? [])];
+  if (exact.includes(path)) return true;
   return (declaration.namesOnly ?? []).some((pattern) => toRegExp(pattern).test(path));
 }
 

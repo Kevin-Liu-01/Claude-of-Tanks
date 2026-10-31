@@ -18,6 +18,8 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 
 import fs from 'node:fs';
 import path from 'node:path';
+import puppeteer from 'puppeteer';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 import { unavailableOracleReport } from './geometry-gate-policy.mjs';
@@ -69,40 +71,48 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
   return ids;
 }
 
-await withIsolatedCaptureBrowser({
-  root: ROOT,
-  logLevel: 'error',
-  // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
-  server: toolServerOptions(7400),
-}, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-}, async ({ server, browser }) => {
-const page = await browser.newPage();
-// Startup import/runtime failures must remain visible instead of appearing
-// only as an unexplained registry timeout during an authored-fleet audit.
-page.on('pageerror', error => console.error(`[geo browser] ${String(error)}`));
-page.on('console', message => {
-  if (message.type() === 'error' && !message.text().includes('favicon'))
-    console.error(`[geo console] ${message.text()}`);
-});
-page.setDefaultTimeout(150000);
-const origin = boundOrigin(server);
-const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
-const registryUrl = `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&registry=1`;
+// One Vite server and browser, its page on the registry: the discovery below, then one per chunk of ids
+// (tools/browser-id-chunks.mjs).
+async function withRegistryPage(run, dependencies = {}) {
+  return await withIsolatedCaptureBrowser({
+    root: ROOT,
+    logLevel: 'error',
+    // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+    server: toolServerOptions(7400),
+  }, {
+    headless: 'new',
+    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+  }, async ({ server, browser }) => {
+    const page = await browser.newPage();
+    // Startup import/runtime failures must remain visible instead of appearing
+    // only as an unexplained registry timeout during an authored-fleet audit.
+    page.on('pageerror', error => console.error(`[geo browser] ${String(error)}`));
+    page.on('console', message => {
+      if (message.type() === 'error' && !message.text().includes('favicon'))
+        console.error(`[geo console] ${message.text()}`);
+    });
+    page.setDefaultTimeout(150000);
+    const origin = boundOrigin(server);
+    // Discover eligible IDs without loading an optional local comparison file.
+    // Worktrees intentionally omit quarantined GLBs, so registry discovery must
+    // not depend on any one source asset being present.
+    // 180 s for the first navigation, 150 s for the registry, one retry of a load that timed out (R4c)
+    await loadReadyPage(page, `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&registry=1`, { label: 'geo',
+      ready: 'Array.isArray(window.__REFERENCE_IDS)', budget: pageLoadBudget({ readyTimeoutMs: 150000 }) });
+    return run({ page, origin });
+  }, dependencies);
+}
 
-  // Discover eligible IDs without loading an optional local comparison file.
-  // Worktrees intentionally omit quarantined GLBs, so registry discovery must
-  // not depend on any one source asset being present.
-  // 180 s for the first navigation, 150 s for the registry, one retry of a load that timed out (R4c)
-  await loadReadyPage(page, registryUrl, { label: 'geo', ready: 'Array.isArray(window.__REFERENCE_IDS)',
-    budget: pageLoadBudget({ readyTimeoutMs: 150000 }) });
+const ids = await withRegistryPage(async ({ page }) => {
   const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
   if(requested)validateSelectedIds(requested,await page.evaluate('window.__PLAYABLE_IDS'));
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
   const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
-  const ids = selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
-  for (const id of ids) {
+  return selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
+});
+await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => withRegistryPage(async ({ page, origin }) => {
+  const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
+  for (const id of chunk) {
     try {
       let rawSourceComparison=null;
       if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
@@ -133,7 +143,7 @@ const registryUrl = `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&
       console.error(`[geo] ${id}: ${error.message}`);
     }
   }
-});
+}, { launchBrowser: (options) => launch(puppeteer, options) }));
 
 // --ids runs MERGE into the fleet ledger (never shrink it to the subset)
 const ledgerPath = path.join(OUT, 'ledger.json');

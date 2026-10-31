@@ -127,9 +127,25 @@ function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }
 // The hold cap (DEFAULT_HOLD_CAP_MS, 20 min): a holder past its cap gives the lock up at its next checkpoint() while
 // anyone waits and re-queues at the back. acquire's `holdCapMinutes` raises it for that ticket only, with a
 // `holdCapReason`; a holder that never calls checkpoint() keeps its hold and is logged once past the cap.
+// Release priority (2026-10-31, item 266): 265's default tier took 96 min, 82 of them its browser receipts waiting one by
+// one behind lane holds (whole-fleet proofs with raised caps). A ticket of priority `release` (acquire's `priority`, else
+// COT_CAPTURE_PRIORITY, read by name: the integrator sets it on its default-tier and smoke runs and their children inherit
+// it) is named before every waiting normal ticket and after every waiting release ticket, so each copy of this module,
+// older ones included (they order by name), lets it go first and release tickets keep FIFO among themselves. While one
+// waits, a normal hold's raised cap falls back to the base cap: at the grant, and at every checkpoint() of a hold
+// already running. A release ticket therefore waits behind the holds running when it arrives (at most the base cap for
+// a holder that checkpoints), never behind the queue. A holder that never checkpoints keeps its hold, as before.
 const LOCK_CLASSES = ['timing', 'render'];
 const RENDER_SLOTS = 2;
 const DEFAULT_HOLD_CAP_MS = 20 * 60 * 1000;
+const PRIORITIES = ['normal', 'release'];
+
+/** This acquisition's priority: acquire's `priority`, else COT_CAPTURE_PRIORITY (read by name), else normal. */
+function resolvePriority(option = null, env = process.env.COT_CAPTURE_PRIORITY) {
+  const value = option ?? (env || 'normal');
+  if (!PRIORITIES.includes(value)) throw new TypeError(`capture priority: not a priority: ${JSON.stringify(value)} (normal or release)`);
+  return value;
+}
 const TIMING_SCRIPTS = /perf|census|timing|sortie/i;
 const RENDER_SCRIPTS = /genIcons|genHeroCards|genDrawings|anatomy-render|gauntlet|sheet|tank-standard-check|geometry-gate|track-clip-audit|first-party-concept-check|photo-reference-check/i;
 
@@ -168,14 +184,14 @@ function resolveLockClass({ option = null, command = null, args = process.argv.s
   return classifyCommand(command ?? process.argv.slice(1).join(' '));
 }
 
-/** The hold cap of one ticket: { capMs, capReason }. Raising it past DEFAULT_HOLD_CAP_MS needs a reason. */
-function resolveHoldCap(minutes, reason) {
+/** The hold cap of one ticket: { capMs, capReason }. Raising it past the base cap (DEFAULT_HOLD_CAP_MS) needs a reason. */
+function resolveHoldCap(minutes, reason, baseCapMs = DEFAULT_HOLD_CAP_MS) {
   const why = typeof reason === 'string' && reason.trim() ? reason.trim().slice(0, 200) : null;
-  if (minutes === null || minutes === undefined) return { capMs: DEFAULT_HOLD_CAP_MS, capReason: why };
+  if (minutes === null || minutes === undefined) return { capMs: baseCapMs, capReason: why };
   const capMs = Number(minutes) * 60_000;
   if (!(capMs > 0) || !Number.isFinite(capMs)) throw new TypeError(`holdCapMinutes: not a positive number: ${minutes}`);
-  if (capMs > DEFAULT_HOLD_CAP_MS && !why) {
-    throw new TypeError(`holdCapMinutes ${minutes} raises the ${DEFAULT_HOLD_CAP_MS / 60_000}-min hold cap: give a holdCapReason`);
+  if (capMs > baseCapMs && !why) {
+    throw new TypeError(`holdCapMinutes ${minutes} raises the ${baseCapMs / 60_000}-min hold cap: give a holdCapReason`);
   }
   return { capMs, capReason: why };
 }
@@ -808,6 +824,38 @@ function reserveTicket(queueDir, text, suffix = '.t') {
   }
 }
 
+/** A release ticket (see release priority above): named one before the first waiting normal ticket, else now, and after
+ *  every waiting release ticket (the same stamp, one sequence later), by exclusive creation. */
+function reserveReleaseTicket(queueDir, text, suffix = '.t') {
+  for (;;) {
+    let names = [];
+    try { names = readdirSync(queueDir).filter((name) => /^\d{15}-\d{12}-\d+\.[tw]$/.test(name)).sort(); } catch { /* an empty queue */ }
+    const release = (name) => readTicketMeta(queueDir, name)?.priority === 'release';
+    const firstNormal = names.find((name) => !release(name));
+    let stamp = Math.min(Date.now(), firstNormal ? Number(firstNormal.slice(0, 15)) - 1 : Infinity), sequence = 0;
+    const lastRelease = names.filter((name) => (!firstNormal || name < firstNormal) && release(name)).at(-1);
+    if (lastRelease && Number(lastRelease.slice(0, 15)) >= stamp) {
+      stamp = Number(lastRelease.slice(0, 15));
+      sequence = Number(lastRelease.slice(16, 28)) + 1;
+    }
+    const name = `${String(stamp).padStart(15, '0')}-${String(sequence).padStart(12, '0')}-${process.pid}${suffix}`;
+    try {
+      writeFileSync(join(queueDir, name), text, { flag: 'wx' });
+      return name;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+  }
+}
+
+/** Live release tickets in the queue other than `except` (warming ones included: they hold their place). */
+function releaseWaiting(queueDir, rules, except = null) {
+  let names;
+  try { names = readdirSync(queueDir); } catch { return 0; }
+  return names.filter((name) => /^\d{15}-\d{12}-\d+\.[tw]$/.test(name) && name !== except
+    && readTicketMeta(queueDir, name)?.priority === 'release' && ticketLiveness(queueDir, name, { ...rules, ignoreAge: true }).live).length;
+}
+
 /** Re-enter the queue under a ticket this process was issued before (its place); a present copy is kept. */
 function restoreTicket(queueDir, name, text = String(process.pid)) {
   if (!/^\d{15}-\d{12}-\d+\.[tw]$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
@@ -914,6 +962,7 @@ export function createCaptureLock({
   orphanStaleMs = 4 * lockStaleMs,
   logFile = lockDir === DEFAULT_LOCK_DIR ? DEFAULT_LOG_FILE : null,
   log = stderrLog,
+  holdCapMs = DEFAULT_HOLD_CAP_MS, // the base hold cap (a selftest shortens it)
 } = {}) {
   let hold = null;
   let lastTicket = null;
@@ -935,11 +984,13 @@ export function createCaptureLock({
    * `holdCapReason` (2026-10-27): see lock classes and the hold cap above.
    */
   async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
-    holdCapMinutes = null, holdCapReason = null,
+    holdCapMinutes = null, holdCapReason = null, priority = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     const classed = resolveLockClass({ option: lockClass, command });
-    const cap = resolveHoldCap(holdCapMinutes, holdCapReason);
-    const terms = { lockClass: classed.lockClass, classFrom: classed.from, capMs: cap.capMs, ...(cap.capReason ? { capReason: cap.capReason } : {}) };
+    const cap = resolveHoldCap(holdCapMinutes, holdCapReason, holdCapMs);
+    const release = resolvePriority(priority) === 'release';
+    const terms = { lockClass: classed.lockClass, classFrom: classed.from, capMs: cap.capMs, ...(cap.capReason ? { capReason: cap.capReason } : {}),
+      ...(release ? { priority: 'release' } : {}) };
     const render = terms.lockClass === 'render';
     // a render needs to know whether every ready ticket ahead is a render, and how many there are up to its slots
     const enough = render ? (ahead) => ahead.at(-1).lockClass !== 'render' || ahead.length >= RENDER_SLOTS : () => true;
@@ -952,11 +1003,12 @@ export function createCaptureLock({
     let ready = typeof prepare !== 'function';
     let preparing = null;
     const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued', terms);
-    if (!ticket && place) ticket = ticketAt(placeStamp(queueDir, place));
+    if (!ticket && place && !release) ticket = ticketAt(placeStamp(queueDir, place)); // a release ticket goes ahead of any place
     // not ready yet: wait as `.w`, out of older copies' sight (see ticket identity above)
     const suffix = ready ? '.t' : '.w';
     if (ticket) ticket = ticket.replace(/\.[tw]$/, suffix);
-    let ownTicket = ticket ? restoreTicket(queueDir, ticket, text()) : reserveTicket(queueDir, text(), suffix);
+    let ownTicket = ticket ? restoreTicket(queueDir, ticket, text())
+      : release ? reserveReleaseTicket(queueDir, text(), suffix) : reserveTicket(queueDir, text(), suffix);
     if (ticket) rewriteTicket(join(queueDir, ownTicket), text());
     lastTicket = ownTicket;
     let ownPath = join(queueDir, ownTicket);
@@ -1004,17 +1056,22 @@ export function createCaptureLock({
         // fewer than the slots free for them, so it never passes a timing ticket nor a render queued before it.
         const turn = ready && (render ? ahead.every((other) => other.lockClass === 'render') && ahead.length < freeRenderSlots(lockDir, lockStaleMs) : atHead);
         if (turn) {
-          const claimed = render ? claimRenderSlot(lockDir, { ticket: ownTicket, terms, lockStaleMs, log, logFile })
-            : claimOwnedLock(lockDir, { ticket: ownTicket, terms });
+          // a normal hold granted while a release ticket waits keeps the base cap, whatever it asked for
+          const granted = !release && terms.capMs > holdCapMs && releaseWaiting(queueDir, queueRules, ownTicket)
+            ? { ...terms, capMs: holdCapMs, capReason: `${terms.capReason} (raised cap refused: a release ticket waits)` } : terms;
+          if (granted !== terms) log(`[capture-lock] a release ticket waits: this ${terms.lockClass} hold keeps the ${holdCapMs / 60_000}-min cap`);
+          const claimed = render ? claimRenderSlot(lockDir, { ticket: ownTicket, terms: granted, lockStaleMs, log, logFile })
+            : claimOwnedLock(lockDir, { ticket: ownTicket, terms: granted });
           if (claimed) {
             hold = claimed;
             heldSince = Date.now();
-            holdTerms = { ...terms, timeoutMs, command, holdCapMinutes, holdCapReason };
+            holdTerms = { ...granted, timeoutMs, command, holdCapMinutes, holdCapReason };
             heldLocks.add(api);
             if (place) { try { unlinkSync(placePath(queueDir, place)); } catch { /* gone */ } }
             appendHoldLog(logFile, { e: 'hold', pid: process.pid, ticket: ownTicket, waitedMs: Date.now() - startedAt, warmMs,
-              lockClass: terms.lockClass, ...(render ? { members: claimed.members } : {}), capMs: terms.capMs,
-              ...(terms.capReason ? { capReason: terms.capReason } : {}), command: process.argv.slice(1).join(' ').slice(0, 300) });
+              lockClass: terms.lockClass, ...(render ? { members: claimed.members } : {}), capMs: granted.capMs,
+              ...(granted.capReason ? { capReason: granted.capReason } : {}), ...(release ? { priority: 'release' } : {}),
+              command: process.argv.slice(1).join(' ').slice(0, 300) });
             return prepared;
           }
         }
@@ -1039,10 +1096,14 @@ export function createCaptureLock({
     }
   }
 
+  /** The running hold's cap: its own, or the base cap while a release ticket waits behind a normal hold. */
+  const capNow = () => (holdTerms.priority !== 'release' && holdTerms.capMs > holdCapMs && releaseWaiting(queueDir, queueRules)
+    ? holdCapMs : holdTerms.capMs);
+
   function refresh() {
     const refreshed = refreshOwnedLock(hold, { log });
-    if (refreshed && Date.now() - heldSince > holdTerms.capMs) {
-      noteOnce(`${hold.nonce}:cap`, `[capture-lock] this ${holdTerms.lockClass} hold (${holdName(hold)}) is past its ${holdTerms.capMs / 60_000}-min cap; `
+    if (refreshed && Date.now() - heldSince > capNow()) {
+      noteOnce(`${hold.nonce}:cap`, `[capture-lock] this ${holdTerms.lockClass} hold (${holdName(hold)}) is past its ${capNow() / 60_000}-min cap; `
         + 'it gives the lock up only at a checkpoint(): call one between batches', log);
     }
     return refreshed;
@@ -1056,23 +1117,23 @@ export function createCaptureLock({
    */
   async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null } = {}) {
     if (!hold) throw new Error('checkpoint(): this lock holds nothing (call it between batches, while the lock is held)');
-    const heldMs = Date.now() - heldSince, terms = holdTerms;
-    if (heldMs < terms.capMs) return { yielded: false, heldMs, capMs: terms.capMs, waitedMs: 0 };
+    const heldMs = Date.now() - heldSince, terms = holdTerms, capMs = capNow();
+    if (heldMs < capMs) return { yielded: false, heldMs, capMs, waitedMs: 0 };
     const waiters = waiting();
     if (!waiters) {
-      noteOnce(`${hold.nonce}:cap-idle`, `[capture-lock] this ${terms.lockClass} hold is past its ${terms.capMs / 60_000}-min cap with nobody `
+      noteOnce(`${hold.nonce}:cap-idle`, `[capture-lock] this ${terms.lockClass} hold is past its ${capMs / 60_000}-min cap with nobody `
         + 'waiting: it keeps the lock', log);
-      return { yielded: false, heldMs, capMs: terms.capMs, waitedMs: 0 };
+      return { yielded: false, heldMs, capMs, waitedMs: 0 };
     }
-    log(`[capture-lock] this ${terms.lockClass} hold is past its ${terms.capMs / 60_000}-min cap (${(heldMs / 60_000).toFixed(1)} min) with `
-      + `${waiters} waiting: yielding at its checkpoint and re-queueing`);
+    log(`[capture-lock] this ${terms.lockClass} hold is past its ${capMs / 60_000}-min cap (${(heldMs / 60_000).toFixed(1)} min) with `
+      + `${waiters} waiting${capMs < terms.capMs ? ' (a release ticket waits: its raised cap is off)' : ''}: yielding at its checkpoint and re-queueing`);
     if (beforeYield) await beforeYield();
     release(`hold cap: yielded after ${(heldMs / 60_000).toFixed(1)} min with ${waiters} waiting`);
     const queuedAt = Date.now();
     await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
-      holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason });
+      holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason, priority: terms.priority ?? 'normal' });
     if (afterResume) await afterResume();
-    return { yielded: true, heldMs, capMs: terms.capMs, waitedMs: Date.now() - queuedAt };
+    return { yielded: true, heldMs, capMs, waitedMs: Date.now() - queuedAt };
   }
 
   /** `reason` (optional) is recorded on the hold-log line (the browser guard's release says why). */
@@ -1190,7 +1251,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     const age = Date.now() - Number(state.name.slice(0, 15));
     const phase = state.ready ? 'ready' : state.meta?.phase ?? 'warming';
     console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${ticketClass(state.meta).padEnd(6)}  `
-      + `${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
+      + `${state.meta?.priority === 'release' ? 'RELEASE  ' : ''}${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
   }
   let lines = [];
   for (const file of [`${DEFAULT_LOG_FILE}.1`, DEFAULT_LOG_FILE]) {

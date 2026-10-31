@@ -12,6 +12,7 @@
 // summary table. Exits 1 when any tank assertion fails.
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createServer } from 'vite';
 import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
@@ -34,16 +35,19 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await launchGuardedBrowser(puppeteer, {
+const launchOptions = {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width: 1900, height: 1400, deviceScaleFactor: 1 });
-page.setDefaultTimeout(240000);
-page.on('pageerror', (e) => console.error('[page]', String(e).slice(0, 300)));
+};
+async function openPage(browser) {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1900, height: 1400, deviceScaleFactor: 1 });
+  page.setDefaultTimeout(240000);
+  page.on('pageerror', (e) => console.error('[page]', String(e).slice(0, 300)));
+  return page;
+}
 
-async function captureSheets(url, dir) {
+async function captureSheets(page, url, dir) {
   fs.mkdirSync(dir, { recursive: true });
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('window.__BOARD_READY === true', { polling: 100 });
@@ -61,35 +65,49 @@ async function captureSheets(url, dir) {
 const report = { generatedAt: new Date().toISOString(), catalog: null, tanks: [] };
 try {
   if (!TANKS_ONLY) {
-    console.log('[decor-eval] catalog…');
-    report.catalog = await captureSheets(
-      `http://localhost:${port}/tools/decoration-board.html?mode=catalog`,
-      path.join(OUT, 'catalog'),
-    );
-    console.log(`[decor-eval] catalog: ${report.catalog.rows.length} kit variants captured`);
-  }
-  if (!CATALOG_ONLY) {
-    for (const id of TANKS) {
-      console.log(`[decor-eval] tank ${id}…`);
-      try {
-        const rep = await captureSheets(
-          `http://localhost:${port}/tools/decoration-board.html?mode=tank&id=${encodeURIComponent(id)}`,
-          path.join(OUT, `tank-${id}`),
-        );
-        report.tanks.push(rep.rows[0]);
-        const a = rep.rows[0].asserts;
-        console.log(`  ${id.padEnd(10)} tris ${String(a.summary ? a.summary.tris : '?').padStart(5)} ` +
-          `draws ${a.summary ? a.summary.drawCalls : '?'} pieces ${a.summary ? a.summary.pieces.length : '?'} | ` +
-          `width ${a.widthGuard.pass ? 'PASS' : 'FAIL'} sweep ${a.gunSweep.pass ? 'PASS' : 'FAIL'} ` +
-          `metrology ${a.metrologyDecorNodes === 0 ? 'CLEAN' : 'DIRTY!'} burn ${a.burn.pass ? 'PASS' : 'FAIL'}`);
-      } catch (e) {
-        console.error(`  ${id}: FAILED — ${e.message}`);
-        report.tanks.push({ id, error: e.message });
-      }
+    // the catalog builds no tank: a browser of its own
+    const browser = await launchGuardedBrowser(puppeteer, launchOptions);
+    try {
+      console.log('[decor-eval] catalog…');
+      report.catalog = await captureSheets(
+        await openPage(browser),
+        `http://localhost:${port}/tools/decoration-board.html?mode=catalog`,
+        path.join(OUT, 'catalog'),
+      );
+      console.log(`[decor-eval] catalog: ${report.catalog.rows.length} kit variants captured`);
+    } finally {
+      await browser.close();
     }
   }
+  // a fresh browser per chunk of tank sheets (tools/browser-id-chunks.mjs)
+  if (!CATALOG_ONLY) await eachBrowserChunk('tools/decoration-eval.mjs', TANKS, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, launchOptions);
+    try {
+      const page = await openPage(browser);
+      for (const id of chunk) {
+        console.log(`[decor-eval] tank ${id}…`);
+        try {
+          const rep = await captureSheets(
+            page,
+            `http://localhost:${port}/tools/decoration-board.html?mode=tank&id=${encodeURIComponent(id)}`,
+            path.join(OUT, `tank-${id}`),
+          );
+          report.tanks.push(rep.rows[0]);
+          const a = rep.rows[0].asserts;
+          console.log(`  ${id.padEnd(10)} tris ${String(a.summary ? a.summary.tris : '?').padStart(5)} ` +
+            `draws ${a.summary ? a.summary.drawCalls : '?'} pieces ${a.summary ? a.summary.pieces.length : '?'} | ` +
+            `width ${a.widthGuard.pass ? 'PASS' : 'FAIL'} sweep ${a.gunSweep.pass ? 'PASS' : 'FAIL'} ` +
+            `metrology ${a.metrologyDecorNodes === 0 ? 'CLEAN' : 'DIRTY!'} burn ${a.burn.pass ? 'PASS' : 'FAIL'}`);
+        } catch (e) {
+          console.error(`  ${id}: FAILED — ${e.message}`);
+          report.tanks.push({ id, error: e.message });
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
-  await browser.close();
   await server.close();
 }
 

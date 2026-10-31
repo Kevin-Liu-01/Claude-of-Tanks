@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
+import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
@@ -326,6 +326,20 @@ put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
 put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\nexport const TOTAL = applyBalance(ALL_TANK_IDS);\n");
 assert.match(state({ steps: readers(), rows: specRows(), cfg: balanced }).partition.balanceReason, /importer pin stale: src\/vehicles\/fleetRegistration\.ts \(now [0-9a-f]{16}\)/,
   'control: a new use of the pass in its importer keeps it in the core until reviewed');
+// A pass the entry adds is pinned by name without a declaration edit (265: applyBuildFootings's call line was not): from
+// a reviewed pin over both imports, a second call of the new pass breaks it, though no declared token names that line.
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length;\nexport function applyFootings(ids) { return ids; }\n');
+const footings = "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance, applyFootings } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\napplyFootings(ALL_TANK_IDS);\n";
+put('src/vehicles/fleetRegistration.ts', footings);
+assert.deepEqual(balanceTokens(root, balanced.balance), ['balance.ts', 'applyBalance', 'applyFootings'], 'the entry\'s exports are tokens');
+const reviewed = { ...config, balance: { ...balanced.balance, importers: { 'src/vehicles/fleetRegistration.ts':
+  { pin: tokenPin(footings, balanceTokens(root, balanced.balance)) } } } };
+assert.equal(state({ steps: readers(), rows: specRows(), cfg: reviewed }).partition.balanceReason, null, 'the reviewed pin holds');
+put('src/vehicles/fleetRegistration.ts', `${footings}applyFootings(ALL_TANK_IDS);\n`);
+assert.equal(tokenPin(read('src/vehicles/fleetRegistration.ts'), tokens), tokenPin(footings, tokens),
+  'control: the declared tokens alone do not see the new call');
+assert.match(state({ steps: readers(), rows: specRows(), cfg: reviewed }).partition.balanceReason, /importer pin stale/,
+  'a second call of the new pass breaks the pin');
 put('src/vehicles/fleetRegistration.ts', registration);
 
 // 15. A module a table imports (266: auxiliaryRoofGuns.generated.ts decodes its rows with auxiliaryRoofGunsCodec.ts) is

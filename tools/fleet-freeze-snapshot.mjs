@@ -13,7 +13,7 @@
 // --ids (2026-10-16, changed-only): capture only those tanks and keep every other row exactly as recorded (an id with no
 // row is always captured), so a scoped run writes the bytes a whole-fleet run would when the other rows are current;
 // --check --ids verifies those tanks. The freeze is a nightly or explicit whole-fleet record, not a release step.
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -46,15 +46,8 @@ const server = await createServer({
 });
 await server.listen();
 
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-page.setDefaultTimeout(120000);
-
-const tanks = {};
-async function capture(id, seed, assetMode = false) {
+const captured = new Map();
+async function capture(page, id, seed, assetMode = false) {
   await page.goto(
     `http://localhost:${server.config.server.port}/tools/fleet-freeze-probe.html?id=${encodeURIComponent(id)}&seed=${seed}&asset=${assetMode ? 1 : 0}`,
     { waitUntil: 'domcontentloaded' },
@@ -64,26 +57,39 @@ async function capture(id, seed, assetMode = false) {
 }
 
 try {
-  for (const id of ids) {
-    if (!capturing.includes(id)) { tanks[id] = previous[id]; continue; }
-    const result = await capture(id, 4242);
-    const assetResult = await capture(id, 4100, true);
-    const manifestHash = manifest.tanks[id]?.geometryHash;
-    if (manifestHash && assetResult.assetHash !== manifestHash) {
-      throw new Error(`${id}: asset fingerprint ${assetResult.assetHash} != manifest ${manifestHash}`);
+  // A fresh browser per chunk of captured ids (tools/browser-id-chunks.mjs); the rows merge in roster order below.
+  await eachBrowserChunk('tools/fleet-freeze-snapshot.mjs', capturing, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(120000);
+      for (const id of chunk) {
+        const result = await capture(page, id, 4242);
+        const assetResult = await capture(page, id, 4100, true);
+        const manifestHash = manifest.tanks[id]?.geometryHash;
+        if (manifestHash && assetResult.assetHash !== manifestHash) {
+          throw new Error(`${id}: asset fingerprint ${assetResult.assetHash} != manifest ${manifestHash}`);
+        }
+        captured.set(id, {
+          freezeHash: result.hash.padStart(8, '0'),
+          instanceFreezeHash: result.assetHash,
+          assetGeometryHash: assetResult.assetHash,
+          meshes: result.meshCount,
+          vertices: result.vertCount,
+        });
+      }
+    } finally {
+      await browser.close();
     }
-    tanks[id] = {
-      freezeHash: result.hash.padStart(8, '0'),
-      instanceFreezeHash: result.assetHash,
-      assetGeometryHash: assetResult.assetHash,
-      meshes: result.meshCount,
-      vertices: result.vertCount,
-    };
-  }
+  });
 } finally {
-  await browser.close();
   await server.close();
 }
+const tanks = {};
+for (const id of ids) tanks[id] = captured.has(id) ? captured.get(id) : previous[id];
 
 const snapshot = {
   schemaVersion: 1,

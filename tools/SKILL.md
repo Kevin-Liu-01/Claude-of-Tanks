@@ -133,6 +133,24 @@ reports and kills without ending the process (`browserGuardOf(browser)`). A
 fixture's fake launcher gets its fake browser back unwatched; a fixture that
 strips imports and runs a tool's source passes a `launchGuardedBrowser` port.
 
+A browser's renderer grows with every tank id it works through (265: genIcons,
+then tank-assets-check, over the fleet in one browser passed the 6 GB guard).
+A tool that opens a browser over tank ids takes its chunks from
+`browser-id-chunks.mjs` (2026-10-31, item 266): `eachBrowserChunk('tools/x.mjs',
+ids, async (chunk, { launch, track }) => ...)` launches a fresh browser per
+chunk within the tool's `BROWSER_ID_CAPS` row in `browser-id-caps.mjs` (keyed
+by tool name, each with its measured peaks), fails a chunk that shares or
+leaves open a browser, and logs each chunk's guard peaks. A cap only places
+browser boundaries, so the table and `COT_BROWSER_ID_CAP` are out of every
+changed-only key (`scheduleOnly`, `SCHEDULING_ENV`): re-measure and edit a row
+without re-running icons or centering. Resolve the
+whole id list first and write reports once after the last chunk;
+`COT_BROWSER_ID_CAP=2` forces small chunks for a smoke run. The census fails
+a tool that opens a browser and reads tank ids (the roster, `--ids`/`--tanks`,
+the icons page's fleet, the Garage's cards) without it, unless
+`ID_LOOP_EXEMPT` says why it has no such loop; `gpuChunks` adds a GPU step's
+time cap on top.
+
 The capture lock has two classes (2026-10-27, item 262). `render` holds
 (genIcons, genHeroCards, genDrawings, anatomy render sets, gauntlet captures,
 sheets) share it, two at once, as one lock directory with a `slot-<k>.holder`
@@ -146,7 +164,11 @@ an older copy's unclassed one, which stays exclusive). The class comes from
 shoot's `checkpoint` in `runWarmHold`, which freezes and thaws the pages)
 between batches, and past the cap with anyone waiting it gives the lock up and
 re-queues at the back. Raise the cap per ticket only: `holdCapMinutes` with a
-`holdCapReason`.
+`holdCapReason`. A release integrator's default tier and smokes run with
+`COT_CAPTURE_PRIORITY=release` (2026-10-31, item 266: 265's browser receipts
+waited 82 min behind lane holds): their tickets are named ahead of every
+waiting normal ticket, and while one waits a normal hold's raised cap falls
+back to 20 min at the grant and at its next checkpoint. Lanes never set it.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

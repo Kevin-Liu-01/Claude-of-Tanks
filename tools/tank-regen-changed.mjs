@@ -40,6 +40,7 @@ import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, r
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
+import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
@@ -251,7 +252,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   log(`[regen] ${name}: ${resolved.mode} ${resolved.ids.length} id(s) (${why.join('; ')})`);
   if (DRY) {
     const chunks = definition.device === 'gpu' ? gpuChunks(definition, resolved.ids).map((chunk) => chunk.length) : null;
-    if (chunks) log(`[regen] ${name}: would run ${chunks.length} browser chunk(s) of ${chunks.join(', ')} id(s) (at most ${definition.maxIds ?? 'any'} per browser, ${definition.chunkS} s per hold)`);
+    if (chunks) log(`[regen] ${name}: would run ${chunks.length} browser chunk(s) of ${chunks.join(', ')} id(s) (at most ${browserIdCap(definition.tool)} per browser, ${definition.chunkS} s per hold)`);
     summary.runs.push({ step: name, mode: resolved.mode, count: resolved.ids.length, ids: resolved.ids, dryRun: true, ...(chunks ? { chunks } : {}) });
     return false;
   }

@@ -18,6 +18,8 @@ import { uniqueIds } from './id-list.mjs';
 // with blind spots (shoeVox > 0 while bandVox = 0 — the m1a1ha class)
 // ranked worst-first.
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { trackClipOptions } from './track-clip-options.mjs';
@@ -81,27 +83,39 @@ function writeAuditReports(results) {
   }
 }
 
-await withIsolatedCaptureBrowser({
+const serverOptions = {
   root: process.cwd(), logLevel: 'error',
   server: { port: 7461 + Math.floor(Math.random() * 30), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-}, {
+};
+const launchOptions = {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-}, async ({ server, browser }) => {
-const port = server.config.server.port;
-const page = await browser.newPage();
-page.setDefaultTimeout(180000);
-const results = [];
-  let ids;
-  if (idArg) {
-    ids = idArg.slice(6).split(',');
-  } else {
-    await page.goto(`http://localhost:${port}/tools/track-clip-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
+};
+/** One isolated server and browser: the roster's list page, or one chunk of ids in a capture hold of its own. */
+async function isolatedBrowser(run, dependencies = {}) {
+  return await withIsolatedCaptureBrowser(serverOptions, launchOptions, run, dependencies);
+}
+let ids;
+if (idArg) {
+  ids = idArg.slice(6).split(',');
+} else {
+  // the procedural roster from a short-lived list page (it draws nothing: no hold), so the audit below can chunk it
+  ids = await isolatedBrowser(async ({ server, browser }) => {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(180000);
+    await page.goto(`http://localhost:${server.config.server.port}/tools/track-clip-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction('window.__CLIP_READY === true', { polling: 50 });
-    ids = (await page.evaluate('window.__CLIP_RESULT')).ids;
-  }
-  console.log(`[track-clip] auditing ${ids.length} procedural ids at ${quality}`);
-  for (const id of ids) {
+    return (await page.evaluate('window.__CLIP_RESULT')).ids;
+  });
+}
+console.log(`[track-clip] auditing ${ids.length} procedural ids at ${quality}`);
+const results = [];
+// A fresh server and browser per chunk of ids (tools/browser-id-chunks.mjs), each chunk in a capture hold of its own.
+await eachBrowserChunk('tools/track-clip-audit.mjs', ids, (chunk, { launch }) => isolatedBrowser(async ({ server, browser }) => {
+  const port = server.config.server.port;
+  const page = await browser.newPage();
+  page.setDefaultTimeout(180000);
+  for (const id of chunk) {
     try {
       await page.goto(`http://localhost:${port}/tools/track-clip-audit.html?id=${encodeURIComponent(id)}&quality=${quality}${process.argv.includes('--exact') ? '&dilate=0' : ''}${process.argv.includes('--strict') ? '&strict=1' : ''}`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__CLIP_READY === true', { polling: 50 });
@@ -113,5 +127,5 @@ const results = [];
       console.log(`[track-clip] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);
     }
   }
-  writeAuditReports(results);
-}, { capture: { lock: captureLock, waitMs: 45 * 60 * 1000 } });
+}, { capture: { lock: captureLock, waitMs: 45 * 60 * 1000 }, launchBrowser: (options) => launch(puppeteer, options) }));
+writeAuditReports(results);

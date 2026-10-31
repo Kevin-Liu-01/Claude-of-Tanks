@@ -8,13 +8,16 @@
 //   node tools/presentation-centering.mjs --sync-assets --ids=a,b
 //   node tools/presentation-centering.mjs --rekey   # move renamed ids' rows (tank id alias layer), no capture
 
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { presentationNumberSource as numberSource, presentationReceiptErrors, rekeyPresentationSource, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
+// the fleet's registered ids (the icons page's __FLEET_IDS): specs.ts alone holds only the seed ids
+import '../src/vehicles/tankFactory.ts';
+import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
@@ -126,51 +129,70 @@ const origin = boundOrigin(server);
 // navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
 // COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
 const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'presentation-centering', ready: 'window.__ICONS_READY === true' });
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  protocolTimeout: 15 * 60 * 1000,
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
 const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon')
-      && !message.text().includes('404')) {
-    pageErrors.push(message.text());
-  }
-});
 
 let failed = false;
 try {
   const url = `${origin}/tools/icons-page.html`;
-  await loadIconsPage(page, url);
-  const fleetIds = await page.evaluate(() => [...window.__FLEET_IDS]);
-  const unknown = selectedIds.filter((id) => !fleetIds.includes(id));
+  const unknown = selectedIds.filter((id) => !DEVELOPMENT_TANK_IDS.includes(id));
   if (unknown.length) throw new Error(`unknown tank id(s): ${unknown.join(', ')}`);
-  const ids = selectedIds.length ? selectedIds : fleetIds;
-  // Match the asset generator's two-pass lifecycle. The warm pass settles
-  // deferred vehicle materials/attachments before either tool measures the
-  // finished top render; auditing a cold one-off build allowed a few cached
-  // fleet variants to disagree with their generated images.
-  await page.evaluate((tankIds) => window.__WARM(tankIds), ids);
-  await page.waitForFunction(
-    () => {
-      window.__CENTER_POLLS = (window.__CENTER_POLLS || 0) + 1;
-      const stats = window.__GLB_STATS;
-      if (!stats) return window.__CENTER_POLLS >= 10;
-      const settled = stats.started === stats.settled;
-      window.__CENTER_SETTLE_STREAK = settled
-        ? (window.__CENTER_SETTLE_STREAK || 0) + 1 : 0;
-      return window.__CENTER_SETTLE_STREAK >= 2;
-    },
-    { timeout: 120000, polling: 400 },
-  );
-  const rows = {};
-  for (let i = 0; i < ids.length; i += 12) {
-    const chunk = ids.slice(i, i + 12);
-    Object.assign(rows, await page.evaluate((tankIds) => window.__CENTER_AUDIT(tankIds), chunk));
-  }
+  const ids = selectedIds.length ? selectedIds : [...DEVELOPMENT_TANK_IDS];
+  // One browser per chunk of ids (tools/browser-id-chunks.mjs): its renderer grows with every id it builds. Each chunk
+  // runs every page measurement for its ids; the checks below read every chunk's rows.
+  const rows = {}, exportedRows = {}, live = { tanks: {} };
+  await eachBrowserChunk('tools/presentation-centering.mjs', ids, async (chunkIds, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      protocolTimeout: 15 * 60 * 1000,
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      const page = await browser.newPage();
+      page.on('pageerror', (error) => pageErrors.push(String(error)));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && !message.text().includes('favicon')
+            && !message.text().includes('404')) {
+          pageErrors.push(message.text());
+        }
+      });
+      await loadIconsPage(page, url);
+      // Match the asset generator's two-pass lifecycle. The warm pass settles
+      // deferred vehicle materials/attachments before either tool measures the
+      // finished top render; auditing a cold one-off build allowed a few cached
+      // fleet variants to disagree with their generated images.
+      await page.evaluate((tankIds) => window.__WARM(tankIds), chunkIds);
+      await page.waitForFunction(
+        () => {
+          window.__CENTER_POLLS = (window.__CENTER_POLLS || 0) + 1;
+          const stats = window.__GLB_STATS;
+          if (!stats) return window.__CENTER_POLLS >= 10;
+          const settled = stats.started === stats.settled;
+          window.__CENTER_SETTLE_STREAK = settled
+            ? (window.__CENTER_SETTLE_STREAK || 0) + 1 : 0;
+          return window.__CENTER_SETTLE_STREAK >= 2;
+        },
+        { timeout: 120000, polling: 400 },
+      );
+      for (let i = 0; i < chunkIds.length; i += 12) {
+        const chunk = chunkIds.slice(i, i + 12);
+        Object.assign(rows, await page.evaluate((tankIds) => window.__CENTER_AUDIT(tankIds), chunk));
+      }
+      if (update) return;
+      for (let i = 0; i < chunkIds.length; i += 24) {
+        const chunk = chunkIds.slice(i, i + 24);
+        Object.assign(exportedRows, await page.evaluate(
+          (tankIds) => window.__TOP_ASSET_CENTER_AUDIT(tankIds), chunk,
+        ));
+      }
+      if (syncAssets) {
+        const { tanks, ...fields } = await page.evaluate(tankIds => window.__AUDIT(tankIds), chunkIds);
+        Object.assign(live, fields);
+        Object.assign(live.tanks, tanks);
+      }
+    } finally {
+      await browser.close();
+    }
+  });
 
   const errors = Object.entries(rows).filter(([, row]) => row.error);
   if (errors.length) {
@@ -213,13 +235,6 @@ try {
       throw new Error(`rendered center exceeds ${MAX_RESIDUAL_PX}px:\n${offCenter.slice(0, 20)
         .map((row) => `  ${row.id}: ${row.residualPx}px (${row.deltaM}m)`).join('\n')}`);
     }
-    const exportedRows = {};
-    for (let i = 0; i < ids.length; i += 24) {
-      const chunk = ids.slice(i, i + 24);
-      Object.assign(exportedRows, await page.evaluate(
-        (tankIds) => window.__TOP_ASSET_CENTER_AUDIT(tankIds), chunk,
-      ));
-    }
     const exportedErrors = Object.entries(exportedRows).filter(([, row]) => row.error);
     if (exportedErrors.length) {
       throw new Error(exportedErrors.map(([id, row]) => `${id}: ${row.error}`).join('\n'));
@@ -239,7 +254,6 @@ try {
       const before = readFileSync(outputPath, 'utf8');
       const iconsRoot = resolve(root, 'public/icons');
       const manifest = JSON.parse(readFileSync(resolve(iconsRoot, 'tank-assets.json'), 'utf8'));
-      const live = await page.evaluate(tankIds => window.__AUDIT(tankIds), ids);
       const captureErrors = ids.flatMap(id => presentationReceiptErrors(id,
         rows[id]?.currentAnchor, rows[id]?.capturedProjection,
         live.tanks[id]?.presentationAnchor, live.tanks[id]?.presentationProjection));
@@ -268,7 +282,6 @@ try {
     console.error(`[presentation-centering] page errors (${pageErrors.length}):`);
     for (const error of pageErrors.slice(0, 20)) console.error(`  ${error}`);
   }
-  await browser.close();
   await server.close();
   rmSync(cacheDir, { recursive: true, force: true });
 }

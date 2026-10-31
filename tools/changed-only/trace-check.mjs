@@ -93,7 +93,7 @@ for (const name of names) {
     ...s.toolFiles, ...s.foreignTables, ...tableFiles, ...AGGREGATES, ...s.outputFiles, ...step.files,
     ...expandGlobs(root, [...(step.writes ?? []), ...(step.reads ?? [])]), step.tool, ...(step.entries ?? []),
     ...Object.entries(DECLARED_DYNAMIC).filter(([file]) => s.toolFiles.includes(file) || file === step.tool)
-      .flatMap(([, declaration]) => expandGlobs(root, declaration.reads ?? [])),
+      .flatMap(([, declaration]) => [...expandGlobs(root, declaration.reads ?? []), ...(declaration.scheduleOnly ?? [])]),
     'package-lock.json', 'node_modules/.package-lock.json']);
   // Directories in the key (fingerprinted whole) cover what lies under them; a directory holding a keyed file may be
   // listed or stat'ed (the generators read their own output directories).

@@ -1,4 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { uniqueIds } from './id-list.mjs';
 // RENDER-TRUTH AUDIT driver (BUILD-STANDARD §C.1, owner order 2026-08-06;
@@ -63,14 +64,18 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await launchGuardedBrowser(puppeteer, {
+const launchOptions = {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-page.setDefaultTimeout(240000);
+};
 let lastPageError = null;
-page.on('pageerror', (e) => { lastPageError = e.message; });
+/** A page of `browser` with the run's timeout and page-error capture. */
+async function auditPage(browser) {
+  const page = await browser.newPage();
+  page.setDefaultTimeout(240000);
+  page.on('pageerror', (e) => { lastPageError = e.message; });
+  return page;
+}
 
 const results = [];
 const S = Math.max(256, Math.min(1024, Number(sizeArg) || 768));
@@ -101,43 +106,59 @@ try {
   if (idArg) {
     ids = idArg.split(',').map((s) => s.trim()).filter(Boolean);
   } else {
-    await page.goto(`http://localhost:${port}/tools/winding-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction('window.__WIND_READY === true', { polling: 50 });
-    ids = (await page.evaluate('window.__WIND_RESULT')).ids;
-  }
-  console.log(`[winding-audit] auditing ${ids.length} ids (size ${S}${viewsArg ? `, views ${viewsArg}` : ''})`);
-  for (const id of ids) {
-    // one FIFO ticket per tank (§C.1 amendment): live lanes interleave
-    await acquireLock(45 * 60 * 1000);
+    // the procedural roster from a short-lived list page, so the audit below can chunk it
+    const browser = await launchGuardedBrowser(puppeteer, launchOptions);
     try {
-      lastPageError = null;
-      const qs = [`id=${encodeURIComponent(id)}`, `size=${S}`];
-      if (viewsArg) qs.push(`views=${encodeURIComponent(viewsArg)}`);
-      await page.goto(`http://localhost:${port}/tools/winding-audit.html?${qs.join('&')}`, { waitUntil: 'domcontentloaded' });
+      const page = await auditPage(browser);
+      await page.goto(`http://localhost:${port}/tools/winding-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__WIND_READY === true', { polling: 50 });
-      const r = await page.evaluate('window.__WIND_RESULT');
-      if (lastPageError && !r) throw new Error(lastPageError);
-      results.push(r);
-      if (r.skipped) {
-        console.log(`[winding-audit] ${id.padEnd(18)} SKIP ${r.skipped}`);
-      } else {
-        const v = verdictOf(r);
-        const c = r.census;
-        const d = r.deficit;
-        const yv = r.yaw;
-        const yawCol = yv?.skipped
-          ? `yaw skip(${yv.skipped})`
-          : `yaw cand ${String(yv.candidatePx).padStart(6)} static ${String(yv.staticPx).padStart(6)} coinc ${String(yv.coincidencePx).padStart(6)}`;
-        const top = yv?.candidates?.[0];
-        console.log(`[winding-audit] ${id.padEnd(18)} rev ${String(c.reversed).padStart(3)} mix ${String(c.mixed).padStart(3)} calls ${String(r.slabCalls.flaggedCalls).padStart(3)} | deficit ${String(d.worstViewDeficit).padStart(6)}px ${(100 * d.worstViewDeficitFrac).toFixed(2).padStart(6)}% @${(d.worstView || '-').padEnd(10)} | ${yawCol} | m1 ${v.m1} m2 ${v.m2}${top ? ` | top ${top.rig}/${top.node}(${top.px})` : ''}`);
-      }
-    } catch (e) {
-      results.push({ id, error: (lastPageError || e.message).slice(0, 200) });
-      console.log(`[winding-audit] ${id.padEnd(18)} ERROR ${(lastPageError || e.message).slice(0, 120)}`);
+      ids = (await page.evaluate('window.__WIND_RESULT')).ids;
     } finally {
-      releaseLock();
+      await browser.close();
     }
   }
+  console.log(`[winding-audit] auditing ${ids.length} ids (size ${S}${viewsArg ? `, views ${viewsArg}` : ''})`);
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs); the FIFO ticket stays per tank.
+  await eachBrowserChunk('tools/winding-audit.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, launchOptions);
+    try {
+      const page = await auditPage(browser);
+      for (const id of chunk) {
+        // one FIFO ticket per tank (§C.1 amendment): live lanes interleave
+        await acquireLock(45 * 60 * 1000);
+        try {
+          lastPageError = null;
+          const qs = [`id=${encodeURIComponent(id)}`, `size=${S}`];
+          if (viewsArg) qs.push(`views=${encodeURIComponent(viewsArg)}`);
+          await page.goto(`http://localhost:${port}/tools/winding-audit.html?${qs.join('&')}`, { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction('window.__WIND_READY === true', { polling: 50 });
+          const r = await page.evaluate('window.__WIND_RESULT');
+          if (lastPageError && !r) throw new Error(lastPageError);
+          results.push(r);
+          if (r.skipped) {
+            console.log(`[winding-audit] ${id.padEnd(18)} SKIP ${r.skipped}`);
+          } else {
+            const v = verdictOf(r);
+            const c = r.census;
+            const d = r.deficit;
+            const yv = r.yaw;
+            const yawCol = yv?.skipped
+              ? `yaw skip(${yv.skipped})`
+              : `yaw cand ${String(yv.candidatePx).padStart(6)} static ${String(yv.staticPx).padStart(6)} coinc ${String(yv.coincidencePx).padStart(6)}`;
+            const top = yv?.candidates?.[0];
+            console.log(`[winding-audit] ${id.padEnd(18)} rev ${String(c.reversed).padStart(3)} mix ${String(c.mixed).padStart(3)} calls ${String(r.slabCalls.flaggedCalls).padStart(3)} | deficit ${String(d.worstViewDeficit).padStart(6)}px ${(100 * d.worstViewDeficitFrac).toFixed(2).padStart(6)}% @${(d.worstView || '-').padEnd(10)} | ${yawCol} | m1 ${v.m1} m2 ${v.m2}${top ? ` | top ${top.rig}/${top.node}(${top.px})` : ''}`);
+          }
+        } catch (e) {
+          results.push({ id, error: (lastPageError || e.message).slice(0, 200) });
+          console.log(`[winding-audit] ${id.padEnd(18)} ERROR ${(lastPageError || e.message).slice(0, 120)}`);
+        } finally {
+          releaseLock();
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  });
 
   // ---- ranked report + JSON ----
   const ok = results.filter((r) => !r.error && !r.skipped);
@@ -175,7 +196,6 @@ try {
   if (CHECK && hard.length) process.exitCode = 2;
   if (errs.length) process.exitCode = process.exitCode || 1;
 } finally {
-  await browser.close();
   await server.close();
   releaseLock();
 }

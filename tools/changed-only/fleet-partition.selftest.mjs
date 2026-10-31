@@ -6,9 +6,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
-import { computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS, gpuChunks } from './steps.mjs';
+  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS, gpuChunks } from './steps.mjs';
+import { browserIdCap } from '../browser-id-chunks.mjs';
+import { declaredNotInput } from './globs.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -33,7 +35,7 @@ for (const [file, declaration] of Object.entries(FLEET_API_USERS)) {
 
 // The balance pass's importers apply it to the registry and use it no other way (steps.mjs BALANCE).
 for (const [file, declaration] of Object.entries(BALANCE.importers)) {
-  const pin = tokenPin(readFileSync(join(root, file), 'utf8'), BALANCE.tokens);
+  const pin = tokenPin(readFileSync(join(root, file), 'utf8'), balanceTokens(root, BALANCE));
   assert.equal(pin, declaration.pin, `${file}: its uses of the balance pass changed; review that they only apply it to the registered specs and set pin: '${pin}'`);
 }
 
@@ -141,20 +143,41 @@ assert.match(chain, /for \(const name of CPU_FIXPOINT_STEPS\.filter\(selected\)\
 
 // A GPU step's browser holds a chunk within its time and its renderer caps (266: icons' time cap alone, 440 ids, put the
 // whole 255-id fleet in one browser and the 6 GB renderer guard killed it). Every chunk of this fleet and of 255 ids keeps
-// both, the chunks cover the list once in order, and the chain plans and runs GPU steps through gpuChunks. Control: the
-// time cap alone puts the 255 ids in one browser.
+// both, the chunks cover the list once in order, and the chain plans and runs GPU steps through gpuChunks, whose ids per
+// browser are the tool's own (tools/browser-id-chunks.mjs). Control: the time cap alone puts the 255 ids in one browser.
 assert.match(chain, /const chunks = gpuChunks\(step, list\);/, 'the chain runs GPU steps in gpuChunks holds');
 for (const step of STEPS.filter((entry) => entry.device === 'gpu')) {
-  assert.ok(step.maxIds > 0, `${step.name}: a GPU step caps its ids per browser (maxIds)`);
+  const maxIds = browserIdCap(step.tool);
+  assert.ok(maxIds > 0, `${step.name}: a GPU step's tool caps its ids per browser (BROWSER_ID_CAPS)`);
   for (const list of [state.ids, Array.from({ length: 255 }, (_, index) => `id${index}`)]) {
     const chunks = gpuChunks(step, list);
     assert.deepEqual(chunks.flat(), list, `${step.name}: the chunks cover the ${list.length} ids once, in order`);
-    assert.ok(chunks.every((chunk) => chunk.length <= step.maxIds && chunk.length * step.perIdS <= step.chunkS),
-      `${step.name}: chunks ${chunks.map((chunk) => chunk.length)} within ${step.maxIds} ids and ${step.chunkS} s`);
+    assert.ok(chunks.every((chunk) => chunk.length <= maxIds && chunk.length * step.perIdS <= step.chunkS),
+      `${step.name}: chunks ${chunks.map((chunk) => chunk.length)} within ${maxIds} ids and ${step.chunkS} s`);
   }
 }
 const icons = STEPS.find((entry) => entry.name === 'icons');
-assert.equal(gpuChunks({ ...icons, maxIds: undefined }, Array.from({ length: 255 }, (_, index) => `id${index}`)).length, 1,
-  'control: the time cap alone puts 255 icons ids in one browser');
+const fleet255 = Array.from({ length: 255 }, (_, index) => `id${index}`);
+assert.ok(Math.floor(icons.chunkS / icons.perIdS) >= 255 && gpuChunks(icons, fleet255).length > 1,
+  'control: the time cap alone would hold 255 icons ids in one browser; the tool\'s cap splits them');
+assert.throws(() => gpuChunks({ ...icons, tool: 'tools/uncapped.mjs' }, fleet255), /no BROWSER_ID_CAPS row/,
+  'control: a GPU tool without a cap row is refused, never run uncapped');
+// 266: the chunk helper's environment only schedules (where a fresh browser starts): every name it reads is a SCHEDULING_ENV
+// row, so a smoke run under COT_BROWSER_ID_CAP keeps the GPU steps' keys (without the row, cap 7 moved icons and centering).
+const chunkEnv = graph.edges(join(root, 'tools/browser-id-chunks.mjs')).flags.environment;
+assert.ok(chunkEnv.includes('COT_BROWSER_ID_CAP') && chunkEnv.every((name) => Object.hasOwn(SCHEDULING_ENV, name)),
+  `tools/browser-id-chunks.mjs reads ${chunkEnv.join(', ')}: each only schedules, so each is a SCHEDULING_ENV row`);
+// 266: so does its cap table (steps.mjs scheduleOnly): the GPU steps key the helper and the launcher it loads, never the
+// table, so a re-measured cap re-runs no step. Control: the helper executes the table, and without the declaration the
+// edge would stay in the key.
+const capsTable = 'tools/browser-id-caps.mjs';
+for (const name of ['icons', 'centering']) {
+  const files = state.steps[name].toolFiles;
+  assert.ok(files.includes('tools/browser-id-chunks.mjs') && files.includes('tools/browser-launch.mjs') && !files.includes(capsTable),
+    `${name}: keys tools/browser-id-chunks.mjs and tools/browser-launch.mjs, never ${capsTable}`);
+}
+assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
+assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),
+  'control: only the scheduleOnly declaration takes the table out of the key');
 
 console.log(`changed-only fleet-partition.selftest: PASS (${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files; kit marks ${marked.ids.length}; ${state.world.ids.length} maps, a ${t90Group} edit marks ${remarked.ids.length})`);

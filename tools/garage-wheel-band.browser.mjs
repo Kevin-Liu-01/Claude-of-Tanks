@@ -33,8 +33,9 @@
 // the run, so give it one Garage).
 // Takes the shared capture lock (tools/capture-lock.mjs) for the whole run (--lock-held: the caller holds it, a chain's
 // lease) and stops before --cap-min minutes of hold; serves --root (default: the current directory) through its own
-// vite dev server. Writes <out>/report.json and PNGs.
-import { launchGuardedBrowser } from './browser-launch.mjs';
+// vite dev server, with a fresh browser per chunk of --tanks (tools/browser-id-chunks.mjs; the battle views run in the
+// last). Writes <out>/report.json and PNGs.
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -75,28 +76,13 @@ const VIEWS = {
 };
 
 const lock = createCaptureLock();
-let heartbeat = null, server = null, browser = null;
+let heartbeat = null, server = null, baseUrl = null, heldAt = 0;
+const overCap = () => Date.now() - heldAt > capMs;
 const report = { root, garages, tanks, views: viewNames, gate: { maxStep, minTag }, garage: [], battle: [], errors: [] };
 let failed = [];
-try {
-  if (!lockHeld) {
-    log('waiting for the capture lock');
-    await lock.acquire(5 * 60 * 60 * 1000);
-    heartbeat = setInterval(() => lock.refresh(), 30_000);
-    heartbeat.unref();
-  }
-  const heldAt = Date.now();
-  const overCap = () => Date.now() - heldAt > capMs;
-  log('capture lock held');
-  server = await createServer({
-    root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
-    server: { host: '127.0.0.1', port: 5300 + (process.pid % 90), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-    optimizeDeps: { entries: ['index.html'] },
-  });
-  await server.listen();
-  const baseUrl = `http://127.0.0.1:${server.config.server.port}`;
-  log('vite', baseUrl);
-  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+
+/** A fresh browser's page: the game in the first Garage, the page-side probe installed. */
+async function openProbePage(browser) {
   const page = await browser.newPage();
   await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => report.errors.push(String(e)));
@@ -300,7 +286,11 @@ try {
         step: under.pixels && over.pixels ? +(under.darken - over.darken).toFixed(2) : null, line: line?.shape ?? null };
     };
   });
+  return page;
+}
 
+/** One browser chunk of the tanks: each Garage with each of them, then (`last`) the battle views. */
+async function probeChunk(page, chunk, last) {
   const shot = async (file) => {
     await page.evaluate(() => window.__GWB.frames(4));
     if (!(await page.evaluate(() => window.__GWB.vision))) { await page.screenshot({ path: file }); return; }
@@ -330,7 +320,7 @@ try {
   // ---- the Garages
   await page.evaluate(() => { window.__GWB.mode = 'garage'; });
   for (const garage of garages) {
-    for (const tank of tanks) {
+    for (const tank of chunk) {
       if (overCap()) { log('hold cap reached before', garage, tank); report.stoppedAt = `${garage}:${tank}`; break; }
       const staged = await page.evaluate(async (garage, tank) => {
         const D = window.__DEBUG, P = window.__GWB;
@@ -347,7 +337,7 @@ try {
       staged.variant = await page.evaluate(() => window.__DEBUG.garage.getSelectedGarageVariant?.() ?? null);
       if (staged.variant !== garage) log('WARN garage variant not selected', garage, staged.variant);
       // the Garage's scene pack activates asynchronously (garageEnvironmentPresentation.activate): a longer settle on a switch
-      await sleep(tank === tanks[0] ? 12_000 : 6000);
+      await sleep(tank === chunk[0] ? 12_000 : 6000);
       const state = await page.evaluate(() => {
         const D = window.__DEBUG, P = window.__GWB;
         D.showroom.stop(); D.shotMode = true; P.hideUi(true);
@@ -390,7 +380,7 @@ try {
   }
 
   // ---- a daylight battle view of the player tank, plain and wearing the live energy skin
-  if (flag('battle') && !overCap()) {
+  if (last && flag('battle') && !overCap()) {
     await page.evaluate(async (tank) => {
       const D = window.__DEBUG, P = window.__GWB;
       P.pose = null; P.skin = null; P.mode = 'shot';
@@ -429,10 +419,42 @@ try {
       else if (style !== 'none') await page.evaluate(() => { const P = window.__GWB; P.skin = null; P.energy.clearJuggernautVisual(P.root()); });
     }
   }
+}
+
+const capStop = new Error('garage-wheel-band: hold cap');
+try {
+  if (!lockHeld) {
+    log('waiting for the capture lock');
+    await lock.acquire(5 * 60 * 60 * 1000);
+    heartbeat = setInterval(() => lock.refresh(), 30_000);
+    heartbeat.unref();
+  }
+  heldAt = Date.now();
+  log('capture lock held');
+  server = await createServer({
+    root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
+    server: { host: '127.0.0.1', port: 5300 + (process.pid % 90), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+    optimizeDeps: { entries: ['index.html'] },
+  });
+  await server.listen();
+  baseUrl = `http://127.0.0.1:${server.config.server.port}`;
+  log('vite', baseUrl);
+  // --no-garage stages no tank of --tanks: its one browser visits the battle tank only. A hold cap stops every later chunk.
+  await eachBrowserChunk('tools/garage-wheel-band.browser.mjs', garages.length ? tanks : [battleTank], async (chunk, { index, count, launch }) => {
+    if (report.stoppedAt) throw capStop;
+    const browser = await launch(puppeteer, { headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+    try {
+      await probeChunk(await openProbePage(browser), chunk, index === count - 1);
+    } finally {
+      await browser.close().catch(() => {});
+    }
+  }).catch((error) => { if (error !== capStop) throw error; });
   report.heldS = Math.round((Date.now() - heldAt) / 1000);
 } finally {
+  // the Garage rows in Garage-then-tank order, as one browser over every tank wrote them
+  const order = (row) => garages.indexOf(row.garage) * tanks.length + tanks.indexOf(row.tank);
+  report.garage.sort((a, b) => order(a) - order(b));
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1));
-  await browser?.close().catch(() => {});
   await server?.close().catch(() => {});
   if (heartbeat) clearInterval(heartbeat);
   if (!lockHeld) lock.release();
