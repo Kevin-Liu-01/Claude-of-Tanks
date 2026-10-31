@@ -91,10 +91,12 @@ export interface PanelBakeStats {
   /** (264) Triangles of spaced or external parts that took the plate behind them, and the authority rays cast. */
   standoff: number;
   standoffRays: number;
-  /** (267) Triangles left bare as gear (by role), and as parts standing off the armour; per-point ones naming a zone set. */
+  /** (267) Triangles left bare as gear (by role), and as parts standing off the armour; per-point ones naming a zone set;
+   * far-LOD stand-ins given their sources' values. */
   gear: number;
   offArmour: number;
   sets: number;
+  farStands: number;
   /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
   wholeParts: number;
   creaseParts: number;
@@ -574,6 +576,8 @@ export function* bakePaintPanelSteps(
   const split = frameZonesOf(template);
   const barrel = !!frames.gun && Number.isFinite(template.barrelFrom) && template.barrelRadius > 0;
   const users = new Map<THREE.BufferGeometry, THREE.Mesh[]>();
+  const farStands: THREE.Mesh[] = [];
+  const farOwners = new Set<THREE.Object3D>();
   root.traverse((object) => {
     const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean };
     if (!mesh.isMesh || mesh.isBatchedMesh || Array.isArray(mesh.material) || !mesh.material) return;
@@ -587,9 +591,34 @@ export function* bakePaintPanelSteps(
       }
       return;
     }
+    // (267) a far-LOD stand-in (vehicles/farLod.ts) merges its owner's parts with no part's role: it takes, vertex by
+    // vertex, what its sources baked (each of its vertices is one of theirs, in the owner's frame), after them
+    if (mesh.userData.farLod && mesh.parent) { farStands.push(mesh); farOwners.add(mesh.parent); return; }
     const list = users.get(mesh.geometry);
     if (list) list.push(mesh); else users.set(mesh.geometry, [mesh]);
   });
+  // (267) the far owners' sources' baked values, by owner, owner-frame position (0.1 mm) and normal band (the far
+  // clustering's: each axis in five), the first of each as the clustering keeps it, and by position alone
+  const nearValues = new Map<THREE.Object3D, Map<string, number>>();
+  const ownerKey = (x: number, y: number, z: number): string => `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+  const band = (value: number): number => Math.max(0, Math.min(4, Math.round((value + 1) * 2)));
+  const bandKey = (n: THREE.Vector3): string => `|${band(n.x) * 25 + band(n.y) * 5 + band(n.z)}`;
+  const recordNear = (mesh: THREE.Mesh, values: Int8Array): void => {
+    if (!mesh.parent || !farOwners.has(mesh.parent)) return;
+    let byPosition = nearValues.get(mesh.parent);
+    if (!byPosition) nearValues.set(mesh.parent, byPosition = new Map());
+    mesh.updateMatrix();
+    _normalWorld.getNormalMatrix(mesh.matrix);
+    const position = mesh.geometry.getAttribute('position'), normal = mesh.geometry.getAttribute('normal');
+    for (let v = 0; v < position.count; v++) {
+      _t.fromBufferAttribute(position, v).applyMatrix4(mesh.matrix);
+      const key = ownerKey(_t.x, _t.y, _t.z);
+      if (!byPosition.has(key)) byPosition.set(key, values[v]);
+      if (!normal) continue;
+      const banded = key + bandKey(_n.fromBufferAttribute(normal, v).applyMatrix3(_normalWorld).normalize());
+      if (!byPosition.has(banded)) byPosition.set(banded, values[v]);
+    }
+  };
   const pose: PanelPose = { hullInv: new THREE.Matrix4(), turretInv: new THREE.Matrix4(), gunInv: new THREE.Matrix4() };
   // a tally of one cluster's votes by area (VOTE_LIVE .. the last zone), and the slots it touched
   const tally = new Float64Array(template.zones.length + 3);
@@ -615,7 +644,12 @@ export function* bakePaintPanelSteps(
     stats.draws += meshes.length;
     const position = geometry.getAttribute('position');
     const was = bakedBy.get(geometry);
-    if (was === armor || (was === null && geometry.getAttribute(PANEL_ZONE_ATTRIBUTE))) continue;
+    if (was === armor || (was === null && geometry.getAttribute(PANEL_ZONE_ATTRIBUTE))) {
+      // baked before (a copy of this spec): its values still stand for this vehicle's far stand-ins
+      const done = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
+      if (done?.array instanceof Int8Array) for (const mesh of meshes) recordNear(mesh, done.array);
+      continue;
+    }
     stats.geometries++;
     const values = new Int8Array(position.count);
     const sharedElsewhere = meshes.length > 1 || (was !== undefined && was !== armor);
@@ -1056,6 +1090,29 @@ export function* bakePaintPanelSteps(
       seeded.needsUpdate = true;
     } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
     bakedBy.set(geometry, sharedElsewhere ? null : armor);
+    for (const mesh of meshes) recordNear(mesh, values);
+  }
+  // (267) the far stand-ins: each vertex its source's value (0, the per-point paint, where none matches)
+  for (const stand of farStands) {
+    const geometry = stand.geometry, position = geometry.getAttribute('position');
+    const byPosition = nearValues.get(stand.parent!), normal = geometry.getAttribute('normal');
+    const values = new Int8Array(position.count);
+    stand.updateMatrix();
+    _normalWorld.getNormalMatrix(stand.matrix);
+    for (let v = 0; v < position.count; v++) {
+      _t.fromBufferAttribute(position, v).applyMatrix4(stand.matrix);
+      const key = ownerKey(_t.x, _t.y, _t.z);
+      const banded = normal ? byPosition?.get(key + bandKey(_n.fromBufferAttribute(normal, v).applyMatrix3(_normalWorld).normalize())) : undefined;
+      values[v] = banded ?? byPosition?.get(key) ?? 0;
+    }
+    const seeded = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
+    if (seeded && seeded.count === position.count && seeded.array instanceof Int8Array) {
+      seeded.array.set(values);
+      seeded.needsUpdate = true;
+    } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
+    bakedBy.set(geometry, armor);
+    stats.farStands++;
+    if (spend(position.count >> 2)) { yield; sliceStarted = performance.now(); }
   }
   const took = performance.now() - sliceStarted;
   stats.sliceMs = Math.max(stats.sliceMs, Math.round(took * 10) / 10);
@@ -1065,7 +1122,7 @@ export function* bakePaintPanelSteps(
 
 /** An empty tally for bakePaintPanelSteps. */
 export function panelBakeStats(): PanelBakeStats {
-  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, gear: 0, offArmour: 0, sets: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
+  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, gear: 0, offArmour: 0, sets: 0, farStands: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
     disagreeArea: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
 }
 

@@ -372,6 +372,25 @@ function hullScene() {
   const far = draws(baked.root, 200), farPlain = draws(plain.root, 200);
   assert.equal(far.count, farPlain.count, 't72b3: the same draws far');
   assert.ok(far.panels > 0 && far.panels < far.stand + 1, `t72b3: the far stand-ins carry the panels (${far.panels} of ${far.stand})`);
+  // (267) a far stand-in built before the bake takes its sources' values vertex by vertex: the same paint as one built
+  // after it (whose clustering copied them); never judged on its own, with no part's role
+  const early = build();
+  await settle(early, state, 10);
+  early.prepareFarLod();
+  await settle(early, state, 200);
+  await overlay.bakePanels({ id: 'panels-early', state, combat: null, visual: early, spec }, async () => {});
+  const stands = (root) => { const list = []; root.traverse((o) => { if (o.isMesh && o.userData.farLod && o.geometry.getAttribute('apZone')) list.push(o); }); return list; };
+  const after = stands(baked.root), before = stands(early.root);
+  assert.equal(before.length, after.length, 't72b3: the same far stand-ins either way');
+  let same = 0, total = 0;
+  for (let k = 0; k < after.length; k++) {
+    const x = after[k].geometry.getAttribute('apZone').array, y = before[k].geometry.getAttribute('apZone').array;
+    assert.equal(x.length, y.length, `t72b3: far stand-in ${k} has one layout either way`);
+    for (let v = 0; v < x.length; v++) { total++; if (x[v] === y[v]) same++; }
+  }
+  assert.ok(same >= 0.99 * total, `t72b3: a far stand-in baked before or after its sources paints the same (${same} of ${total} vertices)`);
+  assert.ok(early.root.userData.armorPaintPanels.farStands > 0, 't72b3: the early far stand-ins were given their sources\' values');
+  early.dispose();
   overlay.dispose();
   plain.dispose(); baked.dispose();
   console.log(`armorPaintPanels.selftest: t72b3 ${stats.baked}/${stats.triangles} baked, ${stats.bare} bare (${stats.gear} gear, ${stats.offArmour} off the armour), ${stats.sets} per-point naming a zone set, ${stats.votes} votes, slice ${stats.sliceMs} ms`);
