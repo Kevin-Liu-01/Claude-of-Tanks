@@ -182,7 +182,7 @@ for (const normalizer of [controlNormalize, candidateNormalize]) {
   normalizer.profiler.measure('after-error', () => {});
   assert.equal(normalizer.profiler.operations['after-error'].calls, 1);
 }
-for (const [path, kind] of [['../src/vehicles/tankFactoryCore.ts', 'factory'], ['../src/vehicles/profiles/t90.ts', 'profile']]) {
+for (const [path, kind] of [['../src/vehicles/tankFactoryCore.ts', 'factory'], ['../src/vehicles/profiles/t90X.ts', 'profile']]) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const observed = transformConstructor(source, kind);
   assert.ok(Object.values(observed.stages).every(stage => Number.isInteger(stage.line) && stage.line > 0));
