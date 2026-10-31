@@ -27,11 +27,11 @@ try {
   assert.ok(isOwnedBy(details, turret), 'AMX-40 roof fittings remain turret-owned');
   assert.ok(isOwnedBy(equipment, turret), 'AMX-40 attachment sockets remain turret-owned equipment');
 
-  assert.equal(receipt?.revision, 'flush-r1', 'AMX-40 exposes the flush attachment revision');
-  assert.equal(receipt?.sidePanels.count, 6, 'three flank cassettes remain on each side');
+  assert.equal(receipt?.revision, 'welded-r2', 'AMX-40 exposes the welded flank revision');
+  assert.equal(receipt?.sidePanels.count, 2, 'one welded flank on each side');
   assert.equal(receipt?.sidePanels.sides, 2, 'flank seating is mirrored');
-  assert.equal(receipt?.sidePanels.contouredAttachmentEdges, 12,
-    'every cassette end follows the local shell wall and crown');
+  assert.equal(receipt?.sidePanels.contouredAttachmentEdges, 4,
+    'each flank end follows the local shell wall and crown');
   assert.ok(receipt?.sidePanels.shellEmbedM >= 0.02,
     'flank panels bury at least 20 mm into the turret instead of floating');
   assert.equal(receipt?.sidePanels.maxSupportGapM, 0,
@@ -46,11 +46,12 @@ try {
   assert.equal(receipt?.roof.maxSupportGapM, 0,
     'roof fittings permit no authored air gap');
 
-  assert.equal(receipt?.cheekTies.count, 2, 'both forward cheek panels have shell ties');
-  assert.ok(receipt?.cheekTies.shellEmbedM >= 0.02,
-    'forward cheek ties penetrate the crown instead of stopping short');
-  assert.equal(receipt?.cheekTies.maxSupportGapM, 0,
-    'forward cheek panels permit no authored air gap');
+  assert.equal(receipt?.cheeks.count, 2, 'both welded cheeks are part of their flanks');
+  assert.ok(receipt?.cheeks.shellEmbedM >= 0.02,
+    'the cheeks bury into the crown instead of stopping short');
+  assert.equal(receipt?.cheeks.smokeTubesPerCheek, 6, 'each cheek carries a 2x3 smoke cluster');
+  assert.equal(receipt?.cheeks.maxSupportGapM, 0,
+    'the cheeks permit no authored air gap');
 
   shell.geometry.computeBoundingBox();
   assert.ok(shell.geometry.boundingBox.max.x <= receipt.sidePanels.outerSilhouetteXM + 1e-6,
@@ -61,4 +62,4 @@ try {
   tank.dispose();
 }
 
-console.log('amx40AttachmentSeat.selftest: flank panels, roof fittings, and cheek ties are flush and turret-owned');
+console.log('amx40AttachmentSeat.selftest: welded flanks, cheeks and roof fittings are flush and turret-owned');
