@@ -148,10 +148,18 @@ frame received, on one clock.
 |---|---|---|---|---|
 | Relay through the real Worker (cot-rooms-preview, Cloudflare) | two real `padLink`s in Node on this Mac, both ends behind the home connection; Node has no WebRTC so the link takes the relay (`cf/relay-latency.mjs` in the evidence folder) | 23.7 ms / 20.9 ms | 93.6 ms / 79.0 ms | 40 / 60 |
 | Edge round trip | TCP connect to cot-rooms from this Mac | ~16 to 21 ms typical | 86 to 134 ms spikes under load | 5 |
-| WebRTC data channel, phone event to the desktop frame that carries it | `tools/pad-e2e.browser.mjs`, two headless pages, loopback | (pending: the e2e's queued run) | | |
-| Relay over the LAN helper, same | the same e2e, a phone page without WebRTC | (pending) | | |
+| WebRTC data channel, phone event to the desktop frame that carries it | `tools/pad-e2e.browser.mjs` run 6, two headless browsers, loopback, load ~250 | 54 ms | 90 ms | 40 |
+| — the phone's send (event to frame stamp) | same | 0 ms | 1 ms | 40 |
+| — the link (stamp to receipt; mostly the busy desktop's main-thread wait) | same | 23 ms | 44 ms | 40 |
+| — the desktop (receipt to the frame that carries it), at a 33 ms (30 fps) frame | same | 33 ms | 58 ms | 40 |
 
-Reading it against the pass rule:
+Reading it against the pass rule (`pad-e2e` holds the controller's share, send plus link, to 60 ms p95; the end-to-end
+figure needs a player's desktop):
+- In the headless harness the desktop rendered the battle at 30 fps on a loaded Mac, and that, not the controller, is
+  what puts the end-to-end p95 at 90 ms: the phone's send is under a millisecond and the link's p95 is 44 ms with the
+  main-thread wait in it. At 60 fps both desktop shares roughly halve (an inference, p95 about 45 ms); the owner's real
+  machines settle it.
+- Run 5 (before the phone sent on each event) was p50 72 / p95 131 ms; sending at once removed the phone's frame wait.
 - The relay through Cloudflare already meets the cellular bar (p95 under 120 ms) with both ends on one home connection; a
   phone on cellular adds its radio's one-way time (typically 15 to 40 ms on 4G/5G). It is the fallback, not the path.
 - A WebRTC data channel on a LAN skips the edge entirely: its share is the Wi-Fi hop (a few ms) plus the desktop's
