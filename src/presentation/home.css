@@ -50,8 +50,9 @@ img{display:block;max-width:100%}
 @media (scripting:enabled){.home .hero:not([data-ready])>.hero__still{opacity:0}}
 .home .hero__still{transition:opacity var(--dur-base) var(--ease-enter)}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
-/* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
-.hero__lqip,.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
+/* the still, the reel, the grade and the headline's falloff share one layer under the card: their order in the markup
+   stacks them */
+.hero__lqip,.hero__still,.hero__reel,.hero__grade,.hero__lead::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
@@ -73,13 +74,14 @@ img{display:block;max-width:100%}
    and every caption shares one cell, so the longest sets the box: nothing moves when the reel starts or turns */
 .hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px;margin-left:auto}
 @media (prefers-reduced-motion:no-preference){.hero__reelbar>.hero__toggle[hidden]{display:grid;visibility:hidden}}
-/* the words' scrim (owner 2026-10-25: their contrast holds over bright snow): a plate of the scene's ink under the lead and
-   under the caption, feathered at its edges and running off the screen's side, a gradient mask over imagery, never blur */
-.hero__lead::before,.hero__reelbar::before{--feather:var(--s9);content:'';position:absolute;pointer-events:none;background:var(--home-hero-scrim);
-  --plate:linear-gradient(90deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent),linear-gradient(0deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent);
-  -webkit-mask-image:var(--plate);mask-image:var(--plate);-webkit-mask-composite:source-in;mask-composite:intersect}
-.hero__lead::before{inset:calc(-1 * var(--feather) - var(--s5)) calc(-1 * var(--feather) - var(--s6)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--home-gutter))}
-.hero__reelbar::before{inset:calc(-1 * var(--feather) - var(--s2)) calc(-1 * var(--feather) - var(--home-gutter)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--s4))}
+/* the words carry their own contrast over the reel (owner 2026-10-31: the scrim's box showed over the pictures, "get rid
+   of that and just add text shadows"): the stage's halo follows each glyph, so no plate or edge stands over the picture;
+   the hollow word keeps its own shadow */
+.hero__title,.hero__lede,.hero__stats li,.hero__shot{text-shadow:var(--stage-halo)}
+/* over the brightest frames (the desert's sand, measured) the line and the hollow word need more than their halos: a soft
+   falloff of the scene's ink behind the headline, round and clear at its rim, so nothing in it reads as an edge */
+.hero__lead::before{content:'';position:absolute;pointer-events:none;inset:-45% -22% -40% calc(-1 * var(--home-gutter) - 12%);
+  background:var(--home-hero-falloff)}
 .hero__shots{display:grid;margin:0;text-align:right}
 .hero__shot{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-end;gap:var(--s1);opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__shot.is-on{opacity:1}
@@ -350,8 +352,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the headline and its line over the picture's foot, then the shot on screen beside the reel's pause, above the counts */
   .hero__card{flex-direction:column;align-items:stretch;gap:var(--s4);margin-bottom:var(--s4)}
   .hero__lead{max-width:none}
-  /* the words' scrim is the phone grade's lower half (home-phone-grade), across the picture and through the counts */
-  .hero__lead::before,.hero__reelbar::before{content:none}
+  /* the phone grade's lower half (home-phone-grade) carries the words across the picture and through the counts */
+  .hero__lead::before{content:none}
   .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
   /* the caption takes the row beside the pause and wraps at its spaces, so the disc keeps the column's right edge whatever
      the clip's names, battlefield and hour */
