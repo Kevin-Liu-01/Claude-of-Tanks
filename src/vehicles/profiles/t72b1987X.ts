@@ -9,8 +9,7 @@ import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
-import {sourceMachineGun} from './sourceMachineGun.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[-.0000548974,1.4040902854,-.0343498434];
@@ -166,9 +165,22 @@ function turretEra(P:TankBuilderPort):void {
   }
 }
 
+/** A closed ring solid round the Y axis: rIn..rOut, y0..y1 (outer wall, top annulus, inner wall, bottom annulus). */
+function ringSolid(rIn:number,rOut:number,y0:number,y1:number,n:number):THREE.BufferGeometry {
+  const v=(r:number,y:number)=>new THREE.Vector2(r,y);
+  return new THREE.LatheGeometry([v(rOut,y0),v(rOut,y1),v(rIn,y1),v(rIn,y0),v(rOut,y0)],n);
+}
+
 function roofEquipment(P:TankBuilderPort):void {
-  P.addCupola('turret',cylY(.367,.118,28),-.60,2.135-YAW[1],-.38-YAW[2]);
-  onTurret(P,'turretDetail',cylY(.348,.044,28),-.60,2.212,-.38);
+  // Owner 2026-10-28 ("fix all the issues where there is no space under hatches of cupolas on t72s and so on"): the
+  // commander's lid stands open behind the cupola (the upright plate in machineGun), yet the drum and its race were
+  // closed discs, so the hatch it swung off had no opening. Both are rings round a 0.44 m opening whose well is dark
+  // down to a floor over the casting's roof (2.03-2.08 under the cupola).
+  const hatchR=.22,wellFloor=2.079;
+  P.addCupola('turret',ringSolid(hatchR,.367,-.059,.059,28),-.60,2.135-YAW[1],-.38-YAW[2]);
+  onTurret(P,'turretDetail',ringSolid(hatchR,.348,-.022,.022,28),-.60,2.212,-.38);
+  onTurret(P,'turretDark',new THREE.CylinderGeometry(hatchR-.002,hatchR-.002,2.232-wellFloor,28,1,true).scale(-1,1,1),-.60,(2.232+wellFloor)/2,-.38);
+  onTurret(P,'turretDark',new THREE.CircleGeometry(hatchR-.001,28).rotateX(-Math.PI/2),-.60,wellFloor,-.38);
   P.addCupola('turret',cylY(.347,.061,28),.568,2.061-YAW[1],-.507-YAW[2]);
   onTurret(P,'turretDetail',cylY(.326,.039,28),.568,2.116,-.507);
   for(const side of [-1,1]) {
@@ -196,27 +208,21 @@ function smoke(P:TankBuilderPort):void {
 }
 
 function machineGun(P:TankBuilderPort):void {
-  const gun=sourceMachineGun(P,YAW);
-  gun.add('turretDetail',box(.104,.117,.061),-.59,2.156,-.779);
+  onTurret(P,'turretDetail',box(.104,.117,.061),-.59,2.156,-.779);
   // Upright open hatch plate with a chamfered crown, independently supported.
   const shield:readonly(readonly[number,number])[]=[[-.788,2.158],[-.393,2.158],[-.393,2.64],[-.447,2.723],[-.735,2.723],[-.788,2.64]];
-  gun.add('turretDetail',sectionSolid([
+  onTurret(P,'turretDetail',sectionSolid([
     {z:-.817,ring:shield},{z:-.775,ring:shield},
   ]),0,0,0);
   // 2026-10-08 (tank-accessories round 5, the contact receipt: the open hatch touched nothing within 15 mm, its
   // support block meeting only the middle of its lower edge): two hinge arms run from the hatch's lower corners to the
   // cupola's wall, so the plate hangs on the cupola it closes.
   for(const [x,front] of [[-.763,-.712],[-.418,-.702]] as const)
-    gun.add('turretDetail',box(.05,.084,front+.81),x,2.192,(front-.81)/2);
-  gun.add('turretDark',box(.073,.129,.610),-.587,2.473,-.447);
-  gun.add('turretDetail',box(.09,.088,.43),-.587,2.298,-.535);
-  gun.add('turretDark',cylZ(.028,.63,20),-.587,2.443,.53);
-  gun.add('turretDark',cylZ(.031,.367,20),-.587,2.444,.033);
-  gun.add('turretDark',box(.245,.177,.079),-.741,2.38,-.394);
-  // round 5 (contact receipt): the front sight post stands on the barrel's crown instead of passing through it
-  gun.add('turretDetail',box(.032,.06,.035),-.587,2.497,.548);
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
-  stationFromDrawnGun(gun.finish(),{name:'t72b1987XRoofNsvt',caliberMm:12.7});
+    onTurret(P,'turretDetail',box(.05,.084,front+.81),x,2.192,(front-.81)/2);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle on the race's
+  // front ahead of the open hatch, in place of the authored receiver box and rods it stood for.
+  libraryRoofMg(P,{station:'t72b1987CommanderNsvtStation',cls:'nsvt',seat:[-.60-YAW[0],2.234-YAW[1],-.38+.285-YAW[2]]});
 }
 
 function mainGun(P:TankBuilderPort,rearMantletBottom=-.18):void {

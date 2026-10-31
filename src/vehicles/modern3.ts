@@ -2107,6 +2107,9 @@ function* buildType10Native2026Steps(
       }, { reachM: 0.03, mode: 'down' });
     } else {
       P.add('turret', box(0.572, 0.528, 0.616), -0.176, 0.88, 1.221);             // housing body (bottom 0.616 overlaps the 0.627 crown)
+      // 264 (Main, false roofs): the crown falls to 0.57 under the housing's front half, which left a 22 cm slot under its
+      // floor seen from the front; a plinth carries the housing's own faces 5 cm on down into the crown.
+      P.add('turret', box(0.572, 0.06, 0.616), -0.176, 0.592, 1.221);
       P.add('turret', box(0.605, 0.0495, 0.638), -0.176, 1.1682, 1.21);           // proud lid
       P.addEquipment('turret', box(0.44, 0.055, 0.088), -0.22, 1.078, 1.545, -0.22, 0, 0); // window brow hood (§B3 sight tell)
       P.add('turretDark', box(0.396, 0.11, 0.033), -0.22, 0.99, 1.54);            // recessed window band on the front face
@@ -2114,7 +2117,9 @@ function* buildType10Native2026Steps(
       P.add('turretDark', box(0.033, 0.088, 0.0165), -0.22, 0.902, 1.554);        // wiper stub under the band
       P.add('turretDark', box(0.0242, 0.484, 0.594), -0.484, 0.88, 1.221);        // side lid seam
       // CONDUIT SPINE bridging housing -> pano (print side band continuous)
-      P.add('turret', box(0.374, 0.264, 0.396), -0.22, 1.0505, 0.726);            // spine
+      // 264 (Main, false roofs): the 26 cm spine stood 29 cm over the 0.627 crown, a roof over air seen from the side;
+      // the print's band is solid to the roof, so the spine stands on the crown (top 1.1825 kept, foot 12 mm into it).
+      P.add('turret', box(0.374, 1.1825 - 0.615, 0.396), -0.22, (1.1825 + 0.615) / 2, 0.726); // spine
       P.add('turretDark', box(0.33, 0.033, 0.33), -0.22, 1.1913, 0.726);
     }
     // PANORAMIC COMMANDER SIGHT (center-left front, head to the P95 datum):

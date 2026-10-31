@@ -7,17 +7,27 @@
 #   ← ↑ → ↓   Chakra Petch's own arrowup / arrowdown; the horizontal pair is that arrow turned a quarter, shaft trimmed
 #   ≤ ≥       Chakra Petch's chevron (its '<' build: flat apex, stroke = the hyphen's weight) over its hyphen bar
 #   ∞         two of Chakra Petch's chamfered 'o' rings fused on a shared stem, centred on the math axis
+#   ł Ł ż Ż   Chakra Petch's own, for the Polish names on the display voice (PT-84 Orzeł, PT-84 Żbik; release 265): its
+#             Latin subsets carry neither lslash nor the dot above, so the browser cannot compose them. ł and Ł are its
+#             own outlines; ż and Ż are the shipped z and Z with its uni0307 at its own composite offsets, recorded from
+#             the full Chakra Petch v1.000 (whose l L z Z equal the shipped subsets') in chakra-latin-ext.json. The
+#             Plex voice takes these four from the accents face, which comes first in its stacks (cot-accents.py).
 #
 # Medium is drawn from Chakra Petch Medium and serves weights up to 549; Bold from Chakra Petch Bold serves 550 and up.
-# Vertical metrics sit inside both shell faces' (Plex 1025/-275, Chakra 992/-308), so a mark never grows a line box.
+# Vertical metrics sit inside both shell faces' (Plex 1025/-275, Chakra 992/-308), so a mark never grows a line box;
+# the ascent is Chakra Petch's own 992, over its dotted capital (893 at Bold).
 # Requires Python fontTools with brotli (an authoring tool; nothing ships it). Run from the repository root:
 #   python3 tools/type/cot-symbols.py
+#   python3 tools/type/cot-symbols.py --extract <dir with ChakraPetch-Medium.ttf and -Bold.ttf>   (re-records the json)
+import hashlib
+import json
 import math
 import os
 import sys
 
 from fontTools.fontBuilder import FontBuilder
-from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.recordingPen import DecomposingRecordingPen, RecordingPen
+from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
 
@@ -26,7 +36,49 @@ SOURCES = {'Medium': 'chakra-petch/ChakraPetch-Medium-Latin.woff2', 'Bold': 'cha
 OUT = os.path.join(ROOT, 'public', 'fonts', 'cot-symbols')
 AXIS = 264  # Chakra Petch's math axis: the centre of '=' and '+'
 CODEPOINTS = {'arrowleft': 0x2190, 'arrowup': 0x2191, 'arrowright': 0x2192, 'arrowdown': 0x2193,
-              'infinity': 0x221E, 'lessequal': 0x2264, 'greaterequal': 0x2265}
+              'infinity': 0x221E, 'lessequal': 0x2264, 'greaterequal': 0x2265,
+              'lslash': 0x0142, 'Lslash': 0x0141, 'zdotaccent': 0x017C, 'Zdotaccent': 0x017B}
+# the Polish letters: name -> (shipped base glyph or None for a whole full-font glyph, the full-font glyph drawn)
+LETTERS = {'lslash': (None, 'lslash'), 'Lslash': (None, 'Lslash'), 'zdotaccent': ('z', 'uni0307'),
+           'Zdotaccent': ('Z', 'uni0307')}
+LETTER_DATA = os.path.join(os.path.dirname(__file__), 'chakra-latin-ext.json')
+ASCENT = 992  # Chakra Petch's own
+
+
+def record(font, name):
+    pen = DecomposingRecordingPen(font.getGlyphSet())
+    font.getGlyphSet()[name].draw(pen)
+    return [[op, [list(p) if p is not None else None for p in args]] for op, args in pen.value]
+
+
+def replay(ops, pen):
+    for op, args in ops:
+        getattr(pen, op)(*[tuple(p) if p is not None else None for p in args])
+
+
+def extract(directory):
+    """Records the full Chakra Petch glyphs the Latin subsets lack, after checking it draws the subsets' bases alike."""
+    data = {'source': 'Chakra Petch (ChakraPetch-Medium.ttf, ChakraPetch-Bold.ttf), SIL OFL 1.1, no Reserved Font Name',
+            'weights': {}}
+    for weight, file in SOURCES.items():
+        path = os.path.join(directory, f'ChakraPetch-{weight}.ttf')
+        full, shipped = TTFont(path), TTFont(os.path.join(ROOT, 'public', 'fonts', file))
+        for base in ('l', 'L', 'z', 'Z'):
+            if record(full, base) != record(shipped, base) or full['hmtx'][base] != shipped['hmtx'][base]:
+                raise SystemExit(f'{path}: {base} differs from the shipped subset')
+        offsets = {name: [c.x, c.y] for name in ('zdotaccent', 'Zdotaccent')
+                   for c in full['glyf'][name].components if c.glyphName == 'uni0307'}
+        with open(path, 'rb') as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        data['weights'][weight] = {
+            'file': os.path.basename(path), 'version': full['name'].getDebugName(5), 'sha256': digest, 'offsets': offsets,
+            'glyphs': {name: {'advance': full['hmtx'][name][0], 'ops': record(full, name)}
+                       for name in ('lslash', 'Lslash', 'uni0307')},
+        }
+    with open(LETTER_DATA, 'w') as f:
+        json.dump(data, f, indent=1)
+        f.write('\n')
+    print(LETTER_DATA)
 
 
 def outline(font, name):
@@ -146,6 +198,23 @@ def build(weight, source):
     infinity = [clockwise(outer), clockwise(hole(xl0, xl1, False), outer=False), clockwise(hole(xr0, xr1, True), outer=False)]
     put('infinity', infinity, 780)
 
+    # ł Ł ż Ż as Chakra Petch draws them (chakra-latin-ext.json).
+    with open(LETTER_DATA) as f:
+        letters = json.load(f)['weights'][weight]
+    glyph_set = chakra.getGlyphSet()
+    for name, (base, source) in LETTERS.items():
+        drawn = letters['glyphs'][source]
+        pen = TTGlyphPen(None)
+        if base:
+            glyph_set[base].draw(pen)
+            dx, dy = letters['offsets'][name]
+            replay(drawn['ops'], TransformPen(pen, (1, 0, 0, 1, dx, dy)))
+        else:
+            replay(drawn['ops'], pen)
+        glyphs[name] = pen.glyph()
+        glyphs[name].recalcBounds(None)
+        metrics[name] = (chakra['hmtx'][base][0] if base else drawn['advance'], getattr(glyphs[name], 'xMin', 0))
+
     order = ['.notdef', *CODEPOINTS]
     notdef = TTGlyphPen(None).glyph()
     glyphs['.notdef'] = notdef
@@ -155,7 +224,7 @@ def build(weight, source):
     fb.setupCharacterMap({cp: name for name, cp in CODEPOINTS.items()})
     fb.setupGlyf(glyphs)
     fb.setupHorizontalMetrics(metrics)
-    fb.setupHorizontalHeader(ascent=800, descent=-200)
+    fb.setupHorizontalHeader(ascent=ASCENT, descent=-200)
     family = 'Cot Symbols'
     fb.setupNameTable({
         'copyright': 'Copyright 2018 The Chakra Petch Project Authors (https://github.com/m4rc1e/Chakra-Petch.git); '
@@ -166,7 +235,7 @@ def build(weight, source):
         'licenseDescription': 'This Font Software is licensed under the SIL Open Font License, Version 1.1.',
         'licenseInfoURL': 'https://openfontlicense.org',
     })
-    fb.setupOS2(sTypoAscender=800, sTypoDescender=-200, sTypoLineGap=0, usWinAscent=800, usWinDescent=200,
+    fb.setupOS2(sTypoAscender=ASCENT, sTypoDescender=-200, sTypoLineGap=0, usWinAscent=ASCENT, usWinDescent=200,
                 sxHeight=498, sCapHeight=700, usWeightClass=500 if weight == 'Medium' else 700, fsType=0,
                 achVendID='NONE', fsSelection=0x40 if weight == 'Medium' else 0x20)
     fb.setupPost()
@@ -182,5 +251,8 @@ def build(weight, source):
     return path
 
 
-for weight, file in SOURCES.items():
-    print(build(weight, os.path.join(ROOT, 'public', 'fonts', file)))
+if '--extract' in sys.argv:
+    extract(sys.argv[sys.argv.index('--extract') + 1])
+else:
+    for weight, file in SOURCES.items():
+        print(build(weight, os.path.join(ROOT, 'public', 'fonts', file)))

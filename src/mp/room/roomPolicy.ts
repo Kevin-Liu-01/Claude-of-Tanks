@@ -42,8 +42,8 @@ export interface RoomPolicyGuards {
   isMapAllowed(mapId: string, room: RoomSnapshot): boolean;
   /**
    * (mp-scale-251) A team size past the mode's own (its room rules, matchRuleset.ts), up to ROOM_DEV_MAX_TEAM_SIZE: the
-   * LAN service's dev override for bot-filled test rooms (COT_ROOM_DEV_MAX_TEAM_SIZE), and a solo room in the page
-   * (ROOM_SOLO_MAX_TEAM_SIZE, 21). Versus modes only. The rooms Worker never sets it.
+   * LAN service's dev override for bot-filled test rooms (COT_ROOM_DEV_MAX_TEAM_SIZE). Versus modes only. The rooms
+   * Worker never sets it.
    */
   maxTeamSize?: number;
 }
@@ -70,7 +70,7 @@ export interface CreateRoomOptions {
   settings?: RoomCreateSettings | null;
   /** Where this room's matches run (the host's `MatchHost.transport`); peer-to-peer by default. */
   hostTransport?: RoomHostInfo['transport'];
-  /** The guards' `maxTeamSize` (a solo room in the page seats more than ROOM_MAX_TEAM_SIZE). */
+  /** The guards' `maxTeamSize` (the LAN dev override seats more than ROOM_MAX_TEAM_SIZE). */
   maxTeamSize?: number;
   now: number;
 }
@@ -258,7 +258,7 @@ function createPlayer(room: RoomSnapshot, {
 export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined, maxTeamSize?: number): RoomSettings {
   const gameMode = roomGameMode(settings?.gameMode);
   const rules = roomSizeRulesFor(gameMode);
-  // the mode's largest, or the host's guard (a versus room: the LAN dev override, a solo room in the page)
+  // the mode's largest, or the host's guard (a versus room: the LAN dev override)
   const limit = maxTeamSizeFor(gameMode, maxTeamSize === undefined ? {} : { maxTeamSize });
   const teamSize = settings?.teamSize == null ? rules.defaultTeamSize : cleanTeamSize(settings.teamSize, Math.max(ROOM_MAX_TEAM_SIZE, limit));
   const maxSpectators = settings?.maxSpectators == null ? ROOM_MAX_SPECTATORS : Number(settings.maxSpectators);

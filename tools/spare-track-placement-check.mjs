@@ -1581,8 +1581,6 @@ const NOT_LIGHT = /light (tank|grey|gray|olive|weight|tone)|lightweight|highligh
 const FALSE_TAGS = [
   ['profiles/pumaS1.ts', "P.addEquipment('turret', box(0.20, 0.44, 0.72),", 'grille'],
   ['profiles/leopard.ts', "P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90)", 'grille'],
-  ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'softload'],
-  ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'light'],
   // the T-62's transom service panel: its comment names the tail lamps drawn beside it, not the panel
   ['profiles/russia.ts', "P.add('hullDark', box(1.958, 0.34, 0.035), 0, 0.82, -3.192);", 'light'],
 ];

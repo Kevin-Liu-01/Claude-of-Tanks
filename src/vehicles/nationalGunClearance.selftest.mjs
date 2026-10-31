@@ -29,13 +29,14 @@ const CURVES = {
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],
-  strv121: [[140, 162]], // release 262: the mount over the engine deck's front quarters (the sweep's mountConflicts)
+  strv121: [], // release 265: on the 2A4 construction's measured stops the sweep finds no mount conflicts (262 skipped 140-162)
   m1a1: [],
   m1a1ha: [],
   m1a1_abrams_hc: [],
   m1a1_abrams_sa: [],
   m1a1_abrams_aim: [], // release 230: the glacis wind-sensor mast in the barrel's path at yaw 0-8 is gone (profiles/abrams.ts)
   m1a1_abrams_fep: [],
+  m1a3: [], // 2026-10-28: the M1E3 rebuilt on the M1 hull (m1e3-264), its measured curve (m1a1GunLimits.ts)
   ua_m1a1: [],
   c1_ariete: [],
   c2_ariete: [],
@@ -49,6 +50,8 @@ const CURVES = {
   m48a5_patton: [],
   // 262: the Leopard 1A5 proportion rebuild (deck 1.58, cast B&V turret); its measured curve (modern2.ts)
   leo1a5: [],
+  // 263: the Leopard 1A2A1, its bare casting on the 1A5's pre-262 hull; its measured curve (leo1a2a1Specs.ts)
+  leo1a2a1: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
@@ -72,7 +75,7 @@ const CURVES = {
   t90am: [[179,180]],
   t90m_proryv: [],
   t90a_burlak_proto: [],
-  strv81: [[2,34],[124,150]],
+  // strv81 left with release 262: the rebuilt Centurion family's curves and their receipt (centurionGunClearance.selftest)
   challenger_x: [],
   challenger_x_sleek: [],
   fv4034: [],
@@ -80,9 +83,7 @@ const CURVES = {
   challenger2e: [[177,177]],
   fv510: [],
   fv510_milan: [],
-  merkava1b: [],
-  merkava2b: [],
-  merkava2d: [],
+  merkava2d: [[139, 145, 'skip']], // 262: the source's raked rear marker poles stand in the barrel's path at every pitch (owner decision)
   ua_challenger2: [[177,177]],
   challenger3_td: [], // 262: measured with the mantlet's lower edge 6 cm over the deck (no mount conflict)
   challenger3_td_rws: [],

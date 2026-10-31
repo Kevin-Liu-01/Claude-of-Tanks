@@ -12,6 +12,9 @@
 //   telemetry); `--install` runs `npm ci` for a Worker whose node_modules is missing.
 // - receipts runs `tools/run-selftests.mjs all` (with --only/--shard/--all/--order passed through)
 //   and keeps one log per receipt.
+// - (265 integration, Main 2026-10-30: strenuous suites are manual and owner-triggered) the fleet-wide fill exposure
+//   (`tools/interior-fill-exposure.mjs --all --check`) left the gate for the manual `fleet` suite's commands
+//   (tools/selftest-tiers.mjs); tank:release:check runs it scoped (--lane: the selected ids and every body that moved).
 // - preflight runs `tools/shared-main-preflight.mjs` for the validated HEAD (in place when the
 //   checkout is clean, else in a reusable detached worktree of HEAD).
 //

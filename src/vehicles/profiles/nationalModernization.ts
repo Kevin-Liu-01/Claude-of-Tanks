@@ -31,6 +31,9 @@ import {buildPolandDonorKit,buildZubrIIDonorKit} from './polandDonorTurretKit.ts
 import {buildChinaDonorKit} from './chinaDonorTurretKit.ts';
 import {steppedBuilder,type TankProfileBuild} from '../tankBuildCooperation.ts';
 import {addGunFloodlight,type GunFloodlightSeat} from './gunFloodlight.ts';
+import {buildLongweiTurret} from './longwei.ts';
+import {chinaDonorHull} from './nationalChina.ts';
+import {LONGWEI_FAMILY} from '../longweiFamilyConfig.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
 function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<NationalModernizationConfig,'package'>):void {
@@ -141,7 +144,31 @@ function* build(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuil
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};
 }
+/** Release 264 (owner 2026-10-28): the Longwei family's two members on the Qilin's T-72B3 and the Kunlun's T-72B3M
+ * (longweiFamilyConfig.ts): the native hull, running gear and fenders, the host's Chinese hull package and rear rack, and a
+ * modernized Longwei turret on the host's Type 96B ring. The hosts' upper-slope drums are left off: the Longwei's long
+ * bustle overhangs that slope (critic round 1: the bustle and its screen rode on the drums' tops). */
+function* buildLongweiFamily72(P:TankBuilderPort,m:(typeof LONGWEI_FAMILY)[number]):TankProfileBuild {
+ addVehicleGhillieSuit(P);
+ const c=NATIONAL_MODERNIZATION_CONFIG.find(x=>x.id===m.host);
+ if(!c)throw new Error(`${m.id}: host ${m.host} is not a national modernization`);
+ P.hullG.position.set(0,0,0);
+ if(c.model===1){buildT72B3MXRunningGear(P);yield 'running-gear';buildT72B3MXHullCore(P);yield 'hull-core';buildT72B3MXFenders(P);}
+ else {buildT72B3XRunningGear(P);yield 'running-gear';buildT72B3XHullCore(P);yield 'hull-core';buildT72B3XFenders(P);}
+ yield 'fenders';
+ chinaDonorHull(P,c);
+ yield 'chinese-hull';
+ addRearFieldStowage(P,true);
+ buildLongweiTurret(P,m.kit);
+ P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:1,concept:true,
+  preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',
+  primaryTurret:'modernized-longwei-turret',turretDonor:'ztz99_longwei',host:m.host};
+}
+const LONGWEI_FAMILY_72_PROFILES=Object.fromEntries(LONGWEI_FAMILY.filter(m=>m.host==='t72b3_qilin'||m.host==='t72b3m_kunlun')
+ .map(m=>[m.id,{build:steppedBuilder((P:TankBuilderPort)=>buildLongweiFamily72(P,m))}]));
+
 export const NATIONAL_MODERNIZATION_PROFILES={
+ ...LONGWEI_FAMILY_72_PROFILES,
  ...Object.fromEntries(NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:steppedBuilder((P:TankBuilderPort)=>build(P,c))}])),
  ...Object.fromEntries(NATIONAL_LEGACY_CONFIG.map(c=>[c.id,{build:steppedBuilder(function*(P:TankBuilderPort):TankProfileBuild{
    const donor=nationalDonorTurret(c.id);

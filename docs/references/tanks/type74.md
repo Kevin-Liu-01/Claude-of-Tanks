@@ -22,9 +22,11 @@ standard ride height, IR/white-light searchlight left of the mantlet.
   bustle (STB-1 lineage, reads like a lower, sleeker M60A1 needle-nose);
   commander's rotating cupola RIGHT with a 12.7 mm M2 on a pintle, low oval
   loader hatch LEFT; roof otherwise clean.
-- Mantlet/gun mount: rounded cast mantlet saddle around a bare rifled tube
-  with a fat mid-tube fume extractor; big rectangular searchlight box
-  mounted LEFT of the mantlet (white/IR light).
+- Mantlet/gun mount: a large external cast mask under a laced canvas cover,
+  the J1 telescope port right of the gun and the coaxial MG port left, a
+  collar with a flared hood; a bare rifled tube with a fat mid-tube fume
+  extractor; the IR/white searchlight on a cradle LEFT of the gun base,
+  riding the gun (see "Mantlet (261 rebuild)").
 - Hull front: LOW-SLUNG hull — sharp shallow glacis with a pronounced
   center crease, flush driver hatch left, very low sponson line; the whole
   vehicle sits close to the ground at standard trim.
@@ -442,3 +444,129 @@ The `8319dbb8` Native2026 experiment was superseded by the authoritative
 since that restoration and was removed from source as dead code in September
 2026. The measurements above remain as historical authoring evidence; the
 playable continues to use original first-party procedural geometry.
+
+## Mantlet (261 rebuild)
+
+Owner, 2026-10-27: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets".
+Builder: `src/vehicles/profiles/japaneseMantlets.ts` (`addType74Mantlet`), called from `buildType74`. Rows marked
+**[photo]** are read from photographs, not stated by a source. Program frame (BUILD-STANDARD §A): +x is the vehicle's
+right.
+
+Photographs: [head-on, light fitted, both port caps](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg);
+[light cradle and link bars](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_Infrared_projector_left_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg);
+[Tsuchiura left front, light removed](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_left_front_view_at_Camp_Tsuchiura_September_28,_2025.jpg);
+[Tsuchiura right front, J1 port and lacing](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_right_front_view_at_Camp_Tsuchiura_September_28,_2025.jpg).
+
+| Feature | Main b93941ce9d (before) | Source | 261 (after) |
+|---|---|---|---|
+| Gun shield | A bare drum (r 0.22 × 0.62 m) with a ball and a taper collar, a canvas sleeve on the tube root | A large external mask of Japan's own design ([en.wikipedia](https://en.wikipedia.org/wiki/Type_74_tank); [ArmedConflicts](https://www.armedconflicts.com/topic/view/660)); a laced canvas cover about half the turret front's width and nearly its height **[photo]** | A broad cast mask, 0.93 m wide and 0.36 m tall, on a 0.18 m drum; its underside rises to the face so it keeps 2 cm over the deck at full depression; the laced canvas gathered over the drum and crown under three straps, the cast face bare round the ports and collar |
+| Turret front round it | The cast dome's face with a slab "brow" box over the drum | Rounded one-piece cast, no distinct brow; a lifting eye on the upper front edge either side of the mask **[photo]** | A channel cut into the cast shell: cheek walls 0.48 m either side of the gun with 15 mm seams, a concave receiver 20 mm behind the drum, trunnion pins into the walls; no brow; the two lifting eyes |
+| Coaxial MG port | A dark stub right of the saddle | Vehicle **left**, a small screw-capped port a little over the bore ([trafficnews 125989](https://trafficnews.jp/post/125989)) | Armoured boss with the 7.62 mm muzzle at x −0.285, 46 mm over the bore |
+| Sight port | None on the front | The J1 monocular telescope's capped port on the vehicle **right** ([trafficnews 125989](https://trafficnews.jp/post/125989)); the J2 gunner's periscope in the roof ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | J1 lens boss at x +0.235, 58 mm over the bore (the roof periscope is unchanged) |
+| IR searchlight | A turret-fixed box left of the drum (x −0.62) with a hood, guard bars and fins; it did not move with the gun | On a cradle beside the gun base, vehicle **left**; aimed by a clamp bolt in the cradle; rear corners chamfered to the turret ([trafficnews 81654/3](https://trafficnews.jp/post/81654/3)); square front with a 2 × 3 pane grid, top above the roof, two parallel bars from the cradle to the collar **[photo]**; fitted from the mid-1980s ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)) | Rides the gun: a deck plate and foot on the mask's left side and an outer rib, the lamp house with chamfered rear corners, a framed six-pane lamp (a searchlight lens at night), lid seam and handles, and the two bars to the collar |
+| Collar | A plain taper collar | A cylindrical collar with a flared half-round hood over its top **[photo]** | Collar r 0.115 m with the flared half-round hood and a dark seal round the barrel |
+| Gun travel | −10/+15 at the gun (spec) | −6/+9 (or −6.5/+9.5) at the gun, −12/+15 with the suspension ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660); GlobalSecurity) | Unchanged spec; the shield is held over the whole −10..+15 |
+
+STB-1 against Type 74 (`docs/references/tanks/stb1.md`): the prototype's mask is narrower (0.79 m), rounder and
+deeper-chinned, its canvas narrower, its port on the upper left, its collar plain, and it carries no searchlight.
+Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
+
+### Roof machine gun (263)
+
+Owner, 2026-10-29: "add mounted machine guns on both of these guys". The M2 stood on the cupola's lid, with no mount
+that read as one. It now stands on the fleet's classic emplacement at the cupola's front-left rim, 40° inboard of dead
+ahead and clear of the hatch lid (`stb1.md`, "Roof machine guns"). A socket post is welded to the ring by a web plate,
+and the full-size M2 rides its pintle column and cradle with its ammunition can.
+
+The geometry gate's p95 height counts roof weapons (the fidelity page's `bodyExtent` leaves out only thin columns),
+and the owner's model has no gun, so the gun lowers this tank's geometry rows: the p95 height 2.83 -> 2.93 m against
+`heightM` 2.83, the gate's minimum 79.9 -> 58.4. Main's 263 ruling keeps `heightM` at the body's height, hull and
+turret without roof weapons, antennas or whips, because bots aim at 0.85 of it and the eye height reads it.
+
+### The mask shaped by the turret (263)
+
+Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shaped" by the turret shape instead of
+protruding out". The 261/262 mask was a block in a slot across the turret front, standing 0.11 m proud of the nose and
+up to 1 m proud of it near the crown, where the cast nose rolls back. Both tanks' masks are now the turret's own nose
+(`castGunSeat.ts` `conformalMask` and `cutConformalSeat`): the wedge of the cast shell round the trunnion axis inside
+the channel, from 2° short of straight down (the 6° depression and a keep) to 56° over the bore, over a floor 0.254 m
+under it. Its face is the turret's surface, flush with the cheeks either side of 8 mm seams, and rolls back toward the
+crown, round a 0.15 m receiver. The canvas cover lies on the mask's crown from 35° to 54.5° under three straps and its
+lacing. The ports stand out of the face along its normal, low enough that their bosses clear the groove at full
+elevation, and the collar and hood stand out of the face at the bore. The lamp's cradle and bars meet the mask's left
+side and the collar.
+
+The groove over the mask (263, the blind critics' "dark gap" and "slot above the mask"): the first conformal mask
+pitched in an open 11° slot under the crown, a dark wedge down to the axis that widened to 17° at full depression.
+The crown now stands a lip over the mask from 70° round, and the mask's top runs on under it as a tongue: a band
+round the trunnion axis from the mask's top face to 78° (the 6° depression and a 2° keep past the lip). At each
+station across the channel, the tongue's radius is the skin's lowest over the groove, less a 6 mm keep and a 5 mm lip.
+The lip's underside stands that keep off the tongue at every pitch; its skin is the shell's own, read by rays before
+the seat is cut. The crown's full casting starts at 92°, where the tongue's top reaches at full elevation plus a 5°
+keep. The 5° keep gives 6 mm at the mask's corners, 7 cm off the axis. At rest the groove reads as a shallow step
+under the lip, about 11 mm deep, like the panel line round the owner's model's mask, and nothing of the turret's
+inside shows through at any pitch. japaneseMantlet.selftest.mjs: the gun keeps 4 mm from every turret part over the
+whole travel (worst 5.2 mm), and the mouth's 14,400 rays meet the mask everywhere.
+
+The shared shell's nose was re-measured on the owner's model (`stb1.md`, "The nose re-measured"); it now stands up to
+10 cm fuller on the bore line. The lamp's cradle stands 4 cm further forward than in 262, as far as the fuller cheek
+beside it came out.
+
+## Hull (262 rebuild)
+
+Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too". Builder: `buildType74`
+(`src/vehicles/profiles/misc.ts`) → `buildType74Family(P, 'production')` (`src/vehicles/profiles/type74Family.ts`), with
+the fittings in `src/vehicles/profiles/japaneseHullKit.ts`. The rows below are this pass's sourced fittings; the hull
+they sit on is the owner's model's (next section). Photographs:
+[glacis, low front](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_left_front_low-angle_view_at_Camp_Katsura_November_11,_2018.jpg),
+[headlight box](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_headlight_(right)_right_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg),
+[right side](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_Right_Side_View_at_Camp_Katsura_September_18,_2016.jpg),
+[rear](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_behind_view_at_Camp_Katsura_November_11,_2018.jpg),
+[left rear, muffler](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_Left_Rear_View_at_Camp_Katsura_September_18,_2016.jpg).
+
+| Feature | Main b93941ce9d (before) | Source | 262 (after) |
+|---|---|---|---|
+| Nose | A V in plan: the glacis and chin swept 0.20 m aft at the corners round a centre crease | A broad flat upper glacis meets a steep flat lower plate at a straight crease across the nose; two tow shackles on the lower plate; the lower plate's corners chamfered **[photo]** | Flat upper glacis (29 degrees) and flat reverse-raked lower plate meeting on a straight welded crease at +3.35, chamfered lower corners, two clevis shackles |
+| Lamps | One round headlight and a guard ring on each fender | At each front corner a recessed box behind a tubular cage: amber marker, blackout lamp, IR lamp and sealed-beam headlight **[photo]**; "infrared driving lights" ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | A caged four-lamp box at each front corner (marker over blackout lamp, IR lamp, headlight), the cage four bars |
+| Front mudguards | Rubber flaps hung from the fender ends | Separate angled plates with two ribs **[photo]** | Angled ribbed mudguard plates |
+| Stern | A flat tail block hung low with an exhaust notch and twin meshed outlets, a raised rack shelf with a tarp roll | A sloped rear plate with a large bolted access door, a horizontal pipe rail with clamps, two low tow shackles and big tow eyes at the top corners **[photo]** | The sloped rear plate (16.7 degrees) with the bolted door, pipe rail and clamps, shackles and tow eyes; the rear deck runs flat to it |
+| Exhaust | Twin outlets in the tail notch | Pipes and silencers on the running boards behind the turret ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)); a long tubular muffler cover on each rear fender ending in a short outlet turned rearward and outward **[photo]** | A muffler cover on each rear fender run, its outlet turned rearward and outward; round tail lamps at the fenders' rear corners |
+| Fender stowage | Two jerry cans standing on the left rear fender (the barrel ran through them at the rear arcs) | No jerry cans on any production vehicle photographed; a bin ahead of the muffler on the right fender **[photo]** | Jerry cans removed; the lockers ahead of the mufflers |
+| Driver | A flush hatch and two periscopes | Front left, single-piece hatch, three JM17 periscopes ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | Three periscopes ahead of the hatch |
+| Track | The Japanese staggered-rib shoe | Double-pin with bolted end connectors and tall centre guides **[photo]** | The double-pin shoe |
+| Smoke dischargers | Three tubes on each turret side, mid-turret | Turret front corners **[photo]** (the prototypes: rear sides) | Three tubes at each front corner of the turret, fired forward and outward; the invented corner marker lamps they replace are gone |
+| Commander's cupola | Six periscopes | Five periscopes round the hatch ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)) | Five |
+| Gun travel | −10/+15 at the gun | −6/+9 at the gun; the hull's hydropneumatic pitch adds the rest | −6/+9 at the gun; the special action's hull pitch (±8, pinned) carries it to −14/+17; per-yaw depression curves keep the gun off the hull |
+
+
+## Owner model (262): the production tank on the family hull
+
+Owner, 2026-10-27, handing over an STB-1 model: "both the type 74 and stb should be based from this". The model, its
+licence, its hash and the measured stations are in `stb1.md` ("Owner model"); both tanks are now the Type 74 family on
+it (`src/vehicles/profiles/type74Family.ts`), the production tank `buildType74Family(P, 'production')`.
+
+| Feature | 262 hull pass (79917245ef) | Owner's model | Production Type 74 after |
+|---|---|---|---|
+| Hull section | Tub ±0.98 under a flat 3.0 m deck at 1.375–1.395 out to fenders at ±1.57, a vertical 0.40 m sponson band | Sponsons over the tracks with sides sloping 45–50 degrees from the tracks' outer edge to the deck edge | Floor 1.23, outer lip ±1.575, sides 46 degrees up to the deck edge ±1.27, deck 1.58; fender caps over the idlers |
+| Glacis | 29 degrees from a crest at +2.42 to a crease at +3.35 | 21 degrees from a crest at +1.87 to the nose's top edge at +3.35 | 22 degrees, to the nose's top edge at 0.99; the lower plate 31 degrees to the belly |
+| Belly | 0.305 | 0.42–0.47 | 0.43 |
+| Running gear | Five wheels on a 0.8675 m pitch (+1.83..−1.64), sprocket (−3.00, 0.90) | Five on a 1.01 m pitch (+2.00..−2.05), idler +3.02, sprocket −2.92, both raised; the stern overhangs the sprocket | Five 0.84 m wheels at +2.00/+0.99/0.00/−1.01/−2.02, idler (+3.00, 0.75), sprocket (−2.95, 0.79) |
+| Turret | 18-station plan ±1.14, +1.35/−2.05; shell 0.465 m, crown at 1.885 | Plan ±1.33, +1.49/−2.12; full belt 0.08–0.27 m, sides rolling to a flat crown at 0.71 m, the bustle undercut | The model's plan and rings; ring datum 1.60, crown at 2.31 |
+| Gun | Bore 1.60, trunnion (0, 0.18, 1.15) | Bore 1.90 | Trunnion (0, 0.29, 1.18), bore 1.89; `armor.gunPivot` follows |
+| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.373 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose); its underside 0.254 m under the bore, 6 cm over the deck it swings over |
+| Searchlight | Cradle at x −0.625 | (the model's is the STB-1 box) | The cradle at x −0.80, clear of the larger mask |
+| Fender stowage | Four lockers on the flat fenders | (no fenders: sloped sides) | Two lockers on each side slope |
+| Mufflers | On the flat rear fenders | (mesh cylinders on the rear corners) | Muffler covers on the rear side slopes |
+| Turret stowage | Baskets hugging the bustle's flanks | A rail at the bustle's rear | A bustle basket across the rear face |
+| Driver's hatch | Flush on the deck at +2.00 | A raised octagon on the glacis (the STB-1's) | Flush, laid on the glacis at +2.15, the three periscopes ahead |
+| Gun curve (gunPitchByYawDeg) | Measured on the 262 hull pass | — | Re-measured on the family hull at the model's proportions (tools/gun-depression-sweep.mjs, 26 mm, whole gun): −6 from the front through yaw 146 (the taller hull lifts the gun clear of the lamp boxes, which stopped it at yaws 9–46 on the squashed hull), rising over the rear quarters to −4.1 at 157–159, −2.4 at 162–164 (the stern's rail, clamps and tow eyes) and −5 dead astern. The STB-1's: −6 to yaw 145, −3.5 at 158–160, −2.2 at 163–165, −3.9 astern |
+
+### Height (262, Main's ruling)
+
+Main ruled for the model's own proportions: the family's y stations are the model's at 0.972, like its x, where the
+first 262 build took 0.86 to fit the sources' 2.25 m (with the cupola; the turret roof about 2.0 m) and stood the hull
+and turret 11% lower than the model. **The sources' 2.25 m is the figure the owner's model overrides**: the crown now
+stands at 2.31 m (ring datum 1.60, the 0.714 m shell) and the deck at 1.58.
+
+`dims.heightM` now follows one rule on both tanks: the P95 combat height the geometry gate measures on the build
+(BUILD-STANDARD §A dims, this packet's 2.70 m rule above). The Type 74's is 2.83 m, the STB-1's 2.73 m (`stb1.md`).

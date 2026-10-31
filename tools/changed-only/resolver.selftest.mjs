@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
+import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
@@ -240,6 +241,31 @@ put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt
 put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.45 };\n");
 assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a kit edit still marks every id');
 put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+// 265: a key the committed manifest holds reads the same in every checkout. A route in the app (`/docs/${topic}`) names
+// no directory, so docs/ edits never re-key the GPU steps (the same string in a tool still does); a file under
+// public/models/ (gitignored whole) is a row by its path, the same with any bytes or none.
+{
+  const tree = mkdtempSync(join(tmpdir(), 'cot-changed-only-local-'));
+  const add = (rel, text) => { mkdirSync(dirname(join(tree, rel)), { recursive: true }); writeFileSync(join(tree, rel), text); };
+  add('src/ui/routes.ts', "export const route = (topic) => [`/docs/${topic}`, 'docs.html'];\n");
+  add('docs.html', '<!doctype html>\n');
+  add('docs/ledger.json', '{}\n');
+  add('tools/source.mjs', "export const SOURCE = 'public/models/x_source.glb';\nexport const page = (topic) => `/docs/${topic}`;\n");
+  const mentions = (file) => [...createGraph({ root: tree, cacheDir: mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-')) })
+    .edges(join(tree, file)).mention].map((target) => target.slice(tree.length + 1)).sort();
+  assert.deepEqual(mentions('src/ui/routes.ts'), ['docs.html'], 'an app route names its page, not the docs directory');
+  assert.deepEqual(mentions('tools/source.mjs'), ['docs', 'public/models/x_source.glb'], 'a tool that names a directory keeps it');
+  const rows = () => {
+    const graph = createGraph({ root: tree, cacheDir: mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-')) });
+    return graph.rowsOf(graph.edges(join(tree, 'tools/source.mjs')).mention).filter((row) => !row.startsWith('dir:docs:'));
+  };
+  const absent = rows();
+  assert.deepEqual(absent, ['local:public/models/x_source.glb'], 'a public/models file is keyed by its path');
+  add('public/models/x_source.glb', 'glb-1');
+  assert.deepEqual(rows(), absent, 'present, the same row');
+  add('public/models/x_source.glb', 'glb-2');
+  assert.deepEqual(rows(), absent, 'other bytes, the same row');
+}
 
 // 13. Route strings are no input (266): a module that only names the public pages (src/ui/localeRouting.ts's route
 // table) declares them `namesOnly`, so a document-head edit marks no id. Controls: undeclared, the mention keys the step

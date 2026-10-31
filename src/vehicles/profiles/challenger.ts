@@ -38,7 +38,7 @@ import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 import { buildChallenger1Historic } from './challenger1Historic.ts';
-import { buildChallenger1SuppliedPlain } from './challenger1XSupplied.ts';
+import { buildChallenger1SuppliedMk1, buildChallenger1SuppliedMk2 } from './challenger1XSupplied.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildChallenger3Td } from './challenger3Td.ts';
@@ -225,9 +225,9 @@ interface Challenger3ShellSection {
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
   // Release 262 (owner 2026-10-28: the supplied-file Mk 3's turret "is what it is actually like"): the Mk 1 and Mk 2 are
-  // the Mk 3's build without its Op Granby kit (challenger1XSupplied.ts).
-  challenger1_mk2: { build: buildChallenger1SuppliedPlain },
-  challenger1_mk1: { build: buildChallenger1SuppliedPlain },
+  // the Mk 3's build in their own fits, without its Op Granby kit (challenger1XSupplied.ts).
+  challenger1_mk2: { build: buildChallenger1SuppliedMk2 },
+  challenger1_mk1: { build: buildChallenger1SuppliedMk1 },
   // ... "and we should just use the weird turrets we invented to make nnew tanks like ... X variants": the fictional
   // FV4030/5 (the wide wedge turret and the applique kit) and FV4030/6 (the sleek turret), both on the hull
   // rebuilt from the Challenger 1's references (challenger1Historic.ts).

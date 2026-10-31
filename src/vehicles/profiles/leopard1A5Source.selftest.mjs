@@ -96,7 +96,7 @@ for (const x of [-1.25, 1.25]) {
     new THREE.Vector3(-Math.sign(x), 0, 0), 0, 3).intersectObject(mesh('turret'), false)[0]?.point.x * Math.sign(x) > 1.18,
   'a spaced side plate stands outboard of the casting');
 }
-const emesLid = down(mesh('turretEquipment'), 0.48, turretRig.position.z + 0.32);
+const emesLid = down(mesh('turretEquipment'), -0.47, turretRig.position.z + 0.54); // the hull's right (-x), at the roof's front edge
 assert.ok(emesLid > turretRoof + 0.25 && emesLid <= 2.76, `the EMES 18 lid tops out at the published 2.71 m (${emesLid})`);
 let pintleMgs = 0;
 let stowageRacks = 0;
@@ -105,7 +105,7 @@ turretRig.traverse((node) => {
   if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') stowageRacks += 1;
 });
 assert.equal(pintleMgs, 1, 'one turret-owned pintle machine gun is retained');
-assert.equal(stowageRacks, 2, 'both turret-side stowage racks are retained');
+assert.equal(stowageRacks, 0, 'the flank racks went into the closed stowage bin on the casting\'s tail (265)');
 
 // The ring holds the source station on the lowered deck; the trunnion keeps its 2.00 m height.
 assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.60, 0.50)) < 1e-8,
@@ -119,6 +119,8 @@ assert.ok(mount.min.z < turret.max.z && mount.max.z > turretRig.position.z + 1.0
 const mantlet = gunRig.userData.leopard1A5MantletReceipt;
 assert.ok(mantlet?.blohmVossMask && mantlet.profileChevron, 'the mantlet carries the B&V armoured mask, a chevron in profile');
 assert.ok(mantlet.maskWidth >= 1.2 && mantlet.maskDepth >= 0.6, `the mask is wide and deep (${mantlet.maskWidth} x ${mantlet.maskDepth})`);
+// (owner 2026-10-28: "this kind of mantlet that ends in a line") the brow and chin close to a line at the gun
+assert.ok(mantlet.maskRidgeHalfHeight <= 0.025, `the mask's brow and chin meet in a line (±${mantlet.maskRidgeHalfHeight})`);
 const receiver = new THREE.Box3(
   new THREE.Vector3(-mantlet.receiverWidth / 2, mantlet.receiverY - 0.30, mantlet.receiverZ - 0.08),
   new THREE.Vector3(mantlet.receiverWidth / 2, mantlet.receiverY + 0.30, mantlet.receiverZ + 0.08),
@@ -130,7 +132,7 @@ for (const pitchDeg of [-9, 0, 20]) {
 }
 gunRig.rotation.x = 0;
 visual.root.updateMatrixWorld(true);
-mesh('hullCloth');
+// (no hullCloth: the transom's fuel cans came off in 265, the Munster 1A5's clean rear)
 mesh('turretCupola');
 
 console.log('leopard1A5Source.selftest: 262 proportions (hull, deck, tracks, skirts), cast B&V turret, EMES 18, seated rig and kit pass');

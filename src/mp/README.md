@@ -5,8 +5,9 @@ client for up to 14v14 that speaks the binary wire in `src/mp/wire`, predicts
 the viewer's own tank through the shared movement module, interpolates
 everyone else, and drives the existing renderer, HUD, FX and audio through one
 thin presentation adapter. Every layer below `presentation/` runs unchanged in
-Node — the receipts and the soaks drive the real client headless — and nothing
-under `src/mp` is imported by the solo boot path.
+Node — the receipts and the soaks drive the real client headless. This is the
+**online driver** (docs/ARCHITECTURE.md §1.6, [SKILL.md](SKILL.md)): nothing under `src/mp` is reached by a local
+battle, which steps the shared core on the page.
 
 ## Module map
 

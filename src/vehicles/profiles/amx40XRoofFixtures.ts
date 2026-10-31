@@ -95,9 +95,12 @@ export function addAmx40WeaponSideMechanism(mg: ReturnType<typeof sourceMachineG
   // the old broad solid box. Source 17277 is its closed longitudinal roller.
   const rows = [[-.084, 2.50719, 2.5320, 2.57849], [.010, 2.519, 2.5325, 2.67029],
     [.15, 2.521, 2.5328, 2.623], [.27749, 2.52189, 2.53359, 2.57949]];
+  // 264 (owner 2026-10-28: "... actual machine guns of current dimensions"): the gun is the fleet's 7.62 mm construction,
+  // whose receiver is narrower than the drawn 145 mm block; the inner web stands 30 mm further inboard, inside the
+  // receiver's left wall, as it stood inside the drawn one
   mg.add('turretDetail', sectionSolid(rows.map(([z, bottom, floor, top]) => ({ z, ring: [
-    [-1.33884, bottom], [-1.21094, bottom], [-1.21094, top],
-    [-1.23334, top], [-1.23334, floor], [-1.33884, floor],
+    [-1.33884, bottom], [-1.18094, bottom], [-1.18094, top],
+    [-1.20334, top], [-1.20334, floor], [-1.33884, floor],
   ] }))), 0, 0, 0);
   for (const center of [-1.30909, -1.25629]) {
     const rollers = [[-.01611, 2.55484, .01805, .02175], [.03439, 2.55869, .02295, .02270],

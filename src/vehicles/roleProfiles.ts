@@ -85,9 +85,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   c2_ariete: { doctrine: 'flanker', viewM: 425, still: 0.218, moving: 0.158 },
   amx40_proto: { doctrine: 'flanker', viewM: 395, still: 0.236, moving: 0.176 },
   leo1a5: { doctrine: 'flanker', viewM: 430, still: 0.238, moving: 0.178 },
+  // the 1A1: the 1A5's flanker without the EMES 18, so a shorter view
+  leo1a2a1: { doctrine: 'flanker', viewM: 410, still: 0.240, moving: 0.180 },
   leopard2_proto: { doctrine: 'flanker', viewM: 395, still: 0.225, moving: 0.165 },
   leo2a2: { doctrine: 'flexible', viewM: 400, still: 0.185, moving: 0.125 },
   leo2a3: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
+  leo2a3_b4: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
   leo2a4m_can: { doctrine: 'flexible', viewM: 410, still: 0.178, moving: 0.118 },
   leo2a4_v: { doctrine: 'flexible', viewM: 405, still: 0.181, moving: 0.121 },
   leo2a4m: { doctrine: 'flexible', viewM: 415, still: 0.176, moving: 0.116 },
@@ -126,6 +129,11 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   ztz99a: { doctrine: 'assault', viewM: 420, still: 0.172, moving: 0.113 },
   ztz99a2: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
   vt4a1: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  // release 264: the Longwei family keeps its hosts' doctrines and optics (longweiFamilyConfig.ts)
+  ztz99a2_qinglong: { doctrine: 'assault', viewM: 425, still: 0.172, moving: 0.112 },
+  vt4a1_baihu: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
+  t72b3_zhuque: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
+  t72b3m_xuanwu: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   type100: { doctrine: 'support', viewM: 450, still: 0.262, moving: 0.202 },
   ztz100: { doctrine: 'assault', viewM: 435, still: 0.188, moving: 0.128 },
   ztz20: { doctrine: 'assault', viewM: 440, still: 0.186, moving: 0.126 },
@@ -156,10 +164,28 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   amx30: { doctrine: 'flanker', viewM: 410, still: 0.244, moving: 0.184 },
   amx30b2: { doctrine: 'flanker', viewM: 420, still: 0.243, moving: 0.183 },
   m48a5_patton: { doctrine: 'flexible', viewM: 395, still: 0.190, moving: 0.130 },
+  // release 266: the M48s drawn on the A5's castings. The M48A3 (90 mm, the tall M1 cupola) is the easier to spot; the
+  // Magach 3's Blazer boxes and the M48 Super's added armour bulk them out; the GA2 is the A5's twin in the field
+  m48a3_patton: { doctrine: 'flexible', viewM: 385, still: 0.196, moving: 0.136 },
+  magach3: { doctrine: 'flexible', viewM: 395, still: 0.196, moving: 0.136 },
+  m48a2ga2: { doctrine: 'flexible', viewM: 405, still: 0.190, moving: 0.130 },
+  m48_super: { doctrine: 'flexible', viewM: 415, still: 0.198, moving: 0.138 },
   m60a2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
   vickers_mk1: { doctrine: 'flanker', viewM: 410, still: 0.241, moving: 0.181 },
   centurion3: { doctrine: 'flexible', viewM: 385, still: 0.189, moving: 0.129 },
   centurion5_2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
+  // the Sho't Kal: the Mk 5/2's flexible gun tank with the diesel's quicker pace and the IDF's taller whips
+  shot_kal: { doctrine: 'flexible', viewM: 410, still: 0.190, moving: 0.130 },
+  // the Mk 13: the Mk 5/2's flexible gun tank; its searchlight drum makes it the easier one to spot
+  centurion13: { doctrine: 'flexible', viewM: 410, still: 0.195, moving: 0.135 },
+  // the Strv 105: the Mk 5/2's flexible gun tank with a thermal sight; its cassettes bulk it out
+  strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
+  // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
+  olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
+  centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
+  // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
+  centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },
@@ -175,6 +201,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // Oplot-T's air conditioner and APU box make it the easier one to spot
   bm_oplot_m: { doctrine: 'flanker', viewM: 435, still: 0.226, moving: 0.166 },
   bm_oplot_t: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.170 },
+  pt84_orzel: { doctrine: 'flanker', viewM: 435, still: 0.229, moving: 0.168 },
+  pt84_sokol: { doctrine: 'precision', viewM: 470, still: 0.214, moving: 0.158 },
+  pt84_zbik: { doctrine: 'assault', viewM: 410, still: 0.246, moving: 0.182 },
   ua_m1a1: { doctrine: 'flexible', viewM: 400, still: 0.176, moving: 0.116 },
   leo2a6_ua: { doctrine: 'flexible', viewM: 425, still: 0.168, moving: 0.108 },
   object695: { doctrine: 'support', viewM: 440, still: 0.275, moving: 0.215 },

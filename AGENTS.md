@@ -92,6 +92,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 | `src/fx/` | [`src/fx/SKILL.md`](src/fx/SKILL.md) | Work on pooled particles, impacts, destruction effects, decals, and shared FX time. |
 | `src/gallery/` | [`src/gallery/SKILL.md`](src/gallery/SKILL.md) | Build and verify the public Tank Gallery, its technical dossiers, diagnostic overlays, and exact-surface markup review packets. |
 | `src/game/` | [`src/game/SKILL.md`](src/game/SKILL.md) | Work on battle integration, bots, input, garage dressing, progression, replays, and studio state. |
+| `src/mp/` | [`src/mp/SKILL.md`](src/mp/SKILL.md) | Work on the online driver - rooms, the binary wire, transports, the match client's prediction and interpolation, the browser host and the session owner. |
 | `src/presentation/` | [`src/presentation/SKILL.md`](src/presentation/SKILL.md) | Maintain lightweight public navigation, media loading, archive presentation, and public-site contracts. |
 | `src/sim/` | [`src/sim/SKILL.md`](src/sim/SKILL.md) | Work on deterministic movement, armor, ballistics, damage, and spotting simulation. |
 | `src/techTree/` | [`src/techTree/SKILL.md`](src/techTree/SKILL.md) | Maintain the read-only national tech trees the Garage draws - tree data, lineage, tiers as columns and the connector layout. |
@@ -127,6 +128,10 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 - Simulation randomness is seeded/injected. Do not use wall-clock time or
   `Math.random()` in authoritative logic.
 - Keep simulation and network modules Node-runnable and free of DOM/WebGL.
+- One core, two drivers (the owner, 2026-10-29; docs/ARCHITECTURE.md §1.6): the shared core (`src/sim`, the bots, the
+  world's collision and kernels) imports no driver; a local battle (solo, campaign, Proving Ground, Watch, replays, Jev)
+  steps it on the page and never reaches `src/mp`; a room's authority runs the same step. Guards:
+  `tools/driver-boundaries.selftest.mjs`, `src/sim/driverStepParity.selftest.mjs`.
 - No per-frame allocation in established hot loops; reuse scratch state.
 - All playable tanks are first-party procedural runtime models. Source GLBs
   are comparison/authoring inputs, never a playable loading path.

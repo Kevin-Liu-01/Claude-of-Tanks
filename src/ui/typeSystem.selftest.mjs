@@ -68,7 +68,8 @@ for (const face of TYPE_SYMBOLS.faces) {
   assert.ok(face.file.startsWith(`${TYPE_SYMBOLS.dir}/`), `${face.file} sits beside its licence`);
 }
 assert.deepEqual(TYPE_SYMBOLS.faces.map((face) => face.weight), ['100 549', '550 1000'], 'the marks face covers every weight, Medium then Bold');
-assert.equal(TYPE_SYMBOLS.range, 'U+2190-2193,U+221E,U+2264-2265', 'the marks face carries ← ↑ → ↓ ∞ ≤ ≥ and nothing else');
+assert.equal(TYPE_SYMBOLS.range, 'U+0141-0142,U+017B-017C,U+2190-2193,U+221E,U+2264-2265',
+  'the marks face carries Chakra Petch\'s Ł ł Ż ż and ← ↑ → ↓ ∞ ≤ ≥, nothing else');
 {
   const ofl = read(`public/fonts/${TYPE_SYMBOLS.dir}/OFL.txt`);
   assert.match(ofl, /SIL Open Font License, Version 1\.1/, 'the marks face ships its OFL text');
@@ -107,7 +108,8 @@ const rangeChars = TYPE_SYMBOLS.range.split(',').flatMap((part) => {
   const [lo, hi = lo] = part.replace(/^U\+/, '').split('-').map((hex) => parseInt(hex, 16));
   return Array.from({ length: hi - lo + 1 }, (_, index) => String.fromCodePoint(lo + index));
 });
-assert.deepEqual(rangeChars, ['←', '↑', '→', '↓', '∞', '≤', '≥'], 'the marks range spells the seven marks');
+assert.deepEqual(rangeChars, ['Ł', 'ł', 'Ż', 'ż', '←', '↑', '→', '↓', '∞', '≤', '≥'],
+  'the marks range spells Chakra Petch\'s four Polish letters and the seven marks');
 const COVERED_MARKS = new Set(['\u2212', ...rangeChars]);
 // Each face's cmap, read from its WOFF2 bytes (table directory, one brotli stream, the cmap's format 4 / 12 subtable).
 const WOFF2_TAGS = ['cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post', 'cvt ', 'fpgm', 'glyf', 'loca', 'prep', 'CFF ',
@@ -166,11 +168,11 @@ const rangeSet = (range) => new Set(range.split(',').flatMap((part) => {
   return Array.from({ length: hi - lo + 1 }, (_, index) => lo + index);
 }));
 // The accents face's unicode-range is the Latin Extended-A block (short in every document head); its cmap is the
-// eighteen letters it draws. A page that prints another letter of the block fetches the 2 KB face and falls through.
+// twenty-two letters it draws. A page that prints another letter of the block fetches the 2 KB face and falls through.
 assert.equal(TYPE_ACCENTS.range, 'U+0100-017F', 'the accents face downloads for Latin Extended-A text only');
 const ACCENT_CHARS = cmapOf(TYPE_ACCENTS.faces[1].file);
-assert.equal([...ACCENT_CHARS].map((c) => String.fromCodePoint(c)).sort().join(''), 'ĀāĆćĒēĪīŃńŌōŚśŪūŹź',
-  'the accents face draws ā ē ī ō ū and ć ń ś ź with their capitals');
+assert.equal([...ACCENT_CHARS].map((c) => String.fromCodePoint(c)).sort().join(''), 'ĀāĆćĒēĪīŁłŃńŌōŚśŪūŹźŻż',
+  'the accents face draws ā ē ī ō ū, ć ń ś ź and ł ż with their capitals');
 const SYMBOL_CHARS = rangeSet(TYPE_SYMBOLS.range);
 const ACCENT_RANGE = rangeSet(TYPE_ACCENTS.range);
 for (const face of TYPE_ACCENTS.faces) {
@@ -182,11 +184,17 @@ for (const face of TYPE_SYMBOLS.faces) {
   assert.deepEqual([...cmapOf(face.file)].sort((a, b) => a - b), [...SYMBOL_CHARS], `${face.file} carries exactly its unicode-range`);
 }
 assert.deepEqual([...ACCENT_CHARS].filter((c) => PLEX_CHARS.has(c)), [], 'the accents face adds only letters Plex Sans lacks');
-// Chakra Petch composes the accented letters from its own combining marks (the browser decomposes a letter its cmap
-// lacks into base + mark when the face carries both), so its stacks need no accents face.
+// Chakra Petch composes the macron and acute letters from its own combining marks (the browser decomposes a letter its
+// cmap lacks into base + mark when the face carries both), so its stacks need no accents face. ł has no decomposition
+// and its subsets lack the dot above, so Ł ł Ż ż are Chakra Petch's own in the marks face, its stacks' next face.
+const MARKS_FACE_LETTERS = [0x141, 0x142, 0x17b, 0x17c];
 for (const c of ACCENT_CHARS) {
   const [letter, mark] = [...String.fromCodePoint(c).normalize('NFD')].map((ch) => ch.codePointAt(0));
-  assert.ok(CHAKRA_CHARS.has(letter) && CHAKRA_CHARS.has(mark), `Chakra Petch composes U+${c.toString(16)} from its own glyphs`);
+  if (MARKS_FACE_LETTERS.includes(c)) {
+    assert.ok(SYMBOL_CHARS.has(c) && !(CHAKRA_CHARS.has(letter) && CHAKRA_CHARS.has(mark)), `U+${c.toString(16)}: the marks face draws what Chakra Petch cannot compose`);
+  } else {
+    assert.ok(CHAKRA_CHARS.has(letter) && CHAKRA_CHARS.has(mark), `Chakra Petch composes U+${c.toString(16)} from its own glyphs`);
+  }
 }
 // Every character a catalog string or a tank name prints is drawn by a shipped face on both voice paths: the Plex path
 // (Plex Sans, then the accents face, then the marks face) and the Chakra Petch path (its cmap or its composition, then
@@ -308,8 +316,10 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // Each Chakra Petch face's fallback is a pair, its capitals' rule and the rest's, and the Bold's has a space rule (264: a
 // caps title keeps its width and its cap height when the face arrives): +1,107 raw / +66 brotli on the game head
 // (5,550 / 961), +1,107 / +71 on /home (4,645 / 992), and on the gallery, which declares the display family as well,
-// +2,512 / +98 (6,632 / 956).
-const HEAD_BUDGET = Object.freeze({ game: { raw: 5580, brotli: 970 }, page: { raw: 6670, brotli: 1000 } });
+// +2,512 / +98 (6,632 / 956). The marks face's four Polish letters (265: Chakra Petch's ł Ł ż Ż for PT-84 Orzeł and
+// Żbik) lengthen its two unicode-ranges: +48 raw everywhere, the game head 5,598 / 974, /home 4,693 / 1,002, the
+// gallery 6,680 / 967.
+const HEAD_BUDGET = Object.freeze({ game: { raw: 5630, brotli: 980 }, page: { raw: 6720, brotli: 1010 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])

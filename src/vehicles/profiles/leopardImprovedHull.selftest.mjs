@@ -13,6 +13,10 @@ const size = (object) => new THREE.Box3().setFromObject(object, true).getSize(ne
 
 // Measured pre-edit envelopes: hull 4.005512 m across fitted skirts,
 // 7.820 m long; turret 3.017523 m across. Only the first dimension changes.
+// 264 (the 2A4-family rebuild, profiles/leopard2A4Family.ts): the Improved stands on the release hull with the 2A4 turret
+// and its 2A6-look wedge; the old hull's 0.9 lateral scale went with that hull (leopard2ImprovedKit.ts). Its envelope is
+// re-measured on the rebuild: 3.662 m across the deep skirts, the release hull's 7.912 m (release 265: re-measured on the
+// merged tree, the stern rack's rails setting the rear at z -4.165) and seven 0.348 m road wheels.
 for (const quality of ['high', 'low']) {
   const tank = createTank('leo2_improved', null, { proceduralOnly: true, quality, geometryReceipt: true });
   const hull = tank.root.getObjectByName('rig_hull');
@@ -20,50 +24,62 @@ for (const quality of ['high', 'low']) {
   const gun = tank.root.getObjectByName('rig_gun');
   tank.root.updateMatrixWorld(true);
   const hullSize = size(hull);
-  near(hullSize.x, 3.604961, `${quality}: narrower frontal envelope`);
-  near(hullSize.y, 2.146500, `${quality}: hull height retained`);
-  near(hullSize.z, 7.820000, `${quality}: hull length retained`);
-  near(size(turret).x, 3.017523, `${quality}: turret retains its width`);
-  near(size(gun.getObjectByName('gunMount')).x, 0.620000, `${quality}: mantlet retains its width`);
+  near(hullSize.x, 3.662000, `${quality}: narrower frontal envelope`);
+  near(hullSize.y, 2.067000, `${quality}: hull height retained`);
+  near(hullSize.z, 7.912000, `${quality}: hull length retained`);
+  near(size(turret).x, 2.905157, `${quality}: turret retains its width`);
+  near(size(gun.getObjectByName('gunMount')).x, 0.443400, `${quality}: mantlet retains its width`);
   near(getSpec('leo2_improved').dims.widthM, 3.6, 'declared hull width');
   const armor = getSpec('leo2_improved').armor;
   const collisionHalfWidth = Math.max(...armor.collisionShells.hull.flatMap(cell =>
     cell.vertices.map(point => Math.abs(point[0]))));
-  assert.ok(collisionHalfWidth > 1.75 && collisionHalfWidth < 1.81,
+  // (264: the release hull's combat shell measures 1.72 m, inside the 1.831 m drawn hull; the skirts' plates at 1.82
+  // carry the side's first face)
+  assert.ok(collisionHalfWidth > 1.70 && collisionHalfWidth < 1.81,
     `combat hull must fit the narrowed visible shell: ${collisionHalfWidth}`);
   const turretSide = armor.turretPlates.find(plate => plate.name === 'turret_side_R');
-  near(turretSide.verts[0][0], 1.41, 'combat turret width retained');
-  near(tank.contactGeom.halfWidM, 1.674, 'ground contact follows narrowed tracks');
+  near(turretSide.verts[0][0], 1.3937, 'combat turret width retained');
+  near(tank.contactGeom.halfWidM, 1.6805, 'ground contact follows narrowed tracks');
   // 2026-10-04 (aa5fdca05): the published track run is read off the drawn band; the narrowed hull's band measures
   // 2.6772 m (the profile's pinned flat run was 2.6975 m), and the build publishes what the combat anatomy records.
-  near(tank.contactGeom.halfLenM, 2.6772, 'ground contact length retained');
+  // (264: the release hull's band measures 2.6405 m)
+  near(tank.contactGeom.halfLenM, 2.6405, 'ground contact length retained');
   near(tank.contactGeom.halfLenM, getSpec('leo2_improved').armor.trackContact.halfLenM, 'ground contact length published', 6e-5);
   const tracks = getSpec('leo2_improved').armor.trackShapes;
   assert.equal(tracks.length, 2, 'one collision lane on each side');
   for (const track of tracks) {
-    near(track.x1 - track.x0, .594, 'track hitbox follows visible band width');
-    near(Math.max(Math.abs(track.x0), Math.abs(track.x1)), 1.674, 'lateral track envelope');
+    near(track.x1 - track.x0, .643, 'track hitbox follows visible band width');
+    near(Math.max(Math.abs(track.x0), Math.abs(track.x1)), 1.6805, 'lateral track envelope');
   }
   // Cached interior fills are stored in tank coordinates, independently of
   // the scaled hull owner. An old-width fill can enter the new track lane.
+  // (264: the lane is the build's own track prism, its slab x 1.0375..1.6805 and its side silhouette's extent)
+  const lane = {
+    x0: Math.min(...tracks.map(track => Math.min(Math.abs(track.x0), Math.abs(track.x1)))),
+    x1: Math.max(...tracks.map(track => Math.max(Math.abs(track.x0), Math.abs(track.x1)))),
+    y0: Math.min(...tracks.flatMap(track => track.poly.map(([, y]) => y))),
+    y1: Math.max(...tracks.flatMap(track => track.poly.map(([, y]) => y))),
+    z0: Math.min(...tracks.flatMap(track => track.poly.map(([z]) => z))),
+    z1: Math.max(...tracks.flatMap(track => track.poly.map(([z]) => z))),
+  };
   const fill = hull.getObjectByName('hullInteriorFill');
   assert.ok(fill, 'closed hull retains its generated interior');
   const point = new THREE.Vector3();
   const positions = fill.geometry.attributes.position;
   for (let i = 0; i < positions.count; i++) {
     point.fromBufferAttribute(positions, i).applyMatrix4(fill.matrixWorld);
-    const insideLane = Math.abs(point.x) > 1.08 && Math.abs(point.x) < 1.674
-      && point.y > .043 && point.y < 1.3698
-      && point.z > -3.5752 && point.z < 3.6782;
+    const insideLane = Math.abs(point.x) > lane.x0 && Math.abs(point.x) < lane.x1
+      && point.y > lane.y0 && point.y < lane.y1
+      && point.z > lane.z0 && point.z < lane.z1;
     assert.equal(insideLane, false, 'interior fill leaves the complete moving track lane empty');
   }
   for (const side of [-1, 1]) {
     const wheels = hull.userData.runningGearRoadWheels(side);
     assert.ok(wheels.length >= 7, 'road wheels remain suspension-owned');
     for (const wheel of wheels) {
-      near(wheel.r, .395, 'round wheel radius retained');
+      near(wheel.r, .348, 'round wheel radius retained');
       const center = hull.localToWorld(new THREE.Vector3(wheel.x, wheel.y, wheel.z));
-      assert.ok(Math.abs(center.x) > 1.08 && Math.abs(center.x) < 1.674,
+      assert.ok(Math.abs(center.x) > lane.x0 && Math.abs(center.x) < lane.x1,
         'wheel center stays inside its narrowed track lane');
     }
   }

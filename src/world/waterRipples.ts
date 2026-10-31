@@ -38,6 +38,13 @@ const WATER_RIPPLE_FOAM_DECAY_PER_S = 0.36;
 export const WATER_RIPPLE_HULL_DRAFT_M = 0.36;
 /** Ground speed at which the tracks churn at full rate — the same speed the sheet's fallback wake saturates at. */
 export const WATER_RIPPLE_CHURN_FULL_SPEED_MPS = 8;
+/**
+ * (2026-10-29) The share of the draft a standing hull presses, and the ground speed from which it presses all of it: still
+ * water rises round a hull at rest, it holds no dimple there, and a standing hull's full draft held a hull-shaped one.
+ * A moving hull presses its full draft (the bow mound, the arms and the stern train are the moving patch's own).
+ */
+export const WATER_RIPPLE_STANDING_PRESS = 0.3;
+export const WATER_RIPPLE_PRESS_FULL_SPEED_MPS = 3;
 const SLOT_CAP = 8;
 /**
  * 2026-10-02 (the frame-budget lane): quiet seconds — no hull in the water, no splash — after which the field returns
@@ -89,21 +96,24 @@ vec2 texelWorld(vec2 uv) {
   vec2 w = uv * uSize;
   return w + uSize * floor((uAnchor - w) / uSize + 0.5);
 }
-// Signed distance to a hull's rounded footprint (half length a.x, half width a.y) in its own frame.
+// Signed distance to a hull's footprint (half length b.x, half width b.y) in its own frame: a stadium, its ends half
+// circles of the half width (2026-10-29, the owner's squares in water: a rounded rectangle with 0.65 m corners pressed a
+// dimple whose rim traced the hull's plan round it on the desktop).
 float hullDistance(vec2 w, vec4 a, vec4 b) {
   vec2 rel = w - a.xy;
   vec2 fwd = a.zw;
   vec2 side = vec2(-fwd.y, fwd.x);
-  float corner = min(0.65, b.y * 0.45);
+  float corner = min(b.x, b.y);
   vec2 q = abs(vec2(dot(rel, fwd), dot(rel, side))) - b.xy + corner;
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;
 }
-// Hull pressure in metres of surface: the draft over the footprint, feathered 0.8 m past the skirt.
+// Hull pressure in metres of surface: the draft over the footprint, feathered under the skirt (full 0.9 m inside it, none
+// 0.1 m past it), so the dimple's rim stands under the hull, not in a band round it.
 float hullPressure(vec2 w) {
   float p = 0.0;
   for (int i = 0; i < 8; i++) {
     if (i >= uHullCount) break;
-    p += uHullB[i].z * (1.0 - smoothstep(-0.2, 0.6, hullDistance(w, uHullA[i], uHullB[i])));
+    p += uHullB[i].z * (1.0 - smoothstep(-0.9, 0.1, hullDistance(w, uHullA[i], uHullB[i])));
   }
   return p;
 }
@@ -318,9 +328,11 @@ export function createWaterRippleField(
         const strength = Number.isFinite(s.strength) ? Math.min(1, Math.max(0, s.strength)) : 0;
         const speed = Math.abs(s.speed ?? 0);
         const churn = Number.isFinite(speed) ? Math.min(1, speed / WATER_RIPPLE_CHURN_FULL_SPEED_MPS) * strength : 0;
+        const press = WATER_RIPPLE_STANDING_PRESS + (1 - WATER_RIPPLE_STANDING_PRESS)
+          * (Number.isFinite(speed) ? Math.min(1, speed / WATER_RIPPLE_PRESS_FULL_SPEED_MPS) : 0);
         hullA[i].set(s.x, s.z, fx, fz);
         hullB[i].set(Math.max(0.5, s.halfLength ?? DEFAULT_HALF_LENGTH_M), Math.max(0.3, s.halfWidth ?? DEFAULT_HALF_WIDTH_M),
-          strength * WATER_RIPPLE_HULL_DRAFT_M, churn);
+          strength * WATER_RIPPLE_HULL_DRAFT_M * press, churn);
       }
       uniforms.uHullCount.value = n;
     },

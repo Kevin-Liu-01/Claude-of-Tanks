@@ -182,6 +182,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
     // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
     'src/vehicles/strv103GunPort.selftest.mjs',
+    // 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets"):
+    // each gun pitches in its own shield, seated in a channel cut into its own turret front, clear of it and filling it
+    // over the whole travel
+    'src/vehicles/japaneseMantlet.selftest.mjs',
+    // 262 (owner: "we should upgrade the hulls and everything about the tanks too"): the STB-1's and the Type 74's guns
+    // keep off their rebuilt hulls at every yaw on their source travel and published curves
+    'src/vehicles/japaneseGunHull.selftest.mjs',
     'src/vehicles/challengerXGunPort.selftest.mjs',
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
@@ -193,6 +200,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // 262: the Challenger 3 TD's deep mantlet and tube clear its two cheeks and every turret fitting through the gun's
     // whole travel, in battery and at full recoil (a rod across the slot fails)
     'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
+    // release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, its gun
+    // clear of its hull at its published stops
+    'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
+    // release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wedge
+    // split, each one's gun forward, the ring on the deck and the 2A4 turret's roof, at both qualities
+    'src/vehicles/profiles/leopard2A4Family.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -286,6 +299,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-sealed-check.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
+    // release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured
+    'tools/roof-pocket-census.selftest.mjs',
     // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
     'tools/hull-contact-census.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
@@ -309,6 +324,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
+    'tools/interior-fill-exposure.selftest.mjs',
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
     'tools/id-list.selftest.mjs',
     'tools/tool-page-load.selftest.mjs',
@@ -489,6 +506,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
     'src/sim/specialActions.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
+    'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
     'src/vehicles/profiles/abramsTuskCheek.selftest.mjs',
@@ -607,6 +625,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
     'src/vehicles/profiles/challenger1XSupplied.selftest.mjs',
     'src/vehicles/profiles/challenger1XSourceHood.selftest.mjs',
+    // 264c: the TOGS barbette past LOD1 and in the turret shadow proxy (rangeSilhouette)
+    'src/vehicles/profiles/challenger1XRangeSilhouette.selftest.mjs',
     'src/vehicles/profiles/strv122X.selftest.mjs',
     'src/vehicles/profiles/strv122XSupplied.selftest.mjs',
     'src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs',
@@ -699,8 +719,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/k2XReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sourceK2Equipment.selftest.mjs',
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4SideSkirt.selftest.mjs',
-  'src/vehicles/profiles/leopard2A4GunSeat.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
     'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
     'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
@@ -723,6 +741,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     // release 262: the Longwei concept's native profile fixture (its first-party concept route's test)
     'src/vehicles/profiles/longwei.selftest.mjs',
+    // release 264: the Longwei family, four hosts' hulls under the Longwei turret with their own kits
+    'src/vehicles/profiles/longweiFamily.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
@@ -735,6 +755,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
     // release 262: the Leclerc turret's false roofs (owner-marked) stay closed on the S1, S2 and SXXI
     'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
+    // release 264: the T-72B 1987's and T-62MV1's open commander's hatch opens into its cupola
+    'src/vehicles/profiles/t72b1987HatchWell.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
@@ -1021,8 +1043,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
-    'src/game/soloSimSession.selftest.mjs', // the solo sim Worker: the planned seats, the held count, the pause, no MP structure
-    'src/game/soloSimBattleRuntime.selftest.mjs', // a sortie's battle on the Worker: covered entry, reveal, held count, hold, boot failure, no MP structure
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -1129,6 +1149,10 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
+    // 2026-10-30 (266): the hull's turret-sweep guard knows the launchers riding the gun, swept over its pitch range
+    'src/vehicles/launcherSweepGuard.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
@@ -1215,8 +1239,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleAccess.selftest.mjs',
     // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
     'src/game/soloKernelObstacleQuery.selftest.mjs',
+    // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
+    'src/game/soloKernelMemoryGrowth.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
+    // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
+    'tools/driver-boundaries.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
     'src/vehicles/markingFilm.selftest.mjs',
@@ -1255,6 +1283,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadSurfaceShader.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
     'src/world/groundContrastStep2.selftest.mjs',
+    'src/world/groundTrainIrregularity.selftest.mjs', // 264b: the sand trains' irregularity, a turned field's lift per channel
     'src/world/snowRockSlope.selftest.mjs',
     'src/world/roadPuddleGloss.selftest.mjs',
     'src/world/snowFaces.selftest.mjs',
@@ -1421,6 +1450,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
     'src/engine/shadowGeometryClaims.selftest.mjs',
+    // (local-fps-266) __SHADOW_DEBUG held as the window's own property: the per-caster shadow hooks' reads skip the
+    // browser's named-element lookup
+    'src/engine/shadowDebugGlobal.selftest.mjs',
     'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/audioMath.selftest.mjs',
@@ -1500,9 +1532,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
-    'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
-    'src/mp/room/syncCrypto.selftest.mjs',
     'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
@@ -1577,7 +1607,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
-    'server/match/matchActorPause.selftest.mjs', // step 5: a solo match's pause, its unpaused twin's state
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
@@ -1608,6 +1637,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
+    'src/sim/driverStepParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
@@ -1862,6 +1893,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
+    'tools/cpu-burners.selftest.mjs',
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
@@ -1888,15 +1920,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/accessoryContact.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
-    'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',
-    'src/vehicles/profiles/merkavaRunningGear.selftest.mjs',
-    'src/vehicles/profiles/merkava1bFit.selftest.mjs',
-    'src/vehicles/profiles/merkava2Fit.selftest.mjs',
-    'src/vehicles/profiles/merkava3Fit.selftest.mjs',
-    'src/vehicles/profiles/merkavaEraFinish.selftest.mjs',
-    'src/vehicles/profiles/merkava4bGeometry.selftest.mjs',
+    // 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls; the
+    // old pile's fit receipts (merkavaGunCradle, merkavaRunningGear, merkava1bFit, merkava2Fit, merkava3Fit,
+    // merkavaEraFinish, merkava4bGeometry) retired with the geometry they pinned
+    'src/vehicles/profiles/merkavaFamily.selftest.mjs',
+    'src/vehicles/profiles/merkavaFamilyGunClearance.selftest.mjs',
     'src/vehicles/profiles/swedishSiegeLine.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4Ghillie.selftest.mjs',
     'src/vehicles/profiles/t72JaguarRedesign.selftest.mjs',
     'src/vehicles/profiles/challenger2Geometry.selftest.mjs',
     'src/vehicles/profiles/challenger2Family.selftest.mjs',
@@ -2444,6 +2473,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // (local-fps-266) the HUD layout's queries skip the Garage, the icon sprite and the play screen, the document's order kept
+    'src/ui/hudQueryScope.selftest.mjs',
     // the security audit's receipt (item/security-audit-240)
     'src/ui/htmlEscape.selftest.mjs',
     // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
@@ -2526,7 +2557,8 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
-    'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
+    'src/vehicles/profiles/centurionFamily.selftest.mjs',
+    'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
     'src/vehicles/profiles/leclercRoofRig.selftest.mjs',
     'src/vehicles/profiles/leclercGunHousingRig.selftest.mjs',
@@ -2587,6 +2619,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
     // guard heals the owner's signature (a camera without layer 0) within half a second
     'tools/black-world.browser.selftest.mjs',
+    // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
+    'tools/garage-roster-settle.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)

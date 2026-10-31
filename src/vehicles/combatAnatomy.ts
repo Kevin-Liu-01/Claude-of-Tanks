@@ -1043,6 +1043,26 @@ function appendStructurePlates(
   });
 }
 
+/** A structure whose builder names the main plate its front face stands on (AnatomyCalibrationStructure.frontPlate:
+ *  the Merkava Mk 1B's glacis hatches, Main's 262 ruling) takes that plate's armour on its front face only; its sides,
+ *  rear and top stay the roof's weak spot (appendStructurePlates). Structures without the hint are untouched. */
+function applyStructureFrontPlates(
+  plates: ArmorPlate[],
+  structures: readonly AnatomyCalibrationStructure[] | undefined,
+  frame: string,
+): void {
+  (structures || []).forEach((structure, index) => {
+    if (!structure.frontPlate) return;
+    const source = plates.find((plate) => (plate.kind || 'main') === 'main' && plate.name === structure.frontPlate);
+    const face = plates.find((plate) =>
+      plate.name === `${frame}_${structure.kind || 'roof_structure'}_${String(index + 1).padStart(2, '0')}_front`);
+    if (!source || !face) return;
+    face.physicalMm = source.physicalMm;
+    face.keMm = source.keMm ?? source.physicalMm;
+    face.ceMm = source.ceMm ?? source.physicalMm;
+  });
+}
+
 function applyEraPlateReceipts(
   armor: ArmorAnatomy,
   receipts: readonly AnatomyEraPlateReceipt[] | undefined,
@@ -1588,6 +1608,8 @@ function reconcileCalibratedAnatomy(
   applyModuleShapes(armor, calibration.moduleShapes);
   appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
   appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
+  applyStructureFrontPlates(armor.hullPlates, calibration.hullStructures, 'hull');
+  applyStructureFrontPlates(armor.turretPlates, calibration.turretStructures, 'turret');
   // The generator measures authored reactive cassettes. Reapplying its
   // previous fitted quads here would make ERA calibration self-referential.
   if (!isCombatAnatomyMeasurementMode()) {

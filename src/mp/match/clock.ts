@@ -240,33 +240,3 @@ export class TimeUnwrapper {
 
   reset(): void { this.epochMs = 0; this.last = null; }
 }
-
-/**
- * A page's clock for its own solo match on a local host (RUST-ENGINE-DECISION §7 step 5): it stands still while the
- * match is paused and goes on from where it stopped, so the client's prediction, interpolation and stall clock rest with
- * the actor's loop (MatchActor.pause), whose server time is its tick's.
- */
-export class PausableClock {
-  private readonly source: () => number;
-  private offsetMs = 0;
-  private pausedAtMs: number | null = null;
-
-  constructor(source: () => number) { this.source = source; }
-
-  readonly now = (): number => this.at(this.source());
-
-  /** This clock's reading for a reading `sourceMs` of its source (a frame time its caller took). */
-  at(sourceMs: number): number { return (this.pausedAtMs ?? sourceMs) - this.offsetMs; }
-
-  get paused(): boolean { return this.pausedAtMs !== null; }
-
-  pause(): void {
-    if (this.pausedAtMs === null) this.pausedAtMs = this.source();
-  }
-
-  resume(): void {
-    if (this.pausedAtMs === null) return;
-    this.offsetMs += this.source() - this.pausedAtMs;
-    this.pausedAtMs = null;
-  }
-}

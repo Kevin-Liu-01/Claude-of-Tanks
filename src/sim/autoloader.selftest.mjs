@@ -395,8 +395,12 @@ function makeSpec(overrides = {}) {
 await import('../vehicles/tankFactory.ts');
 const { getSpec } = await import('../vehicles/specs.ts');
 for (const [id, capacity, cycleS, reloadS] of [
-  ['leclerc_s2', 3, 2.4, 16.5],
-  ['leclerc_sxxi', 3, 2.2, 15.5],
+  // balance-265 (FAIRNESS-265, tiers IX and X): the Leclerc S2, SXXI and XLR and the AMX 56 (the S2's gun) take the Type
+  // 90's 9 s refill: the 3-round clip was still refilling when they died (fleetBalancePass autoloaderCycle)
+  ['leclerc_s2', 3, 2.4, 9],
+  ['leclerc_sxxi', 3, 2.2, 9],
+  ['leclerc_xlr', 3, 2.4, 9],
+  ['amx56', 3, 2.4, 9],
   ['leclerc_s1', 3, 2.0, 14.5],
   // balance-263 (FAIRNESS-263, tier VIII): the Type 90 family's 3-round clip refills in 9 s (fleetBalancePass autoloaderCycle)
   ['type90_kyumaru', 3, 2.2, 9],

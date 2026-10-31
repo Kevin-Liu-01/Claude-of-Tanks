@@ -12,7 +12,7 @@
 //   read the lane's tank ids; the whole suite is manual.
 //
 // docs/TEST-AUDIT.md records the 266 audit of every receipt (decision, reason, where its coverage lives); regenerate it
-// with `node tools/test-audit.mjs --write`.
+// with `node tools/test-audit.mjs --write` after any tier change, never by hand (selftest-tiers.selftest compares its counts).
 
 /** Default-tier receipts that may never move to a manual suite or retire: the invariants a deploy must re-prove. */
 export const MUST_KEEP = Object.freeze({
@@ -221,6 +221,9 @@ export const MANUAL_SUITES = Object.freeze({
       Object.freeze(['node', 'tools/module-hit-probe.mjs']),
       Object.freeze(['node', 'tools/tank-assets-check.mjs', '--views', 'armorSide,modulesSide,crewSide', '--skip-bore']),
       Object.freeze(['node', 'tools/spare-track-placement-check.mjs', '--ids=all', '--ledger=docs/geometry-gate/spare-track.json', '--check', '--quiet']),
+      // 265 integration: the whole fleet's committed interior fills against their current bodies (the owner's voxel blocks;
+      // tank:release:check runs it per id with --lane), moved here from tools/gate.mjs's fills step
+      Object.freeze(['node', 'tools/interior-fill-exposure.mjs', '--all', '--check', '--jobs=4']),
     ]) }),
   tanks: suite('per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane\'s ids)', [
     'src/game/missionAttachmentVisual.selftest.mjs',
@@ -266,6 +269,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/interiorFillWreck.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
+    'src/vehicles/launcherDecorKeepOut.selftest.mjs',
+    'src/vehicles/launcherSweepGuard.selftest.mjs',
     'src/vehicles/markingSeatStability.selftest.mjs',
     'src/vehicles/missionAttachmentReceiver.selftest.mjs',
     'src/vehicles/mudguardHangers.selftest.mjs',
@@ -323,6 +328,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger3RunningGear.selftest.mjs',
     'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
     'src/vehicles/profiles/challenger3TdSuspension.selftest.mjs',
+    // 265 integration: the Centurion family's gun sweep (6 min in the snapshot), a per-family pin
+    'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/chieftain10X.selftest.mjs',
     'src/vehicles/profiles/chieftain10XBasket.selftest.mjs',
     'src/vehicles/profiles/chieftain10XCastCupola.selftest.mjs',
@@ -390,9 +397,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercXSourceFittings.selftest.mjs',
     'src/vehicles/profiles/leclercXTrackLinks.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4Ghillie.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4GunSeat.selftest.mjs',
-    'src/vehicles/profiles/leopard2A4SideSkirt.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/leopard2A7VGunEra.selftest.mjs',
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
@@ -421,23 +425,16 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
-    'src/vehicles/profiles/merkava1bFit.selftest.mjs',
-    'src/vehicles/profiles/merkava2Fit.selftest.mjs',
-    'src/vehicles/profiles/merkava3Fit.selftest.mjs',
     'src/vehicles/profiles/merkava3dLeftCheek.selftest.mjs',
     'src/vehicles/profiles/merkava3dXFrontReturn.selftest.mjs',
     'src/vehicles/profiles/merkava4XEndReturns.selftest.mjs',
     'src/vehicles/profiles/merkava4XRearHull.selftest.mjs',
-    'src/vehicles/profiles/merkava4bGeometry.selftest.mjs',
     'src/vehicles/profiles/merkavaAttachmentSeats.selftest.mjs',
     'src/vehicles/profiles/merkavaBarakClosedDoor.selftest.mjs',
     'src/vehicles/profiles/merkavaBarakRearEquipment.selftest.mjs',
     'src/vehicles/profiles/merkavaBarakSourceStock.selftest.mjs',
-    'src/vehicles/profiles/merkavaEraFinish.selftest.mjs',
-    'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',
     'src/vehicles/profiles/merkavaModernGeometry.selftest.mjs',
     'src/vehicles/profiles/merkavaModernOptics.selftest.mjs',
-    'src/vehicles/profiles/merkavaRunningGear.selftest.mjs',
     'src/vehicles/profiles/merkavaXReturnRollers.selftest.mjs',
     'src/vehicles/profiles/merkavaXShoulderReturns.selftest.mjs',
     'src/vehicles/profiles/modern3PrimaryStock.selftest.mjs',
@@ -473,7 +470,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/strv122XSuppliedEquipment.selftest.mjs',
     'src/vehicles/profiles/strv122XSuppliedFrontClearance.selftest.mjs',
     'src/vehicles/profiles/strv122XSurfaceAssembly.selftest.mjs',
-    'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
     'src/vehicles/profiles/suppliedShadowCoverage.selftest.mjs',
     'src/vehicles/profiles/swedishSiegeLine.selftest.mjs',
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
@@ -796,6 +792,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/gallery/overlays.selftest.mjs',
     'src/ui/hudAmmoOutPaint.selftest.mjs',
     'tools/gallery-shell.selftest.mjs',
+    'tools/garage-roster-settle.browser.selftest.mjs',
     'tools/studio-snow-contact.selftest.mjs',
   ]),
   browser: suite('strenuous real-battle browser receipts (a GPU and the capture lock each)', [

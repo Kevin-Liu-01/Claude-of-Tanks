@@ -26,7 +26,7 @@ const source = readFileSync(new URL('./ztz20Family.ts', import.meta.url), 'utf8'
 assert.deepEqual([...source.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]).sort(), [
   '../factoryGeometry.ts', '../nationWheelConstructions.ts', '../tankFactoryCore.ts', '../vehicleAuxiliaryGeometry.ts',
   '../vehicleNightLighting.ts', './abramsSourceXTrackShoe.ts', './auxiliaryStation.ts', './kit.ts', './lathedWheelStock.ts',
-  './sectionSolid.ts', 'three', 'three/addons/geometries/ConvexGeometry.js',
+  './libraryRoofMg.ts', './sectionSolid.ts', 'three', 'three/addons/geometries/ConvexGeometry.js',
 ], 'the family imports the shared kit vocabulary only');
 const code = source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*\*[\s\S]*?\*\//g, '');
 assert.doesNotMatch(code, /qilin|kunlun|yun|longwei|type99|type96|ztz100X|buildZTZ99|chineseFrontline/i, 'no donor tank participates');

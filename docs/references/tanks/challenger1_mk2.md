@@ -1,7 +1,13 @@
-# Challenger 1 Mk 2 (`challenger1_mk2`) — release 262: the Mk 3's build, without the Op Granby kit
+# Challenger 1 Mk 2 (`challenger1_mk2`) — release 262: the BAOR exercise fit on the Mk 3's build
 
 ## Current status
 
+- Fit (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3", and the turrets, decorations,
+  equipment, optics and machine guns "updated for all 3"). The Mk 2 has TOGS working: the barbette's port is glazed
+  behind an armoured door hinged on its top edge, propped open. It carries the two quick-release rear fuel drums it
+  introduced, and the BAOR exercise load: camouflage nets rolled on the bustle and the left turret side, crew packs, a
+  pair of cans and a canvas roll. It has the commander's L37A2 GPMG, the glazed cupola and the loader's periscope of every
+  mark. It keeps the BAOR coat; the Mk 3 alone takes the Op Granby kit and desert sand.
 - Updated 2026-10-28 (lane item/vickers-cr1-262, target release 262).
 - Owner ruling (2026-10-28): "like the challenger 1 mk 3 that is currently there, that turret is what it is actually like, and we should just use the weird turrets we invented to make nnew tanks like action X variants or connqueror orr smthg".
 - The Mk 2 rides the Mk 3's supplied-file build ([challenger1_x.md](challenger1_x.md);

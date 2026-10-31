@@ -52,7 +52,7 @@ registerFleetSpecs(registry,FLEET_RENEWAL_NEW_IDS,additions);
 
 export const FLEET_RENEWAL_DONORS=Object.freeze({
   t72b3m_2022:'t72b3m_2016',t72bu_1989:'t72bu',t80uk:'t80u',
-  t64bv1:'t72b3',t64bv_donbas:'t72b3',t72m1_jaguar:'t72b3',
+  t64bv1:'t72b3',t64bv_donbas:'t72b3',t72m1_jaguar:'t72b3',pt91a_twardy:'t72b3',
   t62mv1:'t62_1975',t72_rys:'t80u',
 });
 let synchronized=false;

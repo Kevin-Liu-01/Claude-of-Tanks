@@ -102,11 +102,17 @@ unrelated scaffold stubs out of a scoped handbook update.
 
 ## Photographic qualification
 
-The scoped [IFV photographic packet](../references/photos/ifvs-20260925.json)
-records the owner's approved CV9040C route and the three supplied photographic
-additions. `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
-configuration and dimension receipts. `tools/photo-reference-policy.mjs`
-limits that route to the declared IDs. `tank-standard-check` consumes those
+Each photographic ID is registered to one packet in
+`tools/photo-reference-policy.mjs`. A packet is an approved, dated document
+under `docs/references/photos/` that holds exactly the IDs registered to it, and
+each target names the native fixture test that proves it. The fixture must
+exist and name its ID. A packet never qualifies an ID registered to another one.
+The [IFV packet](../references/photos/ifvs-20260925.json) records the owner's
+approved CV9040C route and the three supplied photographic additions. The
+[ZTZ-85-III packet](../references/photos/ztz85-iii-20261028.json) qualifies the
+release 263 rebuild, whose registered print was a fused, low-confidence
+conversion. `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
+configuration and dimension receipts. `tank-standard-check` consumes those
 receipts while retaining strict track sweep, continuity, equipment and all
 release steps. Numerical 3D fidelity remains **unverified**. This is not a
 fallback for a missing or failed registered model; adding a registered 3D

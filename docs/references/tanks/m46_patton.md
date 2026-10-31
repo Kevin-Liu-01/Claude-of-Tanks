@@ -73,6 +73,27 @@ edge (x 0.98): 0/0/0 and shoes 0/0/0 in the lane's offline copy of the audit
 (`~/cot-lanes/patton-262-evidence/tools/clipsim.mjs`, which reproduces the page's counts exactly).
 
 
+### Release 264 detail pass (2026-10-28)
+
+Release 262 landed at gate 88.3 against the 90 floor (Main's ruling (a), gate owed). The 264 pass adds the fittings the
+reference and the photographs share, rather than fitting pixels:
+
+| Item | Release 262 | Release 264 | Evidence |
+|---|---|---|---|
+| Rear plate | bare plate at -4.05 | the engine-exhaust grille box over its top (0.64 half-width, 1.25-1.52, 0.17 aft) with the big towing eyes on lugs on its sides; tail lights moved out to x 0.82 beside it | Commons `M46_Patton_-_Tancrémont_-_rear_view.jpg`; the reference's rear reaches -4.21..-4.25 across the plate |
+| Bustle | plain flanks | cast lifting lugs on both flanks at z -1.56, y 2.15, rings standing 0.10 out | the left-view photo's ring on the bustle; the reference's tabs at x 0.66-0.78 |
+| Cupola | 0.72 m drum, flat top at 2.81 | low vision-block ring (r 0.355, 0.14 tall) under a domed hatch to 2.84 | the reference: 0.77 across at 2.70, tapering to the dome |
+| Roof | — | the commander's vane sight on the right front corner (z 0.10) | the reference's thin blade there |
+| Roof M2 | x -0.455, 1.65 m | x -0.48, 1.71 m from grips to flash hider (the reference's z -0.47 to 1.23) | |
+| Bustle rack | floor 2.08, rail 2.36 | floor 2.00, rail 2.29 | the reference's rack at -2.15 |
+| Cheek boxes | z -0.57..0.09 | the lower two end at -0.11/-0.09 and stand 2.08/2.28 tall | the reference's left cheek |
+| Basket | r 0.69 at z -0.30 | r 0.70 at z -0.31 (the reference's -1.01..0.39) | |
+| Sprocket | hub to x 1.71 | axial scale 0.94 (hub inside 1.69, the fender line) | the reference's track lane ends at 1.68 |
+
+Real geometry gate on the pass: 90.3/90 PASS (hull 91.6, whole 92.1, turret 90.3, stations 93.9). Turret side is the
+floor: its largest remaining miss is the mantlet's foot (the reference's rotor reaches 1.63 at z 0.62-0.81), which the
+driver's hatches and periscopes keep at 1.83 at -10° and on traverse.
+
 ## Historical record (release 260 and earlier)
 
 Exact vehicle: **Medium Tank M46 Patton** — re-engined M26 with the

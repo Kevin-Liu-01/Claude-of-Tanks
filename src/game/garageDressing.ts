@@ -992,8 +992,9 @@ export function createGarageDressing(
   /** A Leopard 2 road-wheel disc (axle along X) to fill the fleet wheel's tyre round its hub. */
   function leopardDiscFill(): THREE.BufferGeometry {
     if (!leopardDiscFillGeometry) {
-      // a closed disc between the tyre's inner lip and the hub (axle along X, like the fleet wheel geometry)
-      leopardDiscFillGeometry = track(new THREE.CylinderGeometry(0.3, 0.3, 0.26, 20, 1, false).rotateZ(Math.PI / 2));
+      // a closed disc between the tyre's inner lip and the hub (axle along X, like the fleet wheel geometry): to the 264
+      // wheel's tyre lip (r 0.3187), inside its 0.348 tread
+      leopardDiscFillGeometry = track(new THREE.CylinderGeometry(0.32, 0.32, 0.26, 20, 1, false).rotateZ(Math.PI / 2));
     }
     return leopardDiscFillGeometry;
   }

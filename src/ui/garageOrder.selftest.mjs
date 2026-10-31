@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, GARAGE_LEADING_VEHICLE_IDS, GARAGE_LEADING_VEHICLE_IDS_BY_NATION,
-  horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta, settledRailEndPad,
+  horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 
 const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 'utf8')}\n${
@@ -206,7 +206,8 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'China', filler: 'unlisted_chinese_vehicle',
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
+    // release 265: the Longwei family after its hosts (the Qinglong and Baihu after the ZTZ-99A, the Zhuque and Xuanwu after the Yun)
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 't72b3_zhuque', 't72b3m_xuanwu', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
@@ -371,33 +372,39 @@ assert.equal(horizontalRailEndPad(620, [0, 164, 328, 492, 656, 820]), 36,
 assert.equal(horizontalRailEndPad(656, [0, 164, 328, 492, 656, 820]), 0,
   'a rail whose reach already lands on a card start needs no extra end');
 assert.equal(horizontalRailEndPad(0, [0, 164]), 0, 'a fitting rail has no end padding');
-// The rail settles (garage.ts settleRailEnd): its scrollWidth rounds to whole pixels while the pad does not. The 259
-// Garage, the M1A1 selected at 1600x900 (content 3929.4 px in a 1106 px rail, the last stop at 2823.5): the raw pad flipped
-// 0.5 px, none, 0.5 px on every layout; the settled one keeps the first and the rail measures once.
+// The rail settles (garage.ts settleRailEnd): nothing it measures moves with the pad it writes, so it writes once.
+// - Its reach without the pad is its items' exact far edge, never the scrollWidth less the pad: the scrollWidth rounds to
+//   whole pixels while the pad does not. The 259 Garage, the M1A1 selected at 1600x900 (content 3929.4 px in a 1106 px
+//   rail, the last stop at 2823.5), flipped the pad 0.5 px, none, 0.5 px on every layout.
+// - Its width never follows its pad (the carousel arrows do not shrink, garage.css). The 265 Garage, Japan or Israel in a
+//   1392-1437 or 1850-1880 px window, flipped the pad between none and a whole card (162 px) every frame, the shrinking
+//   arrows handing the strip 5 px whenever it came (tools/garage-roster-settle.browser.selftest.mjs sweeps the real one).
 {
-  const settle = (content, client, stops, keep) => {
-    let extra = 0, key = null, writes = 0;
+  const settle = ({ content, client, stops, exact = true, share = 0 }) => {
+    let extra = 0, writes = 0;
     for (let pass = 0; pass < 12; pass++) {
-      const scrollWidth = Math.round(content + extra);
-      const natural = scrollWidth - extra;
-      if (key === `${client}|${natural}`) return { writes, settled: true };
-      key = `${client}|${natural}`;
-      const raw = horizontalRailEndPad(natural - client, stops);
-      const pad = keep ? settledRailEndPad(extra, raw) : raw;
-      if (pad !== extra) { extra = pad; writes++; }
+      const reach = exact ? content : Math.round(content + extra) - extra;
+      const pad = horizontalRailEndPad(reach - Math.round(client + share * extra), stops);
+      if (pad === extra) return { writes, settled: true };
+      extra = pad;
+      writes++;
     }
     return { writes, settled: false };
   };
-  const stops = [0, 164.5, 329, 493.5, 658, 822.5, 2823.5];
-  assert.equal(settle(3929.4, 1106, stops, false).settled, false, 'the raw pad flips on every layout (the loop)');
-  assert.deepEqual(settle(3929.4, 1106, stops, true), { writes: 0, settled: true }, 'a sub-pixel pad is the rounding: kept');
-  assert.deepEqual(settle(3700, 1106, [0, 164, 2620], true), { writes: 1, settled: true }, 'a real end pad is written once');
-  assert.equal(settledRailEndPad(0, 0.5), 0);
-  assert.equal(settledRailEndPad(0.5, 0), 0.5);
-  assert.equal(settledRailEndPad(0, 36), 36, 'a pad a pixel or more away is written');
-  assert.equal(settledRailEndPad(36, 0), 0, 'and so is its removal');
-  assert.match(garageSource, /const pad = settledRailEndPad\(extra, horizontalRailEndPad\(natural - rail\.clientWidth, stops\)\);/,
-    'the Garage settles each rail\'s end pad');
+  const m1a1 = { content: 3929.4, client: 1106, stops: [0, 164.5, 329, 493.5, 658, 822.5, 2823.5] };
+  assert.equal(settle({ ...m1a1, exact: false }).settled, false, 'a reach read through the rounded scrollWidth flips the pad (259)');
+  assert.deepEqual(settle(m1a1), { writes: 1, settled: true }, 'the exact reach writes its pad once');
+  const strip = { content: 1656.6, client: 1000, stops: [0, 164, 328, 492, 656, 820] };
+  assert.equal(settle({ ...strip, share: 5 / 163.4 }).settled, false,
+    'a strip whose width follows its pad flips it between none and a whole card (265)');
+  assert.deepEqual(settle(strip), { writes: 1, settled: true }, 'a strip whose width holds writes its pad once');
+  assert.deepEqual(settle({ content: 3700, client: 1106, stops: [0, 164, 2620] }), { writes: 1, settled: true },
+    'a real end pad is written once');
+  assert.match(garageSource, /reach \+= \(parseFloat\(cs\.paddingRight\) \|\| 0\) - extra;\s*const pad = horizontalRailEndPad\(reach - rail\.clientWidth, stops\);/,
+    'the Garage reads each rail\'s reach from its items\' edges');
+  assert.match(garageSource, /cardsEl\.removeAttribute\('data-fit'\);\s*const end = cardsEl\.style\.getPropertyValue\('--rail-end'\);\s*cardsEl\.style\.removeProperty\('--rail-end'\);/,
+    'the strip measures its room with its fit and its end pad off');
+  assert.match(garageSource, /\.cot-car-arrow\{width:34px;flex:none;/, 'the carousel arrows never shrink: the strip takes the whole squeeze');
 }
 assert.equal(horizontalRailWheelDelta(4, 60), 60,
   'vertical mouse-wheel motion pans the horizontal country rail');

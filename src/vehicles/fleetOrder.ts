@@ -38,7 +38,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     ...NATIVE_VARIANT_FAMILIES.t90_1992,
   ]),
   leopard: Object.freeze([
-    'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can',
+    'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can',
     'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco',
     'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved',
   ]),
@@ -48,15 +48,15 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 258: in shown-tier order (matchmaking reads it): the Sabra at II and the Namer at IV come before the Merkava 2 and 3
   israel: Object.freeze([
-    'merkava1b', 'sabra_mk2', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
+    'magach3', 'merkava1b', 'sabra_mk2', 'shot_kal', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
     'merkava4', 'merkava4b', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10_dozer', 'type10b',
   ]),
   national_ua: Object.freeze(["t80u_zoria", "t72b3m_hetman", "t72b3m_hetman_ii", "t72b3_sich"]),
-  national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii", "pt64_tur"]),
-  national_cn: Object.freeze(["t80u_yun", "t72b3m_kunlun", "t72b3_qilin"]),
+  national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii", "pt64_tur", "pt84_sokol", "pt84_orzel", "pt84_zbik"]),
+  national_cn: Object.freeze(["t80u_yun", "t72b3m_kunlun", "t72b3_qilin", "t72b3m_xuanwu", "t72b3_zhuque"]),
   national_ru: Object.freeze(["t80u_bars_m", "t72b3m_bulat_m", "t72b3_bastion_m"]),
   french_ifv: Object.freeze(['amx10p', 'amx10p_25']),
   italy: Object.freeze([
@@ -66,10 +66,10 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     't64bv_donbas', 't64b1v_2022', 't64bm1m', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'ua_m1a1', 'leo2a6_ua',
   ]),
   china: Object.freeze([
-    'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'vt4a1', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
+    'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1', 'vt4a1_baihu', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
   ]),
   sweden: Object.freeze([
-    'strv81', 'udes03', 'strv103a', 'strv103b', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',
+    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',
   ]),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),

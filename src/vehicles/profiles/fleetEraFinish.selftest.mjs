@@ -35,6 +35,8 @@ const REQUIRED_T64_ERA_SECTORS = Object.freeze({
   t64b1v_2022: REBUILT_T64_ERA_SECTORS,
   pt64_tur: REBUILT_T64_ERA_SECTORS,
   t64bm1m: Object.freeze([...REBUILT_T64_ERA_SECTORS, 'turret_roof_era']),
+  // 262: the PT-91 Twardy's ERAWA tiles on the same study
+  pt91a_twardy: REBUILT_T64_ERA_SECTORS,
 });
 
 const uvSpan = (mesh) => {

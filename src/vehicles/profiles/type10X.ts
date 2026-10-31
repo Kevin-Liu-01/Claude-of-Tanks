@@ -8,6 +8,7 @@ import {KIT} from './kit.ts';
 import {fieldChestParts,reserveDecorVolume} from './fieldChest.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import {libraryStationGun} from './libraryRoofMg.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
 import {addType10BowLinks} from './type10XBow.ts';
 import {addType10Skirts} from './type10XSkirts.ts';
@@ -370,31 +371,15 @@ function roofWeapon(P:TankBuilderPort):void {
   weapon.add('turretDetail',cylinder(.020362,.028,16),-.227075,2.69277,.64549);
   weapon.add('turretDetail',box(.079216,.140,.106583),-.227075,2.7575,.64549);
   weapon.stage('pitch');
-  weapon.add('turretDark',box(.177016,.132317,.582882),-.224478,2.882302,.577148);
-  weapon.add('turretDark',cylZ(.027,.957,20),-.224478,2.887,1.339);
-  weapon.add('turretDark',cylZ(.019,.600,16),-.224478,2.843,1.102);
-  for(const x of [-.311927,-.137029])weapon.add('turretDetail',box(.033077,.113532,.034213),x,2.875571,.220661);
-  for(const y of [2.819,2.935])for(const x of [-.29037,-.158585])
-    weapon.add('turretDetail',box(.08749,.008,.090),x,y,.244);
-  weaponSights(weapon);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // remote M2 is the fleet's M2 construction (libraryRoofMg.ts libraryStationGun) on the station's bore and published
+  // muzzle, in place of the traced receiver block, rods, grips and sights; the ammunition box stays on its right.
+  libraryStationGun(weapon,{cls:'m2',x:-.224478,boreY:2.887,pivotZ:.64549,muzzleZ:1.8175});
   weapon.add('turretDetail',box(.167,.154,.080),-.3965,2.864,.735);
   weapon.stage('yaw');
   weaponCradle(weapon);
   weapon.add('turretDetail',box(.196514,.075,.075),-.380257,2.7495,.7415);
   weapon.finish();
-}
-
-function weaponSights(weapon:ReturnType<typeof sourceMachineGun>):void {
-  const arch=new THREE.Shape([[-.023032,2.941225],[-.023032,2.97953],
-    [-.016286,2.99582],[0,3.002565],[.016286,2.99582],[.023032,2.97953],
-    [.023032,2.941225],[.016,2.941225],[.016,2.97953],[.0113,2.99084],
-    [0,2.99553],[-.0113,2.99084],[-.016,2.97953],[-.016,2.941225]]
-    .map(([x,y])=>new THREE.Vector2(x,y)));
-  weapon.add('turretDetail',new THREE.ExtrudeGeometry(arch,{depth:.03630,steps:1,bevelEnabled:false}),
-    -.224478,0,.81829);
-  weapon.add('turretDetail',box(.05285,.007578,.06220),-.224478,2.946489,.36171);
-  for(const x of [-.2469,-.20205])
-    weapon.add('turretDetail',box(.008,.03940,.06220),x,2.962453,.36171);
 }
 
 function weaponCradle(weapon:ReturnType<typeof sourceMachineGun>):void {

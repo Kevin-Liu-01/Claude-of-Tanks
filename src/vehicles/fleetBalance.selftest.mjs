@@ -141,7 +141,18 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 81 -> 106 (263, FAIRNESS-263 merged by the 264 integrator): same-tier fairness on the merged 263 fleet at I, VI, VIII
 // and X (applySameTierFairness; fourteen more extend their entries), commit B's 263-build CR1 entries dropped for C1 + C2.
 // 106 -> 107 (264, Main's ruling): the Leopard 2A6 UA on the 2A6's main plates, HP and cadence.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 107,
+// 107 -> 111 (265 integration, pattons-m48-266): the new M48A3, Magach 3, M48A2GA2 and M48 Super take the M48A5's
+// package (fleetBalancePass).
+// 111 -> 117 (265 integration, centurion family 262 on 264c): the new Sho't Kal and Mk 13 share the Mk 5/2's package (fleetBalancePass);
+// the Strv 105 shares it too, the Olifant Mk 2 and the Mk 5 AVRE carry their own, the Australian Mk 5/1 the Strv 81's.
+// 117 -> 118 (265 integration, leopard1-263): the Leopard 1A2A1 takes its 1A5's tier I footing (applyBuildFootings).
+// 118 -> 117 (265 integration, leo2a4-family-265 ca927a900a): the fourth batch's Leopard 2A3 carries the 2A3's cycle and
+// 2,400 HP (+1); the rebuilt leo2_improved and leo2a4_otco drop 263's VIII mantlet entries, measured on the old builds (-2).
+// 117 -> 125 (265, FAIRNESS-265): the CN Zhuque and Xuanwu, the Leopard 2A5, the Leclerc XLR, the AMX 56, the ZTZ-100 and
+// the rebuilt Merkava 2D and 4B.
+// 125 -> 128 (265, FAIRNESS-265 P1/P2 on the rebuilt 2A4 family): leo2_improved and leo2a4_otco take their mantlet entries
+// back, re-measured on the 27-degree fronts, and leo2a4_v carries the 2A4's main plates.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 128,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -380,12 +391,14 @@ for (const [
 
 const merkavaProgression = [
   // 258: the shown tiers; the Mk 2B's engine lifted over its shown-tier mobility floor (applyShownTierFloors)
-  ['merkava2b', 3, 2200, 1060, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
+  // 265 (FAIRNESS-265 P11): its sloped glacis read 1,055-1,850 mm at III, hull front x0.5 (500 -> 250)
+  ['merkava2b', 3, 2200, 1060, 18, 30.4, 6.9, 525, 794, 650, 250, 650],
   // 235: the Merkava 3C's true (unsquashed) wedge slope stops more of a frontal round, so its wedge plates carry less
   // (fleetBalancePass TURRET_FRONT_COMPENSATION x0.852 keeps its frontal protection where it was)
   ['merkava3c', 8, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 596],
   ['merkava3_baz', 8, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
-  ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
+  // 265 (FAIRNESS-265 P12): the Mk 4M's M338 and 2,850 HP on the same hull
+  ['merkava4b', 9, 2850, 1500, 25, 38, 6.5, 550, 900, 740, 650, 850],
 ];
 let previousMerkavaDpm = 0;
 for (const [

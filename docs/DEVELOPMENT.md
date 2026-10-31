@@ -94,7 +94,7 @@ Codex, Claude and CI run the same gate from the checkout under test. It replaces
 the generated landing chain (`.qa-dev/landing/gen-chain.py` writing `release-then-deploy-*.sh` into
 a session scratchpad), which was not versioned and was lost once with a scratchpad.
 
-    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, preflight
+    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, fills, preflight
     node tools/gate.mjs --baseline=<starting-base>     # stop the line (below)
     node tools/gate.mjs --steps=typecheck,build,workers   # a subset, in the canonical order; --skip=<steps> removes some
     node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
@@ -109,6 +109,10 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
   A missing Worker install fails with the `npm ci --prefix cloudflare/<name>` to run; `--install`
   runs it.
 - **receipts** is `tools/run-selftests.mjs all` with one log per receipt (`--logs`).
+- The fleet-wide fill exposure (`tools/interior-fill-exposure.mjs --all --check --jobs=4`, 2026-10-29: no committed
+  interior fill of any tank stands outside its current body, the owner's "voxel blocks") builds and voxelises the whole
+  fleet, about 20 s a tank: since 265 it is a command of the manual `fleet` suite (`npm run test:heavy -- fleet`), not a
+  gate step; `tank:release:check` runs the scoped `--lane` form (below).
 - **preflight** runs `tools/shared-main-preflight.mjs` for the validated HEAD with `--base`
   (default: the merge-base with `origin/main`) and `--reviewed-main` passed through; in place when
   the checkout is clean, otherwise in a reusable detached worktree of HEAD. HEAD moving or a tracked
@@ -612,6 +616,13 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
   "the shared fleet core changed", Main relays it, and the owner triggers `npm run test:heavy -- fleet`. From
   release 265 the committed fingerprints (`release/fingerprints.tsv`, `tools/changed-only/fresh.selftest.mjs` in
   the default tier) catch a row whose inputs moved without its regeneration.
+- **The fill exposure is scoped in both modes** (2026-10-29): `interior-fill-exposure --ids=<ids> --lane`
+  measures the selected tanks plus every tank whose body moved against the merge-base with `origin/main`: its
+  hull, turret or gun digest at the geometry ledger's HIGH build differs from the base's ledger row, or its fill
+  record line differs from the base's. A shared builder's edit reaches exactly the tanks it moved this way; the
+  import-graph partition would not narrow it (on 2026-10-29, 39 of 51 live branches touched a shared core file such
+  as `decorations.ts` or `camoPolicy.ts`). When the checker's own inputs moved, every tank runs. The whole-fleet form
+  (`interior-fill-exposure --all --check`) is the manual `fleet` suite's command beside `gen-combat-anatomy --check`.
 - **Where the dropped work still runs:** the integrator mode runs both. The release gate
   (`tools/gate.mjs`) runs the default receipt tier (`run-selftests.mjs all`, the same run as `npm test`) and
   `npm run build`. `npm run build` runs build:private's commands (`vite build` and the localized
@@ -1190,10 +1201,34 @@ to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 c
 alone and fails on any module outside its keyed closure (a module a table imports, such as the roof-gun table's decoder,
 is keyed through the rows it decodes: `partition.tableImports`); `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
 --base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
-covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (about 15 s, no builds):
-once a release commits `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs and
-manifest committed together), any builder, kit, spec, generator or flag edit landed without its regeneration turns it
-red with the ids and the reasons; a toolchain difference is reported, not failed (the nightly covers it).
+covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (one fingerprint state, about 55-75 s warm, no
+builds). Since 265 committed `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs
+and manifest committed together), any builder, kit, spec, generator or flag edit landed without its regeneration turns
+it red with the ids and the reasons, and a missing or unreadable manifest fails too (Main, 2026-10-29: a guard that
+passes vacuously is no guard). Its negative controls, run on the same state, show that an edited generator, a moved
+input and a hand-edited output row are each caught. A toolchain difference is reported, not failed (the nightly covers
+it).
+
+Refreshing the fingerprints in a lane. `release/fingerprints.tsv` is a generated output like the tables: never edit it
+by hand, and never take one side of it whole as the merge result.
+- A lane that changes a builder, kit, spec, generator or per-id table runs `npm run tank:regen:changed` (`--dry-run`
+  or `npm run tank:changed -- --explain=<id>` first shows what it will run). The chain rewrites the marked ids'
+  outputs, their keys and the manifest's component lines; commit the manifest in the same commit as those outputs.
+- A tools-only edit inside a generator's closure (its imports, flags or declared reads) moves that step's tool key, so
+  the chain runs that step on every id. When the outputs come back byte-identical, only the manifest's keys move, and
+  the manifest alone is the commit.
+- After merging main or another lane into a branch that touched generated outputs, resolve the output tables first
+  (keep the rows from both sides). Then take either side's `release/fingerprints.tsv` and run
+  `npm run tank:regen:changed` on the merged tree: it re-runs only the ids whose keys moved and rewrites the manifest.
+  A passing `fresh.selftest.mjs` is the proof.
+- A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
+  handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
+- The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. A route in the
+  app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
+  `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
+  the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in
+  the two checkouts.
 
 The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
 `fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still

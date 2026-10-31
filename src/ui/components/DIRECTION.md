@@ -108,6 +108,7 @@ Decided on 10-23, carrying the direction forward. The name stays Claude of Tanks
   splash (`index.html`), where the registration sting moves its parts: `.t` the caps' top halves, `.rl` and `.rr` the
   "of" rules.
 - **Social cards:** they come from `tools/marketing-shots/generate-og-images.mjs`, with the lockup clear of every tank.
-  The game page also carries `og:video` (`public/brand/og/game.mp4`): the f6 Steinburg film with the lockup.
+  Every public page also names its family's share clip as `og:video` beside its one card (the game's, the Gallery's,
+  the manual's and the Studio's, from `shareVideoForRoute` in `src/presentation/siteMetadata.ts`; owner, 2026-10-30).
 - **Archived** in `docs/references/brand/`: `v1`, `v2-roundel` and `og-logo.png`. Two consumers still use the crest
   files (`logo-*`, `v3-shield`): the garage signage atlas and the film tools. They retire as those consumers move.

@@ -1837,12 +1837,12 @@
    "group": "fleet",
    "vehicle": "leo2a4_otco",
    "title": {
-    "en": "A Leopard 2A3 knocks out a T-90M at Tidegate Polders at sunset",
-    "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M"
+    "en": "A Leopard 2A3 OTCO knocks out a T-90M at Tidegate Polders at sunset",
+    "zh": "日落时分，一辆 Leopard 2A3 OTCO 在潮闸圩田击毁一辆 T-90M"
    },
    "short": {
-    "en": "Leopard 2A3, Tidegate Polders",
-    "zh": "Leopard 2A3，潮闸圩田"
+    "en": "Leopard 2A3 OTCO, Tidegate Polders",
+    "zh": "Leopard 2A3 OTCO，潮闸圩田"
    },
    "map": "polders",
    "durationMs": 6600,

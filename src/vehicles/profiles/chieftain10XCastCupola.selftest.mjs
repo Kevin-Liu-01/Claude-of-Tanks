@@ -65,7 +65,7 @@ function checkCupola(all, frame) {
   near(worldValue(all, frame, [-.6872885, 4, -.4119], [0, -1, 0], 1),
     2.709759, .001, 'source dome shoulder');
   near(worldValue(all, frame, [-.35805, 4, .70], [0, -1, 0], 1),
-    2.80820, .0002, 'source roof-MG barrel axis and outside radius');
+    2.81010, .0002, 'source roof-MG barrel axis, the true-scale barrel radius (264: the fleet 7.62 mm construction)');
   assert.equal(hit(all, frame, [-.46, 2.850, .70], [0, 0, -1], .20), undefined,
     'old displaced generic MG position remains empty');
 }

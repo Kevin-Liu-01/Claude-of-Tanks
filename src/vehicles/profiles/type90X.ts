@@ -9,6 +9,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import {libraryStationGun} from './libraryRoofMg.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import {type90RoadWheelCore} from '../nationWheelConstructions.ts';
@@ -261,13 +262,11 @@ function roofWeapon(P:TankBuilderPort):void {
   w.add('turretDetail',box(.084133,.211,.104978),.084077,2.71185,.420359);
   w.add('turretDetail',box(.168155,.210221,.210255),.084133,2.669693,.704187);
   w.add('turretDetail',box(.063154,.073564,.126212),.084077,2.727552,.535954);
-  w.add('turretDark',box(.105111,.168066,.578124),.084077,2.900991,.278595);
-  w.add('turretDark',box(.094511,.094641,.210254),.084077,2.911460,.672784);
-  w.add('turretDark',cylZ(.03157,.724974,20),.084077,2.911460,1.140398);
-  w.add('turretDetail',box(.294243,.189143,.168383),.325821,2.848436,.472998);
-  w.add('turretDetail',box(.042066,.021078,.126212),.157666,2.848436,.472848);
-  for(const x of [.01579,.15242])w.add('turretDetail',box(.031467,.126049,.031403),x,2.921999,-.086284);
-  for(const z of [.073425,.541338])w.add('turretDetail',box(.031578,.031547,.031703),.084077,3.000798,z);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // M2 is the fleet's M2 in its crew form at true length (libraryRoofMg.ts libraryStationGun: spade grips, sight and its
+  // ammunition box on its left), in place of the drawn receiver, rod, box, chute, grips and sights. Its receiver's
+  // underside (51.5 mm under the bore) sits 5 mm into the post's top (2.8173), so the bore runs 48 mm under the drawn one
+  libraryStationGun(w,{cls:'m2',x:.084077,boreY:2.8638,pivotZ:.358595,crew:true,feed:'left'});
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
   stationFromDrawnGun(w.finish(),{name:'type90XRoofM2',caliberMm:12.7});
 }

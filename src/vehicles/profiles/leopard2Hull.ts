@@ -3,8 +3,9 @@
 // totally new tank generation"): the welded tub between the tracks, the sponsons over them, the upper glacis to the
 // nose, the engine deck; seven road wheels, the raised front idler, the rear sprocket and four return rollers a side;
 // three heavy bolted skirt blocks forward and six thin panels aft; the bow's lamps and tow eyes, the driver's hatch, the
-// stern's grilles and lights. The Christian II (christian2.ts) and the Leopard 2A3 of the fourth batch ride it; the
-// datums and the combat envelope on them are leopard2HullDatums.ts's.
+// stern's grilles and lights. The Christian II (christian2.ts) and the early production Leopard 2s (leopard2a3B4.ts: the
+// 2A2, the 2A3 of the fourth batch and the 2A3 OTCO) ride it; the datums and the combat envelope on them are
+// leopard2HullDatums.ts's.
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -18,6 +19,28 @@ export interface Leopard2HullOptions {
   readonly flapName: string;
   /** The exhaust grilles at the engine deck's rear corners: pressed louvres, or round rods (the 2A3's fourth batch). */
   readonly exhaust: 'louvre' | 'rods';
+  /** How much deeper the three heavy fore blocks hang than the aft run (the production Leopard 2's step; default 0). */
+  readonly foreSkirtDropM?: number;
+  /** The forward fuel tanks' filler caps on the glacis's shoulders (the 2A2 upgrade and the third to fifth batches). */
+  readonly fuelFillers?: boolean;
+  /**
+   * The forward lifting eyes' station (hull z; default 1.30, on the roof's front corners). A turret whose cheeks reach over
+   * the driver's hatch sweeps that station, and sets its eyes forward on the upper glacis.
+   */
+  readonly forwardLiftEyeZ?: number;
+  /**
+   * The skirts (default 'standard': the three heavy fore blocks and six aft panels on their hanging rails). 'none' leaves
+   * them, their bolts and rails off for a vehicle whose own skirts replace them (the 2A4M CAN's module skirt and cages,
+   * the Leopard 2 Improved's deep modular skirts); the front mudguard and the rear flap stay.
+   */
+  readonly skirts?: 'standard' | 'none';
+  /**
+   * The splash board's two arms on the glacis ahead of the driver (default true). A vehicle whose field suit nets the
+   * glacis leaves it off: the Strv 121's net covers one arm and clears the driver's periscopes, and the bare other arm
+   * read as a loose plank lying askew (two blind critics, release 265); the photographed Strv 121s show the glacis
+   * under the net.
+   */
+  readonly splashBoard?: boolean;
 }
 
 /** Linear interpolation along a [z, y] station line, held past its ends. */
@@ -64,8 +87,24 @@ function hull(P: TankBuilderPort): void {
 function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
   const { box } = KIT;
   for (const side of [-1, 1]) {
-    // the skirts hang 0.46 m from the sponson's floor: the upper hull's band stands bare above them
-    const top = H.skirtTopY, bottom = top - 0.46;
+    if (o.skirts !== 'none') skirtRuns(P, o, side);
+    // front mudguard over the idler, running out ahead of the nose with a turned-down lip, and the rear flap off the
+    // sponson's end
+    P.add('hull', sectionSolid([[3.16, 1.32, 1.40], [3.40, 1.25, 1.33], [3.62, 1.18, 1.26], [3.70, 1.12, 1.24]].map(([z, foot, lid]): SolidSection => {
+      const r: SectionPoint[] = [[1.05, foot], [1.72, foot], [1.72, lid], [1.05, lid]];
+      return { z, ring: side > 0 ? r : mirrorRing(r) };
+    })));
+    P.hangMudguard(o.flapName, 'hullRubber', box(0.60, 0.42, 0.025), side * 1.36, 1.15, -3.74);
+  }
+}
+
+/** One side's skirt runs: the heavy fore blocks, the aft panels and their hanging rails. */
+function skirtRuns(P: TankBuilderPort, o: Leopard2HullOptions, side: number): void {
+  const { box } = KIT;
+  {
+    // the skirts hang 0.46 m from the sponson's floor (the fore blocks deeper by the vehicle's drop): the upper hull's
+    // band stands bare above them
+    const top = H.skirtTopY, bottom = top - 0.46 - (o.foreSkirtDropM ?? 0);
     const blocks: Array<[number, number]> = [[1.42, 2.02], [2.04, 2.64], [2.66, 3.16]];
     for (const [z0, z1] of blocks) {
       const lead = z1 > 3.0;
@@ -76,8 +115,12 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
       P.add('hull', sectionSolid(lead
         ? [ring(z0, bottom), ring(z1 - 0.18, bottom), ring(z1, top - 0.24)]
         : [ring(z0, bottom), ring(z1, bottom)]));
-      // the heavy block's bolts: two rows of three on its face
-      for (const z of [z0 + 0.10, (z0 + z1) / 2, z1 - (lead ? 0.26 : 0.10)]) {
+      // the heavy block's bolts: two rows of three on its face, the middle one at the block's midpoint; the chamfered
+      // leader, its last bolt 0.26 m in, keeps two a row (release 265: a midpoint bolt stood 1 cm from that last one, two
+      // discs overlapping on the face, the circular-cap lint; one midway between them closed the 2A4 OTCO's ISAF cage slot
+      // above and below into a pocket the watertight gate measured as leaking interior)
+      const first = z0 + 0.10, last = z1 - (lead ? 0.26 : 0.10);
+      for (const z of lead ? [first, last] : [first, (z0 + z1) / 2, last]) {
         for (const y of [top - 0.08, bottom + 0.08]) P.add('hullDetail', KIT.cylX(0.022, 0.018, 8), side * 1.827, y, z);
       }
     }
@@ -97,13 +140,6 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
     // the hanging rails along the sponson's edge, flush with each run's face (the fore blocks step 10 cm out)
     P.add('hullDetail', box(0.055, 0.02, b - a + 0.06), side * 1.6975, top + 0.01, (a + b) / 2);
     P.add('hullDetail', box(0.148, 0.02, 1.74), side * 1.744, top + 0.01, 2.29);
-    // front mudguard over the idler, running out ahead of the nose with a turned-down lip, and the rear flap off the
-    // sponson's end
-    P.add('hull', sectionSolid([[3.16, 1.32, 1.40], [3.40, 1.25, 1.33], [3.62, 1.18, 1.26], [3.70, 1.12, 1.24]].map(([z, foot, lid]): SolidSection => {
-      const r: SectionPoint[] = [[1.05, foot], [1.72, foot], [1.72, lid], [1.05, lid]];
-      return { z, ring: side > 0 ? r : mirrorRing(r) };
-    })));
-    P.hangMudguard(o.flapName, 'hullRubber', box(0.60, 0.42, 0.025), side * 1.36, 1.15, -3.74);
   }
 }
 
@@ -129,7 +165,15 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     for (const gx of [-0.165, 0.165]) P.add('hullDetail', box(0.016, 0.20, 0.30), px + gx, py + 0.09, pz + 0.03);
     P.add('hullDetail', box(0.346, 0.016, 0.016), px, py + 0.19, pz + 0.17);
     // the splash board's arm: from the apex ahead of the driver back and out across the glacis
-    P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    if (o.splashBoard !== false) {
+      P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    }
+    // the forward fuel tank's filler cap on the glacis's shoulder, outboard of the headlight pod, its lever across it
+    if (o.fuelFillers) {
+      const fz = 2.62, fy = lineAt(H.deck, fz), tilt = glacisTilt(fz);
+      P.add('hullDetail', cylY(0.085, 0.09, 0.035, P.q ? 16 : 10), side * 1.42, fy + 0.012, fz, tilt, 0, 0);
+      P.add('hullDark', box(0.10, 0.012, 0.025), side * 1.42, fy + 0.034, fz, tilt, 0, 0);
+    }
   }
   // the driver's hatch (right front) on the glacis's slope, its periscopes ahead of it
   const hz = 2.06, hy = lineAt(H.deck, hz), tilt = glacisTilt(hz);
@@ -164,7 +208,8 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     } else {
       for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.40, 0.012, 0.035), ex, ey + 0.014, ez - 0.09 + k * 0.045, 0.35, 0, 0);
     }
-    for (const [lz, ly] of [[1.30, lineAt(H.deck, 1.30)], [-3.52, lineAt(H.deck, -3.52)]]) {
+    const eyeZ = o.forwardLiftEyeZ ?? 1.30;
+    for (const [lz, ly] of [[eyeZ, lineAt(H.deck, eyeZ)], [-3.52, lineAt(H.deck, -3.52)]]) {
       KIT.liftEye(P, 'hullDetail', side * 1.50, ly + 0.015, lz);
     }
     // the stern's corners: a tail-light cluster under the exhaust band's ends, a tow hook low

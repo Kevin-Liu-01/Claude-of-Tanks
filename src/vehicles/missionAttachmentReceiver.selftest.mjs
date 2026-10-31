@@ -8,9 +8,9 @@ import {leopardA6UaDockSeat} from './leopardA6UaLayout.ts';
 import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesClear} from '../sim/missionAttachment.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
-const ids=['pt91a_twardy','leo2a6_ua','ua_m1a1','t80u_zoria'];
+const ids=['leo2a6_ua','ua_m1a1','t80u_zoria'];
 const UA_DOCK=leopardA6UaDockSeat();
-const counts={pt91a_twardy:24,leo2a6_ua:22,ua_m1a1:47,t80u_zoria:2};
+const counts={leo2a6_ua:22,ua_m1a1:47,t80u_zoria:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
@@ -23,22 +23,18 @@ function nativeParts(mesh,turret){
 }
 // Anchors lead each part list: the welded feet, rail posts, rail sockets or seated bearers (bearerParts in the source).
 // ua_m1a1: the two roof-rail sockets, then (round 4) the two side-rail clamps of the posts down the cage's side frame.
-function anchorIndexes(id){return id==='pt91a_twardy'||id==='ua_m1a1'?[0,1,2,3]:[0,1];}
+function anchorIndexes(id){return id==='ua_m1a1'?[0,1,2,3]:[0,1];}
 // The side frame's two-thirds rail: a 22.4 mm bar in the frame plane x -2.01 from (y .892, z .28) to (y .9116, z -1.28).
 const sideRail=(row)=>row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-2.025&&v.x<=-1.995&&v.y>=.875&&v.y<=.935&&v.z>=-1.281&&v.z<=.281);
 const sideRailY=(z)=>.892+(.28-z)/1.56*(.9116-.892);
 function anchorStock(id,row){
  if(row.solidBox)return false;
- if(id==='pt91a_twardy')return row.name==='turret';
  // Zoria's bearers rest on the top lattice of the left roof-cage wing (rails, ties and cross rows at y 1.04).
  if(id==='t80u_zoria')return row.name==='turretOpenLattice'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-1.645&&v.x<=-.955&&v.y>=1.015&&v.y<=1.065&&v.z>=-1.235&&v.z<=.345);
  // 264: the Leopard 2A6 UA's sockets stand on the cage roof's dock rail (leopardA6UaLayout.ts), its length of the roof
  if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x-UA_DOCK.x)<.0161&&Math.abs(v.y-UA_DOCK.railY)<.0161&&v.z>=-4.0&&v.z<=.16);
  return (row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161))||sideRail(row);
 }
-// 252: the Twardy's welded feet embed (2-35 mm) through its thin roof; the interior fill under that roof (the 248 refresh's
-// seated turret, gen-interior-fills) is part of the host they embed into, hidden inside the turret.
-const hostFill=(id,row)=>id==='pt91a_twardy'&&row.name==='turretInteriorFill';
 function contactCount(id,box,rows){return rows.filter(row=>anchorStock(id,row)&&box.intersectsBox(row.bounds)&&box.intersectsTriangle(row.tri)).length;}
 function nativeTop(rows,x,z){let height=-Infinity;ray.origin.set(x,20,z);for(const row of rows)if(ray.intersectTriangle(row.tri.a,row.tri.b,row.tri.c,false,hit))height=Math.max(height,hit.y);return height;}
 function radial(b,p){const x0=b.min.x-p.x,x1=b.max.x-p.x,z0=b.min.z-p.z,z1=b.max.z-p.z;return[Math.hypot(Math.max(x0,0,-x1),Math.max(z0,0,-z1)),Math.hypot(Math.max(Math.abs(x0),Math.abs(x1)),Math.max(Math.abs(z0),Math.abs(z1)))];}
@@ -48,7 +44,7 @@ function receiverFailures(id,parts,stock,rows){
   const padded=part.clone().expandByScalar(.006);
   for(const row of rows){
    if(row.name==='turretMissionReceiver'||!padded.intersectsBox(row.bounds))continue;
-   if(anchors.includes(i)&&(anchorStock(id,row)||hostFill(id,row)))continue;
+   if(anchors.includes(i)&&anchorStock(id,row))continue;
    if(row.solidBox||padded.intersectsTriangle(row.tri))failures.push({part:i,kind:row.kind??'surface',mesh:row.name,triangle:row.id});
   }
   const range=radial(padded,stock.pivot);

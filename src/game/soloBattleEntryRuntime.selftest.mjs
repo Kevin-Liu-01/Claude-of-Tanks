@@ -208,7 +208,7 @@ for (const outcome of ['success', 'import-failure', 'paint-failure']) {
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-const soloComposition = mainSource.slice(mainSource.indexOf('async function beginSoloBattle('), mainSource.indexOf('async function debugStartBattle('));
+const soloComposition = mainSource.slice(mainSource.indexOf('function beginLocalBattle('), mainSource.indexOf('async function debugStartBattle('));
 assert.match(soloComposition, /mapId: operation\?\.mapId \?\? mapId,/,
   'free Mars sorties preserve the selected map; campaigns retain their authored override');
 const entryComposition = mainSource.slice(mainSource.indexOf('const soloBattleEntry = createSoloBattleEntryRuntime({'));

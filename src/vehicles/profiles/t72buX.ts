@@ -10,8 +10,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
-import {sourceMachineGun} from './sourceMachineGun.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import {T72BU_X_SOURCE_DATUMS} from '../t72buXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -220,21 +219,10 @@ function smoke(P:TankBuilderPort):void{
   }
 }
 function machineGun(P:TankBuilderPort):void{
-  // 2026-10-19 (owner float sweep): the ammunition box stood 39 mm off the gun with nothing under it, the rear upright
-  // 24 mm over the hatch block and 12 mm short of the fore one; the upright sits on the block and meets the fore one,
-  // and a stay carries the box from the mount's post
-  for(const [x,y,z,w,h,d]of [[-.95625,2.58946,.3938,.51045,.33676,.44685],[-.4267,2.46625,.39464,.1063,.3572,.422],
-    [-.4265,2.4587,.7467,.191,.444,.298],[-.5955,2.2467,.2605,.184,.229,.116]])equipment(P,'turretDetail',box(w,h,d),x,y,z);
-  equipment(P,'turretDetail',beamBetween([-.61,2.22,.22],[-.61,2.58,.55],.035),0,0,0);
-  equipment(P,'turretDetail',beamBetween([-.73,2.50,.4767],[-.60,2.50,.4767],.02),0,0,0);
-  const mg=sourceMachineGun(P,YAW);
-  mg.add('turretDark',box(.15886,.11767,.6897),-.61393,2.625,.62165);
-  mg.add('turretDetail',box(.07286,.14285,1.19466),-.6096,2.67241,.86528);
-  mg.add('turretDark',cylZ(.0199,.65654,20),-.60653,2.68942,1.85594);
-  mg.add('turretDetail',box(.10463,.02406,.31138),-.60938,2.74389,.66017);
-  mg.add('turretDark',box(.02651,.03249,.15),-.60615,2.64089,1.59225);
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
-  stationFromDrawnGun(mg.finish(),{name:'t72buXRoofNsvt',caliberMm:12.7});
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle on the cupola
+  // race's front rim (2.2445) ahead of the hatch blocks, in place of the traced box mount, uprights and rods.
+  libraryRoofMg(P,{station:'t72buCommanderNsvtStation',cls:'nsvt',seat:[-.58057-YAW[0],2.2445-YAW[1],.217-YAW[2]]});
 }
 function mainGun(P:TankBuilderPort):void{
   const muzzle=T72BU_X_DATUMS.muzzleZ,floor=T72BU_X_DATUMS.boreFloorZ;

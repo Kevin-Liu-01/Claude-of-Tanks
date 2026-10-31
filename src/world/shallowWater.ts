@@ -873,7 +873,10 @@ export function createShallowWaterSurface(
         float trailLen = hl + 4.0 + spd * 22.0;
         float back = clamp(behindStern / trailLen, 0.0, 1.0);
         float laneHalf = hw * (1.0 + 0.7 * back);
-        float lane = (1.0 - smoothstep(laneHalf, laneHalf + 1.2, abs(across))) * sternIn;
+        // the tracks' churn spreading behind: soft across, rising behind the stern from its middle out. A plateau the hull's
+        // width with straight sides and a straight front drew a pale box behind it (the owner's square, the phone's stills)
+        float acrossN = abs(across) / laneHalf;
+        float lane = exp(-acrossN * acrossN * 1.6) * smoothstep(0.0, 2.2, behindStern - 1.4 * acrossN * acrossN);
         float wash = lane * (1.0 - back) * (1.0 - back) * mov * str;
         wakeWash += wash;
         wave += (waveFine.xy * 2.0 - 1.0) * wash * 1.2;

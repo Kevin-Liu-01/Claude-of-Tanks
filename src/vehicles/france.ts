@@ -630,6 +630,14 @@ function buildAMX40(P: FranceBuilderPort): void {
     const cheekTieInnerX = shellCrownXAt(s, cheekTieZ) - attachmentEmbedM;
     P.add('turret', box(cheekTieOuterX - cheekTieInnerX, 0.10, s < 0 ? 0.46 : 0.36),
       s * ((cheekTieOuterX + cheekTieInnerX) / 2), s < 0 ? 0.66 : 0.48, cheekTieZ); // asymmetric source cheek ties now bury into the crown instead of ending in air
+    // 264 (Main, false roofs): each tie roofed an open box between its rail panel and the crown, seen from the front
+    // (left 20 cm deep, right 28 cm). The cheek now stands solid under the tie, from the panel's foot (left 0.44, right
+    // 0.34) to the tie, between the crown and the panel's inner face, flush with the panel's front; on the left the
+    // well that ran on down inboard of the panel's foot is filled to the cheek course too. Outside faces are unchanged.
+    const panelInnerX = s < 0 ? 1.192 : 1.256, panelFootY = s < 0 ? 0.44 : 0.34, tieFootY = s < 0 ? 0.61 : 0.43;
+    P.add('turret', box(panelInnerX + 0.003 - 0.79, tieFootY + 0.005 - panelFootY, 1.84 - 1.47),
+      s * (panelInnerX + 0.003 + 0.79) / 2, (tieFootY + 0.005 + panelFootY) / 2, (1.84 + 1.47) / 2);
+    if (s < 0) P.add('turret', box(1.045 - 0.79, panelFootY + 0.005 - 0.22, 1.93 - 1.60), -(1.045 + 0.79) / 2, (panelFootY + 0.005 + 0.22) / 2, (1.93 + 1.60) / 2);
     if (s < 0) P.add('turret', box(0.18, 0.30, 0.14), -1.27, 0.73, 0.54);     // raised left cheek shoulder, rooted into the source's sloped crown course
     P.add('turretDetail', box(0.08, 0.30, 0.16), s * 1.49, 0.30, -1.44);        // low seated flank latch at the source outer silhouette
     if (s > 0) P.add('turretDetail', box(0.06, 0.06, 0.57), 1.39, 0.58, 0.335); // asymmetric inner flank rail, below the outer cassette lip

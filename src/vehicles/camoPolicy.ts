@@ -121,18 +121,23 @@ const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as con
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21), the Christian II's Danish tri-tone with it (release 262). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_christian2'] as const);
-/** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
- * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
+/** Release 262: the T-84BM Oplot-M's Ukrainian MM-14 digital and the Oplot-T's Thai three-tone desert came with those
+ * tanks, the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
 // 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
-// it appends after GT too and no saved index moves.
+// it appends after GT too and no saved index moves. So do the PT-84 Sokół's digital and the Żbik's three-tone urban, their
+// Factory coats (their stock stays the PL-01's digital and the urban block), and the Orzeł's sand three-tone, its stock.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
-  'paint_ua_t84_oplot_m'] as const);
+  'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel'] as const);
+/** The Centurion family (262, merged on 264c): the Sho't Kal's 1973 Sinai grey, the Olifant Mk 2's SANDF coat and
+ * the Australian Mk 5/1's olive drab came with those tanks; they append after 264's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -148,6 +153,17 @@ const RELEASE_233_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_233_SIGNATURE_
   sig_m1a1_abrams_fep: 'M1A1 FEP USMC Woodland',
   sig_m60a3: 'M60A3 MERDC Woodland',
 });
+/** Release 265 (owner 2026-10-28; lane 264): the Longwei family's own Signatures, each in its symbol's colour. Appended after every
+ * earlier id, so no serialized index moves. */
+const RELEASE_265_SIGNATURE_IDS = Object.freeze([
+  'sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu',
+] as const);
+const RELEASE_265_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_265_SIGNATURE_IDS[number], string>> = Object.freeze({
+  sig_ztz99a2_qinglong: 'Qinglong Azure Digital',
+  sig_vt4a1_baihu: 'Baihu Desert Digital',
+  sig_t72b3_zhuque: 'Zhuque Red Earth',
+  sig_t72b3m_xuanwu: 'Xuanwu Night Digital',
+});
 const AUTHORED_PAINT_IDS_BEFORE_GT = AUTHORED_PAINT_IDS.filter(
   (id): id is Exclude<typeof id, AuthoredPaintIdAfterGt> => !isAuthoredPaintIdAfterGt(id));
 
@@ -159,6 +175,8 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
   ...AUTHORED_PAINT_IDS_AFTER_262,
+  ...RELEASE_265_SIGNATURE_IDS,
+  ...AUTHORED_PAINT_IDS_AFTER_264,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -292,6 +310,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
   ...RELEASE_233_SIGNATURE_LABEL,
+  ...RELEASE_265_SIGNATURE_LABEL,
 } as Record<CamoPatternId, string>);
 
 /**
@@ -529,6 +548,16 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#35453a', weather: '#4a5847', patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43 }),
   preset('sig_ztz99a2', 'ztz99a2', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#36463a', weather: '#4c5a49', patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43 }),
+  // release 264: the Longwei family, each in its symbol's colour (azure, white-sand, vermilion earth, black)
+  preset('sig_ztz99a2_qinglong', 'ztz99a2_qinglong', signatureTags('cn', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#3d4a45', weather: '#4f5c55', patches: ['#26302d', '#5b6a5e', '#7a7558'], camoScale: 0.40 }),
+  preset('sig_vt4a1_baihu', 'vt4a1_baihu', signatureTags('cn', 'desert', 'digital'),
+    { scheme: 'digital', base: '#8c7f5e', weather: '#a39572', patches: ['#5e5240', '#b8a983', '#6d6a4f'], camoScale: 0.42 }),
+  preset('sig_t72b3_zhuque', 't72b3_zhuque', signatureTags('cn', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#5b5a3f', weather: '#6c6a4c', patches: ['#7a4f36', '#333a2b', '#8d8360'], camoScale: 0.44 }),
+  // (critic round 1: the darker coat lost the side modules' shape)
+  preset('sig_t72b3m_xuanwu', 't72b3m_xuanwu', signatureTags('cn', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#3a4540', weather: '#4c5850', patches: ['#222a26', '#5a675a', '#6c6650'], camoScale: 0.42 }),
   // Broad olive/sage digital fields with subdued earth and charcoal accents.
   // Six-centimetre cells stay readable on armor without the fine grey speckle.
   preset('sig_type100', 'type100', signatureTags('cn', 'woodland', 'digital'),
@@ -541,8 +570,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#394b3c', weather: '#53604a', patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42 }),
   preset('sig_t72m1_jaguar', 't72m1_jaguar', signatureTags('pl', 'woodland', 'organic'),
     { scheme: 'nato', base: '#46533a', weather: '#60694d', patches: ['#5a4534', '#1c211c'], camoScale: 0.44, patchK: 1.35 }),
-  preset('sig_pt91_twardy', 'pt91a_twardy', signatureTags('pl', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'], camoScale: 0.46 }),
+  preset('sig_pt91_twardy', 'pt91a_twardy', signatureTags('pl', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4b5a3c', weather: '#66694f', patches: ['#8a7653', '#202420'], camoScale: 0.46 }),
   preset('sig_pl01_105', 'pl01_105', signatureTags('pl', 'woodland', 'digital'),
     { scheme: 'digital', base: '#3b4641', weather: '#525c55', patches: ['#252d2a', '#56615a', '#73746a'], camoScale: 0.3 }),
   preset('sig_bwp1', 'bwp1', signatureTags('pl', 'woodland', 'digital'),
@@ -760,6 +789,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   'type10b', 'type90_kyumaru', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
   'type59', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'type100', 'ztz100',
+  'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
   // Russia — the Object 695 owns its own digital service paint.
   'object695',
   // Poland — PL-01 itself owns the national Factory reference.
@@ -800,6 +830,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48a5_patton: 'summer',
+  // release 266: the M48A3 in the A5's US coat; the Magach 3 and the German M48s take their nations' Factory coats
+  m48a3_patton: 'summer',
   m2a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
   // 262: the production ZTZ-20 wears its family's PLA digital woodland
@@ -807,17 +839,34 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz20_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // Release 262 (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"): the Mk 3 is the Op Granby
+  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87); the Mk 1 and Mk 2 keep the BAOR coat.
+  challenger1_mk3: 'desert',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
   t64bm1m: 'sig_ua_t64bv',
   t64b1v_2022: 'sig_ua_t64bv',
-  // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
+  // release 262: the new Oplots' own stock coats: the Ukrainian MM-14 digital (owner 2026-10-30: "oplot-m doesnt hav ea
+  // camo", no flat coat), the Thai desert
   bm_oplot_m: 'paint_bm_oplot_m',
   bm_oplot_t: 'paint_bm_oplot_t',
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
+  // release 262: the Sho't Kal wears the IDF's 1973 Sinai grey as it came (shotKalSpecs.ts)
+  shot_kal: 'paint_shot_kal',
+  // the Olifant Mk 2 wears the South African Army's sand, green and brown (olifantMk2Specs.ts)
+  olifant_mk2: 'paint_olifant_mk2',
+  // the Australian Mk 5/1 wears the RAAC's plain olive drab of Vietnam (centurionAusSpecs.ts)
+  centurion5_1_aus: 'paint_centurion5_1_aus',
+  // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A3 OTCO
+  leo2a3_b4: 'sig_leo2a4_otco',
+  // the PT-84 Orzeł in its own Polish sand three-tone (262 visual bar, round 9: the Zubr family's green woodland shared
+  // the Oplot-M's hue), not the PL-01's digital
+  pt84_orzel: 'paint_pt84_orzel',
+  // the Żbik in the urban block grey (the Sokół keeps Poland's factory coat, the PL-01's digital)
+  pt84_zbik: 'urbanblock',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

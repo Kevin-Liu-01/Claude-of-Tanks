@@ -11,7 +11,8 @@ import { TANK_PORTRAIT_FRAME_POLICY as policy } from '../src/ui/portraitFraming.
 const changed = new Set(['t72b3', 'strv122']);
 // Mirrored, the KF51's full silhouette measured 123.8 card px against the 123.2 px envelope, so its azimuth is a
 // touch more frontal (0.72); the T-72B3 X and Strv 122 X keep the side-on 0.76.
-const sourceDirections = new Map([['kf41_lynx', 0.86], ['merkava4_barak', 0.70], ['kf51_panther', 0.72]]);
+// Release 262: the Sho't Kal's tall IDF whips fit the card's height envelope at the more side-on 0.74 (portrait-camera.ts).
+const sourceDirections = new Map([['kf41_lynx', 0.86], ['merkava4_barak', 0.70], ['kf51_panther', 0.72], ['shot_kal', 0.74]]);
 for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
   const expected = sourceDirections.get(id) ?? (changed.has(id) ? 0.76 : 0.56);
   assert.equal(portraitSideRatio(id), expected, `${id}: exact portrait-only azimuth (bow to the left)`);
