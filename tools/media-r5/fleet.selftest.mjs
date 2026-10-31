@@ -38,6 +38,11 @@ const perMap = {};
 for (const sc of scenes.values()) perMap[sc.map] = (perMap[sc.map] ?? 0) + 1;
 assert.ok(Object.keys(perMap).length >= 25, `the fleet spreads over 25 battlefields at least (${Object.keys(perMap).length})`);
 for (const [map, count] of Object.entries(perMap)) assert.ok(count <= 7, `${map} holds ${count} fleet takes, 7 at most`);
+// the planner keeps takes 60 m apart at the least; two lanes appending at once each miss the other's takes and can pick
+// one set (265: the Centurion Mk 5/1 Aust on the Qinglong's copper_mesa anchor at 0 m), so the merge fails here
+const crowded = FLEET.flatMap(([n, , , , a], i) => FLEET.slice(i + 1).filter(([, , , , b]) => b.map === a.map
+  && Math.hypot(b.anchor[0] - a.anchor[0], b.anchor[1] - a.anchor[1]) < 60).map(([m]) => `s${n}/s${m} on ${a.map}`));
+assert.deepEqual(crowded, [], 'no two fleet takes within 60 m on one battlefield');
 
 // paint: the hero's side in the hero's own scheme (its signature, else its nation's stock coat), the foes in another,
 // one scheme a model (the Studio paints per model), catalog paint only
