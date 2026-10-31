@@ -4,9 +4,10 @@ import ts from 'typescript-compiler-api';
 // Puppeteer in input.ts used to invalidate hundreds of checks on any doc edit.
 // The checkout's top-level directories a path literal can start with: every tracked one (selftest-cache.selftest holds
 // the list to `git ls-tree`; 266: site/, api/ and crates/ came after it, so 'site/home.html' named no input) and the
-// untracked roots receipts read (shots/, tests/, node_modules/).
+// untracked roots receipts read (shots/, tests/, node_modules/). (265) release/ holds the changed-only fingerprint
+// manifest (data, no sources).
 export const SELFTEST_ROOT_DIRS = Object.freeze(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'site', 'api', 'crates',
-  'cloudflare', 'LICENSES', '.github', '.agents', '.agent-docs', '.cargo', 'shots', 'tests', 'node_modules']);
+  'cloudflare', 'LICENSES', '.github', '.agents', '.agent-docs', '.cargo', 'release', 'shots', 'tests', 'node_modules']);
 const FILE_LITERAL = new RegExp(`^(?:\\.{1,2}/|/?(?:${SELFTEST_ROOT_DIRS.map(name => name.replace(/\./g, '\\.')).join('|')})/)`
   + '|^[\\w.-]+\\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js)$');
 const URL_PATH = /\/(?:src|tools|public|docs)\/[\w./-]+\.[\w]+/g;
