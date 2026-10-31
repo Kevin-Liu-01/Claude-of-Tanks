@@ -3444,16 +3444,15 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
     });
   }
-  // 265 (the Ukrainian CV9040C, ua4; the ua3 blind critics, both: its turret net "a hollow hoop", daylight under it): the
-  // cans, crate, whip and M2 seated on its turret roof drew the net up into an arch over them, as the Ariete's cradle did.
-  // Its net lies on the bundled heap on the rear roof (profiles/cv9040CSourceX.ts); nothing else is stowed on that roof,
-  // nor on the troop roof, whose stowage is the tarpaulin load (the cargo turned away from the turret stood on it).
+  // 265 (the Ukrainian CV9040C, ua4): its troop roof's stowage is the tarpaulin load (profiles/cv9040CSourceX.ts); the
+  // fleet cargo stood on it. Its turret roof, under the bundled net, is the placement's field-suit roof rule (266:
+  // underRoofNet; the ua3 critics' "hollow hoop" was the decor's roof loads under that net).
   if (spec.id === 'ua_cv9040c') {
-    const kitRoof = (slot: string): boolean => slot === 'turretRoof' || slot === 'rearDeck';
+    const troopRoof = (slot: string): boolean => slot === 'rearDeck';
     return manifest
-      .filter((row) => !kitRoof(row.slot[0]))
+      .filter((row) => !troopRoof(row.slot[0]))
       .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
-        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !kitRoof(slot)) }] }
+        ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => !troopRoof(slot)) }] }
         : row));
   }
   return manifest;
