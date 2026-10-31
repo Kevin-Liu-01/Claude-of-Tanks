@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-31T16:08:50.158Z",
+ "generatedAt": "2026-10-31T16:57:47.627Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 45,
  "total": 166,
@@ -918,6 +918,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t72bu",
+   "geoMin": 38.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 92.5,
+    "dims": 38.1,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "centurion5_2",
    "geoMin": 39.2,
    "requiredMinimum": 90,
@@ -1124,6 +1137,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t80u",
+   "geoMin": 59,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 92.4,
+    "dims": 59,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "object148_proto",
    "geoMin": 59.9,
    "requiredMinimum": 90,
@@ -1182,32 +1208,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t72b_1987",
-   "geoMin": 71.1,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 93.3,
-    "dims": 71.1,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t80u",
-   "geoMin": 74.6,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 92.4,
-    "dims": 74.6,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "m1a1_abrams_hc",
    "geoMin": 76,
    "gatePassed": false,
@@ -1219,19 +1219,6 @@
     "dims": 100,
     "floaters": 100
    }
-  },
-  {
-   "id": "t72bu",
-   "geoMin": 76.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 92.5,
-    "dims": 76.3,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m551_sheridan",
@@ -1326,6 +1313,19 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "t72b_1987",
+   "geoMin": 83.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 93.3,
+    "dims": 83.1,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "amx30",
