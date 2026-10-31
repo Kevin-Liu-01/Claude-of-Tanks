@@ -32,22 +32,27 @@ export function sourceDimensionCamera(sourceBounds,direction) {
   return camera;
 }
 
-export function sourceDimensionRows(reference,actual,referenceBounds,actualBounds) {
-  const rows=[];
+/** `buildOffset` is the build's declared departure from the source's turret datums (source-world-registration.mjs
+ *  SOURCE_WORLD_BUILD_OFFSETS: the T-80U's ring race); its rise is added to the source's heights, nothing else. */
+export function sourceDimensionRows(reference,actual,referenceBounds,actualBounds,buildOffset=[0,0,0]) {
+  const rows=[],lift=buildOffset[1];
   const add=(name,a,r,method)=>{
     if(![a,r].every(v=>Number.isFinite(v)&&v>0))throw new Error(`Missing positive ${name} source measurement`);
     rows.push({name,actual:a,published:r,pct:Math.abs(a-r)/r*100,method});
   };
+  const raised=lift?` (the source raised ${lift} m, the build's declared offset)`:'';
   for(const name of ['heightM','hullLengthM','overallLengthM','widthM']) {
-    add(name,actual[name],reference[name],'paired identical masks in source-only fixed frame');
+    add(name,actual[name],name==='heightM'?reference[name]+lift:reference[name],
+      `paired identical masks in source-only fixed frame${name==='heightM'?raised:''}`);
   }
   const r=referenceBounds.getSize(new THREE.Vector3()),a=actualBounds.getSize(new THREE.Vector3());
+  r.y+=lift;
   for(const [name,key]of [['physicalWidthM','x'],['physicalHeightM','y'],['physicalOverallLengthM','z']]) {
     // Full 3D bounds deliberately do not inherit raster filtering or camera
     // clipping. An oversized/missing skirt or barrel still fails. The gate
     // passes the bodies' bounds: whips, antennas and roof weapons are not
     // part of either (tools/body-height-parts.mjs, Main's ruling 2026-10-30).
-    add(name,a[key],r[key],'full visible body envelope, no raster filtering');
+    add(name,a[key],r[key],`full visible body envelope, no raster filtering${key==='y'?raised:''}`);
   }
   return rows;
 }

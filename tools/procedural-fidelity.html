@@ -2091,7 +2091,8 @@ if (params.get('geo')) {
     const actual=measure(procedural,reference);
     // the ruler stays framed by the whole source; the physical envelopes are the bodies'
     dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
-      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired')));
+      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired'),
+      SOURCE_WORLD_BUILD_OFFSETS[id]));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
