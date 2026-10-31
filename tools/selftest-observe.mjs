@@ -18,8 +18,15 @@ const dir = process.env.COT_SELFTEST_OBSERVE_DIR, root = process.env.COT_SELFTES
 if (dir && root) {
   const seen = { reads: new Set(), lists: new Set(), probes: new Set() };
   const prefix = root + sep;
+  // once noted, a repeat (the cache's own stat loops) is one lookup; a relative path is keyed with the cwd it resolves in
+  const noted = new Set();
   const note = (kind, path) => {
     if (typeof path === 'number') return; // a descriptor: its open was noted
+    if (typeof path === 'string') {
+      const key = path.startsWith(sep) ? kind + path : `${kind}${process.cwd()}\0${path}`;
+      if (noted.has(key)) return;
+      noted.add(key);
+    }
     try {
       const text = path instanceof URL ? (path.protocol === 'file:' ? decodeURIComponent(path.pathname) : null)
         : Buffer.isBuffer(path) ? path.toString() : String(path);
