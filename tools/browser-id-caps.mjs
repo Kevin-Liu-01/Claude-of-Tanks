@@ -3,14 +3,20 @@
 // A row is the tool's file name without its directory and .mjs (genIcons, garage-wheel-band for its .browser.mjs).
 // Each comment gives the guard's peaks behind the row (largest renderer / whole browser tree, on this Mac, 2026-10-31)
 // and how they were measured. tools/browser-launch.mjs kills a renderer past 6 GB or a tree past 10 GB (exit 86): a
-// cap keeps a chunk's renderer near half its limit, so the fleet can grow. The tools that run four worker pages in
-// one browser (fleet-geometry-audit, fleet-surface-overlap-audit, fleet-battle-views) are bound by the tree, which
-// their worker count sets, not their cap.
+// cap keeps a chunk's renderer near half its limit, so the fleet can grow. The tools that run worker pages in one
+// browser (fleet-geometry-audit, fleet-surface-overlap-audit, fleet-battle-views) are bound by the tree, which their
+// worker count sets (WORKER_PAGES below), not their cap.
 //
 // A cap decides only where a fresh browser starts, never what an id renders or writes (centering --update chunked and
 // unchunked: byte for byte), so this table is out of every changed-only key (steps.mjs DECLARED_DYNAMIC scheduleOnly):
 // re-measure and edit a row without re-running a step. Each chunk logs its peaks ([browser-chunks]); a row whose tool
 // has only run at smoke size says so.
+/**
+ * Worker pages per browser for the tools that work through a chunk's jobs in parallel pages (--workers overrides it).
+ * Four held the whole browser tree at 9.0-9.5 GB of the guard's 10 GB at any cap (2026-10-31): each page is a renderer.
+ */
+export const WORKER_PAGES = 3;
+
 export const BROWSER_ID_CAPS = Object.freeze({
   // whole fleet, 5 chunks of 48: 2.28 / 3.47 GB; the 60 heaviest ids in one browser: 3.0 / 4.4 GB
   'genIcons': 51,
