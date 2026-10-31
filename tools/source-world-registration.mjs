@@ -97,6 +97,23 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386',
     turret:[0, 1.98, 0.7106], gun:[0, 2.2341, 1.9195],
   },
+  // The M60s (release 266, Main's ruling 2026-10-31: the owner's models are the reference): the owner's M60A1, M60A2 and
+  // M60A3 models prepared by tools/source-x-oracle.mjs (.qa-dev/m60-265/a1-, a2-, a3-recipe.json: the A1 FBX in cm at
+  // 0.01, axes -z y x; the A3 axes -z y x; the A2 axes x y z, 0.15 m forward and 0.045 m down to the A1's ring; raw
+  // hashes in ~/cot-lanes/m60-src-265/SOURCES.sha256), in the M60A1 build frame. The ring and the trunnion are the
+  // castings' measured datums in that frame (pattonCast.ts M60_RING, M60_GUN, M60A2_GUN).
+  m60a1: {
+    sha256:'c002db9dab0c31efb26bb8fb7586f0a2b347e673cab874760d4cdab866e00a8d',
+    turret:[0, 1.733, 0.55], gun:[0, 2.10, 1.62],
+  },
+  m60a2: {
+    sha256:'d2d5e89f9ff357b110e9955ea64a13cd8aaafed0b31adbf45acafdabdaf96c86',
+    turret:[0, 1.733, 0.55], gun:[0, 2.145, 1.80],
+  },
+  m60a3: {
+    sha256:'1eaf2699bfb8471b8a251b92679ba8e7149015745fadd33cf0a3b1f0a684b3fb',
+    turret:[0, 1.733, 0.55], gun:[0, 2.10, 1.62],
+  },
   amx56: {
     sha256:'e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0',
     turret:[-.0162842395776,1.47698078437,.561125178827],

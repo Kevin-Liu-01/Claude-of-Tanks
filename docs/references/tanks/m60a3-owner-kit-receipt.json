@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "tankId": "m60a3",
+  "quality": "high",
+  "decision": "Main 266 (2026-10-31): exempt the owner's kit from the source comparison; tools/owner-kit-targets.mjs",
+  "reviewer": "the owner's request (2026-10-30) and approval of the spare wheels on the rack's rear corners; blind critic round 18 (z-buffered renders against the owner's model): 8/10 PASS with the kit; Main's ruling on the exemption",
+  "reviewScope": "Owner-directed kit parts the owner's model does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digest from procedural-fidelity.html (high, camoSeed 4242), the fail-closed pass at 2026-10-31 03:51.",
+  "parts": {
+    "m60a3KitRackLoad": {
+      "arrangementAccepted": true,
+      "reference": "owner-kit:m60a3:m60a3KitRackLoad",
+      "geometryPoseSha256": "23fed4598f3223be7747ac0440859e1d948cc607bd6f1e829df190e7f16e9689"
+    }
+  }
+}

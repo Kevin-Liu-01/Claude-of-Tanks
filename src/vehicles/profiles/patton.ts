@@ -141,6 +141,8 @@ interface PattonBuilderPort {
   addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
+  /** Visit every bucket part drawn so far in these buckets (the owner-kit groups: pattonCast.ts m60OwnerKitGroup). */
+  forEachBucketPart(slots: string | string[], visit: (geometry: THREE.BufferGeometry) => void): void;
   decal(
     owner: ProfileOwner,
     kind: string,

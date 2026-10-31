@@ -34,6 +34,7 @@ import { supplementDigest, supplementSnapshot, verifySupplement } from '/tools/r
 import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
 import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
 import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
+import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
@@ -296,7 +297,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m46_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m46_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  m60a2: { source:'glb', glb:{ path:'/models/tanks/community/m60a2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // Owner-supplied Sheridan print: local-only comparison oracle. Blender
   // connected-component inspection resolves the generic object names into
   // honest articulation buckets without copying any source geometry into the
@@ -606,28 +606,26 @@ const LOCAL_REFERENCE_OVERRIDES = {
       gunFollowers:'vehicle#gun_barrel_' },
   },
   merkava3c: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava3c_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
-  // m60a1 / m60a3: retired configs RECOVERED (205a095~1 / 5acc7ec) and
-  // LOAD-PROVEN via tmp-m60probe (2026-08-02): the ref RENDERS through
-  // these entries (board 42.9, hull masks aligned at yaw -PI/2 — probe
-  // shots/m60probe/). REMAINING DEFECT, still DO-NOT-GATE: the ref
-  // TURRET/GUN renders ~90deg yawed vs proc (gun west in top view; gun
-  // component 0.0) — yaw 0 and PI both rotate the HULL (worse, 37.1);
-  // -PI/2 is hull-correct. Pre-graduation this same GLB gated 90.7, so
-  // the delta is in how the override path (vs the retired MODEL_SOURCE
-  // path) zeroes the turret rest yaw — read the page's rig/zeroing
-  // internals before enabling gate runs. False-0 law applies until then.
-  m60a1: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
-      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2, gateEligible:false },
-  },
-  m60a3: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
-      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2, gateEligible:false },
-  },
+  // Release 266 (Main's ruling, 2026-10-31: the M60s' reference is the owner's models since 2026-10-28): the owner's
+  // M60A1, M60A2 and M60A3 models, LOCAL-ONLY and gitignored (never committed), measurement-only oracles registered to
+  // the M60A1 build frame by tools/source-x-oracle.mjs (.qa-dev/m60-265/a1-, a2-, a3-recipe.json; raw hashes in
+  // ~/cot-lanes/m60-src-265/SOURCES.sha256). The ring and trunnion are the rebuilt castings' (pattonCast.ts M60_RING,
+  // M60_GUN, M60A2_GUN); the turret and gun owners are the models' own nodes. The A3's owner-requested rack load is set
+  // aside by tools/owner-kit-targets.mjs.
+  m60a1: { source:'glb', glb:{ path:'/models/community-candidates/m60a1_x_source.glb',
+    turretNode:'^turret$',
+    turretFollowers:'^(?:interior_turret|steel_cable|object70|object03|antenna2|jerrycan|base_of_small_turret|mount2|hatch|interior_little_turret|periscope2|mount3|weapon2|jerrycan01|object71|object01|object02|object38|antenna|gear2|object13|hatch2|object04|periscope)$',
+    gunNode:'^weapon$', gunFollowers:'^(?:mount|spotlight|weapon3)$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.10, 1.62], paintUntextured:true } },
+  m60a2: { source:'glb', glb:{ path:'/models/community-candidates/m60a2_x_source.glb',
+    turretNode:'^Object_23$', turretFollowers:'^Object_(?:22|25|24|8|2|26|6)$',
+    gunNode:'^Object_21$', gunFollowers:'^Object_(?:10|3|5)$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.145, 1.80], paintUntextured:true } },
+  m60a3: { source:'glb', glb:{ path:'/models/community-candidates/m60a3_x_source.glb',
+    turretNode:'^turret_m60a3\\-turret_1_0$',
+    turretFollowers:'^(?:baseleftsmoke_m60a3\\-turret_1_0|smoke[2]?[b-f]?\\-model_m60a3\\-turret_1_0|baserightsmoke_m60a3\\-turret_1_0|attachment_points_m60a3\\-turret_1_0|steel_cable_m60a3\\-turret_1_0|hatch2_m60a3\\-turret_1_0|antenna2?_m60a3\\-turret_1_0|periscope_m60a3\\-turret_1_0|wind_sensor01_m60a3\\-turret_1_0|s\\-box_m60a3\\-turret_1_0|object(?:13|38)_m60a3\\-alpha_5_0|(?:jerrycan01?|object0[1-4]|object7[01]|gear2)_us_coldwar_gear_4_0|interior_turret_m60a3\\-interior_3_0|(?:base_of_small_turret|mount[23]|hatch|interior_little_turret|periscope2|weapon2)_m60a3\\-mini_turret_2_0)$',
+    gunNode:'^weapon_m60a3\\-turret_1_0$', gunFollowers:'^(?:mount|weapon3)_m60a3\\-turret_1_0$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.10, 1.62], paintUntextured:true } },
   // t30: NO gate oracle possible through this harness (ww2 r2 finding).
   // The offline candidate is ONE fused node ('hull', mesh Object.113 — probed
   // 2026-08-04); modelLoader's fixedMount guard was written expressly so
@@ -722,7 +720,7 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
 // Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
 // receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
-const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
+const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt,m60a3:m60a3OwnerKitReceipt};
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){

@@ -55,6 +55,7 @@ interface CastPort {
   addExternalArmor(owner: 'hull' | 'turret', geometry: Geo, ...transform: number[]): void;
   destructibleCluster(plateName: string, fill: () => void): void;
   snapGroup(label: string, build: () => void, options?: { reachM?: number }): void;
+  forEachBucketPart(slots: string | string[], visit: (geometry: THREE.BufferGeometry) => void): void;
   decal(owner: 'hull' | 'turret', kind: string, value: string | null, scale: number, position: readonly number[],
     ...rotation: number[]): void;
 }
@@ -2797,12 +2798,15 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       // the A3's lived-in rack (the owner, 2026-10-30: "more decorations like wheels and bags ..."): three packs along
       // it under a bedroll, and a spare road wheel tipped up on each of its rear corners (the rest of its load:
       // decorations.ts)
-      KIT.stowage(P, 'turretCloth', mulberry(617), [
-        [0.52, L.y(yf + 0.16), L.z(-1.94), 0.52, 0.30, 0.20], [0, L.y(yf + 0.14), L.z(-1.94), 0.46, 0.26, 0.20],
-        [-0.50, L.y(yf + 0.18), L.z(-1.94), 0.50, 0.34, 0.20],
-      ]);
-      KIT.tarpRoll(P, 'turretCloth', 0.05, L.y(yf + 0.41), L.z(-1.95), 1.25, 0.10, true, P.q ? 12 : 8);
-      m60SpareWheels(P, T, yf + 0.21, -1.55);
+      // (Main 266: one owner-kit group, set aside from the source comparison: tools/owner-kit-targets.mjs)
+      m60OwnerKitGroup(P, 'm60a3KitRackLoad', () => {
+        KIT.stowage(P, 'turretCloth', mulberry(617), [
+          [0.52, L.y(yf + 0.16), L.z(-1.94), 0.52, 0.30, 0.20], [0, L.y(yf + 0.14), L.z(-1.94), 0.46, 0.26, 0.20],
+          [-0.50, L.y(yf + 0.18), L.z(-1.94), 0.50, 0.34, 0.20],
+        ]);
+        KIT.tarpRoll(P, 'turretCloth', 0.05, L.y(yf + 0.41), L.z(-1.95), 1.25, 0.10, true, P.q ? 12 : 8);
+        m60SpareWheels(P, T, yf + 0.21, -1.55);
+      });
     } else if (mark !== 'magach7c') {
       for (const [x, z, w, h, d] of [[0.50, -1.88, 0.50, 0.30, 0.30], [-0.05, -1.92, 0.50, 0.30, 0.30]] as const) {
         P.add('turretDetail', moldedBox(w, h, d, 0.02, P.q ? 2 : 1, 0.01), x, L.y(yf + h / 2 + 0.01), L.z(z));
@@ -3025,6 +3029,21 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   }
   P.topY = L.y(3.12) + 0.12;
   yield 'm60Gun';
+}
+
+/** Owner-directed kit set aside from the registered source comparison (tools/owner-kit-targets.mjs, the Oplot's
+ * mechanism): everything `build` adds to the turret's buckets is drawn in one named group under rig_turret, so the
+ * fidelity page can authenticate it and set it aside by name. */
+const M60_KIT_BUCKETS = Object.freeze(['turret', 'turretDetail', 'turretDark', 'turretGlass', 'turretCloth']);
+function m60OwnerKitGroup(P: CastPort, name: string, build: () => void): void {
+  const group = new THREE.Group();
+  group.name = name;
+  Object.assign(group.userData, { ownerKit: true, fitting: 'ownerKit' });
+  P.turretG.add(group);
+  const buckets = [...M60_KIT_BUCKETS], seen = new Set<THREE.BufferGeometry>();
+  P.forEachBucketPart(buckets, (part) => seen.add(part));
+  build();
+  P.forEachBucketPart(buckets, (part) => { if (!seen.has(part)) part.userData.auxiliaryStation = { name, stage: 'yaw' }; });
 }
 
 /** The M60A3's spare road wheels, one on each rear corner of its bustle rack at z, tipped up (axis 25 degrees up and
