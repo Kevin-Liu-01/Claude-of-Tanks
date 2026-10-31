@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createArmorAimOverlay } from './armorAimOverlay.ts';
-import { ARMOR_PAINT_ZONE_TEXELS, makeBurnUniforms } from '../vehicles/materials.ts';
+import { ARMOR_PAINT_SET_SLOTS, ARMOR_PAINT_ZONE_TEXELS, makeBurnUniforms } from '../vehicles/materials.ts';
 
 // 262: the scoped flashlight is paint (vehicles/materials.ts ARMOR_PAINT, riding the burn hook): this runtime fills
 // each scoped vehicle's zone table — every authored main plate's plane and outline, and its colour blended from samples
@@ -83,7 +83,7 @@ assert.equal(target.uniforms.uApOn.value, 0, 'primed paint stays off before scop
 // the zone table: the two main plates (the spaced skirt is a layer, not a zone), each a plane and an outline
 {
   const table = entry.table;
-  assert.equal(table.length, 2 * ARMOR_PAINT_ZONE_TEXELS * 4, 'one run of texels per main plate');
+  assert.equal(table.length, (2 * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_SET_SLOTS) * 4, 'one run of texels per main plate, then the zone-set slots');
   assert.deepEqual([...table.slice(0, 4)].map((v) => +v.toFixed(6)), [0, 0, 1, -1], 'the glacis plane: z = 1, facing +z');
   const edges = [];
   for (let e = 1; e < ARMOR_PAINT_ZONE_TEXELS - 1; e++) edges.push([...table.slice(e * 4, e * 4 + 4)]);
@@ -127,6 +127,26 @@ assert.equal(secondTarget.uniforms.uApOn.value, 0, 'scope exit turns every enemy
 overlay.update({ enabled: true, scoped: true, targets: [target, secondTarget], shellSpec, muzzle: new THREE.Vector3(0, 1, 6), nowMs: 150 });
 overlay.update({ enabled: false, scoped: true, targets: [target, secondTarget], shellSpec, nowMs: 200 });
 assert.equal(target.uniforms.uApOn.value, 0, 'the setting turns the paint off at once');
+// (267) a refresh samples only when the round's view of the vehicle moved: at rest nothing is traced
+{
+  const still = createArmorAimOverlay();
+  const lone = makeTarget('overlay-still', 0);
+  const lonely = still.prime(lone);
+  const at = (muzzle, nowMs) => still.update({ enabled: true, scoped: true, targets: [lone], shellSpec, muzzle, nowMs });
+  at(new THREE.Vector3(0, 1, 6), 0);
+  const painted = lonely.texture.version;
+  at(new THREE.Vector3(0, 1, 6), 1000);
+  at(new THREE.Vector3(0.001, 1, 6), 2000);
+  assert.equal(lonely.texture.version, painted, 'at rest (or a millimetre off) a refresh samples nothing');
+  at(new THREE.Vector3(1, 1, 6), 3000);
+  assert.ok(lonely.texture.version > painted, 'the muzzle moved a metre: the refresh samples again');
+  const moved = lonely.texture.version;
+  lone.combat.eraSpent.add('test_tile');
+  at(new THREE.Vector3(1, 1, 6), 4000);
+  assert.ok(lonely.texture.version > moved, 'ERA spent: the refresh samples again');
+  still.dispose();
+}
+
 const restoreWarm = overlay.warm();
 restoreWarm();
 overlay.clear();
@@ -146,7 +166,7 @@ overlay.dispose();
   const turretOverlay = createArmorAimOverlay();
   const turretEntry = turretOverlay.prime(turretTarget);
   assert.equal(turretEntry.template.footprints, 1, 'one mantlet, one footprint');
-  const foot = [...turretEntry.table.slice(4 * 4 * ARMOR_PAINT_ZONE_TEXELS)].map((v) => +v.toFixed(6));
+  const foot = [...turretEntry.table.slice(4 * 4 * ARMOR_PAINT_ZONE_TEXELS, 4 * (4 * ARMOR_PAINT_ZONE_TEXELS + 2))].map((v) => +v.toFixed(6));
   assert.deepEqual(foot, [-0.3, 0.7, 0.65, 3, 0.3, 1.3, 1.35, 0], 'the footprint box after the four zones, its zone the mantlet\'s');
   // the bare barrel: a cylinder along the gun from just ahead of the turret's front and its mantlet's (z = 1 + 0.05)
   const turretGroup = turretTarget.visual.root.children[1], gun = new THREE.Group();
