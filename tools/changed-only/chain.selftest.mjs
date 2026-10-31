@@ -7,7 +7,12 @@
 //   - --verify checks exactly the ids each step ran;
 //   - an output row edited by hand is found and regenerated;
 //   - the world step (per map, after the tank steps) re-runs only the maps whose wreck donors or config moved, and its
-//     shards and index match the whole-world regen byte for byte.
+//     shards and index match the whole-world regen byte for byte;
+//   - (266) with no fingerprints table, or one recorded on another toolchain, a plain run refuses (exit 2, nothing run);
+//     --ids runs every step on exactly those ids (the world step on the maps casting them), records their rows only
+//     when the table exists, and refuses an unknown or repeated id; --help prints the usage;
+//   - (266) a page built from a step's output (steps.mjs DEPENDENTS, the Field Manual prerender after icons) is checked
+//     after that step ran and rewritten only when stale; a chain where the step did not run never touches it.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -15,7 +20,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { dynamicSites, h16 } from './graph.mjs';
-import { FLEET_API_TOKENS } from './steps.mjs';
+import { DEPENDENTS, FLEET_API_TOKENS, stepByName } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const repo = resolve(import.meta.dirname, '../..');
@@ -115,6 +120,14 @@ const worldTool = [
   "if (args.includes('--check')) process.exitCode = stale ? 1 : 0;",
   "else writeFileSync(`${dir}/index.json`, `${JSON.stringify({ version: 2, maps: entries }, null, 1)}\\n`);", ''].join('\n');
 put(B, 'tools/gen-world.mjs', worldTool);
+// A page built from the seats table (the Field Manual from the icons manifest): no args checks it (exit 1 when stale),
+// --write rewrites it.
+put(B, 'tools/gen-docs.mjs', [
+  "import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+  "const seats = readFileSync('src/vehicles/seats.generated.ts', 'utf8');",
+  'const out = `${JSON.stringify({ seats: seats.length, sum: [...seats.matchAll(/"seat":(-?\\d+)/g)].reduce((sum, match) => sum + Number(match[1]), 0) })}\\n`;',
+  "if (process.argv.includes('--write')) { mkdirSync('docs', { recursive: true }); writeFileSync('docs/fleet.json', out); }",
+  "else if ((existsSync('docs/fleet.json') ? readFileSync('docs/fleet.json', 'utf8') : '') !== out) { console.error('docs: stale'); process.exitCode = 1; }", ''].join('\n'));
 
 // The fixture step table (tools/changed-only/table.mjs), kept outside every closure the resolver walks.
 const tableModule = join(base, 'table.mjs');
@@ -140,8 +153,12 @@ writeFileSync(tableModule, [
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
-  "export const STEPS = [step('controls'), step('fills'), step('seats')];", ''].join('\n'));
+  "export const STEPS = [step('controls'), step('fills'), step('seats')];",
+  "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
+// A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
+const N = join(base, 'N');
+cpSync(B, N, { recursive: true });
 const env = { ...process.env, COT_CHANGED_ONLY_CACHE_DIR: cacheDir, NODE_OPTIONS: '' };
 const summaries = (root) => {
   const dir = join(root, '.qa-dev/changed-only');
@@ -162,7 +179,7 @@ function chain(root, ...flags) {
 }
 const OUTPUTS = ['src/vehicles/controls.generated.ts', 'src/vehicles/fills.generated.ts', 'src/vehicles/seats.generated.ts',
   'server/world-collision-manifests/index.json', 'server/world-collision-manifests/alpha.json',
-  'server/world-collision-manifests/beta.json', 'release/fingerprints.tsv'];
+  'server/world-collision-manifests/beta.json', 'release/fingerprints.tsv', 'docs/fleet.json'];
 const snapshot = (root) => Object.fromEntries(OUTPUTS.map((rel) => [rel, read(root, rel)]));
 const ranIds = (summary, name) => summary.runs.filter((run) => run.step === name).flatMap((run) => run.ids);
 
@@ -174,11 +191,13 @@ assert.deepEqual(boot.verify.map((entry) => `${entry.step}:${entry.check}`), ['c
 assert.equal(boot.final.collision.mode, 'none', 'the world step is recorded too');
 assert.ok(boot.passes >= 2, 'controls re-keyed after the fills it reads moved (a second pass)');
 assert.match(read(B, 'src/vehicles/seats.generated.ts'), /"a1":\{"seat":/);
+assert.deepEqual(boot.dependents.map((entry) => `${entry.step}:${entry.wrote}`), ['docs:true'], 'seats ran: the page built from it is rewritten');
 
 // 2. Unchanged: nothing runs and nothing is rewritten.
 const quiet = snapshot(B);
 const noop = chain(B);
 assert.deepEqual(noop.runs, [], 'an unchanged tree runs no generator');
+assert.deepEqual(noop.dependents, [], 'nor checks the page built from one (negative control)');
 assert.deepEqual(snapshot(B), quiet, 'an unchanged tree is left byte-identical');
 
 // 3. A shared-kit edit: the changed-only tree C against a whole-fleet regen F of the same edit.
@@ -189,6 +208,7 @@ for (const root of [C, F]) put(root, 'src/vehicles/profiles/turretKit.ts', 'expo
 const changedRun = chain(C, '--verify');
 const fullRun = chain(F, '--all');
 assert.deepEqual(snapshot(C), snapshot(F), 'changed-only outputs and manifest are byte-identical to a whole-fleet regen');
+assert.deepEqual(changedRun.dependents.map((entry) => `${entry.step}:${entry.wrote}`), ['docs:true'], 'the kit moved seats rows: the page is rewritten');
 assert.notDeepEqual(snapshot(C), quiet, 'the edit moved rows');
 for (const name of ['controls', 'fills', 'seats']) {
   const ids = new Set(ranIds(changedRun, name));
@@ -210,6 +230,8 @@ const seats = read(C, 'src/vehicles/seats.generated.ts');
 put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '"b1":{"seat":-1}'));
 const repair = chain(C);
 assert.deepEqual(ranIds(repair, 'seats'), ['b1'], 'the hand-edited row is the only one regenerated');
+assert.deepEqual(repair.dependents.map((entry) => `${entry.step}:${entry.wrote}`), ['docs:false'],
+  'seats ran but restored the rows the page was built from: checked, not rewritten');
 assert.deepEqual(snapshot(C), snapshot(F), 'the repair restores the full regen bytes');
 
 // 5. A map config edit rebuilds that map alone (no tank step runs); the whole-world regen agrees byte for byte.
@@ -219,5 +241,81 @@ assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), 
 chain(F, '--all', '--steps=collision');
 assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
 
+/** A chain run expected to refuse: exit 2 and no generator; returns its output. */
+function refused(root, ...flags) {
+  const before = summaries(root).length;
+  try {
+    execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`, '--no-gpu', '--jobs=1', ...flags],
+      { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
+  } catch (error) {
+    assert.equal(error.status, 2, `${flags.join(' ')} refuses with exit 2:\n${error.stderr}`);
+    const written = summaries(root).slice(before);
+    for (const name of written) assert.deepEqual(JSON.parse(read(root, `.qa-dev/changed-only/${name}`)).runs, [], 'a refusal runs no generator');
+    return `${error.stdout}${error.stderr}`;
+  }
+  assert.fail(`${flags.join(' ') || 'a plain run'} in ${root} should have refused`);
+}
+const rowOf = (root, table, id) => JSON.parse(read(root, `src/vehicles/${table}.generated.ts`).replace(/^export const \w+ = /, '').replace(/;\n$/, ''))[id];
+
+// 6. No fingerprints table (main before the 265 bootstrap): a plain run, a dry run and --verify refuse; --help prints usage.
+assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')));
+for (const flags of [[], ['--dry-run'], ['--verify']]) {
+  assert.match(refused(N, ...flags), /no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap/);
+}
+assert.deepEqual(summaries(N), [], 'the table refusals write nothing at all');
+const help = execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), '--help'], { cwd: N, env, encoding: 'utf8' });
+assert.match(help, /--ids=a,b/); assert.match(help, /--all/); assert.match(help, /refuses/);
+assert.match(refused(N, '--ids=a1,a1'), /lists a1 2 times/, 'a repeated id is refused');
+assert.match(refused(N, '--ids=zz'), /roster does not hold: zz/, 'an unknown id is refused before any step runs');
+assert.match(refused(N, '--ids=b1', '--all'), /drop --all/);
+
+// 7. --ids with no table: every step on exactly b1, the world step on the map casting it; nothing recorded.
+const lone = chain(N, '--ids=b1');
+for (const name of ['controls', 'fills', 'seats']) assert.deepEqual(ranIds(lone, name), ['b1'], `${name} ran b1 alone`);
+assert.deepEqual(ranIds(lone, 'collision'), ['beta'], 'the world step ran the map whose wrecks cast b1');
+assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')), 'no table: none created, no rows recorded');
+for (const table of ['controls', 'fills', 'seats']) {
+  // (the fixture generators fill an absent row even under --ids; the chain asked for b1 alone, as ranIds shows)
+  assert.deepEqual(rowOf(N, table, 'b1'), rowOf(B, table, 'b1'), `${table}: b1's row equals the bootstrapped tree's`);
+}
+assert.equal(read(N, 'server/world-collision-manifests/beta.json'), read(B, 'server/world-collision-manifests/beta.json'));
+assert.ok(!existsSync(join(N, 'server/world-collision-manifests/alpha.json')), 'the map that does not cast b1 is untouched');
+
+// 8. A table recorded on another toolchain marks every id: a plain run refuses and names this run's parts; --ids runs.
+const T = join(base, 'T');
+cpSync(B, T, { recursive: true });
+put(T, 'release/fingerprints.tsv', read(T, 'release/fingerprints.tsv').replace(/^toolchain\t\w+$/m, 'toolchain\t0123456789abcdef'));
+assert.match(refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: schema:1, node:v\d+/);
+assert.deepEqual(ranIds(chain(T, '--ids=b1'), 'seats'), ['b1'], '--ids is not blocked by the toolchain');
+
+// 9. With a table: --ids runs exactly those ids and records their rows; the plain chain then finds only the rest, and the
+// tree ends equal to a whole-fleet regen of the same edit. Negative control: the plain chain on a tree with a current
+// table is not refused.
+const S = join(base, 'S'), G = join(base, 'G');
+cpSync(B, S, { recursive: true });
+cpSync(B, G, { recursive: true });
+for (const root of [S, G]) put(root, 'src/vehicles/profiles/alpha.ts', "import { TURRET } from './turretKit.ts';\nexport const ALPHA = { a1: 12 + TURRET, a2: 21 + TURRET };\n");
+const first = chain(S, '--ids=a1');
+for (const name of ['controls', 'fills', 'seats']) assert.deepEqual([...new Set(ranIds(first, name))], ['a1'], `${name} ran a1 alone (a later pass re-runs it when the fills it reads moved)`);
+assert.deepEqual(ranIds(first, 'collision'), ['alpha'], 'the world step ran the map casting a1');
+const rest = chain(S);
+for (const name of ['controls', 'fills', 'seats']) {
+  const ids = ranIds(rest, name);
+  assert.ok(!ids.includes('a1') && ids.includes('a2') && ids.includes('b2'), `${name}: a1's rows were recorded, the rest ran (${ids})`);
+}
+chain(G, '--all');
+assert.deepEqual(snapshot(S), snapshot(G), '--ids then changed-only equals a whole-fleet regen, manifest included');
+assert.deepEqual(chain(S).runs, [], 'a current table: the plain chain runs nothing and is not refused');
+
+// 10. Bootstrapping the pristine tree lifts the refusal (negative control for 6).
+chain(N, '--all');
+assert.deepEqual(chain(N).runs, [], 'after --all the plain chain resolves clean');
+
 const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.join(',')}]`).join(' ');
+// The repository's dependents: the Field Manual prerender after the icons step (its fleet tiles read the icons
+// manifest, which the icons step writes), the public shell after a prerender write.
+assert.deepEqual(DEPENDENTS.map((entry) => `${entry.name}<${entry.after.join(',')}`), ['docsPrerender<icons', 'publicShell<docsPrerender']);
+assert.ok(stepByName('icons').outputs.includes('tankAssets'), 'icons writes the manifest the prerender reads');
+for (const entry of DEPENDENTS) assert.ok(existsSync(join(repo, entry.tool)), `${entry.name}: ${entry.tool} exists`);
+
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);

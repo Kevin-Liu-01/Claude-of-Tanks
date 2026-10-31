@@ -7,6 +7,13 @@
 //   npm run tank:regen:changed -- --all             # every step on the whole fleet first (bootstrap, explicit full)
 //   npm run tank:regen:changed -- --check --all     # nightly: every step's whole-fleet --check; writes nothing
 //   npm run tank:regen:changed -- --verify          # then each step's --check on the ids it ran (whole fleet if it ran full)
+//   npm run tank:regen:changed -- --ids=a,b         # every step on exactly these ids (a lane's own tanks), the world steps
+//                                                   # on the maps that cast them as wreck donors; their rows are recorded
+//                                                   # only when release/fingerprints.tsv exists
+//   npm run tank:regen:changed -- --help
+//   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the installed lock, NODE_OPTIONS),
+//   the chain refuses unless --ids, --all or --check says what to run (266: either way every id resolves as changed, so
+//   the default run used to plan the whole fleet silently).
 //   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel fill parts)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
@@ -16,7 +23,8 @@
 // missionDockSeats feeds the spare-track dock keep-out); the geometry ledger; the manual reference; then centering and
 // icons under the capture lock in holds of at most 20 minutes. Centering moves the presentation anchors every build
 // reads, so the CPU fixpoint (and the ledger) runs again for any id they moved, and the GPU steps repeat until stable.
-// Then the world steps, per map (tools/changed-only/world.mjs): the wreck bake plan, the collision shards and the
+// Then the pages built from what ran (steps.mjs DEPENDENTS: after icons the Field Manual prerender, after a prerender
+// write the public shell), each checked and rewritten only when stale. Then the world steps, per map (tools/changed-only/world.mjs): the wreck bake plan, the collision shards and the
 // assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
 // settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
@@ -28,20 +36,38 @@ import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
+import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+if (args.includes('--help') || args.includes('-h')) {
+  const text = readFileSync(new URL(import.meta.url), 'utf8').split('\n');
+  console.log(text.slice(1, text.findIndex((line, index) => index > 0 && !line.startsWith('//'))).map((line) => line.replace(/^\/\/ ?/, '')).join('\n'));
+  process.exit(0);
+}
+/** A refusal before anything runs: exit 2, one line, nothing written. */
+const refuse = (message) => { console.error(`[regen] ${message}`); process.exit(2); };
 const ALL = args.includes('--all'), CHECK = args.includes('--check'), DRY = args.includes('--dry-run');
 const NO_GPU = args.includes('--no-gpu'), VERIFY = args.includes('--verify'), NO_WORLD = args.includes('--no-world');
 const JOBS = Math.max(1, Number(value('jobs') ?? 4) | 0);
 const MAX_PASSES = Math.max(1, Number(value('max-passes') ?? 3) | 0);
 const ONLY = value('steps')?.split(',').filter(Boolean) ?? null;
 const root = resolve(value('root') ?? process.cwd());
+let IDS = null;
+if (value('ids') !== undefined) {
+  try { IDS = uniqueIds(value('ids').split(',').map((id) => id.trim()).filter(Boolean), 'tank:regen:changed --ids'); }
+  catch (error) { refuse(error.message); }
+  if (!IDS.length) refuse('--ids needs at least one tank id');
+  if (ALL || CHECK) refuse('--ids runs those ids alone: drop --all/--check (or drop --ids for the whole fleet)');
+}
+// No table: every id would resolve as changed (no manifest), so a plain run would silently plan the whole fleet.
+const TABLE_PRESENT = existsSync(resolve(root, MANIFEST_PATH));
+if (!TABLE_PRESENT && !ALL && !CHECK && !IDS) refuse('no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap');
 const table = await loadTable(value('table') ?? null);
-const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, WORLD_STEPS, stepByName } = table;
+const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
 /** A world step's resolver view is the state's per-map half; a tank step's is the state itself. */
 const viewOf = (definition, state) => (definition.universe === 'maps' ? state.world : state);
@@ -49,8 +75,8 @@ const qaDir = join(root, '.qa-dev/changed-only');
 mkdirSync(qaDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const logPath = join(qaDir, `${stamp}.log`);
-const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : 'changed', dryRun: DRY, runs: [], passes: 0, final: null,
-  verify: [], resolveSeconds: [] };
+const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : IDS ? 'ids' : 'changed', ...(IDS ? { ids: IDS } : {}), dryRun: DRY,
+  runs: [], passes: 0, final: null, verify: [], dependents: [], resolveSeconds: [] };
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
 // The summary is rewritten after every step, so a chain stopped part-way still records what it ran.
 const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
@@ -193,13 +219,33 @@ const fresh = () => {
   return state;
 };
 
-/** Resolve and run one step; returns true when it ran (its keys may have moved others). */
-async function step(name, { forceFull = false } = {}) {
+/** --ids: a tank step's exact ids; a world step's maps that cast any of them as a wreck donor. */
+function idsScope(definition, fullState, state) {
+  if (definition.universe !== 'maps') return { mode: 'ids', ids: [...IDS], reasons: { '*': ['--ids'] } };
+  const maps = state.ids.filter((map) => state.donorsOf(definition.name, map).some((id) => IDS.includes(id)));
+  return { mode: maps.length ? 'ids' : 'none', ids: maps, reasons: { '*': ['--ids: the maps casting them as wreck donors'] } };
+}
+
+/** --ids after its first pass, with a table: what the resolver still finds due among the ids (or their donor maps). */
+function idsResolve(definition, fullState, state) {
+  const scope = new Set(idsScope(definition, fullState, state).ids);
+  const due = resolveChanged(state, readManifest(root), { steps: [definition.name] })[definition.name];
+  const ids = due.ids.filter((id) => scope.has(id));
+  return { mode: ids.length ? 'ids' : 'none', ids, reasons: due.reasons };
+}
+
+/**
+ * Resolve and run one step; returns true when it ran (its keys may have moved others). Under --ids the first touch of a
+ * step runs it on every id (`restrict` false); later passes re-run only what is still due among the ids, which needs the
+ * table (without one a step runs once).
+ */
+async function step(name, { forceFull = false, restrict = false } = {}) {
   const definition = stepByName(name);
   const fullState = fresh();
   const state = viewOf(definition, fullState);
   if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
-  const resolved = forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
+  const resolved = IDS ? (restrict && TABLE_PRESENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
+    : forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
   if (resolved.mode === 'none') { log(`[regen] ${name}: 0 changed`); return false; }
   const why = resolved.reasons['*'] ?? [...new Set(Object.values(resolved.reasons).flat())].slice(0, 6);
@@ -214,6 +260,8 @@ async function step(name, { forceFull = false } = {}) {
   summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code });
   saveSummary();
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
+  // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
+  if (IDS && !TABLE_PRESENT) { log(`[regen] ${name}: done in ${seconds} s (no fingerprints table: rows not recorded)`); return true; }
   const after = fresh();
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
@@ -231,7 +279,43 @@ async function aggregates(list, label) {
   }
 }
 
+/**
+ * The pages built from the steps this chain ran (steps.mjs DEPENDENTS): a dependent whose `after` step ran (or whose
+ * earlier dependent wrote) runs its check, and when that finds its output stale its write and the check again. In a dry
+ * run each one that would be checked is listed.
+ */
+async function dependents() {
+  const moved = new Set(summary.runs.filter((run) => run.code === 0 || run.dryRun).map((run) => run.step));
+  for (const dependent of DEPENDENTS) {
+    const after = dependent.after.filter((name) => moved.has(name));
+    if (!after.length) continue;
+    const entry = { step: dependent.name, after };
+    summary.dependents.push(entry);
+    if (DRY) { log(`[regen] ${dependent.name}: would check ${dependent.tool} (after ${after.join(', ')})`); entry.dryRun = true; moved.add(dependent.name); continue; }
+    const check = () => runChild([dependent.tool, ...dependent.check], { niced: true, timeoutS: 900, label: `${dependent.name}-check` });
+    if ((await check()).code === 0) { log(`[regen] ${dependent.name}: current (after ${after.join(', ')})`); entry.wrote = false; continue; }
+    const write = await runChild([dependent.tool, ...dependent.write], { niced: true, timeoutS: 900, label: dependent.name });
+    if (write.code !== 0) throw new Error(`${dependent.name} failed (exit ${write.code}); output in ${write.out}`);
+    const recheck = await check();
+    if (recheck.code !== 0) throw new Error(`${dependent.name}: still stale after ${dependent.write.join(' ')}; output in ${recheck.out}`);
+    log(`[regen] ${dependent.name}: rewritten (after ${after.join(', ')})`);
+    entry.wrote = true;
+    moved.add(dependent.name);
+    saveSummary();
+  }
+}
+
 async function cpuFixpoint(firstPassFull) {
+  if (IDS) {
+    // the fixpoint over the ids alone: one pass without a table (nothing to resolve against)
+    for (let pass = 1; pass <= MAX_PASSES; pass++) {
+      summary.passes++;
+      let moved = false;
+      for (const name of CPU_FIXPOINT_STEPS.filter(selected)) if (await step(name, { restrict: !(firstPassFull && pass === 1) })) moved = true;
+      if (!moved || !TABLE_PRESENT) return;
+    }
+    return;
+  }
   for (let pass = 1; pass <= MAX_PASSES; pass++) {
     summary.passes++;
     let moved = false;
@@ -296,10 +380,15 @@ async function checkAll() {
     log(`[regen] ${definition.name} --check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
   }
   await aggregates(POST_AGGREGATES, 'post');
+  for (const dependent of DEPENDENTS) {
+    const run = await runChild([dependent.tool, ...dependent.check], { niced: true, timeoutS: 900, label: `${dependent.name}-check` });
+    summary.dependents.push({ step: dependent.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
+    log(`[regen] ${dependent.name} check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
+  }
   const state = fresh();
   summary.final = { ...resolveChanged(state, readManifest(root)),
     ...(state.world && !NO_WORLD ? resolveChanged(state.world, readManifest(root), { steps: WORLD_NAMES.filter(selected) }) : {}) };
-  const failed = summary.runs.filter((run) => run.check === 'fail');
+  const failed = [...summary.runs, ...summary.dependents].filter((run) => run.check === 'fail');
   if (failed.length) throw new Error(`--check failed: ${failed.map((run) => run.step).join(', ')}`);
 }
 
@@ -307,16 +396,29 @@ async function checkAll() {
 const AFTER_STEPS = STEPS.filter((entry) => entry.device === 'cpu' && entry.after).map((entry) => entry.name);
 const GPU_STEPS = STEPS.filter((entry) => entry.device === 'gpu').map((entry) => entry.name);
 async function afterSteps(forceFull) {
-  for (const name of AFTER_STEPS.filter(selected)) await step(name, { forceFull });
+  for (const name of AFTER_STEPS.filter(selected)) await step(name, { forceFull, restrict: !forceFull });
 }
 
 const started = Date.now();
 try {
+  if (IDS) {
+    const unknown = IDS.filter((id) => !fresh().ids.includes(id));
+    if (unknown.length) throw Object.assign(new Error(`--ids names ids the roster does not hold: ${unknown.join(', ')}`), { refusal: true });
+  }
+  // A table recorded on another toolchain marks every id on every step: a plain run would plan the fleet as surely as
+  // no table at all (266: the bootstrap's 576f5e32ebc3c262 matched no install on the machine).
+  if (!ALL && !CHECK && !IDS) {
+    const recorded = readManifest(root)?.toolchain, state = fresh();
+    if (recorded && recorded !== state.toolchain) {
+      throw Object.assign(new Error(`the fingerprints table was recorded on another toolchain (${recorded}; this run ${state.toolchain}: `
+        + `${state.toolchainParts.join(', ')}), so every id would be marked: pass --ids=<ids> for a lane-scoped regen, or --all to re-record`), { refusal: true });
+    }
+  }
   if (CHECK) await checkAll();
   else {
     if (!DRY) await aggregates(PRE_AGGREGATES, 'pre');
-    await cpuFixpoint(ALL);
-    await afterSteps(ALL);
+    await cpuFixpoint(ALL || !!IDS);
+    await afterSteps(ALL || !!IDS);
     if (!DRY) await aggregates(POST_AGGREGATES, 'post');
     // A GPU step can write a table every build reads (centering: the presentation anchors), so after each one that ran
     // the CPU steps and the ledger are re-resolved (a no-op when it moved nothing), and the GPU steps repeat until a round
@@ -324,19 +426,22 @@ try {
     if (!NO_GPU) for (let round = 1; round <= MAX_PASSES; round++) {
       let ran = false;
       for (const name of GPU_STEPS.filter(selected)) {
-        if (!await step(name, { forceFull: ALL && round === 1 })) continue;
+        if (!await step(name, { forceFull: ALL && round === 1, restrict: round > 1 })) continue;
         ran = true;
+        // --ids: the CPU steps run again only after a GPU step whose tables a build reads (centering's anchors)
+        if (IDS && !stepByName(name).outputs.some((output) => fresh().buildReadTables.includes(output))) continue;
         await cpuFixpoint(false);
         await afterSteps(false);
       }
-      if (!ran || DRY) break;
+      if (!ran || DRY || IDS) break;
     }
+    await dependents();
     // The world steps last: a wreck donor's build reads the fleet's settled rows. A pass that moves nothing ends it (a
     // wreck plan whose donors changed re-keys its own map and its collision shards once more).
     if (!NO_WORLD && WORLD_NAMES.some(selected)) for (let pass = 1; pass <= MAX_PASSES; pass++) {
       let moved = false;
-      for (const name of WORLD_NAMES.filter(selected)) if (await step(name, { forceFull: ALL && pass === 1 })) moved = true;
-      if (!moved || DRY) break;
+      for (const name of WORLD_NAMES.filter(selected)) if (await step(name, { forceFull: ALL && pass === 1, restrict: pass > 1 })) moved = true;
+      if (!moved || DRY || IDS) break;
     }
     const state = fresh();
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
@@ -344,6 +449,15 @@ try {
     if (worldNames.length && !state.world) throw new Error(`this tree has no world rows (${state.errors.join('; ') || 'no map registry'})`);
     summary.final = { ...resolveChanged(state, readManifest(root), { steps: names }),
       ...(worldNames.length ? resolveChanged(state.world, readManifest(root), { steps: worldNames }) : {}) };
+    if (IDS) {
+      // --ids answers for its own ids (and the maps it ran): other ids may still be due, which the plain chain resolves
+      const mine = new Set([...IDS, ...summary.runs.filter((run) => WORLD_NAMES.includes(run.step)).flatMap((run) => run.ids)]);
+      for (const [name, entry] of Object.entries(summary.final)) {
+        const ids = TABLE_PRESENT ? entry.ids.filter((id) => mine.has(id)) : [];
+        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_PRESENT ? {} : { unrecorded: true }) };
+      }
+      if (!TABLE_PRESENT) log('[regen] no fingerprints table: no rows recorded, no final resolve; run the release check for these ids next');
+    }
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
     for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
@@ -364,7 +478,7 @@ try {
   summary.seconds = Math.round((Date.now() - started) / 1000);
   summary.ok = false; summary.error = String(error.message ?? error);
   log(`[regen] FAILED: ${summary.error}`);
-  process.exitCode = 1;
+  process.exitCode = error.refusal ? 2 : 1; // a refusal ran nothing
 } finally {
   saveSummary();
 }

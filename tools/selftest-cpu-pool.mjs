@@ -57,7 +57,7 @@ export async function runSelftestCpuPool(name, files, options) {
       interruptionSeen ||= Boolean(interrupted(result));
       failures.push(row);
       if (!failure || index < failure.index) failure = row;
-    } else gate.record(file, keys.get(file), result.status, runMs);
+    } else gate.record(file, keys.get(file), result.status, runMs, result.observed);
   };
   // True when an expired batch must yield to a queued acquisition; an expired batch nobody
   // waits for is renewed in place (a fresh window and a refreshed lock).

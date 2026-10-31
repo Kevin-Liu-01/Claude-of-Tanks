@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
@@ -10,6 +10,13 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { createRoundedBoxGeometryCache, cachedRoundedBoxGeometry } from './roundedBoxGeometryCache.ts';
 
 const nativeIds=['m1a1_abrams_hc','challenger2','leclerc_s2','leo2_revolution'];
+// (267, main's load class: both native children hit spawnSync's 180 s wall timeout at load 300-534, where a child takes
+// ~18 s of CPU and its wall time is five to thirty times that) each child is bounded by its own CPU clock, never the
+// wall: the kernel stops it past NATIVE_CHILD_CPU_S of CPU (ulimit -t), and a child whose CPU clock stands still for
+// NATIVE_CHILD_STALL_MIN has hung. The two run side by side.
+const NATIVE_CHILD_CPU_S=Math.max(1,Number(process.env.COT_ROUNDED_BOX_CHILD_CPU_S??120));
+const NATIVE_CHILD_STALL_MIN=Math.max(1,Number(process.env.COT_ROUNDED_BOX_CHILD_STALL_MIN??10));
+const cpuSeconds=(text)=>text.trim().split(':').reduce((total,part)=>total*60+Number(part),0);
 const factoryUrl=new URL('./factoryGeometry.ts',import.meta.url);
 
 function same(a,b,{bounds=true}={}){
@@ -159,14 +166,39 @@ if(process.argv.includes('--native-child')){
   same(second,reference);same(third,reference);assert.deepEqual(third.userData,{});
   second.dispose();third.dispose();reference.dispose();
 
+  const children=new Set();
   function run(reference){
-    const child=spawnSync(process.execPath,[fileURLToPath(import.meta.url),'--native-child',...(reference?['--reference']:[])],
-      {encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});
-    assert.ifError(child.error);assert.equal(child.status,0,child.stderr||child.stdout);
-    const line=child.stdout.split('\n').find(row=>row.startsWith('ROUNDED_BOX_NATIVE '));assert.ok(line,'completed native receipt');
-    return JSON.parse(line.slice('ROUNDED_BOX_NATIVE '.length));
+    return new Promise((resolve,reject)=>{
+      const child=spawn('/bin/sh',['-c',`ulimit -t ${NATIVE_CHILD_CPU_S} && exec "$0" "$@"`,process.execPath,
+        fileURLToPath(import.meta.url),'--native-child',...(reference?['--reference']:[])],{stdio:['ignore','pipe','pipe']});
+      children.add(child);
+      let stdout='',stderr='',stalled=null,lastCpu=-1,movedAt=performance.now();
+      child.stdout.setEncoding('utf8').on('data',(chunk)=>{stdout+=chunk;});
+      child.stderr.setEncoding('utf8').on('data',(chunk)=>{stderr+=chunk;});
+      const watch=setInterval(()=>execFile('ps',['-o','time=','-p',String(child.pid)],(error,out)=>{
+        if(error)return;
+        const cpu=cpuSeconds(out);
+        if(cpu!==lastCpu){lastCpu=cpu;movedAt=performance.now();}
+        else if(performance.now()-movedAt>NATIVE_CHILD_STALL_MIN*60000&&!stalled){
+          stalled=`its CPU clock stood at ${cpu.toFixed(1)} s for ${NATIVE_CHILD_STALL_MIN} min (COT_ROUNDED_BOX_CHILD_STALL_MIN)`;child.kill('SIGKILL');
+        }
+      }),15000);
+      child.on('error',(error)=>{clearInterval(watch);reject(error);});
+      child.on('close',(status,signal)=>{
+        clearInterval(watch);children.delete(child);
+        try{
+          assert.equal(stalled,null,`native child (${reference?'reference':'candidate'}) hung: ${stalled}`);
+          assert.notEqual(signal,'SIGXCPU',`native child (${reference?'reference':'candidate'}) over its CPU limit of ${NATIVE_CHILD_CPU_S} s (COT_ROUNDED_BOX_CHILD_CPU_S): find the cost before raising it`);
+          assert.equal(status,0,stderr||stdout);
+          const line=stdout.split('\n').find(row=>row.startsWith('ROUNDED_BOX_NATIVE '));assert.ok(line,'completed native receipt');
+          resolve(JSON.parse(line.slice('ROUNDED_BOX_NATIVE '.length)));
+        }catch(error){reject(error);}
+      });
+    });
   }
-  const nativeBefore=run(true),nativeAfter=run(false);
+  // (a child that fails stops its sibling: no child outlives the receipt)
+  const [nativeBefore,nativeAfter]=await Promise.all([run(true),run(false)])
+    .catch((error)=>{for(const child of children)child.kill('SIGKILL');throw error;});
   assert.deepEqual(nativeAfter,nativeBefore,'all native geometry attributes, instances, hierarchy, LOD, transforms and serialized materials match original');
   assert.equal(nativeAfter.length,nativeIds.length*2*2);
   for(const row of nativeAfter.filter(row=>row.pass===1)){

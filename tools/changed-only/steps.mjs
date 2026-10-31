@@ -71,7 +71,8 @@ export const AGGREGATES = Object.freeze([
  * chain never runs (a --check audit): the edge to them is dropped. `covered` names paths the file reads that the fleet keys
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
  * name files the tool reads in the chain's mode whose contents reach only its verdicts (printed problems), never a
- * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them.
+ * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them. `namesOnly` globs
+ * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266).
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
@@ -230,6 +231,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
     modeOnly: ['index.html'],
     note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
   },
+  // 266: the public route table names every page (index.html, 404.html, home.html, ...) as a route string. It has no file
+  // access and reads none of them, yet the mention put the pages into the wreckPlan, collision, trenches, centering and
+  // icons keys, so a document-head edit re-ran them on every map and id. A step that serves or reads a page names it in
+  // its own closure, which stays keyed.
+  'src/ui/localeRouting.ts': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    namesOnly: ['*.html'],
+    note: 'route strings for the public pages; no file access, so it reads none of them',
+  },
   'tools/viteI18nStudioCatalog.ts': {
     pin: '525a21e40aa0d260',
     reads: [],
@@ -276,6 +287,39 @@ export const PER_ID_ACCESSORS = Object.freeze({
   },
 });
 
+/**
+ * The fleet balance pass (266, Main: a balance merge re-keyed every generator step on every id through the shared core,
+ * though ~19 ids' outputs moved). fleetRegistration.ts applies it to the registered specs and nothing else imports it,
+ * so what it does reaches a tool only through those specs. It leaves the core, and each id's registered spec is keyed as
+ * two per-id rows (tools/changed-only/rows-child.mjs): SPEC_COMBAT holds the `combat` leaves, SPEC_REST everything else.
+ * Every step keys SPEC_REST; a step whose outputs follow the combat leaves keys SPEC_COMBAT too (its `rowReads`). A lever
+ * on one id's armour, hp, mobility or gun stats marks that id on those steps alone; a lever on any other field marks it
+ * on every step.
+ *   entries   the balance modules; their closure beyond the core is checked like any executed fleet module
+ *   importers the files whose imports of an entry apply it to the registry (any other import keeps it in the core)
+ *   tokens    the importers' lines naming one are pinned (world.mjs tokenPin): a new use of the pass
+ *             breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
+ *   combat    leaf paths of a registered spec (`[]`: every item of an array): what the levers set (measured, every field
+ *             the pass moved on the 266 fleet). tools/changed-only/trace-check.mjs --combat moves them all and fails a step
+ *             whose rows follow without SPEC_COMBAT in its rowReads.
+ */
+export const SPEC_COMBAT = 'specCombat';
+export const SPEC_REST = 'specRest';
+export const BALANCE = Object.freeze({
+  entries: Object.freeze(['src/vehicles/fleetBalancePass.ts']),
+  importers: Object.freeze({
+    'src/vehicles/fleetRegistration.ts': { pin: '09848b33916b3875', note: 'applies the four passes to TANK_SPECS, once each, at registration' },
+  }),
+  tokens: Object.freeze(['fleetBalancePass', 'applyFleetBalancePass', 'applyModernEraFold', 'applyShownTierFloors', 'applySameTierFairness']),
+  combat: Object.freeze([
+    'hp', 'enginePowerHp', 'topSpeedKmh', 'reverseSpeedKmh', 'hullTraverseDegS', 'turretTraverseDegS',
+    'gun.reloadS', 'gun.aimTimeS', 'gun.baseAccuracy', 'gun.autoloader.intraClipS', 'gun.autoloader.fullReloadS',
+    'gun.shells[].name', 'gun.shells[].count', 'gun.shells[].dmg', 'gun.shells[].velocityMps', 'gun.shells[].reloadS',
+    'gun.shells[].pen100Mm', 'gun.shells[].pen1000Mm', 'gun.shells[].pen2000Mm',
+    'armor.hullPlates[].keMm', 'armor.hullPlates[].ceMm', 'armor.turretPlates[].keMm', 'armor.turretPlates[].ceMm',
+  ]),
+});
+
 const ids = (list) => `--ids=${list.join(',')}`;
 
 /**
@@ -314,6 +358,8 @@ export const STEPS = Object.freeze([
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
     flags: ['--seeds=4000,4242,8191', '--qualities=high,low'],
     full: [], scoped: (list) => [ids(list)],
+    // 266 (trace-check --combat): the attachment seats follow the combat leaves
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['missionAttachmentSeats', 'missionDockSeats'],
     files: [], report: '--report', gb: 8, timeoutS: 3600, perIdS: 60,
@@ -331,6 +377,9 @@ export const STEPS = Object.freeze([
   {
     name: 'anatomy', device: 'cpu', tool: 'tools/gen-combat-anatomy.mjs',
     flags: [], full: [], scoped: (list) => [ids(list)],
+    // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
+    // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
@@ -364,6 +413,9 @@ export const STEPS = Object.freeze([
   {
     name: 'centering', device: 'gpu', tool: 'tools/presentation-centering.mjs', entries: ['tools/icons-page.html'],
     flags: ['--update'], full: [], scoped: (list) => [ids(list)],
+    // 266: the page renders in a browser the combat proof (trace-check --combat) cannot reach, so it keys the combat row
+    // unproven; a balance lever re-centres its own ids (about 1.5 s each)
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
     files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
@@ -376,6 +428,8 @@ export const STEPS = Object.freeze([
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],
     flags: [], full: [], scoped: (list) => [ids(list)],
+    // the armour, module and crew views draw each id's plates and stats (266: keyed through the combat row)
+    rowReads: [SPEC_COMBAT],
     check: null, checkScoped: null,
     outputs: ['tankAssets'],
     // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
@@ -398,6 +452,19 @@ export const PRE_AGGREGATES = Object.freeze([
 ]);
 export const POST_AGGREGATES = Object.freeze([
   ['tools/generate-manual-reference.mjs'],
+]);
+
+/**
+ * Pages built from a step's outputs, run after it (266: the Field Manual's fleet chapter tiles come from the icons
+ * step's public/icons/tank-assets.json, so every lane that regenerated icons left src/docs/topics red, and the 265
+ * bootstrap left it stale for 209 ids). A dependent runs only when a step in `after` ran in this chain (or an earlier
+ * dependent in `after` wrote); it runs its own check first and writes only when that finds its output stale, then
+ * checks again. A chain where none of them ran touches none. The public shell inlines the symbols the prerendered
+ * chapters reference, so it follows a prerender write.
+ */
+export const DEPENDENTS = Object.freeze([
+  { name: 'docsPrerender', tool: 'tools/docs-prerender.mjs', check: [], write: ['--write'], after: ['icons'] },
+  { name: 'publicShell', tool: 'tools/public-shell.mjs', check: [], write: ['--write'], after: ['docsPrerender'] },
 ]);
 
 /** Fields of a step that decide what it writes. Scheduling fields (gb, timeouts, chunking, report paths) are not keyed. */

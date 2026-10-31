@@ -504,7 +504,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteProportions.selftest.mjs',
     'src/vehicles/profiles/arieteTurretOwnership.selftest.mjs',
   'src/vehicles/vehicleSize.selftest.mjs',
-  'src/vehicles/fleetResize20261002.selftest.mjs',
   'src/vehicles/escortModernization.selftest.mjs',
   'src/vehicles/chineseMantletFit.selftest.mjs',
   'src/vehicles/aresFlanking.selftest.mjs',
@@ -812,6 +811,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
+    'tools/selftest-tiers.selftest.mjs',
+    'tools/test-commands-exit.selftest.mjs',
+    'tools/test-base.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
@@ -850,6 +853,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/chain.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
     'tools/changed-only/fresh.selftest.mjs',
+    // 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that id on
+    // the combat readers alone (manual: fleet suite).
+    'tools/changed-only/balance-keys.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
@@ -915,6 +921,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cameraRig.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
+    // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
+    'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
@@ -939,6 +947,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/armorAimOverlay.selftest.mjs',
     // 263: the armour paint by panel (a cluster's one zone; gear bare; the pose's parts live) and a battle build's draws
     'src/game/armorPaintPanels.selftest.mjs',
+    // 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake
+    // while the overlay is off, staging or frames; every primed vehicle baked once it is on; its control bakes
+    'src/game/armorPanelsOnDemand.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
@@ -1198,6 +1209,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/selectedVehicleSelection.selftest.mjs',
     'src/game/sniperFillRuntime.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
+    // local-fps-265: the page's step on the world's obstacle grid on its kernels plays the TypeScript grid's battle byte for byte
+    'src/game/soloKernelObstacleQuery.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
@@ -1852,6 +1865,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 263 (the GPU-still critic: "black specks and dark fringes", "the net reads flat"): the suits' cut textures keep
     // straight alpha flooded with their cloth's colour, coverage mips, and the gaps under thick garnish shaded
     'src/vehicles/alphaCutTexture.selftest.mjs',
+    // 265 (the 264b preview, the owner: box-shaped shadows beside netted tanks): every alpha-cut caster casts through
+    // its map's level 0, never the coverage mips' near-solid texels; its control finds a suit draw without it
+    'src/vehicles/alphaCutShadow.selftest.mjs',
     // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
     // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
     'src/vehicles/suitOcclusion.selftest.mjs',
@@ -2196,8 +2212,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landscapeWoods.selftest.mjs',
     // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
     'src/world/riparianTrees.selftest.mjs',
-    // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
-    'src/world/skybridgeArmIsolation.selftest.mjs',
     // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
     'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',

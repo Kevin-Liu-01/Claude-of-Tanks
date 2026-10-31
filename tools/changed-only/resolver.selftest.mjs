@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
+import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
+import { tokenPin } from './world.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-'));
@@ -218,5 +220,103 @@ const m4 = bootstrap(state({ cfg: modeOnly }));
 put('public/out/a1.webp', 'image-4');
 assert.equal(resolveChanged(state({ cfg: modeOnly }), m4).other.mode, 'none', 'a modeOnly path is not an input');
 put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
+
+// 11. Test-only files never key a build (266): a fleet record naming its receipt (as docs/references/concepts/*.json do)
+// keeps the record keyed and the receipt out, so an edit to the receipt or to the test runner marks no id. Negative
+// controls: an edit to the record itself, or to the kit beside it, still marks every id.
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.4 };\n");
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 1;\n');
+const s5 = state(), m5 = bootstrap(s5);
+assert.ok(s5.partition.core.includes('docs/references/concepts/alpha.json'), 'the record a core module names is a core input');
+assert.ok(!s5.partition.core.includes('src/vehicles/profiles/alpha.selftest.mjs'), 'the receipt it names is not');
+put('src/vehicles/profiles/alpha.selftest.mjs', "import './alpha.ts';\nconsole.log('alpha, edited');\n");
+put('tools/run-selftests.mjs', 'export const RUNNER = 2;\n');
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'none:', other: 'none:' }, 'a receipt or test-runner edit marks no id');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs', note: 'x' })}\n`);
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'the record itself still keys the core');
+put('docs/references/concepts/alpha.json', `${JSON.stringify({ id: 'a1', receipt: 'src/vehicles/profiles/alpha.selftest.mjs' })}\n`);
+put('src/vehicles/kit.ts', "export const RECORD = 'docs/references/concepts/alpha.json';\nexport const KIT = { wheel: 0.45 };\n");
+assert.deepEqual(changed(resolveChanged(state(), m5)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a kit edit still marks every id');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+
+// 13. Route strings are no input (266): a module that only names the public pages (src/ui/localeRouting.ts's route
+// table) declares them `namesOnly`, so a document-head edit marks no id. Controls: undeclared, the mention keys the step
+// (466cea1178 marked centering, icons and every map's world steps that way); a tool that reads a page itself still keys it.
+const read = (rel) => readFileSync(join(root, rel), 'utf8');
+const genSizes = read('tools/gen-sizes.mjs'), genOther = read('tools/gen-other.mjs');
+put('src/ui/routes.ts', "export const ROUTES = [{ path: '/', file: 'index.html' }, { path: '/404', file: '404.html' }];\n");
+put('index.html', '<!doctype html><html><head><title>t</title></head><body></body></html>\n');
+put('404.html', '<!doctype html><html><head><title>404</title></head></html>\n');
+put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nimport { ROUTES } from '../src/ui/routes.ts';\nexport default [createTank, ROUTES];\n");
+const routes = { ...config, declared: { 'src/ui/routes.ts': { pin: '', reads: [], namesOnly: ['*.html'] } } };
+const head = (title) => put('index.html', `<!doctype html><html><head><title>${title}</title><meta name="og" content="x"></head><body></body></html>\n`);
+const m6 = bootstrap(state({ cfg: routes })), m7 = bootstrap(state());
+assert.ok(!state({ cfg: routes }).steps.other.toolFiles.includes('index.html') && state().steps.other.toolFiles.includes('index.html'));
+head('t2');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m6)), { sizes: 'none:', other: 'none:' }, 'a document-head edit marks no id');
+assert.equal(resolveChanged(state(), m7).other.mode, 'all', 'control: undeclared, the route string keys the step');
+put('tools/gen-sizes.mjs', "import { readFileSync } from 'node:fs';\nimport { createTank } from '../src/vehicles/tankFactory.ts';\nimport { round } from './helper.mjs';\nexport const PAGE = readFileSync('index.html', 'utf8');\nexport default [createTank, round];\n");
+const m8 = bootstrap(state({ cfg: routes }));
+head('t3');
+assert.deepEqual(changed(resolveChanged(state({ cfg: routes }), m8)), { sizes: 'all:a1,a2,b1', other: 'none:' }, 'control: a tool reading the page itself keeps it keyed');
+put('tools/gen-sizes.mjs', genSizes);
+put('tools/gen-other.mjs', genOther);
+
+// 14. The balance pass is keyed per id through the spec rows, not the core (266, Main: a balance merge re-keyed every
+// step on every id). Its registration import leaves it out of the core; a lever on one id's combat leaves marks that id on
+// the steps that read them (rowReads SPEC_COMBAT) alone, a lever on any other field marks it on every step. Controls: the
+// same edit through the core (no balance declaration), a second importer and a stale importer pin each mark every id.
+const registration = read('src/vehicles/fleetRegistration.ts');
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length;\n');
+put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\n");
+const tokens = ['balance.ts', 'applyBalance'];
+const balanced = { ...config, balance: { entries: ['src/vehicles/balance.ts'], tokens, combat: ['hp'],
+  importers: { 'src/vehicles/fleetRegistration.ts': { pin: tokenPin(read('src/vehicles/fleetRegistration.ts'), tokens) } } } };
+const readers = () => { const steps = baseSteps(); steps[1].rowReads = [SPEC_COMBAT]; return steps; };
+const specRows = (moved = {}) => { const rows = rowsData(); rows.rows[SPEC_COMBAT] = { a1: 'c1', a2: 'c2', b1: 'c3', ...moved.combat };
+  rows.rows[SPEC_REST] = { a1: 'x1', a2: 'x2', b1: 'x3', ...moved.rest }; return rows; };
+const lever = (rows, cfg = balanced) => changed(resolveChanged(state({ steps: readers(), rows, cfg }), bootstrap(state({ steps: readers(), rows: specRows(), cfg }))));
+const s9 = state({ steps: readers(), rows: specRows(), cfg: balanced });
+assert.deepEqual([s9.partition.balance, s9.partition.balanceReason, s9.partition.core.includes('src/vehicles/balance.ts')],
+  [['src/vehicles/balance.ts'], null, false], 'the registration import leaves the pass out of the core');
+assert.deepEqual([s9.steps.sizes.rowTables, s9.steps.other.rowTables], [['anchors', SPEC_REST], ['anchors', SPEC_COMBAT, SPEC_REST]]);
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length + 1;\n'); // the lever's own edit: no key reads the file
+assert.deepEqual(lever(specRows({ combat: { a2: 'c2b' } })), { sizes: 'none:', other: 'ids:a2' }, 'a combat lever marks its id on the reader alone');
+assert.ok(resolveChanged(state({ steps: readers(), rows: specRows({ combat: { a2: 'c2b' } }), cfg: balanced }),
+  bootstrap(s9)).other.reasons.a2.includes(`row ${SPEC_COMBAT}[a2]`));
+assert.deepEqual(lever(specRows({ rest: { a2: 'x2b' } })), { sizes: 'ids:a2', other: 'ids:a2' }, 'negative control: a non-combat lever marks its id on every step');
+assert.deepEqual(lever(specRows()), { sizes: 'none:', other: 'none:' }, 'an edit that moves no spec marks nothing');
+const unbalanced = { ...config, balance: null }, m9 = bootstrap(state({ steps: readers(), rows: specRows(), cfg: unbalanced }));
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length + 2;\n');
+assert.deepEqual(changed(resolveChanged(state({ steps: readers(), rows: specRows({ combat: { a2: 'c2b' } }), cfg: unbalanced }), m9)),
+  { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'control: through the core, the same lever marks every id on every step');
+put('src/vehicles/kit.ts', "import './balance.ts';\nexport const KIT = { wheel: 0.4 };\n");
+const imported = state({ steps: readers(), rows: specRows(), cfg: balanced });
+assert.deepEqual([imported.partition.balance, imported.partition.balanceReason, imported.partition.core.includes('src/vehicles/balance.ts')],
+  [[], 'another fleet module imports it', true], 'control: a second importer keeps the pass in the core');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\nexport const TOTAL = applyBalance(ALL_TANK_IDS);\n");
+assert.match(state({ steps: readers(), rows: specRows(), cfg: balanced }).partition.balanceReason, /importer pin stale: src\/vehicles\/fleetRegistration\.ts \(now [0-9a-f]{16}\)/,
+  'control: a new use of the pass in its importer keeps it in the core until reviewed');
+put('src/vehicles/fleetRegistration.ts', registration);
+
+// 15. A module a table imports (266: auxiliaryRoofGuns.generated.ts decodes its rows with auxiliaryRoofGunsCodec.ts) is
+// keyed through the rows it decodes: the partition names it for the runtime traces, outside the core. Controls: one a
+// core module imports too is core; one that reads files ends the mention rule like any executed fleet module.
+const anchors = read('src/vehicles/anchors.generated.ts');
+put('src/vehicles/anchorsCodec.ts', 'export const decode = (rows) => rows;\n');
+put('src/vehicles/anchors.generated.ts', "import { decode } from './anchorsCodec.ts';\nexport const ANCHORS = decode({ a1: 1, a2: 2, b1: 3 });\n");
+const decoded = state();
+assert.deepEqual([decoded.partition.tableImports, decoded.partition.core.includes('src/vehicles/anchorsCodec.ts'), decoded.globalReasons],
+  [['src/vehicles/anchorsCodec.ts'], false, []], 'a table\'s decoder is named apart, outside the core');
+put('src/vehicles/kit.ts', "import { decode } from './anchorsCodec.ts';\nexport const KIT = decode({ wheel: 0.4 });\n");
+assert.deepEqual([state().partition.tableImports, state().partition.core.includes('src/vehicles/anchorsCodec.ts')], [[], true],
+  'control: a decoder the core imports is core');
+put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
+put('src/vehicles/anchorsCodec.ts', "import { readFileSync } from 'node:fs';\nexport const decode = (rows) => (readFileSync('x'), rows);\n");
+assert.match(state().globalReasons.join(), /anchorsCodec\.ts can read files/, 'control: a decoder that reads files fails closed');
+put('src/vehicles/anchors.generated.ts', anchors);
 
 console.log('changed-only resolver.selftest: PASS');

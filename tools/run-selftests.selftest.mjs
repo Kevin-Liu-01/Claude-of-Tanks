@@ -1,20 +1,22 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { defaultTierFiles } from './selftest-tiers.mjs';
+import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
-assert.deepEqual(selftestCommand(['all', '--all']).files, Object.values(SELFTEST_SUITES).flat(),
-  'one cache-bypass command runs every group, including former npm lifecycle hooks');
-assert.deepEqual(selftestCommand([]).files, Object.values(SELFTEST_SUITES).flat());
+// 266: a selection is the default tier (tools/selftest-tiers.mjs); manual suites only by name (--heavy, npm run test:heavy)
+assert.deepEqual(selftestCommand(['all', '--all']).files, defaultTierFiles(Object.values(SELFTEST_SUITES).flat()),
+  'one cache-bypass command runs every group of the default tier, including former npm lifecycle hooks');
+assert.deepEqual(selftestCommand([]).files, defaultTierFiles(Object.values(SELFTEST_SUITES).flat()));
 assert.equal(selftestCommand(['core', '--plan']).plan, true);
 assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
 assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
@@ -24,11 +26,11 @@ assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-te
 // Gate P8 (2026-10-01): --only selects registry entries by glob; --shard=i/n runs one of n
 // deterministic shards that together cover the selection exactly once, each in registry order.
 {
-  const registry = Object.values(SELFTEST_SUITES).flat();
+  const registry = defaultTierFiles(Object.values(SELFTEST_SUITES).flat()); // what a selection draws from (266)
   assert.deepEqual(selftestCommand(['all', '--only=tools/run-selftests*.mjs']).files, ['tools/run-selftests.selftest.mjs']);
   const vehicles = selftestCommand(['--only=src/vehicles/**']).files;
   assert.deepEqual(vehicles, registry.filter(file => file.startsWith('src/vehicles/')), 'a tree glob keeps registry order');
-  assert.ok(vehicles.length > 400);
+  assert.ok(vehicles.length > 100);
   assert.deepEqual(selftestCommand(['core', '--only=tools/{capture-lock,selftest-cpu-pool}.selftest.mjs']).files,
     SELFTEST_SUITES.core.filter(file => ['tools/capture-lock.selftest.mjs', 'tools/selftest-cpu-pool.selftest.mjs'].includes(file)),
     'a group narrows first');
@@ -37,7 +39,7 @@ assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-te
   assert.throws(() => selftestCommand(['--only=nowhere/**']), /matched no registered receipt/);
   for (const durations of [undefined, new Map()]) {
     const shards = [1, 2, 3, 4, 5, 6].map(index => selftestCommand(['all', `--shard=${index}/6`], durations ? { durations } : undefined));
-    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the registry exactly once');
+    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the default tier exactly once');
     for (const shard of shards) assert.deepEqual(shard.files, registry.filter(file => shard.files.includes(file)), 'registry order inside a shard');
     assert.equal(new Set(shards.map(shard => shard.shard.partition)).size, 1, 'every shard job derives the same partition');
     assert.equal(shards[0].shard.selected, registry.length);
@@ -450,17 +452,18 @@ assert.deepEqual(timings, [
 ], 'execution and FIFO time stay separate, and the files after a failure are still measured');
 
 for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
-  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: SELFTEST_GRAPH_GUARD },
-    'respect caller opt-out, explicit cache and coverage (only the graph guard is added)');
+  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: `${SELFTEST_GRAPH_GUARD} ${SELFTEST_OBSERVER}` },
+    'respect caller opt-out, explicit cache and coverage (only the graph guard and the observer are added)');
 }
 const capped = { NODE_OPTIONS: '--max-old-space-size=4096' };
-assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD}`, 'the heap cap is kept');
-assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the guard is added once');
+assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD} ${SELFTEST_OBSERVER}`, 'the heap cap is kept');
+assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the preloads are added once');
 assert.equal(capped.NODE_OPTIONS, '--max-old-space-size=4096', 'never mutate parent environment');
-assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'the guard never keys a proof');
+assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'neither preload keys a proof');
 assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
 assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`,
   'assert-graph-guard.selftest spells the same flag');
+assert.equal(SELFTEST_OBSERVER, `--import=${new URL('./selftest-observe.mjs', import.meta.url).href}`);
 // every declared-input receipt names all the code it runs: each declared file's relative imports, and every repository
 // path a receipt joins onto the checkout, are declared too (a missed edge would reuse a PASS the code no longer earns)
 {
@@ -578,6 +581,29 @@ try {
   const realLog = join(logFixture, 'speaks.log');
   assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
   assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  // 266: with an observe directory the child and every process it starts record what they read, listed and probed
+  // (tools/selftest-observe.mjs); the result carries the merged checkout paths and the directory is gone. Without one
+  // nothing is recorded.
+  const observeRoot = join(logFixture, 'checkout'), observeDir = join(logFixture, 'observe');
+  mkdirSync(join(observeRoot, 'data', 'pages'), { recursive: true });
+  for (const name of ['a.json', 'b.json']) writeFileSync(join(observeRoot, 'data', 'pages', name), '{}');
+  writeFileSync(join(observeRoot, 'child.mjs'), "import { readFileSync } from 'node:fs'; readFileSync('data/pages/' + ['b', 'json'].join('.'));\n");
+  writeFileSync(join(observeRoot, 'observed.mjs'), [
+    "import { existsSync, readdirSync, readFileSync } from 'node:fs';",
+    "import { readFile } from 'node:fs/promises';",
+    "import { spawnSync } from 'node:child_process';",
+    "const name = ['a', 'json'].join('.');",
+    "readFileSync(`data/pages/${name}`); await readFile(new URL('./data/pages/a.json', import.meta.url));",
+    "readdirSync('data/pages'); existsSync('data/missing.json'); readFileSync('/etc/hosts');",
+    "process.exitCode = spawnSync(process.execPath, ['child.mjs'], { stdio: 'inherit' }).status;",
+  ].join('\n'));
+  const observedRun = await runSelftestFile('observed.mjs', { cwd: observeRoot, observeDir, logFile: join(logFixture, 'observed.log') });
+  assert.equal(observedRun.status, 0, readFileSync(join(logFixture, 'observed.log'), 'utf8'));
+  assert.deepEqual(observedRun.observed, { reads: ['child.mjs', 'data/pages/a.json', 'data/pages/b.json', 'observed.mjs'],
+    lists: ['data/pages'], probes: ['data/missing.json'] }, 'computed, promise and spawned reads, the listing and the probe; nothing outside the checkout');
+  assert.equal(existsSync(observeDir), false, 'the observe directory is removed');
+  assert.equal('observed' in await runSelftestFile('observed.mjs', { cwd: observeRoot, logFile: join(logFixture, 'observed.log') }), false,
+    'without an observe directory nothing is observed');
   // test-speed R9a: the runner sets the run directory on its own environment after it built the cache, and every child
   // it launches then reads it (a judge finds its shards' records there), with or without a preset compile cache
   const runDirProbe = join(logFixture, 'run-dir-probe.mjs');

@@ -2242,6 +2242,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   getSpec,
   prebakeSharedTextures,
   armorAimOverlay,
+  // (265) the armour paint's panels bake at staging only while the overlay is on
+  armorPanelsWanted: () => !!input.getSettings().armorAimOverlay,
   forwardProgramWarm,
   // (perf-245) a staged tank draws once offscreen, every mesh at once, whatever the warm camera frames
   drawWarm: (root) => {

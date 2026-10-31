@@ -16,7 +16,7 @@ import {
   FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
   type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
-import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
+import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -3399,6 +3399,8 @@ function addMerged(
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = name;
   mesh.castShadow = mesh.receiveShadow = true;
+  // (265) its shadow through the cut the eye sees up close, never the coarse mips' near-solid box
+  castThroughAlphaCut(mesh);
   // A cut net encloses real exterior air: it is suspended dressing, outside the armor's zero-hole scan.
   mesh.userData.combatHitboxRole = 'nonArmor';
   mesh.userData.continuityRole = 'open-lattice';
@@ -5737,6 +5739,7 @@ function* addGhillieOwner(
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
+    castThroughAlphaCut(mesh);
     if (clearance) {
       mesh.userData.fieldSuit = true;
       // the fix round: a field card lifted over a load keeps the rule it was placed by (the field lens views)

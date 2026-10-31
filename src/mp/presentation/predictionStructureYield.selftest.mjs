@@ -75,10 +75,12 @@ function pageWorld() {
   const mirror = createDestructionMirror(world, null);
   const house = mirror.structures.byId(HOUSE);
   const authority = createStructureDamage(createDedicatedWorldCollision(MAP).getObstacles(), [], { wallMaterial });
+  // object3d-assert-ok: a structure's wall material is a StructureMaterial string ('masonry', 'adobe', 'concrete')
   assert.equal(house.material, authority.byId(HOUSE).material, `the page prices the house as the authority does (${house.material})`);
   const adobe = { ...config, props: { ...config.props, architecture: 'wadirum' } };
   const earthWorld = createDedicatedWorldCollision(MAP);
   earthWorld.config = adobe;
+  // object3d-assert-ok: a structure's wall material is a StructureMaterial string ('masonry', 'adobe', 'concrete')
   assert.equal(createDestructionMirror(earthWorld, null).structures.byId(HOUSE).material, wallMaterialForStyle('wadirum'),
     'an earth-walled map\'s houses are adobe on the page too');
   const record = world.getObstacles().find((r) => r.structureIdx === HOUSE);

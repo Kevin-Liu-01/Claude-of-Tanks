@@ -309,7 +309,8 @@ try {
   };
   /** One view: the frame, the frame without the ground occlusion, the tank mask and the metrics. */
   const measureView = async (prefix, sign) => {
-    await page.evaluate(() => window.__GWB.toggle({}));
+    // (265) the ground occlusion is off by default: the base frame turns it on
+    await page.evaluate(() => window.__GWB.toggle({ VEHICLE_GROUND_AO: 1 }));
     await page.evaluate(() => window.__GWB.frames(16));
     await sleep(400);
     await shot(`${prefix}.png`);

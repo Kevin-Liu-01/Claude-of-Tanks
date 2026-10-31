@@ -9,7 +9,7 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { LateFxPass } from './post.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
 import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
-import { baseDynamicScale, dynamicScaleFloor, internalPixelRatio } from './renderScalePolicy.ts';
+import { baseDynamicScale, carriedDynamicScale, dynamicScaleFloor, internalPixelRatio, RCAS_MIN_SCALE } from './renderScalePolicy.ts';
 import { MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs } from './frameLoopScheduler.ts';
 import { PRESETS } from './quality.ts';
 
@@ -40,7 +40,7 @@ assert.ok(targetMs, 'production cadence target exists');
 const createSizing = new Function(stripTypeScriptTypes(`
 function createSizing(ports) {
   const { renderer, composer, gtao, bloom, sceneAA, aerial, upscaler, size, THREE,
-    AdaptiveQualityPolicy, baseDynamicScale, internalPixelRatio, dynamicScaleFloor,
+    AdaptiveQualityPolicy, baseDynamicScale, carriedDynamicScale, internalPixelRatio, dynamicScaleFloor, RCAS_MIN_SCALE,
     MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat } = ports;
   let preset = initialPreset;
   const maxSamples = 4;
@@ -56,7 +56,7 @@ function createSizing(ports) {
   const qualityPolicy = new AdaptiveQualityPolicy(scale);
   // 2026-10-02: the governor's sampled GPU time (gpuFrameTimer.ts) — a reset clears its window; no GPU in this receipt
   const gpuFrameTimer = { reset() {} };
-  let quality = 'high', adaptiveSuspended = false;
+  let quality = 'high', adaptiveSuspended = false, carriedRasterRatio = null;
   let dynPin = null, dynClock = 17, dynEma = 19, dynRingN = 4, dynRingI = 3;
   let dynWinFrames = 6, dynWinMisses = 2, dynBudgetMs = 3, dynBestCadenceMs = 4, dynLastDecision = 1;
   ${targetMs}
@@ -75,7 +75,12 @@ function createSizing(ports) {
   const publishAAState = () => {};
   const resolveLightFx = () => {}; // round 69: the light-effect levers re-resolve on a preset change (stubbed like the AA state)
   ${presetChange}
-  return { post, policy: qualityPolicy, changePreset: p => onPreset(p),
+  // (local-fps-265) the governor's own tier change: the raster it stood at rides the switch (post.ts applyAdaptiveQualityAction)
+  const changePresetCarried = (p) => {
+    carriedRasterRatio = internalPixelRatio(renderer.getPixelRatio(), preset, qualityPolicy.dynamicScale);
+    try { onPreset(p); } finally { carriedRasterRatio = null; }
+  };
+  return { post, policy: qualityPolicy, changePreset: p => onPreset(p), changePresetCarried,
     seedHistory: () => { emaLastMs = 100; }, history: () => emaLastMs,
     governor: () => ({ dynPin, dynEma, dynRingN, dynRingI, dynWinFrames, dynWinMisses,
       dynBudgetMs, dynBestCadenceMs, dynLastDecision }),
@@ -120,8 +125,8 @@ function fixture(initialPreset = PRESETS.high, scale = 1, ratio = 1, { productio
   const emaPrev = gtao.pdRenderTarget.clone(), emaCur = gtao.pdRenderTarget.clone();
   const emaMat = { uniforms: { uTexel: { value: new THREE.Vector2() } } };
   const owner = createSizing({ renderer, composer, gtao, bloom, sceneAA, aerial, upscaler,
-    size, THREE, AdaptiveQualityPolicy, baseDynamicScale, internalPixelRatio, dynamicScaleFloor,
-    MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat });
+    size, THREE, AdaptiveQualityPolicy, baseDynamicScale, carriedDynamicScale, internalPixelRatio, dynamicScaleFloor,
+    RCAS_MIN_SCALE, MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat });
   const passes = [sceneAA, aerial, gtao, lateFx, bloom];
   for (const [index, pass] of passes.entries()) {
     const original = pass.setSize;
@@ -204,6 +209,21 @@ try {
     const before = f.dimensions(); f.policy.setDynamicScale(0.5); f.clear(); f.resize();
     traversals(f, 1, 'policy scale changes effective raster');
     assert.notDeepEqual(f.dimensions().color, before.color);
+  }
+  {
+    // (local-fps-265) the governor's tier cut carries its raster: Auto High at its 0.67 native floor cut to an Auto Medium
+    // (High's native floor) stays at 0.67 instead of restarting at Medium's full raster; a plain preset change (the
+    // settings, a phase reset) still starts the new preset at its base
+    const autoMedium = { ...PRESETS.medium, nativeDynMin: PRESETS.medium.autoNativeDynMin };
+    const f = fixture(PRESETS.high, 0.67, 1); f.resize();
+    assert.equal(f.renderer.domElement.dataset.renderScale, '0.670');
+    f.changePresetCarried(autoMedium);
+    assert.equal(f.policy.dynamicScale, 0.67, 'the cut lands on the raster it left');
+    assert.equal(f.renderer.domElement.dataset.renderScale, '0.670', 'never more pixels than before the cut');
+    f.changePresetCarried(PRESETS.high);
+    assert.equal(f.renderer.domElement.dataset.renderScale, '0.670', 'a failed trial\'s restore keeps the raster');
+    f.changePreset(autoMedium);
+    assert.equal(f.renderer.domElement.dataset.renderScale, '1.000', 'an uncarried change starts at the base');
   }
   {
     // High's native floor: a 1080p laptop at DPR 1 keeps the governor's 0.91 instead of being fenced back to 1, and
