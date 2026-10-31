@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1472 | 139.1 |
+| KEEP | 1473 | 139.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1121.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2134 | 1260.6 | 211.5 |
-| After: the default tier | 1472 | 139.1 | 19.8 |
+| Before: every receipt (npm test without the tiers) | 2135 | 1260.7 | 211.5 |
+| After: the default tier | 1473 | 139.2 | 19.8 |
 
 Default tier: 11.0 % of the whole registry's CPU; 15.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.1 min pool, 2.5 min browser receipts.
 
@@ -807,7 +807,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1472)
+## KEEP (1473)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1198,6 +1198,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/visual-census-lock.selftest.mjs` | 4.0 | KEEP | tool contract, 4.0 s: 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/i18n-literal-lint.selftest.mjs` | 3.9 | KEEP | tool contract, 3.9 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/mediaPlayer.selftest.mjs` | 3.7 | KEEP | site, manual or app contract, 3.7 s: brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds, o | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/cpu-burners.selftest.mjs` | 3.4 | KEEP | tool contract, 3.4 s: CPU burners leave with their parent (tools/cpu-burners.test-support.mjs; 2026-10-30, Main: a runner's alarm en | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/eraModuleKit.selftest.mjs` | 3.2 | KEEP | vehicle rule, 3.2 s: eraModuleKit.selftest.mjs — the permanent stock's banded raycast (UI-LOCKDOWN E, 2026-10-25): every seat ray a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/tokens.selftest.mjs` | 3.1 | KEEP | interface contract, 3.1 s: 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5 colour- | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/renderLayers.selftest.mjs` | 3.0 | KEEP | renderer contract, 3.0 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1347,6 +1348,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/hero-cards.selftest.mjs` | 1.4 | KEEP | tool contract, 1.4 s: 2026-10-17 tank hero cards: the showroom camera with the whole tank facing left, the turret turned modestly to | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/gunshipLens.selftest.mjs` | 1.3 | KEEP | effects contract, 1.3 s: (ac130-barrels-230, the owner) the guns beside the gimbal lens: seen firing and recoiling, their rounds, missi | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/hot-path-alloc.selftest.mjs` | 1.3 | KEEP | tool contract, 1.3 s: hot-path-alloc.selftest.mjs — the receipt that keeps marked hot paths allocation-free (2026-10-24, lockdown-25 | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/groundTrainIrregularity.selftest.mjs` | 1.3 | KEEP | world rule, 1.3 s: 264b: the sand trains' irregularity, a turned field's lift per channel | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/docs/docsPrint.selftest.mjs` | 1.2 | KEEP | site, manual or app contract, 1.2 s: 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page b | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/blackWorldGuard.selftest.mjs` | 1.2 | KEEP | renderer contract, 1.2 s: 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allo | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2281,5 +2283,4 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/black-world-repro-summary.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: black-world-repro-summary.selftest.mjs — the repro summary's arithmetic (black-screen-228): a frame is BLACK-W | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/world/groundTrainIrregularity.selftest.mjs` | n/a | KEEP | world rule, n/a s: 264b: the sand trains' irregularity, a turned field's lift per channel | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/cpu-burners.selftest.mjs` | n/a | KEEP | tool contract, n/a s: CPU burners leave with their parent (tools/cpu-burners.test-support.mjs; 2026-10-30, Main: a runner's alarm en | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/gate-repin.selftest.mjs` | 0.1 | KEEP | test, gate or release tooling, 0.1 s: 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is | default tier (npm test, the release gate; lane mode by its closure) |
