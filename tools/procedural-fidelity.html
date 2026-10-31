@@ -2075,10 +2075,10 @@ if (params.get('geo')) {
   };
   const dimRows = [];
   const specDimensions = spec.dims || {};
-  const dimCheck = (name, actual, published, method) => {
+  const dimCheck = (name, actual, published, extra) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
-    dimRows.push({ name, actual, published, pct, ...(method && { method }) });
+    dimRows.push({ name, actual, published, pct, ...extra });
   };
   const pixelSpanZ = (part, visual = procedural, other = reference, cam = camsG.side) => {
     const m = gMask(visual, other, cam, part);
@@ -2152,8 +2152,9 @@ if (params.get('geo')) {
       pct:heightIntervalPct(ext.h, procRoofTop, publishedHeight) });
     const donorId = FLEET_RENEWAL_DONORS[id] ?? spec.variantOf;
     const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
-    const hullTarget = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims, ownOracle ? referenceDimensions.hullLengthM : null);
-    if (ext) dimCheck('hullLengthM', ext.len, hullTarget.published, hullTarget.method);
+    const { published: hullTarget, ...hullBasis } = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims,
+      ownOracle ? referenceDimensions.hullLengthM : null);
+    if (ext) dimCheck('hullLengthM', ext.len, hullTarget, hullBasis);
     dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
     dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }

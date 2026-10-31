@@ -4,7 +4,7 @@
 // 'antenna' seat role, leaves the measured height unchanged (negative controls), while raising the hull moves it. Main's
 // later rulings: a published height is an interval (body top to roof-fittings top, whips out of both) and hull length
 // comes from the hull's own trace, so a thick barrel column never counts as hull; that trace is a silhouette, so a build
-// on a donor's frame is held to its own oracle's span or the donor's silhouette, never the donor's structural datum.
+// on a donor's frame is held to the donor's silhouette (its own oracle's span beside it), never the structural datum.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import '../src/vehicles/tankFactory.ts';
@@ -154,7 +154,8 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   const donor = { hullLengthM: 6.3563, silhouetteHullLengthM: 7.1932 };
   const copied = { hullLengthM: 6.3563 };
   assert.deepEqual(hullLengthTarget({ ...copied, silhouetteHullLengthM: 7.4 }, donor, 6.9), { published: 7.4 }, 'its own silhouette first');
-  assert.deepEqual(hullLengthTarget(copied, donor, 6.9), { published: 6.9, method: 'donor frame: own oracle hull span' });
+  assert.deepEqual(hullLengthTarget(copied, donor, 6.9), { published: 7.1932, method: 'donor frame: donor silhouette', ownOracleHullSpan: 6.9 },
+    'the donor\'s silhouette first; the own oracle\'s span is informational');
   assert.deepEqual(hullLengthTarget(copied, donor, null), { published: 7.1932, method: 'donor frame: donor silhouette' });
   // negative controls: a hull length of its own, or a donor without a silhouette, keeps the published hull length
   assert.deepEqual(hullLengthTarget({ hullLengthM: 6.54 }, donor, 6.9), { published: 6.54 });
