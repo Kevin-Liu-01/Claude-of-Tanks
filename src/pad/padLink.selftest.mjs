@@ -60,11 +60,14 @@ assert.equal(desktop.state.kind, 'live', 'relay frames make the desktop live');
 assert.equal(desktop.state.path, 'relay');
 assert.equal(desktop.direct, false);
 
-// the relay is rate-limited at the phone: a burst of changed frames inside one relay interval sends one
+// the relay is rate-limited at the phone: a burst of changed frames inside one relay interval sends at most one now and
+// the newest on the window's trailing edge (a capped change is held, never dropped)
 const before = calls.filter((c) => c[0] === 'move').length;
 for (let i = 0; i < 10; i++) { axes.seq++; axes.steer = i / 20; phone.sendAxes(encodePadAxes(axes, frame), true); }
 await new Promise((r) => setTimeout(r, 300));
-assert.ok(calls.filter((c) => c[0] === 'move').length - before <= 1, `at most one relay frame per 1/${PAD_RELAY_HZ} s`);
+const burst = calls.filter((c) => c[0] === 'move').slice(before);
+assert.ok(burst.length <= 2, `at most one relay frame per 1/${PAD_RELAY_HZ} s (got ${burst.length})`);
+assert.equal(burst.at(-1)?.[1], 0.45, 'the burst\'s newest frame arrives on the trailing edge');
 // an unchanged frame inside the 333 ms pulse is not relayed at all (one changed frame goes first, then 100 ms)
 axes.seq++; axes.steer = 0.9;
 phone.sendAxes(encodePadAxes(axes, frame), true);

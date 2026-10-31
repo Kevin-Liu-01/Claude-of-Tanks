@@ -181,6 +181,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
     ended = true;
     teardownPeer();
     clearTimeout(reconnectTimer!);
+    clearTimeout(relayTimer!);
     clearInterval(keepalive!);
     const ws = socket;
     socket = null;
@@ -310,6 +311,16 @@ export function createPadLink(options: PadLinkOptions): PadLink {
   }
 
   // ---- the relay ---------------------------------------------------------------------------------------------
+  let relayPending = '';
+  let relayTimer: ReturnType<typeof setTimeout> | null = null;
+  function flushRelay(): void {
+    relayTimer = null;
+    if (!relayPending || ended || relaySpent || !paired || !peerHere || channelsOpen()) { relayPending = ''; return; }
+    lastRelayAt = now();
+    send({ t: 'relay', data: relayPending });
+    relayPending = '';
+  }
+
   function onRelay(data: string): void {
     // frames arriving over the relay before (or without) a data channel: the pairing is live, over the relay
     if (!channelsOpen() && state.kind !== 'live' && peerHere) setState({ kind: 'live', path: 'relay' });
@@ -331,8 +342,18 @@ export function createPadLink(options: PadLinkOptions): PadLink {
       if (axes?.readyState === 'open') { try { axes.send(bytes as Uint8Array<ArrayBuffer>); } catch { /* closing */ } return; }
       if (!paired || !peerHere || relaySpent) return;
       const at = now();
-      // the relay is billed per message: changed frames only, at most PAD_RELAY_HZ, and a 3 Hz pulse for held controls
-      if (at - lastRelayAt < 1000 / PAD_RELAY_HZ || (!changed && at - lastRelayAt < 333)) return;
+      // the relay is billed per message: changed frames only, at most PAD_RELAY_HZ, and a 3 Hz pulse for held controls.
+      // A change inside the rate window is held and goes on the window's trailing edge (the newest one wins), never
+      // dropped: the page counts a frame sent when it hands it over.
+      const wait = 1000 / PAD_RELAY_HZ - (at - lastRelayAt);
+      if (wait > 0) {
+        if (!changed && !relayPending) return;
+        if (changed) relayPending = PAD_RELAY_AXES + padAxesToRelay(bytes);
+        if (!relayTimer) relayTimer = setTimeout(flushRelay, wait);
+        return;
+      }
+      if (!changed && at - lastRelayAt < 333) return;
+      relayPending = '';
       lastRelayAt = at;
       send({ t: 'relay', data: PAD_RELAY_AXES + padAxesToRelay(bytes) });
     },
@@ -350,6 +371,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
       ended = true;
       teardownPeer();
       clearTimeout(reconnectTimer!);
+      clearTimeout(relayTimer!);
       clearInterval(keepalive!);
       try { socket?.close(1000, 'leave'); } catch { /* closed */ }
       socket = null;
