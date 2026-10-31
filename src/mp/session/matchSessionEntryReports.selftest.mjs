@@ -36,6 +36,21 @@ const until = async (predicate, label, timeoutMs = 8000) => {
   const started = Date.now();
   while (!predicate()) { if (Date.now() - started > timeoutMs) throw new Error(`timeout: ${label}`); await sleep(10); }
 };
+// (267, main's load class: "timers slip under load" at load 280-600) the event loop's own stalls, sampled every 5 ms. A
+// report timer cannot fire while the loop is stalled, so the entry reports' cadence is judged against what the loop gave
+// them: a gap is the reports' fault only past the loop's own longest stall in it plus two intervals
+const loopSamples = [];
+let loopLast = performance.now();
+const loopMonitor = setInterval(() => {
+  const now = performance.now();
+  loopSamples.push({ at: now, gap: now - loopLast });
+  loopLast = now;
+  if (loopSamples.length > 20_000) loopSamples.splice(0, 10_000);
+}, 5);
+loopMonitor.unref();
+const loopStall = (from, to) => Math.max(0, ...loopSamples.filter((sample) => sample.at > from && sample.at <= to + 5).map((sample) => sample.gap));
+const reportGaps = (envelopes) => envelopes.slice(1).map((envelope, index) => ({
+  gap: envelope.at - envelopes[index].at, stall: loopStall(envelopes[index].at, envelope.at) }));
 
 function scriptedTransport() {
   const frames = new Listeners();
@@ -64,7 +79,7 @@ const snapshotWith = (host) => ({ ...serializeRoom(room), host });
 const world = new RtcWorld();
 const cores = [];
 
-async function seat({ presentationMs = 0, p2p = {} } = {}) {
+async function seat({ presentationMs = 0, presentationUntil = null, p2p = {} } = {}) {
   let transport = null;
   const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 2000, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const logs = [];
@@ -72,6 +87,8 @@ async function seat({ presentationMs = 0, p2p = {} } = {}) {
     room: client, clock: () => performance.now(),
     createPresentation: async () => {
       if (presentationMs) await sleep(presentationMs);
+      // (267) a world build that lasts until the event it is there for (the entry reports flowing), capped
+      if (presentationUntil) await until(() => presentationUntil(transport), 'the presentation\'s event', 20_000);
       const presentation = new RecordingPresentation(64);
       return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() };
     },
@@ -106,7 +123,10 @@ assert.equal(ENTRY_REPORT_CEILING_MS, 150_000, 'the production ceiling holds the
 // ---- the elected host reports loading through a slow entry, and stops when its actor reports
 stage = 'case 1';
 {
-  const { transport, session, client, logs } = await seat({ presentationMs: 600 });
+  // (267) the world builds until five entry reports have gone out (600 ms at least): at load the 600 ms sleep alone
+  // could end before four 40 ms timers had fired
+  const { transport, session, client, logs } = await seat({ presentationMs: 600,
+    presentationUntil: (transport) => reportsOf(transport).length >= 5 });
   const { matchId } = start(transport);
   const pump = setInterval(() => session.update(performance.now(), 1 / 60), 16);
   await until(() => !!stopOf(logs), 'the entry reports stopped', 10_000);
@@ -114,13 +134,17 @@ stage = 'case 1';
   assert.equal(stopped.fields.reason, 'host reporting', "they stop at the actor's own first report");
   const duringEntry = reportsOf(transport).filter((envelope) => envelope.at <= stopped.at);
   assert.equal(stopped.fields.sent, duringEntry.length);
-  assert.ok(duringEntry.length >= 4, `loading reports flowed while the world built (${duringEntry.length} in 600 ms at 40 ms; timers slip under load)`);
+  assert.ok(duringEntry.length >= 4, `loading reports flowed while the world built (${duringEntry.length} at 40 ms)`);
   for (const envelope of duringEntry) assert.deepEqual(envelope.payload.command, { type: 'match_report', matchId, generation: 1, phase: 'loading', tick: 0 });
-  const gaps = duringEntry.slice(1).map((envelope, index) => envelope.at - duringEntry[index].at);
-  assert.ok(Math.max(...gaps) < 400, `no gap near the room's budget (max ${Math.round(Math.max(...gaps))} ms at a 40 ms interval)`);
+  for (const { gap, stall } of reportGaps(duringEntry)) {
+    assert.ok(gap < 400 || gap <= stall + 80, `no gap near the room's budget beyond the loop's own stall (${Math.round(gap)} ms at a 40 ms interval, the loop stalled ${Math.round(stall)} ms)`);
+  }
   const atStop = reportsOf(transport).length;
+  const waitFrom = performance.now();
   await sleep(300);
-  assert.ok(reportsOf(transport).length - atStop <= 1, 'after it, only the actor reports (500 ms cadence here)');
+  // (267) a loaded machine can stretch the 300 ms: the actor's 500 ms cadence allows one report per 500 ms waited
+  const waited = performance.now() - waitFrom;
+  assert.ok(reportsOf(transport).length - atStop <= 1 + Math.floor(waited / 500), `after it, only the actor reports (500 ms cadence here; ${Math.round(waited)} ms waited)`);
   clearInterval(pump);
   stage += ' leave'; await session.leaveMatch('done');
   session.dispose(); client.dispose();
@@ -134,7 +158,13 @@ stage = 'case 2';
   await until(() => !!stopOf(logs), 'the ceiling', 3000);
   assert.equal(stopOf(logs).fields.reason, 'ceiling');
   const sent = reportsOf(transport).length;
-  assert.ok(sent >= 4 && sent <= 7, `about ceiling / interval reports (${sent})`);
+  // (267) the ceiling caps them (at most ceiling / interval + 2); they repeat at the interval wherever the loop ran, up to
+  // the ceiling's stop (at load a stalled loop fires fewer: four are required only when it never stalled past an interval,
+  // and a stall that outlasts the ceiling leaves the first report alone)
+  const marks = [...reportsOf(transport), { at: stopOf(logs).at }];
+  const ceilingStall = loopStall(marks[0].at, marks.at(-1).at);
+  assert.ok(sent <= 7 && sent >= (ceilingStall < 40 ? 4 : 1), `about ceiling / interval reports (${sent}; the loop stalled ${Math.round(ceilingStall)} ms)`);
+  for (const { gap, stall } of reportGaps(marks)) assert.ok(gap <= stall + 80, `they repeat at the interval up to the ceiling (${Math.round(gap)} ms, the loop stalled ${Math.round(stall)} ms)`);
   await sleep(150);
   assert.equal(reportsOf(transport).length, sent, 'none after the ceiling');
   await until(() => session.phase === 'match', 'the round entered');

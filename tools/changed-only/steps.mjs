@@ -287,7 +287,61 @@ export const PER_ID_ACCESSORS = Object.freeze({
   },
 });
 
+/**
+ * The fleet balance pass (266, Main: a balance merge re-keyed every generator step on every id through the shared core,
+ * though ~19 ids' outputs moved). fleetRegistration.ts applies it to the registered specs and nothing else imports it,
+ * so what it does reaches a tool only through those specs. It leaves the core, and each id's registered spec is keyed as
+ * two per-id rows (tools/changed-only/rows-child.mjs): SPEC_COMBAT holds the `combat` leaves, SPEC_REST everything else.
+ * Every step keys SPEC_REST; a step whose outputs follow the combat leaves keys SPEC_COMBAT too (its `rowReads`). A lever
+ * on one id's armour, hp, mobility or gun stats marks that id on those steps alone; a lever on any other field marks it
+ * on every step.
+ *   entries   the balance modules; their closure beyond the core is checked like any executed fleet module
+ *   importers the files whose imports of an entry apply it to the registry (any other import keeps it in the core)
+ *   tokens    the importers' lines naming one are pinned (world.mjs tokenPin): a new use of the pass
+ *             breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
+ *   combat    leaf paths of a registered spec (`[]`: every item of an array): what the levers set (measured, every field
+ *             the pass moved on the 266 fleet). tools/changed-only/trace-check.mjs --combat moves them all and fails a step
+ *             whose rows follow without SPEC_COMBAT in its rowReads.
+ */
+export const SPEC_COMBAT = 'specCombat';
+export const SPEC_REST = 'specRest';
+export const BALANCE = Object.freeze({
+  entries: Object.freeze(['src/vehicles/fleetBalancePass.ts']),
+  importers: Object.freeze({
+    'src/vehicles/fleetRegistration.ts': { pin: '09848b33916b3875', note: 'applies the four passes to TANK_SPECS, once each, at registration' },
+  }),
+  tokens: Object.freeze(['fleetBalancePass', 'applyFleetBalancePass', 'applyModernEraFold', 'applyShownTierFloors', 'applySameTierFairness']),
+  combat: Object.freeze([
+    'hp', 'enginePowerHp', 'topSpeedKmh', 'reverseSpeedKmh', 'hullTraverseDegS', 'turretTraverseDegS',
+    'gun.reloadS', 'gun.aimTimeS', 'gun.baseAccuracy', 'gun.autoloader.intraClipS', 'gun.autoloader.fullReloadS',
+    'gun.shells[].name', 'gun.shells[].count', 'gun.shells[].dmg', 'gun.shells[].velocityMps', 'gun.shells[].reloadS',
+    'gun.shells[].pen100Mm', 'gun.shells[].pen1000Mm', 'gun.shells[].pen2000Mm',
+    'armor.hullPlates[].keMm', 'armor.hullPlates[].ceMm', 'armor.turretPlates[].keMm', 'armor.turretPlates[].ceMm',
+  ]),
+});
+
 const ids = (list) => `--ids=${list.join(',')}`;
+
+/**
+ * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
+ * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
+ * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
+ * killed. `maxIds` caps a chunk by renderer memory as well. Measured on this Mac (2026-10-31, RSS of the browser tree):
+ * icons on the 60 heaviest ids by ledger vertices peaked at 3.0 GB renderer / 4.4 GB tree in 162 s, so 51 keeps half the
+ * cap; centering on all 236 ids peaked at 4.45 GB / 5.7 GB, so 120 keeps it near half as the fleet grows.
+ */
+const ICONS_MAX_IDS = 51;
+const CENTERING_MAX_IDS = 120;
+
+/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within both caps, chunkS seconds of estimated
+ *  work (perIdS each) and maxIds ids, split evenly (255 ids at 51: five of 51). */
+export function gpuChunks(step, list) {
+  const cap = Math.max(1, Math.min(Math.floor(step.chunkS / step.perIdS), step.maxIds ?? Infinity));
+  const count = Math.ceil(list.length / cap), size = Math.ceil(list.length / Math.max(1, count));
+  const chunks = [];
+  for (let index = 0; index < list.length; index += size) chunks.push(list.slice(index, index + size));
+  return chunks;
+}
 
 /**
  * The fleet steps, in chain order. Seats read the fills and the roof guns (controls), and missionDockSeats feeds the
@@ -299,6 +353,8 @@ const ids = (list) => `--ids=${list.join(',')}`;
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
  *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
  *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
+ *   chunkS, perIdS, maxIds  a GPU step's capture-lock holds: at most chunkS seconds of estimated work and maxIds ids per
+ *           browser (gpuChunks); none of them is keyed
  */
 export const STEPS = Object.freeze([
   {
@@ -325,6 +381,8 @@ export const STEPS = Object.freeze([
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
     flags: ['--seeds=4000,4242,8191', '--qualities=high,low'],
     full: [], scoped: (list) => [ids(list)],
+    // 266 (trace-check --combat): the attachment seats follow the combat leaves
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['missionAttachmentSeats', 'missionDockSeats'],
     files: [], report: '--report', gb: 8, timeoutS: 3600, perIdS: 60,
@@ -342,6 +400,9 @@ export const STEPS = Object.freeze([
   {
     name: 'anatomy', device: 'cpu', tool: 'tools/gen-combat-anatomy.mjs',
     flags: [], full: [], scoped: (list) => [ids(list)],
+    // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
+    // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
@@ -375,9 +436,12 @@ export const STEPS = Object.freeze([
   {
     name: 'centering', device: 'gpu', tool: 'tools/presentation-centering.mjs', entries: ['tools/icons-page.html'],
     flags: ['--update'], full: [], scoped: (list) => [ids(list)],
+    // 266: the page renders in a browser the combat proof (trace-check --combat) cannot reach, so it keys the combat row
+    // unproven; a balance lever re-centres its own ids (about 1.5 s each)
+    rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100, maxIds: CENTERING_MAX_IDS,
     // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
     // models excepted: no playable build loads one, AGENTS.md).
     reads: ['public/**'],
@@ -387,12 +451,14 @@ export const STEPS = Object.freeze([
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],
     flags: [], full: [], scoped: (list) => [ids(list)],
+    // the armour, module and crew views draw each id's plates and stats (266: keyed through the combat row)
+    rowReads: [SPEC_COMBAT],
     check: null, checkScoped: null,
     outputs: ['tankAssets'],
     // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
     // into public/icons): not inputs of its own key.
     writes: ['public/icons/**'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
+    files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
     reads: ['public/**'],
     // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
     excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],

@@ -1,14 +1,14 @@
 // The changed-only partition of the real fleet (no tank builds): every step decomposes per id, every dynamic read is
 // declared and pinned to its current call sites, the demand loaders and the eager tool factory register the same group
-// modules, a shared builder kit marks every id that uses it, and the chain runs seats after fills and controls.
-// First-party tooling: Kevin B. Liu.
+// modules, a shared builder kit marks every id that uses it, the chain runs seats after fills and controls, and the
+// balance pass is out of the core (keyed per id through the spec rows). First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
-import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  STEPS, WORLD_STEPS } from './steps.mjs';
+import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
+  SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS, gpuChunks } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -31,7 +31,20 @@ for (const [file, declaration] of Object.entries(FLEET_API_USERS)) {
   assert.equal(pin, declaration.pin, `${file}: its fleet uses changed; review that it builds only the map's donors and set pin: '${pin}'`);
 }
 
+// The balance pass's importers apply it to the registry and use it no other way (steps.mjs BALANCE).
+for (const [file, declaration] of Object.entries(BALANCE.importers)) {
+  const pin = tokenPin(readFileSync(join(root, file), 'utf8'), BALANCE.tokens);
+  assert.equal(pin, declaration.pin, `${file}: its uses of the balance pass changed; review that they only apply it to the registered specs and set pin: '${pin}'`);
+}
+
 const state = computeState({ root, steps: STEPS });
+// The pass is out of the core and keyed through the spec rows: every step keys SPEC_REST, the combat readers SPEC_COMBAT.
+assert.deepEqual([state.partition.balanceReason, BALANCE.entries.every((file) => state.partition.balance.includes(file) && !state.partition.core.includes(file))],
+  [null, true], 'the balance pass is out of the core');
+for (const [name, entry] of Object.entries(state.steps)) {
+  assert.ok(entry.rowTables.includes(SPEC_REST), `${name} keys each id's spec`);
+  assert.equal(entry.rowTables.includes(SPEC_COMBAT), Boolean(entry.step.rowReads?.includes(SPEC_COMBAT)), `${name}: the combat row only through rowReads`);
+}
 // Test-only tooling never keys a generator (266, Main's probe of 705417532f): the runner, the selftest tiers, scans and
 // suites, the test:* commands and the tank release plan are read by no generator, so an edit to them marks no id. The
 // control: each step's own generator is in its key.
@@ -125,5 +138,23 @@ assert.ok(at('controls') >= 0 && at('fills') > at('controls') && at('seats') > a
 assert.ok(at('anatomy') > at('controls'), 'anatomy reads the roof guns');
 const chain = readFileSync(join(root, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(chain, /for \(const name of CPU_FIXPOINT_STEPS\.filter\(selected\)\)/, 'the chain runs the CPU steps in table order');
+
+// A GPU step's browser holds a chunk within its time and its renderer caps (266: icons' time cap alone, 440 ids, put the
+// whole 255-id fleet in one browser and the 6 GB renderer guard killed it). Every chunk of this fleet and of 255 ids keeps
+// both, the chunks cover the list once in order, and the chain plans and runs GPU steps through gpuChunks. Control: the
+// time cap alone puts the 255 ids in one browser.
+assert.match(chain, /const chunks = gpuChunks\(step, list\);/, 'the chain runs GPU steps in gpuChunks holds');
+for (const step of STEPS.filter((entry) => entry.device === 'gpu')) {
+  assert.ok(step.maxIds > 0, `${step.name}: a GPU step caps its ids per browser (maxIds)`);
+  for (const list of [state.ids, Array.from({ length: 255 }, (_, index) => `id${index}`)]) {
+    const chunks = gpuChunks(step, list);
+    assert.deepEqual(chunks.flat(), list, `${step.name}: the chunks cover the ${list.length} ids once, in order`);
+    assert.ok(chunks.every((chunk) => chunk.length <= step.maxIds && chunk.length * step.perIdS <= step.chunkS),
+      `${step.name}: chunks ${chunks.map((chunk) => chunk.length)} within ${step.maxIds} ids and ${step.chunkS} s`);
+  }
+}
+const icons = STEPS.find((entry) => entry.name === 'icons');
+assert.equal(gpuChunks({ ...icons, maxIds: undefined }, Array.from({ length: 255 }, (_, index) => `id${index}`)).length, 1,
+  'control: the time cap alone puts 255 icons ids in one browser');
 
 console.log(`changed-only fleet-partition.selftest: PASS (${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files; kit marks ${marked.ids.length}; ${state.world.ids.length} maps, a ${t90Group} edit marks ${remarked.ids.length})`);
