@@ -1588,8 +1588,9 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
   fuelDrums(P,-4.1164,1.4435,.2925,.88,.59);
   // 2026-10-31: the smaller drums' fronts stand 100 mm off the hull's rear edge (-3.42), an enclosed slot in plan
   // (contig-phase-audit); each drum's cradle floor runs from under the deck edge to where it meets the drum's belly,
-  // and out over the hull's rear ledge (x 1.15).
-  for(const side of [-1,1])P.addEquipment('hullDetail',box(.98,.025,.175),side*.68,1.278,-3.4875);
+  // and out over the hull's rear ledge (x 1.15), closing the notch the stern corner leaves open between the deck and
+  // that ledge (x 1.04-1.11, z -3.24 to -3.40, open to the ground in plan).
+  for(const side of [-1,1])P.addEquipment('hullDetail',box(.98,.025,.355),side*.68,1.278,-3.3975);
   bowGear(P,1.174,3.27,false,1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],
