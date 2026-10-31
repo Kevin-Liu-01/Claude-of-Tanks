@@ -279,32 +279,10 @@
    "hostSweep": []
   },
   "bmpt_t90": {
-   "inputHash": "642f959dc6eb0519",
+   "inputHash": "58090651cd79f47c",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@addT90ALegacyHullDeckAndGear@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.969,
-      "gap": 0.031,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<Proxy.add<-loftHull@profiles/russia.ts:509>"
-     }
-    },
-    {
-     "index": 1,
      "site": "fitting:spareTrackLinks@addTerminatorT90Station@profiles/afvFamily.ts",
      "source": "fitting",
      "frame": "turret",
@@ -317,15 +295,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.13,
-      "gap": 0.87,
+      "support": 0.133,
+      "gap": 0.867,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.039,
+      "sunkMaxM": 0.04,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.967,
-      "host": "turret<Proxy.add<-addTerminatorT90Station@profiles/afvFamily.ts:1546>"
+      "host": "turret<Proxy.add<-addTerminatorT90Station@profiles/afvFamily.ts:1547>"
      }
     }
    ],
@@ -3244,31 +3222,8 @@
    "hostSweep": []
   },
   "t90_1992": {
-   "inputHash": "2a24cb465f0c87f5",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildT90@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.904,
-      "gap": 0.09,
-      "air": 0.006,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.933,
-      "host": "hull<Proxy.hangMudguard<-panel@profiles/russia.ts:1052>"
-     }
-    }
-   ],
+   "inputHash": "a82b93360535b123",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3279,38 +3234,13 @@
    "hostSweep": []
   },
   "t90a_2004": {
-   "inputHash": "c21be89c3b290130",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@addT90ALegacyHullDeckAndGear@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.227,
-      "gap": 0.723,
-      "air": 0.05,
-      "hidden": 0,
-      "sunkMaxM": 0.008,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:514>"
-     }
-    }
-   ],
+   "inputHash": "e2856f407793b45b",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90a_2006": {
-   "inputHash": "23311d97a9998069",
+   "inputHash": "d108bb511ae3a424",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3322,44 +3252,19 @@
    "hostSweep": []
   },
   "t90a_burlak_proto": {
-   "inputHash": "047368f4d6a9ac33",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@addT90ALegacyHullDeckAndGear@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.23,
-      "gap": 0.77,
-      "air": 0,
-      "hidden": 0.002,
-      "sunkMaxM": 0.018,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<Proxy.add<-loftHull@profiles/russia.ts:514>"
-     }
-    }
-   ],
+   "inputHash": "ea08ab6e0dd722d5",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90a_vladimir": {
-   "inputHash": "7f3724f680d67a40",
+   "inputHash": "4275553596b76242",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "a9d17a165a7a99cf",
+   "inputHash": "2c87d4fb8ae5f626",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3371,37 +3276,14 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "8811d27c6013684c",
+   "inputHash": "354c543cc604c83e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90ms_2011": {
-   "inputHash": "8f1191a8efa0395a",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@rebuildT90MSTurretExact@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "turret",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.978,
-      "gap": 0.022,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.006,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.956,
-      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6679>"
-     }
-    }
-   ],
+   "inputHash": "248cc33714d402f5",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3418,31 +3300,8 @@
    "hostSweep": []
   },
   "t90sm_2013": {
-   "inputHash": "b549b8fa7e13ce56",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@addT90SMLegacyHullDeckAndGear@profiles/t90.ts",
-     "source": "fitting",
-     "frame": "turret",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.755,
-      "gap": 0.245,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.006,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4266>"
-     }
-    }
-   ],
+   "inputHash": "f454bdc815506a37",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

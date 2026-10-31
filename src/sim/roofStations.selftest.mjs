@@ -64,12 +64,24 @@ for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun
 assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
 // One-station vehicles have no extra station state and no arc. (VH.14: the Abrams loaders' M240s now work, so the
 // controls are vehicles with one real roof weapon.)
-for (const id of ['abramsx', 'k2_black_panther', 't90am']) {
+// 2026-10-31 (lane t90-family-266; the owner: "make some of our reworked t90s have new or unique machine gun
+// arrangmenet,s like 2 machine guns"): the T-90AM now carries two stations (its RWS and the twin 7.62 mm anti-drone mount),
+// so the plain T-90SM it is built on stands in as the one-station control.
+for (const id of ['abramsx', 'k2_black_panther', 't90sm']) {
   assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
   assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
   assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
 }
 assert.equal(createAuxiliaryState(TANK_SPECS[ID]).stations?.length, 1, 'the TTS state carries its second station');
+for (const [id, second, caliber] of [['t90am', 't90amTwinPkt', 7.62], ['t90m_proryv', 't90mProryvGunnerPkt', 7.62]]) {
+  const guns = AUXILIARY_INVENTORY[id].guns;
+  assert.equal(guns.length, 2, `${id}: two roof stations`);
+  assert.equal(guns[0].caliberMm, 12.7, `${id}: guns[0] is the 12.7 mm station`);
+  assert.equal(guns[1].name, second, `${id}: guns[1] is the second gun the owner asked for`);
+  assert.equal(guns[1].caliberMm, caliber, `${id}: ${second} is a 7.62 mm gun`);
+  assert.equal(roofStationCount(TANK_SPECS[id]), 2);
+  assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations?.length, 1, `${id}: its state carries the second station`);
+}
 
 const DEG = Math.PI / 180;
 function battle(bearingDeg, distanceM = 150, yM = 0) {

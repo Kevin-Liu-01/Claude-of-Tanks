@@ -45,7 +45,7 @@ export const COUNTER_DRONE_CLASSES = Object.freeze({
   rifle: Object.freeze({ calibreMm: [0, 10], anchor: 'm1a1', numbers: numbers(150, .025, .15, 8, .09, 1.25, .75, 1.7, 1),
     capped: 8, survivesBurst: false, downsInsideBurst: true, at100: 46 }),
   heavy: Object.freeze({ calibreMm: [10, 20], anchor: 't90a_2004', numbers: numbers(200, .03, .2, 5, .12, 1.4, .75, 1.7, 1),
-    capped: 6, survivesBurst: true, at100: 39 }),
+    capped: 6, survivesBurst: true, at100: 38 }), // 39 until 266: the anchor's Kord now rides the source-X T-90A turret
   rh202: Object.freeze({ calibreMm: [20, 20.5], anchor: 'mbt70', numbers: numbers(280, .045, .3, 5, .1, 1.6, .9, 1.4, .9),
     capped: 4, survivesBurst: false, at100: 26 }),
   cannon: Object.freeze({ calibreMm: [20, 100], anchor: 't72b3m_hetman', numbers: numbers(300, .06, .35, 3, .2, 1.8, .75, 1.2, .8),
