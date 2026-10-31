@@ -206,6 +206,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/underbodyBackdrops.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/vehicles/workingPintleCradle.selftest.mjs',
+    'tools/changed-only/balance-keys.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
