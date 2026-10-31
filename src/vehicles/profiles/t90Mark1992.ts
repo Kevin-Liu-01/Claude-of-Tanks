@@ -3,9 +3,12 @@
 // layerring onn top, hull modificaitons, track shapes, shoulders, rear stuuff like barrrles and so on, sideskirts, cages,
 // shtora or otherr quipmennt, machine guns"). Laid after the source build, in the builder frame of that build.
 // The first production T-90 still carried the T-72B's night and field kit: the commander's IR searchlight, the IR
-// driving lamp, rubber mud flaps at both fender ends, a rubber fringe under the side screens, welded ZIP boxes on the
+// driving lamp, rubber mud flaps at the rear fender ends, a rubber fringe under the side screens, welded ZIP boxes on the
 // rear fenders and stowage bins in the turret's rear corners. Every part is seated on the source stock it hangs from
-// (the raycasts below fail loudly if that stock moves).
+// (the raycasts below fail loudly if that stock moves). 2026-10-31: the cast turret carries the first production T-90's
+// chunky welded Kontakt-5 packs over its K-5 V (t90Mark1992Turret.ts): a blind A/B against the pre-rebuild build
+// preferred its "bulky, blocky ERA-covered turret"; the front mud flaps are gone (that A/B: "oversized curved bow
+// mudguard plates flaring forward and drooping over the tracks").
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
@@ -13,6 +16,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addT90Mark1992CheekPacks} from './t90Mark1992Turret.ts';
 type V3=readonly[number,number,number];
 const YAW=T90_AW_X_SOURCE_DATUMS.turretPivot;
 const {box,cylX,cylZ,torus}=KIT;
@@ -87,13 +91,12 @@ function irDrivingLamp(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',beamBetween([x-.10,1.015,2.874],[x-.10,1.245,2.73],.009));
 }
 
-// Rubber mud flaps clamped to the bow mudguards' front faces (T-72/T-90 fleet fitting), clear ahead of the idler.
-// Rear flaps on the rear fender ends behind the sprockets, as the service tanks ran them.
+// Rear rubber mud flaps on the rear fender ends behind the sprockets, as the service tanks ran them. 2026-10-31 (a blind
+// A/B against the pre-rebuild build: "oversized curved bow mudguard plates flaring forward and drooping over the
+// tracks"): the front flaps that hung off the bow guards are gone, so the guards' outline reads tight.
 function mudFlaps(P:TankBuilderPort):void{
   const x0=1.18,x1=1.78,w=x1-x0,cx=(x0+x1)/2;
   for(const side of [-1,1]){
-    const fz=hit(P,['hull'],[side*cx,.89,5],[0,0,-1],'bow flap').z;
-    flap(P,side*cx,w,.900,.50,fz,1);
     const rz=hit(P,['hull'],[side*cx,1.212,-5],[0,0,1],'rear flap').z;
     flap(P,side*cx,w,1.218,.80,rz,-1);
   }
@@ -161,4 +164,5 @@ export function addT90Mark1992Kit(P:TankBuilderPort):void{
   zipBox(P,1.29,-2.53,.54,.70,.28);
   zipBox(P,-1.39,-2.45,.46,.62,.28);
   for(const side of [-1,1]){skirtFringe(P,side);turretBin(P,side);}
+  addT90Mark1992CheekPacks(P);
 }
