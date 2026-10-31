@@ -33,6 +33,7 @@ glacis in place of the Mk 5's bin (SV, F81), two Swedish whips, no searchlight o
 | TE | https://tanks-encyclopedia.com/centurion-mantletless-turret/ (Discharger No. 1 Mk 1, the loading hatch in the left wall) |
 | F81 | https://forum.warthunder.com/t/strv-81b-swedens-second-centurion/359700 (KATF 1960 catalogue, Lindström) |
 | ORACLE | the registered Strv 81 model `public/models/community-candidates/strv81_mmdsonic.glb` (md5 5daeeb2de58a7b3b85fa4e60b4595a5f), width-normalised to 3.38 m, measured by raycast sections (lane tools `.qa-dev/cent262/turret-map.mjs`, `skirt-oracle.mjs`, `wheels-oracle.mjs`) |
+| CERTIFIED (267) | the gate measures the three marks against that print, source-world certified (Main 2026-10-31): its pristine download (raw bda892df…, before the 08-17 whip excision) baked by `tools/source-x-oracle.mjs` (`docs/history/research/second-wave-registrations/strv81_x.json`) to `strv81_x_source.glb` (66b2818a…): gun to +z, 3.38 m over the side plates, ground at the belts' contact, the belts centred on z 0. Ring centre z 0.4686 on the turret's underside, y 1.6963; bore y 2.0792 (the builds: 0.47, 1.70, 2.075). Its two whips stay in it and leave every height by box (`tools/fused-roof-gun-boxes.mjs`) |
 | Photos (Commons) | Mk 3 Bovington front-left / rear-left (CC BY-SA 4.0); Mk III Swiss side and front (PD); Mk 5/2 Delft head-on and turret front (CC0); Strv 81A/81B period photographs (PD Sweden): `File:Centurion_Mk_3_front-left_2017_Bovington.jpg`, `File:Centurion_Mk_3_rear-left1_2017_Bovington.jpg`, `File:Centurion_MK_III_Seite_-_Schweizer_Armee_-_Steel_Parade_2006.jpg`, `File:Centurion_MK_III_Front_-_Schweizer_Armee_-_Steel_Parade_2006.jpg`, `File:Centurion_Mk._5-2_pic1._5-2.JPG`, `File:Centurion_Mk_5_105mm,_Museumdag_2010_picture-013.jpg`, `File:Strv_81B_(C_V)_1.jpg`, `File:Strv_81B_(C_V)_2.jpg` |
 
 ### Shared family gap table (hull frame: +Z forward, ground y 0, hull centred on z 0)
@@ -87,6 +88,12 @@ Swedish published figures. Rig pivots patched to the measured build
 (turretPivot [0,1.76,0.35], gunPivot [0,0.32,0.75]; bore axis 2.08).
 
 ## Certified-cap candidate — THE WHIP PAIR (oracle defect)
+**267 (Main 2026-10-31): handled by the body rule, not by trimming the oracle.** The certified frame is the pristine
+print, whips included; the gate's body rule names them by two boxes in that frame (exactly their 136 triangles, the
+census below) and leaves them out of every comparison (heights, curves and stations), the build's whips paired with
+them. Kept in the shapes, they took centurion3's stations from 60.9 to 0 (2026-10-31 experiment). The excised
+`strv81_mmdsonic.glb` (e1f0c2cb…) is no longer registered. History follows.
+
 The print fuses two large raked whip antennas INTO turret_0: bases (±0.40,
 y 2.72, z -0.45/-0.28 build frame), raked back over z -2.47..-0.27 with
 tops 3.15..4.17 (extract turretZProfile + gate work orders). Matching them

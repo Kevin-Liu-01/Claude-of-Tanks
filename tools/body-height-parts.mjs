@@ -23,7 +23,8 @@
 // a print's ammo_5, a source's ammo2 or ammobelt) goes with a roof gun the oracle names when it touches it (AMMO_TOUCH_M),
 // as the build's ammunition rides in its gun's fitting; a box or rack anywhere else, or beside the coaxial mg_twin, stays
 // body. A fused source names its roof gun by registered boxes in its certified frame (tools/fused-roof-gun-boxes.mjs):
-// the triangles with all three corners in them leave its body. An oracle comparison drops a kind of roof
+// the triangles with all three corners in them leave its body; whips it fuses into a mesh it names by antenna boxes, and
+// those leave every height, as the build's antenna spans do. An oracle comparison drops a kind of roof
 // fitting (antennas, roof weapons) only where the oracle names that kind (pairedRoofFittings): a source that fuses its
 // roof gun into the turret keeps the build's gun beside it, and one that names nothing is compared whole against whole.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
@@ -117,12 +118,15 @@ export function trianglesInBoxes(mesh, root, boxes) {
 
 /**
  * The roof fittings of one model: `nodes` (render node -> tag) leave the body whole; `trimmed` (render node -> body
- * geometry) lose their tagged antenna spans; `boxed` (render node -> body geometry) lose a fused oracle's roof gun, the
- * triangles in its registered `boxes`. An oracle also answers to its node names. isAntennaTag sorts the nodes.
+ * geometry) lose their antennas: the build's tagged spans, or the whips an oracle fuses into a mesh, the triangles in its
+ * registered `antennaBoxes` (`antennaBoxed`: render node -> triangles taken); `boxed` (render node -> body geometry) lose
+ * a fused oracle's roof gun, the triangles in its registered `boxes`, and those antennas too. An oracle also answers to
+ * its node names. isAntennaTag sorts the nodes.
  */
-export function roofFittingParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_ROOF_FITTING_NODES, boxes = null }) {
-  const nodes = new Map(), trimmed = new Map(), ammo = new Map(), boxed = new Map();
-  if (oracle && boxes?.length) root.updateMatrixWorld(true);
+export function roofFittingParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_ROOF_FITTING_NODES, boxes = null,
+  antennaBoxes = null }) {
+  const nodes = new Map(), trimmed = new Map(), ammo = new Map(), boxed = new Map(), antennaBoxed = new Map();
+  if (oracle && (boxes?.length || antennaBoxes?.length)) root.updateMatrixWorld(true);
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
     const tag = roofFittingTag(o, root) ?? (oracle ? oracleRoofFittingTag(o, root, nodePattern) : null)
@@ -130,11 +134,14 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
     if (tag) { nodes.set(o, tag); return; }
     const box = oracle ? oracleRoofFittingTag(o, root, oracleAmmo) : null;
     if (box) ammo.set(o, box);
-    const ranges = (o.userData?.seatRoleRanges ?? []).filter((r) => cutRoles.has(r.role));
-    if (ranges.length && !o.isInstancedMesh) trimmed.set(o, bodyGeometryWithout(o.geometry, ranges));
-    if (oracle && boxes?.length && !o.isInstancedMesh) {
+    if (o.isInstancedMesh) return;
+    const whips = oracle && antennaBoxes?.length ? trianglesInBoxes(o, root, antennaBoxes) : [];
+    if (whips.length) antennaBoxed.set(o, whips.length);
+    const ranges = [...(o.userData?.seatRoleRanges ?? []).filter((r) => cutRoles.has(r.role)), ...whips];
+    if (ranges.length) trimmed.set(o, bodyGeometryWithout(o.geometry, ranges));
+    if (oracle && boxes?.length) {
       const gun = trianglesInBoxes(o, root, boxes);
-      if (gun.length) boxed.set(o, bodyGeometryWithout(o.geometry, gun));
+      if (gun.length) boxed.set(o, bodyGeometryWithout(o.geometry, [...gun, ...whips]));
     }
   });
   if (ammo.size) {
@@ -145,7 +152,7 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
       if (guns.some((gun) => gun.intersectsBox(box))) nodes.set(o, tag);
     }
   }
-  return { nodes, trimmed, boxed };
+  return { nodes, trimmed, boxed, antennaBoxed };
 }
 
 /** The parts an oracle comparison leaves out of both models: every roof fitting the oracle names (by node or by its

@@ -132,7 +132,14 @@ and parts drawn into ordinary buckets under the `antenna` seat role
 spans and the gate cuts them). The oracle names them by node: War Thunder
 `antenna*`, `bone_mg_aa_*`, `mg_aa*`, `bone_mg_[hv]_*`, `mg_NN`,
 `mg_mount_*` (never `mg_twin`, the coaxial), Sketchfab `*Pintle`/`AmmoCan`, or
-a registration's `roofFittingNodes`. An oracle node named `ammo*` goes with a
+a registration's `roofFittingNodes`. A source that fuses them into one mesh
+names them by boxes in its certified frame (`tools/fused-roof-gun-boxes.mjs`):
+the triangles wholly inside leave it, a roof gun's from the body (the T-72/T-80
+studies). A whip fused into a source mesh is that source's defect (the Strv 81
+print's raked pair, 4.19 m tips over a 3.0 m tank; the oracle file keeps
+them): its boxes take it out of every comparison on the page, curves and
+stations too, with the build's whips beside it (`boxedWhipsAside` in the
+record). Whips a source names by node leave the dims rows only. An oracle node named `ammo*` goes with a
 named roof gun it touches (within 0.1 m), as the build's ammunition rides in
 its gun's fitting; any other ammo box stays body. A new whip or mast drawn as a
 raw rod needs `antennaPart()`, or it counts as body.

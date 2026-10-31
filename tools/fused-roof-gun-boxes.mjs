@@ -1,5 +1,6 @@
-// tools/fused-roof-gun-boxes.mjs — where a fused source (one mesh for body, turret and fittings) carries its roof gun, so
-// the geometry gate's dims compare body against body (Main's ruling 2026-10-30; Main 2026-10-31: the fused-oracle boxes).
+// tools/fused-roof-gun-boxes.mjs — where a fused source (one mesh for body, turret and fittings) carries its roof gun
+// (and, below, its whips), so the geometry gate's dims compare body against body (Main's ruling 2026-10-30; Main
+// 2026-10-31: the fused-oracle boxes).
 // Each box is [x0, y0, z0, x1, y1, z1] in the certified source frame (tools/source-world-registration.mjs). The gate
 // leaves out of the source's body every triangle whose three corners lie in the boxes (body-height-parts.mjs
 // roofFittingParts), so the source names its roof gun and the build's roof gun leaves too (pairedRoofFittings).
@@ -25,4 +26,19 @@ export const FUSED_ROOF_GUN_BOXES = Object.freeze({
   t80u: Object.freeze({ boxes: Object.freeze([
     Object.freeze([-1.26, 2.205, 0.0, -0.89, 2.52, 1.64]),
   ]) }),
+});
+
+// Whips a source fuses into its turret mesh (267, Main 2026-10-31: "the whip defect is handled by the body rule, not by
+// trimming the oracle"): the gate takes the triangles in these boxes out of the source for every comparison on its page,
+// heights, curves and stations, and the build's whips with them (body-height-parts.mjs roofFittingParts; the page's
+// boxedWhipsAside). The Strv 81 print (the Centurion family's certified frame, source-world-registration.mjs) carries
+// two raked whips in turret_0, two 68-triangle prisms (the census the 08-17 excision cut, docs/references/tanks/strv81.md): one from its
+// mount on the left of the roof (z 0.09) to 4.19 m, one from the right rear (z -1.10) to 3.68 m, raked back to z -2.41.
+// Each box holds its rod and none of its mount's cap (a wider collar), which stays body like the builds' mount blocks.
+const CENTURION_WHIPS = Object.freeze({ triangles: 136, boxes: Object.freeze([
+  Object.freeze([0.6055, 2.840, -0.708, 0.626, 4.200, 0.105]),
+  Object.freeze([-0.4132, 2.822, -2.418, -0.393, 3.690, -1.087]),
+]) });
+export const FUSED_ANTENNA_BOXES = Object.freeze({
+  centurion3: CENTURION_WHIPS, centurion5_2: CENTURION_WHIPS, strv81: CENTURION_WHIPS,
 });

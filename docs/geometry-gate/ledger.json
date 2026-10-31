@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-31T17:43:13.597Z",
+ "generatedAt": "2026-10-31T23:14:26.453Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 43,
  "total": 166,
@@ -921,22 +921,6 @@
    }
   },
   {
-   "id": "strv81",
-   "geoMin": 31.5,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 72.2,
-    "stations": 55.9,
-    "turretCurves": 57.5,
-    "wholeCurves": 31.5,
-    "dims": 98.7,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "m60a2",
    "geoMin": 32.8,
    "requiredMinimum": 90,
@@ -974,21 +958,6 @@
    "components": {
     "wholeCurves": 92.5,
     "dims": 38.1,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "centurion5_2",
-   "geoMin": 39.2,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 65.9,
-    "stations": 39.2,
-    "wholeCurves": 43.2,
-    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1037,21 +1006,6 @@
     "dims": 100,
     "floaters": 100
    }
-  },
-  {
-   "id": "centurion3",
-   "geoMin": 45.4,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 66.6,
-    "stations": 60.9,
-    "wholeCurves": 45.4,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t90sm_2013",
@@ -1170,6 +1124,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "centurion5_2",
+   "geoMin": 57.6,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 76.5,
+    "stations": 57.6,
+    "turretCurves": 63.8,
+    "wholeCurves": 68.2,
+    "dims": 99.5,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "type10_tk_x",
    "geoMin": 58.1,
    "requiredMinimum": 90,
@@ -1198,6 +1168,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "centurion3",
+   "geoMin": 59.3,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 76.3,
+    "stations": 59.3,
+    "turretCurves": 60.5,
+    "wholeCurves": 65.4,
+    "dims": 99.5,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "object148_proto",
    "geoMin": 59.9,
    "requiredMinimum": 90,
@@ -1209,6 +1195,22 @@
     "turretCurves": 61.2,
     "wholeCurves": 62.1,
     "dims": 59.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "strv81",
+   "geoMin": 62.2,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 73.4,
+    "stations": 64.2,
+    "turretCurves": 62.2,
+    "wholeCurves": 65.7,
+    "dims": 99.5,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
