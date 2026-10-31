@@ -259,7 +259,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     pin: '525a21e40aa0d260',
     reads: [],
     // 230 (foliage-shadow-sites-228): map-probe-runtime's probe server loads this Vite plugin; the world steps import
-    // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above).
+    // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above). 266: nor does
+    // the catalog path's template (src/ui/i18nCatalog.${locale}.json) key the whole of src/ui: every UI edit re-ran the
+    // world steps on every map; its key modules stay keyed as imports.
+    modeOnly: ['src/ui'],
     note: 'a Vite plugin: reads src/ui/i18nCatalog.<locale>.json only when a dev server serves virtual:cot-i18n-studio/<locale>; the chain runs no dev server',
   },
   // 264: battle-spikes-253 (85d330ad12, 254) reads a sourced texture's file back from the HTTP cache to decode it off the
