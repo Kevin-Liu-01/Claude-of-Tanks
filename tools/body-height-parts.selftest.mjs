@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import '../src/vehicles/tankFactory.ts';
 import { createTank } from '../src/vehicles/tankFactoryCore.ts';
 import { FITTINGS } from '../src/vehicles/profiles/kit.ts';
-import { ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, isAntennaTag,
+import { AMMO_TOUCH_M, ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, isAntennaTag,
   oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
@@ -91,6 +91,36 @@ const heightOf = (root, frame, options) => {
   assert.match(oracleRoofFittingTag(oracleWhip, root), /^node:/);
   assert.equal(roofFittingParts(root, { isRenderNode }).nodes.has(oracleWhip), false, 'a build answers to its tags only');
   assert.equal(roofFittingParts(root, { isRenderNode, oracle: true }).nodes.has(oracleWhip), true);
+}
+
+// --- an oracle's ammunition goes with the roof gun it touches, never on its own ----------------------------------------
+{
+  // the War Thunder Merkava 2B's turret: ammo_01_44 against the AA gun's mount, ammo_02_101 1.7 m off it beside the
+  // over-gun mg_twin, and a turret-roof ammo_box a metre from the gun (the M1A2 print's)
+  const root = new THREE.Group();
+  const box = (name, [x0, y0, z0], [x1, y1, z1]) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0)); m.name = name;
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); root.add(m); return m;
+  };
+  const mount = box('vehicle#mg_aa_mount_v_43', [-0.62, 2.80, -1.10], [-0.40, 3.00, -0.88]);
+  const touching = box('vehicle#ammo_01_44', [-0.78, 2.96, -1.06], [-0.62, 3.04, -0.92]);
+  const twin = box('vehicle#mg_twin_100', [-0.20, 2.63, 1.65], [-0.01, 2.85, 2.40]);
+  const beside = box('vehicle#ammo_02_101', [-0.01, 2.63, 1.65], [0.19, 2.91, 1.80]);
+  const roofBox = box('ammo_box', [-1.42, 2.64, 0.02], [-0.42, 2.96, 0.85]);
+  const near = box('ammobelt_m', [-0.40 + AMMO_TOUCH_M - 0.02, 2.80, -1.10], [-0.12, 2.90, -0.95]);
+  const parts = roofFittingParts(root, { isRenderNode, oracle: true });
+  assert.equal(parts.nodes.get(mount), 'node:vehicle#mg_aa_mount_v_43');
+  assert.equal(parts.nodes.get(touching), 'node:vehicle#ammo_01_44', 'ammunition against a named roof gun leaves with it');
+  assert.equal(isAntennaTag(parts.nodes.get(touching)), false, 'as a roof weapon');
+  assert.equal(parts.nodes.get(near), 'node:ammobelt_m', `a feed within ${AMMO_TOUCH_M} m of the gun goes with it`);
+  assert.equal(parts.nodes.has(twin), false, 'the over-gun mg_twin stays body');
+  assert.equal(parts.nodes.has(beside), false, 'ammunition beside an unnamed gun stays body');
+  assert.equal(parts.nodes.has(roofBox), false, 'a box a metre from the gun stays body');
+  mount.removeFromParent();
+  assert.equal(roofFittingParts(root, { isRenderNode, oracle: true }).nodes.has(touching), false,
+    'with no named roof gun the ammunition stays body (a fused weapon station compares whole against whole)');
+  root.add(mount);
+  assert.equal(roofFittingParts(root, { isRenderNode }).nodes.has(touching), false, 'a build answers to its tags only');
 }
 
 // --- antenna or roof weapon, the interval, the hull's own length ------------------------------------------------------

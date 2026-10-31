@@ -17,10 +17,14 @@
 // (bone_mg_aa_*, mg_aa*, bone_mg_h_/bone_mg_v_*, mg_NN, mg_mount_*; never mg_twin or bone_mg_twin, the coaxial and
 // over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, the supplied sources'
 // numbered weapon2../mount2.. and mgbracket/mgbox (their bare weapon and mount are the main gun's), or the registration's
-// own roofFittingNodes pattern, so a gun-less oracle compares like for like. An oracle comparison drops a kind of roof
+// own roofFittingNodes pattern, so a gun-less oracle compares like for like. A node named ammo* (War Thunder's ammo_NN,
+// a print's ammo_5, a source's ammo2 or ammobelt) goes with a roof gun the oracle names when it touches it (AMMO_TOUCH_M),
+// as the build's ammunition rides in its gun's fitting; a box or rack anywhere else, or beside the coaxial mg_twin, stays
+// body. An oracle comparison drops a kind of roof
 // fitting (antennas, roof weapons) only where the oracle names that kind (pairedRoofFittings): a source that fuses its
 // roof gun into the turret keeps the build's gun beside it, and one that names nothing is compared whole against whole.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
+import { Box3 } from 'three';
 
 /** Fitting types that are roof fittings; the antenna ones never count toward any height. */
 export const ROOF_FITTING_TYPES = Object.freeze(['antennaWhip', 'pintleMG', 'americanM2', 'americanRws', 'openYokeRws',
@@ -35,6 +39,9 @@ const roofTypes = new Set(ROOF_FITTING_TYPES);
 const antennaTypes = new Set(ANTENNA_FITTING_TYPES);
 const cutRoles = new Set(BODY_EXCLUDED_SEAT_ROLES);
 const oracleAntenna = /(?:^|[#/-])(?:antenna|aerial)/i;
+const oracleAmmo = /(?:^|[#/_-])ammo/i;
+/** How close (metres, box to box) an oracle's ammo node stands to a named roof gun to go with it. */
+export const AMMO_TOUCH_M = 0.1;
 
 /** Whether a roof-fitting tag (roofFittingParts) names an antenna, which leaves every height, or a roof weapon, which only
  * the body leaves. */
@@ -96,15 +103,25 @@ export function bodyGeometryWithout(geometry, ranges) {
  * geometry) lose their tagged antenna spans. An oracle also answers to its node names. isAntennaTag sorts the nodes.
  */
 export function roofFittingParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_ROOF_FITTING_NODES }) {
-  const nodes = new Map(), trimmed = new Map();
+  const nodes = new Map(), trimmed = new Map(), ammo = new Map();
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
     const tag = roofFittingTag(o, root) ?? (oracle ? oracleRoofFittingTag(o, root, nodePattern) : null)
       ?? (cutRoles.has(o.geometry.userData?.seatRole) ? `${o.geometry.userData.seatRole}:${o.name}` : null);
     if (tag) { nodes.set(o, tag); return; }
+    const box = oracle ? oracleRoofFittingTag(o, root, oracleAmmo) : null;
+    if (box) ammo.set(o, box);
     const ranges = (o.userData?.seatRoleRanges ?? []).filter((r) => cutRoles.has(r.role));
     if (ranges.length && !o.isInstancedMesh) trimmed.set(o, bodyGeometryWithout(o.geometry, ranges));
   });
+  if (ammo.size) {
+    root.updateMatrixWorld(true);
+    const guns = [...nodes].filter(([, tag]) => !isAntennaTag(tag)).map(([o]) => new Box3().setFromObject(o).expandByScalar(AMMO_TOUCH_M));
+    for (const [o, tag] of ammo) {
+      const box = new Box3().setFromObject(o);
+      if (guns.some((gun) => gun.intersectsBox(box))) nodes.set(o, tag);
+    }
+  }
   return { nodes, trimmed };
 }
 

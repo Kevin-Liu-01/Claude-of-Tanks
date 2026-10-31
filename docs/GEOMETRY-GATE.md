@@ -132,8 +132,10 @@ and parts drawn into ordinary buckets under the `antenna` seat role
 spans and the gate cuts them). The oracle names them by node: War Thunder
 `antenna*`, `bone_mg_aa_*`, `mg_aa*`, `bone_mg_[hv]_*`, `mg_NN`,
 `mg_mount_*` (never `mg_twin`, the coaxial), Sketchfab `*Pintle`/`AmmoCan`, or
-a registration's `roofFittingNodes`. A new whip or mast drawn as a raw rod
-needs `antennaPart()`, or it counts as body.
+a registration's `roofFittingNodes`. An oracle node named `ammo*` goes with a
+named roof gun it touches (within 0.1 m), as the build's ammunition rides in
+its gun's fitting; any other ammo box stays body. A new whip or mast drawn as a
+raw rod needs `antennaPart()`, or it counts as body.
 - A published `heightM` is an interval target, since sources measure to the
   cupola or the roof gun: it passes anywhere from the body top (the p95 roof)
   to the roof-fittings top (the highest column with the roof weapons back and
