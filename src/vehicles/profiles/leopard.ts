@@ -9345,9 +9345,11 @@ function addKF51ClosedShoulderMudguards(
   profile: 'kf51_evo' | 'kf51_u',
 ): void {
   const ownerExact = profile === 'kf51_u';
+  // 266 (roof-pocket census): the U's shoulder is solid down to the side plate and the web under it (1.33); its 6-8 cm
+  // slab stood 2-9 cm over them with daylight between (0.19 m2 a pair)
   const shoulder = ownerExact
     ? { innerX: 1.50, outerX: 1.88, rearZ: 2.52, frontZ: 3.38,
-      rearBottomY: 1.42, rearTopY: 1.50, frontBottomY: 1.37, frontTopY: 1.43 }
+      rearBottomY: 1.33, rearTopY: 1.50, frontBottomY: 1.33, frontTopY: 1.43 }
     : { innerX: 1.48, outerX: 1.78, rearZ: 2.48, frontZ: 3.35,
       rearBottomY: 1.40, rearTopY: 1.48, frontBottomY: 1.37, frontTopY: 1.42 };
   const web = ownerExact
