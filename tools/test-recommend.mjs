@@ -13,16 +13,24 @@
 //     shared fleet core or a wreck donor moved, from the changed-only world partition; or any tank moved);
 //   - balance: an id's balance inputs moved (spec armour, gun, HP, mobility, size, role: base and head registries).
 // `tanks` is id-scoped: lane mode runs the pins of the changed tanks, so the whole suite is warranted only when the
-// shared fleet core moved under them. `--root=<dir>` evaluates another checkout (a report on another branch's diff).
-import { writeFileSync } from 'node:fs';
+// shared fleet core moved under them. An entry page's HTML (a root *.html Vite builds from) counts only for a receipt
+// that names that page itself: many receipts reach index.html and 404.html through Vite's entry, and a document-head
+// change moves no simulation, bot or world result (the og:video head warranted six suites that way).
+// `--root=<dir>` evaluates another checkout (a report on another branch's diff); `--base=integ` and the integration
+// suggestion as in lane mode; the command exits with its parent and on SIGTERM/SIGINT/SIGHUP/SIGALRM.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { MANUAL_SUITES, STALE_GUARDS, manualSuiteFiles } from './selftest-tiers.mjs';
-import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankIds, fleetPartition, laneReadOf, receiptRunTimes, roman,
-  TOOLS_ROOT, withBaseSources } from './test-diff.mjs';
+import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankIds, chooseBase, createReadIndex, exitWithParent,
+  fleetPartition, laneReadOf, receiptRunTimes, roman, TOOLS_ROOT, withBaseSources } from './test-diff.mjs';
 import { simulateWall } from './test-audit.mjs';
 
 const READS = new Set(['named', 'scan']);
+/** An entry page's HTML: it counts only for a receipt that names the page itself. */
+export const ENTRY_HTML = /^[^/]+\.html$/;
+/** Whether `file` reads `path` on purpose: any path but an entry page, or a page the receipt's own source names. */
+export const readsOnPurpose = (path, text) => !ENTRY_HTML.test(path) || text.includes(path);
 const list = (items, count = 5) => `${items.slice(0, count).join(', ')}${items.length > count ? `, +${items.length - count} more` : ''}`;
 const CLASS_WORDS = { armour: 'armour', gun: 'gun', hp: 'HP', mobility: 'mobility', size: 'size', role: 'role', new: 'new', removed: 'removed' };
 
@@ -124,9 +132,10 @@ export function reportLines(rows) {
 }
 
 async function main(argv) {
+  exitWithParent();
   const value = (name) => argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const root = resolve(value('root') ?? TOOLS_ROOT);
-  const base = value('base') ?? 'origin/main';
+  const base = chooseBase(root, value('base'), 'test:recommend');
   const load = (path) => import(pathToFileURL(join(root, path)).href);
   const { SELFTEST_SUITES } = await load('tools/selftest-suites.mjs');
   const runner = await load('tools/run-selftests.mjs');
@@ -136,19 +145,27 @@ async function main(argv) {
   console.log(`[test:recommend] ${root === TOOLS_ROOT ? '' : `${root}: `}base ${base} (merge base ${diff.mergeBase.slice(0, 10)}), ${diff.paths.length} changed paths`);
   const cache = createSelftestCache({ root, alwaysRun: runner.SELFTEST_FRESH_FILES, fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES,
     declaredInputs: runner.SELFTEST_DECLARED_INPUTS });
-  const readOf = laneReadOf(cache, runner.selftestReadOf, root);
+  const index = createReadIndex(cache, root, diff.paths, (await load('tools/selftest-cache.mjs')).SELFTEST_BROAD_DIRS);
+  const readOf = laneReadOf(cache, index.readOf, root);
+  const texts = new Map();
+  const textOf = (file) => {
+    if (!texts.has(file)) { try { texts.set(file, readFileSync(join(root, file), 'utf8')); } catch { texts.set(file, ''); } }
+    return texts.get(file);
+  };
   const readers = new Map();
   for (const [name, entry] of Object.entries(MANUAL_SUITES)) {
     const reading = new Map();
     for (const file of [...manualSuiteFiles(registered, [name]), ...entry.commands.map((command) => command[1])]) {
-      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)));
+      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)) && readsOnPurpose(path, textOf(file)));
       if (paths.length) reading.set(file, paths);
     }
     readers.set(name, reading);
   }
   const partition = await fleetPartition(root, { world: true });
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase });
-  const maps = changedMaps(partition.world, diff.paths, { ids: idChanges.ids, core: idChanges.core });
+  // The world steps' Node captures never read a page: their keys hold index.html and 404.html only because the locale
+  // route table names them (src/ui/localeRouting.ts) and the probe runtime's browser mode serves them (declared modeOnly).
+  const maps = changedMaps(partition.world, diff.paths.filter((path) => !ENTRY_HTML.test(path)), { ids: idChanges.ids, core: idChanges.core });
   const tanks = manualSuiteFiles(registered, ['tanks']);
   const { selectLane } = await import('./test-lane.mjs');
   const { receiptsNaming } = await import('./test-diff.mjs');

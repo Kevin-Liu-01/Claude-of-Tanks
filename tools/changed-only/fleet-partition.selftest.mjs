@@ -32,6 +32,27 @@ for (const [file, declaration] of Object.entries(FLEET_API_USERS)) {
 }
 
 const state = computeState({ root, steps: STEPS });
+// Test-only tooling never keys a generator (266, Main's probe of 705417532f): the runner, the selftest tiers, scans and
+// suites, the test:* commands and the tank release plan are read by no generator, so an edit to them marks no id. The
+// control: each step's own generator is in its key.
+const TEST_ONLY = /^tools\/(?:run-selftests|selftest-[\w-]+|test-[\w-]+|tank-release-(?:plan|check))\.mjs$|\.selftest\.mjs$/;
+for (const [name, entry] of [...Object.entries(state.steps), ...Object.entries(state.world?.steps ?? {})]) {
+  assert.deepEqual(entry.toolFiles.filter((file) => TEST_ONLY.test(file)), [], `${name}: test-only tooling keys this step`);
+  assert.ok(entry.toolFiles.includes(entry.step.tool), `${name}: its generator ${entry.step.tool} keys it (control)`);
+}
+for (const [label, files] of [['the fleet core', state.partition.core], ...Object.entries(state.partition.groups)]) {
+  assert.deepEqual(files.filter((file) => TEST_ONLY.test(file)), [], `${label}: test-only tooling in a build's key`);
+}
+assert.ok(TEST_ONLY.test('tools/test-lane.mjs') && TEST_ONLY.test('tools/run-selftests.mjs') && !TEST_ONLY.test('tools/gen-combat-anatomy.mjs'),
+  'the test-only pattern names the harness and no generator');
+// No step key holds a public page (266): the route table only names them (steps.mjs namesOnly), and a document-head
+// edit re-ran the world steps on every map and centering and icons on every id. A step that really reads a page joins
+// PAGE_READERS with the reason.
+const PAGE_READERS = Object.freeze({});
+for (const [name, entry] of [...Object.entries(state.steps), ...Object.entries(state.world?.steps ?? {})]) {
+  const pages = entry.toolFiles.filter((file) => /^[^/]+\.html$/.test(file) && !PAGE_READERS[name]?.includes(file));
+  assert.deepEqual(pages, [], `${name}: public pages key this step; if it reads them, list them in PAGE_READERS`);
+}
 // The accessors take effect: seats key the roof-gun inventory per id, not the whole table.
 assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whole');
 assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
