@@ -121,12 +121,13 @@ const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as con
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21), the Christian II's Danish tri-tone with it (release 262). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_christian2'] as const);
-/** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
- * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
+/** Release 262: the T-84BM Oplot-M's Ukrainian MM-14 digital and the Oplot-T's Thai three-tone desert came with those
+ * tanks, the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
 // 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
-// it appends after GT too and no saved index moves.
+// it appends after GT too and no saved index moves. So do the PT-84 Sokół's digital and the Żbik's three-tone urban, their
+// Factory coats (their stock stays the PL-01's digital and the urban block), and the Orzeł's sand three-tone, its stock.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
-  'paint_ua_t84_oplot_m'] as const);
+  'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel'] as const);
 /** The Centurion family (262, merged on 264c): the Sho't Kal's 1973 Sinai grey, the Olifant Mk 2's SANDF coat and
  * the Australian Mk 5/1's olive drab came with those tanks; they append after 264's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
@@ -569,8 +570,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#394b3c', weather: '#53604a', patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42 }),
   preset('sig_t72m1_jaguar', 't72m1_jaguar', signatureTags('pl', 'woodland', 'organic'),
     { scheme: 'nato', base: '#46533a', weather: '#60694d', patches: ['#5a4534', '#1c211c'], camoScale: 0.44, patchK: 1.35 }),
-  preset('sig_pt91_twardy', 'pt91a_twardy', signatureTags('pl', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'], camoScale: 0.46 }),
+  preset('sig_pt91_twardy', 'pt91a_twardy', signatureTags('pl', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4b5a3c', weather: '#66694f', patches: ['#8a7653', '#202420'], camoScale: 0.46 }),
   preset('sig_pl01_105', 'pl01_105', signatureTags('pl', 'woodland', 'digital'),
     { scheme: 'digital', base: '#3b4641', weather: '#525c55', patches: ['#252d2a', '#56615a', '#73746a'], camoScale: 0.3 }),
   preset('sig_bwp1', 'bwp1', signatureTags('pl', 'woodland', 'digital'),
@@ -846,7 +847,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
   t64bm1m: 'sig_ua_t64bv',
   t64b1v_2022: 'sig_ua_t64bv',
-  // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
+  // release 262: the new Oplots' own stock coats: the Ukrainian MM-14 digital (owner 2026-10-30: "oplot-m doesnt hav ea
+  // camo", no flat coat), the Thai desert
   bm_oplot_m: 'paint_bm_oplot_m',
   bm_oplot_t: 'paint_bm_oplot_t',
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
@@ -860,6 +862,11 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   centurion5_1_aus: 'paint_centurion5_1_aus',
   // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A3 OTCO
   leo2a3_b4: 'sig_leo2a4_otco',
+  // the PT-84 Orzeł in its own Polish sand three-tone (262 visual bar, round 9: the Zubr family's green woodland shared
+  // the Oplot-M's hue), not the PL-01's digital
+  pt84_orzel: 'paint_pt84_orzel',
+  // the Żbik in the urban block grey (the Sokół keeps Poland's factory coat, the PL-01's digital)
+  pt84_zbik: 'urbanblock',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

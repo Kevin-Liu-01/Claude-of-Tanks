@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-28",
+    "request": "make a new polish version based on this style",
+    "scope": "One original Polish game concept, the PT-84 Orzeł, on the T-84BM Oplot-M / Oplot-T base of release 262 (profiles/oplotBM.ts, variant 'pl'). Poland never fielded the Oplot; the Orzeł is a what-if of the 2017 Bumar-Łabędy / KMDB PT-17 partnership on the Oplot itself, in the fleet's Polish Krata language."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "pt84_orzel": {
+      "id": "pt84_orzel",
+      "test": "src/vehicles/oplotBMGun.selftest.mjs",
+      "ring": [
+        -0.0119925,
+        1.4965,
+        0.18501249999999997
+      ],
+      "gunLocal": [
+        0,
+        0.3114975,
+        1.3330125
+      ],
+      "barrelLengthM": 5.042999999999999,
+      "barrelRadiusM": 0.1148,
+      "pitchDeg": [
+        -5,
+        14
+      ],
+      "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 2,
+      "hullLengthM": 7.17,
+      "hullWidthM": 4.264,
+      "widthM": 4.489,
+      "overallLengthM": 10.498,
+      "tallestM": 3.987,
+      "specDimensions": {
+        "hullLengthM": 7.17,
+        "overallLengthM": 10.28,
+        "widthM": 4.42,
+        "heightM": 2.97
+      },
+      "silhouette": "Polish game concept on the T-84BM Oplot-M's hull, six-wheel running gear and welded turret with its armoured bustle: framed ERAWA-2 Krata grids (cassettes 3 cm down in 9 cm welded frames) on the glacis (two 3 x 3 fields), the welded cheek boxes (five columns of two a side), the turret flanks (4 x 2) and the two bow skirt panels, stand-off slat armour on brackets over the seven panels behind them, an add-on arrowhead on each cheek; Tellur 81 mm banks, a round PCO panoramic commander's head, four Obra-3 heads, two ZSMU-1276 stations (a 12.7 mm WKM-B on a tower, a 7.62 mm UKM-2000), the PT-17's long full-width ammunition bustle with the rear stowage box and two jerrycans on its rear face, olive drums; the PT-17's 120 mm KBM2"
+    }
+  }
+}

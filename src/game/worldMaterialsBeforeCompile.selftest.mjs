@@ -31,7 +31,8 @@ assert.ok(shadowsAt > 0 && shadowsBody.indexOf('post.warmFirstFrame(') > shadows
 
 // (and its opening effects' covered composer render draws no shadow pass: that pass made every far caster's depth
 // program in one 1.6 s task ahead of the shadow prime's batches, nav-perf's root-r room)
-const openingAt = main.indexOf('openingEffects: async (fx');
+// (262, the solo sim Worker's pacing option: the signature spans lines, so the anchor stops at its parenthesis)
+const openingAt = main.indexOf('openingEffects: async (');
 const openingBody = main.slice(openingAt, main.indexOf('shotCards:', openingAt));
 assert.ok(openingAt > 0 && /renderWithoutShadowUpdates\(lighting\.csm\?\.lights \?\? \[\], \(\) => \{\s*const rendered = renderCoveredComposerWarm\(post\.composer\);/.test(openingBody),
   'the MP opening warm renders without shadow updates');
@@ -41,7 +42,10 @@ const cohorts = openingBody.indexOf('createDeploymentForwardWarmBatches({');
 assert.ok(cohorts > 0 && cohorts < openingBody.indexOf('renderCoveredComposerWarm(post.composer)')
   // (2026-10-26, the room-stalls lane: each cohort's buffers uploaded with zero draw counts ahead of its draws, a frame
   // between draw batches, the GPU caught up after every batch)
-  && /\(batch\.phase === 'upload' \? uploadBatches : forwardBatches\)\.push\(batch\.ms\);\s*signal\?\.throwIfAborted\(\);\s*if \(batch\.phase !== 'upload'\) await forwardYield\(true\);/.test(openingBody),
+  // (262, da18bcdd48: the solo sim Worker's covered pacing yields as the page's solo deployment warm, a painted frame at
+  // most every 32 ms; the room's GPU pacing keeps a frame per batch)
+  && /const batchYield = gpuPaced \? forwardYield : createOpaqueLoadingYielder\(12, 32\);/.test(openingBody)
+  && /\(batch\.phase === 'upload' \? uploadBatches : forwardBatches\)\.push\(batch\.ms\);\s*signal\?\.throwIfAborted\(\);\s*if \(batch\.phase !== 'upload'\) await batchYield\(true\);\s*if \(gpuPaced\) catchUpFrames \+= await waitForGpuCatchUp\(catchUp\);/.test(openingBody),
 'the MP opening warm draws the battlefield in cohorts between frames before its composer render');
 
 // the solo combat warm: before its first compileAll (the tanks', then the world's)

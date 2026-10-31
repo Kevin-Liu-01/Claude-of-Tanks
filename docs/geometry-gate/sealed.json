@@ -2222,17 +2222,69 @@
   },
   "pt91a_twardy": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 317,
-   "seeThroughPx": 16,
-   "netSeeThroughPx": 7108,
-   "tris": 82560,
+   "insideOutPx": 135,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 80968,
    "frame": [
-    -0.2,
-    1.7,
-    1.4,
-    5.8
+    0,
+    2.75,
+    0.95,
+    6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "rebuilt as the serial PT-91 on the T-72B3 study, whose own row holds this frame [0 2.75 0.95 6] for the same roof whips",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "sealed": true,
+      "openPx": 1,
+      "openViews": 0,
+      "seeThroughPx": 16,
+      "netSeeThroughPx": 7108,
+      "frame": [
+       -0.2,
+       1.7,
+       1.4,
+       5.8
+      ]
+     },
+     "to": [
+      0,
+      2.75,
+      0.95,
+      6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the ghillie net is gone with the rebuild, see-through and netting both fell to 0",
+     "by": "kevinliu",
+     "date": "2026-10-29",
+     "from": {
+      "seeThroughPx": 16,
+      "netSeeThroughPx": 7108,
+      "frame": [
+       -0.2,
+       1.7,
+       1.4,
+       5.8
+      ]
+     }
+    }
    ]
   },
   "pt91m": {
@@ -4380,6 +4432,51 @@
     2,
     1.45,
     6.1
+   ]
+  },
+  "pt84_orzel": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 60,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 116244,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "pt84_sokol": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 146,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 113716,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
+   ]
+  },
+  "pt84_zbik": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 56,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 118705,
+   "frame": [
+    0,
+    2,
+    1.3,
+    6.2
    ]
   },
   "ztz99a2_qinglong": {

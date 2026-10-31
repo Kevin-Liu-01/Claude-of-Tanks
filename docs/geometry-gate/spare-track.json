@@ -2273,8 +2273,26 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "pt84_orzel": {
+   "inputHash": "24533811b6da45da",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "pt84_sokol": {
+   "inputHash": "f61ddc74b9fad03c",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "pt84_zbik": {
+   "inputHash": "40774f687506db1e",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "pt91a_twardy": {
-   "inputHash": "39c4cfda60697e27",
+   "inputHash": "f987ca867c25773d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3118,7 +3136,7 @@
    "hostSweep": []
   },
   "t84bm_oplot_m": {
-   "inputHash": "8f2cf5a07ae07397",
+   "inputHash": "ddaabfe8bea59792",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

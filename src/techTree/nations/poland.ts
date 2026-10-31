@@ -15,7 +15,7 @@ export const POLAND_TREE: NationTree = Object.freeze({
   name: 'Poland',
   lines: Object.freeze([
     { id: 'pt91', name: 'T-72M1 to Zubr' },
-    { id: 'pt91_side', name: 'Twardy' },
+    { id: 'pt91_side', name: 'Twardy to the PT-84s' },
     { id: 'bwp', name: 'BWP-1, Upiór and Borsuk' },
     { id: 'pl01', name: 'PL-01' },
     { id: 'special', name: 'Special' },
@@ -36,6 +36,9 @@ export const POLAND_TREE: NationTree = Object.freeze({
     node({ id: 'pt91a_twardy', tier: 5, line: 'pt91_side', lane: 2, parents: ['t72m1_jaguar'], slot: 'line' }),
     // release 262: the PT-64 Tur, the Polish what-if on the true T-64 (profiles/pt64Tur.ts)
     node({ id: 'pt64_tur', tier: 4, line: 'pt91_side', lane: 1, parents: ['t72m1_jaguar'], slot: 'line' }),
+    node({ id: 'pt84_sokol', tier: 9, line: 'pt91_side', lane: 3, parents: ['pt91a_twardy'], slot: 'line' }),
+    node({ id: 'pt84_orzel', tier: 10, line: 'pt91_side', lane: 3, parents: ['pt84_sokol'], slot: 'line' }),
+    node({ id: 'pt84_zbik', tier: 10, line: 'pt91_side', lane: 4, parents: ['pt84_sokol'], slot: 'line' }),
     // PL-01
     node({ id: 'pl01', tier: 10, line: 'pl01', lane: 1, parents: ['upior'], slot: 'line', builds: ['pl01_105'] }),
     // Special

@@ -1351,5 +1351,8 @@ export const UKRAINE_PROFILES = {
   t84bm_oplot_m: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 'u') },
   bm_oplot_m: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 'm') },
   bm_oplot_t: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 't') },
+  pt84_orzel: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 'pl') },
+  pt84_sokol: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 'pls') },
+  pt84_zbik: { build: (builder: ProfileBuilderPort) => buildOplotBM(builder as TankBuilderPort, 'plz') },
   ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
 } satisfies VehicleProfileRecord;

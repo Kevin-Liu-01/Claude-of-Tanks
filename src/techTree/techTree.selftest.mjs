@@ -180,5 +180,10 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the Germany tree (Leopard side line, lane 2: lanes 4 and 5 put it on the 2A2's connectors to the A4 and A4 V).
 // Re-pinned 2026-10-30 at integ/265 (leo2a4-family-265 ca927a900a merged; every other tree check passes): + the fourth
 // batch's Leopard 2A3 beside the 2A3 OTCO.
-assert.equal(digest, '91c37a404c7a4380', `tree content changed: re-pin to ${digest} if deliberate`);
+// 262 (owner 2026-10-28): the PT-84 Orzeł, the Polish concept on the Oplot-M's base, ends Poland's Twardy line at X (lane 3:
+// the Upiór holds lane 2 at X); its light hunter, the PT-84 Sokół, leads to it at IX and the assault PT-84 Żbik branches
+// from the Sokół at X (lane 4). Re-pinned on the merged tree (main 637c3b4ccf + the PT-84s).
+// Re-pinned 2026-10-30 at integ/265 (pt91-twardy-262 bbf22b6ce3 merged; every other tree check passes): + the three
+// PT-84s on Poland's Twardy line.
+assert.equal(digest, 'e74e06310faaa982', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

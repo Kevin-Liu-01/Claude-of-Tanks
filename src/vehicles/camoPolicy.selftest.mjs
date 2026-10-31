@@ -305,10 +305,11 @@ assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored
 // 233 appended three Signatures (715151d24c) and the Type 10 (Dozer) its stock coat (2facf33e95) after them; release 262 the
 // Christian II its Danish tri-tone, then the T-84BM Oplot-M's and Oplot-T's stock coats, then the Challenger 3 TD's, then the
 // rebuilt T-84U's 2000 three-tone (263); 265 the Longwei family's four Signatures, then (the Centurion family) the
-// Sho't Kal's, the Olifant Mk 2's and the Australian Mk 5/1's
+// Sho't Kal's, the Olifant Mk 2's and the Australian Mk 5/1's; the PT-84 Sokół's and Żbik's Factory coats and the
+// Orzeł's sand (262) after the T-84U's three-tone
 assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep',
   'sig_m60a3', 'paint_type10_dozer', 'paint_christian2', 'paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td',
-  'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m',
+  'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   'sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu',
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);

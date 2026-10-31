@@ -297,7 +297,7 @@ function roofEra(P:TankBuilderPort):void {
   }
 }
 
-function roofEquipment(P:TankBuilderPort):void {
+function roofEquipment(P:TankBuilderPort,sosna=true):void {
   P.addCupola('turret',cylY(.405,.111,32),-.6042,2.285-YAW[1],-.265-YAW[2]);
   turretPart(P,'turretDetail',cylY(.358,.078,28),-.61355,2.411,-.363);
   // 2026-10-19 (owner float sweep): this upper race stood 32 mm over the cupola; a collar carries it
@@ -305,7 +305,7 @@ function roofEquipment(P:TankBuilderPort):void {
   P.addCupola('turret',cylY(.345,.068,28),.56485,2.205-YAW[1],-.462-YAW[2]);
   turretPart(P,'turretDetail',cylY(.323,.033,28),.56485,2.274,-.462);
   turretPart(P,'turretDetail',box(.402,.077,.337),.0657,2.271,-.75675);
-  addT72B3Stowage(P);addT72B3Optics(P);
+  addT72B3Stowage(P);addT72B3Optics(P,sosna);
 }
 
 function antennae(P:TankBuilderPort):void {
@@ -404,7 +404,7 @@ export function buildT72B3XHull(P:TankBuilderPort,options:T72B3XOptions={}):void
   hull(P);runningGear(P);engineDeck(P);rearFittings(P);if(options.kontakt5!==false)hullEra(P);
 }
 
-export function buildT72B3X(P:TankBuilderPort,options:T72B3XOptions={}):void {
+export function buildT72B3X(P:TankBuilderPort,options:T72B3XTurretOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.topY=T72B3_X_DATUMS.highestFittingM-YAW[1];
   buildT72B3XHull(P,options);buildT72B3XTurret(P,options);
@@ -413,8 +413,9 @@ export function buildT72B3X(P:TankBuilderPort,options:T72B3XOptions={}):void {
 /** Options for reusing the T-72B3 turret on another hull. A vehicle whose own
  * fitted remote station replaces the commander's machine gun omits that gun
  * (one working roof gun, never a duplicate); one whose station's barrel sweeps
- * the roof whips omits them and fits its own outside that sweep. */
-export interface T72B3XTurretOptions extends T72B3XOptions { commanderGun?:boolean; antennae?:boolean }
+ * the roof whips omits them and fits its own outside that sweep. One with its own smoke banks or gunner's sight (the
+ * PT-91's two 12-tube banks and Drawa head, pt91Twardy.ts) omits the B3's 902A bank or Sosna-U housing. */
+export interface T72B3XTurretOptions extends T72B3XOptions { commanderGun?:boolean; antennae?:boolean; smoke?:boolean; sosna?:boolean }
 
 /** The complete T-72B3 turret in its own turret frame (the turret ring centre
  * is the origin): casting, Kontakt-5 cheek and roof cassettes, roof equipment,
@@ -424,7 +425,8 @@ export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions=
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];
   casting(P);if(options.kontakt5!==false){cheekEra(P);roofEra(P);}
-  roofEquipment(P);if(options.antennae!==false)antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
+  roofEquipment(P,options.sosna!==false);if(options.antennae!==false)antennae(P);if(options.smoke!==false)smoke(P);
+  if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;
 
