@@ -71,6 +71,8 @@ interface OffscreenSceneWarmerOptions {
    * target bound the programs but left the multisampled scene pass's pipelines to the first live frame that drew them.
    */
   samples?: (() => number) | null;
+  /** The clock the program steps slice their compile and readiness polls on (performance.now; a receipt passes the thread's CPU clock). */
+  now?: () => number;
 }
 
 interface WarmBatchSelection {
@@ -91,7 +93,7 @@ export function createOffscreenSceneWarmer(
   scene: Scene,
   camera: Camera,
   scale = 0.25,
-  { samples = null }: OffscreenSceneWarmerOptions = {},
+  { samples = null, now }: OffscreenSceneWarmerOptions = {},
 ): OffscreenSceneWarmer {
   const size = new Vector2();
   let target: WebGLRenderTarget | null = null;
@@ -144,7 +146,7 @@ export function createOffscreenSceneWarmer(
 
   let programWarm: ForwardProgramWarmOwner | undefined;
   warmSceneOffscreen.prepareProgramsSteps = (objects, timing) => {
-    programWarm ??= createForwardProgramWarmOwner({ renderer, scene, camera, getTarget: ensureTarget });
+    programWarm ??= createForwardProgramWarmOwner({ renderer, scene, camera, getTarget: ensureTarget, now });
     return programWarm.prepareSceneSteps({ objects, timing, strict: true });
   };
 

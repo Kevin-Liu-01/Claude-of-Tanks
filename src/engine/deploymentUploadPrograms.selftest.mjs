@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import os from 'node:os';
 import * as THREE from 'three';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 import { createOffscreenSceneWarmer } from './offscreenWarm.ts';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
 import { deploymentUploadVariantKey } from './deploymentUploadPrograms.ts';
 import { createOpaqueLoadingYielder } from './frameScheduler.ts';
+import { threadCpuMs } from '../../tools/starvation-meter.mjs';
 
 const uploadMaterial = new THREE.MeshBasicMaterial({ color: 0, colorWrite: false,
   depthWrite: false, depthTest: false, fog: false, toneMapped: false });
@@ -86,7 +86,7 @@ function fixture(mode) {
   let active = { caller: true }, face = 3, mip = 2, lost = false, cancelled = false;
   const priorTarget = active;
   let uploads = 0, compiles = 0, queries = 0, closed = 0;
-  let programFrames = 0, tasks = 0, revoked = false, queriesAtFrame = 0;
+  let programFrames = 0, tasks = 0, revoked = false, queriesAtFrame = 0, planted = false;
   const failure = new Error('guarded covered yield cancelled');
   const coveredYield = createOpaqueLoadingYielder(12, 32, {
     now: () => 0,
@@ -98,7 +98,13 @@ function fixture(mode) {
     getExtension: () => ({ COMPLETION_STATUS_KHR: 123 }),
     getProgramParameter() {
       queries++;
-      return mode !== 'pending' && (mode !== 'frame-ready' || programFrames >= 2);
+      // the planted controls: the first readiness query after the frames came blocks PLANT_MS without CPU, or spends it
+      if (programFrames >= 2 && !planted && (mode === 'frame-ready-blocked' || mode === 'frame-ready-busy')) {
+        planted = true;
+        if (mode === 'frame-ready-blocked') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PLANT_MS);
+        else for (const from = threadCpuMs(); threadCpuMs() - from < PLANT_MS;) { /* the compiler's own stall: CPU */ }
+      }
+      return mode !== 'pending' && (!mode.startsWith('frame-ready') || programFrames >= 2);
     },
   };
   const renderer = {
@@ -147,7 +153,9 @@ function fixture(mode) {
     },
   };
   const programKey = nativeKeys(renderer);
-  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
+  // (267, the load1 class) the program steps slice on this thread's CPU clock: a slice the machine preempted past its
+  // 8 ms (an 8-worker suite at load 30+) no longer reads as one that spent them and asks for another frame
+  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { now: threadCpuMs });
   const prepare = warmRender.prepareProgramsSteps;
   warmRender.prepareProgramsSteps = function* (...args) {
     try { return yield* prepare(...args); } finally { closed++; }
@@ -207,31 +215,29 @@ function fixture(mode) {
   };
 }
 
-const loadPerCpu = os.loadavg()[0] / Math.max(1, os.cpus().length);
+const PLANT_MS = 20;
 for (const mode of ['success', 'frame-ready', 'frame-throws', 'frame-cancel', 'frame-context-loss',
   'frame-dispose', 'frame-target-dispose', 'cancel', 'context-loss', 'dispose', 'target-dispose', 'pending',
-  'compile-throws', 'missing-cache', 'missing-return', 'detach', 'hide']) {
+  'compile-throws', 'missing-cache', 'missing-return', 'detach', 'hide', 'frame-ready-blocked', 'frame-ready-busy']) {
   const f = fixture(mode);
   try {
-    if (['success', 'frame-ready'].includes(mode)) {
+    if (['success', 'frame-ready', 'frame-ready-blocked', 'frame-ready-busy'].includes(mode)) {
       const receipt = await f.prime();
       assert.equal(receipt.uploadProgramPreparation.variants, 3);
       assert.equal(receipt.uploadProgramPreparation.timing.uniformCount, 3);
       assert.ok(receipt.uploadProgramPreparation.maxStepMs >= 0);
       assert.ok(receipt.uploadProgramPreparation.totalMs >= receipt.uploadProgramPreparation.syncMs);
       assert.ok(f.uploads > 0);
-      if (mode === 'frame-ready') {
-        // 2026-09-28: the real-frame count is timing-bound (a poll that outlasts a frame under an 8-worker suite at load
-        // 30+ asks for one more — chain 111 read 3 once; 4/4 runs alone read 2). Above 1.5 load per CPU the counts are
-        // reported, not asserted — the pattern of the other timing receipts; the contract holds whenever the host is sane.
-        if (loadPerCpu > 1.5) {
-          console.log(`deploymentUploadPrograms.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs — frame-ready counts reported only: programFrames ${f.programFrames} (2 quiet), tasks ${f.tasks}, queries ${f.queries}`);
-        } else {
-          assert.equal(f.programFrames, 2, 'readiness gets real frames; geometry batches do not request them');
-          assert.ok(f.tasks > f.programFrames, 'ordinary covered loading still uses task-only yields');
-          assert.ok(f.queries < 20, 'a frame-ready native compiler cannot burn the strict poll budget in task churn');
-        }
+      if (mode === 'frame-ready' || mode === 'frame-ready-blocked') {
+        // 2026-09-28: the real-frame count was timing-bound (a poll that outlasted a frame under an 8-worker suite at load
+        // 30+ asked for one more; chain 111 read 3 once) and above 1.5 load per CPU it was only reported. (267) The slices
+        // run on the thread's CPU clock, so it is asserted at any load: the planted 20 ms block without CPU changes nothing.
+        assert.equal(f.programFrames, 2, 'readiness gets real frames; geometry batches do not request them');
+        assert.ok(f.tasks > f.programFrames, 'ordinary covered loading still uses task-only yields');
+        assert.ok(f.queries < 20, 'a frame-ready native compiler cannot burn the strict poll budget in task churn');
       }
+      // the negative control: a readiness query that spends 20 ms of CPU ends its slice, and the steps ask for one more frame
+      if (mode === 'frame-ready-busy') assert.equal(f.programFrames, 3, 'a slice that spent its budget is charged');
     } else {
       await assert.rejects(f.prime(), error => ['cancel', 'compile-throws', 'frame-cancel', 'frame-throws'].includes(mode) ? error === f.failure
         : ['dispose', 'frame-dispose'].includes(mode) ? /disposed/.test(error.message)
