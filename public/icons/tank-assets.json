@@ -165598,8 +165598,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 9.63,
         "overallLength": 13.15,
@@ -167200,7 +167200,7 @@
         ]
       },
       "geometryHash": "792c03fd",
-      "metadataHash": "bee906de",
+      "metadataHash": "0f2ffb2a",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.3577
@@ -167373,8 +167373,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 9.63,
         "overallLength": 13.15,
@@ -169724,7 +169724,7 @@
         ]
       },
       "geometryHash": "b6fc261d",
-      "metadataHash": "5f179d4d",
+      "metadataHash": "2b1afd81",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.3589

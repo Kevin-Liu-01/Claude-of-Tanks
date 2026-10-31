@@ -195,5 +195,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Denmark tree (the Christian II out of Sweden's special lane, the Strv 105 kept there).
 // 266 (m60-family-265): the Magach 6B (I) and 7C (II) in Israel's second special lane, beside the Magach 3 and the Sabra.
 // Re-pinned 2026-10-31 at integ/266 (m60-family-265 17fe8bb7d1 merged; every other tree check passes): + the Magach 6B and 7C.
-assert.equal(digest, 'cd6f2f04cb7dfff1', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-31 re-pin (266): the owner moved the Challenger 3 TD and its RWS build to tier X beside the Challenger 3.
+// Re-pinned 2026-10-31 at integ/266 (cr3td-tier-x-266 986c7a4452 merged; every other tree check passes).
+assert.equal(digest, '62f9a84770302495', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
