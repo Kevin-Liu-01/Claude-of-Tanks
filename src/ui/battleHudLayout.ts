@@ -342,6 +342,44 @@ const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot
 /** What covers the vision switch's seat right of the sight on a mouse layout (critic r9: under about 1200 px wide): a shot
  *  report's host, which takes the pointer over its whole box while it holds a card, and the open combat log. */
 const RIGHT_LANE_COVERS = '.cot-si-cardhost:not(:empty),.cot-si-log.open';
+/** (local-fps-266) The screens the layout's queries never look into. In battle the Garage, the icon sprite and the play
+ *  screen held 10,221 of the document's 12,028 elements and every one of a pass's ~30 queries walked them (2.9 ms a query
+ *  against 0.14 ms under the HUD root; a pass took 20-25 ms, 21 passes in a 25 s drive). None holds a HUD part; the parts
+ *  outside the root (.cot-hints, .cot-medal-toasts, the network strip) are body children of their own. */
+const HUD_QUERY_SKIPS = '.cot-garage,#cot-icon-sprite,.cot-play';
+/** A document stand-in without its body's children (the receipts') is queried whole. */
+function hudHosts(): HTMLCollection | null {
+  return document.body?.children ?? null;
+}
+/** hudQueryAll(selector) less the HUD_QUERY_SKIPS screens, in document order: each body child that is not
+ *  one of them, then its matches (Element.querySelectorAll matches against the whole document, so a combinator still
+ *  reads the ancestors above it). */
+export function hudQueryAll<E extends Element = Element>(selector: string): E[] {
+  const hosts = hudHosts();
+  if (!hosts) return Array.from(document.querySelectorAll<E>(selector));
+  const out: E[] = [];
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
+    if (host.matches(HUD_QUERY_SKIPS)) continue;
+    if (host.matches(selector)) out.push(host as unknown as E);
+    const found = host.querySelectorAll<E>(selector);
+    for (let k = 0; k < found.length; k++) out.push(found[k]);
+  }
+  return out;
+}
+/** hudQuery(selector) less the HUD_QUERY_SKIPS screens: the first match in document order. */
+export function hudQuery<E extends Element = Element>(selector: string): E | null {
+  const hosts = hudHosts();
+  if (!hosts) return document.querySelector<E>(selector);
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
+    if (host.matches(HUD_QUERY_SKIPS)) continue;
+    if (host.matches(selector)) return host as unknown as E;
+    const found = host.querySelector<E>(selector);
+    if (found) return found;
+  }
+  return null;
+}
 
 export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
@@ -450,13 +488,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const read = (selector: string) => {
     const keep = reuseReads && steadyReads.has(selector);
     if (keep) { const seen = readsThisPass.get(selector); if (seen !== undefined) return seen; }
-    const node = document.querySelector<HTMLElement>(selector);
+    const node = hudQuery<HTMLElement>(selector);
     const box = !node || !node.getClientRects().length || getComputedStyle(node).visibility === 'hidden' ? null : node.getBoundingClientRect();
     if (keep) readsThisPass.set(selector, box);
     return box;
   };
   const observe = (selector: string, content = false) => {
-    for (const node of document.querySelectorAll(selector)) {
+    for (const node of hudQueryAll(selector)) {
       if (observed.has(node)) continue;
       observed.add(node);
       resize.observe(node);
@@ -498,7 +536,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
    *  left and kept where it clears the score. 'side', 'corner', or '' (the panel under the score and the team strip). */
   function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null,
     pips: DOMRect | null): string {
-    const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
+    const node = hudQuery<HTMLElement>('.cot-mode-status.show');
     objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: pips ? pips.bottom + PIPS_GAP : score?.bottom || 64,
       // (the network strip's touch tile stands beside the map, clear of the tab: the 52 px it once took from the tab cut its
       // copy to "CONTROL 2" at 844x390, gauntlet r7)
@@ -549,7 +587,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // A tab too narrow for its parts on one line stacks them (hud.ts setObjectiveValue estimates the same at each copy;
     // the planner decides it again whenever it places the tab, as a copy can land before the tab's width does: gauntlet
     // r3 still read "0 ALIVE" over "· 0/1 SAFE" on the phones).
-    const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
+    const node = hudQuery<HTMLElement>('.cot-mode-status.show');
     const copy = (typeof node?.querySelector === 'function' ? node.querySelector('.mv')?.textContent : '') ?? '';
     if (node?.classList && seat !== 'side') {
       const over = seat !== 'corner' && objectiveCopyOver(node.querySelector?.('.mv') ?? node, copy, place.width);
@@ -573,7 +611,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
    * otherwise waits hidden until the lane clears (its key still cycles the view). Touch seats it left of the sight already.
    */
   function seatScopeVision(width: number, height: number, touch: boolean): void {
-    const vision = document.querySelector<HTMLElement>('.cot-scope-vision');
+    const vision = hudQuery<HTMLElement>('.cot-scope-vision');
     let seat = '';
     let rise = 0;
     let shift = 0;
@@ -585,7 +623,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const right = { left: Math.min(width / 2 + reach, width - edge), top: height / 2 - h / 2, right: 0, bottom: height / 2 + h / 2 };
       right.right = right.left + w;
       let covered = false;
-      for (const node of document.querySelectorAll(RIGHT_LANE_COVERS)) {
+      for (const node of hudQueryAll(RIGHT_LANE_COVERS)) {
         const box = shownBox(node);
         if (box && apart(right, box) < 3) covered = true;
       }
@@ -594,7 +632,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         left.left = left.right - w;
         seat = 'left';
         const boxes: DOMRect[] = [];
-        for (const node of document.querySelectorAll(`${SIGHT_FURNITURE},${LEFT_LANE},.cot-sixth.on,.cot-alert.show`)) {
+        for (const node of hudQueryAll(`${SIGHT_FURNITURE},${LEFT_LANE},.cot-sixth.on,.cot-alert.show`)) {
           if (node === vision || node.contains(vision)) continue;
           const box = shownBox(node);
           if (box) boxes.push(box);
@@ -636,7 +674,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const place = ribbon.getClientRects().length ? ribbon.getBoundingClientRect() : null;
     let meets = false;
     if (place) {
-      for (const node of document.querySelectorAll(RIBBON_YIELDS)) {
+      for (const node of hudQueryAll(RIBBON_YIELDS)) {
         const box = shownBox(node);
         if (box && apart(place, box) < 8) { meets = true; break; }
       }
@@ -649,7 +687,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
    *  sixth-sense notice its seated warning chip yields to, and on either the centre notices the scope's arms end short of. */
   function publishSightFurniture(touch: boolean): void {
     clearSightFurniture();
-    for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
+    for (const node of hudQueryAll(SIGHT_FURNITURE)) {
       const box = shownBox(node);
       if (!box) continue;
       // (a round control's ring keeps the reticle's marks the layout's 8 px off, their 3 px gap and ROUND_CONTROL_PAD:
@@ -657,13 +695,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const pad = node.matches?.('.cot-touch.on .round') ? ROUND_CONTROL_PAD : 0;
       addSightFurniture(box.left - pad, box.top - pad, box.right + pad, box.bottom + pad);
     }
-    for (const node of document.querySelectorAll(PLATE_OBSTACLES)) {
+    for (const node of hudQueryAll(PLATE_OBSTACLES)) {
       const box = shownBox(node);
       if (box) addPlateObstacle(box.left, box.top, box.right, box.bottom);
     }
     // (each row by its copy's extent, not the lane-wide row box; a row standing aside for the target plate is laid out
     // still, and is published as it is)
-    for (const node of document.querySelectorAll(FEED_ROWS)) {
+    for (const node of hudQueryAll(FEED_ROWS)) {
       if (!node.getClientRects().length) continue;
       plateRange ??= typeof document.createRange === 'function' ? document.createRange() : null;
       plateRange?.selectNodeContents(node);
@@ -672,14 +710,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
     // land on any frame of that, its first included; r10e)
-    const notice = touch ? document.querySelector<HTMLElement>(SIXTH_SENSE) : null;
+    const notice = touch ? hudQuery<HTMLElement>(SIXTH_SENSE) : null;
     if (notice && notice.getClientRects().length && getComputedStyle(notice).visibility !== 'hidden') {
       const box = notice.getBoundingClientRect();
       const slide = translationY(notice);
       setSightNotice(true, box.left, box.top - slide, box.right, box.bottom - slide);
     } else setSightNotice(false);
     // the centre notices the scope's arms end short of, each at its settled place (both slide in)
-    for (const node of document.querySelectorAll<HTMLElement>('.cot-sixth.on,.cot-alert.show')) {
+    for (const node of hudQueryAll<HTMLElement>('.cot-sixth.on,.cot-alert.show')) {
       if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
       const box = node.getBoundingClientRect();
       const slide = translationY(node);
@@ -696,24 +734,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const push = (box: { left: number; top: number; right: number; bottom: number } | null) => {
       if (box) floor.push({ x0: Math.floor(box.left), y0: Math.floor(box.top), x1: Math.ceil(box.right), y1: Math.ceil(box.bottom) });
     };
-    for (const node of document.querySelectorAll(CHASE_FLOOR)) push(shownBox(node));
+    for (const node of hudQueryAll(CHASE_FLOOR)) push(shownBox(node));
     // (a portrait phone's row by its place this pass: under the sight's band it is the floor's too)
     const rowFloor = touch && width < height ? height / 2 - battleSightShift() + SIGHT_BAND_BELOW : -Infinity;
-    for (const node of document.querySelectorAll(CHASE_FLOOR_SYSTEMS)) {
+    for (const node of hudQueryAll(CHASE_FLOOR_SYSTEMS)) {
       const box = shownBox(node);
       if (box && box.top >= rowFloor) push(box);
     }
     // (the strip by its seat, as wide as it may run: its own width changes as its groups are done; transient, the chase
     // keeps its sight where it was and draws back over it)
     const transient: BattleBandBox[] = [];
-    const plate = touch ? null : document.querySelector<HTMLElement>('.cot-hints.show');
+    const plate = touch ? null : hudQuery<HTMLElement>('.cot-hints.show');
     if (plate?.getClientRects().length) {
       const plateH = plate.getBoundingClientRect().height;
       transient.push({ x0: Math.floor(hints.x - hints.width / 2), y0: Math.floor(hints.bottom - plateH),
         x1: Math.ceil(hints.x + hints.width / 2), y1: Math.ceil(hints.bottom) });
     }
     let ceiling = 0;
-    for (const node of document.querySelectorAll(CHASE_CEILING)) {
+    for (const node of hudQueryAll(CHASE_CEILING)) {
       const box = shownBox(node);
       if (!box || box.top > height * 0.45 || box.right < width / 2 - CHASE_CEILING_HALF || box.left > width / 2 + CHASE_CEILING_HALF) continue;
       ceiling = Math.max(ceiling, Math.ceil(box.bottom));
@@ -730,7 +768,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
    * mouse window (no corner beside its score) folds it into the right lane under the objective.
    */
   function networkCornerRight(width: number, touch: boolean, telemetry: DOMRect | null, score: DOMRect | null): number {
-    const network = document.querySelector<HTMLElement>('.cot-mp-status.battle');
+    const network = hudQuery<HTMLElement>('.cot-mp-status.battle');
     const corner = !touch && document.body.dataset.cotWidth !== 'phone';
     const cells = network && corner ? read('.cot-mp-status.battle .cot-mp-strip') : null;
     if (!network || !cells) return NETWORK_CORNER_RIGHT;
@@ -773,7 +811,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   let restingEars: { size: number; left: DOMRect | null; right: DOMRect | null; counts: number } | null = null;
   /** Whether anything the plan places (or the Tab rosters it bounds) is on screen. */
   const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on')
-    || !!document.querySelector('.cot-medal-toasts')?.childElementCount;
+    || !!hudQuery('.cot-medal-toasts')?.childElementCount;
   function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null, map: DOMRect | null,
     rosters: readonly [PlanBox | null, number, PlanBox | null, number],
     systemsLeft: number, systemsTop: number, systemsWidth: number, systemsHeight: number, sideWidth: number,
@@ -823,11 +861,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // rail's spare width): each where this pass puts it (the buttons move with the strip, whose place is written below).
     const strip = read('.cot-vehicle-controls');
     const dx = strip ? systemsLeft - strip.left : 0, dy = strip ? systemsTop - strip.top : 0;
-    for (const node of document.querySelectorAll('.cot-vehicle-controls>button')) {
+    for (const node of hudQueryAll('.cot-vehicle-controls>button')) {
       const b = shownBox(node);
       if (b) box(b.left + dx, b.top + dy, b.width, b.height, 2);
     }
-    for (const node of document.querySelectorAll('.cot-shell,.cot-con,.flight-identity')) {
+    for (const node of hudQueryAll('.cot-shell,.cot-con,.flight-identity')) {
       const b = shownBox(node);
       if (b) box(b.left, b.top, b.width, b.height, 2);
     }
@@ -1122,13 +1160,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // layout receipt's ammo-expanded)
     let ammoReachLeft = ammo?.left ?? 0;
     if (touch && ammo) {
-      for (const node of document.querySelectorAll<HTMLElement>('.cot-shells>.cot-shell')) {
+      for (const node of hudQueryAll<HTMLElement>('.cot-shells>.cot-shell')) {
         if (node.checkVisibility()) ammoReachLeft = Math.min(ammoReachLeft, ammo.left + (parseFloat(node.style.getPropertyValue('--touch-ammo-x')) || 0));
       }
     }
     let systemsWidth = Math.min(440, width - 24);
     let systemsTop = (ammo?.top ?? height - 80) - systemsHeight - 8;
-    const systemsElement = document.querySelector<HTMLElement>('.cot-vehicle-controls');
+    const systemsElement = hudQuery<HTMLElement>('.cot-vehicle-controls');
     const naturalWidth = systemsElement ? systemsElement.scrollWidth + 2 : 0;
     let dockWidth = Math.min(systemsWidth, naturalWidth);
     // (centred on the tray by the row's own rendered width: the 2 px margin dockWidth carries would set it 1 px left)
@@ -1167,8 +1205,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const slots: DOMRect[] = [];
     let shellSlots = 0, conSlots = 0;
     if (fillRack) {
-      for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) if (node.checkVisibility()) tiles.push(node);
-      for (const node of document.querySelectorAll<HTMLElement>('.cot-shell,.cot-con')) {
+      for (const node of hudQueryAll<HTMLElement>('.cot-vehicle-controls>button')) if (node.checkVisibility()) tiles.push(node);
+      for (const node of hudQueryAll<HTMLElement>('.cot-shell,.cot-con')) {
         const box = shownBox(node);
         if (!box) continue;
         slots.push(box);
@@ -1195,7 +1233,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // on the divider, a loadout without C set F and Q over HEAT and HE, gauntlet r16)
     const slotOf = (at: number) => (!sided ? firstSlot + at : at < leftTiles ? at : shellSlots + at - leftTiles);
     if (overSlots || tilesOverSlots) {
-      for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) {
+      for (const node of hudQueryAll<HTMLElement>('.cot-vehicle-controls>button')) {
         if (!node.style) continue;
         const at = overSlots ? tiles.indexOf(node) : -1;
         const slot = at >= 0 ? slots[slotOf(at)] : null;
@@ -1303,7 +1341,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SLOT_ROW_GAP;
     };
     // (a row that pages no longer, its paging marks lifted before it is counted)
-    const more = document.querySelector<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
+    const more = hudQuery<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
     const paged = touch && !systemsSlot && !!systemsElement && !!more;
     if (!paged && more && !more.hidden) {
       more.hidden = true;
@@ -1450,7 +1488,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const ribbonFloor = ribbonShows && ribbon.width >= RIBBON_LEAST && ribbon.x + ribbon.width / 2 > width - sideWidth - 12
       ? ribbonTop - RIBBON_LIFT - RIBBON_H - 8 : height;
     const scopeVision = read('.cot-scope-vision');
-    const reportShown = !!document.querySelector('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
+    const reportShown = !!hudQuery('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
     const rightBottom = Math.min(rightFloor(height, width, map), ribbonFloor,
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
       // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
@@ -1489,7 +1527,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
     const countdown = read('.cot-prebattle.on');
     // Mouse: one plan from the viewport, the fixed instruments and the lanes' bands (mouseNoticePlan.ts).
-    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
+    const banner = hudQuery<HTMLElement>('.cot-medal-toasts');
     const expanded = root.classList.contains('rosters-expanded');
     let plan: MouseNoticePlan | null = null;
     if (!touch && !planInputs && planned) plan = planned;
@@ -1574,7 +1612,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (the battle's notice over a side lane's column takes the lane's band too while it shows, the lane's rows starting
     // under it: the network's banner sat over the right-hand kill feed at 1024x600 and 900x700, the overlap probe; a touch
     // layout reads it out, never draws it)
-    const battleNotice = touch ? null : document.querySelector('.cot-battle-notices .cot-c-notice:not([data-state="exit"])');
+    const battleNotice = touch ? null : hudQuery('.cot-battle-notices .cot-c-notice:not([data-state="exit"])');
     const noticesBox = battleNotice ? battleNotice.parentElement!.getBoundingClientRect() : null;
     if (noticesBox && noticesBox.height > 0) {
       const under = Math.ceil(noticesBox.bottom + 8);
@@ -1751,7 +1789,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (touch) {
       const boxes = (selector: string): TouchBox[] => {
         const out: TouchBox[] = [];
-        for (const node of document.querySelectorAll(selector)) {
+        for (const node of hudQueryAll(selector)) {
           const box = shownBox(node);
           if (box) out.push({ x0: box.left, y0: box.top, x1: box.right, y1: box.bottom });
         }
@@ -1761,10 +1799,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const obstacles = boxes(slotChip ? TOUCH_NOTICE_OBSTACLES.replace(`${AIM_CHIP},`, '') : TOUCH_NOTICE_OBSTACLES);
       if (systems) obstacles.push({ x0: systemsLeft, y0: systemsTop, x1: systemsLeft + dockWidth, y1: systemsTop + systemsHeight });
       // (the countdown's own box, unscaled: the plan sets its scale)
-      const countdownNode = document.querySelector<HTMLElement>('.cot-prebattle.on');
+      const countdownNode = hudQuery<HTMLElement>('.cot-prebattle.on');
       const touchCountdown = countdownNode && shownBox(countdownNode) ? { w: countdownNode.offsetWidth, h: countdownNode.offsetHeight } : null;
       touchCountdownShown = !!touchCountdown;
-      const rulesNode = document.querySelector<HTMLElement>('.cot-prebattle-rules');
+      const rulesNode = hudQuery<HTMLElement>('.cot-prebattle-rules');
       const touchRules = touchCountdown && rulesNode?.offsetWidth ? { w: rulesNode.offsetWidth, h: rulesNode.offsetHeight } : null;
       // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
       const compactNow = document.body.dataset.touchNotices ?? '';
@@ -1858,7 +1896,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-aim-warning-top', `${Math.floor(chipTop)}px`);
     }
     // (the parked chip is the kit's notice in the battle's region, which gives way: battleHudLayout.css)
-    const chipNode = slotChip ? document.querySelector<HTMLElement>('.cot-battle-notices') : null;
+    const chipNode = slotChip ? hudQuery<HTMLElement>('.cot-battle-notices') : null;
     const underNotice = !!chipNode && !!root.querySelector('.cot-sixth.on,.cot-alert.show');
     if (chipNode && chipNode.hasAttribute('data-under-notice') !== underNotice) chipNode.toggleAttribute('data-under-notice', underNotice);
     const rosterLeftHeight = battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded'));
