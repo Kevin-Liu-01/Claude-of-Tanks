@@ -9,7 +9,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { PANE_STACK_MAX_GAP_M, PANE_STACK_UNITS_PER_LAYER, installPaneStackDepth, paneStackLayers, stacked } from './paneStack.ts';
-import { PartSink } from './maps/regional/geometry.ts';
+import { PartSink, streamFrom } from './maps/regional/geometry.ts';
+import { withFacade } from './maps/regional/facade.ts';
 import { holedPolygon } from './maps/regional/house.ts';
 import { windowUnit } from './maps/regional/openings.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
@@ -70,6 +71,31 @@ function quad(x0, y0, x1, y1, z, back = false) {
   assert.ok(layerOf(parts.curtain, 1).every((g) => g.getAttribute(NIGHT_EMISSION_ATTRIBUTE)?.count === g.getAttribute('position').count), 'the curtain keeps its glow mask');
 }
 
+// the facade craft's leaning glass stays between the reveal's back and its bars (Main's ruling 2026-10-31: at +-2 cm about
+// back + 0.02 it passed through its bars and frame): every lean of 300 facade streams, every frame depth the kits use
+{
+  const face = { origin: [0, 0, 0], u: [1, 0, 0], out: [0, 0, 1], width: 2 };
+  let windows = 0, minLean = Infinity, maxLean = -Infinity;
+  for (const frameOut of [0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]) {
+    for (let seed = 1; seed <= 300; seed++) {
+      const style = { frame: [0.9, 0.9, 0.88], frameWidth: 0.06, frameOut, bars: 'cross', surround: null, sill: null, shutters: null };
+      const sink = new PartSink();
+      sink.recess = 0.34;
+      withFacade({ tier: 'desktop', rng: streamFrom(seed) }, () => windowUnit(sink, face, 0, 1, 0.9, 1.3, style, () => 0.99, 0));
+      const parts = sink.finish(), back = -0.34, bars = back + frameOut * 0.7;
+      const z = parts.glass.flatMap((g) => Array.from({ length: g.getAttribute('position').count }, (_, i) => g.getAttribute('position').getZ(i)));
+      assert.ok(z.length, 'a pane');
+      const lo = Math.min(...z) - back, hi = Math.max(...z) - back;
+      assert.ok(lo >= 0.004 - 1e-6, `frame ${frameOut}, stream ${seed}: the glass stands ${lo} m off the reveal's back (>= 4 mm)`);
+      assert.ok(hi <= Math.min(0.017, frameOut * 0.7 - 0.004) + 1e-6 && hi < bars - back - 0.0039, `frame ${frameOut}, stream ${seed}: the glass stays 4 mm behind its bars (${hi})`);
+      if (frameOut >= 0.03) { minLean = Math.min(minLean, lo); maxLean = Math.max(maxLean, hi); }
+      windows++;
+    }
+  }
+  assert.ok(minLean < 0.0045 && maxLean > 0.0165, `the lean still reaches across its range under the common frame (${minLean}..${maxLean})`);
+  assert.equal(windows, 2100);
+}
+
 // the draw: the mesh's own draws take the offset, the shared material comes back after, other draws untouched
 {
   const material = new THREE.MeshStandardMaterial();
@@ -93,4 +119,4 @@ function quad(x0, y0, x1, y1, z, back = false) {
   assert.match(props, /if \(layer\) installPaneStackDepth\(mesh, mats\[key\], layer\);/, 'through the bucket\'s own material, offset');
 }
 
-console.log(`paneStack.selftest: a face 0-${PANE_STACK_MAX_GAP_M * 100} cm behind another facing its way and over it is in its stack (not beside, turned, at its edge or farther); a framed pane one layer back unless walled, its dark one more; the sink sets the glazed openings' layers apart and leaves a bare opening's dark; a layer's draws alone take ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer PASS`);
+console.log(`paneStack.selftest: a face 0-${PANE_STACK_MAX_GAP_M * 100} cm behind another facing its way and over it is in its stack (not beside, turned, at its edge or farther); a framed pane one layer back unless walled, its dark one more; the sink sets the glazed openings' layers apart and leaves a bare opening's dark; the craft's leaning glass stays between the reveal's back and its bars in 2,100 windows; a layer's draws alone take ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer PASS`);

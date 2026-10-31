@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 // Native focused receipt. Run: node tools/pane-stack-layer.browser.selftest.mjs
 // (local-fps-266) A regional wall cut by three openings (house.ts holedPolygon, the room's dark at the back of each
-// reveal) with a unit in each (openings.ts windowUnit: a lit curtain, plain glass, the facade craft's leaning glass; frames
-// and glazing bars), built by the regional sink, drawn on the GPU at 20-700 m with the battle camera's depth (near 0.5 m,
-// far 4000 m; a 4x MSAA 24-bit depth, the scene target's). The window stacks' three groups (the dark, the panes, the
-// frames) are drawn in all six orders, after the rest of the wall and before it. With the stack's layers
-// (src/world/paneStack.ts) the six orders draw the same pixels and no dark shows through a pane; without them the order
-// decides, which the receipt must see (else it could not see the fight); at 20 m the layers change nothing.
+// reveal), a unit in two (openings.ts windowUnit: a lit curtain and plain glass, frames and glazing bars) and the third
+// bare, built by the regional sink, drawn on the GPU at 20-700 m with the battle camera's depth (near 0.5 m, far 4000 m;
+// a 4x MSAA 24-bit depth, the scene target's). The window stacks' three groups (the dark, the panes, the frames) are
+// drawn in all six orders, after the rest of the wall and before it. With the stack's layers (src/world/paneStack.ts) the
+// six orders draw the same pixels and no dark shows through a pane; without them the order decides, which the receipt
+// must see (else it could not see the fight); at 20 m the layers change nothing. A second wall's unit wears the facade
+// craft's leaning glass, held the same: its lean and turn now stay between the reveal's back and the bars' faces
+// (back + 0.004 to + 0.017; at +-2 cm about back + 0.02 it passed through its bars and frame, Main's ruling 2026-10-31).
+// "Changed by order" counts fully covered pixels (one draw's colour in both shots). The MSAA edge samples along a line
+// where two draws' faces meet (a pane against its jamb's inner face) are reported, not held: there both depths are equal
+// in a band about a sample wide whatever the layers, a crossing (the killcam's class), decided by the order.
 // (The killcam's 8 px, Main's ruling 2026-10-31, are a crossing, not a stack: two interpenetrating turret parts meet on a
 // curve where both depths are equally valid, so the draw order decides those pixels in any renderer and no layer applies.)
 import { launchGuardedBrowser } from './browser-launch.mjs';
@@ -35,35 +40,48 @@ setFacadeCraft(true);
 const face = { origin: [0, 0, 0], u: [1, 0, 0], out: [0, 0, 1], width: 6 };
 const holes = [-2, 0, 2].map((u) => ({ u0: u - 0.45, u1: u + 0.45, y0: 1, y1: 2.3 }));
 const style = { frame: [0.9, 0.9, 0.88], frameWidth: 0.06, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null };
-const sink = new PartSink();
-holedPolygon(sink, 'plaster', face, [[-3, 0], [3, 0], [3, 3.2], [-3, 3.2]], holes, 0.4, 0.34);
-sink.recess = 0.34;
-windowUnit(sink, face, -2, 1, 0.9, 1.3, style, () => 0, 1); // lit: a curtain
-windowUnit(sink, face, 0, 1, 0.9, 1.3, style, () => 0.99, 0); // plain glass
-withFacade({ tier: 'desktop', rng: streamFrom(7) }, () => windowUnit(sink, face, 2, 1, 0.9, 1.3, style, () => 0.99, 0)); // leaning glass
-sink.recess = 0;
-const parts = sink.finish();
-
-const positions = (g) => Array.from((g.index ? g.toNonIndexed() : g).getAttribute('position').array);
-const draws = [];
-// a colour each group's pixels can be told by: the dark alone writes blue
-const otherColours = [[0, 200, 0], [120, 60, 0], [0, 120, 60], [60, 60, 0], [200, 100, 60]];
-let other = 0;
-for (const [bucket, list] of Object.entries(parts)) {
-  for (const g of list) {
-    const layer = g.userData.paneStackLayer ?? 0;
-    const group = bucket === 'dark' ? 'dark' : bucket === 'glass' || bucket === 'curtain' ? 'pane' : bucket === 'structureWood' ? 'frame' : 'rest';
-    draws.push({ name: `${bucket}${layer ? ` L${layer}` : ''}`, group, pos: positions(g), units: layer * PANE_STACK_UNITS_PER_LAYER,
-      colour: group === 'dark' ? [0, 0, 255] : bucket === 'curtain' ? [255, 0, 0] : bucket === 'glass' ? [200, 0, 0]
-        : group === 'frame' ? [230, 230, 0] : otherColours[other++ % otherColours.length] });
-  }
+/** A wall with the three openings and `units` laid in them (each a function of the sink), as the regional sink builds it. */
+function wall(units) {
+  const sink = new PartSink();
+  holedPolygon(sink, 'plaster', face, [[-3, 0], [3, 0], [3, 3.2], [-3, 3.2]], holes, 0.4, 0.34);
+  sink.recess = 0.34;
+  for (const unit of units) unit(sink);
+  sink.recess = 0;
+  return sink.finish();
 }
-const trianglesOf = (pick) => draws.filter(pick).reduce((n, d) => n + d.pos.length / 9, 0);
-assert.equal(trianglesOf((d) => d.group === 'dark' && d.units === 2 * PANE_STACK_UNITS_PER_LAYER), holes.length * 2,
-  'every opening\'s dark is two layers back, behind its framed pane');
-assert.equal(trianglesOf((d) => d.group === 'pane' && d.units === PANE_STACK_UNITS_PER_LAYER), trianglesOf((d) => d.group === 'pane'),
+const positions = (g) => Array.from((g.index ? g.toNonIndexed() : g).getAttribute('position').array);
+// a colour each group's pixels can be told by: the dark behind a pane alone writes blue (a bare opening's dark is drawn olive)
+const otherColours = [[0, 200, 0], [120, 60, 0], [0, 120, 60], [60, 60, 0], [200, 100, 60]];
+function drawsOf(parts) {
+  const draws = [];
+  let other = 0;
+  for (const [bucket, list] of Object.entries(parts)) {
+    for (const g of list) {
+      const layer = g.userData.paneStackLayer ?? 0;
+      const group = bucket === 'dark' ? 'dark' : bucket === 'glass' || bucket === 'curtain' ? 'pane' : bucket === 'structureWood' ? 'frame' : 'rest';
+      draws.push({ name: `${bucket}${layer ? ` L${layer}` : ''}`, group, pos: positions(g), units: layer * PANE_STACK_UNITS_PER_LAYER,
+        colour: group === 'dark' ? (layer ? [0, 0, 255] : [40, 40, 0]) : bucket === 'curtain' ? [255, 0, 0] : bucket === 'glass' ? [200, 0, 0]
+          : group === 'frame' ? [230, 230, 0] : otherColours[other++ % otherColours.length] });
+    }
+  }
+  return draws;
+}
+const framed = drawsOf(wall([
+  (sink) => windowUnit(sink, face, -2, 1, 0.9, 1.3, style, () => 0, 1), // lit: a curtain
+  (sink) => windowUnit(sink, face, 0, 1, 0.9, 1.3, style, () => 0.99, 0), // plain glass (the third opening bare)
+]));
+const craft = drawsOf(wall([
+  (sink) => withFacade({ tier: 'desktop', rng: streamFrom(7) }, () => windowUnit(sink, face, 2, 1, 0.9, 1.3, style, () => 0.99, 0)),
+]));
+const trianglesOf = (draws, pick) => draws.filter(pick).reduce((n, d) => n + d.pos.length / 9, 0);
+assert.equal(trianglesOf(framed, (d) => d.group === 'dark' && d.units === 2 * PANE_STACK_UNITS_PER_LAYER), 4,
+  'each glazed opening\'s dark is two layers back, behind its framed pane');
+assert.equal(trianglesOf(framed, (d) => d.group === 'dark' && d.units === 0), 2, 'the bare opening\'s dark draws where it is');
+assert.equal(trianglesOf(framed, (d) => d.group === 'pane' && d.units === PANE_STACK_UNITS_PER_LAYER), trianglesOf(framed, (d) => d.group === 'pane'),
   'every pane is one layer back, behind its frame');
-assert.ok(trianglesOf((d) => d.group === 'frame') > 0 && draws.filter((d) => d.group === 'frame').every((d) => d.units === 0), 'the frames draw where they are');
+assert.ok(trianglesOf(framed, (d) => d.group === 'frame') > 0 && framed.filter((d) => d.group === 'frame').every((d) => d.units === 0), 'the frames draw where they are');
+assert.equal(trianglesOf(craft, (d) => d.group === 'pane' && d.units === PANE_STACK_UNITS_PER_LAYER), trianglesOf(craft, (d) => d.group === 'pane'),
+  'the leaning glass stands behind its bars and frame: one layer back');
 
 // ---- the views: the wall's middle from each range, head on and 40 degrees off, the battle camera's near and far
 const W = 512, H = 256;
@@ -144,7 +162,11 @@ function renderStacks({ draws, views, width, height }) {
   const stack = [group('dark'), group('pane'), group('frame')], rest = group('rest');
   const perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
   const orderSets = [perms.map((p) => [...rest, ...p.flatMap((k) => stack[k])]), perms.map((p) => [...p.flatMap((k) => stack[k]), ...rest])];
-  const differing = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
+  // a fully covered pixel shows one draw's colour (or the clear); an MSAA edge sample mixes them
+  const exact = new Set([...draws.map((d) => d.colour.join(',')), '0,0,0']);
+  const covered = (a, i) => exact.has(`${a[i]},${a[i + 1]},${a[i + 2]}`);
+  const differing = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if ((a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) && covered(a, i) && covered(b, i)) n++; return n; };
+  const edges = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if ((a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) && !(covered(a, i) && covered(b, i))) n++; return n; };
   const blue = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i + 2] > 0) n++; return n; };
   // which groups' colours a pixel shows in two shots (exact colours only: an MSAA edge mixes them)
   const names = new Map(draws.map((d) => [d.colour.join(','), d.group === 'rest' ? d.name : d.group]));
@@ -156,9 +178,13 @@ function renderStacks({ draws, views, width, height }) {
     const row = { distance: view.distance, yawDeg: view.yawDeg };
     for (const layered of [true, false]) {
       const sets = orderSets.map((orders) => orders.map((order) => draw(view, order, layered)));
-      let worst = 0, worstPairs = {};
-      for (const shots of sets) for (const s of shots.slice(1)) { const n = differing(shots[0], s); if (n > worst) { worst = n; worstPairs = pairs(shots[0], s); } }
-      row[layered ? 'layered' : 'control'] = { stackOrder: worst, pairs: worstPairs, darkShows: Math.max(...sets.flat().map(blue)), first: sets[0][0] };
+      let worst = 0, worstPairs = {}, edgeSamples = 0;
+      for (const shots of sets) for (const s of shots.slice(1)) {
+        const n = differing(shots[0], s);
+        edgeSamples = Math.max(edgeSamples, edges(shots[0], s));
+        if (n > worst) { worst = n; worstPairs = pairs(shots[0], s); }
+      }
+      row[layered ? 'layered' : 'control'] = { stackOrder: worst, edgeSamples, pairs: worstPairs, darkShows: Math.max(...sets.flat().map(blue)), first: sets[0][0] };
     }
     // up close the layers change nothing: the layered frame equals the control's with the farther faces drawn first
     row.nearSame = differing(row.layered.first, row.control.first);
@@ -171,7 +197,7 @@ function renderStacks({ draws, views, width, height }) {
 
 const lock = createCaptureLock();
 const report = { protocol: 'pane-stack-layer-v1', ok: false, unitsPerLayer: PANE_STACK_UNITS_PER_LAYER,
-  draws: draws.map((d) => `${d.name} ${d.pos.length / 9}`), renderer: null, rows: [], errors: [], browserClosed: false, lockReleased: false };
+  draws: framed.map((d) => `${d.name} ${d.pos.length / 9}`), renderer: null, craft: null, rows: [], errors: [], browserClosed: false, lockReleased: false };
 let browser, refresh;
 try {
   await lock.acquire(45 * 60_000);
@@ -181,19 +207,20 @@ try {
   report.launch = verifyNativeBrowserLaunch(browser);
   const page = await browser.newPage();
   page.on('pageerror', (error) => { if (report.errors.length < 12) report.errors.push(String(error)); });
-  const { renderer, rows } = await bounded(page.evaluate(renderStacks, { draws, views, width: W, height: H }), 300_000, 'render');
+  const { renderer, rows } = await bounded(page.evaluate(renderStacks, { draws: framed, views, width: W, height: H }), 300_000, 'render');
   report.renderer = renderer; report.rows = rows;
-  for (const r of rows) {
-    const at = `${r.distance} m, ${r.yawDeg} deg`;
+  report.craft = (await bounded(page.evaluate(renderStacks, { draws: craft, views, width: W, height: H }), 300_000, 'render craft')).rows;
+  for (const [wallName, r] of [...rows.map((r) => ['framed', r]), ...report.craft.map((r) => ['craft', r])]) {
+    const at = `${wallName} wall, ${r.distance} m, ${r.yawDeg} deg`;
     assert.ok(r.paneCover > 0, `${at}: the panes are in the frame`);
-    assert.equal(r.layered.stackOrder, 0, `${at}: with the stack's layers every order of its dark, panes and frames draws the same pixels (${JSON.stringify(r.layered.pairs)})`);
+    assert.equal(r.layered.stackOrder, 0, `${at}: with the stack's layers every order of its dark, panes and frames draws the same fully covered pixels (${JSON.stringify(r.layered.pairs)})`);
     assert.equal(r.layered.darkShows, 0, `${at}: no dark shows through a pane`);
     if (r.distance <= 20) {
       assert.equal(r.nearSame, 0, `${at}: up close the layers change no pixel`);
       assert.equal(r.control.darkShows, 0, `${at}: up close the depth buffer tells them apart unaided`);
     }
   }
-  assert.ok(rows.some((r) => r.distance >= 300 && r.control.stackOrder > 0 && r.control.darkShows > 0),
+  assert.ok([rows, report.craft].every((wallRows) => wallRows.some((r) => r.distance >= 300 && r.control.stackOrder > 0)) && rows.some((r) => r.control.darkShows > 0),
     'without the layers the order decides somewhere at 300-700 m (the receipt sees the fight it guards)');
   assert.deepEqual(report.errors, []);
 } catch (error) {
@@ -210,5 +237,6 @@ console.log(JSON.stringify(report, null, 1));
 if (!report.ok) process.exitCode = 1;
 else {
   const fights = report.rows.filter((r) => r.control.stackOrder > 0);
-  console.log(`pane-stack-layer.browser.selftest: a regional wall's three windows (curtain, glass, leaning glass; frames and bars) over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the dark, panes and frames in all six orders after and before the rest: with the stack ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer, every order draws the same pixels and no dark shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.stackOrder))} px); at 20 m the layers change nothing (${report.renderer}) PASS`);
+  const crossings = [...report.rows, ...report.craft].reduce((n, r) => n + r.layered.edgeSamples, 0);
+  console.log(`pane-stack-layer.browser.selftest: a regional wall's two windows (curtain, glass; frames and bars) and a bare opening, and a wall with the craft's leaning glass, over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the dark, panes and frames in all six orders after and before the rest: with the stack ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer, every order draws the same fully covered pixels and no dark shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.stackOrder))} px); at 20 m the layers change nothing. Reported, not held: ${crossings} MSAA edge samples on lines where two faces meet (crossings, the killcam's class: equal depths in a band about a sample wide, decided by the order) (${report.renderer}) PASS`);
 }
