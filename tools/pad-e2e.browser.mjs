@@ -137,7 +137,7 @@ try {
   report.pairing = pairing;
   check('Connect Phone shows a code and a QR of /pad#CODE', /\/pad#[A-Z2-9]{6}$/.test(pairing.url) && pairing.code.replace(' ', '') === pairing.url.slice(-6),
     `${pairing.code} → ${pairing.url}`);
-  report.network.padModulesAfterConnect = padTraffic(desktopRequests).filter((url) => url.includes('/src/pad/')).map((url) => url.replace(origin, ''));
+  report.network.padModulesAfterConnect = desktopRequests.filter((url) => url.includes('/src/pad/')).map((url) => url.replace(origin, ''));
   await (await desktop.$('.cot-settings.open .cot-set-card:has(.cot-pad-card)'))?.screenshot({ path: resolve(outDir, 'desktop-card-qr.png') });
   await desktop.screenshot({ path: resolve(outDir, 'desktop-settings-qr.png') });
 
@@ -369,6 +369,7 @@ try {
   await pads.close();
   padServer.close();
   const failed = Object.entries(report.checks).filter(([, value]) => !value.ok).map(([name]) => name);
+  if (report.failure) failed.push('the run stopped early (report.failure)');
   if (failed.length) process.exitCode = 1;
   console.log(`pad-e2e: ${failed.length ? `FAIL (${failed.length})` : 'PASS'} in ${report.wallS} s — report ${resolve(outDir, 'report.json')}`);
 }
