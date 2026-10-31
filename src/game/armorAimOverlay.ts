@@ -599,7 +599,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         // (267) a face of this zone the round reads through the plate across its path (its own plate does not face the
         // round: sim/armor.ts plateAlongShot) is painted in that plate's zone, so here it is judged as this zone's plate
         const own = entry.template.zones[entry.sampleZone].plate;
-        if (last && last.plate !== own && last.collisionFace?.plate === own && !last.collisionFace.gunSplit) {
+        const face = last?.collisionFace;
+        if (last && face && last.plate !== own && face.plate === own && !face.gunSplit) {
           if (info.plate === last.plate) info.plate = own as typeof info.plate;
           last.plate = own as typeof last.plate;
         }

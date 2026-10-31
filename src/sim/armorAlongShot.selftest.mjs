@@ -13,7 +13,12 @@ import { Vector3 } from 'three';
 
 const { tankPoseFromState, traceTank } = await import('./armor.ts');
 const { zoneAlongShot, zonePlates } = await import('./armorZones.ts');
+const { PLANE_FACING_MIN } = await import('./armorPlanes.ts');
+const { ZONE_FACING_MIN } = await import('./armorZoneWeights.ts');
 const { gunFaceSplitPlate } = await import('./gunFaceSplit.ts');
+
+// the trace's facing floor is the paint's (a literal in the trace's module, which shares no chunk with the paint's weights)
+assert.equal(PLANE_FACING_MIN, ZONE_FACING_MIN, 'the trace and the paint share one facing floor');
 
 const POSE = tankPoseFromState({ pos: new Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
 const firstFace = (hits) => hits.find((hit) => hit.kind === 'plate' && hit.collisionFace);
