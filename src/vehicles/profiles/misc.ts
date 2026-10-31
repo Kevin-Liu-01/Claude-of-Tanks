@@ -243,7 +243,7 @@ function galixBank(
     if (!casing) continue;
     const mouth = at.clone().add(new THREE.Vector3(0, 0, 0.123).applyEuler(turn));
     P.add('turretDark', cylZ(0.04, 0.006, 12), mouth.x, mouth.y, mouth.z, turn.x, turn.y, 0);
-    const sleeve = cylZ(0.06, 0.12, 8).translate(0, 0, -0.06)
+    const sleeve = cylZ(0.056, 0.18, 8).translate(0, 0, -0.03)
       .applyMatrix4(new THREE.Matrix4().compose(at, new THREE.Quaternion().setFromEuler(turn), new THREE.Vector3(1, 1, 1)));
     const p = sleeve.getAttribute('position');
     for (let i = 0; i < p.count; i++) housing.push(new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i)));
@@ -1694,7 +1694,9 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // All pieces INTERIOR to the priced collar envelope (y band 1.70..2.10w,
     // x inside the ±0.15 plan cols the junction collars own; face plate 5 mm
     // proud at z 3.0 sits mid-span of the tube's plan run — zero row change).
-    gunHousing('turretDark', box(0.17, 0.36, 0.012), 0, 0.305, 2.976);           // bolted face frame plate
+    // 266 (both photo critics: "a dark square opening in the mantlet above the barrel"): the face frame plate takes the
+    // housing's paint; drawn dark it read as a hole into the turret.
+    gunHousing('turret', box(0.17, 0.36, 0.012), 0, 0.305, 2.976);               // bolted face frame plate
     gunHousing('turretDark', torus(0.105, 0.014, 14), 0, 0.305, 2.983, Math.PI / 2, 0, 0); // tube aperture ring on the face
     for (const bs of [-1, 1]) {
       gunHousing('turretDark', box(0.013, 0.30, 0.04), bs * 0.1965, 0.3285, 2.40); // boot side flange bolt strips
