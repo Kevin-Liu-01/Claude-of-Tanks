@@ -257,6 +257,8 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
   const buildM41HullFittings = (): void => {
     // the driver's hatch (front left, +x) on the deck ahead of the gun shield (r4: the Aalborg photographs), and his
     // periscope on the step down ahead of it
+    // (c6 critics asked for a raised ring, lid and periscopes; the gun's frontal depression sweeps over this hatch, and a
+    // raised one held the gun at +0.6 deg dead ahead against the published -9: it stays a flat disc)
     P.addCupola('hull', cylY(0.22, 0.23, 0.012, P.q ? 20 : 14), 0.55, deckY(1.62) + 0.006, 1.62);
     P.addEquipment('hull', box(0.16, 0.08, 0.10), 0.55, deckY(1.98) + 0.04, 1.98);
     P.add('hullGlass', box(0.12, 0.04, 0.012), 0.55, deckY(1.98) + 0.05, 2.032);
@@ -648,23 +650,30 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
       // port, the coaxial MG's round port on the left and the telescope's teardrop port on the right.
       // (the teardrop sight port high in its outer corner on the gunner's side: c4 critics, both, on the scale model; c5's
       // taller, rounder crown read as a pillow blended into the roof: back to c4's square block)
+      // c7 (c6 critics, both, on the scale model: a flat face in a heavy black ring, set back under the turret's front):
+      // the square block up to 7 cm taller, so its top stands clear of the casting above it, and the mask's ring a fine
+      // seam; its stations and underside stay where they were (7 cm further forward, its foot met the deck 1.2 deg sooner
+      // dead ahead: gun-depression sweep)
       const shield = (z: number, hw: number, bot: number, top: number): CastStation => ({ z: z - TRUNNION.z, hw,
         bot: bot - TRUNNION.y, top: top - TRUNNION.y, roof: 0.80, foot: 0.82, waist: 0.45, nUp: 3.4, nLo: 3.4 });
       P.addGunExtra(castSolid([
-        shield(0.83, 0.62, 0.08, 0.49), shield(0.97, 0.64, 0.07, 0.50), shield(1.12, 0.64, 0.095, 0.50),
-        shield(1.22, 0.62, 0.115, 0.48), shield(1.28, 0.56, 0.13, 0.44), shield(1.30, 0.48, 0.15, 0.41),
+        shield(0.83, 0.62, 0.08, 0.52), shield(0.97, 0.64, 0.07, 0.55), shield(1.12, 0.64, 0.095, 0.56),
+        shield(1.22, 0.62, 0.115, 0.55), shield(1.28, 0.56, 0.13, 0.51), shield(1.30, 0.48, 0.15, 0.48),
       ], P.q));
-      P.addGunExtraDark(castSolid([shield(0.94, 0.655, 0.065, 0.515), shield(0.962, 0.655, 0.065, 0.515)], P.q));
+      P.addGunExtraDark(castSolid([shield(0.945, 0.647, 0.066, 0.556), shield(0.952, 0.647, 0.066, 0.556)], P.q));
       const face = 1.30 - TRUNNION.z;
       P.addGunExtra(box(0.21, 0.19, 0.04), 0, 0, face + 0.01);
       P.addGunExtraDark(box(0.155, 0.145, 0.012), 0, 0, face + 0.031);
-      P.addGunExtra(cylZ(0.05, 0.04, 14), 0.30, -0.04, face + 0.005);
-      P.addGunExtraDark(cylZ(0.024, 0.012, 12), 0.30, -0.04, face + 0.026);
-      P.addGunExtraDark(cylZ(0.012, 0.08, 10), 0.30, -0.04, face + 0.06);
-      P.addGunExtra(cylZ(0.07, 0.04, 16), -0.36, 0.035, face - 0.012);
-      P.addGunExtra(box(0.085, 0.085, 0.04).rotateZ(Math.PI / 4), -0.36, 0.085, face - 0.012);
-      P.addGunExtraDark(cylZ(0.040, 0.012, 14), -0.36, 0.035, face + 0.010);
-      P.addGunExtraDark(box(0.045, 0.045, 0.012).rotateZ(Math.PI / 4), -0.36, 0.068, face + 0.010);
+      // the coaxial MG's round port on the left, about half the gun port's width (c6 critics, both: a pinprick)
+      P.addGunExtra(cylZ(0.085, 0.05, 18), 0.30, -0.02, face + 0.005);
+      P.addGunExtraDark(cylZ(0.048, 0.012, 16), 0.30, -0.02, face + 0.031);
+      P.addGunExtraDark(cylZ(0.014, 0.08, 10), 0.30, -0.02, face + 0.07);
+      // the telescope's teardrop on the right, high and outboard, a raised boss (c6 critics, both: a small hole level with
+      // the gun port)
+      P.addGunExtra(cylZ(0.08, 0.05, 18), -0.37, 0.03, face - 0.005);
+      P.addGunExtra(box(0.10, 0.10, 0.05).rotateZ(Math.PI / 4), -0.37, 0.085, face - 0.005);
+      P.addGunExtraDark(cylZ(0.05, 0.012, 16), -0.37, 0.03, face + 0.021);
+      P.addGunExtraDark(box(0.055, 0.055, 0.012).rotateZ(Math.PI / 4), -0.37, 0.068, face + 0.021);
     }
     if (dk) {
       // the DK-1's weathered canvas cover gathered round the nose and the tube's root, in folds
