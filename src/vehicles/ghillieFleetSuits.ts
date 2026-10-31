@@ -670,7 +670,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.30, 2.42, 1.40, 0.50, 1.83, 41),
+      // 267 (Sonnet, round 3: "the net patches on the skirt are flat rectangles with hard edges, pasted mats"): the skirt
+      // drapes are gone; the armoured skirt course stays bare under the deck nets.
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each
