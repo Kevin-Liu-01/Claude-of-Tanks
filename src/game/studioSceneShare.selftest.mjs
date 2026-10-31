@@ -17,6 +17,8 @@ import { STUDIO_FX_PARAMS } from './studioFxSettings.ts';
 import { isStudioTime, normalizeStudioLight } from './studioLight.ts';
 import { pictureStateJson, resolvePicture } from './studioPicture.ts';
 import { normalizeStoryboard } from './studioTimeline.ts';
+import { segmented } from '../ui/components/components.ts';
+import { esc } from '../ui/components/escape.ts';
 import { staticImportClosure, importChain } from '../../tools/static-import-closure.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -568,8 +570,18 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   const files = execFileSync('git', ['ls-files', 'src/game/studio*.ts', 'src/ui/studio*.ts'], { cwd: ROOT, encoding: 'utf8' })
     .trim().split('\n').filter((file) => !file.endsWith('.selftest.mjs'));
   assert.ok(files.length >= 20, `the Studio's sources are found (${files.length})`);
-  // (STUDIO_GLYPHS is studioPanel.ts's constant table: the transport glyphs the sprite lacks and the mark)
-  const constantMarkup = /^(?:''|SCENE_LINK_GLYPHS\.[a-z]+|STUDIO_GLYPHS\.[a-zA-Z]+|tone === 'error' \? SCENE_LINK_GLYPHS\.broken : SCENE_LINK_GLYPHS\.done|uiIconSVG\([^)]*\)|`[^`]*`)$/;
+  // (STUDIO_GLYPHS is studioPanel.ts's constant table: the transport glyphs the sprite lacks and the mark; segmented is the
+  // kit's two-to-five-value control since ui 261's dropdown audit, whose renderer escapes every label and value it
+  // writes, held just below with markup in each)
+  const constantMarkup = /^(?:''|SCENE_LINK_GLYPHS\.[a-z]+|STUDIO_GLYPHS\.[a-zA-Z]+|tone === 'error' \? SCENE_LINK_GLYPHS\.broken : SCENE_LINK_GLYPHS\.done|uiIconSVG\([^)]*\)|segmented\(\{ [^}]*\}\)|`[^`]*`)$/;
+  const hostile = segmented({ label: '<img src=x onerror=alert(1)>', className: 'studio-picture-seg', value: '"><script>',
+    options: [{ value: '"><script>x</script>', label: '<b>bold</b>' }, { value: 'b', label: 'B&C' }] });
+  assert.doesNotMatch(hostile, /<(?:script|img|b)\b|B&C/, 'the kit\'s segmented control writes its label and values as text');
+  // (integ 254, the templates browser: a template's facts and acts reach the sheet as the kit's escaped text, a list
+  // mapped through esc() from components/escape.ts; the sheet's frame is string literals joined with +)
+  const literalMarkup = /^'[^'\n]*'(?:\s*\+\s*'[^'\n]*')+$/;
+  const escapedList = /^\([^()]*\)(?:\.slice\(\d+\))?\.map\(\([^)]*\) =>\s*`[^`]*`\)\.join\(''\)$/;
+  assert.equal(esc('<b a="1" b=\'2\'>&</b>'), '&lt;b a=&quot;1&quot; b=&#39;2&#39;&gt;&amp;&lt;/b&gt;', 'the kit\'s esc writes markup as text');
   let sinks = 0;
   for (const file of files) {
     const source = read(file);
@@ -577,11 +589,15 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
     for (const match of source.matchAll(/\.innerHTML\s*=\s*([\s\S]*?);\n|insertAdjacentHTML\(\s*'[a-z]+',\s*([\s\S]*?)\);\n/g)) {
       const rhs = (match[1] ?? match[2]).trim();
       sinks++;
-      assert.match(rhs, constantMarkup, `${file}: markup is constant or translated: ${rhs.slice(0, 120)}`);
-      // a template may interpolate only translations and icons, never scene or actor data
+      const escaped = escapedList.test(rhs);
+      assert.ok(constantMarkup.test(rhs) || literalMarkup.test(rhs) || escaped, `${file}: markup is constant or translated: ${rhs.slice(0, 120)}`);
+      if (escaped) assert.match(source, /^import \{ esc \} from '\.\/components\/escape\.ts';$/m, `${file}: its esc is the kit's escape`);
+      // a template may interpolate only translations and icons, never scene or actor data (an escaped list: its items as
+      // escaped text, and their numerals)
       for (const hole of rhs.matchAll(/\$\{([^}]*)\}/g)) {
         // a translation without parameters (a parameter could carry scene text) or an icon
-        assert.match(hole[1].trim(), /^(?:t\('[\w.]+'\)|uiIconSVG\('[\w-]+'(?:, \d+)?\))$/, `${file}: only t('key') and icons are interpolated: ${hole[1]}`);
+        const text = escaped ? /^(?:esc\(\w+\)|String\(index \+ 1\)\.padStart\(2, '0'\))$/.test(hole[1].trim()) : false;
+        assert.ok(text || /^(?:t\('[\w.]+'\)|uiIconSVG\('[\w-]+'(?:, \d+)?\))$/.test(hole[1].trim()), `${file}: only t('key') and icons are interpolated: ${hole[1]}`);
       }
     }
   }

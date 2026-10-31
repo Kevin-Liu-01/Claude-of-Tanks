@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createSelftestCache, REPO_ROOT, SELFTEST_CACHE_VERSION } from './selftest-cache.mjs';
-import { collectSelftestInputs } from './selftest-inputs.mjs';
+import { createSelftestCache, REPO_ROOT, SELFTEST_CACHE_VERSION, sha1 } from './selftest-cache.mjs';
+import { collectSelftestInputs, SELFTEST_ROOT_DIRS } from './selftest-inputs.mjs';
 
 // Fast checks (2026-09-15): the result cache skips a receipt only when every input it can
 // observe is byte-identical to its last PASS. These fixtures pin the dependency rules on a
@@ -53,7 +54,27 @@ assert.deepEqual(rel(make(), 'src/joined.selftest.mjs'), ['index.html', 'main.ts
 assert.ok(rel(make(), 'src/listing.selftest.mjs').includes('public/icons'), 'a listed directory is an input');
 assert.ok(rel(make(), 'src/listing.selftest.mjs').includes('src'), 'a directory-listing receipt observes the source tree broadly');
 assert.ok(rel(make(), 'src/url.selftest.mjs').includes('tools/page.html'), 'a dev-server URL names its page');
-assert.ok(rel(make(), 'src/icons.selftest.mjs').includes('public/icons'), 'templated data URLs observe their actual directory');
+// a templated data path reads the files its pattern matches, not its directory (266: `src/ui/i18nCatalog.${locale}.json`
+// put all of src/ui into every capture tool's key); a member that appears changes the key, another file does not
+assert.deepEqual(rel(make(), 'src/icons.selftest.mjs'), ['public/icons/x.webp', 'src/icons.selftest.mjs'],
+  'templated data URLs observe the files their pattern matches');
+const iconsKey = make().inputKey('src/icons.selftest.mjs').key;
+write('public/icons/notes.md', 'not an icon');
+assert.equal(make().inputKey('src/icons.selftest.mjs').key, iconsKey, 'a file the pattern cannot match is not an input');
+write('public/icons/y.webp', 'webp');
+assert.notEqual(make().inputKey('src/icons.selftest.mjs').key, iconsKey, 'a new file the pattern matches changes the key');
+write('src/stopsAtTop.selftest.mjs', "const page = `public/${name}.webp`;");
+assert.ok(rel(make(), 'src/stopsAtTop.selftest.mjs').includes('public'), 'a pattern that stops at a top-level directory keeps it (the broad fallback)');
+write('public/kits/a/one.json', '{}');
+write('src/kitDirs.selftest.mjs', "const kit = `public/kits/${id}/`;");
+assert.ok(rel(make(), 'src/kitDirs.selftest.mjs').includes('public/kits/a'), 'a pattern that names directories keeps the ones it matches');
+write('site/home.html', '<html>home</html>');
+write('src/site.selftest.mjs', "import { readFileSync } from 'node:fs'; readFileSync('site/home.html', 'utf8');");
+assert.ok(rel(make(), 'src/site.selftest.mjs').includes('site/home.html'), 'site/ is a root: its pages are named inputs');
+write('site/docs-combat.html', '<html>combat</html>');
+write('src/sitePages.selftest.mjs', "const page = (slug) => `site/docs-${slug}.html`;");
+assert.deepEqual(rel(make(), 'src/sitePages.selftest.mjs'), ['site/docs-combat.html', 'src/sitePages.selftest.mjs'],
+  'a pattern under a top-level directory that names its files is those files, not the fallback');
 write('src/erased.ts', 'import type { A } from "./a.ts"; import { type B } from "./b.ts";');
 assert.deepEqual(rel(make(), 'src/erased.ts'), ['src/erased.ts'], 'type-only edges are checked by typecheck, not executed by Node');
 write('src/source-read.selftest.mjs', "import { readFileSync } from 'node:fs'; readFileSync(new URL('./a.ts', import.meta.url));");
@@ -141,6 +162,37 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   const disabled = make({ env: { COT_SELFTEST_CACHE: '0' } });
   disabled.recordPass('src/simple.selftest.mjs', 'ignored');
   assert.equal(make().lookup('src/simple.selftest.mjs').skip, false, 'a disabled cache records nothing');
+}
+// 266: what a run observed (tools/selftest-observe.mjs) keys its PASS beside the closure. A path read by a computed
+// name, a listed directory and a probed path the closure does not cover must still hold for the PASS to be reused;
+// a covered one is already keyed and is not kept. The receipt's latest observation serves lane mode.
+{
+  write('data/walk/entry.ts', 'export const entry = 1;\n'); write('data/walk/deep.ts', 'export const deep = 1;\n');
+  write('src/walker.selftest.mjs', "import { b } from './b.ts';\nconsole.log(b);\n");
+  const receipt = 'src/walker.selftest.mjs';
+  const observed = { reads: ['data/walk/deep.ts', 'src/b.ts', 'node_modules/x/index.js'], lists: ['data/walk'], probes: ['data/later.json'] };
+  const pass = () => { const cache = make(), { key } = cache.lookup(receipt); cache.recordPass(receipt, key, { observed }); return key; };
+  const key = pass();
+  const record = JSON.parse(readFileSync(join(cacheDir, `${sha1(receipt)}-${key}.json`), 'utf8'));
+  assert.deepEqual(Object.keys(record.observed.reads), ['data/walk/deep.ts'], 'only reads the closure misses are kept (src/b.ts is keyed; node_modules never)');
+  assert.equal(make().lookup(receipt).skip, true, 'an unchanged observation reuses the PASS');
+  write('data/walk/deep.ts', 'export const deep = 2;\n');
+  const changed = make().lookup(receipt);
+  assert.deepEqual([changed.skip, changed.key], [false, key], 'a changed observed read runs the receipt again under the same static key');
+  assert.match(changed.reason, /data\/walk\/deep\.ts/, 'and names the read');
+  pass();
+  write('data/walk/added.ts', 'export const added = 1;\n');
+  assert.equal(make().lookup(receipt).skip, false, 'a file that appears in an observed listing runs it again');
+  pass();
+  write('data/later.json', '{}');
+  assert.equal(make().lookup(receipt).skip, false, 'a probed path that appears runs it again');
+  pass();
+  write('data/unread.ts', 'export const unread = 1;\n');
+  assert.equal(make().lookup(receipt).skip, true, 'negative control: a file it never read, listed or probed reuses the PASS');
+  const cache = make();
+  cache.recordObserved(receipt, observed);
+  assert.deepEqual([...make().observedOf(receipt).reads], observed.reads, 'the latest observation is kept for lane mode');
+  assert.equal(make().observedOf('src/simple.selftest.mjs'), null, 'a receipt never observed has none');
 }
 {
   const cache = make();
@@ -251,5 +303,12 @@ rmSync(root, { recursive: true, force: true });
   }
   assert.ok(!cache.lookup('tools/selftest-cache.selftest.mjs').skip || cache.lookup('tools/selftest-cache.selftest.mjs').key,
     'lookup returns a key for the running receipt');
+  // every tracked top-level directory is a root a path literal can name (266: site/ came after the list, so the public
+  // pages' receipts read site/*.html by names the cache never resolved, and reused their PASS after a page changed)
+  const tops = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 1 << 28 })
+    .split('\0').filter((path) => path.includes('/')).map((path) => path.split('/')[0]));
+  assert.deepEqual([...tops].filter((dir) => !SELFTEST_ROOT_DIRS.includes(dir)), [],
+    'a new top-level directory joins SELFTEST_ROOT_DIRS (tools/selftest-inputs.mjs), and SELFTEST_BROAD_DIRS when it holds sources');
+  assert.ok(has('src/presentation/publicCopy.selftest.mjs', 'site/docs.html'), 'the public copy receipt observes the pages it reads');
 }
 console.log('selftest-cache: dependency closure rules, keys, lookup/record round trip and the batch-28 receipts pass');
