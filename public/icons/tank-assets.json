@@ -194663,7 +194663,7 @@
           }
         ]
       },
-      "geometryHash": "313ce0d2",
+      "geometryHash": "ab29a546",
       "metadataHash": "79a9071e",
       "presentationAnchor": {
         "xM": -0.0023,
@@ -194721,39 +194721,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 55876,
-          "sha256": "eb1a76c1d17b1a1a407b9c51c2fc4f614a8338239c6b412f99e6bf19cfd7b919"
+          "bytes": 54562,
+          "sha256": "d610bf1e74bb621e1f6b2979e81d7f351f4d4391b9cf148fe7f47a999169372d"
         },
         "modulesSide": {
           "file": "griffin_viper_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 56314,
-          "sha256": "6f8c7dd91b1216c5f9b08f147a673cf30713cdfe44c33962767dc2790f0c7b47"
+          "bytes": 54834,
+          "sha256": "2388ee2b85933c51131453bd807d9aa9124e9aca3087c6933d588a84ce165f54"
         },
         "crewSide": {
           "file": "griffin_viper_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 53182,
-          "sha256": "0f765a9b8323984273e61b19656680ef2f4865d16879d318bde37979fcd23cf4"
+          "bytes": 51836,
+          "sha256": "2e795efb46be157ebe3392f27715794624723d9dbb4e0f2e4a3a9763804ec92b"
         },
         "angle": {
           "file": "griffin_viper_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36116,
-          "sha256": "5d63b60957c391a8afc64b755a6e9012a320fbaef73e0cc9073ac664428bb1c6",
+          "bytes": 36032,
+          "sha256": "a018c2a5edf97be840724967a2d5589378f724b3c06bf0d2d572adba5159c36b",
           "thumbnail": {
             "file": "thumbs/griffin_viper_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 13358,
-            "sha256": "c31dea5e84a5e5faad6502faeff01d8003dfde03ef4ffd724194466d5e2da4a5"
+            "bytes": 13454,
+            "sha256": "9372181ca924c20bd4549667c52731bc9a13e4d7d86ae446ba324d9c90df1e6d"
           }
         },
         "top": {
@@ -194761,16 +194761,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32736,
-          "sha256": "a8baefeb4e9653a9e3d3d9fc4f0f5402b61456511b3f436c4e86d79827579a70"
+          "bytes": 32862,
+          "sha256": "793d52147f8526ba472f6b7b0f3ef7d635551379a7e11a73782d3eabea813e6b"
         },
         "side": {
           "file": "griffin_viper_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 21076,
-          "sha256": "31d3570ddc081ce87bca958624022b4fe6c6c1e9b999f3e9e192ad3047ff5e95"
+          "bytes": 20542,
+          "sha256": "3c3f80984707c7d3ee2bd6268aa0c0f91588679d5de1454660aaef4088cccb3c"
         },
         "topSilhouette": {
           "file": "griffin_viper_top_silhouette.png",
@@ -194785,8 +194785,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5711,
-          "sha256": "1a0ab5b0e23c0c2d109b001ba49f012d148a263dbf7b427bbe54a4a7909405ea"
+          "bytes": 5557,
+          "sha256": "19f2a800c4fd4b776c0c56aa4eac6c8d1e0463b1d35991f2024d05d76d3259f5"
         },
         "markings": {
           "file": "griffin_viper_markings.png",
