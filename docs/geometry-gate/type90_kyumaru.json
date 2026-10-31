@@ -1,6 +1,6 @@
 {
  "id": "type90_kyumaru",
- "geoMin": 22.7,
+ "geoMin": 21.6,
  "requiredMinimum": 90,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,21 +9,21 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 22.673688962843887,
+ "rawGeoMin": 21.57643673415102,
  "rawComponents": {
   "hullCurves": 77.16570232612004,
   "stations": 38.48454708565104,
-  "turretCurves": 22.673688962843887,
+  "turretCurves": 21.57643673415102,
   "wholeCurves": 27.78745063687436,
-  "dims": 50.09696868739191,
+  "dims": 66.95979225810397,
   "floaters": 100
  },
  "components": {
   "hullCurves": 77.2,
   "stations": 38.5,
-  "turretCurves": 22.7,
+  "turretCurves": 21.6,
   "wholeCurves": 27.8,
-  "dims": 50.1,
+  "dims": 67,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -680,8 +680,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 22.673688962843887,
-   "meanPct": 5.48,
+   "score": 21.57643673415102,
+   "meanPct": 5.58,
    "p95Pct": 10.58,
    "coverPct": 3.45,
    "reg": {
@@ -722,31 +722,31 @@
      "errM": 0.244
     },
     {
-     "at": 0.06,
-     "refTop": 1.21,
-     "refBot": 0.13,
-     "procTop": 0.83,
-     "procBot": 0.15,
-     "errM": 0.202
-    },
-    {
      "at": 0.17,
      "refTop": 1.21,
      "refBot": 0.13,
      "procTop": 0.83,
-     "procBot": 0.15,
-     "errM": 0.202
+     "procBot": 0.1,
+     "errM": 0.204
     },
     {
      "at": 0.28,
      "refTop": 1.21,
      "refBot": 0.13,
      "procTop": 0.83,
-     "procBot": 0.15,
-     "errM": 0.202
+     "procBot": 0.1,
+     "errM": 0.204
     },
     {
      "at": 0.39,
+     "refTop": 1.21,
+     "refBot": 0.13,
+     "procTop": 0.83,
+     "procBot": 0.1,
+     "errM": 0.204
+    },
+    {
+     "at": 0.06,
      "refTop": 1.21,
      "refBot": 0.13,
      "procTop": 0.83,
@@ -758,8 +758,8 @@
      "refTop": 1.21,
      "refBot": 0.13,
      "procTop": 0.84,
-     "procBot": 0.15,
-     "errM": 0.197
+     "procBot": 0.1,
+     "errM": 0.199
     },
     {
      "at": -2.38,
@@ -1027,15 +1027,17 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.388036041627564,
+   "actual": 2.159615202863188,
+   "roofFittingsTop": 2.4191843378227063,
    "published": 2.55,
-   "pct": 6.351527779311204
+   "method": "interval: body top to roof-fittings top",
+   "pct": 5.130025967737003
   },
   {
    "name": "hullLengthM",
-   "actual": 7.309466840460022,
+   "actual": 7.42367725984221,
    "published": 7.45,
-   "pct": 1.8863511347648072
+   "pct": 0.353325371245511
   },
   {
    "name": "overallLengthM",
@@ -1052,18 +1054,32 @@
  ],
  "referenceDimensions": {
   "heightM": 2.543777522603275,
-  "hullLengthM": 7.309466840460022,
+  "hullLengthM": 7.42367725984221,
   "overallLengthM": 9.780565005274632,
   "widthM": 3.405547050668874
  },
  "referenceBodyExtent": {
   "h": 2.544,
-  "len": 7.309
+  "len": 7.424
  },
  "proceduralBodyExtent": {
-  "h": 2.388,
-  "len": 7.309
+  "h": 2.16,
+  "len": 7.424,
+  "roofFittingsTop": 2.419
  },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
+  ],
+  "reference": []
+ },
+ "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {

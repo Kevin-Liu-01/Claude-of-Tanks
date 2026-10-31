@@ -325,6 +325,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/reference-gun-pivot.selftest.mjs',
     'tools/source-world-registration.selftest.mjs',
     'tools/source-dimension-frame.selftest.mjs',
+    // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
+    'tools/body-height-parts.selftest.mjs',
+    // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
+    'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',

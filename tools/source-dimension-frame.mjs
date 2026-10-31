@@ -44,8 +44,10 @@ export function sourceDimensionRows(reference,actual,referenceBounds,actualBound
   const r=referenceBounds.getSize(new THREE.Vector3()),a=actualBounds.getSize(new THREE.Vector3());
   for(const [name,key]of [['physicalWidthM','x'],['physicalHeightM','y'],['physicalOverallLengthM','z']]) {
     // Full 3D bounds deliberately do not inherit raster filtering or camera
-    // clipping. An oversized/missing antenna, skirt or barrel still fails.
-    add(name,a[key],r[key],'full visible physical envelope, no raster filtering');
+    // clipping. An oversized/missing skirt or barrel still fails. The gate
+    // passes the bodies' bounds: whips, antennas and roof weapons are not
+    // part of either (tools/body-height-parts.mjs, Main's ruling 2026-10-30).
+    add(name,a[key],r[key],'full visible body envelope, no raster filtering');
   }
   return rows;
 }

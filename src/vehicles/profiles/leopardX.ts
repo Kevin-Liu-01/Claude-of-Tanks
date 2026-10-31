@@ -1,5 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { LEOPARD_X_WEDGES } from '../leopardXWedges.ts';
+import { antennaPart } from './antennaPart.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
@@ -1014,7 +1015,7 @@ function a5Whip(P:TankBuilderPort,d:Datum,x:number,yOffset:number,zOffset:number
   put(cylY(.01295,.01295,.13717,14),2.67516,-1.745,-.087);
   put(cylY(.0103,.0103,.11449,12),2.79641,-1.7547,-.06);
   put(torus(.015,.004,12,6),2.777,-1.763,Math.PI/2);
-  equip(P,d,'turretDark',cylY(.00455,.00455,1.279,8),x,
+  equip(P,d,'turretDark',antennaPart(cylY(.00455,.00455,1.279,8)),x,
     3.47994+yOffset,-1.81638+zOffset,-.088);
 }
 
@@ -1038,12 +1039,12 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
   const points=stations.map(([y,z])=>new THREE.Vector3(0,y,z));
   const shaft=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),40,.0167,8,false);
   shaft.scale(1.287,1,1);
-  equip(P,d,'turretDark',shaft,x,0,0);
+  equip(P,d,'turretDark',antennaPart(shaft),x,0,0);
   // 2026-10-14 (the sealed-hull dump on leo2a7v: 11 of its open px at 256 were these whips' open tube ends, seen down
   // the tube from above): a whip ends in its rounded tip, not an open tube.
   const tip=new THREE.SphereGeometry(.0167,8,6);tip.scale(1.287,1,1);
   const end=points[points.length-1]!;
-  equip(P,d,'turretDark',tip,x,end.y,end.z);
+  equip(P,d,'turretDark',antennaPart(tip),x,end.y,end.z);
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
@@ -1054,7 +1055,7 @@ function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
   equip(P,d,'turretDetail',cylY(.02,.02,.148,10),x,2.454,-1.8716);
   equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
   equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
-  equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
+  equip(P,d,'turretDark',antennaPart(cylY(.00348,.00348,.74385,10)),x,3.016925,-1.8716);
 }
 
 function a6RoofEquipment(P:TankBuilderPort,d:Datum): void {
@@ -1181,7 +1182,7 @@ function a7FrontalRack(P:TankBuilderPort,d:Datum): void {
 function a4Whip(P:TankBuilderPort,d:Datum,x:number,dy:number,dz:number): void {
   equip(P,d,'turretDetail',cylY(.045,.049,.13,12),x,2.487+dy,-1.956+dz);
   const rise=1.829,rake=.3264;
-  equip(P,d,'turretDark',cylY(.0008,.0155,Math.hypot(rise,rake),10),x,
+  equip(P,d,'turretDark',antennaPart(cylY(.0008,.0155,Math.hypot(rise,rake),10)),x,
     3.4645+dy,-2.1417+dz,-Math.atan2(rake,rise));
 }
 

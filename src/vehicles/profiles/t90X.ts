@@ -1,4 +1,5 @@
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four independently authored September 2026 owner-reference reconstructions.
 // Source assets are quarantined comparison inputs only. Every runtime surface
@@ -846,7 +847,7 @@ function classicVMasts(P: TankBuilderPort): void {
   onTurret(P,d,'turretDetail',cylZ(.0769,.1175,20),.55,2.5142,-.7673);
   onTurret(P,d,'turretDetail',box(.09,.027,.045),.4467,2.4754,z);
   onTurret(P,d,'turretDetail',cylY(.0196,.242,12),-.2478,2.2886,-.9447);
-  onTurret(P,d,'turretDark',cylY(.0073,1.398,10),-.2478,3.1079,-.9447);
+  onTurret(P,d,'turretDark',antennaPart(cylY(.0073,1.398,10)),-.2478,3.1079,-.9447);
 }
 
 function modernSkirts(P: TankBuilderPort,roof: number): void {

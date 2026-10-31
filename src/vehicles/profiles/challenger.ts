@@ -1,4 +1,5 @@
 import { lathedWheelSection } from './lathedWheelStock.ts';
+import { antennaPart } from './antennaPart.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { beginAuxiliaryStation, captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -888,7 +889,7 @@ function* buildChallenger2VariantPackageSteps(
         roofSeats.push({ label: `fv4034-periscope-${x}`, carrierY, bottomY: y - 0.035 });
       }
       P.add('turretDetail', box(0.10, 0.16, 0.10), 0.05, 0.58, -1.34);
-      P.add('turretDetail', cylY(0.014, 0.018, 0.36, 8), 0.05, 0.80, -1.34);
+      P.add('turretDetail', antennaPart(cylY(0.014, 0.018, 0.36, 8)), 0.05, 0.80, -1.34);
       const loaderMgSeatY = loaderCupolaBaseY + 0.12 + 0.040 - 0.005;
       // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
       // Challenger 2's one roof gun is the loader's L37A2 GPMG, a working station; the commander carries none, so the

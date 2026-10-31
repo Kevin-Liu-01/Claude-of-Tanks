@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Small first-party construction vocabulary shared by four independent source
 // studies. Every vehicle owns its primary shell sections and measured frames.
 import * as THREE from 'three';
@@ -52,7 +53,7 @@ export function hatch(P: TankBuilderPort, owner: 'hull' | 'turret',
 export function antenna(P: TankBuilderPort, x: number, floor: number, z: number, top: number, tipZ = z): void {
   equipment(P, 'turret', 'Detail', cylY(.036, .056, .14, 10), x, floor + .07, z);
   const rise = top - floor - .11, run = tipZ - z;
-  equipment(P, 'turret', 'Dark', cylY(.0038, .012, Math.hypot(rise, run), P.q ? 8 : 6),
+  equipment(P, 'turret', 'Dark', antennaPart(cylY(.0038, .012, Math.hypot(rise, run), P.q ? 8 : 6)),
     x, floor + .11 + rise / 2, (z + tipZ) / 2, Math.atan2(run, rise));
 }
 

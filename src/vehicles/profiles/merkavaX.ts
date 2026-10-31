@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
 // Independent first-party Merkava X constructions. Source archives are local
@@ -330,7 +331,7 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   put('turretDetail',box(.1565,.0242,.1565),.21147,2.5174,-3.1848);
   put('turretDetail',cylY(.0496,.1051,16),.21144,2.58133,-3.18473);
   put('turretDetail',cylY(.02725,.22533,14),.21147,2.74652,-3.18475);
-  put('turretDark',cylY(.0055,2.28859,8),.21147,3.994055,-3.18475);
+  put('turretDark',antennaPart(cylY(.0055,2.28859,8)),.21147,3.994055,-3.18475);
   // Source right MAG pedestal: roof foot, vertical neck and forward cantilever.
   // The receiver retains its measured firing height, with an actual load path.
   put('turretDetail',box(.2808,.1189,.1135),1.0387,2.48885,-1.20835);
@@ -608,7 +609,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
         const g=KIT.cylY(b[3]/2,a[3]/2,delta.length(),10)
           .applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(rotation));
         const mid=start.add(end).multiplyScalar(.5);
-        topPart(P,MK4,'turretOpenLatticeDark',g,mid.x,mid.y,mid.z);
+        topPart(P,MK4,'turretOpenLatticeDark',antennaPart(g),mid.x,mid.y,mid.z);
       }
     },{reachM:.12});
     // Exact horizontal source calipers: the five long aerials curve aft and
@@ -641,8 +642,8 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
     // 2026-10-19 (owner float sweep): the right aerial's base stood 51 mm off the turret side; each aerial seats on it
     P.snapGroup('merkava4-aerial',()=>{
       put('turretDetail',cylY(.042,.17,12),x,base-.078,z);
-      put('turretDark',cylY(.0047,tip-base-.020,8),x,(tip+base-.020)/2,z);
-      put('turretDetail',new THREE.SphereGeometry(.020,8,6),x,tip-.020,z);
+      put('turretDark',antennaPart(cylY(.0047,tip-base-.020,8)),x,(tip+base-.020)/2,z);
+      put('turretDetail',antennaPart(new THREE.SphereGeometry(.020,8,6)),x,tip-.020,z);
     },{reachM:.06});
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);

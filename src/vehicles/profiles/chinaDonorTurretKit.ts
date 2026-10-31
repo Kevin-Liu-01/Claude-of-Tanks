@@ -10,6 +10,7 @@
 // Everything here is turret-local (origin on the ring centre, +Z forward, +X the vehicle's left) and stands on
 // permanent donor stock found by raycast: never on removable ERA, never in open air.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import {KIT,orientedSlab} from './kit.ts';
 import {machinedRing} from '../machineGunGeometry.ts';
 import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase,stockRoof} from './nationalChina.ts';
@@ -281,7 +282,7 @@ function kunlunRearCage(P:TankBuilderPort):void {
 function whip(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,length:number):void {
   const y=equipmentFoot(P,parts,x,z,.13,.13);
   P.addEquipment('turretDetail',cylY(.050,.064,.09,12),x,y+.040,z);
-  P.addEquipment('turretDark',cylY(.007,.011,length,8),x,y+.08+length/2,z);
+  P.addEquipment('turretDark',antennaPart(cylY(.007,.011,length,8)),x,y+.08+length/2,z);
 }
 
 /** A guarded lamp (nationalRoofSystems.ts) on a shaped foot: the 96B's front roof falls 16 degrees under it. Its base

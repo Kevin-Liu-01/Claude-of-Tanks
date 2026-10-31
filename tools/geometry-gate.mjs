@@ -14,13 +14,16 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // Writes docs/geometry-gate/<id>.json (full deltas — the builder's work
 // order) and maintains docs/geometry-gate/ledger.json (tool-written only).
 //
-// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check]
+// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check] [--repin]
+// --repin (npm run gate:repin): a requested registered id whose oracle file is missing stops the run before anything is
+// measured or written, instead of recording an unavailable row over its measured one; an id the page cannot measure
+// keeps its previous ledger row, marked with the error as repinError.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
-import { unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { mergeLedgerRow, missingOraclesError, unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 
@@ -29,6 +32,7 @@ const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
 const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'geometry-gate --ids') : null;
 const CHECK = args.includes('--check');
+const REPIN = args.includes('--repin');
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -54,8 +58,10 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     const firstPartyOnly = requested.filter((id) => !registered.has(id));
     const unavailable = requested.filter((id) => registered.has(id) && !available.has(id));
     if (firstPartyOnly.length) {
-      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations`);
+      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations` +
+        ` (${firstPartyOnly.join(', ')})`);
     }
+    if (unavailable.length && REPIN) throw missingOraclesError(unavailable, referenceSources);
     if (unavailable.length) {
       for (const id of unavailable) {
         const qualityBar = referenceQualityBars[id] || 'fleet';
@@ -148,13 +154,7 @@ if (requested && fs.existsSync(ledgerPath)) {
     }
   } catch { /* corrupted ledger rebuilds from this run */ }
 }
-for (const r of rows) byId.set(r.id, {
-  id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
-  qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
-  ...(r.comparisonPurpose ? { comparisonPurpose:r.comparisonPurpose } : {}),
-  ...(r.comparisonScope ? {comparisonScope:r.comparisonScope,rawSourceComparison:r.rawSourceComparison} : {}),
-  ...(r.preservationBaseline ? { preservationBaseline:r.preservationBaseline } : {}),
-});
+for (const r of rows) mergeLedgerRow(byId, r, { repin: REPIN });
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
@@ -177,4 +177,6 @@ const runSummary = runSorted.length
   ? `worst ${runSorted[0].id} (${runSorted[0].geoMin})`
   : 'no registered comparison rows requested';
 console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ${runSummary}`);
+const notRepinned = REPIN ? rows.filter((r) => r.error && !r.components).map((r) => r.id) : [];
+if (notRepinned.length) console.log(`[geo] not re-pinned (page errors above); their previous rows are kept, marked repinError: ${notRepinned.join(', ')}`);
 if (CHECK && runPassed < rows.length) process.exitCode = 1;

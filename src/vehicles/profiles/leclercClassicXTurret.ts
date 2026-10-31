@@ -1,5 +1,6 @@
 // Original older-file turret solids; scalar sections are not source contours.
 import { KIT } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { classicTurret, LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import { addLeclercClassicXRoofDetails, addLeclercClassicXMast } from './leclercClassicXRoofDetails.ts';
@@ -115,7 +116,7 @@ function stocks(P: TankBuilderPort): void {
     const g = sectionSolid(rows.map(([height, half, depth]) => ({ z: height,
       ring: [[-half, -depth], [half, -depth], [half, depth], [-half, depth]],
     }))).rotateX(-Math.PI / 2);
-    classicTurret(P, 'turretDetail', g, x, 0, -1.1813242);
+    classicTurret(P, 'turretDetail', antennaPart(g), x, 0, -1.1813242);
   }
   addLeclercClassicXMast(P);
 }

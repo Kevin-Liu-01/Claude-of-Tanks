@@ -38,9 +38,11 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
+import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
+import { FLEET_RENEWAL_DONORS } from '/src/vehicles/fleetRenewalSpecs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
 import { assertNoConceptReferences } from '/tools/first-party-concept-policy.mjs';
 import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
@@ -720,6 +722,7 @@ const comparisonScope=ownerKit?{
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p === ancestor) return true; return false; };
+const onGunRig = (node) => { for (let p=node; p; p=p.parent) if (/^rig_(gun|recoil|muzzle)$/.test(p.name || '')) return true; return false; };
 const isRenderNode = (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry;
 const effectivelyVisible = (o) => {
   for (let p=o; p; p=p.parent) if (!p.visible) return false;
@@ -773,6 +776,41 @@ const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
   root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o) && !isCamouflageSuit(o)); });
 }
+// The geometry gate's dims rows measure the BODY (Main's ruling 2026-10-30, owner-delegated): no whips or antennas, no
+// pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
+// oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
+// the roof weapons and leaves only the antennas out: the top of a published height's interval.
+const roofFittings = [
+  roofFittingParts(procedural.root, { isRenderNode }),
+  roofFittingParts(reference.root, { isRenderNode, oracle:true,
+    ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
+];
+const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
+const antennaNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes].filter(([, tag]) => isAntennaTag(tag)).map(([node]) => node)));
+// An oracle comparison drops a kind of roof fitting only where the oracle names it too: a source that fuses its roof
+// gun into the turret (the T-90MS's) keeps the build's gun beside it, and one that names nothing (a fused export) is
+// compared whole against whole.
+const paired = pairedRoofFittings(roofFittings[0], roofFittings[1]);
+let hiddenRoofFittings = null;
+function withBodyOnly(measure, mode = 'body') {
+  const swapped = [];
+  for (const [i, { trimmed }] of roofFittings.entries()) {
+    if (mode === 'paired' && i === 0 && !paired.cutBuildSpans) continue;
+    for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
+  }
+  hiddenRoofFittings = mode === 'roof' ? antennaNodes : mode === 'paired' ? paired.hidden : roofFittingNodes;
+  try { return measure(); } finally {
+    hiddenRoofFittings = null;
+    for (const [node, geometry] of swapped) node.geometry = geometry;
+  }
+}
+const roofFittingsExcluded = (() => {
+  const [built, oracle] = roofFittings.map(({ nodes, trimmed }) => [...new Set([
+    ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
+    ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => `antennaSpans:${node.name}`),
+  ])].sort());
+  return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
+})();
 // Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
 // named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
 // before the part leaves the track profile (every other mask keeps it); ?comparison=raw-source compares it unexempted.
@@ -817,7 +855,7 @@ function visibleBox(root) {
   const world = new THREE.Matrix4();
   root.updateMatrixWorld(true);
   root.traverse((o) => {
-    if (!isRenderNode(o) || !baseVisible.get(o)) return;
+    if (!isRenderNode(o) || !baseVisible.get(o) || hiddenRoofFittings?.has(o)) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
     local.copy(o.geometry.boundingBox);
@@ -948,8 +986,11 @@ function setPart(root, part) {
     const allowed = part === 'whole'
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
       || (part === 'turret' && isBelow(o, turret))
-      || (part === 'gun' && isBelow(o, gun));
-    o.visible = base && allowed;
+      || (part === 'gun' && isBelow(o, gun))
+      // the dims rows' hull: no turret and no gun, even where a casemate hangs its muzzle rig on the hull's rig or draws
+      // its barrel into the hull's gun buckets
+      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !onGunRig(o) && !/^(gun|hullGun)/.test(o.name || ''));
+    o.visible = base && allowed && !hiddenRoofFittings?.has(o);
   });
 }
 
@@ -1681,22 +1722,7 @@ if (params.get('geo')) {
     setPart(visual.root, part);
     return readGeometryMask(gtarget, GSIZE, camera);
   };
-  const gTrace = (mask, cam, N = 96) => {
-    const half = cam.right;
-    const out = [];
-    const step = GSIZE / N;
-    for (let c = 0; c < N; c++) {
-      const x0 = Math.floor(c * step), x1 = Math.min(GSIZE, Math.floor((c + 1) * step));
-      let top = -1, bot = -1;
-      for (let x = x0; x < x1; x++) {
-        for (let y = GSIZE - 1; y >= 0; y--) if (mask[y * GSIZE + x]) { if (y > top) top = y; break; }
-        for (let y = 0; y < GSIZE; y++) if (mask[y * GSIZE + x]) { if (bot < 0 || y < bot) bot = y; break; }
-      }
-      out.push(top >= 0 ? [((x0 + x1) / 2 + 0.5) / GSIZE * 2 * half - half,
-        ((top + 0.5) / GSIZE * 2 - 1) * half, ((bot + 0.5) / GSIZE * 2 - 1) * half] : null);
-    }
-    return out;
-  };
+  const gTrace = (mask, cam, N = 96) => columnTrace(mask, GSIZE, cam.right, N);
   const clamp01 = (v) => Math.max(0, Math.min(100, v));
   // Curve deviation: mean+max |ref−proc| over columns where BOTH exist, plus
   // a coverage penalty where exactly one silhouette exists (missing/excess
@@ -1962,23 +1988,23 @@ if (params.get('geo')) {
   const mT = trimmed(stationErr.map((e) => e.topPct));
   const stationScore = clamp01(100 - 10 * mW - 10 * mT);
   // Published-dimension anchor: PROCEDURAL vs spec.dims (real vehicle).
-  // Antenna-robust: measured from silhouette curves counting only columns
-  // whose band thickness exceeds 12% of height (whip antennas/masts are
-  // authoring metadata, not the vehicle's published envelope).
-  const bodyExtent = (curve) => {
-    const cols = curve.filter(Boolean);
-    if (!cols.length) return null;
-    const rough = Math.max(...cols.map((c) => c[1])) - Math.min(...cols.map((c) => c[2]));
-    const body = cols.filter((c) => c[1] - c[2] > rough * 0.12);
-    if (!body.length) return null;
-    // p95 of column tops: a 2-column antenna mast must not define the roof
-    const tops = body.map((c) => c[1]).sort((a, b) => a - b);
-    const top = tops[Math.min(tops.length - 1, Math.floor(tops.length * 0.95))];
-    const bot = Math.min(...body.map((c) => c[2]));
-    return { h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]) };
-  };
-  const procExt = bodyExtent(curves.side_whole_proc);
-  const refExt = bodyExtent(curves.side_whole_ref);
+  // Every dims row measures the BODY (withBodyOnly: no whips, antennas or
+  // roof weapons on either model; Main's rulings 2026-10-30). A published
+  // height is met anywhere from the body top to the roof-fittings top
+  // (sources measure to the cupola or the roof gun; whips stay out), an
+  // oracle is body against body, and hull length is the hull's own side
+  // span, gun left out, wherever both sides have one (a fused oracle has
+  // none: the whole-body extent on both sides there).
+  const sideTraces = (visual, other, mode = 'body', cam = camsG.side) => withBodyOnly(() => ({
+    whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hullBody'), cam),
+  }), mode);
+  const procSide = sideTraces(procedural, reference);
+  const procPairedSide = sideTraces(procedural, reference, 'paired');
+  const refSide = sideTraces(reference, procedural, 'paired');
+  const procExt = bodyExtent(procSide.whole, procSide.hull);
+  const procPairedExt = bodyExtent(procPairedSide.whole, geometryComponentMasksAvailable ? procPairedSide.hull : null);
+  const refExt = bodyExtent(refSide.whole, geometryComponentMasksAvailable ? refSide.hull : null);
+  const procRoofTop = bodyExtent(sideTraces(procedural, reference, 'roof').whole)?.hMax;
   // columns are CENTERS: a span between first/last centers is one pitch
   // short of the physical extent (refs self-measured ~3% narrow on width)
   const colPitch = (curve) => {
@@ -1998,10 +2024,10 @@ if (params.get('geo')) {
   };
   const dimRows = [];
   const specDimensions = spec.dims || {};
-  const dimCheck = (name, actual, published) => {
+  const dimCheck = (name, actual, published, extra) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
-    dimRows.push({ name, actual, published, pct });
+    dimRows.push({ name, actual, published, pct, ...extra });
   };
   const pixelSpanZ = (part, visual = procedural, other = reference, cam = camsG.side) => {
     const m = gMask(visual, other, cam, part);
@@ -2037,11 +2063,11 @@ if (params.get('geo')) {
   // Legacy sources retain published dimensions; historical preservation
   // retains its frozen-original policy. Explicitly certified source-study
   // IDs below use an independent fixed ruler and full physical envelopes.
-  let referenceDimensions = {
+  let referenceDimensions = withBodyOnly(() => ({
     heightM:refExt?.h, hullLengthM:refExt?.len,
     overallLengthM:pixelSpanZ('whole', reference, procedural),
     widthM:measurePixelWidth(reference, procedural),
-  };
+  }), 'paired');
   let dimensionFrame = null;
   if (usesSourceDimensionFrame(id,sourceWorldRegistration)) {
     // A candidate-dependent union frame moves96-column percentile bins.
@@ -2050,24 +2076,36 @@ if (params.get('geo')) {
     // The additional full3D envelopes catch any out-of-frame excess.
     const side=sourceDimensionCamera(referenceBox,TRUE_AXES.side);
     const plan=sourceDimensionCamera(referenceBox,TRUE_AXES.plan);
-    const measure=(visual,other)=>{
-      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side));
+    const measure=(visual,other)=>withBodyOnly(()=>{
+      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side),
+        geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hullBody'),side):null);
       return {heightM:body?.h,hullLengthM:body?.len,
         overallLengthM:pixelSpanZ('whole',visual,other,side),
         widthM:measurePixelWidth(visual,other,plan)};
-    };
+    },'paired');
     referenceDimensions=measure(reference,procedural);
     const actual=measure(procedural,reference);
-    dimRows.push(...sourceDimensionRows(referenceDimensions,actual,referenceBox,proceduralBox));
+    // the ruler stays framed by the whole source; the physical envelopes are the bodies'
+    dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
+      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired')));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
   } else {
     const pub = preservationDimensionTargets(source, id, preservation ? referenceDimensions : {}, specDimensions);
-    if (procExt) dimCheck('heightM', procExt.h, pub.silhouetteHeightM ?? pub.heightM);
-    if (procExt) dimCheck('hullLengthM', procExt.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
-    dimCheck('overallLengthM', pixelSpanZ('whole'), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
-    dimCheck('widthM', measurePixelWidth(procedural, reference), pub.silhouetteWidthM ?? pub.widthM);
+    const publishedHeight = pub.silhouetteHeightM ?? pub.heightM;
+    const ext = preservation ? procPairedExt : procExt;
+    if (preservation && ext) dimCheck('heightM', ext.h, publishedHeight);
+    else if (ext && publishedHeight && Number.isFinite(procRoofTop)) dimRows.push({ name:'heightM', actual:ext.h,
+      roofFittingsTop:Math.max(ext.h, procRoofTop), published:publishedHeight, method:'interval: body top to roof-fittings top',
+      pct:heightIntervalPct(ext.h, procRoofTop, publishedHeight) });
+    const donorId = FLEET_RENEWAL_DONORS[id] ?? spec.variantOf;
+    const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
+    const { published: hullTarget, ...hullBasis } = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims,
+      ownOracle ? referenceDimensions.hullLengthM : null);
+    if (ext) dimCheck('hullLengthM', ext.len, hullTarget, hullBasis);
+    dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+    dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
@@ -2169,7 +2207,11 @@ if (params.get('geo')) {
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
     turretRows, stationErr, dimRows, referenceDimensions,
     referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },
-    proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3) },
+    proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
+      ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
+    ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
+    ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
+      roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');
