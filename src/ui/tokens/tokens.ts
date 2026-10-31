@@ -315,6 +315,7 @@ export const TOKENS = {
   'plate-chip-fill': 'linear-gradient(rgba(246,243,236,.03),rgba(246,243,236,.03)),#11151a',
   'plate-chip-fill-on': 'linear-gradient(rgba(240,160,48,.12),rgba(240,160,48,.12)),#11151a',
   'home-hero-grade': 'linear-gradient(180deg,rgba(5,6,8,.78) 0,rgba(5,6,8,.4) 8vh,rgba(5,6,8,0) 18vh),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(5,6,8,.6) 10vh,rgba(5,6,8,0) 26vh)',
+  'home-hero-falloff': 'radial-gradient(farthest-side at 46% 56%,rgba(5,6,8,.35) 0,rgba(5,6,8,.35) 38%,rgba(5,6,8,.25) 58%,rgba(5,6,8,.13) 76%,rgba(5,6,8,.04) 90%,rgba(5,6,8,0) 100%)',
   'home-hero-scrim': 'rgba(5,6,8,.66)',
   'home-phone-grade': 'linear-gradient(180deg,rgba(5,6,8,.84) 0,rgba(5,6,8,.4) 12%,rgba(5,6,8,0) 24%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,.6) 9%,rgba(11,14,17,0) 22%),linear-gradient(180deg,rgba(5,6,8,0) 34%,rgba(5,6,8,.66) 50%)',
   'home-headline-shadow': '0 6px 40px rgba(5,6,8,.35)',
