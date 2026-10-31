@@ -3921,8 +3921,10 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
     tube(0.10, 0.10, 1.43, 1.75);
     tube(0.10, 0.09, 1.75, 1.78);
     tube(0.09, 0.09, 1.78, 1.90);
-    tube(0.10, 0.10, 1.90, 1.95);
-    muzzleBore(P, { z: 1.954, r: 0.07 });
+    // (round 18: the lip 0.12 m round, inside the owner's model's 0.144 m muzzle swell, holding the true 152 mm bore: the
+    // mouth's inner wall is 0.72 of the radius drawn, so 0.1056 m draws the 0.076 m bore)
+    tube(0.12, 0.12, 1.90, 1.95);
+    muzzleBore(P, { z: 1.954, r: 0.1056 });
     P.muzzleZ = 1.95;
   }
   P.topY = L.y(3.30) + 0.12;
