@@ -4,7 +4,9 @@
 // day: a published height is an interval target, since sources measure to the cupola or to the roof gun: it passes when it
 // lies between the body top and the roof-fittings top (whips always out, heightIntervalPct). An oracle comparison stays
 // body against body. Hull length is the hull curve's own side span (the gun's rig left out, even on a casemate), never a
-// band threshold that barrel columns can cross (bodyExtent).
+// band threshold that barrel columns can cross (bodyExtent). That span is a silhouette, so a build on a donor's frame,
+// whose dims carry the donor's structural hull length, is held to its own oracle's span or the donor's silhouette
+// (hullLengthTarget; Main 2026-10-30).
 //
 // The parts are named by tags the builders already set, never by shape:
 //   - fitting roots (profiles/kit.ts FITTINGS): antennaWhip, and the roof-gun set ghillieSuit.ts's ROOF_GUN_FITTINGS names;
@@ -172,6 +174,17 @@ export function bodyExtent(curve, hullCurve = null) {
   const hull = hullCurve?.filter(Boolean) ?? [];
   const span = hull.length ? hull : body;
   return { h: top - bot, hMax: tops[tops.length - 1] - bot, len: Math.abs(span[span.length - 1][0] - span[0][0]) };
+}
+
+/** The published hull length a build's hull span is held to. The span is a silhouette (fenders, drums and stern kit in
+ * it), so the target is one too: the spec's own silhouette hull length, else its published one. A build on a donor's
+ * frame carries the donor's structural hull length without the donor's silhouette (stripSilhouetteDimensions); it is
+ * held to its own oracle's hull span (`ownOracleLen`, measured on the same raster), else to the donor's silhouette. */
+export function hullLengthTarget(dims, donorDims = null, ownOracleLen = null) {
+  if (dims.silhouetteHullLengthM != null) return { published: dims.silhouetteHullLengthM };
+  if (donorDims?.silhouetteHullLengthM == null || donorDims.hullLengthM !== dims.hullLengthM) return { published: dims.hullLengthM };
+  return ownOracleLen > 0 ? { published: ownOracleLen, method: 'donor frame: own oracle hull span' }
+    : { published: donorDims.silhouetteHullLengthM, method: 'donor frame: donor silhouette' };
 }
 
 /** A published height's error against the interval from the body top to the roof-fittings top: 0 inside it, else the

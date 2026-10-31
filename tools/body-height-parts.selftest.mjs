@@ -3,14 +3,17 @@
 // CPU raster of a real build's side view: a 1 m whip added as a fitting, or drawn into a turret bucket under the
 // 'antenna' seat role, leaves the measured height unchanged (negative controls), while raising the hull moves it. Main's
 // later rulings: a published height is an interval (body top to roof-fittings top, whips out of both) and hull length
-// comes from the hull's own trace, so a thick barrel column never counts as hull.
+// comes from the hull's own trace, so a thick barrel column never counts as hull; that trace is a silhouette, so a build
+// on a donor's frame is held to its own oracle's span or the donor's silhouette, never the donor's structural datum.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import '../src/vehicles/tankFactory.ts';
 import { createTank } from '../src/vehicles/tankFactoryCore.ts';
 import { FITTINGS } from '../src/vehicles/profiles/kit.ts';
-import { AMMO_TOUCH_M, ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, isAntennaTag,
-  oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
+import { TANK_SPECS } from '../src/vehicles/specs.ts';
+import { FLEET_RENEWAL_DONORS } from '../src/vehicles/fleetRenewalSpecs.ts';
+import { AMMO_TOUCH_M, ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, hullLengthTarget,
+  isAntennaTag, oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
 const visible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
@@ -146,6 +149,27 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   assert.equal(bodyExtent(whole).hMax, 2.5);
 }
 
+// --- a build on a donor's frame is held to a silhouette hull length, never the donor's structural datum ----------------
+{
+  const donor = { hullLengthM: 6.3563, silhouetteHullLengthM: 7.1932 };
+  const copied = { hullLengthM: 6.3563 };
+  assert.deepEqual(hullLengthTarget({ ...copied, silhouetteHullLengthM: 7.4 }, donor, 6.9), { published: 7.4 }, 'its own silhouette first');
+  assert.deepEqual(hullLengthTarget(copied, donor, 6.9), { published: 6.9, method: 'donor frame: own oracle hull span' });
+  assert.deepEqual(hullLengthTarget(copied, donor, null), { published: 7.1932, method: 'donor frame: donor silhouette' });
+  // negative controls: a hull length of its own, or a donor without a silhouette, keeps the published hull length
+  assert.deepEqual(hullLengthTarget({ hullLengthM: 6.54 }, donor, 6.9), { published: 6.54 });
+  assert.deepEqual(hullLengthTarget(copied, { hullLengthM: 6.3563 }, 6.9), { published: 6.3563 });
+  assert.deepEqual(hullLengthTarget(copied), { published: 6.3563 });
+  // the fleet: the renewal and the Pendekar carry their donors' structural hull lengths; the donors keep their own silhouettes
+  const donorOf = (id) => TANK_SPECS[FLEET_RENEWAL_DONORS[id] ?? TANK_SPECS[id].variantOf]?.dims;
+  for (const [id, donorId] of [['t64bv1', 't72b3'], ['t64bv_donbas', 't72b3'], ['t72m1_jaguar', 't72b3'], ['t72bu_1989', 't72bu'], ['pt91m', 't72bu']]) {
+    assert.equal(donorOf(id), TANK_SPECS[donorId].dims, `${id}: built on ${donorId}'s frame`);
+    assert.equal(hullLengthTarget(TANK_SPECS[id].dims, donorOf(id)).published, TANK_SPECS[donorId].dims.silhouetteHullLengthM,
+      `${id}: held to a silhouette, not ${donorId}'s structural ${TANK_SPECS[donorId].dims.hullLengthM}`);
+  }
+  for (const id of ['t72b3', 't72bu']) assert.equal(hullLengthTarget(TANK_SPECS[id].dims, donorOf(id)).published, TANK_SPECS[id].dims.silhouetteHullLengthM);
+}
+
 // --- an oracle comparison drops a kind only where the oracle names it -------------------------------------------------
 {
   const n = (name) => Object.assign(new THREE.Object3D(), { name });
@@ -246,6 +270,6 @@ const raised = heightOf(root, frame, { body: true });
 assert.ok(raised.ext.h > withSpan.ext.h + 0.08, `raising the hull raises the gate height (${withSpan.ext.h.toFixed(3)} -> ${raised.ext.h.toFixed(3)})`);
 for (const whip of added) turret.remove(whip);
 tank.dispose?.();
-console.log(`body-height-parts: tags, interval and hull-span length pass; type74 gate height ${before.ext.h.toFixed(3)} m `
+console.log(`body-height-parts: tags, interval, hull-span length and the donor-frame hull target pass; type74 gate height ${before.ext.h.toFixed(3)} m `
   + `(roof-fittings top ${roofBefore.ext.hMax.toFixed(3)}, whole ${whole.ext.h.toFixed(3)}), unchanged by four 1 m whips and a 1 m `
   + `tagged bucket rod, ${raised.ext.h.toFixed(3)} m with the hull raised`);

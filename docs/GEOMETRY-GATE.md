@@ -147,7 +147,13 @@ raw rod needs `antennaPart()`, or it counts as body.
   gun, even where a casemate hangs the gun on the hull's rig), never a band
   threshold that barrel columns can cross once the whips stop raising it;
   fenders and mudguards count, as in published hull lengths. A fused oracle
-  has no hull trace, so both sides use the whole-body extent there.
+  has no hull trace, so both sides use the whole-body extent there. That span
+  is a silhouette, so its target is the spec's `silhouetteHullLengthM` when
+  there is one. A build on a donor's frame (`FLEET_RENEWAL_DONORS`, else
+  `variantOf`, when its hull length is the donor's own number) lost the
+  donor's silhouette in the copy; it is held to its own oracle's hull span,
+  else to the donor's silhouette, never to the donor's structural datum
+  (the row says which in `method`).
 - The source ruler keeps its whole-source frame; its physical envelopes are
   the bodies'. An oracle comparison drops a kind of roof fitting (antennas,
   roof weapons) from both models only where the oracle names that kind: a

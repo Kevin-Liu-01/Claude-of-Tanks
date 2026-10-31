@@ -36,10 +36,11 @@ import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
 import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
+import { FLEET_RENEWAL_DONORS } from '/src/vehicles/fleetRenewalSpecs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
 import { assertNoConceptReferences } from '/tools/first-party-concept-policy.mjs';
 import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
@@ -2074,10 +2075,10 @@ if (params.get('geo')) {
   };
   const dimRows = [];
   const specDimensions = spec.dims || {};
-  const dimCheck = (name, actual, published) => {
+  const dimCheck = (name, actual, published, method) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
-    dimRows.push({ name, actual, published, pct });
+    dimRows.push({ name, actual, published, pct, ...(method && { method }) });
   };
   const pixelSpanZ = (part, visual = procedural, other = reference, cam = camsG.side) => {
     const m = gMask(visual, other, cam, part);
@@ -2149,7 +2150,10 @@ if (params.get('geo')) {
     else if (ext && publishedHeight && Number.isFinite(procRoofTop)) dimRows.push({ name:'heightM', actual:ext.h,
       roofFittingsTop:Math.max(ext.h, procRoofTop), published:publishedHeight, method:'interval: body top to roof-fittings top',
       pct:heightIntervalPct(ext.h, procRoofTop, publishedHeight) });
-    if (ext) dimCheck('hullLengthM', ext.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
+    const donorId = FLEET_RENEWAL_DONORS[id] ?? spec.variantOf;
+    const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
+    const hullTarget = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims, ownOracle ? referenceDimensions.hullLengthM : null);
+    if (ext) dimCheck('hullLengthM', ext.len, hullTarget.published, hullTarget.method);
     dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
     dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }
