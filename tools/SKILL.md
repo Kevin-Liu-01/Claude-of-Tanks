@@ -106,6 +106,13 @@ one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
 generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
 also spelled `--release`); exploration passes its own rounds explicitly.
 
+A receipt that pools many independent runs (`destruction-slab-kinds`, 2026-10-30, item 265) queues its
+smallest unit (a run, not the map that holds it) so no container is the long pole, keys every result on its
+inputs (a clean or judged run on its fingerprint, a map's listing on the tool's import closure) so unchanged
+work is never redone, stops a unit past its CPU on the worker thread's clock (`worker.cpuUsage()`: at load
+300 the wall runs 10-15x the CPU), budgets the whole receipt in CPU minutes, and plants a defect the verdict
+must catch.
+
 Every browser goes through `browser-launch.mjs` (2026-10-26, item 244; the
 10-23 crashes came from a 14.1 GB capture renderer): `launchGuardedBrowser(
 puppeteer, options, { label })`, or `launchGuardedBrowser(chromium, options)`

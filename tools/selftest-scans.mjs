@@ -293,8 +293,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/test-diff.mjs': cli('changedPaths lists the diff and fleetPartition runs computeState only when test:lane or test:recommend run as commands; the tiers receipt imports its pure helpers'),
   'tools/test-heavy.mjs': cli('npm run test:heavy reads the id-scoped closures; the tiers receipt imports idScopedSelection'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
-  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) from selftest-cache.mjs: ' +
-    'the closures of fixed files, for its pass fingerprint'),
+  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) and of ' +
+    'tools/destruction-slab-check.mjs from selftest-cache.mjs: the closures of fixed files, for its pass fingerprint and its maps\' listings'),
 });
 
 const KINDS = ['lists', 'tracked', 'caller', 'outside', 'identity', 'cli', 'none'];
