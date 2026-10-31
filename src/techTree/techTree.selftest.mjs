@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 14, 'fourteen national trees'); // 265: Denmark
+assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -110,6 +110,8 @@ const FAMILY_UPGRADES = Object.freeze({
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 265: the Danish Leopards
   denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
+  // 266: the Osório's two prototypes (the 105 mm P.1 before the 120 mm P.2)
+  brazil: [['x1_pioneiro', 'x1a2_carcara'], ['tamoyo1', 'tamoyo3'], ['osorio_p1', 'osorio_p2'], ['ee_t3_osorio', 'ee_t4_osorio']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -197,5 +199,11 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Re-pinned 2026-10-31 at integ/266 (m60-family-265 17fe8bb7d1 merged; every other tree check passes): + the Magach 6B and 7C.
 // 2026-10-31 re-pin (266): the owner moved the Challenger 3 TD and its RWS build to tier X beside the Challenger 3.
 // Re-pinned 2026-10-31 at integ/266 (cr3td-tier-x-266 986c7a4452 merged; every other tree check passes).
-assert.equal(digest, '62f9a84770302495', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-29 re-pin (266, Main's ruling on the Brazil line): the Brazil tree, head A: its root the X1 Pioneiro (I) and the
+// Bernardini and Engesa line on through the X1A2 Carcará (I), the MB-3 Tamoyo 1 (II) and 3 (III) and the EE-T1 Osório P.1
+// (III) and P.2 (IV); head B's Army-fleet line (the M41C, the Leopards, the M60A3 TTS) re-cuts it again.
+// 2026-10-30 re-pin (266, the owner's ask and Main's ruling the same day): the fictional EE-T3 (IX) and EE-T4 (X) Osório
+// on from the P.2, lane 2.
+// Re-pinned 2026-10-31 at integ/266 (brazil-line-266 22327fcc1f merged; every other tree check passes): + the Brazil tree.
+assert.equal(digest, '2263d78472b37899', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

@@ -71,15 +71,17 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   ...RELEASE_265_SIGNATURES,
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
-  'paint_challenger1_mk1', 'paint_challenger1_x'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats and the Challenger 1 paints (266), append, after GT');
+  'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
+  'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints and the Brazilian coats (266), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
   'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   ...RELEASE_265_SIGNATURES,
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
-  'paint_challenger1_mk1', 'paint_challenger1_x']);
+  'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
+  'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -110,12 +112,16 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // The Centurion family (262, merged on 264c): the Sho't Kal and its 1973 Sinai grey, the Olifant Mk 2 and its SANDF
 // coat, the Australian Mk 5/1 and its olive drab; the Centurion Mk 13 and the Mk 5 AVRE wear the Mk 5/2's British
 // stock, the Strv 105 the Strv 81's Swedish stock. The PT-84 Orzeł (262) wears its own sand three-tone. Release 266: the
-// Danish 1A5 DK-1 and 2A5 DK, each in its own coat.
+// Danish 1A5 DK-1 and 2A5 DK, each in its own coat; the Osório P.2 and P.1, the Tamoyo 1 and 3 and the X1A2, each in its
+// own coat (the P.1's earth-brown and dark-green bands appended last, after the blind critics' second round); the
+// fictional EE-T3 and EE-T4 Osório (owner 2026-10-30) in their three-tone and digital woodland, appended after.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
-  'centurion5_1_aus', 'pt84_orzel', 'leo1a5dk1', 'leo2a5dk'];
-// Release 266: the Leopard 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone sit within a shade of a named preset, so
-// no authored paint of their own: Denmark has no national Factory coat, and they paint their spec's coat.
-const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
+  'centurion5_1_aus', 'pt84_orzel', 'leo1a5dk1', 'leo2a5dk', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1',
+  'ee_t3_osorio', 'ee_t4_osorio'];
+// Release 266: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the X1's grey olive drab sit within a
+// shade of a named preset, so no authored paint of their own: Denmark and Brazil have no national Factory coat, and they
+// paint their spec's coat.
+const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).

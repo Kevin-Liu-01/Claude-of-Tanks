@@ -15,11 +15,12 @@ const rows = NATION_INDEX.map(([id, country, era, tier]) => ({ id, country, era,
 assert.ok(rows.length >= 200, 'the index lists the production fleet');
 assert.ok(rows.every((row) => row.country), 'every production vehicle maps to a country');
 
-// the country table: seventeen countries (266: Denmark), their aliases, flags and blocs; a vehicle fights for its
+// the country table: eighteen countries (266: Denmark, Brazil), their aliases, flags and blocs; a vehicle fights for its
 // operator (round 2: the Leopard 2A4M CAN is Canada's, not its German design's)
-assert.equal(COUNTRIES.length, 17);
+assert.equal(COUNTRIES.length, 18);
 assert.equal(countryOfVehicle('christian2', 'Denmark'), 'denmark', '266: the Christian II fields for Denmark');
 assert.equal(countryFlag('denmark'), 'dk');
+assert.equal(countryOfNation('Brazil'), 'brazil'); assert.equal(countryFlag('brazil'), 'br'); assert.equal(countryBloc('brazil'), 'west');
 assert.equal(countryOfVehicle('leo2a4m_can', 'Germany'), 'canada'); assert.equal(countryOfVehicle('leo2a4m', 'Germany'), 'germany');
 assert.equal(rows.find((row) => row.id === 'leo2a4m_can')?.country, 'canada', 'the index seats it for Canada');
 assert.equal(countryFlag('canada'), 'ca');
@@ -27,21 +28,22 @@ assert.equal(countryOfNation('USSR/Russia'), 'russia'); assert.equal(countryOfNa
 assert.equal(countryFlag('uk'), 'gb'); assert.equal(countryFlag('nope'), 'xx');
 assert.equal(countryBloc('china'), 'east'); assert.equal(countryBloc('poland'), 'west');
 assert.deepEqual(Object.fromEntries(Object.entries(COUNTRY_ALLIES).map(([c, list]) => [c, list.join(' ')])), {
-  usa: 'uk germany france italy poland israel japan south_korea sweden denmark ukraine canada south_africa australia',
-  uk: 'usa germany france italy poland sweden denmark israel japan south_korea ukraine canada south_africa australia',
-  germany: 'france italy poland uk usa sweden denmark ukraine israel japan south_korea canada south_africa australia',
-  france: 'germany italy uk usa poland sweden denmark ukraine israel japan south_korea canada south_africa australia',
-  italy: 'germany france uk usa poland sweden denmark ukraine israel japan south_korea canada south_africa australia',
-  poland: 'ukraine germany usa uk sweden denmark france italy israel japan south_korea canada south_africa australia',
-  ukraine: 'poland uk usa germany sweden denmark france italy israel japan south_korea canada south_africa australia',
-  sweden: 'denmark germany uk poland france usa italy ukraine israel japan south_korea canada south_africa australia',
-  israel: 'usa uk germany france italy poland sweden denmark ukraine japan south_korea canada south_africa australia',
-  japan: 'usa south_korea uk france germany italy poland sweden denmark israel ukraine canada south_africa australia',
-  south_korea: 'usa japan uk germany france italy poland sweden denmark israel ukraine canada south_africa australia',
-  canada: 'usa uk france germany italy poland sweden denmark ukraine israel japan south_korea south_africa australia',
-  south_africa: 'uk canada usa germany france italy poland sweden denmark ukraine israel japan south_korea australia',
-  australia: 'uk usa canada south_africa germany france italy poland sweden denmark ukraine israel japan south_korea',
-  denmark: 'sweden germany uk usa poland france italy ukraine canada israel japan south_korea south_africa australia',
+  usa: 'uk germany france italy poland israel japan south_korea sweden denmark ukraine canada south_africa australia brazil',
+  uk: 'usa germany france italy poland sweden denmark israel japan south_korea ukraine canada south_africa australia brazil',
+  germany: 'france italy poland uk usa sweden denmark ukraine israel japan south_korea canada south_africa australia brazil',
+  france: 'germany italy uk usa poland sweden denmark ukraine israel japan south_korea canada south_africa australia brazil',
+  italy: 'germany france uk usa poland sweden denmark ukraine israel japan south_korea canada south_africa australia brazil',
+  poland: 'ukraine germany usa uk sweden denmark france italy israel japan south_korea canada south_africa australia brazil',
+  ukraine: 'poland uk usa germany sweden denmark france italy israel japan south_korea canada south_africa australia brazil',
+  sweden: 'denmark germany uk poland france usa italy ukraine israel japan south_korea canada south_africa australia brazil',
+  israel: 'usa uk germany france italy poland sweden denmark ukraine japan south_korea canada south_africa australia brazil',
+  japan: 'usa south_korea uk france germany italy poland sweden denmark israel ukraine canada south_africa australia brazil',
+  south_korea: 'usa japan uk germany france italy poland sweden denmark israel ukraine canada south_africa australia brazil',
+  canada: 'usa uk france germany italy poland sweden denmark ukraine israel japan south_korea south_africa australia brazil',
+  south_africa: 'uk canada usa germany france italy poland sweden denmark ukraine israel japan south_korea australia brazil',
+  australia: 'uk usa canada south_africa germany france italy poland sweden denmark ukraine israel japan south_korea brazil',
+  denmark: 'sweden germany uk usa poland france italy ukraine canada israel japan south_korea south_africa australia brazil',
+  brazil: 'usa germany italy france uk israel sweden denmark poland ukraine canada japan south_korea south_africa australia',
   russia: 'china', china: 'russia',
 }, 'the closest-ally order (study-country 3.2)');
 for (const [c, list] of Object.entries(COUNTRY_ALLIES)) for (const ally of list) assert.equal(countryBloc(ally), countryBloc(c), `${c}: fills stay in its bloc`);

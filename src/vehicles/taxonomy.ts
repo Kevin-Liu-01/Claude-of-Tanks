@@ -41,7 +41,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'kv2', 'jpz_e100',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
-    'amx10p', 'amx10p_25', 'amx30b', 'amx40', 't62mv1',
+    'amx10p', 'amx10p_25', 'amx30b', 'amx40', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1_pioneiro', 'x1a2_carcara', 't62mv1',
     'challenger1_mk3',
     't72bu',
     'chieftain5',
@@ -76,6 +76,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a1_abrams_hc', 't72b3m_2022', 'pt91m', 't84', 't90_1992', 't90a_2004',
     't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv',
     'strv121', 'challenger2', 'challenger2e', 'ua_challenger2', 'xk2_black_panther', 'k1e1', 'type10_tk_x', 'type10_dozer', 'christian2',
+    'ee_t3_osorio', 'ee_t4_osorio',
     'm6_linebacker', 'marder2', 'dardo', 'puma_s1', 'cv9040c', 'spz_puma', 'spz_wotan', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m',
     'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'leclerc_s2', 'leclerc_sxxi',
     'leclerc_s1', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'm1a1_abrams_sa', 'm1a1_abrams_aim',

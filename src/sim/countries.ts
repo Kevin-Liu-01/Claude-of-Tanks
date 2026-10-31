@@ -7,7 +7,7 @@
 
 export type CountryId =
   | 'russia' | 'germany' | 'usa' | 'uk' | 'france' | 'china' | 'japan' | 'sweden' | 'israel' | 'poland' | 'italy'
-  | 'south_korea' | 'ukraine' | 'canada' | 'south_africa' | 'australia' | 'denmark';
+  | 'south_korea' | 'ukraine' | 'canada' | 'south_africa' | 'australia' | 'denmark' | 'brazil';
 
 interface Country {
   readonly id: CountryId;
@@ -42,6 +42,8 @@ export const COUNTRIES: readonly Country[] = Object.freeze([
   country('australia', 'au', 'west', 'Australia'),
   // release 266: the Danish Army line (techTree/nations/denmark.ts)
   country('denmark', 'dk', 'west', 'Denmark'),
+  // release 266: the Brazilian Army line (techTree/nations/brazil.ts)
+  country('brazil', 'br', 'west', 'Brazil'),
 ]);
 
 const COUNTRY_BY_ID: ReadonlyMap<string, Country> = new Map(COUNTRIES.map((entry) => [entry.id, entry]));
@@ -108,27 +110,30 @@ export function sideFlags(vehicles: readonly { readonly id: string | null | unde
  */
 const allies = (...ids: CountryId[]): readonly CountryId[] => Object.freeze(ids);
 export const COUNTRY_ALLIES: Readonly<Record<CountryId, readonly CountryId[]>> = Object.freeze({
-  usa: allies('uk', 'germany', 'france', 'italy', 'poland', 'israel', 'japan', 'south_korea', 'sweden', 'denmark', 'ukraine', 'canada', 'south_africa', 'australia'),
-  uk: allies('usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'japan', 'south_korea', 'ukraine', 'canada', 'south_africa', 'australia'),
-  germany: allies('france', 'italy', 'poland', 'uk', 'usa', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  france: allies('germany', 'italy', 'uk', 'usa', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  italy: allies('germany', 'france', 'uk', 'usa', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  poland: allies('ukraine', 'germany', 'usa', 'uk', 'sweden', 'denmark', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  ukraine: allies('poland', 'uk', 'usa', 'germany', 'sweden', 'denmark', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  sweden: allies('denmark', 'germany', 'uk', 'poland', 'france', 'usa', 'italy', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  israel: allies('usa', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'japan', 'south_korea', 'canada', 'south_africa', 'australia'),
-  japan: allies('usa', 'south_korea', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'ukraine', 'canada', 'south_africa', 'australia'),
-  south_korea: allies('usa', 'japan', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'ukraine', 'canada', 'south_africa', 'australia'),
+  usa: allies('uk', 'germany', 'france', 'italy', 'poland', 'israel', 'japan', 'south_korea', 'sweden', 'denmark', 'ukraine', 'canada', 'south_africa', 'australia', 'brazil'),
+  uk: allies('usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'japan', 'south_korea', 'ukraine', 'canada', 'south_africa', 'australia', 'brazil'),
+  germany: allies('france', 'italy', 'poland', 'uk', 'usa', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  france: allies('germany', 'italy', 'uk', 'usa', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  italy: allies('germany', 'france', 'uk', 'usa', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  poland: allies('ukraine', 'germany', 'usa', 'uk', 'sweden', 'denmark', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  ukraine: allies('poland', 'uk', 'usa', 'germany', 'sweden', 'denmark', 'france', 'italy', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  sweden: allies('denmark', 'germany', 'uk', 'poland', 'france', 'usa', 'italy', 'ukraine', 'israel', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  israel: allies('usa', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'japan', 'south_korea', 'canada', 'south_africa', 'australia', 'brazil'),
+  japan: allies('usa', 'south_korea', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'ukraine', 'canada', 'south_africa', 'australia', 'brazil'),
+  south_korea: allies('usa', 'japan', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'israel', 'ukraine', 'canada', 'south_africa', 'australia', 'brazil'),
   // one Canadian hull in the fleet: a Canadian side is its allies' first (the US and the UK), named in the notes
-  canada: allies('usa', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'south_africa', 'australia'),
+  canada: allies('usa', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'south_africa', 'australia', 'brazil'),
   // one South African hull in the fleet (release 262: the Olifant Mk 2, a Centurion derivative): the UK first, then the
   // Commonwealth's Canada and the West
-  south_africa: allies('uk', 'canada', 'usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'australia'),
+  south_africa: allies('uk', 'canada', 'usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'australia', 'brazil'),
   // one Australian hull in the fleet (release 262: the Centurion Mk 5/1 of Vietnam): the UK and the US first, then the
   // Commonwealth
-  australia: allies('uk', 'usa', 'canada', 'south_africa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea'),
+  australia: allies('uk', 'usa', 'canada', 'south_africa', 'germany', 'france', 'italy', 'poland', 'sweden', 'denmark', 'ukraine', 'israel', 'japan', 'south_korea', 'brazil'),
   // release 266: Denmark fills first from its Nordic neighbour, then its NATO allies
-  denmark: allies('sweden', 'germany', 'uk', 'usa', 'poland', 'france', 'italy', 'ukraine', 'canada', 'israel', 'japan', 'south_korea', 'south_africa', 'australia'),
+  denmark: allies('sweden', 'germany', 'uk', 'usa', 'poland', 'france', 'italy', 'ukraine', 'canada', 'israel', 'japan', 'south_korea', 'south_africa', 'australia', 'brazil'),
+  // release 266: Brazil fills first from the countries whose armour it fields (the US's M41s and M60s, Germany's Leopards,
+  // Italy's Centauro and Iveco hulls), then the rest of the west
+  brazil: allies('usa', 'germany', 'italy', 'france', 'uk', 'israel', 'sweden', 'denmark', 'poland', 'ukraine', 'canada', 'japan', 'south_korea', 'south_africa', 'australia'),
   russia: allies('china'),
   china: allies('russia'),
 });

@@ -82,6 +82,8 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
   za: Object.freeze({ countryLabel: 'South Africa', filterLabel: 'ZA', insignia: 'za-castle', designation: 'SA' }),
   au: Object.freeze({ countryLabel: 'Australia', filterLabel: 'AU', insignia: 'au-kangaroo', designation: 'AUS' }),
+  // release 266: the Brazilian Army (Exército Brasileiro) line
+  br: Object.freeze({ countryLabel: 'Brazil', filterLabel: 'BR', insignia: 'br-eb-arms', designation: 'EB' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -134,6 +136,19 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
+  // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
+  osorio_p1: anchor('turret', 'left', .22, .45, .30, 1),
+  // (low on the wall aft of the basket, its number further aft: the dischargers and the basket's rail covered them in the
+  // rear three-quarter view; blind critics, rounds 9 and 10)
+  osorio_p2: anchor('turret', 'left', .17, .30, .22, -1),
+  ee_t3_osorio: anchor('turret', 'left', .17, .30, .22, -1),
+  ee_t4_osorio: anchor('turret', 'left', .10, .30, .22, 1), // (the pair between the rear radar and the basket, the number ahead)
+  // 266: the Army plaque on the Tamoyos' turret flanks (Vesp's profiles: amidships, behind the cheek)
+  tamoyo1: anchor('turret', 'right', .50, .40, .22, 1), // the tank's left (+x), as Vesp's profiles
+  tamoyo3: anchor('turret', 'right', .50, .45, .22, 1),
+  // 266: the plaque on the BT-90's flank ahead of the bustle
+  x1_pioneiro: anchor('turret', 'right', .66, .45, .32, 1), // 'right' seats on +x, the tank's left (Gaydos' profiles)
+  x1a2_carcara: anchor('turret', 'right', .58, .45, .32, 1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   strv122: anchor('hull', 'right', .26, .82, .24, 1),
@@ -764,6 +779,99 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.stroke();
 }
 
+/** Release 266 (the Brazilian Army line; Bastos, "100 Anos de Blindados no EB", 2022, prints both plates): the Army's
+ *  vehicle emblem from 1998, its coat of arms at game scale: a shield halved red and blue under a steel helmet, the gold
+ *  griffin rising across it with the silver eight-pointed star. */
+function drawBrazilArmyArms({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.18, top = cy - radius * 0.46, bottom = cy + radius * 0.92;
+  const shield = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, top); ctx.lineTo(cx + w / 2, top); ctx.lineTo(cx + w / 2, cy + radius * 0.30);
+    ctx.lineTo(cx + w * 0.36, cy + radius * 0.68); ctx.lineTo(cx, bottom); ctx.lineTo(cx - w * 0.36, cy + radius * 0.68);
+    ctx.lineTo(cx - w / 2, cy + radius * 0.30);
+    ctx.closePath();
+  };
+  ctx.save();
+  shield(); ctx.clip();
+  ctx.fillStyle = '#b8343a'; ctx.fillRect(cx - w / 2, top, w / 2, bottom - top);
+  ctx.fillStyle = '#2d4f8f'; ctx.fillRect(cx, top, w / 2, bottom - top);
+  ctx.restore();
+  ctx.strokeStyle = '#ece8dc'; ctx.lineWidth = radius * 0.08; shield(); ctx.stroke();
+  // the griffin, a gold wedge rising from the base to the star
+  ctx.fillStyle = '#e0bd4c';
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.30, bottom - radius * 0.22); ctx.lineTo(cx + w * 0.10, cy - radius * 0.10);
+  ctx.lineTo(cx + w * 0.28, cy - radius * 0.20); ctx.lineTo(cx + w * 0.18, cy + radius * 0.20); ctx.lineTo(cx - w * 0.08, bottom - radius * 0.18);
+  ctx.closePath(); ctx.fill();
+  starPath(ctx, cx - w * 0.16, cy - radius * 0.10, radius * 0.22, radius * 0.10, 8);
+  ctx.fillStyle = '#ece8dc'; ctx.fill();
+  // the helmet over the shield
+  ctx.fillStyle = '#c9c6bc';
+  ctx.beginPath(); ctx.arc(cx, top - radius * 0.02, radius * 0.30, Math.PI, 0); ctx.fill();
+}
+
+/** Release 266: the Brazilian vehicles' emblem of 1983-1998 (the 1980s Bernardini and Engesa tanks): a dark green plaque
+ *  carrying the Army's upright oval with the Southern Cross. */
+function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const w = size * 0.70, h = size * 0.92;
+  ctx.fillStyle = '#3d6a3a';
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+  ctx.strokeStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.08;
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.40, y = cy + Math.sin(a) * radius * 0.66;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#ece8dc';
+  for (const [dx, dy, r] of [[0, -0.40, 0.10], [0, 0.42, 0.11], [-0.20, 0.0, 0.09], [0.18, -0.08, 0.08], [0.07, 0.14, 0.05]] as const) {
+    starPath(ctx, cx + dx * radius, cy + dy * radius, r * radius, r * radius * 0.42);
+    ctx.fill();
+  }
+}
+
+/** Release 266: the emblem the surviving Osório P.1 carries on its turret (the 2015 museum and 2024 Curitiba
+ *  photographs): a white ring with an upright oval inside it, a short stencil block under it. */
+function drawOsorioEmblem({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const ey = cy - radius * 0.14;
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.11;
+  ctx.beginPath();
+  ctx.arc(cx, ey, radius * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.09;
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, x = cx + Math.cos(a) * radius * 0.20, y = ey + Math.sin(a) * radius * 0.40;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillRect(cx - radius * 0.46, cy + radius * 0.66, radius * 0.92, radius * 0.14);
+}
+
+// The white ring the Bernardini X1 and X1A2 carry on the turret's left side (Gaydos' profiles after the 1970s-80s
+// photographs): a ring, four short ticks inward and a centre dot, on the bare paint.
+function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.12;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.84, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.10;
+  ctx.beginPath();
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    ctx.moveTo(cx + dx * radius * 0.78, cy + dy * radius * 0.78);
+    ctx.lineTo(cx + dx * radius * 0.42, cy + dy * radius * 0.42);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -843,6 +951,10 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,
+  'br-eb-arms': drawBrazilArmyArms,
+  'br-cruzeiro': drawBrazilSouthernCross,
+  'br-ring': drawBrazilTurretRing,
+  'br-osorio': drawOsorioEmblem,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

@@ -133,9 +133,14 @@ const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_b
 const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
 /** Release 266: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white and the 2A5 DK's
  * three-tone of the 2010s; then the owner's Challenger 1 camo pick (2026-10-31): the 1980s BAOR two-tone the Mk 1, Mk 2
- * and FV4030s wear and the Op Granby Mk 3's plain stone. They append after 265's saved catalog indices. */
+ * and FV4030s wear and the Op Granby Mk 3's plain stone; then the Brazil line's own coats (brazilSpecs.ts): the Osório
+ * P.2's Army two-tone bands, the Tamoyo 1's and the Tamoyo 3's 1980s three-tones and the X1A2's 6º RCB three-tone (the
+ * Osório P.1's 1986 three-tone and the X1's olive drab sit within a shade of a named preset, so they paint their spec's
+ * coat as Factory), the fictional EE-T3's three-tone and the EE-T4's digital woodland. They append after 265's saved
+ * catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_challenger1_mk1',
-  'paint_challenger1_x'] as const);
+  'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara', 'paint_osorio_p1',
+  'paint_ee_t3_osorio', 'paint_ee_t4_osorio'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
@@ -885,6 +890,15 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // named preset, so they paint their spec's coat as Factory)
   leo1a5dk1: 'paint_leo1a5dk1',
   leo2a5dk: 'paint_leo2a5dk',
+  // release 266: the Brazil line in its own coats
+  osorio_p2: 'paint_osorio_p2',
+  osorio_p1: 'paint_osorio_p1',
+  tamoyo1: 'paint_tamoyo1',
+  tamoyo3: 'paint_tamoyo3',
+  x1a2_carcara: 'paint_x1a2_carcara',
+  // the fictional EE-T3 (a NATO-style three-tone) and EE-T4 (a digital woodland)
+  ee_t3_osorio: 'paint_ee_t3_osorio',
+  ee_t4_osorio: 'paint_ee_t4_osorio',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

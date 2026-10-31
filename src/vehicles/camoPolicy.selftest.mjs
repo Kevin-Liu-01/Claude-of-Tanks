@@ -313,8 +313,9 @@ assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 
   'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik', 'paint_pt84_orzel',
   'sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu',
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
-  'paint_challenger1_mk1', 'paint_challenger1_x'],
-  'GT, then later paints (266: the Danish coats, the Challenger 1 paints), append without shifting saved catalog indices');
+  'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
+  'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio'],
+  'GT, then later paints (266: the Danish coats, the Challenger 1 paints, the Brazilian coats), append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');

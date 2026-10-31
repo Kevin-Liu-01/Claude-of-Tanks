@@ -2,6 +2,7 @@
 // Node-runnable. First-party: Kevin B. Liu (NOTICE.md).
 
 import type { NationTree, TreeNode } from './model.ts';
+import { BRAZIL_TREE } from './nations/brazil.ts';
 import { CHINA_TREE } from './nations/china.ts';
 import { DENMARK_TREE } from './nations/denmark.ts';
 import { FRANCE_TREE } from './nations/france.ts';
@@ -20,7 +21,7 @@ import { USA_TREE } from './nations/usa.ts';
 /** Every national tree, in the Garage's nation order. */
 export const TECH_TREES: readonly NationTree[] = Object.freeze([
   USA_TREE, GERMANY_TREE, RUSSIA_TREE, UK_TREE, FRANCE_TREE, CHINA_TREE, ITALY_TREE, JAPAN_TREE, POLAND_TREE,
-  SOUTH_KOREA_TREE, SWEDEN_TREE, DENMARK_TREE, ISRAEL_TREE, UKRAINE_TREE,
+  SOUTH_KOREA_TREE, SWEDEN_TREE, DENMARK_TREE, ISRAEL_TREE, UKRAINE_TREE, BRAZIL_TREE,
 ]);
 
 interface TreePlace {

@@ -75,6 +75,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   denmark: Object.freeze([
     'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'christian2',
   ]),
+  // 266: the Brazilian Army line
+  brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
+    'ee_t4_osorio']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   poland: Object.freeze([

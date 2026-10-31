@@ -133,6 +133,7 @@ const GROUP_LOADERS = Object.freeze({
   leopard2a3B4: () => import('./profiles/leopard2a3B4.ts').then((mod) => registerProfiles(mod.LEOPARD2A3B4_PROFILES)),
   leopard2a4Family: () => import('./profiles/leopard2A4Family.ts').then((mod) => registerProfiles(mod.LEOPARD2A4_FAMILY_PROFILES)),
   denmark: () => import('./profiles/denmark.ts').then((mod) => registerProfiles(mod.DENMARK_PROFILES)),
+  brazil: () => import('./profiles/brazil.ts').then((mod) => registerProfiles(mod.BRAZIL_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),

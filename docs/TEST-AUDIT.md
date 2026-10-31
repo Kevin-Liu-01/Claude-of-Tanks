@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1481 | 144.0 |
+| KEEP | 1482 | 144.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1120.6 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2143 | 1265.0 | 212.0 |
-| After: the default tier | 1481 | 144.0 | 20.4 |
+| Before: every receipt (npm test without the tiers) | 2144 | 1265.1 | 212.0 |
+| After: the default tier | 1482 | 144.2 | 20.4 |
 
 Default tier: 11.4 % of the whole registry's CPU; 15.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.3 min exclusive receipts, 17.7 min pool, 2.5 min browser receipts.
 
@@ -807,7 +807,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1481)
+## KEEP (1482)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1080,6 +1080,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/vehicleFacets.selftest.mjs` | 7.6 | KEEP | vehicle rule, 7.6 s: 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/vehicleActions.selftest.mjs` | 7.5 | KEEP | game flow, 7.5 s: 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/gunFaceSplit.selftest.mjs` | 7.4 | KEEP | vehicle rule, 7.4 s: 265 (FAIRNESS-265 §3, release 266): a forward turret face only partly over the gun reads, point by point, the | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/brazil.selftest.mjs` | 7.4 | KEEP | vehicle rule, 7.4 s: release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilia | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/accessibilityPreferences.selftest.mjs` | 7.3 | KEEP | interface contract, 7.3 s: 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/thermalFireGain.selftest.mjs` | 7.0 | KEEP | effects contract, 7.0 s: thermalFireGain.selftest.mjs — (lane ac130-fx-228 r3, the r5 blind critic's MAJOR "the 152 mm burst has essent | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.colliderStop.selftest.mjs` | 7.0 | KEEP | game flow, 7.0 s: 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it | default tier (npm test, the release gate; lane mode by its closure) |

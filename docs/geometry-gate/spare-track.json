@@ -837,6 +837,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "ee_t3_osorio": {
+   "inputHash": "ee87bf0a11914c1a",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "ee_t4_osorio": {
+   "inputHash": "d3746f45ab15fffc",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "fv4034": {
    "inputHash": "0c2413af34ae8ea6",
    "runs": [],
@@ -2262,6 +2274,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "osorio_p1": {
+   "inputHash": "cb27cf2d14ad4dbb",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "osorio_p2": {
+   "inputHash": "82d660ae731eb57d",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "olifant_mk2": {
    "inputHash": "1b0ff0caefe1214f",
    "runs": [],
@@ -3386,6 +3410,64 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "tamoyo1": {
+   "inputHash": "2b32c5c30be2593e",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@buildTamoyoHullFittings@profiles/tamoyo.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.978,
+      "gap": 0.022,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.007,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.944,
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "tamoyo3": {
+   "inputHash": "586f0d88a6322dbe",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@buildTamoyoHullFittings@profiles/tamoyo.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.008,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.922,
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "tos1a_tagil": {
    "inputHash": "e64489503c8b9029",
    "runs": [],
@@ -3957,6 +4039,18 @@
   },
   "warrior_tes_h": {
    "inputHash": "9873adf8550017e6",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "x1_pioneiro": {
+   "inputHash": "2c488c3615d9e1cf",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "x1a2_carcara": {
+   "inputHash": "9af13a4ed1b80e07",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -173,6 +173,16 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
     { donor: 'leo2a4', roles: MBT_HULL_ROLES, reason: 'Denmark MBT hull (the Leopards) → Germany MBT donor' },
     { donor: 'cv90_mk4', reason: 'Denmark IFV/light hull (the CV90) → CV90 Mk IV X wheel' },
   ],
+  // release 266: Brazil fields German Leopards and American M41s and M60s, and its own Bernardini and Engesa hulls: the
+  // Bernardini hulls (the Tamoyos and the X1 family, M41-lineage running gear) and the US-built marks draw the Patton-era
+  // cast spoke, every other MBT hull (the Osório, the Leopards) the Leopard 2 paired dish
+  brazil: [
+    { donor: 'm60a3', ids: ['x1_pioneiro', 'x1a2_carcara', 'm41c_caxias', 'm60a3br'],
+      reason: 'Brazil Stuart-lineage and US-lineage hull → USA Patton-era cast spoke (the X1s\' open-spoked VVSS wheels)' },
+    { donor: 'leo2a4', roles: MBT_HULL_ROLES,
+      reason: 'Brazil MBT and medium hull (the Osório, the Tamoyos\' dished discs, the Leopards) → Germany MBT donor' },
+    { donor: 'm551a1_tts', reason: 'Brazil light hull → USA light donor' },
+  ],
   'south korea': [
     { donor: 'k1e1', ids: ['k1e1'], reason: 'the K1A1 draws its own wheel' },
     { donor: 'xk2_black_panther', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },

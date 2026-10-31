@@ -13,6 +13,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARESAPCX } from './combatAn
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARIETEX } from './combatAnatomyGroups/arieteX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BMP3MDRAGUN125X } from './combatAnatomyGroups/bmp3mDragun125X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BORSUK } from './combatAnatomyGroups/borsuk.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BRAZIL } from './combatAnatomyGroups/brazil.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER } from './combatAnatomyGroups/challenger.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER1X } from './combatAnatomyGroups/challenger1X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHIEFTAIN10X } from './combatAnatomyGroups/chieftain10X.generated.ts';
@@ -100,6 +101,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_ARIETEX,
   CALIBRATIONS_BMP3MDRAGUN125X,
   CALIBRATIONS_BORSUK,
+  CALIBRATIONS_BRAZIL,
   CALIBRATIONS_CHALLENGER,
   CALIBRATIONS_CHALLENGER1X,
   CALIBRATIONS_CHIEFTAIN10X,

@@ -18,6 +18,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "arieteX": () => import('./vehicleMarkingSeatGroups/arieteX.generated.ts'),
   "bmp3mDragun125X": () => import('./vehicleMarkingSeatGroups/bmp3mDragun125X.generated.ts'),
   "borsuk": () => import('./vehicleMarkingSeatGroups/borsuk.generated.ts'),
+  "brazil": () => import('./vehicleMarkingSeatGroups/brazil.generated.ts'),
   "challenger": () => import('./vehicleMarkingSeatGroups/challenger.generated.ts'),
   "challenger1X": () => import('./vehicleMarkingSeatGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./vehicleMarkingSeatGroups/chieftain10X.generated.ts'),
