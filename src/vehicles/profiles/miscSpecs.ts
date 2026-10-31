@@ -21,6 +21,11 @@ const communityArmor = (
   allowTurretless: false,
 } satisfies CommunityArmorOptions);
 
+// 262: measured by tools/gun-depression-sweep.mjs on the family hull at the owner's model's own proportions (26 mm, the
+// whole gun, every degree of yaw; profiles/type74Family.ts): -6 over the front and sides, the gun riding up over the
+// rear deck's edge, the stern's rail, clamps and tow eyes over the rear quarters
+const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [146, -6], [151, -4.7], [156, -4.4], [157, -4.1], [159, -4.1], [160, -4.2], [161, -2.8], [162, -2.4], [164, -2.4], [168, -2.9], [169, -4.1], [178, -4.4], [180, -5]];
+
 // Same authored combat row as the quarantined user-drop fallback. No external
 // model or visual builder participates in this module.
 const TYPE74_SPEC = {
@@ -35,7 +40,11 @@ const TYPE74_SPEC = {
     noseDownDeg: 8, noseUpDeg: 8, rateDegS: 7,
     compressionM: 0.32, droopM: 0.32,
   },
-  turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 15, gunDepressionDeg: 10,
+  // 262 (Main's ruling on the owner's STB-1 / Type 74 rebuild): the gun's own source travel, −6/+9 (JGSDF; ArmedConflicts
+  // −6.5/+9.5); the hydropneumatic hull pitch below (the special action, which bots engage when halted on a target)
+  // carries it to −14/+17. It was −10/+15 at the gun.
+  turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 9, gunDepressionDeg: 6,
+  gunPitchByYawDeg: TYPE74_GUN_PITCH_BY_YAW_DEG,
   gun: {
     caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
     bloom: BLOOM_MODERN,
@@ -45,10 +54,16 @@ const TYPE74_SPEC = {
       shell('M393 HEP', 'HE', 105, 45, 45, 500, 730),
     ],
   },
-  dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.70 },
+  // 262 (Main's ruling): heightM is the P95 combat height the geometry gate measures on the build (the STB-1's rule too);
+  // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/type74.md).
+  // 263 (Main's ruling): it is the body's height, hull and turret without roof weapons, antennas or whips (bots aim at
+  // 0.85 of it, the eye height reads it), so the roof M2 leaves it; the gate's p95 counts the gun and reads 2.93 m
+  dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.83 },
   armor: communityArmor({
-    lenM: 6.7, widM: 3.18, hgtM: 2.25, turretPivot: [0, 1.42, 0.50],
-    gunPivot: [0, 0.18, 1.15], barrelLenM: 4.42, barrelRadM: 0.062,
+    // 262: the Type 74 family at the owner's model's own proportions (profiles/type74Family.ts): the ring datum 1.60 m up,
+    // the mask's trunnion 0.29 m over it; the armour seed's height is the old 2.25 m at those proportions
+    lenM: 6.7, widM: 3.18, hgtM: 2.54, turretPivot: [0, 1.60, 0.50],
+    gunPivot: [0, 0.29, 1.18], barrelLenM: 4.42, barrelRadM: 0.062,
     frontMm: 110, sideMm: 45, rearMm: 25, roofMm: 20,
     tFrontMm: 195, tSideMm: 80, tRearMm: 40, mantletMm: 195,
   }),

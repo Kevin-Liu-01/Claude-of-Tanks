@@ -2754,15 +2754,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type74: () => [
-    { kit: 'aamg', p: 1, v: { v: 'm2' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
-    { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
-    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  ],
   // --- Modern ---
   // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) go out loaded (the owner,
   // 2026-10-28: "a lot of the equipment and decorations and stuff! add a lot on our tanks"): over the fleet's seven-piece
@@ -3071,6 +3062,18 @@ const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifes
   ],
 });
 
+// 262 (owner on the STB-1 and the Type 74: "we should upgrade the hulls and everything about the tanks too"): both now
+// carry their sourced equipment in their builders (the production tank's M2, smoke dischargers at the turret's front
+// corners, the gun-riding searchlight, the bow shackles, the fender lockers and mufflers; the prototype's remote gun,
+// rear-side smoke and silencer). No photograph shows a production Type 74 with jerry cans or a rear rack, so neither
+// takes the fleet's cargo pools: the Type 74 its crew packs in the bustle basket, the trials prototype nothing.
+const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[]>> = Object.freeze({
+  type74: (): DecorManifestRow[] => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+  ],
+  stb1: (): DecorManifestRow[] => [],
+});
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -3139,6 +3142,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  if (spec.id === 'type74' || spec.id === 'stb1') return JAPAN_74_DECOR[spec.id]();
   // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
   // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,

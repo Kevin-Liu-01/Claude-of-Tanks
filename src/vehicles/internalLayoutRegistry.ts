@@ -374,6 +374,12 @@ const LAYOUTS = Object.freeze({
     ['loader', 'turret', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'wetHullRacks' } }) },
   westernManualHullAmmo: { confidence: 'platform-inferred', sources: ['britishChallenger'], crew: FOUR_MAN_TURRET, systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
+  // 262 (Main: the STB-1's kit stands on the sides the owner's model shows it, profiles/type74Family.ts): the gunner's
+  // sight and the commander's station at -x, the loader's and the driver's hatches at +x, each crewman under his own
+  stb1ModelSides: { confidence: 'owner-directed', sources: [], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
+    ['loader', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
   starship: { confidence: 'platform-inferred', sources: ['usArmySheridan'], crew: FOUR_MAN_TURRET, systems: systems({
     ammoRack: { placement: 'hull', form: 'mixed152mmStowage' },
     missileRack: { placement: 'hull', form: 'gunLaunchedRounds' },
@@ -526,7 +532,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3'],
+  westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3'],
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
@@ -550,6 +556,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
+  stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
   armata: ['object148_proto', 't14_armata'],
   kf51_evo: ['kf51_evo', 'kf51_u', 'kf51_panther'],

@@ -182,6 +182,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
     // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
     'src/vehicles/strv103GunPort.selftest.mjs',
+    // 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets"):
+    // each gun pitches in its own shield, seated in a channel cut into its own turret front, clear of it and filling it
+    // over the whole travel
+    'src/vehicles/japaneseMantlet.selftest.mjs',
+    // 262 (owner: "we should upgrade the hulls and everything about the tanks too"): the STB-1's and the Type 74's guns
+    // keep off their rebuilt hulls at every yaw on their source travel and published curves
+    'src/vehicles/japaneseGunHull.selftest.mjs',
     'src/vehicles/challengerXGunPort.selftest.mjs',
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums

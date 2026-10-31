@@ -87,7 +87,10 @@ const targets={
   type96b:{expected:3,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.triangles.length===68)),mirror:true},
   type10b:{expected:3,select:p=>(p.site.includes('addType10BPackage (')&&p.bucket==='turret'&&p.part.vertices.length===8&&p.part.bounds.max.y>.6&&p.part.bounds.min.y<.06)||(p.site.includes('buildType10Native2026TurretStage1 (')&&p.bucket==='turret'&&p.part.triangles.length===108&&p.part.size.z>4)},
   k1a1:{expected:2,select:p=>(p.site.includes('hullBody (')&&p.bucket==='hull'&&p.part.bounds.min.z>2&&p.part.bounds.max.z<3.49)||(p.site.includes('turretBody (')&&p.bucket==='turret'&&p.part.triangles.length===92)},
-  stb1:{expected:12,select:p=>p.site.includes('addSTB1HullBody (')&&p.bucket==='hull'&&p.part.vertices.length===8&&p.part.size.x>1.4&&p.part.size.z<3.19&&p.part.size.y>.075,mirror:true},
+  // release 262: the STB-1 and the Type 74 share one family hull (profiles/type74Family.ts addHullBody), the welded tub
+  // between the tracks (6-point section) and the two sponsons over them (5-point sections)
+  stb1:{expected:3,select:p=>p.site.includes('addHullBody (')&&p.site.includes('type74Family.ts')&&p.bucket==='hull'&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.9?6:5,tubAndSponsons:true},
+  type74:{expected:3,select:p=>p.site.includes('addHullBody (')&&p.site.includes('type74Family.ts')&&p.bucket==='hull'&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.9?6:5,tubAndSponsons:true},
   t90ms_2011:{expected:1,select:p=>p.site.includes('rebuildT90MSTurretExact (')&&p.bucket==='turret'&&p.part.triangles.length===104,panels:96,mirror:true},
   mbt70:{expected:1,select:p=>p.bucket==='turret'&&p.part.bounds.min.z<-2.91&&p.part.bounds.max.z>1.6&&p.part.vertices.length>80},
   challenger2:{expected:2,select:p=>p.bucket==='hull'&&p.part.size.x<.021&&p.part.size.z>7&&p.part.bounds.min.y>1.16},
@@ -126,8 +129,14 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
       if(!config.cap)assert.equal(edges.boundary,0,`${id}/${quality} closed finite stock`);
       if(config.panels)panelFaces(part,config.panels);
       if(id==='k1a1'&&part.triangles.length===92)panelFaces(part,80);
-      if(id==='stb1')for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
-        for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,'STB welded bay is outward convex stock');}
+      if(config.tubAndSponsons){
+        // the tub is its own mirror (its nose chamfers taper, so it is not one convex body); each sponson mirrors the other
+        if(part.bounds.min.x<0&&part.bounds.max.x>0)close(mirroredSurfaceError(part,part).maxM,0,`${id}/${quality} tub mirror interiors`);
+        else{const peer=parts.find(p=>p!==entry&&p.part.bounds.min.x*p.part.bounds.max.x>0&&p.part.bounds.min.x*part.bounds.min.x<0);
+          assert.ok(peer,`${id}/${quality} opposite sponson present`);close(mirroredSurfaceError(part,peer.part).maxM,0,`${id}/${quality} paired sponsons`);}
+        if(id==='stb1'&&part.bounds.min.x*part.bounds.max.x>0)for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
+          for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,'STB sponson is outward convex stock');}
+      }
       if(id==='type10b'&&part.triangles.length===108){panelFaces(part,72);close(mirroredSurfaceError(part,part).maxM,0,'native Type10 hull-derived turret symmetry');}
       if(config.mirror)close(mirroredSurfaceError(part,part).maxM,0,`${id}/${quality} mirror interiors`);
       if(config.cap){

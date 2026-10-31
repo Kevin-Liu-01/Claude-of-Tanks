@@ -2,7 +2,7 @@
  "generatedAt": "2026-10-13T19:34:22.037Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 69,
- "total": 172,
+ "total": 173,
  "rows": [
   {
    "id": "challenger1",
@@ -325,17 +325,33 @@
    }
   },
   {
-   "id": "type74",
-   "geoMin": 0,
+   "id": "stb1",
+   "geoMin": 5.1,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 0,
-    "dims": 94,
+    "hullCurves": 86.5,
+    "stations": 61.3,
+    "turretCurves": 29.1,
+    "wholeCurves": 50.1,
+    "dims": 5.1,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "type74",
+   "geoMin": 58.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 88.5,
+    "dims": 58.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "ua_t80bv",

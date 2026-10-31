@@ -90,9 +90,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
   // hull/turret/whole comparisons strict and disable only the dishonest
   // isolated-gun component mask.
+  // 262 (the owner's file of 2026-10-27, md5 464b7e95…, is this print): Hull_0, Tracks_1 and Turret_2 share one node
+  // frame whose +Z (the hull's axis, and the gun's within 0.2 deg) sits at raw bearing -115.63 deg, not -90: the PI/2
+  // registration skewed the hull 25.6 deg, nearly doubled the box width and normalizeReferenceWidth halved the oracle (the
+  // cast turret's lopsided plan pulls a principal-axis fit 4.9 deg off, so read the node frame, not the shell). Its
+  // dark camo falls under the mask threshold: mask floor.
   stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb_1_owner.glb',
-    turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI / 2,
-    gunComponentMasks:false } },
+    turretNode:'^Turret_2$', autoPivot:true, yawOffset:115.63 * Math.PI / 180,
+    gunComponentMasks:false, maskFloorOracle:true } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
