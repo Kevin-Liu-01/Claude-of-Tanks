@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// Native focused receipt. Run: node tools/pane-backing-layer.browser.selftest.mjs
+// Native focused receipt. Run: node tools/pane-stack-layer.browser.selftest.mjs
 // (local-fps-266) A regional wall cut by three openings (house.ts holedPolygon, the room's dark at the back of each
-// reveal) with a unit in each (openings.ts windowUnit: a lit curtain, plain glass, the facade craft's leaning glass), built
-// by the regional sink, drawn on the GPU at 300-700 m with the battle camera's depth (near 0.5 m, far 4000 m; a 4x MSAA
-// 24-bit depth, the scene target's) with the backing drawn before and after the rest (the rest in its order and reversed). With the backing's offset
-// (src/world/paneBacking.ts) the backing's place in the order changes no pixel and no backing shows through a pane; without it the
-// order decides, which the receipt must see (else it could not see the fight); at 20 m the offset changes nothing.
+// reveal) with a unit in each (openings.ts windowUnit: a lit curtain, plain glass, the facade craft's leaning glass; frames
+// and glazing bars), built by the regional sink, drawn on the GPU at 20-700 m with the battle camera's depth (near 0.5 m,
+// far 4000 m; a 4x MSAA 24-bit depth, the scene target's). The window stacks' three groups (the dark, the panes, the
+// frames) are drawn in all six orders, after the rest of the wall and before it. With the stack's layers
+// (src/world/paneStack.ts) the six orders draw the same pixels and no dark shows through a pane; without them the order
+// decides, which the receipt must see (else it could not see the fight); at 20 m the layers change nothing.
+// (The killcam's 8 px, Main's ruling 2026-10-31, are a crossing, not a stack: two interpenetrating turret parts meet on a
+// curve where both depths are equally valid, so the draw order decides those pixels in any renderer and no layer applies.)
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
@@ -16,7 +19,7 @@ import { PartSink, streamFrom } from '../src/world/maps/regional/geometry.ts';
 import { holedPolygon } from '../src/world/maps/regional/house.ts';
 import { windowUnit } from '../src/world/maps/regional/openings.ts';
 import { setFacadeCraft, withFacade } from '../src/world/maps/regional/facade.ts';
-import { paneBackingMaterial } from '../src/world/paneBacking.ts';
+import { PANE_STACK_UNITS_PER_LAYER } from '../src/world/paneStack.ts';
 
 async function bounded(promise, timeoutMs, label) {
   let timer;
@@ -41,24 +44,26 @@ withFacade({ tier: 'desktop', rng: streamFrom(7) }, () => windowUnit(sink, face,
 sink.recess = 0;
 const parts = sink.finish();
 
-const units = paneBackingMaterial(new THREE.MeshStandardMaterial(), () => {}).polygonOffsetUnits;
 const positions = (g) => Array.from((g.index ? g.toNonIndexed() : g).getAttribute('position').array);
 const draws = [];
-// a colour a draw's pixels can be told by: the backing alone writes blue
-const otherColours = [[0, 200, 0], [200, 200, 0], [120, 60, 0], [0, 120, 60], [60, 60, 0], [200, 100, 60]];
+// a colour each group's pixels can be told by: the dark alone writes blue
+const otherColours = [[0, 200, 0], [120, 60, 0], [0, 120, 60], [60, 60, 0], [200, 100, 60]];
 let other = 0;
 for (const [bucket, list] of Object.entries(parts)) {
   for (const g of list) {
-    const backing = bucket === 'dark' && g.userData.paneBacking === true;
-    const pane = bucket === 'glass' || bucket === 'curtain';
-    draws.push({ name: backing ? 'backing' : bucket, pos: positions(g), units: backing ? units : 0,
-      colour: backing ? [0, 0, 255] : pane ? (bucket === 'curtain' ? [255, 0, 0] : [255, 0, 120].map((v, i) => (i === 2 ? 0 : v))) : otherColours[other++ % otherColours.length] });
+    const layer = g.userData.paneStackLayer ?? 0;
+    const group = bucket === 'dark' ? 'dark' : bucket === 'glass' || bucket === 'curtain' ? 'pane' : bucket === 'structureWood' ? 'frame' : 'rest';
+    draws.push({ name: `${bucket}${layer ? ` L${layer}` : ''}`, group, pos: positions(g), units: layer * PANE_STACK_UNITS_PER_LAYER,
+      colour: group === 'dark' ? [0, 0, 255] : bucket === 'curtain' ? [255, 0, 0] : bucket === 'glass' ? [200, 0, 0]
+        : group === 'frame' ? [230, 230, 0] : otherColours[other++ % otherColours.length] });
   }
 }
-const backings = draws.filter((d) => d.name === 'backing');
-assert.equal(backings.reduce((n, d) => n + d.pos.length / 9, 0), holes.length * 2, 'the sink sets every opening\'s backing apart (two triangles each)');
-assert.ok(!draws.some((d) => d.name === 'dark'), 'no dark is left in front of or behind a pane outside the backing layer');
-assert.ok(units > 0, 'the backing draws behind (a positive offset)');
+const trianglesOf = (pick) => draws.filter(pick).reduce((n, d) => n + d.pos.length / 9, 0);
+assert.equal(trianglesOf((d) => d.group === 'dark' && d.units === 2 * PANE_STACK_UNITS_PER_LAYER), holes.length * 2,
+  'every opening\'s dark is two layers back, behind its framed pane');
+assert.equal(trianglesOf((d) => d.group === 'pane' && d.units === PANE_STACK_UNITS_PER_LAYER), trianglesOf((d) => d.group === 'pane'),
+  'every pane is one layer back, behind its frame');
+assert.ok(trianglesOf((d) => d.group === 'frame') > 0 && draws.filter((d) => d.group === 'frame').every((d) => d.units === 0), 'the frames draw where they are');
 
 // ---- the views: the wall's middle from each range, head on and 40 degrees off, the battle camera's near and far
 const W = 512, H = 256;
@@ -75,7 +80,7 @@ for (const distance of [20, 300, 400, 500, 700]) {
   }
 }
 
-/** In the page: each view drawn forward and reversed, with the offsets and without; compared there. */
+/** In the page: each view drawn in every order of the stack's groups, with the layers and without; compared there. */
 function renderStacks({ draws, views, width, height }) {
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
@@ -134,14 +139,15 @@ function renderStacks({ draws, views, width, height }) {
     const out = new Uint8Array(width * height * 4); gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, out);
     return out;
   };
-  // the rest in its order and reversed, the backing drawn first (its pane after it: three's order happened to give the
-  // curtain this) and last (the program order's): only the backing's place in the order changes between a pair
-  const rest = draws.map((_, i) => i).filter((i) => draws[i].name !== 'backing'), backing = draws.map((_, i) => i).filter((i) => draws[i].name === 'backing');
-  const orders = [[...backing, ...rest], [...rest, ...backing], [...backing, ...[...rest].reverse()], [...[...rest].reverse(), ...backing]];
+  // the stack's groups in all six orders, after the rest and before it: only the stack's own order changes within a set
+  const group = (name) => draws.map((_, i) => i).filter((i) => draws[i].group === name);
+  const stack = [group('dark'), group('pane'), group('frame')], rest = group('rest');
+  const perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+  const orderSets = [perms.map((p) => [...rest, ...p.flatMap((k) => stack[k])]), perms.map((p) => [...p.flatMap((k) => stack[k]), ...rest])];
   const differing = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
   const blue = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i + 2] > 0) n++; return n; };
-  // which draws' colours a pixel shows in two shots (exact colours only: an MSAA edge mixes them)
-  const names = new Map(draws.map((d) => [d.colour.join(','), d.name]));
+  // which groups' colours a pixel shows in two shots (exact colours only: an MSAA edge mixes them)
+  const names = new Map(draws.map((d) => [d.colour.join(','), d.group === 'rest' ? d.name : d.group]));
   const pairs = (a, b) => { const out = {}; for (let i = 0; i < a.length; i += 4) {
     if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) continue;
     const k = [names.get(`${a[i]},${a[i + 1]},${a[i + 2]}`) ?? 'edge', names.get(`${b[i]},${b[i + 1]},${b[i + 2]}`) ?? 'edge'].sort().join(' / ');
@@ -149,44 +155,46 @@ function renderStacks({ draws, views, width, height }) {
   const rows = views.map((view) => {
     const row = { distance: view.distance, yawDeg: view.yawDeg };
     for (const layered of [true, false]) {
-      const shots = orders.map((order) => draw(view, order, layered));
-      row[layered ? 'layered' : 'control'] = { backingOrder: Math.max(differing(shots[0], shots[1]), differing(shots[2], shots[3])),
-        backingShows: Math.max(...shots.map(blue)), restOrder: pairs(shots[0], shots[2]), shots };
+      const sets = orderSets.map((orders) => orders.map((order) => draw(view, order, layered)));
+      let worst = 0, worstPairs = {};
+      for (const shots of sets) for (const s of shots.slice(1)) { const n = differing(shots[0], s); if (n > worst) { worst = n; worstPairs = pairs(shots[0], s); } }
+      row[layered ? 'layered' : 'control'] = { stackOrder: worst, pairs: worstPairs, darkShows: Math.max(...sets.flat().map(blue)), first: sets[0][0] };
     }
-    // up close the offset changes nothing: the layered frame equals the control's with the backing drawn first
-    row.nearSame = differing(row.layered.shots[0], row.control.shots[0]);
-    row.paneCover = row.layered.shots[1].reduce((n, v, i) => n + (i % 4 === 0 && v === 255 ? 1 : 0), 0);
-    delete row.layered.shots; delete row.control.shots;
+    // up close the layers change nothing: the layered frame equals the control's with the farther faces drawn first
+    row.nearSame = differing(row.layered.first, row.control.first);
+    row.paneCover = row.layered.first.reduce((n, v, i) => n + (i % 4 === 0 && (v === 255 || v === 200) && row.layered.first[i + 1] === 0 ? 1 : 0), 0);
+    delete row.layered.first; delete row.control.first;
     return row;
   });
   return { renderer, rows };
 }
 
 const lock = createCaptureLock();
-const report = { protocol: 'pane-backing-layer-v1', ok: false, units, draws: draws.map((d) => `${d.name} ${d.pos.length / 9}`), renderer: null, rows: [], errors: [], browserClosed: false, lockReleased: false };
+const report = { protocol: 'pane-stack-layer-v1', ok: false, unitsPerLayer: PANE_STACK_UNITS_PER_LAYER,
+  draws: draws.map((d) => `${d.name} ${d.pos.length / 9}`), renderer: null, rows: [], errors: [], browserClosed: false, lockReleased: false };
 let browser, refresh;
 try {
   await lock.acquire(45 * 60_000);
   refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
-  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 120_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 300_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);
   const page = await browser.newPage();
   page.on('pageerror', (error) => { if (report.errors.length < 12) report.errors.push(String(error)); });
-  const { renderer, rows } = await bounded(page.evaluate(renderStacks, { draws, views, width: W, height: H }), 120_000, 'render');
+  const { renderer, rows } = await bounded(page.evaluate(renderStacks, { draws, views, width: W, height: H }), 300_000, 'render');
   report.renderer = renderer; report.rows = rows;
   for (const r of rows) {
     const at = `${r.distance} m, ${r.yawDeg} deg`;
-    assert.ok(r.paneCover > 0, `${at}: the curtain is in the frame`);
-    assert.equal(r.layered.backingOrder, 0, `${at}: with the backing's offset its place in the draw order changes no pixel`);
-    assert.equal(r.layered.backingShows, 0, `${at}: no backing shows through a pane`);
+    assert.ok(r.paneCover > 0, `${at}: the panes are in the frame`);
+    assert.equal(r.layered.stackOrder, 0, `${at}: with the stack's layers every order of its dark, panes and frames draws the same pixels (${JSON.stringify(r.layered.pairs)})`);
+    assert.equal(r.layered.darkShows, 0, `${at}: no dark shows through a pane`);
     if (r.distance <= 20) {
-      assert.equal(r.nearSame, 0, `${at}: up close the offset changes no pixel`);
-      assert.equal(r.control.backingShows, 0, `${at}: up close the depth buffer tells them apart unaided`);
+      assert.equal(r.nearSame, 0, `${at}: up close the layers change no pixel`);
+      assert.equal(r.control.darkShows, 0, `${at}: up close the depth buffer tells them apart unaided`);
     }
   }
-  assert.ok(rows.some((r) => r.distance >= 300 && r.control.backingOrder > 0 && r.control.backingShows > 0),
-    'without the offset the order decides somewhere at 300-700 m (the receipt sees the fight it guards)');
+  assert.ok(rows.some((r) => r.distance >= 300 && r.control.stackOrder > 0 && r.control.darkShows > 0),
+    'without the layers the order decides somewhere at 300-700 m (the receipt sees the fight it guards)');
   assert.deepEqual(report.errors, []);
 } catch (error) {
   report.errors.push(String(error?.stack ?? error));
@@ -201,6 +209,6 @@ report.ok = report.errors.length === 0 && report.rows.length === views.length &&
 console.log(JSON.stringify(report, null, 1));
 if (!report.ok) process.exitCode = 1;
 else {
-  const fights = report.rows.filter((r) => r.control.backingOrder > 0 || r.control.backingShows > 0);
-  console.log(`pane-backing-layer.browser.selftest: a regional wall's three panes (curtain, glass, leaning glass) over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the backing drawn first and last: ${units} depth steps back, its place changes no pixel and no backing shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.backingShows))} backing px); at 20 m the offset changes nothing (${report.renderer}) PASS`);
+  const fights = report.rows.filter((r) => r.control.stackOrder > 0);
+  console.log(`pane-stack-layer.browser.selftest: a regional wall's three windows (curtain, glass, leaning glass; frames and bars) over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the dark, panes and frames in all six orders after and before the rest: with the stack ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer, every order draws the same pixels and no dark shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.stackOrder))} px); at 20 m the layers change nothing (${report.renderer}) PASS`);
 }

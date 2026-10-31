@@ -388,7 +388,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
-  'tools/pane-backing-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-backing layer's GPU receipt
+  'tools/pane-stack-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt
   'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {
