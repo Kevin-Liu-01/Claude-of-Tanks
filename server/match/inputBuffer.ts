@@ -11,6 +11,15 @@ import {
 import type { AuthoritativePlayerInput } from '../../src/sim/authoritativeMatch.ts';
 
 const RING = 64;
+const MAX_BUFFER_TICKS = 3; // the adaptive jitter buffer's deepest setting
+/**
+ * The admission horizon is what the ring can hold (267). A control for tick X runs at inputFor(X + bufferTicks); the
+ * control for X + RING shares its slot and, admitted at most L ticks ahead of the server's last tick, can arrive at
+ * server tick X + RING - L. Past RING - bufferTicks it takes the slot before X runs, and neither is applied while the
+ * client stays that far ahead (the old 120-tick bound: leads 62-119 every tick dry at the deepest buffer). A frame
+ * beyond the horizon is refused, never stored.
+ */
+export const MAX_LEAD_TICKS = RING - MAX_BUFFER_TICKS;
 // HELD_INPUT_LEASE_TICKS (wire constants, shared with the seat's prediction): 500 ms without a fresh frame releases the controls
 const ACTION_REPEAT_WINDOW_TICKS = 30; // bits applied at the previous actionSeq within 500 ms are not applied again
 const ADAPT_WINDOW = 60;             // frames per adaptation decision (about one second at 60 Hz)
@@ -27,7 +36,7 @@ interface AdmitResult {
 }
 
 interface SeatInputBufferOptions {
-  /** The frame is rejected when its newest tick exceeds serverTick + maxLeadTicks (v1: 120). */
+  /** The frame is rejected when its newest tick exceeds serverTick + maxLeadTicks (at most, and by default, MAX_LEAD_TICKS). */
   maxLeadTicks?: number;
   initialBufferTicks?: number;
 }
@@ -41,7 +50,8 @@ export interface SeatInputBuffer {
   readonly interpDelayMs: number;
   /** Ticks of margin the newest frame arrived with (smoothed minimum), or null. */
   readonly marginTicks: number | null;
-  readonly stats: { frames: number; accepted: number; stale: number; farAhead: number; late: number; held: number; dry: number };
+  /** `longestDry`: the longest run of braking ticks (the held lease expired) that ended with an applied control. */
+  readonly stats: { frames: number; accepted: number; stale: number; farAhead: number; late: number; held: number; dry: number; longestDry: number };
   admit(frame: InputMessage, serverTick: number): AdmitResult;
   /** The authority input for `serverTick` (applies tick serverTick - bufferTicks), or a neutral hold. */
   inputFor(serverTick: number): AuthoritativePlayerInput;
@@ -57,13 +67,16 @@ function makeInput(): AuthoritativePlayerInput {
   };
 }
 
-export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks = 1 }: SeatInputBufferOptions = {}): SeatInputBuffer {
-  if (!Number.isInteger(maxLeadTicks) || maxLeadTicks < 1) throw new TypeError('maxLeadTicks must be a positive integer');
+export function createSeatInputBuffer({ maxLeadTicks = MAX_LEAD_TICKS, initialBufferTicks = 1 }: SeatInputBufferOptions = {}): SeatInputBuffer {
+  if (!Number.isInteger(maxLeadTicks) || maxLeadTicks < 1 || maxLeadTicks > MAX_LEAD_TICKS) {
+    throw new TypeError(`maxLeadTicks must be an integer in 1..${MAX_LEAD_TICKS} (the ${RING}-tick ring holds no further)`);
+  }
   const ticks = new Int32Array(RING).fill(-1);
   const controls: (ControlFrame | null)[] = new Array(RING).fill(null);
   const output = makeInput();
-  const stats = { frames: 0, accepted: 0, stale: 0, farAhead: 0, late: 0, held: 0, dry: 0 };
-  let bufferTicks = Math.min(3, Math.max(1, initialBufferTicks | 0));
+  const stats = { frames: 0, accepted: 0, stale: 0, farAhead: 0, late: 0, held: 0, dry: 0, longestDry: 0 };
+  let bufferTicks = Math.min(MAX_BUFFER_TICKS, Math.max(1, initialBufferTicks | 0));
+  let dryRun = 0;
   let lastAppliedTick = -1;
   let lastAppliedFireSeq = -1;
   let lastAppliedActionSeq = -1;
@@ -80,14 +93,15 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
   let marginTicks: number | null = null;
   // held controls (the last applied) keep aim and ammunition selection across gaps
   let held: ControlFrame | null = null;
-  let heldTick = -1;
+  // ticks run since the last applied control: the lease counts what the server ran, not a stall's skipped ticks (267)
+  let heldRun = 0;
 
   function slot(tick: number): number { return tick % RING; }
 
   function adapt(): void {
     if (windowFrames < ADAPT_WINDOW) return;
     const lateRate = windowLate / windowFrames;
-    if (lateRate > LATE_RATE_GROW && bufferTicks < 3) bufferTicks++;
+    if (lateRate > LATE_RATE_GROW && bufferTicks < MAX_BUFFER_TICKS) bufferTicks++;
     else if (windowMinMargin >= bufferTicks + MARGIN_SHRINK && bufferTicks > 1) bufferTicks--;
     windowFrames = 0;
     windowLate = 0;
@@ -186,17 +200,20 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
       }
       if (applyTick >= 0) {
         const control = controls[slot(applyTick)]!;
+        if (dryRun > stats.longestDry) stats.longestDry = dryRun;
+        dryRun = 0;
         lastAppliedTick = applyTick;
         held = control;
-        heldTick = serverTick;
+        heldRun = 0;
         return fillInput(control, true, serverTick);
       }
-      if (held && serverTick - heldTick <= HELD_INPUT_LEASE_TICKS) {
+      if (held && ++heldRun <= HELD_INPUT_LEASE_TICKS) {
         stats.held++;
         return fillInput(held, false, serverTick);
       }
       stats.dry++;
       if (held) {
+        dryRun++;
         // the lease expired: keep aim and ammunition, release drive and fire (v1)
         const neutral = fillInput(held, false, serverTick);
         neutral.throttle = 0; neutral.steer = 0; neutral.brake = true; neutral.fire = false;
@@ -213,7 +230,7 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
       ticks.fill(-1);
       controls.fill(null);
       lastAppliedTick = -1; lastAppliedFireSeq = -1; lastAppliedActionSeq = -1; lastActionBits = 0; lastActionTick = -Infinity;
-      snapshotAckTick = NO_TICK; newestStoredTick = -1; held = null; heldTick = -1;
+      snapshotAckTick = NO_TICK; newestStoredTick = -1; held = null; heldRun = 0; dryRun = 0;
       windowFrames = 0; windowLate = 0; windowMinMargin = Infinity; marginTicks = null;
     },
   };

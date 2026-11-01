@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { CONTROL_FLAGS, MESSAGE_TYPE, NO_TICK } from '../../src/mp/wire/constants.ts';
 import { quantizeAngle, quantizeAimDistance } from '../../src/mp/wire/quantize.ts';
-import { createSeatInputBuffer } from './inputBuffer.ts';
+import { createSeatInputBuffer, MAX_LEAD_TICKS } from './inputBuffer.ts';
 
 const control = (overrides = {}) => ({
   throttle: 127, steer: 0, flags: 0, aimYaw: quantizeAngle(Math.PI / 2), aimPitch: 0, aimDistance: quantizeAimDistance(300),
@@ -55,6 +55,64 @@ const frame = (clientTick, controls, extra = {}) => ({
   assert.equal(seat.stats.late, 1);
   assert.equal(seat.lastAppliedTick, 7);
   console.log('inputBuffer.selftest: stale dropped, far-ahead rejected, late controls applied once');
+}
+
+// (267) The admission horizon is what the ring holds: under the old 120-tick bound a client 62+ ticks ahead (its clock
+// behind a server drop) had every control overwritten in its slot before it ran, every tick dry. At each lead up to
+// MAX_LEAD_TICKS and each buffer depth every control runs on its tick (a late frame each 15 ticks, once controls run,
+// holds the deepest buffer); a frame one tick further is refused whole, and no seat can be built with a further bound.
+{
+  function drive(lead, depth) {
+    const seat = createSeatInputBuffer({ initialBufferTicks: depth });
+    let applied = 0, missed = 0;
+    for (let s = 100; s < 700; s++) {
+      if (depth === 3 && s % 15 === 0 && seat.lastAppliedTick >= 0) seat.admit(frame(s - 10, [control()]), s);
+      const c = s + lead;
+      const admitted = seat.admit(frame(c, [control({ throttle: (c - 2) % 120 }), control({ throttle: (c - 1) % 120 }), control({ throttle: c % 120 })]), s);
+      assert.equal(admitted.farAhead, false);
+      const input = seat.inputFor(s + 1);
+      const target = s + 1 - seat.bufferTicks;
+      if (target < 100 + lead - 2) continue; // before the first control
+      if (seat.lastAppliedTick === target && Math.round(input.throttle * 127) === target % 120) applied++;
+      else missed++;
+    }
+    return { applied, missed, depth: seat.bufferTicks, dry: seat.stats.longestDry };
+  }
+  for (const depth of [1, 2, 3]) {
+    for (const lead of [0, 30, MAX_LEAD_TICKS]) {
+      const run = drive(lead, depth);
+      assert.equal(run.missed, 0, `lead ${lead} at depth ${depth}: ${run.missed} of ${run.applied + run.missed} controls lost`);
+      assert.ok(run.applied >= 500 && run.dry === 0, `lead ${lead} at depth ${depth}: ${run.applied} applied, longest dry ${run.dry}`);
+      if (depth === 3) assert.equal(run.depth, 3, 'the late frames held the deepest buffer');
+    }
+  }
+  const seat = createSeatInputBuffer();
+  assert.equal(seat.admit(frame(10 + MAX_LEAD_TICKS + 1, [control()]), 10).farAhead, true, 'one tick past the horizon is refused');
+  assert.equal(seat.admit(frame(10 + MAX_LEAD_TICKS, [control()]), 10).farAhead, false);
+  assert.throws(() => createSeatInputBuffer({ maxLeadTicks: MAX_LEAD_TICKS + 1 }), /ring holds no further/);
+  assert.throws(() => createSeatInputBuffer({ maxLeadTicks: 120 }), /ring holds no further/, 'the old bound');
+  console.log(`inputBuffer.selftest: every control runs on its tick at leads up to the ring's horizon (${MAX_LEAD_TICKS}) and depths 1-3; past it frames are refused`);
+}
+
+// (267) A dry run (the held lease expired) is measured from the brake to the next applied control.
+{
+  const seat = createSeatInputBuffer();
+  seat.admit(frame(10, [control()]), 9);
+  seat.inputFor(11);
+  for (let t = 12; t <= 11 + 30 + 5; t++) seat.inputFor(t); // 30 held, then 5 braking
+  assert.equal(seat.stats.longestDry, 0, 'a run still braking is not yet counted');
+  seat.admit(frame(50, [control()]), 46);
+  seat.inputFor(51);
+  assert.equal(seat.stats.longestDry, 5, 'five braking ticks between two applied controls');
+  // the lease counts ticks run: a stall's skipped ticks (the loop's tick jumps to the wall's, server/match/loop.ts) spend none
+  const stalled = createSeatInputBuffer();
+  stalled.admit(frame(10, [control({ throttle: 64 })]), 9);
+  stalled.inputFor(11);
+  for (let t = 12; t <= 17; t++) stalled.inputFor(t); // the catch-up window, held
+  const afterJump = stalled.inputFor(17 + 96 + 1); // the first tick after a 96-tick skip, no fresh control yet
+  assert.equal(Math.round(afterJump.throttle * 127), 64, 'still held after the skip');
+  assert.equal(stalled.stats.dry, 0);
+  console.log('inputBuffer.selftest: a braking run is measured between controls; the held lease counts ticks run, not a stall\'s skipped ones');
 }
 
 // The first applied control seeds the edge sequences: a reconnecting client whose counters continue never fires a stray shot.
@@ -121,8 +179,8 @@ const frame = (clientTick, controls, extra = {}) => ({
   const seat = createSeatInputBuffer();
   seat.admit(frame(1, [control({ throttle: 100, flags: CONTROL_FLAGS.FIRE_HELD })]), 0);
   seat.inputFor(2);
-  for (let tick = 3; tick <= 31; tick++) assert.equal(Math.round(seat.inputFor(tick).throttle * 127), 100, `tick ${tick} still held`);
-  const expired = seat.inputFor(33);
+  for (let tick = 3; tick <= 32; tick++) assert.equal(Math.round(seat.inputFor(tick).throttle * 127), 100, `tick ${tick} still held`);
+  const expired = seat.inputFor(33); // the 31st tick run without a frame
   assert.equal(expired.throttle, 0);
   assert.equal(expired.brake, true);
   assert.equal(expired.fire, false);

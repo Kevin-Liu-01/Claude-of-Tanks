@@ -3,6 +3,20 @@ import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
 import { T80U_X_RING_RAISE_M } from '../src/vehicles/t80uXArmor.ts';
+// The Strv 81 print ("Strv 81" by MMD_SonicNewYear, CC-BY-4.0, docs/ATTRIBUTION.md), raw bda892df… (the bytes kept
+// before the 08-17 whip excision; nothing trimmed), prepared by tools/source-x-oracle.mjs
+// (docs/history/research/second-wave-registrations/strv81_x.json): gun to +z, uniform 3.38 m over the side plates (the
+// User Handbook's width; the hull then reads 7.569 m against its 7.557), ground at the track belts' contact, the belts
+// centred on z 0. Turret: the ring skirt's circle (23 vertices, rms 0) on the turret's flat underside, the plane it turns
+// in (y 1.69628; the deck under it is 1.6807). Gun: the bore axis on the tube (12 rings within 0.2 mm). The print shows no
+// trunnion (its gun mesh starts at the mantlet cover, z 1.285, and its gun_0 origin stands 7 cm beside the bore at the
+// cover's face), so the station is the family casting's, z 1.10 (centurionFamily.ts TRUNNION), as the M60s take theirs.
+// turret_0 and gun_0 are the print's own meshes; its two whips are fused into turret_0 and stay in the oracle (the gate's
+// body rule names them by box: tools/fused-roof-gun-boxes.mjs FUSED_ANTENNA_BOXES).
+const CENTURION_SOURCE_FRAME = Object.freeze({
+  sha256:'66b2818a6cfe23a2f7be0ec7be68286e9969fb253d0c878a231aeec95e021aa1',
+  turret:Object.freeze([-.000085,1.69628,.468587]), gun:Object.freeze([.000004,2.079211,1.10]),
+});
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
@@ -235,6 +249,9 @@ const STUDY_SOURCE_WORLD_FRAMES = withAssembledSourceFrames({
     sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],
   },
+  // The Centurion family (267, Main 2026-10-31), one source frame for the three marks rebuilt to it in 262
+  // (centurionFamily.ts): the Strv 81 print in its pristine download, whips and all (CENTURION_SOURCE_FRAME).
+  centurion3: CENTURION_SOURCE_FRAME, centurion5_2: CENTURION_SOURCE_FRAME, strv81: CENTURION_SOURCE_FRAME,
 });
 /** One source's hull under another's turret and gun: the graft moves rigidly by the difference of the two certified
  *  ring datums (the graft's onto the host's), so the composite's turret datum is the host's and its trunnion the graft's,

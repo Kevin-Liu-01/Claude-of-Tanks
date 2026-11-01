@@ -16,7 +16,7 @@ external model files.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 Receipt tiers (266): `selftest-tiers.mjs` splits `selftest-suites.mjs` into the default tier (`npm test`, the
-release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser) that only
+release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser, media) that only
 `npm run test:heavy -- <suite>` runs, when the owner triggers it. `test-recommend.mjs` says which suites a diff
 warrants, one plain line each for Main to relay; `test-lane.mjs` runs a lane's share of the default tier plus its
 tanks' pins, each with its reason and a negative control; `test-diff.mjs` holds what both read (the diff, the

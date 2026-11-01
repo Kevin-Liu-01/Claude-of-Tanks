@@ -8,11 +8,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { anchorsFinder } from './fleet-anchors.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyDirectory } from './paths.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const FEATURES = arg('features') ?? process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features');
+const FEATURES = arg('features') ?? surveyDirectory(); // paths.mjs: MEDIA_R5_FEATURES, else this tool's own dumps
 const ROSTER = join(HERE, 'fleet-roster.json'), REJECTS = join(HERE, 'fleet-rejects.json');
 const SPACING = Number(arg('spacing') ?? 150);
 const want = new Set((process.argv[2] ?? '').split(',').filter(Boolean).map(Number));

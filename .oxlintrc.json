@@ -46,6 +46,23 @@
       }
     },
     {
+      // JavaScript has no compiler here: an unimported name is a ReferenceError in whichever tier first runs it
+      // (fleetPassDefault died at setup on a missing fileURLToPath for a week, 267). TypeScript checks the .ts files.
+      "files": ["**/*.js", "**/*.mjs", "**/*.cjs"],
+      "env": { "builtin": true, "es2024": true, "node": true, "browser": true, "worker": true },
+      "rules": { "eslint/no-undef": "error" }
+    },
+    {
+      // The page's debug hooks, read inside page.evaluate.
+      "files": ["tools/**"],
+      "globals": { "__DEBUG": "readonly", "__STUDIO": "readonly", "__click": "readonly", "__LOD_QA": "readonly", "__GUIDE_QA": "readonly" }
+    },
+    {
+      // The worker runtime is serialized beside the composers' extracted bodies, which define these.
+      "files": ["tools/sourced-image-worker.mjs"],
+      "globals": { "composeAlbedo": "readonly", "composeSurface": "readonly" }
+    },
+    {
       // Its method is a parameter; a GET never carries a body here.
       "files": ["tools/audio/elevenlabs.mjs"],
       "rules": { "unicorn/no-invalid-fetch-options": "off" }

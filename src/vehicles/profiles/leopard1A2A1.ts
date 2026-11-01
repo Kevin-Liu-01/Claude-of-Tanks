@@ -8,6 +8,7 @@
 // gun, with the Munster 1A2A1's PERI R12 (docs/references/tanks/leo1a2a1.md). First-party procedural geometry: Kevin B.
 // Liu (NOTICE.md).
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -601,7 +602,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.addEquipment('turret', box(0.04, binWallH + 0.02, 0.04), s * (bustleWidth / 2), binWallY, bustleRearZ);
       for (const y of [0.30, 0.50]) P.addEquipment('turret', box(0.012, 0.03, bustleDepth), wallX + s * 0.016, y, bustleCenterZ);
       P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.60, coreRoofAt(-1.42) - 0.04, -1.42);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.60, coreRoofAt(-1.42) + 0.66, -1.42, 0, 0, s * 0.025);
+      P.addEquipment('turret', antennaPart(cylY(0.014, 0.016, 2.62, 8)), s * 0.60, coreRoofAt(-1.42) + 0.66, -1.42, 0, 0, s * 0.025);
     }
     stowage(P, 'turretCloth', rng, [
       [-0.62, 0.58, -2.33, 0.46, 0.26, 0.20], [0, 0.58, -2.34, 0.52, 0.25, 0.20],

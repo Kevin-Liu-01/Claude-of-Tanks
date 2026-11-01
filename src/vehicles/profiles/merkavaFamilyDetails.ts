@@ -8,6 +8,7 @@
 // removable package (destructibleCluster), its side by the part's x.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -56,6 +57,16 @@ function openTubeGeometry(r: number, len: number, seg: number): THREE.BufferGeom
   const floor = new THREE.CircleGeometry(bore, seg).translate(0, 0, front - depth);
   const breech = new THREE.CircleGeometry(r, seg).rotateY(Math.PI).translate(0, 0, -front);
   return KIT.mergeAll([wall, inner, rim, floor, breech]);
+}
+
+/** Whether a part is a rod standing within 50 degrees of upright: two of its sizes 4 cm or less, the third 0.5 m or more
+ * (its long axis turned by the part's attitude). */
+function uprightRod(p: SourcePart): boolean {
+  const sizes = [p[5]!, p[6]!, p[7]!], long = sizes.indexOf(Math.max(...sizes));
+  if (sizes[long]! < 0.5 || sizes.some((size, i) => i !== long && size > 0.04)) return false;
+  const axis = new THREE.Vector3(long === 0 ? 1 : 0, long === 1 ? 1 : 0, long === 2 ? 1 : 0)
+    .applyQuaternion(q.set(p[8]!, p[9]!, p[10]!, p[11]!).normalize());
+  return Math.abs(axis.y) >= Math.cos(50 * Math.PI / 180);
 }
 
 /** The part's geometry in its own frame (centred, axis-aligned), oriented and placed in the owner's frame. */
@@ -279,7 +290,11 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
       case ROLE.hullArmor: {
         // skirt panels outboard of the track lane ride the track-guard buckets; sponson boxes and plates are appliqué
         const skirt = Math.abs(cx) > 1.70 && sy > 0.30 && sz > 0.30 && sx < 0.30;
-        P.addExternalArmor(skirt ? (cx > 0 ? 'hullTrackGuardL' : 'hullTrackGuardR') : 'hull', partGeometry(p, none, seg));
+        // an upright rod the fit measured with the armour on the hull's outboard corners is a corner aerial (the Mk 4B's
+        // antennaWhip fittings stand there): the antenna role, so the gate's body leaves it out (tools/whip-rod-census.mjs)
+        const g = partGeometry(p, none, seg);
+        const aerial = Math.abs(cx) > 1.70 && uprightRod(p);
+        P.addExternalArmor(skirt ? (cx > 0 ? 'hullTrackGuardL' : 'hullTrackGuardR') : 'hull', aerial ? antennaPart(g) : g);
         break;
       }
       case ROLE.turretArmor:

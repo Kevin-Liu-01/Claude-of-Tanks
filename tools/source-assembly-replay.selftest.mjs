@@ -11,6 +11,7 @@ import { SOURCE_WORLD_FRAMES, AUTHORING_SOURCE_WORLD_FRAMES, validateSourceWorld
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
+import { recipeMatrix } from './source-x-oracle.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
@@ -200,7 +201,27 @@ try {
     // source models keep the file name they were registered under (schema 1, tankIdAliases.ts)
     if (!SUPPLIED_SOURCE_ASSEMBLIES[id]) assert.equal(reference.glb.path, `/models/community-candidates/${tankSeedId(id)}_source.glb`);
   }
-  console.log('source-assembly-replay: literal component/node fixtures, hash/selector/transform negatives, five source-only references and unchanged legacy datums pass');
+  // 267: the Centurion family's certificate is the Strv 81 print's committed recipe replayed (tools/source-x-oracle.mjs
+  // --prepare writes the same bytes each run): the recipe and its bake receipt are pinned, the recipe registers the
+  // pristine download (before the 08-17 whip excision) by a proper rotation and one uniform scale, and the three marks'
+  // certificate is the replay's hash. The historical certificates above stay byte-identical.
+  const centurionRecipeBytes = fs.readFileSync(path.join(root, 'docs/history/research/second-wave-registrations/strv81_x.json'));
+  const centurionReceiptBytes = fs.readFileSync(path.join(root, 'docs/history/research/second-wave-registrations/strv81_x.receipt.json'));
+  assert.equal(sha(centurionRecipeBytes), '86e7104655f96194e2aee9dddb512ccdf0e7ef9de490a24567d096f0b42baaa9', 'the Strv 81 recipe is pinned');
+  assert.equal(sha(centurionReceiptBytes), '777075ce504d60154f3c5d90d9b41a3422607a99ca2bb81aef0da83aa1100a09', 'its bake receipt is pinned');
+  const centurionRecipe = JSON.parse(centurionRecipeBytes), centurionReceipt = JSON.parse(centurionReceiptBytes);
+  assert.equal(recipeMatrix(centurionRecipe).determinant() > 0, true, 'a proper, uniform registration');
+  assert.equal(centurionRecipe.sourceSha256, 'bda892df141aab4ef64879de5be3236a2cfe118fada7a9c38e707076b634765d', 'the pristine download');
+  assert.equal(centurionReceipt.sourceSha256, centurionRecipe.sourceSha256);
+  // object3d-assert-ok: the recipe's and receipt's JSON selector fields (names and arrays), not three.js objects
+  assert.deepEqual([centurionRecipe.includeRoots, centurionRecipe.exactDuplicateMeshes, centurionRecipe.omitIslandsBelowY,
+    centurionRecipe.omitIslandsInside, centurionReceipt.omittedMeshes, centurionReceipt.omittedDetachedIslands],
+    [undefined, undefined, undefined, undefined, [], null], 'the whole print: nothing selected away or trimmed');
+  for (const id of ['centurion3', 'centurion5_2', 'strv81']) {
+    assert.equal(SOURCE_WORLD_FRAMES[id].sha256, centurionReceipt.canonicalSha256, `${id}: certified on the replayed bytes`);
+    assert.equal(SOURCE_WORLD_FRAMES[id].fused, undefined, `${id}: the print's own turret_0 and gun_0`);
+  }
+  console.log('source-assembly-replay: literal component/node fixtures, hash/selector/transform negatives, five source-only references, unchanged legacy datums and the pinned Centurion recipe pass');
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }

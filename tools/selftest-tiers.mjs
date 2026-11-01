@@ -793,6 +793,9 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
   ]),
+  media: suite('the media lane\'s fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane\'s local dumps: run it where they are)', [
+    'tools/media-r5/fleet-coverage.selftest.mjs',
+  ]),
 });
 
 /**

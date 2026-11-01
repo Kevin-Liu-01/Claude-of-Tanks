@@ -1,7 +1,7 @@
 // Minimal glob expansion for the changed-only step table: `dir/*.ext` (one level), `dir/**` (everything below) and
 // plain paths. Sorted repository-relative paths of the files that exist. First-party tooling: Kevin B. Liu.
 import { readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 const SKIP = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
 const isFile = (path) => { try { return statSync(path).isFile(); } catch { return false; } };
@@ -52,4 +52,14 @@ export function expandGlobs(base, patterns, { exclude = [] } = {}) {
     for (const file of files) if (re.test(file)) out.add(file);
   }
   return [...out].filter((file) => !excluded.some((re) => re.test(file))).sort();
+}
+
+/** A table's files (steps.mjs TABLES). An `idsOnly` table takes only the files named for one of `ids` (<id>.json): the
+ *  directory's other files belong to other tools (266: docs/geometry-gate holds the gate's records beside other
+ *  steps' ledgers). */
+export function tableFileList(base, table, ids) {
+  const files = expandGlobs(base, table.files);
+  if (!table.idsOnly) return files;
+  const known = new Set(ids);
+  return files.filter((file) => known.has(basename(file, '.json')));
 }
