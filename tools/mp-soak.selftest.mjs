@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 
@@ -10,7 +11,9 @@ import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 // (--plant-stall) spends 400 ms of CPU inside one server tick: the ticks that stall drops must be charged to the server.
 // (267, the residual) The input acknowledgement is judged in the server's own ticks over spans that ran on schedule;
 // --plant-late-input and --plant-late-ack must exceed its bound, and a server slow on its own thread
-// (--plant-slow-server) must fail a server gate. A gate the machine starved is the STARVED verdict
+// (--plant-slow-server) must fail a server gate. The clients aim their controls with the real client's clock
+// (src/mp/match/clock.ts), and a control that left past the server's input ring is set aside and counted: the soak's
+// copy of the ring size is pinned to the server's here. A gate the machine starved is the STARVED verdict
 // (tools/selftest-verdict.mjs): this receipt exits with it, so the runner reports it apart, neither PASS nor FAIL.
 // The short, seeded soak: four headless wire clients (2v2) against the in-process
 // match service for 20 s through 40 ms +- 10 ms latency and 2 % replaceable-frame
@@ -28,6 +31,11 @@ const starvedVerdict = (what, output) => {
   process.exit(SELFTEST_STARVED_EXIT);
 };
 
+const ringOf = (file, name) => Number(readFileSync(file, 'utf8').match(new RegExp(`^const ${name} = (\\d+);$`, 'm'))?.[1]);
+const serverRing = ringOf(new URL('../server/match/inputBuffer.ts', import.meta.url), 'RING');
+assert.ok(Number.isInteger(serverRing), 'the server\'s input ring size is read');
+assert.equal(ringOf(script, 'INPUT_RING_TICKS'), serverRing, 'mp-soak sets aside controls past the server\'s own input ring');
+
 const main = await soak(['--plant-stall', '--plant-late-input', '--plant-late-ack']);
 assert.doesNotMatch(main.output, /\[mp-soak\] FAILED/, 'no soak gate failed');
 assert.match(main.output, /welcomed\+spawned\s+PASS/);
@@ -40,7 +48,7 @@ if (main.code === SELFTEST_STARVED_EXIT) starvedVerdict('the soak', main.output)
 assert.equal(main.code, 0, 'the short soak passes every gate');
 assert.match(main.output, /all gates passed/);
 assert.match(main.output, /input ack lag\s+PASS\s+p50 \d+ \/ p95 \d+ \/ max \d+ ticks/, 'the acknowledgement is judged in server ticks');
-assert.match(main.output, /late input control\s+PASS/, 'controls sent late exceed the acknowledgement bound');
+assert.match(main.output, /late input control\s+PASS/, 'controls held past their tick exceed the acknowledgement bound');
 assert.match(main.output, /late ack control\s+PASS/, 'acknowledgements reported late exceed the bound');
 
 // the server slow on its own thread (9 ms of CPU in every tick, past the 6 ms budget): a server gate fails it, so the
