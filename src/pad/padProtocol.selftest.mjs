@@ -26,6 +26,25 @@ assert.equal(readPadClientMessage('{"t":"resume","token":"short"}'), null, 'a ma
 assert.equal(readPadClientMessage('{"t":"relay","data":"' + 'x'.repeat(600) + '"}'), null, 'an oversized relay payload is refused');
 assert.equal(readPadClientMessage('[1]'), null);
 assert.equal(readPadClientMessage('not json'), null);
+
+// couch lobbies (docs/COUCH-MODE.md): the route, the desktop's lobby messages, and seats on signal, relay and presence
+assert.deepEqual(parsePadRoute('/pad/lobby'), { kind: 'lobby' });
+assert.equal(parsePadRoute('/pad/lobby/K7Q4MZ'), null, 'a lobby is opened by the desktop, never joined by path');
+assert.deepEqual(readPadClientMessage('{"t":"signal","kind":"answer","sdp":"a","seat":3}'), { t: 'signal', kind: 'answer', sdp: 'a', seat: 3 });
+assert.equal(readPadClientMessage('{"t":"signal","kind":"answer","seat":9}'), null, 'a seat past the lobby is refused');
+assert.equal(readPadClientMessage('{"t":"relay","data":"a","seat":0}'), null, 'seats count from 1');
+assert.deepEqual(readPadClientMessage('{"t":"relay","data":"a","seat":8}'), { t: 'relay', data: 'a', seat: 8 });
+assert.deepEqual(readPadClientMessage('{"t":"lobby","open":false}'), { t: 'lobby', open: false });
+assert.equal(readPadClientMessage('{"t":"lobby","open":"yes"}'), null);
+assert.deepEqual(readPadClientMessage('{"t":"kick","seat":2}'), { t: 'kick', seat: 2 });
+assert.equal(readPadClientMessage('{"t":"kick","seat":2.5}'), null);
+assert.deepEqual(readPadHostMessage('{"t":"joined","token":"tok","seat":4}'), { t: 'joined', token: 'tok', seat: 4 });
+assert.deepEqual(readPadHostMessage('{"t":"joined","token":"tok"}'), { t: 'joined', token: 'tok' }, 'a pairing names no seat');
+assert.deepEqual(readPadHostMessage('{"t":"seat","seat":2,"state":"gone"}'), { t: 'seat', seat: 2, state: 'gone' });
+assert.equal(readPadHostMessage('{"t":"seat","seat":2,"state":"lost"}'), null);
+assert.deepEqual(readPadHostMessage('{"t":"lobby","open":true,"until":5,"seats":3}'), { t: 'lobby', open: true, until: 5, seats: 3 });
+assert.deepEqual(readPadHostMessage('{"t":"relay_spent","seat":5}'), { t: 'relay_spent', seat: 5 });
+assert.deepEqual(readPadHostMessage('{"t":"signal","kind":"offer","sdp":"o","seat":1}'), { t: 'signal', kind: 'offer', sdp: 'o', seat: 1 });
 assert.deepEqual(readPadHostMessage('{"t":"ice","iceServers":[{"urls":"stun:a"},{"bogus":1}],"relay":false}'),
   { t: 'ice', iceServers: [{ urls: 'stun:a' }], relay: false }, 'malformed ICE servers are dropped');
 assert.deepEqual(readPadCtl('{"k":"down","a":"fire","s":70000}'), { k: 'down', a: 'fire', s: 70000 & 0xffff });
@@ -79,4 +98,4 @@ assert.equal(resolvePadServiceUrl('', 'http:', '192.168.1.20'), 'ws://192.168.1.
 assert.equal(resolvePadServiceUrl('ws://insecure.test', 'https:', OFFICIAL_SITE_HOST), OFFICIAL_ROOMS_URL, 'no ws:// from an https page');
 assert.equal(resolvePadServiceUrl('', 'https:', 'example.vercel.app'), null, 'a host with no rooms Worker has no pad service');
 
-console.log('padProtocol: PASS — routes, readers, the 24-byte axes frame, relay text, page address, service URL');
+console.log('padProtocol: PASS — routes, readers, lobby seats, the 24-byte axes frame, relay text, page address, service URL');

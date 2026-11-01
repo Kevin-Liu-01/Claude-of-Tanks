@@ -37,6 +37,8 @@ export interface PadLinkOptions {
   onCtl?(message: PadCtlMessage): void;
   /** The resume token for this pairing (the phone keeps it in sessionStorage). */
   onToken?(code: string, token: string): void;
+  /** The phone's seat in a couch lobby (docs/COUCH-MODE.md), told once when it joins. */
+  onSeat?(seat: number): void;
   createSocket?: (url: string) => WebSocket;
   createPeer?: (config: RTCConfiguration) => RTCPeerConnection;
   now?: () => number;
@@ -145,6 +147,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
       case 'joined':
         token = message.token; paired = true;
         options.onToken?.(code, token);
+        if (message.seat !== undefined) options.onSeat?.(message.seat);
         return;
       case 'resumed':
         paired = true;

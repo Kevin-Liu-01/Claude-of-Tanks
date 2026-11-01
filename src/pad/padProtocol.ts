@@ -26,6 +26,10 @@ export const PAD_ICE_WINDOW_MS = 600_000;
  *  Every incoming Durable Object message is billed (20:1 on Workers Free), so the relay is capped, not a transport. */
 export const PAD_RELAY_HZ = 15;
 export const PAD_RELAY_BUDGET = 12_000;
+/** Couch mode (docs/COUCH-MODE.md): a lobby code seats up to this many phones on one desktop, numbered from 1, and
+ *  admits joins for this long each time the desktop opens it. The relay budget and the limits count per seat. */
+export const PAD_LOBBY_SEATS = 8;
+export const PAD_LOBBY_JOIN_MS = 10 * 60_000;
 /** The desktop's fail-safe: no axes frame for this long zeroes the stick and releases every held control. */
 export const PAD_STALE_MS = 400;
 /** The client's keepalive frame, answered by the host without waking a hibernating object (the rooms' pair). */
@@ -58,12 +62,14 @@ export function formatPadCode(code: string): string {
 
 export type PadRoute =
   | { kind: 'new' }
+  | { kind: 'lobby' }
   | { kind: 'join'; code: string }
   | { kind: 'resume'; code: string };
 
-/** `/pad/new`, `/pad/join/<CODE>`, `/pad/resume/<CODE>`; anything else is not a pad route. */
+/** `/pad/new`, `/pad/lobby`, `/pad/join/<CODE>`, `/pad/resume/<CODE>`; anything else is not a pad route. */
 export function parsePadRoute(pathname: string): PadRoute | null {
   if (pathname === '/pad/new') return { kind: 'new' };
+  if (pathname === '/pad/lobby') return { kind: 'lobby' };
   const match = /^\/pad\/(join|resume)\/([A-Za-z0-9]{6})$/.exec(pathname);
   if (!match) return null;
   const code = normalizePadCode(match[2]);
@@ -75,8 +81,11 @@ export function parsePadRoute(pathname: string): PadRoute | null {
 
 export type PadSignalKind = 'offer' | 'answer' | 'candidate';
 
-/** Why a socket or a pairing ended. `unknown` covers every refused join (unknown, expired, used, a second phone). */
-export type PadEndReason = 'unknown' | 'expired' | 'ended' | 'replaced' | 'desktop_left' | 'too_long' | 'limit' | 'invalid' | 'full';
+/** Why a socket or a pairing ended. `unknown` covers every refused join (unknown, expired, used, a second phone, a
+ *  closed lobby); `full` is a lobby with every seat taken; `removed` is a seat the desktop let go. */
+export type PadEndReason = 'unknown' | 'expired' | 'ended' | 'replaced' | 'desktop_left' | 'too_long' | 'limit' | 'invalid' | 'full' | 'removed';
+/** A lobby seat's presence, as the desktop hears it. */
+export type PadSeatState = 'here' | 'away' | 'gone';
 
 export interface PadIceServer {
   urls: string | string[];
@@ -84,28 +93,39 @@ export interface PadIceServer {
   credential?: string;
 }
 
-/** Client → host. */
+/** Client → host. A lobby's desktop names the seat its `signal` and `relay` go to; `lobby` and `kick` are its own. */
 export type PadClientMessage =
   | { t: 'resume'; token: string }
-  | { t: 'signal'; kind: PadSignalKind; sdp?: string; candidate?: unknown }
+  | { t: 'signal'; kind: PadSignalKind; sdp?: string; candidate?: unknown; seat?: number }
   | { t: 'ice' }
-  | { t: 'relay'; data: string }
+  | { t: 'relay'; data: string; seat?: number }
+  | { t: 'lobby'; open: boolean }
+  | { t: 'kick'; seat: number }
   | { t: 'end' };
 
-/** Host → client. */
+/** Host → client. A lobby's desktop hears each phone as a numbered seat (`seat`), and its `signal`, `relay` and
+ *  `relay_spent` name the seat; a phone in a lobby learns its seat number when it joins. */
 export type PadHostMessage =
   | { t: 'code'; code: string; expiresAt: number; token: string }
-  | { t: 'joined'; token: string }
+  | { t: 'joined'; token: string; seat?: number }
   | { t: 'resumed' }
   | { t: 'peer'; state: 'here' | 'away' }
-  | { t: 'signal'; kind: PadSignalKind; sdp?: string; candidate?: unknown }
+  | { t: 'seat'; seat: number; state: PadSeatState }
+  | { t: 'lobby'; open: boolean; until: number | null; seats: number }
+  | { t: 'signal'; kind: PadSignalKind; sdp?: string; candidate?: unknown; seat?: number }
   | { t: 'ice'; iceServers: PadIceServer[]; relay: boolean }
-  | { t: 'relay'; data: string }
-  | { t: 'relay_spent' }
+  | { t: 'relay'; data: string; seat?: number }
+  | { t: 'relay_spent'; seat?: number }
   | { t: 'error'; code: 'rate_limit' | 'invalid' | 'not_paired' }
   | { t: 'end'; reason: PadEndReason };
 
 const SIGNAL_KINDS = new Set<string>(['offer', 'answer', 'candidate']);
+const SEAT_STATES = new Set<string>(['here', 'away', 'gone']);
+
+/** A lobby seat number, or undefined (absent or not a seat). */
+function seatOf(value: unknown): number | undefined {
+  return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= PAD_LOBBY_SEATS ? value as number : undefined;
+}
 
 /** A client frame as a typed message, or null (the host closes the socket as `invalid`). */
 export function readPadClientMessage(text: string): PadClientMessage | null {
@@ -120,11 +140,18 @@ export function readPadClientMessage(text: string): PadClientMessage | null {
     case 'signal': {
       if (typeof record.kind !== 'string' || !SIGNAL_KINDS.has(record.kind)) return null;
       if (record.sdp !== undefined && typeof record.sdp !== 'string') return null;
+      if (record.seat !== undefined && seatOf(record.seat) === undefined) return null;
       return { t: 'signal', kind: record.kind as PadSignalKind, ...(record.sdp !== undefined ? { sdp: record.sdp } : {}),
-        ...(record.candidate !== undefined ? { candidate: record.candidate } : {}) };
+        ...(record.candidate !== undefined ? { candidate: record.candidate } : {}),
+        ...(record.seat !== undefined ? { seat: record.seat as number } : {}) };
     }
     case 'ice': return { t: 'ice' };
-    case 'relay': return typeof record.data === 'string' && record.data.length <= 512 ? { t: 'relay', data: record.data } : null;
+    case 'relay':
+      if (record.seat !== undefined && seatOf(record.seat) === undefined) return null;
+      return typeof record.data === 'string' && record.data.length <= 512
+        ? { t: 'relay', data: record.data, ...(record.seat !== undefined ? { seat: record.seat as number } : {}) } : null;
+    case 'lobby': return typeof record.open === 'boolean' ? { t: 'lobby', open: record.open } : null;
+    case 'kick': { const seat = seatOf(record.seat); return seat === undefined ? null : { t: 'kick', seat }; }
     case 'end': return { t: 'end' };
     default: return null;
   }
@@ -140,17 +167,35 @@ export function readPadHostMessage(text: string): PadHostMessage | null {
     case 'code':
       return typeof record.code === 'string' && Number.isFinite(record.expiresAt) && typeof record.token === 'string'
         ? { t: 'code', code: record.code, expiresAt: Number(record.expiresAt), token: record.token } : null;
-    case 'joined': return typeof record.token === 'string' ? { t: 'joined', token: record.token } : null;
+    case 'joined': {
+      if (typeof record.token !== 'string') return null;
+      const seat = seatOf(record.seat);
+      return { t: 'joined', token: record.token, ...(seat !== undefined ? { seat } : {}) };
+    }
     case 'resumed': return { t: 'resumed' };
     case 'peer': return record.state === 'here' || record.state === 'away' ? { t: 'peer', state: record.state } : null;
-    case 'signal':
-      return typeof record.kind === 'string' && SIGNAL_KINDS.has(record.kind)
-        ? { t: 'signal', kind: record.kind as PadSignalKind, ...(typeof record.sdp === 'string' ? { sdp: record.sdp } : {}),
-          ...(record.candidate !== undefined ? { candidate: record.candidate } : {}) } : null;
+    case 'seat': {
+      const seat = seatOf(record.seat);
+      return seat !== undefined && typeof record.state === 'string' && SEAT_STATES.has(record.state)
+        ? { t: 'seat', seat, state: record.state as PadSeatState } : null;
+    }
+    case 'lobby':
+      return typeof record.open === 'boolean' && Number.isInteger(record.seats) && (record.until === null || Number.isFinite(record.until))
+        ? { t: 'lobby', open: record.open, until: record.until as number | null, seats: record.seats as number } : null;
+    case 'signal': {
+      if (typeof record.kind !== 'string' || !SIGNAL_KINDS.has(record.kind)) return null;
+      const seat = seatOf(record.seat);
+      return { t: 'signal', kind: record.kind as PadSignalKind, ...(typeof record.sdp === 'string' ? { sdp: record.sdp } : {}),
+        ...(record.candidate !== undefined ? { candidate: record.candidate } : {}), ...(seat !== undefined ? { seat } : {}) };
+    }
     case 'ice':
       return Array.isArray(record.iceServers) ? { t: 'ice', iceServers: record.iceServers.filter(isIceServer), relay: record.relay === true } : null;
-    case 'relay': return typeof record.data === 'string' ? { t: 'relay', data: record.data } : null;
-    case 'relay_spent': return { t: 'relay_spent' };
+    case 'relay': {
+      if (typeof record.data !== 'string') return null;
+      const seat = seatOf(record.seat);
+      return { t: 'relay', data: record.data, ...(seat !== undefined ? { seat } : {}) };
+    }
+    case 'relay_spent': { const seat = seatOf(record.seat); return { t: 'relay_spent', ...(seat !== undefined ? { seat } : {}) }; }
     case 'error':
       return record.code === 'rate_limit' || record.code === 'invalid' || record.code === 'not_paired' ? { t: 'error', code: record.code } : null;
     case 'end': return typeof record.reason === 'string' ? { t: 'end', reason: record.reason as PadEndReason } : null;

@@ -102,7 +102,19 @@ export function storedDeskResume(): { code: string; token: string } | null {
   } catch { return null; }
 }
 
-export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, resume?: { code: string; token: string }): PadReceiver {
+/** How a couch lobby (padLobby.ts) runs one receiver per seat: over its seat's share of the lobby socket, without this
+ *  tab's single-pairing resume record, and with its diagnostics under the seat's number. */
+export interface PadReceiverOptions {
+  createSocket?: (url: string) => WebSocket;
+  /** False: the pairing is not this tab's to resume (a lobby seat); nothing is stored or forgotten. */
+  remember?: boolean;
+  /** The seat number the diagnostics go under (`__COT_PAD_SEATS`), in place of `__COT_PAD`. */
+  debugSeat?: number;
+}
+
+export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, resume?: { code: string; token: string },
+  options: PadReceiverOptions = {}): PadReceiver {
+  const remember = options.remember !== false;
   const listeners = new Set<(view: PadReceiverView) => void>();
   let view: PadReceiverView = { state: { kind: 'connecting' }, rttMs: null };
   const mapper = createPadInputMapper(ports.input, ports.togglePause);
@@ -116,9 +128,12 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   /** The phone drives only in a battle, unpaused, with this tab shown: anywhere else its holds are let go and its
    *  frames and presses wait (its pause button still works, to close the menu it opened). */
   let driving = false;
-  const debug: PadDebug | null = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]padDebug\b/.test(location.search))
+  const debug: PadDebug | null = import.meta.env?.DEV || (typeof location !== 'undefined' && /[?&]padDebug\b/.test(location.search))
     ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0, trace: [] } : null;
-  if (debug) (globalThis as { __COT_PAD?: PadDebug }).__COT_PAD = debug;
+  if (debug && options.debugSeat !== undefined) {
+    const seats = ((globalThis as { __COT_PAD_SEATS?: Record<number, PadDebug> }).__COT_PAD_SEATS ??= {});
+    seats[options.debugSeat] = debug;
+  } else if (debug) (globalThis as { __COT_PAD?: PadDebug }).__COT_PAD = debug;
 
   const publish = (next: Partial<PadReceiverView>): void => {
     view = { ...view, ...next };
@@ -142,10 +157,13 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     role: 'desktop',
     serviceUrl,
     ...(resume ? { resume } : {}),
-    onToken(code, token) { try { sessionStorage.setItem(DESK_RESUME_KEY, JSON.stringify({ code, token })); } catch { /* storage blocked */ } },
+    ...(options.createSocket ? { createSocket: options.createSocket } : {}),
+    onToken(code, token) {
+      if (remember) try { sessionStorage.setItem(DESK_RESUME_KEY, JSON.stringify({ code, token })); } catch { /* storage blocked */ }
+    },
     onState(state) {
       if (state.kind === 'away' || state.kind === 'ended') mapper.releaseAll();
-      if (state.kind === 'ended') { forgetDeskResume(); stop(); }
+      if (state.kind === 'ended') { if (remember) forgetDeskResume(); stop(); }
       publish({ state, ...(state.kind === 'live' ? {} : { rttMs: null }) });
     },
     onAxes(bytes) {
@@ -199,7 +217,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
       return () => listeners.delete(listener);
     },
     disconnect() {
-      forgetDeskResume();
+      if (remember) forgetDeskResume();
       stop();
       link.end();
     },
