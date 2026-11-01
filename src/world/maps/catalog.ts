@@ -2,7 +2,6 @@ import type { MapCompositionConfig } from './contracts.ts';
 
 // The battlefield identity slice (ids, names, the random rotation, the resolvers) lives in mapIds.ts so the rooms
 // Worker and the dedicated server can import it without this file's contracts.ts type chain (2026-09-28).
-import { isMapId } from './mapIds.ts';
 export { MAP_IDS, RANDOM_BATTLE_MAP_IDS, isMapId, getMapName, resolveMapId, type MapId } from './mapIds.ts';
 
 // The sealed motor-pool Garage uses Verdant's authored neutral light until a
@@ -27,14 +26,4 @@ export const DEFAULT_GARAGE_SKY: NonNullable<MapCompositionConfig['sky']> = {
   hemiIntensity: 0.32,
 };
 
-/**
- * Localized map name. Falls back to the English MAP_NAMES when the active
- * locale is en-US. The Random option always returns the localized label.
- */
-import { t } from '../../ui/i18n.ts';
-
-export function getLocalizedMapName(mapId: string): string {
-  if (mapId === 'random') return t('map.random');
-  return isMapId(mapId) ? t(`map.${mapId}`) : t('map.verdant');
-}
 

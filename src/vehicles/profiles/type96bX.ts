@@ -1,4 +1,5 @@
 import {addRearFieldStowage} from './rearFieldStowage.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
@@ -384,7 +385,7 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     equipment(P, 'turret', 'Detail', box(.0903, .0176, .0898), .76195, 2.24186, -1.32903);
     equipment(P, 'turret', 'Detail', cylY(.02905, .02905, .185, 10), .76145, 2.33046, -1.32903);
     equipment(P, 'turret', 'Detail', box(.0903, .0371, .0898), .76195, 2.43911, -1.32903);
-    equipment(P, 'turret', 'Detail', cylY(.026, .045, .557, 10), .761, 2.736, -1.329);
+    equipment(P, 'turret', 'Detail', antennaPart(cylY(.026, .045, .557, 10)), .761, 2.736, -1.329);
     if (options.mastTopY === undefined) antenna(P, .95, 2.20, -1.78, 5.26855, -2.057);
     else antenna(P, .95, 2.20, -1.78, options.mastTopY, -1.78 - .277 * (options.mastTopY - 2.31) / (5.26855 - 2.31));
     // No roof weapon is present in this particular source configuration.

@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Shape vocabulary only. Vehicle measurements and silhouettes belong to their
 // individual source-study profiles; no complete donor vehicle is assembled here.
 import * as THREE from 'three';
@@ -148,7 +149,7 @@ function blindCup(radius: number, bore: number, length: number, depth: number, s
 
 export function antenna(P: TankBuilderPort, x: number, bottom: number, top: number, z: number): void {
   turretEquipment(P, 'turretDetail', KIT.cylY(.038, .055, .11, P.q ? 14 : 8), x, bottom + .055, z);
-  turretEquipment(P, 'turretDark', KIT.cylY(.009, .017, top - bottom - .10, P.q ? 10 : 6),
+  turretEquipment(P, 'turretDark', antennaPart(KIT.cylY(.009, .017, top - bottom - .10, P.q ? 10 : 6)),
     x, (top + bottom + .10) / 2, z);
 }
 

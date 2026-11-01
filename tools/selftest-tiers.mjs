@@ -104,14 +104,15 @@ export const MUST_KEEP = Object.freeze({
 
 const suite = (about, files, extra = {}) => Object.freeze({ about, files: Object.freeze(files), commands: Object.freeze([]), ...extra });
 
-/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. */
+/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. `hits`: its
+ *  verdicts are hits the authority resolves, so a change to that code warrants it whole (test-diff.mjs hitResolutionMoves). */
 export const MANUAL_SUITES = Object.freeze({
   balance: suite('fleet round-robin duels on the authoritative battle path and the balance tables they hold', [
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
   ],
-    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]) }),
+    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]), hits: true }),
   pacing: suite('whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map', [
     'server/battlePacing.selftest.mjs',
     'server/battlePacingShard1.selftest.mjs',
@@ -126,7 +127,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/sim/deployment.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-  ]),
+  ], { hits: true }),
   bots: suite('bot behaviour played out on the authority (every mode, objectives, levels, approaches)', [
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
@@ -136,7 +137,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
-  ]),
+  ], { hits: true }),
   sims: suite('drone, missile, escort and counter-drone scenario runs', [
     'src/game/watchTakeover.selftest.mjs',
     'src/sim/botDroneAttack.selftest.mjs',
@@ -145,7 +146,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
-  ]),
+  ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
@@ -265,7 +266,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/garagePresentation.selftest.mjs',
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
-    'src/vehicles/historicalT90MLamps.selftest.mjs',
     'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/interiorFillWreck.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
@@ -419,7 +419,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
-    'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',
@@ -494,9 +493,6 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
-    'src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs',
-    'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',
-    'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
     'src/vehicles/profiles/t90AXFenderClosures.selftest.mjs',
     'src/vehicles/profiles/t90AXGun.selftest.mjs',
     'src/vehicles/profiles/t90AXRearGuard.selftest.mjs',
@@ -514,20 +510,14 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/t90AwXSideMounts.selftest.mjs',
     'src/vehicles/profiles/t90AwXSmallOptics.selftest.mjs',
     'src/vehicles/profiles/t90AwXTowCables.selftest.mjs',
-    'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
     'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXRear.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXSkirtMounts.selftest.mjs',
-    'src/vehicles/profiles/t90MProryvTrackRwsBustle.selftest.mjs',
-    'src/vehicles/profiles/t90MSTurretArmorSeat.selftest.mjs',
     'src/vehicles/profiles/t90MXEngineDeck.selftest.mjs',
     'src/vehicles/profiles/t90MXHullEnds.selftest.mjs',
     'src/vehicles/profiles/t90MXRwsHousing.selftest.mjs',
     'src/vehicles/profiles/t90MachineGunForward.selftest.mjs',
-    'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
-    'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90RoofStudioSelectability.selftest.mjs',
-    'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
     'src/vehicles/profiles/t90SMXEngineDeck.selftest.mjs',
     'src/vehicles/profiles/t90SMXFenderShoulders.selftest.mjs',
     'src/vehicles/profiles/t90SMXFrontEra.selftest.mjs',
@@ -602,6 +592,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/sourceXSovietAuxArmor.selftest.mjs',
     'src/vehicles/sourceXWesternAuxArmor.selftest.mjs',
     'src/vehicles/strv103GunPort.selftest.mjs',
+    'src/vehicles/suitRoofDecor.selftest.mjs',
     'src/vehicles/suppliedSourceWeapons.selftest.mjs',
     'src/vehicles/suspensionClearance.selftest.mjs',
     'src/vehicles/trackContactDerivationAudit.selftest.mjs',
@@ -793,6 +784,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/ui/hudAmmoOutPaint.selftest.mjs',
     'tools/gallery-shell.selftest.mjs',
     'tools/garage-roster-settle.browser.selftest.mjs',
+    'tools/hud-self-measure.browser.selftest.mjs',
     'tools/studio-snow-contact.selftest.mjs',
   ]),
   browser: suite('strenuous real-battle browser receipts (a GPU and the capture lock each)', [

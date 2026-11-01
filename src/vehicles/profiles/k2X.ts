@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // First-party K2 X. The owner's quarantined source is a measurement/reference
 // input only; this module has no source loader, mesh buffers or donor builder.
 import * as THREE from 'three';
@@ -286,7 +287,7 @@ function roofFurniture(P: TankBuilderPort): void {
     // continuous whip. The initial generic base left a real 60 mm air gap.
     onTurret(P, 'turretDetail', box(.415, .110, .393), side * .9365, 2.295, -1.9015);
     onTurret(P, 'turretDetail', cylY(.064, .097, 16), side * .8355, 2.3975, -2.0202);
-    onTurret(P, 'turretDark', cylY(.006, 2.291, 8), side * .8355, 3.58527, -2.0202);
+    onTurret(P, 'turretDark', antennaPart(cylY(.006, 2.291, 8)), side * .8355, 3.58527, -2.0202);
     // Paired roof sensor cradles, including their open gap and inclined feet.
     // Their high cheek plates are not cupolas or an enlarged MG ammunition box.
     const cradle=():void=>{

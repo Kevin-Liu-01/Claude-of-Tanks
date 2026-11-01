@@ -19,6 +19,7 @@
 // addExternalArmor; every cage, rail, rack, bin, tool and fitting is equipment or detail.
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { lineAt } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
@@ -659,8 +660,8 @@ function roofFit(P: TankBuilderPort): void {
   const roof = T.roofY;
   for (const ax of [-0.88017, 0.91495]) {
     P.addEquipment('turretDark', cylY(0.02, 0.02, 0.07, 10), ax, roof + 0.13, -1.98);
-    P.addEquipment('turretDetail', cylY(0.007, 0.010, 0.95, 6), ax, roof + 0.10 + 0.475, -1.98);
-    P.addEquipment('turretDetail', sph(0.014, 8), ax, roof + 1.055, -1.98);
+    P.addEquipment('turretDetail', antennaPart(cylY(0.007, 0.010, 0.95, 6)), ax, roof + 0.10 + 0.475, -1.98);
+    P.addEquipment('turretDetail', antennaPart(sph(0.014, 8)), ax, roof + 1.055, -1.98);
   }
   for (const [x, w] of [[0.905, 0.035], [-0.865, 0.03]] as const) {
     P.addEquipment('turretDetail', cylY(w, w + 0.006, 0.08, 10), x, roof + 0.04, -0.77);

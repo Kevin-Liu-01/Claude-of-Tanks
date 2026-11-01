@@ -141,8 +141,10 @@ scaleNonExternalArmor(type10_tk_x, 1.12);
 
 // 262: the STB-1's own curve, measured on its hull at the owner's model's own proportions (tools/gun-depression-sweep.mjs,
 // as the Type 74's): -6 over the front and sides, the gun riding up over the rear deck's kit and the stern (263: re-swept
-// with the mask shaped by the turret, which clears the stern's kit from 168 degrees round sooner)
-const STB1_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [145, -6], [148, -5], [152, -4.1], [158, -3.5], [160, -3.5], [161, -3.6], [162, -2.7], [163, -2.2], [165, -2.2], [166, -2.5], [168, -4.3], [180, -4.5]];
+// with the mask shaped by the turret, which clears the stern's kit from 168 degrees round sooner; 265: re-swept with the
+// fuel drums raised over the deck's edge on the stern, which lift it from 168 degrees round; 266: re-swept with the drums
+// on 23.5 cm saddles, which lift it from 166 degrees round, to -1.1 astern)
+const STB1_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [145, -6], [148, -5], [152, -4.1], [158, -3.5], [160, -3.5], [161, -3.6], [162, -2.7], [163, -2.2], [165, -2.2], [166, -1.4], [167, -1.1], [180, -1.1]];
 
 const JAPAN_SPECS = {
   stb1: variant('stb1', 'type74', {

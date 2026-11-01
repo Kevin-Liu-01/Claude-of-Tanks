@@ -6,8 +6,10 @@
 //   node tools/fleet-surface-overlap-audit.mjs --ids=type10b --report-only
 //   node tools/fleet-surface-overlap-audit.mjs --check --out=/tmp/surface-overlaps.json
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -20,10 +22,10 @@ const option = (name, fallback = '') => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-surface-overlap-audit --ids');
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))
-  : 4;
+  : WORKER_PAGES;
 const outputPath = resolve(option('out', '.qa-device/fleet-surface-overlap-audit.json'));
 const check = args.includes('--check') && !args.includes('--report-only');
 const root = process.cwd();
@@ -39,7 +41,7 @@ const server = await createServer({
 });
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
-const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const tankAssets = readTankAssets(resolve(root, 'public/icons'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
@@ -102,7 +104,7 @@ const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   method: 'same-facing cross-surface triangle intersection on quantized world-space planes; markings, shadow-only and polygon-offset materials excluded',
-  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets.json',
+  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets/',
   rosterCount: ids.length,
   summary: {
     buildFailures: failures.length,

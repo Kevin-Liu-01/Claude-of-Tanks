@@ -10,7 +10,7 @@ import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
 import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
-import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
+import { SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 if (!globalThis.ProgressEvent) globalThis.ProgressEvent=class {
   constructor(type, values) { this.type=type;Object.assign(this,values); }
 };
@@ -30,7 +30,7 @@ for (const [id,certificate] of Object.entries(SOURCE_WORLD_FRAMES)) {
     path:`data:model/gltf-binary;base64,${bytes.toString('base64')}`}},id,TANK_SPECS[id]);
   const procedural=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   const frames={reference:frame(reference),procedural:frame(procedural)};
-  const result=validateSourceWorldFrame(certificate,sha256,frames);
+  const result=validateSourceWorldFrame(certificate,sha256,frames,SOURCE_WORLD_BUILD_OFFSETS[id]);
   process.stdout.write(`${JSON.stringify({id,result,frames})}\n`);
   if (!result.passed) process.exitCode=1;
   procedural.dispose();

@@ -2,6 +2,7 @@
 // Small warped latches and cloth relief are simplified; open basket cells and
 // recessed optical faces are geometric space, not dark-painted closed boxes.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { chieftain5SourceClothRoll } from './chieftain5XSourceClosure.ts';
@@ -151,7 +152,7 @@ function antennae(add: Add): void {
     [.968477, 2.388700, .482222], [-1.152223, 2.203161, .366596]]) {
     add('turretDetail', box(.135, .065, .135), x, base - .140, z);
     add('turretDark', cylY(.035, .0596, .115, 16), x, base - .0575, z);
-    add('turretDark', cylY(.0035, .011652, 1.3480697, 12), x, base + .67403485, z);
+    add('turretDark', antennaPart(cylY(.0035, .011652, 1.3480697, 12)), x, base + .67403485, z);
   }
 }
 

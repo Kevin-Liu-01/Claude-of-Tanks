@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo1a3dk": {
+      "name": "Leopard 1A3 DK",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): Leopard 1A3 DK at tier I, a photo-class first-party build with its Danish kit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.pansermuseet.dk/?p=1580",
+        "https://armyvehicles.dk/leopard1a5.htm",
+        "https://armyvehicles.dk/leopard1a3.htm",
+        "https://commons.wikimedia.org/wiki/File:Leopard_1_kampvogn_ved_Krigsmuseet_01.jpg"
+      ],
+      "widthM": 3.396,
+      "overallLengthM": 9.672,
+      "tallestM": 4.51,
+      "envelopeBasis": "Width is the as-built X extent over the 1A5 hull's skirts (published 3.41 m, Pansermuseet). Length is the as-built Z extent with the gun forward: the published 9.54 m (Pansermuseet: 6.94 m hull, 9.54 m with the gun at 12 o'clock) plus the bow tow eyes and stern can carriers, within 1.4%. Tallest is the tip of the two rear roof whips as built; the published height is 2.8 m over the commander's MG, which the fixture holds against the cupola. The welded turret is measured from the Krigsmuseet side view (Wikimedia Commons) scaled by the 0.74 m road-wheel pitch; docs/history/research/denmark-line-265.md records the stations.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}

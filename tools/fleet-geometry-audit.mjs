@@ -5,8 +5,10 @@
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
 //   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -21,10 +23,10 @@ const option = (name, fallback = '') => {
 const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-geometry-audit --ids');
 const modes = option('modes', 'gallery,garage,battle-player,battle-bot-near,battle-bot-far,battle-mobile-player-far')
   .split(',').map((mode) => mode.trim()).filter(Boolean);
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))
-  : 4;
+  : WORKER_PAGES;
 const outputPath = resolve(option('out', '.qa-device/fleet-geometry-audit.json'));
 const root = process.cwd();
 const cacheDir = resolve('/tmp', `cot-fleet-geometry-vite-${process.pid}`);
@@ -40,7 +42,7 @@ const server = await createServer({
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.ts');
-const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const tankAssets = readTankAssets(resolve(root, 'public/icons'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
@@ -136,7 +138,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   sourceRevision: process.env.GIT_COMMIT || null,
   method: 'visible geometry traversal; indexed topology and InstancedMesh/BatchedMesh multiplicity included',
-  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets.json',
+  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets/',
   rosterCount: ids.length,
   playableRosterCount: ALL_TANK_IDS.length,
   modes,

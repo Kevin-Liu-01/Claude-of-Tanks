@@ -131,13 +131,26 @@ const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_b
 /** The Centurion family (262, merged on 264c): the Sho't Kal's 1973 Sinai grey, the Olifant Mk 2's SANDF coat and
  * the Australian Mk 5/1's olive drab came with those tanks; they append after 264's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
+/** Release 266: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white and the 2A5 DK's
+ * three-tone of the 2010s; then the owner's Challenger 1 camo pick (2026-10-31): the 1980s BAOR two-tone the Mk 1, Mk 2
+ * and FV4030s wear and the Op Granby Mk 3's plain stone; then the Brazil line's own coats (brazilSpecs.ts): the Osório
+ * P.2's Army two-tone bands, the Tamoyo 1's and the Tamoyo 3's 1980s three-tones and the X1A2's 6º RCB three-tone (the
+ * Osório P.1's 1986 three-tone and the X1's olive drab sit within a shade of a named preset, so they paint their spec's
+ * coat as Factory), the fictional EE-T3's three-tone and the EE-T4's digital woodland; then the Danish line's M41 DK-1
+ * late-1980s three-tone and the CV9035 DK's lighter three-tone, and the Bundeswehr's and JGSDF's M41 period coats
+ * (Gelboliv, the JGSDF's 1961-80s olive drab). They append after 265's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_challenger1_mk1',
+  'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara', 'paint_osorio_p1',
+  'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk', 'paint_m41_bw', 'paint_m41_jgsdf'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -177,6 +190,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_262,
   ...RELEASE_265_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_264,
+  ...AUTHORED_PAINT_IDS_AFTER_265,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -840,8 +854,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
   // Release 262 (owner 2026-10-28: the Mk 1 and Mk 2 "NEED TO LOOK A LOT DIFERENT FROM MK 3"): the Mk 3 is the Op Granby
-  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87); the Mk 1 and Mk 2 keep the BAOR coat.
-  challenger1_mk3: 'desert',
+  // fit, and the Granby tanks went in desert sand (the Bovington 64 KG 87). 266 (the owner's pick from the camo sheet,
+  // 2026-10-31, "mix of 1980s and stone"): the Mk 3 in the Gulf tanks' plain stone; the Mk 1, Mk 2 and the FV4030/5 and
+  // FV4030/6 built on them in the 1980s BAOR green with large black patches (their own authored paints).
+  challenger1_mk3: 'paint_challenger1_x',
+  challenger1_mk1: 'paint_challenger1_mk1',
+  challenger1_mk2: 'paint_challenger1_mk1',
+  challenger_x: 'paint_challenger1_mk1',
+  challenger_x_sleek: 'paint_challenger1_mk1',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
@@ -867,6 +887,27 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   pt84_orzel: 'paint_pt84_orzel',
   // the Żbik in the urban block grey (the Sokół keeps Poland's factory coat, the PL-01's digital)
   pt84_zbik: 'urbanblock',
+  // release 266: the Danish line in its own coats (the 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone are near a
+  // named preset, so they paint their spec's coat as Factory)
+  leo1a5dk1: 'paint_leo1a5dk1',
+  leo2a5dk: 'paint_leo2a5dk',
+  // release 266: the Brazil line in its own coats
+  osorio_p2: 'paint_osorio_p2',
+  osorio_p1: 'paint_osorio_p1',
+  tamoyo1: 'paint_tamoyo1',
+  tamoyo3: 'paint_tamoyo3',
+  x1a2_carcara: 'paint_x1a2_carcara',
+  // the fictional EE-T3 (a NATO-style three-tone) and EE-T4 (a digital woodland)
+  ee_t3_osorio: 'paint_ee_t3_osorio',
+  ee_t4_osorio: 'paint_ee_t4_osorio',
+  // release 266: the Danish M41 DK-1 and CV9035 DK in their own coats (the US M41's plain coat is near a named preset, so
+  // it paints its spec's coat as Factory)
+  m41dk1: 'paint_m41dk1',
+  cv9035dk: 'paint_cv9035dk',
+  // the Bundeswehr and JGSDF M41s in their own period coats (265 r2, the blind critics: the national presets read as a
+  // modern cool green and the Type 10's two-tone): Gelboliv, and the JGSDF's olive drab of 1961 to the 1980s
+  m41_bw: 'paint_m41_bw',
+  m41_jgsdf: 'paint_m41_jgsdf',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

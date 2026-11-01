@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
+import { SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 
 // An owner-directed enlargement changes the entire frozen source frame,
 // including its ground translation. Moving just the mesh scale would drift
@@ -87,6 +87,22 @@ const longitudinal=source.map(([x,t,b])=>[x+.10,t,b]);
 assert.ok(score(source,longitudinal,3.2,fixed).score<92,'real longitudinal outline displacement must fail');
 assert.ok(Math.abs(score(source,vertical,3.2).score-100)<1e-10,'legacy translation behavior is preserved');
 assert.equal(SOURCE_WORLD_FRAMES.m1a1_abrams_hc,undefined,'old fleet cannot silently change registration');
+// A declared build offset (the T-80U's ring race, 31235a8c85; SOURCE_WORLD_BUILD_OFFSETS): the build is held to the datums plus the raise,
+// the source's own anchors to the datums; the unraised build and any other move fail (negative controls).
+{
+  const cert=SOURCE_WORLD_FRAMES.t80u,offset=SOURCE_WORLD_BUILD_OFFSETS.t80u,raise=offset[1];
+  assert.ok(raise>0.06&&raise<0.07,'the T-80U build offset is its ring raise');
+  const identity=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  const frames=(lift)=>({reference:{rootMatrix:identity,hull:[0,0,0],turret:[0,0,0],gun:[0,0,0]},
+    procedural:{rootMatrix:identity,hull:[0,0,0],turret:cert.turret.map((v,i)=>i===1?v+lift:v),gun:cert.gun.map((v,i)=>i===1?v+lift:v)}});
+  assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(raise),offset).passed,true,'the raised build passes');
+  assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(raise)).passed,false,'without its declared offset it fails');
+  assert.deepEqual(validateSourceWorldFrame(cert,cert.sha256,frames(0),offset).failures,
+    ['procedural: turret differs from the independent source datum','procedural: gun differs from the independent source datum'],
+    'the unraised build fails');
+  assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(raise+.02),offset).passed,false,'a further 20 mm fails');
+  assert.deepEqual(Object.keys(SOURCE_WORLD_BUILD_OFFSETS),['t80u'],'one declared build offset');
+}
 console.log('source-world-registration: hashes/datums fail closed; exact scorer self100, displaced geometry fails92, legacy preserved');
 
 // Mk3D's source file is already normalized. Preserve the measured source

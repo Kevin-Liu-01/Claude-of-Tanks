@@ -1,7 +1,9 @@
 /**
  * One HTTP server hosting the v2 room service and the match service on one
  * port: `/rooms/<CODE>` (room WebSocket), `/match` (match WebSocket),
- * `/healthz`, `/metrics`, `/control/*` and `/rooms/healthz`. The LAN helper
+ * `/healthz`, `/metrics`, `/control/*` and `/rooms/healthz`, and beside them the
+ * phone controller's pairing (`/pad/*`, `localPadService.ts`, its own channel:
+ * docs/PHONE-CONTROLLER.md). The LAN helper
  * (`server/rooms/main.ts`), `tools/mp-rooms-e2e.mjs` and the receipts compose
  * it the same way.
  */
@@ -10,6 +12,7 @@ import type { AddressInfo } from 'node:net';
 import { createMatchService, type MatchService } from '../match/service.ts';
 import { createLogger, silentLogger, type Logger } from '../match/log.ts';
 import { createLocalRoomService, type LocalRoomService } from './localRoomService.ts';
+import { createLocalPadService, type LocalPadService } from './localPadService.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
 import type { RoomActorPorts } from '../../src/mp/room/roomActor.ts';
 
@@ -41,6 +44,7 @@ interface RoomsServer {
   readonly url: string;
   readonly matchService: MatchService;
   readonly roomService: LocalRoomService;
+  readonly padService: LocalPadService;
   close(): Promise<void>;
 }
 
@@ -68,6 +72,11 @@ export async function createRoomsServer({
     matchService, seatSecret, allowedOrigins, matchUrl: '/match', world, matchTransport, countdownS, battleLimitS, guards, log, wallClock, random,
     ...(relayCredentials ? { relayCredentials } : {}), ...(maxRooms !== undefined ? { maxRooms } : {}),
   });
+  // the phone controller's pairing: the same relay issuer grants its ICE servers (STUN alone while unset)
+  const padService = createLocalPadService({
+    allowedOrigins, ...(wallClock ? { wallClock } : {}),
+    ...(relayCredentials ? { iceServers: () => relayCredentials({ roomCode: 'pad', playerId: 'pad' }) } : {}),
+  });
   server.on('request', (request, response) => {
     if (matchService.handleRequest(request, response) || roomService.handleRequest(request, response)) return;
     const body = JSON.stringify({ error: 'not_found' });
@@ -75,7 +84,8 @@ export async function createRoomsServer({
     response.end(body);
   });
   server.on('upgrade', (request, socket, head) => {
-    if (matchService.handleUpgrade(request, socket, head) || roomService.handleUpgrade(request, socket, head)) return;
+    if (padService.handleUpgrade(request, socket, head) || matchService.handleUpgrade(request, socket, head) ||
+      roomService.handleUpgrade(request, socket, head)) return;
     socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
     socket.destroy();
   });
@@ -92,7 +102,9 @@ export async function createRoomsServer({
     url,
     matchService,
     roomService,
+    padService,
     async close() {
+      await padService.close();
       await roomService.close();
       await matchService.close();
       // Both services have terminated their sockets; whatever HTTP connection is still open is idle.

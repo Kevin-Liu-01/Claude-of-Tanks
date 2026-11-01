@@ -9,7 +9,25 @@
 const OPLOT_OWNER_WORDS = 'make thesee tannks a lot more visually distinct and specialized with extra side armor, '
   + 'fuel barrles inn back, lights, 2 gun towers instead of 1 (i know we have that caapabilty), etc';
 
+// The owner's words, verbatim (2026-10-31, release 266's STB-1 lane).
+const STB1_OWNER_WORDS = 'raise the drums on the stb1 so theyre visible in the hero images a lil more!!! just rule of cool type stuf';
+// The owner's words, verbatim (2026-10-30, release 266's M60 lane).
+const M60A3_OWNER_WORDS = 'the m60a3 should have more decorations like wheels and bags and fuel tanks annd fuel barrels '
+  + 'and tech annd more';
+
 export const OWNER_KIT_TARGETS = Object.freeze({
+  m60a3: Object.freeze({
+    ownerDecision: `Owner: "${M60A3_OWNER_WORDS}". Main (266): exempt the kit from the source comparison; do not trim it.`,
+    decisionDate: '2026-10-31',
+    parts: Object.freeze([
+      Object.freeze({ group: 'm60a3KitRackLoad', parent: 'rig_turret', ownerWords: 'wheels and bags',
+        part: 'the bustle rack\'s field load: two spare road wheels tipped up on its rear corners, three packs under a bedroll',
+        metadata: Object.freeze({ ownerKit: true, fitting: 'ownerKit' }), reference: 'owner-kit:m60a3:m60a3KitRackLoad' }),
+    ]),
+    // the rest of the owner's ask (the drum, fuel cans, rucksacks, ammunition, optics and ration cases, whips) is the
+    // decoration load (decorations.ts TANK_MANIFESTS.m60a3), which the measured builds never draw
+    retained: 'the decoration load (decorations.ts TANK_MANIFESTS.m60a3): absent from the measured builds',
+  }),
   bm_oplot_m: Object.freeze({
     ownerDecision: `Owner: "${OPLOT_OWNER_WORDS}". Main (262): exempt the kit from the source comparison; do not trim it.`,
     decisionDate: '2026-10-27',
@@ -27,5 +45,17 @@ export const OWNER_KIT_TARGETS = Object.freeze({
     // the owner's "extra side armor" on this tank is a lower Duplet course: ERA in the skirt sector's destructible
     // cluster (hit faces, lids that fly off), which cannot be one rigid group; it stays in the comparison
     retained: 'the lower Duplet skirt course ("extra side armor"): skirt-sector ERA, compared as built',
+  }),
+  // 266: the owner's stern drums on the STB-1 (265: "make the stb 1 have two big fuel barrels and back"); the owner's
+  // model they are compared against has none
+  stb1: Object.freeze({
+    ownerDecision: `Owner: "${STB1_OWNER_WORDS}". Main (266): exempt the kit from the source comparison; do not trim it.`,
+    decisionDate: '2026-10-31',
+    parts: Object.freeze([
+      Object.freeze({ group: 'stb1KitSternDrums', parent: 'rig_hull', ownerWords: 'raise the drums on the stb1',
+        part: 'the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps',
+        metadata: Object.freeze({ ownerKit: true, fitting: 'ownerKit' }), reference: 'owner-kit:stb1:stb1KitSternDrums' }),
+    ]),
+    retained: 'everything else on the STB-1, the roof M2 included, compared as built',
   }),
 });

@@ -241,6 +241,17 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   Object.assign(spec(registry, 'm60a1'), {
     hp: 2100, enginePowerHp: 900, topSpeedKmh: 52, reverseSpeedKmh: 18,
   });
+  // release 267: the Magachs on the A1's castings (m60VariantSpecs.ts) share its package; the 7C carries its passive
+  // armour and skirts on the AVDS-1790-5A's 908 hp
+  for (const id of ['magach6b', 'magach7c']) {
+    Object.assign(spec(registry, id), { hp: 2100, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 18 });
+  }
+  {
+    const tank = spec(registry, 'magach7c');
+    Object.assign(tank, { hp: 2200, enginePowerHp: 908, topSpeedKmh: 48 });
+    Object.assign(tank.gun, { baseAccuracy: 0.29, aimTimeS: 1.75 });
+    armor(registry, 'magach7c', 1.25);
+  }
   Object.assign(spec(registry, 'm60a3'), { enginePowerHp: 950, reverseSpeedKmh: 18 });
   {
     const tank = spec(registry, 'm60a2');

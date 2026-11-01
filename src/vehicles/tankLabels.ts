@@ -78,6 +78,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
   borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
   cv9040c: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
+  ua_cv9040c: {displayName:'CV9040C (Ukraine)',shortName:'CV9040C UA',searchAliases:['Ukrainian CV90','CV90 Ukraine','CV9040 UA']},
   type89: {displayName:'Type 89',shortName:'Type 89',searchAliases:['Japanese Type 89 IFV X']},
   cv90_mk4: {
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
@@ -172,8 +173,28 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['TK-X-0002', 'Type 90 second prototype', 'Type 90A', 'Type 90 Kai'],
   },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
+  // 266: the Brazilian Army line
+  osorio_p1: { displayName: 'EE-T1 Osório (105)', shortName: 'Osório 105', searchAliases: ['EE-T1 Osorio', 'Osorio P1', 'Osório P.1', 'Engesa Osorio 105', 'Brazilian tank'] },
+  x1_pioneiro: { displayName: 'CCL X1 Pioneiro', shortName: 'X1 Pioneiro', searchAliases: ['X1', 'Pioneiro', 'Bernardini X1', 'X1A', 'Brazilian Stuart', 'MB-1'] },
+  x1a2_carcara: { displayName: 'CCL X1A2 Carcará', shortName: 'X1A2 Carcará', searchAliases: ['X1A2', 'Carcara', 'Carcará', 'Bernardini X1A2', 'MB-2'] },
+  tamoyo1: { displayName: 'MB-3 Tamoyo 1', shortName: 'Tamoyo 1', searchAliases: ['Tamoyo', 'Tamoyo I', 'Bernardini Tamoyo', 'X-30', 'XMB-3'] },
+  tamoyo3: { displayName: 'MB-3 Tamoyo 3', shortName: 'Tamoyo 3', searchAliases: ['Tamoyo III', 'Tamoyo 105', 'Bernardini Tamoyo 3', 'XMB-3'] },
+  osorio_p2: { displayName: 'EE-T1 Osório (120)', shortName: 'Osório 120', searchAliases: ['EE-T1 Osorio', 'EE-T2 Osorio', 'Osorio P2', 'Osório P.2', 'Al Fahd', 'Engesa Osorio 120'] },
+  // the fictional Osório developments (owner 2026-10-30, Main's ruling the same day: the "concept" facet)
+  ee_t3_osorio: { displayName: 'EE-T3 Osório', shortName: 'Osório T3', searchAliases: ['EE-T3 Osorio', 'Osorio T3', 'Osório modernised', 'Engesa Osorio tier IX'] },
+  ee_t4_osorio: { displayName: 'EE-T4 Osório', shortName: 'Osório T4', searchAliases: ['EE-T4 Osorio', 'Osorio T4', 'Osório APS', 'Engesa Osorio 130'] },
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
+  // 265: the Danish Army line
+  leo1a3dk: { displayName: 'Leopard 1A3 DK', searchAliases: ['Leopard 1A3', 'Danish Leopard 1', 'Leopard 1 DK', 'Kampvogn Leopard 1'] },
+  leo1a5dk: { displayName: 'Leopard 1A5 DK', searchAliases: ['Leopard 1A5DK', 'Danish Leopard 1A5', 'Leopard 1 A5 DK'] },
+  leo2a5dk: { displayName: 'Leopard 2A5 DK', searchAliases: ['Leopard 2A5DK', 'Danish Leopard 2A5', 'Leopard 2 A5 DK'] },
+  m41a3: { displayName: 'M41A3 Walker Bulldog', shortName: 'M41A3', searchAliases: ['M41', 'Walker Bulldog', 'M41A3', 'Little Bulldog'] },
+  m41_bw: { displayName: 'M41 (Bundeswehr)', shortName: 'M41 BW', searchAliases: ['M41 Germany', 'Bundeswehr M41', 'M41A1 BW', 'Walker Bulldog Germany'] },
+  m41_jgsdf: { displayName: 'M41 (JGSDF)', shortName: 'M41 JGSDF', searchAliases: ['M41 Japan', 'JGSDF M41', 'Walker Bulldog Japan'] },
+  m41dk1: { displayName: 'M41 DK-1', searchAliases: ['M41DK1', 'M41 DK1', 'Walker Bulldog DK', 'Danish M41', 'M41 Walker Bulldog'] },
+  t49: { displayName: 'T49', searchAliases: ['T49', 'T49 light tank', 'M41 Sheridan turret', 'Walker Bulldog 152'] },
+  leo1a5dk1: { displayName: 'Leopard 1A5 DK-1', searchAliases: ['Leopard 1A5DK1', 'Leopard 1A5 DK1', 'Bøllebank', 'Bollebank', 'UN Leopard', 'Danish Leopard Bosnia'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo1a2a1: { displayName: 'Leopard 1A2A1', searchAliases: ['Leopard 1', 'Leo 1', 'Leopard 1A2', 'Leopard 1 A2 A1', 'Leopard cast turret'] },
   // 262: the 2A3 OTCO, a fourth-batch 2A3 with the OTCO field modification (the owner, 2026-10-28; Main had shown it as
@@ -339,6 +360,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // release 266: the M48s drawn on the M48A5's castings
   m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
   magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },
+  // release 267: the IDF's M60s
+  magach6b: { displayName: 'Magach 6B', searchAliases: ['Magach 6', 'Magach 6B Blazer', 'IDF M60A1', 'Israeli M60'] },
+  magach7c: { displayName: 'Magach 7C', searchAliases: ['Magach 7', 'Magach 7C', 'IDF M60 passive armour'] },
   m48a2ga2: {
     displayName: 'Kpz M48A2GA2', shortName: 'M48A2GA2',
     searchAliases: ['M48A2GA2', 'Kampfpanzer M48A2GA2', 'M48A2G A2', 'Bundeswehr M48'],
@@ -350,6 +374,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
   centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
   centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },
+  cv9035dk: { displayName: 'CV9035 DK', searchAliases: ['CV9035DK', 'CV90 Denmark', 'Danish CV90', 'CV90 MkIII DK'] },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
   c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
   c1_ariete_proto_serie1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },

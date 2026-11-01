@@ -94,7 +94,6 @@ const rh202:AuxiliaryWeaponProfile={
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
-  t72b3m_2022:b32Heavy,
   t84bm_oplot_m:b32Heavy,bm_oplot_m:b32Heavy,bm_oplot_t:b32Heavy,
   t72b3m_hetman_ii:ubr6,
   t72b3_zubr_ii:wkmb,
@@ -119,7 +118,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
   t62_1975:b32Nsvt,t62mv1:b32Nsvt,t64bv1:b32Nsvt,t64bv_donbas:b32Nsvt,t64bm1m:b32Nsvt,t64bv:b32Nsvt,t64b1v_2022:b32Nsvt,pt64_tur:b32Nsvt,t72bu_1989:b32Nsvt,t72bu:b32Nsvt,t72b3:b32Nsvt,
-  t72b3m_2016:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
+  t72b3m_2016:b32Nsvt,t72b3m_2022:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
   t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80uk:b32Nsvt,t80u:b32Nsvt,ua_t80bv:b32Nsvt,t80u_kursk:b32Nsvt,
   t84:b32Nsvt,t90:b32Nsvt,t90a_2004:b32Nsvt,t90a_burlak_proto:b32Nsvt,t90a_burlak:b32Nsvt,t90a_2006:b32Nsvt,
   t90am:b32Nsvt,t90sm_2013:b32Nsvt,
@@ -128,8 +127,15 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   ztz99a2_qinglong:type54,vt4a1_baihu:type54,t72b3_zhuque:type54,t72b3m_xuanwu:type54,
 };
 
+// 2026-10-31 (lane t90-family-266; the owner: "make some of our reworked t90s have new or unique machine gun
+// arrangmenet,s like 2 machine guns"): the second, 7.62 mm roof guns (the AM II's gunner's PKT, the AM's twin PKT mount)
+// fire the PK family's 7.62×54R cartridge, not the generic rifle profile's NATO round (game numbers unchanged).
+const vehicleRifleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {t90am:b32Rifle,t90m_proryv:b32Rifle};
+
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {
   const specific=vehicleAmmunition[vehicleId];
   if(specific?.shell.caliberMm===caliberMm)return specific;
+  const ownRifle=vehicleRifleAmmunition[vehicleId];
+  if(ownRifle?.shell.caliberMm===caliberMm)return ownRifle;
   return caliberMm >= 20 ? cannon : caliberMm < 10 ? rifle : heavy;
 }

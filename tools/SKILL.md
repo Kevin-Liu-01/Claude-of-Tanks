@@ -41,6 +41,11 @@ server; the manual `ui` suite) is the Garage roster's settle pass. At each windo
 also steps the carousel's width across its whole range. It fails when the card strip or the nation rail keeps changing
 once it has had four frames to settle. `--negative-control` makes the carousel arrows shrink again, the 265 loop (the
 strip's width followed its own end pad), and the run must then find the loop.
+`hud-self-measure.browser.selftest.mjs` (Puppeteer, the capture lock; `--url=` a served game, else its own vite server;
+the manual `ui` suite) checks on the HUD layout fixture that the battle HUD measures nothing it sets. With four statuses up,
+the touch status strip shows every chip its room fits and keeps clear of the joystick. The hull bars keep their widths
+across relabels and a short-band toggle. A page at rest rewrites no attribute. `--negative-control` puts back the
+stretched vehicle line and a 150 ms class sweep, and the run must then fail on both.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments
@@ -307,7 +312,7 @@ Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
 turret turned modestly toward the lens with the gun forward and level; turretless mounts
 keep the gun on the hull axis).
 `node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
-sha from `tank-assets.json`, flag SVG, policy keys); render only those with
+sha from the tank's `public/icons/tank-assets/tanks/<id>.json` row, flag SVG, policy keys); render only those with
 `node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
 change needs an explicit `--all --part=i/n`), then
 `node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and

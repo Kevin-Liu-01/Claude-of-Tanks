@@ -7,7 +7,8 @@
 //   node tools/gen-combat-anatomy.mjs --crew-only [--ids=a,b]  # re-seat the crew in the committed calibrations
 //
 // Every row carries its crew seats (235, tools/crew-seat-fit.mjs): a P50 body per crew station, seated in its role's
-// posture inside the shell this row measures. --crew-only refits them against the committed rows without rebuilding a
+// posture inside the shell this row measures, and (266) its module seats: the sketched modules placed around the crew
+// in one priority order, inside their armour. --crew-only refits both against the committed rows without rebuilding a
 // tank (the full regen writes the same seats for an unchanged tank).
 //
 // Both modes also hold every measured tank's belly pan, track bottom and combat hull box to
@@ -46,10 +47,10 @@ const { measureTurretRing, measureTurretSweep, turretRingRadius, TURRET_RING_SID
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
-const { authoredCombatAnatomy, finalizeCombatAnatomy } = await import('../src/vehicles/combatAnatomy.ts');
+const { authoredCombatAnatomy, finalizeCombatAnatomy, moduleHitShapes } = await import('../src/vehicles/combatAnatomy.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
-const { fitCrewSeats } = await import('./crew-seat-fit.mjs');
+const { fitCrewSeats, placeModules } = await import('./crew-seat-fit.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -367,15 +368,23 @@ const HULL_LATERAL_CUTS = Object.freeze({
 // corner, and one convex cell a slice closes over a pocket. The notch's own lateral band, 1 cm inside its walls (0.50 and
 // 0.94 m right of the bore: leopard2a3B4Armor.ts sightInnerX, sightOuterX), is its own cell, so the shell meets the
 // notch's sill and the sight housing's front, and the turret_front_sight_notch plate takes that face.
+// 266 (FAIRNESS-265 §8, Main: the KF51 EVO's turret front read 2,455 mm effective at the balance range, no round
+// passing, a modelling error routed since 263): its turret carries two forward wedge cheeks either side of a gun slot whose
+// front is a vertical face at z 1.10 (measured on the build: the cheeks' inner walls stand at |x| 0.430, the slot face
+// runs y 0.05-0.75). A slice's one convex cell bridged the cheeks' 74-degree noses across the slot, so a level round in
+// front of the gun met a 74-degree face 1.2 m ahead of the armour it should meet. Its turret slices are cut 1 mm inside
+// the walls, so each wall stays with its cheek and the slot's band follows the vertical face; every other turret keeps
+// one cell a slice.
 const TURRET_LATERAL_CUTS = Object.freeze({
   leo2a2: [-.93, -.51],
   leo2a3_b4: [-.93, -.51],
   leo2a3: [-.93, -.51],
+  kf51_evo: [-0.429, 0.429],
 });
-// Their turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme points
-// drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill and
-// the notch over it would be one face and take one plate.
-const TURRET_PLATE_FIT_IDS = new Set(Object.keys(TURRET_LATERAL_CUTS));
+// The Leopards' turret cells are plate-fitted (PLATE_FIT_IDS's cell, the turret only): the support hull of 26 extreme
+// points drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill
+// and the notch over it would be one face and take one plate. The KF51 EVO's cut cells are not plate-fitted.
+const TURRET_PLATE_FIT_IDS = new Set(['leo2a2', 'leo2a3_b4', 'leo2a3']);
 
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
   seatedUnderside = false) {
@@ -744,12 +753,32 @@ function receiptFor(id) {
   }
 }
 
-/** The crew seats of one measured row: the authored spec finalized against that row, then seated in its shell. */
-function crewSeatsFor(id, calibration) {
+/** A module sketch with this share of its box outside its armour, or keeping less than DATA_FIX_KEPT_SHARE of it once
+ *  placed, is reported as a data fix. */
+const DATA_FIX_OUTSIDE_SHARE = 0.3;
+const DATA_FIX_KEPT_SHARE = 0.1;
+
+/**
+ * The internal placement of one measured row (266, tools/crew-seat-fit.mjs): the authored spec finalized against that
+ * row, its crew seated in its shell inside the turret ring's limits, then its sketched modules placed around them.
+ */
+function seatsFor(id, calibration) {
   const probe = authoredCombatAnatomy(id);
   if (!probe) throw new Error(`[combat-anatomy] ${id}: no authored combat anatomy to seat the crew in`);
   finalizeCombatAnatomy(probe, calibration);
-  return fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null);
+  const ring = calibration.turretRing ?? null;
+  const crewSeats = fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null, ring);
+  const drawn = new Set((calibration.moduleShapes || []).map((receipt) => `${receipt.module}|${!!receipt.turretLocal}`));
+  const { seats: moduleSeats, report } = placeModules(probe, crewSeats, { drawn, ring, hitShapes: moduleHitShapes });
+  // a sketch that lies largely outside its armour, or has almost no room, is wrong data: the pass keeps what fits, and
+  // says so
+  for (const entry of report) {
+    if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.kept < DATA_FIX_KEPT_SHARE || entry.unplaced) {
+      console.log(`[combat-anatomy] data fix: ${id} ${entry.module} (${entry.frame}) sketch ${entry.sketchedL} L, `
+        + `${Math.round(entry.outside * 100)}% outside its armour, ${Math.round(entry.kept * 100)}% kept${entry.unplaced ? ', UNPLACED' : ''}`);
+    }
+  }
+  return { crewSeats, moduleSeats };
 }
 
 const rows = {};
@@ -758,13 +787,13 @@ for (const id of ALL_TANK_IDS) {
   if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
   if (crewOnly) {
     if (!COMBAT_ANATOMY_CALIBRATIONS[id]) throw new Error(`[combat-anatomy] ${id}: --crew-only needs a committed calibration`);
-    const { crewSeats: _previous, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
-    rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
+    const { crewSeats: _previous, moduleSeats: _previousModules, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
+    rows[id] = { ...measured, ...seatsFor(id, measured) };
     console.log(`[combat-anatomy] seated ${id}`);
     continue;
   }
   const measured = receiptFor(id);
-  rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
+  rows[id] = { ...measured, ...seatsFor(id, measured) };
   console.log(`[combat-anatomy] measured ${id}`);
 }
 

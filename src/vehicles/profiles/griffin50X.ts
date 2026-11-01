@@ -1,4 +1,5 @@
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -453,7 +454,7 @@ function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
   griffinRoofM2(P,add);
   for(const [x,top] of [[-.696,4.702],[.696,4.399]]) {
     add('turretDetail',cylY(.084,.111,.397,P.q?18:10),x,2.938,-1.698);
-    add('turretDetail',cylY(.010,.017,top-3.1365,8),x,(top+3.1365)/2,-1.698);
+    add('turretDetail',antennaPart(cylY(.010,.017,top-3.1365,8)),x,(top+3.1365)/2,-1.698);
   }
 }
 

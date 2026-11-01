@@ -24,9 +24,16 @@ import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 import { zonePlates, type ZonePlate } from '../sim/armorZones.ts';
 import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armorPaintPanels.ts';
-import { ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
+import { ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
+/**
+ * (267) A refresh samples again only when the round's view of the vehicle moved: the muzzle, in the vehicle's hull, turret
+ * and gun frames, further than this (m) or this share of the range; its ERA spent; the round changed. A sniper and a
+ * target at rest pay nothing.
+ */
+const REFRESH_MOVE_M = 0.02;
+const REFRESH_MOVE_SHARE = 0.001;
 const SAMPLE_BATCH_SIZE = 48;
 const MAX_QUERY_M = 820;
 /**
@@ -114,6 +121,10 @@ interface PaintTemplate {
   readonly turretZones: number;
   /** Mantlet footprints after the zones (a forward surface over one is its plate's). */
   readonly footprints: number;
+  /** (267) The zone sets after the footprints (the bake adds them: zoneSet), by their zones. */
+  readonly sets: Map<string, number>;
+  readonly setBase: number;
+  zoneSet(zones: readonly number[]): number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
   /** Each frame's cells' bounds, centre and half extents: their rounded box stands in for the cells' surface. */
@@ -148,6 +159,12 @@ interface ArmorOverlayEntry {
   blend: PanelBlend;
   nextSampleMs: number;
   lastShellSpec: DamageShellSpec | null;
+  /** (267) The template's zone sets this entry's table holds. */
+  setsSynced: number;
+  /** (267) The view the last refresh sampled: the muzzle in the hull's, turret's and gun's frames, the ERA spent; and
+   * whether there is one. */
+  view: Float64Array;
+  viewKnown: boolean;
 }
 
 interface ArmorAimOverlayUpdateOptions {
@@ -185,15 +202,39 @@ const distance = (a: readonly number[], b: readonly number[]): number => {
   return Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
 };
 
+/** A convex outline's area (m²): its fan's cross products. */
+function pieceArea(points: readonly (readonly number[])[]): number {
+  let x = 0, y = 0, z = 0;
+  for (let index = 1; index + 1 < points.length; index++) {
+    const u = sub(points[index], points[0]), v = sub(points[index + 1], points[0]);
+    x += u[1] * v[2] - u[2] * v[1]; y += u[2] * v[0] - u[0] * v[2]; z += u[0] * v[1] - u[1] * v[0];
+  }
+  return Math.sqrt(x * x + y * y + z * z) / 2;
+}
+
 /** A cell face as a sample candidate: its centroid, its area and its plate. */
 interface FaceSite { centroid: number[]; area: number; plate: unknown }
 
 /** The outward faces of a frame's cells (the slice caps two cells share are left out) as sample candidates. */
 function faceSites(cells: readonly ArmorCollisionCell[] | undefined): FaceSite[] {
   const sites: FaceSite[] = [];
+  const splits = new Set<unknown>();
   for (const cell of cells || []) {
     for (const face of cell.faces) {
       if (face.internal || face.indices.length < 3) continue;
+      // (265) a plane only partly over the gun: a site per piece, each the plate a round meets there
+      if (face.gunSplit) {
+        if (splits.has(face.gunSplit)) continue;
+        splits.add(face.gunSplit);
+        for (const piece of face.gunSplit.pieces) {
+          const area = pieceArea(piece.points);
+          if (!(area > 1e-6)) continue;
+          const centroid = [0, 0, 0];
+          for (const point of piece.points) for (let axis = 0; axis < 3; axis++) centroid[axis] += point[axis] / piece.points.length;
+          sites.push({ centroid, area, plate: piece.plate });
+        }
+        continue;
+      }
       const [a, b, c] = face.indices.map((index) => cell.vertices[index]);
       const u = sub(b, a), v = sub(c, a);
       const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
@@ -264,7 +305,8 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   if (!hull.length && !turret.length) return null;
   const zones = [...hull, ...turret];
   const footprints = zones.filter((zone) => zone.footprint).length;
-  const table = new Float32Array((zones.length * ARMOR_PAINT_ZONE_TEXELS + footprints * 2) * 4);
+  const setBase = zones.length * ARMOR_PAINT_ZONE_TEXELS + footprints * 2;
+  const table = new Float32Array((setBase + SET_SLOTS) * 4);
   let footAt = zones.length * ARMOR_PAINT_ZONE_TEXELS * 4;
   zones.forEach((zone, index) => {
     const base = index * ARMOR_PAINT_ZONE_TEXELS * 4;
@@ -314,8 +356,20 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
-  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre,
-    turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
+  const sets = new Map<string, number>();
+  const zoneSet = (members: readonly number[]): number => {
+    const sorted = [...members].sort((a, b) => a - b), key = sorted.join(',');
+    let index = sets.get(key);
+    if (index === undefined) {
+      if (sets.size >= SET_SLOTS || !sorted.length || sorted.length > 4) return -1;
+      index = sets.size;
+      sets.set(key, index);
+      table.set([0, 1, 2, 3].map((k) => sorted[k] ?? -1), (setBase + index) * 4);
+    }
+    return index;
+  };
+  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, turretMin,
+    turretMax, hullCentre, turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -371,6 +425,9 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       blend: { clear: 0, clearWeight: 0, hidden: 0, hiddenWeight: 0 },
       nextSampleMs: -Infinity,
       lastShellSpec: null,
+      setsSynced: template.sets.size,
+      view: new Float64Array(10),
+      viewKnown: false,
     };
     entries.set(target.id, entry);
     unbaked.add(entry);
@@ -436,6 +493,15 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     u.uApOn.value = visible ? 1 : 0;
   }
 
+  /** (267) The zone sets its spec's bake has named since this entry's table was cut. */
+  function syncSets(entry: ArmorOverlayEntry): void {
+    const { sets, setBase, table } = entry.template;
+    if (entry.setsSynced === sets.size) return;
+    entry.table.set(table.subarray(setBase * 4, (setBase + sets.size) * 4), setBase * 4);
+    entry.setsSynced = sets.size;
+    entry.texture.needsUpdate = true;
+  }
+
   /** The vehicle's frames this frame (its hull and turret move under the paint). */
   function syncFrames(entry: ArmorOverlayEntry): void {
     const { hull, turret, uniforms } = entry.paint;
@@ -450,6 +516,30 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       gun.updateWorldMatrix(true, false);
       frameInverse(gun, uniforms.uApGunInv.value);
     }
+  }
+
+  /** (267) Whether the round's view of the vehicle moved since the last refresh; records the view when it did. */
+  function viewMoved(entry: ArmorOverlayEntry, muzzle: THREE.Vector3 | null | undefined): boolean {
+    if (!muzzle) return true;
+    const u = entry.paint.uniforms, view = entry.view;
+    const range = _world.copy(muzzle).applyMatrix4(u.uApHullInv.value).length();
+    const reach = Math.max(REFRESH_MOVE_M, REFRESH_MOVE_SHARE * range);
+    let moved = !entry.viewKnown || view[9] !== (entry.target.combat?.eraSpent?.size ?? 0);
+    for (let frame = 0; frame < 3; frame++) {
+      const inverse = frame === 0 ? u.uApHullInv.value : frame === 1 ? u.uApTurInv.value : u.uApGunInv.value;
+      _world.copy(muzzle).applyMatrix4(inverse);
+      const at = frame * 3;
+      if (!moved && (_world.x - view[at]) ** 2 + (_world.y - view[at + 1]) ** 2 + (_world.z - view[at + 2]) ** 2 > reach * reach) moved = true;
+    }
+    if (!moved) return false;
+    for (let frame = 0; frame < 3; frame++) {
+      const inverse = frame === 0 ? u.uApHullInv.value : frame === 1 ? u.uApTurInv.value : u.uApGunInv.value;
+      _world.copy(muzzle).applyMatrix4(inverse);
+      view[frame * 3] = _world.x; view[frame * 3 + 1] = _world.y; view[frame * 3 + 2] = _world.z;
+    }
+    view[9] = entry.target.combat?.eraSpent?.size ?? 0;
+    entry.viewKnown = true;
+    return true;
   }
 
   function hide(): void {
@@ -532,8 +622,10 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (!entry.visible) {
       entry.sampling = false;
       entry.nextSampleMs = -Infinity;
+      entry.viewKnown = false;
     }
     setVisible(entry, true);
+    syncSets(entry);
     syncFrames(entry);
     visibleEntries.push(entry);
   }
@@ -558,6 +650,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
 
   function prepareScopedSamples(
     shellSpec: DamageShellSpec | null | undefined,
+    muzzle: THREE.Vector3 | null | undefined,
     sampleNowMs: number,
   ): void {
     for (const entry of visibleEntries) {
@@ -565,8 +658,10 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         entry.lastShellSpec = shellSpec ?? null;
         entry.nextSampleMs = -Infinity;
         entry.sampling = false;
+        entry.viewKnown = false;
       }
       if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
+      if (!viewMoved(entry, muzzle)) { entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS; continue; }
       entry.sampling = true;
       entry.sampleZone = 0;
       entry.samplePoint = 0;
@@ -615,7 +710,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (!visibleEntries.length) return;
 
     const sampleNowMs = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : 0;
-    prepareScopedSamples(shellSpec, sampleNowMs);
+    prepareScopedSamples(shellSpec, muzzle, sampleNowMs);
     sampleNextScopedEntry(shellSpec, muzzle, sampleNowMs);
   }
 

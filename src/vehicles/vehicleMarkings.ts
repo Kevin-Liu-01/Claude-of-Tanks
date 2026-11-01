@@ -82,6 +82,8 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
   za: Object.freeze({ countryLabel: 'South Africa', filterLabel: 'ZA', insignia: 'za-castle', designation: 'SA' }),
   au: Object.freeze({ countryLabel: 'Australia', filterLabel: 'AU', insignia: 'au-kangaroo', designation: 'AUS' }),
+  // release 266: the Brazilian Army (Exército Brasileiro) line
+  br: Object.freeze({ countryLabel: 'Brazil', filterLabel: 'BR', insignia: 'br-eb-arms', designation: 'EB' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -134,6 +136,19 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
+  // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
+  osorio_p1: anchor('turret', 'left', .22, .45, .30, 1),
+  // (low on the wall aft of the basket, its number further aft: the dischargers and the basket's rail covered them in the
+  // rear three-quarter view; blind critics, rounds 9 and 10)
+  osorio_p2: anchor('turret', 'left', .17, .30, .22, -1),
+  ee_t3_osorio: anchor('turret', 'left', .17, .30, .22, -1),
+  ee_t4_osorio: anchor('turret', 'left', .10, .30, .22, 1), // (the pair between the rear radar and the basket, the number ahead)
+  // 266: the Army plaque on the Tamoyos' turret flanks (Vesp's profiles: amidships, behind the cheek)
+  tamoyo1: anchor('turret', 'right', .50, .40, .22, 1), // the tank's left (+x), as Vesp's profiles
+  tamoyo3: anchor('turret', 'right', .50, .45, .22, 1),
+  // 266: the plaque on the BT-90's flank ahead of the bustle
+  x1_pioneiro: anchor('turret', 'right', .66, .45, .32, 1), // 'right' seats on +x, the tank's left (Gaydos' profiles)
+  x1a2_carcara: anchor('turret', 'right', .58, .45, .32, 1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   strv122: anchor('hull', 'right', .26, .82, .24, 1),
@@ -167,6 +182,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a6m: anchor('hull', 'left', .192, .493, .22, 1),
   leo2a5m: anchor('hull', 'right', .655, .54, .22, -1),
   leo2a5: anchor('hull', 'left', .758, .484, .22, -1),
+  // 265: the Danish flag on the hull side ahead of the bar-armour cages / under the Barracuda drapes' cut
+  leo2a5dk: anchor('hull', 'left', .62, .484, .20, -1),
   merkava4: anchor('hull', 'left', .55132, .48234, .24, 1),
   // Source-built variants use exposed permanent armor: Trophy’s turret cheek
   // clears its outer skirts; Barak and Namer retain clear hull-side fields.
@@ -191,6 +208,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   lrmv_lynx: anchor('hull', 'left', .42, .64, .22, 1),
   borsuk: anchor('hull', 'left', .45, .60, .22, 1),
   cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
+  ua_cv9040c: anchor('hull', 'left', .52, .58, .20, 1),
   type89: anchor('hull', 'left', .45, .38, .20, 1),
   type96_72_long: anchor('turret','left',.33,.42,.23,1),
   type96_80_feng: anchor('turret','left',.36,.42,.23,1),
@@ -235,6 +253,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv121: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
   cv90: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  cv9035dk: anchor('hull', 'left', .52, .58, .20, 1),
   cv90_mk4_concept: anchor('hull', 'left', 0.36, 0.59, 0.23, 1),
   // Polish family deliberately uses three different, source-appropriate
   // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
@@ -293,6 +312,15 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
+  leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
+  t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
+  m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
+  m41_bw: anchor('turret', 'left', 0.62, 0.40, 0.22, 1),
+  m41_jgsdf: anchor('turret', 'left', 0.62, 0.40, 0.20, 1),
+  leo1a5dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  leo1a5dk1: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
   leo2a2: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a4_v: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
@@ -372,6 +400,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   magach3: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
   m48a2ga2: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m48_super: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
+  magach6b: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
+  magach7c: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
@@ -694,6 +724,49 @@ function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
 }
 
 /** Release 262 (the Christian II): a small Dannebrog, the white Nordic cross on red, its upright off the hoist. */
+function drawBundeswehrFlaredCross({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const L = radius * 0.86, a = L * 0.17, b = L * 0.44;
+  const pts: [number, number][] = [[-a, -a], [-b, -L], [b, -L], [a, -a], [L, -b], [L, b], [a, a], [b, L], [-b, L], [-a, a],
+    [-L, b], [-L, -b]];
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(cx + x, cy + y) : ctx.moveTo(cx + x, cy + y)));
+  ctx.closePath();
+  ctx.strokeStyle = '#e4e0d4';
+  ctx.lineWidth = size * 0.09;
+  ctx.lineJoin = 'miter';
+  ctx.stroke();
+  ctx.fillStyle = '#1d1f1d';
+  ctx.fill();
+}
+
+function drawJgsdfSakura({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.84;
+  ctx.fillStyle = '#ebe7db';
+  // (r5, critics: round petals read as a generic flower): each petal drawn with the cherry blossom's notch in its tip
+  for (let k = 0; k < 5; k++) {
+    const t = -Math.PI / 2 + k * (Math.PI * 2) / 5, ux = detMath.cos(t), uy = detMath.sin(t), vx = -uy, vy = ux;
+    const at = (u: number, v: number): [number, number] => [cx + (ux * u + vx * v) * r, cy + (uy * u + vy * v) * r];
+    ctx.beginPath();
+    ctx.moveTo(...at(0.10, 0));
+    ctx.quadraticCurveTo(...at(0.30, 0.44), ...at(0.74, 0.33));
+    ctx.quadraticCurveTo(...at(1.03, 0.25), ...at(0.98, 0.10));
+    ctx.lineTo(...at(0.80, 0));
+    ctx.lineTo(...at(0.98, -0.10));
+    ctx.quadraticCurveTo(...at(1.03, -0.25), ...at(0.74, -0.33));
+    ctx.quadraticCurveTo(...at(0.30, -0.44), ...at(0.10, 0));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  // (r4, critics: a red star read Soviet or Chinese; the blossom keeps a plain dark heart)
+  ctx.fillStyle = '#3a3f2c';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
   ctx.fillStyle = '#b8343a';
@@ -701,6 +774,45 @@ function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): voi
   ctx.fillStyle = '#ece8dc';
   ctx.fillRect(x0 + w * 0.36 - bar / 2, y0, bar, h);
   ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
+// the Dannebrog seen from the flag's other face (release 265, r7 critics: the far face showed the cross toward the fly):
+// the cross stays at the hoist, so from that side it stands right of centre
+function drawDenmarkDannebrogReverse({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
+  ctx.fillStyle = '#b8343a';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#ece8dc';
+  ctx.fillRect(x0 + w * 0.64 - bar / 2, y0, bar, h);
+  ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
+// the Leopard 1A5 DK's blanked rangefinder port (the Aalborg turret): a white perforated cover round a dark centre hole
+function drawLeo1RangefinderBlank({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const r = radius * 0.92;
+  ctx.fillStyle = '#e4e2da';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a2c26';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  // (r8 critics: a pin-dot centre in a thin ring read as a target roundel: a larger hole, a thick dark collar)
+  ctx.lineWidth = r * 0.14;
+  ctx.strokeStyle = '#3c4232';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.93, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let ring = 0; ring < 1; ring++) {
+    const rr = r * 0.63, n = 12;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx + detMath.cos(a) * rr, cy + detMath.sin(a) * rr, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
 function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
@@ -714,6 +826,115 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.lineTo(cx + radius * 0.55, cy - radius * 0.62);
   ctx.moveTo(cx, cy - radius * 0.72);
   ctx.lineTo(cx, cy + radius * 0.78);
+  ctx.stroke();
+}
+
+/** Release 266 (the Brazilian Army line; Bastos, "100 Anos de Blindados no EB", 2022, prints both plates): the Army's
+ *  vehicle emblem from 1998, its coat of arms at game scale: a shield halved red and blue under a steel helmet, the gold
+ *  griffin rising across it with the silver eight-pointed star. */
+function drawBrazilArmyArms({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.18, top = cy - radius * 0.46, bottom = cy + radius * 0.92;
+  const shield = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, top); ctx.lineTo(cx + w / 2, top); ctx.lineTo(cx + w / 2, cy + radius * 0.30);
+    ctx.lineTo(cx + w * 0.36, cy + radius * 0.68); ctx.lineTo(cx, bottom); ctx.lineTo(cx - w * 0.36, cy + radius * 0.68);
+    ctx.lineTo(cx - w / 2, cy + radius * 0.30);
+    ctx.closePath();
+  };
+  ctx.save();
+  shield(); ctx.clip();
+  ctx.fillStyle = '#b8343a'; ctx.fillRect(cx - w / 2, top, w / 2, bottom - top);
+  ctx.fillStyle = '#2d4f8f'; ctx.fillRect(cx, top, w / 2, bottom - top);
+  ctx.restore();
+  ctx.strokeStyle = '#ece8dc'; ctx.lineWidth = radius * 0.08; shield(); ctx.stroke();
+  // the griffin, a gold wedge rising from the base to the star
+  ctx.fillStyle = '#e0bd4c';
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.30, bottom - radius * 0.22); ctx.lineTo(cx + w * 0.10, cy - radius * 0.10);
+  ctx.lineTo(cx + w * 0.28, cy - radius * 0.20); ctx.lineTo(cx + w * 0.18, cy + radius * 0.20); ctx.lineTo(cx - w * 0.08, bottom - radius * 0.18);
+  ctx.closePath(); ctx.fill();
+  starPath(ctx, cx - w * 0.16, cy - radius * 0.10, radius * 0.22, radius * 0.10, 8);
+  ctx.fillStyle = '#ece8dc'; ctx.fill();
+  // the helmet over the shield
+  ctx.fillStyle = '#c9c6bc';
+  ctx.beginPath(); ctx.arc(cx, top - radius * 0.02, radius * 0.30, Math.PI, 0); ctx.fill();
+}
+
+/** Release 266: the Brazilian vehicles' emblem of 1983-1998 (the 1980s Bernardini and Engesa tanks): a dark green plaque
+ *  carrying the Army's upright oval with the Southern Cross. */
+function drawBrazilSouthernCross({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const w = size * 0.70, h = size * 0.92;
+  ctx.fillStyle = '#3d6a3a';
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+  ctx.strokeStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.08;
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.40, y = cy + detMath.sin(a) * radius * 0.66;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#ece8dc';
+  for (const [dx, dy, r] of [[0, -0.40, 0.10], [0, 0.42, 0.11], [-0.20, 0.0, 0.09], [0.18, -0.08, 0.08], [0.07, 0.14, 0.05]] as const) {
+    starPath(ctx, cx + dx * radius, cy + dy * radius, r * radius, r * radius * 0.42);
+    ctx.fill();
+  }
+}
+
+/** Release 266: the emblem the surviving Osório P.1 carries on its turret (the 2015 museum and 2024 Curitiba
+ *  photographs): a white ring with an upright oval inside it, a short stencil block under it. */
+function drawOsorioEmblem({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const ey = cy - radius * 0.14;
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.11;
+  ctx.beginPath();
+  ctx.arc(cx, ey, radius * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.09;
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, x = cx + detMath.cos(a) * radius * 0.20, y = ey + detMath.sin(a) * radius * 0.40;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillRect(cx - radius * 0.46, cy + radius * 0.66, radius * 0.92, radius * 0.14);
+}
+
+// The white ring the Bernardini X1 and X1A2 carry on the turret's left side (Gaydos' profiles after the 1970s-80s
+// photographs): a ring, four short ticks inward and a centre dot, on the bare paint.
+function drawBrazilTurretRing({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#ece8dc';
+  ctx.fillStyle = '#ece8dc';
+  ctx.lineWidth = radius * 0.12;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.84, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = radius * 0.10;
+  ctx.beginPath();
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    ctx.moveTo(cx + dx * radius * 0.78, cy + dy * radius * 0.78);
+    ctx.lineTo(cx + dx * radius * 0.42, cy + dy * radius * 0.42);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Ukraine's white tactical triangle (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): an
+// upright open outline in white on the vehicle's flanks.
+function drawUkraineTriangle({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const r = Math.min(size, 256) * 0.40;
+  ctx.strokeStyle = '#ecebe4';
+  // (ua2: ua1 critics, both: a hairline at game distance; the photograph's stroke about twice as heavy)
+  ctx.lineWidth = r * 0.30;
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.95, cy + r * 0.66);
+  ctx.lineTo(cx - r * 0.95, cy + r * 0.66);
+  ctx.closePath();
   ctx.stroke();
 }
 
@@ -790,10 +1011,21 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'dk-dannebrog': drawDenmarkDannebrog,
+  // release 265 (the M41 family's blind critics): the early Bundeswehr's flared black cross with its white border, and the
+  // JGSDF's cherry-blossom badge (its tanks wore no national roundel)
+  'de-cross-1956': drawBundeswehrFlaredCross,
+  'jp-jgsdf-sakura': drawJgsdfSakura,
+  'dk-dannebrog-reverse': drawDenmarkDannebrogReverse,
+  'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
+  'ua-triangle': drawUkraineTriangle,
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,
+  'br-eb-arms': drawBrazilArmyArms,
+  'br-cruzeiro': drawBrazilSouthernCross,
+  'br-ring': drawBrazilTurretRing,
+  'br-osorio': drawOsorioEmblem,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

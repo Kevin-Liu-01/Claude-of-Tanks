@@ -1,0 +1,157 @@
+// The M41 Walker Bulldog family (release 265; owner 2026-10-29: "lets make a m41", the original US tank and other
+// countries'; Main's ruling the same day): the US Army's M41A3, the Bundeswehr's and the JGSDF's M41s and the Danish
+// M41 DK-1, one build (profiles/m41.ts) and one combat envelope. Published figures: the US M41A3 (TM 9-2350-217 data as
+// summarised by the Pansermuseet and armyvehicles.dk pages: 5.82 m hull, 8.21 m over the gun, 3.20 m wide, 2.73 m,
+// 23.5 t, 500 hp Continental AOS-895-3, 72 km/h, four crew, the 76 mm M32); the Danish DK-1 (Pansermuseet's data plate:
+// 25 t, 3.33 m over its skirts, 3.25 m over the commander's MG, 750 km; armyvehicles.dk: the 465 hp Cummins VTA-903T).
+// Armour is the M41's: 25.4 mm at 60 degrees on the upper glacis, 31.75 mm lower, 25.4 mm sides and turret, the 38 mm
+// gun shield, 19 mm rear, 12.7 mm roofs. Penetration figures are not published for the M32's rounds in the form the
+// fleet uses, nor for the AAI APFSDS the Danes bought: the rounds sit at the fleet's tier I and II light-tank footings
+// for the balance session to measure.
+import './modern2Specs.generated.ts';
+import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
+import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { modernArmor } from './specHelpers.ts';
+
+const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
+
+const m41 = (id: string, name: string, nation: string) => {
+  const spec = cloneFleetVariant(registries.tankSpecs, id, 'leo1a5', { name, nation, era: 'cold-war' });
+  for (const key of ['balancePeerOf', 'publicVisualFallback', 'label', 'roster', 'variantOf', 'gunPitchByYawDeg'] as const) delete spec[key];
+  stripSilhouetteDimensions(spec.dims);
+  Object.assign(spec, {
+    role: 'light', hp: 1250, enginePowerHp: 500, weightTons: 23.5, topSpeedKmh: 72, reverseSpeedKmh: 20,
+    hullTraverseDegS: 48, turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 19.75, gunDepressionDeg: 9.75,
+  });
+  // the supplied print's envelope at the published hull length (its 3.38 m over the tracks against the published 3.20)
+  Object.assign(spec.dims, { hullLengthM: 5.82, overallLengthM: 8.12, widthM: 3.38, heightM: 2.73 });
+  const [sabot, heat, he] = spec.gun.shells;
+  spec.gun = {
+    ...spec.gun,
+    caliberMm: 76, reloadS: 4.6, baseAccuracy: 0.31, aimTimeS: 1.8,
+    shells: [
+      { ...sabot, name: 'M331A2 HVAP-T', type: 'APFSDS', caliberMm: 76, pen100Mm: 215, pen1000Mm: 190, pen2000Mm: 165, dmg: 250, velocityMps: 1260 },
+      { ...heat, name: 'M496 HEAT-T', caliberMm: 76, pen100Mm: 254, pen1000Mm: 254, dmg: 270, velocityMps: 1000 },
+      { ...he, name: 'M352 HE-T', caliberMm: 76, pen100Mm: 20, pen1000Mm: 20, dmg: 300, velocityMps: 732 },
+    ],
+  };
+  spec.armor = modernArmor({
+    hl: 2.80, hw: 1.33, inW: 1.15, floor: 0.29, trkTop: 1.18, roofY: 1.44,
+    turretPivot: [0, 1.44, 0.20], gunPivot: [0, 0.315, 1.30], barrelLenM: 3.71, barrelRadM: 0.066,
+    glacis: [25, 25, 25], lower: [32, 32, 32], side: [25, 25, 25], skirt: null, rear: 19, roof: 13,
+    tw: 1.13, tFrontZ: 1.50, tRearZ: -2.25, tH: 0.74,
+    cheek: [25, 25, 25], tSide: [25, 25, 25], tRear: 25, tRoof: 13, mantlet: [38, 38, 38], loader: true,
+  });
+  return spec;
+};
+
+// The US Army's M41A3, in olive drab with the white star (its stock coat is the US Factory coat, the owner's 2026-10-22
+// rule for plain US coats).
+const m41a3 = m41('m41a3', 'M41A3 Walker Bulldog', 'USA');
+m41a3.visual = { ...m41a3.visual, scheme: 'solid', base: '#4b4e32', weather: '#575a3e', patches: [], marking: 'number', number: '24', camoScale: 0.5 };
+
+// The Bundeswehr's M41 (1956-66, the armoured reconnaissance battalions), in RAL 6014 Gelboliv (the German national coat).
+const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
+// r3 (critics: too light and sandy for Gelboliv; the cross straight-armed): darker, and the early Bundeswehr's flared cross
+// r4 (critics: it read chocolate brown): Gelboliv's dark, greyed olive-brown, the wash lighter (kept more than 14 a channel
+// from the German, Japanese and KV-2 coats and the JGSDF's, so it stays its own paint)
+// r5 (critics: still warm, a reddish chocolate; Gelboliv leans yellow; the mottle heavy): a yellower olive-brown, the
+// wash lighter (its blue kept 15 under the German national olive's, so it stays its own paint)
+m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#474028', weather: '#544b34', patches: [], marking: 'number', number: '231', camoScale: 0.5,
+  insignia: 'de-cross-1956', solidWeatheringIntensity: 0.35 };
+
+// The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
+// came after it), warmer and greener than the Bundeswehr's Gelboliv.
+const m41_jgsdf = m41('m41_jgsdf', 'M41 (JGSDF)', 'Japan');
+// r3 (critics: too light and yellow; nothing said Japan): a darker brown-green, greener than the Bundeswehr's, and the
+// JGSDF's cherry-blossom badge in place of a national roundel its tanks never wore
+// r4 (critics: it read lime): a darker, browner olive drab, still greener than the Bundeswehr's (its wash kept clear of the
+// KV-2's and the national colours, so it stays its own paint)
+// r5 (critics: lighter and yellower than the period's dull olive drab, the mottle blotchy): darker and duller, the wash a
+// browner drab (its red 16 over the KV-2's, the base's 15 under the Bundeswehr's, so both stay their own paints)
+m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#383b28', weather: '#504b36', patches: [], marking: 'number', number: '12', camoScale: 0.5,
+  insignia: 'jp-jgsdf-sakura', solidWeatheringIntensity: 0.35 };
+
+// The Danish M41 DK-1 of the late 1980s: the Cummins diesel, skirts, the thermal sight and laser rangefinder, the AAI
+// APFSDS at the tier II footing.
+const m41dk1 = m41('m41dk1', 'M41 DK-1', 'Denmark');
+Object.assign(m41dk1, { hp: 1300, enginePowerHp: 465, weightTons: 25.0 });
+// (266, Main 2026-10-31: the DK-1 is an M41A3 rebuild; its spec the M41A3's published envelope, Foss, Jane's World
+// Armoured Fighting Vehicles, 1976, pp. 213-216: hull 19 ft 1 in, width 10 ft 6 in, height 8 ft 11 in. The build's
+// Leopard-pattern skirts stand outboard of that width: module-hit reads 3.56 m over them.)
+Object.assign(m41dk1.dims, { hullLengthM: 5.82, widthM: 3.20, heightM: 2.72 });
+m41dk1.gun = {
+  ...m41dk1.gun,
+  baseAccuracy: 0.29, aimTimeS: 1.6,
+  shells: m41dk1.gun.shells.map((shell, i) => i === 0
+    ? { ...shell, name: 'AAI 76 mm APFSDS-T', pen100Mm: 262, pen1000Mm: 238, pen2000Mm: 214, dmg: 260, velocityMps: 1500 }
+    : shell),
+};
+m41dk1.armor = { ...m41dk1.armor };
+m41dk1.visual = {
+  ...m41dk1.visual,
+  // the late-1980s Danish Army coat (the Aalborg DK-1): a medium olive with large irregular fields of black-green and slate
+  // blue-grey (r3: the sage base read pale, the patches small; r4: the green too yellow, the grey too blue; r5: the green
+  // still yellow, the grey pale, the black heavy): a greyer sage, a darker blue-grey, the black-green lighter in weight
+  // (r6: the black still spotty and small; the photographs' are large soft fields of olive and slate, little black)
+  // (r7 critics: the grey a lavender in small polka dots, the whole too dark; the photographs' a pale olive-grey with large
+  // slate and black-green fields): paler, a neutral slate, the fields about twice as large
+  scheme: 'nato', base: '#5c614d', weather: '#64695a', patches: ['#262c24', '#4a4f51'], patchK: 2.4, blackK: 0.5, marking: 'number', number: '26',
+  camoScale: 0.42,
+};
+
+// The measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the cast turret, its gun shield and the gun; the three
+// stock marks sweep alike): the full 9.7 degrees but dead ahead, where the broad proud shield (the owner 2026-10-30) meets
+// the driver's hatch at 9, and over the left lift eye on the step ahead; astern over the fender boxes, the engine deck's
+// grilles and its stern
+const M41_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [4, -9.1], [7, -9.5], [8, -9.7], [29, -9.7], [30, -9.6], [31, -8.7],
+  [32, -8.3], [35, -8.4], [38, -9.1], [45, -9], [49, -9.5], [50, -9.7], [128, -9.7], [129, -5.9], [130, -3.5], [131, -2.9],
+  [143, -2.1], [150, -2.3], [151, -2.7], [152, -8.2], [156, -7.4], [158, -7.4], [166, -8], [167, -7.3], [168, -6.7],
+  [170, -6.6], [180, -6.7]] as const);
+for (const spec of [m41a3, m41_bw, m41_jgsdf]) spec.gunPitchByYawDeg = M41_GUN_PITCH_BY_YAW_DEG;
+// the DK-1's (r8 sweep, its fender stowage of the Aalborg top photograph): the mirrors on the mudguards and the box beside
+// the turret's front ahead, the full depression over the grid trays, the rear bins, the deck's grilles and its closed rear
+// box astern
+m41dk1.gunPitchByYawDeg = Object.freeze([[0, -9.7], [11, -9.7], [12, -9.5], [25, -9.2], [26, -9], [27, -9], [28, -7.1],
+  [29, -6.1], [30, -5.9], [31, -5.9], [33, -2.5], [34, -2.2], [38, -2.2], [39, -2.3], [41, -4.3], [44, -4], [47, -4],
+  [62, -5.5], [63, -6.2], [64, -7.9], [65, -9.7], [112, -9.7], [113, -8.5], [114, -7.5], [115, -7.3], [117, -6.5],
+  [118, -5.6], [119, -5.2], [121, -5.1], [122, -5.1], [125, -6.1], [129, -5.7], [130, -3.5], [131, -2.9], [148, -1.8],
+  [153, -1.8], [155, -1.9], [156, -2.3], [157, -7.4], [158, -7.4], [163, -7.9], [165, -6.6], [167, -6.5],
+  [180, -6.7]] as const);
+
+// The T49 (the owner 2026-10-30: "now that we have the m41 hull we can put the m551 turret on it and call it a t49"):
+// the M41A3's hull, running gear and Continental under the M551 Sheridan's turret and its 152 mm M81 gun-launcher with
+// the Shillelagh (profiles/m41.ts builds it); the 1950s light-tank programme tried bigger guns on the M41 under that
+// name, and the games know it in this form. The turret's plates, gun, traverse and crew seats are the M551's; its pivot
+// 0.30 m aft of the M41's ring, the turret centred on the hull, its shell on a low cast ring boss about 6 cm over the
+// deck (the owner 2026-10-30, profiles/m41.ts); no ERA (the build carries none).
+// Its hit points at the M41 DK-1's tier II footing.
+const t49 = m41('t49', 'T49', 'USA');
+{
+  const sheridan = registries.tankSpecs.m551_sheridan;
+  Object.assign(t49, {
+    hp: 1300, weightTons: 24.5, turretTraverseDegS: sheridan.turretTraverseDegS, gunPitchDegS: sheridan.gunPitchDegS,
+    gunElevationDeg: sheridan.gunElevationDeg, gunDepressionDeg: sheridan.gunDepressionDeg,
+  });
+  t49.gun = structuredClone(sheridan.gun);
+  const inTurret = (entry: { turretLocal?: boolean }): boolean => entry.turretLocal === true;
+  t49.armor = {
+    ...t49.armor,
+    turretPivot: [0, 1.37, -0.10],
+    gunPivot: [...sheridan.armor.gunPivot],
+    gunBarrel: { ...sheridan.armor.gunBarrel },
+    turretPlates: sheridan.armor.turretPlates.filter((plate) => plate.kind !== 'era').map((plate) => structuredClone(plate)),
+    modules: [...t49.armor.modules.filter((m) => !inTurret(m)), ...sheridan.armor.modules.filter(inTurret).map((m) => structuredClone(m))],
+    crew: [...t49.armor.crew.filter((c) => !inTurret(c)), ...sheridan.armor.crew.filter(inTurret).map((c) => structuredClone(c))],
+  };
+  Object.assign(t49.dims, { overallLengthM: 6.04, heightM: 2.20 });
+  t49.visual = { ...t49.visual, scheme: 'solid', base: '#4b4e32', weather: '#575a3e', patches: [], marking: 'star', number: '49', camoScale: 0.5 };
+}
+// the T49's measured gun stops (tools/gun-depression-sweep.mjs at 26 mm, the turret centred on its low ring boss): the
+// M551's full 8 degrees over the bow and flanks, less over the rear quarters where the gun-launcher crosses the M41's
+// rear deck fittings
+t49.gunPitchByYawDeg = Object.freeze([[0, -8], [110, -8], [111, -7.1], [114, -5], [115, -4.7], [117, -4.7], [123, -5],
+  [124, -4.2], [125, -3.9], [128, -3.6], [129, -3], [130, -2.8], [143, -2.8], [144, -2.9], [147, -3.5], [153, -6.6],
+  [155, -8], [180, -8]] as const);
+
+registerFleetSpecs(registries, ['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'], { m41a3, m41_bw, m41_jgsdf, m41dk1, t49 });

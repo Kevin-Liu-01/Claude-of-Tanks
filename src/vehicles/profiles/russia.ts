@@ -1,4 +1,5 @@
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
+import { antennaPart } from './antennaPart.ts';
 import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64BV1 } from './t64bvK1.ts';
@@ -1512,7 +1513,7 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   }
   // Single source radio whip on the turret-rear shoulder.
   P.add('turret', cylY(0.055, 0.07, 0.08, 10), 0.968, 0.68, -0.48);
-  P.add('turretDark', cylY(0.012, 0.014, 1.92, 7), 0.968, 1.69, -0.48);
+  P.add('turretDark', antennaPart(cylY(0.012, 0.014, 1.92, 7)), 0.968, 1.69, -0.48);
   // ---- U-5TS: axis 1.717 (post-warp contour), pivot world +2.065, evac
   // swell 4.99..5.99, muzzle +6.03 (overall 9.34 published) ----
   P.gunG.position.set(0, 0.2866, 1.019);

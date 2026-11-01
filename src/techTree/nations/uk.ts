@@ -62,10 +62,11 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    // release 262: the 2021 Challenger 3 demonstrator beside its prototype's tier (a prototype never above production)
-    // and its field fit with the remote station and kit (the owner, 2026-10-27) drawn on its node as a twin build
+    // release 262: the 2021 Challenger 3 demonstrator and its field fit with the remote station and kit (the owner,
+    // 2026-10-27) drawn on its node as a twin build. 266 (the owner, 2026-10-31): tier X beside the Challenger 3 it
+    // demonstrated (a prototype never above production, level with it here)
     node({
-      id: 'challenger3_td', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special',
+      id: 'challenger3_td', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special',
       builds: ['challenger3_td_rws'],
     }),
     // release 262: the Royal Engineers' Mk 5 AVRE and the South African Olifant Mk 2 on the rebuilt Centurion family, at the

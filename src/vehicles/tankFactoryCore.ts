@@ -617,6 +617,9 @@ interface GunBuildConfig {
    * 2026-10-16: the 20-pdr's tube ran to its collar's cap plane after VH.04, the bore carver merged the two coplanar
    * caps into one ring at the tube's radius, and the collar's outer annulus went missing (strv81 open 0 -> 14 px). */
   tubeInset?: number;
+  /** The bucket of the painted tube, its sleeve, evacuator and collars (default 'gun'). Release 265: the Leopard 2A7 DK's
+   * gun in its Barracuda cover's wrap ('gunCanvasPale'), the tube's shape unchanged. */
+  tubeBucket?: string;
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -6801,7 +6804,7 @@ function addMuzzleBrake(
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0 } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0, tubeBucket = 'gun' } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
@@ -6815,7 +6818,7 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
   if (brake) addMuzzleBrake(g, gd, len, r, seg, brake);
-  for (const geo of g) P.add('gun', geo);
+  for (const geo of g) P.add(tubeBucket, geo);
   for (const geo of gd) P.add('gunDark', geo);
   Object.assign(builder, { muzzleZ: len });
 }
@@ -7622,6 +7625,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // is a measured source part keeps its own stock (the Type 96B's boot, type96GunOwnership.selftest.mjs)
   gunMountLamp: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // a pale canvas mantlet cover that turns with the gun (the M41 DK-1's)
+  gunMountCanvasPale: ['gunG', 'canvasPale'],
+  // the Leopard 2A7 DK's cover wrap on the recoiling tube (release 265)
+  gunCanvasPale: ['recoilG', 'canvasPale'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
   gunMountCanvasSkin: ['gunG', 'canvasCloth'],
   gunMountGlass: ['gunG', 'glass'],
@@ -9190,12 +9197,13 @@ function* buildTankCoreSteps(
   // 2026-10-30 (owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): the merged mesh
   // keeps the vertex spans of its missile-rack stock (weaponAssembly's parts), so the decor keeps its pieces off every
   // launcher (decorations.ts launcherKeepOut). A smoke bank shares the 'launcher' seat role, so the role cannot say it.
-  const missileRackRangesFor = (list: THREE.BufferGeometry[]): Array<{ start: number; count: number }> => {
+  // 267 (Main 2026-10-31): the same for stowage (profiles/stowagePart.ts), which the geometry gate's body leaves out.
+  const partRangesFor = (list: THREE.BufferGeometry[], test: (part: THREE.BufferGeometry) => boolean): Array<{ start: number; count: number }> => {
     const ranges: Array<{ start: number; count: number }> = [];
     let vertexOffset = 0;
     for (const part of list) {
       const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
-      if (part.userData.weaponStock?.module === 'missileRack' && count) ranges.push({ start: vertexOffset, count });
+      if (test(part) && count) ranges.push({ start: vertexOffset, count });
       vertexOffset += count;
     }
     return ranges;
@@ -9281,7 +9289,8 @@ function* buildTankCoreSteps(
     if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
-    const rackRanges = missileRackRangesFor(list);
+    const rackRanges = partRangesFor(list, (part) => part.userData.weaponStock?.module === 'missileRack');
+    const stowageRanges = partRangesFor(list, (part) => part.userData.stowage === true);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -9303,6 +9312,7 @@ function* buildTankCoreSteps(
     tagMergedBucket(bucket, mesh);
     if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     if (rackRanges.length) mesh.userData.missileRackRanges = rackRanges;
+    if (stowageRanges.length) mesh.userData.stowageRanges = stowageRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>

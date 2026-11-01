@@ -84,7 +84,7 @@ cavity in the front armour in previous models").
   gun. The 2A2's collar stands longer (about 0.12 m, an estimate: from the 2A3 the tube was shortened).
 - The "window thing" is the EMES 15 gunner's sight in a notch in the right cheek's top inboard corner, open to the front
   and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.33 m tall under the sight
-  housing's front, about 0.22 m deep to the sight head, roofed by the housing's bolted lip 16 cm out over it; the head's
+  housing's front, 0.35 m deep to the sight head (the photos read about 0.22; deepened 2026-10-30, below), roofed by the housing's bolted lip 16 cm out over it; the head's
   thermal window outboard and its day and laser window inboard; two armoured door leaves hinged at the walls, swung
   forward flat against them (open).
 - Over the mantlet (the owner's photo): the dark groove of its seal behind the mantlet's top, the rubber strip, and the
@@ -184,3 +184,8 @@ cavity in the front armour in previous models").
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.
   Capability score 0.511, as leo2a3's.
+- 2026-10-30 (the christian2 lane; the owner: "make the otehr 2a4s have that correct window"): the EMES 15 window
+  deepened to the Christian II's 0.35 m to the sight head (it was 0.22, the head at the bevel's edge, the window
+  reading flush with the face in right-front renders), its width and sill unchanged; the housing shortened 0.62 ->
+  0.49 m so its rear stays at z 0.685, clear of the PERI R17's drum; the window's plate and the optics module follow
+  the datums (shared cheek front, leopard2CheekFrontDatums.ts).

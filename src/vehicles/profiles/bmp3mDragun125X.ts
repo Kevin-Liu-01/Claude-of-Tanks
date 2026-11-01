@@ -1,4 +1,5 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
@@ -680,7 +681,7 @@ function buildDragunTurret(P: TankBuilderPort): void {
         const whip = cylY(.0058, .0126, axis.length(), P.q ? 8 : 6);
         whip.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize()));
         const center = a.add(b).multiplyScalar(.5);
-        equipment(P, 'turret', 'Dark', whip, center.x, center.y, center.z);
+        equipment(P, 'turret', 'Dark', antennaPart(whip), center.x, center.y, center.z);
     }
     buildDragunRoofWeapon(P);
     optic(P, 'turret', -.32, 2.535, .12, .25, .17, .28);

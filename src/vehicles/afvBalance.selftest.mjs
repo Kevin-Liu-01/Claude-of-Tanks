@@ -15,6 +15,10 @@ const EXPECTED = Object.freeze({
   spz_wotan:        { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
   raiju_ifv: { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   cv90:               { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  // 265: the Danish CV9035 DK on the Mk IV (denmarkSpecs.ts): the 35 mm at tier V's footing, its report the fleet's 35 mm
+  cv9035dk:           { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [205, 188, 170], reload: 0.55, sound: 'kde-35', missile: null },
+  // 265: the Ukrainian CV9040C (ukraineCv90Specs.ts), the Swedish CV9040C's combat
+  ua_cv9040c:         { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
   // 2026-10-25: folded into the modern Tier X IFVs (fleetBalancePass applyModernEraFold): a slower 50 mm, a little less pen
   cv90_mk4_concept:          { hp: 2825, speed: 74, reverse: 42, traverse: 55.1, damage: 145, pen: [280, 258, 236], reload: 0.66, sound: 'xm913-50', missile: [760, 'spike-launch'] },
   hayate_ifv:             { hp: 1450, speed: 70, reverse: 16, traverse: 48.8, damage: 82, pen: [112, 100, 88], reload: 0.52, sound: 'kde-35', missile: [500, 'jyu-mat-launch'] },
@@ -59,7 +63,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 41, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable.
+assert.equal(ifvIds.length, 43, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

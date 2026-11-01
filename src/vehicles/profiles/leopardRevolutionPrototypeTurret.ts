@@ -1,6 +1,7 @@
 // Owner-directed ancestor of the current Revolution, not a historical replica.
 // The original chassis remains in leopard.ts; this owns the complete new turret.
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { REVOLUTION_PROTO_FRAME as FRAME } from './leopardRevolutionPrototypeFrame.ts';
@@ -110,7 +111,7 @@ function addPrototypeRoof(P: TankBuilderPort): void {
       P.addEquipment('turretDark',launcher.cap,side*1.48,.685,.10-i*.10,-.42,side*.65);
     }
     P.addEquipment('turretDetail',cylY(.045,.065,.09,12),side*1.03,ROOF+.037,-1.27);
-    P.addEquipment('turretDark',cylY(.006,.013,1.02,P.q?8:6),side*1.03,ROOF+.59,-1.27);
+    P.addEquipment('turretDark',antennaPart(cylY(.006,.013,1.02,P.q?8:6)),side*1.03,ROOF+.59,-1.27);
   }
 }
 

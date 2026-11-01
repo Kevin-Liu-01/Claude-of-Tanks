@@ -110,9 +110,9 @@ import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
   MAP_IDS,
-  getLocalizedMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
+import { getLocalizedMapName } from './ui/mapNames.ts';
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';
@@ -241,6 +241,7 @@ import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
+import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import { installAccessibility } from './ui/accessibilityPreferences.ts';
@@ -1116,7 +1117,10 @@ let pendingCampaignOperationId: string | null = null;
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide(); }
+  if (active) {
+    battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
+    lighting.setBattleLitSet(false);
+  }
   garagePhasePresentation.setActive(active);
   garageLightsUp = active;
   killcamAccess.current?.setBattleLights(!active);
@@ -1993,6 +1997,9 @@ const nightLighting = createNightLightingAccess({
   isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
     : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
       || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+  // (local-fps-266) a battle's lit set is fixed with the night pool's: the hemisphere and the anti-sun fill leave it where
+  // they hold 0 (the Garage's switch, setGarageSpots, takes them back)
+  fixLitSet: () => lighting.setBattleLitSet(true),
 });
 const post = createPost(renderer, scene, camera);
 // transitions-249: the scene probes (the black-world watchdogs) draw in the scene target's format, so the GPU pipelines
@@ -2284,6 +2291,9 @@ const settings = createSettingsAccess({
   // livePaused from (kill-cam replays close the panel themselves; the end
   // overlay keeps the old non-paused Esc behavior).
   isGamePaused: battlePhase.isPauseEligible,
+  // a paired phone's readout (docs/PHONE-CONTROLLER.md): the raw facts; the lazy receiver maps them
+  phoneSource: () => ({ battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
+    shellCode: shellTypeCode }),
 });
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value

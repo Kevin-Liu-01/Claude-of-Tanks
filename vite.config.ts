@@ -127,6 +127,10 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
     && existsSync(resolve(documentRoot, `site${path}`))) {
     req.url = `/site${path}${query}`;
   }
+  // the phone controller (docs/PHONE-CONTROLLER.md): /pad serves its page in dev and preview (vercel.json in production)
+  else if (path === '/pad' || path === '/pad.html') {
+    req.url = `/${existsSync(resolve(documentRoot, 'pad.html')) ? '' : 'site/'}pad.html${query}`;
+  }
   else if (path !== '/' && !path.startsWith('/api/') &&
     req.headers.accept?.includes('text/html') && !isExistingProjectDocument(path,documentRoot)) {
     forceNotFoundStatus(res);
@@ -400,6 +404,8 @@ export default defineConfig({
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
         docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
+        // the phone controller's page (docs/PHONE-CONTROLLER.md): its own small entry, /pad
+        pad: resolve(process.cwd(), 'site/pad.html'),
       },
       output: {
         // 2026-09-25: hashes encode as base36 — every /assets URL changed once so no edge node keeps serving
@@ -431,7 +437,14 @@ export default defineConfig({
             // 2026-10-25 (integrator 253): the UI canvas primitive (canvas-ui-253) and the vehicle eras table (equipment-rules-253)
             // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
             // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-30 (gunface-span-265, release 266): the gun-face split (sim/gunFaceSplit.ts: the authority's per-point read,
+            // the anatomy's cut) and the cell facets it is cut from (sim/convexCellFacets.ts, shared with the armour skin) are
+            // leaves the trace, the anatomy and the Gallery load at boot on the same three pages; on their own they were two
+            // more boot requests on each.
+            // 2026-10-31 (shot-card-damage-266): the hit's hull points reader (game/hullPointsRemoved.ts: the profile's tally at
+            // boot, the lazy HUD, killcam, hit format and service record) is a leaf the same three pages load; on its own it
+            // was one more game, cn and Gallery boot request.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
@@ -492,7 +505,10 @@ export default defineConfig({
             // armour (leopard2a3B4Armor.ts), with the plate tables both read (leopard2A4FamilyArmor.ts, leopard2CheekFrontDatums.ts):
             // the boot fleet reads them beside leopard2HullDatums; leo2a4-family-265 split them into two more game, cn and Gallery
             // boot requests.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-31 (integrator 266): the Leopard 2 wedge fit (leopardXWedges.ts, leo2-front-265 D), a table the boot
+            // specs (sourceXFleetSpecs, germany.ts) and the lazy builders (leopardX, leopardA6X) read; alone it was one more
+            // game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more

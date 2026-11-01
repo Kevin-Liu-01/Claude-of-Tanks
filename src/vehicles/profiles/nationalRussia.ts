@@ -1,6 +1,7 @@
 // Russian modernization concepts: retained Soviet hulls and compact cast
 // turret cores, with the heaviest national protection and sensor packages.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
@@ -152,7 +153,7 @@ function turretKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
   // The right mast stands aft of the complete RWS muzzle sweep.
   const ax=s<0?-.54:[.50,.62,.42][m],az=s<0?(m===2?-1.02:-.92):[-1.80,-1.95,-1.74][m],ay=seat(P,'turret',ax,az);
   P.addEquipment('turretDetail',cylY(.053,.065,.08,16),ax,ay+.034,az);
-  P.addEquipment('turretDark',cylY(.008,.012,m===1?.57:.43,12),ax,ay+(m===1?.35:.28),az);
+  P.addEquipment('turretDark',antennaPart(cylY(.008,.012,m===1?.57:.43,12)),ax,ay+(m===1?.35:.28),az);
  }
  const sightX=[-.82,-.88,-.78][m],sightZ=-.09,sightBase=seat(P,'turret',sightX,sightZ);
  supportedSensor(P,[sightX,sightBase+.20,sightZ],sightBase-.008);

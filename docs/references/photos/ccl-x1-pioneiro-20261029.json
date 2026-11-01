@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "x1_pioneiro": {
+      "name": "CCL X1 Pioneiro",
+      "authority": "Main ruled the Brazil line on 2026-10-29 (DECISIONS) on the owner's request the same day (\"lets build brazil, not taiwan, and flesh it out with all its own tanks\"): the X1 at tier I as the Brazil tree's root, a photo-class first-party build on the Bernardini X1 family's build; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/brazil/bernardini-ccl-x1-pioneiroo",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2021/07/X1Rear1.png",
+        "https://ecsbdefesa.com.br/wp-content/uploads/2022/11/DC38SE100anosBldEBParte2.pdf"
+      ],
+      "widthM": 2.5,
+      "overallLengthM": 6.394,
+      "tallestM": 4.472,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the X1 family build (profiles/bernardiniX1.ts): published 5.04 m hull, 2.4 m wide, 2.45 m high (Tanks Encyclopedia after Bastos' \"Brazilian Stuart\"); stations from Gaydos' profile. The muzzle stands 1.28 m past the bow as Gaydos draws it (25.4% of the hull at 55.6 px/m), the 33-calibre D-921 (CN-90 F1, Military Periscope) ahead of its trunnion; Tanks Encyclopedia's 6.04 m over the gun reads it 0.28 m shorter, recorded as a conflict. The envelope holds the fender ledges over the tracks, the rear hood's lip, the pioneer tools, the sprockets' outer toothed rings, the .50 on the roof aft of the loader's hatch and the raked whip on the roof's right rear corner.",
+      "caliberMm": 90,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/brazil.selftest.mjs"
+    }
+  }
+}

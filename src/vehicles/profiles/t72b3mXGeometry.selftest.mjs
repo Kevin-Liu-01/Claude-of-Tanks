@@ -47,14 +47,18 @@ function bore(tank){
 }
 function covers(tank){
   const meshes=actualOpaque(tank.root);
+  // 266 (lane t72b3m-2022-266, shared-base follow-up; intended re-pin): the cheek cassettes keep their measured plan
+  // stations and headings but stand 0.10 m higher at 60 % of the measured tilt (t72b3mX.ts cheekCellPlane). The source
+  // planes were [-.59824,1.93354,1.54708] n [-.14365,.857658,.493748], [1.32502,1.92166,1.00438] n
+  // [.445996,.850585,.278554] and [-1.48508,1.91604,.57381] n [-.44491,.881787,.156542].
   for(const [point,n]of [
-    [[-.59824,1.93354,1.54708],[-.14365,.857658,.493748]],
-    [[1.32502,1.92166,1.00438],[.445996,.850585,.278554]],
-    [[-1.48508,1.91604,.57381],[-.44491,.881787,.156542]],
+    [[-.59824,2.03354,1.54708],[-.088951,.947951,.30574]],
+    [[1.32502,2.02166,1.00438],[.276622,.945321,.172769]],
+    [[-1.48508,2.01604,.57381],[-.273983,.956891,.096401]],
   ]){
     const p=new THREE.Vector3(...point),normal=new THREE.Vector3(...n).normalize();
     const hit=new THREE.Raycaster(p.clone().addScaledVector(normal,.035),normal.clone().negate(),0,.075).intersectObjects(meshes,false)[0];
-    near(hit?.point.distanceTo(p),0,.00003,'source cheek exposed plane');
+    near(hit?.point.distanceTo(p),0,.00003,'cheek cassette exposed plane (266: raised, flatter)');
   }
   const receipt=tank.root.userData.eraVisualBindingReceipt;
   assert.equal(receipt.plates.length,6);

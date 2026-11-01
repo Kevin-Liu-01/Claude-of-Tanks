@@ -222,6 +222,7 @@ interface InteractionExempt {
 }
 export const INTERACTION_EXEMPT: readonly InteractionExempt[] = Object.freeze([
   { owner: GALLERY, mark: 'bespoke:dataset.tab', reason: "the dossier's tabs (role=tab in site/gallery.html): navigation, not a choice" },
+  { owner: 'src/pad/padPage.ts', mark: 'bespoke:slot===next.slot', reason: "the phone controller's ammunition keys press the shell actions (the keyboard's 1 to 3); the mark is the desktop's current slot read back: a readout, the choice is the game's" },
   { owner: 'src/ui/endScreen.ts', mark: 'bespoke:dataset.reportView', reason: "the report's Personal and Teams tabs: navigation, not a choice" },
   { owner: 'src/ui/hud.ts', mark: "bespoke:action==='roofGun'", reason: "the systems row's roof gun and lights show their own on state: toggles, not a set" },
   { owner: 'src/gallery/damageWorkbench.ts', mark: "bespoke:action==='hitboxes'", reason: 'the Hitboxes and Probe tools show their own on state: toggles, not a set' },

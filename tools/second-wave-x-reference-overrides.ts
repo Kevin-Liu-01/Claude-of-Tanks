@@ -1,5 +1,10 @@
 // Local QA only. Every mesh listed here is an original complete source node.
 // No source vertices, images, materials or model loading enter playable code.
+const CENTURION_SOURCE = { source: 'glb', glb: {
+  path: '/models/community-candidates/strv81_x_source.glb',
+  turretNode: '^turret_0_turret_0_0$', gunNode: '^gun_0_gun_0_0$',
+  autoPivot: true, pivot: [-.000085, 1.69628, .468587], gunPivot: [.000004, 2.079211, 1.10], paintUntextured: true,
+} } as const;
 export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
   // ztz100 retired 2026-10-27 (release 262, owner: "the ztz 100 is its prototype"): the ZTZ-100 is the ZTZ-20 family's
   // pre-production stage, an owner-authored concept (docs/references/concepts/ztz20-family-20261027.json); the same
@@ -146,6 +151,10 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // One fused body/turret/cannon/fittings owner plus native track owner.
     // No fabricated disjoint turret or gun masks; whole views still gate92.
     fixedMount: true, componentMasks: false, geometryComponentMasks: false,
+    // Out of the gate since the T-62M-V1 became a T-62 chassis carrying the complete T-72B 1987 upper assembly
+    // (4c34b3e8ba, 2026-09-30; fleetRenewalSpecs.ts transplant, its turret 0.37 m aft of the source's): this source's
+    // T-62 turret cannot certify that turret. The certificate stays with the source file (266, Main's fallout item).
+    gateEligible: false,
   } },
   t72b_1987: { source: 'glb', qualityBar: 'exemplar', glb: {
     path: '/models/community-candidates/t72b_1987_x_source.glb',
@@ -170,4 +179,9 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     autoPivot: true, pivot: [-.001963, 1.638327, .577502], gunPivot: [0, 1.9215, 1.761582],
     componentMasks: true, directGunComponentMasks: true,
   } },
+  // 267 (Main 2026-10-31): the Centurions rebuilt to the Strv 81 print in 262 (centurionFamily.ts) measure against it,
+  // source-world certified (source-world-registration.mjs CENTURION_SOURCE_FRAME), no longer against the recovered
+  // centurion3/centurion5 prints. turret_0 and gun_0 are the print's own meshes; the whips fused into turret_0 stay in
+  // the oracle and leave its body by box (fused-roof-gun-boxes.mjs FUSED_ANTENNA_BOXES).
+  centurion3: CENTURION_SOURCE, centurion5_2: CENTURION_SOURCE, strv81: CENTURION_SOURCE,
 } as const;

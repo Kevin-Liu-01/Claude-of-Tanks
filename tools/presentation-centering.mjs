@@ -19,7 +19,10 @@ import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
 import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
+import { iconsPagePublicOnly } from './icons-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS, undeclaredCatalogReads } from './page-catalog-keys.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
@@ -122,6 +125,9 @@ const server = await createServer({
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
   server: toolServerOptions(7600),
+  // 266: --update serves only the public directories the step's key reads; any other public load fails the run before a
+  // row is written. The checks load the exported icons too, and record no key.
+  plugins: update ? [iconsPagePublicOnly((file) => pageErrors.push(`refused ${file}: not an icons-page input (tools/icons-page-public.mjs)`))] : [],
 });
 await server.listen();
 const origin = boundOrigin(server);
@@ -177,6 +183,8 @@ try {
         const chunk = chunkIds.slice(i, i + 12);
         Object.assign(rows, await page.evaluate((tankIds) => window.__CENTER_AUDIT(tankIds), chunk));
       }
+      // 267: --update keys only the catalog strings this page draws; any other key it asked for fails the run
+      if (update) pageErrors.push(...await undeclaredCatalogReads(page, ICONS_PAGE_CATALOG_KEYS));
       if (update) return;
       for (let i = 0; i < chunkIds.length; i += 24) {
         const chunk = chunkIds.slice(i, i + 24);
@@ -253,7 +261,7 @@ try {
     if (syncAssets) {
       const before = readFileSync(outputPath, 'utf8');
       const iconsRoot = resolve(root, 'public/icons');
-      const manifest = JSON.parse(readFileSync(resolve(iconsRoot, 'tank-assets.json'), 'utf8'));
+      const manifest = readTankAssets(iconsRoot);
       const captureErrors = ids.flatMap(id => presentationReceiptErrors(id,
         rows[id]?.currentAnchor, rows[id]?.capturedProjection,
         live.tanks[id]?.presentationAnchor, live.tanks[id]?.presentationProjection));

@@ -30,6 +30,7 @@ export const IMAGE_FIT_CUTOUTS: readonly ImageFitCutout[] = Object.freeze([
   { owner: GARAGE_CSS, key: '.cot-card .ti', holds: "a roster card's packaged angle render" },
   { owner: GARAGE_CSS, key: '.cot-garage .stats .stats-ti', holds: "the readout's tank icon" },
   { owner: 'src/docs/fleet.css', key: '.dm-fleet__side img', holds: "a fleet tile's side render" },
+  { owner: 'src/pad/pad.css', key: '.pad-plan', holds: "the phone controller's plan view of the driven tank (its top-down cutout)" },
   { owner: 'src/ui/hudEditorPreview.ts', key: "js:drawImageFit(ctx, surface.image, width - 10, height - 10, 'contain');", holds: "the damage panel's top-view plan" },
   // diagrams on their own plates (line drawings, shot schematics)
   { owner: 'src/ui/contextInfo.ts', key: ".cot-info-modal__media figure[data-fit='contain'] img", holds: "an info image its caller marks fit: 'contain', a render or a diagram (a footage frame or a photo takes the default cover)" },

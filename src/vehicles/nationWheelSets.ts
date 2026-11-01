@@ -168,6 +168,21 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
     { donor: 'strv121', roles: MBT_HULL_ROLES, reason: 'Sweden MBT/tank-destroyer hull → Strv 122 wheel' },
     { donor: 'cv90_mk4', reason: 'Sweden IFV/light hull → CV90 Mk IV X wheel' },
   ],
+  // release 265: Denmark fields German Leopards and Swedish CV90s, so its sets are theirs
+  denmark: [
+    { donor: 'leo2a4', roles: MBT_HULL_ROLES, reason: 'Denmark MBT hull (the Leopards) → Germany MBT donor' },
+    { donor: 'cv90_mk4', reason: 'Denmark IFV/light hull (the CV90) → CV90 Mk IV X wheel' },
+  ],
+  // release 266: Brazil fields German Leopards and American M41s and M60s, and its own Bernardini and Engesa hulls: the
+  // Bernardini hulls (the Tamoyos and the X1 family, M41-lineage running gear) and the US-built marks draw the Patton-era
+  // cast spoke, every other MBT hull (the Osório, the Leopards) the Leopard 2 paired dish
+  brazil: [
+    { donor: 'm60a3', ids: ['x1_pioneiro', 'x1a2_carcara', 'm41c_caxias', 'm60a3br'],
+      reason: 'Brazil Stuart-lineage and US-lineage hull → USA Patton-era cast spoke (the X1s\' open-spoked VVSS wheels)' },
+    { donor: 'leo2a4', roles: MBT_HULL_ROLES,
+      reason: 'Brazil MBT and medium hull (the Osório, the Tamoyos\' dished discs, the Leopards) → Germany MBT donor' },
+    { donor: 'm551a1_tts', reason: 'Brazil light hull → USA light donor' },
+  ],
   'south korea': [
     { donor: 'k1e1', ids: ['k1e1'], reason: 'the K1A1 draws its own wheel' },
     { donor: 'xk2_black_panther', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },
@@ -238,6 +253,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // release 266: the M48s of Israel and Germany ride the M48A5's cast running gear (pattonCast.ts), as the Sabra does
   m48a3_patton: { donor: 'm48a3_patton', reason: 'release 266: the M48A3 Mod B: the M48 dished disc road wheel' },
   magach3: { donor: 'm48a3_patton', reason: 'release 266: the Magach 3 is an M48 hull: the M48 dished disc road wheel' },
+  magach6b: { donor: 'm60a3', reason: 'release 267: the Magach 6B is an M60A1 hull: the M60 cast five-spoke wheel' },
+  magach7c: { donor: 'm60a3', reason: 'release 267: the Magach 7C is an M60 hull: the M60 cast five-spoke wheel' },
   m48a2ga2: { donor: 'm48a3_patton', reason: 'release 266: the Bundeswehr M48A2GA2 is an M48 hull: the M48 dished disc road wheel' },
   m48_super: { donor: 'm48a3_patton', reason: 'release 266: the M48 Super is an M48A2G hull: the M48 dished disc road wheel' },
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
@@ -245,6 +262,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
+  ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },
   t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
   t84: { donor: 't90_1992', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
@@ -259,13 +277,20 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
   griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
+  leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
+  // 265 (Main: the M41 family on the Pattons' running gear): the M41s, the M46 and M47's contemporaries, ride the US
+  // Patton-era wheel whoever fields them
+  m41a3: { donor: 'm60a3', reason: '265: the M41 family rides the US Patton-era wheel (its 1950s contemporaries)' },
+  m41_bw: { donor: 'm60a3', reason: '265: the Bundeswehr M41 keeps its US Patton-era wheel' },
+  m41_jgsdf: { donor: 'm60a3', reason: '265: the JGSDF M41 keeps its US Patton-era wheel' },
+  m41dk1: { donor: 'm60a3', reason: '265: the Danish M41 DK-1 keeps its US Patton-era wheel' },
+  t49: { donor: 'm60a3', reason: '265: the T49 rides the M41 hull\'s US Patton-era wheel' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
   // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type
   // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
-  christian2: { donor: 'leo2a4', reason: 'release 262: the Danish Christian II concept rides a Leopard 2-pattern hull and seven-wheel gear (Denmark has no wheel set) → Germany MBT donor' },
   ...(T54_STARFISH_WHEELS ? {
     type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
     t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },

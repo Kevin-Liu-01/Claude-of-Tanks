@@ -14,34 +14,55 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // Writes docs/geometry-gate/<id>.json (full deltas — the builder's work
 // order) and maintains docs/geometry-gate/ledger.json (tool-written only).
 //
-// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check]
+// Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check] [--repin] [--absent=skip] [--skipped=<file>] [--oracles-only]
+// --repin (npm run gate:repin): a requested registered id whose oracle file is missing stops the run before anything is
+// measured or written, instead of recording an unavailable row over its measured one; an id the page cannot measure
+// keeps its previous ledger row, marked with the error as repinError.
+// --absent=skip (the changed-only gate step, 267): a registered id whose oracle file is missing here is skipped, its record
+// and ledger row untouched, never thrown on or recorded as unavailable. --skipped=<file> writes { id: reason } for every
+// requested registered id the run did not measure (an absent oracle, or a page error that kept its previous row), so the
+// changed-only chain leaves them due. Every record names its oracle: { path, sha256 }, the registry's path as the page
+// fetches it and the sha256 of that file's bytes (the gate step's per-id input). --oracles-only measures nothing and
+// writes that field into each requested (or every) id's existing record where the oracle file is here.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
-import { unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { mergeLedgerRow, missingOraclesError, unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
+import { servedPublicOnly } from './served-public.mjs';
+import { GATE_PAGE_PUBLIC } from './gate-page-public.mjs';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
 const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'geometry-gate --ids') : null;
 const CHECK = args.includes('--check');
+const REPIN = args.includes('--repin');
+const ABSENT_SKIP = args.includes('--absent=skip');
+const SKIPPED_FILE = args.find((a) => a.startsWith('--skipped='))?.slice(10) ?? null;
+const ORACLES_ONLY = args.includes('--oracles-only');
+/** id -> why this run did not measure it (--skipped). */
+const skipped = {};
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
 
 const rows = [];
+const publicRoot = path.resolve(ROOT, 'public');
+const localAssetPath = (assetPath) => {
+  if (typeof assetPath !== 'string' || !assetPath.startsWith('/')) return null;
+  const resolved = path.resolve(publicRoot, assetPath.slice(1));
+  return resolved.startsWith(`${publicRoot}${path.sep}`) ? resolved : null;
+};
+/** The oracle a record names: the registry's path as the page fetches it and the sha256 of the file's bytes. */
+const oracleOf = (assetPath) => ({ path: assetPath, sha256: crypto.createHash('sha256').update(fs.readFileSync(localAssetPath(assetPath))).digest('hex') });
+let referenceSourceOf = {};
 function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars) {
-  const publicRoot = path.resolve(ROOT, 'public');
-  const localAssetPath = (assetPath) => {
-    if (typeof assetPath !== 'string' || !assetPath.startsWith('/')) return null;
-    const resolved = path.resolve(publicRoot, assetPath.slice(1));
-    return resolved.startsWith(`${publicRoot}${path.sep}`) ? resolved : null;
-  };
   const registered = new Set(referenceIds);
   assertNoPhotoOverride(requested??[],registered);
   const available = new Set(referenceIds.filter((id) => {
@@ -55,9 +76,16 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     const firstPartyOnly = requested.filter((id) => !registered.has(id));
     const unavailable = requested.filter((id) => registered.has(id) && !available.has(id));
     if (firstPartyOnly.length) {
-      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations`);
+      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations` +
+        ` (${firstPartyOnly.join(', ')})`);
     }
-    if (unavailable.length) {
+    if (unavailable.length && ABSENT_SKIP) {
+      for (const id of unavailable) {
+        skipped[id] = `oracle absent here (${referenceSources[id]})`;
+        console.log(`[geo] ${id}: ${skipped[id]}`);
+      }
+    } else if (unavailable.length && REPIN) throw missingOraclesError(unavailable, referenceSources);
+    else if (unavailable.length) {
       for (const id of unavailable) {
         const qualityBar = referenceQualityBars[id] || 'fleet';
         const report = unavailableOracleReport(id, qualityBar);
@@ -73,12 +101,21 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
 
 // One Vite server and browser, its page on the registry: the discovery below, then one per chunk of ids
 // (tools/browser-id-chunks.mjs).
+/** Public files a page of this run loaded outside the gate step's key (267): any one fails the run. */
+const refusedPublic = [];
 async function withRegistryPage(run, dependencies = {}) {
+  // 267: the requested ids' registered oracles (none before discovery, which loads no oracle) and GATE_PAGE_PUBLIC
+  const oracles = Object.entries(referenceSourceOf).filter(([id, file]) => file && (!requested || requested.includes(id))).map(([, file]) => file);
   return await withIsolatedCaptureBrowser({
     root: ROOT,
     logLevel: 'error',
     // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
     server: toolServerOptions(7400),
+    // 267: only the public files the gate step keys (tools/served-public.mjs); any other is refused and fails the run
+    plugins: [servedPublicOnly({ dirs: GATE_PAGE_PUBLIC.dirs, files: [...GATE_PAGE_PUBLIC.files, ...oracles] }, (file) => {
+      refusedPublic.push(file);
+      console.error(`[geo] refused ${file}: not an input of the gate step's key (tools/gate-page-public.mjs)`);
+    })],
   }, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -108,8 +145,22 @@ const ids = await withRegistryPage(async ({ page }) => {
   if(requested)validateSelectedIds(requested,await page.evaluate('window.__PLAYABLE_IDS'));
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
   const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
+  referenceSourceOf = referenceSources;
   return selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
 });
+if (ORACLES_ONLY) {
+  // the gate step's per-id input on the records already measured: no page, no measurement (267 backfill)
+  let named = 0;
+  for (const id of ids) {
+    const file = path.join(OUT, `${id}.json`);
+    if (!fs.existsSync(file)) continue;
+    const text = fs.readFileSync(file, 'utf8'), record = JSON.parse(text);
+    const next = `${JSON.stringify({ ...record, oracle: oracleOf(referenceSourceOf[id]) }, null, 1)}\n`;
+    if (next !== text) { fs.writeFileSync(file, next); named++; }
+  }
+  console.log(`geometry-gate --oracles-only: ${named} record(s) name their oracle (${ids.length} id(s) with an oracle here)`);
+  process.exit(0);
+}
 await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => withRegistryPage(async ({ page, origin }) => {
   const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
   for (const id of chunk) {
@@ -132,6 +183,7 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
       const report = await page.evaluate('window.__GEO_REPORT');
       if (!report) throw new Error('no __GEO_REPORT');
       if(rawSourceComparison)report.rawSourceComparison=rawSourceComparison;
+      report.oracle = oracleOf(referenceSourceOf[id]);
       fs.writeFileSync(path.join(OUT, `${id}.json`), `${JSON.stringify(report, null, 1)}\n`);
       rows.push(report);
       const c = report.components;
@@ -140,6 +192,7 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
         `stations ${c.stations} dims ${c.dims} floaters ${c.floaters} ${report.gatePassed ? 'PASS' : ''}`);
     } catch (error) {
       rows.push({ id, geoMin: 0, gatePassed: false, error: String(error.message) });
+      if (REPIN) skipped[id] = `page error, previous row kept: ${error.message}`;
       console.error(`[geo] ${id}: ${error.message}`);
     }
   }
@@ -157,13 +210,7 @@ if (requested && fs.existsSync(ledgerPath)) {
     }
   } catch { /* corrupted ledger rebuilds from this run */ }
 }
-for (const r of rows) byId.set(r.id, {
-  id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
-  qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
-  ...(r.comparisonPurpose ? { comparisonPurpose:r.comparisonPurpose } : {}),
-  ...(r.comparisonScope ? {comparisonScope:r.comparisonScope,rawSourceComparison:r.rawSourceComparison} : {}),
-  ...(r.preservationBaseline ? { preservationBaseline:r.preservationBaseline } : {}),
-});
+for (const r of rows) mergeLedgerRow(byId, r, { repin: REPIN });
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
@@ -186,4 +233,12 @@ const runSummary = runSorted.length
   ? `worst ${runSorted[0].id} (${runSorted[0].geoMin})`
   : 'no registered comparison rows requested';
 console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ${runSummary}`);
+const notRepinned = REPIN ? rows.filter((r) => r.error && !r.components).map((r) => r.id) : [];
+if (notRepinned.length) console.log(`[geo] not re-pinned (page errors above); their previous rows are kept, marked repinError: ${notRepinned.join(', ')}`);
+if (SKIPPED_FILE) fs.writeFileSync(SKIPPED_FILE, `${JSON.stringify(skipped, null, 1)}\n`);
+if (Object.keys(skipped).length) console.log(`[geo] skipped: ${Object.keys(skipped).join(', ')}`);
 if (CHECK && runPassed < rows.length) process.exitCode = 1;
+if (refusedPublic.length) {
+  console.error(`[geo] FAIL: the page loaded ${refusedPublic.length} public file(s) outside the gate step's key: ${[...new Set(refusedPublic)].join(', ')}`);
+  process.exitCode = 1;
+}

@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 6,
+  "partial": false,
+  "generator": "tools/genIcons.mjs",
+  "requiredViews": ["angle","top","side","topSilhouette","sideSilhouette","armorSide","modulesSide","crewSide","markings"]
+}

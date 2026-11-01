@@ -34,11 +34,15 @@ import { supplementDigest, supplementSnapshot, verifySupplement } from '/tools/r
 import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
 import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
 import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
+import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.json';
+import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
+import { roofFittingParts, stowageParts, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
+import { FLEET_RENEWAL_DONORS } from '/src/vehicles/fleetRenewalSpecs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
 import { assertNoConceptReferences } from '/tools/first-party-concept-policy.mjs';
 import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
@@ -50,15 +54,20 @@ import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-referenc
 import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
 import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
-import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
+import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
+import { FUSED_ANTENNA_BOXES, FUSED_ROOF_GUN_BOXES, FUSED_STOWAGE_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
   window.__FIDELITY_ERROR = message;
   throw new Error(message);
 };
+// Fail closed: an error the page does not catch (a loader's refusal, a module that throws) is its named failure, not
+// a page the gate waits 150 s on. The first message stands.
+addEventListener('error', (event) => { window.__FIDELITY_ERROR ??= String(event.error?.message || event.message); });
+addEventListener('unhandledrejection', (event) => { window.__FIDELITY_ERROR ??= String(event.reason?.message || event.reason); });
 
 const SIZE = 384;
 const params = new URLSearchParams(location.search);
@@ -102,11 +111,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
-  // The recovered Centurion oracles' Turret trees (centurion3.glb, centurion5.glb) carry a 36-vertex basket drum down
-  // to 23 % of the model's height inside the hull (the Type 10 class, below). The tree stays mandatory for yaw and
-  // ownership; only its isolated turret mask is suppressed. Hull, cannon, tracks and every whole view stay mandatory.
-  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
+  // 267: centurion3, centurion5_2 and strv81 are source-world certified on the Strv 81 print (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
@@ -203,7 +209,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   pl01: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
   pl01_105: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
-  pt91a_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
+  // pt91a_twardy (266): a declared derivative of the certified t72b3 study (its 262 rebuild), as the T-84U and the
+  // Oplot-T are; pt91a_manako.glb is retired as its gate oracle. That print's bow is the outlier: the glacis nose's lead
+  // over the front road-wheel / idler centre is 0.89 / +0.21 m on the t72b3 study, 0.79 / +0.13 on t72b_1987, 0.75 /
+  // +0.12 on t72b3m and 0.45 / -0.16 on t72bu, but ~1.27 / +0.62 on the print, whose PT-91 keeps the T-72M1 hull.
+  // Fitting it would copy that error (docs/references/tanks/pt91_twardy.md).
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
   // release 262: "Challenger 3 TD MBT" by Jeyhun1985 (CC-BY-4.0; sha256 3a4b3fbbe52aad3e…), the TD's measurement oracle
   // (docs/references/tanks/challenger3_td.md). An OBJ conversion: unnamed material-merged nodes. The turret is
@@ -222,7 +232,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
       { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
     ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
-  strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
+  // release 265 (owner 2026-10-29: "use our tank generation procedure on this m41 as the basis"): "Low poly M41Walker
+  // Bulldog" by SIpriv (Sketchfab, CC-BY-4.0; sha256 127ca9ed9d1b2a36…), the M41A3's measurement print
+  // (docs/references/tanks/m41a3.md). Gun toward raw -Z; the turret is mesh_selection_45 (Object_94-97, the cupola and
+  // bustle box included), the barrel tube_47 with its collar tube_46. Scaled once on the published 5.82 m hull (x1.8484 of
+  // the raw file), so the hull-length anchor applies. The Bundeswehr, JGSDF and Danish DK-1 fits are photo-class
+  // derivatives on the same build: not registered here.
+  m41a3: { source:'glb', glb:{ path:'/models/community-candidates/m41_walker_bulldog_lowpoly.glb', turretNode:'^mesh_selection_45$',
+    gunNode:'^tube_47$', gunFollowers:'^tube_46$', autoPivot:true, yawOffset:Math.PI, fidelityScaleAnchor:'hullLength' } },
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): strv121 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle strv122_vavtrudner.glb shows a Stridsvagn 122 (fleet id strv122): re-register it there later.
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   // ztz85_iii (265): qualified by photographs (docs/references/photos/ztz85-iii-20261028.json); its fused print is retired
@@ -242,11 +259,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   c2_ariete_proto: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
   k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
-  t90ms_2011: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
-  t90_1992: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak_proto: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
-  // (the recovered Centurion oracles' basket drum: see centurion3)
-  centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc_s2: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
@@ -270,7 +283,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m46_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m46_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  m60a2: { source:'glb', glb:{ path:'/models/tanks/community/m60a2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // Owner-supplied Sheridan print: local-only comparison oracle. Blender
   // connected-component inspection resolves the generic object names into
   // honest articulation buckets without copying any source geometry into the
@@ -302,7 +314,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // a partial fused subassembly rather than the complete barrel silhouette.
   // Judge the authored gun in the full nine-view masks; do not compare two
   // semantically different node fragments as a standalone component.
-  t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966, gunComponentMasks:false } },
   t72bu_1989: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   // These recovered comparison prints expose a Turret node but no honest
   // independent gun subtree: their cannon is partly fused into the turret
@@ -313,15 +324,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80uk: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
-  t90a_2004: { source:'glb', glb:{ path:'/models/tanks/community/variants/t90a_xarchenko_variant.glb', turretNode:'TurretPivot', gunNode:'GunPivot', autoPivot:true, paintUntextured:true } },
-  t90a_2006: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
-  // Main_barrel contains only the forward tube in this source.  The thermal
-  // sleeve/root meshes are turret siblings (see references/tanks/t90m.md),
-  // so an independent gun-node mask compares a partial source against our
-  // complete cannon and is not a valid component measurement.  The full gun
-  // remains mandatory in all nine whole silhouettes and in yaw evidence.
-  t90am: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true, gunComponentMasks:false } },
-  t90sm_2013: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
+  // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
+  // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
+  // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered
+  // t90a_vladimir and t90sm) retired with the builds that followed them. t90_1992, t90ms_2011 and t90am followed (Main
+  // 10-31: they draw their twins t90, t90ms_tagil and t90sm with their own kits): their legacy prints (t90_kojf,
+  // t90ms_kojf, and the T-90M t90m_minehffd for the AM) measured the marks' drums and roof kit, not the build's source.
   type90_kyumaru: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   c1_ariete_preserie: {
@@ -568,28 +576,26 @@ const LOCAL_REFERENCE_OVERRIDES = {
       gunFollowers:'vehicle#gun_barrel_' },
   },
   merkava3c: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/merkava3c_supplied_x_source.glb', fixedMount:true, componentMasks:false, paintUntextured:true } },
-  // m60a1 / m60a3: retired configs RECOVERED (205a095~1 / 5acc7ec) and
-  // LOAD-PROVEN via tmp-m60probe (2026-08-02): the ref RENDERS through
-  // these entries (board 42.9, hull masks aligned at yaw -PI/2 — probe
-  // shots/m60probe/). REMAINING DEFECT, still DO-NOT-GATE: the ref
-  // TURRET/GUN renders ~90deg yawed vs proc (gun west in top view; gun
-  // component 0.0) — yaw 0 and PI both rotate the HULL (worse, 37.1);
-  // -PI/2 is hull-correct. Pre-graduation this same GLB gated 90.7, so
-  // the delta is in how the override path (vs the retired MODEL_SOURCE
-  // path) zeroes the turret rest yaw — read the page's rig/zeroing
-  // internals before enabling gate runs. False-0 law applies until then.
-  m60a1: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
-      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2, gateEligible:false },
-  },
-  m60a3: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
-      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2, gateEligible:false },
-  },
+  // Release 266 (Main's ruling, 2026-10-31: the M60s' reference is the owner's models since 2026-10-28): the owner's
+  // M60A1, M60A2 and M60A3 models, LOCAL-ONLY and gitignored (never committed), measurement-only oracles registered to
+  // the M60A1 build frame by tools/source-x-oracle.mjs (.qa-dev/m60-265/a1-, a2-, a3-recipe.json; raw hashes in
+  // ~/cot-lanes/m60-src-265/SOURCES.sha256). The ring and trunnion are the rebuilt castings' (pattonCast.ts M60_RING,
+  // M60_GUN, M60A2_GUN); the turret and gun owners are the models' own nodes. The A3's owner-requested rack load is set
+  // aside by tools/owner-kit-targets.mjs.
+  m60a1: { source:'glb', glb:{ path:'/models/community-candidates/m60a1_x_source.glb',
+    turretNode:'^turret$',
+    turretFollowers:'^(?:interior_turret|steel_cable|object70|object03|antenna2|jerrycan|base_of_small_turret|mount2|hatch|interior_little_turret|periscope2|mount3|weapon2|jerrycan01|object71|object01|object02|object38|antenna|gear2|object13|hatch2|object04|periscope)$',
+    gunNode:'^weapon$', gunFollowers:'^(?:mount|spotlight|weapon3)$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.10, 1.62], paintUntextured:true } },
+  m60a2: { source:'glb', glb:{ path:'/models/community-candidates/m60a2_x_source.glb',
+    turretNode:'^Object_23$', turretFollowers:'^Object_(?:22|25|24|8|2|26|6)$',
+    gunNode:'^Object_21$', gunFollowers:'^Object_(?:10|3|5)$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.145, 1.80], paintUntextured:true } },
+  m60a3: { source:'glb', glb:{ path:'/models/community-candidates/m60a3_x_source.glb',
+    turretNode:'^turret_m60a3\\-turret_1_0$',
+    turretFollowers:'^(?:baseleftsmoke_m60a3\\-turret_1_0|smoke[2]?[b-f]?\\-model_m60a3\\-turret_1_0|baserightsmoke_m60a3\\-turret_1_0|attachment_points_m60a3\\-turret_1_0|steel_cable_m60a3\\-turret_1_0|hatch2_m60a3\\-turret_1_0|antenna2?_m60a3\\-turret_1_0|periscope_m60a3\\-turret_1_0|wind_sensor01_m60a3\\-turret_1_0|s\\-box_m60a3\\-turret_1_0|object(?:13|38)_m60a3\\-alpha_5_0|(?:jerrycan01?|object0[1-4]|object7[01]|gear2)_us_coldwar_gear_4_0|interior_turret_m60a3\\-interior_3_0|(?:base_of_small_turret|mount[23]|hatch|interior_little_turret|periscope2|weapon2)_m60a3\\-mini_turret_2_0)$',
+    gunNode:'^weapon_m60a3\\-turret_1_0$', gunFollowers:'^(?:mount|weapon3)_m60a3\\-turret_1_0$',
+    autoPivot:true, pivot:[0, 1.733, 0.55], gunPivot:[0, 2.10, 1.62], paintUntextured:true } },
   // t30: NO gate oracle possible through this harness (ww2 r2 finding).
   // The offline candidate is ONE fused node ('hull', mesh Object.113 — probed
   // 2026-08-04); modelLoader's fixedMount guard was written expressly so
@@ -684,7 +690,7 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
 // Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
 // receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
-const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
+const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt,stb1:stb1OwnerKitReceipt,m60a3:m60a3OwnerKitReceipt};
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){
@@ -716,6 +722,7 @@ const comparisonScope=ownerKit?{
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p === ancestor) return true; return false; };
+const onGunRig = (node) => { for (let p=node; p; p=p.parent) if (/^rig_(gun|recoil|muzzle)$/.test(p.name || '')) return true; return false; };
 const isRenderNode = (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry;
 const effectivelyVisible = (o) => {
   for (let p=o; p; p=p.parent) if (!p.visible) return false;
@@ -769,6 +776,86 @@ const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
   root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o) && !isCamouflageSuit(o)); });
 }
+// The geometry gate's dims rows measure the BODY (Main's ruling 2026-10-30, owner-delegated): no whips or antennas, no
+// pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
+// oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
+// the roof weapons and leaves only the antennas out: the top of a published height's interval.
+// Stowage (fuel drums, their cradles, stowage racks and baskets) leaves every comparison on this page, on both models,
+// wherever the build tags it (profiles/stowagePart.ts) or the source names it or boxes it (FUSED_STOWAGE_BOXES): body
+// against body (Main's ruling 2026-10-31, 267). Every body built below leaves it out too; the score's ruler keeps it
+// (withWholeSource).
+const stowage = [
+  stowageParts(procedural.root, { isRenderNode }),
+  stowageParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_STOWAGE_BOXES[id]?.boxes ?? null }),
+];
+const roofFittings = [
+  roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),
+  roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
+    antennaBoxes:FUSED_ANTENNA_BOXES[id]?.boxes ?? null, cut:stowage[1].ranges,
+    ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
+];
+const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
+const antennaNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes].filter(([, tag]) => isAntennaTag(tag)).map(([node]) => node)));
+// An oracle comparison drops a kind of roof fitting only where the oracle names it too: a source that fuses its roof
+// gun into the turret (the T-90MS's) keeps the build's gun beside it, and one that names nothing (a fused export) is
+// compared whole against whole.
+const paired = pairedRoofFittings(roofFittings[0], roofFittings[1]);
+let hiddenRoofFittings = null;
+function withBodyOnly(measure, mode = 'body') {
+  const swapped = [];
+  for (const [i, { trimmed, boxed }] of roofFittings.entries()) {
+    if (mode === 'paired' && i === 0 && !paired.cutBuildSpans) continue;
+    for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
+    // a fused oracle's roof gun (its registered boxes) leaves the body masks, never the roof-fittings top
+    if (mode !== 'roof') for (const [node, body] of boxed) { swapped.push([node, node.geometry]); node.geometry = body; }
+  }
+  hiddenRoofFittings = mode === 'roof' ? antennaNodes : mode === 'paired' ? paired.hidden : roofFittingNodes;
+  try { return measure(); } finally {
+    hiddenRoofFittings = null;
+    for (const [node, geometry] of swapped) node.geometry = geometry;
+  }
+}
+const roofFittingsExcluded = (() => {
+  const [built, oracle] = roofFittings.map(({ nodes, trimmed, boxed, antennaBoxed }) => [...new Set([
+    ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
+    // an oracle's fused whips name their mesh and the triangles its antenna boxes took
+    ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => (antennaBoxed.has(node)
+      ? `antennaBoxes:${node.name}:${antennaBoxed.get(node)}` : `antennaSpans:${node.name}`)),
+    ...[...boxed.keys()].filter((node) => baseVisible.get(node)).map((node) => `roofGunBoxes:${node.name}`),
+  ])].sort());
+  return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
+})();
+// Whips leave every comparison on this page wherever the source names them, by node or by the boxes a fused source's
+// whips take (FUSED_ANTENNA_BOXES), the curves and stations as well as the heights, and the build's whips (their antenna
+// tags, tools/whip-rod-census.mjs) leave with them: body against body (267, Main 2026-10-31). The score's height and plan
+// length stay the source's whole ones (withWholeSource): setting whips or stowage aside changes what is compared, never
+// the ruler. Stowage goes first, so a mesh that loses both keeps neither.
+const stowageAsideUndo = [];
+for (const { nodes, ranges } of stowage) {
+  for (const [node, cut] of ranges) {
+    const body = bodyGeometryWithout(node.geometry, cut);
+    stowageAsideUndo.push([node, node.geometry, body]); node.geometry = body;
+  }
+  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+const stowageAside = (() => {
+  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
+    ...[...ranges].map(([node, cut]) => `${node.name}:${cut.length}`)])].sort());
+  return named[0].length || named[1].length ? { procedural:named[0], reference:named[1] } : null;
+})();
+const whipsAside = paired.named.antenna;
+const whipsAsideUndo = [];
+if (whipsAside) {
+  for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
+  for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+function withWholeSource(measure) {
+  const undo = [...stowageAsideUndo, ...whipsAsideUndo];
+  for (const [node, geometry, other] of undo.slice().reverse()) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+  try { return measure(); } finally {
+    for (const [node, geometry, other] of undo) { if (geometry) node.geometry = other; else baseVisible.set(node, false); }
+  }
+}
 // Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
 // named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
 // before the part leaves the track profile (every other mask keeps it); ?comparison=raw-source compares it unexempted.
@@ -813,7 +900,7 @@ function visibleBox(root) {
   const world = new THREE.Matrix4();
   root.updateMatrixWorld(true);
   root.traverse((o) => {
-    if (!isRenderNode(o) || !baseVisible.get(o)) return;
+    if (!isRenderNode(o) || !baseVisible.get(o) || hiddenRoofFittings?.has(o)) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
     local.copy(o.geometry.boundingBox);
@@ -881,7 +968,8 @@ if (sourceWorldCertificate) {
       turret:datum('rig_turret'), gun:datum('rig_gun') };
   };
   sourceWorldRegistration = validateSourceWorldFrame(sourceWorldCertificate,
-    await hashLocalOracle(source.glb.path), {reference:frame(reference),procedural:frame(procedural)});
+    await hashLocalOracle(source.glb.path), {reference:frame(reference),procedural:frame(procedural)},
+    SOURCE_WORLD_BUILD_OFFSETS[id]);
   if (!sourceWorldRegistration.passed) failFidelity(sourceWorldRegistration.failures.join('; '));
 }
 referenceBox.copy(visibleBox(reference.root));
@@ -944,8 +1032,11 @@ function setPart(root, part) {
     const allowed = part === 'whole'
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
       || (part === 'turret' && isBelow(o, turret))
-      || (part === 'gun' && isBelow(o, gun));
-    o.visible = base && allowed;
+      || (part === 'gun' && isBelow(o, gun))
+      // the dims rows' hull: no turret and no gun, even where a casemate hangs its muzzle rig on the hull's rig or draws
+      // its barrel into the hull's gun buckets
+      || (part === 'hullBody' && isBelow(o, hull) && !isBelow(o, turret) && !onGunRig(o) && !/^(gun|hullGun)/.test(o.name || ''));
+    o.visible = base && allowed && !hiddenRoofFittings?.has(o);
   });
 }
 
@@ -1677,22 +1768,7 @@ if (params.get('geo')) {
     setPart(visual.root, part);
     return readGeometryMask(gtarget, GSIZE, camera);
   };
-  const gTrace = (mask, cam, N = 96) => {
-    const half = cam.right;
-    const out = [];
-    const step = GSIZE / N;
-    for (let c = 0; c < N; c++) {
-      const x0 = Math.floor(c * step), x1 = Math.min(GSIZE, Math.floor((c + 1) * step));
-      let top = -1, bot = -1;
-      for (let x = x0; x < x1; x++) {
-        for (let y = GSIZE - 1; y >= 0; y--) if (mask[y * GSIZE + x]) { if (y > top) top = y; break; }
-        for (let y = 0; y < GSIZE; y++) if (mask[y * GSIZE + x]) { if (bot < 0 || y < bot) bot = y; break; }
-      }
-      out.push(top >= 0 ? [((x0 + x1) / 2 + 0.5) / GSIZE * 2 * half - half,
-        ((top + 0.5) / GSIZE * 2 - 1) * half, ((bot + 0.5) / GSIZE * 2 - 1) * half] : null);
-    }
-    return out;
-  };
+  const gTrace = (mask, cam, N = 96) => columnTrace(mask, GSIZE, cam.right, N);
   const clamp01 = (v) => Math.max(0, Math.min(100, v));
   // Curve deviation: mean+max |ref−proc| over columns where BOTH exist, plus
   // a coverage penalty where exactly one silhouette exists (missing/excess
@@ -1796,8 +1872,9 @@ if (params.get('geo')) {
   });
 
   const refBoxG = visibleBox(reference.root);
-  const height = refBoxG.max.y - refBoxG.min.y;
-  const length = refBoxG.max.z - refBoxG.min.z;
+  const wholeBoxG = withWholeSource(() => visibleBox(reference.root));
+  const height = wholeBoxG.max.y - wholeBoxG.min.y;
+  const length = wholeBoxG.max.z - wholeBoxG.min.z;
   const camsG = { side: cameraFor(TRUE_AXES.side), plan: cameraFor(TRUE_AXES.plan), front: cameraFor(TRUE_AXES.front) };
   const curves = {};
   for (const [view, cam] of Object.entries(camsG)) {
@@ -1958,23 +2035,23 @@ if (params.get('geo')) {
   const mT = trimmed(stationErr.map((e) => e.topPct));
   const stationScore = clamp01(100 - 10 * mW - 10 * mT);
   // Published-dimension anchor: PROCEDURAL vs spec.dims (real vehicle).
-  // Antenna-robust: measured from silhouette curves counting only columns
-  // whose band thickness exceeds 12% of height (whip antennas/masts are
-  // authoring metadata, not the vehicle's published envelope).
-  const bodyExtent = (curve) => {
-    const cols = curve.filter(Boolean);
-    if (!cols.length) return null;
-    const rough = Math.max(...cols.map((c) => c[1])) - Math.min(...cols.map((c) => c[2]));
-    const body = cols.filter((c) => c[1] - c[2] > rough * 0.12);
-    if (!body.length) return null;
-    // p95 of column tops: a 2-column antenna mast must not define the roof
-    const tops = body.map((c) => c[1]).sort((a, b) => a - b);
-    const top = tops[Math.min(tops.length - 1, Math.floor(tops.length * 0.95))];
-    const bot = Math.min(...body.map((c) => c[2]));
-    return { h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]) };
-  };
-  const procExt = bodyExtent(curves.side_whole_proc);
-  const refExt = bodyExtent(curves.side_whole_ref);
+  // Every dims row measures the BODY (withBodyOnly: no whips, antennas or
+  // roof weapons on either model; Main's rulings 2026-10-30). A published
+  // height is met anywhere from the body top to the roof-fittings top
+  // (sources measure to the cupola or the roof gun; whips stay out), an
+  // oracle is body against body, and hull length is the hull's own side
+  // span, gun left out, wherever both sides have one (a fused oracle has
+  // none: the whole-body extent on both sides there).
+  const sideTraces = (visual, other, mode = 'body', cam = camsG.side) => withBodyOnly(() => ({
+    whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hullBody'), cam),
+  }), mode);
+  const procSide = sideTraces(procedural, reference);
+  const procPairedSide = sideTraces(procedural, reference, 'paired');
+  const refSide = sideTraces(reference, procedural, 'paired');
+  const procExt = bodyExtent(procSide.whole, procSide.hull);
+  const procPairedExt = bodyExtent(procPairedSide.whole, geometryComponentMasksAvailable ? procPairedSide.hull : null);
+  const refExt = bodyExtent(refSide.whole, geometryComponentMasksAvailable ? refSide.hull : null);
+  const procRoofTop = bodyExtent(sideTraces(procedural, reference, 'roof').whole)?.hMax;
   // columns are CENTERS: a span between first/last centers is one pitch
   // short of the physical extent (refs self-measured ~3% narrow on width)
   const colPitch = (curve) => {
@@ -1994,10 +2071,10 @@ if (params.get('geo')) {
   };
   const dimRows = [];
   const specDimensions = spec.dims || {};
-  const dimCheck = (name, actual, published) => {
+  const dimCheck = (name, actual, published, extra) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
-    dimRows.push({ name, actual, published, pct });
+    dimRows.push({ name, actual, published, pct, ...extra });
   };
   const pixelSpanZ = (part, visual = procedural, other = reference, cam = camsG.side) => {
     const m = gMask(visual, other, cam, part);
@@ -2033,11 +2110,11 @@ if (params.get('geo')) {
   // Legacy sources retain published dimensions; historical preservation
   // retains its frozen-original policy. Explicitly certified source-study
   // IDs below use an independent fixed ruler and full physical envelopes.
-  let referenceDimensions = {
+  let referenceDimensions = withBodyOnly(() => ({
     heightM:refExt?.h, hullLengthM:refExt?.len,
     overallLengthM:pixelSpanZ('whole', reference, procedural),
     widthM:measurePixelWidth(reference, procedural),
-  };
+  }), 'paired');
   let dimensionFrame = null;
   if (usesSourceDimensionFrame(id,sourceWorldRegistration)) {
     // A candidate-dependent union frame moves96-column percentile bins.
@@ -2046,24 +2123,37 @@ if (params.get('geo')) {
     // The additional full3D envelopes catch any out-of-frame excess.
     const side=sourceDimensionCamera(referenceBox,TRUE_AXES.side);
     const plan=sourceDimensionCamera(referenceBox,TRUE_AXES.plan);
-    const measure=(visual,other)=>{
-      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side));
+    const measure=(visual,other)=>withBodyOnly(()=>{
+      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side),
+        geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hullBody'),side):null);
       return {heightM:body?.h,hullLengthM:body?.len,
         overallLengthM:pixelSpanZ('whole',visual,other,side),
         widthM:measurePixelWidth(visual,other,plan)};
-    };
+    },'paired');
     referenceDimensions=measure(reference,procedural);
     const actual=measure(procedural,reference);
-    dimRows.push(...sourceDimensionRows(referenceDimensions,actual,referenceBox,proceduralBox));
+    // the ruler stays framed by the whole source; the physical envelopes are the bodies'
+    dimRows.push(...sourceDimensionRows(referenceDimensions,actual,
+      withBodyOnly(()=>visibleBox(reference.root),'paired'),withBodyOnly(()=>visibleBox(procedural.root),'paired'),
+      SOURCE_WORLD_BUILD_OFFSETS[id]));
     dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
       side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
       plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
   } else {
     const pub = preservationDimensionTargets(source, id, preservation ? referenceDimensions : {}, specDimensions);
-    if (procExt) dimCheck('heightM', procExt.h, pub.silhouetteHeightM ?? pub.heightM);
-    if (procExt) dimCheck('hullLengthM', procExt.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
-    dimCheck('overallLengthM', pixelSpanZ('whole'), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
-    dimCheck('widthM', measurePixelWidth(procedural, reference), pub.silhouetteWidthM ?? pub.widthM);
+    const publishedHeight = pub.silhouetteHeightM ?? pub.heightM;
+    const ext = preservation ? procPairedExt : procExt;
+    if (preservation && ext) dimCheck('heightM', ext.h, publishedHeight);
+    else if (ext && publishedHeight && Number.isFinite(procRoofTop)) dimRows.push({ name:'heightM', actual:ext.h,
+      roofFittingsTop:Math.max(ext.h, procRoofTop), published:publishedHeight, method:'interval: body top to roof-fittings top',
+      pct:heightIntervalPct(ext.h, procRoofTop, publishedHeight) });
+    const donorId = FLEET_RENEWAL_DONORS[id] ?? spec.variantOf;
+    const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
+    const { published: hullTarget, ...hullBasis } = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims,
+      ownOracle ? referenceDimensions.hullLengthM : null);
+    if (ext) dimCheck('hullLengthM', ext.len, hullTarget, hullBasis);
+    dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+    dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
@@ -2165,7 +2255,13 @@ if (params.get('geo')) {
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
     turretRows, stationErr, dimRows, referenceDimensions,
     referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },
-    proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3) },
+    proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
+      ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
+    ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
+    ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
+    ...(stowageAside ? { stowageAside:{ rule:'every comparison: the build\'s tagged stowage and the source\'s named or boxed stowage; the score height and plan length with them', ...stowageAside } } : {}),
+    ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
+      roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');

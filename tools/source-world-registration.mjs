@@ -2,6 +2,21 @@ import { withOwnerSizeTargets } from './owner-size-targets.ts';
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
+import { T80U_X_RING_RAISE_M } from '../src/vehicles/t80uXArmor.ts';
+// The Strv 81 print ("Strv 81" by MMD_SonicNewYear, CC-BY-4.0, docs/ATTRIBUTION.md), raw bda892df… (the bytes kept
+// before the 08-17 whip excision; nothing trimmed), prepared by tools/source-x-oracle.mjs
+// (docs/history/research/second-wave-registrations/strv81_x.json): gun to +z, uniform 3.38 m over the side plates (the
+// User Handbook's width; the hull then reads 7.569 m against its 7.557), ground at the track belts' contact, the belts
+// centred on z 0. Turret: the ring skirt's circle (23 vertices, rms 0) on the turret's flat underside, the plane it turns
+// in (y 1.69628; the deck under it is 1.6807). Gun: the bore axis on the tube (12 rings within 0.2 mm). The print shows no
+// trunnion (its gun mesh starts at the mantlet cover, z 1.285, and its gun_0 origin stands 7 cm beside the bore at the
+// cover's face), so the station is the family casting's, z 1.10 (centurionFamily.ts TRUNNION), as the M60s take theirs.
+// turret_0 and gun_0 are the print's own meshes; its two whips are fused into turret_0 and stay in the oracle (the gate's
+// body rule names them by box: tools/fused-roof-gun-boxes.mjs FUSED_ANTENNA_BOXES).
+const CENTURION_SOURCE_FRAME = Object.freeze({
+  sha256:'66b2818a6cfe23a2f7be0ec7be68286e9969fb253d0c878a231aeec95e021aa1',
+  turret:Object.freeze([-.000085,1.69628,.468587]), gun:Object.freeze([.000004,2.079211,1.10]),
+});
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
@@ -96,6 +111,23 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   challenger3_td: {
     sha256:'6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386',
     turret:[0, 1.98, 0.7106], gun:[0, 2.2341, 1.9195],
+  },
+  // The M60s (release 266, Main's ruling 2026-10-31: the owner's models are the reference): the owner's M60A1, M60A2 and
+  // M60A3 models prepared by tools/source-x-oracle.mjs (.qa-dev/m60-265/a1-, a2-, a3-recipe.json: the A1 FBX in cm at
+  // 0.01, axes -z y x; the A3 axes -z y x; the A2 axes x y z, 0.15 m forward and 0.045 m down to the A1's ring; raw
+  // hashes in ~/cot-lanes/m60-src-265/SOURCES.sha256), in the M60A1 build frame. The ring and the trunnion are the
+  // castings' measured datums in that frame (pattonCast.ts M60_RING, M60_GUN, M60A2_GUN).
+  m60a1: {
+    sha256:'c002db9dab0c31efb26bb8fb7586f0a2b347e673cab874760d4cdab866e00a8d',
+    turret:[0, 1.733, 0.55], gun:[0, 2.10, 1.62],
+  },
+  m60a2: {
+    sha256:'d2d5e89f9ff357b110e9955ea64a13cd8aaafed0b31adbf45acafdabdaf96c86',
+    turret:[0, 1.733, 0.55], gun:[0, 2.145, 1.80],
+  },
+  m60a3: {
+    sha256:'1eaf2699bfb8471b8a251b92679ba8e7149015745fadd33cf0a3b1f0a684b3fb',
+    turret:[0, 1.733, 0.55], gun:[0, 2.10, 1.62],
   },
   amx56: {
     sha256:'e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0',
@@ -217,15 +249,22 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],
   },
+  // The Centurion family (267, Main 2026-10-31), one source frame for the three marks rebuilt to it in 262
+  // (centurionFamily.ts): the Strv 81 print in its pristine download, whips and all (CENTURION_SOURCE_FRAME).
+  centurion3: CENTURION_SOURCE_FRAME, centurion5_2: CENTURION_SOURCE_FRAME, strv81: CENTURION_SOURCE_FRAME,
 }), griffin50mm: GRIFFIN_PROPORTION_REFERENCE.frame});
 export const SOURCE_WORLD_FRAMES = Object.freeze(withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
+// Declared departures of a build's turret and gun pivots from its certificate's source datums (the certificates stay
+// immutable). The T-80U seats its casting T80U_X_RING_RAISE_M over the source's ring on a machined race (owner
+// 2026-10-21, 31235a8c85: the gun mount stood in the deck); the build is held to the datums plus that raise only.
+export const SOURCE_WORLD_BUILD_OFFSETS = Object.freeze({ t80u: Object.freeze([0, T80U_X_RING_RAISE_M, 0]) });
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
 const distance = (a,b) => Math.hypot(...a.map((v,i)=>v-b[i]));
 
 /** Fail closed: no declaration alone can switch off registration. */
-export function validateSourceWorldFrame(certificate, measuredHash, frames) {
+export function validateSourceWorldFrame(certificate, measuredHash, frames, buildOffset = [0,0,0]) {
   const failures=[];
   if (!certificate || measuredHash !== certificate.sha256) failures.push('canonical oracle hash mismatch');
   for (const owner of ['reference','procedural']) {
@@ -239,8 +278,9 @@ export function validateSourceWorldFrame(certificate, measuredHash, frames) {
       // A fused oracle has no independent moving owners. Its empty rig nodes
       // stay at the origin; do not fabricate source articulation. Native
       // inferred articulation remains independently checked below.
+      const offset=owner==='procedural' && anchor!=='hull' ? buildOffset : [0,0,0];
       const expected=anchor==='hull' || (owner==='reference'&&certificate?.fused)
-        ? [0,0,0] : certificate?.[anchor];
+        ? [0,0,0] : certificate?.[anchor]?.map((v,i)=>v+offset[i]);
       const actual=frame?.[anchor];
       // Source datums are measured to millimetres; procedural pivots may use
       // rounded authoring coordinates, but never more than 12 mm departure.

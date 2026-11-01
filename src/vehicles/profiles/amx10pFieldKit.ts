@@ -1,6 +1,7 @@
 // Owner-requested field equipment for the tier-X Dragar, inspired by Warrior
 // MILAN X's dressed silhouette. This kit is not a historical configuration claim.
 import { KIT } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { AMX10P25_SKIRT_CONTOUR, AMX10P25_SKIRT_STATIONS, amx10p25SkirtPoint } from '../amx10pSkirtLayout.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -138,7 +139,7 @@ function turretEquipment(P: TankBuilderPort): void {
   P.addEquipment('turretDark', box(.17, .065, .19), .40, .788, -.27);
   P.addEquipment('turretDetail', box(.14, .10, .14), -.47, .647, -.64);
   P.addEquipment('turretDark', KIT.cylY(.031, .046, .10, 10), -.47, .72, -.64);
-  P.addEquipment('turretDark', KIT.cylY(.006, .012, 1.08, P.q ? 10 : 6), -.47, 1.30, -.64);
+  P.addEquipment('turretDark', antennaPart(KIT.cylY(.006, .012, 1.08, P.q ? 10 : 6)), -.47, 1.30, -.64);
 }
 
 export function addAmx10p25FieldKit(P: TankBuilderPort): void {

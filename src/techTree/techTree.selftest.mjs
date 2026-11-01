@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 13, 'thirteen national trees');
+assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -108,6 +108,14 @@ const FAMILY_UPGRADES = Object.freeze({
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
+  // 265: the Danish Leopards
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
+  // 266: the Osório's two prototypes (the 105 mm P.1 before the 120 mm P.2)
+  brazil: [['x1_pioneiro', 'x1a2_carcara'], ['tamoyo1', 'tamoyo3'], ['osorio_p1', 'osorio_p2'], ['ee_t3_osorio', 'ee_t4_osorio']],
+  // 265: the M41s (the Danish rebuild at II over the originals at I)
+  m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
+  // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
+  denmarkB: [['cv90', 'cv9035dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -185,5 +193,30 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // from the Sokół at X (lane 4). Re-pinned on the merged tree (main 637c3b4ccf + the PT-84s).
 // Re-pinned 2026-10-30 at integ/265 (pt91-twardy-262 bbf22b6ce3 merged; every other tree check passes): + the three
 // PT-84s on Poland's Twardy line.
-assert.equal(digest, 'e74e06310faaa982', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-31 re-pin (266, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
+// Leopard line on through the 1A5 DK (I, the DK-1 its twin) to the 2A5 DK (IX), the 2A7 DK held (2026-10-30, Main: its
+// Barracuda lands later); the Christian II moves out of the Sweden tree into Denmark's special lane, and Sweden's nations
+// are Sweden's alone again.
+// Re-pinned 2026-10-31 at integ/266 (leo2-front-265 3fc640ea29 merged; every other tree check passes): 265's trees + the
+// Denmark tree (the Christian II out of Sweden's special lane, the Strv 105 kept there).
+// 266 (m60-family-265): the Magach 6B (I) and 7C (II) in Israel's second special lane, beside the Magach 3 and the Sabra.
+// Re-pinned 2026-10-31 at integ/266 (m60-family-265 17fe8bb7d1 merged; every other tree check passes): + the Magach 6B and 7C.
+// 2026-10-31 re-pin (266): the owner moved the Challenger 3 TD and its RWS build to tier X beside the Challenger 3.
+// Re-pinned 2026-10-31 at integ/266 (cr3td-tier-x-266 986c7a4452 merged; every other tree check passes).
+// 2026-10-29 re-pin (266, Main's ruling on the Brazil line): the Brazil tree, head A: its root the X1 Pioneiro (I) and the
+// Bernardini and Engesa line on through the X1A2 Carcará (I), the MB-3 Tamoyo 1 (II) and 3 (III) and the EE-T1 Osório P.1
+// (III) and P.2 (IV); head B's Army-fleet line (the M41C, the Leopards, the M60A3 TTS) re-cuts it again.
+// 2026-10-30 re-pin (266, the owner's ask and Main's ruling the same day): the fictional EE-T3 (IX) and EE-T4 (X) Osório
+// on from the P.2, lane 2.
+// Re-pinned 2026-10-31 at integ/266 (brazil-line-266 22327fcc1f merged; every other tree check passes): + the Brazil tree.
+// 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
+// Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
+// off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
+// 265 (the owner 2026-10-30): the T49 at II off the M41A3 on the US M41 line (lane 10, clear of the M551's and M60A3's
+// connectors).
+// Re-pinned 2026-10-31 at integ/266 (wip/denmark-c-265 e7b231c694 merged; every other tree check passes): + the M41s, the T49 and
+// the CV9035 DK; the US M41A3 on lane 6 beside the M46, the Bundeswehr M41 a Germany special at I.
+// 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
+// Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
+assert.equal(digest, 'c285a4ac9b24e43d', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

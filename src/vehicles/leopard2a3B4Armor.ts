@@ -47,14 +47,16 @@ export const LEO2A3B4_TURRET = Object.freeze({
    * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head (its back
    * parallel to the cheek's face); the head's armoured housing on the cheek's top behind it, its foot sightLintelY, its top
    * sightTopY. Measured from the cited photos (docs/references/tanks/leo2a3_b4.md, "Turret front"); the lintel rose 5 cm
-   * after the photo critic (its face over the opening is a thin lip in the owner's photo, not a deep brow).
+   * after the photo critic (its face over the opening is a thin lip in the owner's photo, not a deep brow). The depth is
+   * the Christian II's 0.35 m (the owner, 2026-10-30: "make the otehr 2a4s have that correct window"): at the photos'
+   * 0.22 the head stood at the bevel's edge and the window read flush with the face.
    */
   sightInnerX: 0.50,
   sightOuterX: 0.94,
   sightSillY: 0.42,
   sightLintelY: 0.75,
   sightTopY: 0.86,
-  sightDepthM: 0.22,
+  sightDepthM: 0.35,
   stepZ: -1.62,
   bustleHalfWidthM: 1.15,
   /** The bustle's rear plate (hull z -2.27, the registered drawing's). */
@@ -84,7 +86,8 @@ export const LEO2A3B4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
   sight: Object.freeze({
     innerX: LEO2A3B4_TURRET.sightInnerX, outerX: LEO2A3B4_TURRET.sightOuterX, sillY: LEO2A3B4_TURRET.sightSillY,
     lintelY: LEO2A3B4_TURRET.sightLintelY, topY: LEO2A3B4_TURRET.sightTopY, depthM: LEO2A3B4_TURRET.sightDepthM,
-    housingDepthM: 0.62,
+    // its rear where it stood before the window deepened (0.62 m from a 0.22 m-deep back)
+    housingDepthM: 0.49,
   }),
 });
 

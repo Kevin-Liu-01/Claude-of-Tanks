@@ -12,7 +12,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   lrmvLynx: Object.freeze(['lrmv_lynx']),
   borsuk: Object.freeze(['borsuk']),
   pumaS1SourceX: Object.freeze(['puma_s1']),
-  cv9040CSourceX: Object.freeze(['cv9040c']),
+  cv9040CSourceX: Object.freeze(['cv9040c', 'ua_cv9040c']),
   type89SourceX: Object.freeze(['type89']),
   griffinViper: Object.freeze(['griffin_viper']),
   tos1aTagil: Object.freeze(['tos1a_tagil']),
@@ -31,6 +31,10 @@ export const FLEET_GROUP_IDS = Object.freeze({
   christian2: Object.freeze(['christian2']),
   leopard2a3B4: Object.freeze(['leo2a3_b4', 'leo2a2', 'leo2a3']),
   leopard2a4Family: Object.freeze(['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a4_otco', 'leo2_improved', 'strv121']),
+  denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk']),
+  brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
+    'ee_t4_osorio']),
+  m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
@@ -110,7 +114,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   patton: Object.freeze([
     'm46_patton', 'm47_patton', 'm48a5_patton', 'm60a2',
-    'm60a1', 'm60a3', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super',
+    'm60a1', 'm60a3', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'magach6b', 'magach7c',
   ]),
   merkava: Object.freeze([
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',

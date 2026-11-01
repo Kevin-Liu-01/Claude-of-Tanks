@@ -5,15 +5,15 @@
 // leaves no process of the tree behind. The caps here are a few hundred MB, and the page stops itself at 1.5 GB, so a
 // broken guard cannot grow the browser far.
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { execFile, execFileSync, spawn } from 'node:child_process';
+import { chmodSync, mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import {
   BROWSER_GUARD_EXIT_CODE, browserGuardConfig, browserGuardOf, browserInstallPrefix, guardedLaunchArgs, launchGuardedBrowser,
-  measureTree, parseFootprint, parsePsRows, processType,
+  measureTree, parseFootprint, parsePsRows, processType, psCpuSeconds,
 } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
@@ -186,6 +186,52 @@ if (process.argv[2] === '--child') {
   await until(() => groupPids(rootPid).length === 0, 10_000, 'the child\'s browser tree gone');
 }
 
+// ---- (267) the launch is judged on the browser's CPU, never a fixed wall -------------------------------------------
+// Under machine load Chrome took past 30 s to print its DevTools endpoint ("Timed out after 30000 ms while waiting for the
+// WS endpoint URL", vehicle-ground-occlusion in 266's tier). A browser stopped for 6 s launches under a 3 s timeout (the
+// previous launcher failed it at 3.3 s); one that burns its CPU budget without the endpoint fails, naming the budget;
+// one that spends no CPU past the hang cap fails as a hang; neither leaves a process.
+assert.deepEqual(['0:01.50', '1:02.25', '1:00:00.00', '2-00:00:01.00'].map(psCpuSeconds), [1.5, 62.25, 3600, 172801]);
+{
+  const fakes = mkdtempSync(join(tmpdir(), 'browser-launch-fakes-'));
+  const fake = (name, code) => {
+    const file = join(fakes, name);
+    writeFileSync(file, `#!/bin/sh\nexec "${process.execPath}" -e '${code}' -- "$@"\n`);
+    chmodSync(file, 0o755);
+    return file;
+  };
+  const ps = (args) => new Promise((done) => execFile('ps', args, { encoding: 'utf8', maxBuffer: 64 << 20 }, (error, out) => done(out ?? '')));
+  const tokenedChildren = async () => {
+    const children = (await ps(['-A', '-o', 'pid=,ppid='])).split('\n').map((line) => line.trim().split(/\s+/).map(Number))
+      .filter(([, ppid]) => ppid === process.pid).map(([pid]) => pid);
+    if (!children.length) return [];
+    return (await ps(['-ww', '-o', 'pid=,command=', '-p', children.join(',')])).split('\n')
+      .filter((line) => line.includes('--cot-browser-guard=')).map((line) => Number.parseInt(line, 10));
+  };
+  // a real browser stopped for 6 s as soon as it appears (async: a synchronous ps would block the launch's own timers)
+  let stopped = null, polling = false;
+  const freezer = setInterval(async () => {
+    if (stopped || polling) return;
+    polling = true;
+    [stopped] = await tokenedChildren();
+    polling = false;
+    if (stopped) { process.kill(stopped, 'SIGSTOP'); setTimeout(() => { try { process.kill(stopped, 'SIGCONT'); } catch { /* gone */ } }, 6000); }
+  }, 50);
+  const started = Date.now();
+  try {
+    const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--disable-gpu'], timeout: 3000 }, { label: 'starved-launch' });
+    assert.match(await browser.version(), /Chrome/);
+    await browser.close();
+  } finally { clearInterval(freezer); }
+  assert.ok(stopped && Date.now() - started >= 6000, 'the browser was stopped past the caller\'s 3 s and still launched');
+  await assert.rejects(launchGuardedBrowser(puppeteer, { headless: true, executablePath: fake('burn.sh', 'for(;;){}'), timeout: 2000 }, { label: 'burn' }),
+    /browser launch \(burn\): the browser spent [\d.]+ s of CPU \(budget 2\.0 s\) without its DevTools endpoint/, 'a real slowdown fails on its CPU');
+  await assert.rejects(launchGuardedBrowser(puppeteer, { headless: true, executablePath: fake('sleep.sh', 'setTimeout(() => {}, 3600000)'), timeout: 30_000 },
+    { label: 'sleep', launchHangMs: 4000 }), /browser launch \(sleep\): the launch waited .* a hang/, 'a launch that spends no CPU fails as a hang');
+  assert.deepEqual(await tokenedChildren(), [], 'no launched process is left');
+}
+
 console.log('browser-launch.selftest: the heap cap and flags merged into the caller\'s, the process-group tree measure, a hog page '
   + 'tripping the renderer cap in-process (tree killed, page named, capture lock released with its reason) and in a child '
-  + `(exit ${BROWSER_GUARD_EXIT_CODE}, no process left)`);
+  + `(exit ${BROWSER_GUARD_EXIT_CODE}, no process left); the launch judged on the browser's CPU (a stopped browser launches, `
+  + 'a burning one fails on its budget, a still one as a hang)');

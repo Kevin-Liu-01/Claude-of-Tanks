@@ -11,7 +11,8 @@
  * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
  * stay browsable without returning to the player-facing loading rotation.
  */
-import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
+import { isMapId } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from './mapNames.ts';
 import { mapBackdropFor, type ViewportSample } from './mapBackdrop.ts';
 
 interface FeaturedShot {

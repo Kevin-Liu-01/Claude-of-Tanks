@@ -50,6 +50,35 @@ export function evaluateFidelityGate({ qualityBar, totalScore, wholeScores,
   return { gatePassed: failures.length === 0, requiredMinimum, failures };
 }
 
+/** A re-pin (geometry-gate.mjs --repin) stops before measuring when a requested registered oracle is not on
+ *  disk: its unavailable row would replace the measured one. `sources` maps an id to its oracle's public path. */
+export function missingOraclesError(ids, sources) {
+  return new Error(`registered comparison oracle missing for ${ids.length} id(s); nothing was measured or written:\n`
+    + ids.map((id) => `  ${id}: public${sources[id] ?? ' (no path)'}`).join('\n'));
+}
+
+/** Put one run's report into the ledger's rows (`byId`). In a re-pin, an id the page could not measure keeps its
+ *  previous row (its record is never written on an error) and carries the error as `repinError` until a later run
+ *  measures it; an id with no previous row gets its zero row with the same mark. */
+export function mergeLedgerRow(byId, report, { repin = false } = {}) {
+  const previous = byId.get(report.id);
+  if (repin && report.error && !report.components) {
+    byId.set(report.id, { ...(previous ?? ledgerRow(report)), repinError: report.error });
+    return;
+  }
+  byId.set(report.id, ledgerRow(report));
+}
+
+function ledgerRow(r) {
+  return {
+    id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
+    qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
+    ...(r.comparisonPurpose ? { comparisonPurpose:r.comparisonPurpose } : {}),
+    ...(r.comparisonScope ? {comparisonScope:r.comparisonScope,rawSourceComparison:r.rawSourceComparison} : {}),
+    ...(r.preservationBaseline ? { preservationBaseline:r.preservationBaseline } : {}),
+  };
+}
+
 export function unavailableOracleReport(id, qualityBar = 'fleet') {
   const requiredMinimum = requiredMinimumForQualityBar(qualityBar);
   return {

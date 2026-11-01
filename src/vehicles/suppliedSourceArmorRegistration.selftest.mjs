@@ -15,7 +15,7 @@ const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
 const cases = [
   ['type96b', 'ztz99_longwei', 'glacis_era_L'],
   ['aft10', 'm551_sheridan', 'sheridan_glacis_era'],
-  ['sabra_mk2', 'm60a3', 'm60a3_turret_era_front_L'],
+  // (the Sabra's M60A3 donor carries no reactive armour since release 265, so it has none to inherit)
 ].map(([id, donorId, failureZone]) => {
   const spec = getSpec(id), donor = getSpec(donorId);
   const donorReactive = rows(donor.armor);

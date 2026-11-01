@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 import * as THREE from 'three';
 import {KIT, FITTINGS} from './kit.ts';
 import {fieldChestParts, reserveDecorVolume} from './fieldChest.ts';
@@ -174,7 +175,7 @@ export function addBarakWhips(P: TankBuilderPort): void {
     [5.008657,.008711],[5.664633,.007424]];
   const points=[new THREE.Vector2(0,0),...rings.map(([y,r])=>new THREE.Vector2(r,(y-baseY)/axisY)),
     new THREE.Vector2(0,(5.664633-baseY)/axisY)];
-  const whips=new THREE.InstancedMesh(new THREE.LatheGeometry(points,P.q?8:6),P.mats.dark,2);
+  const whips=new THREE.InstancedMesh(antennaPart(new THREE.LatheGeometry(points,P.q?8:6)),P.mats.dark,2);
   whips.name='barakRearWhips';
   for(const [i,x,y,z]of[[0,-1.023587,2.598081,-3.570749],[1,1.029952,2.607366,-3.572234]]){
     const pose=new THREE.Object3D();pose.rotation.x=-Math.PI/60;

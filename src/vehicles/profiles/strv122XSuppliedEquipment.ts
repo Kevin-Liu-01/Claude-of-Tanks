@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent source-frame fittings. Recesses, cupola gaps and the aft cage
 // are modeled with individual supported walls/bars, not opaque proxy boxes.
 import * as THREE from 'three';
@@ -116,7 +117,7 @@ function antenna(P:TankBuilderPort,x:number,z:number,tip:number,r:number):void {
   }
   add(P,'turretDark',cylY(.027,.036,.123,20),x,2.663,z);
   const start=2.710;
-  add(P,'turretDark',cylY(r*.54,r,tip-start,12),x,(tip+start)/2,z);
+  add(P,'turretDark',antennaPart(cylY(r*.54,r,tip-start,12)),x,(tip+start)/2,z);
 }
 
 function smokeTube(P:TankBuilderPort,end:StrvPoint,direction:StrvPoint,r:number,

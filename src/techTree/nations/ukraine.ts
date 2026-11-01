@@ -46,6 +46,8 @@ export const UKRAINE_TREE: NationTree = Object.freeze({
     node({ id: 'leo2a6_ua', tier: 9, line: 'aid_mbt', lane: 3, parents: ['ua_m1a1'], slot: 'line' }),
     // Allied vehicles
     node({ id: 'ua_m2a3_bradley', tier: 4, line: 'aid', lane: 4, parents: ['t64bv_donbas'], slot: 'line' }),
+    // release 265 (the owner 2026-10-30): the CV9040C Sweden gave, beside the Bradley
+    node({ id: 'ua_cv9040c', tier: 4, line: 'aid', lane: 5, parents: ['ua_m2a3_bradley'], slot: 'line' }),
     node({ id: 'ua_challenger2', tier: 9, line: 'aid', lane: 4, parents: ['ua_m2a3_bradley'], slot: 'line' }),
     // Special
     node({ id: 't80u_zoria', tier: 7, line: 'special', lane: 0, parents: [], slot: 'special' }),

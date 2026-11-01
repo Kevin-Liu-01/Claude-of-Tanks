@@ -15,7 +15,7 @@
 
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -25,7 +25,10 @@ import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, technicalLabelsFile } from
 import '../src/vehicles/tankFactory.ts';
 import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
+import { compareTankIds, readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
+import { iconsPagePublicOnly } from './icons-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS, undeclaredCatalogReads } from './page-catalog-keys.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -46,7 +49,6 @@ let selectedViews = metadataOnly ? [] : opt('views')
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
 const authoringViews = new Set(['front']);
-const manifestPath = resolve(outDir, 'tank-assets.json');
 mkdirSync(outDir, { recursive: true });
 
 if (portraitOnly && (metadataOnly
@@ -59,12 +61,8 @@ function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function readManifest() {
-  if (!existsSync(manifestPath)) return null;
-  return JSON.parse(readFileSync(manifestPath, 'utf8'));
-}
-
-let startingManifest = readManifest();
+// The manifest is a directory of per-tank rows beside the icons (266, tools/tank-assets-store.mjs).
+let startingManifest = readTankAssets(outDir);
 const priorManifest = startingManifest;
 for (const view of selectedViews) {
   if (!TANK_ASSET_VIEWS[view] && !(allowPartial && authoringViews.has(view))) {
@@ -133,6 +131,8 @@ const server = await createServer({
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
   server: toolServerOptions(7400),
+  // 266: only the public directories this step's key reads; any other public load fails the run
+  plugins: [iconsPagePublicOnly((file) => pageErrors.push(`refused ${file}: not an icons-page input (tools/icons-page-public.mjs)`))],
 });
 await server.listen();
 const url = `${boundOrigin(server)}/tools/icons-page.html`;
@@ -201,6 +201,8 @@ try {
         writeFileSync(outputPath, buffer);
         console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
       }
+      // 267: the step keys only the catalog strings this page draws; any other key it asked for fails the run
+      pageErrors.push(...await undeclaredCatalogReads(page, ICONS_PAGE_CATALOG_KEYS));
     } finally {
       await browser.close();
     }
@@ -229,7 +231,7 @@ try {
       tanks[id] = { ...record, assets };
       delete tanks[id].requiredFiles;
     }
-    const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => a.localeCompare(b)));
+    const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => compareTankIds(a, b)));
     const manifest = {
       schemaVersion: TANK_ASSET_SCHEMA_VERSION,
       partial: onlyTanks.length ? (previous ? !!previous.partial : true) : false,
@@ -267,9 +269,12 @@ try {
         }
       }
     }
-    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    // A full generation is the whole fleet: it also retires the rows of tanks that left it. A selective one writes the
+    // rows it generated (and the header) and leaves every other row file untouched.
+    const { changed, removed } = writeTankAssets(outDir, manifest, { prune: !onlyTanks.length });
     console.log(`[tank-assets] ${Object.keys(generated.tanks).length} tanks, ${Object.keys(generated.files).length} files -> ${outDir}`);
-    console.log(`[tank-assets] manifest ${manifestPath}`);
+    console.log(`[tank-assets] manifest ${tankAssetsDir(outDir)}: ${changed.length} files rewritten`
+      + `${removed.length ? `, ${removed.length} retired rows removed (${removed.join(', ')})` : ''}`);
   }
 } catch (error) {
   failed = true;

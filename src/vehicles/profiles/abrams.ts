@@ -1,4 +1,5 @@
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import { antennaPart } from './antennaPart.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
@@ -6942,7 +6943,7 @@ function* buildAbramsX(P: AbramsBuilderPort): TankProfileBuild {
         P.add('turretDetail', box(0.148, 0.10, 0.148), mastX, 0.033, mastZ);
         const wireSegH = 2.098 / 12;
         for (let wi = 0; wi < 12; wi++) {
-          P.add('turretDark', cylY(0.005, 0.005, wireSegH, 6), mastX,
+          P.add('turretDark', antennaPart(cylY(0.005, 0.005, wireSegH, 6)), mastX,
             0.083 + (wi + 0.5) * wireSegH, mastZ);
         }
       } else {

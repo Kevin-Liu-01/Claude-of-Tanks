@@ -22,6 +22,16 @@ assert.ok(Math.abs(clipped.find(r=>r.name==='physicalWidthM').pct-10)<1e-10,'a c
 const short=ref.clone();short.max.y*=.95;
 assert.ok(sourceDimensionRows(dims,dims,ref,short).find(r=>r.name==='physicalHeightM').pct>4.99,'missing thin tops fail physical height even when filtered raster matches');
 assert.throws(()=>sourceDimensionRows({...dims,widthM:NaN},dims,ref,ref));
+// a declared build offset (the T-80U's 65 mm ring race) raises the source's heights only; undeclared, the rise fails
+{
+  const lift=.065,taller=ref.clone();taller.max.y+=lift;const tallDims={...dims,heightM:dims.heightM+lift};
+  const declared=sourceDimensionRows(dims,tallDims,ref,taller,[0,lift,0]);
+  assert.ok(declared.every(r=>Math.abs(r.pct)<1e-9),'the raised build matches the source plus its declared raise');
+  assert.match(declared.find(r=>r.name==='heightM').method,/the build's declared offset/);
+  const undeclared=sourceDimensionRows(dims,tallDims,ref,taller);
+  assert.ok(undeclared.find(r=>r.name==='heightM').pct>2&&undeclared.find(r=>r.name==='physicalHeightM').pct>1.6,'undeclared, the rise is a height error');
+  assert.ok(sourceDimensionRows(dims,dims,ref,ref,[0,lift,0]).find(r=>r.name==='heightM').pct>2,'an unraised build fails a declared raise');
+}
 assert.throws(()=>sourceDimensionCamera(new THREE.Box3(),new THREE.Vector3(1,0,0)));
 const certified={passed:true,mode:'canonical-source-world'};
 for (const id of SUPPLIED_SOURCE_COMPARISON_IDS) {

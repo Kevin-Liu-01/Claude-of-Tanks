@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-30T12:38:07.433Z",
+ "generatedAt": "2026-10-31T09:52:05.902Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1173,7 +1173,7 @@
    "openViews": 0,
    "insideOutPx": 36,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4265,
+   "netSeeThroughPx": 3052,
    "tris": 148877,
    "frame": [
     0,
@@ -1189,6 +1189,16 @@
      "date": "2026-10-20",
      "from": {
       "openPx": 6
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "266 cleanup (owner 10-30), the turret net now ends at the bustle box and its face drape is gone, so less declared net shows through, 4265 -> 3052 px",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4265
      }
     }
    ]
@@ -1894,33 +1904,105 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 396,
+   "insideOutPx": 0,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 90338,
+   "tris": 106580,
    "frame": [
     0,
-    1.65,
-    0,
-    4.2
+    2.4,
+    0.1,
+    4.9
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 266 M60 batch, rebuilt at true size on the owner's models (Main's ruling 2026-10-28, the 0.9 envelope retired), the Starship's whip and the A3's field load, owner-requested 2026-10-30",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.65,
+       0,
+       4.2
+      ]
+     },
+     "to": [
+      0,
+      2.4,
+      0.1,
+      4.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "m60a3": {
-   "sealed": false,
-   "openPx": 42,
-   "openViews": 1,
-   "openViewNames": [
-    "ring12_4"
-   ],
-   "insideOutPx": 1683,
-   "seeThroughPx": 1,
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 44,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 91824,
+   "tris": 98093,
    "frame": [
     0,
-    1.6,
-    1.1,
-    5
+    1.7,
+    1.2,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 266 M60 batch, rebuilt at true size on the owner's models (Main's ruling 2026-10-28, the 0.9 envelope retired), the Starship's whip and the A3's field load, owner-requested 2026-10-30",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": false,
+      "openPx": 42,
+      "openViews": 1,
+      "openViewNames": [
+       "ring12_4"
+      ],
+      "seeThroughPx": 1,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.6,
+       1.1,
+       5
+      ]
+     },
+     "to": [
+      0,
+      1.7,
+      1.2,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 1,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "m6_linebacker": {
@@ -2381,15 +2463,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 297,
-   "seeThroughPx": 3,
+   "insideOutPx": 352,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 70656,
+   "tris": 85266,
    "frame": [
     0,
-    1.45,
-    1.45,
-    5.2
+    1.6,
+    0.8,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "owner-directed pair of 200 L fuel drums on a welded stern shelf, 0.73 m aft of the stern plate",
+     "by": "kevinliu",
+     "date": "2026-10-30",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 3,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.45,
+       5.2
+      ]
+     },
+     "to": [
+      0,
+      1.6,
+      0.8,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "strv103a": {
@@ -4434,6 +4552,291 @@
     6.1
    ]
   },
+  "x1_pioneiro": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 2,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 53696,
+   "frame": [
+    0,
+    2.25,
+    0.6,
+    4.2
+   ]
+  },
+  "x1a2_carcara": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 0,
+   "seeThroughPx": 1,
+   "netSeeThroughPx": 0,
+   "tris": 67992,
+   "frame": [
+    0,
+    2.3,
+    0.45,
+    4.5
+   ]
+  },
+  "tamoyo1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 304,
+   "seeThroughPx": 4,
+   "netSeeThroughPx": 0,
+   "tris": 87790,
+   "frame": [
+    0,
+    2.1,
+    1.05,
+    5.4
+   ]
+  },
+  "tamoyo3": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 414,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 89148,
+   "frame": [
+    0,
+    2.2,
+    1.1,
+    5.5
+   ]
+  },
+  "osorio_p1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 238,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 93184,
+   "frame": [
+    0,
+    2.25,
+    1,
+    5.7
+   ]
+  },
+  "osorio_p2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 200,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94693,
+   "frame": [
+    0,
+    2.25,
+    1.4,
+    6
+   ]
+  },
+  "ee_t3_osorio": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 176,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 97424,
+   "frame": [
+    0,
+    2.25,
+    1.55,
+    6.2
+   ]
+  },
+  "ee_t4_osorio": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 168,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 103466,
+   "frame": [
+    0,
+    2.25,
+    1.95,
+    6.7
+   ]
+  },
+  "leo1a3dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 164,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 107713,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo1a5dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 164,
+   "seeThroughPx": 2,
+   "netSeeThroughPx": 0,
+   "tris": 108561,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo1a5dk1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 184,
+   "seeThroughPx": 2,
+   "netSeeThroughPx": 0,
+   "tris": 107671,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.7
+   ]
+  },
+  "leo2a5dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 137,
+   "seeThroughPx": 1,
+   "netSeeThroughPx": 0,
+   "tris": 118396,
+   "frame": [
+    0,
+    2.05,
+    1.05,
+    5.9
+   ]
+  },
+  "ua_cv9040c": {
+   "sealed": true,
+   "openPx": 20,
+   "openViews": 0,
+   "insideOutPx": 338,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 2411,
+   "tris": 53148,
+   "frame": [
+    0,
+    2.1,
+    0.05,
+    4.6
+   ]
+  },
+  "t49": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 846,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82328,
+   "frame": [
+    0,
+    2.2,
+    0.1,
+    4.3
+   ]
+  },
+  "m41a3": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 11,
+   "netSeeThroughPx": 0,
+   "tris": 77414,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41_bw": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 78544,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41_jgsdf": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 770,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 78085,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "m41dk1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 492,
+   "seeThroughPx": 12,
+   "netSeeThroughPx": 0,
+   "tris": 82926,
+   "frame": [
+    0,
+    2.1,
+    1.15,
+    5.1
+   ]
+  },
+  "cv9035dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 649,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 56612,
+   "frame": [
+    -0.05,
+    1.9,
+    0.05,
+    4.3
+   ]
+  },
   "pt84_orzel": {
    "sealed": true,
    "openPx": 0,
@@ -4537,6 +4940,36 @@
     1.8,
     1.75,
     6.4
+   ]
+  },
+  "magach6b": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 45,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 111065,
+   "frame": [
+    0,
+    2.6,
+    1.2,
+    5.9
+   ]
+  },
+  "magach7c": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 457,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 101742,
+   "frame": [
+    0,
+    2.65,
+    1.2,
+    5.9
    ]
   }
  }

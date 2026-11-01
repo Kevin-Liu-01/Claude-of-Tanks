@@ -9,7 +9,8 @@ import {
   staticImportSpecifiers,
 } from './bundle-budget.mjs';
 
-assert.deepEqual(Object.keys(BUNDLE_PAGES), ['game', 'home', 'docs', 'gallery', 'notFound', 'cn']);
+// 2026-10-30 (phone-controller-266): the phone controller's page, held in a phone's hand on cellular, has its own row
+assert.deepEqual(Object.keys(BUNDLE_PAGES), ['game', 'home', 'docs', 'gallery', 'notFound', 'cn', 'pad']);
 assert.deepEqual(budgetMetrics('game'), ['requests', 'raw', 'gzip', 'brotli', 'inlineCss', 'entryRaw', 'entryBrotli']);
 assert.deepEqual(budgetMetrics('home'), ['requests', 'raw', 'gzip', 'brotli', 'inlineCss'],
   'public pages budget their totals and inline CSS; their first module script is an arbitrary shared chunk');

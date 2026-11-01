@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toolOnlyPublicFiles } from './tool-only-public-files.mjs';
+import { toolOnlyPublicDirs, toolOnlyPublicFiles } from './tool-only-public-files.mjs';
 import { iconUrl } from '../src/ui/icons.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,16 +14,19 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // 1. The matcher on a fixture build output.
 const dist = mkdtempSync(join(tmpdir(), 'cot-tool-only-'));
 try {
-  for (const file of ['icons/tank-assets.json', 'icons/m1a1_markings.png', 'icons/m1a1_angle.webp',
+  for (const file of ['icons/tank-assets/index.json', 'icons/tank-assets/tanks/m1a1.json', 'icons/m1a1_markings.png', 'icons/m1a1_angle.webp',
     'icons/m1a1_armor_side.webp', 'icons/m1a1_technical.json', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json']) {
     mkdirSync(dirname(join(dist, file)), { recursive: true });
     writeFileSync(join(dist, file), 'x'.repeat(file.length));
   }
   assert.deepEqual(toolOnlyPublicFiles(dist), [
     { path: 'icons/m1a1_markings.png', bytes: 'icons/m1a1_markings.png'.length },
-    { path: 'icons/tank-assets.json', bytes: 'icons/tank-assets.json'.length },
-  ], 'only the manifest and the marking sheets in icons/ are tool-only; every runtime icon ships');
+    { path: 'icons/tank-assets/index.json', bytes: 'icons/tank-assets/index.json'.length },
+    { path: 'icons/tank-assets/tanks/m1a1.json', bytes: 'icons/tank-assets/tanks/m1a1.json'.length },
+  ], 'only the manifest (every file under icons/tank-assets/) and the marking sheets are tool-only; every runtime icon ships');
+  assert.deepEqual(toolOnlyPublicDirs(dist), ['icons/tank-assets'], 'the manifest directory goes whole, no empty folder ships');
   assert.deepEqual(toolOnlyPublicFiles(join(dist, 'missing')), [], 'a build without icons/ has nothing to drop');
+  assert.deepEqual(toolOnlyPublicDirs(join(dist, 'missing')), [], 'nor a directory to remove');
 } finally {
   rmSync(dist, { recursive: true, force: true });
 }
@@ -48,9 +51,10 @@ const importers = runtimeFiles.filter((file) => file !== 'src/vehicles/tankAsset
 assert.deepEqual(importers, [], 'asset-file naming (which includes the marking sheets) is a tool concern');
 
 // 3. The sources stay where the tools write them; the build step deletes the copies.
-assert.ok(existsSync(resolve(ROOT, 'public/icons/tank-assets.json')), 'tools read public/icons/tank-assets.json');
+assert.ok(existsSync(resolve(ROOT, 'public/icons/tank-assets/index.json')), 'tools read public/icons/tank-assets/');
 const strip = readFileSync(resolve(ROOT, 'tools/strip-nc-assets.mjs'), 'utf8');
 assert.match(strip, /toolOnlyPublicFiles\(DIST\)/, 'npm run build drops the tool-only files from dist/');
+assert.match(strip, /toolOnlyPublicDirs\(DIST\)/, 'and the tool-only directories');
 // 2026-10-06: main's provenance receipt (cd0caad68) appends `node tools/asset-provenance.mjs --write=dist/…` after the
 // strip, so the provenance it writes describes the stripped dist; the strip only has to run inside the build.
 assert.match(readFileSync(resolve(ROOT, 'package.json'), 'utf8'), /"build": "[^"]*node tools\/strip-nc-assets\.mjs(?: && [^"]*)?"/);

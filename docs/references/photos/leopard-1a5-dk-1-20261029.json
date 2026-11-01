@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo1a5dk1": {
+      "name": "Leopard 1A5 DK-1",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): Leopard 1A5 DK-1 at tier I (twin build on the Leopard 1A5 DK), a photo-class first-party build with its Danish kit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.pansermuseet.dk/?p=1580",
+        "https://armyvehicles.dk/leopard1a5.htm",
+        "https://armyvehicles.dk/leopard1a3.htm",
+        "https://commons.wikimedia.org/wiki/File:Leopard_1_A5_DK-1.jpg",
+        "https://commons.wikimedia.org/wiki/File:Leopard_1_A5_DK1_%E2%80%93_62.448_at_Danish_Air_Show_2022.jpg",
+        "https://en.wikipedia.org/wiki/Operation_B%C3%B8llebank"
+      ],
+      "widthM": 3.396,
+      "overallLengthM": 9.672,
+      "tallestM": 4.51,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope, the 1A5 DK's (published 3.41 m wide, 9.54 m with the gun forward, 2.8 m over the MG). The DK-1 fit (the turret-rear air conditioning and generator housing, the M41 DK-1 searchlight, GPS, United Nations white) follows armyvehicles.dk and Pansermuseet and the DK-1 photographs on Wikimedia Commons.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}

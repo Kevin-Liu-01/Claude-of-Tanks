@@ -23,8 +23,8 @@ const communityArmor = (
 
 // 262: measured by tools/gun-depression-sweep.mjs on the family hull at the owner's model's own proportions (26 mm, the
 // whole gun, every degree of yaw; profiles/type74Family.ts): -6 over the front and sides, the gun riding up over the
-// rear deck's edge, the stern's rail, clamps and tow eyes over the rear quarters
-const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [146, -6], [151, -4.7], [156, -4.4], [157, -4.1], [159, -4.1], [160, -4.2], [161, -2.8], [162, -2.4], [164, -2.4], [168, -2.9], [169, -4.1], [178, -4.4], [180, -5]];
+// rear deck's edge, the stern's rail, clamps and tow eyes over the rear quarters; 266: re-swept with the 4.27 m tube
+const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [146, -6], [151, -4.7], [155, -4.7], [156, -4.3], [157, -4.1], [160, -4.1], [161, -2.8], [162, -2.4], [164, -2.4], [168, -2.9], [169, -4], [178, -4.4], [180, -5]];
 
 // Same authored combat row as the quarantined user-drop fallback. No external
 // model or visual builder participates in this module.

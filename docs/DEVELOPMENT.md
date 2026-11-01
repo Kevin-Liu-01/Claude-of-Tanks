@@ -532,8 +532,21 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   (`STALE_GUARDS`: `collisionManifestDrift` and `wreckBakePlanDrift` on any map's files, the world core, the fleet core
   or a moved wreck donor, from the changed-only world partition; the fleet passes and the anatomy check on any moved
   tank), or, for balance, when an id's spec armour, gun, HP, mobility, size or role moved (the base's and the head's
-  registries). When closure reads alone warrant a suite and reach at most a quarter of it, the command names just those
-  receipts (`--only=`) with their own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
+  registries). The code that reads those fields counts too: a changed file in the static import closure of the
+  authority's hit resolution (`HIT_RESOLUTION_ENTRIES` in `tools/test-diff.mjs`: ballistics, armour, damage, walked as
+  det-math-lint walks the authority), less the per-id tables and group files the fleet partition names by id, is a
+  fleet-wide balance move that warrants every `hits` suite (balance, pacing, bots, sims) whole. 267's bevel head moved
+  `sim/armor.ts` and added `sim/armorPlanes.ts` while its balance line said no tank's armour changed. Two kinds of read
+  decide no result and are dropped. A path a reader reaches only through a module that declares it `scheduleOnly`
+  (`DECLARED_DYNAMIC`, as changed-only drops it from its keys) is one: the cap table placed only browsers yet named the
+  whole fleet suite. The other is a `hits` suite's reads of builder paths (a group or per-id table file outside the
+  authority's import graph) when what the builders emit did not move. When such reads alone warrant a `hits` suite,
+  the recommender compares, for the tanks those paths name, every finalized spec field as the tool facade registers it
+  and the HIGH and LOW geometry digests (each tree's own ledger worker), base against head (`builderObservables`; 187
+  tanks in under three minutes). Equal, the reads drop: 267's whip-rod tags (15 builders) named balance, pacing, bots
+  and sims and now names none. A tank that moved keeps them and is named on the balance line. When closure reads
+  alone warrant a suite and reach at most a quarter of it, the command names just those receipts (`--only=`) with their
+  own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
   whose own source names it, and never as a world-step trigger (the locale route table names the pages; the Node
   captures never read one): the og:video head (12 paths) went from six suites to two narrowed lines. Main relays that
   report; the owner triggers the run.
@@ -1155,8 +1168,8 @@ fails if a page enters a step key (a step that really reads one is listed in its
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
-spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
-most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
+spare-track keep-out), then the geometry ledger, the manual reference, centering, icons and the geometry gate (capture
+lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
 by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
@@ -1225,8 +1238,23 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
+- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`) names it in the
+  report its step's `skipped` flag asks for. The chain records the other ids, leaves that one due without retrying it
+  or failing, and names it in the final resolve; `tank:changed --explain` says the file is absent here. A checkout
+  holding the oracle clears it.
+- The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
+  `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
+  (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran
+  centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
-  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. A route in the
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
+  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`): the file's bytes
+  where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
+  did, and different bytes at the path re-run that id alone. A ledger a step only checks each id against
+  (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
+  as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
+  order moves no key, one row moves its id alone and the tolerance moves every id (267: the 266 Brazil merge reordered
+  its rows and re-ran anatomy on all 276 ids for identical content). A route in the
   app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
   `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
   the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in

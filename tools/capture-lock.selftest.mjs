@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   rmdirSync,
   statSync,
@@ -13,13 +14,18 @@ import {
   utimesSync,
   writeFileSync,
 } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { classifyCommand, createCaptureLock, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
-// acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
-process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
-// and acquire's class from COT_SHOTS_LOCK_CLASS, which a lane may export
-process.env.COT_SHOTS_LOCK_CLASS = '';
+// This receipt pins the lock's own semantics, so it owns every variable the lock reads (267), taken from the lock's
+// source so a new one is owned without a list: a landing chain's COT_SHOTS_LOCK_TIMEOUT_MS, a lane's COT_SHOTS_LOCK_CLASS
+// and the integrator's COT_CAPTURE_PRIORITY=release (under which the dead-lock reaping waiter never got the lock) would
+// each change what it sees. Its own priority checks set and clear COT_CAPTURE_PRIORITY themselves.
+const LOCK_ENV = [...new Set([...readFileSync(fileURLToPath(new URL('./capture-lock.mjs', import.meta.url)), 'utf8')
+  .matchAll(/process\.env\.([A-Z0-9_]+)/g)].map((match) => match[1]))].sort();
+for (const name of LOCK_ENV) delete process.env[name];
 
 const root = mkdtempSync(join(tmpdir(), 'cot-capture-lock-'));
 const lockDir = join(root, 'capture.lock');
@@ -649,6 +655,20 @@ async function checkHoldCap() {
 // tickets; renders queued behind it cannot take a freed slot; while one waits, a normal hold's raised cap falls back to
 // the base cap at the grant and at checkpoint(). Controls: the same arrival as a normal ticket waits its turn; a raised
 // cap with only a normal waiter keeps its minutes; an unknown priority is refused.
+// (266) Imported by a process whose first argument is no file (`node -e ... <argument>`), the module loads; started as a
+// command, --status still reports. Control: the realpath the old check made throws on that argument.
+function checkImportGuard() {
+  const url = new URL('./capture-lock.mjs', import.meta.url).href;
+  const imported = spawnSync(process.execPath, ['--input-type=module', '-e',
+    `await import(${JSON.stringify(url)}); console.log('imported');`, 'not-a-file'], { encoding: 'utf8' });
+  assert.equal(imported.status, 0, `importing with a non-file argument: ${imported.stderr}`);
+  assert.match(imported.stdout, /imported/);
+  assert.throws(() => realpathSync('not-a-file'), /ENOENT/, 'control: the old check realpaths that argument and throws');
+  const status = spawnSync(process.execPath, [fileURLToPath(url), '--status'], { encoding: 'utf8' });
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /queue: /, 'started as a command, --status reports');
+}
+
 async function checkReleasePriority() {
   const queued = (prefix, count) => until(`${count} tickets queue`, () => readdirSync(join(root, `${prefix}.queue`)).length === count);
   /** acquire, note the order, release at once */
@@ -862,6 +882,7 @@ try {
   await checkNoStarvation();
   await checkHoldCap();
   await checkReleasePriority();
+  checkImportGuard();
   await checkDeadClassedCleanup();
   await checkClassOverrideAndOlderHold();
 
@@ -899,8 +920,14 @@ try {
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf: () => 'node tools/media-production/cinema.mjs' }), MEDIA,
     'no perf ticket waiting: the lease keeps its place');
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
+  // 267: the owned environment. The source scan finds the four variables the lock reads today (control: it found them),
+  // and none was set at the end (the priority checks clear what they set).
+  for (const name of ['COT_CAPTURE_PRIORITY', 'COT_SHOTS_LOCK_CLASS', 'COT_SHOTS_LOCK_TIMEOUT_MS', 'COT_SHOTS_WARM_AHEAD']) {
+    assert.ok(LOCK_ENV.includes(name), `the receipt owns ${name}, which the lock reads`);
+  }
+  assert.deepEqual(LOCK_ENV.filter((name) => process.env[name] !== undefined), [], 'no lock variable is set at the end');
   console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, lock classes (shared renders, timing exclusion, no starvation, '
-    + 'the hold cap and its yield, release priority, dead classed tickets and members, the --lock-class override), the hold log and waiting() passed');
+    + 'the hold cap and its yield, release priority, the import guard, dead classed tickets and members, the --lock-class override), the hold log and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

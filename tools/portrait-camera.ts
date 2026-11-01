@@ -14,5 +14,10 @@ export function portraitSideRatio(id: string): number {
   // Release 262: the Sho't Kal's tall IDF whips (2.9 and 2.6 m) stood 115.0 card px against the 111.8 px height
   // envelope; a more side-on view widens the dense core and brings the whips inside it.
   if (id === 'shot_kal') return 0.74;
+  // The Bernardini light tanks' whips stand over a small chassis: the mirrored X1 measured 119.7 and the X1A2 112.1
+  // card px against the 111.8 px full-height envelope (1.27 x 88), so a more side-on view widens the dense core they
+  // scale to (brazil-line-266; the X1 still measured 113.7 x 112.0 at the Lynx's 0.86).
+  if (id === 'x1_pioneiro') return 1.10;
+  if (id === 'x1a2_carcara') return 0.70;
   return 0.56;
 }

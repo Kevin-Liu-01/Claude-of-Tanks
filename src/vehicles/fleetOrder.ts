@@ -48,7 +48,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 258: in shown-tier order (matchmaking reads it): the Sabra at II and the Namer at IV come before the Merkava 2 and 3
   israel: Object.freeze([
-    'magach3', 'merkava1b', 'sabra_mk2', 'shot_kal', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
+    'magach3', 'magach6b', 'merkava1b', 'magach7c', 'sabra_mk2', 'shot_kal', 'merkava2b', 'merkava2d', 'namer_ifv', 'merkava3c', 'merkava3_baz', 'merkava3d',
     'merkava4', 'merkava4b', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
@@ -63,14 +63,23 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'dardo', 'lrmv_lynx', 'carro45t', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto', 'c1_ariete', 'c2_ariete',
   ]),
   ukraine: Object.freeze([
-    't64bv_donbas', 't64b1v_2022', 't64bm1m', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'ua_m1a1', 'leo2a6_ua',
+    't64bv_donbas', 't64b1v_2022', 't64bm1m', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'ua_m1a1', 'leo2a6_ua', 'ua_cv9040c',
   ]),
   china: Object.freeze([
     'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1', 'vt4a1_baihu', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
   ]),
   sweden: Object.freeze([
-    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',
+    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'cv90_mk4_concept', 'cv90_mk4',
   ]),
+  // 266: the Danish Army line (the Christian II moved here from Sweden)
+  denmark: Object.freeze([
+    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'christian2',
+  ]),
+  // 266: the Brazilian Army line
+  brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
+    'ee_t4_osorio']),
+  // 265: the M41 Walker Bulldog family
+  m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   poland: Object.freeze([

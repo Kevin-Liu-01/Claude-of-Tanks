@@ -34,7 +34,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv103a: { doctrine: 'precision', viewM: 415, still: 0.263, moving: 0.173 },
   strv103b: { doctrine: 'precision', viewM: 425, still: 0.260, moving: 0.170 },
   cv90: { doctrine: 'support', viewM: 445, still: 0.263, moving: 0.203 },
+  cv9035dk: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
+  ua_cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv90105_tml: { doctrine: 'scout', viewM: 465, still: 0.338, moving: 0.338 },
   strv121: { doctrine: 'precision', viewM: 410, still: 0.238, moving: 0.148 },
   cv90_mk4_concept: { doctrine: 'support', viewM: 460, still: 0.260, moving: 0.200 },
@@ -87,6 +89,10 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leo1a5: { doctrine: 'flanker', viewM: 430, still: 0.238, moving: 0.178 },
   // the 1A1: the 1A5's flanker without the EMES 18, so a shorter view
   leo1a2a1: { doctrine: 'flanker', viewM: 410, still: 0.240, moving: 0.180 },
+  // 265: the Danish Leopard 1s, the 1A5's flanker; the 1A3 DK without the EMES 18 sees less far
+  leo1a3dk: { doctrine: 'flanker', viewM: 410, still: 0.240, moving: 0.180 },
+  leo1a5dk: { doctrine: 'flanker', viewM: 430, still: 0.238, moving: 0.178 },
+  leo1a5dk1: { doctrine: 'flanker', viewM: 430, still: 0.238, moving: 0.178 },
   leopard2_proto: { doctrine: 'flanker', viewM: 395, still: 0.225, moving: 0.165 },
   leo2a2: { doctrine: 'flexible', viewM: 400, still: 0.185, moving: 0.125 },
   leo2a3: { doctrine: 'flexible', viewM: 405, still: 0.184, moving: 0.124 },
@@ -168,6 +174,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // Magach 3's Blazer boxes and the M48 Super's added armour bulk them out; the GA2 is the A5's twin in the field
   m48a3_patton: { doctrine: 'flexible', viewM: 385, still: 0.196, moving: 0.136 },
   magach3: { doctrine: 'flexible', viewM: 395, still: 0.196, moving: 0.136 },
+  // release 267: the Magach 6B's Blazer and the 7C's armour and skirts bulk the M60A1 out
+  magach6b: { doctrine: 'flexible', viewM: 395, still: 0.194, moving: 0.134 },
+  magach7c: { doctrine: 'flexible', viewM: 405, still: 0.198, moving: 0.138 },
   m48a2ga2: { doctrine: 'flexible', viewM: 405, still: 0.190, moving: 0.130 },
   m48_super: { doctrine: 'flexible', viewM: 415, still: 0.198, moving: 0.138 },
   m60a2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
@@ -228,11 +237,20 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
+  // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
+  m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },
+  t49: { doctrine: 'scout', viewM: 470, still: 0.358, moving: 0.350 },
+  // the original M41s' optical sights see less far
+  m41a3: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_bw: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_jgsdf: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
   m551a1_tts: { doctrine: 'scout', viewM: 490, still: 0.355, moving: 0.355 },
   leo2a7v: { doctrine: 'flexible', viewM: 440, still: 0.174, moving: 0.114 },
   leo2a6m: { doctrine: 'flexible', viewM: 435, still: 0.176, moving: 0.116 },
   leo2a5m: { doctrine: 'flexible', viewM: 425, still: 0.178, moving: 0.118 },
   leo2a5: { doctrine: 'flexible', viewM: 420, still: 0.181, moving: 0.121 },
+  // 265: the Danish Leopard 2A5 DK keeps its donor's role (its Elop sight)
+  leo2a5dk: { doctrine: 'flexible', viewM: 425, still: 0.181, moving: 0.121 },
   k2_black_panther: { doctrine: 'flanker', viewM: 430, still: 0.225, moving: 0.165 },
   kf51_panther: { doctrine: 'flexible', viewM: 440, still: 0.181, moving: 0.121 },
   t90a: { doctrine: 'assault', viewM: 400, still: 0.183, moving: 0.123 },
@@ -257,6 +275,18 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   type10: { doctrine: 'flanker', viewM: 425, still: 0.232, moving: 0.172 },
   type90: { doctrine: 'flanker', viewM: 405, still: 0.230, moving: 0.170 },
   amx40: { doctrine: 'flanker', viewM: 405, still: 0.236, moving: 0.176 },
+  // 266: the Osório prototypes, the AMX-40's flankers (1,040 hp on 43.7 t); the P.1's LRS-5 sights without a thermal see less far
+  osorio_p1: { doctrine: 'flanker', viewM: 395, still: 0.238, moving: 0.178 },
+  osorio_p2: { doctrine: 'flanker', viewM: 410, still: 0.234, moving: 0.174 },
+  // 266: the fictional EE-T3 and EE-T4 (tiers IX and X), flankers with a modern panoramic thermal sight
+  ee_t3_osorio: { doctrine: 'flanker', viewM: 430, still: 0.236, moving: 0.176 },
+  ee_t4_osorio: { doctrine: 'flanker', viewM: 440, still: 0.238, moving: 0.178 },
+  // 266: the Tamoyos, frontline mediums on the Pattons' footing; the Tamoyo 3's Ferranti thermal sees further
+  tamoyo1: { doctrine: 'flexible', viewM: 385, still: 0.200, moving: 0.140 },
+  tamoyo3: { doctrine: 'flexible', viewM: 405, still: 0.192, moving: 0.132 },
+  // 266: the Bernardini light tanks, the cavalry's scouts (the M551's doctrine on optical sights)
+  x1_pioneiro: { doctrine: 'scout', viewM: 430, still: 0.330, moving: 0.330 },
+  x1a2_carcara: { doctrine: 'scout', viewM: 440, still: 0.335, moving: 0.335 },
   strv122: { doctrine: 'precision', viewM: 420, still: 0.238, moving: 0.148 },
   t72b3m_2016: { doctrine: 'assault', viewM: 405, still: 0.183, moving: 0.123 },
   challenger1_mk3: { doctrine: 'precision', viewM: 400, still: 0.238, moving: 0.148 },

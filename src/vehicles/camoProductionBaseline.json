@@ -752,8 +752,8 @@
   },
   "challenger1": {
    "selection": "factory",
-   "stock": "service_challenger_3",
-   "factory": "24af537fcedf03bc",
+   "stock": "paint_challenger1_mk1",
+   "factory": "469cd9bcaa3f2824",
    "auto": "summer chocchip washworn urban autumn summer chocchip urban urbanblock summer summer summer"
   },
   "fv4034": {
@@ -1646,8 +1646,8 @@
   },
   "challenger1_x": {
    "selection": "factory",
-   "stock": "desert",
-   "factory": "ac6d88a92bedf83a",
+   "stock": "paint_challenger1_x",
+   "factory": "87eaa3d45551ed6a",
    "auto": "dpm desert winter urbanblock oakleaf summer desert urban urban dpm dpm dpm"
   },
   "t72bu_x": {

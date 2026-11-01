@@ -1,4 +1,5 @@
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
+import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { botCallsign, PLAYER_CALLSIGN } from './botCallsigns.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
@@ -919,10 +920,10 @@ const HIT_MARK_BOX_PX = 96;
 
 /** Exact value printed on an incoming direction arc. */
 export function directionalHitAmount(
-  hit: Pick<HudHitEvent, 'damage' | 'dmgRoll'>,
+  hit: Pick<HudHitEvent, 'damage' | 'hpRemoved' | 'dmgRoll'>,
   blocked = false,
 ): number {
-  const raw = blocked ? hit.dmgRoll : hit.damage;
+  const raw = blocked ? hit.dmgRoll : hullPointsRemoved(hit);
   return Number.isFinite(raw) ? Math.max(0, Math.round(raw || 0)) : 0;
 }
 
@@ -1292,7 +1293,7 @@ import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
 import { plateObstacles, sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap, worldPlateGap,
   worldPlateSink } from './sightFurniture.ts';
-import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
+import { damageFigureMarkup, hitOutcomeFor, INCOMING_DAMAGE_INK, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   guidedMissileSlot,
@@ -1827,8 +1828,11 @@ ${spectatorSwitcherStyles}
 /* brand-ui 245: the battle layout's touch and roster rules that only matter once the HUD is up ride this lazy sheet, not
    the boot CSS (battleHudLayout.css); their selectors keep the layout sheet's weight */
 /* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
-   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
+   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom). Their room is the
+   panel less --status-room-inset, the dock's margin, on the joystick's side: vehicleStatus.ts fits the chips to it, so a
+   full strip stays clear too (266) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto;
+  --status-room-inset:8px;max-width:calc(100% - var(--status-room-inset))}
 /* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
    tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
@@ -1870,8 +1874,9 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
+/* (the figure untracked, as the card's: at -.02em the true minus ran into a 4, "−420" read as one bar, critic r2) */
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
-  letter-spacing:-.02em;color:var(--accent-hi);white-space:nowrap;text-transform:uppercase;
+  letter-spacing:0;color:var(--battle-damage-dealt);white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
   animation:cotFloat calc(var(--dur-stage) * 2.4) cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
 .cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
@@ -2143,7 +2148,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb .nm .si,.cot-tgt .cg{filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 0 1px var(--surface-scene))
   drop-shadow(0 1px 1px var(--surface-scene));}
 .cot-hpb .nm span{display:block;min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
-.cot-hpb .vh{height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
+/* (the vehicle line is as wide as its words, centred: measureHpBar reads it, and stretched to the bar's width it read
+   back the width it set, 14 px more at every measure, 266) */
+.cot-hpb .vh{align-self:center;height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
   white-space:nowrap;}
 /* (the quiet lines' halo doubled, so they hold over snow where their ink is the snow's own value) */
 .cot-hpb .vh,.cot-tgt .mt,.cot-tgt .hp{text-shadow:var(--battle-control-label-halo),var(--battle-control-label-halo);}
@@ -6143,7 +6150,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function measureHpBar(bar: HpBar): void {
     bar.measure = false;
     // the wider of its lines (the name with the silhouette's room on both sides, the name on the axis; the vehicle) and
-    // their padding
+    // their padding, each read at its own content's width (the vehicle line is not stretched, .vh), never the bar's
     const vehicle = bar.solo || hpBarsShort ? 0 : Math.ceil(bar.nm.scrollWidth);
     const measured = hpBarsShort ? Math.ceil(bar.cs.scrollWidth) + 10
       : Math.max(Math.ceil(bar.cs.scrollWidth) + 2 * (22 + 4), vehicle) + 14;
@@ -8066,8 +8073,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintDamageNumber(number: LiveDamageNumber, hit: HudHitEvent, rapid: boolean): void {
     const d = number.element;
-    const damage = number.burst?.damage ?? hit.damage;
-    d.textContent = `-${damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage)}`;
+    const damage = number.burst?.damage ?? hullPointsRemoved(hit);
+    // (the card's and the log's formatter: one datum, one glyph, the true minus; a burst's fraction keeps one decimal)
+    d.innerHTML = damageFigureMarkup(damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage));
     if (number.burst?.critical) el('span', 'crit', d).textContent = t('hud.dmg.crit');
     clearTimeout(number.timer);
     d.classList.remove('burst-ending');
@@ -8083,9 +8091,11 @@ export function initHud(bus: EventBus): HudRuntime {
   function pushDamageNumber(hit: HudHitEvent): void {
     if (!lastCamera || mode === 'hidden') return;
     const rapid = isRapidFireHit(hit);
+    // (the hull points the hit took off, as the shot card and the totals read them: a kill reads what the hull had left)
+    const removed = hullPointsRemoved(hit);
     // Automatic fire confirms blocks at the reticle, never as a cloud of zeroes.
-    if (rapid && !(hit.damage > 0)) return;
-    if (!(hit.damage > 0) && !document.body.classList.contains('cot-touch-layout')) return;
+    if (rapid && !(removed > 0)) return;
+    if (!(removed > 0) && !document.body.classList.contains('cot-touch-layout')) return;
     project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
     if (!_sVisible) return;
     const now = performance.now();
@@ -8095,7 +8105,7 @@ export function initHud(bus: EventBus): HudRuntime {
       number = { x: _sx, y: _sy, element: el('div', 'cot-dmgnum', dmgLayer) };
       liveNums.push(number);
     }
-    if (hit.damage > 0) {
+    if (removed > 0) {
       number.burst = accumulateDamage(number.burst, hit, now) ?? undefined;
       paintDamageNumber(number, hit, rapid);
     } else {
@@ -8197,7 +8207,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // visual language tiers (drawHitIndicators): red damage wedge / thin
     // steel deflect arc / amber splash wedge; crits ride the damage wedge
     // as a hot core flash
-    const dmg = Number.isFinite(hit.damage) ? Math.max(0, hit.damage || 0) : 0;
+    const dmg = hullPointsRemoved(hit);
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
     // it keeps the red wedge (+ crit flash), never the deflect read
     const outcome = hitOutcomeFor(hit);
@@ -8224,7 +8234,8 @@ export function initHud(bus: EventBus): HudRuntime {
       outcomeId: feedback.outcomeId,
       mergeKey: feedback.mergeKey,
       label: feedback.label,
-      labelColor: feedback.color,
+      // (damage taken's token resolved for the canvas; an outcome word keeps its registry ink)
+      labelColor: feedback.color === INCOMING_DAMAGE_INK ? liveToken('battle-damage-taken') : feedback.color,
       numeric: feedback.numeric,
       crit: feedback.critical,
       dmg, amount,
@@ -8621,7 +8632,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
-      killRibbon.damage(hit.targetId, hit.damage);
+      killRibbon.damage(hit.targetId, hullPointsRemoved(hit));
       // Zero-damage and pass-through outcomes use the steel confirmation;
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.
@@ -9242,8 +9253,8 @@ export function initHud(bus: EventBus): HudRuntime {
     setDamagePanel(panel: DamagePanelController) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
-        // Conditions travel with the damage panel, including custom HUD placement.
-        panel.root.appendChild(vehicleStatus.root);
+        // Conditions travel with the damage panel, including custom HUD placement; its width is their room.
+        vehicleStatus.mount(panel.root);
         // r5-2: keep a handle so update() can feed the live turret bearing
         // into the panel's rotating turret/barrel schematic
         dmgPanelRef = panel;

@@ -6,6 +6,7 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   communityArmor,
+  frontPlate,
   reactivePlate,
 } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -62,6 +63,18 @@ const KF51_SPEC = {
       marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34, patchK: 1.75,
     },
 } satisfies FleetTankSpec;
+
+// 266 (FAIRNESS-265 §8): the KF51 EVO's mantlet is the turret's gun face, a main plate on the gun slot's vertical front
+// (measured on the build: x +-0.430 between the cheeks' inner walls, y 0.01-0.79, z 1.088 at its foot to 1.100 at its
+// head), which gunFacePlate and the gun-face split read the faces in front of the gun as. The communityArmor template's
+// mantlet was a spaced plate riding the gun, behind the bridged 74-degree face the round met first
+// (gen-combat-anatomy.mjs TURRET_LATERAL_CUTS cuts that face away); `drawn` keeps the envelope calibration from moving
+// this one onto the cheeks' noses, and a variant on its own build (the source-X KF51 Panther) takes the template back.
+const KF51_MANTLET = KF51_SPEC.armor.turretPlates.findIndex((plate) => plate.name === 'mantlet');
+if (KF51_MANTLET >= 0) {
+  const template = KF51_SPEC.armor.turretPlates[KF51_MANTLET];
+  KF51_SPEC.armor.turretPlates[KF51_MANTLET] = { ...frontPlate('mantlet', 500, 0.43, 0.01, 1.088, 0.79, 1.1), drawn: true, template };
+}
 
 // The procedural KF51 now carries a reactive two-row flank jacket. Keep its
 // combat zones in the boot-light spec registry so the visible cassettes are

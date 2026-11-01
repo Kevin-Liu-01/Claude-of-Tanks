@@ -1,6 +1,6 @@
 {
  "id": "namer_ifv",
- "geoMin": 95.4,
+ "geoMin": 95.3,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -112,14 +112,14 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 95.39768227913302,
+ "rawGeoMin": 95.30269898684824,
  "rawComponents": {
-  "wholeCurves": 95.39768227913302,
+  "wholeCurves": 95.30269898684824,
   "dims": 100,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 95.4,
+  "wholeCurves": 95.3,
   "dims": 100,
   "floaters": 100
  },
@@ -128,7 +128,7 @@
  "curveRows": {
   "side_hull": {
    "score": 0,
-   "meanPct": 8.84,
+   "meanPct": 8.9,
    "p95Pct": 19.66,
    "coverPct": 0,
    "reg": {
@@ -235,9 +235,9 @@
    ]
   },
   "side_whole": {
-   "score": 89.8931660589881,
-   "meanPct": 0.72,
-   "p95Pct": 2.46,
+   "score": 88.01758666474845,
+   "meanPct": 0.82,
+   "p95Pct": 3.56,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -277,6 +277,14 @@
      "errM": 0.185
     },
     {
+     "at": 0.38,
+     "refTop": 1.09,
+     "refBot": -1.6,
+     "procTop": 1.32,
+     "procBot": -1.6,
+     "errM": 0.114
+    },
+    {
      "at": -3.41,
      "refTop": -0.2,
      "refBot": -0.85,
@@ -301,6 +309,22 @@
      "errM": 0.067
     },
     {
+     "at": 0.8,
+     "refTop": 1.23,
+     "refBot": -1.6,
+     "procTop": 1.35,
+     "procBot": -1.6,
+     "errM": 0.059
+    },
+    {
+     "at": -3.16,
+     "refTop": -0.12,
+     "refBot": -1.1,
+     "procTop": -0.06,
+     "procBot": -1.15,
+     "errM": 0.055
+    },
+    {
      "at": 1.14,
      "refTop": 1.25,
      "refBot": -1.6,
@@ -309,36 +333,12 @@
      "errM": 0.055
     },
     {
-     "at": 0.8,
-     "refTop": 1.23,
-     "refBot": -1.6,
-     "procTop": 1.33,
-     "procBot": -1.6,
-     "errM": 0.051
-    },
-    {
-     "at": -3.32,
-     "refTop": -0.14,
-     "refBot": -1,
-     "procTop": -0.19,
-     "procBot": -1.04,
-     "errM": 0.043
-    },
-    {
-     "at": 3.24,
-     "refTop": 0.3,
-     "refBot": -0.9,
-     "procTop": 0.3,
-     "procBot": -0.97,
-     "errM": 0.039
-    },
-    {
-     "at": 1.22,
-     "refTop": 1.25,
+     "at": 0.47,
+     "refTop": 1.22,
      "refBot": -1.6,
      "procTop": 1.32,
      "procBot": -1.6,
-     "errM": 0.036
+     "errM": 0.051
     }
    ]
   },
@@ -560,7 +560,7 @@
   },
   "front_hull": {
    "score": 0,
-   "meanPct": 10.87,
+   "meanPct": 11.04,
    "p95Pct": 20.13,
    "coverPct": 0,
    "reg": {
@@ -636,39 +636,39 @@
      "at": 0.26,
      "refTop": 1.61,
      "refBot": -1.24,
-     "procTop": 0.47,
+     "procTop": 0.41,
      "procBot": -1.24,
-     "errM": 0.569
+     "errM": 0.599
+    },
+    {
+     "at": 0.3,
+     "refTop": 1.61,
+     "refBot": -1.24,
+     "procTop": 0.42,
+     "procBot": -1.24,
+     "errM": 0.594
     },
     {
      "at": -0.02,
      "refTop": 1.61,
      "refBot": -1.27,
-     "procTop": 0.48,
+     "procTop": 0.46,
      "procBot": -1.27,
-     "errM": 0.567
+     "errM": 0.579
     },
     {
      "at": 0.02,
      "refTop": 1.61,
      "refBot": -1.27,
-     "procTop": 0.48,
+     "procTop": 0.46,
      "procBot": -1.27,
-     "errM": 0.567
-    },
-    {
-     "at": -0.14,
-     "refTop": 1.61,
-     "refBot": -1.26,
-     "procTop": 0.48,
-     "procBot": -1.26,
-     "errM": 0.565
+     "errM": 0.579
     }
    ]
   },
   "front_whole": {
-   "score": 85.85835689808144,
-   "meanPct": 0.88,
+   "score": 85.64646768401275,
+   "meanPct": 0.9,
    "p95Pct": 5.89,
    "coverPct": 0,
    "reg": {
@@ -749,6 +749,14 @@
      "errM": 0.096
     },
     {
+     "at": 0.59,
+     "refTop": 1.16,
+     "refBot": -1.22,
+     "procTop": 1.35,
+     "procBot": -1.23,
+     "errM": 0.096
+    },
+    {
      "at": 1.68,
      "refTop": 0.33,
      "refBot": -0.86,
@@ -757,20 +765,12 @@
      "errM": 0.096
     },
     {
-     "at": 0.38,
-     "refTop": 1.22,
-     "refBot": -1.23,
-     "procTop": 1.36,
-     "procBot": -1.23,
-     "errM": 0.066
-    },
-    {
      "at": 0.54,
      "refTop": 1.22,
      "refBot": -1.22,
-     "procTop": 1.09,
+     "procTop": 1.36,
      "procBot": -1.23,
-     "errM": 0.064
+     "errM": 0.078
     }
    ]
   }
@@ -836,18 +836,18 @@
    "refW": 3.58,
    "procW": 3.585,
    "refTop": 2.968,
-   "procTop": 2.958,
+   "procTop": 2.98,
    "wPct": 0.13632059168452337,
-   "topPct": 0.32415250146875746
+   "topPct": 0.36265048478521167
   },
   {
    "i": 6,
    "refW": 3.58,
    "procW": 3.585,
    "refTop": 2.867,
-   "procTop": 2.867,
+   "procTop": 2.942,
    "wPct": 0.13897142742975988,
-   "topPct": 0.0007878311624666135
+   "topPct": 2.3204006052945725
   },
   {
    "i": 7,
@@ -947,21 +947,21 @@
    "actual": 3.5850000500679013,
    "published": 3.5801196098327637,
    "pct": 0.13632059168452337,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
    "actual": 3.2199168943170378,
    "published": 3.2120080120473062,
    "pct": 0.24622859719115295,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 7.4819998359680175,
    "published": 7.482503175735474,
    "pct": 0.006726890128003397,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
@@ -976,7 +976,28 @@
  },
  "proceduralBodyExtent": {
   "h": 3.181,
-  "len": 7.324
+  "len": 7.494,
+  "roofFittingsTop": 3.204
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "auxiliaryWeapon:browningDerivedMachineGunBody",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
+   "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
+   "pintleMG:browningDerivedMachineGunMount"
+  ],
+  "reference": [
+   "node:ammo2_namer-ifv-turret_4_0",
+   "node:ammo3_namer-ifv-turret_4_0",
+   "node:weapon2_namer-ifv-turret_4_0",
+   "node:weapon3_namer-ifv-turret_4_0",
+   "node:weapon4_namer-ifv-turret_4_0"
+  ]
+ },
+ "oracleComparison": {
+  "antennasDropped": false,
+  "roofWeaponsDropped": true,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -986,7 +1007,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 248534,
+     "area": 248825,
      "minX": 54,
      "minY": 298,
      "maxX": 972,
@@ -1000,7 +1021,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 249571,
+     "area": 249760,
      "minX": 54,
      "minY": 298,
      "maxX": 972,
@@ -1014,7 +1035,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 246840,
+     "area": 247110,
      "minX": 54,
      "minY": 298,
      "maxX": 972,
@@ -1028,7 +1049,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 247544,
+     "area": 247835,
      "minX": 54,
      "minY": 298,
      "maxX": 972,
@@ -1042,7 +1063,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 249650,
+     "area": 249941,
      "minX": 54,
      "minY": 298,
      "maxX": 972,

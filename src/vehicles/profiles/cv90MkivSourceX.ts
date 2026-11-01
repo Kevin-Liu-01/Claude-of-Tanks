@@ -70,7 +70,7 @@ function buildCv90RearRamp(P: TankBuilderPort): void {
   }
 }
 
-function addCv90SideArmor(P: TankBuilderPort, side: number, x: number): void {
+function addCv90SideArmor(P: TankBuilderPort, side: number, x: number, curtain = true): void {
     sideWall(P,side,Math.abs(x)-.0225,Math.abs(x)+.0225,[
       [-3.16,.97,1.725],[-2.66,.97,1.725],[-2.60,.97,1.537],
       [1.25,.97,1.515],[2.55,.97,1.266],[3.17,.995,1.15],
@@ -83,6 +83,8 @@ function addCv90SideArmor(P: TankBuilderPort, side: number, x: number): void {
     }
     // The source's lower curtain is a separate part below the upper side cells.
     // Source-only lateral rays put its central lower edge at0.307–0.310m rawY.
+    // (the CV9035 DK goes without it: the c2 critics on the SIAF and Holstebro photographs, the wheels shown nearly whole)
+    if(!curtain)return;
     sideWall(P,side,Math.abs(x)-.0175,Math.abs(x)+.0175,[
       [-2.754,.830,.856],[-2.70,.789,.856],[-2.48,.515,.565],
       [-2.40,.422,.563],[-2.18,.314,.562],[0,.312,.557],
@@ -98,7 +100,7 @@ function addCv90SideArmor(P: TankBuilderPort, side: number, x: number): void {
 // raised troop roof (1.727) starts at -2.66, 2.06 m off the ring's axis, past the sweep of the turret's lower shoulders
 // and cheek smoke arrays (1.58-1.73, out to 1.99 m). It rose from -1.22, and they ran up to 21 cm through it at every
 // rear bearing: a source error. Its walls step with it.
-function buildCv90Hull(P: TankBuilderPort): void {
+function buildCv90Hull(P: TankBuilderPort, danish = false): void {
   P.add('hull',chassisLoft([
     [-3.185,.76,1.535,1.515,.91,1.03,1.727],[-2.75,.78,1.555,1.535,.35,.99,1.727],
     [-2.66,0.7715,1.555,1.535,0.3453,0.9881,1.727],[-2.6,0.7658,1.555,1.535,0.3421,0.9868,1.537],
@@ -108,7 +110,7 @@ function buildCv90Hull(P: TankBuilderPort): void {
   ],.923).translate(-.035,0,0));
   for(const side of [-1,1]) {
     const x=side<0?-1.6094:1.5381;
-    addCv90SideArmor(P,side,x);
+    addCv90SideArmor(P,side,x,!danish);
     addCv90FendersAndLamps(P,side);
   }
   for(const x of [-.5432,.4682]) {
@@ -125,7 +127,8 @@ function buildCv90Hull(P: TankBuilderPort): void {
     new THREE.Vector3(1.665,.645,2.32),new THREE.Vector3(1.555,.645,2.375),
   ]);
   // This open towing eye is separate equipment, never continuous armor.
-  P.addEquipment('hullOpenLattice',new THREE.TubeGeometry(towLoop,P.q?16:8,.007,6,false));
+  // (the CV9035 DK carries shackles on its nose instead: c4 Sonnet, the side loop stood past the hull)
+  if(!danish)P.addEquipment('hullOpenLattice',new THREE.TubeGeometry(towLoop,P.q?16:8,.007,6,false));
   buildCv90RearRamp(P);
   // Large paired deck service covers follow the actual glacis slope.
   for(const side of [-1,1]) {
@@ -250,6 +253,38 @@ function buildCv90CrewHatch(P: TankBuilderPort, px: number, py: number, pz: numb
   for(const a of [-1.15,.25,1.65,2.7])turretEquipment(P,'turretDetail',box(.022,.040,.063),.7308+Math.sin(a)*.367,2.346,-.148+Math.cos(a)*.367,0,a);
 }
 
+/** The CV9035 DK's roof (the c2 critics on the SIAF Mk IV photograph): the commander's panoramic sight high on a round
+ *  mast over the citadel roof, its drum head and window; laser warning heads in place of the rear twin-tube units. */
+/** The twin-tube units on the turret roof's rear corners (Iron Fist-style protection launchers). */
+function cv90RearUnits(P: TankBuilderPort): void {
+  for(const side of [-1,1]) {
+    const x=side<0?-.570:.923,baseY=side<0?2.193:2.173;
+    turretEquipment(P,'turretDetail',box(.40,.15,.32),x,baseY,-1.425);
+    for(const dx of [-.080,.080])turretEquipment(P,'turretDetail',box(.043,.31,.24),x+dx,baseY+.22,-1.425,-.16);
+    turretEquipment(P,'turretDetail',box(.205,.045,.26),x,baseY+.080,-1.425);
+    for(const dy of [0,.1465]) {
+      const hx=side<0?-.710+dy*.36:1.063-dy*.36,hy=baseY+.219+dy;
+      turretEquipment(P,'turretDetail',cylX(.088,.27,P.q?20:10),hx,hy,-1.422,0,0,side*.31);
+      turretEquipment(P,'turretDark',cylX(.061,.012,P.q?16:8),hx+side*.132,hy+side*.041,-1.422,0,0,side*.31);
+    }
+  }
+}
+
+function buildCv9035DkRoofSights(P: TankBuilderPort): void {
+  const x=.2341,z=-.66,n=P.q?20:12;
+  turretEquipment(P,'turretDetail',cylY(.10,.11,.05,n),x,2.33,z);
+  turretEquipment(P,'turretDetail',cylY(.058,.066,.30,n),x,2.49,z);
+  turretEquipment(P,'turretDetail',cylY(.125,.125,.17,n),x,2.71,z);
+  // (c4 critics: the dark cap read as a hole from above: in the coat)
+  turretEquipment(P,'turretDetail',cylY(.13,.13,.025,n),x,2.805,z);
+  turretEquipment(P,'turretGlass',box(.15,.085,.02),x,2.71,z+.124);
+  // the Mk IV's rear twin-tube units (c4 Opus on the SIAF and Holstebro photographs: protection launchers at both rear
+  // corners; c2 Sonnet had read them as missile pods)
+  cv90RearUnits(P);
+  turretEquipment(P,'turretDetail',cylY(.055,.072,.575,P.q?16:8),.313,2.367,-1.737);
+  antenna(P,-.71,2.28,3.85279,-.65);antenna(P,1.10,2.149,3.72,-.65);
+}
+
 function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: number): void {
   // Open A-frame feet carry the source sight neck; the space between them remains real air.
   for(const side of [-1,1])towerStrut(P,[.2341+side*.165,2.18,-.63],[.2341+side*.070,2.455,-.66],.055,.16);
@@ -268,17 +303,7 @@ function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: num
     {z:-.515-pz,ring:[[.097-px,2.68-py],[.371-px,2.68-py],[.371-px,2.711-py],[.097-px,2.711-py]]},
   ]));
   turretEquipment(P,'turretGlass',box(.194,.135,.018),.2341,2.725,-.550,-.50);
-  for(const side of [-1,1]) {
-    const x=side<0?-.570:.923,baseY=side<0?2.193:2.173;
-    turretEquipment(P,'turretDetail',box(.40,.15,.32),x,baseY,-1.425);
-    for(const dx of [-.080,.080])turretEquipment(P,'turretDetail',box(.043,.31,.24),x+dx,baseY+.22,-1.425,-.16);
-    turretEquipment(P,'turretDetail',box(.205,.045,.26),x,baseY+.080,-1.425);
-    for(const dy of [0,.1465]) {
-      const hx=side<0?-.710+dy*.36:1.063-dy*.36,hy=baseY+.219+dy;
-      turretEquipment(P,'turretDetail',cylX(.088,.27,P.q?20:10),hx,hy,-1.422,0,0,side*.31);
-      turretEquipment(P,'turretDark',cylX(.061,.012,P.q?16:8),hx+side*.132,hy+side*.041,-1.422,0,0,side*.31);
-    }
-  }
+  cv90RearUnits(P);
   turretEquipment(P,'turretDetail',cylY(.055,.072,.575,P.q?16:8),.313,2.367,-1.737);
   antenna(P,-.71,2.28,3.85279,-.65);antenna(P,1.10,2.149,3.72,-.65); // 2026-10-19 (owner float sweep): right base was 128 mm over the roof
 }
@@ -331,7 +356,62 @@ function buildCv90Cannon(P: TankBuilderPort): void {
   P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:outer,innerRadiusM:inner,depthM:depth,rimProjectionM:.0996};
 }
 
-export function buildCv90MkivX(P: TankBuilderPort): void {
+/** The CV9035 DK's nose (c4 critics on the Holstebro and SIAF photographs): two heavy shackles on the tow eyes in place
+ *  of the source's side loop, and a black lamp cluster at each corner, two white lamps over the amber indicator. */
+function addCv9035DkNose(P: TankBuilderPort): void {
+  for(const x of [-.5432,.4682])P.addEquipment('hullFittingPaint',new THREE.TorusGeometry(.078,.024,8,P.q?20:12),x,.555,3.17);
+  for(const side of [-1,1]) {
+    const lx=side<0?-1.406:1.336;
+    P.addEquipment('hullDark',box(.32,.15,.05),lx,1.064,3.23);
+    for(const dx of [-.075,.075])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.012,P.q?16:10),'headlight'),lx+dx,1.075,3.259);
+    P.decal('hull','mlc','',.05,[lx,1.010,3.2565],0);
+  }
+}
+
+/** The CV9035 DK's 35 mm Bushmaster III on the Mk IV's mount (release 265): a slimmer barrel than the 50 mm's and the
+ *  35 mm's long ported brake, about twice the barrel across (the Danish CV9035 photographs), in plain steel: three rows
+ *  of ports round the drum, a slimmer collar ahead of it and the open mouth, 60% of the drum, dark to its backstop (the
+ *  c2 critics: rings on a closed drum), the muzzle just short of the bow. */
+function buildCv9035DkCannon(P: TankBuilderPort): void {
+  P.add('gunMount',sectionSolid([
+    {z:-.14,ring:[[-.26,-.24],[.26,-.24],[.29,.14],[.20,.26],[-.20,.26],[-.29,.14]]},
+    {z:.42,ring:[[-.13,-.13],[.13,-.13],[.15,.10],[.10,.15],[-.10,.15],[-.15,.10]]},
+  ]));
+  const n=P.q?28:14,barrel=.050,brakeR=.098,collarR=.082,collarL=.06,brakeL=.47,mouth=2.42,z0=mouth-brakeL,drumEnd=mouth-collarL;
+  // open shells (a capped cylinder would close the bore), the drum's back and shoulder closed by annuli
+  const shell=(r: number,len: number)=>new THREE.CylinderGeometry(r,r,len,n,1,true).rotateX(Math.PI/2);
+  P.add('gun',shell(barrel,z0+.02-.30),0,0,(z0+.02+.30)/2);
+  P.add('gun',shell(brakeR,drumEnd-z0),0,0,(z0+drumEnd)/2);
+  P.add('gun',new THREE.RingGeometry(barrel,brakeR,n).rotateY(Math.PI),0,0,z0);
+  P.add('gun',new THREE.RingGeometry(collarR,brakeR,n),0,0,drumEnd);
+  P.add('gun',shell(collarR,collarL),0,0,drumEnd+collarL/2);
+  for(const dz of [.08,.20,.32])for(let k=0;k<8;k++){
+    const a=(k+.5)*Math.PI/4,r=brakeR+.001;
+    P.add('gunDark',box(.034,.006,.075).rotateZ(-a),Math.sin(a)*r,Math.cos(a)*r,z0+dz);
+  }
+  const inner=.058,depth=.08;
+  const throat=new THREE.CylinderGeometry(inner,inner,depth,n,1,true).rotateX(Math.PI/2),index=throat.index!;
+  for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}throat.computeVertexNormals();
+  P.add('gunDark',throat,0,0,mouth-depth/2);
+  P.add('gun',new THREE.RingGeometry(inner,collarR,n),0,0,mouth);
+  P.add('gunDark',new THREE.CircleGeometry(inner,n),0,0,mouth-depth);
+  P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:collarR,innerRadiusM:inner,depthM:depth,rimProjectionM:0};
+}
+
+/** The CV9035 DK's Danish Army registration plate, black with white figures and the small yellow emblem at its end, on
+ *  the nose's upper plate left of centre (the Holstebro photograph's "75.177"). */
+function addCv9035DkPlates(P: TankBuilderPort): void {
+  // (the C gate: its figures' square seat on the nose's upright face, which ends at 1.13 under the glacis; at 1.05 its top
+  // stood clear of the glacis's slope and showed the sky from below the bow)
+  P.addEquipment('hullDark',box(.52,.12,.012),.38,.96,3.236);
+  P.decal('hull','stencilWhite','75.145',.32,[.43,.96,3.244],0);
+  P.decal('hull','mlc','',.07,[.17,.96,3.244],0);
+}
+
+/** The CV90 Mk IV (release 265: `danish` builds the CV9035 DK on it, profiles/denmark.ts; the owner 2026-10-30: "the
+ *  cv9035 should be based on the cv90 mk 4"): the 35 mm in place of the 50 mm, no missile launcher (the Danish CV90s
+ *  carry none) and the Danish plate. */
+export function buildCv90MkivX(P: TankBuilderPort, kit: { readonly danish?: boolean } = {}): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
     hull: ['hullExternalArmor', 'hullHatch'],
@@ -339,15 +419,25 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   };
   P.hullG.position.set(0,0,0); P.turretG.position.set(-.035,1.55,-.60);
   P.gunG.position.set(.207, .294, 1.30);
-  buildCv90Hull(P);
+  buildCv90Hull(P,kit.danish);
   buildCv90RunningGear(P);
   const px=P.turretG.position.x,py=P.turretG.position.y,pz=P.turretG.position.z;
   buildCv90TurretArmor(P,py,pz);
   buildCv90CrewHatch(P,px,py,pz);
-  buildCv90RoofSights(P,px,py,pz);
-  buildCv90MissileCanisters(P);
-  buildCv90Cannon(P);
+  if(kit.danish)buildCv9035DkRoofSights(P);else buildCv90RoofSights(P,px,py,pz);
+  if(kit.danish){
+    optic(P,-.282,2.407,.25,.488,.245,.377);
+    buildCv9035DkCannon(P);
+    addCv9035DkPlates(P);
+    addCv9035DkNose(P);
+    if(P.geometryReceipt)P.gunG.userData.cv9035DkReceipt=Object.freeze({
+      host:'cv90_mk4',mainGunCaliberMm:35,muzzleZ:P.muzzleZ,missileLauncher:false,registrationPlate:'75.145',
+    });
+  }else{
+    buildCv90MissileCanisters(P);
+    buildCv90Cannon(P);
+  }
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.82-py;
-  P.hullG.userData.xRebuild={candidate:'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:kit.danish?'cv9035dk':'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

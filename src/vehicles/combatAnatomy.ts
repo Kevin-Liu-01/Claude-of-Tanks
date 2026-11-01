@@ -17,6 +17,7 @@ import {
   type AnatomyCalibrationCell,
   type AnatomyCalibrationStructure,
   type AnatomyCrewSeatReceipt,
+  type AnatomyModuleSeatReceipt,
   type AnatomyModuleShapeReceipt,
   type AnatomyEraPlateReceipt,
   type CombatAnatomyCalibration,
@@ -26,6 +27,7 @@ import {
   calibrationOrientationPoint, stockCollisionCoverCandidates, stockCollisionFaceCovered,
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
+import { stationSideSign } from './vehicleSide.ts';
 import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
 import { rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
@@ -35,6 +37,8 @@ import type {
   InternalLayoutRecord,
   InternalSystemPlacement,
 } from './internalLayoutRegistry.ts';
+import { convexCellFacets } from '../sim/convexCellFacets.ts';
+import { splitGunFace, type GunFaceSplit, type GunFaceWindow } from '../sim/gunFaceSplit.ts';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
@@ -63,6 +67,9 @@ interface ArmorPlate {
   convexPolygon?: boolean;
   openEdges?: number[];
   traceBounds?: { min: Vec3; max: Vec3 };
+  /** 266: a main plate measured on the drawn build (the KF51 EVO's mantlet on its gun slot), already in its frame: the
+   * calibration leaves it in place and only the faces over it read it (prepareCollisionCells) */
+  drawn?: boolean;
 }
 
 interface AnatomyShapeEllipsoid {
@@ -123,6 +130,8 @@ interface CollisionFace {
   center: Vec3;
   plate: ArmorPlate;
   internal?: boolean;
+  /** 265: a forward turret face only partly over a mantlet or gun-notch plate, cut into the pieces a point reads. */
+  gunSplit?: GunFaceSplit<ArmorPlate>;
 }
 
 interface CollisionCell extends Bounds {
@@ -237,7 +246,7 @@ function plateBounds(plates: readonly ArmorPlate[] | undefined, mainOnly = false
   const max = [-Infinity, -Infinity, -Infinity];
   for (const plate of plates || []) {
     if (plate.kind === 'external') continue;
-    if (mainOnly && (plate.kind || 'main') !== 'main') continue;
+    if (mainOnly && ((plate.kind || 'main') !== 'main' || plate.drawn)) continue;
     for (const point of plate.verts || []) {
       for (let axis = 0; axis < 3; axis++) {
         min[axis] = Math.min(min[axis], point[axis]);
@@ -377,14 +386,40 @@ const DEGENERATE_FACE_CROSS = 1e-10;
  * their thin roof (the T-90AM). Forward: outward normal z >= 0.2 (turret local). Over: the face centre inside the plate's
  * x range, within its height +-0.1 m and within 0.35 m of its depth. The nearest such plate wins
  * (gunFacePlates.selftest.mjs holds the fleet to it).
+ *
+ * 265 (FAIRNESS-265 §3, Main's ruling: fleet-wide, release 266): that is the face's `plate`, its centre's read. A face
+ * only partly over a gun plate (on 221 vehicles a slice's convex cell lays one triangle across a cheek and the gun: the
+ * M1A2's runs x -1.52..0.22, 53% of it in front of the mantlet, its centre 13 mm outside) is also cut at the windows
+ * into pieces (sim/gunFaceSplit.ts): inside one, the nearest gun plate; off them, the nearest other plate. A round reads
+ * the piece it enters (sim/armor.ts), as the panels and overlays draw them (gunFaceSplit.selftest.mjs).
  */
 const GUN_FACE_PLATE = /mantlet|gun_notch/i;
 const GUN_FACE_MIN_NORMAL_Z = 0.2;
 const GUN_FACE_HEIGHT_PAD_M = 0.1;
 const GUN_FACE_DEPTH_PAD_M = 0.35;
 
-function gunFaceDescriptors(descriptors: readonly PlateDescriptor[]): PlateDescriptor[] {
-  return descriptors.filter((descriptor) => GUN_FACE_PLATE.test(descriptor.plate.name));
+/** A turret's gun plates, their windows, and the plates a split face reads off them. */
+interface GunFaceContext {
+  plates: PlateDescriptor[];
+  windows: GunFaceWindow<ArmorPlate>[];
+  others: PlateDescriptor[];
+}
+
+function gunFaceContext(descriptors: readonly PlateDescriptor[]): GunFaceContext | null {
+  const plates = descriptors.filter((descriptor) => GUN_FACE_PLATE.test(descriptor.plate.name));
+  if (!plates.length) return null;
+  const others = descriptors.filter((descriptor) => !plates.includes(descriptor));
+  return {
+    plates,
+    windows: plates.map(({ plate, min, max }) => ({
+      plate,
+      lo: [min[0], min[1] - GUN_FACE_HEIGHT_PAD_M, min[2] - GUN_FACE_DEPTH_PAD_M],
+      hi: [max[0], max[1] + GUN_FACE_HEIGHT_PAD_M, max[2] + GUN_FACE_DEPTH_PAD_M],
+      min,
+      max,
+    })),
+    others: others.length ? others : descriptors.slice(),
+  };
 }
 
 function gunFacePlate(
@@ -413,7 +448,7 @@ function collisionFaceFromTriangle(
   vertices: Vec3[],
   cellCenter: readonly number[],
   descriptors: readonly PlateDescriptor[],
-  gunPlates: readonly PlateDescriptor[] = [],
+  gun: GunFaceContext | null = null,
 ): CollisionFace | null {
   if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
   const indices = sourceIndices.slice();
@@ -435,7 +470,7 @@ function collisionFaceFromTriangle(
     [indices[1], indices[2]] = [indices[2], indices[1]];
     normal = [-normal[0], -normal[1], -normal[2]];
   }
-  const plate = gunFacePlate(faceCenter, normal, gunPlates) ?? nearestPlate(faceCenter, normal, descriptors);
+  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates)) ?? nearestPlate(faceCenter, normal, descriptors);
   if (!plate) return null;
   return {
     indices,
@@ -446,17 +481,45 @@ function collisionFaceFromTriangle(
   };
 }
 
+/** Whether a cell's bounds reach a gun window (the facets' 1 mm growth included). */
+function cellReachesWindow(cell: CollisionCell, window: GunFaceWindow<ArmorPlate>): boolean {
+  for (let axis = 0; axis < 3; axis++) {
+    if (cell.max[axis] + 1e-3 < window.lo[axis] || cell.min[axis] - 1e-3 > window.hi[axis]) return false;
+  }
+  return true;
+}
+
+/**
+ * 265: a cell's forward facets cut at the gun windows. A round enters a convex cell through the plane it crosses last,
+ * anywhere on that plane's facet (sim/convexCellFacets.ts: the bounds cut by the planes, which on a stock cell can run
+ * past the plane's triangles), and is given the first face listed there; so the split is the facet's, and every face on
+ * the plane carries it. Off the windows a point reads that face's plate, or, where that is a gun plate (its centre lay
+ * over the gun), the nearest other plate.
+ */
+function splitCellGunFaces(cell: CollisionCell, gun: GunFaceContext): void {
+  if (!gun.windows.some((window) => cellReachesWindow(cell, window))) return;
+  for (const facet of convexCellFacets(cell).facets) {
+    const face = facet.faces[0];
+    if (face.normal[2] < GUN_FACE_MIN_NORMAL_Z || facet.faces.every((member) => member.internal)) continue;
+    const offGun = gun.plates.some((descriptor) => descriptor.plate === face.plate)
+      ? (point: readonly number[]) => nearestPlate(point, face.normal, gun.others) ?? face.plate
+      : () => face.plate;
+    const split = splitGunFace([{ points: facet.points, offGun }], face.normal, gun.windows);
+    if (split) for (const member of facet.faces) member.gunSplit = split;
+  }
+}
+
 function collisionCellFromCalibration(
   source: AnatomyCalibrationCell,
   descriptors: readonly PlateDescriptor[],
-  gunPlates: readonly PlateDescriptor[] = [],
+  gun: GunFaceContext | null = null,
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
   const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
-    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gunPlates);
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun);
     if (face) faces.push(face);
   }
   if (faces.length < 4) return null;
@@ -511,14 +574,19 @@ function prepareCollisionCells(
   if (!Array.isArray(sourceCells) || !sourceCells.length) return [];
   const descriptors = mainPlateDescriptors(plates);
   if (!descriptors.length) return [];
-  // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate)
-  const gunPlates = gunFaces ? gunFaceDescriptors(descriptors) : [];
+  // the turret frame's mantlet and gun-notch plates own the faces in front of the gun (gunFacePlate, gunSplit)
+  const gun = gunFaces ? gunFaceContext(descriptors) : null;
+  // 266: a plate measured on the drawn build is read by the faces over it (the gun-face rule), never as another
+  // face's nearest guess (the KF51 EVO's cheek noses face below every plate's alignment and kept the front's read)
+  const nearest = descriptors.some((descriptor) => !descriptor.plate.drawn)
+    ? descriptors.filter((descriptor) => !descriptor.plate.drawn) : descriptors;
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, descriptors, gunPlates);
+    const cell = collisionCellFromCalibration(source, nearest, gun);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);
+  if (gun) for (const cell of cells) splitCellGunFaces(cell, gun);
   return cells;
 }
 
@@ -655,16 +723,18 @@ function moduleUsesInternalShell(volume: ModuleVolume): boolean {
     && volume.module !== 'optics';
 }
 
-function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+/** The hit shapes a module volume carries (266: the placement pass in tools/crew-seat-fit.mjs judges a module by them). */
+export function moduleHitShapes(armor: ArmorAnatomy, volume: ModuleVolume): AnatomyShape[] {
   const parts = Array.isArray(volume.parts) && volume.parts.length
     ? volume.parts
     : [volume];
   const cells = collisionCellsForVolume(armor, volume);
   const internal = moduleUsesInternalShell(volume);
-  volume.shapes = [];
-  for (const part of parts) {
-    volume.shapes.push(...fitModulePartToShell(volume.module, part, cells, internal));
-  }
+  return parts.flatMap((part) => fitModulePartToShell(volume.module, part, cells, internal));
+}
+
+function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+  volume.shapes = moduleHitShapes(armor, volume);
 }
 
 function crewBodyShapes(volume: CrewVolume): AnatomyShapeEllipsoid[] {
@@ -732,9 +802,27 @@ function applyCrewSeat(volume: CrewVolume, seat: AnatomyCrewSeatReceipt): void {
   volume.blastPoints = seat.blastPoints.map((point) => point.slice());
 }
 
+/**
+ * 266 module placement: a calibration's module seat (tools/crew-seat-fit.mjs placeModules) is the sketched module's
+ * parts placed around the seated crew inside its armour; applied as literal numbers before its hit shapes are fitted.
+ */
+function applyModuleSeat(volume: ModuleVolume, seat: AnatomyModuleSeatReceipt): void {
+  const parts = seat.parts.map((part) => ({ min: part.min.slice(), max: part.max.slice() }));
+  const bounds = boxBounds(parts);
+  if (!bounds) return;
+  volume.min = bounds.min;
+  volume.max = bounds.max;
+  if (parts.length > 1 || volume.parts?.length) volume.parts = parts;
+}
+
 function addPreciseInternalShapes(armor: ArmorAnatomy, calibration: CombatAnatomyCalibration | null): void {
-  for (const volume of armor.modules || []) addPreciseModuleShapes(armor, volume);
-  // The generator measures the legacy stations; it never reads its own previous seats.
+  // The generator measures the sketches; it never reads its own previous seats.
+  const moduleSeats = isCombatAnatomyMeasurementMode() ? null : calibration?.moduleSeats;
+  for (const volume of armor.modules || []) {
+    const seat = moduleSeats?.find((entry) => entry.module === volume.module && entry.turretLocal === !!volume.turretLocal);
+    if (seat && !volume.gunFollow) applyModuleSeat(volume, seat);
+    addPreciseModuleShapes(armor, volume);
+  }
   const seats = isCombatAnatomyMeasurementMode() ? null : calibration?.crewSeats;
   for (const volume of armor.crew || []) {
     const seat = seats?.find((entry) => entry.crew === volume.crew);
@@ -975,12 +1063,13 @@ function reconcileFrame(
   // base-shell calibration transform: applying the hull/turret envelope scale
   // to those already-seated coordinates silently moves the gameplay surface
   // away from its cassette (most visibly on long skirt fields). Main armor and
-  // internal boxes remain receipt-calibrated below.
+  // internal boxes remain receipt-calibrated below; a main plate measured on the
+  // drawn build (266, `drawn`) is already where it belongs, like those layers.
   const from = plateBounds(plates, true);
   if (!from || !target) return;
   const seen = new Set<Vec3>();
   for (const plate of plates || []) {
-    if ((plate.kind || 'main') !== 'main') continue;
+    if ((plate.kind || 'main') !== 'main' || plate.drawn) continue;
     for (const point of plate.verts || []) {
       if (seen.has(point)) continue;
       seen.add(point);
@@ -1142,6 +1231,7 @@ function reconcileChildFrame(
   };
   const seen = new Set<Vec3>();
   for (const plate of plates || []) {
+    if (plate.drawn) continue;
     for (const point of plate.verts || []) {
       if (seen.has(point)) continue;
       seen.add(point);
@@ -1259,7 +1349,7 @@ function boxForStation(
     template.max[axis] - value,
     (frameBounds.max[axis] - frameBounds.min[axis]) * (axis === 1 ? 0.72 : 0.34),
   ));
-  const xFraction = station.endsWith('Left') ? -0.28 : station.endsWith('Right') ? 0.28 : 0;
+  const xFraction = stationSideSign(station) * 0.28;
   const zFraction = station.startsWith('front') ? 0.29 : station.startsWith('rear') ? -0.24 : 0;
   const center = [
     (frameBounds.min[0] + frameBounds.max[0]) * 0.5
@@ -1273,6 +1363,64 @@ function boxForStation(
     min: center.map((value, axis) => Math.max(frameBounds.min[axis] + 0.03, value - size[axis] * 0.5)),
     max: center.map((value, axis) => Math.min(frameBounds.max[axis] - 0.03, value + size[axis] * 0.5)),
   };
+}
+
+/** A box this close to its frame's axis names no side. */
+const SIDE_DEADBAND_M = 0.05;
+/** Volumes with a place of their own: measured (tracks, the ring), drawn with the gun, or outside the hull. */
+const SKETCH_FIXED_MODULES = new Set(['trackL', 'trackR', 'turretRing', 'gun', 'gunMount', 'roofGun']);
+
+function boxSide(box: Bounds): number {
+  const x = (box.min[0] + box.max[0]) * 0.5;
+  return Math.abs(x) < SIDE_DEADBAND_M ? 0 : Math.sign(x);
+}
+
+function mirrorBoxX(box: AnatomyVolume): void {
+  for (const part of [box, ...(box.parts || [])]) {
+    const min = part.min[0];
+    part.min[0] = -part.max[0];
+    part.max[0] = -min;
+  }
+}
+
+/**
+ * (266) The combat anatomy is a hand sketch in vehicleSide.ts's frame, but most families were sketched with the left at
+ * -x, the mirror of the world and of their drawn models: the M1A2's commander sat under the loader's M240, the
+ * Leopard 2A6's gunner under the loader's hatch, the Merkava 4's engine on the left. The sourced crew stations
+ * (internalLayoutRegistry.ts) decide each sketch's handedness, frame by frame (a hull and a turret are often sketched
+ * by different helpers): where more of a frame's side-named stations sit on the wrong side than on their own, that
+ * frame's sketch (its crew and the modules sketched with them) is mirrored about its axis. A frame with no side-named
+ * station follows the vehicle's vote. Drawn module receipts, the tracks, the ring and the gun are measured from the
+ * model and stay.
+ */
+function matchSketchHandedness(
+  armor: ArmorAnatomy,
+  layout: CombatInternalLayout,
+  calibration: CombatAnatomyCalibration | null,
+): void {
+  if (layout.confidence === 'legacy-nonplayable') return;
+  const votes = { hull: { own: 0, mirrored: 0 }, turret: { own: 0, mirrored: 0 } };
+  for (const station of layout.crew) {
+    const want = stationSideSign(station.station);
+    const box = (armor.crew || []).find((entry) => entry.crew === station.role);
+    const side = box ? boxSide(box) : 0;
+    if (!box || !want || !side) continue;
+    votes[box.turretLocal ? 'turret' : 'hull'][side === want ? 'own' : 'mirrored']++;
+  }
+  const own = votes.hull.own + votes.turret.own;
+  const mirrored = votes.hull.mirrored + votes.turret.mirrored;
+  const mirrors = (box: AnatomyVolume): boolean => {
+    const frame = votes[box.turretLocal ? 'turret' : 'hull'];
+    return frame.own + frame.mirrored ? frame.mirrored > frame.own : mirrored > own;
+  };
+  const drawn = new Set((calibration?.moduleShapes || []).map((receipt) => (
+    `${receipt.module}|${!!receipt.turretLocal}|${!!receipt.gunFollow}`)));
+  for (const box of armor.crew || []) if (mirrors(box)) mirrorBoxX(box);
+  for (const box of armor.modules || []) {
+    if (SKETCH_FIXED_MODULES.has(box.module) || box.external || box.gunFollow || box.roofGunFollow) continue;
+    if (drawn.has(`${box.module}|${!!box.turretLocal}|${!!box.gunFollow}`)) continue;
+    if (mirrors(box)) mirrorBoxX(box);
+  }
 }
 
 function applyPublishedCrewLayout(
@@ -1298,6 +1446,16 @@ function applyPublishedCrewLayout(
       if (!template || !bounds) continue;
       const placed = boxForStation(template, bounds, station.station);
       box = { crew: station.role, min: placed.min, max: placed.max, turretLocal };
+    }
+    // a station the sketch still puts on the wrong side of its frame's axis crosses over; one on the axis that names a
+    // side steps onto it, its box clear of the axis (the seat fitter may move it further out)
+    const want = layout.confidence === 'legacy-nonplayable' ? 0 : stationSideSign(station.station);
+    const side = boxSide(box);
+    if (want && side === -want) mirrorBoxX(box);
+    if (want && !side) {
+      const shift = want * (box.max[0] - box.min[0]) * 0.5 - (box.min[0] + box.max[0]) * 0.5;
+      box.min[0] += shift;
+      box.max[0] += shift;
     }
     box.station = station.station;
     box.visualForm = 'seatedCrew';
@@ -1737,6 +1895,7 @@ export function finalizeCombatAnatomy(
   // 122-vehicle evidence registry. Keep their authored anatomy usable without
   // diluting the playable-fleet exact-coverage gate.
   const layout = internalLayoutFor(spec.id) || legacyInternalLayout(spec);
+  matchSketchHandedness(armor, layout, calibration);
   applyPublishedCrewLayout(spec, layout, calibration);
   applyModuleLayoutMetadata(spec, layout, calibration);
   addDerivedModules(spec, layout, calibration);

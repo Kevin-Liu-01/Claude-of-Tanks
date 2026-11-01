@@ -26,6 +26,8 @@ export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object
   Canada: 'ca',
   'South Africa': 'za',
   Australia: 'au',
+  // release 266: the Brazilian Army line
+  Brazil: 'br',
   Community: 'xx',
 });
 

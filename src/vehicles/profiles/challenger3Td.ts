@@ -9,6 +9,7 @@
 // Challenger family's 1.10 (S: the 248 ruling, one combat scale, what players see is what they hit). There is no rig
 // scale: the buckets, the running gear and the pivots are all drawn at the installed size.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { FITTINGS, KIT, muzzleBore } from './kit.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
@@ -364,7 +365,7 @@ function buildTurret(P: TankBuilderPort): void {
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.59 - PIVOT[1]) * S, (-2.70 - PIVOT[2]) * S);
     const x = side > 0 ? 0.992 : -0.956;                    // the oracle's whip centres (its turret sits 1.8 cm left)
     turret('turretDetail', cylY(0.055, 0.065, 0.08, 10), x, 2.62, -2.25);
-    turret('turretDark', cylY(0.008, 0.012, 2.74, 6), x, 4.03, -2.25);
+    turret('turretDark', antennaPart(cylY(0.008, 0.012, 2.74, 6)), x, 4.03, -2.25);
   }
 }
 

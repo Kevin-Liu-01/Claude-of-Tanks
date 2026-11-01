@@ -52,6 +52,19 @@ const CURVES = {
   leo1a5: [],
   // 263: the Leopard 1A2A1, its bare casting on the 1A5's pre-262 hull; its measured curve (leo1a2a1Specs.ts)
   leo1a2a1: [],
+  // 265: the Danish Leopards (denmarkSpecs.ts): the welded 1A3 DK turret on the 1A5 hull without its deck tools (the
+  // breech swung through the shovel and crowbar at full elevation), the 2A5 DK's bar armour clear of the gun
+  leo1a3dk: [],
+  leo1a5dk: [],
+  leo1a5dk1: [],
+  leo2a5dk: [],
+  cv9035dk: [], // the 35 mm on the CV90 Mk IV's mount (the owner 2026-10-30)
+  // 265: the M41 family (profiles/m41.ts), the gun shield the cast turret's own nose
+  m41a3: [],
+  m41_bw: [],
+  m41_jgsdf: [],
+  m41dk1: [],
+  t49: [], // the M551's turret and gun-launcher on the M41's hull (the owner 2026-10-30)
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
@@ -108,6 +121,13 @@ const CURVES = {
   t64bv: [],
   t64b1v_2022: [],
   pt64_tur: [],
+  // 266: the Brazil line (brazilSpecs.ts; the X1s keep their full depression all round and publish no curve)
+  tamoyo1: [],
+  tamoyo3: [],
+  osorio_p1: [],
+  osorio_p2: [],
+  ee_t3_osorio: [],
+  ee_t4_osorio: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

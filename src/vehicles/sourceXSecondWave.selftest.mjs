@@ -37,8 +37,10 @@ function armament({aimTimeS, baseAccuracy, bloom, ...weapon}) {
 // weapon" (transplanted from t72b_1987). The t72b3m_2022 slot became the obr. 2022 on the T-90SM upper assembly, while
 // t72b3m_2016, now the obr. 2016, keeps the payload it synchronized from that slot before the transplant: the t72b3
 // donor template's gun at the slot's authored 6.5 s reload (additionalFleetSpecs.ts make('t72b3', 't72b3m_2022', ...)).
+// 266 (the owner: "also completley redesign the t72b3 (2022)"): the obr. 2022 is the T-72B3M's own build again and keeps
+// that gun (Svinets-2 and the faster fire control) as its own step on the line (fleetRenewalSpecs.ts).
 assert.deepEqual(armament(TANK_SPECS.t72b3m_2022.gun), armament(TANK_SPECS.t90sm.gun),
-  't72b3m_2022: the obr. 2022 carries the T-90SM upper assembly gun');
+  't72b3m_2022: the obr. 2022 keeps the 2022 gun');
 const weaponReference = (id, donorRow) => id === 't62mv1' ? TANK_SPECS.t72b_1987.gun
   : id === 't72b3m_2016' ? { ...donorSpec(TANK_SPECS, 't72b3').gun, reloadS: 6.5 } : donorRow.gun;
 for (const id of SECOND_WAVE_X_IDS) {

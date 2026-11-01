@@ -152,7 +152,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // the rebuilt Merkava 2D and 4B.
 // 125 -> 128 (265, FAIRNESS-265 P1/P2 on the rebuilt 2A4 family): leo2_improved and leo2a4_otco take their mantlet entries
 // back, re-measured on the 27-degree fronts, and leo2a4_v carries the 2A4's main plates.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 128,
+// 128 -> 130 (266, m60-family-265): the new Magach 6B and 7C take the M60A1's.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 130,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -234,7 +235,7 @@ const missileVelocityByVehicle = new Map([
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
   ['marder1a3', 130], ['m3a3_bradley', 195], ['bmp3', 240.5], ['upior', 117],
-  ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
+  ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5], ['t49', 208],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
   ['kurganets25', 240], ['warrior_tes_h', 130], ['aft10', 208], ['cv90_mk4', 210], ['k21', 130],

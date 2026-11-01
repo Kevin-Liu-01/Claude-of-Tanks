@@ -67,6 +67,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-vn .hv{color:var(--hollow-fill);
 body[data-cot-width] .cot-es.cot-es--record .es-tal{background:var(--fill-quiet);border:0;border-radius:var(--r1);box-shadow:var(--ring-1);padding:var(--s3);gap:var(--s2)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font:700 var(--fs-40)/1.1 var(--font-ui);letter-spacing:var(--track-title);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{color:var(--accent)}
+body[data-cot-width] .cot-es.cot-es--record .es-tal[data-stat=dealt] .v{color:var(--battle-damage-dealt)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:var(--battle-fs-11);letter-spacing:var(--track-label-s)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal[data-stat=accuracy] .v::after{content:'%';font-size:max(var(--battle-fs-11),.55em);margin-left:3px}
 body[data-cot-width] .cot-es.cot-es--record .es-awards{display:block;margin:0;padding:20px;border:0;border-bottom:1px solid var(--line-1);background:none}

@@ -42,7 +42,7 @@ const brotliOptions = (bytes) => ({ params: {
   [constants.BROTLI_PARAM_SIZE_HINT]: bytes.length,
 } });
 
-/** Budgeted pages: the playable game, the public pages and the Chinese game document. */
+/** Budgeted pages: the playable game, the public pages, the Chinese game document and the phone controller's page. */
 export const BUNDLE_PAGES = Object.freeze({
   game: 'index.html',
   home: 'home.html',
@@ -50,6 +50,7 @@ export const BUNDLE_PAGES = Object.freeze({
   gallery: 'gallery.html',
   notFound: '404.html',
   cn: 'cn/index.html',
+  pad: 'pad.html',
 });
 
 const TOTAL_METRICS = Object.freeze(['requests', 'raw', 'gzip', 'brotli', 'inlineCss']);

@@ -1,5 +1,5 @@
 {
- "id": "kf41_lynx_x",
+ "id": "kf41_lynx",
  "geoMin": 95.9,
  "requiredMinimum": 92,
  "registration": {
@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 95.864710113392,
+ "rawGeoMin": 95.90305542706004,
  "rawComponents": {
-  "wholeCurves": 95.864710113392,
+  "wholeCurves": 95.90305542706004,
   "dims": 100,
   "floaters": 100
  },
@@ -127,7 +127,7 @@
  "stationMethod": "exact-triangle-slab-intersections",
  "curveRows": {
   "side_hull": {
-   "score": 19.77896835085037,
+   "score": 19.789484638599212,
    "meanPct": 5.56,
    "p95Pct": 9.3,
    "coverPct": 5.26,
@@ -250,7 +250,7 @@
      "refBot": -2.89,
      "procTop": -0.09,
      "procBot": -2.89,
-     "errM": 0.152
+     "errM": 0.156
     },
     {
      "at": 1.27,
@@ -667,8 +667,8 @@
    ]
   },
   "front_whole": {
-   "score": 92.61702054511012,
-   "meanPct": 0.43,
+   "score": 92.69295828253551,
+   "meanPct": 0.42,
    "p95Pct": 1.27,
    "coverPct": 0.99,
    "reg": {
@@ -680,9 +680,9 @@
      "at": -0.81,
      "refTop": 0.22,
      "refBot": -2.41,
-     "procTop": -0.08,
+     "procTop": -0.09,
      "procBot": -2.56,
-     "errM": 0.223
+     "errM": 0.226
     },
     {
      "at": -0.75,
@@ -725,14 +725,6 @@
      "errM": 0.061
     },
     {
-     "at": -1.33,
-     "refTop": -0.64,
-     "refBot": -2.89,
-     "procTop": -0.54,
-     "procBot": -2.89,
-     "errM": 0.052
-    },
-    {
      "at": 1.47,
      "refTop": -0.83,
      "refBot": -2.14,
@@ -757,10 +749,10 @@
      "errM": 0.034
     },
     {
-     "at": 1.27,
-     "refTop": -0.33,
+     "at": -1.33,
+     "refTop": -0.64,
      "refBot": -2.89,
-     "procTop": -0.39,
+     "procTop": -0.58,
      "procBot": -2.89,
      "errM": 0.034
     },
@@ -770,6 +762,14 @@
      "refBot": -2.48,
      "procTop": -0.05,
      "procBot": -2.46,
+     "errM": 0.031
+    },
+    {
+     "at": 0.88,
+     "refTop": -0.15,
+     "refBot": -2.86,
+     "procTop": -0.19,
+     "procBot": -2.89,
      "errM": 0.031
     }
    ]
@@ -818,9 +818,9 @@
    "refW": 3.24,
    "procW": 3.24,
    "refTop": 2.726,
-   "procTop": 2.817,
+   "procTop": 2.808,
    "wPct": 0.012777308653509376,
-   "topPct": 1.576187311546824
+   "topPct": 1.4207769515384752
   },
   {
    "i": 4,
@@ -947,21 +947,21 @@
    "actual": 3.256200075149536,
    "published": 3.243005919456482,
    "pct": 0.40684957168580294,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
    "actual": 5.791139969103038,
    "published": 5.791121864318847,
    "pct": 0.0003126299983860324,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 7.795341138839722,
    "published": 7.788051152229309,
    "pct": 0.0936047602656718,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
@@ -976,7 +976,19 @@
  },
  "proceduralBodyExtent": {
   "h": 3.116,
-  "len": 6.927
+  "len": 7.017,
+  "roofFittingsTop": 3.116
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDark"
+  ],
+  "reference": []
+ },
+ "oracleComparison": {
+  "antennasDropped": false,
+  "roofWeaponsDropped": false,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -986,7 +998,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 249701,
+     "area": 249690,
      "minX": 118,
      "minY": 144,
      "maxX": 978,
@@ -1000,7 +1012,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 247072,
+     "area": 247054,
      "minX": 118,
      "minY": 144,
      "maxX": 978,
@@ -1014,7 +1026,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 249980,
+     "area": 249965,
      "minX": 118,
      "minY": 144,
      "maxX": 978,
@@ -1028,7 +1040,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 245266,
+     "area": 245349,
      "minX": 118,
      "minY": 144,
      "maxX": 978,
@@ -1042,7 +1054,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 259032,
+     "area": 259115,
      "minX": 118,
      "minY": 144,
      "maxX": 978,

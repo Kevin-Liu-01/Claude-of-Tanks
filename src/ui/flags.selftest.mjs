@@ -8,7 +8,7 @@ import { FLAG_ICON_CODE_BY_NATION, flagIconCode } from './flagCodes.ts';
 const expected = {
   USA: 'us', Germany: 'de', USSR: 'ru', Russia: 'ru', 'USSR/Russia': 'ru',
   UK: 'gb', France: 'fr', China: 'cn', Israel: 'il', Italy: 'it', Japan: 'jp',
-  Poland: 'pl', 'South Korea': 'kr', Sweden: 'se', Denmark: 'dk', Ukraine: 'ua', Canada: 'ca', 'South Africa': 'za', Australia: 'au', Community: 'xx',
+  Poland: 'pl', 'South Korea': 'kr', Sweden: 'se', Denmark: 'dk', Ukraine: 'ua', Canada: 'ca', 'South Africa': 'za', Australia: 'au', Brazil: 'br', Community: 'xx',
 };
 
 assert.deepEqual(FLAG_ICON_CODE_BY_NATION, expected, 'every roster nation has a stable flag-icons code');
@@ -24,6 +24,14 @@ for (const code of new Set(Object.values(expected))) {
 const uiDir = dirname(fileURLToPath(import.meta.url));
 const flagsSource = await readFile(join(uiDir, 'flags.ts'), 'utf8');
 assert.doesNotMatch(flagsSource, /<svg|<rect|<polygon|function star/, 'flag UI no longer draws replacement flags');
+// every mapped code is bundled and served: a code with no import resolved to undefined and drew a broken image (Brazil's
+// 'br' in release 266's preview: the Gallery's eight Brazilian records and its nation facet, every Brazilian flag chip)
+const flagTable = /const FLAG_URL[^=]*=\s*Object\.freeze\(\{([^}]*)\}\)/.exec(flagsSource)?.[1] ?? '';
+const tableCodes = new Set(flagTable.split(',').map((entry) => entry.trim()).filter(Boolean));
+for (const code of new Set(Object.values(expected))) {
+  assert.match(flagsSource, new RegExp(`^import ${code} from 'flag-icons/flags/4x3/${code}\\.svg\\?url';$`, 'm'), `flags.ts bundles ${code}.svg`);
+  assert.ok(tableCodes.has(code), `FLAG_URL serves ${code}`);
+}
 
 const garageSource = await readFile(join(uiDir, 'garage.ts'), 'utf8');
 // the camo picker (INTERACTION-REDESIGN B) retired the flag-only country collections: a paint names its nation in the

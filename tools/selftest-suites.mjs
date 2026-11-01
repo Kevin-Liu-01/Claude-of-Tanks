@@ -193,6 +193,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
+    // release 265 (owner: "add a bunch more denmark tanks"): the Danish Leopards within their photo packets at both
+    // qualities, each mark's Danish kit, the Denmark tree on the 1A3 DK with the Christian II as its special, the country
+    'src/vehicles/profiles/denmark.selftest.mjs',
+    // release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilian line's
+    // X1, X1A2, Tamoyos and Osórios in their trees, tiers and photo packets at both qualities, each mark's kit
+    'src/vehicles/profiles/brazil.selftest.mjs',
+    // 265: the M41 family on its supplied print's datums, each mark's kit and tree
+    'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
     // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
     // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis
@@ -318,7 +326,19 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',
     'tools/source-world-registration.selftest.mjs',
+    // 266: the gate page's reference table names each id once; certified ids register their private local oracle
+    'tools/reference-override-registry.selftest.mjs',
     'tools/source-dimension-frame.selftest.mjs',
+    // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
+    'tools/body-height-parts.selftest.mjs',
+    // 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare body to body
+    'tools/fused-roof-gun-boxes.selftest.mjs',
+    // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
+    'tools/whip-rods.selftest.mjs',
+    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
+    'tools/gate-stowage.selftest.mjs',
+    // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
+    'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
@@ -327,6 +347,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
     'tools/id-list.selftest.mjs',
     'tools/tool-page-load.selftest.mjs',
+    // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
+    'tools/icons-page-public.selftest.mjs',
+    // 267: the icons page keys only the catalog strings it draws; an undeclared key fails its tools' runs
+    'tools/page-catalog-keys.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
@@ -482,14 +506,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
     'src/vehicles/profiles/bradleyRunningGear.selftest.mjs',
-    'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
-    'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
-    'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
-    'src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs',
     'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
-    'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
-    'src/vehicles/profiles/t90MSTurretArmorSeat.selftest.mjs',
-    'src/vehicles/profiles/t90MProryvTrackRwsBustle.selftest.mjs',
+    'src/vehicles/profiles/t90XTwins.selftest.mjs',
     'src/vehicles/profiles/t90MachineGunForward.selftest.mjs',
     'src/vehicles/profiles/t90RoofStudioSelectability.selftest.mjs',
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
@@ -582,7 +600,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14XReturnRollers.selftest.mjs',
     'src/vehicles/sourceXFleet.selftest.mjs',
     'src/vehicles/t90XCanvasFinish.selftest.mjs',
-    'src/vehicles/historicalT90MLamps.selftest.mjs',
     'src/vehicles/sourceXSecondWave.selftest.mjs',
     'src/vehicles/sourceXSecondWaveLazy.selftest.mjs',
     'src/vehicles/sourceXSecondWaveMarkings.selftest.mjs',
@@ -719,7 +736,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
     'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
-    'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
     'src/vehicles/profiles/turretSeatClosure.selftest.mjs',
     'src/vehicles/profiles/chieftainFidelity.selftest.mjs',
     'src/vehicles/underbodyBackdrops.selftest.mjs',
@@ -833,6 +849,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    'tools/selftest-process-groups.selftest.mjs',
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
     'tools/test-commands-exit.selftest.mjs',
@@ -905,6 +922,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
     'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
+    'src/engine/opaqueProgramOrder.selftest.mjs',
+    // local-fps-266: a regional window's farther faces (its pane behind the frame, the dark behind the pane) layered behind
+    'src/world/paneStack.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
@@ -964,6 +984,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/anatomyFidelity.selftest.mjs',
     // 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate)
     'src/vehicles/gunFacePlates.selftest.mjs',
+    // 265 (FAIRNESS-265 §3, release 266): a forward turret face only partly over the gun reads, point by point, the plate
+    // it lies over (sim/gunFaceSplit.ts); the M1A2 reads its SEPv2 twin across the gun face; the control without splits
+    'src/vehicles/gunFaceSplit.selftest.mjs',
+    // 266 (FAIRNESS-265 §8): the KF51 EVO's level rounds meet its gun slot's face and read its mantlet; the cheeks keep the front
+    'src/vehicles/kf51EvoGunFace.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
@@ -1151,6 +1176,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/launcherDecorKeepOut.selftest.mjs',
     // 2026-10-30 (266): the hull's turret-sweep guard knows the launchers riding the gun, swept over its pitch range
     'src/vehicles/launcherSweepGuard.selftest.mjs',
+    // 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull
+    'src/vehicles/suitRoofDecor.selftest.mjs',
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
@@ -1339,6 +1366,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/nightLightingAccess.selftest.mjs',
+    'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
@@ -1535,6 +1563,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
+    // 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model and QR
+    'src/pad/padProtocol.selftest.mjs',
+    'src/pad/padActor.selftest.mjs',
+    'src/pad/padInput.selftest.mjs',
+    'src/pad/padLink.selftest.mjs',
+    'src/pad/qr.selftest.mjs',
+    'server/rooms/localPadService.selftest.mjs',
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
@@ -1872,6 +1907,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduces
     // the browser generator's id-bearing fields byte for byte.
     'tools/tank-id-rekey-assets.selftest.mjs',
+    // 2026-10-30 (266): the tank asset manifest is a row file per tank: every file under the 5 MB cap, canonical, named
+    // for its row, joined and re-split byte for byte in the pinned id order; negative controls on fixtures.
+    'tools/tank-assets-layout.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
@@ -2413,6 +2451,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/turretRingWatertight.selftest.mjs',
     // 2026-10-22 (crew-fit 235): every crew station a seated P50 body inside the shell at every turret yaw
     'src/vehicles/crewSeats.selftest.mjs',
+    // 2026-10-30 (crew-side 266): +X is the vehicle's left; every side-named station on its side, no ring crossings, no
+    // crew or module hit shape inside another module (default tier: the fleet's finalized anatomy, no builds)
+    'src/vehicles/internalPlacement.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',
@@ -2442,6 +2483,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
+    // 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off the
+    // enemy"), stamped where the hit resolves and carried over the wire
+    'src/sim/hullPointsRemoved.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
     'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
@@ -2569,7 +2613,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
-    'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
     'src/vehicles/profiles/kv2Dimensions.selftest.mjs',
     'src/vehicles/profiles/kv2GunClearance.selftest.mjs',
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
@@ -2604,7 +2647,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
-    'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
@@ -2620,6 +2662,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
     'tools/garage-roster-settle.browser.selftest.mjs',
+    // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
+    // they set
+    'tools/hud-self-measure.browser.selftest.mjs',
+    // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
+    'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)

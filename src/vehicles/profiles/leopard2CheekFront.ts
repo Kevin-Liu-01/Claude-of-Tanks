@@ -1,7 +1,8 @@
 // The early Leopard 2 turrets' cheek front, built (release 262's 2A2 and 2A3, profiles/leopard2a3B4.ts; release 265's 2A4
-// family, profiles/leopard2A4Turret.ts): the two cheek blocks in front of a turret's welded shell and the EMES 15 in its
-// notch. One construction (the christian2 lane's, 63c90394f4, moved here unchanged); each turret passes its datums
-// (leopard2CheekFrontDatums.ts) and keeps its own shell, brow, mantlet and fittings.
+// family, profiles/leopard2A4Turret.ts; the Christian II, profiles/christian2.ts): the two cheek blocks in front of a
+// turret's welded shell and the EMES 15 in its notch. One construction (the christian2 lane's, 63c90394f4, moved here
+// unchanged); each turret passes its datums (leopard2CheekFrontDatums.ts) and keeps its own shell, brow, mantlet and
+// fittings.
 import { KIT, convexSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import {

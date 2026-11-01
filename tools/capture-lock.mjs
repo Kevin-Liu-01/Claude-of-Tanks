@@ -1214,7 +1214,10 @@ export function summarizeHoldLog(lines, { now = Date.now(), hours = 6 } = {}) {
 
 // `node tools/capture-lock.mjs --status [--hours=6]`: who holds the lock, who waits (ready, warming, dead) and, from the
 // hold log, holds per hour. Read-only: it removes nothing. Holds by tools on an older copy of this module are not logged.
-if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url) && process.argv.includes('--status')) {
+// (266) a first argument that is no file (`node -e` with arguments) means another module imported this one: the check
+// must not throw at import.
+const startedAsCommand = () => { try { return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url); } catch { return false; } };
+if (process.argv[1] && process.argv.includes('--status') && startedAsCommand()) {
   const hours = Number(process.argv.find((arg) => arg.startsWith('--hours='))?.slice(8)) || 6;
   const minutes = (ms) => `${(ms / 60_000).toFixed(1)} min`;
   const owner = readOwner(DEFAULT_LOCK_DIR);

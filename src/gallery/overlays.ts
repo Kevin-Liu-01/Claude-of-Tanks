@@ -2,6 +2,7 @@ import { addCombatHitboxes, createCombatFrames, type HitboxArmor } from './comba
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
+import type { GunFaceSplit } from '../sim/gunFaceSplit.ts';
 import { t } from '../ui/i18n.ts';
 import { TECHNICAL_LEGENDS, technicalToneColor, technicalToneHex } from '../ui/technicalDiagramLegend.ts';
 import {
@@ -32,6 +33,7 @@ interface CollisionFace {
   internal?: boolean;
   plate?: ArmorPlate;
   indices?: readonly number[];
+  gunSplit?: GunFaceSplit<ArmorPlate>;
 }
 
 interface CollisionCell {
@@ -131,17 +133,35 @@ function plateGeometry(plate: ArmorPlate): THREE.BufferGeometry | null {
   return geometry;
 }
 
+function platePositions(byPlate: Map<ArmorPlate, number[]>, plate: ArmorPlate): number[] {
+  let positions = byPlate.get(plate);
+  if (!positions) {
+    positions = [];
+    byPlate.set(plate, positions);
+  }
+  return positions;
+}
+
 function appendCollisionFace(
   byPlate: Map<ArmorPlate, number[]>,
   cell: CollisionCell,
   face: CollisionFace,
+  splits: Set<GunFaceSplit<ArmorPlate>>,
 ): void {
   if (face.internal || !face.plate) return;
-  let positions = byPlate.get(face.plate);
-  if (!positions) {
-    positions = [];
-    byPlate.set(face.plate, positions);
+  // (265) a plane only partly over the gun: its pieces, each in the plate a round meets there (once for the plane)
+  if (face.gunSplit) {
+    if (splits.has(face.gunSplit)) return;
+    splits.add(face.gunSplit);
+    for (const piece of face.gunSplit.pieces) {
+      const piecePositions = platePositions(byPlate, piece.plate);
+      for (let index = 1; index + 1 < piece.points.length; index++) {
+        for (const point of [piece.points[0], piece.points[index], piece.points[index + 1]]) piecePositions.push(point[0], point[1], point[2]);
+      }
+    }
+    return;
   }
+  const positions = platePositions(byPlate, face.plate);
   for (const index of face.indices || []) {
     const point = cell.vertices?.[index];
     if (point) positions.push(point[0], point[1], point[2]);
@@ -164,8 +184,9 @@ function collisionPlateGeometry(cells?: readonly CollisionCell[]): Array<{
   geometry: THREE.BufferGeometry;
 }> {
   const byPlate = new Map<ArmorPlate, number[]>();
+  const splits = new Set<GunFaceSplit<ArmorPlate>>();
   for (const cell of cells || []) {
-    for (const face of cell.faces || []) appendCollisionFace(byPlate, cell, face);
+    for (const face of cell.faces || []) appendCollisionFace(byPlate, cell, face, splits);
   }
   const geometries: Array<{ plate: ArmorPlate; geometry: THREE.BufferGeometry }> = [];
   for (const [plate, positions] of byPlate) {

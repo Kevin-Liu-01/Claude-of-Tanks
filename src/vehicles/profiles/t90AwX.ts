@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 // Independent source-measured AW-labelled T-90 X. Analytic first-party
 // solids only: no source topology, old T-90 builder or runtime source loader.
 import * as THREE from 'three';
@@ -169,7 +170,7 @@ function antenna(P:TankBuilderPort,x:number,y:number,z:number,footY=y):void{
   // a foot under the source station (footY < y) extends the base collar straight down to it; the whip above is unchanged
   const rows=[...(footY<y?[[0,footY-y],[.0129,footY-y]]:[[0,0]]),[.0129,0],[.0185,.0694],[.0115,.1385],[.012,.5989],[.0094,.6042],[.0093,.7922],
     [.0064,.7986],[.0086,.8041],[.0082,1.0165],[.0078,1.2289],[.0074,1.4414],[.007,1.6538],[.0066,1.8662],[.0062,2.0786],[.0058,2.291],[0,2.291]];
-  top(P,'turretDetail',new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6),x,y,z);
+  top(P,'turretDetail',antennaPart(new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6)),x,y,z);
 }
 function smokeAndAA(P:TankBuilderPort):void{
   for(const side of [-1,1]){

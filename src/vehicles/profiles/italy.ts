@@ -29,6 +29,7 @@
 // UNTOUCHED donor, byte-held.
 
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
 import { buildAriete } from './misc.ts';
@@ -1309,7 +1310,7 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
     for (const [wx, wy, wz, wh] of [[-0.385, roofY(-0.385, L(-1.590)) - 0.01, -1.535, 1.63], [0.385, roofY(0.385, L(-1.620)) - 0.01, -1.565, 1.64]]) {
       P.add('turretDark', cylY(0.035, 0.045, 0.08, 10), wx, wy + 0.04, L(wz - 0.055)); // offset-mount whips: pot clear of the st4 window, VERTICAL rod in
       P.add('turretDark', box(0.024, 0.05, 0.075), wx, wy + 0.10, L(wz - 0.028)); // the print's own trace column (tips ~4.10; the fitting's inline pot
-      P.add('turretDetail', box(0.038, wh, 0.038), wx, wy + 0.125 + wh / 2, L(wz)); // could not satisfy both station windows at once)
+      P.add('turretDetail', antennaPart(box(0.038, wh, 0.038)), wx, wy + 0.125 + wh / 2, L(wz)); // could not satisfy both station windows at once)
       P.add('turretDark', box(0.05, 0.035, 0.05), wx, wy + 0.135, L(wz));
     }
                                                                                  // the print's -1.52 station read one column rear; st3/st4 carry the

@@ -80,7 +80,7 @@ owner corrections, successes, rejected methods, and scope changes.
 | Per-tank source identity, datums, decisions, run results | `docs/references/tanks/<id>.md` |
 | Batch scope, variant mapping, integration and explicit exceptions | `docs/history/research/<batch>.md` |
 | First-party authored runtime geometry / tests | `src/vehicles/` and the exact family/profile owner |
-| Generated receipts, asset registry and technical cards | Their existing generators; never hand-edited to claim success |
+| Generated receipts, asset registry and technical cards | Their existing generators; never hand-edited to claim success. The asset manifest is a row file per tank (`public/icons/tank-assets/tanks/<id>.json`, 266): a lane commits its own ids' rows; a branch cut before 266 re-homes them with `tools/tank-assets-split.mjs` ([DEVELOPMENT.md](../DEVELOPMENT.md#changed-only-regeneration-2026-10-16)) |
 | Source binaries, intermediate conversions, bulk screenshots/logs | Ignored comparison/QA paths; durable packets retain hashes and regeneration instructions |
 
 Keep one current-status block above chronological checkpoints. Use `PASS`,

@@ -69,8 +69,9 @@ export const LEO2A4_TURRET = Object.freeze({
   mantletFaceZ: 0.20,
   /** The EMES 15 sight's notch: cut through the right cheek's upper face and bevel (x centre, half-width, its sill, the
    *  block's top), open forward and upward back to the sight head's face at `pocketZ`; 0.44 m wall to wall (the 262 lane's
-   *  measure from three photographs: 441, 428 and 446 mm). */
-  emes: Object.freeze({ x: -0.72, halfW: 0.22, y0: 0.42, y1: 0.74, pocketZ: 1.40 }),
+   *  measure from three photographs: 441, 428 and 446 mm), 0.35 m deep to the head at its centre (the owner, 2026-10-30:
+   *  "make the otehr 2a4s have that correct window", the Christian II's). */
+  emes: Object.freeze({ x: -0.72, halfW: 0.22, y0: 0.42, y1: 0.74, pocketZ: 1.175 }),
   /** The 2A6-look front (profiles/leopard2A4Wedge.ts: the 2A6 X's wedges compressed ahead of the trunnion): its tip and
    *  shoulder stations, the wedges' inner and shoulder half-widths, the side modules' outer half-widths. */
   wedge: Object.freeze({ tipZ: 2.75, shoulderZ: 2.187, innerLeft: 0.261, innerRight: 0.199, shoulderLeft: 1.177,
@@ -84,8 +85,10 @@ export const LEO2A4_TURRET = Object.freeze({
  * The square block's cheek front (leopard2CheekFrontDatums.ts, the 262 early Leopards' construction shared): the faces at
  * faceZ across the slot, swept back LEOPARD2_CHEEK_SWEEP_DEG toward their outer ends (the owner, 2026-10-29: "i think it
  * nneeds to be a lot mroe than 6 degrees"), vertical to faceTopY, bevelled back to the block's top, a 10 cm chamfer to each
- * wall; the shell's front at 0.98, behind the outer ends' bevelled tops (the right's at 1.03); the EMES 15's notch 0.22 deep,
- * not shallower than the bevel, its housing on the roof behind it. The 2A6-look wedge front keeps the shell to blockZ.
+ * wall; the shell's front at 0.98, behind the outer ends' bevelled tops (the right's at 1.03); the EMES 15's notch 0.35 deep,
+ * the head set back past the bevel (at 0.22 it stood at the bevel's edge and the window read flush), its housing on the
+ * roof behind it, its rear where it stood before (clear of the PERI R17's drum). The 2A6-look wedge front keeps the shell
+ * to blockZ.
  */
 export const LEO2A4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
   frontZ: LEO2A4_TURRET.faceZ, slotHalfWidthM: LEO2A4_TURRET.slotHalfWidthM, sweepDeg: LEOPARD2_CHEEK_SWEEP_DEG,
@@ -95,7 +98,7 @@ export const LEO2A4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
   left: Object.freeze({ faceHalfWidthM: LEO2A4_TURRET.faceLeftM, wallHalfWidthM: LEO2A4_TURRET.wallLeftM }),
   sight: Object.freeze({
     innerX: -LEO2A4_TURRET.emes.x - LEO2A4_TURRET.emes.halfW, outerX: -LEO2A4_TURRET.emes.x + LEO2A4_TURRET.emes.halfW,
-    sillY: LEO2A4_TURRET.emes.y0, lintelY: 0.715, topY: 0.83, depthM: 0.22, housingDepthM: 0.62,
+    sillY: LEO2A4_TURRET.emes.y0, lintelY: 0.715, topY: 0.83, depthM: 0.35, housingDepthM: 0.49,
   }),
 });
 

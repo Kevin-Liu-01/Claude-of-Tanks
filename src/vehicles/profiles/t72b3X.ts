@@ -2,6 +2,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independently authored T-72B3 X. Only measured dimensions/planes inform these
 // mathematical solids; no source mesh, rig, texture or donor builder is used.
 import * as THREE from 'three';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
@@ -76,9 +77,11 @@ function fenderShell(P:TankBuilderPort,side:number):void {
 }
 
 function rearFenderGuard(P:TankBuilderPort,side:number):void {
+  // 266 (roof-pocket census): the guard follows the fender's bend at -3.18 up under its rising run (2 mm into it); it ran
+  // straight on to 1.242 and left a wedge up to 8 cm tall under the fender (0.05 m2 a side)
+  const l=Math.min(side*1.052,side*1.786),r=Math.max(side*1.052,side*1.786);
   P.addMudguard('t72b3-x-rear-guard','hullRubber',roofSheet([
-    [-3.36035,Math.min(side*1.052,side*1.786),Math.max(side*1.052,side*1.786),1.116,1.116],
-    [-3.03395,Math.min(side*1.052,side*1.786),Math.max(side*1.052,side*1.786),1.242,1.242],
+    [-3.36035,l,r,1.116,1.116],[-3.18,l,r,1.2215,1.2215],[-3.03395,l,r,1.328,1.328],
   ],.014));
 }
 
@@ -130,6 +133,11 @@ function engineDeck(P:TankBuilderPort):void {
 function rearFittings(P:TankBuilderPort):void {
   addT72B3RearDrums(P);
   P.addEquipment('hullDetail',cylX(.1156,3.1592,24),-.0002,.8958,-3.15755);
+  // 266 (roof-pocket census): the beam's bed, the brackets' web across the stern between the lower rear plate, which
+  // faces down over the beam, and the beam's front half (its top and bottom just inside each; its underside 0.86): the
+  // beam hung 11 cm off the plate with daylight between them along the whole width (0.42 m2 of see-through pocket)
+  P.addEquipment('hullDetail',boxSections([[-3.17,1.10,1.21,1.0],[-3.13,1.10,1.18,.99],[-3.06,1.10,1.115,.86],
+    [-2.93,1.10,.97,.86],[-2.85,1.10,.90,.86]]));
   // 2026-10-19 (owner float sweep): the towing rings hung 28-42 mm clear of the beam cradles; each is seated on its cradle
   for(const x of [-.760,.768])P.snapGroup('t72b3-tow-ring',()=>P.addEquipment('hullDetail',torus(.070,.021,20,8),x,.720,-2.944),{reachM:.06});
   // One retained physical rear mount, not its five coincident source options.
@@ -308,7 +316,10 @@ function roofEquipment(P:TankBuilderPort,sosna=true):void {
   addT72B3Stowage(P);addT72B3Optics(P,sosna);
 }
 
-function antennae(P:TankBuilderPort):void {
+// the whips, their pots and the compact antenna carry the antenna seat role: the geometry gate's body leaves them out
+// (tools/body-height-parts.mjs, Main's ruling 2026-10-30)
+function antennae(P0:TankBuilderPort):void {
+  withSeatRole(P0,'antenna',(P)=>{
   for(const [x,z,low,wideTop,neckTop]of [[-.2288,-1.0235,2.0291,2.0832,2.2685],[1.0391,-.18205,2.0272,2.1725,2.3577]]){
     turretPart(P,'turretDetail',cylY(.07895,wideTop-low,6),x,(low+wideTop)/2,z);
     turretPart(P,'turretDetail',cylY(.03095,neckTop-wideTop,6),x,(wideTop+neckTop)/2,z);
@@ -318,6 +329,7 @@ function antennae(P:TankBuilderPort):void {
   taperedWhip(P,1.0405,[[2.2743,-.18178333,.01273333],[3.2332,-.18128333,.01093333],
     [4.2167,-.21335,.0084],[5.457,-.29361667,.00326667]]);
   compactAntenna(P);
+  });
 }
 
 function taperedWhip(P:TankBuilderPort,x:number,sections:readonly(readonly[number,number,number])[]):void {

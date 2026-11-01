@@ -2,6 +2,7 @@
 // The integrator emits the untouched donor tub, rounded guards and gear.
 // This pack adds finite modernization stock, never a replacement nose.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import {KIT, FITTINGS} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {castModernizedTurret} from './nationalDonorCore.ts';
@@ -448,7 +449,7 @@ function turretEquipment(P: TankBuilderPort, c: NationalModernizationConfig): vo
     const az = side > 0 ? [-1.76, -2.00, -1.60][model] : -.88, ax = side > 0 ? .72 : -.77;
     const ay = side > 0 ? armorTop(armorParts, ax, az) : topOn(P, 'turret', ax, az);
     P.addEquipment('turretDetail', cylY(.060, .075, .06, 12), ax, ay + .024, az);
-    P.addEquipment('turretDark', cylY(.008, .014, .65, 8), ax, ay + .375, az);
+    P.addEquipment('turretDark', antennaPart(cylY(.008, .014, .65, 8)), ax, ay + .375, az);
   }
   const x = -.62, z = .15, seat = topOn(P, 'turret', x, z), y = Math.max(seat, d.roofY) + .055;
   P.addEquipment('turretDetail', box(.30, y - seat + .035, .22), x, (y + seat) / 2, z - .035);

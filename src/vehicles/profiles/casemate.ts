@@ -37,6 +37,7 @@ import {
   Vector2,
 } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
 
 interface LoftStation {
@@ -473,7 +474,7 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   // raked antenna masts (oracle: symmetric pair rising to 2.80 at z ~ -2.0)
   for (const s of [-1, 1]) {
     P.add('hullDetail', KIT.cylY(0.045, 0.055, 0.10, 10), s * 0.96, 1.86, -1.86);
-    P.add('hullDark', KIT.xform(KIT.cylY(0.012, 0.009, 0.98, 8), 0, 0.49, 0, -0.20, 0, 0), s * 0.96, 1.82, -1.86);
+    P.add('hullDark', antennaPart(KIT.xform(KIT.cylY(0.012, 0.009, 0.98, 8), 0, 0.49, 0, -0.20, 0, 0)), s * 0.96, 1.82, -1.86);
   }
   // fixed MG box on the left front fender (KsP 58 pair)
   P.add('hull', box(0.24, 0.15, 0.60), -1.50, 1.37, 1.95);

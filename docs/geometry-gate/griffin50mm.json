@@ -1,5 +1,5 @@
 {
- "id": "griffin50_x",
+ "id": "griffin50mm",
  "geoMin": 94.3,
  "requiredMinimum": 92,
  "registration": {
@@ -235,7 +235,7 @@
    ]
   },
   "side_whole": {
-   "score": 82.51475636672858,
+   "score": 82.5953335263289,
    "meanPct": 1.16,
    "p95Pct": 5.87,
    "coverPct": 0,
@@ -343,8 +343,8 @@
    ]
   },
   "plan_hull": {
-   "score": 98.0804687290047,
-   "meanPct": 0.12,
+   "score": 98.05410154121631,
+   "meanPct": 0.13,
    "p95Pct": 0.74,
    "coverPct": 0,
    "reg": {
@@ -441,18 +441,18 @@
      "errM": 0.01
     },
     {
-     "at": -1.21,
-     "refTop": 3.2,
-     "refBot": -3.25,
-     "procTop": 3.18,
-     "procBot": -3.25,
-     "errM": 0.007
+     "at": 0.63,
+     "refTop": 2.53,
+     "refBot": -3.23,
+     "procTop": 2.51,
+     "procBot": -3.23,
+     "errM": 0.01
     }
    ]
   },
   "plan_whole": {
-   "score": 98.0804687290047,
-   "meanPct": 0.12,
+   "score": 98.05410154121631,
+   "meanPct": 0.13,
    "p95Pct": 0.74,
    "coverPct": 0,
    "reg": {
@@ -549,12 +549,12 @@
      "errM": 0.01
     },
     {
-     "at": -1.21,
-     "refTop": 3.2,
-     "refBot": -3.25,
-     "procTop": 3.18,
-     "procBot": -3.25,
-     "errM": 0.007
+     "at": 0.63,
+     "refTop": 2.53,
+     "refBot": -3.23,
+     "procTop": 2.51,
+     "procBot": -3.23,
+     "errM": 0.01
     }
    ]
   },
@@ -667,8 +667,8 @@
    ]
   },
   "front_whole": {
-   "score": 79.25887773110006,
-   "meanPct": 1.27,
+   "score": 79.02873488314079,
+   "meanPct": 1.29,
    "p95Pct": 7.49,
    "coverPct": 0.65,
    "reg": {
@@ -712,25 +712,25 @@
      "at": 0.29,
      "refTop": 1.2,
      "refBot": -1.49,
-     "procTop": 0.64,
+     "procTop": 0.63,
      "procBot": -1.49,
-     "errM": 0.28
+     "errM": 0.289
     },
     {
      "at": 0.25,
      "refTop": 1.2,
      "refBot": -1.49,
-     "procTop": 0.64,
+     "procTop": 0.63,
      "procBot": -1.49,
-     "errM": 0.278
+     "errM": 0.287
     },
     {
      "at": 0.34,
      "refTop": 1.2,
      "refBot": -1.49,
-     "procTop": 0.64,
+     "procTop": 0.63,
      "procBot": -1.49,
-     "errM": 0.278
+     "errM": 0.287
     },
     {
      "at": -0.74,
@@ -947,21 +947,21 @@
    "actual": 3.419297456741333,
    "published": 3.4295400381088257,
    "pct": 0.2986575824652221,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
    "actual": 3.9949198625162246,
    "published": 3.9944127949071118,
    "pct": 0.012694421812370035,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 6.539345979690552,
    "published": 6.539345955848694,
    "pct": 3.645908556944505e-7,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
@@ -975,8 +975,22 @@
   "len": 6.256
  },
  "proceduralBodyExtent": {
-  "h": 3.269,
-  "len": 6.256
+  "h": 3.014,
+  "len": 6.549,
+  "roofFittingsTop": 3.304
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDetail",
+   "pintleMG:browningDerivedMachineGunBody",
+   "pintleMG:griffin50RoofM2"
+  ],
+  "reference": []
+ },
+ "oracleComparison": {
+  "antennasDropped": false,
+  "roofWeaponsDropped": false,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -986,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 266770,
+     "area": 266620,
      "minX": 54,
      "minY": 223,
      "maxX": 964,
@@ -1000,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 266104,
+     "area": 265950,
      "minX": 54,
      "minY": 223,
      "maxX": 964,
@@ -1014,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 266950,
+     "area": 266948,
      "minX": 54,
      "minY": 223,
      "maxX": 964,
@@ -1028,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 265040,
+     "area": 264911,
      "minX": 54,
      "minY": 223,
      "maxX": 964,
@@ -1042,7 +1056,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 267767,
+     "area": 267617,
      "minX": 54,
      "minY": 223,
      "maxX": 964,

@@ -103,6 +103,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
   // the manual's fleet filters (era, class, role, nation: one id, four triggers; the census's site screen is /home)
   'docs-fleet-filter': { screen: 'site', owner: 'src/docs/fleetGrid.ts', box: menuBox('docs-fleet-filter'), open: {} },
   'media-library': { screen: 'site', owner: 'src/presentation/mediaLibrary.ts', box: 'dialog[open]', modal: true, open: {} },
+  // the phone controller's options (phone-controller-266, docs/PHONE-CONTROLLER.md): a native modal on the /pad page
+  'pad-options': { screen: 'site', owner: 'src/pad/padPage.ts', box: 'dialog[open]', modal: true, open: {} },
   'media-archive': { screen: 'site', owner: 'src/presentation/mediaArchive.ts', box: 'dialog[open]', modal: true, open: {} },
 
   // ---- the battle

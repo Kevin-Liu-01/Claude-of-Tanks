@@ -173,6 +173,26 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
     },
   },
+  // 265: the Ukrainian CV9040C (the owner's photograph, 21st Mechanized Brigade, 2024): the net bundled over the turret
+  // only (its troop roof carries the tarpaulin load, profiles/cv9040CSourceX.ts)
+  ua_cv9040c: {
+    id: 'ua_cv9040c', seed: 9042, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
+    turret: {
+      top: [laid({
+        x0: -1.24, x1: 1.24, z0: -1.44, z1: 0.40, nx: 31, nz: 23, y: 0.78,
+        // (ua2, ua1 critics, both: a ring round an open roof; the photograph's net a closed heap over the roof and rear,
+        // the sight heads clear. ua3, ua2 critics, both: its front edge, run past the sight heads, rose over them as a hoop
+        // with daylight under it: it stops behind them, over the rear two-thirds, heaped higher. ua4, the ua3 critics, both:
+        // still a hoop, drawn up over the fleet loads seated on the roof under it: it lies on the bundled heap on the rear
+        // roof instead, profiles/cv9040CSourceX.ts, which carries its height, and the roof holds no load, decorations.ts)
+        holes: [rect(-0.72, -0.18, 0.50, 1.02), rect(0.20, 0.72, 0.20, 0.72)],
+        garnishRiseM: 0.16, seed: 11,
+      })],
+      side: flanks(-1.30, 0.06, 0.82, 0.38, 1.22, 17),
+      face: [face({ z: -1.42, x0: -0.92, x1: 0.92, y0: 0.38, y1: 0.75, nx: 18, ny: 6, seed: 23 })],
+    },
+  },
   // Merkava Mk 4B: the roof behind the wedge mantlet and over the cheeks netted round the commander's cupola, the
   // loader's ring, the mortar and every sight head; the bustle basket's load under its own net; drapes down the flared
   // turret walls (behind the cheek smoke dischargers) and down the basket's sides, and over its rear. The hull's rear
@@ -434,9 +454,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({
-        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.30, nx: 36, nz: 56, y: 0.84,
-        // the gun slot (the sights, lids and posts open the net round their own shapes)
-        holes: [rect(-0.50, 0.50, 0.80, 1.34)],
+        // to the frontal modules' swept tips (z 1.66; the net ends at the faces)
+        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.68, nx: 36, nz: 61, y: 0.84,
+        // the gun slot and the gunner's sight window in the right cheek (the sights, lids and posts open the net round
+        // their own shapes)
+        holes: [rect(-0.50, 0.50, 0.80, 1.72), rect(-0.94, -0.50, 1.00, 1.50)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // the walls' shoulders stand at 0.76-0.77 under the roof's bevel: the drapes hang from over them, behind the smoke
@@ -453,9 +475,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
       // three long overlapping drapes a side from the sponson's wall, their tops 13 cm under the deck's edge (the gun's
       // low sweep over the sides at full depression stays clear of their garnish): over the heavy fore blocks, amidships
-      // and aft over the panels, ending ahead of the sprocket
+      // and aft over the panels, ending ahead of the sprocket (6 cm short of the aft run's rear end at z -2.81: a column
+      // at -2.80 fell past the panel's end, and a leaf lay behind it on the track, 25 voxels in the strict track clip)
       side: [...flanks(1.36, 3.16, 1.50, 0.58, 1.86, 41), ...flanks(-1.40, 1.42, 1.50, 0.54, 1.78, 47),
-        ...flanks(-2.80, -1.10, 1.50, 0.56, 1.78, 53)],
+        ...flanks(-2.75, -1.10, 1.50, 0.56, 1.78, 53)],
     },
   },
   // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
@@ -471,7 +494,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
-      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
+      // the EMES 15's window in the right cheek left open (the deepened window took the net's edge into it: the window critic)
+      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.98, -0.46, 1.10, 1.75)] })],
       side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19)],
       face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
     },
@@ -632,17 +657,20 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   leclerc_sxxi: {
     id: 'leclerc_sxxi', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.86,
+    // 266 (owner: "clean up the leclercs"; both photo critics: "a hump of net over the turret rear with daylight through
+    // it", "a stiff vertical panel"): the roof net ran on over the open bustle cage to z -2.63 and its drape hung off the
+    // cage's tail; the net now ends at the bustle box's rear face (-2.35) and the cage stays bare, no drape. The skirt
+    // drapes hang to the hem floor over the raised (0.70) skirt foot.
     turret: {
-      top: [laid({ x0: -1.68, x1: 1.58, z0: -2.63, z1: 1.99, nx: 41, nz: 58, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
+      top: [laid({ x0: -1.68, x1: 1.58, z0: -2.35, z1: 1.99, nx: 41, nz: 54, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),
-      face: [face({ z: -2.63, x0: -1.20, x1: 1.20, y0: 0.30, y1: 0.70, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.30, 2.42, 1.40, 0.42, 1.83, 41),
+      side: skirts(-3.30, 2.42, 1.40, 0.50, 1.83, 41),
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each
@@ -668,30 +696,33 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.10, 3.20, 1.34, 0.40, 2.25, 41),
     },
   },
-  // T-90AM: the roof netted round the commander's panorama and its guard, the gunner's sight, both hatches and the roof
-  // boxes, drapes down the walls behind the smoke banks and down the bustle box, a rear drape; the engine deck netted
-  // (the left fender's exhaust and the stern drums bare) and the front deck, four drapes a side (the left one cut round
-  // the exhaust).
+  // T-90AM: the roof netted round the remote weapon station, the commander's panorama, the gunner's sight and the
+  // hatches, drapes down the walls ahead of the bustle basket and a rear drape down the bustle box; the engine deck
+  // netted (the stern drums bare) and the front deck, four drapes a side over the Relikt skirts.
+  // 2026-10-30 (lane t90-family-266): refitted to the source-X T-90SM build the AM now uses (turret frame: roof 0.62-0.83,
+  // the station at x 0.10..0.90, z -2.10..-0.95, the panorama at x -0.55..-0.05, z -1.75..-1.05, the bustle box to z -2.95).
   t90am: {
     id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     // 245: under its measured curve (turretScaleGunPitch.ts) the front deck's net lay 10.9 mm under the barrel at yaw 37
     clothClearsGunStops: true,
     turret: {
-      top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
-        holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-3.40, -0.30, 0.98, 0.46, 1.84, 17),
-      face: [face({ z: -3.55, x0: -1.30, x1: 1.30, y0: 0.50, y1: 0.92, nx: 26, ny: 6, seed: 23 })],
+      top: [laid({ x0: -1.85, x1: 1.85, z0: -2.90, z1: 1.85, nx: 44, nz: 57, y: 0.68,
+        holes: [rect(0.10, 0.90, -2.10, -0.95), rect(-0.55, -0.05, -1.75, -1.05), rect(-0.95, -0.45, -0.15, 0.35),
+          rect(-1.15, -0.85, -0.75, -0.45)],
+        garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.80, -0.20, 0.62, 0.40, 1.85, 17),
+      face: [face({ z: -2.95, x0: -1.10, x1: 1.10, y0: 0.25, y1: 0.65, nx: 22, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
         // 245: the engine deck's centre lane carries no garnish under the gun turned aft, whose curve dips to -0.5 degrees
         // at yaw 180 (its leaves stood 19.3 mm under the barrel there)
-        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.60, holes: [rect(-1.95, -1.40, -3.50, -2.20)], garnishRiseM: 0.14, seed: 31,
+        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.55, garnishRiseM: 0.14, seed: 31,
           foliageExclude: [rect(-0.40, 0.40, -3.95, -1.20)] }),
-        laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.50, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.05, 3.35, 1.52, 0.48, 1.95, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
+      side: skirts(-3.05, 3.35, 1.47, 0.50, 1.95, 41),
     },
   },
   // Leopard 2A7V: the arrowhead roof netted round the PERI, the EMES head, the hatches and the remote station (the

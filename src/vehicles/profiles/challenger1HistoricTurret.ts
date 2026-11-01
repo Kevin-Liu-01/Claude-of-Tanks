@@ -10,6 +10,7 @@
 // Turret stowage follows the Bovington vehicle: the TOGS barbette on the right cheek beside the gun, the right smoke bank
 // on its face, baskets and bins down both walls and the bustle bin hung across the back.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
@@ -261,7 +262,7 @@ function roofFittings(P: TankBuilderPort): void {
   // Aerial bases at the rear corners and lifting eyes on the roof edge.
   for (const [x, z] of [[-.92, -1.25], [.95, -1.10]] as const) {
     eq(P, cylY(.05, .06, .09, 12), x, roofAt(z) + .045, z);
-    eq(P, cylY(.009, .012, 1.9, 6), x, roofAt(z) + 1.04, z, 'turretDark');
+    eq(P, antennaPart(cylY(.009, .012, 1.9, 6)), x, roofAt(z) + 1.04, z, 'turretDark');
   }
   // lifting eyes lying on the housing, a cheek and the bustle roof
   for (const [x, y, z] of [[-.40, housingTop(1.45), 1.45], [.98, cheekTop(.80, .98), .80], [-.98, roofAt(-1.55), -1.55],

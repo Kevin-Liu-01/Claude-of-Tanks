@@ -10,8 +10,7 @@ const node = (row: TreeNode): TreeNode => Object.freeze({
 
 export const SWEDEN_TREE: NationTree = Object.freeze({
   id: 'sweden',
-  // release 262: the Danish Christian II is drawn here, a Nordic special under the Swedish lines
-  nations: Object.freeze(['Sweden', 'Denmark']),
+  nations: Object.freeze(['Sweden']),
   flagNation: 'Sweden',
   name: 'Sweden',
   lines: Object.freeze([
@@ -36,9 +35,8 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
       id: 'cv90_mk4', tier: 7, line: 'cv90', lane: 3, parents: ['cv9040c'], slot: 'line',
       builds: ['cv90_mk4_concept'],
     }),
-    // release 262: the Christian II, a Danish Army concept on the Type 90 X (Nordic special)
-    node({ id: 'christian2', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    // Special (release 262: the Strv 105 prototype; III by its same-tier duels: 0.28 there, 0.03 at IV)
+    // Special (release 262: the Strv 105 prototype; III by its same-tier duels: 0.28 there, 0.03 at IV). The Christian II
+    // moved to the Denmark tree (release 266, the Danish line) as its special.
     node({ id: 'strv105', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

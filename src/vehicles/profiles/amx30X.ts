@@ -1,6 +1,7 @@
 // Independent first-party AMX-30 B X. Source geometry is a private comparison
 // instrument only. These are authored solids, not a donor or mesh conversion.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -223,8 +224,8 @@ function roof(P: TankBuilderPort): void {
   for (const [x,z,seat,base,stem,tip] of [[.65449,-1.18238,1.74097,2.33332,2.51256,3.31302],
     [.79306,.44951,2.283,2.41889,2.59952,3.42382]]) {
     equipment(P, 'turretDetail', cylY(.0413, .0413, base - seat, 20), x, (base + seat) / 2, z);
-    equipment(P, 'turretDark', cylY(.0161, .0161, stem - base + .025, 12), x, (stem + base - .025) / 2, z);
-    equipment(P, 'turretDark', cylY(.0056, .0068, tip - stem + .025, 8), x, (tip + stem - .025) / 2, z);
+    equipment(P, 'turretDark', antennaPart(cylY(.0161, .0161, stem - base + .025, 12)), x, (stem + base - .025) / 2, z);
+    equipment(P, 'turretDark', antennaPart(cylY(.0056, .0068, tip - stem + .025, 8)), x, (tip + stem - .025) / 2, z);
   }
   // Source has an exposed coaxial/AA station attached to the command cupola.
   // The gun body and barrel share this straight axis, supported at the cradle.

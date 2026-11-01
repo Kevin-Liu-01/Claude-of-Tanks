@@ -16,7 +16,7 @@
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { dynamicSites, h16 } from './graph.mjs';
@@ -53,13 +53,16 @@ put(B, 'src/vehicles/tankFactoryCore.ts', [
   "import { FILLS } from './fills.generated.ts';",
   'export const build = (id, base) => ({ id, base: base * KIT, guns: CONTROLS[id]?.guns ?? 0, fill: FILLS[id]?.fill ?? 0 });', ''].join('\n'));
 put(B, 'src/vehicles/tankFactory.ts', "import './fleetRegistration.ts';\nimport { P } from './profiledProcedurals.ts';\nimport { build } from './tankFactoryCore.ts';\nexport const createTank = (id) => build(id, P[id]);\n");
+put(B, 'docs/floors.json', '{"schema":1,"tolerance":1,"rows":{"a1":{"f":1,"g":0},"a2":{"f":2,"g":0},"b1":{"f":3,"g":0},"b2":{"f":4,"g":0}}}\n');
 put(B, 'src/vehicles/fleetFactory.ts', "import './fleetRegistration.ts';\nconst GROUP_LOADERS = Object.freeze({\n  alpha: () => import('./profiles/alpha.ts'),\n  beta: () => import('./profiles/beta.ts'),\n});\nexport { GROUP_LOADERS };\n");
 
 // Generators: each rebuilds the listed ids (all without --ids), keeps every other row, writes rows in roster order, and
 // with --check compares instead of writing. controls ignores the fills its build reads, so the chain's second pass
 // re-runs it for the ids whose fills moved and gets the same rows: the fixpoint the real chain relies on.
-const generator = (table, exportName, formula) => [
-  "import { readFileSync, writeFileSync } from 'node:fs';",
+// seats also takes the chain's --skipped report (267): an id named in skip-ids.txt cannot run in this tree, keeps its row
+// and is reported, as the geometry gate reports an id whose oracle is absent here.
+const generator = (table, exportName, formula, { skips = false } = {}) => [
+  "import { existsSync, readFileSync, writeFileSync } from 'node:fs';",
   "import { createTank } from '../src/vehicles/tankFactory.ts';",
   "import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';",
   'const args = process.argv.slice(2);',
@@ -69,17 +72,22 @@ const generator = (table, exportName, formula) => [
   `const text = readFileSync('src/vehicles/${table}.generated.ts', 'utf8');`,
   'const previous = JSON.parse(text.slice(head.length, -2));',
   'const rows = {};',
+  ...(skips ? ["const cannot = new Set(existsSync('skip-ids.txt') ? readFileSync('skip-ids.txt', 'utf8').split(',').map((id) => id.trim()) : []);",
+    'const skipped = {};'] : []),
   'for (const id of ALL_TANK_IDS) {',
   '  if (scoped && !scoped.has(id) && previous[id]) { rows[id] = previous[id]; continue; }',
+  ...(skips ? ["  if (cannot.has(id) && (!scoped || scoped.has(id))) { rows[id] = previous[id]; skipped[id] = 'fixture input absent here'; continue; }"] : []),
   '  const tank = createTank(id);',
   `  rows[id] = ${formula};`,
   '}',
+  ...(skips ? ["const report = args.find((arg) => arg.startsWith('--skipped='))?.slice(10);",
+    'if (report) writeFileSync(report, JSON.stringify(skipped));'] : []),
   'const out = `${head}${JSON.stringify(rows)};\\n`;',
   "if (args.includes('--check')) { if (out !== text) { console.error('stale'); process.exitCode = 1; } }",
   `else writeFileSync('src/vehicles/${table}.generated.ts', out);`, ''].join('\n');
 put(B, 'tools/gen-controls.mjs', generator('controls', 'CONTROLS', '{ guns: tank.base % 7 }'));
 put(B, 'tools/gen-fills.mjs', generator('fills', 'FILLS', '{ fill: tank.base * 2 + tank.guns }'));
-put(B, 'tools/gen-seats.mjs', generator('seats', 'SEATS', '{ seat: tank.fill + tank.guns + 1 }'));
+put(B, 'tools/gen-seats.mjs', generator('seats', 'SEATS', '{ seat: tank.fill + tank.guns + 1 }', { skips: true }));
 for (const [table, exportName] of [['controls', 'CONTROLS'], ['fills', 'FILLS'], ['seats', 'SEATS']]) {
   put(B, `src/vehicles/${table}.generated.ts`, `export const ${exportName} = {};\n`);
 }
@@ -136,12 +144,16 @@ writeFileSync(tableModule, [
   "  controls: { kind: 'module', files: ['src/vehicles/controls.generated.ts'], exportName: 'CONTROLS' },",
   "  fills: { kind: 'module', files: ['src/vehicles/fills.generated.ts'], exportName: 'FILLS' },",
   "  seats: { kind: 'module', files: ['src/vehicles/seats.generated.ts'], exportName: 'SEATS' },",
+  // a ledger seats checks each id against, read per id: its order means nothing (267, TABLES `canonical`)
+  "  floors: { kind: 'json', files: ['docs/floors.json'], path: ['rows'], canonical: true },",
   '};',
   'export const CONFIG = { tables: TABLES, aggregates: [],',
   "  fleetEntries: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/specs.ts', 'src/vehicles/fleetRegistration.ts'],",
   "  loaderFiles: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/profiledProcedurals.ts'],",
   // The world tool reads its own outputs at computed paths (the index, to keep the maps it does not rebuild): declared.
-  `  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: { 'tools/gen-world.mjs': { pin: '${h16(dynamicSites(worldTool, 'gen-world.mjs').join('\n'))}', reads: [] } }, accessors: {},`,
+  `  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: { 'tools/gen-world.mjs': { pin: '${h16(dynamicSites(worldTool, 'gen-world.mjs').join('\n'))}', reads: [] },`,
+  // seats' skip marker stands for an oracle absent from one checkout: never a whole-step input (as the gate's public/)
+  "    'tools/gen-seats.mjs': { reads: [], covered: ['skip-ids.txt'] } }, accessors: {},",
   "  world: { registryFile: 'src/world/maps/index.ts', outputs: ['server/world-collision-manifests'],",
   `    fleetApiUsers: { 'tools/gen-world.mjs': { pin: '${tokenPin(worldTool, FLEET_API_TOKENS)}' } }, fleetApiTokens: ${JSON.stringify(FLEET_API_TOKENS)} } };`,
   "export const MAP_REGISTRY_FILE = 'src/world/maps/index.ts';",
@@ -153,7 +165,7 @@ writeFileSync(tableModule, [
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
-  "export const STEPS = [step('controls'), step('fills'), step('seats')];",
+  "export const STEPS = [step('controls'), step('fills'), { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
   "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
 // A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
@@ -234,12 +246,43 @@ assert.deepEqual(repair.dependents.map((entry) => `${entry.step}:${entry.wrote}`
   'seats ran but restored the rows the page was built from: checked, not rewritten');
 assert.deepEqual(snapshot(C), snapshot(F), 'the repair restores the full regen bytes');
 
+// 4b (267). A tool that cannot run an id in this tree reports it (steps.mjs `skipped`): the chain records the other ids,
+// leaves that one due without failing or re-trying it, and names it in the final resolve; once the tree can run it, the
+// next chain runs it alone.
+put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '"b1":{"seat":-1}').replace(/"a2":\{"seat":\d+\}/, '"a2":{"seat":-2}'));
+put(C, 'skip-ids.txt', 'b1');
+const blocked = chain(C);
+assert.equal(blocked.ok, true, 'an id the tool cannot run here does not fail the chain');
+assert.deepEqual(ranIds(blocked, 'seats'), ['a2', 'b1'], 'seats ran once on both edited ids: the skipped one is not retried');
+assert.deepEqual([blocked.final.seats.mode, Object.keys(blocked.final.seats.notRunHere ?? {})], ['none', ['b1']],
+  'the final resolve names the id left due, with its reason');
+assert.match(read(C, 'src/vehicles/seats.generated.ts'), /"b1":\{"seat":-1\}/, 'its row is untouched');
+rmSync(join(C, 'skip-ids.txt'));
+const unblocked = chain(C);
+assert.deepEqual(ranIds(unblocked, 'seats'), ['b1'], 'the id left due runs alone once the tree can run it (a2 was recorded)');
+assert.deepEqual(snapshot(C), snapshot(F), 'and the tree returns to the full regen bytes');
+
 // 5. A map config edit rebuilds that map alone (no tank step runs); the whole-world regen agrees byte for byte.
 for (const root of [C, F]) put(root, 'src/world/maps/betaMap.ts', "export default { base: 8, props: { tankWrecks: { ids: ['b1'] } } };\n");
 const mapRun = chain(C);
 assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['collision[beta]'], 'a map config edit runs that map only');
 chain(F, '--all', '--steps=collision');
 assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
+
+// 5b (267). A canonical ledger (TABLES `canonical`, read per id): re-serializing it with rows and keys in another order
+// runs nothing; one id's changed row runs that id alone; its frame (a tolerance) runs every id.
+const floors = read(C, 'docs/floors.json');
+const flip = (value) => (value && typeof value === 'object' && !Array.isArray(value)
+  ? Object.fromEntries(Object.keys(value).reverse().map((key) => [key, flip(value[key])])) : value);
+put(C, 'docs/floors.json', `${JSON.stringify(flip(JSON.parse(floors)), null, 2)}\n`);
+assert.deepEqual(chain(C).runs, [], 'the same ledger in another order runs nothing');
+put(C, 'docs/floors.json', floors.replace('"a2":{"f":2,', '"a2":{"f":2.5,'));
+assert.deepEqual(chain(C).runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[a2]'], 'one id\'s changed row runs that id alone');
+put(C, 'docs/floors.json', floors.replace('"tolerance":1', '"tolerance":2'));
+assert.deepEqual(ranIds(chain(C), 'seats'), ['*'], 'the frame (its tolerance) runs the step on the whole fleet');
+put(C, 'docs/floors.json', floors);
+chain(C);
+assert.deepEqual(snapshot(C), snapshot(F), 'restored, the tree returns to the full regen bytes');
 
 /** A chain run expected to refuse: exit 2 and no generator; returns its output. */
 function refused(root, ...flags) {

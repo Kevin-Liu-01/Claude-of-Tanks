@@ -1,4 +1,5 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -549,7 +550,7 @@ function milanLauncherAndAntenna(P: TankBuilderPort, add: EquipmentAdder): void 
   });
   add('turretDetail',box(.22,.10,.12),.855,2.48,.195);
   add('turretDetail',cylY(.019,.029,.19,10),.904,2.60,.195);
-  add('turretDetail',cylY(.008,.014,1.29,8),.904,3.34,.195);
+  add('turretDetail',antennaPart(cylY(.008,.014,1.29,8)),.904,3.34,.195);
 }
 
 function turretRearStowage(P: TankBuilderPort, add: EquipmentAdder): void {

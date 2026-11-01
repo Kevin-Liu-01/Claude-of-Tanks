@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m41_bw": {
+      "name": "M41 (Bundeswehr)",
+      "authority": "Main ruled the M41 family on 2026-10-29 (DECISIONS) on the owner's requests the same day (\"lets make a m41, not chaffee\", the original US tank and other countries', then \"use our tank generation procedure on this m41 as the basis\"): the Bundeswehr M41 at Germany's tier I, a photo-class mark of the M41A3's build judged on its markings, paint (the national RAL 6014-pattern coat) and stowage; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/M41_Walker_Bulldog#West_Germany",
+        "https://commons.wikimedia.org/wiki/File:Man%C3%B6ver_S%C3%BCdwind_der_Bundeswehr_(Kiel_13.779).jpg",
+        "https://commons.wikimedia.org/wiki/File:Man%C3%B6ver_S%C3%BCdwind_der_Bundeswehr_(Kiel_13.781).jpg",
+        "https://commons.wikimedia.org/wiki/Category:M41_Walker_Bulldog_in_German_service"
+      ],
+      "widthM": 3.506,
+      "overallLengthM": 8.174,
+      "tallestM": 4.21,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared M41 build, scaled once on the M41A3's registered print (SIpriv's \"Low poly M41Walker Bulldog\", CC-BY-4.0, measurement-only; the hull on the published 5.82 m): published 5.81 m hull, 8.21 m over the gun, 3.19 m wide, 2.72 m high (Jane's via Wikipedia). The envelope holds the fender stowage, the mirrors and the antenna whip. The Bundeswehr mark (1956-66, the first postwar tank the Bundeswehr adopted) carries the German national coat, the Iron Cross and German stowage on the bustle rack, as the 1957 Manöver Südwind photographs (Kieler Stadtarchiv) show.",
+      "caliberMm": 76,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/m41.selftest.mjs"
+    }
+  }
+}

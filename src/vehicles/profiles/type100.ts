@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { antennaPart } from './antennaPart.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Original owner-directed Chinese IFV, 2026-09-19. Photographs inform the
 // fabrication language; dimensions and unmanned layout are authored game design.
@@ -222,7 +223,7 @@ function sensors(P: TankBuilderPort): void {
     P.addEquipment('turret', part(box(.10, .16, .40), 'smoke-bracket'), s * .90, .32, -.60);
     for (let i = 0; i < 3; i++) P.addEquipment('turretDark', part(markSmokeTube(cylZ(.047, .21, P.q ? 14 : 8)), 'smoke-tube'), s * .96, .38, -.75 + i * .135, -.48, s * .65, 0);
     P.addEquipment('turret', part(cylY(.04, .05, .09, 10), 'antenna-foot'), s * .58, .80, -.80);
-    P.addEquipment('turretDark', part(cylY(.009, .013, .70, P.q ? 10 : 6), 'antenna-whip'), s * .58, 1.19, -.80);
+    P.addEquipment('turretDark', antennaPart(part(cylY(.009, .013, .70, P.q ? 10 : 6), 'antenna-whip')), s * .58, 1.19, -.80);
   }
   P.topY = 1.54;
 }

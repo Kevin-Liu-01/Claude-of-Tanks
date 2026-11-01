@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Re-key public/icons/tank-assets.json after a tank id rename, on the CPU (SSOT 2.19, ID.04/05).
+// Re-key the tank asset manifest (public/icons/tank-assets/, tools/tank-assets-store.mjs) after a tank id rename, on
+// the CPU (SSOT 2.19, ID.04/05).
 //
 //   node tools/tank-id-rekey-assets.mjs            write the re-keyed manifest
-//   node tools/tank-id-rekey-assets.mjs --check    exit 1 when the manifest is not what this tool would write
+//   node tools/tank-id-rekey-assets.mjs --check    exit 1 when a manifest file is not what this tool would write
 //
 // A rename moves the icon files byte for byte (tools/tank-id-move-files.mjs) and changes neither geometry nor looks
 // (every look seed hashes tankSeedId), so each entry's rendered receipts carry over unchanged: geometryHash,
@@ -10,22 +11,23 @@
 // the vehicle, exactly as tools/icons-page.html does: tankAssetMetadata(spec) and its metadataFingerprint, the file
 // names from requiredTankAssetFiles(id), and every asset's bytes and sha256 from the file now on disk. It finds each
 // vehicle's previous entry by its display name, which a rename never changes and tankLabelUniqueness keeps unique, so
-// it is idempotent and needs no schema bookkeeping. On an unrenamed tree it rewrites the manifest byte for byte.
+// it is idempotent and needs no schema bookkeeping. On an unrenamed tree it rewrites no file; a renamed tank's row moves
+// to tanks/<new id>.json and its old row file is removed.
 //
 // It never renders. A vehicle with no previous entry, or whose files are missing, fails: that is a real change and
 // belongs to `node tools/genIcons.mjs` under the capture lock.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { TANK_ASSET_VIEWS, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata, technicalLabelsFile } from '../src/vehicles/tankAssets.ts';
+import { compareTankIds, readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 
 const check = process.argv.includes('--check');
 const outDir = resolve('public/icons');
-const manifestPath = resolve(outDir, 'tank-assets.json');
-const before = readFileSync(manifestPath, 'utf8');
-const manifest = JSON.parse(before);
+const manifest = readTankAssets(outDir);
+if (!manifest) { console.error(`[rekey-assets] no manifest under ${tankAssetsDir(outDir)}: run genIcons`); process.exit(1); }
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 const failures = [];
 
@@ -100,12 +102,17 @@ if (failures.length) {
   console.error(`[rekey-assets] FAILED (${failures.length})`);
   process.exit(1);
 }
-const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => a.localeCompare(b)));
-const after = `${JSON.stringify({ ...manifest, tanks: sortedTanks }, null, 2)}\n`;
+const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => compareTankIds(a, b)));
+const { changed, removed } = writeTankAssets(outDir, { ...manifest, tanks: sortedTanks }, { prune: true, dryRun: check });
+const unchanged = !changed.length && !removed.length;
 if (check) {
-  if (after !== before) { console.error('[rekey-assets] public/icons/tank-assets.json is not keyed to the current ids: run node tools/tank-id-rekey-assets.mjs'); process.exit(1); }
+  if (!unchanged) {
+    console.error(`[rekey-assets] ${tankAssetsDir(outDir)} is not keyed to the current ids (${changed.length} files differ, `
+      + `${removed.length} rows retired): run node tools/tank-id-rekey-assets.mjs`);
+    process.exit(1);
+  }
   console.log(`[rekey-assets] PASS: ${ids.length} vehicles keyed to the current ids`);
 } else {
-  if (after !== before) writeFileSync(manifestPath, after);
-  console.log(`[rekey-assets] ${ids.length} vehicles, ${moved} re-keyed, ${after === before ? 'manifest unchanged' : 'manifest written'}`);
+  console.log(`[rekey-assets] ${ids.length} vehicles, ${moved} re-keyed, ${unchanged ? 'manifest unchanged'
+    : `${changed.length} manifest files written, ${removed.length} retired rows removed`}`);
 }

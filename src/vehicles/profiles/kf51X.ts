@@ -1,6 +1,7 @@
 // Independently authored first-party Panther X. GRIP420 / David Falke's FBX
 // remains a local comparison oracle; no source geometry or texture is loaded.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -246,9 +247,9 @@ function pantherRoof(P: TankBuilderPort): void {
     fitting(P,'turretDetail',cylY(.057,.207,14),side*1.02234,2.6605,-2.13537);         // 2026-10-19 (owner float sweep): base reaches the crown (was 34 mm short)
     // The source has a vertical lower neck, then an aft-leaning upper rod.
     // Keeping the bend at Y3.00752 retains the actual tip and base datums.
-    fitting(P,'turretDark',cylY(.01257,.259,10),side*1.02234,2.87802,-2.13537);
-    fitting(P,'turretDark',cylY(.02270,.01289,12),side*1.02234,3.00107,-2.13537);
-    fitting(P,'turretDark',pantherWhip(),side*1.02234,0,0);
+    fitting(P,'turretDark',antennaPart(cylY(.01257,.259,10)),side*1.02234,2.87802,-2.13537);
+    fitting(P,'turretDark',antennaPart(cylY(.02270,.01289,12)),side*1.02234,3.00107,-2.13537);
+    fitting(P,'turretDark',antennaPart(pantherWhip()),side*1.02234,0,0);
     for(const z of[-1.87,-.36])fitting(P,'turretDetail',torus(.045,.014,12,6),side*.97,2.48,z,Math.PI/2);
   }
   fitting(P,'turretDark',box(.53,.026,1.38),.428,2.477,-1.40);

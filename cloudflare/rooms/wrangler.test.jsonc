@@ -11,6 +11,10 @@
     "name": "ROOM_CONNECT_LIMITER",
     "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
+  }, {
+    "name": "PAD_CONNECT_LIMITER",
+    "namespace_id": "2610300266",
+    "simple": { "limit": 30, "period": 60 }
   }],
   // No relay secret (2026-10-02, §13.14): a seat's room_relay is answered with COT_STUN_URLS alone — the deployed Worker
   // before `wrangler secret put` (test/relay.test.ts runs the configured Worker under wrangler.relay.test.jsonc).
@@ -21,8 +25,9 @@
   },
   "durable_objects": {
     "bindings": [
-      { "name": "ROOMS", "class_name": "Room" }
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "PADS", "class_name": "PadPair" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "PadPair"] }]
 }
