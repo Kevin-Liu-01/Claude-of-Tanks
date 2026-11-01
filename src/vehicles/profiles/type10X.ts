@@ -49,7 +49,9 @@ function tubSection(z:number,top:number,bottom:number):SolidSection {
     [.862,top],[-.862,top],[-.882,top-bevel]]};
 }
 
-function hull(P:TankBuilderPort,bowLinks:boolean):void {
+interface HullFit {readonly bowLinks:boolean;readonly lowerSkirts:boolean;readonly fascia:'solid'|'segmented'}
+
+function hull(P:TankBuilderPort,fit:HullFit):void {
   P.add('hull',sectionSolid([
     tubSection(-3.615,1.515,1.45),tubSection(-3.552,1.516,.908),
     tubSection(-3.15,1.520,.625),
@@ -73,10 +75,10 @@ function hull(P:TankBuilderPort,bowLinks:boolean):void {
       const ring:[number,number][]=[[1.54402,floor],[1.551345,floor],[1.551345,roof],[1.54402,roof]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
     })));
-    sideArmor(P,side);mudguards(P,side);
+    sideArmor(P,side,fit);mudguards(P,side);
   }
   P.add('hull',cylinder(1.31519,.041,64),-.00276,1.485,.20655);
-  deckEquipment(P);frontEquipment(P,bowLinks);
+  deckEquipment(P);frontEquipment(P,fit.bowLinks);
 }
 
 // The tub's bow stations [z, roof, floor]: the floor rises over the lower bow's two planes to the nose and the roof
@@ -86,10 +88,18 @@ export const TYPE10_X_BOW_SECTIONS=Object.freeze([
   [3.32,1.306,.7303013235],[3.615,1.166,1.1463973487],
 ] as const);
 
-function sideArmor(P:TankBuilderPort,side:number):void {
-  addType10Skirts(P,side);
-  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),
-    'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);
+function sideArmor(P:TankBuilderPort,side:number,fit:HullFit):void {
+  if(fit.lowerSkirts)addType10Skirts(P,side);
+  if(fit.fascia==='solid') {
+    P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),
+      'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);
+  } else {
+    // a mark's own side armour: six bolted panels over the same 6.07 m with 10 cm cutouts between them showing the hull
+    // side behind (the TK-X trials vehicle, japan.ts)
+    const len=(6.0704-.10*5)/6;
+    for(let i=0;i<6;i++)P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,len),
+      'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545-6.0704/2+len/2+i*(len+.10));
+  }
   P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4065,.9621),
     'type10-painted-rear-fascia','hullDetail'),side*1.559035,.96097,-2.95899);
 }
@@ -352,7 +362,7 @@ function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:num
   for(const side of [-1,1])turret(P,'turretDark',box(.003,h-.046,depth),x+side*(w-.054)/(2*EQUIPMENT_X_DATUM),y+h/2,mouth);
 }
 
-function roofEquipment(P:TankBuilderPort,remoteM2:boolean):void {
+function roofEquipment(P:TankBuilderPort,remoteM2:boolean,whips:boolean):void {
   turret(P,'turretHatch',cylinder(.32747,.127,40),-.511,2.317,.271);
   // 2026-10-19 (owner float sweep): the cupola stood 42-49 mm over the roof; a collar ring carries it from the roof
   turret(P,'turretDetail',cylinder(.33,.058,40),-.511,2.2295,.271);
@@ -373,7 +383,7 @@ function roofEquipment(P:TankBuilderPort,remoteM2:boolean):void {
   turret(P,'turretDetail',box(.240,.025,.235),-.976,2.505,-.501);
   addType10XRoofPanels(P,PIVOT);
   if(remoteM2)roofWeapon(P);
-  antennas(P);
+  if(whips)antennas(P);
 }
 
 function roofWeapon(P:TankBuilderPort):void {
@@ -670,14 +680,22 @@ interface Type10XBuildOptions {
   readonly basketStowage?:boolean;
   /** The spare links across the lower bow (production; the TK-X's lower plate was plain). */
   readonly bowLinks?:boolean;
+  /** The production basket, its whips and its rear antenna mount, its lower folded skirts and its one-piece side fascia;
+   *  a mark that carries its own (owner 2026-11-01: the TK-X and the 10B "need to look a lot more unique") draws them
+   *  in profiles/japan.ts. */
+  readonly basket?:boolean;
+  readonly antennas?:boolean;
+  readonly lowerSkirts?:boolean;
+  readonly fascia?:'solid'|'segmented';
 }
 
 export function buildType10X(P:TankBuilderPort,{remoteM2=true,mark='production',stowageDoors=mark==='production',smoke=true,
-  basketStowage=true,bowLinks=mark==='production'}:Type10XBuildOptions={}):void {
+  basketStowage=true,bowLinks=mark==='production',basket=true,antennas=true,lowerSkirts=true,
+  fascia='solid'}:Type10XBuildOptions={}):void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
-  hull(P,bowLinks);
+  hull(P,{bowLinks,lowerSkirts,fascia});
   P.gear=buildType10XGear(P,{style:'rubber',wheelR:.33617,wheelW:.358099,wheelY:.405,
     wheelZs:[...TYPE10_X_DATUMS.wheelStations],xc:1.27414,trackW:.486738,trackTh:.035,
     idler:{z:3.2069,y:.8113,r:.33617},sprocket:{z:-2.8495,y:.7480,r:.3131},
@@ -685,7 +703,7 @@ export function buildType10X(P:TankBuilderPort,{remoteM2=true,mark='production',
     returnRollerHullHalfWidthM:.878,
     topY:1.249,botY:.0805,paintedEnds:true,coveredTop:true,arms:true,
   });
-  turretArmor(P);rearRack(P,mark,basketStowage);roofEquipment(P,remoteM2);mainGun(P,mark);
+  turretArmor(P);if(basket)rearRack(P,mark,basketStowage);roofEquipment(P,remoteM2,antennas);mainGun(P,mark);
   for(const side of [-1,1]){sideModules(P,side,stowageDoors,mark);if(smoke)smokeDischargers(P,side,mark);}
   laserWarners(P);hullFittings(P);
   P.topY=2.989-PIVOT[1];

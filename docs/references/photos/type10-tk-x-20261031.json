@@ -21,10 +21,10 @@
         "https://ja.wikipedia.org/wiki/10%E5%BC%8F%E6%88%A6%E8%BB%8A",
         "https://en.wikipedia.org/wiki/Type_10_(tank)"
       ],
-      "widthM": 3.389,
+      "widthM": 3.159,
       "overallLengthM": 9.42,
-      "tallestM": 4.122,
-      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the modern Type 10 it draws: 9.42 m gun forward (the prototype placard and Gunji Kenkyu's table: 9.42 m), 3.389 m over the skirts (the modern Type 10's source width; the published 3.24 m conflict is recorded in docs/references/tanks/type10_x.md), 4.122 m to the whips' tips (the roof at 2.21 m, published 2.30 m).",
+      "tallestM": 3.617,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the trials configuration the owner directed on 2026-11-01 (\"the prototype can literally have a new turret or diff hull ... different antennas, roof decorations, cutouts, armor\"): 9.42 m gun forward (the prototype placard and Gunji Kenkyu's table: 9.42 m), 3.159 m over the six-panel side armour with no lower skirts (the published 3.24 m), 3.617 m to the telemetry masts' disc antennas (the production whips are not carried).",
       "caliberMm": 120,
       "launcherTubes": 0,
       "roofMachineGuns": 1,

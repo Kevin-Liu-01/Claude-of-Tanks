@@ -9,6 +9,7 @@ import { buildType90 } from './misc.ts';
 import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
+import { sectionSolid } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
 import { buildType90B } from './type90B.ts';
@@ -323,17 +324,95 @@ function addTkxTrialsFit(P: JapaneseBuilderPort): void {
   P.add('turretDark', box(0.30, 0.15, 0.34), ...tl(x0, roof + 0.186, z0));         // recorder case on the shelf
   P.add('turretDetail', box(0.31, 0.012, 0.35), ...tl(x0, roof + 0.266, z0));
   P.add('turretDark', box(0.12, 0.08, 0.10), ...tl(x0 + 0.06, roof + 0.34, z0 - 0.10)); // junction box on the top rails
-  // the telemetry mast: one thick pole over the rack's rear corner (the photographs), its antenna head on top
-  // (round 4, the photo critic: "about 0.6-1.0x turret height" in tkx_rear_left.jpg: half the 0.86 m it stood)
-  P.add('turretDetail', cylY(0.042, 0.048, 0.48, 14), ...tl(x0 - 0.12, roof + 0.54, z0 - 0.16));
-  P.add('turretDark', cylY(0.06, 0.06, 0.05, 14), ...tl(x0 - 0.12, roof + 0.806, z0 - 0.16));
+}
+
+// ---- the TK-X as the trials vehicle (owner 2026-11-01: "the prototype can literally have a new turret or diff hull and
+// things like that. different antennas, roof decorations, cutouts, armor"). On the modern Type 10's hull and running
+// gear: blunt trial armour modules boxing in the cheek wedges, a bolted trial plate on the glacis, the side armour in
+// six bolted panels with cutouts between them and no lower skirts, an instrumentation pod, GPS dome, cable runs and two
+// telemetry masts on the roof for the production whips, and a ballast rack in place of the basket.
+
+/** The trial armour modules: a flat-faced bolted box over each cheek wedge, squaring the turret's nose, and the trial plate
+ *  bolted to the upper glacis. */
+function addTkxTrialArmour(P: JapaneseBuilderPort & TankBuilderPort): void {
+  const { box, cylZ, cylY } = KIT;
+  const xi = 0.49, xo = 1.40, z0 = 1.62, z1 = 2.56, y0 = 1.57, y1 = 2.15;
+  for (const side of [-1, 1]) {
+    const xc = side * (xi + xo) / 2, w = xo - xi;
+    P.add('turretDetail', box(w, y1 - y0, z1 - z0), ...tl(xc, (y0 + y1) / 2, (z0 + z1) / 2));
+    // the front face's bolted frame and bolt rows, the seam where the module meets the turret, two lifting eyes on top
+    for (const y of [y0 + 0.03, y1 - 0.03]) P.add('turretDetail', box(w - 0.02, 0.03, 0.02), ...tl(xc, y, z1 + 0.0105));
+    for (const x of [xi + 0.025, xo - 0.025]) P.add('turretDetail', box(0.03, y1 - y0 - 0.09, 0.02), ...tl(side * x, (y0 + y1) / 2, z1 + 0.0105));
+    for (let i = 0; i < 4; i++) for (const y of [y0 + 0.13, (y0 + y1) / 2, y1 - 0.13])
+      P.add('turretDark', cylZ(0.016, 0.012, 8), ...tl(side * (xi + 0.14 + i * (w - 0.28) / 3), y, z1 + 0.007));
+    P.add('turretDark', box(0.006, y1 - y0 - 0.02, 0.012), ...tl(side * (xo + 0.004), (y0 + y1) / 2, z0 + 0.03));
+    for (const z of [z0 + 0.25, z1 - 0.25]) {
+      const eye = new THREE.TorusGeometry(0.035, 0.009, 6, 12); eye.rotateY(Math.PI / 2);
+      P.add('turretDetail', eye, ...tl(xc, y1 + 0.035, z));
+    }
+  }
+  // the glacis trial plate (the glacis falls 1.370 -> 1.3065 from z 2.50 to 3.31), its bolt rows along both long edges
+  const rake = Math.atan2(1.370 - 1.3065, 3.3137 - 2.50), zc = 2.93, yc = 1.339 - (zc - 2.898) * Math.tan(rake) + 0.021;
+  P.addEquipment('hullDetail', box(1.50, 0.04, 0.62), 0, yc, zc, rake, 0, 0);
+  for (let i = 0; i < 8; i++) for (const dz of [-0.27, 0.27])
+    P.addEquipment('hullDark', cylY(0.017, 0.017, 0.012, 8), -0.66 + i * 0.19, yc + 0.026 - dz * Math.tan(rake), zc + dz, rake, 0, 0);
+}
+
+/** The trials instrumentation on the roof: the pod on the rear roof's right, the GPS dome, the cable runs and the two
+ *  telemetry masts at the bustle's corners (each a mast on its foot with a disc antenna and a cross arm). */
+function addTkxTrialsInstruments(P: JapaneseBuilderPort): void {
+  const { box, cylY, cylX } = KIT;
+  const podRoof = 2.202, px = 0.58, pz = -1.30;
+  P.add('turretDetail', box(0.55, 0.30, 0.72), ...tl(px, podRoof + 0.151, pz));
+  P.add('turretDark', box(0.50, 0.012, 0.66), ...tl(px, podRoof + 0.308, pz));                  // its lid seam
+  for (const dz of [-0.22, 0.0, 0.22]) P.add('turretDark', box(0.006, 0.12, 0.14), ...tl(px + 0.2785, podRoof + 0.16, pz + dz)); // vents
+  for (const dz of [-0.26, 0.26]) P.add('turretDark', cylX(0.012, 0.16, 8), ...tl(px, podRoof + 0.33, pz + dz)); // handles
+  // the GPS dome on its base ring
+  const domeRoof = 2.188, dx = 0.15, dz2 = -1.75;
+  P.add('turretDetail', cylY(0.15, 0.15, 0.05, 24), ...tl(dx, domeRoof + 0.026, dz2));
+  const dome = new THREE.SphereGeometry(0.14, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  P.add('turretDetail', dome, ...tl(dx, domeRoof + 0.052, dz2));
+  // the two telemetry masts on the bustle's corners, a foot, a mast, a disc antenna and a cross arm
+  for (const side of [-1, 1]) {
+    const mx = side * 1.10, mroof = 2.186, mz = -1.90;
+    P.add('turretDetail', cylY(0.07, 0.07, 0.10, 16), ...tl(mx, mroof + 0.051, mz));
+    P.add('turretDark', cylY(0.024, 0.032, 1.30, 10), ...tl(mx, mroof + 0.10 + 0.651, mz));
+    P.add('turretDark', cylY(0.11, 0.11, 0.03, 16), ...tl(mx, mroof + 1.40 + 0.016, mz));
+    P.add('turretDark', box(0.36, 0.02, 0.02), ...tl(mx, mroof + 1.10, mz));
+  }
+  // cable runs from the pod to each mast's foot, laid on the roof
+  for (const side of [-1, 1]) {
+    const run = new THREE.CatmullRomCurve3([[px - side * 0.0 - 0.20, podRoof + 0.02, pz - 0.36], [side > 0 ? 0.9 : 0.1, 2.21, -1.60],
+      [side * 1.10 - side * 0.09, 2.21, -1.90]].map(([x, y, z]) => new THREE.Vector3(...tl(x, y, z))));
+    P.add('turretDark', new THREE.TubeGeometry(run, 20, 0.014, 6, false), 0, 0, 0);
+  }
+}
+
+/** The ballast rack in the basket's place: a floor and low rails off the bustle carrying the trial ballast blocks. */
+function addTkxBallastRack(P: JapaneseBuilderPort): void {
+  const { box, cylY, cylX, cylZ } = KIT;
+  const front = -2.018, rear = -2.66, floorY = 1.635, half = 1.02;
+  P.add('turretDetail', box(half * 2, 0.03, front - rear), ...tl(0, floorY, (front + rear) / 2));
+  for (const x of [-half, half]) for (const z of [rear + 0.02, front - 0.06]) P.add('turretDetail', cylY(0.016, 0.016, 0.30, 8), ...tl(x, floorY + 0.166, z));
+  P.add('turretDetail', cylX(0.016, half * 2, 8), ...tl(0, floorY + 0.30, rear + 0.02));
+  for (const x of [-half, half]) P.add('turretDetail', cylZ(0.016, front - rear - 0.08, 8), ...tl(x, floorY + 0.30, (front + rear) / 2 - 0.02));
+  // the ballast: three blocks on the floor and two stacked on them, each with its lifting lug
+  for (const [x, layer] of [[-0.62, 0], [0, 0], [0.62, 0], [-0.31, 1], [0.31, 1]] as const) {
+    const y = floorY + 0.016 + 0.11 + layer * 0.221;
+    P.add('turretDark', box(0.55, 0.22, 0.42), ...tl(x, y, (front + rear) / 2));
+    P.add('turretDark', cylX(0.025, 0.12, 8), ...tl(x, y + 0.123, (front + rear) / 2));
+  }
 }
 
 function buildType10TkX(P: JapaneseBuilderPort & TankBuilderPort): void {
-  // the TK-X prototype: the base's prototype forms (plain side blocks, four round smoke ports, the open basket fence,
-  // the muzzle mirror on the left) and its trials fit
-  buildType10X(P, { mark: 'prototype', basketStowage: false });
+  // the TK-X prototype as the trials vehicle: the base's prototype forms (plain side blocks, four round smoke ports, the
+  // muzzle mirror on the left) without its basket, whips and rear mount, lower skirts or one-piece side fascia, and the
+  // trial armour, instrumentation and ballast in their place
+  buildType10X(P, { mark: 'prototype', basketStowage: false, basket: false, antennas: false, lowerSkirts: false, fascia: 'segmented' });
   addTkxTrialsFit(P);
+  addTkxTrialArmour(P);
+  addTkxTrialsInstruments(P);
+  addTkxBallastRack(P);
 }
 
 /** The 10B's remote weapon station on the commander's ring (the 12.7 mm station in place of the manual mount), stacked face
@@ -439,14 +518,53 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   }
 }
 
+/** The upgrade's add-on armour (owner 2026-11-01: "different ... armor"): a wedge module over each cheek, pointed forward
+ *  from the cheek's full face to a narrow nose, its top falling to the nose, with bolt rows along its top. */
+function addType10BWedges(P: JapaneseBuilderPort): void {
+  const { cylY } = KIT;
+  for (const side of [-1, 1]) {
+    const rows: [number, number, number, number, number][] = [
+      [1.62, 0.49, 1.42, 1.58, 2.15], [2.30, 0.62, 1.18, 1.61, 2.11], [2.86, 0.84, 0.94, 1.68, 1.98]];
+    const g = sectionSolid(rows.map(([z, xi, xo, lo, hi]) => {
+      const ring: [number, number][] = [[xi, lo], [xo, lo], [xo, hi], [xi, hi]];
+      return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring };
+    }));
+    P.add('turretDetail', g, ...tl(0, 0, 0));
+    for (let i = 0; i < 3; i++) for (const f of [0.25, 0.75]) {
+      const z = 1.75 + i * 0.30, t = (z - 1.62) / (2.86 - 1.62);
+      const xi = 0.49 + (0.84 - 0.49) * t, xo = 1.42 + (0.94 - 1.42) * t, top = 2.15 + (1.98 - 2.15) * t;
+      P.add('turretDark', cylY(0.016, 0.016, 0.012, 8), ...tl(side * (xi + (xo - xi) * f), top + 0.004, z));
+    }
+  }
+}
+
+/** The armoured stowage box in the basket's place, its lid seams, hinges and latches, and the SATCOM dome on its lid. */
+function addType10BBustleBox(P: JapaneseBuilderPort): void {
+  const { box, cylY, cylX } = KIT;
+  const front = -2.018, rear = -3.20, lo = 1.622, hi = 2.10, left = -1.326, right = 1.172;
+  const xc = (left + right) / 2, zc = (front + rear) / 2;
+  P.add('turretDetail', box(right - left, hi - lo, front - rear), ...tl(xc, (lo + hi) / 2, zc));
+  for (const z of [-2.42, -2.82]) P.add('turretDark', box(right - left + 0.006, 0.012, 0.012), ...tl(xc, hi - 0.002, z)); // lid seams
+  for (const x of [left + 0.3, xc, right - 0.3]) {
+    P.add('turretDark', cylX(0.014, 0.10, 8), ...tl(x, hi - 0.01, front - 0.03));                                       // hinges
+    P.add('turretDark', box(0.06, 0.08, 0.02), ...tl(x, hi - 0.06, rear - 0.011));                                      // latches
+  }
+  P.add('turretDetail', cylY(0.22, 0.22, 0.04, 28), ...tl(-0.60, hi + 0.021, -2.65));
+  const dome = new THREE.SphereGeometry(0.20, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+  P.add('turretDetail', dome, ...tl(-0.60, hi + 0.042, -2.65));
+}
+
 function buildType10B(P: JapaneseBuilderPort & TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  // the later production Type 10: the base's production forms, its side blocks under the reactive armour
-  buildType10X(P, { remoteM2: false, stowageDoors: false });
+  // the later production Type 10: the base's production forms, its side blocks under the reactive armour, the basket
+  // replaced by the upgrade's armoured stowage box (owner 2026-11-01: the 10B "need[s] to look a lot more unique")
+  buildType10X(P, { remoteM2: false, stowageDoors: false, basket: false });
   addType10BRemoteStation(P);
   addType10BActiveProtection(P);
   addType10BReactiveArmor(P);
+  addType10BWedges(P);
+  addType10BBustleBox(P);
 }
 
 function buildType10Dozer(P: TankBuilderPort): void {

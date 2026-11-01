@@ -407,7 +407,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
           // 267 (the Japan line's 10B on the Type 10 base): the remote station's turntable, the launcher units and the
           // front radar heads stand clear of the net
           rect(-0.96, -0.06, -0.39, 0.54), ...pair(1.00, 1.42, -1.00, -0.50), ...pair(0.92, 1.42, 0.22, 0.78),
-          ...pair(0.98, 1.48, -2.02, -1.50)],
+          ...pair(0.98, 1.48, -2.02, -1.50), rect(-0.84, -0.36, -3.10, -2.62)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // 267 (round 3 photo critic: "a wavy net sheet stands upright above the turret's rear roof edge", "cut the net back
