@@ -137,9 +137,14 @@ names them by boxes in its certified frame (`tools/fused-roof-gun-boxes.mjs`):
 the triangles wholly inside leave it, a roof gun's from the body (the T-72/T-80
 studies). A whip fused into a source mesh is that source's defect (the Strv 81
 print's raked pair, 4.19 m tips over a 3.0 m tank; the oracle file keeps
-them): its boxes take it out of every comparison on the page, curves and
-stations too, with the build's whips beside it (`boxedWhipsAside` in the
-record). Whips a source names by node leave the dims rows only. An oracle node named `ammo*` goes with a
+them): its boxes name it. Wherever a source names whips, by node or by box,
+they leave every comparison on the page, curves and stations too, with the
+build's whips beside them (`whipsAside` in the record; 267); the score's
+height stays the source's whole height, so setting them aside changes what is
+compared and never the ruler. Every build whip carries the antenna role:
+`node tools/whip-rod-census.mjs --all --gate` finds the fleet's whips by
+their geometry (a thin rod whose tip stands clear of everything round it)
+and fails on an untagged one. An oracle node named `ammo*` goes with a
 named roof gun it touches (within 0.1 m), as the build's ammunition rides in
 its gun's fitting; any other ammo box stays body. A new whip or mast drawn as a
 raw rod needs `antennaPart()`, or it counts as body.

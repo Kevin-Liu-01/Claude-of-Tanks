@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {antennaPart} from './antennaPart.ts';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {buildT72BUXCore,T72BU_X_DATUMS} from './t72buX.ts';
@@ -118,7 +119,7 @@ function roof(P:TankBuilderPort,shell:THREE.BufferGeometry):void{
  for(const side of[-1,1]){
   const x=side*.55,z=-.78,y=roofY(x,z);
   equipment(P,'turretDetail',cylY(.05,.10,12),x,y+.03,z);
-  equipment(P,'turretDark',cylY(.004,.75,8),x,y+.43,z);
+  equipment(P,'turretDark',antennaPart(cylY(.004,.75,8)),x,y+.43,z);
   equipment(P,'turretDetail',box(.12,.12,.12),side*1.00,roofY(side*1.00,-.2)+.035,-.2);
   equipment(P,'turretGlass',box(.08,.065,.025).rotateY(side*.7),side*1.02,roofY(side*1.00,-.2)+.06,-.135);
  }

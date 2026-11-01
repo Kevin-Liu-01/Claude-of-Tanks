@@ -817,14 +817,21 @@ const roofFittingsExcluded = (() => {
   ])].sort());
   return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
 })();
-// Whips a source fuses into a mesh (FUSED_ANTENNA_BOXES, 267: the Strv 81 print's raked pair, its packet's oracle defect)
-// are handled by the body rule, not by trimming the file (Main 2026-10-31): their boxes take them out of the source for
-// every comparison on this page, the curves and stations as well as the heights, and the build's whips leave with them,
-// body against body. Whips a source names by node stay in both models' shapes (they leave the dims rows only).
-const boxedWhipsAside = roofFittings[1].antennaBoxed.size > 0;
-if (boxedWhipsAside) {
-  for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) node.geometry = body;
-  for (const node of paired.hidden) if (antennaNodes.has(node)) baseVisible.set(node, false);
+// Whips leave every comparison on this page wherever the source names them, by node or by the boxes a fused source's
+// whips take (FUSED_ANTENNA_BOXES), the curves and stations as well as the heights, and the build's whips (their antenna
+// tags, tools/whip-rod-census.mjs) leave with them: body against body (267, Main 2026-10-31). The score's height stays the
+// source's whole height (withWhipsBack): setting the whips aside changes what is compared, never the ruler.
+const whipsAside = paired.named.antenna;
+const whipsAsideUndo = [];
+if (whipsAside) {
+  for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
+  for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+function withWhipsBack(measure) {
+  for (const [node, geometry, other] of whipsAsideUndo) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+  try { return measure(); } finally {
+    for (const [node, geometry, other] of whipsAsideUndo) { if (geometry) node.geometry = other; else baseVisible.set(node, false); }
+  }
 }
 // Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
 // named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
@@ -1842,7 +1849,8 @@ if (params.get('geo')) {
   });
 
   const refBoxG = visibleBox(reference.root);
-  const height = refBoxG.max.y - refBoxG.min.y;
+  const wholeBoxG = withWhipsBack(() => visibleBox(reference.root));
+  const height = wholeBoxG.max.y - wholeBoxG.min.y;
   const length = refBoxG.max.z - refBoxG.min.z;
   const camsG = { side: cameraFor(TRUE_AXES.side), plan: cameraFor(TRUE_AXES.plan), front: cameraFor(TRUE_AXES.front) };
   const curves = {};
@@ -2227,7 +2235,7 @@ if (params.get('geo')) {
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
-    ...(boxedWhipsAside ? { boxedWhipsAside:'every comparison: the source\'s boxed whips and the build\'s whips' } : {}),
+    ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,

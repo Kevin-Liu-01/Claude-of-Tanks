@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1496 | 161.6 |
+| KEEP | 1497 | 161.6 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 652 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2149 | 1280.7 | 228.1 |
-| After: the default tier | 1496 | 161.6 | 36.7 |
+| Before: every receipt (npm test without the tiers) | 2150 | 1280.7 | 228.1 |
+| After: the default tier | 1497 | 161.6 | 36.7 |
 
 Default tier: 12.6 % of the whole registry's CPU; 17.6 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 18.6 min browser receipts.
 
@@ -798,7 +798,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1496)
+## KEEP (1497)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2186,11 +2186,11 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/inputPointerLockFocus.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim poin | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/liveCombatWarm.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: liveCombatWarm.selftest.mjs — the combat warms that run between a revealed battle's frames restore everything | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/watchController.selftest.mjs` | 0.7 | KEEP | game flow, 0.7 s: watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/hullPointsRemoved.selftest.mjs` | 0.7 | KEEP | simulation rule, 0.7 s: 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/glossary.selftest.mjs` | 0.7 | KEEP | interface contract, 0.7 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/trackRollerSag.selftest.mjs` | 0.7 | KEEP | vehicle rule, 0.7 s: A roller-carried upper track run hangs by the length of each span (fleet lane 2026-10-08, the coordinator's tr | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/pr-census.selftest.mjs` | 0.7 | KEEP | tool contract, 0.7 s: 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold an | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/vercel-static-preview.selftest.mjs` | 0.7 | KEEP | tool contract, 0.7 s: tools/vercel-static-preview.mjs (2026-10-22, nav-perf-240): a built dist answered the way production answers i | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/sim/hullPointsRemoved.selftest.mjs` | 0.7 | KEEP | simulation rule, 0.7 s: 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/gallery/trueScale.selftest.mjs` | 0.6 | KEEP | site, manual or app contract, 0.6 s: trueScale.selftest.mjs — a true-scale canvas is a uiCanvas: its backing store is its CSS box × min(DPR, 2), a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/provingRangeDressing.selftest.mjs` | 0.6 | KEEP | game flow, 0.6 s: 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/localizedBody.selftest.mjs` | 0.6 | KEEP | site, manual or app contract, 0.6 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2298,3 +2298,4 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/whip-rods.selftest.mjs` | n/a | KEEP | tool contract, n/a s: 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna rol | default tier (npm test, the release gate; lane mode by its closure) |
