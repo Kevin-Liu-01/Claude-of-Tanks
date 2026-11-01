@@ -6,8 +6,11 @@
 // 3. A slot past the rack is the last one; an empty slot is refused, the trigger held off, the refusal emitted once
 //    while it is asked for, and again after a slot that was taken.
 // 4. The aim decodes from the hull's position, from its drone's while one flies, into the hull's own aim point.
+// 5. A bot (applyBotInput): a live hull's lay is handed back before its controller writes; a wreck's controller still
+//    runs (it zeroes its own drive) with the lay left held; the slot it asks for is taken when stocked, else the request
+//    falls back to the slot held, fired or not.
 import assert from 'node:assert/strict';
-import { applyPlayerInput } from './playerInputStage.ts';
+import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
 import { decodeAimIntent, encodeAimIntent } from './aimIntent.ts';
 
 const point = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } });
@@ -95,6 +98,32 @@ for (const [label, prepare, input] of [
   assert.ok(Math.abs(aimPoint.x - target.x) < 1e-9, 'a parked drone hands the aim back to the hull');
 }
 
+// 5. a bot
+{
+  const entity = hull();
+  const seen = [];
+  let ask = 1;
+  entity.aiCtl = { update(dt, timeS) { seen.push([dt, timeS, entity.input.aimLocked]); entity.input.shellSlot = ask; entity.input.fire = false; } };
+  entity.input.aimLocked = true;
+  applyBotInput(entity, 1 / 60, 2.5);
+  assert.deepEqual(seen, [[1 / 60, 2.5, false]], 'a live bot\'s lay is handed back before its controller writes');
+  assert.equal(entity.combat.shellSlot, 1, 'a stocked slot is taken without a shot');
+  ask = 2;
+  applyBotInput(entity, 1 / 60, 2.6);
+  assert.equal(entity.combat.shellSlot, 1, 'an empty slot is not taken');
+  assert.equal(entity.input.shellSlot, 1, 'the request falls back to the slot held');
+  ask = 9;
+  entity.combat.ammo[2] = 1;
+  applyBotInput(entity, 1 / 60, 2.7);
+  assert.equal(entity.combat.shellSlot, 2, 'a request past the rack takes the last slot');
+  entity.combat.destroyed = true;
+  entity.input.aimLocked = true;
+  applyBotInput(entity, 1 / 60, 2.8);
+  assert.equal(seen.length, 4, 'a wreck\'s controller still runs');
+  assert.equal(seen[3][2], true, 'a wreck\'s lay stays held');
+}
+
 console.log('playerInputStage.selftest: no driver, an inactive hull and a wreck brake and hold the lay; the controls land as sent '
   + '(fire intent a safe integer, action bits an integer); a slot past the rack is the last, an empty one refused with the trigger '
-  + 'held off and its refusal emitted once, again after a taken slot; the aim decodes from the hull, from its drone while one flies');
+  + 'held off and its refusal emitted once, again after a taken slot; the aim decodes from the hull, from its drone while one flies; '
+  + 'a bot\'s lay handed back before its controller, a wreck\'s controller run with the lay held, its slot taken when stocked, else held');
