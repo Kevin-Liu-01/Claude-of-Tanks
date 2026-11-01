@@ -11,7 +11,11 @@
 // (back + 0.004 to + 0.017; at +-2 cm about back + 0.02 it passed through its bars and frame, Main's ruling 2026-10-31).
 // "Changed by order" counts fully covered pixels (one draw's colour in both shots). The MSAA edge samples along a line
 // where two draws' faces meet (a pane against its jamb's inner face) are reported, not held: there both depths are equal
-// in a band about a sample wide whatever the layers, a crossing (the killcam's class), decided by the order.
+// in a band about a sample wide whatever the layers, a crossing (the killcam's class), decided by the order. The craft
+// wall is held to 500 m (Main, 2026-10-31): its glass sits inside its glazing bars' depth (back + 0.004..0.017 within
+// back..back + 0.021), so the bars' side faces cross the glass plane, and at 700 m one depth step (5.8 cm) exceeds the
+// frame's whole depth (2-3 cm), so the crossing band covers whole side faces at this receipt's 1.7 cm a pixel; in the
+// game a window there is about 1 px. Its 700 m views are reported as crossings.
 // (The killcam's 8 px, Main's ruling 2026-10-31, are a crossing, not a stack: two interpenetrating turret parts meet on a
 // curve where both depths are equally valid, so the draw order decides those pixels in any renderer and no layer applies.)
 import { launchGuardedBrowser } from './browser-launch.mjs';
@@ -213,7 +217,10 @@ try {
   const { renderer, rows } = await bounded(page.evaluate(renderStacks, { draws: framed, views, width: W, height: H }), 300_000, 'render');
   report.renderer = renderer; report.rows = rows;
   report.craft = (await bounded(page.evaluate(renderStacks, { draws: craft, views, width: W, height: H }), 300_000, 'render craft')).rows;
-  for (const [wallName, r] of [...rows.map((r) => ['framed', r]), ...report.craft.map((r) => ['craft', r])]) {
+  // the craft wall past 500 m: its glazing bars' sides cross the glass inside one depth step (reported, not held)
+  const CRAFT_HELD_M = 500;
+  report.craftCrossings = report.craft.filter((r) => r.distance > CRAFT_HELD_M).map((r) => ({ distance: r.distance, yawDeg: r.yawDeg, px: r.layered.stackOrder, pairs: r.layered.pairs }));
+  for (const [wallName, r] of [...rows.map((r) => ['framed', r]), ...report.craft.filter((r) => r.distance <= CRAFT_HELD_M).map((r) => ['craft', r])]) {
     const at = `${wallName} wall, ${r.distance} m, ${r.yawDeg} deg`;
     assert.ok(r.paneCover > 0, `${at}: the panes are in the frame`);
     assert.equal(r.layered.stackOrder, 0, `${at}: with the stack's layers every order of its dark, panes and frames draws the same fully covered pixels (${JSON.stringify(r.layered.pairs)})`);
@@ -241,5 +248,5 @@ if (!report.ok) process.exitCode = 1;
 else {
   const fights = report.rows.filter((r) => r.control.stackOrder > 0);
   const crossings = [...report.rows, ...report.craft].reduce((n, r) => n + r.layered.edgeSamples, 0);
-  console.log(`pane-stack-layer.browser.selftest: a regional wall's two windows (curtain, glass; frames and bars) and a bare opening, and a wall with the craft's leaning glass, over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the dark, panes and frames in all six orders after and before the rest: with the stack ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer, every order draws the same fully covered pixels and no dark shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.stackOrder))} px); at 20 m the layers change nothing. Reported, not held: ${crossings} MSAA edge samples on lines where two faces meet (crossings, the killcam's class: equal depths in a band about a sample wide, decided by the order) (${report.renderer}) PASS`);
+  console.log(`pane-stack-layer.browser.selftest: a regional wall's two windows (curtain, glass; frames and bars) and a bare opening, and a wall with the craft's leaning glass, over their reveals' dark, ${views.length} views at 20-700 m head on and 40 deg off, the dark, panes and frames in all six orders after and before the rest: with the stack ${PANE_STACK_UNITS_PER_LAYER} depth steps a layer, every order draws the same fully covered pixels and no dark shows; without it ${fights.length} views fight (up to ${Math.max(...fights.map((r) => r.control.stackOrder))} px); at 20 m the layers change nothing (the craft wall held to 500 m). Reported, not held: ${crossings} MSAA edge samples on lines where two faces meet (crossings, the killcam's class: equal depths in a band about a sample wide, decided by the order); the craft wall at 700 m ${report.craftCrossings.map((r) => `${r.yawDeg} deg ${r.px} px`).join(', ')}, its glazing bars' sides crossing the glass where one depth step (5.8 cm) exceeds the frame's whole depth (a window there is about 1 px in the game) (${report.renderer}) PASS`);
 }
