@@ -147,6 +147,20 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     hashes.set(file, digest);
     return digest;
   };
+  /** hashFile for large inputs read per id (comparison oracles, 266): the digest is kept in the store against the
+   *  file's size, mtime and inode, so a run rehashes only a file that changed. */
+  const hashLargeFile = (file) => {
+    let stat;
+    try { stat = statSync(file); } catch (error) { if (['ENOENT', 'ENOTDIR'].includes(error.code)) return 'missing'; throw error; }
+    if (!stat.isFile()) return 'missing';
+    const id = `${stat.size}:${stat.mtimeMs}:${stat.ino}`;
+    const known = store.digests?.[file];
+    if (known?.id === id) return known.sha256;
+    const sha256 = hashFile(file);
+    (store.digests ??= {})[file] = { id, sha256 };
+    dirty = true;
+    return sha256;
+  };
   const walk = (dir, out, seen = new Set()) => {
     let canonical, entries;
     try { canonical = realpathSync(dir); entries = readdirSync(dir, { withFileTypes: true }); }
@@ -315,13 +329,16 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     if (!dirty) return;
     let previous;
     try { previous = JSON.parse(readFileSync(storePath, 'utf8')); } catch {}
-    if (previous?.parserHash === parserHash) store.byHash = { ...previous.byHash, ...store.byHash };
+    if (previous?.parserHash === parserHash) {
+      store.byHash = { ...previous.byHash, ...store.byHash };
+      store.digests = { ...previous.digests, ...store.digests };
+    }
     mkdirSync(cacheDir, { recursive: true });
     const temporary = `${storePath}.${process.pid}.tmp`;
     writeFileSync(temporary, JSON.stringify(store));
     renameSync(temporary, storePath);
     dirty = false;
   };
-  return { root, hashFile, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
+  return { root, hashFile, hashLargeFile, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
     rel: (path) => relative(root, path), abs: (path) => resolve(root, path) };
 }

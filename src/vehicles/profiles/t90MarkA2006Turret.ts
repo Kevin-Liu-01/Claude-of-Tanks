@@ -13,6 +13,7 @@
 // lanes, the station's swept circle, hatches, the ring); every part below is turret-frame equipment (builder frame
 // minus the ring pivot), measured off the twin's stock by ray and buried 5-15 mm into what carries it.
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT } from './kit.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -374,7 +375,7 @@ function radioCourses(P: TankBuilderPort): void {
     P.addEquipment('turretDetail', box(.15, .09, .20), x, top - .045, z);
     P.addEquipment('turretDark', cylY(.036, .050, .10, 12), x, top + .045, z);
     P.addEquipment('turretDark', cylY(.017, .017, .075, 8), x, top + .13, z);
-    P.addEquipment('turretDark', cylY(.0045, .010, h, 6), x, top + .16 + h / 2, z);
+    P.addEquipment('turretDark', antennaPart(cylY(.0045, .010, h, 6)), x, top + .16 + h / 2, z);
   }
 }
 

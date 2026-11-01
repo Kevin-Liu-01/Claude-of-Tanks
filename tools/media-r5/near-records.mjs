@@ -4,13 +4,12 @@
 // a fight clear of the buildings before any lens is flown.
 //   node tools/media-r5/near-records.mjs <map> <x> <z> [r=25]
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { insideRecord, worldModel } from './world-model.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 const [map, xs, zs, rs = '25'] = process.argv.slice(2);
 const x = Number(xs), z = Number(zs), r = Number(rs);
-const model = worldModel(JSON.parse(readFileSync(join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`), 'utf8')));
+const model = worldModel(JSON.parse(readFileSync(surveyPath(map), 'utf8')));
 const found = [];
 model.query(x - r, z - r, x + r, z + r, found);
 const rows = found.map((rec) => {

@@ -982,6 +982,7 @@
  "roofFittingsExcluded": {
   "procedural": [
    "antenna:barakRearWhips",
+   "antennaSpans:hullDark",
    "auxiliaryWeapon:browningDerivedMachineGunBody",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",

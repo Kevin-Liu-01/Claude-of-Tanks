@@ -2185,11 +2185,11 @@ function* buildType10Native2026Steps(
       w2.position.set(1.276, 0.572, -2.10);                                      // over the R aft module's end (at -2.145 it stood 60 mm off it: owner 2026-10-19 sweep)
       P.turretG.add(w2);
     }
-    P.add('turretDetail', box(0.0396, 0.869, 0.0396), -1.4388, 0.9405, -2.0174);  // LEFT whip MAST BASE — solid run seated THROUGH the rack shoulder
+    P.add('turretDetail', antennaPart(box(0.0396, 0.869, 0.0396)), -1.4388, 0.9405, -2.0174);  // LEFT whip MAST BASE — solid run seated THROUGH the rack shoulder
     P.add('turretDetail', box(0.0275, 0.0275, 0.462), -1.4388, 1.1671, -2.1927, -0.86, 0, 0); // antenna STAY off the mast raked aft-down (under the datum); its head meets the mast (24 mm short of it before: owner 2026-10-19 sweep)
     P.add('turretDetail', box(0.0495, 0.0495, 0.286), 1.243, 0.6078, -2.6334 + bustleRackSeatShift); // forward rail stub off the rack's front post (§B2)
     P.add('turretDetail', box(0.264, 0.0495, 0.0495), 1.364, 0.6078, -2.5124 + bustleRackSeatShift); // mast seat arm on the stub
-    P.add('turretDetail', box(0.0396, 0.726, 0.0396), 1.4388, 0.9955, -2.5124 + bustleRackSeatShift); // RIGHT STOWED ANTENNA MAST seated on the arm (PHYSICAL-SEAT gate)
+    P.add('turretDetail', antennaPart(box(0.0396, 0.726, 0.0396)), 1.4388, 0.9955, -2.5124 + bustleRackSeatShift); // RIGHT STOWED ANTENNA MAST seated on the arm (PHYSICAL-SEAT gate)
     P.add('turretDark', box(0.0352, 0.066, 0.0352), 1.4388, 1.3915, -2.5124 + bustleRackSeatShift); // its cap joint
     // crosswind sensor on the bustle crown (print roof dip zone)
     // 2026-10-19 (owner float sweep): the sensor stood 0.14 m over the falling bustle crown with its plate and stub

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles } from './selftest-tiers.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
@@ -87,7 +88,7 @@ assert.deepEqual(selftestPlan(['a'], {
     scanBy: ['src/presentation/gone.ts'], broadOnly: false },
 ], 'named files, named directories and listings select; the fallback alone only explains');
 
-function fixture({ failAt, errorAt, acquireError } = {}) {
+function fixture({ failAt, errorAt, acquireError, starvedAt } = {}) {
   const events = [], errors = [];
   let held = false, refreshes = 0;
   const lock = {
@@ -107,7 +108,7 @@ function fixture({ failAt, errorAt, acquireError } = {}) {
       assert.equal(held, file !== 'browser', 'actual browser child owns its own lease');
       events.push(file);
       if (file === 'slow') await new Promise((resolve) => setTimeout(resolve, 25));
-      return { status: file === failAt ? 7 : 0, error: file === errorAt ? new Error('spawn failed') : undefined };
+      return { status: file === failAt ? 7 : file === starvedAt ? SELFTEST_STARVED_EXIT : 0, error: file === errorAt ? new Error('spawn failed') : undefined };
     },
   };
   return { options, events, errors, get held() { return held; }, get refreshes() { return refreshes; } };
@@ -260,6 +261,17 @@ assert.equal(selftestFailFast({}), false); assert.equal(selftestFailFast({ COT_S
   records.length = 0;
   assert.equal(await runSelftestSuite('cached-fail', ['b'], { ...failedCached.options, cache }), 7);
   assert.deepEqual(records, [], 'a failure is never recorded as a pass');
+}
+{
+  // (267) STARVED (tools/selftest-verdict.mjs): the machine withheld what the receipt judges. Neither a failure (the suite
+  // passes, nothing is logged as FAIL) nor a pass the cache keeps (the next run executes it again); it is logged apart.
+  const starved = fixture({ starvedAt: 'b' });
+  const records = [];
+  const cache = { lookup: (file) => ({ skip: false, key: `k-${file}`, inputs: 1 }), recordPass: (file, key) => records.push([file, key]) };
+  assert.equal(await runSelftestSuite('starved', ['a', 'b', 'browser'], { ...starved.options, cache }), 0, 'a STARVED receipt does not fail the suite');
+  assert.deepEqual(starved.errors, [], 'nor is it logged as a failure');
+  assert.ok(starved.events.includes('[selftests] STARVED b'), 'it is logged as STARVED');
+  assert.deepEqual(records, [['a', 'k-a'], ['browser', 'k-browser']], 'and never recorded as a pass');
 }
 const spawnFailed = fixture({ errorAt: 'a' });
 await assert.rejects(runSelftestSuite('spawn-error', ['a'], spawnFailed.options), /spawn failed/);
