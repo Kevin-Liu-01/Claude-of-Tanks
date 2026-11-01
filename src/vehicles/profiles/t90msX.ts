@@ -281,14 +281,33 @@ function aps(P:TankBuilderPort,shtora:boolean):void{
   // 2026-10-30 (t90-family-266): the T-90MS obr. 2011 (t90.ts) keeps the housings blank; the T-90MS carries no Shtora
   if(shtora)addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
 }
+/** A vertical round head of radius `r`, `h` tall about y 0, whose front (+z) is cut back to a flat pocket `2a` wide
+ * with its floor `floor` ahead of the axis. */
+function pocketedHead(r:number,a:number,floor:number,h:number):THREE.BufferGeometry{
+  const edge=Math.sqrt(r*r-a*a),from=Math.atan2(edge,-a),to=Math.atan2(edge,a)+Math.PI*2;
+  const plan=new THREE.Shape();
+  plan.moveTo(-a,edge);
+  plan.absarc(0,0,r,from,to,false);
+  plan.lineTo(a,floor);plan.lineTo(-a,floor);plan.lineTo(-a,edge);
+  // the plan in x, z (shape y is +z) extruded down, then centred on y 0
+  return new THREE.ExtrudeGeometry(plan,{depth:h,bevelEnabled:false,curveSegments:14}).rotateX(Math.PI/2).translate(0,h/2,0);
+}
 function remoteWeapon(P:TankBuilderPort):void{
   const station=beginAuxiliaryStation(P,{name:'t90msRemoteGun',caliberMm:12.7,
     yaw:[-.5514-YAW[0],2.28619-YAW[1],-1.12601-YAW[2]],
     pivot:[-.582-YAW[0],2.86869-YAW[1],-1.52451-YAW[2]],
     muzzle:[-.582-YAW[0],2.91609-YAW[1],-.71541-YAW[2]]});
-  for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.34454,.21715,.0747],[2.52154,.21715,.2803]])
+  // 267 (the accessory-contact receipt: the sight window "touches nothing within 15 mm", 2.3 cm inside the drum): the
+  // source station (t90ms_x_source.glb, rays round its yaw axis) is a 434 mm drum to y 2.423 under a 388 mm head to
+  // 2.662 whose front carries a pocket 210 mm wide, its floor 124 mm ahead of the axis, under a lip at 156 mm, the dark
+  // sight window standing in it. The build ran the drum to the head's top, which buried the window 63 mm deep. The
+  // drum stops at the head, the head and lip carry the pocket, and the window stands on its floor (5 mm into it) with
+  // its face where it was.
+  for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.36515,.21715,.1157]])
     top(P,'turretDetail',cylY(r,h,32),-.5514,y,-1.12601);
-  top(P,'turretDark',box(.1872,.206,.012),-.55185,2.53519,-.9786);
+  top(P,'turretDetail',pocketedHead(.194,.105,.124,.222),-.5514,2.534,-1.12601);
+  top(P,'turretDetail',pocketedHead(.194,.105,.156,.017),-.5514,2.6535,-1.12601);
+  top(P,'turretDark',box(.1872,.206,.0344),-.55185,2.53519,-.98981);
   for(const x of [-.740,-.353]){
     const wall=sectionSolid([[-1.725, {low:2.80,high:2.90}],[-1.55,{low:2.38,high:2.99469}],[-1.33,{low:2.55,high:2.985}]].map(([z,r])=>{
       const a=r as {low:number;high:number};return{z:z as number,ring:[[x-.014,a.low],[x+.014,a.low],[x+.014,a.high],[x-.014,a.high]] as Array<readonly[number,number]>};
