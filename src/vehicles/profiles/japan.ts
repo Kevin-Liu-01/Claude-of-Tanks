@@ -10,7 +10,7 @@ import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_FOOT, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
+import { TKX_MODULE_FOOT, TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_FOOT, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
 import { buildType90B } from './type90B.ts';
@@ -352,6 +352,8 @@ function addTkxTrialArmour(P: JapaneseBuilderPort & TankBuilderPort): void {
       P.add('turretDetail', eye, ...tl(xc, y1 + 0.035, z));
     }
   }
+  const F = TKX_MODULE_FOOT;                                                   // the left module's foot under the nose
+  P.add('turretDetail', box(F.xo - F.xinL, F.y1 - F.y0, F.z1 - F.z0), ...tl(-(F.xinL + F.xo) / 2, (F.y0 + F.y1) / 2, (F.z0 + F.z1) / 2));
   // the glacis trial plate (the glacis falls 1.370 -> 1.3065 from z 2.50 to 3.31), its bolt rows along both long edges
   const G = TKX_GLACIS_PLATE, rake = Math.atan2(1.370 - 1.3065, 3.3137 - 2.50), zc = (G.z0 + G.z1) / 2;
   const yc = tkxGlacisY(zc) + G.t / 2 + 0.001;

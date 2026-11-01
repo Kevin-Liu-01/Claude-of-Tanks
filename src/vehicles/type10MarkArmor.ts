@@ -25,10 +25,15 @@ export const tkxGlacisY = (z: number): number => 1.339 - (z - 2.898) * ((1.370 -
 export const TYPE10B_WEDGE_ROWS = Object.freeze([
   [1.62, 0.49, 1.42, 1.58, 2.15], [2.30, 0.62, 1.18, 1.61, 2.11], [2.86, 0.84, 0.94, 1.68, 1.98],
 ] as const);
-/** The wedges' foot under the Type 10's nose (267, the shrink-only roof-pocket ledger): each wedge's inner face walled the
- *  air under the nose's sloped underside beside the mantlet, a slot that read as a see-through pocket. The upgrade's block
- *  fills it flush with the nose's tip over |x| xin..xo (the right one from the coaxial recess's wall), y y0..y1, z z0..z1. */
-export const TYPE10B_WEDGE_FOOT = Object.freeze({ xinL: 0.20, xinR: 0.50, xo: 0.70, y0: 1.62, y1: 1.80, z0: 2.22, z1: 2.49 });
+/** The foot under the Type 10's nose (267, the shrink-only roof-pocket ledger): a mark's add-on beside the mantlet walled
+ *  the air under the nose's sloped underside, a slot that read as a see-through pocket. The foot fills it flush with the
+ *  nose's tip from the mantlet's side (|x| xinL; on the right the coaxial recess's wall, xinR) to the add-on (xo), y y0..y1,
+ *  z z0..z1. */
+const NOSE_FOOT = { xinL: 0.20, xinR: 0.50, y0: 1.62, y1: 1.80, z0: 2.22, z1: 2.49 } as const;
+/** The 10B's wedges' foot, both sides. */
+export const TYPE10B_WEDGE_FOOT = Object.freeze({ ...NOSE_FOOT, xo: 0.70 });
+/** The TK-X's trial module's foot, the left only: on the right the recess's wall meets the module's inner face (0.49). */
+export const TKX_MODULE_FOOT = Object.freeze({ ...NOSE_FOOT, xo: 0.52 });
 
 const CHEVRON = { kind: 'spaced', keMm: 220, ceMm: 750 } as const;
 const WEDGE = { kind: 'spaced', keMm: 279, ceMm: 953 } as const;
@@ -43,7 +48,8 @@ function facing(name: string, mm: number, v0: Vec3Tuple, v1: Vec3Tuple, v3: Vec3
   return n[0] * out[0] + n[1] * out[1] + n[2] * out[2] >= 0 ? plate(name, mm, v0, v1, v3, o) : plate(name, mm, v0, v3, v1, o);
 }
 
-/** The TK-X's trial cheek modules (turret frame: front, top, outer and inner faces a side) and its glacis plate (hull). */
+/** The TK-X's trial cheek modules (turret frame: front, top, outer and inner faces a side, the left one's foot) and its
+ *  glacis plate (hull). */
 export function tkxTrialPlates(): { turret: ArmorPlate[]; hull: ArmorPlate[] } {
   const { xi, xo, z0, z1, y0, y1 } = TKX_TRIAL_MODULE, turret: ArmorPlate[] = [];
   for (const s of [-1, 1]) {
@@ -54,6 +60,8 @@ export function tkxTrialPlates(): { turret: ArmorPlate[]; hull: ArmorPlate[] } {
       facing(`tkx_trial_module_${tag}`, 90, p(xo, y0, z0), p(xo, y0, z1), p(xo, y1, z0), [s, 0, 0], CHEVRON),
       facing(`tkx_trial_module_${tag}`, 90, p(xi, y0, z0), p(xi, y0, z1), p(xi, y1, z0), [-s, 0, 0], CHEVRON));
   }
+  const F = TKX_MODULE_FOOT, foot = (x: number, y: number, z: number): Vec3Tuple => local([-x, y, z]);
+  turret.push(facing('tkx_trial_module_L', 90, foot(F.xinL, F.y0, F.z1), foot(F.xo, F.y0, F.z1), foot(F.xinL, F.y1, F.z1), [0, 0, 1], CHEVRON));
   const { halfW, z0: g0, z1: g1, t } = TKX_GLACIS_PLATE;
   const hull = [facing('tkx_glacis_trial_plate', 40, [-halfW, tkxGlacisY(g0) + t, g0], [halfW, tkxGlacisY(g0) + t, g0],
     [-halfW, tkxGlacisY(g1) + t, g1], [0, 1, 0], { kind: 'spaced' })];
