@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.46654370007755,
+ "rawGeoMin": 92.47059828461741,
  "rawComponents": {
-  "wholeCurves": 92.46654370007755,
+  "wholeCurves": 92.47059828461741,
   "dims": 95.30158730158728,
   "floaters": 100
  },
@@ -1069,5 +1069,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t80u_x_source.glb",
+  "sha256": "dcb16e5bc83c37e380a252c08462948a6ff9098738464ea4bee9e45ccb02df81"
+ }
 }

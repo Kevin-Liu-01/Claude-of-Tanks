@@ -1077,7 +1077,8 @@
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
-   "pintleMG:browningDerivedMachineGunMount"
+   "pintleMG:browningDerivedMachineGunMount",
+   "weaponStationMount:t72buCommanderNsvtRiser"
   ],
   "reference": []
  },
@@ -1153,5 +1154,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/t72bu.glb",
+  "sha256": "2957f8938e4e5c897ba680deb2ca986b270bbddb215fcddd52e495b3e4b9608b"
+ }
 }
