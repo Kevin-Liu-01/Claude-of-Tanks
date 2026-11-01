@@ -211,6 +211,17 @@ for (const name of ['icons', 'centering']) {
     assert.ok(!recordFiles.includes(`docs/geometry-gate/${other}`), `gate: docs/geometry-gate/${other} is not a record`);
   }
 }
+// 267: the sim-floor ledger keys anatomy per id (TABLES simFloors, canonical) and through its frame, never by its bytes:
+// the 266 Brazil merge reordered its rows and re-ran anatomy on every id for identical content.
+{
+  const anatomy = state.steps.anatomy;
+  assert.ok(anatomy.rowTables.includes('simFloors') && !anatomy.toolFiles.includes('docs/geometry-gate/sim-floors.json')
+    && !anatomy.foreignTables.includes('docs/geometry-gate/sim-floors.json'), 'anatomy: reads the sim floors per id, not the file whole');
+  assert.equal(Object.keys(state.rows.simFloors ?? {}).length, state.ids.length, 'every id has a sim-floor row');
+  for (const [name, entry] of Object.entries(state.steps)) {
+    if (name !== 'anatomy') assert.ok(!entry.toolFiles.includes('docs/geometry-gate/sim-floors.json'), `${name}: never keys the sim floors`);
+  }
+}
 assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
 assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),
   'control: only the scheduleOnly declaration takes the table out of the key');

@@ -36,7 +36,11 @@ const roster = {
 };
 
 // named: each `inputField` table's id -> the file its row names (steps.mjs TABLES), keyed by tools/changed-only/fingerprint.mjs
-const rows = {}, fileIds = {}, named = {}, errors = [];
+// frames: each `canonical` table's fields beside its rows, as canonical JSON (keys sorted at every level): what decides
+// every id. Its rows are hashed as canonical JSON too; every other table's row keeps its insertion order.
+const rows = {}, fileIds = {}, named = {}, frames = {}, errors = [];
+const canonical = (value) => (Array.isArray(value) ? value.map(canonical)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value);
 const rosterIds = [...new Set([...roster.saved, ...roster.all])];
 for (const [name, table] of Object.entries(TABLES)) {
   rows[name] = {};
@@ -46,7 +50,15 @@ for (const [name, table] of Object.entries(TABLES)) {
       try {
         if (table.kind === 'module') data = (await load(file))[table.exportName];
         else if (table.kind === 'jsonRow') data = { [basename(file, '.json')]: JSON.parse(readFileSync(join(root, file), 'utf8')) };
-        else data = table.path.reduce((value, key) => value?.[key], JSON.parse(readFileSync(join(root, file), 'utf8')));
+        else {
+          const whole = JSON.parse(readFileSync(join(root, file), 'utf8'));
+          data = table.path.reduce((value, key) => value?.[key], whole);
+          if (table.canonical) {
+            const frame = structuredClone(whole);
+            delete table.path.slice(0, -1).reduce((value, key) => value?.[key], frame)?.[table.path.at(-1)];
+            frames[name] = h16(`${frames[name] ?? ''}${file}:${JSON.stringify(canonical(frame))}\n`);
+          }
+        }
       } catch (error) {
         if (error.code === 'ENOENT' || error.code === 'ERR_MODULE_NOT_FOUND') continue;
         errors.push(`${name} ${file}: ${error.message}`);
@@ -57,7 +69,7 @@ for (const [name, table] of Object.entries(TABLES)) {
       fileIds[file] = [...new Set([...(fileIds[file] ?? []), ...ids])];
       for (const id of ids) {
         if (Object.hasOwn(rows[name], id)) errors.push(`${name}: ${id} appears in more than one file`);
-        rows[name][id] = h16(JSON.stringify(data[id]) ?? 'undefined');
+        rows[name][id] = h16(JSON.stringify(table.canonical ? canonical(data[id]) : data[id]) ?? 'undefined');
         if (table.inputField && data[id]?.[table.inputField]) (named[name] ??= {})[id] = data[id][table.inputField];
       }
     }
@@ -154,4 +166,4 @@ if (WORLD_TABLES && MAP_REGISTRY_FILE && existsSync(join(root, MAP_REGISTRY_FILE
   }
 }
 
-process.stdout.write(JSON.stringify({ roster, rows, fileIds, named, chains, errors, world, root: relative(root, root) }));
+process.stdout.write(JSON.stringify({ roster, rows, fileIds, named, frames, chains, errors, world, root: relative(root, root) }));

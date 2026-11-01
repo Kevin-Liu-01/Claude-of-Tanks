@@ -38,6 +38,9 @@ export const GROUP_LOADERS_FILE = 'src/vehicles/fleetFactory.ts';
  * `inputField` (267): the field of an id's row naming a file the step writing the table reads for that id, as
  * { path, sha256 } (path as a page fetches it, under public/): keyed per id by tools/changed-only/fingerprint.mjs, from
  * the file when it is in this checkout, else from the recorded sha256.
+ * `canonical` (267): a ledger whose order means nothing, read by a step per id (its rowReads) instead of whole: each row
+ * is hashed as canonical JSON (keys sorted), and its frame (the fields beside the rows: a tolerance) is keyed whole into
+ * each reading step's tool key, canonically too, so re-serializing or reordering the file moves no key.
  */
 export const TABLES = Object.freeze({
   auxiliaryInventory: { kind: 'module', files: ['src/vehicles/auxiliaryInventory.generated.ts'], exportName: 'AUXILIARY_INVENTORY' },
@@ -57,6 +60,8 @@ export const TABLES = Object.freeze({
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'jsonRow', files: ['public/icons/tank-assets/tanks/*.json'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
+  // 267: the sim-floor ledger the anatomy step checks each id against (tools/anatomy-floor-ledger.mjs); keyed per id
+  simFloors: { kind: 'json', files: ['docs/geometry-gate/sim-floors.json'], path: ['rows'], canonical: true },
   // 267: the geometry gate's records, one per measured id beside the other steps' ledgers; each names its oracle
   geometryGate: { kind: 'jsonRow', files: ['docs/geometry-gate/*.json'], idsOnly: true, inputField: 'oracle' },
   // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
@@ -209,6 +214,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // the floor ledger decides whether a regen passes (a drift exits 3 after the rows are written), never what the
     // generated anatomy rows hold; its accepts carry their own reason trail
     verdictOnly: ['docs/geometry-gate/sim-floors.json'],
+    // 267: keyed per id by the anatomy step's rowReads (TABLES simFloors, canonical) and its frame, never by its bytes
+    // (the 266 Brazil merge reordered rows and re-ran anatomy on all 276 ids for identical content)
+    covered: ['docs/geometry-gate/sim-floors.json'],
     note: 'reads the anatomy step\'s own outputs (src/vehicles/combatAnatomyCalibrations.ts and its combatAnatomyGroups files, as data) and the sim-floor ledger (verdict only); writes the ledger\'s rows for new and retired tanks',
   },
   'tools/fleet-geometry-ledger.mjs': {
@@ -484,7 +492,8 @@ export const STEPS = Object.freeze([
     flags: [], full: [], scoped: (list) => [ids(list)],
     // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
     // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
-    rowReads: [SPEC_COMBAT],
+    // 267: each id's sim-floor row (its drift check), and the ledger's tolerance through the table's frame
+    rowReads: [SPEC_COMBAT, 'simFloors'],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],

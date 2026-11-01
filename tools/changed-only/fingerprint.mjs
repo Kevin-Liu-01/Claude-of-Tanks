@@ -337,9 +337,18 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const readFiles = readGlobs.length
       ? expandGlobs(root, readGlobs, { exclude: [...(step.excludeReads ?? [])] }).map(abs).filter((file) => !excluded.has(file))
       : [];
+    // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
+    // rows when the balance pass is out of the core (the combat row only where rowReads names it)
+    const rowTables = [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
+      ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT),
+      // the per-id files its own output rows name (266, `inputField`)
+      ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort();
     const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...toolFiles, ...foreignTables]), { exclude: ownFiles }),
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`),
-      ...envRows(environmentOf(toolExecuted)));
+      ...envRows(environmentOf(toolExecuted)),
+      // (267) a canonical table's frame, its fields beside the rows, decides every id it reads (TABLES `canonical`):
+      // keyed whole as canonical content, so a reorder of rows or fields moves no key
+      ...rowTables.filter((table) => data.frames?.[table]).map((table) => `frame:${table}:${data.frames[table]}`));
     // Recorded (frame-checked) outputs: the tables' files and files written whole. `writes` files are bound to the rows
     // by the tool itself (the icon manifest holds each image's sha256), so they are not tracked file by file.
     const outputFiles = [...recorded].filter((file) => !aggregateFiles.has(file) || step.files.includes(rel(file)));
@@ -348,12 +357,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
       foreignTables: [...foreignTables].map(rel).sort(),
-      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
-      // rows when the balance pass is out of the core (the combat row only where rowReads names it)
-      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
-        ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT),
-        // the per-id files its own output rows name (266, `inputField`)
-        ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort(),
+      rowTables,
     };
   }
 

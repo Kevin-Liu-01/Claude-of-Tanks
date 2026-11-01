@@ -1250,7 +1250,11 @@ by hand, and never take one side of it whole as the merge result.
   its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
   (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`): the file's bytes
   where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
-  did, and different bytes at the path re-run that id alone. A route in the
+  did, and different bytes at the path re-run that id alone. A ledger a step only checks each id against
+  (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
+  as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
+  order moves no key, one row moves its id alone and the tolerance moves every id (267: the 266 Brazil merge reordered
+  its rows and re-ran anatomy on all 276 ids for identical content). A route in the
   app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
   `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
   the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in

@@ -53,6 +53,7 @@ put(B, 'src/vehicles/tankFactoryCore.ts', [
   "import { FILLS } from './fills.generated.ts';",
   'export const build = (id, base) => ({ id, base: base * KIT, guns: CONTROLS[id]?.guns ?? 0, fill: FILLS[id]?.fill ?? 0 });', ''].join('\n'));
 put(B, 'src/vehicles/tankFactory.ts', "import './fleetRegistration.ts';\nimport { P } from './profiledProcedurals.ts';\nimport { build } from './tankFactoryCore.ts';\nexport const createTank = (id) => build(id, P[id]);\n");
+put(B, 'docs/floors.json', '{"schema":1,"tolerance":1,"rows":{"a1":{"f":1,"g":0},"a2":{"f":2,"g":0},"b1":{"f":3,"g":0},"b2":{"f":4,"g":0}}}\n');
 put(B, 'src/vehicles/fleetFactory.ts', "import './fleetRegistration.ts';\nconst GROUP_LOADERS = Object.freeze({\n  alpha: () => import('./profiles/alpha.ts'),\n  beta: () => import('./profiles/beta.ts'),\n});\nexport { GROUP_LOADERS };\n");
 
 // Generators: each rebuilds the listed ids (all without --ids), keeps every other row, writes rows in roster order, and
@@ -143,6 +144,8 @@ writeFileSync(tableModule, [
   "  controls: { kind: 'module', files: ['src/vehicles/controls.generated.ts'], exportName: 'CONTROLS' },",
   "  fills: { kind: 'module', files: ['src/vehicles/fills.generated.ts'], exportName: 'FILLS' },",
   "  seats: { kind: 'module', files: ['src/vehicles/seats.generated.ts'], exportName: 'SEATS' },",
+  // a ledger seats checks each id against, read per id: its order means nothing (267, TABLES `canonical`)
+  "  floors: { kind: 'json', files: ['docs/floors.json'], path: ['rows'], canonical: true },",
   '};',
   'export const CONFIG = { tables: TABLES, aggregates: [],',
   "  fleetEntries: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/specs.ts', 'src/vehicles/fleetRegistration.ts'],",
@@ -162,7 +165,7 @@ writeFileSync(tableModule, [
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
-  "export const STEPS = [step('controls'), step('fills'), { ...step('seats'), skipped: '--skipped' }];",
+  "export const STEPS = [step('controls'), step('fills'), { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
   "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
 // A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
@@ -265,6 +268,21 @@ const mapRun = chain(C);
 assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['collision[beta]'], 'a map config edit runs that map only');
 chain(F, '--all', '--steps=collision');
 assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
+
+// 5b (267). A canonical ledger (TABLES `canonical`, read per id): re-serializing it with rows and keys in another order
+// runs nothing; one id's changed row runs that id alone; its frame (a tolerance) runs every id.
+const floors = read(C, 'docs/floors.json');
+const flip = (value) => (value && typeof value === 'object' && !Array.isArray(value)
+  ? Object.fromEntries(Object.keys(value).reverse().map((key) => [key, flip(value[key])])) : value);
+put(C, 'docs/floors.json', `${JSON.stringify(flip(JSON.parse(floors)), null, 2)}\n`);
+assert.deepEqual(chain(C).runs, [], 'the same ledger in another order runs nothing');
+put(C, 'docs/floors.json', floors.replace('"a2":{"f":2,', '"a2":{"f":2.5,'));
+assert.deepEqual(chain(C).runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[a2]'], 'one id\'s changed row runs that id alone');
+put(C, 'docs/floors.json', floors.replace('"tolerance":1', '"tolerance":2'));
+assert.deepEqual(ranIds(chain(C), 'seats'), ['*'], 'the frame (its tolerance) runs the step on the whole fleet');
+put(C, 'docs/floors.json', floors);
+chain(C);
+assert.deepEqual(snapshot(C), snapshot(F), 'restored, the tree returns to the full regen bytes');
 
 /** A chain run expected to refuse: exit 2 and no generator; returns its output. */
 function refused(root, ...flags) {
