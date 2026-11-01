@@ -154,12 +154,13 @@ leo2a7dk.visual = {
   // own lace, the fleck painter's dense dapple at a few centimetres (the Latvia photograph at full size, Commons
   // 3840 px: mid-green panels under a fine dark lace, about a sixth of them brown-tan), the dark tone twice for the
   // lace's share; the cover's cut-leaf texture takes its colours from the first three (ghillieSuit coverPaletteOf), so
-  // the cover and the paint between its panels are one fabric; p3 (the p2 sheets: a coarse, contrasty flecktarn of
-  // brown and near-black blobs; the photograph's lace finer, its ground greener): the dapples at half the size, a softer
-  // dark seven times over and the tan once, so the lace carries about two fifths of the ground (camoprev q5)
-  scheme: 'fleck', base: '#58643f', weather: '#535e3c',
-  patches: ['#323b27', '#5e5640', '#3b452c', '#323b27', '#323b27', '#323b27', '#3b452c', '#323b27', '#323b27', '#323b27', '#3b452c'],
-  marking: 'number', number: '11', camoScale: 2.2,
+  // the cover and the paint between its panels are one fabric; p4 (the p2 and p3 sheets: a coarse, contrasty flecktarn
+  // of brown and near-black blobs; the photograph's ground greener, its lace dark and fine): the catalog painter's
+  // flecktarn takes the base and three patches at its finest density (catalogCamoPainter: half the ground the first
+  // patch, a fifth the second, under a fifth the third): a mid-green ground, a slightly darker green for its fields, an
+  // olive-tan accent close to them and the dark lace last
+  scheme: 'fleck', base: '#59653f', weather: '#545f3c', patches: ['#4c5736', '#5a5a40', '#2f3726'],
+  marking: 'number', number: '11', camoScale: 1.0,
 };
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
