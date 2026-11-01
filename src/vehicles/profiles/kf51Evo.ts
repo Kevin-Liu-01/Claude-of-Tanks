@@ -256,8 +256,8 @@ function addEngineDeckAndStern(P: TankBuilderPort): void {
     P.add('hullDetail', box(0.52, 0.05, 0.10), s * 1.30, SPONSON_FLOOR - 0.015, HULL_REAR - 0.01);
     P.hangMudguard(`kf51evo-rear-flap-${s < 0 ? 'right' : 'left'}`, 'hullRubber', KIT.box(0.50, 0.50, 0.022),
       s * 1.30, 1.03, HULL_REAR - 0.045);
-    KIT.liftEye(P, 'hullDetail', s * 1.52, deckY(-3.55) + 0.012, -3.55);
-    KIT.liftEye(P, 'hullDetail', s * 1.52, deckY(2.45) + 0.012, 2.45);
+    // the forward lifting eye on the mudguard box's top, beyond the shroud's and the barrel's reach at full depression
+    KIT.liftEye(P, 'hullDetail', s * 1.60, guardTop(3.66) + 0.012, 3.66);
   }
   P.add('hullDetail', box(0.30, 0.012, 0.86), 0, deckY(-3.18) + 0.006, -3.18);
   // the louvred grille across the upper rear plate under the deck's lip: dark backing, nine slats, its frame and centre
@@ -654,15 +654,23 @@ function addRoofEquipment(P: TankBuilderPort): void {
 
 // ----------------------------------------------------------------------------------------------------------------- gun
 /** The EVO shroud's section (gun-local x, y) at scale k: a hexagon standing on its points (narrow flats at the top and
- * the foot), the shoulders' short vertical sides between its long upper and lower facets (photos 4, 5). */
+ * the foot `foot` below the bore), the shoulders' short vertical sides between its long upper and lower facets
+ * (photos 4, 5). */
 const SHROUD_HW = 0.30;
-const shroudRing = (k: number, ky = k): Array<readonly [number, number]> => [
-  [0.035 * k, -0.32 * ky], [SHROUD_HW * k, -0.08 * ky], [SHROUD_HW * k, 0.17 * ky], [0.035 * k, 0.40 * ky],
-  [-0.035 * k, 0.40 * ky], [-SHROUD_HW * k, 0.17 * ky], [-SHROUD_HW * k, -0.08 * ky], [-0.035 * k, -0.32 * ky],
+const shroudRing = (k: number, ky = k, foot = 0.32 * ky): Array<readonly [number, number]> => [
+  [0.035 * k, -foot], [SHROUD_HW * k, -0.08 * ky], [SHROUD_HW * k, 0.17 * ky], [0.035 * k, 0.40 * ky],
+  [-0.035 * k, 0.40 * ky], [-SHROUD_HW * k, 0.17 * ky], [-SHROUD_HW * k, -0.08 * ky], [-0.035 * k, -foot],
 ];
-/** The shroud starts clear of the slot face at full elevation; its pointed foot keeps the full 9 degrees over the sides. */
+/** The shroud starts clear of the slot face at full elevation. Its foot rises forward (photos 1, 6: the lower edge
+ * climbs toward the front) from 0.32 m under the bore at the slot to 0.255 m at the knee and 0.21 m at the front: at
+ * full depression it keeps the 2.6 cm gun-sweep clearance over the 1.615 m deck, the band and the driver's hatch at
+ * every yaw to 124 degrees and holds the live build's floors behind them (tools/gun-depression-sweep.mjs; the deck
+ * allows 0.278 m at the knee over the sides and ~0.257 m at 1.25 m over the rear quarters). */
 const SHROUD_Z0 = 0.40;
-const SHROUD_KNEE = 1.10;      // the parallel rear half ends here; the front half tapers
+const SHROUD_KNEE = 1.10;      // the top runs level to here; the front half tapers
+const SHROUD_FOOT = 0.32;
+const SHROUD_KNEE_FOOT = 0.255;
+const SHROUD_FRONT_FOOT = 0.21;
 const SHROUD_Z1 = 2.04;        // the open front's foot; its top rakes forward to SHROUD_Z1 + SHROUD_RAKE
 const SHROUD_RAKE = 0.20;
 const SHROUD_TAPER = 0.76;
@@ -673,10 +681,10 @@ const RH130_SLEEVE_R = 0.120;
 const RH130_MUZZLE_R = 0.136;
 
 /** The raked front's plane: z at height y, the top reaching SHROUD_RAKE past the foot. */
-const rakeZ = (y: number): number => SHROUD_Z1 + SHROUD_RAKE * (y + 0.32 * SHROUD_TAPER_Y) / (0.72 * SHROUD_TAPER_Y);
-/** A ring of the shroud's section laid on the raked front's plane (dz off it). */
-function rakedFront(k: number, ky: number, dz = 0): P3[] {
-  return shroudRing(k, ky).map(([x, y]) => [x, y, rakeZ(y) + dz] as P3);
+const rakeZ = (y: number): number => SHROUD_Z1 + SHROUD_RAKE * (y + SHROUD_FRONT_FOOT) / (0.40 * SHROUD_TAPER_Y + SHROUD_FRONT_FOOT);
+/** A ring of the shroud's section (scale k, ky, its foot `foot` under the bore) laid on the raked front's plane (dz off it). */
+function rakedFront(k: number, ky: number, foot: number, dz = 0): P3[] {
+  return shroudRing(k, ky, foot).map(([x, y]) => [x, y, rakeZ(y) + dz] as P3);
 }
 
 function addGun(P: TankBuilderPort): void {
@@ -686,14 +694,15 @@ function addGun(P: TankBuilderPort): void {
   // the trunnion roll: rotation-invariant about the pivot, it fills the slot behind the shroud at every elevation
   P.addGunExtraDark(cylX(0.27, 0.80, P.q ? 20 : 12), 0, 0, 0);
   // the shroud: parallel from the slot to the knee, then tapering to the raked open front
-  const ringAt = (z: number, k = 1, ky = k): P3[] => shroudRing(k, ky).map(([x, y]) => [x, y, z] as P3);
-  P.addGunExtra(hullOf([...ringAt(SHROUD_Z0), ...ringAt(SHROUD_KNEE)]));
-  P.addGunExtra(hullOf([...ringAt(SHROUD_KNEE - 0.01), ...rakedFront(SHROUD_TAPER, SHROUD_TAPER_Y)]));
+  const ringAt = (z: number, k = 1, ky = k, foot?: number): P3[] => shroudRing(k, ky, foot).map(([x, y]) => [x, y, z] as P3);
+  P.addGunExtra(hullOf([...ringAt(SHROUD_Z0, 1, 1, SHROUD_FOOT), ...ringAt(SHROUD_KNEE, 1, 1, SHROUD_KNEE_FOOT)]));
+  P.addGunExtra(hullOf([...ringAt(SHROUD_KNEE - 0.01, 1, 1, SHROUD_KNEE_FOOT), ...rakedFront(SHROUD_TAPER, SHROUD_TAPER_Y, SHROUD_FRONT_FOOT)]));
   // the joint band at the knee, 5 mm proud
-  P.addGunExtraDark(hullOf([...ringAt(SHROUD_KNEE - 0.025, 1.015, 1.012), ...ringAt(SHROUD_KNEE + 0.025, 1.012, 1.010)]));
+  P.addGunExtraDark(hullOf([...ringAt(SHROUD_KNEE - 0.025, 1.015, 1.012, SHROUD_KNEE_FOOT * 1.012),
+    ...ringAt(SHROUD_KNEE + 0.025, 1.012, 1.010, SHROUD_KNEE_FOOT * 1.010)]));
   // the open front frame: a dark hexagon inset on the raked face, 4 mm proud
-  P.addGunExtraDark(hullOf([...rakedFront(SHROUD_TAPER * 0.80, SHROUD_TAPER_Y * 0.80, -0.012),
-    ...rakedFront(SHROUD_TAPER * 0.80, SHROUD_TAPER_Y * 0.80, 0.004)]));
+  const frame = (dz: number): P3[] => rakedFront(SHROUD_TAPER * 0.80, SHROUD_TAPER_Y * 0.80, SHROUD_FRONT_FOOT * 0.80, dz);
+  P.addGunExtraDark(hullOf([...frame(-0.012), ...frame(0.004)]));
   // three vent slots on each upper facet, laid in the facet's plane 3 mm proud (photos 1, 6)
   const facetBand = (s: Side, z: number, out: number): P3[] => {
     const t = (z - SHROUD_KNEE) / (SHROUD_Z1 - SHROUD_KNEE);
@@ -728,8 +737,10 @@ function addGun(P: TankBuilderPort): void {
     gunPivotLocal: Object.freeze([0, 0.38, 0.90]),
     barrelLengthM: GUN_LEN,
     shroud: Object.freeze({ sides: 6, z0: SHROUD_Z0, kneeZ: SHROUD_KNEE, footZ: SHROUD_Z1, topZ: SHROUD_Z1 + SHROUD_RAKE,
-      rearWidthM: 2 * SHROUD_HW, rearHeightM: 0.72, frontWidthM: 2 * SHROUD_HW * SHROUD_TAPER,
-      frontHeightM: 0.72 * SHROUD_TAPER_Y, footBelowBoreM: 0.32, ventSlotsPerSide: 3, openFrontFrame: true, rakedFront: true,
+      rearWidthM: 2 * SHROUD_HW, rearHeightM: 0.40 + SHROUD_FOOT, frontWidthM: 2 * SHROUD_HW * SHROUD_TAPER,
+      frontHeightM: 0.40 * SHROUD_TAPER_Y + SHROUD_FRONT_FOOT, footBelowBoreM: SHROUD_FOOT, kneeFootBelowBoreM: SHROUD_KNEE_FOOT,
+      frontFootBelowBoreM: SHROUD_FRONT_FOOT,
+      ventSlotsPerSide: 3, openFrontFrame: true, rakedFront: true,
       jointBand: true, gunOwned: true }),
     trunnionRollRadiusM: 0.27,
     sleeveRadiusM: RH130_SLEEVE_R,

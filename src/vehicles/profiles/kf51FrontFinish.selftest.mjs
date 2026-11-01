@@ -1,9 +1,11 @@
 // kf51FrontFinish.selftest.mjs — the KF51 EVO's 267 build (profiles/kf51Evo.ts) as the real Panther KF51 EVO: the rig
 // on the measured combat frame, the vertical gun-slot face between the arrowhead cheeks (the face kf51Specs.ts lays the
 // mantlet on and kf51EvoGunFace.selftest.mjs reads), the Rh-130 (the turret's planned retrofit; the game keeps the
-// 130 mm) in the EVO's gun-owned six-sided shroud, clear of that face over the whole elevation range, the right-cheek gunner's sight and the SEOSS behind it, the one roof weapon station, the KF51
-// forged road-wheel faces on one suspension-bound gear course, and the two-row StrikeShield flank inside the 1.809 m
-// authored width guard.
+// 130 mm) in the EVO's gun-owned six-sided shroud (267 round 2: tapering to a raked open front), clear of that face over
+// the whole elevation range, the right-cheek gunner's sight and the SEOSS behind it, the one roof weapon station, the
+// KF51 forged road-wheel faces on one suspension-bound gear course, and the Eurosatory vehicle's Leopard 2A4 flank (the
+// upper band's panels, the hanging rail, the thin skirt panels aft and the heavy blocks forward) as the two-row reactive
+// jacket inside the 1.809 m authored width guard.
 // Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -58,9 +60,11 @@ try {
 
   // the EVO shroud: gun-owned, six-sided, and clear of the slot face at full elevation and full depression
   const gun = gunRig.userData.kf51EvoGunReceipt;
-  assert.equal(gun?.profile, 'kf51-evo-rh130-shroud-r1', 'KF51 EVO publishes its Rh-130 shroud receipt');
+  assert.equal(gun?.profile, 'kf51-evo-rh130-shroud-r2', 'KF51 EVO publishes its Rh-130 shroud receipt');
   assert.equal(TANK_SPECS.kf51_evo.gun.caliberMm, 130, 'KF51 EVO keeps the game\'s 130 mm');
   assert.equal(gun.shroud.sides, 6, 'KF51 EVO shroud is the six-sided EVO sleeve');
+  assert.ok(gun.shroud.frontWidthM < gun.shroud.rearWidthM * 0.85 && gun.shroud.frontHeightM < gun.shroud.rearHeightM * 0.85
+    && gun.shroud.topZ > gun.shroud.footZ, 'KF51 EVO shroud tapers forward to a raked front (a shroud, not a box)');
   assert.equal(gun.barrelLengthM, 5.475, 'KF51 EVO tube keeps the measured 5.475 m from its pivot');
   assert.ok(gun.muzzleSectionRadiusM > gun.sleeveRadiusM, 'KF51 EVO Rh-130 steps out to its muzzle section');
   const tube = gunRig.getObjectByName('rig_recoil')?.children.find((node) => node.isMesh && node.name === 'gun');
@@ -116,10 +120,16 @@ try {
   assert.equal(wheelLayers.length, 6, 'KF51 EVO draws its six forged-face layers');
   assert.equal(hullRig.userData.runningGearUnitCount, 1, 'KF51 EVO has one running-gear course');
 
-  // the StrikeShield flank: six two-row modules a side, registered as external armor, inside the width guard
+  // the Leopard 2A4 flank: the upper band's panels and the skirt's six panels a side (three thin aft, three heavy
+  // forward) under the hanging rail, the two reactive rows, registered as external armor, inside the width guard
   const flank = hullRig.userData.kf51EvoFlankReceipt;
-  assert.equal(flank?.modulesPerSide, 6, 'KF51 EVO flank carries six StrikeShield modules a side');
-  assert.equal(flank.protectionRows, 2, 'KF51 EVO flank modules have two protection rows');
+  assert.equal(flank?.profile, 'kf51-evo-leopard2-skirt-r2', 'KF51 EVO publishes its Leopard 2 flank receipt');
+  assert.equal(flank.modulesPerSide, 6, 'KF51 EVO skirt carries six panels a side');
+  assert.equal(flank.lowerRow.heavyBlocksPerSide, 3, 'KF51 EVO skirt has the three heavy fore blocks');
+  assert.equal(flank.protectionRows, 2, 'KF51 EVO flank jacket has two protection rows');
+  assert.ok(flank.lowerRow.heavyOuterFaceX > flank.lowerRow.thinOuterFaceX
+    && flank.rail.y > flank.lowerRow.hemY && flank.rail.y < flank.upperRow.footY + 0.05,
+    'KF51 EVO heavy blocks stand proud of the thin panels and the rail runs along the step line');
   const eraFinish = tank.root.userData.eraFinishReceipt;
   assert.ok(eraFinish?.visualSectors.includes(flank.visualEraSector), 'KF51 EVO flank is visual external armor');
   assert.equal(eraFinish?.semanticBucket, 'externalArmor', 'KF51 EVO flank ERA stays distinct from the hull envelope');
@@ -131,10 +141,13 @@ try {
   const hullHit = (origin, direction) => new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, 10)
     .intersectObject(hullRig, true).find((hit) => hit.object.isMesh);
   assert.equal(hullHit([0, 4, 2.9], [0, -1, 0])?.object.name, 'hull', 'KF51 EVO upper glacis is the camouflaged hull');
-  const flankHit = hullHit([4, 1.05, -0.5], [-1, 0, 0]);
-  assert.ok(flankHit?.point.x > 1.79 && flankHit.object.material?.map, 'KF51 EVO flank modules are camouflaged armor at x 1.80');
+  const blockHit = hullHit([4, 1.10, 2.20], [-1, 0, 0]);
+  assert.ok(blockHit?.point.x > 1.79 && blockHit.object.material?.map, 'KF51 EVO heavy skirt blocks are camouflaged armor at x 1.80');
+  const panelHit = hullHit([4, 1.05, -0.5], [-1, 0, 0]);
+  assert.ok(panelHit?.point.x > 1.74 && panelHit.point.x < 1.79 && panelHit.object.material?.map,
+    'KF51 EVO thin skirt panels are camouflaged armor at x 1.75');
 } finally {
   tank.dispose();
 }
 
-console.log('kf51FrontFinish.selftest: KF51 EVO rig, gun slot and cheeks, Rh-130 and shroud clearance, sights, roof station, forged wheels and StrikeShield flank pass');
+console.log('kf51FrontFinish.selftest: KF51 EVO rig, gun slot and cheeks, Rh-130 and tapered shroud clearance, sights, roof station, forged wheels and Leopard 2 flank pass');

@@ -802,22 +802,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
   },
   // KF51-U (267: refitted to the KF51 Panther hull and the Concept Uncrewed Turret, profiles/leopard.ts
-  // buildKF51OwnerExact): the turret roof netted inside its raked edge round the weapon station's tower (its sight window,
-  // launcher stack, electronics box and the station in its collar), the sensor boxes on the front corners, the ROSY pairs
+  // buildKF51OwnerExact): the turret roof netted inside its raked edge round the weapon station in its roof collar (the
+  // panoramic sight's head, the launcher stack, the electronics box), the sensor boxes on the front corners, the ROSY pairs
   // and MUSS heads on the rear corners, the lift eyes and whip bases; the fore-roof over the gun housing open; drapes on
   // the slab walls above the chine, clear of the smoke dischargers on the lower face and the cheek sensors on the nose
-  // facets; nothing over the magazine doors in the back. The engine deck netted round its grille fields, the front deck
-  // and fender boxes to the bow (the crew hatches and vision blocks opened by the builder); a drape on each skirt panel,
+  // facets; nothing over the magazine doors in the back. The engine deck netted round its grille fields, the raised crew
+  // deck and fender boxes to the bow (the hatch blocks and periscopes opened by the builder); a drape on each skirt panel,
   // the breaks between them and the fender boxes' sides bare, every hem above the running gear.
   kf51_u: {
     id: 'kf51_u', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.98, hemFloorM: 0.98,
     turret: {
       // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85)
-      top: [laid({ x0: -1.38, x1: 1.38, z0: -2.90, z1: 1.56, nx: 35, nz: 56, y: 0.62, garnishRiseM: 0.14, seed: 11,
-        outline: [[-0.50, 1.56], [0.50, 1.56], [1.22, 0.96], [1.38, 0.45], [1.38, -2.28], [0.86, -2.90], [-0.86, -2.90],
-          [-1.38, -2.28], [-1.38, 0.45], [-1.22, 0.96]],
-        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(-0.68, 0.68, -2.42, -1.40), ...pair(0.78, 1.22, 0.80, 1.20),
+      top: [laid({ x0: -1.38, x1: 1.38, z0: -2.72, z1: 1.56, nx: 35, nz: 54, y: 0.62, garnishRiseM: 0.14, seed: 11,
+        outline: [[-0.50, 1.56], [0.50, 1.56], [1.22, 0.96], [1.38, 0.45], [1.38, -2.22], [0.84, -2.72], [-0.84, -2.72],
+          [-1.38, -2.22], [-1.38, 0.45], [-1.22, 0.96]],
+        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(-0.70, 0.68, -2.40, -1.18), ...pair(0.78, 1.22, 0.80, 1.20),
           ...pair(0.80, 1.34, -2.98, -2.18), ...pair(0.60, 0.80, -2.72, -2.52), ...pair(1.10, 1.30, -0.40, -0.20)] })],
       side: [...flanks(0.05, 0.80, 0.50, 0.30, 1.60, 17), ...flanks(-1.05, -0.05, 0.50, 0.30, 1.60, 21),
         ...flanks(-2.25, -1.15, 0.50, 0.30, 1.58, 19)],

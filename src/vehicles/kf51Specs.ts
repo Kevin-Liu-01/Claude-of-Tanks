@@ -43,8 +43,9 @@ const KF51_SPEC = {
         shell('130mm HE-ABM', 'HE', 130, 50, 50, 660, 1000),
       ],
     },
-    // 267 (profiles/kf51Evo.ts): the build's hull runs -3.868 (the rear tow eyes) to 3.845 (the front mudguard lips),
-    // its Rh-130 muzzle to 7.005, the skirts to +-1.808; heightM covers the SEOSS head (the whips rise past it)
+    // 267 (profiles/kf51Evo.ts): the build's hull runs -3.868 (the rear tow eyes) to 3.845 (the front mudguard boxes'
+    // faces; the headlight guards reach 3.915), its Rh-130 muzzle to 7.005, the skirt blocks to +-1.807; heightM covers
+    // the SEOSS head (the whips and the drone on its mast rise past it)
     dims: { hullLengthM: 7.70, overallLengthM: 10.87, widthM: 3.60, heightM: 3.00 },
     armor: communityArmor({
       // The procedural turret rig moves forward 180 mm as one assembly. The
@@ -81,8 +82,11 @@ if (KF51_MANTLET >= 0) {
 // The procedural KF51 now carries a reactive two-row flank jacket. Keep its
 // combat zones in the boot-light spec registry so the visible cassettes are
 // hittable, consumable and depleted by the same ERA path as the KF51B set.
-// 267: the jacket is six two-row StrikeShield modules a side (profiles/kf51Evo.ts), x 1.705-1.80, y 0.88-1.59,
-// z -3.12-2.98 (it was x 1.78-1.80, y 0.88-1.47, z -2.72-2.44); the zones are fitted to the cassettes at regeneration.
+// 267 (round 2): the jacket is the Eurosatory vehicle's Leopard 2A4 flank (profiles/kf51Evo.ts addLeopard2Flank): the
+// upper row is the band's two panels over the sponson wall with their lids and grille, the lower row the skirt under the
+// hanging rail, three thin panels aft and three heavy blocks forward; together x 1.68-1.807, y 0.88-1.76 (the band
+// follows the deck), z -3.66-2.99 (round 1: six StrikeShield modules, x 1.705-1.80, z -3.12-2.98; the live build:
+// x 1.78-1.80, y 0.88-1.47, z -2.72-2.44); the zones are fitted to the panels at regeneration.
 KF51_SPEC.armor.hullPlates.push(
   reactivePlate('kf51_skirt_era_R', 'right'),
   reactivePlate('kf51_skirt_era_L', 'left'),

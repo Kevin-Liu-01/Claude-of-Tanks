@@ -209,6 +209,11 @@ try {
     'KF51B skirt hem rides over the road-wheel tops, as on the 2A6');
   assert.ok(skirtArmor?.armorBottomY < runningGear.topY,
     'KF51B skirt still covers the return run');
+  // 267 round 4 (research/kf51_u photo 2): the KF51-U's own skirt panels hang below that hem over the road wheels' tops
+  assert.equal(skirtArmor?.segmentedPanels?.perSide, 6, 'KF-51U reads the KF51 segmented skirt panels');
+  assert.ok(skirtArmor.segmentedPanels.hemY < runningGear.wheelY + runningGear.wheelR
+    && skirtArmor.segmentedPanels.hemY > runningGear.wheelY + 0.1,
+  'KF-51U skirt panels cover the upper part of the road wheels, clear of their hubs');
   assert.equal(trackSeat?.sharedHull, 'kf51X.ts buildKF51XHull',
     'KF-51U draws the KF51 Panther\'s hull, skirts and running gear (one construction, kf51X.ts)');
   for (let i = 1; i < runningGear.loopPoints.length; i++) {
@@ -226,9 +231,10 @@ try {
     'KF51B tower uses the same size standard as the Leopard 2A6M');
   assert.equal(rws?.userData.weaponRole, 'roof-primary',
     'KF51B open-yoke station replaces the retired split-shield roof gun');
-  // 267 round 3: the station stands in the collar of the CUT's flat-faced armoured tower (photo 6), its slew ring hidden
-  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [0, 0.91, -1.92]);
-  assert.equal(attachmentSeat?.roofRwsOnPedestalTower, true, 'KF-51U weapon station stands on the rear-centre tower');
+  // 267 round 5: the station sits down on the roof at the rear centre in a flush armoured collar (photos 1, 2, 6), its
+  // slew ring hidden
+  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [0, 0.56, -1.92]);
+  assert.equal(attachmentSeat?.roofRwsInRoofCollar, true, 'KF-51U weapon station stands at the rear centre in its collar');
   assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
   // 267 (the real Eurosatory 2024 KF51-U): the three crew ride in the hull under the KF51 front armour's flat crew roof,
   // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
