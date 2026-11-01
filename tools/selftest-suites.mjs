@@ -751,6 +751,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/longweiFamily.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
+    // 267: the per-tank ERA seating pins (id-scoped tanks suite) and the whole-fleet ERA agreement sweep (manual fleet
+    // suite); eraSeating.selftest.mjs keeps the rule's negative controls and held list in the default tier
+    'src/vehicles/profiles/eraSeatingPins.selftest.mjs',
+    'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
     'src/vehicles/profiles/type10GunSeat.selftest.mjs',
     'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',

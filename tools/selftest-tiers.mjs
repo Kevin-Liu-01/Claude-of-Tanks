@@ -173,6 +173,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
+    'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/interiorFillSurface.selftest.mjs',
@@ -355,7 +357,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/easternSourceContact.selftest.mjs',
-    'src/vehicles/profiles/eraSeating.selftest.mjs',
+    'src/vehicles/profiles/eraSeatingPins.selftest.mjs',
     'src/vehicles/profiles/europeGunOwnership.selftest.mjs',
     'src/vehicles/profiles/europeSourceDetail.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
