@@ -14,7 +14,7 @@ import { laneControl, selectLane } from './test-lane.mjs';
 import { recommend, reportLines, tierList } from './test-recommend.mjs';
 import { balanceChanges, builderMoves, builderPaths, changedMaps, changedTankIds, createReadIndex, HIT_RESOLUTION_ENTRIES, hitResolutionMoves,
   laneReadOf, withoutScheduleReads } from './test-diff.mjs';
-import { ENTRY_HTML, readsOnPurpose } from './test-recommend.mjs';
+import { ENTRY_HTML, readsOnPurpose, readsReceiptFile, RECEIPT_FILE } from './test-recommend.mjs';
 import { SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
 import { auditCounts, auditRows, documentText, simulateWall, summary } from './test-audit.mjs';
@@ -350,6 +350,27 @@ assert.ok(ENTRY_HTML.test('index.html') && ENTRY_HTML.test('404.html') && !ENTRY
 assert.equal(readsOnPurpose('index.html', "import { build } from 'vite';"), false, 'a receipt reaching index.html through vite does not read it on purpose');
 assert.equal(readsOnPurpose('index.html', "readFileSync('index.html', 'utf8')"), true, 'one that names the page does');
 assert.equal(readsOnPurpose('src/world/terrain.ts', ''), true, 'any other path counts as the closure says');
+
+// ---- receipt files: never product input; they count for a receipt that runs or reads them, not through a directory
+{
+  const root = '/repo', at = (path) => `${root}/${path}`;
+  // r/pass runs the fleet-pass support module; its closure also holds the profiles directory and the suite registry,
+  // which names every receipt (closureOf), neither of which it runs
+  const runs = { 'r/pass.selftest.mjs': [at('r/pass.selftest.mjs'), at('src/vehicles/fleetPass.test-support.mjs')] };
+  const sources = { 'r/lint.selftest.mjs': "readFileSync('src/vehicles/profiles/object695X.selftest.mjs')" };
+  const cache = { runSetOf: (file) => new Set(runs[file.slice(root.length + 1)] ?? []),
+    closureOf: () => { throw new Error('a closure names directories and registries: never the test'); },
+    observedOf: (file) => (file === 'r/census.selftest.mjs' ? { reads: new Set(['src/vehicles/profiles/object695X.selftest.mjs']), lists: new Set() } : null) };
+  const counts = readsReceiptFile(cache, root, (file) => sources[file] ?? ''), receipt = 'src/vehicles/profiles/object695X.selftest.mjs';
+  assert.ok(RECEIPT_FILE.test(receipt) && RECEIPT_FILE.test('src/vehicles/fleetPass.test-support.mjs') && !RECEIPT_FILE.test('src/vehicles/profiles/object695X.ts'));
+  assert.equal(counts('r/pass.selftest.mjs', receipt), false, 'a receipt listing the profiles directory does not read the receipts in it');
+  assert.equal(counts('r/pass.selftest.mjs', 'src/vehicles/profiles/object695X.ts'), true, 'its product files there still count');
+  assert.equal(counts('r/pass.selftest.mjs', 'src/vehicles/fleetPass.test-support.mjs'), true, 'a test-support file it imports counts');
+  assert.equal(counts('r/other.selftest.mjs', 'src/vehicles/fleetPass.test-support.mjs'), false, 'one it does not import, not');
+  assert.equal(counts(receipt, receipt), true, 'a receipt reads itself: the suite that runs it');
+  assert.equal(counts('r/lint.selftest.mjs', receipt), true, 'a receipt naming another counts (a lint over receipts)');
+  assert.equal(counts('r/census.selftest.mjs', receipt), true, 'so does one seen reading its bytes');
+}
 
 // ---- the id-scoped selection and the wall replay
 {
