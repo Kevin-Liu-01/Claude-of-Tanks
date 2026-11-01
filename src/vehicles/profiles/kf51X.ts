@@ -108,14 +108,14 @@ function pantherWhip(): THREE.BufferGeometry {
   g.computeVertexNormals();return g;
 }
 
-function pantherSkirts(P: TankBuilderPort, eraPrefix: string): void {
+function pantherSkirts(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     // Independently drawn cross sections preserve the Panther's two sloping
     // flank planes, raised rear hem and thin terminal fenders. Flat boxes
     // had put low, full-width armor into both wrap zones.
     // This is the removable outer skirt, not the independent closed inner
     // hull. Its attached fasteners leave with it; separate guards stay fixed.
-    P.destructibleCluster(`${eraPrefix}${side<0?'L':'R'}`,()=>{
+    P.destructibleCluster(`kf51_skirt_era_${side<0?'L':'R'}`,()=>{
     P.add('hull',markEraHitFaces(sectionSolid([
       // z, inner hem, outer width, outer hem, outer belt top, upper edge x/y, roof
       [-3.85,1.758,1.668,1.759,1.764,1.661,1.769,1.7711],
@@ -297,10 +297,9 @@ function pantherRoof(P: TankBuilderPort): void {
   }
 }
 
-/** The KF51 hull (267: shared with the KF51-U, profiles/leopard.ts buildKF51OwnerExact): the measured hull shell, the
- * Leopard 2 running gear at the Panther's track, the flank skirts (their ERA zones `${eraPrefix}L/R`), mudguards, flaps,
- * lamps and the engine deck's grille fields. The KF51 Panther adds its driver's plate and periscopes after it. */
-export function buildKF51XHull(P: TankBuilderPort, eraPrefix = 'kf51_skirt_era_'): void {
+export function buildKF51X(P: TankBuilderPort): void {
+  P.hullG.position.set(0,0,0);P.turretG.position.set(0,RING_Y,RING_Z);
+  P.gunG.position.set(0,GUN_Y-RING_Y,GUN_Z-RING_Z);
   P.add('hull',sectionSolid([
     // The raised aft lip is thin; the source lower tub rises from Z−2.973
     // through the rear bulkhead instead of carrying its floor to the stern.
@@ -328,18 +327,12 @@ export function buildKF51XHull(P: TankBuilderPort, eraPrefix = 'kf51_skirt_era_'
     sprocket:LEO2_GEAR.sprocket,idler:LEO2_GEAR.idler,
     topY:LEO2_GEAR.topY,botY:.097,paintedEnds:true,arms:true,coveredTop:true,
   },LEO2_GEAR.rollerZs,0,.90));
-  pantherSkirts(P, eraPrefix);
+  pantherSkirts(P);
   // (release 240: the grille fields 3.5 cm lower, under the bustle's 1.844 rear underside as it turns)
   for(const x of[-.53,.53]){
     P.addEquipment('hullDark',box(.88,.024,1.07),x,1.808,-2.86);
     for(let j=0;j<14;j++)P.addEquipment('hullDetail',box(.83,.014,.036),x,1.829,-3.34+j*.074);
   }
-}
-
-export function buildKF51X(P: TankBuilderPort): void {
-  P.hullG.position.set(0,0,0);P.turretG.position.set(0,RING_Y,RING_Z);
-  P.gunG.position.set(0,GUN_Y-RING_Y,GUN_Z-RING_Z);
-  buildKF51XHull(P);
   P.addEquipment('hullDetail',box(.54,.050,.68),-.57,1.505,2.12,.18);
   for(let i=0;i<3;i++){
     // 2026-10-19 (owner float sweep): the heads stood 5-22 mm over the raked plate's rear edge; each drops onto it.

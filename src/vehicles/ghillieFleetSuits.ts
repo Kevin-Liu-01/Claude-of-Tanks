@@ -801,37 +801,27 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.60, 0.20, 1.80, 0.42, 1.72, 41, (side) => (side < 0 ? [cut(-3.05, -1.15, 1.25, 1.90)] : [])),
     },
   },
-  // KF51-U (267: refitted to the KF51 Panther hull and the Concept Uncrewed Turret, profiles/leopard.ts
-  // buildKF51OwnerExact): the turret roof netted inside its raked edge round the weapon station in its roof collar (the
-  // panoramic sight's head, the launcher stack, the electronics box), the sensor boxes on the front corners, the ROSY pairs
-  // and MUSS heads on the rear corners, the lift eyes and whip bases; the fore-roof over the gun housing open; drapes on
-  // the slab walls above the chine, clear of the smoke dischargers on the lower face and the cheek sensors on the nose
-  // facets; nothing over the magazine doors in the back. The engine deck netted round its grille fields, the raised crew
-  // deck and fender boxes to the bow (the hatch blocks and periscopes opened by the builder); a drape on each skirt panel,
-  // the breaks between them and the fender boxes' sides bare, every hem above the running gear.
+  // KF51-U: the roof netted round the commander's and gunner's sights, the hatches and the roof station (the builder),
+  // drapes ahead of and behind the smoke banks, a rear drape; the engine deck netted short of the rear louvres, the
+  // front deck, four drapes a side.
   kf51_u: {
     id: 'kf51_u', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.98, hemFloorM: 0.98,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.1, hemFloorM: 0.68,
     turret: {
       // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85)
-      top: [laid({ x0: -1.38, x1: 1.38, z0: -2.72, z1: 1.56, nx: 35, nz: 54, y: 0.62, garnishRiseM: 0.14, seed: 11,
-        outline: [[-0.50, 1.56], [0.50, 1.56], [1.22, 0.96], [1.38, 0.45], [1.38, -2.22], [0.84, -2.72], [-0.84, -2.72],
-          [-1.38, -2.22], [-1.38, 0.45], [-1.22, 0.96]],
-        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(-0.70, 0.68, -2.40, -1.18), ...pair(0.78, 1.22, 0.80, 1.20),
-          ...pair(0.80, 1.34, -2.98, -2.18), ...pair(0.60, 0.80, -2.72, -2.52), ...pair(1.10, 1.30, -0.40, -0.20)] })],
-      side: [...flanks(0.05, 0.80, 0.50, 0.30, 1.60, 17), ...flanks(-1.05, -0.05, 0.50, 0.30, 1.60, 21),
-        ...flanks(-2.25, -1.15, 0.50, 0.30, 1.58, 19)],
+      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.48, 0.48, 0.86, 1.90)] })],
+      // the front drapes cut round the cheek sensors (turret z 0.88, both flanks)
+      side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
+        ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],
+      face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.62, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.75, x1: 1.75, z0: -3.80, z1: -1.48, nx: 35, nz: 38, y: 1.90, garnishRiseM: 0.14, seed: 31,
-          holes: [rect(-1.00, 1.00, -3.45, -2.28)] }),
-        laid({ x0: -1.80, x1: 1.80, z0: -1.48, z1: 3.75, nx: 36, nz: 52, y: 1.70, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.75, x1: 1.75, z0: -3.50, z1: 0.65, nx: 35, nz: 42, y: 2.00, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.75, x1: 1.75, z0: 0.65, z1: 3.50, nx: 35, nz: 29, y: 1.95, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      // one drape on each skirt panel, the breaks between them left bare
-      side: [...flanks(-3.26, -2.42, 1.70, 0.34, 1.81, 65), ...flanks(-2.24, -1.26, 1.48, 0.43, 1.85, 41),
-        ...flanks(-1.06, -0.08, 1.48, 0.36, 1.85, 47), ...flanks(0.12, 1.10, 1.48, 0.43, 1.85, 53),
-        ...flanks(1.30, 2.22, 1.46, 0.36, 1.85, 59)],
+      side: skirts(-3.40, 3.12, 1.48, 0.52, 1.92, 41),
     },
   },
   // SPz Wotan (267, refitted to the rebuilt Puma-family hull and RCT30 turret; owner-local metres of the 90 % build): the

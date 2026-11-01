@@ -27,10 +27,8 @@ const TARGETS = Object.freeze({
     // tower is its only roof gun
     soleRoofWeapon: true,
   }),
-  // 267: the KF51-U's station sits down on its Concept Uncrewed Turret's roof at the rear centre in a flush armoured
-  // collar (Eurosatory 2024)
   kf51_u: Object.freeze({
-    variant: 'kf51b-panther', mount: [0, 0.56, -1.92],
+    variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
     sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
     minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
   }),

@@ -99,8 +99,8 @@ const KF51B_SPEC = {
   ...KF51_SPEC,
   id: 'kf51_u', name: 'KF51-U', variantOf: 'kf51_u',
   // 267: its own dims (the spread carried the EVO's): hull and width as before; overall from the installed muzzle
-  // (7.4865) to the KF51 hull's stern (-3.85, profiles/kf51X.ts buildKF51XHull), as built
-  dims: { hullLengthM: 7.70, overallLengthM: 11.34, widthM: 3.60, heightM: 3.00 },
+  // (7.4865) to the stern (-4.011), as built
+  dims: { hullLengthM: 7.70, overallLengthM: 11.50, widthM: 3.60, heightM: 3.00 },
   // §5.299 fleet-integration truth-up (kf51_u row ONLY — kf51_evo's shared armor
   // object is untouched, this is a fresh communityArmor instance). The
   // rebuilt Panther is installed at 1.05x, so these are the final rendered
