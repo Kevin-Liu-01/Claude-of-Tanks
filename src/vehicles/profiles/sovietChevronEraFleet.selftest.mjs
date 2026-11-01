@@ -22,15 +22,22 @@ for (const [id, donorId] of Object.entries(REBUILT)) {
   assert.deepEqual(sectors, eraSectors(donorId), `${id}: carries exactly its donor study's reactive sectors`);
 }
 
+// 2026-10-30 (lane t90-family-266, 50854bcefb; the owner: "take inspirration annd update from the later t90s we added
+// that have far more accurate models"): the earlier T-90 marks build from their source-X twins (t90XTwins.selftest.mjs)
+// and carry the twins' measured Kontakt-5 / Relikt construction, not this shared two-row carrier. They leave the carrier
+// cases and are held to their twin's reactive sectors (the twins' zones: t90XEraBindings.selftest.mjs).
+const T90_TWINS = Object.freeze({ t90_1992: 't90', t90a_2004: 't90a', t90a_2006: 't90a_vladimir', t90a_burlak_proto: 't90a',
+  t90m_proryv: 't90m' });
+for (const [id, twinId] of Object.entries(T90_TWINS)) {
+  const sectors = eraSectors(id);
+  assert.ok(sectors.includes('turret_era_L') && sectors.includes('turret_era_R'), `${id}: keeps live turret reactive sectors`);
+  assert.deepEqual(sectors, eraSectors(twinId), `${id}: carries exactly its source-X twin ${twinId}'s reactive sectors`);
+}
+
 const cases = Object.freeze({
   t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
-  t90a_2004: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.24 }),
-  t90a_burlak_proto: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
-  t90a_2006: Object.freeze({ receiptKey: 't90aVladimirChevronEraReceipt', forwardM: 0.12 }),
-  t90_1992: Object.freeze({ receiptKey: 't90ChevronEraReceipt', forwardM: 0.27 }),
-  t90m_proryv: Object.freeze({ receiptKey: 't90MProryvChevronEraReceipt', forwardM: 0 }),
 });
 
 for (const [id, expected] of Object.entries(cases)) {

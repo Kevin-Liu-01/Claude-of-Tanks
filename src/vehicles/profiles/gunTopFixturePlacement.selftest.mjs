@@ -12,11 +12,6 @@ const cases = Object.freeze([
     bodyZ: 5.02, faceZ: 5.21, supportRadiusM: 0.112,
   }),
   Object.freeze({
-    id: 'm60a3', owner: 'recoilG', bodyBucket: 'gunDark', faceBucket: 'gunDark',
-    bodySize: [0.16, 0.12, 0.26], faceSize: [0.10, 0.07, 0.018],
-    bodyZ: 3.56, faceZ: 3.70, supportRadiusM: 0.096,
-  }),
-  Object.freeze({
     id: 'mbt70', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: 'gunMountDark',
     bodySize: [0.18, 0.14, 0.28], faceSize: [0.10, 0.065, 0.025],
     bodyZ: 3.38, faceZ: 3.525, supportRadiusM: 0.128,
@@ -108,6 +103,18 @@ for (const fixture of cases) {
   assert.ok(receipt.supportEmbedM >= 0.008 && receipt.supportEmbedM <= 0.012,
     `${fixture.id}: clamp overlap is deliberate and tightly bounded`);
 
+  tank.dispose();
+}
+
+// The M60A3 rebuilt on the owner's model (23cd21c3de, 2026-10-28: its sleeved tube tops out at the sleeve's radius, no
+// top housing) carries no muzzle-reference fixture: no seating receipt, and every part riding the recoil is on the bore.
+{
+  const tank = createTank('m60a3', null, { proceduralOnly: true, geometryReceipt: true, materialMode: 'geometry-only', quality: 'low' });
+  assert.equal(tank.root.getObjectByName('rig_gun')?.userData.muzzleReferenceSeatReceipt, undefined,
+    'm60a3: the rebuilt tube carries no top-mounted muzzle fixture');
+  const recoil = (tank.root.userData.combatGeometryParts || []).filter((part) => part.parent === 'recoilG');
+  assert.ok(recoil.length > 0 && recoil.every((part) => near(centerOf(part)[0], 0) && near(centerOf(part)[1], 0)),
+    'm60a3: every part riding the recoil is centred on the bore (nothing hangs beside or above the tube)');
   tank.dispose();
 }
 
