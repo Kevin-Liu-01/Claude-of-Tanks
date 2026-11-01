@@ -3448,8 +3448,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && !(row.kit === 'tarp' && row.slot[0] === 'rearDeck'));
   // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
   // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
-  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
-  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
+  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census). 267: the Burlak
+  // prototype's eleven grenade tubes ride its rebuilt turret at the source's positions (t90.ts); the pair stood through
+  // its right cheek.
+  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m' || spec.id === 't90a_burlak_proto') {
+    return manifest.filter(row => row.kit !== 'smoke');
+  }
   // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
   // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
