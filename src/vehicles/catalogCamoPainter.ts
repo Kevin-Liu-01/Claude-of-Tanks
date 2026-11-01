@@ -410,7 +410,7 @@ function paintSubstrate<C extends MaterialCanvas>(
 }
 
 /** A fitted multispectral cover (release 267; the Danish Leopard 2A7 DK's Barracuda, the Latvia photograph at full
- * size): flat panels in brick rows with dark seams, about one in ten a brown-tan, under a fine, sparse, soft-edged
+ * size): flat panels in brick rows with dark seams, one a tile brown-tan, under a fine, sparse, soft-edged
  * dark-green lace (a quarter of the ground).
  * The base and the first patch are the panels' greens, the second the tan panels', the third the lace. Fourteen
  * panels a tile (two metres), the lace a few centimetres; periodic in both directions. */
@@ -424,9 +424,12 @@ function paintBarracuda<C extends MaterialCanvas>(
   const [green, greenB, tan, lace] = [visual.base, ...(visual.patches || [])].map(parse);
   const rows = 4, cols = [3, 4, 3, 4];
   const stagger = Array.from({ length: rows }, () => rng());
-  const tones = Array.from({ length: rows * 4 }, () => {
+  // exactly one brown-tan panel a tile (a chance per panel left some coats none, others a row of them)
+  const tanRow = Math.floor(rng() * rows), tanCol = Math.floor(rng() * cols[tanRow]);
+  const tones = Array.from({ length: rows * 4 }, (_, k) => {
     const pick = rng();
-    return { colour: pick < .10 ? tan ?? green : pick < .56 ? green : greenB ?? green, light: 1 + (rng() - .5) * .08 };
+    const isTan = Math.floor(k / 4) === tanRow && k % 4 === tanCol;
+    return { colour: isTan ? tan ?? green : pick < .5 ? green : greenB ?? green, light: 1 + (rng() - .5) * .08 };
   });
   const fine = noise(rng, 60), mid = noise(rng, 20), pigment = noise(rng, 5);
   const field = new Float32Array(n * n);
