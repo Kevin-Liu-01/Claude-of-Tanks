@@ -3919,8 +3919,11 @@ function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
     parts.add('detail', box(hx, hy, hz), 0, headY, 0);
     parts.add('detail', box(hx - 0.04, 0.024, hz - 0.04), 0, headY + hy / 2 + 0.012, 0);
   }
-  parts.add('dark', box(wx, wy, 0.02), 0, headY + 0.004, hz / 2 + 0.005);
-  parts.add('glass', box(wx - 0.03, wy - 0.024, 0.012), 0, headY + 0.004, hz / 2 + 0.017);
+  // a round head carries its window in a flat-faced housing proud of the drum, so the frame reads square-on
+  const faceZ = opts.roundHead ? hx / 2 + 0.02 : hz / 2;
+  if (opts.roundHead) parts.add('detail', box(wx + 0.06, wy + 0.06, 0.10), 0, headY + 0.004, faceZ - 0.05);
+  parts.add('dark', box(wx, wy, 0.02), 0, headY + 0.004, faceZ + 0.005);
+  parts.add('glass', box(wx - 0.03, wy - 0.024, 0.012), 0, headY + 0.004, faceZ + 0.017);
   return fitAssemble('roofSight', parts, opts);
 }
 

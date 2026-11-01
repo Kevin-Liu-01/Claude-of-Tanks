@@ -1685,17 +1685,29 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // 267 round 2 (Opus, critic3: "the tall HL-60 gunner's-sight box with armoured doors is missing as a distinct shape";
     // mg_7754): the HL-60 stands on the right cheek beside the mantlet's moving housing (outboard of its x 0.44), a tall
     // armoured box with two doors on its face, their hinges and the seam between them, and a chamfered lid.
+    // 267 round 3 (both critics, critic5: "a plain tall box with one slit: no sloped head, no pair of armoured doors, no
+    // flat-faced base block", M7754): a flat-faced base block on the cheek, the sight head on it with its top falling to
+    // the front, a hood round its recessed dark face with the blue window and the round aperture, and the two armoured
+    // doors standing open forward from its outer edges.
     P.add('turret', convexSlab(
-      [-0.50, 0.26, 1.72], [-0.94, 0.26, 1.72], [-0.94, 0.26, 1.24], [-0.50, 0.26, 1.24],
-      [-0.50, 0.84, 1.69], [-0.94, 0.84, 1.69], [-0.94, 0.86, 1.24], [-0.50, 0.86, 1.24]));
-    for (const dx of [-0.105, 0.105]) {
-      P.add('turret', box(0.19, 0.36, 0.014), -0.72 + dx, 0.58, 1.715 - (0.58 - 0.26) * 0.03 / 0.58, -0.05, 0, 0); // doors
-      P.add('turretDetail', box(0.03, 0.07, 0.03), -0.72 + dx * 2.02, 0.68, 1.712);   // upper hinge
-      P.add('turretDetail', box(0.03, 0.07, 0.03), -0.72 + dx * 2.02, 0.44, 1.718);   // lower hinge
+      [-0.47, 0.18, 1.76], [-0.97, 0.18, 1.76], [-0.97, 0.18, 1.24], [-0.47, 0.18, 1.24],
+      [-0.47, 0.56, 1.72], [-0.97, 0.56, 1.72], [-0.97, 0.56, 1.24], [-0.47, 0.56, 1.24]));
+    P.add('turret', convexSlab(
+      [-0.53, 0.55, 1.60], [-0.91, 0.55, 1.60], [-0.91, 0.55, 1.30], [-0.53, 0.55, 1.30],
+      [-0.53, 0.86, 1.60], [-0.91, 0.86, 1.60], [-0.91, 0.90, 1.30], [-0.53, 0.90, 1.30]));
+    for (const sx of [-1, 1]) P.add('turret', box(0.025, 0.31, 0.08), -0.72 + sx * 0.1775, 0.705, 1.64); // hood cheeks
+    P.add('turret', box(0.38, 0.025, 0.08), -0.72, 0.8475, 1.64);               // hood lip
+    P.add('turret', box(0.38, 0.03, 0.08), -0.72, 0.565, 1.64);                 // sill
+    P.add('turretDark', box(0.33, 0.27, 0.012), -0.72, 0.705, 1.606);           // the recessed sight face
+    P.add('turretGlass', box(0.10, 0.14, 0.012), -0.81, 0.71, 1.614);          // blue window
+    P.add('turretGlass', cylZ(0.072, 0.012, 20), -0.64, 0.71, 1.614);           // round aperture
+    P.add('turretDetail', torus(0.075, 0.009, 20, 6), -0.64, 0.71, 1.62, Math.PI / 2, 0, 0);
+    for (const sx of [-1, 1]) {
+      const hinge = -0.72 + sx * 0.19;
+      P.add('turret', box(0.022, 0.30, 0.19), hinge + sx * (0.013 + Math.sin(0.17) * 0.095), 0.705,
+        1.68 + Math.cos(0.17) * 0.095, 0, sx * 0.17, 0);                         // armoured door, open forward
+      for (const y of [0.60, 0.81]) P.add('turretDetail', box(0.035, 0.05, 0.035), hinge, y, 1.675);
     }
-    P.add('turretDark', box(0.012, 0.36, 0.02), -0.72, 0.58, 1.722);             // door seam
-    P.add('turretDetail', box(0.06, 0.03, 0.025), -0.72, 0.60, 1.730);          // latch
-    P.add('turret', box(0.46, 0.03, 0.50), -0.72, 0.86, 1.465);                  // lid
     // chin jaw under the bay (LOW, bottom 1.27w over z 1.45..1.66w — the dark
     // under-mantlet recess the real vehicle carries) + gun BOOT and ROOT
     // COLLAR on the print's own side shelves (2.132 / 2.077)
@@ -1718,6 +1730,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       [-0.21, 0.10, 2.19], [0.21, 0.10, 2.19], [0.17, 0.125, 2.97], [-0.17, 0.125, 2.97],
       [-0.21, 0.53, 2.19], [0.21, 0.53, 2.19], [0.17, 0.485, 2.97], [-0.17, 0.485, 2.97]), 0, 0, 0);
     for (const z of [2.40, 2.60]) gunHousing('turretDark', box(0.34, 0.012, 0.04), 0, 0.53 - (z - 2.19) * 0.045 / 0.78 + 0.002, z);
+    // 267 round 3 (Opus, critic5: "no coaxial machine-gun tube sticks out beside the mantlet", M7754): the coax barrel runs
+    // low along the casting's left wall on a bracket and stands 0.15 m out of its face
+    gunHousing('turret', box(0.05, 0.06, 0.14), 0.195, 0.16, 2.84);
+    gunHousing('turret', cylZ(0.036, 0.34, 10), 0.222, 0.16, 2.95);
+    gunHousing('turretDark', cylZ(0.022, 0.012, 8), 0.222, 0.16, 3.121);
     gunHousing('turret', box(0.52, 0.44, 0.028), 0, 0.26, 2.182);                // clamp frame: face z_w 2.096 owns plan +-0.29 at neutral
     // §5.329 item 3 (§B2): CANVAS BASE FOLD closing the brow->boot slot. The
     // 6 cm z-gap between the brow strip rear (z_w 2.025) and the boot mouth
@@ -1826,7 +1843,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // 0.6"): the tower is the kit's roofSight fitting (a roof fitting to the height gate, as on the AMX-40), a round
     // column from the low field to a round head with its big window, 0.23 m taller than the old lid.
     {
-      const hl70 = FITTINGS.roofSight({ mats: P.mats, colR: 0.17, colR2: 0.18, colH: 0.56, head: [0.37, 0.15, 0.37], window: [0.24, 0.10], roundHead: true });
+      const hl70 = FITTINGS.roofSight({ mats: P.mats, colR: 0.17, colR2: 0.18, colH: 0.56, head: [0.37, 0.19, 0.37], window: [0.26, 0.12], roundHead: true });
       hl70.position.set(0.55, 0.44, 1.00);
       P.turretG.add(hl70);
     }
@@ -2020,8 +2037,13 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       for (const sx of [-1, 1]) P.add('turretDetail', box(0.032, 0.032, 0.20), sx * 0.90, y2, -1.96);
     }
     for (const vx of [-0.86, -0.45, -0.16, 0.16, 0.55, 0.88]) P.add('turretDetail', box(0.028, 0.16, 0.028), vx, 0.52, -2.06);
-    P.add('turretDark', box(0.77, 0.14, 0.014), -0.505, 0.52, -2.075);
-    P.add('turretDark', box(0.72, 0.14, 0.014), 0.52, 0.52, -2.075);
+    // 267 round 3 (both critics, critic5: "a blank dark rectangle in the turret rear reads as an opening"): the rack's two
+    // rear panels are perforated plates in the turret's paint, as on the side racks
+    P.add('turretDetail', box(0.77, 0.14, 0.014), -0.505, 0.52, -2.075);
+    P.add('turretDetail', box(0.72, 0.14, 0.014), 0.52, 0.52, -2.075);
+    for (const [x0, x1] of [[-0.85, -0.16], [0.19, 0.85]]) for (const y of [0.49, 0.55]) {
+      for (let k = 0; k <= 9; k++) P.add('turretDark', new THREE.CircleGeometry(0.019, 8), x0 + (x1 - x0) * k / 9, y, -2.0835, 0, Math.PI, 0);
+    }
     P.add('turretCloth', box(0.70, 0.10, 0.16), -0.47, 0.50, -1.95);
     P.add('turretCloth', box(0.60, 0.09, 0.15), 0.50, 0.49, -1.94);
     // §B3.2: cargo STRAPS over the shelf rolls (2.5 mm proud, cage-interior)

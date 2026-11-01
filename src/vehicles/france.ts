@@ -16,7 +16,7 @@ import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
-import { CircleGeometry } from 'three';
+import { CircleGeometry, Vector3 } from 'three';
 import type { BufferGeometry } from 'three';
 
 type Vec3Tuple = [number, number, number];
@@ -263,14 +263,30 @@ function buildAMX40(P: FranceBuilderPort): void {
   for (const [z0, z1, y0, y1] of [[2.04, 2.48, 1.47, 1.43], [2.48, 2.72, 1.42, 1.42]]) P.add('hull', slab( // over the tub, under the glacis
     [-0.97, 1.00, z0], [-0.97, 1.00, z1], [-0.97, y1, z1], [-0.97, y0, z0],
     [0.97, 1.00, z0], [0.97, 1.00, z1], [0.97, y1, z1], [0.97, y0, z0]));
-  P.add('hull', convexSlab(                                                     // behind the sheets: the V's side facets
-    [-0.42, 0.45, 2.70], [0.42, 0.45, 2.70], [0.48, 0.62, 3.12], [-0.48, 0.62, 3.12],
-    [-0.90, 1.40, 2.70], [0.90, 1.40, 2.70], [0.90, 1.046, 3.42], [-0.90, 1.046, 3.42]));
+  // (in two halves at the centreline: one 1.2 m3 box would outweigh the hull courses that combat anatomy's primary
+  // envelope reads, and drop the measured hull roof off the engine deck's plateau)
+  for (const s of [-1, 1]) {
+    P.add('hull', convexSlab(                                                   // behind the sheets: the V's side facets
+      [s * 0.42, 0.45, 2.70], [0, 0.45, 2.70], [0, 0.62, 3.12], [s * 0.48, 0.62, 3.12],
+      [s * 0.90, 1.40, 2.70], [0, 1.40, 2.70], [0, 1.046, 3.42], [s * 0.90, 1.046, 3.42]));
+  }
   P.add('hull', convexSlab(                                                     // over the facets, up into the platform, chamfer and beak
     [-0.90, 1.40, 2.70], [-0.90, 1.30, 3.24], [-0.90, 1.20, 3.31], [-0.90, 1.046, 3.42],
     [0.90, 1.40, 2.70], [0.90, 1.30, 3.24], [0.90, 1.20, 3.31], [0.90, 1.046, 3.42]));
   for (const x of [-0.32, -0.24, -0.16, 0.16, 0.24, 0.32]) {
     P.add('hullDetail', cylZ(0.022, 0.03, 8), x, 0.678, 3.172, 0.603, 0, 0);  // bolt row across the knee's foot
+  }
+  // 267 round 3 (Opus, critic5: "the lower front hull is a flat rectangle", the knee in shadow against a lit tub face; Sonnet:
+  // "the lower nose corners lack the ribbed grilles", pic-1): the V's corners show dark ribbed guard fronts on the tub face,
+  // under the facets' line
+  for (const s of [-1, 1]) {
+    P.add('hullDark', convexSlab(
+      [s * 0.46, 0.46, 2.705], [s * 0.93, 0.46, 2.705], [s * 0.93, 1.30, 2.705], [s * 0.90, 1.30, 2.705],
+      [s * 0.46, 0.46, 2.745], [s * 0.93, 0.46, 2.745], [s * 0.93, 1.30, 2.745], [s * 0.90, 1.30, 2.745]));
+    for (const x of [0.56, 0.66, 0.76, 0.86]) {
+      const top = 0.46 + (x - 0.46) * 1.91 - 0.02;
+      P.add('hullDetail', box(0.025, top - 0.47, 0.03), s * x, (top + 0.47) / 2, 2.76);
+    }
   }
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
   // plan rear -3.380/-3.403) + undercut wedge (bellyCorners 0.44 -> 0.599
@@ -731,7 +747,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     // 267 round 3 (both critics, critic3: "the discharger stacks stand outboard of the turret silhouette on bars; on the
     // real turret they sit on the cheek faces, inside the outline"): each cluster moves forward on its cheek and turns
     // 0.70 rad off the cheek's normal toward the bow; its plate stands square to the tubes on a welded wedge whose back
-    // lies on the cheek face, so the cluster stays inside the 1.49 flank line, and the guard hoop is gone.
+    // lies on the cheek face, so the cluster stays inside the 1.49 flank line, and the outboard guard hoop is gone.
     const tubeLen = 0.22, tubePitch = -0.30, plateHalf = 0.135;
     for (const s of [-1, 1]) {
       const zc = 1.70, xo = flankOuterXAt(s, zc);
@@ -757,6 +773,23 @@ function buildAMX40(P: FranceBuilderPort): void {
           spacing: 0.115, base: false, seed: 5 + row + (s > 0 ? 3 : 0) });
         bank.position.set(fx + dx * reach, y + dy * reach, fz + dz * reach);
         P.turretG.add(bank);
+      }
+      // 267 round 3 (both critics, critic5: "the handrail loops round the dischargers are missing", pic-2): one tube
+      // rail from the flank roof behind the plate, forward past the outer tubes, down, in under the cluster and back
+      // into the cheek, so the cluster stands inside its rail frame (the round-2 hoop stood outboard on bars)
+      const dpx = Math.sin(yaw), dpz = Math.cos(yaw);
+      const rail: Vec3Tuple[] = [
+        [ofx - nx * 0.03, 0.60, ofz - nz * 0.03],
+        [ox + px * 0.06 + dpx * 0.10, 0.60, oz + pz * 0.06 + dpz * 0.10],
+        [ox + px * 0.06 + dpx * 0.10, 0.265, oz + pz * 0.06 + dpz * 0.10],
+        [ix + dpx * 0.10, 0.265, iz + dpz * 0.10],
+        [ifx - nx * 0.04, 0.265, ifz - nz * 0.04],
+      ];
+      for (let i = 0; i < rail.length - 1; i++) {
+        const [ax, ay, az] = rail[i], [cx, cy, cz] = rail[i + 1];
+        const len = Math.hypot(cx - ax, cy - ay, cz - az);
+        const seg = cylZ(0.017, len + 0.02, 10).lookAt(new Vector3(cx - ax, cy - ay, cz - az));
+        P.add('turretDetail', seg, (ax + cx) / 2, (ay + cy) / 2, (az + cz) / 2);
       }
     }
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
@@ -867,17 +900,26 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 round 2 (both critics, critic1: "the box shows two thin slits; the real box has a large round armoured door with a
   // hinge and handle, and a round port beside it"): the box stands 0.335 m tall (it grows upward only, so its lower edge
   // and the depression it allows are unchanged), the door is 0.25 m across with a heavy rim, and the port is larger.
+  // 267 round 3 (both critics, critic5: "a flat panel with two shallow arcs that read as goggles; the real box sticks out
+  // in front of the turret face with a raised round door and a hasp, and the round port beside it is on the mantlet
+  // face", pic-1): the box spans x -1.06..-0.52 and stands 8 cm proud of a mantlet step that carries the port on a
+  // raised collar; the door is a raised boss under its hinge straps, the hasp across it.
   P.addGunExtra(slab(
-    [-1.06, -0.115, 0.40], [-0.28, -0.115, 0.40], [-0.28, -0.115, 1.00], [-1.06, -0.115, 1.00],
-    [-1.06, 0.22, 0.40], [-0.28, 0.22, 0.40], [-0.28, 0.22, 0.985], [-1.06, 0.22, 0.985]));
-  P.addGunExtra(xform(cylZ(0.158, 0.016, 8), 0, 0, 0, 0, 0, Math.PI / 8), -0.70, 0.045, 1.006); // octagonal cover plate
-  P.addGunExtra(cylZ(0.125, 0.030, 22), -0.70, 0.045, 1.027);                  // round armoured door
-  P.addGunExtraDark(torus(0.125, 0.014, 22, 6), -0.70, 0.045, 1.030);           // door rim
-  P.addGunExtraDark(box(0.11, 0.026, 0.022), -0.70, 0.005, 1.048);              // latch bar
-  for (const sx of [-1, 1]) P.addGunExtra(box(0.020, 0.080, 0.022), -0.70 + sx * 0.04, 0.19, 1.022); // hinge lug
-  P.addGunExtra(box(0.10, 0.020, 0.022), -0.70, 0.225, 1.022);
-  P.addGunExtraDark(cylZ(0.088, 0.012, 20), -0.41, 0.03, 1.002);                // aperture port
-  P.addGunExtraDark(torus(0.092, 0.012, 20, 6), -0.41, 0.03, 1.005);
+    [-1.06, -0.115, 0.40], [-0.52, -0.115, 0.40], [-0.52, -0.115, 1.00], [-1.06, -0.115, 1.00],
+    [-1.06, 0.22, 0.40], [-0.52, 0.22, 0.40], [-0.52, 0.22, 0.985], [-1.06, 0.22, 0.985]));
+  P.addGunExtra(slab(                                                           // the mantlet step beside the box
+    [-0.52, -0.115, 0.40], [-0.28, -0.115, 0.40], [-0.28, -0.115, 0.92], [-0.52, -0.115, 0.92],
+    [-0.52, 0.20, 0.40], [-0.28, 0.20, 0.40], [-0.28, 0.20, 0.92], [-0.52, 0.20, 0.92]));
+  P.addGunExtra(xform(cylZ(0.158, 0.016, 8), 0, 0, 0, 0, 0, Math.PI / 8), -0.79, 0.045, 1.006); // octagonal cover plate
+  P.addGunExtra(cylZ(0.128, 0.065, 22), -0.79, 0.045, 1.045);                  // raised round armoured door (to z 1.078)
+  // (KIT's torus lies flat: the round-2 door rim and port ring, drawn unturned, stood out of the face as two arcs, the
+  // critics' "goggles"; this seam and the port collar face the bow)
+  P.addGunExtraDark(xform(torus(0.128, 0.008, 22, 6), 0, 0, 0, Math.PI / 2, 0, 0), -0.79, 0.045, 1.016); // its seam on the plate
+  P.addGunExtraDark(box(0.13, 0.03, 0.03), -0.79, 0.005, 1.088);                // hasp bar across the door
+  for (const sx of [-1, 1]) P.addGunExtra(box(0.024, 0.09, 0.06), -0.79 + sx * 0.045, 0.19, 1.045); // hinge straps
+  P.addGunExtra(box(0.12, 0.022, 0.03), -0.79, 0.225, 1.022);
+  P.addGunExtra(cylZ(0.105, 0.04, 20), -0.40, 0.03, 0.94);                     // the port's raised collar on the step
+  P.addGunExtraDark(cylZ(0.072, 0.012, 20), -0.40, 0.03, 0.962);               // the open port
   // 20mm F2 coax on the RIGHT (print Object_2: x +0.34..+0.44, r ~0.05,
   // to z_w 2.81) — the France-lane visible second barrel
   P.addGunExtra(box(0.14, 0.18, 0.30), 0.39, -0.02, 0.90);                      // coax housing slot
