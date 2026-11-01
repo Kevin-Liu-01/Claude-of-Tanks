@@ -5,13 +5,16 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { GUNSHIP_WEAPONS } from '../sim/matchRuleset.ts';
-import { t } from './i18n.ts';
+import { formatNumber, t } from './i18n.ts';
+import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 
 export interface HitEventPresentation {
   readonly caliberMm?: number;
   readonly guided?: boolean;
   readonly kind?: string;
   readonly damage?: number;
+  /** The hull points the target lost (sim/damage.ts settleHullPoints): the figure every damage readout shows. */
+  readonly hpRemoved?: number;
   readonly modulesHit?: readonly { readonly newState?: string }[];
   readonly crewHit?: readonly RuntimeValue[];
   readonly zone?: string;
@@ -109,6 +112,16 @@ const HIT_OUTCOME_LABEL_KEYS: Readonly<Record<HitOutcomeId, string>> = Object.fr
   module_hit: 'hud.hitOutcome.module_hit',
 });
 
+/**
+ * A damage-dealt figure's markup, the one formatter for the shot card, the float and the shot log: the catalog's
+ * "−{amount}" over the locale's number, its true minus in a span (.cot-minus) that keeps it off a 4's arm in the
+ * condensed figures (untracked, "−420" read as one bar on the float and in the log, critic r2).
+ */
+export function damageFigureMarkup(amount: number): string {
+  const text = t('shotInfo.damageAmount', { amount: formatNumber(amount) });
+  return text.replace('\u2212', '<span class="cot-minus">\u2212</span>');
+}
+
 /** Resolve the localized label for one outcome id. */
 function hitOutcomeLabel(id: HitOutcomeId): string {
   return t(HIT_OUTCOME_LABEL_KEYS[id] || 'hud.hitOutcome.no_damage');
@@ -148,6 +161,9 @@ function resolveHitOutcome(
   return HIT_OUTCOMES.blocked;
 }
 
+/** The damage the player took, as a token reference (a canvas resolves it with liveToken('battle-damage-taken')). */
+export const INCOMING_DAMAGE_INK = 'var(--battle-damage-taken)';
+
 /**
  * One canonical, always-readable label for the camera-relative incoming-hit
  * indicator. Positive HP damage uses the historical signed number while every
@@ -156,7 +172,7 @@ function resolveHitOutcome(
 export function incomingHitFeedbackFor(
   ev: HitEventPresentation,
 ): IncomingHitFeedbackPresentation {
-  const damage = Number.isFinite(ev.damage) ? Math.max(0, Math.round(ev.damage || 0)) : 0;
+  const damage = Math.round(hullPointsRemoved(ev));
   const outcome = hitOutcomeFor(ev);
   const kind: IncomingHitArcKind = ev.kind === 'he_splash'
     ? 'he'
@@ -166,12 +182,10 @@ export function incomingHitFeedbackFor(
   const numeric = damage > 0;
   const critical = (ev.modulesHit?.length || 0) > 0 || (ev.crewHit?.length || 0) > 0;
   const label = numeric ? `-${damage}` : outcome.label;
-  // Splash damage is deliberately amber: it is the distinct "yellow one"
-  // from the original HUD. Direct damage stays salmon-red; outcome words use
-  // the registry color consumed by the cards and kill cam.
-  const color = numeric
-    ? kind === 'he' ? '#ffd166' : '#ff8a72'
-    : outcome.color;
+  // Damage taken is one token, a direct hit's and an HE splash's alike (the splash's old amber read as the damage the
+  // player dealt, Main 2026-10-31); the arc's kind still tells them apart. The canvas resolves the token (hud.ts liveToken);
+  // outcome words use the registry color consumed by the cards and kill cam.
+  const color = numeric ? INCOMING_DAMAGE_INK : outcome.color;
   return {
     kind,
     outcomeId: outcome.id,

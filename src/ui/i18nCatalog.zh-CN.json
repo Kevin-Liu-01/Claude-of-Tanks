@@ -4641,7 +4641,7 @@
   "shotInfo.machineGunSummary": "命中 {hits} 次 · 击穿 {pens} 次 · 阻挡 {blocked} 次 · 伤害 {damage}",
   "shotInfo.missileImpact": "导弹命中",
   "shotInfo.range": "距离",
-  "shotInfo.missileBlast": "爆炸 · {targets} 辆载具 · 伤害 {damage}",
+  "shotInfo.missileBlast": "爆炸 · {targets} 辆载具",
   "media.site50.title.s01MainStreetPush": "一辆 Leopard 2A6 沿燃烧的斯泰因堡主街推进",
   "media.site50.short.s01MainStreetPush": "Leopard 2A6，主街",
   "media.site50.title.s02FactoryRoad": "一辆 M1A2 Abrams TUSK 在炮火中驶过工厂",
