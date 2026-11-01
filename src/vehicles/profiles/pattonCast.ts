@@ -2881,6 +2881,18 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
         const run = outline.map(([x, z]) => new THREE.Vector3(x + Math.sign(x) * 0.03, L.y(rails[0] + dy), L.z(z - (z < -1.75 ? 0.03 : 0))));
         P.add('turretDark', new THREE.TubeGeometry(new THREE.CatmullRomCurve3(run, false, 'centripetal'), P.q ? 48 : 24, 0.022, 6, false));
       }
+      // (267: the basket's sheet floor on its bottom rail, from the casting's flanks round to its back, so the bustle's
+      // lip has the floor under it and no slot behind the cable; latrun-3's flat underside, latrun-4's plate under the
+      // cable)
+      {
+        const yFloor = rails[0] + 0.006, zs: number[] = [];
+        for (let z = -0.90; z >= -1.70 - 1e-6; z -= 0.10) zs.push(z);
+        const plan = [...outline, ...zs.map((z) => [0.02 - castSideAt(M60_TURRET, yFloor, z), z])];
+        for (const z of zs.slice().reverse()) plan.push([castSideAt(M60_TURRET, yFloor, z) - 0.02, z]);
+        const floor = new THREE.ExtrudeGeometry(new THREE.Shape(plan.map(([x, z]) => new THREE.Vector2(x, L.z(z)))), { depth: 0.012, bevelEnabled: false });
+        floor.rotateX(Math.PI / 2);
+        P.add('turretDetail', floor, 0, L.y(yFloor), 0);
+      }
       for (const s of [1, -1]) {
         P.add('turretDark', KIT.xform(KIT.torus(0.06, 0.016, P.q ? 12 : 8), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.98, L.y(rails[0] + 0.035), L.z(-2.00));
       }
