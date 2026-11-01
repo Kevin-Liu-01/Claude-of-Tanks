@@ -4103,6 +4103,9 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  *   (267) A whole panel (below the sets' codes: its row after the sets) reads its row's zone, which the overlay sets on
  *   each refresh to the plate a round along the current view reads there (sim/armorPlanes.ts zoneAlongShot): a bevel
  *   the roof scores, seen level, reads the cheek or front across it, as the authority does. Then it is a baked panel.
+ *   (267) A split panel whose scored zone does not face the eye takes the zone among its set the eye's line crosses,
+ *   nearest the point (zoneAlongShot among its members): a casting split between the front and the roof at the front's
+ *   top edge, seen level, reads the front across it. Its other zones only: a piece's cover is one of its own.
  * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
  * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
  *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
@@ -4227,6 +4230,29 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
     if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
+    if ( apSetted && !apForced && apZone >= 0 ) {
+      vec3 apD = normalize( apP - apEye );
+      if ( -dot( texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 ).xyz, apD ) < ${ZONE_FACING_MIN.toFixed(4)} ) {
+        float apReach = 1e9;
+        int apCover = -1;
+        for ( int i = 0; i < 4; i++ ) {
+          int k = int( floor( ( i == 0 ? apSet.x : i == 1 ? apSet.y : i == 2 ? apSet.z : apSet.w ) + 0.5 ) );
+          if ( k < 0 || k == apZone ) continue;
+          vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+          float apAlong = dot( apPl.xyz, apD );
+          if ( -apAlong < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+          float apS = -( dot( apPl.xyz, apP ) + apPl.w ) / apAlong;
+          vec3 apX = apP + apS * apD;
+          bool apIn = true;
+          for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+            vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+            if ( dot( apEd.xyz, apX ) + apEd.w > 0.001 ) { apIn = false; break; }
+          }
+          if ( apIn && abs( apS ) < apReach ) { apReach = abs( apS ); apCover = k; }
+        }
+        if ( apCover >= 0 ) { apOther = -1; apZone = apCover; apPx = 1e3; apBlendPx = 1e3; }
+      }
+    }
   }
   if ( apZone >= 0 ) {
     vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
