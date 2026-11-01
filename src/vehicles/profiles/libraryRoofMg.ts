@@ -114,3 +114,16 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   addPintleBarrel(layout);
   if (ammo) addPintleAmmo(layout);
 }
+
+/** The drawn bounds of libraryStationGun's construction for these options, in the stock's authored frame (no geometry is
+ *  kept): a mount reads it to seat its cradle under the receiver and its station's muzzle on the drawn mouth. */
+export function libraryStationGunBounds(o: LibraryStationGunOptions): THREE.Box3 {
+  const bounds = new THREE.Box3(), part = new THREE.Box3();
+  libraryStationGun({ add(_slot, geometry, x, y, z) {
+    geometry.computeBoundingBox();
+    part.copy(geometry.boundingBox!).translate(new THREE.Vector3(x, y, z));
+    bounds.union(part);
+    geometry.dispose();
+  } }, o);
+  return bounds;
+}

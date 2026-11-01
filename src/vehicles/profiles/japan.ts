@@ -10,7 +10,7 @@ import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
-import { libraryStationGun } from './libraryRoofMg.ts';
+import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
 import { buildType90B } from './type90B.ts';
 import { buildType74Family } from './type74Family.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -334,38 +334,44 @@ function buildType10TkX(P: JapaneseBuilderPort & TankBuilderPort): void {
   addTkxTrialsFit(P);
 }
 
-/** The 10B's remote weapon station on the commander's ring (the 12.7 mm station in place of the manual mount): turntable,
- *  pedestal and yoke over the ring, the cradle with the M2, its ammunition can on the gun's right and the sight head on
- *  its left. */
+/** The 10B's remote weapon station on the commander's ring (the 12.7 mm station in place of the manual mount), stacked face
+ *  to face (the accessory receipt): the turntable on the ring, the pedestal and its top plate, the yoke's cheeks standing
+ *  on it, the cradle between the cheeks carrying the M2 on its top, the ammunition can on the right cheek's outer face
+ *  and the sight head on the left's. */
 function addType10BRemoteStation(P: JapaneseBuilderPort & TankBuilderPort): void {
   const { box, cylX, cylY, cylZ } = KIT;
-  const x = -0.3228, z = 0.496, ringY = 2.405 + 0.0225 + 0.017, trunnionY = 2.80, boreY = 2.838, muzzleZ = 1.62;
+  const x = -0.3228, z = 0.496, ringTop = 2.405 + 0.0225, muzzleZ = 1.62;
+  const tableTop = ringTop + 0.034, discTop = tableTop + 0.006, pedestalTop = 2.70, plateTop = pedestalTop + 0.035;
+  const cheekIn = 0.117, cheekOut = 0.139, cheekTop = plateTop + 0.20;
+  // the remote form's housing hangs under its receiver: the cradle's top meets the lowest point of the drawn gun
+  const trunnionY = 2.80, boreY = 2.886;
+  const gun = { cls: 'm2', x, boreY, pivotZ: z + 0.02, muzzleZ, feed: 'right' } as const;
+  // (each face 1 mm off its neighbour: within the receipt's 15 mm touch, never coplanar)
+  const cradleTop = libraryStationGunBounds(gun).min.y - 0.001, cradleH = cradleTop - (plateTop + 0.03);
   P.add('turretDetail', cylY(0.209, 0.209, 0.045, 32), ...tl(x, 2.405, z));              // the commander's ring
   const weapon = sourceMachineGun(P, T10_PIVOT, { name: 'type10bRemoteM2', caliberMm: 12.7,
-    yaw: [x, ringY, z], pivot: [x, trunnionY, z + 0.02], muzzle: [x, boreY, muzzleZ] });
-  libraryStationGun(weapon, { cls: 'm2', x, boreY, pivotZ: z + 0.02, muzzleZ, feed: 'right' });
-  weapon.add('turretDetail', box(0.19, 0.035, 0.62), x, trunnionY - 0.07, z + 0.06);
-  for (const side of [-1, 1]) weapon.add('turretDetail', box(0.016, 0.11, 0.56), x + side * 0.098, trunnionY - 0.02, z + 0.05);
-  weapon.add('turretDark', cylX(0.024, 0.30, 14), x, trunnionY, z + 0.02);
-  weapon.add('turretAmmo', box(0.13, 0.205, 0.33), x - 0.20, trunnionY + 0.005, z - 0.03);
-  weapon.add('turretDark', box(0.135, 0.018, 0.30), x - 0.20, trunnionY + 0.115, z - 0.03);
-  weapon.add('turretDetail', box(0.10, 0.04, 0.08), x - 0.125, trunnionY + 0.07, z + 0.02);
-  const sx = x + 0.205, sy = trunnionY + 0.03, sz = z + 0.10;
-  weapon.add('turretDetail', box(0.15, 0.20, 0.30), sx, sy, sz);
+    yaw: [x, ringTop, z], pivot: [x, trunnionY, z + 0.02], muzzle: [x, boreY, muzzleZ] });
+  libraryStationGun(weapon, gun);
+  weapon.add('turretDetail', box(cheekIn * 2 - 0.002, cradleH, 0.50), x, cradleTop - cradleH / 2, z + 0.05); // cradle between the cheeks
+  for (const side of [-1, 1]) weapon.add('turretDark', cylX(0.02, 0.012, 12), x + side * (cheekOut + 0.006), trunnionY, z + 0.02);
+  const canX = x - cheekOut - 0.065;
+  weapon.add('turretAmmo', box(0.13, 0.205, 0.33), canX, cheekTop - 0.1025, z - 0.03);
+  weapon.add('turretDark', box(0.13, 0.016, 0.31), canX, cheekTop + 0.008, z - 0.03);
+  const sx = x + cheekOut + 0.075, sy = cheekTop - 0.10, sz = z + 0.10;
+  weapon.add('turretDetail', box(0.15, 0.20, 0.30), sx, sy, sz);                          // the sight head
   weapon.add('turretDetail', box(0.16, 0.022, 0.32), sx, sy + 0.111, sz - 0.005);
   weapon.add('turretDark', box(0.13, 0.17, 0.012), sx, sy, sz + 0.156);
-  weapon.add('turretGlass', cylZ(0.034, 0.008, 20), sx + 0.03, sy + 0.035, sz + 0.164);
-  weapon.add('turretGlass', box(0.05, 0.05, 0.008), sx - 0.035, sy + 0.035, sz + 0.164);
-  weapon.add('turretGlass', cylZ(0.016, 0.008, 14), sx, sy - 0.05, sz + 0.164);
-  weapon.add('turretDark', box(0.03, 0.12, 0.10), x + 0.115, trunnionY, z + 0.06);
+  weapon.add('turretGlass', cylZ(0.034, 0.008, 20), sx + 0.03, sy + 0.035, sz + 0.166);
+  weapon.add('turretGlass', box(0.05, 0.05, 0.008), sx - 0.035, sy + 0.035, sz + 0.166);
+  weapon.add('turretGlass', cylZ(0.016, 0.008, 14), sx, sy - 0.05, sz + 0.166);
   weapon.stage('yaw');
-  weapon.add('turretDetail', cylY(0.19, 0.19, 0.034, 32), x, ringY, z);
-  weapon.add('turretDark', cylY(0.196, 0.196, 0.008, 32), x, ringY + 0.017, z);
-  const pedestalTop = trunnionY - 0.12;
-  weapon.add('turretDetail', box(0.17, pedestalTop - ringY, 0.20), x, (pedestalTop + ringY) / 2, z - 0.01);
-  weapon.add('turretDetail', box(0.23, 0.035, 0.24), x, pedestalTop, z);
-  for (const side of [-1, 1]) weapon.add('turretDetail', box(0.022, 0.20, 0.18), x + side * 0.128, trunnionY - 0.03, z + 0.02);
-  weapon.add('turretDark', box(0.10, 0.09, 0.08), x - 0.05, ringY + 0.075, z - 0.15);
+  weapon.add('turretDetail', cylY(0.19, 0.19, 0.034, 32), x, ringTop + 0.017, z);
+  weapon.add('turretDark', cylY(0.17, 0.17, 0.006, 32), x, tableTop + 0.003, z);
+  weapon.add('turretDetail', box(0.17, pedestalTop - discTop, 0.20), x, (pedestalTop + discTop) / 2, z - 0.01);
+  weapon.add('turretDetail', box(0.30, plateTop - pedestalTop, 0.26), x, (plateTop + pedestalTop) / 2, z);
+  for (const side of [-1, 1]) weapon.add('turretDetail', box(cheekOut - cheekIn, cheekTop - plateTop, 0.18),
+    x + side * (cheekIn + cheekOut) / 2, (cheekTop + plateTop) / 2, z + 0.02);
+  weapon.add('turretDark', box(0.10, 0.09, 0.08), x - 0.05, discTop + 0.045, z - 0.15);  // the traverse drive
   weapon.finish();
 }
 
