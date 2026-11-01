@@ -976,6 +976,21 @@
       },
       {
         "hitboxId": "T29",
+        "name": "type10b_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.1972,0.1117,2.2835],
+          [-0.1972,0.2917,2.2835],
+          [-0.6972,0.2917,2.2835],
+          [-0.6972,0.1117,2.2835]
+        ]
+      },
+      {
+        "hitboxId": "T30",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -990,7 +1005,7 @@
         ]
       },
       {
-        "hitboxId": "T30",
+        "hitboxId": "T31",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1005,7 +1020,7 @@
         ]
       },
       {
-        "hitboxId": "T31",
+        "hitboxId": "T32",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1020,7 +1035,7 @@
         ]
       },
       {
-        "hitboxId": "T32",
+        "hitboxId": "T33",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1035,7 +1050,7 @@
         ]
       },
       {
-        "hitboxId": "T33",
+        "hitboxId": "T34",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1050,7 +1065,7 @@
         ]
       },
       {
-        "hitboxId": "T34",
+        "hitboxId": "T35",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1065,7 +1080,7 @@
         ]
       },
       {
-        "hitboxId": "T35",
+        "hitboxId": "T36",
         "name": "type10b_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1080,7 +1095,22 @@
         ]
       },
       {
-        "hitboxId": "T36",
+        "hitboxId": "T37",
+        "name": "type10b_wedge_R",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [0.5028,0.1117,2.2835],
+          [0.7028,0.1117,2.2835],
+          [0.7028,0.2917,2.2835],
+          [0.5028,0.2917,2.2835]
+        ]
+      },
+      {
+        "hitboxId": "T38",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 49,
@@ -1095,7 +1125,7 @@
         ]
       },
       {
-        "hitboxId": "T37",
+        "hitboxId": "T39",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 49,
@@ -1110,7 +1140,7 @@
         ]
       },
       {
-        "hitboxId": "T38",
+        "hitboxId": "T40",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 49,
@@ -1125,7 +1155,7 @@
         ]
       },
       {
-        "hitboxId": "T39",
+        "hitboxId": "T41",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 49,
@@ -1140,7 +1170,7 @@
         ]
       },
       {
-        "hitboxId": "T40",
+        "hitboxId": "T42",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 49,
@@ -1155,7 +1185,7 @@
         ]
       },
       {
-        "hitboxId": "T41",
+        "hitboxId": "T43",
         "name": "turret_hatch_02_front",
         "physicalMm": 40,
         "keMm": 49,
@@ -1170,7 +1200,7 @@
         ]
       },
       {
-        "hitboxId": "T42",
+        "hitboxId": "T44",
         "name": "turret_hatch_02_rear",
         "physicalMm": 40,
         "keMm": 49,
@@ -1185,7 +1215,7 @@
         ]
       },
       {
-        "hitboxId": "T43",
+        "hitboxId": "T45",
         "name": "turret_hatch_02_right",
         "physicalMm": 40,
         "keMm": 49,
@@ -1200,7 +1230,7 @@
         ]
       },
       {
-        "hitboxId": "T44",
+        "hitboxId": "T46",
         "name": "turret_hatch_02_left",
         "physicalMm": 40,
         "keMm": 49,
@@ -1215,7 +1245,7 @@
         ]
       },
       {
-        "hitboxId": "T45",
+        "hitboxId": "T47",
         "name": "turret_hatch_02_top",
         "physicalMm": 40,
         "keMm": 49,
@@ -1412,8 +1442,8 @@
       }
     ]
   },
-  "geometryHash": "24fd4210",
-  "metadataHash": "d3091d0b",
+  "geometryHash": "fa396fe2",
+  "metadataHash": "3d558a94",
   "presentationAnchor": {
     "xM": 0.0037,
     "zM": 0.0085
@@ -1473,15 +1503,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32046,
-      "sha256": "aab9d502dd36d3dcb3dc5d1ebd24d894c1eca3cf1de37807168f6429a05aa4a3",
+      "bytes": 32024,
+      "sha256": "870c296a0e10da46b3adfe64c842340c54fe8c58ef6c8d5bb146333b806150ba",
       "thumbnail": {
         "file": "thumbs/type10b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12594,
-        "sha256": "5d44a356ab8e1d340c3200be05efcaa95fc99158d7411335203c8522c9685c0f"
+        "bytes": 12588,
+        "sha256": "a1877f1c4afa9235cb2f19030249edb5edcea4938489874c1a7a6113acdc612d"
       }
     },
     "top": {
@@ -1489,16 +1519,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17856,
-      "sha256": "33bec53d9a688f5672206980cca056bca4a46d7d27068f275319197a11a69068"
+      "bytes": 17848,
+      "sha256": "38618cacf3b2b8633f8ce22ec43dac3367f65125001cbab8be0c376fbdcf2044"
     },
     "side": {
       "file": "type10b_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14948,
-      "sha256": "61bf2fbda455869b4b5ccdee601dfbbba1f8e53090d48ce790cef4ddc95812be"
+      "bytes": 14956,
+      "sha256": "4a1ac5f97fb49ceef7e7c4aeb153f7a1599603838e91a72e3e28a102795e9575"
     },
     "topSilhouette": {
       "file": "type10b_top_silhouette.png",
@@ -1513,32 +1543,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5047,
-      "sha256": "7327e9f77fa1a03c9784cc8d3cb98ae4e19483c8741cb0f3f8f2d7db3d5ace5d"
+      "bytes": 5046,
+      "sha256": "71e9442f41deaa02d9d91af1e1dd9e34f4492017509f26611f370d1d9d5869f0"
     },
     "armorSide": {
       "file": "type10b_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33564,
-      "sha256": "434e3775eaa98820a0eba2950662618c1a68ce92d48a651273c9bcd737e38f35"
+      "bytes": 33558,
+      "sha256": "9fd3fc80c4a987d895a11f12496395f9c4a7706316edf7140a1e03501474bea1"
     },
     "modulesSide": {
       "file": "type10b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31276,
-      "sha256": "ab2a07ecdb4cfd2edc355723db0c485152af96494c84e4650e6a5eb877494e9b"
+      "bytes": 31284,
+      "sha256": "bc437e072807023882bb34470a39a352253d02a3bf6b456425203c5fbe05addc"
     },
     "crewSide": {
       "file": "type10b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28734,
-      "sha256": "a3e934152b4f844b8c79bd6ff454c9c18e6a369651fa5260edafd408b9f5eb1e"
+      "bytes": 28772,
+      "sha256": "9a29dfff47191bfbfb4377394a4479085b0a2bbafa8c3c3ff1973611930a0025"
     },
     "markings": {
       "file": "type10b_markings.png",
