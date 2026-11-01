@@ -10,7 +10,7 @@ import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
+import { TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_FOOT, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
 import { buildType90B } from './type90B.ts';
@@ -523,8 +523,10 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
 /** The upgrade's add-on armour (owner 2026-11-01: "different ... armor"): a wedge module over each cheek, pointed forward
  *  from the cheek's full face to a narrow nose, its top falling to the nose, with bolt rows along its top. */
 function addType10BWedges(P: JapaneseBuilderPort): void {
-  const { cylY } = KIT;
+  const { box, cylY } = KIT, F = TYPE10B_WEDGE_FOOT;
   for (const side of [-1, 1]) {
+    const xin = side > 0 ? F.xinR : F.xinL;                                     // the foot under the nose, beside the mantlet
+    P.add('turretDetail', box(F.xo - xin, F.y1 - F.y0, F.z1 - F.z0), ...tl(side * (xin + F.xo) / 2, (F.y0 + F.y1) / 2, (F.z0 + F.z1) / 2));
     const g = sectionSolid(TYPE10B_WEDGE_ROWS.map(([z, xi, xo, lo, hi]) => {                 // its plates: type10MarkArmor.ts
       const ring: [number, number][] = [[xi, lo], [xo, lo], [xo, hi], [xi, hi]];
       return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring };

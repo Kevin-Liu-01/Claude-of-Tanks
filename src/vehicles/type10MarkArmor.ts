@@ -25,6 +25,10 @@ export const tkxGlacisY = (z: number): number => 1.339 - (z - 2.898) * ((1.370 -
 export const TYPE10B_WEDGE_ROWS = Object.freeze([
   [1.62, 0.49, 1.42, 1.58, 2.15], [2.30, 0.62, 1.18, 1.61, 2.11], [2.86, 0.84, 0.94, 1.68, 1.98],
 ] as const);
+/** The wedges' foot under the Type 10's nose (267, the shrink-only roof-pocket ledger): each wedge's inner face walled the
+ *  air under the nose's sloped underside beside the mantlet, a slot that read as a see-through pocket. The upgrade's block
+ *  fills it flush with the nose's tip over |x| xin..xo (the right one from the coaxial recess's wall), y y0..y1, z z0..z1. */
+export const TYPE10B_WEDGE_FOOT = Object.freeze({ xinL: 0.20, xinR: 0.50, xo: 0.70, y0: 1.62, y1: 1.80, z0: 2.22, z1: 2.49 });
 
 const CHEVRON = { kind: 'spaced', keMm: 220, ceMm: 750 } as const;
 const WEDGE = { kind: 'spaced', keMm: 279, ceMm: 953 } as const;
@@ -56,7 +60,7 @@ export function tkxTrialPlates(): { turret: ArmorPlate[]; hull: ArmorPlate[] } {
   return { turret, hull };
 }
 
-/** The 10B's add-on wedges (turret frame): each face between two stations, outer, inner and top, and the nose. */
+/** The 10B's add-on wedges (turret frame): each face between two stations, outer, inner and top, the nose and the foot. */
 export function type10bWedgePlates(): ArmorPlate[] {
   const out: ArmorPlate[] = [], R = TYPE10B_WEDGE_ROWS;
   for (const s of [-1, 1]) {
@@ -70,6 +74,8 @@ export function type10bWedgePlates(): ArmorPlate[] {
     }
     const [zn, inn, on, ln, hn] = R[R.length - 1];
     out.push(facing(name, 90, p(inn, ln, zn), p(on, ln, zn), p(inn, hn, zn), [0, 0, 1], WEDGE));
+    const F = TYPE10B_WEDGE_FOOT, xin = s > 0 ? F.xinR : F.xinL;
+    out.push(facing(name, 90, p(xin, F.y0, F.z1), p(F.xo, F.y0, F.z1), p(xin, F.y1, F.z1), [0, 0, 1], WEDGE));
   }
   return out;
 }
