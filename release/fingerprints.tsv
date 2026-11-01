@@ -572,6 +572,26 @@ group	type96bX	7efccf10f7a41c91
 group	uk	73ab9c831232bab7
 group	ukraine	3a71faea460198ea
 group	xk2	23f04cd94737e328
+key	anatomy	magach6b	2602e45582764a3b	8118742e8ab5c944
+key	anatomy	magach7c	f3715984c93fc1d4	66c4a0435b5609b1
+key	centering	magach6b	1e7caa2957d9aa5e	3c88ac81bcb10306
+key	centering	magach7c	f167e73a4464dd88	616c3448430ba6ac
+key	controls	magach6b	951e435a78d7855b	d73871e3cd33b671
+key	controls	magach7c	842512beae64ea85	af405ecbb6542dca
+key	fills	magach6b	779af3b07ca26472	5c12462c9c465964
+key	fills	magach7c	764abb627e967c25	2ce45d68f6d7b881
+key	gunLines	magach6b	3b3fdd4f613ae30f	06916116d4a14af9
+key	gunLines	magach7c	b5b4b4c4e32125ae	0b6875cff70ccc45
+key	icons	magach6b	63ccc0a8c8ff9e84	f04cf4e42a60b740
+key	icons	magach7c	1f15722c278c5d4b	a8cbaacf658d51a6
+key	ledger	magach6b	bd64e377c046ac55	8d039d6c4ee9d127
+key	ledger	magach7c	404ec0109ee631e9	7f4d05f01698c33b
+key	marking	magach6b	c4e7b991ca7d8086	934b7a4a4dc4b695
+key	marking	magach7c	e545d08d673c4db9	84a00fb6105420a8
+key	seats	magach6b	666af235a8699de3	63af943077a126be
+key	seats	magach7c	bb7898ab12313d00	2768e9a4ca55381f
+key	spareTrack	magach6b	c417fa646c83ae4b	cb9973bae5078b9d
+key	spareTrack	magach7c	9fabcfd1bc392317	ac4b99153a954ac4
 key	anatomy	abramsx	a85a38d885b684cc	aff5e7b00792d887
 key	anatomy	aft10	c6fcf3dd3280d698	a90999c92790e77f
 key	anatomy	ajax	39757b7691df6046	06f7c0ba628d28ad
@@ -972,8 +992,6 @@ key	centering	m60a2	a738b48b4309d8d2	42e5c972aaf18a20
 key	centering	m60a3	8d3203ffd32fd1b3	20761566ea5db5a6
 key	centering	m6_linebacker	f20fcbf31c16b5a8	20e23f4cac178aee
 key	centering	magach3	5b7bf72a9d354c23	f644c3752d6b3db6
-key	centering	magach6b	bd2b3ce48c3fcc3c	3c88ac81bcb10306
-key	centering	magach7c	986bc0df13412584	616c3448430ba6ac
 key	centering	marder1a3	4441e373a963f632	678aab2d5915f55e
 key	centering	marder2	f2e6ecad9388a6cb	173db268ad63618c
 key	centering	mbt70	c6a0adc4d9c7a46c	adad99f6850c514a
@@ -2090,8 +2108,6 @@ key	icons	m60a2	1dea06f5e0308608	38ce77365e3f423c
 key	icons	m60a3	c114b078521f0275	1bcc9beb13b1095e
 key	icons	m6_linebacker	46550667d1dae149	23176c4830212bf2
 key	icons	magach3	50bbe3d3996897a8	87211caac5d0259d
-key	icons	magach6b	ec15754683fb46ac	fb2303af65f6ce87
-key	icons	magach7c	963a193254ff8750	e2aab17b05b1c3dc
 key	icons	marder1a3	97c32c973758c005	cef1a2dcd0b20dde
 key	icons	marder2	df540a793f8ccb15	7d4cc72af20b517a
 key	icons	mbt70	bcdfee34b513ee51	360b72efdf8dc06a
@@ -3529,8 +3545,8 @@ row	auxiliaryInventory	m60a2	4f46100cc0f26efb
 row	auxiliaryInventory	m60a3	caff573c9000a1f5
 row	auxiliaryInventory	m6_linebacker	979e22214d731485
 row	auxiliaryInventory	magach3	c7337dc800069d80
-row	auxiliaryInventory	magach6b	121c4b0c1381f55f
-row	auxiliaryInventory	magach7c	310fec1e0489eee1
+row	auxiliaryInventory	magach6b	32c89c7e518723c7
+row	auxiliaryInventory	magach7c	69ee7ce904679e44
 row	auxiliaryInventory	marder1a3	7d2d7e483d1f8655
 row	auxiliaryInventory	marder2	89fccefdc7cfc8fa
 row	auxiliaryInventory	mbt70	125828992df51965
@@ -4716,8 +4732,8 @@ row	geometryLedger	m60a2	16b31e3a5840afc5
 row	geometryLedger	m60a3	82690938c03a86bf
 row	geometryLedger	m6_linebacker	ddd2d5506c19e2b7
 row	geometryLedger	magach3	c0acfcf28adf8620
-row	geometryLedger	magach6b	a05e4a9c0ef620ff
-row	geometryLedger	magach7c	cb91886f9625614e
+row	geometryLedger	magach6b	fdbdaba8023aec5e
+row	geometryLedger	magach7c	856c0d5a27824693
 row	geometryLedger	marder1a3	b83fba5b86ae7fd8
 row	geometryLedger	marder2	fc72fc79cc29bc3e
 row	geometryLedger	mbt70	028e63c895c525e3
@@ -4992,8 +5008,8 @@ row	gunJunction	m60a2	4bf259f92ac68331
 row	gunJunction	m60a3	3c6f1c14a1c6482a
 row	gunJunction	m6_linebacker	b756eee33929a735
 row	gunJunction	magach3	766f34e8efbc866c
-row	gunJunction	magach6b	c945e6912dca6c57
-row	gunJunction	magach7c	a54c54e0193ff94e
+row	gunJunction	magach6b	24a5fc6cec68d969
+row	gunJunction	magach7c	9163c55ef1d91aa5
 row	gunJunction	marder1a3	ca3a871b293757f1
 row	gunJunction	marder2	50316529de86654e
 row	gunJunction	mbt70	ce218c8921d1b0df
@@ -7791,8 +7807,8 @@ row	tankAssets	m60a2	a39b240ea76cb250
 row	tankAssets	m60a3	83aac860ce84da4f
 row	tankAssets	m6_linebacker	ac3c4b7662d99c91
 row	tankAssets	magach3	d873a8f0d2435a38
-row	tankAssets	magach6b	4ed643dd1cabd75b
-row	tankAssets	magach7c	871e1251ff3dbea6
+row	tankAssets	magach6b	eb522c27caec2cd1
+row	tankAssets	magach7c	fc135ed5666f8ce6
 row	tankAssets	marder1a3	3e7168f5a399173a
 row	tankAssets	marder2	037484ad20b5669f
 row	tankAssets	mbt70	01662ede6b2b52b2

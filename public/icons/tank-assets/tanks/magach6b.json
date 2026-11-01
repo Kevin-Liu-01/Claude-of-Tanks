@@ -2433,36 +2433,36 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.1718,0.5242,-3.5114],
-        "max": [1.1718,1.8124,-1.7809],
+        "min": [-1.1718,0.5242,-2.7953],
+        "max": [1.1718,1.7525,-1.7809],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-1.0077,0.6645,-3.373],
+        "min": [-1.0077,0.8141,-3.373],
         "max": [1.0077,1.592,-2.7846],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.4687,0.5242,-1.7096],
-        "max": [1.1718,1.2847,-0.5343],
+        "min": [-1.1718,0.5242,-1.7096],
+        "max": [-0.4687,1.2847,-0.5343],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.996,0.5242,-0.6037],
-        "max": [0.996,1.3778,0.7043],
+        "min": [-0.3374,0.5965,-0.5206],
+        "max": [0.8726,1.3055,0.2942],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.9374,0.8812,-1.4247],
-        "max": [-0.2929,1.5874,-0.3562],
+        "min": [0.3122,0.9024,-1.3935],
+        "max": [0.9181,1.5662,-0.4171],
         "turretLocal": false
       },
       {
@@ -2534,35 +2534,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2569,0.9527,1.4079],
-        "max": [0.2025,1.469,3.2004],
+        "min": [-0.2025,1.1177,1.5243],
+        "max": [0.2569,1.4232,3.2915],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2392,-0.7205,-0.1986],
-        "max": [0.6589,0.5712,0.2182],
+        "min": [-0.6589,-0.7205,-0.1986],
+        "max": [-0.2392,0.5712,0.2182],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.273,-1.1748,-0.4652],
-        "max": [0.7324,-0.122,0.3775],
+        "min": [-0.7324,-1.1748,-0.4652],
+        "max": [-0.273,-0.122,0.3775],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.6289,-1.2559,-0.287],
-        "max": [-0.1892,0.5175,0.1525],
+        "min": [0.1892,-1.2559,-0.287],
+        "max": [0.6289,0.5175,0.1525],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "84886dcf",
-  "metadataHash": "805c2de8",
+  "metadataHash": "10c1aaf1",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0065
@@ -2669,24 +2669,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28628,
-      "sha256": "2084ca26a0d727e7ab18b6032c30e442e07516c81c44988f5e77f7a0a791db45"
+      "bytes": 28644,
+      "sha256": "55c8eea92ed540f4403c8d69c3812d7cee0af7c9c817d06e4968e37d6b6d21de"
     },
     "modulesSide": {
       "file": "magach6b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29434,
-      "sha256": "c37b41a84e5b4b2c6a1a72bad74b3d7b755ebee3b4f81540c20422370c2465ec"
+      "bytes": 28872,
+      "sha256": "9340ed06d14d39b175b8d4e2731df638c3118c79238ec5dcedb5aec173b82415"
     },
     "crewSide": {
       "file": "magach6b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27040,
-      "sha256": "d5ec60d1d1d5600bad9f800dbecdb9151e269c151d8b66949cfc19fa3644956a"
+      "bytes": 27036,
+      "sha256": "d471c7ccf00bb82136bebec86f386611cdff91f940279e3027ea15d20d773ce1"
     },
     "markings": {
       "file": "magach6b_markings.png",
@@ -2699,8 +2699,8 @@
     "technicalLabels": {
       "file": "magach6b_technical.json",
       "mime": "application/json",
-      "bytes": 4282,
-      "sha256": "89e4551b06555b6d6fa2864bcd7b6b9e185292815f79ca08c1b1602af4517e2c"
+      "bytes": 4382,
+      "sha256": "90956385760769933f3753b131ff1904aa6685605e47b7ef48ad97e47ff86655"
     }
   }
 }

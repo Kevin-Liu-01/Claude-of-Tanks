@@ -3216,7 +3216,8 @@ function m60UrdanCupola(P: CastPort, T: TurretFrame, heavy: boolean): void {
     P.add('turretDark', cylY(0.025, 0.025, Math.max(0.02, ly - lr), 10), lx, L.y((ly + lr) / 2), L.z(lz));
     P.add('turretDark', box(0.10, 0.06, 0.12), lx, L.y(ly - 0.03), L.z(lz));
   }
-  roofM2(P, T, lx, lz, ly, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 723, ring: false, elev: 0, ammo: false });
+  // (266, integrator: roofWeaponPolicy) the loader's station keeps its own name beside the commander's, as the M48A5's
+  roofM2(P, T, lx, lz, ly, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 723, ring: false, elev: 0, ammo: false, station: 'loader' });
   P.add('turretDetail', box(0.10, 0.12, 0.24), lx + (heavy ? 0.17 : 0.10), L.y(lBore - 0.04), L.z(lz));
   // the tall tube at the roof's right rear (every Latrun photograph)
   const ty = frameTop(T, -0.95, -1.30);
