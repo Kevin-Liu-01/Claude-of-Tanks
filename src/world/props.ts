@@ -297,6 +297,7 @@ import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
+import { installPaneStackDepth } from './paneStack.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -11670,9 +11671,13 @@ ${snowCap ? `
       const groundOnly = (g: THREE.BufferGeometry) => g.userData.receiveOnly === true;
       const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key) && !groundOnly(g));
       const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : all.filter(groundOnly);
-      const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
-      if (!fine.length) meshes.push([coarse, false, '-detail']);
-      for (const [list, casts, suffix] of meshes) {
+      const unlayered: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
+      if (!fine.length) unlayered.push([coarse, false, '-detail']);
+      // (local-fps-266) a regional pane stack's farther faces (geometry.ts PartSink: userData.paneStackLayer) draw in
+      // meshes of their own in the bucket's material, each layer a few depth steps behind (paneStack.ts)
+      const meshes = unlayered.flatMap(([list, casts, suffix]) => [0, 1, 2].map((layer) =>
+        [list.filter((g) => (g.userData.paneStackLayer ?? 0) === layer), casts, layer ? `${suffix}-stack${layer}` : suffix, layer] as const));
+      for (const [list, casts, suffix, layer] of meshes) {
         if (!list.length) continue;
         // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
         const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
@@ -11691,6 +11696,7 @@ ${snowCap ? `
           structureMaterials.push({ material: depth, bucket: key, role: 'depth', mesh, batched: false });
         }
         mesh.name = 'props-bucket-' + key + suffix; // round 75: the perf inventories attribute the merged buckets by name
+        if (layer) installPaneStackDepth(mesh, mats[key], layer);
         setShadowCasterProfile(mesh, profile);
         mesh.castShadow = casts;
         mesh.receiveShadow = true;

@@ -85,7 +85,10 @@ hull length matches. One uniform scale cannot reconcile it. The build follows th
 the print, heights 0.96, the turret 0.96 about its ring, the hull length kept), so after the fidelity page's width
 normalisation the print reads ~6 % short in the side and plan views against the build. That residual is the print's,
 not a build defect, and is reported with the gate results. **Ruling (Main, 2026-10-28):** accepted as published-dimension
-builds; the prints' re-registration is a later cleanup.
+builds; the prints' re-registration is a later cleanup. **Ruling (Main, 2026-10-31):** the three prints are
+deregistered (none is the reference these builds follow); t64bm1m, t64bv and t64b1v_2022 pass stage A through their
+photo packet (`docs/references/photos/t64-20261031.json`, `tools/photo-reference-policy.mjs`). The T-64BV1 and Donbas
+prints stay registered for t64bv1 and t64bv_donbas. This closes the 10-28 cleanup.
 
 ### Photographs read (citations; none embedded in the repo)
 

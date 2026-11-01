@@ -4,15 +4,10 @@ import { createTank } from '../tankFactory.ts';
 
 const EPSILON = 1e-6;
 
+// 2026-10-30 (lane t90-family-266): the earlier T-90 marks build from their source-X twins (their own receipts hold
+// their roof weapons); the Burlak prototype keeps its own turret and station.
 const ROOF_WEAPONS = Object.freeze({
-  t90_1992: 't90Ru417AutomatedKord',
-  t90a_2004: 't90aRemoteNsvt',
-  t90sm_2013: 't90smRemoteNsvt',
-  t90a_2006: 't90aVladimirRemoteKord',
   t90a_burlak_proto: 't90aBurlakCommanderNsvt',
-  t90ms_2011: 't90msTagilRemoteKord',
-  t90am: 't90mProryvRemoteKord',
-  t90m_proryv: 't90mProryvRemoteKord',
 });
 
 for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
@@ -52,74 +47,7 @@ for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
   }
 }
 
-for (const id of ['t90_1992', 't90a_2004', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011']) {
-  const tank = createTank(id, null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
+// 2026-10-30 (lane t90-family-266): the forward-deck spare-track runs and the T-90MS's Tagil tower retired with the
+// earlier builds; the spare-track ledger (docs/geometry-gate/spare-track.json) holds every run's placement.
 
-  try {
-    const tracks = [];
-    tank.root.traverse((node) => {
-      if (node.userData?.fittingRoot && node.userData?.fitting === 'spareTrackLinks') tracks.push(node);
-    });
-    assert.ok(tracks.length > 0, `${id}: exposes at least one spare-track fitting run`);
-
-    const pickTargets = new Set(collectSurfacePickTargets(tank.root));
-    for (const trackRun of tracks) {
-      const receipt = trackRun.userData.horizontalPlateSeatReceipt;
-      assert.ok(receipt, `${id}: spare-track run publishes its plate-seat receipt`);
-      assert.ok(Math.abs(receipt.seatedBottomY - (receipt.planeY - receipt.embedM)) <= EPSILON,
-        `${id}: spare-track underside is seated into its supporting plate`);
-      trackRun.traverse((node) => {
-        if (!node.isMesh || !node.visible) return;
-        assert.ok(pickTargets.has(node), `${id}: spare-track primitive is Gallery-selectable`);
-        assert.equal(node.userData.surfaceMarkupSelectable, true,
-          `${id}: spare-track primitive carries explicit markup semantics`);
-      });
-    }
-  } finally {
-    tank.dispose();
-  }
-}
-
-{
-  const tank = createTank('t90ms_2011', null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
-  try {
-    const turret = tank.root.getObjectByName('rig_turret');
-    const tower = turret?.getObjectByName('t90msTagilWeaponTower');
-    assert.ok(tower, 't90ms_2011: exposes one coherent named Tagil weapon-tower assembly');
-    const pickTargets = new Set(collectSurfacePickTargets(tank.root));
-    const names = new Set();
-    tower?.traverse((node) => {
-      if (!node.isMesh) return;
-      names.add(node.name);
-      assert.equal(node.userData.combatHitboxRole, 'equipment',
-        `t90ms_2011: ${node.name} remains external equipment rather than turret armor`);
-      assert.ok(pickTargets.has(node), `t90ms_2011: ${node.name} is Studio-selectable`);
-    });
-    assert.ok(names.has('t90msTagilTowerAlignedArmoredHead'),
-      't90ms_2011: selected armored head rises from the exact marked support interface');
-    assert.ok(names.has('t90msTagilTowerThermalWindow'),
-      't90ms_2011: tower includes its thermal optic');
-    assert.ok(names.has('t90msTagilTowerDayWindow'),
-      't90ms_2011: tower includes its day optic');
-    assert.ok(names.has('t90msTagilTowerWorkLight'),
-      't90ms_2011: tower includes a protected work light');
-    assert.ok(names.has('t90msTagilTowerAmmoBox'),
-      't90ms_2011: tower includes its ammunition box');
-    assert.equal([...names].filter((name) => name.startsWith('t90msTagilTowerFeedLink')).length, 7,
-      't90ms_2011: tower exposes seven selectable ammunition-feed links');
-  } finally {
-    tank.dispose();
-  }
-}
-
-console.log('t90RoofStudioSelectability.selftest: roof weapons, spare tracks, and Tagil tower are seated and Gallery-selectable');
+console.log('t90RoofStudioSelectability.selftest: the Burlak prototype roof weapon is seated and Gallery-selectable');

@@ -105,6 +105,20 @@ export const DEFAULT_CONFIG = Object.freeze({
     fleetApiTokens: FLEET_API_TOKENS }),
 });
 
+
+/** The tokens that pin the balance pass's importers (steps.mjs BALANCE): its own `tokens` and every name its entries
+ *  export, so a new pass's call line is pinned without an edit to the declaration (265: applyBuildFootings's call line
+ *  was not). */
+export function balanceTokens(root, balance) {
+  const exported = balance.entries.flatMap((file) => {
+    const path = resolve(root, file);
+    return existsSync(path)
+      ? [...readFileSync(path, 'utf8').matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm)].map((match) => match[1])
+      : [];
+  });
+  return [...new Set([...balance.tokens, ...exported])];
+}
+
 export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, env = process.env, rows = null, graph = null, cacheDir,
   config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
@@ -160,7 +174,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   let balanceReason = null;
   if (balanceEntries.size) {
     const stale = Object.entries(BALANCE_PASS.importers).flatMap(([file, declaration]) => {
-      const pin = existsSync(abs(file)) ? tokenPin(readFileSync(abs(file), 'utf8'), BALANCE_PASS.tokens) : 'missing';
+      const pin = existsSync(abs(file)) ? tokenPin(readFileSync(abs(file), 'utf8'), balanceTokens(root, BALANCE_PASS)) : 'missing';
       return pin === declaration.pin ? [] : [`${file} (now ${pin})`];
     });
     if (stale.length) balanceReason = `importer pin stale: ${stale.join(', ')}`;

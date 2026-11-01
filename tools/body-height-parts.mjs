@@ -22,11 +22,12 @@
 // own roofFittingNodes pattern, so a gun-less oracle compares like for like. A node named ammo* (War Thunder's ammo_NN,
 // a print's ammo_5, a source's ammo2 or ammobelt) goes with a roof gun the oracle names when it touches it (AMMO_TOUCH_M),
 // as the build's ammunition rides in its gun's fitting; a box or rack anywhere else, or beside the coaxial mg_twin, stays
-// body. An oracle comparison drops a kind of roof
+// body. A fused source names its roof gun by registered boxes in its certified frame (tools/fused-roof-gun-boxes.mjs):
+// the triangles with all three corners in them leave its body. An oracle comparison drops a kind of roof
 // fitting (antennas, roof weapons) only where the oracle names that kind (pairedRoofFittings): a source that fuses its
 // roof gun into the turret keeps the build's gun beside it, and one that names nothing is compared whole against whole.
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
-import { Box3 } from 'three';
+import { Box3, Matrix4, Vector3 } from 'three';
 
 /** Fitting types that are roof fittings; the antenna ones never count toward any height. */
 export const ROOF_FITTING_TYPES = Object.freeze(['antennaWhip', 'pintleMG', 'americanM2', 'americanRws', 'openYokeRws',
@@ -100,12 +101,28 @@ export function bodyGeometryWithout(geometry, ranges) {
   return body;
 }
 
+/** The triangles (corner slots, as bodyGeometryWithout takes them) of `mesh` whose three corners lie in `boxes`
+ * ([x0, y0, z0, x1, y1, z1] in `root`'s frame). */
+export function trianglesInBoxes(mesh, root, boxes) {
+  const toRoot = new Matrix4().copy(root.matrixWorld).invert().multiply(mesh.matrixWorld);
+  const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+  const n = index ? index.count : position.count, p = new Vector3(), ranges = [];
+  const inside = (slot) => {
+    p.fromBufferAttribute(position, index ? index.getX(slot) : slot).applyMatrix4(toRoot);
+    return boxes.some((b) => p.x >= b[0] && p.y >= b[1] && p.z >= b[2] && p.x <= b[3] && p.y <= b[4] && p.z <= b[5]);
+  };
+  for (let t = 0; t + 2 < n; t += 3) if (inside(t) && inside(t + 1) && inside(t + 2)) ranges.push({ start: t, count: 3 });
+  return ranges;
+}
+
 /**
  * The roof fittings of one model: `nodes` (render node -> tag) leave the body whole; `trimmed` (render node -> body
- * geometry) lose their tagged antenna spans. An oracle also answers to its node names. isAntennaTag sorts the nodes.
+ * geometry) lose their tagged antenna spans; `boxed` (render node -> body geometry) lose a fused oracle's roof gun, the
+ * triangles in its registered `boxes`. An oracle also answers to its node names. isAntennaTag sorts the nodes.
  */
-export function roofFittingParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_ROOF_FITTING_NODES }) {
-  const nodes = new Map(), trimmed = new Map(), ammo = new Map();
+export function roofFittingParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_ROOF_FITTING_NODES, boxes = null }) {
+  const nodes = new Map(), trimmed = new Map(), ammo = new Map(), boxed = new Map();
+  if (oracle && boxes?.length) root.updateMatrixWorld(true);
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
     const tag = roofFittingTag(o, root) ?? (oracle ? oracleRoofFittingTag(o, root, nodePattern) : null)
@@ -115,6 +132,10 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
     if (box) ammo.set(o, box);
     const ranges = (o.userData?.seatRoleRanges ?? []).filter((r) => cutRoles.has(r.role));
     if (ranges.length && !o.isInstancedMesh) trimmed.set(o, bodyGeometryWithout(o.geometry, ranges));
+    if (oracle && boxes?.length && !o.isInstancedMesh) {
+      const gun = trianglesInBoxes(o, root, boxes);
+      if (gun.length) boxed.set(o, bodyGeometryWithout(o.geometry, gun));
+    }
   });
   if (ammo.size) {
     root.updateMatrixWorld(true);
@@ -124,13 +145,13 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
       if (guns.some((gun) => gun.intersectsBox(box))) nodes.set(o, tag);
     }
   }
-  return { nodes, trimmed };
+  return { nodes, trimmed, boxed };
 }
 
-/** The parts an oracle comparison leaves out of both models: every roof fitting the oracle names, and the build's roof
- * fittings of the kinds the oracle names. `cutBuildSpans` says whether the build's antenna spans are cut too. */
+/** The parts an oracle comparison leaves out of both models: every roof fitting the oracle names (by node or by its
+ * registered roof-gun boxes), and the build's roof fittings of the kinds the oracle names. `cutBuildSpans` says whether the build's antenna spans are cut too. */
 export function pairedRoofFittings(built, oracle) {
-  const named = { antenna: oracle.trimmed.size > 0, weapon: false };
+  const named = { antenna: oracle.trimmed.size > 0, weapon: (oracle.boxed?.size ?? 0) > 0 };
   for (const tag of oracle.nodes.values()) named[isAntennaTag(tag) ? 'antenna' : 'weapon'] = true;
   const hidden = new Set(oracle.nodes.keys());
   for (const [node, tag] of built.nodes) if (named[isAntennaTag(tag) ? 'antenna' : 'weapon']) hidden.add(node);

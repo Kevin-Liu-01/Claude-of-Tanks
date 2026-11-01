@@ -9,9 +9,9 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.79646252806741,
+ "rawGeoMin": 92.76939579398751,
  "rawComponents": {
-  "wholeCurves": 92.79646252806741,
+  "wholeCurves": 92.76939579398751,
   "dims": 97.03055116869028,
   "floaters": 100
  },
@@ -132,13 +132,13 @@
    ]
   },
   "side_whole": {
-   "score": 65.98366620526437,
+   "score": 65.99000531793452,
    "meanPct": 2.35,
    "p95Pct": 8.23,
    "coverPct": 0.56,
    "reg": {
     "dAlong": -0.11367733971734495,
-    "dy": 0.04758303418183429
+    "dy": 0.04764102777284068
    },
    "worst": [
     {
@@ -864,7 +864,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -873,7 +872,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 170044,
+     "area": 170642,
      "minX": 152,
      "minY": 286,
      "maxX": 961,
@@ -887,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 166624,
+     "area": 166518,
      "minX": 214,
      "minY": 286,
      "maxX": 961,
@@ -901,7 +900,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167591,
+     "area": 168326,
      "minX": 214,
      "minY": 286,
      "maxX": 965,
@@ -915,7 +914,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167372,
+     "area": 167848,
      "minX": 155,
      "minY": 286,
      "maxX": 961,
@@ -929,7 +928,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 170681,
+     "area": 171158,
      "minX": 169,
      "minY": 286,
      "maxX": 961,

@@ -76,7 +76,10 @@ m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#383b28', weat
 // APFSDS at the tier II footing.
 const m41dk1 = m41('m41dk1', 'M41 DK-1', 'Denmark');
 Object.assign(m41dk1, { hp: 1300, enginePowerHp: 465, weightTons: 25.0 });
-Object.assign(m41dk1.dims, { widthM: 3.33, heightM: 3.25 });
+// (266, Main 2026-10-31: the DK-1 is an M41A3 rebuild; its spec the M41A3's published envelope, Foss, Jane's World
+// Armoured Fighting Vehicles, 1976, pp. 213-216: hull 19 ft 1 in, width 10 ft 6 in, height 8 ft 11 in. The build's
+// Leopard-pattern skirts stand outboard of that width: module-hit reads 3.56 m over them.)
+Object.assign(m41dk1.dims, { hullLengthM: 5.82, widthM: 3.20, heightM: 2.72 });
 m41dk1.gun = {
   ...m41dk1.gun,
   baseAccuracy: 0.29, aimTimeS: 1.6,

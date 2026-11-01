@@ -76,7 +76,6 @@ assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES, [
   'server/dedicatedWorldCollisionMemory.selftest.mjs',
   'tools/garage-switch-probe.selftest.mjs',
   'server/match/tickCost.selftest.mjs',
-  'tools/mp-soak.selftest.mjs',
   'server/match/loop.selftest.mjs',
   'server/match/service.selftest.mjs',
 ]);

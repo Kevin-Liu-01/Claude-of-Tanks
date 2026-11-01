@@ -80,7 +80,7 @@ owner corrections, successes, rejected methods, and scope changes.
 | Per-tank source identity, datums, decisions, run results | `docs/references/tanks/<id>.md` |
 | Batch scope, variant mapping, integration and explicit exceptions | `docs/history/research/<batch>.md` |
 | First-party authored runtime geometry / tests | `src/vehicles/` and the exact family/profile owner |
-| Generated receipts, asset registry and technical cards | Their existing generators; never hand-edited to claim success |
+| Generated receipts, asset registry and technical cards | Their existing generators; never hand-edited to claim success. The asset manifest is a row file per tank (`public/icons/tank-assets/tanks/<id>.json`, 266): a lane commits its own ids' rows; a branch cut before 266 re-homes them with `tools/tank-assets-split.mjs` ([DEVELOPMENT.md](../DEVELOPMENT.md#changed-only-regeneration-2026-10-16)) |
 | Source binaries, intermediate conversions, bulk screenshots/logs | Ignored comparison/QA paths; durable packets retain hashes and regeneration instructions |
 
 Keep one current-status block above chronological checkpoints. Use `PASS`,
@@ -107,16 +107,29 @@ Each photographic ID is registered to one packet in
 under `docs/references/photos/` that holds exactly the IDs registered to it, and
 each target names the native fixture test that proves it. The fixture must
 exist and name its ID. A packet never qualifies an ID registered to another one.
-The [IFV packet](../references/photos/ifvs-20260925.json) records the owner's
-approved CV9040C route and the three supplied photographic additions. The
-[ZTZ-85-III packet](../references/photos/ztz85-iii-20261028.json) qualifies the
-release 263 rebuild, whose registered print was a fused, low-confidence
-conversion. `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
-configuration and dimension receipts. `tank-standard-check` consumes those
+A lane registers its IDs with their packet (Main, 2026-10-31: the photo route
+ends per-batch exemptions). The [IFV packet](../references/photos/ifvs-20260925.json)
+records the owner's approved CV9040C route and the three supplied photographic
+additions. The [ZTZ-85-III packet](../references/photos/ztz85-iii-20261028.json)
+qualifies the release 263 rebuild, whose registered print was a fused,
+low-confidence conversion. The [T-64 packet](../references/photos/t64-20261031.json)
+holds the true T-64s, whose borrowed prints were deregistered. `stageARoute` and
+`stageAPassed` state stage A's rule:
+
+- a registered 3D oracle always measures, and a packet never overrides it (the
+  geometry gate refuses an ID with both);
+- an owner concept proves its design record; a photo-class ID proves its packet;
+- an ID with no packet, no oracle and no concept still fails a forced gate.
+
+`tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
+configuration and dimension receipts (the packet's width, length and tallest,
+3 %, as the build's whole bounding box). `tank-standard-check` consumes those
 receipts while retaining strict track sweep, continuity, equipment and all
 release steps. Numerical 3D fidelity remains **unverified**. This is not a
-fallback for a missing or failed registered model; adding a registered 3D
-reference requires resolving its qualification route explicitly.
+fallback for a missing or failed registered model: an id leaves the 3D route
+only when its print is deregistered as not the reference its build follows.
+`tools/photo-reference-policy.selftest.mjs` holds the rule against the live
+registry with controls.
 
 Published body dimensions and inferred antenna/weapon envelopes must be
 identified separately in the packet. Native physical tests are not proof that

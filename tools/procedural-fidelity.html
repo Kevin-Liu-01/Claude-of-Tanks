@@ -57,6 +57,7 @@ import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-over
 import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
+import { FUSED_ROOF_GUN_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -249,15 +250,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
   // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
-  // 262: the new true T-64s compare against the T-64 prints their siblings use (the 42manako T-64BV1 and T-64BV Donbas
-  // kitbash, local-only, CC-BY-NC); their builds follow published T-64 dimensions (docs/references/tanks/t64bm1m.md).
-  t64bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  t64b1v_2022: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
-  // 262: the 42manako T-64BM1M print (CC-BY-NC, local-only; sha256 c62063d8507a993c; docs/references/tanks/t64bm1m.md),
-  // +X forward in its own frame. Its horseshoe, searchlight, smoke banks, rack and bustle stores are root-level nodes that
-  // ride the turret; two stray two-triangle planes float 5.7 m up (gear1-optione002/003, recorded in the packet).
-  t64bm1m: { source:'glb', glb:{ path:'/models/community-candidates/t64bm1m_42manako.glb', turretNode:'^turret001$', gunNode:'^mount001$', autoPivot:true, yawOffset:-1.5707963267948966,
-    turretFollowers:'^(?:era(?:[2-9]|10)?|object0200[45]|object22\\d{3}|smoke-model[ef]\\d{3}|slat3002|suporte|gear|gear001|gear222|object01|weapon3)$' } },
+  // 266 (Main 2026-10-31): the true T-64s (t64bv, t64b1v_2022, t64bm1m) are not registered here. Their builds follow
+  // published T-64 dimensions, not the prints they were measured against in 262 (the T-64BV1 and Donbas prints, which are
+  // their siblings' own and stay registered below, and the 42manako BM1M print the build departs from); stage A takes
+  // them on their photo packet (docs/references/photos/t64-20261031.json, tools/photo-reference-policy.mjs).
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
   c1_ariete_proto_serie1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
@@ -267,8 +263,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   c2_ariete_proto: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
   k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
-  t90ms_2011: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
-  t90_1992: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak_proto: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
   // (the recovered Centurion oracles' basket drum: see centurion3)
   centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
@@ -336,15 +330,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80uk: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
-  t90a_2004: { source:'glb', glb:{ path:'/models/tanks/community/variants/t90a_xarchenko_variant.glb', turretNode:'TurretPivot', gunNode:'GunPivot', autoPivot:true, paintUntextured:true } },
-  t90a_2006: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
-  // Main_barrel contains only the forward tube in this source.  The thermal
-  // sleeve/root meshes are turret siblings (see references/tanks/t90m.md),
-  // so an independent gun-node mask compares a partial source against our
-  // complete cannon and is not a valid component measurement.  The full gun
-  // remains mandatory in all nine whole silhouettes and in yaw evidence.
-  t90am: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true, gunComponentMasks:false } },
-  t90sm_2013: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
+  // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
+  // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
+  // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered
+  // t90a_vladimir and t90sm) retired with the builds that followed them. t90_1992, t90ms_2011 and t90am followed (Main
+  // 10-31: they draw their twins t90, t90ms_tagil and t90sm with their own kits): their legacy prints (t90_kojf,
+  // t90ms_kojf, and the T-90M t90m_minehffd for the AM) measured the marks' drums and roof kit, not the build's source.
   type90_kyumaru: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   c1_ariete_preserie: {
@@ -797,7 +788,7 @@ for (const root of [reference.root, procedural.root]) {
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
 const roofFittings = [
   roofFittingParts(procedural.root, { isRenderNode }),
-  roofFittingParts(reference.root, { isRenderNode, oracle:true,
+  roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
     ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
 ];
 const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
@@ -809,9 +800,11 @@ const paired = pairedRoofFittings(roofFittings[0], roofFittings[1]);
 let hiddenRoofFittings = null;
 function withBodyOnly(measure, mode = 'body') {
   const swapped = [];
-  for (const [i, { trimmed }] of roofFittings.entries()) {
+  for (const [i, { trimmed, boxed }] of roofFittings.entries()) {
     if (mode === 'paired' && i === 0 && !paired.cutBuildSpans) continue;
     for (const [node, body] of trimmed) { swapped.push([node, node.geometry]); node.geometry = body; }
+    // a fused oracle's roof gun (its registered boxes) leaves the body masks, never the roof-fittings top
+    if (mode !== 'roof') for (const [node, body] of boxed) { swapped.push([node, node.geometry]); node.geometry = body; }
   }
   hiddenRoofFittings = mode === 'roof' ? antennaNodes : mode === 'paired' ? paired.hidden : roofFittingNodes;
   try { return measure(); } finally {
@@ -820,9 +813,10 @@ function withBodyOnly(measure, mode = 'body') {
   }
 }
 const roofFittingsExcluded = (() => {
-  const [built, oracle] = roofFittings.map(({ nodes, trimmed }) => [...new Set([
+  const [built, oracle] = roofFittings.map(({ nodes, trimmed, boxed }) => [...new Set([
     ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
     ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => `antennaSpans:${node.name}`),
+    ...[...boxed.keys()].filter((node) => baseVisible.get(node)).map((node) => `roofGunBoxes:${node.name}`),
   ])].sort());
   return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
 })();

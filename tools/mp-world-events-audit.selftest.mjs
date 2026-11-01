@@ -22,12 +22,17 @@
 //   - (destruction, 2026-10-07) a scripted bot rammed at 14 m/s into a verdant house brings it down; every structure_stage
 //     a seat received is presented once at the authority's point, a stage older than a view lands settled, nothing stages
 //     that the host never sent, and the new host after the migration never re-sends a stage the old host sent.
+//   - (267, main's load class: "2 of 48 never presented" at load 36-200, clean alone) a send is judged once the link it went
+//     to presented the queue's deadline past its tick, never by a wall-clock guard stamped at the view's teardown; a
+//     negative control rides every run: the first prop p2's view fells through its event is left out of its log, and the
+//     matrix must count exactly that one missing.
 // Shorter windows than the tool's defaults (8 s of play, 4 s after each scenario; ≈ 45 s wall).
 import assert from 'node:assert/strict';
 import { formatMatrix, runWorldEventsAudit } from './mp-world-events-audit.mjs';
 import { matchRulesetFor } from '../src/sim/matchRuleset.ts';
 
-const report = await runWorldEventsAudit({ playMs: 8000, afterMs: 4000 });
+const PLANT_VIEW = 'p2#0';
+const report = await runWorldEventsAudit({ playMs: 8000, afterMs: 4000, plant: { view: PLANT_VIEW } });
 const text = formatMatrix(report);
 if (!report.pass) { console.log(text); assert.fail(`the audit did not complete: ${report.failures.join('; ')}`); }
 const failures = [];
@@ -44,7 +49,9 @@ check(report.steps.live.hostCrushes >= 3, `the live window produced ${report.ste
 for (const row of report.matrix) {
   if (row.sent === 0) continue;
   const view = `${row.peer}#${row.round} ${row.kind}`;
-  check(row.missing === 0, `${view}: ${row.missing} of ${row.sent} never presented`);
+  // the planted drop is the one miss expected (judged below)
+  const planted = report.planted && `${row.peer}#${row.round}` === PLANT_VIEW && row.kind === 'world_prop_destroyed' ? 1 : 0;
+  check(row.missing <= planted, `${view}: ${row.missing - planted} of ${row.sent} never presented`);
   check(row.duplicate === 0, `${view}: ${row.duplicate} presented twice`);
   check(row.wrongPlace === 0, `${view}: ${row.wrongPlace} presented > 0.5 m from the authority's position`);
   // the budget's deadline bounds a beat to four ticks past its tick; a slow frame of the single-process presenter can add two
@@ -57,6 +64,20 @@ for (const row of report.matrix) {
     check(row.fxWithoutCrush === 0, `${view}: ${row.fxWithoutCrush} crunches for props that had already fallen`);
   }
 }
+// the negative control: the judge counts a send its view presented past and never applied (a judge that reaches nothing
+// skips the row and fails here)
+const plantedRow = report.matrix.find((row) => `${row.peer}#${row.round}` === PLANT_VIEW && row.kind === 'world_prop_destroyed');
+check(report.planted !== null && plantedRow?.missing === 1, `the negative control: ${report.planted ? `the planted drop of ${report.planted.key} on ${PLANT_VIEW} counted ${plantedRow?.missing ?? 'no row'} missing of ${plantedRow?.sent ?? 0} judged (1 expected)` : `${PLANT_VIEW} felled no prop through its event to leave out`}`);
+// and the judge reaches most of what each view was sent: a link the mapping missed would leave a whole view unjudged
+const judgedPerView = new Map();
+for (const row of report.matrix) {
+  const view = `${row.peer}#${row.round}`;
+  const total = judgedPerView.get(view) ?? { sent: 0, unreached: 0 };
+  total.sent += row.sent;
+  total.unreached += row.unreached;
+  judgedPerView.set(view, total);
+}
+for (const [view, total] of judgedPerView) check(total.unreached <= total.sent, `${view}: ${total.unreached} sends its links never presented far enough to judge, against ${total.sent} judged`);
 for (const [view, row] of Object.entries(report.perPeer)) {
   // destruction (2026-10-07): a stage that predates the view lands settled; nothing stages that the host never sent
   check(row.stagesOlderAnimated === 0, `${view}: ${row.stagesOlderAnimated} structure stages that predate this view were animated`);
@@ -116,4 +137,4 @@ const olderCraters = Object.values(report.perPeer).reduce((sum, row) => sum + ro
 console.log(`mp world events audit: scripted at battle tick ${scripted.atPlayTick} (seed ${scripted.seed}): ram ${scripted.ram?.botId}/${scripted.ram?.specId} ${scripted.ram?.weightTons} t, crater ${scripted.crater?.botId}/${scripted.crater?.shell}, breach ${scripted.breach?.botId ?? '-'}/${scripted.breach?.shell ?? '-'}; live ${report.steps.live.ticks} ticks, ${report.steps.live.hostCrushes} crushes`);
 console.log(`mp world events audit: craters ${cratersOn ? `on: ${scripted.crater?.dug ?? 0} dug by ${scripted.crater?.shell ?? '?'}, presented on ${craterRows.length} views `
   + `${craterRows.reduce((sum, row) => sum + row.applied, 0)}/${craterRows.reduce((sum, row) => sum + row.sent, 0)}, ${olderCraters} laid down settled for later views, `
-  + `the new host re-sent ${migration.recrateredEvents}` : 'off (the switch): none dug'}; scripted ram brought house ${scripted.ram.structureId} down (${scripted.ram.stages.join(' > ')}; stages presented on ${stageRows.length} views, ${stageRows.reduce((sum, row) => sum + row.applied, 0)}/${stageRows.reduce((sum, row) => sum + row.sent, 0)}, the new host re-sent ${migration.restagedEvents}; breaches presented on ${breachRows.length} views, ${breachRows.reduce((sum, row) => sum + row.applied, 0)}/${breachRows.reduce((sum, row) => sum + row.sent, 0)}, re-sent ${migration.rebreachedEvents}); scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged (world events ${report.withheldWorldEvents.sent}, ${report.withheldWorldEvents.withheld} withheld for a hidden source) in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);
+  + `the new host re-sent ${migration.recrateredEvents}` : 'off (the switch): none dug'}; scripted ram brought house ${scripted.ram.structureId} down (${scripted.ram.stages.join(' > ')}; stages presented on ${stageRows.length} views, ${stageRows.reduce((sum, row) => sum + row.applied, 0)}/${stageRows.reduce((sum, row) => sum + row.sent, 0)}, the new host re-sent ${migration.restagedEvents}; breaches presented on ${breachRows.length} views, ${breachRows.reduce((sum, row) => sum + row.applied, 0)}/${breachRows.reduce((sum, row) => sum + row.sent, 0)}, re-sent ${migration.rebreachedEvents}); scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries logged, ${report.matrix.reduce((sum, row) => sum + row.unreached, 0)} unjudged where their link ended before presenting them, the planted drop of ${report.planted.key} on ${PLANT_VIEW} counted missing (world events ${report.withheldWorldEvents.sent}, ${report.withheldWorldEvents.withheld} withheld for a hidden source) in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);

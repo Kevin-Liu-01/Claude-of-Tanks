@@ -18,7 +18,7 @@
 //   hitbox    exact combat shapes    (BEFORE: Modules + the workbench hitbox toggle · AFTER: Modules + Hit volumes)
 //   killcam   the dev shot runtime's killcam_xray stage on the same target (seeds 9001, 4242, 555, 77)
 // Output: <out>/<side>/<id>-<view>-<desktop|phone>.jpg (the #viewport stage) and …-page.jpg (the whole window).
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -92,7 +92,9 @@ const HOLD_LIMIT_MS = swiftshader ? Infinity : 17 * 60 * 1000;
 const settle = (ms = 700) => new Promise(r => setTimeout(r, ms));
 
 const allIds = ids;
-async function captureItem({ side, part }) {
+async function captureItem({ side, part }, ids) {
+  // a later chunk past the limit opens no page
+  if (Date.now() - holdStart > HOLD_LIMIT_MS) { for (const id of ids) receipts.skipped.push(`${side}:${part}:${id}`); return; }
   const OUT = join(OUT_ROOT, side);
   await mkdir(OUT, { recursive: true });
   const { base } = servers[side];
@@ -101,7 +103,6 @@ async function captureItem({ side, part }) {
   await page.evaluateOnNewDocument(() => { try { localStorage.setItem('cot.locale', 'en-US'); } catch {} });
   const phone = part === 'phone';
   const viewportName = phone ? 'phone' : 'desktop';
-  const ids = phone ? phoneIds : allIds;
   if (phone) await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   else await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
 
@@ -179,13 +180,16 @@ async function captureItem({ side, part }) {
 }
 
 try {
-  browser = await launchGuardedBrowser(puppeteer, { channel: 'chrome', headless: true,
-    args: swiftshader ? ['--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars']
-      : ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
   for (const item of plan) {
     if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${item.side}:${item.part}`); continue; }
     log('item', item.side, item.part);
-    await captureItem(item);
+    // a fresh browser per chunk of the item's ids (tools/browser-id-chunks.mjs)
+    await eachBrowserChunk('tools/anatomy-render-set.mjs', item.part === 'phone' ? phoneIds : allIds, async (chunk, { launch }) => {
+      browser = await launch(puppeteer, { channel: 'chrome', headless: true,
+        args: swiftshader ? ['--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars']
+          : ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
+      try { await captureItem(item, chunk); } finally { await browser.close(); browser = null; }
+    });
   }
 } catch (error) {
   receipts.errors.push(`fatal: ${String(error?.stack || error).slice(0, 600)}`);

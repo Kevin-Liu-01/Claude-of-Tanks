@@ -1,6 +1,6 @@
 {
  "id": "t72bu",
- "geoMin": 76.3,
+ "geoMin": 38.1,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -104,7 +104,7 @@
    ]
   },
   "actual": {
-   "heightM": 2.6410943710058925,
+   "heightM": 2.2809451385959982,
    "hullLengthM": 7.563133880607785,
    "overallLengthM": 10.357018835060298,
    "widthM": 3.5796650978922844
@@ -112,15 +112,15 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 76.25396825396822,
+ "rawGeoMin": 38.131004366812306,
  "rawComponents": {
   "wholeCurves": 92.47776299255032,
-  "dims": 76.25396825396822,
+  "dims": 38.131004366812306,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 92.5,
-  "dims": 76.3,
+  "dims": 38.1,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.6410943710058925,
-   "published": 2.750230502039194,
-   "pct": 3.9682539682539715,
+   "actual": 2.2809451385959982,
+   "published": 2.4992174006626007,
+   "pct": 8.733624454148462,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -965,13 +965,13 @@
   }
  ],
  "referenceDimensions": {
-  "heightM": 2.750230502039194,
+  "heightM": 2.4992174006626007,
   "hullLengthM": 7.563133880607785,
   "overallLengthM": 10.346105221956968,
   "widthM": 3.5796650978922844
  },
  "referenceBodyExtent": {
-  "h": 2.743,
+  "h": 2.492,
   "len": 7.573
  },
  "proceduralBodyExtent": {
@@ -989,11 +989,13 @@
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
    "pintleMG:browningDerivedMachineGunMount"
   ],
-  "reference": []
+  "reference": [
+   "roofGunBoxes:mesh_324"
+  ]
  },
  "oracleComparison": {
   "antennasDropped": false,
-  "roofWeaponsDropped": false,
+  "roofWeaponsDropped": true,
   "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,

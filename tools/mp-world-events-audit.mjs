@@ -40,6 +40,7 @@ import { MatchSession } from '../src/mp/session/matchSession.ts';
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { createBattlePresentation } from '../src/mp/presentation/battlePresentation.ts';
+import { ReliableEventQueue } from '../src/mp/match/events.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
@@ -94,8 +95,15 @@ const WORLD_KINDS = new Set(['world_prop_destroyed', 'structure_stage', 'structu
 const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired', structure_stage: 'structure:stage', structure_breach: 'structure:breach', terrain_crater: 'terrain:crater' };
 const MAP_ID = 'verdant';
 const SNAPSHOT_TICKS = 3; // 20 Hz
-/** A send this close to a view's end (its leave, the host's close, the run's end) cannot have been presented by it. */
-const END_GUARD_MS = 400;
+/**
+ * (267, main's load class: "2 of 48 never presented" at load 36-200, clean alone) A view presents a send once it renders
+ * the send's tick; the event queue's deadline releases whatever its budget still holds this many ticks later. A send is
+ * judged when the link it went to presented a frame that far past its tick, never by the wall clock: a 400 ms guard
+ * before the view's end, its host's stop or its link's reset was stamped when the teardown ran, and a harness descheduled
+ * between a view's last frame and that teardown judged sends the view never reached (one sent 6 ms after p3's last frame,
+ * never delivered, its view stamped 624 ms later).
+ */
+const DEADLINE_TICKS = new ReliableEventQueue().maxLateTicks;
 
 function keyOf(type, payload) {
   switch (type) {
@@ -139,7 +147,12 @@ export const AUDIT_MATCH_SEED = 1;
 const pct = (sorted, p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : null);
 const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) : null);
 
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, log = () => {} } = {}) {
+/**
+ * `plant` (267): a negative control on the judge, run with the audit. The first prop the named view (`{ view: 'p2#0' }`)
+ * fells through its event is left out of that view's log, as a presentation that dropped it would leave it; the matrix
+ * must count it missing (`report.planted` names it).
+ */
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, plant = null, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event),
@@ -234,7 +247,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   const peers = [];
   const failures = [];
   const marks = {};
-  const report = { label: null, mapId: MAP_ID, playMs, afterMs, hostGraceMs, teamSize, steps: {}, wallMs: 0, loopDelay: null };
+  const report = { label: null, mapId: MAP_ID, playMs, afterMs, hostGraceMs, teamSize, steps: {}, wallMs: 0, loopDelay: null, planted: null };
   const startedAt = now();
   // The host, the seats and the transport share this one process: its event-loop delay says whether the harness kept
   // its frame cadence, so a reader can tell a late beat of a starved harness from a late client.
@@ -313,12 +326,14 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const colliders = cloneStructureColliders();
     // the presentation's own records (their `crushed` flags are this view's), queried as the browser world's grid is
     const queryClones = createObstacleGrid(obstacles);
-    const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null };
+    // links: one per welcome (the first, a reconnect's, a migration's), with the newest tick this view presented on it
+    const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null, links: [] };
     peer.rounds.push(record);
     let path = 'none';
     let presentedTick = -1;
     let frameGap = 0;
     const newestTick = () => peer.session.match?.snapshots.latest?.tick ?? -1;
+    const planting = plant?.view === `${peer.label}#${roundIndex}`;
     const worldCollision = {
       heightField: reference.heightField,
       getObstacles: () => obstacles,
@@ -326,6 +341,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       queryObstacles: (minX, minZ, maxX, maxZ, target) => queryClones(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
+        if (planting && !report.planted && path === 'event' && !(options && options.settled)) {
+          report.planted = { view: plant.view, key: `prop:${index}`, presentedTick, wallMs: now() };
+          return;
+        }
         record.applied.push({ kind: 'crush', key: `prop:${index}`, index, dx, dz, speed, settled: !!(options && options.settled), path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now() });
       },
     };
@@ -334,6 +353,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         if (!TRACKED_BUS.has(type)) return;
         const pos = Array.isArray(payload.pos) ? [...payload.pos] : null;
         const propIndex = type === 'prop:crushed' ? (payload.obstacleIndex ?? obstacleIndexAt(pos)) : null;
+        if (planting && type === 'prop:crushed' && report.planted?.key === `prop:${propIndex}`) return;
         const hostId = peer.session.p2p?.hostId ?? peer.id;
         const busKey = busKeyOf(type, payload);
         const worldKeyed = type === 'structure:stage' || type === 'structure:breach' || type === 'terrain:crater';
@@ -350,7 +370,12 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     });
     const adapter = {
       applyRoster: (roster, context) => presentation.applyRoster(roster, context),
-      applyFrame(frame) { path = 'frame'; frameGap = presentedTick < 0 ? 0 : frame.tick - presentedTick; presentedTick = frame.tick; record.frames++; try { presentation.applyFrame(frame); } finally { path = 'none'; } },
+      applyFrame(frame) {
+        path = 'frame'; frameGap = presentedTick < 0 ? 0 : frame.tick - presentedTick; presentedTick = frame.tick; record.frames++;
+        const link = record.links.at(-1);
+        if (link) link.presentedTick = Math.max(link.presentedTick, frame.tick);
+        try { presentation.applyFrame(frame); } finally { path = 'none'; }
+      },
       applyEvent(event, context) { path = 'event'; try { presentation.applyEvent(event, context); } finally { path = 'none'; } },
       applyVerdict: (verdict, reason) => presentation.applyVerdict(verdict, reason),
       setVisibility: (entityId, visible) => presentation.setVisibility(entityId, visible),
@@ -364,6 +389,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         record.welcomeTick ??= welcome.serverTick;
         record.welcomeAtMs ??= now();
         record.hostIdAtWelcome ??= peer.session.p2p?.hostId ?? null;
+        record.links.push({ welcomeAtMs: now(), serverTick: welcome.serverTick, hostId: peer.session.p2p?.hostId ?? null, presentedTick: -1 });
         try { await presentation.rosterReady(); record.actors = presentation.actors.size; }
         catch (error) { record.rosterError = error instanceof Error ? error.message : String(error); log(`[${peer.id}] roster failed: ${record.rosterError}`); }
       },
@@ -375,7 +401,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   const spawn = (id, name, storage, index, { canHost = true } = {}) => {
     // the returning p1 is a second seat instance under the same player id: its views are labelled p1' in the report
     const label = `${id}${"'".repeat(peers.filter((other) => other.id === id).length)}`;
-    const peer = { id, label, name, storage, index, controls: scriptedControls(index), rounds: [], disposed: false, room: null, session: null, p2pEvents: [], hostLiveTick: null, resets: [], lastReconnects: 0 };
+    const peer = { id, label, name, storage, index, controls: scriptedControls(index), rounds: [], disposed: false, room: null, session: null, p2pEvents: [], hostLiveTick: null };
     const room = new RoomClient({ endpoint: rooms.url, player: { id, name }, storage, clientBuild: 'audit', transport: { createSocket } });
     const session = new MatchSession({
       room, clientBuild: 'audit', transport: { createSocket },
@@ -407,16 +433,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       rtc.flush();
       for (const peer of peers) if (!peer.disposed) peer.session.update(current, elapsedS);
       rtc.flush();
-      for (const entry of hostCores) {
-        hookCore(entry);
-        if (entry.core.stopped && entry.stoppedAtMs == null) entry.stoppedAtMs = current;
-      }
-      // a seat's link resets (a reconnect, a host migration) clear its event queue: sends just before one are lost by design
-      for (const peer of peers) {
-        if (peer.disposed) continue;
-        const reconnects = peer.session.match?.stats().reconnects ?? 0;
-        if (reconnects !== peer.lastReconnects) { peer.lastReconnects = reconnects; peer.resets.push(current); }
-      }
+      for (const entry of hostCores) hookCore(entry);
       await sleep(1000 / frameHz);
     }
   })();
@@ -731,17 +748,21 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     for (const round of peer.rounds) {
       if (round.welcomeAtMs === null) continue;
       const roundEnd = round.endedAtMs ?? peer.rounds[round.roundIndex + 1]?.welcomeAtMs ?? peer.retiredAtMs ?? marks.end ?? Infinity;
-      const hostStoppedAt = (hostId) => hostCores.find((entry) => entry.id === hostId)?.stoppedAtMs ?? Infinity;
-      // what the host sent to this seat while this presentation was its view (by wall time of the send). Not judged: a send
-      // inside the last END_GUARD_MS before the view ended, before its host stopped, or before the seat's link reset (the
-      // interpolation delay keeps it from presenting; a reset clears the queue by design — persistent state covers the world,
-      // never a replayed effect); the seat's own shell_fired when its presentation has no actors (the single-process harness
-      // cannot build the fleet twice; own shots are receipted in battlePresentation.selftest).
-      const judged = (e) => e.wallMs < roundEnd - END_GUARD_MS && e.wallMs < hostStoppedAt(e.host) - END_GUARD_MS &&
-        !peer.resets.some((reset) => e.wallMs >= reset - END_GUARD_MS && e.wallMs <= reset + 50) &&
-        !(e.type === 'shell_fired' && e.shooterId === peer.id && round.actors === 0);
+      // the link a send went to: this view's newest link from the send's host welcomed by the time it was sent (one sent
+      // between the host's welcome and this view's stamp of it falls to the link before, which never presented its tick)
+      const linkOf = (e) => {
+        const links = round.links.filter((link) => link.hostId === null || link.hostId === e.host);
+        return links.findLast((link) => link.welcomeAtMs <= e.wallMs) ?? links[0] ?? null;
+      };
+      // what the host sent to this seat while this presentation was its view (by wall time of the send). Judged once the
+      // link it went to presented DEADLINE_TICKS past its tick: by then the queue had released it, and a view that never got
+      // there (it ended, its host stopped, a reset cleared its queue by design — persistent state covers the world, never a
+      // replayed effect) could not present it. Not judged either: the seat's own shell_fired when its presentation has no
+      // actors (the single-process harness cannot build the fleet twice; own shots are receipted in battlePresentation.selftest).
+      const reached = (e) => (linkOf(e)?.presentedTick ?? -1) >= e.tick + DEADLINE_TICKS;
+      const exempt = (e) => e.type === 'shell_fired' && e.shooterId === peer.id && round.actors === 0;
       const sentAll = hostLog.filter((e) => e.viewerId === peer.id && e.wallMs >= round.welcomeAtMs - 50 && e.wallMs < roundEnd);
-      const sent = sentAll.filter(judged);
+      const sent = sentAll.filter((e) => reached(e) && !exempt(e));
       const applied = round.applied;
       const used = new Set();
       const rows = {};
@@ -761,7 +782,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       for (const type of HOST_KINDS) {
         const busKind = BUS_FOR[type];
         const sentOfKind = sent.filter((e) => e.type === type);
-        const row = { peer: peer.label, round: round.roundIndex, kind: type, sent: sentOfKind.length, applied: 0, missing: 0, duplicate: 0, late: 0, early: 0, wrongPlace: 0, dTicks: [], dWallMs: [], posErrM: [], viaFrame: 0, viaEvent: 0, cannedDirection: 0, settled: 0, fxWithoutCrush: 0, crushWithoutFx: 0 };
+        // unreached: sends of this kind the view's link never presented far enough past to judge
+        const row = { peer: peer.label, round: round.roundIndex, kind: type, sent: sentOfKind.length, unreached: sentAll.filter((e) => e.type === type && !reached(e) && !exempt(e)).length, applied: 0, missing: 0, duplicate: 0, late: 0, early: 0, wrongPlace: 0, dTicks: [], dWallMs: [], posErrM: [], viaFrame: 0, viaEvent: 0, cannedDirection: 0, settled: 0, fxWithoutCrush: 0, crushWithoutFx: 0 };
         for (const event of sentOfKind) {
           const crush = type === 'world_prop_destroyed' ? nextApplied(event.key, ['crush'], event.wallMs) : null;
           const fx = nextApplied(event.key, [busKind], event.wallMs);
@@ -801,7 +823,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         matrix.push(row);
       }
       // crushes applied by this presentation that match no judged send: replays of state older than the view (a late joiner's
-      // settled list), applications of sends the guards left unjudged (a reset or a view end within END_GUARD_MS), or — with
+      // settled list), applications of sends left unjudged (their link never presented DEADLINE_TICKS past them), or — with
       // no send of that prop to this seat at any time — unexplained
       const everSent = (a) => hostLog.some((e) => e.type === 'world_prop_destroyed' && e.viewerId === peer.id && e.index === a.index && e.wallMs <= a.wallMs);
       const unmatchedCrushes = applied.filter((a, i) => a.kind === 'crush' && !used.has(i) && !everSent(a));
@@ -839,7 +861,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   report.withheldWorldEvents = { sent: hostLog.filter((e) => WORLD_KINDS.has(e.type)).length, withheld: hostLog.filter((e) => e.withheld).length };
   report.failures = failures;
   report.pass = failures.length === 0;
-  report.raw = { hostLog, peers: peers.map((peer) => ({ id: peer.id, label: peer.label, rounds: peer.rounds.map((round) => ({ roundIndex: round.roundIndex, welcomeTick: round.welcomeTick, welcomeAtMs: round.welcomeAtMs, frames: round.frames, applied: round.applied })) })), marks, roomEvents: roomEvents.filter((e) => e.kind === 'host_changed' || e.kind === 'match_report') };
+  report.raw = { hostLog, peers: peers.map((peer) => ({ id: peer.id, label: peer.label, rounds: peer.rounds.map((round) => ({ roundIndex: round.roundIndex, welcomeTick: round.welcomeTick, welcomeAtMs: round.welcomeAtMs, frames: round.frames, links: round.links, applied: round.applied })) })), marks, roomEvents: roomEvents.filter((e) => e.kind === 'host_changed' || e.kind === 'match_report') };
   return report;
 }
 
@@ -853,11 +875,11 @@ export function formatMatrix(report) {
   lines.push('');
   lines.push('## Per seat and presentation: what the host sent vs what the presentation applied');
   lines.push('');
-  lines.push('| seat#view | kind | sent | applied | missing | duplicate | late (>2 intervals) | early (<0) | wrong place (>0.5 m) | Δticks min/p50/max | Δwall p50/max ms | pos err max m | via frame / via event | canned dir | settled | FX w/o crush | crush w/o FX |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| seat#view | kind | sent | unreached | applied | missing | duplicate | late (>2 intervals) | early (<0) | wrong place (>0.5 m) | Δticks min/p50/max | Δwall p50/max ms | pos err max m | via frame / via event | canned dir | settled | FX w/o crush | crush w/o FX |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const row of report.matrix) {
     if (row.sent === 0) continue;
-    lines.push(`| ${row.peer}#${row.round} | ${row.kind} | ${row.sent} | ${row.applied} | ${row.missing} | ${row.duplicate} | ${row.late} | ${row.early} | ${row.wrongPlace} | ${row.dTicks.min ?? '–'}/${row.dTicks.p50 ?? '–'}/${row.dTicks.max ?? '–'} | ${row.dWallMs.p50 ?? '–'}/${row.dWallMs.max ?? '–'} | ${row.posErrM.max ?? '–'} | ${row.viaFrame} / ${row.viaEvent} | ${row.cannedDirection} | ${row.settled} | ${row.fxWithoutCrush} | ${row.crushWithoutFx} |`);
+    lines.push(`| ${row.peer}#${row.round} | ${row.kind} | ${row.sent} | ${row.unreached} | ${row.applied} | ${row.missing} | ${row.duplicate} | ${row.late} | ${row.early} | ${row.wrongPlace} | ${row.dTicks.min ?? '–'}/${row.dTicks.p50 ?? '–'}/${row.dTicks.max ?? '–'} | ${row.dWallMs.p50 ?? '–'}/${row.dWallMs.max ?? '–'} | ${row.posErrM.max ?? '–'} | ${row.viaFrame} / ${row.viaEvent} | ${row.cannedDirection} | ${row.settled} | ${row.fxWithoutCrush} | ${row.crushWithoutFx} |`);
   }
   lines.push('');
   lines.push('## Per presentation: replays of older state, own-shot feedback');

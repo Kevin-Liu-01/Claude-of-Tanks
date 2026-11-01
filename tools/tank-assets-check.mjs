@@ -2,7 +2,7 @@
 // hashes/dimensions, live geometry and metadata freshness, plus a visible
 // muzzle-bore marker for every selected vehicle.
 
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -12,10 +12,11 @@ import '../src/vehicles/tankFactory.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
 } from '../src/vehicles/tankAssets.ts';
-import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
+import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 import { presentationReceiptErrors } from './presentation-receipt.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets, tankAssetIndexPath, tankAssetsLayoutProblems } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
@@ -54,7 +55,6 @@ function opt(name, fallback = '') {
 const selected = opt('tanks') || opt('ids');
 const onlyTanks = selected ? uniqueIds(selected.split(',').map((id) => id.trim()).filter(Boolean), 'tank-assets-check --ids') : [];
 const outDir = resolve(opt('out', 'public/icons'));
-const manifestPath = resolve(outDir, 'tank-assets.json');
 const skipBore = args.includes('--skip-bore');
 const skipGeometry = args.includes('--skip-geometry');
 const liveOnly = args.includes('--live-only');
@@ -104,12 +104,15 @@ function imageDimensions(buffer, ext) {
   return null;
 }
 
-if (!liveOnly && !existsSync(manifestPath)) {
-  console.error(`[tank-assets-check] missing ${manifestPath}; run npm run tank:assets`);
+if (!liveOnly && !existsSync(tankAssetIndexPath(outDir))) {
+  console.error(`[tank-assets-check] missing ${tankAssetIndexPath(outDir)}; run npm run tank:assets`);
   process.exit(2);
 }
 
-const manifest = liveOnly ? null : JSON.parse(readFileSync(manifestPath, 'utf8'));
+// The per-tank rows reassembled (266, tools/tank-assets-store.mjs).
+const manifest = liveOnly ? null : readTankAssets(outDir);
+// The split layout itself: each file under the size cap, in its canonical text, named for its row (266).
+if (manifest) failures.push(...tankAssetsLayoutProblems(outDir));
 if (manifest && manifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
   failures.push(`manifest schema ${manifest.schemaVersion} != ${TANK_ASSET_SCHEMA_VERSION}`);
 }
@@ -143,37 +146,69 @@ await server.listen();
 // navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
 // COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
 const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'tank-assets-check', ready: 'window.__ICONS_READY === true' });
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  protocolTimeout: 15 * 60 * 1000,
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
 const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon') && !message.text().includes('404')) {
-    pageErrors.push(message.text());
-  }
-});
+// One browser per chunk of ids (tools/browser-id-chunks.mjs): the whole fleet in one browser passed the 6 GB renderer
+// guard (265). Each chunk warms and audits its own ids and its saved portraits; the fleet checks below read every chunk.
+const auditIds = onlyTanks.length ? onlyTanks : [...ALL_TANK_IDS];
+const portraitAuditIds = !liveOnly && selectedViews.includes('angle')
+  ? (onlyTanks.length ? onlyTanks : Object.keys(manifest?.tanks || {})) : [];
+const auditSet = new Set(auditIds), portraitSet = new Set(portraitAuditIds);
+const thumbnailPath = (id) => {
+  const file = manifest?.tanks?.[id]?.assets?.angle?.thumbnail?.file;
+  return file ? resolve(outDir, file) : null;
+};
 
 try {
   const url = `${boundOrigin(server)}/tools/icons-page.html`;
-  await loadIconsPage(page, url);
-  await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
-  await page.waitForFunction(
-    () => {
-      window.__ASSET_POLLS = (window.__ASSET_POLLS || 0) + 1;
-      const stats = window.__GLB_STATS;
-      if (!stats) return window.__ASSET_POLLS >= 10;
-      const settled = stats.started === stats.settled;
-      window.__ASSET_SETTLE_STREAK = settled ? (window.__ASSET_SETTLE_STREAK || 0) + 1 : 0;
-      return window.__ASSET_SETTLE_STREAK >= 2;
-    },
-    { timeout: 120000, polling: 400 },
-  );
-  const audit = await page.evaluate((ids) => window.__AUDIT(ids), onlyTanks);
-  const liveIds = [...audit.ids].sort();
+  const audit = { tanks: {} }, portraitAudit = {};
+  await eachBrowserChunk('tools/tank-assets-check.mjs', [...new Set([...auditIds, ...portraitAuditIds])], async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      protocolTimeout: 15 * 60 * 1000,
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      const page = await browser.newPage();
+      page.on('pageerror', (error) => pageErrors.push(String(error)));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && !message.text().includes('favicon') && !message.text().includes('404')) {
+          pageErrors.push(message.text());
+        }
+      });
+      await loadIconsPage(page, url);
+      const audited = chunk.filter((id) => auditSet.has(id));
+      if (audited.length) {
+        await page.evaluate((ids) => window.__WARM(ids), audited);
+        await page.waitForFunction(
+          () => {
+            window.__ASSET_POLLS = (window.__ASSET_POLLS || 0) + 1;
+            const stats = window.__GLB_STATS;
+            if (!stats) return window.__ASSET_POLLS >= 10;
+            const settled = stats.started === stats.settled;
+            window.__ASSET_SETTLE_STREAK = settled ? (window.__ASSET_SETTLE_STREAK || 0) + 1 : 0;
+            return window.__ASSET_SETTLE_STREAK >= 2;
+          },
+          { timeout: 120000, polling: 400 },
+        );
+        Object.assign(audit.tanks, (await page.evaluate((ids) => window.__AUDIT(ids), audited)).tanks);
+      }
+      const sources = {};
+      for (const id of chunk) {
+        const file = portraitSet.has(id) ? thumbnailPath(id) : null;
+        if (file && existsSync(file)) sources[id] = `data:image/webp;base64,${readFileSync(file).toString('base64')}`;
+      }
+      if (Object.keys(sources).length) {
+        Object.assign(portraitAudit, await page.evaluate(
+          (ids, idSources) => window.__AUDIT_PORTRAITS(ids, idSources),
+          Object.keys(sources),
+          sources,
+        ));
+      }
+    } finally {
+      await browser.close();
+    }
+  });
+  const liveIds = [...ALL_TANK_IDS].sort();
   const manifestIds = manifest ? Object.keys(manifest.tanks || {}).sort() : [];
   if (manifest && !onlyTanks.length && JSON.stringify(liveIds) !== JSON.stringify(manifestIds)) {
     const missing = liveIds.filter((id) => !manifestIds.includes(id));
@@ -301,28 +336,15 @@ try {
       }
     }
   }
-  if (!liveOnly && selectedViews.includes('angle')) {
-    const portraitSources = {};
-    const portraitIdsToAudit = onlyTanks.length ? ids : Object.keys(manifest?.tanks || {});
-    for (const id of portraitIdsToAudit) {
-      const saved = manifest?.tanks?.[id];
-      const thumbnailFile = saved?.assets?.angle?.thumbnail?.file;
-      if (!thumbnailFile) {
+  if (portraitAuditIds.length) {
+    const portraitIds = [];
+    for (const id of portraitAuditIds) {
+      if (!manifest?.tanks?.[id]?.assets?.angle?.thumbnail?.file) {
         failures.push(`${id}: missing thumbnail manifest record`);
         continue;
       }
-      const thumbPath = resolve(outDir, thumbnailFile);
-      if (!existsSync(thumbPath)) continue;
-      portraitSources[id] = `data:image/webp;base64,${readFileSync(thumbPath).toString('base64')}`;
+      if (existsSync(thumbnailPath(id))) portraitIds.push(id);
     }
-    const portraitIds = Object.keys(portraitSources);
-    const portraitAudit = portraitIds.length
-      ? await page.evaluate(
-        (auditIds, sources) => window.__AUDIT_PORTRAITS(auditIds, sources),
-        portraitIds,
-        portraitSources,
-      )
-      : {};
     const widths = [];
     for (const id of portraitIds) {
       const result = portraitAudit[id];
@@ -346,7 +368,6 @@ try {
 } catch (error) {
   failures.push(`browser audit failed: ${error.message}`);
 } finally {
-  await browser.close();
   await server.close();
   rmSync(viteCacheDir, { recursive: true, force: true });
 }

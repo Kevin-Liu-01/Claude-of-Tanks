@@ -13,7 +13,7 @@ import { FITTINGS } from '../src/vehicles/profiles/kit.ts';
 import { TANK_SPECS } from '../src/vehicles/specs.ts';
 import { FLEET_RENEWAL_DONORS } from '../src/vehicles/fleetRenewalSpecs.ts';
 import { AMMO_TOUCH_M, ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, hullLengthTarget,
-  isAntennaTag, oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag } from './body-height-parts.mjs';
+  isAntennaTag, oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag, trianglesInBoxes } from './body-height-parts.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
 const visible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
@@ -184,6 +184,36 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
     'an oracle with its roof gun fused into the turret keeps the build\'s gun');
   const fused = pairedRoofFittings(built, { nodes: new Map(), trimmed: new Map() });
   assert.deepEqual([fused.hidden.size, fused.cutBuildSpans], [0, false], 'an oracle naming nothing: whole against whole');
+}
+
+// --- a fused oracle names its roof gun by registered boxes (tools/fused-roof-gun-boxes.mjs) ------------------------------
+{
+  // one mesh: a 2 m body block and a roof gun over it (a fused source), under a moved root (the boxes are root-frame)
+  const block = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).toNonIndexed().translate(x, y, z).getAttribute('position').array;
+  const fusedGeometry = new THREE.BufferGeometry();
+  fusedGeometry.setAttribute('position', new THREE.Float32BufferAttribute([...block(3, 2, 6, 0, 1, 0), ...block(0.1, 0.12, 1.2, -0.6, 2.36, 0.5)], 3));
+  const fused = new THREE.Mesh(fusedGeometry), root = new THREE.Group();
+  root.add(fused); root.position.set(5, 0, -2); fused.position.set(0.1, 0, 0);
+  const top = (geometry) => { geometry.computeBoundingBox?.(); return geometry.boundingBox.max.y; };
+  const gunBox = [-0.6, 2.25, -0.15, -0.4, 2.45, 1.15];
+  const withBox = roofFittingParts(root, { isRenderNode, oracle: true, boxes: [gunBox] });
+  assert.equal(withBox.boxed.has(fused), true, 'the registered box names the fused gun');
+  assert.equal(withBox.boxed.get(fused).index.count, 36, 'the gun\'s 12 triangles leave; the block\'s 12 stay');
+  assert.ok(Math.abs(withBox.boxed.get(fused).boundingBox.max.y - 2) < 1e-6, 'the body top is the block\'s');
+  // negative control: without its box the fused gun is body and sets the top
+  const without = roofFittingParts(root, { isRenderNode, oracle: true });
+  assert.equal(without.boxed.size, 0);
+  assert.ok(Math.abs(top(fused.geometry) - 2.42) < 1e-6, 'unboxed, the fused gun is the top (2.42)');
+  // a box that misses part of the gun (its muzzle end) leaves those triangles: only whole triangles in the boxes go
+  assert.ok(trianglesInBoxes(fused, root, [[-0.6, 2.25, -0.15, -0.4, 2.45, 0.6]]).length < 12);
+  assert.deepEqual(trianglesInBoxes(fused, root, [[5, 2.25, -2, 6, 2.45, 2]]), [], 'boxes are in the root frame, not the world');
+  // the paired rule: a boxed oracle names its roof weapon, so the build's roof gun leaves too
+  const n = (name) => Object.assign(new THREE.Object3D(), { name });
+  const gun = n('gun'), whip = n('whip');
+  const built = { nodes: new Map([[gun, 'pintleMG:gun'], [whip, 'antennaWhip:whip']]), trimmed: new Map(), boxed: new Map() };
+  const paired = pairedRoofFittings(built, withBox);
+  assert.deepEqual([paired.named.weapon, paired.hidden.has(gun), paired.hidden.has(whip)], [true, true, false]);
+  assert.equal(pairedRoofFittings(built, without).hidden.has(gun), false, 'unboxed: whole against whole');
 }
 
 // --- the merged-bucket cut keeps every other triangle and shares the attributes ---------------------------------------

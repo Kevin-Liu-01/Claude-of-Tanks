@@ -9,7 +9,7 @@
 // With steps.mjs BALANCE, each id's registered spec is two more rows: its combat leaves and the rest of it.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { splitCombat } from './combat-fields.mjs';
 import { expandGlobs } from './globs.mjs';
@@ -43,13 +43,14 @@ for (const [name, table] of Object.entries(TABLES)) {
       let data;
       try {
         if (table.kind === 'module') data = (await load(file))[table.exportName];
+        else if (table.kind === 'jsonRow') data = { [basename(file, '.json')]: JSON.parse(readFileSync(join(root, file), 'utf8')) };
         else data = table.path.reduce((value, key) => value?.[key], JSON.parse(readFileSync(join(root, file), 'utf8')));
       } catch (error) {
         if (error.code === 'ENOENT' || error.code === 'ERR_MODULE_NOT_FOUND') continue;
         errors.push(`${name} ${file}: ${error.message}`);
         continue;
       }
-      if (!data || typeof data !== 'object') { errors.push(`${name} ${file}: no ${table.exportName ?? table.path.join('.')}`); continue; }
+      if (!data || typeof data !== 'object') { errors.push(`${name} ${file}: no ${table.exportName ?? table.path?.join('.') ?? 'row'}`); continue; }
       const ids = Object.keys(data);
       fileIds[file] = [...new Set([...(fileIds[file] ?? []), ...ids])];
       for (const id of ids) {

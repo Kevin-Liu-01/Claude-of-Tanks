@@ -41,7 +41,7 @@
   "stations": 93.65694318220261,
   "turretCurves": 64.93612935949896,
   "wholeCurves": 76.09241237144639,
-  "dims": 76.60736855217984,
+  "dims": 81.10309436598857,
   "floaters": 100
  },
  "components": {
@@ -49,7 +49,7 @@
   "stations": 93.7,
   "turretCurves": 64.9,
   "wholeCurves": 76.1,
-  "dims": 76.6,
+  "dims": 81.1,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -814,9 +814,9 @@
    ]
   },
   "plan": {
-   "score": 67.30511196026919,
-   "meanPct": 1.9,
-   "p95Pct": 7.86,
+   "score": 72.84758131413994,
+   "meanPct": 1.59,
+   "p95Pct": 4.8,
    "coverPct": 3.45,
    "reg": {
     "dAlong": 0,
@@ -832,14 +832,6 @@
      "errM": 1.403
     },
     {
-     "at": -1.34,
-     "refTop": 1.07,
-     "refBot": -0.17,
-     "procTop": 2.56,
-     "procBot": -0.15,
-     "errM": 0.752
-    },
-    {
      "at": 1.45,
      "refTop": 1.19,
      "refBot": -0.08,
@@ -848,20 +840,12 @@
      "errM": 0.459
     },
     {
-     "at": 1.35,
-     "refTop": 1.99,
-     "refBot": -0.13,
-     "procTop": 2.63,
+     "at": -1.34,
+     "refTop": 1.07,
+     "refBot": -0.17,
+     "procTop": 1.63,
      "procBot": -0.15,
-     "errM": 0.328
-    },
-    {
-     "at": -1.24,
-     "refTop": 2.39,
-     "refBot": -0.21,
-     "procTop": 2.83,
-     "procBot": -0.15,
-     "errM": 0.252
+     "errM": 0.288
     },
     {
      "at": 0.16,
@@ -878,6 +862,14 @@
      "procTop": 0.34,
      "procBot": -0.15,
      "errM": 0.212
+    },
+    {
+     "at": 1.35,
+     "refTop": 1.99,
+     "refBot": -0.13,
+     "procTop": 1.63,
+     "procBot": -0.15,
+     "errM": 0.192
     },
     {
      "at": -0.91,
@@ -918,6 +910,14 @@
      "procTop": 3.19,
      "procBot": -0.28,
      "errM": 0.096
+    },
+    {
+     "at": -0.7,
+     "refTop": 3.15,
+     "refBot": -0.6,
+     "procTop": 3.28,
+     "procBot": -0.65,
+     "errM": 0.091
     }
    ]
   }
@@ -1054,8 +1054,10 @@
   {
    "name": "heightM",
    "actual": 3.218923720736057,
+   "roofFittingsTop": 3.4207371201552452,
    "published": 3.27,
-   "pct": 1.5619657267260918
+   "method": "interval: body top to roof-fittings top",
+   "pct": 0
   },
   {
    "name": "hullLengthM",
@@ -1088,7 +1090,23 @@
  },
  "proceduralBodyExtent": {
   "h": 3.219,
-  "len": 7.104
+  "len": 7.104,
+  "roofFittingsTop": 3.421
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "auxiliaryWeapon:americanM2HBBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "pintleMG:americanM2HBMount"
+  ],
+  "reference": [
+   "node:antenna2_m60a3-turret_1_0",
+   "node:antenna_m60a3-turret_1_0",
+   "node:mount2_m60a3-mini_turret_2_0",
+   "node:mount3_m60a3-mini_turret_2_0",
+   "node:weapon2_m60a3-mini_turret_2_0",
+   "node:weapon3_m60a3-turret_1_0"
+  ]
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -1098,7 +1116,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 182078,
+     "area": 182061,
      "minX": 162,
      "minY": 324,
      "maxX": 985,
@@ -1112,7 +1130,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 177325,
+     "area": 177311,
      "minX": 213,
      "minY": 324,
      "maxX": 985,
@@ -1140,7 +1158,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 178931,
+     "area": 178914,
      "minX": 165,
      "minY": 324,
      "maxX": 985,
@@ -1154,7 +1172,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 181659,
+     "area": 181642,
      "minX": 180,
      "minY": 324,
      "maxX": 985,

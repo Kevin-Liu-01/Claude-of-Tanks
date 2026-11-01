@@ -3,7 +3,7 @@
 // marketing"). Each still in picks.json ships as one 1920x1080 webp made from its delivered 1440p master, found in the
 // masters folder given on the command line: <id>-1920.webp as it stands, else <id>.png encoded at q90. manifest.json
 // records, per still, its round, map and hour, its titles in English and Chinese (the game's own map, hour and vehicle
-// names: the i18n catalogs and public/icons/tank-assets.json label.displayName, never an id), its tanks at this tree's
+// names: the i18n catalogs and public/icons/tank-assets/ rows' label.displayName, never an id), its tanks at this tree's
 // tank-id schema, its scene (scenes/<id>.json) and the file's bytes and sha256. Nothing is written unless every pick
 // has its master. Files in the folder that no pick names are removed. tools/marketing-shots/versus-media.selftest.mjs
 // holds the result.
@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from '../../tank-assets-store.mjs';
 import { FIRST_PARTY_LICENSE, PROJECT_COPYRIGHT, PROJECT_CREATOR } from '../../../src/authorship.ts';
 import { TANK_IDS } from '../../../src/vehicles/tankIdAliases.ts';
 import { REPO as ROOT } from '../paths.mjs';
@@ -41,7 +42,7 @@ const URL_BASE = `/media/${PICKS.collection}`;
 const WIDTH = 1920, HEIGHT = 1080, MAX_BYTES = 600 * 1024, QUALITY = 90;
 const EN = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
 const ZH = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
-const TANKS = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks;
+const TANKS = readTankAssets(join(ROOT, 'public/icons')).tanks;
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 function webpSize(buffer) {
@@ -84,7 +85,7 @@ function itemOf(id) {
   const scene = JSON.parse(readFileSync(sceneFile, 'utf8'));
   const tanks = scene.actors.map((a) => {
     const current = TANK_IDS.resolve(a.id, scene.tankIdSchema), displayName = TANKS[current]?.label?.displayName;
-    if (!displayName) throw new Error(`${id}: ${a.name} ${a.id} (${current}) has no label.displayName in public/icons/tank-assets.json`);
+    if (!displayName) throw new Error(`${id}: ${a.name} ${a.id} (${current}) has no label.displayName in public/icons/tank-assets/`);
     return { role: roleOf(a.name), id: current, displayName, paint: a.camo ?? null };
   });
   const hero = tanks[scene.actors.findIndex((a) => a.name === 'hero')], foe = tanks[scene.actors.findIndex((a) => /^foe\d*$/.test(a.name))];

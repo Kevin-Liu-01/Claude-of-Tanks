@@ -1,6 +1,6 @@
 {
  "id": "m60a2",
- "geoMin": 42.6,
+ "geoMin": 32.8,
  "requiredMinimum": 90,
  "registration": {
   "passed": true,
@@ -15,13 +15,13 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 42.57281643807369,
+ "rawGeoMin": 32.77679758632699,
  "rawComponents": {
   "hullCurves": 78.55798589841325,
   "stations": 92.8236280967131,
   "turretCurves": 80.78650524516189,
   "wholeCurves": 76.28876884633058,
-  "dims": 42.57281643807369,
+  "dims": 32.77679758632699,
   "floaters": 100
  },
  "components": {
@@ -29,7 +29,7 @@
   "stations": 92.8,
   "turretCurves": 80.8,
   "wholeCurves": 76.3,
-  "dims": 42.6,
+  "dims": 32.8,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -1034,14 +1034,16 @@
   {
    "name": "heightM",
    "actual": 3.3035403801575307,
+   "roofFittingsTop": 3.319013637207449,
    "published": 3.11,
+   "method": "interval: body top to roof-fittings top",
    "pct": 6.2231633491167475
   },
   {
    "name": "hullLengthM",
-   "actual": 7.094488357387484,
+   "actual": 7.1795912711620336,
    "published": 6.95,
-   "pct": 2.078969171042935
+   "pct": 3.3034715275112716
   },
   {
    "name": "overallLengthM",
@@ -1058,17 +1060,28 @@
  ],
  "referenceDimensions": {
   "heightM": 3.334486894257367,
-  "hullLengthM": 7.013253757875414,
+  "hullLengthM": 7.098356671649963,
   "overallLengthM": 7.326587213136256,
   "widthM": 3.6516886637806896
  },
  "referenceBodyExtent": {
   "h": 3.334,
-  "len": 7.013
+  "len": 7.098
  },
  "proceduralBodyExtent": {
   "h": 3.304,
-  "len": 7.094
+  "len": 7.18,
+  "roofFittingsTop": 3.319
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:americanM2HBBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "pintleMG:americanM2HBMount"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [

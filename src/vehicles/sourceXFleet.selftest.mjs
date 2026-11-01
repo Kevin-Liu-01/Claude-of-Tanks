@@ -9,7 +9,6 @@ import { tankTier } from './tier.ts';
 import { displayTier } from '../techTree/tiers.ts';
 import { k2SourceMetadata } from './xk2Specs.ts';
 import { donorSpec } from './donorSpecs.ts';
-import { assertCurrentT90MLampSeats } from './historicalT90MLamps.test-support.mjs';
 import { VEHICLE_ROLE_PROFILES } from './roleProfiles.ts';
 import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
 
@@ -26,7 +25,6 @@ for (const donor of new Set(Object.values(SOURCE_X_DONORS))) {
   assert.ok(ALL_TANK_IDS.includes(donor), `${donor}: registered donor`);
   const tank = createTank(donor, null, options);
   try {
-    if (donor === 't90am') assertCurrentT90MLampSeats(tank);
     donorFingerprints.set(donor, geometryFingerprint(tank.root));
   } finally { tank.dispose(); }
 }

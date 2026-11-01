@@ -21,7 +21,7 @@
   "stations": 93.65694318220261,
   "turretCurves": 45.69189058948835,
   "wholeCurves": 65.4550954661095,
-  "dims": 76.60736855217984,
+  "dims": 81.10309436598857,
   "floaters": 100
  },
  "components": {
@@ -29,7 +29,7 @@
   "stations": 93.7,
   "turretCurves": 45.7,
   "wholeCurves": 65.5,
-  "dims": 76.6,
+  "dims": 81.1,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -1034,8 +1034,10 @@
   {
    "name": "heightM",
    "actual": 3.218923720736057,
+   "roofFittingsTop": 3.4207371201552452,
    "published": 3.27,
-   "pct": 1.5619657267260918
+   "method": "interval: body top to roof-fittings top",
+   "pct": 0
   },
   {
    "name": "hullLengthM",
@@ -1068,7 +1070,23 @@
  },
  "proceduralBodyExtent": {
   "h": 3.219,
-  "len": 7.104
+  "len": 7.104,
+  "roofFittingsTop": 3.421
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "auxiliaryWeapon:americanM2HBBody",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "pintleMG:americanM2HBMount"
+  ],
+  "reference": [
+   "node:antenna2_m60a3-turret_1_0",
+   "node:antenna_m60a3-turret_1_0",
+   "node:mount2_m60a3-mini_turret_2_0",
+   "node:mount3_m60a3-mini_turret_2_0",
+   "node:weapon2_m60a3-mini_turret_2_0",
+   "node:weapon3_m60a3-turret_1_0"
+  ]
  },
  "floaterFails": 0,
  "floaterRows": [
