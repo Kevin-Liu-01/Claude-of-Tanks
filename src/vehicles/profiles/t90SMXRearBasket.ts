@@ -1,9 +1,9 @@
 // Independently authored flat-bar basket. The source oracle is local-only;
 // rail levels, canted side planes and support datums are scalar measurements.
-// 267 (Main 2026-10-31): every part of the basket is stowage (stowagePart.ts): rails, uprights, posts, clips, retainers.
+// 267: not tagged as stowage (stowagePart.ts): the print's basket lies inside its misc_a mesh with no piece-for-piece
+// match, so the gate keeps the basket as body on both sides.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
-import { stowagePart } from './stowagePart.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number,number,number];
@@ -16,12 +16,12 @@ function rail(P: TankBuilderPort, a: Point, b: Point, width=.04002, thickness=.0
   const geometry=KIT.box(width,thickness,direction.length());
   geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
     new THREE.Vector3(0,0,1),direction.normalize()));
-  P.addEquipment('turretDetail',stowagePart(geometry),
+  P.addEquipment('turretDetail',geometry,
     (a[0]+b[0])/2-YAW[0],(a[1]+b[1])/2-YAW[1],(a[2]+b[2])/2-YAW[2]);
 }
 
 function member(P: TankBuilderPort, min: Point, max: Point): void {
-  P.addEquipment('turretDetail',stowagePart(KIT.box(max[0]-min[0],max[1]-min[1],max[2]-min[2])),
+  P.addEquipment('turretDetail',KIT.box(max[0]-min[0],max[1]-min[1],max[2]-min[2]),
     (min[0]+max[0])/2-YAW[0],(min[1]+max[1])/2-YAW[1],(min[2]+max[2])/2-YAW[2]);
 }
 

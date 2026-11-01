@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {stowagePart} from './stowagePart.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -227,20 +226,20 @@ function sideArmor(P:TankBuilderPort):void{
   addT90MSSideAssembly(P);
 }
 function bustle(P:TankBuilderPort):void{
+  // 267: the open bustle basket stays body, not stowage (stowagePart.ts): the print's basket node starts at y 1.81 and
+  // matches the build's piece for piece nowhere, so the gate keeps it on both sides.
   top(P,'turretDetail',boxSections([[-2.4092,.61,2.100,1.66],[-2.28,.660,2.1163,1.6292],[-1.70,.66,2.1163,1.675],[-1.5899,.64,2.10,1.70]]),-.0127,0,0);
   top(P,'turretDetail',box(.5082,.0127,.751),-.00955,2.12014,-1.99081);
   top(P,'turretDetail',box(1.5049,.3445,.0957),.0088,1.91174,-2.49616);
-  // 267 (Main 2026-10-31): the open bustle basket behind the rear plate is stowage (stowagePart.ts): its two dividers,
-  // rear and side rails, posts and the braces under it. The bustle box, its plates and the side case stay body.
-  for(const x of [-.24575,.22745])top(P,'turretDetail',stowagePart(box(.0202,.3713,.2929)),x,1.93,-2.55966);
-  for(const y of [1.84159,1.89494,1.95339,2.00909,2.06449,2.12064])top(P,'turretDetail',stowagePart(box(1.721,.006,.0371)),.003,y,-2.91216);
+  for(const x of [-.24575,.22745])top(P,'turretDetail',box(.0202,.3713,.2929),x,1.93,-2.55966);
+  for(const y of [1.84159,1.89494,1.95339,2.00909,2.06449,2.12064])top(P,'turretDetail',box(1.721,.006,.0371),.003,y,-2.91216);
   for(const y of [1.85379,1.90969,1.96569,2.02154,2.07669,2.13284]){
-    top(P,'turretDetail',stowagePart(beamBetween([-.86,y,-2.912],[-.998,y,-2.355],.003,8)),0,0,0);
-    top(P,'turretDetail',stowagePart(beamBetween([.852,y,-2.912],[1.0889,y,-1.7061],.003,8)),0,0,0);
+    top(P,'turretDetail',beamBetween([-.86,y,-2.912],[-.998,y,-2.355],.003,8),0,0,0);
+    top(P,'turretDetail',beamBetween([.852,y,-2.912],[1.0889,y,-1.7061],.003,8),0,0,0);
   }
-  for(const x of [-.85,-.44,0,.44,.85])top(P,'turretDetail',stowagePart(box(.011,.306,.015)),x,1.976,-2.906);
-  for(const[x,z]of [[-.987,-2.390],[1.071,-1.79],[.970,-2.33]])top(P,'turretDetail',stowagePart(box(.009,.301,.011)),x,1.981,z);
-  for(const side of [-1,1])top(P,'turretDetail',stowagePart(beamBetween([side*.62,1.70,-2.30],[side*.83,1.83,-2.908],.011)),0,0,0);
+  for(const x of [-.85,-.44,0,.44,.85])top(P,'turretDetail',box(.011,.306,.015),x,1.976,-2.906);
+  for(const[x,z]of [[-.987,-2.390],[1.071,-1.79],[.970,-2.33]])top(P,'turretDetail',box(.009,.301,.011),x,1.981,z);
+  for(const side of [-1,1])top(P,'turretDetail',beamBetween([side*.62,1.70,-2.30],[side*.83,1.83,-2.908],.011),0,0,0);
   top(P,'turretDetail',box(.2466,.2692,.5273),.73315,1.90299,-2.07526);
 }
 function roofEquipment(P:TankBuilderPort):void{
