@@ -337,6 +337,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/whip-rods.selftest.mjs',
     // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
     'tools/gate-stowage.selftest.mjs',
+    // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
+    'tools/gate-oracle-pins.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
