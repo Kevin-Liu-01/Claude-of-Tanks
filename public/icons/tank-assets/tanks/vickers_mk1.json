@@ -558,8 +558,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26084,
-      "sha256": "b450138d350cdc0a10ea11da185ffb4dbe81863935b468af3e34456970a88de7"
+      "bytes": 26214,
+      "sha256": "dd0dcd7af97290607f17231debc8365cba4543c681b8ec754b365cef3c997c11"
     },
     "modulesSide": {
       "file": "vickers_mk1_modules_side.webp",
@@ -588,8 +588,8 @@
     "technicalLabels": {
       "file": "vickers_mk1_technical.json",
       "mime": "application/json",
-      "bytes": 4214,
-      "sha256": "a8360c4dd64889b93d8d877420746d75674fab6cbe055310545d69cd6e4d19e5"
+      "bytes": 4216,
+      "sha256": "b36c4d5bf531a922a7bc1e0ba19b941dc2f34b9883f48a504ef483fb2749260d"
     }
   }
 }

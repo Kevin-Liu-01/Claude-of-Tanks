@@ -5620,22 +5620,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9301,0.4383,-3.1548],
-        "max": [0.9301,1.3992,-1.5237],
+        "min": [-0.9301,0.4383,-2.4727],
+        "max": [0.9301,1.3701,-1.5237],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.7999,0.5328,-3.0243],
+        "min": [-0.7999,0.5617,-3.0243],
         "max": [0.7999,1.2247,-2.4697],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5581,0.4383,-1.4693],
-        "max": [1.1347,1.0066,-0.0014],
+        "min": [-1.1347,0.4383,-1.4693],
+        "max": [-0.5581,1.0066,-0.0014],
         "turretLocal": false
       },
       {
@@ -5648,8 +5648,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7952,0.1582,-1.4864],
-        "max": [-0.1327,0.7096,-0.9291],
+        "min": [0.1327,0.1582,-1.2517],
+        "max": [0.5071,0.6515,-0.9291],
         "turretLocal": true
       },
       {
@@ -5790,7 +5790,7 @@
     ]
   },
   "geometryHash": "e9ea9ebd",
-  "metadataHash": "41bbe797",
+  "metadataHash": "23158e52",
   "presentationAnchor": {
     "xM": -0.006,
     "zM": 0.0001
@@ -5895,24 +5895,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23154,
-      "sha256": "33e26ee972fcbc9e3c984a1143a3fc8a87420c4a56f1f106ca10da5ff034f207"
+      "bytes": 23128,
+      "sha256": "dec6d5141ecd48f7a5d924a740a425b84450e2cfca6553375149f6720e0e237c"
     },
     "modulesSide": {
       "file": "pt91m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21466,
-      "sha256": "df3adc9651b24f78abae1f1517188510d12070b0c8829f15e075c210013665d4"
+      "bytes": 20840,
+      "sha256": "84a0289c9e5c7df8add5a8e018f80de9a917d2c6b34bb96f21fb6bebd5bdf2c5"
     },
     "crewSide": {
       "file": "pt91m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18814,
-      "sha256": "6fb5490ff1f280f2ba7f68f08cebb9d3b4f546e34b3cf3b4004cab3261f91e32"
+      "bytes": 19032,
+      "sha256": "8616df0cc404fa1daa3a9cfc910eca7bf549b7e707f5ef44ed83a69bde41dcb4"
     },
     "markings": {
       "file": "pt91m_markings.png",
@@ -5925,8 +5925,8 @@
     "technicalLabels": {
       "file": "pt91m_technical.json",
       "mime": "application/json",
-      "bytes": 5462,
-      "sha256": "62bfa7768eedd664dd95af798b9493fb833534890ee31e1085b6b5c84f378bf4"
+      "bytes": 5461,
+      "sha256": "fbafe8f0dd87643e1e159da4c41ceb82739dcc250b4fed6140fb093b71a388d6"
     }
   }
 }

@@ -23617,24 +23617,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33510,
-      "sha256": "b0aeba1383247cdf4b14aa704c7a2489d81d48f3e02b515f3c6aea180ad08299"
+      "bytes": 33498,
+      "sha256": "cb8c431d878c267ddb9c8a463d6ca9541889bb8a441b6670019bbc2b7ac6ec2c"
     },
     "modulesSide": {
       "file": "t80u_zoria_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28306,
-      "sha256": "634c80ae5bdd4e15692c229cef17b548534b80f68049fbf6ef2de52e0a7d8388"
+      "bytes": 28162,
+      "sha256": "7186cbb6f5f8baef5e91e1bc237cf1f13dc85993d00224bc288aba613e70df2f"
     },
     "crewSide": {
       "file": "t80u_zoria_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24890,
-      "sha256": "611ba31771466c02535104e1b76982f89a03e1df44f37f0e355e31cc963abb06"
+      "bytes": 25028,
+      "sha256": "119ef7d54bec36643c3c7f39085347b69d505ae516cf9b8071e553c7cc4ec9c3"
     },
     "angle": {
       "file": "t80u_zoria_angle.webp",
@@ -23695,8 +23695,8 @@
     "technicalLabels": {
       "file": "t80u_zoria_technical.json",
       "mime": "application/json",
-      "bytes": 5340,
-      "sha256": "06cba617445258f89f46d3fa6948f7b5e32d38cae1ebd019591a2d21ebb3a1ce"
+      "bytes": 5338,
+      "sha256": "28f2f43e61384a777f96d7d94cd14a7e9086272c698998e2b469eef0388a87eb"
     }
   }
 }

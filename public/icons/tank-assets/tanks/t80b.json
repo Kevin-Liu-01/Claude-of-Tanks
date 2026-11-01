@@ -620,24 +620,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20970,
-      "sha256": "30898abc1b4063dafd22cdbbbf0d9b06c38e7499875946a18931ca41663520f2"
+      "bytes": 20964,
+      "sha256": "30bda79c3e0864f3b82380a9ae705b0472e3cebd4df6a20dc82370e20226ff0c"
     },
     "modulesSide": {
       "file": "t80b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23046,
-      "sha256": "e5a1a0e6fe36a29294f48c061699d0c9839359fdcd29aad01c778a48d499b035"
+      "bytes": 21762,
+      "sha256": "ffcf8d3bd645e805d95a2cedf7d0c189961a052ab7b5ebb2f94947551c8b9099"
     },
     "crewSide": {
       "file": "t80b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18498,
-      "sha256": "400b4761a19f687765de687abce1cc2ac1b9e049d163510f64fff8c005c02424"
+      "bytes": 18390,
+      "sha256": "abce26e5870f1dd43f65a8b315859733a5d328400665393c98aadaa62e7cd9ba"
     },
     "markings": {
       "file": "t80b_markings.png",
@@ -651,7 +651,7 @@
       "file": "t80b_technical.json",
       "mime": "application/json",
       "bytes": 4974,
-      "sha256": "9f18b8447aa7b39db3e5a0c4dc3be49b75d7edf48da52bfe59c47da5f7538638"
+      "sha256": "84f2a4ae7690ba893aa0186361cd4f594ffb419dfc6eabf52c2ad591685491bb"
     }
   }
 }

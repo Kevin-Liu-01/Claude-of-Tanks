@@ -588,15 +588,15 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-0.9975,0.45,-3.0859],
+        "min": [-0.9975,0.45,-2.4654],
         "max": [0.9975,1.4859,-1.6086],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-0.8578,0.555,-2.9677],
-        "max": [0.8579,1.3009,-2.4654],
+        "min": [-0.8579,0.555,-2.9677],
+        "max": [0.8578,1.3009,-2.4654],
         "turretLocal": false
       },
       {
@@ -616,8 +616,8 @@
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.672,-0.0345,-1.7475],
-        "max": [-0.112,0.3494,-0.9407],
+        "min": [0.112,0.1427,-1.7475],
+        "max": [0.672,0.3494,-0.9407],
         "turretLocal": true
       },
       {
@@ -697,35 +697,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.6497,0.9069,1.151],
-        "max": [-0.1903,1.1969,3.0106],
+        "min": [0.1903,0.6082,1.1285],
+        "max": [0.6497,1.2582,2.8331],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2575,-0.5931,-0.4887],
-        "max": [0.7169,0.7162,0.3326],
+        "min": [-0.7169,-0.5931,-0.4887],
+        "max": [-0.2575,0.7162,0.3326],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.2855,-0.3568,-0.9945],
-        "max": [0.6452,0.7164,-0.3827],
+        "min": [-0.6949,0.016,-1.113],
+        "max": [-0.2355,0.716,-0.3491],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.7169,-0.4777,-0.4973],
-        "max": [-0.2575,0.7155,0.2963],
+        "min": [0.2575,-0.5973,-0.4381],
+        "max": [0.7169,0.7116,0.337],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "34692f3e",
-  "metadataHash": "2d76b270",
+  "metadataHash": "e97c7477",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.015
@@ -784,15 +784,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24404,
-      "sha256": "22126404e50a9fd60f74f0fc404a60989ce8f5ea70185a8d891af397e8b6c73b",
+      "bytes": 24412,
+      "sha256": "130239255a63f332835ee26a9be6b4d671e552cb47ec6664f02bb28740fd0342",
       "thumbnail": {
         "file": "thumbs/tamoyo1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10438,
-        "sha256": "1d58fe9d55f9d206e272fc2ba3e9078d4889a61a80c578aa2fbb688549184458"
+        "bytes": 10430,
+        "sha256": "1b19f45879f6879d97b78fa15ccb0aa38be70d74960710c6b097d393d9961650"
       }
     },
     "top": {
@@ -808,8 +808,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9856,
-      "sha256": "7dd3cf551909f84fba2b573386ace5caac57f52cead76a2386f9c74a880cd345"
+      "bytes": 9850,
+      "sha256": "41194bfc2f3a1d3128da8cd394f3b9ba21afcc48d45eae31d645c904bd528978"
     },
     "topSilhouette": {
       "file": "tamoyo1_top_silhouette.png",
@@ -832,24 +832,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21780,
-      "sha256": "30bda88236823d49373ca24556400037992a01c381fa966295ae62702c150553"
+      "bytes": 21762,
+      "sha256": "f8b60caabdfe6a559065d09abef9fb55be801b995af97549ffd6912d6d4c8bba"
     },
     "modulesSide": {
       "file": "tamoyo1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22810,
-      "sha256": "88e9955aa6df6a0b195fce3a2090510dc7bae3bc1aba879c83432b08a0dc5222"
+      "bytes": 22196,
+      "sha256": "04936fa373c7632761f43d338366feaa6311aac53cc01c2b4de22e9f2442b0dd"
     },
     "crewSide": {
       "file": "tamoyo1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20004,
-      "sha256": "e3c83266890dadf348b69d4ff9173a69a514946fce1588cdcd6df9097dfaaa9a"
+      "bytes": 20316,
+      "sha256": "44e024ff42810df463e6c9abd2c6a635c588ba31cdc39803e9d006322e83d47a"
     },
     "markings": {
       "file": "tamoyo1_markings.png",
@@ -862,8 +862,8 @@
     "technicalLabels": {
       "file": "tamoyo1_technical.json",
       "mime": "application/json",
-      "bytes": 5181,
-      "sha256": "2bddf2477769df04b27a5fa37ca3d5704ec1da73fe1a6c6719305d6664eeb2d4"
+      "bytes": 5183,
+      "sha256": "315aa68bdd8c9452b2a5844d4182e1644ac763e9561c07af509bf655bc44bb12"
     }
   }
 }

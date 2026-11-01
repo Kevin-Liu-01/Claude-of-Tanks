@@ -978,8 +978,8 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.5476,0.6085,-2.6101],
-        "max": [0.7252,0.7522,-1.5526],
+        "min": [-0.7252,0.6085,-2.9332],
+        "max": [0.5476,0.8097,-1.5526],
         "turretLocal": true
       },
       {
@@ -1006,8 +1006,8 @@
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.1777,0.5239,-3.2017],
-        "max": [1.0072,0.7633,-1.2842],
+        "min": [-0.8887,0.464,-3.2017],
+        "max": [0.5628,0.8232,-1.3441],
         "turretLocal": true
       },
       {
@@ -1094,28 +1094,28 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.7333,0.7456,1.8991],
-        "max": [-0.2739,1.2856,3.6037],
+        "min": [0.2739,0.5677,1.9022],
+        "max": [0.7333,1.3177,3.5007],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.9797,0.0071,-0.5958],
-        "max": [-0.5203,0.8049,0.1392],
+        "min": [0.2857,0.006,-0.4358],
+        "max": [0.7142,0.856,0.3824],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.5357,0.1624,-2.8999],
-        "max": [0.9642,0.9824,-2.4109],
+        "min": [-1.0797,0.0313,-1.7873],
+        "max": [-0.6203,0.7713,-1.1492],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "294f2a06",
-  "metadataHash": "4f4f9b27",
+  "metadataHash": "13f6bf85",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0036
@@ -1229,16 +1229,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26070,
-      "sha256": "5fc58d474bbac6a21476384e857220c597b84355752be08fc88854af7f034bb1"
+      "bytes": 25854,
+      "sha256": "92bf70aeb41ed8a42fc63000e038fb004035eb964dcb757e2f0609c809bef2ca"
     },
     "crewSide": {
       "file": "kf51_evo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22112,
-      "sha256": "123b153695d42a08ba8449920c1d8f8cc5d6361bfb171d89204e83c76e04b27e"
+      "bytes": 22374,
+      "sha256": "a348f09abd0f82acae5b2f0fb974315971beaa8c58d9dbe2b03703bb0f6ae59a"
     },
     "markings": {
       "file": "kf51_evo_markings.png",
@@ -1251,8 +1251,8 @@
     "technicalLabels": {
       "file": "kf51_evo_technical.json",
       "mime": "application/json",
-      "bytes": 5213,
-      "sha256": "ac94667cf8692a5b84e45e98f3ebb6812f812bb0a32ad9a8f04f8022591700de"
+      "bytes": 5218,
+      "sha256": "7ef463f160208ad177ecfc665464c63bd224de99376c0bf20db5b13d590157c2"
     }
   }
 }

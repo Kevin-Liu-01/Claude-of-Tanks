@@ -577,24 +577,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44942,
-      "sha256": "87d59883795610ce055d804c24c90606eda64e64b294817ea1a1e61dbb305a50"
+      "bytes": 44900,
+      "sha256": "726622786b0948a164479c2a894c095cc70415a1a9443a2cee676dba54990c04"
     },
     "modulesSide": {
       "file": "fv510_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37148,
-      "sha256": "ba8b4203d32c693436792cf6d4050721dd1b1e03684bdde327a15c5bf98843ff"
+      "bytes": 36032,
+      "sha256": "980a2f11027e662fb67daf6ffb83e334a3a40c55bfe0a254215d2363683e5f5d"
     },
     "crewSide": {
       "file": "fv510_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31998,
-      "sha256": "a9c16355ba0a35854119958f96d877aa0d84020929a1fe710dd2c130927a1604"
+      "bytes": 31880,
+      "sha256": "cfc72b12532eda7cca21d388a2e5592cd9e34e10d88abbac431af0703fc7e11c"
     },
     "markings": {
       "file": "fv510_markings.png",

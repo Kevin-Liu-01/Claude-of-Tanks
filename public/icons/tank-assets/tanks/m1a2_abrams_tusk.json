@@ -44601,24 +44601,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30058,
-      "sha256": "81f37ef5fee81810c2edef103cd23f84ab62ba71d99c460f425a50f5dd0e1e22"
+      "bytes": 30044,
+      "sha256": "6e67f20a45421f803094c7fcbe34623172d365e929dc0d1fb837edb9705ba4ab"
     },
     "modulesSide": {
       "file": "m1a2_abrams_tusk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27972,
-      "sha256": "658962d1845a67391b6154a740fd504dab352c0de46536b0f5e3fc09271eb1b0"
+      "bytes": 28264,
+      "sha256": "228c07ffe8eed9435a7603e1f8c2b6387621d29f3949b73d30cb0b2f9e3ee561"
     },
     "crewSide": {
       "file": "m1a2_abrams_tusk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26370,
-      "sha256": "03702c9bee020b0fd3af8f35d5722d02bc3238818775aa0e713960bb46f4bd7d"
+      "bytes": 26302,
+      "sha256": "ab22fcd79767dbf0d63ec3afda78b5f692b2231bff17923b4d031c22f14e136f"
     },
     "angle": {
       "file": "m1a2_abrams_tusk_angle.webp",
@@ -44680,7 +44680,7 @@
       "file": "m1a2_abrams_tusk_technical.json",
       "mime": "application/json",
       "bytes": 5711,
-      "sha256": "24d0c92823bd026e43767afbf84cf009bd2dec7d8d35aa38b71ae54cab1cd7b4"
+      "sha256": "14706676d7cdf7dbb73854bcbc8475d01ad09e412d1de7366bdbda16614da148"
     }
   }
 }

@@ -333,36 +333,36 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.0012,0.3661,-3.3204],
-        "max": [1.0012,1.5761,-1.7035],
+        "min": [-0.9411,0.8318,-2.6911],
+        "max": [0.9411,1.5531,-1.734],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-0.861,0.4955,-3.1911],
+        "min": [-0.861,0.6698,-3.1911],
         "max": [0.861,1.3667,-2.6413],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.4005,0.3661,-1.637],
-        "max": [1.0012,1.0805,-0.5389],
+        "min": [-0.7723,0.7531,-1.1621],
+        "max": [-0.4005,1.0805,-0.5389],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.851,0.3661,-0.6037],
-        "max": [0.851,1.1679,0.6183],
+        "min": [-0.2239,0.4552,-0.4249],
+        "max": [0.1344,1.0788,0.1414],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.8009,0.7014,-1.3708],
-        "max": [-0.2503,1.3647,-0.3725],
+        "min": [0.2503,0.7014,-1.3708],
+        "max": [0.8009,1.3647,-0.3725],
         "turretLocal": false
       },
       {
@@ -490,7 +490,7 @@
     ]
   },
   "geometryHash": "69b7a291",
-  "metadataHash": "b44472af",
+  "metadataHash": "8116cb06",
   "presentationAnchor": {
     "xM": 0.004,
     "zM": -0.0595
@@ -545,24 +545,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25822,
-      "sha256": "3c8439c888ef9688c945aa4ae9c46aed63d3d3eb31a4e6e1450511d2ecc1b0cf"
+      "bytes": 25814,
+      "sha256": "5390fff37d135dd78e6fe7572575f72ea7c97f2d3f5a178bb93cf648c0ddb4b7"
     },
     "modulesSide": {
       "file": "amx30b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25066,
-      "sha256": "f0f8dfab005cd9509465e0cd5c5c35489b36ce14e3e41b0e019baacb35f6cff9"
+      "bytes": 24600,
+      "sha256": "a3da09780e0a8ac991a7a9cef280510056c2097e92a20c12310534749d7784ef"
     },
     "crewSide": {
       "file": "amx30b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22534,
-      "sha256": "2b038579a5ca71285c003af24c81ec5dcc188d0f751a5563e5a9535a3e9b71e5"
+      "bytes": 22324,
+      "sha256": "bc9c805367516e8dfa1399c10074721eae8e029e7f3889f3abd94b19a4fe7f84"
     },
     "angle": {
       "file": "amx30b_angle.webp",
@@ -623,8 +623,8 @@
     "technicalLabels": {
       "file": "amx30b_technical.json",
       "mime": "application/json",
-      "bytes": 4898,
-      "sha256": "ea41f0a06b0e43c21cc362c6be4bc8ec28f8266e95c4b98d112c7861dedb8825"
+      "bytes": 4897,
+      "sha256": "11a4aca21ceb1b4ee9c8c561efe977ed3f2aa34831da70dd156cf1f0b43a10ba"
     }
   }
 }

@@ -940,24 +940,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32764,
-      "sha256": "0916c274e3328d9d107e3e180f91cd1b6a523b7e48711a434b2f98a76c869f8b"
+      "bytes": 32776,
+      "sha256": "802a05e45f0a3d15f43ca3ae3b1bf1d560bd425e748c55fc3efe309d4900d0e2"
     },
     "modulesSide": {
       "file": "kurganets25_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34232,
-      "sha256": "6816e933980585ff4e9b17002fddf9fb2ca969fed267ac0197741ae3cb00d89e"
+      "bytes": 33572,
+      "sha256": "2cce849e662333ddf365d4552bc3a5e5485221587f69a0a5ec4f1944dff45028"
     },
     "crewSide": {
       "file": "kurganets25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30330,
-      "sha256": "5e71778c53e1af037de9760cf62ed15ee17ca0b33b4884dd2a6e0a7dcfda403c"
+      "bytes": 29698,
+      "sha256": "860508524f292fd9b244bf2ddfba8ec5c1d72986e02542645a7ebacee7aaa2f7"
     },
     "angle": {
       "file": "kurganets25_angle.webp",
@@ -1019,7 +1019,7 @@
       "file": "kurganets25_technical.json",
       "mime": "application/json",
       "bytes": 4324,
-      "sha256": "fd5570fc9647fc4280b18b6d42fbd4a4dec8e48cc5b5a880ba74e011936b2643"
+      "sha256": "a13a5f9f3c3df237d88bb89a4f3e4d6b8d8ee54ed042333e318e33ae3e65881f"
     }
   }
 }

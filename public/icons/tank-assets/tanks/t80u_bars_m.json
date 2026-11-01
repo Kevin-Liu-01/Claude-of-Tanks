@@ -9877,24 +9877,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32032,
-      "sha256": "c6d4d80ef88955e6e25a8dab1c4f1d4f81564152aeb1d5d3c3391b05eecca968"
+      "bytes": 32028,
+      "sha256": "15d8062d8f6da69c3997ea099135bf697c0c4116c8bbce85cfbc9db8d17432e3"
     },
     "modulesSide": {
       "file": "t80u_bars_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28752,
-      "sha256": "1e56d8eff47fffb60cc2479b21fc5af219111cb48eac10f63d213b68377470db"
+      "bytes": 28654,
+      "sha256": "762748eb89142de743444fd42ff10fbe17833167e28ee0d702b680d1568dffc2"
     },
     "crewSide": {
       "file": "t80u_bars_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25660,
-      "sha256": "dbdded7525629d772990256f2d90334e24524385c694fb8c6efee89a6e63ac56"
+      "bytes": 25680,
+      "sha256": "5f13335e611295247c38541b47dd0ed41d674a9a4b1d21fd007a2561585e46fd"
     },
     "angle": {
       "file": "t80u_bars_m_angle.webp",
@@ -9955,8 +9955,8 @@
     "technicalLabels": {
       "file": "t80u_bars_m_technical.json",
       "mime": "application/json",
-      "bytes": 5334,
-      "sha256": "71f696f9a5d4e85fc4788c56dcb5dbe991b89a8e650e012bb6701733301deb41"
+      "bytes": 5333,
+      "sha256": "a0fa47565ed9bdde9730026dc747ce4eb88215cb83f7882d7bc74c2b82a7e704"
     }
   }
 }

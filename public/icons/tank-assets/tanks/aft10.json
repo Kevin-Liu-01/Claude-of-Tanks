@@ -2556,24 +2556,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24160,
-      "sha256": "1236518aea9a79dfcd5cff7e0027c03be31887f234dc8876cc3ef561138fa49b"
+      "bytes": 23490,
+      "sha256": "223f30655839e3a858270d5e4c980010e59eb5fa7412f7292c2618a4fb57cbc7"
     },
     "modulesSide": {
       "file": "aft10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24984,
-      "sha256": "d8cc34f34c160e55ad1665baf9a4cd1eba0de12e7c11d1f27c153e570c626dd0"
+      "bytes": 24818,
+      "sha256": "27cb6ddc26d2b48d5992799e8db1ed968b559a2aee0d2adb3cb62d602fffb339"
     },
     "crewSide": {
       "file": "aft10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25062,
-      "sha256": "433ac26b4d5e28b3aaa04463f4f91cda858cc22642a17c174202ba5b02e71890"
+      "bytes": 24984,
+      "sha256": "bc8536879c814c19762d61a58fcf510631a183bd47bf3b3a97db1b099e181053"
     },
     "angle": {
       "file": "aft10_angle.webp",
@@ -2634,8 +2634,8 @@
     "technicalLabels": {
       "file": "aft10_technical.json",
       "mime": "application/json",
-      "bytes": 3808,
-      "sha256": "f9c75e76923722eec4587080f241fd0607a3785d27973ef036f1b6ac15dc6f64"
+      "bytes": 3811,
+      "sha256": "b00e8f536c0410b69393362e3d2796ffaf58117d22982a45eb246b75c7ae4a36"
     }
   }
 }

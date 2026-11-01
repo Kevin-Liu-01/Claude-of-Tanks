@@ -1831,24 +1831,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25696,
-      "sha256": "5c5af5681963361c74b53e6a4e8ed4a103c5e6c97e8cc6a340ebc91050675ef3"
+      "bytes": 25702,
+      "sha256": "6330be5f1e67a868a720cffe854388eaadfec01f0c914c6cc8f3fa5e3932c831"
     },
     "modulesSide": {
       "file": "t80u_kursk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25964,
-      "sha256": "a2ffde265060e5f89a482042a4209f34d1160478cc7281f41f2d9642eb2b27bd"
+      "bytes": 24898,
+      "sha256": "e0d5f4f393aa046f7e8a777dab7c5f003251c4f510974814236a92534d6cdee9"
     },
     "crewSide": {
       "file": "t80u_kursk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22914,
-      "sha256": "5f50028952858947e877557941ec9b1c42985fb21ab24abbe29919c1ac7481b3"
+      "bytes": 22934,
+      "sha256": "13bbbad9980011000e388935c6ac4954bbd8b908b79ed0d1479914577878a95a"
     },
     "markings": {
       "file": "t80u_kursk_markings.png",
@@ -1862,7 +1862,7 @@
       "file": "t80u_kursk_technical.json",
       "mime": "application/json",
       "bytes": 5124,
-      "sha256": "0a2d6cb62ab441cbf8ac39f07f8a681952fd4f88c8b5d5c2328dfe76db3892a0"
+      "sha256": "fc75f95084e474c7859ad7dfb2321800cc804bee78b6be2a5b6a8f6573ad7b69"
     }
   }
 }

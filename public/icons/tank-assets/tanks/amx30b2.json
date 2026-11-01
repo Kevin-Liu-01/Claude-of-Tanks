@@ -1866,24 +1866,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27128,
-      "sha256": "c45283f9555af93ace06a24d68c41bf1eb9c081454eaea4616ead962fa949fe9"
+      "bytes": 27142,
+      "sha256": "909bb6391773e57742dd767c21fd4cb47db5e95070eacab12b3c6196edd62939"
     },
     "modulesSide": {
       "file": "amx30b2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23968,
-      "sha256": "f3d940e9cf7f457476d5a85d6d20b5e8af95ea276e47d854658d1f157784c60d"
+      "bytes": 23394,
+      "sha256": "e6527210b08b433d066732742b8f26e923e4b7857de25720e872c9287ad37c89"
     },
     "crewSide": {
       "file": "amx30b2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21962,
-      "sha256": "151e5a3dd088a8541e07a7751c48869c56424b31abf8a21c7ab060c295d225a1"
+      "bytes": 21588,
+      "sha256": "bc2517743744faf87cda149e14a3f7676a8300e4b5c03b25819835fe02ce20a6"
     },
     "markings": {
       "file": "amx30b2_markings.png",
@@ -1896,8 +1896,8 @@
     "technicalLabels": {
       "file": "amx30b2_technical.json",
       "mime": "application/json",
-      "bytes": 4725,
-      "sha256": "31045d1e40a261e9cea6aba713089f34c26b68b1a5bd42dfb90551c201910cfe"
+      "bytes": 4724,
+      "sha256": "c0d8e41744fd94d72164367edd2648b9475a16546d0b116afb37b825ba45aabf"
     }
   }
 }

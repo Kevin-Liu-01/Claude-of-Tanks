@@ -12603,43 +12603,43 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.8472,0.1406,-2.1318],
-        "max": [0.8472,0.42,-1.2871],
+        "min": [-0.8472,0.1965,-1.8405],
+        "max": [0.55,0.42,-1.2871],
         "turretLocal": true
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.2747,0.43,-3.4199],
+        "min": [-0.7348,0.6075,-2.7385],
         "max": [1.2747,1.3469,-1.7609],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.0963,0.5184,-3.2872],
-        "max": [1.0963,1.1785,-2.7231],
+        "min": [-1.0963,0.748,-3.1981],
+        "max": [1.0666,1.1785,-2.7231],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-1.2747,0.43,-1.6872],
+        "min": [-0.6449,0.63,-1.6872],
         "max": [1.2747,0.9728,-0.8392],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.1767,-0.0307,-2.296],
-        "max": [1.1767,0.5514,-1.1228],
+        "min": [-1.1171,0.2021,-1.9734],
+        "max": [0.5213,0.5514,-1.1228],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-1.0086,0.0208,-1.976],
-        "max": [-0.1681,0.3695,-1.1228],
+        "min": [-1.0086,0.1661,-1.6524],
+        "max": [-0.1681,0.2242,-1.1228],
         "turretLocal": true
       },
       {
@@ -12764,7 +12764,7 @@
     ]
   },
   "geometryHash": "14bd306d",
-  "metadataHash": "ac28f4f0",
+  "metadataHash": "8664f2fd",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": 0.0291
@@ -12870,24 +12870,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28578,
-      "sha256": "a1f35019cbae2755e0f64ce0832e3a3ae8a273de6aa7115101cc58d94a3dc595"
+      "bytes": 28602,
+      "sha256": "abf418df1d445f2550dd021673eb76320170e678a32dae954b612ef7b4156b81"
     },
     "modulesSide": {
       "file": "bm_oplot_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24186,
-      "sha256": "039113178fbe09637f55932d798d4a9cb7e6264803496843b6287da6f560db12"
+      "bytes": 23144,
+      "sha256": "3907ee78ef02c5c6dcab2a8401ab73ff40d69aee46a60812e2440619fd3a25ed"
     },
     "crewSide": {
       "file": "bm_oplot_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20926,
-      "sha256": "db6d0ab80eae00d46d9fbe5911a0aa2d68f594101e25725bd7a44bb7380f7245"
+      "bytes": 21696,
+      "sha256": "bb866391761df0bd9459b71b6a51604fc0b90d70c8ac995713e391bbf3007c3b"
     },
     "markings": {
       "file": "bm_oplot_m_markings.png",
@@ -12901,7 +12901,7 @@
       "file": "bm_oplot_m_technical.json",
       "mime": "application/json",
       "bytes": 5466,
-      "sha256": "a3b5946d471455b17ffa10b8e3fee2f7fa95b78df072a021d4ac1e4a0a57af9d"
+      "sha256": "ae61da559fc268ffaa87fc3872aa168b1e5b4b64dd908bda2793992d7b86c124"
     }
   }
 }

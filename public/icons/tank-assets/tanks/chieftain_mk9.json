@@ -562,24 +562,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18820,
-      "sha256": "cbf716de0a8c09f3627ef0218b476966b91b27fa3b0f2f4351bfa1cf6481542e"
+      "bytes": 18810,
+      "sha256": "8b95a55afc317734bba5038d844622ab9bfc5f73258ae258518f449f6cf749fb"
     },
     "modulesSide": {
       "file": "chieftain_mk9_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20988,
-      "sha256": "898e250ebbd488d07daabc76392bd6b623a773c6dcae0fbe4c3c811793a5f7fa"
+      "bytes": 20528,
+      "sha256": "3b6751b7c3d8240e92b61105ecf822f06e2831c7a96b70d703ed64e1d805e5b5"
     },
     "crewSide": {
       "file": "chieftain_mk9_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16672,
-      "sha256": "54cfc7dda8293fe342e7998e3a26d3759be546ab19f6acab8674b037937fe1d8"
+      "bytes": 16520,
+      "sha256": "c501ad95f609a650896128c529f413a9610556a12a727d4c521c6b548f1620f5"
     },
     "markings": {
       "file": "chieftain_mk9_markings.png",
@@ -592,8 +592,8 @@
     "technicalLabels": {
       "file": "chieftain_mk9_technical.json",
       "mime": "application/json",
-      "bytes": 4294,
-      "sha256": "f32393b35b61a973d05ed190de69e75cfb5be76b9b487569382aa58951907870"
+      "bytes": 4298,
+      "sha256": "5c86437eec9421aaad1473fe0255ae1ba762290ef620bada080c635c726d5429"
     }
   }
 }

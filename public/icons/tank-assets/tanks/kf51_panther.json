@@ -4188,16 +4188,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20144,
-      "sha256": "ca6d769dc4c6a98d4c00fe280efed03dd925e9111572ade65721e58f0cf1be33"
+      "bytes": 19894,
+      "sha256": "e7793bcbcbdce7313b6daf193d241067da47329f9c9c83260a228eedc7967d5d"
     },
     "crewSide": {
       "file": "kf51_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17294,
-      "sha256": "0cc580a34119f0c21ea2913a8569cb71398920dc91ac41c06b0737f54a8843e6"
+      "bytes": 17172,
+      "sha256": "1a113f8cddf30465626012f7ab232f6169990f81e5803e87ff4a4ed74e8e81b3"
     },
     "angle": {
       "file": "kf51_panther_angle.webp",

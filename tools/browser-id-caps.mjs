@@ -3,14 +3,23 @@
 // A row is the tool's file name without its directory and .mjs (genIcons, garage-wheel-band for its .browser.mjs).
 // Each comment gives the guard's peaks behind the row (largest renderer / whole browser tree, on this Mac, 2026-10-31)
 // and how they were measured. tools/browser-launch.mjs kills a renderer past 6 GB or a tree past 10 GB (exit 86): a
-// cap keeps a chunk's renderer near half its limit, so the fleet can grow. The tools that run four worker pages in
-// one browser (fleet-geometry-audit, fleet-surface-overlap-audit, fleet-battle-views) are bound by the tree, which
-// their worker count sets, not their cap.
+// cap keeps a chunk's renderer near half its limit, so the fleet can grow. The tools that run worker pages in one
+// browser (fleet-geometry-audit, fleet-surface-overlap-audit, fleet-battle-views) are bound by the tree: WORKER_PAGES
+// sets most of it, and their heaviest chunk is set by its heaviest ids, not by the cap.
 //
 // A cap decides only where a fresh browser starts, never what an id renders or writes (centering --update chunked and
 // unchunked: byte for byte), so this table is out of every changed-only key (steps.mjs DECLARED_DYNAMIC scheduleOnly):
 // re-measure and edit a row without re-running a step. Each chunk logs its peaks ([browser-chunks]); a row whose tool
 // has only run at smoke size says so.
+/**
+ * Worker pages per browser for the tools that work through a chunk's jobs in parallel pages (--workers overrides it).
+ * Each page is a renderer. With four, whole-fleet runs passed 8 GB of the guard's 10 GB tree in 4 of 11
+ * surface-overlap chunks (9.41 at most), and fleet-geometry-audit at 60 ids passed 10 GB (exit 86) (2026-10-31). With
+ * three, every chunk of the three tools stays under 7.5 GB but the geometry and battle-view chunks that hold merkava4b:
+ * their jobs are an id in one mode or at one range, so the pages build that one heavy tank at once (rows below).
+ */
+export const WORKER_PAGES = 3;
+
 export const BROWSER_ID_CAPS = Object.freeze({
   // whole fleet, 5 chunks of 48: 2.28 / 3.47 GB; the 60 heaviest ids in one browser: 3.0 / 4.4 GB
   'genIcons': 51,
@@ -18,9 +27,14 @@ export const BROWSER_ID_CAPS = Object.freeze({
   'presentation-centering': 120,
   // whole fleet, 4 chunks of 59: 2.34 / 3.30 GB
   'tank-assets-check': 60,
-  // 3 of 13 chunks of 20 (a whole-fleet run takes ~85 min): 3.82 / 8.98 GB; at 60 its tree passed 10 GB (exit 86)
+  // 3 workers, whole fleet as 13 chunks of 20 (run in slices of 40): 3.48 / 9.25 GB in the chunk from m60a1, at most
+  // 2.25 / 6.91 GB in the others. merkava4b sets that chunk's peak: alone it reaches 2.49 / 7.85 GB (merkava4_trophy
+  // alone 4.44 GB, as a light id), so a lower cap cannot lower it: at 15 the chunk still peaked at 3.10 / 9.18 GB and
+  // its slice ran 1143 s against 778 (4 workers, the first 3 chunks at 20: 3.82 / 8.98 GB; at 60 its tree passed
+  // 10 GB, exit 86)
   'fleet-geometry-audit': 20,
-  // whole fleet, 11 chunks of 24: 3.69 / 9.41 GB, the same tree as at 59 ids: its workers set it
+  // 3 workers, whole fleet, 11 chunks of 24 (the last 87 ids rerun as 4 chunks of 22): at most 2.72 / 7.41 GB
+  // (4 workers: 3.69 / 9.41 GB, four chunks past 8 GB)
   'fleet-surface-overlap-audit': 25,
   // not measured: a whole-fleet run stops at its fingerprint check before any browser (as on main, 2026-10-31)
   'fleet-freeze-snapshot': 60,
@@ -48,7 +62,9 @@ export const BROWSER_ID_CAPS = Object.freeze({
   'vehicle-marking-visibility': 40,
   // --mode tank-switch over the whole fleet, 6 chunks of 40: 1.62 / 2.70 GB
   'loading-budget-probe': 40,
-  // whole fleet, 9 chunks of 29: 3.90 / 9.49 GB in one chunk, at most 2.35 / 5.67 GB in the other eight
+  // 3 workers, whole fleet, 9 chunks of 29: 3.18 / 8.84 GB in the chunk with merkava4b, at most 1.78 / 5.53 GB
+  // in the other eight; at 20 that chunk still reached 3.03 / 8.48 GB and the run took 890 s against 756 (4 workers:
+  // 3.90 / 9.49 GB in the same chunk)
   'fleet-battle-views': 30,
   // --all, 6 chunks of 40: 1.65 / 2.67 GB
   'muzzle-bore-probe': 40,

@@ -2211,24 +2211,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35296,
-      "sha256": "4379e293b499c3631ce67f37d30dadf8b8ddd10d1f48696432dfc8a1552bcbd4"
+      "bytes": 35266,
+      "sha256": "3e8be3756f835bb100b7040f9a3a30c83b8964f3d0a75d4a215f35b19e82dd09"
     },
     "modulesSide": {
       "file": "m1a1_abrams_sa_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34786,
-      "sha256": "73cdbcde202828f775444274a69f2d20bc82485ca37c539a2e2338765cadbe9a"
+      "bytes": 33874,
+      "sha256": "65c07e0833521ee7a7c9c06f14c28b526df0150f3ab7ddf0066d027ed5173270"
     },
     "crewSide": {
       "file": "m1a1_abrams_sa_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32184,
-      "sha256": "a7337238fcdcfdce0107bf7a151c897a45dbd8bd7b6a08493ba0ca3ea6203ae5"
+      "bytes": 31936,
+      "sha256": "47ef65c3722701e0388586d249bdd10b9f668edc25b31c33f34be0534db12cf9"
     },
     "markings": {
       "file": "m1a1_abrams_sa_markings.png",

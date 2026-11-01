@@ -11142,24 +11142,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34772,
-      "sha256": "a39dd151e7480dc03395c2b85419fc1898e737be9378e928f06a805f9f04381b"
+      "bytes": 34906,
+      "sha256": "8b02e944dc2cca17dc348465c32dc6c410ce7065c1858ea25647c09efc314c32"
     },
     "modulesSide": {
       "file": "strv122_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33408,
-      "sha256": "9ee889827ca79e3cebbb9ea0933317902e14dd529d3fc75fd93533d9f3ab3348"
+      "bytes": 33846,
+      "sha256": "9925608141450c7dc7e26699493e9f0dcc0178ffa776db7141c0598cd2e250ef"
     },
     "crewSide": {
       "file": "strv122_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30532,
-      "sha256": "10d185d5878b04b5b1c8cb1f31753d2db22d0f162a7366b8ba59a4cab97f972f"
+      "bytes": 30620,
+      "sha256": "bc5c77fd9e96b3b410d22ddad04d40ff4126bbc9ae9526e8f2a6ffed03be3f3c"
     },
     "angle": {
       "file": "strv122_angle.webp",

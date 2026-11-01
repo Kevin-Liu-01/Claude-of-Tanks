@@ -1990,22 +1990,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9153,0.4373,-3.169],
-        "max": [0.9153,1.3992,-1.4702],
+        "min": [-0.9153,0.4373,-2.4537],
+        "max": [0.9153,1.3701,-1.4702],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.7872,0.5319,-3.0331],
+        "min": [-0.7872,0.5608,-3.0331],
         "max": [0.7872,1.2245,-2.4555],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5492,0.4373,-1.4172],
-        "max": [1.1442,1.0448,0.0162],
+        "min": [-1.1442,0.4373,-1.4172],
+        "max": [-0.5492,1.0448,0.0162],
         "turretLocal": false
       },
       {
@@ -2018,8 +2018,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7518,0.1466,-0.7279],
-        "max": [-0.1254,0.5937,-0.2975],
+        "min": [0.1254,0.1466,-0.7279],
+        "max": [0.7518,0.5937,-0.4983],
         "turretLocal": true
       },
       {
@@ -2100,7 +2100,7 @@
     ]
   },
   "geometryHash": "542806a4",
-  "metadataHash": "13465c95",
+  "metadataHash": "82725aa0",
   "presentationAnchor": {
     "xM": -0.013,
     "zM": -0.006
@@ -2155,24 +2155,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22528,
-      "sha256": "0e2b08db2878577cb41e954babe81ce6f04979f3cb8cd62091f31a66f0d9ad62"
+      "bytes": 22506,
+      "sha256": "380d119ecba8e62023f630a3a189a4df8afa3c15e18612a3c31191699d731bc1"
     },
     "modulesSide": {
       "file": "t72bu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20612,
-      "sha256": "3b337ac975c6b6057559e7dee63d7332f97f9cb7b033e0fe357fdb88ad92a2ea"
+      "bytes": 20362,
+      "sha256": "dff96465f1860ca09681d4660e284360e6b06c614fbf38980967a852d60ad94a"
     },
     "crewSide": {
       "file": "t72bu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17824,
-      "sha256": "15b95ab3a2eec6def53144a97ac8075ad0d0791df4ce838cb69a464ccc9dd2ee"
+      "bytes": 18278,
+      "sha256": "297406c403fba08c358e4c9e08907f1395232604b0d557ce506e25a44d0cf551"
     },
     "angle": {
       "file": "t72bu_angle.webp",
@@ -2233,8 +2233,8 @@
     "technicalLabels": {
       "file": "t72bu_technical.json",
       "mime": "application/json",
-      "bytes": 4705,
-      "sha256": "c8cbd42d59d9de0961fa734a8e995e14ceb7e9ea75b878acbe0c326ea066f78b"
+      "bytes": 4704,
+      "sha256": "c151768feb0510a080a273d83400a35b85fac49c642f12d5651027dec7c70aec"
     }
   }
 }

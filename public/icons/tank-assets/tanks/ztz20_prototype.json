@@ -783,8 +783,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27204,
-      "sha256": "fef7a911e1cb6f3f04ba86ff05002cd5d5b0b8bbfb1e963a56796462fe3edfeb"
+      "bytes": 27152,
+      "sha256": "395dd8f85f3165f8b64f935bfd8ba86c210c69ae32cc90116d73c09ba2216adc"
     },
     "modulesSide": {
       "file": "ztz20_prototype_modules_side.webp",
@@ -814,7 +814,7 @@
       "file": "ztz20_prototype_technical.json",
       "mime": "application/json",
       "bytes": 4248,
-      "sha256": "b4219e791c487857ccbc76612acd4c848b3925124834a5d6927d9d505c9658dd"
+      "sha256": "e53781faccfe61affa040ea5787e2facfdb1b280d622595ca8938f94c51d923d"
     }
   }
 }

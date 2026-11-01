@@ -317,7 +317,7 @@ function bentoPicture(rungs, lead) {
   return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
     + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
 }
-/** One still: its picture (its alt stays empty: the caption names it) and its two lines on their own scrim (home.css
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines in the stage's halo (home.css
  *  .bento__words), the whole tile the way in. */
 const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
   + `<figcaption class="bento__cap"><a href="${href}"><span class="bento__words">${name}<span class="bento__where">${where.join('')}</span></span></a></figcaption></figure>`;

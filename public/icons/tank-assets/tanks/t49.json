@@ -619,43 +619,43 @@
       {
         "volumeId": "M03",
         "name": "missileRack",
-        "min": [-1.098,0.4162,-0.3864],
-        "max": [-0.0732,0.7302,0.6635],
+        "min": [0.0732,0.4162,-0.3864],
+        "max": [1.098,0.7302,0.6635],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.3636,0.29,-2.7877],
-        "max": [1.3636,1.3047,-1.4709],
+        "min": [-1.2137,0.29,-2.2789],
+        "max": [1.2137,1.3047,-1.4709],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.1727,0.3921,-2.6823],
+        "min": [-1.1727,0.4505,-2.6823],
         "max": [1.1727,1.1227,-2.2346],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-1.3636,0.29,-1.4123],
-        "max": [1.3636,0.9416,-0.7393],
+        "min": [-1.1538,0.29,-1.4123],
+        "max": [1.1538,0.9416,-0.7393],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.22,0.29,-0.5345],
-        "max": [1.22,0.7964,0.8116],
+        "min": [-1.0843,0.3195,-0.3028],
+        "max": [0.0726,0.7669,0.4902],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.757,0.4624,-0.6242],
-        "max": [-0.435,0.6253,-0.4053],
+        "min": [0.435,0.4624,-0.6242],
+        "max": [0.757,0.6253,-0.4053],
         "turretLocal": true
       },
       {
@@ -755,35 +755,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.8038,0.7027,0.8944],
-        "max": [-0.3444,1.419,1.8714],
+        "min": [0.3444,0.7171,0.9444],
+        "max": [0.8038,1.4334,1.8614],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2475,-0.5692,0.1391],
-        "max": [0.6572,0.7051,0.4333],
+        "min": [-0.8069,-0.5627,-0.0551],
+        "max": [-0.3475,0.0266,0.6592],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.2083,-0.5386,-0.5242],
-        "max": [0.588,0.7124,0.282],
+        "min": [-0.338,-0.5724,-0.7102],
+        "max": [0.0417,0.6524,0.0811],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.6768,-0.5671,-0.4002],
-        "max": [-0.2771,0.5511,0.3725],
+        "min": [0.2771,-0.5466,-0.4069],
+        "max": [0.6668,0.6847,0.3626],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "6405cd16",
-  "metadataHash": "248c62d5",
+  "metadataHash": "ad156ddb",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": 0.0227
@@ -889,24 +889,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37862,
-      "sha256": "c226f8d14518a1ef0d67a2dab3de6661656c8a34c671151ffd28777b2fb6676f"
+      "bytes": 37902,
+      "sha256": "b1618a23ee9e5110541b5cef979597dc8193ddcc8bb45dea5023bffd0b807256"
     },
     "modulesSide": {
       "file": "t49_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37766,
-      "sha256": "74bd1163f14ba5cd6a8fb152fd4a8bada5ff924ff8cbd68a833acb7f6d115234"
+      "bytes": 37668,
+      "sha256": "59b2713366a13be65edcfbd64a995e51af525aefbaec5f5e6b02dc7a189b4977"
     },
     "crewSide": {
       "file": "t49_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37518,
-      "sha256": "745621b5400ef83949ba188fc310246475c31d518f39f1b655a9d6385d1f619e"
+      "bytes": 38514,
+      "sha256": "8786002bfedee8cf577dcfbf69011cc052342f82957468aca077bd7abcc27a53"
     },
     "markings": {
       "file": "t49_markings.png",
@@ -920,7 +920,7 @@
       "file": "t49_technical.json",
       "mime": "application/json",
       "bytes": 5563,
-      "sha256": "a1014015e10670e67a67f4e86bf2bfec0ee8efa2a41db2a583289553a98af0d4"
+      "sha256": "50b6aea4be3edadc683ec94f541b10c18cd07d43b23865c75da1b86eea8f6b7e"
     }
   }
 }
