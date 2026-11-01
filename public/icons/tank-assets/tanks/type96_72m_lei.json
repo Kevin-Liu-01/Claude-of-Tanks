@@ -13113,17 +13113,17 @@
       }
     ]
   },
-  "geometryHash": "e881d85a",
-  "metadataHash": "89a79823",
+  "geometryHash": "8899a8b3",
+  "metadataHash": "6665f86d",
   "presentationAnchor": {
-    "xM": -0.0035,
-    "zM": 0.0224
+    "xM": -0.0027,
+    "zM": 0.0299
   },
-  "presentationHash": "f6a89158",
+  "presentationHash": "8552f6fd",
   "presentationProjection": {
     "centerYM": 2.607,
-    "topHalfM": 7.2375,
-    "sideHalfM": 3.6188
+    "topHalfM": 7.2295,
+    "sideHalfM": 3.6147
   },
   "appearance": {
     "version": 1,
@@ -13141,7 +13141,7 @@
       "hullRubber": 1,
       "gunmetal": 6,
       "wood": 1,
-      "unclassified": 20,
+      "unclassified": 18,
       "opticGlass": 2,
       "canvas": 1,
       "fittingPaint": 1
@@ -13171,39 +13171,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25654,
-      "sha256": "214eee0376d9f90b96b96bec5438e56a2e0f1d8aabd8051b7c88235c2c92fa88"
+      "bytes": 25570,
+      "sha256": "bed0fcaed7265bcd7ce1b460c73b3b028a9af994bf1773cb5550cbf67a40987f"
     },
     "modulesSide": {
       "file": "type96_72m_lei_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22128,
-      "sha256": "20241a2becf47803b1bb8d428022c0d12d216b6c3c2a16d4fc3afb2269fefaf4"
+      "bytes": 21636,
+      "sha256": "f23806ef78dd992b100f2a1d08942a2dbf7e27fc91fe260b8c9e81eceb4bc1ba"
     },
     "crewSide": {
       "file": "type96_72m_lei_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19174,
-      "sha256": "9224053c9e83d1657bf2eb851653d021fe4faa0de7914f80fd0ec85e9c688056"
+      "bytes": 20160,
+      "sha256": "15045b681cf01dfdcae665ceee4b4c30d656f631e306ee5f21899c87b280042e"
     },
     "angle": {
       "file": "type96_72m_lei_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25334,
-      "sha256": "51b394b24aa1713a05bc2d96def2a9a9dde675036b924133360aa40bcf847905",
+      "bytes": 25452,
+      "sha256": "fd65b28e739842bef6f0189ad60916e3cf008c6579d5d8755f48f208f1d1444c",
       "thumbnail": {
         "file": "thumbs/type96_72m_lei_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10314,
-        "sha256": "5c105fbcce23e2bbe085ed1509a7be00baa2e9e845fb22016a6a548663ce72f8"
+        "bytes": 10372,
+        "sha256": "e421d75bf53d21b9ef3e4838de1d69e98919ed5541182377d5d632739600aea6"
       }
     },
     "top": {
@@ -13211,32 +13211,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11548,
-      "sha256": "3a8066083d7feec82ada159ff693949d88cd04793f949a80e5be6fd726de1f06"
+      "bytes": 11446,
+      "sha256": "43a72a2bd74faa8bba1fcedc07f100a72d52ceb8a0166d51a0b1885d015c65de"
     },
     "side": {
       "file": "type96_72m_lei_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10246,
-      "sha256": "4b3a172ce8b91cae2caf3f400a6a56fd206825c201e429bc014f54566b4557a0"
+      "bytes": 10440,
+      "sha256": "aba2a842189408ca3b6bab9ade3d0db8b6cc58abb9e34bbeb989b746aba6dd17"
     },
     "topSilhouette": {
       "file": "type96_72m_lei_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1372,
-      "sha256": "48028d6195ca1b07ede550a28b485858ff8815cb8a3258d8b1d3d37405c91c2e"
+      "bytes": 1374,
+      "sha256": "8d240219a436197d56826220e0dabfdd0c39323940cb49474983edabbde85f61"
     },
     "sideSilhouette": {
       "file": "type96_72m_lei_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4443,
-      "sha256": "be5793369e847b79a4abf929a5cdb8f1a42b838ab79931a8586e61251d9aac84"
+      "bytes": 4410,
+      "sha256": "2bacc01759fd272262ddee436d54bcc48dba7b5008bc616f6e835dbf3c4b36d9"
     },
     "markings": {
       "file": "type96_72m_lei_markings.png",
@@ -13249,8 +13249,8 @@
     "technicalLabels": {
       "file": "type96_72m_lei_technical.json",
       "mime": "application/json",
-      "bytes": 5318,
-      "sha256": "e7ec786ad72ad37bccaf596b02f35dc604abf254a5f6d3d222497274861087cf"
+      "bytes": 5319,
+      "sha256": "13f70503355409f1d235095b5349cd02d5a3e5ff1273ec9643e3c27b93dd49ac"
     }
   }
 }

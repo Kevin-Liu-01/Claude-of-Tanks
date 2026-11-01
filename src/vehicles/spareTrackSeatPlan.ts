@@ -20,9 +20,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "bmp3_rok": {
     "fitting@hull(1.38,1.27,-2.60)": [0.83726, 0.71871, -3.08698, -0.46405, 0.40298, -0.58104, 0.53353, 1],
   },
-  "bmpt_t90": {
-    "fitting@turret(0.57,0.72,-0.78)": [0.62667, 0.31269, -1.10212, -0.41864, 0.5431, -0.45281, 0.56986, 1],
-  },
   "bwp1": {
     "fitting@hull(1.38,1.27,-2.60)": [1.18, 1.272, -2.4, 0, 0, 0, 1, 1],
   },

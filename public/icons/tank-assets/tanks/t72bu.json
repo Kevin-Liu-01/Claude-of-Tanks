@@ -1990,22 +1990,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9153,0.4373,-3.169],
-        "max": [0.9153,1.3992,-1.4702],
+        "min": [-0.9153,0.4373,-2.4537],
+        "max": [0.9153,1.3701,-1.4702],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.7872,0.5319,-3.0331],
+        "min": [-0.7872,0.5608,-3.0331],
         "max": [0.7872,1.2245,-2.4555],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5492,0.4373,-1.4172],
-        "max": [1.1442,1.0448,0.0162],
+        "min": [-1.1442,0.4373,-1.4172],
+        "max": [-0.5492,1.0448,0.0162],
         "turretLocal": false
       },
       {
@@ -2018,8 +2018,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7518,0.1466,-0.7279],
-        "max": [-0.1254,0.5937,-0.2975],
+        "min": [0.1254,0.1466,-0.7279],
+        "max": [0.7518,0.5937,-0.4983],
         "turretLocal": true
       },
       {
@@ -2099,8 +2099,8 @@
       }
     ]
   },
-  "geometryHash": "542806a4",
-  "metadataHash": "13465c95",
+  "geometryHash": "ab3a62be",
+  "metadataHash": "82725aa0",
   "presentationAnchor": {
     "xM": -0.013,
     "zM": -0.006
@@ -2155,39 +2155,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22528,
-      "sha256": "0e2b08db2878577cb41e954babe81ce6f04979f3cb8cd62091f31a66f0d9ad62"
+      "bytes": 22736,
+      "sha256": "7e44f324e4bd1f6eb60f92f85eba2bc58b54f9d98400549bc42d1ced96dee3f6"
     },
     "modulesSide": {
       "file": "t72bu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20612,
-      "sha256": "3b337ac975c6b6057559e7dee63d7332f97f9cb7b033e0fe357fdb88ad92a2ea"
+      "bytes": 20434,
+      "sha256": "139beaba8410b3816c6161ef030223913fc1400fac8bf261dc35fe0d1540eee9"
     },
     "crewSide": {
       "file": "t72bu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17824,
-      "sha256": "15b95ab3a2eec6def53144a97ac8075ad0d0791df4ce838cb69a464ccc9dd2ee"
+      "bytes": 18322,
+      "sha256": "6ee8bb71776076d8d1849a879f48d4640d97a330158b34546402b306bda1134c"
     },
     "angle": {
       "file": "t72bu_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23580,
-      "sha256": "636440d75d40e61d57766f68073599e56356ceb56ad86ce9b5579deb75bfeb19",
+      "bytes": 23876,
+      "sha256": "173856df76c0822750ff01866a94bcb71757dde55f3d1592b7cd41cb3eb2bba4",
       "thumbnail": {
         "file": "thumbs/t72bu_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9722,
-        "sha256": "fed12daef39ebd1ac8d5957187cff66c5c780fcbf8d1eacfb9248745d4441e20"
+        "bytes": 9848,
+        "sha256": "05f1990e6d0a73dab4a680c7f8f943b538f8103ee42af44ada1acecc25674307"
       }
     },
     "top": {
@@ -2195,16 +2195,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9268,
-      "sha256": "03439b4a7f7955fe9f8e10d146612765da7259c629cde3afdf2dceb956fbd4b6"
+      "bytes": 9318,
+      "sha256": "ec9354283c8828a43512c6e1d69090974d0f1777ba94c0a6e37d0ae1862d5014"
     },
     "side": {
       "file": "t72bu_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9032,
-      "sha256": "2e276b4fdffaa354a50b2284e8baf0664d66090766f4365f878419efa55596bc"
+      "bytes": 8872,
+      "sha256": "22d3bdab83eda2f0133355a06d84c345c053109dc2bc9eba1349fe2999203f4e"
     },
     "topSilhouette": {
       "file": "t72bu_top_silhouette.png",
@@ -2220,7 +2220,7 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 4087,
-      "sha256": "ec081c06192e1ffb2897d8f576e048c44d3d17710460927375a4ebffc2400b68"
+      "sha256": "24c963ec267d5eb7988c58b800739413bc3c0f746cbd2ad7112670ce8fba71a1"
     },
     "markings": {
       "file": "t72bu_markings.png",
@@ -2233,8 +2233,8 @@
     "technicalLabels": {
       "file": "t72bu_technical.json",
       "mime": "application/json",
-      "bytes": 4705,
-      "sha256": "c8cbd42d59d9de0961fa734a8e995e14ceb7e9ea75b878acbe0c326ea066f78b"
+      "bytes": 4704,
+      "sha256": "2d0b4f85e452cc5b0f719f32ace5e52681c4a7fdabb23ca0a72fac84acea4c88"
     }
   }
 }

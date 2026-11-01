@@ -4173,7 +4173,7 @@
         "volumeId": "C01",
         "name": "driver",
         "min": [-0.2297,0.8941,1.8133],
-        "max": [0.2297,1.3196,3.673],
+        "max": [0.2297,1.3096,3.673],
         "turretLocal": false
       },
       {
@@ -4192,17 +4192,17 @@
       }
     ]
   },
-  "geometryHash": "33940d51",
-  "metadataHash": "021837f1",
+  "geometryHash": "2f5560ef",
+  "metadataHash": "16c65a90",
   "presentationAnchor": {
     "xM": 0.0008,
-    "zM": -0.1581
+    "zM": -0.1583
   },
-  "presentationHash": "b9a03199",
+  "presentationHash": "b59bae1f",
   "presentationProjection": {
     "centerYM": 1.6537,
-    "topHalfM": 8.0785,
-    "sideHalfM": 4.0392
+    "topHalfM": 8.0787,
+    "sideHalfM": 4.0394
   },
   "appearance": {
     "version": 1,
@@ -4251,15 +4251,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29392,
-      "sha256": "947910461807c2bbbf556110abb5896937ada89976f39db5916fece3a29528ab",
+      "bytes": 29542,
+      "sha256": "1c9dfcb5551fca08a9b1b634d62b1ee62a93293b9afff24ad300e87f2658d75e",
       "thumbnail": {
         "file": "thumbs/t90sm_2013_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11542,
-        "sha256": "e1cd1c747687ca4c6706e3662220c1c2e49b484c757c5337c381410de266cfba"
+        "bytes": 11566,
+        "sha256": "112e95c169c576f50998b1ee6a7531749f2d1d8ec992818792d61714d9188885"
       }
     },
     "top": {
@@ -4267,56 +4267,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12750,
-      "sha256": "6e8a4dc1887f6736462d1a20020338350d84bc89f31d5d1ad24e37f4a968bab3"
+      "bytes": 12778,
+      "sha256": "3bf8aca59f5e8c72a27b10e2bebf401596683015d432bb2914281b948c4184b7"
     },
     "side": {
       "file": "t90sm_2013_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10372,
-      "sha256": "29eecd5e95c94416df40cc7f2450ba83eb0ae51d57d6695b0182373ab6ac36f4"
+      "bytes": 10450,
+      "sha256": "8167621d3019d3adf925fc23e7bc66e775bd271b72ff8530c8b6bd4e84c21281"
     },
     "topSilhouette": {
       "file": "t90sm_2013_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1302,
-      "sha256": "70a55ff254ea262b28e0cdaf5b95bebd05cb396af1d84f13ae2a0e1689d04e9f"
+      "bytes": 1299,
+      "sha256": "bab28060dd1b882924f5abef5a04e2f631d1a19ebae8fa2b59324e6c1173dffb"
     },
     "sideSilhouette": {
       "file": "t90sm_2013_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4135,
-      "sha256": "5655c46cf33f52a1145fd1f7e38e23254bd3098a8158fa41fd4fcf7415143519"
+      "bytes": 4151,
+      "sha256": "f0d73c36436c762449d50994b15ad2cfb1351c45c74dc9605073bc94afe747df"
     },
     "armorSide": {
       "file": "t90sm_2013_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26600,
-      "sha256": "9f3ab809368bda684beadc1a3336263dbeb43e380f3b272e9cf13424b54db75e"
+      "bytes": 26864,
+      "sha256": "a70ca92114a971cdc8b22c028a297a6865012f84c62ef55ea497d6a3500b3530"
     },
     "modulesSide": {
       "file": "t90sm_2013_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24056,
-      "sha256": "ebd8ac2c601f35ca2cec80bd244f8b157941d2df8319825929c823ca997bf3f2"
+      "bytes": 24146,
+      "sha256": "d66239b8edd193e1b03deca3d8be420bfab1b3f27e283d241b9caad4497fdc43"
     },
     "crewSide": {
       "file": "t90sm_2013_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22702,
-      "sha256": "828351b89849e5b66a78aa9e239ad265c1bec893b51c9671630f7fe95cd3d749"
+      "bytes": 22828,
+      "sha256": "4c286747fd44f71307eeb1c2c2083f6dda03303041f1c933e8adb885cb80be32"
     },
     "markings": {
       "file": "t90sm_2013_markings.png",
@@ -4329,8 +4329,8 @@
     "technicalLabels": {
       "file": "t90sm_2013_technical.json",
       "mime": "application/json",
-      "bytes": 4939,
-      "sha256": "d8d77dcccee84591a1d891d014f7b140adbc08579717b4ccc6987370a5d67de2"
+      "bytes": 4936,
+      "sha256": "efc6b77ff19813728d7c7d0d6ba55c2a065f7243d9f388ad1cf78efedcb62679"
     }
   }
 }

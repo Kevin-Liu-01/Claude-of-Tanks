@@ -1224,14 +1224,14 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1082,0.5735,-3.3113],
+        "min": [-1.1082,0.5735,-2.6904],
         "max": [1.1082,1.5109,-1.6557],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9531,0.6647,-3.1789],
+        "min": [-0.9531,0.8701,-3.1789],
         "max": [0.9531,1.3397,-2.6159],
         "turretLocal": false
       },
@@ -1239,14 +1239,14 @@
         "volumeId": "M06",
         "name": "fuelTank",
         "min": [0.4433,0.5735,-1.5875],
-        "max": [1.1082,1.1318,-0.4626],
+        "max": [1.1082,1.1318,-0.5218],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
         "min": [-0.942,0.5735,-0.5357],
-        "max": [0.942,1.1464,0.7304],
+        "max": [0.942,1.0604,0.7304],
         "turretLocal": false
       },
       {
@@ -1337,8 +1337,8 @@
       }
     ]
   },
-  "geometryHash": "610d514f",
-  "metadataHash": "b2af4691",
+  "geometryHash": "cb82ce3a",
+  "metadataHash": "71f63e77",
   "presentationAnchor": {
     "xM": -0.0018,
     "zM": -0.0813
@@ -1394,39 +1394,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23486,
-      "sha256": "c39da7f13873d48acd9bc467fdace8800b85344172e8e1f5a2564b145c84b840"
+      "bytes": 23552,
+      "sha256": "23fa01ddbff3836ae5bd1fca13486fac1f92fa12a4cf8bda8a86782357acb2cd"
     },
     "modulesSide": {
       "file": "t80u_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23022,
-      "sha256": "974ef84a3a1a950f5e4595e468e317899215bda5963047664df16705a259c209"
+      "bytes": 22538,
+      "sha256": "1922bc21df94848ec2ea554e428fed467064f2f49bb4bdf773f658c3740afa13"
     },
     "crewSide": {
       "file": "t80u_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20592,
-      "sha256": "528800ae166d3e896b5fb05287daffbde84548c41ee18707221d01306c172b3c"
+      "bytes": 20554,
+      "sha256": "d7ca43378e107b6e72607e88dc1697d5c7cf56259d5a6ee724dfa082728c53bc"
     },
     "angle": {
       "file": "t80u_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24746,
-      "sha256": "53635ceb7dbeea573176cbe3e3ead87ff03a035313829d69dc154c0013c31a84",
+      "bytes": 25216,
+      "sha256": "145d6a85bbc875e68668009e4b34285017ad0a59b40fee78c3557504930bf8ca",
       "thumbnail": {
         "file": "thumbs/t80u_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10184,
-        "sha256": "5ee2a528b723ea93dfaeed87b569c3676f38af30074f6d802934288a177d1d50"
+        "bytes": 10208,
+        "sha256": "3680e436a5c6128138466ce5ccad7c9ba7cf0729d72ac3537b5cb51c3f742cfa"
       }
     },
     "top": {
@@ -1434,16 +1434,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10578,
-      "sha256": "421fd24892c696be43018aa0d7cb0a3af234d0a9d7f75f12fffb61ace931c2bd"
+      "bytes": 10582,
+      "sha256": "385f3173c4109bace8db7e74b8c93f28756affd97a0bf2cfa9d2ed62d6a1551e"
     },
     "side": {
       "file": "t80u_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9970,
-      "sha256": "467e1e8c00447019cc77b6598f3f5cfbd1b30a8a5ee3a9109aaa1a6e5d86b85e"
+      "bytes": 10076,
+      "sha256": "81c23c7fb6c88fd67cdd0a9b47c0fc35b839601183a745923c54db4e0274caab"
     },
     "topSilhouette": {
       "file": "t80u_top_silhouette.png",
@@ -1458,8 +1458,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4008,
-      "sha256": "243853da483300b418d904d5a9b702c5c94e7cc715f66e6c9fb90175517a75fd"
+      "bytes": 4057,
+      "sha256": "9db1a44304651767e5a13900ab359f6e02eb48486708e4a2d45b3902a07d4312"
     },
     "markings": {
       "file": "t80u_markings.png",
@@ -1472,8 +1472,8 @@
     "technicalLabels": {
       "file": "t80u_technical.json",
       "mime": "application/json",
-      "bytes": 4698,
-      "sha256": "b15a1625f3c151137f2927b403d0d0859f1d73f7f7131a60f3fb105f5218e51c"
+      "bytes": 4695,
+      "sha256": "97c627f4349bc9f22015cad45a48cc090ac0bd6ad839340226e5303715603c60"
     }
   }
 }
