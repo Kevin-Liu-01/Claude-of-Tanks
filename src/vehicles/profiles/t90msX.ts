@@ -119,7 +119,7 @@ function glacis(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.056,1.494,1.609);
 }
 /** 267 (S3; the 266 critics: "the side skirts read as plain slabs"): one Relikt container of a skirt screen, a closed
- * box from the screen's backing out to 30 mm past the 266 cover's 13 mm face, 10 mm chamfers round its face (square
+ * box from the screen's backing out to the 266 cover's 13 mm face, 10 mm chamfers round its face (square
  * ends at low quality). */
 function skirtContainer(side:number,inner:number,face:number,y0:number,y1:number,a:number,b:number,fine:boolean):THREE.BufferGeometry{
   const c=.010,ring=(inset:number):Array<readonly[number,number]>=>{
@@ -133,9 +133,10 @@ function skirts(P:TankBuilderPort):void{
   for(const side of [-1,1])for(const[z,d]of [[-.67086,.6536],[-.00331,.6557],[.66249,.6498],[1.32764,.6547],[1.99864,.6613],[2.65939,.6344]]){
     const x=side<0?-1.78658:1.78406,t=z>2.5?1.36644:1.43438;
     P.addEquipment('hullDetail',box(.025,t-.763,d-.007),x-side*.035,(t+.763)/2,z);
-    // the containers run from the backing's face (12.5 mm off its centre) to 30 mm past the old cover's outer face; two
-    // bolt heads (high quality) hold each lid at its outer corners and go with it
-    const inner=Math.abs(x)-.035+.0125,face=Math.abs(x)+.0065+.030,a=z-(d-.003)/2,b=z+(d-.003)/2;
+    // the containers run from the backing's face (12.5 mm off its centre) to the old cover's outer face, the source's
+    // plan width (30 mm past it read 19.5 % over the source's plan at its outer station: geometry gate, 267); two bolt
+    // heads (high quality) hold each lid at its outer corners and go with it
+    const inner=Math.abs(x)-.035+.0125,face=Math.abs(x)+.0065,a=z-(d-.003)/2,b=z+(d-.003)/2;
     P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
       for(const[y0,y1]of [[1.139,t],[.7595,1.0597]]){
         P.addExternalArmor('hull',markEraHitFaces(skirtContainer(side,inner,face,y0,y1,a,b,P.q),[side,0,0]));

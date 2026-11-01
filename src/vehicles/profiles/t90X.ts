@@ -421,7 +421,9 @@ function aHangingSkirts(P:TankBuilderPort,side:number):void {
     let i=1;while(i<rows.length-1&&t>rows[i][0])i++;
     const [t0,a]=rows[i-1],[t1,b]=rows[i];return a+(b-a)*(t-t0)/(t1-t0);
   };
-  rubberHem(P,side,spans.map(([rear,front]):HemSpan=>[rear+.22*(front-rear),front,centre(rear,front),.72953,.012]));
+  // the A skirt's hem rides its sheet's foot, its flaps' lower edge on the sheet's (the source's skirt line: hung 34 mm
+  // under it, the front view's outer station read 4 cm low against the source, geometry gate 267)
+  rubberHem(P,side,spans.map(([rear,front]):HemSpan=>[rear+.22*(front-rear),front,centre(rear,front),.72953+.034,.012]));
   for(const z of [-1.377,.0935,1.6365])P.addEquipment('hullDetail',box(.010,.39,.050),side*1.8125,.94,z);
   for(const [rear,front,high]of [[-3.272,-1.517,1.4617],[-1.511,.309,1.4622],[.316,1.689,1.4617],[1.693,2.808,1.4354]] as const) {
     const sections=[rear,front].map((z):SolidSection=>{
