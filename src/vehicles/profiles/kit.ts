@@ -319,6 +319,7 @@ interface FittingOptions {
   colH?: number;
   head?: readonly [number, number, number];
   window?: readonly [number, number];
+  roundHead?: boolean;
 }
 
 interface FittingParts {
@@ -3900,7 +3901,7 @@ function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
  * or the roof gun, so the body leaves the tower out and the roof-fittings top keeps it (267, Main's ruling on the AMX-40).
  * Origin: the column's foot, on its turntable.
  * @param {object} opts  mats; colR=0.15; colR2=0.165 (foot); colH=0.48; head=[0.34, 0.168, 0.34]; window=[0.24, 0.084];
- *   seed, shadows, rotation
+ *   roundHead=false (a drum head of diameter head[0]); seed, shadows, rotation
  */
 function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY } = KIT;
@@ -3910,8 +3911,14 @@ function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
   const parts = fitParts();
   parts.add('detail', cylY(colR, colR2, colH, 20), 0, colH / 2, 0);
   const headY = colH + hy / 2 - 0.006;
-  parts.add('detail', box(hx, hy, hz), 0, headY, 0);
-  parts.add('detail', box(hx - 0.04, 0.024, hz - 0.04), 0, headY + hy / 2 + 0.012, 0);
+  // a round head (the Leclerc's HL-70) or a squared one (the AMX-40's), its window on the front, its lid on top
+  if (opts.roundHead) {
+    parts.add('detail', cylY(hx / 2, hx / 2, hy, 22), 0, headY, 0);
+    parts.add('detail', cylY(hx / 2 - 0.02, hx / 2, 0.024, 22), 0, headY + hy / 2 + 0.012, 0);
+  } else {
+    parts.add('detail', box(hx, hy, hz), 0, headY, 0);
+    parts.add('detail', box(hx - 0.04, 0.024, hz - 0.04), 0, headY + hy / 2 + 0.012, 0);
+  }
   parts.add('dark', box(wx, wy, 0.02), 0, headY + 0.004, hz / 2 + 0.005);
   parts.add('glass', box(wx - 0.03, wy - 0.024, 0.012), 0, headY + 0.004, hz / 2 + 0.017);
   return fitAssemble('roofSight', parts, opts);

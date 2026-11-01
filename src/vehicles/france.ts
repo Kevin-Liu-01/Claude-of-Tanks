@@ -16,7 +16,7 @@ import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
-import { CircleGeometry, Vector3 } from 'three';
+import { CircleGeometry } from 'three';
 import type { BufferGeometry } from 'three';
 
 type Vec3Tuple = [number, number, number];
@@ -244,32 +244,34 @@ function buildAMX40(P: FranceBuilderPort): void {
     // envelope 1.245 (§B4 shoe-stack law).
     P.add('hull', box(0.30, 0.19, 0.46), s * 1.46, 1.365, 2.27);
   }
-  P.add('hull', slab(                                                           // lower bow reverse plate, shallow first course; inside native shoe lanes
-    [-0.90, 0.44, 2.70], [0.90, 0.44, 2.70], [0.90, 0.61, 3.12], [-0.90, 0.61, 3.12],
-    [-0.90, 0.46, 2.72], [0.90, 0.46, 2.72], [0.90, 0.63, 3.12], [-0.90, 0.63, 3.12]));
+  // 267 round 2 (both critics, critic3: "the lower hull front is one flat plate; the photos show a V-shaped lower glacis
+  // with bolt rows and two large towing eyes", pic-1): the reverse plate and the knee narrow to +-0.48 at their foot and
+  // two raked side facets run from the knee's top corners down to it, so the lower nose reads as the photo's V against
+  // the tub face behind. The knee keeps its datums (bounds +-0.90, 0.61..1.048, 3.12..3.43).
+  P.add('hull', convexSlab(                                                     // lower bow reverse plate, shallow first course
+    [-0.42, 0.44, 2.70], [0.42, 0.44, 2.70], [0.48, 0.61, 3.12], [-0.48, 0.61, 3.12],
+    [-0.42, 0.46, 2.72], [0.42, 0.46, 2.72], [0.48, 0.63, 3.12], [-0.48, 0.63, 3.12]));
   // Both offset courses reverse their normal order at the jaw. Their eight
   // retained datums bound a finite convex knee; connecting the original rings
   // directly folds the thin sheet through itself.
   P.add('hull', convexSlab(                                                     // steep source knee into the jaw lip
-    [-0.90, 0.61, 3.12], [0.90, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
-    [-0.90, 0.63, 3.12], [0.90, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
-  // 266 (owner: "the amx 40 proto has a big hole behind its lower glacis"): the two sheets above hung in an empty bow;
-  // from a low front three-quarter the eye ran past their ±0.90 edges into the open space under the bow platform and
-  // over the tub (z 2.04..3.43). The bow is now solid behind them, as on the Saumur hull: each fill's underside lies on
-  // the sheet it backs, its top is buried in the glacis, platform or beak, and its walls stand inside the shoe lanes.
-  // The sheets keep their outer faces, so the lower glacis and its silhouette are unchanged.
+    [-0.48, 0.61, 3.12], [0.48, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
+    [-0.48, 0.63, 3.12], [0.48, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
+  // 266 (owner: "the amx 40 proto has a big hole behind its lower glacis"): the bow is solid behind the two sheets. 267
+  // round 2: the fill behind them carries the V's side facets (its underside on the sheets, its back on the tub face),
+  // and a second fill closes it up into the platform, chamfer and beak with walls inside the shoe lanes.
   for (const [z0, z1, y0, y1] of [[2.04, 2.48, 1.47, 1.43], [2.48, 2.72, 1.42, 1.42]]) P.add('hull', slab( // over the tub, under the glacis
     [-0.97, 1.00, z0], [-0.97, 1.00, z1], [-0.97, y1, z1], [-0.97, y0, z0],
     [0.97, 1.00, z0], [0.97, 1.00, z1], [0.97, y1, z1], [0.97, y0, z0]));
-  P.add('hull', slab(                                                           // behind the reverse plate
-    [-0.90, 0.46, 2.70], [-0.90, 0.63, 3.12], [-0.90, 1.40, 3.12], [-0.90, 1.40, 2.70],
-    [0.90, 0.46, 2.70], [0.90, 0.63, 3.12], [0.90, 1.40, 3.12], [0.90, 1.40, 2.70]));
-  P.add('hull', slab(                                                           // behind the knee, under the platform
-    [-0.90, 0.63, 3.12], [-0.90, 0.801, 3.24], [-0.90, 1.40, 3.24], [-0.90, 1.40, 3.12],
-    [0.90, 0.63, 3.12], [0.90, 0.801, 3.24], [0.90, 1.40, 3.24], [0.90, 1.40, 3.12]));
-  P.add('hull', convexSlab(                                                     // behind the knee, up into the beak
-    [-0.90, 0.801, 3.24], [-0.90, 1.03, 3.40], [-0.90, 1.06, 3.40], [-0.90, 1.28, 3.24],
-    [0.90, 0.801, 3.24], [0.90, 1.03, 3.40], [0.90, 1.06, 3.40], [0.90, 1.28, 3.24]));
+  P.add('hull', convexSlab(                                                     // behind the sheets: the V's side facets
+    [-0.42, 0.45, 2.70], [0.42, 0.45, 2.70], [0.48, 0.62, 3.12], [-0.48, 0.62, 3.12],
+    [-0.90, 1.40, 2.70], [0.90, 1.40, 2.70], [0.90, 1.046, 3.42], [-0.90, 1.046, 3.42]));
+  P.add('hull', convexSlab(                                                     // over the facets, up into the platform, chamfer and beak
+    [-0.90, 1.40, 2.70], [-0.90, 1.30, 3.24], [-0.90, 1.20, 3.31], [-0.90, 1.046, 3.42],
+    [0.90, 1.40, 2.70], [0.90, 1.30, 3.24], [0.90, 1.20, 3.31], [0.90, 1.046, 3.42]));
+  for (const x of [-0.32, -0.24, -0.16, 0.16, 0.24, 0.32]) {
+    P.add('hullDetail', cylZ(0.022, 0.03, 8), x, 0.678, 3.172, 0.603, 0, 0);  // bolt row across the knee's foot
+  }
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
   // plan rear -3.380/-3.403) + undercut wedge (bellyCorners 0.44 -> 0.599
   // @ -3.31 -> 0.70 lip @ -3.43)
@@ -412,9 +414,11 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.hullG.add(links);
   }
   for (const s of [-1, 1]) {
-    P.add('hullDark', torus(0.095, 0.022, 12), s * 0.55, 1.14, 3.295, Math.PI / 2, 0, 0); // bow tow eyes under the beak lip
-    P.add('hullDetail', box(0.15, 0.07, 0.07), s * 0.55, 1.11, 3.255);
-    P.add('hullDetail', box(0.045, 0.20, 0.10), s * 0.67, 1.19, 3.22, 0, 0, s * 0.30); // clevis guards blend the eyes into the jaw
+    // 267 round 2 (Opus, critic3: "missing the two large towing eyes", pic-1): a tall lug on the beak face each side,
+    // leaning with the face, its eye a dark bore through it (the old horizontal rings hid under the lip)
+    P.add('hullDetail', box(0.06, 0.18, 0.12), s * 0.48, 1.147, 3.382, -0.634, 0, 0);
+    P.add('hullDark', cylX(0.036, 0.068, 14), s * 0.48, 1.181, 3.394);
+    P.add('hullDetail', box(0.16, 0.035, 0.05), s * 0.48, 1.068, 3.418, -0.634, 0, 0); // weld pad at the lug's foot
     // 266: the two thin dark "lamp/tool relief" plates on the upper bow read as loose debris to both critics; gone.
   }
   // lift eyes seated LOW (r2: the r1 rings topped 1.756/1.836 — +0.10 over
@@ -644,6 +648,12 @@ function buildAMX40(P: FranceBuilderPort): void {
   }
   };
   buildTurretStowage();
+  // 267 round 2 (Opus, critic3: "a dark notch at the tank's-left front corner of the turret, between the roof box and the
+  // cheek, reads as a cavity; the real cheek is solid"): the left cheek's nose runs on to the mantlet's side as solid
+  // armour, 10 mm outboard of the mantlet web (x 0.62) so the gun elevates clear of it.
+  P.add('turret', convexSlab(
+    [0.63, 0.18, 1.86], [1.00, 0.18, 1.86], [1.00, 0.18, 2.12], [0.63, 0.18, 2.20],
+    [0.63, 0.56, 1.86], [1.00, 0.56, 1.86], [1.00, 0.56, 2.12], [0.63, 0.56, 2.20]));
   // ---- optics band — CAPPED AT 2.40 world (post-warp frame; the print's
   // 2.77 cupola / 3.09 pano tower compress onto this line under the filed
   // knee-2.39 plan). Every top ≤ 0.800 local. -----------------------------
@@ -718,30 +728,35 @@ function buildAMX40(P: FranceBuilderPort): void {
     // 267 round 2 (both critics, critic1: "they point straight out sideways; the real clusters face forward and outward,
     // so the muzzles show from the front"): the tubes turn 0.5 rad off the cheek's normal toward the bow (about 30
     // degrees off the bow), on a bracket block square to them whose inner edge is buried in the cheek.
-    const tubeLen = 0.22, tubePitch = -0.30, standoff = 0.09;
+    // 267 round 3 (both critics, critic3: "the discharger stacks stand outboard of the turret silhouette on bars; on the
+    // real turret they sit on the cheek faces, inside the outline"): each cluster moves forward on its cheek and turns
+    // 0.70 rad off the cheek's normal toward the bow; its plate stands square to the tubes on a welded wedge whose back
+    // lies on the cheek face, so the cluster stays inside the 1.49 flank line, and the guard hoop is gone.
+    const tubeLen = 0.22, tubePitch = -0.30, plateHalf = 0.135;
     for (const s of [-1, 1]) {
-      const zc = 1.58, xo = flankOuterXAt(s, zc);
+      const zc = 1.70, xo = flankOuterXAt(s, zc);
       const ex = -(flankOuterX - cheekNoseX), ez = cheekNoseZ(s) - cheekZ, el = Math.hypot(ex, ez);
       const nx = s * ez / el, nz = -ex / el;                                     // the cheek's outward normal in plan
-      const yaw = Math.atan2(nx, nz) - s * 0.50;
-      const bx = s * xo + nx * standoff, bz = zc + nz * standoff;
-      P.add('turretDetail', box(0.27, 0.25, 0.20), bx - Math.sin(yaw) * 0.08, 0.42, bz - Math.cos(yaw) * 0.08, 0, yaw, 0);
+      const yaw = Math.atan2(nx, nz) - s * 0.70;
+      const px = s * Math.cos(yaw), pz = -s * Math.sin(yaw);                     // across the plate, outboard
+      const pn = px * nx + pz * nz;
+      const h = 0.012 + plateHalf * pn;                                          // the plate's inner edge stands 12 mm off the cheek
+      const fx = s * xo + nx * h, fz = zc + nz * h;
+      const edge = (k: number): [number, number, number, number] => {
+        const ax = fx + px * plateHalf * k, az = fz + pz * plateHalf * k, d = h + plateHalf * pn * k + 0.02;
+        return [ax, az, ax - nx * d, az - nz * d];                               // the plate edge and its foot buried in the cheek
+      };
+      const [ix, iz, ifx, ifz] = edge(-1), [ox, oz, ofx, ofz] = edge(1);
+      P.add('turretDetail', convexSlab(
+        [ix, 0.29, iz], [ox, 0.29, oz], [ofx, 0.29, ofz], [ifx, 0.29, ifz],
+        [ix, 0.555, iz], [ox, 0.555, oz], [ofx, 0.555, ofz], [ifx, 0.555, ifz]));
       const dx = Math.sin(yaw) * Math.cos(tubePitch), dy = -Math.sin(tubePitch), dz = Math.cos(yaw) * Math.cos(tubePitch);
-      const reach = 0.02 + tubeLen / 2 - 0.02;
+      const reach = tubeLen / 2 - 0.01;
       for (const [row, y] of [[0, 0.405], [1, 0.505], [2, 0.605]]) {
         const bank = FITTINGS.smokeBank({ mats: P.mats, count: 2, r: 0.045, len: tubeLen, splay: yaw, arc: 0.06, pitch: tubePitch,
           spacing: 0.115, base: false, seed: 5 + row + (s > 0 ? 3 : 0) });
-        bank.position.set(bx + dx * reach, y + dy * reach, bz + dz * reach);
+        bank.position.set(fx + dx * reach, y + dy * reach, fz + dz * reach);
         P.turretG.add(bank);
-      }
-      // the tube guard hoop over each cluster (Sonnet, critic1: "the wire-loop grab rails at the turret front corners are
-      // absent"): from the flank's roof edge out over the cluster and back into the cheek top beside the nose
-      const hoop: Vec3Tuple[] = [[s * 1.40, 0.52, 1.12], [s * 1.60, 0.62, 1.30], [s * 1.60, 0.62, 1.74], [s * 1.30, 0.62, 2.02], [s * 1.10, 0.53, 1.92]];
-      for (let i = 0; i < hoop.length - 1; i++) {
-        const [ax, ay, az] = hoop[i], [cx, cy, cz] = hoop[i + 1];
-        const len = Math.hypot(cx - ax, cy - ay, cz - az);
-        const seg = cylZ(0.017, len + 0.02, 10).lookAt(new Vector3(cx - ax, cy - ay, cz - az));
-        P.add('turretDetail', seg, (ax + cx) / 2, (ay + cy) / 2, (az + cz) / 2);
       }
     }
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
