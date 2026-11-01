@@ -494,7 +494,9 @@ function addT90BurlakShoulderFoundationNative2026(P: T90BuilderPort, {
     // width through z=-0.9 before entering the narrow autoloader neck.  A
     // buried unequal service pack supplies that supported shoulder volume
     // while retaining the lower undercut and the one-shell topology.
-    P.add('turret', box(0.30, 0.31, 0.68), s * 1.42, 0.31, -0.84, -0.06, -s * 0.10, 0);
+    // 267: its underside stays 13.5 cm over the ring plane, where the retired 0.85 section squash drew it (at 15.5 cm
+    // the slot under it read as a roof pocket on the census at some grid alignments).
+    P.add('turret', box(0.30, 0.33, 0.68), s * 1.42, 0.30, -0.84, -0.06, -s * 0.10, 0);
     P.add('turretDark', box(0.018, 0.24, 0.56), s * 1.58, 0.31, -0.84, -0.06, -s * 0.10, 0);
     P.add('turretDetail', box(0.23, 0.016, 0.040), s * 1.42, 0.48, -0.61, -0.06, -s * 0.10, 0);
   }
@@ -544,14 +546,42 @@ function addT90BurlakBustleNative2026(
         0, fit(y + 0.015), fitZ(z + d * 0.39));
     }, { reachM: 0.04, mode: 'down' });
   }
+  // The bustle side's half-width at height y and station z (the loft's straight runs between its stations and between
+  // each station's floor, chine and roof rows).
+  const wallX = (y: number, z: number): number => {
+    const at = ([, y0, y1, , xm, , xb, , xt]: WeldedStation): number => {
+      const ym = y0 + (y1 - y0) * 0.46;
+      return y <= ym ? xb + (xm - xb) * (y - y0) / (ym - y0) : xm + (xt - xm) * (y - ym) / (y1 - ym);
+    };
+    const behind = stations.findIndex((station) => station[0] <= z);
+    const i = behind < 0 ? stations.length - 1 : Math.max(1, behind);
+    const a = stations[i - 1], b = stations[Math.min(i, stations.length - 1)];
+    const t = b[0] === a[0] ? 0 : Math.min(1, Math.max(0, (z - a[0]) / (b[0] - a[0])));
+    return at(a) + (at(b) - at(a)) * t;
+  };
   for (const s of [-1, 1]) {
     // 2026-10-19 (owner float sweep): the yawed side pods stood 25-46 mm off the tapering bustle wall; each pod and its
     // face plate is seated on the wall.
-    for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) P.snapGroup('t90-burlak-bustle-pod', () => {
-      P.add('turret', box(fit(0.19), fit(0.28), fit(d)), s * fit(x), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
-      P.add('turretDark', box(fit(0.015), fit(0.22), fit(d * 0.80)),
-        s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
-    }, { reachM: 0.06 });
+    for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) {
+      // 267 (roof-pocket census): each pod stands on a foot plate run in to the bustle side, which falls away under the
+      // chine the pod seats on; the slot under the pod's floor read as a pocket once the section rose. The foot rides
+      // the pod's seat move, so its lip stays 15 mm proud of the pod's outer face and its inner edge buried in the wall.
+      const yaw = -s * 0.32, ux = [Math.cos(yaw), -Math.sin(yaw)], uz = [Math.sin(yaw), Math.cos(yaw)];
+      const at = (across: number, along: number): [number, number] => [
+        s * fit(x) + ux[0] * across + uz[0] * along, fitZ(z) + ux[1] * across + uz[1] * along];
+      const half = fit(d) / 2 + fit(0.01), outer = s * fit(0.095 + 0.015), inner = -s * fit(0.095);
+      const footTop = fit(0.235), footBottom = fit(0.21);
+      const inWall = (point: [number, number]): [number, number] => [s * (wallX(footBottom, point[1]) - fit(0.015)), point[1]];
+      const front = at(inner, half), rear = at(inner, -half);
+      const foot = KIT.polyTurret([at(outer, half), at(outer, -half), rear, inWall(rear), inWall(front), front],
+        footTop - footBottom, 1, 1, true);
+      P.snapGroup('t90-burlak-bustle-pod-foot', () => P.add('turretDetail', foot, 0, footBottom, 0), { reachM: 0.004 });
+      P.snapGroup('t90-burlak-bustle-pod', () => {
+        P.add('turret', box(fit(0.19), fit(0.28), fit(d)), s * fit(x), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
+        P.add('turretDark', box(fit(0.015), fit(0.22), fit(d * 0.80)),
+          s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
+      }, { reachM: 0.06, onMove: ([mx, my, mz]) => { foot.translate(mx, my, mz); } });
+    }
     if (scale < 0.999) {
       // Keep optional reduced comparison envelopes watertight without changing
       // the visible armour-pod proportions. Production vehicles remain scale=1.
@@ -671,7 +701,8 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
     P.turretG.add(smoke);
   }
   {
-    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h:2.67, r:0.014, rake:0.018, seed:61 });
+    // 267: the whip keeps the 2.27 m it drew under the retired 0.85 section squash; only its foot rises with the roof.
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h:2.27, r:0.014, rake:0.018, seed:61 });
     antenna.position.set(0, 0.63, -1.02);
     P.turretG.add(antenna);
     P.add('turretDark', cylY(0.045, 0.060, 0.12, 8), 0, 0.63, -1.02);
@@ -683,8 +714,10 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
   P.add('gun', cylZ(0.082, 2.34, 18), 0, 0, 3.05);
   for (const z of [0.56, 1.90, 2.18, 3.02, 4.18]) P.add('gunDark', cylZ(z < 2 ? 0.116 : 0.098, 0.030, 16), 0, 0, z);
   P.gunG.scale.z = 0.955;
-  P.gunG.scale.y = 1.318;
-  P.gunG.position.y += 0.08;
+  // 267: the trunnion stays where the 266 rig drew it (80 mm over the T-90A seat, seen through the retired 0.85
+  // section squash), so the combat frame (t90MarkFrames.ts) and the gun-pitch curve (turretScaleGunPitch.ts) still
+  // describe the drawn gun; the restored turret section rises round it.
+  P.gunG.position.y = (P.gunG.position.y + 0.08) * 0.85;
 }
 
 function replaceT90BurlakCoreNative2026(P: T90BuilderPort): void {
@@ -717,8 +750,12 @@ function replaceT90BurlakCoreNative2026(P: T90BuilderPort): void {
     [1.26, -0.68], [0.82, -1.02], [-0.82, -1.02], [-1.26, -0.68],
     [-1.36, 0.08], [-0.92, 0.68],
   ];
-  P.add('turret', polyTurret(apron, 0.24, 0.94, 0.95), 0, -0.18, -0.06);
-  P.add('turretDark', polyTurret(apron, 0.022, 0.95, 0.97), 0, 0.04, -0.06);
+  // 267 (roof-pocket census, turret RAISED 3328 cm2 in 8 pockets): both prisms are closed solids. Open-bottomed, the
+  // seat over the deck folded each one's walls to its lid, and those lids, up-facing inside the shell's floor, closed the
+  // shell there: its whole body read as a 1 cm floor plate, and the slew seat, hatch collars and roof foundations over it
+  // read as roofs over open air.
+  P.add('turret', polyTurret(apron, 0.24, 0.94, 0.95, true), 0, -0.18, -0.06);
+  P.add('turretDark', polyTurret(apron, 0.022, 0.95, 0.97, true), 0, 0.04, -0.06);
 }
 
 // Every turret-owned bucket of a build (tankFactoryCore BUCKET_DEF: turretG, gunG and recoilG owners), for replacing a
@@ -738,10 +775,10 @@ function buildT90BurlakTurret(P: T90BuilderPort): void {
   P.clear(...T90_TURRET_BUCKETS);
   replaceT90BurlakCoreNative2026(P);
   finishT90BurlakNative2026(P);
-  // The inherited cast tree is deliberately compressed only in section; width, plan length, ring location and the
-  // independently dimensioned roof stations remain unchanged. The gun group is counter-scaled so the tube stays round.
-  P.turretG.scale.set(1.00, 0.85, 1.00);
-  P.gunG.scale.y = 1 / 0.85;
+  // 267 (both blind critics, S5: "the turret reads low against the photos and drawings"): the 0.85 section squash the
+  // native hull needed is retired. On the T-90A X ring the authored section is the source's own: over the deck the
+  // bustle roof stands 0.72 m, the crown 0.65 m and the front 0.56 m, as on t90a_burlak_x_source.glb (0.72 / 0.69 /
+  // 0.53) and the BTVT side drawing's tall bustle box; squashed they read 0.62 / 0.55 / 0.48.
 }
 
 /** Turret-ring height on the family chassis (builder frame). */
