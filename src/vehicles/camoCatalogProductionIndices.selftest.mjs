@@ -125,7 +125,8 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // Release 266: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the X1's grey olive drab sit within a
 // shade of a named preset, so no authored paint of their own: Denmark and Brazil have no national Factory coat, and they
 // paint their spec's coat.
-const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro'];
+const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro', 'centurion5_2dk'];
+// (267: the Centurion Mk 5/2 DK's 1980s three-tone sits within a shade of a named preset too)
 // Release 266: the US M41A3 and the T49 wear the US Factory coat (the owner's 2026-10-22 rule for plain coats).
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)

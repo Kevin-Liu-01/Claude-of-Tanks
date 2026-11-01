@@ -358,6 +358,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5_2: { displayName: 'Centurion Mk 5/2' },
+  centurion5_2dk: { displayName: 'Centurion Mk 5/2 DK', searchAliases: ['Centurion DK', 'Danish Centurion', 'Centurion Mk V/2 DK', 'Centurion Mk 5/2 Denmark'] },
   // release 266: the M48s drawn on the M48A5's castings
   m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
   magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },

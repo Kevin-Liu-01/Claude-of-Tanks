@@ -2,7 +2,8 @@
 // names (docs/references/photos/leopard-*-dk*-20261029.json). At both qualities: the as-built envelope against its packet
 // (widthM the X extent, overallLengthM the Z extent, tallestM the highest point, within 3%); the Leopard 1 DKs' welded
 // 1A3 turret with each mark's kit; the 2A5 DK's Elop sight and bar armour, without the German builds' remote 30 mm
-// station; the 2A7 DK's ribbed modules and Barracuda cover, without it too; the CV9035 DK on the CV90 Mk IV (the owner 2026-10-30) with the 35 mm and no
+// station; the 2A7 DK's ribbed modules and Barracuda cover, without it too; the Centurion Mk 5/2 DK's 1985 fire control
+// (the rangefinder box on the mantlet's right, the thermal sight box on the roof's right front); the CV9035 DK on the CV90 Mk IV (the owner 2026-10-30) with the 35 mm and no
 // missile launcher (the M41 DK-1 is m41.selftest.mjs's). Then the tree and the team country: one Denmark tree rooted on the 1A3 DK, the Christian II in
 // its special lane, Denmark a country that fills first from Sweden.
 import assert from 'node:assert/strict';
@@ -21,9 +22,10 @@ const PACKETS = {
   'leo1a5dk1': 'leopard-1a5-dk-1-20261029.json',
   'leo2a5dk': 'leopard-2a5-dk-20261029.json',
   'leo2a7dk': 'leopard-2a7-dk-20261029.json',
+  'centurion5_2dk': 'centurion-mk5-2-dk-20261029.json',
   'cv9035dk': 'cv9035-dk-20261029.json',
 };
-const TIERS = { 'leo1a3dk': 1, 'leo1a5dk': 1, 'leo1a5dk1': 1, 'leo2a5dk': 9, 'leo2a7dk': 10, 'cv9035dk': 5 };
+const TIERS = { 'leo1a3dk': 1, 'leo1a5dk': 1, 'leo1a5dk1': 1, 'leo2a5dk': 9, 'leo2a7dk': 10, 'centurion5_2dk': 3, 'cv9035dk': 5 };
 await ensureInteriorFills(Object.keys(PACKETS));
 
 const within = (actual, target, label) =>
@@ -64,6 +66,10 @@ for (const [id, file] of Object.entries(PACKETS)) {
         assert.equal(gun.mainGunCaliberMm, 35, `${id} ${quality}: the 35 mm Bushmaster III`);
         assert.equal(gun.missileLauncher, false, `${id} ${quality}: no missile launcher`);
         assert.ok(!spec.gun.shells.some((shell) => shell.guided), `${id}: no guided round`);
+      } else if (id === 'centurion5_2dk') {
+        const r = turret.userData.centurionDkReceipt;
+        assert.equal(r?.laserRangefinderBox, 'right', `${id} ${quality}: the rangefinder box on the mantlet's right`);
+        assert.equal(r.thermalSightBox, 'right-front', `${id} ${quality}: the thermal sight box on the roof's right front`);
       } else {
         const r = turret.userData.leopard2DkReceipt;
         assert.ok(r, `${id} ${quality}: the Danish kit's receipt`);
