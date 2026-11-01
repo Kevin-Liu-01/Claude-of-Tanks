@@ -76,18 +76,22 @@ checks it).
 - What is single today is the stage before the step. `pollFrameInput` (`src/game/battleFrameRuntime.ts:187-201`) copies
   the one global input layer onto `game.player.input` (`src/game/playerFrameInput.ts:128-155`), and the one camera rig
   writes the aim point (`src/engine/cameraRig.ts:747-749`). `game.player` is `tanks[0]` (`src/game/state.ts:1208`).
-- Couch mode gives each seat its own input layer (the same `createInput` virtual controls the phone mapper already
-  drives), its own rig, and a seat-to-tank map. The input stage loops over the seats and writes each seat's controls
-  and aim point onto its tank, the way the multiplayer host's input map does
-  (`server/match/matchActor.ts:712-716`), with none of that code imported.
-- Seat ids are not spec ids. Solo makes the entity id from the spec id today (`src/game/rosterState.ts:176`); couch
-  numbers its seats' tanks the way the multiplayer host does (humans first, then bots), so two players may take the
-  same tank.
-- Bots fill the rest from the solo roster planner (`battleRosterPlan`, `soloRosterSeats` in
-  `src/game/soloRosterPlan.ts`), not from the room planner, which belongs to `src/mp`.
-- Sizes and sides come from `src/sim/matchRuleset.ts`. Versus seats up to 14 a side (`roomSizeRulesFor`); the co-op
-  modes seat at most 7 commanders (`COOP_ROOM.maxHumans`), so an eight-seat couch co-op needs a couch entry there, not
-  a literal in the couch code.
+- Each seat has its own controls (`src/game/couchSeats.ts`), which its phone receiver drives as the touch HUD drives
+  the input layer. Once per fixed step, before it, the couch runtime (`src/app/couchRuntime.ts` `beforeStep`) hands
+  every seat's controls to the core's player input stage (`src/sim/playerInputStage.ts` `applyPlayerInput`), the
+  same stage the multiplayer authority uses for a network seat, so a seat steps exactly as a network seat does (agreed
+  with the core lane, 2026-11-01: per tick, through the authority's own stage, never a copy of it). Levels (stick,
+  fire, brake) hold until they change; a tap is a press on one tick only, because the core consumes action bits every
+  tick. In a couch battle the keyboard drives no tank and the camera rig aims none (`pollFrameInput` gets no player).
+- Phase 1 seats take the mode's own roster (`assignCouchSeats`): the first seat present drives the battle's first tank,
+  every other seat the next tank on its side in roster order, and the rest stay bots, so a seat's tank has no bot
+  (`spawnBattleEntities`). The roster holds one tank per vehicle, so no two seats share an id; the phone's own vehicle
+  pick (phase 3) brings seat ids that are not spec ids, as the multiplayer host numbers its seats.
+- Sizes and sides come from `src/sim/matchRuleset.ts`: `COUCH_RULES` (the couch modes, eight seats, the shared camera's
+  framing) and `couchSeatSides` (Together puts every seat on Alpha; Teams alternates, Alpha first; the Horde is always
+  Together). A seat with no tank left on its side sits the battle out.
+- One shared camera with seats on both sides shows every hull (`watchRevealsAll` reads a Teams couch battle): each seat
+  sees its own side, so the shared screen shows both. One pane per seat (phase 2) draws only its side's spotting.
 - Spotting is kept per team (`src/sim/spotting.ts:442`), and the local driver hides an unspotted enemy by setting the
   one shared visual invisible (`src/game/battlePresentationRuntime.ts:238-249`). With seats on both teams, that becomes
   a per-pane pass: before each pane's draw, the tanks its seat's team has not spotted are hidden for that draw only,
