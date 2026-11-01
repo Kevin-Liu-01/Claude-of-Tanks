@@ -882,6 +882,13 @@ const CREW_PAD_M = 0.01;
 const PLACE_TOL_M = 0.01;
 const SETTLE_SCALE = 0.94;
 const SETTLE_STEPS = 24;
+/**
+ * The release floor: no internal volume is thinner than this along any axis (object695X.selftest imports it). A part
+ * that settles thinner is not placed; the strategies after it are tried, and a module with no part placed keeps its
+ * sketch (267: object695's feed system settled 23 mm deep, and six radios and a transmission under 50 mm).
+ */
+export const MODULE_DEPTH_FLOOR_M = 0.05;
+const thickEnough = (box) => box.min.every((value, axis) => box.max[axis] - value >= MODULE_DEPTH_FLOOR_M);
 
 /** A shape's surface samples and its core (centre, or a capsule's axis ends and middle). */
 function samplesOf(shape) {
@@ -1058,7 +1065,8 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
       crew += shares.crew * size;
       moduleShare += shares.modules * size;
       // settle: shrink about a point until the runtime's hit shapes clear the crew and the earlier modules; first about
-      // the box's centre, then toward its free seed, then from the free voxel deepest from anything blocked
+      // the box's centre, then toward its free seed, then from the free voxel deepest from anything blocked. A settled
+      // box thinner than the release floor along any axis fails that strategy.
       const settle = (start, about) => {
         let at = start, fitted = partShapes(start);
         for (let step = 0; step < SETTLE_STEPS && shapesIntersect(fitted, obstacles, PLACE_TOL_M); step++) {
@@ -1068,7 +1076,7 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
           fitted = partShapes(at);
           settled++;
         }
-        return shapesIntersect(fitted, obstacles, PLACE_TOL_M) ? null : { box: at, fitted };
+        return shapesIntersect(fitted, obstacles, PLACE_TOL_M) || !thickEnough(at) ? null : { box: at, fitted };
       };
       let result = grown ? settle(grown, null) ?? settle(grown, seed) : null;
       if (!result && grown) {
