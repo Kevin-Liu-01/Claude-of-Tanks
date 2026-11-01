@@ -22,11 +22,11 @@ try{for(const quality of ['high','low']){
     assert.equal(skin.userData.appearanceRole,'armorPaint');
     assert.ok(skin.material === hull.material,'same camouflaged body material');
     assert.ok(skin.material.map&&skin.geometry.attributes.uv&&skin.geometry.attributes.color,'real camo UVs and weathering');
-    // 267: two twenty-triangle long returns plus two 52-triangle front skirt panels (the 52-triangle bow return walls
-    // are gone: the bow guard is a rolled sheet with a lip, and the oracle's separate front panel hangs under it)
-    assert.equal(skin.geometry.attributes.position.count/3,144,'two twenty-triangle long returns plus two 52-triangle front skirt panels');
+    // 267 fix: the two twenty-triangle long returns only (the 52-triangle bow return walls went in round 1, and the front
+    // skirt panels that replaced them go now: the front idler stays exposed under the rolled bow guard)
+    assert.equal(skin.geometry.attributes.position.count/3,40,'two twenty-triangle long returns');
     const added=extrusionStock(skin),old=extrusionStock(hull);
-    assert.equal(added.length,4);assert.ok(added.every(s=>s.closed),'all four mirrored finite sheets are closed and outward');
+    assert.equal(added.length,2);assert.ok(added.every(s=>s.closed),'both mirrored finite sheets are closed and outward');
     let attachments=0,closedRays=0,oldGapRays=0;
     for(const side of [-1,1])for(const z of [-3.18,-2.5,-1.5,-.5,.5,1.5,2.5,3.17]){
       for(const [x,y] of [[1.688,1.287],[1.806,1.142]]){
@@ -46,37 +46,23 @@ try{for(const quality of ['high','low']){
       }
     }
     assert.equal(oldGapRays,56,'56 original open-slot witnesses plus eight existing front-shelf witnesses');
-    // The bow guard is sheet: a rolled shoulder and a short lip over the hinged front skirt panel, which hangs inboard
-    // of the lip with its top buried in the roll, from the long skirt's front edge (a 6 mm hinge line) to the nose.
+    // The bow guard is sheet: a rolled shoulder and a short lip, with the front idler exposed under it (no wall, no panel),
+    // and the long return's front end laps the roll.
     const bowRows=[[3.20,1.2758],[3.30,1.265],[3.40,1.247],[3.50,1.216],[3.56,1.179]];
-    const panelRows=[[3.192,.825,1.808],[3.45,.82,1.808],[3.55,.838,1.808],[3.62,.842,1.808],[3.68,.862,1.806],[3.700,.880,1.786],[3.712,.900,1.770]];
     const bowBoxes=[];let bowAttachments=0,bowGapRays=0;
     for(const side of [-1,1]){
       for(const [z,top] of bowRows){
         const lip=ray([hull],2,top-.112,z,side);
         assert.ok(lip&&Math.abs(Math.abs(lip.point.x)-1.826)<.002,`${quality}: the guard's rolled lip is its outer face at ${z}`);
-        const under=ray([hull],2,top-.15,z,side);
-        assert.ok(!under||Math.abs(under.point.x)<1.6,`${quality}: under the lip the guard is no wall (the panel hangs there) at ${z}`);
-        const panel=ray([skin],2,top-.15,z,side);
-        assert.ok(panel&&Math.abs(Math.abs(panel.point.x)-1.808)<1e-5,`${quality}: the front skirt panel closes the side, 19 mm inboard of the lip`);
-        bowGapRays++;
-      }
-      for(let i=0;i<panelRows.length;i++){
-        const [zs,low,outer]=panelRows[i],z=Math.min(Math.max(zs,3.195),3.709);
-        // the panel's top is buried in the guard's roll: a point just under its top edge lies inside both
-        const hit=new T.Raycaster(new T.Vector3(side*(outer-.006),3,z),new T.Vector3(0,-1,0),0,3).intersectObjects([skin],false)[0];
-        assert.ok(hit,`${quality}: the panel is present at ${z}`);
-        const point=new T.Vector3(side*(outer-.006),hit.point.y-.0015,z);
-        assert.ok(added.some(s=>stockWinding(s,point)===1)&&old.some(s=>stockWinding(s,point)===1),
-          `${quality}: the front panel's top edge is buried in the guard's roll at ${z}`);bowAttachments++;
-        if(i>0){
-          const [z0,low0,outer0]=panelRows[i-1],inner=Math.min(outer,outer0)-.012;
-          bowBoxes.push({side,box:new T.Box3(new T.Vector3(side<0?-1.808:inner,Math.min(low,low0),z0),
-            new T.Vector3(side<0?-inner:1.808,1.30,zs))});
+        for(const y of [top-.15,top-.25,.95]){
+          const under=ray([hull,skin],2,y,z,side);
+          assert.ok(!under||Math.abs(under.point.x)<1.6,`${quality}: the guard is no wall under its lip; the idler stays open at ${z}/${y}`);
+          bowGapRays++;
         }
       }
-      const front=ray([skin],2,1.0,3.188,side);
-      assert.ok(!front||Math.abs(front.point.x)>1.80,'the hinge line: the panel starts ahead of the long skirt\'s front edge');
+      const lap=new T.Vector3(side*1.803,1.23,3.185);
+      assert.ok(added.some(s=>stockWinding(s,lap)===1)&&old.some(s=>stockWinding(s,lap)===1),
+        `${quality}: the long return's front end laps the bow guard's roll`);bowAttachments++;
     }
     // Lower wheel faces remain the first visible physical stock, not filled
     // wheel-bay plates or merely correctly colored hidden meshes.
@@ -118,6 +104,6 @@ try{for(const quality of ['high','low']){
     for(const zone of zones)tank.stripEra(zone);
     assert.deepEqual(skin.geometry.attributes.position.array,before,'permanent upper closure survives all ERA depletion');
     assert.ok(skin.visible,'ERA does not hide fixed skin');
-    console.log(`${quality}: 144 triangles, ${attachments}+${bowAttachments} physical attachment witnesses, ${closedRays}+${bowGapRays} closed-slot/bow-sheet rays, lower wheels visible, ${intervals} continuous neutral-course bounds PASS`);
+    console.log(`${quality}: 40 triangles, ${attachments}+${bowAttachments} physical attachment witnesses, ${closedRays}+${bowGapRays} closed-slot/open-idler rays, lower wheels visible, ${intervals} continuous neutral-course bounds PASS`);
   }finally{tank.dispose();}
 }}finally{restore();}
