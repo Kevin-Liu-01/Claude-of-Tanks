@@ -561,6 +561,10 @@ function plateAlongShot(
   if (!zones) { zones = zonePlates(plates); shotZones.set(plates, zones); }
   let own = -1;
   for (let index = 0; index < zones.length; index++) if (zones[index].plate === plate) { own = index; break; }
+  // a model copied through JSON (a receipt's exact copy) keeps its faces' plates apart from its plate list: by name
+  if (own < 0) for (let index = 0; index < zones.length; index++) {
+    if ((zones[index].plate as ArmorPlate).name === plate.name) { own = index; break; }
+  }
   if (own < 0) return plate;
   const d = _dirN[frame];
   return zones[zoneAlongShot(zones, own, x, y, z, d.x, d.y, d.z)].plate as ArmorPlate;

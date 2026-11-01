@@ -37,6 +37,8 @@ const SAMPLE_INTERVAL_MS = 110;
 const REFRESH_MOVE_M = 0.02;
 const REFRESH_MOVE_SHARE = 0.001;
 const SAMPLE_BATCH_SIZE = 48;
+/** (267) Whole panels of one zone whose centres share a cell this size (m) share a row: resolved at the first's centre. */
+const PANEL_ROW_CELL_M = 0.25;
 const MAX_QUERY_M = 820;
 /**
  * A zone aims at most this many samples, spread over the faces the authority gives its plate. A sample whose ray meets
@@ -389,12 +391,14 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     return index;
   };
   // (267) a whole panel: its row holds its zone until the overlay sets the plate along the current view (resolvePanels).
-  // One row per zone and centre (to 1 cm): every vehicle of a spec, whatever its own geometry, names the same rows
+  // One row per zone and PANEL_ROW_CELL_M cell of the centre: every vehicle of a spec, whatever its own geometry, names
+  // the same rows, and a casting cut into many small pieces (a T-72B3: ~900, a median 28 cm²) shares a few hundred
   const panels: WholePanel[] = [];
   const panelRows = new Map<string, number>();
   const wholePanel = (zone: number, point: readonly number[]): number => {
     if (!(zone >= 0 && zone < zones.length)) return -1;
-    const key = `${zone}:${Math.round(point[0] * 100)}:${Math.round(point[1] * 100)}:${Math.round(point[2] * 100)}`;
+    const cell = (v: number): number => Math.floor(v / PANEL_ROW_CELL_M);
+    const key = `${zone}:${cell(point[0])}:${cell(point[1])}:${cell(point[2])}`;
     let index = panelRows.get(key);
     if (index === undefined) {
       if (panels.length >= PANEL_SLOTS) return -1;

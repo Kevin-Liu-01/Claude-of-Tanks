@@ -351,9 +351,6 @@ const FLAT_DOT = 0.9995;
 const MAX_VOTES = 32;
 /** (267) A whole panel's code: below the sets' (materials.ts reads its row after the sets' slots). */
 const WHOLE_PANEL_FIRST = PANEL_BARE - 1 - ARMOR_PAINT_SET_SLOTS;
-/** (267) A panel smaller than this (m², a 10 cm square) stays baked: a T-72B3 bakes ~900 such panels, a median 28 cm²,
- * 7 % of their area, invisible at a sight's range, each a row the overlay resolves on every refresh. */
-const WHOLE_PANEL_MIN_M2 = 0.01;
 /** (267) A panel's triangles (on a stride) the bake tests the level views at, beside its centre. */
 const COVER_POINTS = 8;
 /** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
@@ -898,7 +895,7 @@ export function* bakePaintPanelSteps(
           nx += faces[t * 3] * a; ny += faces[t * 3 + 1] * a; nz += faces[t * 3 + 2] * a;
         }
         const facing = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (!(area >= WHOLE_PANEL_MIN_M2) || !(facing > 1e-9)) return value;
+        if (!(area > 0) || !(facing > 1e-9)) return value;
         // its centre and up to COVER_POINTS triangles' on a stride: a panel can span two plates' outlines
         samplePoints[0].set(cx / area, cy / area, cz / area);
         let used = 1;
