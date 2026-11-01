@@ -1,6 +1,6 @@
 {
  "id": "t90a",
- "geoMin": 90,
+ "geoMin": 91.3,
  "requiredMinimum": 90,
  "registration": {
   "passed": true,
@@ -15,9 +15,9 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": true,
- "rawGeoMin": 90.01333033160294,
+ "rawGeoMin": 91.29415734539168,
  "rawComponents": {
-  "hullCurves": 90.01333033160294,
+  "hullCurves": 91.29415734539168,
   "stations": 93.57734116804217,
   "turretCurves": 92.7542839582108,
   "wholeCurves": 92.35284830881855,
@@ -25,7 +25,7 @@
   "floaters": 100
  },
  "components": {
-  "hullCurves": 90,
+  "hullCurves": 91.3,
   "stations": 93.6,
   "turretCurves": 92.8,
   "wholeCurves": 92.4,
@@ -36,39 +36,15 @@
  "stationMethod": "exact-triangle-slab-intersections",
  "curveRows": {
   "side_hull": {
-   "score": 92.00529245540851,
-   "meanPct": 0.59,
-   "p95Pct": 1.56,
+   "score": 93.14036447309351,
+   "meanPct": 0.5,
+   "p95Pct": 1.37,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
     "dy": 0
    },
    "worst": [
-    {
-     "at": 2.77,
-     "refTop": 0.3,
-     "refBot": -1.41,
-     "procTop": 0.12,
-     "procBot": -1.41,
-     "errM": 0.094
-    },
-    {
-     "at": 2.65,
-     "refTop": 0.29,
-     "refBot": -1.41,
-     "procTop": 0.12,
-     "procBot": -1.41,
-     "errM": 0.088
-    },
-    {
-     "at": 2.88,
-     "refTop": 0.28,
-     "refBot": -1.41,
-     "procTop": 0.19,
-     "procBot": -1.41,
-     "errM": 0.044
-    },
     {
      "at": 4.3,
      "refTop": 0.19,
@@ -140,6 +116,30 @@
      "procTop": 0.19,
      "procBot": -1.13,
      "errM": 0.033
+    },
+    {
+     "at": 3.94,
+     "refTop": 0.18,
+     "refBot": -1.09,
+     "procTop": 0.19,
+     "procBot": -1.03,
+     "errM": 0.033
+    },
+    {
+     "at": 4.41,
+     "refTop": 0.22,
+     "refBot": -0.61,
+     "procTop": 0.28,
+     "procBot": -0.61,
+     "errM": 0.033
+    },
+    {
+     "at": -2.41,
+     "refTop": -0.15,
+     "refBot": -0.93,
+     "procTop": -0.17,
+     "procBot": -0.9,
+     "errM": 0.028
     }
    ]
   },
@@ -468,9 +468,9 @@
    ]
   },
   "front_hull": {
-   "score": 90.01333033160294,
-   "meanPct": 0.68,
-   "p95Pct": 3.05,
+   "score": 91.29415734539168,
+   "meanPct": 0.62,
+   "p95Pct": 2.13,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -494,52 +494,52 @@
      "errM": 0.102
     },
     {
-     "at": -0.06,
-     "refTop": 0.28,
-     "refBot": -1.04,
-     "procTop": 0.14,
-     "procBot": -1.01,
-     "errM": 0.086
-    },
-    {
      "at": -0.02,
-     "refTop": 0.28,
+     "refTop": 0.23,
      "refBot": -1.04,
      "procTop": 0.14,
      "procBot": -1.01,
-     "errM": 0.086
+     "errM": 0.062
     },
     {
      "at": 0.02,
-     "refTop": 0.28,
+     "refTop": 0.23,
      "refBot": -1.04,
      "procTop": 0.14,
      "procBot": -1.01,
-     "errM": 0.086
+     "errM": 0.062
+    },
+    {
+     "at": -0.06,
+     "refTop": 0.23,
+     "refBot": -1.04,
+     "procTop": 0.14,
+     "procBot": -1.01,
+     "errM": 0.06
     },
     {
      "at": 0.06,
-     "refTop": 0.28,
+     "refTop": 0.23,
      "refBot": -1.04,
      "procTop": 0.14,
      "procBot": -1.01,
-     "errM": 0.086
-    },
-    {
-     "at": 0.11,
-     "refTop": 0.29,
-     "refBot": -1.03,
-     "procTop": 0.14,
-     "procBot": -1.01,
-     "errM": 0.086
+     "errM": 0.06
     },
     {
      "at": -0.11,
-     "refTop": 0.28,
+     "refTop": 0.23,
      "refBot": -1.03,
      "procTop": 0.14,
      "procBot": -1.01,
-     "errM": 0.084
+     "errM": 0.058
+    },
+    {
+     "at": 0.11,
+     "refTop": 0.23,
+     "refBot": -1.03,
+     "procTop": 0.14,
+     "procBot": -1.01,
+     "errM": 0.058
     },
     {
      "at": 1.13,
@@ -1161,6 +1161,14 @@
      "maxY": 655
     }
    ]
+  }
+ ],
+ "declaredDepartures": [
+  {
+   "node": "gear222",
+   "sourceTop": 1.7211,
+   "top": 1.53,
+   "ruling": "owner, release 240 (\"make sure all tank turrets are clear of hulls\"): the housing behind the ring is a low cover at 1.53 (profiles/t90X.ts aGlacis)"
   }
  ]
 }
