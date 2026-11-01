@@ -1007,6 +1007,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
     'src/sim/armorZonePlates.selftest.mjs',
+    // 267 (Main's ruling, a fleet balance move): a round whose face's plate cannot meet it reads the plate across its path
+    'src/sim/armorAlongShot.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
