@@ -276,7 +276,8 @@ for(const quality of ['high','low']){
     // 2026-09-22 nation wheel standard: the T-90MS chassis draws the T-90M X pressed road-wheel face (twelve stations,
     // +19.8k triangles at HIGH, +10.2k at LOW), so the retained-chassis budget carries that owner-ruled wheel.
     // 252: and the turret race under the launcher (turretSeatRace.ts, the owner's 2026-10-22 ring directive): 640 at HIGH, 480 at LOW.
-    assert(triangles<=(quality==='high'?69900+30000+640:64652+16000+480),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
+    // 267: and the T-90MS X hull's toothed bow guards and glacis container rows (t90msX.ts, the 266 critics' S1/S3): 4300 at HIGH.
+    assert(triangles<=(quality==='high'?69900+30000+640+4300:64652+16000+480),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
     const b=new T.Box3().setFromObject(tank.root);assert(Math.abs(b.max.y-D.stowedHeight)<.001);assert(b.max.x-b.min.x<=3.781&&b.max.z-b.min.z<=7.479);
     results.push({quality,triangles,turretTriangles,batches,paintUVChanges:payload(tank.root,true).filter((row,i)=>row.attrs.uv?.hash!==hull[i].attrs.uv?.hash).map(row=>row.name),bounds:{min:b.min.toArray(),max:b.max.toArray()},...articulation});
     const decorated=createTank('tos1a_tagil',null,{...options(quality),proceduralOnly:false,decor:true});

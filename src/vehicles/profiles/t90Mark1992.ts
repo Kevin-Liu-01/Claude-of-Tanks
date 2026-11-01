@@ -132,6 +132,9 @@ function zipBox(P:TankBuilderPort,x:number,z:number,w:number,d:number,h:number):
 
 // A rubber fringe bolted along the side screens' lower hem behind the Kontakt-5 cassettes, in seven strips a side (the
 // early T-90's rubber-fabric screens ran lower than the later steel-framed skirts), outboard of the track and wheels.
+// 267 (S3; the 266 critics: "flat hems"): each strip's lower edge is cut into four trapezoid teeth between V notches
+// 50 mm deep, the tips at the old 160 mm drop, in the language of the source build's toothed hem (t90AwXFenders.ts),
+// whose shallower teeth (100 mm) it hides where it hangs.
 function skirtFringe(P:TankBuilderPort,side:number):void{
   const n=7,segW=.54,gap=.014,z0=-2.97,t=.012,drop=.16,lap=.045,steps=5;
   const station=(z:number)=>{
@@ -143,13 +146,17 @@ function skirtFringe(P:TankBuilderPort,side:number):void{
     const out=Math.abs(hit(P,['hullFixedPaintedBodywork'],[side*2.4,low+.02,z],[-side,0,0],'skirt face').x);
     return {z,low,out};
   };
-  const sheet=(rows:readonly{z:number,low:number,out:number}[],dx0:number,dx1:number,dy0:number,dy1:number)=>sectionSolid(rows.map(({z,low,out})=>{
+  const sheet=(rows:readonly{z:number,low:number,out:number,cut?:number}[],dx0:number,dx1:number,dy0:number,dy1:number)=>sectionSolid(rows.map(({z,low,out,cut=0})=>{
     const a=side*(out+dx0),b=side*(out+dx1),x0=Math.min(a,b),x1=Math.max(a,b);
-    return {z,ring:[[x0,low+dy0],[x1,low+dy0],[x1,low+dy1],[x0,low+dy1]] as const};
+    return {z,ring:[[x0,low+dy0+cut],[x1,low+dy0+cut],[x1,low+dy1],[x0,low+dy1]] as const};
   }));
+  const teeth=4,notch=.03,depth=.05;
   for(let i=0;i<n;i++){
     const a=z0+i*(segW+gap),rows=Array.from({length:steps+1},(_,k)=>station(a+segW*k/steps));
-    P.addEquipment('hullDark',sheet(rows,-.001,t,-drop,lap));
+    const cuts:{z:number,cut:number}[]=[{z:a,cut:0}];
+    for(let k=1;k<teeth;k++){const z=a+segW*k/teeth;cuts.push({z:z-notch,cut:0},{z,cut:depth},{z:z+notch,cut:0});}
+    cuts.push({z:a+segW,cut:0});
+    P.addEquipment('hullDark',sheet(cuts.map(({z,cut})=>({...station(z),cut})),-.001,t,-drop,lap));
     P.addEquipment('hullDetail',sheet(rows,t-.001,t+.007,.006,.040));
     for(const k of [1,steps-1]){
       const {z,low,out}=rows[k];
