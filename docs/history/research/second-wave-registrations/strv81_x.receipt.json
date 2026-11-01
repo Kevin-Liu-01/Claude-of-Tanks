@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "recipe": "docs/history/research/second-wave-registrations/strv81_x.json",
+  "sourceSha256": "bda892df141aab4ef64879de5be3236a2cfe118fada7a9c38e707076b634765d",
+  "canonicalSha256": "66b2818a6cfe23a2f7be0ec7be68286e9969fb253d0c878a231aeec95e021aa1",
+  "target": "public/models/community-candidates/strv81_x_source.glb",
+  "replay": "node tools/source-x-oracle.mjs --prepare=<the pristine download> --recipe=docs/history/research/second-wave-registrations/strv81_x.json writes the same bytes (twice, 2026-10-31)",
+  "meshCount": 7,
+  "triangleCount": 47587,
+  "omittedMeshes": [],
+  "omittedDetachedIslands": null,
+  "canonicalBounds": {
+    "min": [
+      -1.6919653415679932,
+      -2.8911341636711496e-12,
+      -3.845182418823242
+    ],
+    "max": [
+      1.6934798955917358,
+      4.1939592361450195,
+      6.140017509460449
+    ],
+    "size": [
+      3.385445237159729,
+      4.1939592361479106,
+      9.985199928283691
+    ]
+  },
+  "datums": {
+    "ringCentre": [
+      -0.000085,
+      0.468587
+    ],
+    "ringDiameter": 1.910236,
+    "turretUnderside": 1.69628,
+    "deckAtRing": 1.6807,
+    "boreAxis": [
+      0.000004,
+      2.079211
+    ],
+    "gunMeshRearZ": 1.285041,
+    "gun0NodeOrigin": "beside the bore at the mantlet cover (x 0.0708, y 2.0618, z 1.5223): not a pivot"
+  },
+  "whips": {
+    "mesh": "turret_0_turret_0_0",
+    "components": [
+      {
+        "triangles": 68,
+        "min": [
+          0.606,
+          2.846,
+          -0.7022
+        ],
+        "max": [
+          0.6253,
+          4.194,
+          0.0986
+        ]
+      },
+      {
+        "triangles": 68,
+        "min": [
+          -0.4127,
+          2.8284,
+          -2.4112
+        ],
+        "max": [
+          -0.3935,
+          3.6829,
+          -1.0938
+        ]
+      }
+    ]
+  },
+  "comparisonPurpose": "the Centurion family source frame (centurion3, centurion5_2, strv81); measurement-only print, never shipped",
+  "tool": "tools/source-x-oracle.mjs",
+  "status": "source registration only; candidate qualification separate"
+}
