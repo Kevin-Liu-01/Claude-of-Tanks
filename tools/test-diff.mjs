@@ -4,12 +4,14 @@
 // No second resolver: a receipt's reads are the result cache's own closure (run-selftests.mjs selftestReadOf), and a
 // changed file's tank ids come from the changed-only fleet partition (tools/changed-only/fingerprint.mjs computeState:
 // the shared core, each group's files, each table file's ids). This module adds only what those leave open: the
-// diff itself, the rows a changed table file moved (its hunks), and the spec fields balance reads, per id and tier.
+// diff itself, the rows a changed table file moved (its hunks), the spec fields balance reads, per id and tier, and the
+// hit-resolution code that reads them.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { authorityModules } from './det-math-lint.mjs';
 import { namedIds } from './selftest-tiers.mjs';
 import { scanPatternRegExp } from './selftest-scans.mjs';
 
@@ -229,6 +231,20 @@ export function balanceChanges(before, after) {
   }
   for (const id of Object.keys(before)) if (!after[id]) rows.push({ id, tier: before[id].tier, classes: ['removed'] });
   return rows.sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id, 'en'));
+}
+
+/** The authority's hit resolution: the shell's path, the armour it meets and the damage it does. */
+export const HIT_RESOLUTION_ENTRIES = Object.freeze(['src/sim/ballistics.ts', 'src/sim/armor.ts', 'src/sim/damage.ts']);
+
+/**
+ * The changed paths that move hit resolution for every tank: the static import closure of HIT_RESOLUTION_ENTRIES in the
+ * tree (det-math-lint's walk of the authority), less what the fleet partition keys per id (a table file's rows, a
+ * group's files), which changedTankIds names by id. balanceChanges compares the data; this is the code that reads it.
+ */
+export function hitResolutionMoves(root, partition, changed) {
+  const closure = new Set(authorityModules(root, HIT_RESOLUTION_ENTRIES).map((file) => relative(root, file).split(sep).join('/')));
+  const grouped = new Set(Object.values(partition.groups).flat());
+  return changed.filter((path) => closure.has(path) && !partition.fileIds[path]?.length && !grouped.has(path));
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];

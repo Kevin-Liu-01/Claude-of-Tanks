@@ -12,7 +12,7 @@ import { selftestCommand, selftestReadOf, SELFTEST_DECLARED_INPUTS, SELFTEST_FIX
 import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
 import { laneControl, selectLane } from './test-lane.mjs';
 import { recommend, reportLines, tierList } from './test-recommend.mjs';
-import { balanceChanges, changedMaps, changedTankIds, createReadIndex, laneReadOf } from './test-diff.mjs';
+import { balanceChanges, changedMaps, changedTankIds, createReadIndex, HIT_RESOLUTION_ENTRIES, hitResolutionMoves, laneReadOf } from './test-diff.mjs';
 import { ENTRY_HTML, readsOnPurpose } from './test-recommend.mjs';
 import { SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
@@ -262,6 +262,41 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.equal(ids.find((row) => row.suite === 'tanks').warranted, false, 'changed ids alone: lane mode runs their pins');
   assert.equal(ids.find((row) => row.suite === 'tanks').run, 'npm run test:heavy -- tanks --ids=leo2a4');
   assert.deepEqual(ids.filter((row) => row.warranted).map((row) => row.suite), ['fleet'], '...and the fleet ledgers may be stale');
+}
+
+// ---- hit resolution (267's bevel head moved armor.ts and added armorPlanes.ts; its balance line said "no tank's armour
+// changed"): a change in the authority's hit-resolution closure is a fleet-wide balance move for every `hits` suite, run
+// whole; the closure's per-id tables and group files stay per id; spotting, the HUD and the balance pass stay out
+{
+  assert.deepEqual(MANUAL_SUITE_NAMES.filter((name) => MANUAL_SUITES[name].hits), ['balance', 'pacing', 'bots', 'sims']);
+  const balanceRead = new Map([['balance', new Map([['src/vehicles/balanceMatchups.selftest.mjs', ['src/sim/armor.ts']]])]]);
+  const quiet = recommend({ readers: balanceRead, balance: [], wallMs: {} }).find((row) => row.suite === 'balance');
+  assert.equal(quiet.line, 'balance: 1 of its 4 checks read the change (src/sim/armor.ts); no tank\'s armour, gun, HP, mobility, size or role changed',
+    'control: a read with no spec change and no hit move says only that');
+  const hits = ['src/sim/armor.ts', 'src/sim/armorPlanes.ts'];
+  const moved = recommend({ readers: balanceRead, balance: [], hits, wallMs: {} });
+  assert.deepEqual(moved.filter((row) => row.warranted).map((row) => row.suite), ['balance', 'pacing', 'bots', 'sims']);
+  assert.equal(moved.find((row) => row.suite === 'balance').line,
+    'balance: hit resolution changed (src/sim/armor.ts, src/sim/armorPlanes.ts), a fleet-wide balance move; 1 of its 4 checks read the change (src/sim/armor.ts)');
+  assert.equal(moved.find((row) => row.suite === 'bots').line, 'bots: hit resolution changed (src/sim/armor.ts, src/sim/armorPlanes.ts), a fleet-wide balance move');
+  const pacingRead = new Map([['pacing', new Map([['src/sim/deployment.selftest.mjs', ['src/sim/armor.ts']]])]]);
+  assert.equal(recommend({ readers: pacingRead, wallMs: {} }).find((row) => row.suite === 'pacing').run,
+    'npm run test:heavy -- pacing --only=src/sim/deployment.selftest.mjs', 'control: a read alone names just its reader');
+  assert.equal(recommend({ readers: pacingRead, hits, wallMs: {} }).find((row) => row.suite === 'pacing').run, 'npm run test:heavy -- pacing',
+    'a hit move runs the suite whole');
+  const spec = recommend({ readers: new Map(), balance: [{ id: 'ztz85_iii', tier: 7, classes: ['gun', 'hp'] }], wallMs: {} });
+  assert.deepEqual([spec.find((row) => row.suite === 'balance').line, spec.filter((row) => row.warranted).map((row) => row.suite)],
+    ['balance: 1 tank changed gun/HP in tier VII (ztz85_iii)', ['balance']], 'a spec edit alone still names its ids, and only balance');
+
+  // the closure on this tree: the three entries and what they import (detMath; sceneWind three imports down), less the
+  // per-id table and group file a partition names; spotting, the HUD and the balance pass are outside it
+  const partition = { groups: { g: ['src/vehicles/auxiliaryWeapons.ts'] }, fileIds: { 'src/vehicles/auxiliaryInventory.generated.ts': ['m1a1'] } };
+  const paths = ['src/sim/armor.ts', 'src/sim/ballistics.ts', 'src/sim/damage.ts', 'src/sim/detMath.ts', 'src/world/sceneWind.ts',
+    'src/vehicles/auxiliaryInventory.generated.ts', 'src/vehicles/auxiliaryWeapons.ts', 'src/sim/spotting.ts', 'src/ui/hud.ts',
+    'src/vehicles/fleetBalancePass.ts', 'docs/DEVELOPMENT.md'];
+  assert.deepEqual(hitResolutionMoves(REPO_ROOT, partition, paths), paths.slice(0, 5));
+  assert.deepEqual(hitResolutionMoves(REPO_ROOT, { groups: {}, fileIds: {} }, paths), paths.slice(0, 7), 'control: unpartitioned, the table and the group file move it');
+  assert.deepEqual(HIT_RESOLUTION_ENTRIES.filter((file) => !existsSync(join(REPO_ROOT, file))), [], 'every entry exists');
 }
 
 // ---- entry pages: a root *.html counts as a heavy-suite trigger only for a receipt naming that page
