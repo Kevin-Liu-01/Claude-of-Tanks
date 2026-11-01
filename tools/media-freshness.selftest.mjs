@@ -29,6 +29,7 @@ const CURRENT = Object.freeze({
   'showcase-r2/process': 'the review sheets of the filming process',
   maps: 'the battlefields\' art and cards (the S2 re-renders land under the same names)',
   'maps-r1': 'the battlefield picker\'s card stills (the media lane, 2026-10-26, filmed on 251: public/media/maps-r1/manifest.json)',
+  'share-r1': 'each page\'s share clip (og:video), its banner take at 1280x720 (og-r2, 2026-11-01: src/presentation/siteMetadata.ts)',
   'brand/og': 'the social cards (regenerated from their sources)',
 });
 
@@ -52,7 +53,7 @@ const RETIRING = Object.freeze([
     replacement: 'J, the Studio loop (site50-r14/home/features/studio.mp4)',
     landed: (tree) => tree.has('/media/site50-r14/home/features/studio.mp4') },
   { name: 'the PNG game card', match: /^\/brand\/og-image\.png$/,
-    replacement: 'the ≤ 200 KB jpg from f6-r6 (public/brand/og-image.jpg)', landed: (tree) => tree.has('/brand/og-image.jpg') },
+    replacement: 'the og-r2 game card, a ≤ 300 KB jpg of f6-r6 (public/brand/og-r2/game.jpg)', landed: (tree) => tree.has('/brand/og-r2/game.jpg') },
 ]);
 
 /** The collection a site path belongs to, or null for a path outside the media roots. */

@@ -270,7 +270,7 @@ function wireGame() {
   // the modern version of the game"): generate-og-images.mjs draws every card from the versus stills and the current
   // UI captures and sets each one's framing itself, so a re-run here leaves its table alone.
   // the 404 page shares its own card (r14b, owner: "all pages with their custom ogs"), no longer the landing page's
-  swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og\/)[a-z0-9-]+(\.jpg">)/,
+  swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og-r2\/)[a-z0-9-]+(\.jpg">)/,
     (_, a, b) => `${a}404${b}`, '404 social card');
 }
 

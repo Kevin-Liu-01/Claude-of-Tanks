@@ -81,9 +81,9 @@ const filming = topics.filming;
 assert.deepEqual(filming.media.map(([src]) => src), ['/media/filming-r1/previz-sheet.webp', '/media/filming-r1/plan-view.webp']);
 assert.deepEqual(filming.mediaAt, [3, 5], 'the previz sheet follows the motion search, the Plan view the Studio\'s gains');
 assert.match(read('site/docs.html'), /<a class="docs-chapter-wide" href="\/docs\/filming"><span class="docs-chapter-media" data-reveal[^>]*><img src="\/media\/filming-r1\/card\.webp"/);
-// (the page's social card is a still of a filmed take or a versus still, staged in Scene Studio like the takes it
-// describes: since 2026-10-15 every card shows the current game)
-assert.match(read('tools/marketing-shots/generate-og-images.mjs'), /\['docs-filming', 'FILMING THE MEDIA', 'public\/media\/(?:site50-r14\/stills|versus-r1)\/[^']+\.webp'/);
+// (the page's social card is its banner take's poster, a take staged in Scene Studio like the takes it describes:
+// og-r2, 2026-11-01, every card is the shot its page opens on)
+assert.match(read('tools/marketing-shots/generate-og-images.mjs'), /\['docs-filming', 'Filming the media', 'public\/media\/site50-r14\/loops\/s07-lake-shellfire\.jpg'/);
 const topicsSource = read('src/docs/topics.ts');
 assert.match(topicsSource, /slug === 'filming'\) \{\n\s+whenOnline\(\(\) => import\('\.\/filming\.ts'\)/, 'the viewer loads on demand, on its own page (and again once back online)');
 

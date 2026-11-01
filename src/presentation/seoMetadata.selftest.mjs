@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 // The server-side catalog (as middleware.ts loads it): both locales resident for the metadata helpers.
 import '../ui/i18nCatalog.ts';
-import { privateRoomMetadata, STUDIO_METADATA } from './siteMetadata.ts';
+import { privateRoomMetadata, shareVideoForRoute, STUDIO_METADATA } from './siteMetadata.ts';
 import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
 import { localizeHtmlDocument } from './localizedHtml.ts';
 import { resolveVercelRequest, vercelJsonRoutes } from '../../tools/vercelRoutes.test-support.mjs';
@@ -24,13 +24,13 @@ const indexedPages = new Map([
     .map((route) => [`site/${route.sourceHtml}`, `${SITE}${route.pathname}`]),
 ]);
 const socialCards = new Map([
-  ['index.html', 'brand/og-image.png'],
-  ['site/home.html', 'brand/og/home.jpg'],
-  ['site/gallery.html', 'brand/og/gallery.jpg'],
-  ['site/docs.html', 'brand/og/docs.jpg'],
+  ['index.html', 'brand/og-r2/game.jpg'],
+  ['site/home.html', 'brand/og-r2/home.jpg'],
+  ['site/gallery.html', 'brand/og-r2/gallery.jpg'],
+  ['site/docs.html', 'brand/og-r2/docs.jpg'],
   ...[...indexedPages.keys()]
     .filter((file) => file.startsWith('site/docs-'))
-    .map((file) => [file, `brand/og/${file.replace(/^site\//, '').replace(/\.html$/, '')}.jpg`]),
+    .map((file) => [file, `brand/og-r2/${file.replace(/^site\//, '').replace(/\.html$/, '')}.jpg`]),
 ]);
 
 function attribute(html, element, key, value, wanted = 'content') {
@@ -231,14 +231,14 @@ assert.doesNotMatch(renderProductStats(readFileSync(join(ROOT, 'site/docs.html')
   /16 (?:maps|authored battlefields)/);
 assert.doesNotMatch(readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8'), /Sixteen battlefields/);
 
-assert.equal(STUDIO_METADATA.image, `${SITE}/brand/og/studio.jpg`);
+assert.equal(STUDIO_METADATA.image, `${SITE}/brand/og-r2/studio.jpg`);
 assert.match(STUDIO_METADATA.description, /maps, cameras, weather/);
 const privateMetadata = privateRoomMetadata(new URL(`${SITE}/?room=HKP5XW&mode=lan&host=Commander+09HY`));
 assert.ok(privateMetadata, 'valid private-room links need crawler metadata');
 assert.match(privateMetadata.title, /Commander 09HY’s LAN Battle/);
 assert.match(privateMetadata.description, /room HKP5XW/);
 assert.match(privateMetadata.robots, /noindex, nofollow, noarchive/);
-assert.equal(privateMetadata.image, `${SITE}/brand/og/private-room.jpg`);
+assert.equal(privateMetadata.image, `${SITE}/brand/og-r2/private-room.jpg`);
 assert.equal(privateMetadata.canonical, `${SITE}/`, 'temporary room codes must never become indexed canonicals');
 const chinesePrivateMetadata = privateRoomMetadata(
   new URL(`${SITE}/cn/?room=HKP5XW&mode=lan&host=Commander+09HY`),
@@ -319,23 +319,17 @@ function mp4Facts(file) {
   return facts;
 }
 
-// The share clips (266): the owner's media election (2026-10-30) gave each page family one published clip, used as it
-// is. Each must stay inside the limits it was chosen under: H.264 High at level 4.0 or lower, faststart (moov before
-// mdat), one video track and no audio, at most 10 s and 3 MB (Apple Messages caps a preview's video and image at
-// 10 MB together, TN3156).
-const SHARE_CLIPS = {
-  game: '/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4',
-  gallery: '/media/home-r2/fleet-montage.mp4',
-  docs: '/media/docs-hero-r2/verdant-challenger3-t80u-mobile.mp4',
-  studio: '/media/home-r2/studio-246.mp4',
-};
-/** The game's clip on the game, the landing and the 404; the manual's on its index and every chapter. */
-const clipFamily = (route) => (route.id === 'gallery' || route.id === 'studio' ? route.id
-  : route.id.startsWith('docs') ? 'docs' : 'game');
+// The share clips: each page's own (og-r2, 2026-11-01: the Studio, the manual's index and every chapter play their banner
+// take; the game, the landing, the 404 and the Gallery keep the clips of the owner's media election of 2026-10-30). Each
+// must stay inside the limits it was chosen under: H.264 High at level 4.0 or lower, faststart (moov before mdat), one
+// video track and no audio, at most 10 s and 3 MB (Apple Messages caps a preview's video and image at 10 MB together,
+// TN3156). Every manual chapter but those that share a take plays its own clip.
 const shareClips = new Map();
-for (const [family, path] of Object.entries(SHARE_CLIPS)) {
+for (const route of PUBLIC_ROUTE_RECORDS) {
+  const { path, width, height } = shareVideoForRoute(route.id);
+  if (shareClips.has(path)) continue;
   const file = join(ROOT, 'public', path);
-  assert.ok(existsSync(file), `the ${family} share clip public${path} is published`);
+  assert.ok(existsSync(file), `the ${route.id} share clip public${path} is published`);
   const facts = mp4Facts(file);
   const video = facts.tracks.filter((track) => track.handler === 'vide');
   assert.equal(video.length, 1, `${path} has one video track`);
@@ -346,10 +340,12 @@ for (const [family, path] of Object.entries(SHARE_CLIPS)) {
     `${path} is faststart (${facts.topLevel.join(' ')})`);
   assert.ok(facts.seconds > 0 && facts.seconds <= 10, `${path} runs at most 10 s (${facts.seconds} s)`);
   assert.ok(statSync(file).size <= 3e6, `${path} is at most 3 MB (${statSync(file).size} bytes)`);
-  assert.ok(video[0].width >= 640 && Number.isInteger(video[0].width) && Number.isInteger(video[0].height),
-    `${path} names whole-pixel dimensions (${video[0].width}x${video[0].height})`);
-  shareClips.set(family, { url: `${SITE}${path}`, width: String(video[0].width), height: String(video[0].height) });
+  assert.deepEqual([video[0].width, video[0].height], [width, height], `${path} is ${width}x${height} as siteMetadata.ts names it`);
+  shareClips.set(path, { url: `${SITE}${path}`, width: String(width), height: String(height) });
 }
+const chapterClips = PUBLIC_ROUTE_RECORDS.filter((route) => route.id.startsWith('docs')).map((route) => shareVideoForRoute(route.id).path);
+assert.ok(new Set(chapterClips).size >= chapterClips.length - 2, `the manual's pages play their own clips (${new Set(chapterClips).size} of ${chapterClips.length})`);
+const clipOf = (route) => shareClips.get(shareVideoForRoute(route.id).path);
 
 const viteConfig = (await import('../../vite.config.ts')).default;
 const localeDocuments = viteConfig.plugins.flat(Infinity).find((plugin) => plugin?.name === 'cot-locale-documents');
@@ -434,12 +430,12 @@ try {
     if (/<meta\b[^>]*\bname=["']twitter:player/i.test(html)) videoFailures.push(`${label}: names a twitter:player`);
     return images[0];
   };
-  for (const { label, html, route } of pages) expectClip(label, html, shareClips.get(clipFamily(route)));
+  for (const { label, html, route } of pages) expectClip(label, html, clipOf(route));
   // a room invite is the game's document under middleware.ts: it plays the game's clip and keeps its invite card
   const inviteImage = expectClip('room invite', await served('/?room=HKP5XW&mode=lan&host=Commander+09HY'),
-    shareClips.get('game'));
-  if (inviteImage !== `${SITE}/brand/og/private-room.jpg`) videoFailures.push(`room invite: og:image ${inviteImage}`);
-  assert.deepEqual(videoFailures, [], 'every public page, as served, shares its family clip as a playable og:video');
+    clipOf({ id: 'game' }));
+  if (inviteImage !== `${SITE}/brand/og-r2/private-room.jpg`) videoFailures.push(`room invite: og:image ${inviteImage}`);
+  assert.deepEqual(videoFailures, [], 'every public page, as served, shares its own clip as a playable og:video');
 } finally {
   globalThis.fetch = originalFetch;
   rmSync(built, { recursive: true, force: true });
