@@ -22,9 +22,11 @@ import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
 import type { ArmorCollisionCell, ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
-import { zonePlates, type ZonePlate } from '../sim/armorZones.ts';
+import { zoneAlongShot, zonePlates, type ZonePlate } from '../sim/armorZones.ts';
 import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armorPaintPanels.ts';
-import { ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
+import {
+  ARMOR_PAINT_PANEL_SLOTS as PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS,
+} from '../vehicles/materials.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 /**
@@ -58,6 +60,7 @@ const HIGH = new THREE.Color(0x48d985);
 const _color = new THREE.Color();
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();
+const _eyeHull = new THREE.Vector3(), _eyeTurret = new THREE.Vector3();
 const _frame = new THREE.Matrix4();
 const _unscale = new THREE.Matrix4();
 const _pose = {
@@ -112,6 +115,15 @@ interface ZoneSamples {
   readonly turret: boolean;
 }
 
+/** (267) A whole panel: its zone (template order), whether it rides the turret, and a frame-local point of it (its centre). */
+interface WholePanel {
+  readonly zone: number;
+  readonly turret: boolean;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
 /** A spec's paint: its zones' table (planes and outlines; colours left blank), the turret envelope, the samples. */
 interface PaintTemplate {
   readonly table: Float32Array;
@@ -125,7 +137,12 @@ interface PaintTemplate {
   readonly sets: Map<string, number>;
   readonly setBase: number;
   zoneSet(zones: readonly number[]): number;
-  wholePanel(zone: number, covers: readonly number[]): number;
+  /** (267) The whole panels (the bake adds them: wholePanel), their rows after the sets' slots, and each frame's zones. */
+  readonly panels: WholePanel[];
+  readonly panelBase: number;
+  wholePanel(zone: number, point: readonly number[]): number;
+  readonly hullList: readonly ZonePlate[];
+  readonly turretList: readonly ZonePlate[];
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
   /** Each frame's cells' bounds, centre and half extents: their rounded box stands in for the cells' surface. */
@@ -160,8 +177,9 @@ interface ArmorOverlayEntry {
   blend: PanelBlend;
   nextSampleMs: number;
   lastShellSpec: DamageShellSpec | null;
-  /** (267) The template's zone sets this entry's table holds. */
+  /** (267) The template's zone sets this entry's table holds; its whole panels resolved for the current view. */
   setsSynced: number;
+  panelsResolved: number;
   /** (267) The view the last refresh sampled: the muzzle in the hull's, turret's and gun's frames, the ERA spent; and
    * whether there is one. */
   view: Float64Array;
@@ -307,7 +325,8 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   const zones = [...hull, ...turret];
   const footprints = zones.filter((zone) => zone.footprint).length;
   const setBase = zones.length * ARMOR_PAINT_ZONE_TEXELS + footprints * 2;
-  const table = new Float32Array((setBase + SET_SLOTS) * 4);
+  const panelBase = setBase + SET_SLOTS;
+  const table = new Float32Array((panelBase + PANEL_SLOTS) * 4);
   let footAt = zones.length * ARMOR_PAINT_ZONE_TEXELS * 4;
   zones.forEach((zone, index) => {
     const base = index * ARMOR_PAINT_ZONE_TEXELS * 4;
@@ -369,20 +388,25 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     }
     return index;
   };
-  // (267) a whole panel: its zone, taken as baked, and the plates some level eye meets it through, which the shader tests
-  // along the eye ([zone, -2, cover, cover]); more than two, every plate of its frame ([zone, -3])
-  const wholePanel = (zone: number, covers: readonly number[]): number => {
-    const sorted = [...covers].sort((a, b) => a - b), key = `whole:${zone}:${sorted.join(',')}`;
-    let index = sets.get(key);
+  // (267) a whole panel: its row holds its zone until the overlay sets the plate along the current view (resolvePanels).
+  // One row per zone and centre (to 1 cm): every vehicle of a spec, whatever its own geometry, names the same rows
+  const panels: WholePanel[] = [];
+  const panelRows = new Map<string, number>();
+  const wholePanel = (zone: number, point: readonly number[]): number => {
+    if (!(zone >= 0 && zone < zones.length)) return -1;
+    const key = `${zone}:${Math.round(point[0] * 100)}:${Math.round(point[1] * 100)}:${Math.round(point[2] * 100)}`;
+    let index = panelRows.get(key);
     if (index === undefined) {
-      if (sets.size >= SET_SLOTS) return -1;
-      index = sets.size;
-      sets.set(key, index);
-      table.set(sorted.length <= 2 ? [zone, -2, sorted[0] ?? -1, sorted[1] ?? -1] : [zone, -3, -1, -1], (setBase + index) * 4);
+      if (panels.length >= PANEL_SLOTS) return -1;
+      index = panels.length;
+      panelRows.set(key, index);
+      panels.push({ zone, turret: zone >= hull.length, x: point[0], y: point[1], z: point[2] });
+      table[(panelBase + index) * 4] = zone;
     }
     return index;
   };
-  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, wholePanel, turretMin,
+  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, panels, panelBase,
+    wholePanel, hullList: hull, turretList: turret, turretMin,
     turretMax, hullCentre, turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
 }
 
@@ -440,6 +464,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       nextSampleMs: -Infinity,
       lastShellSpec: null,
       setsSynced: template.sets.size,
+      panelsResolved: -1,
       view: new Float64Array(10),
       viewKnown: false,
     };
@@ -514,6 +539,34 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     entry.table.set(table.subarray(setBase * 4, (setBase + sets.size) * 4), setBase * 4);
     entry.setsSynced = sets.size;
     entry.texture.needsUpdate = true;
+  }
+
+  /**
+   * (267) Each whole panel's row: the plate a round along the current view (the muzzle to the panel's centre) reads there
+   * (sim/armorPlanes.ts zoneAlongShot: its zone where that faces the round, else the plate across the round's path), so
+   * the paint reads as the authority does (sim/armor.ts plateAlongShot); with no muzzle, its zone. On a refresh (the
+   * view moved) and when the bake has added panels.
+   */
+  function resolvePanels(entry: ArmorOverlayEntry, muzzle: THREE.Vector3 | null | undefined): void {
+    const { panels, panelBase, hullZones, hullList, turretList } = entry.template;
+    const u = entry.paint.uniforms;
+    const hullEye = muzzle ? _eyeHull.copy(muzzle).applyMatrix4(u.uApHullInv.value) : null;
+    const turretEye = muzzle ? _eyeTurret.copy(muzzle).applyMatrix4(u.uApTurInv.value) : null;
+    let changed = false;
+    for (let index = 0; index < panels.length; index++) {
+      const panel = panels[index], eye = panel.turret ? turretEye : hullEye;
+      let zone = panel.zone;
+      if (eye) {
+        const dx = panel.x - eye.x, dy = panel.y - eye.y, dz = panel.z - eye.z, length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const base = panel.turret ? hullZones : 0;
+        if (length > 1e-6) zone = base + zoneAlongShot(panel.turret ? turretList : hullList, panel.zone - base, panel.x, panel.y, panel.z,
+          dx / length, dy / length, dz / length);
+      }
+      const at = (panelBase + index) * 4;
+      if (entry.table[at] !== zone) { entry.table[at] = zone; changed = true; }
+    }
+    entry.panelsResolved = panels.length;
+    if (changed) entry.texture.needsUpdate = true;
   }
 
   /** The vehicle's frames this frame (its hull and turret move under the paint). */
@@ -682,8 +735,10 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         entry.sampling = false;
         entry.viewKnown = false;
       }
+      if (entry.panelsResolved !== entry.template.panels.length) resolvePanels(entry, muzzle);
       if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
       if (!viewMoved(entry, muzzle)) { entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS; continue; }
+      resolvePanels(entry, muzzle);
       entry.sampling = true;
       entry.sampleZone = 0;
       entry.samplePoint = 0;

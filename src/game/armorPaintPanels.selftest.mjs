@@ -220,8 +220,8 @@ function hullScene() {
   assert.ok(faceValues(roofPlain.meshes.stowage.geometry, [0, -1, 0]).every((v) => v > 0), 'the control: no authority, the box\'s underside is painted');
 
   // (267) a bevel at the cells (the box's front-top edge, sloped 27 degrees up) scores the roof, but a level round meets the
-  // front across it (sim/armorPlanes.ts zoneAlongShot): a whole panel naming the roof and the front, the plate the paint
-  // tests along the eye; a flat roof plate there faces no level eye and stays baked
+  // front across it (sim/armorPlanes.ts zoneAlongShot): a whole panel of the roof at its centre, its row set by the
+  // overlay to the plate along the view (armorAimOverlay.selftest); a flat roof tile there faces no level eye: baked
   const bevel = new THREE.BufferGeometry();
   const corners = [[-0.5, 1.8, 1], [0.5, 1.8, 1], [0.5, 2, 0.6], [-0.5, 2, 0.6]];
   bevel.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 2, 0, 2, 3].flatMap((i) => corners[i]), 3));
@@ -232,12 +232,12 @@ function hullScene() {
   bevelHull.add(bevelMesh, roofTile);
   bevelRoot.updateMatrixWorld(true);
   const calls = [];
-  const wholePanel = (zone, covers) => calls.push([zone, ...covers]) - 1;
+  const wholePanel = (zone, point) => calls.push([zone, ...point]) - 1;
   const bevelStats = bakePaintPanels(bevelRoot, { ...tmpl, wholePanel }, { hull: bevelHull, turret: null, gun: null }, armor, { pose });
-  const ROOF_ZONE = zones.findIndex((zone) => zone.plate === roofPlate), FRONT_ZONE = zones.findIndex((zone) => zone.plate === front);
-  const whole = calls.findIndex(([zone, ...covers]) => zone === ROOF_ZONE && covers.includes(FRONT_ZONE));
-  assert.ok(whole >= 0, `the bevel is a whole panel naming the roof, the front its plate along a level eye (${JSON.stringify(calls)})`);
-  assert.deepEqual([...new Set(bevel.getAttribute('apZone').array)], [-2 - whole], 'its every triangle names that whole panel');
+  const ROOF_ZONE = zones.findIndex((zone) => zone.plate === roofPlate);
+  const whole = calls.findIndex(([zone, x, y, z]) => zone === ROOF_ZONE && Math.abs(x) < 0.01 && Math.abs(y - 1.9) < 0.01 && Math.abs(z - 0.8) < 0.01);
+  assert.ok(whole >= 0, `the bevel is a whole panel of the roof at its centre (${JSON.stringify(calls)})`);
+  assert.deepEqual([...new Set(bevel.getAttribute('apZone').array)], [-66 - whole], 'its every triangle names that whole panel\'s row');
   assert.ok(bevelStats.alongShot >= 2, `counted (${bevelStats.alongShot})`);
   assert.deepEqual(faceValues(roofTile.geometry, [0, 1, 0]), [ROOF_ZONE + 1], 'the control: a flat roof tile stays baked, the roof');
 }
@@ -350,7 +350,7 @@ function hullScene() {
   const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
   material.onBeforeCompile(shader, {});
   assert.ok(shader.vertexShader.includes('attribute float apZone;') && shader.vertexShader.includes('vApZone = apZone;'), 'the vertex passes the panel on');
-  assert.ok(shader.fragmentShader.includes('bool apPanel = apBaked > 0;'), 'the fragment reads it');
+  assert.ok(shader.fragmentShader.includes('bool apPanel = apBaked > 0 || apWholePanel;'), 'the fragment reads it (a whole panel its row)');
   removeBurnHook(material, burn);
   assert.equal(Object.prototype.hasOwnProperty.call(material, 'defaultAttributeValues'), false, 'and taking the hook off takes the default off');
 }
@@ -404,11 +404,14 @@ function hullScene() {
   const stands = (root) => { const list = []; root.traverse((o) => { if (o.isMesh && o.userData.farLod && o.geometry.getAttribute('apZone')) list.push(o); }); return list; };
   const after = stands(baked.root), before = stands(early.root);
   assert.equal(before.length, after.length, 't72b3: the same far stand-ins either way');
+  // (267) a whole panel's code reads as its row's zone: a vertex on two panels' border keeps one or the other's row
+  const { template: paintTemplate } = overlay.prime({ id: 'panels', state, combat: null, visual: baked, spec });
+  const meaning = (code) => (code <= -66 ? paintTemplate.panels[-66 - code].zone + 1 : code);
   let same = 0, total = 0;
   for (let k = 0; k < after.length; k++) {
     const x = after[k].geometry.getAttribute('apZone').array, y = before[k].geometry.getAttribute('apZone').array;
     assert.equal(x.length, y.length, `t72b3: far stand-in ${k} has one layout either way`);
-    for (let v = 0; v < x.length; v++) { total++; if (x[v] === y[v]) same++; }
+    for (let v = 0; v < x.length; v++) { total++; if (meaning(x[v]) === meaning(y[v])) same++; }
   }
   assert.ok(same >= 0.99 * total, `t72b3: a far stand-in baked before or after its sources paints the same (${same} of ${total} vertices)`);
   assert.ok(early.root.userData.armorPaintPanels.farStands > 0, 't72b3: the early far stand-ins were given their sources\' values');

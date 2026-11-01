@@ -29,7 +29,9 @@ import * as THREE from 'three';
 import { tracedCollisionCells, type ArmorCollisionCell, type ArmorModel, type ArmorPlate, type TankArmorPose } from '../sim/armor.ts';
 import { zoneAlongShot, zoneAt, type ZonePlate } from '../sim/armorZones.ts';
 import { gunFaceSplitPlate } from '../sim/gunFaceSplit.ts';
-import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
+import {
+  ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_SET_SLOTS, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode,
+} from '../vehicles/materials.ts';
 
 /** The share of a cluster's area its zone must hold to be baked; under it the cluster keeps the per-point score. */
 export const PANEL_MAJORITY = 0.6;
@@ -49,9 +51,9 @@ export interface PanelTemplate {
   /** (267) The index of a set of up to four zones in the template's table (-1: it is full): a panel split between them
    * names it. */
   zoneSet?(zones: readonly number[]): number;
-  /** (267) The index of a whole panel's row (-1: the table is full): its zone, taken whole, and the plates some level eye
-   * meets it through (coversAlongViews), the ones the shader tests along the eye. */
-  wholePanel?(zone: number, covers: readonly number[]): number;
+  /** (267) The index of a whole panel's row (-1: the table is full), for its zone and a frame-local point of it (its
+   * centre): the overlay sets the row to the plate along the current view. */
+  wholePanel?(zone: number, point: readonly number[]): number;
 }
 
 /** (264) The authority the bake asks what lies behind a spaced or external part: the vehicle's pose as the sim reads it. */
@@ -245,9 +247,9 @@ const _vp = new THREE.Vector3(), _vn = new THREE.Vector3();
 /**
  * (267) The plates some level view of a panel meets it through instead of its zone's (template zone indices, none: an
  * empty list): the authority reads the plate across a round's path where the face's own does not face the round
- * (sim/armor.ts plateAlongShot, sim/armorPlanes.ts zoneAlongShot), and the paint's shader takes that plate along the
- * eye's line. Judged at the panel's sample points (world), facing its mean way (world); only a panel at the cells (within
- * FLUSH_M), where rounds enter. Such a panel is a whole panel, naming those plates for the shader to test.
+ * (sim/armor.ts plateAlongShot, sim/armorPlanes.ts zoneAlongShot). Judged at the panel's sample points (world), facing its
+ * mean way (world); only a panel at the cells (within FLUSH_M), where rounds enter. Such a panel is a whole panel, whose
+ * row the overlay sets to the plate along the current view.
  */
 function coversAlongViews(template: PanelTemplate, split: FrameZones, pose: PanelPose, cells: CellsByFrame, zone: number,
   points: readonly THREE.Vector3[], normal: THREE.Vector3): number[] {
@@ -347,6 +349,11 @@ const WELD_SPAN = 131072;
 const FLAT_DOT = 0.9995;
 /** A curved cluster votes on at most this many of its triangles (an even stride). */
 const MAX_VOTES = 32;
+/** (267) A whole panel's code: below the sets' (materials.ts reads its row after the sets' slots). */
+const WHOLE_PANEL_FIRST = PANEL_BARE - 1 - ARMOR_PAINT_SET_SLOTS;
+/** (267) A panel smaller than this (m², a 10 cm square) stays baked: a T-72B3 bakes ~900 such panels, a median 28 cm²,
+ * 7 % of their area, invisible at a sight's range, each a row the overlay resolves on every refresh. */
+const WHOLE_PANEL_MIN_M2 = 0.01;
 /** (267) A panel's triangles (on a stride) the bake tests the level views at, beside its centre. */
 const COVER_POINTS = 8;
 /** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
@@ -628,7 +635,7 @@ export function* bakePaintPanelSteps(
     if (mesh.isInstancedMesh) {
       if (gearDraw(mesh) && !mesh.geometry.getAttribute(PANEL_ZONE_ATTRIBUTE)) {
         const count = mesh.geometry.getAttribute('position').count;
-        mesh.geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(count).fill(PANEL_BARE), 1, false));
+        mesh.geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int16Array(count).fill(PANEL_BARE), 1, false));
         stats.gear += Math.floor((mesh.geometry.index ? mesh.geometry.index.count : count) / 3);
       }
       return;
@@ -645,7 +652,7 @@ export function* bakePaintPanelSteps(
   const ownerKey = (x: number, y: number, z: number): string => `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
   const band = (value: number): number => Math.max(0, Math.min(4, Math.round((value + 1) * 2)));
   const bandKey = (n: THREE.Vector3): string => `|${band(n.x) * 25 + band(n.y) * 5 + band(n.z)}`;
-  const recordNear = (mesh: THREE.Mesh, values: Int8Array): void => {
+  const recordNear = (mesh: THREE.Mesh, values: Int16Array): void => {
     if (!mesh.parent || !farOwners.has(mesh.parent)) return;
     let byPosition = nearValues.get(mesh.parent);
     if (!byPosition) nearValues.set(mesh.parent, byPosition = new Map());
@@ -689,11 +696,11 @@ export function* bakePaintPanelSteps(
     if (was === armor || (was === null && geometry.getAttribute(PANEL_ZONE_ATTRIBUTE))) {
       // baked before (a copy of this spec): its values still stand for this vehicle's far stand-ins
       const done = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
-      if (done?.array instanceof Int8Array) for (const mesh of meshes) recordNear(mesh, done.array);
+      if (done?.array instanceof Int16Array) for (const mesh of meshes) recordNear(mesh, done.array);
       continue;
     }
     stats.geometries++;
-    const values = new Int8Array(position.count);
+    const values = new Int16Array(position.count);
     const sharedElsewhere = meshes.length > 1 || (was !== undefined && was !== armor);
     if (meshes.every(gearDraw)) {
       // (267) gear, wherever it is drawn: bare whole
@@ -876,10 +883,10 @@ export function* bakePaintPanelSteps(
       // a cluster with no majority, by part: a small one whole on its plurality (a dome, a hatch); a large one (a welded
       // casting) split at its creases, each piece voting on all its triangles and taking its majority, or its plurality
       // when it is small; a piece still split keeps the per-point score
-      // (267) a panel some level view meets through another plate than its zone's is a whole panel (its zone, taken whole,
-      // with the plates along the eye tested per point: coversAlongViews): the panel as a whole, facing its mean way, so a
-      // part reads one zone as ever (a dome faces up as a whole) and a bevel's piece faces its slope. The panel's zone + 1
-      // in, its value out
+      // (267) a panel some level view meets through another plate than its zone's (coversAlongViews) is a whole panel: one
+      // zone as ever, its row set by the overlay to the plate along the current view at its centre. The panel as a whole,
+      // facing its mean way, so a part reads one zone (a dome faces up as a whole) and a bevel's piece faces its slope.
+      // The panel's zone + 1 in, its value out
       const samplePoints: THREE.Vector3[] = Array.from({ length: COVER_POINTS + 1 }, () => new THREE.Vector3());
       const keepAlongShot = (value: number, count: number, triangle: (i: number) => number): number => {
         let area = 0, cx = 0, cy = 0, cz = 0, nx = 0, ny = 0, nz = 0;
@@ -891,7 +898,7 @@ export function* bakePaintPanelSteps(
           nx += faces[t * 3] * a; ny += faces[t * 3 + 1] * a; nz += faces[t * 3 + 2] * a;
         }
         const facing = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (!(area > 0) || !(facing > 1e-9)) return value;
+        if (!(area >= WHOLE_PANEL_MIN_M2) || !(facing > 1e-9)) return value;
         // its centre and up to COVER_POINTS triangles' on a stride: a panel can span two plates' outlines
         samplePoints[0].set(cx / area, cy / area, cz / area);
         let used = 1;
@@ -904,8 +911,9 @@ export function* bakePaintPanelSteps(
           _normal.set(nx / facing, ny / facing, nz / facing));
         if (!covers.length) return value;
         stats.alongShot += count;
-        const set = template.wholePanel ? template.wholePanel(value - 1, covers) : -1;
-        return set >= 0 ? PANEL_BARE - 1 - set : 0;
+        const centre = _vp.copy(samplePoints[0]).applyMatrix4(value - 1 >= template.hullZones ? pose.turretInv : pose.hullInv);
+        const panel = template.wholePanel ? template.wholePanel(value - 1, [centre.x, centre.y, centre.z]) : -1;
+        return panel >= 0 ? WHOLE_PANEL_FIRST - panel : 0;
       };
       function* resolveParts(start: number, end: number, total: number): Generator<void, void, void> {
         const count = end - start;
@@ -1160,7 +1168,7 @@ export function* bakePaintPanelSteps(
     }
     // into the attribute the build seeded (tankFactoryCore seedArmorPaintPanels), else a new one
     const seeded = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
-    if (seeded && seeded.count === position.count && seeded.array instanceof Int8Array) {
+    if (seeded && seeded.count === position.count && seeded.array instanceof Int16Array) {
       seeded.array.set(values);
       seeded.needsUpdate = true;
     } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
@@ -1171,7 +1179,7 @@ export function* bakePaintPanelSteps(
   for (const stand of farStands) {
     const geometry = stand.geometry, position = geometry.getAttribute('position');
     const byPosition = nearValues.get(stand.parent!), normal = geometry.getAttribute('normal');
-    const values = new Int8Array(position.count);
+    const values = new Int16Array(position.count);
     stand.updateMatrix();
     _normalWorld.getNormalMatrix(stand.matrix);
     for (let v = 0; v < position.count; v++) {
@@ -1181,7 +1189,7 @@ export function* bakePaintPanelSteps(
       values[v] = banded ?? byPosition?.get(key) ?? 0;
     }
     const seeded = geometry.getAttribute(PANEL_ZONE_ATTRIBUTE) as THREE.BufferAttribute | undefined;
-    if (seeded && seeded.count === position.count && seeded.array instanceof Int8Array) {
+    if (seeded && seeded.count === position.count && seeded.array instanceof Int16Array) {
       seeded.array.set(values);
       seeded.needsUpdate = true;
     } else geometry.setAttribute(PANEL_ZONE_ATTRIBUTE, new THREE.BufferAttribute(values, 1, false));
