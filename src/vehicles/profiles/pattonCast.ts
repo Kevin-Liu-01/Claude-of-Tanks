@@ -2835,10 +2835,26 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       // the spare road wheel standing on edge at the basket's rear, its axle across the tank and its top 5 cm over the
       // top rail (latrun-3); two tarpaulin rolls and two boxes stowed beside it
       // (round 17: turned to face the side, a load packed round it)
-      const wy = rails[rails.length - 1] + 0.05 - 0.33;
-      P.add('turretDetail', KIT.cylX(0.33, 0.20, P.q ? 24 : 14), 0.42, L.y(wy), L.z(-1.72));
-      P.add('turretDark', KIT.cylX(0.12, 0.22, P.q ? 12 : 8), 0.42, L.y(wy), L.z(-1.72));
-      for (const [x, y] of [[-0.30, yf + 0.16], [-0.30, yf + 0.46]] as const) {
+      // (round 20: the running gear's own cast-spoke wheel, as the A3's spares, so it reads as a road wheel; on the
+      // basket's right half, the rolls on its left)
+      const { wheelR } = M60_HULL_SPEC.gear, trackW = M60_HULL_SPEC.trackW, wheelW = Math.min(0.26, trackW * 0.42);
+      const wy = rails[rails.length - 1] + 0.05 - wheelR;
+      const spare = buildNationWheel('m60a3-cast-spoke', {
+        radiusM: wheelR, tireWidthM: wheelW, high: Boolean(P.q), segments: P.q ? 28 : 12,
+        maxWidthM: Math.max(wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE, trackW * TRACK_WIDTH_WHEEL_CAP),
+      });
+      const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, -0.42, L.y(wy), L.z(-1.72)); };
+      at('turretDark', spare.tire);
+      at('turretDetail', spare.disc);
+      at('turretDark', spare.dark);
+      for (const layer of spare.layers) at(layer.paint === 'dish' ? 'turretDetail' : 'turretDark', KIT.xform(layer.geometry, layer.outset ?? 0, 0, 0));
+      // the steel tow cable wound round the basket's foot outside its bottom rail, its eyes at the rear corners (latrun-4)
+      const run = outline.map(([x, z]) => new THREE.Vector3(x + Math.sign(x) * 0.03, L.y(rails[0] + 0.035), L.z(z - (z < -1.75 ? 0.03 : 0))));
+      P.add('turretDark', new THREE.TubeGeometry(new THREE.CatmullRomCurve3(run, false, 'centripetal'), P.q ? 48 : 24, 0.0175, 6, false));
+      for (const s of [1, -1]) {
+        P.add('turretDark', KIT.xform(KIT.torus(0.06, 0.016, P.q ? 12 : 8), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.98, L.y(rails[0] + 0.035), L.z(-2.00));
+      }
+      for (const [x, y] of [[0.30, yf + 0.16], [0.30, yf + 0.46]] as const) {
         KIT.tarpRoll(P, 'turretCloth', x, L.y(y), L.z(-1.82), 0.95, 0.15, true, P.q ? 12 : 8);
       }
       for (const [x, z] of [[-0.62, -1.30], [0.72, -1.20]] as const) {
@@ -3454,6 +3470,12 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
     loft([rearZ, zRoof - eps, zRoof + eps, knee, zA2, zA, tip], (z) => quad(xMid, xOut, bot(z), coreTop(z)));
     loft([slotZ, knee, zA2, zA, tip], (z) => quad(xIn, xMid, bot(z), coreTop(z)));
     loft([lidZ, slotZ], (z) => quad(xIn, xMid, top(z) - 0.08, top(z)));
+    // (round 20: behind the mantlet the lid run on back over the casting's roof to the modules' rear, so only the gun's
+    // slot parts the modules' tops, as latrun-1)
+    loft([rearZ, 1.30, 1.45, zRoof - eps, zRoof + eps, 1.65, lidZ], (z) => {
+      const cb = (x: number): number => castTopAt(M60_TURRET, side * x, z) - 0.02;
+      return [[xIn, cb(xIn)], [xMid, cb(xMid)], [xMid, top(z)], [xIn, top(z)]];
+    });
     const plate = new THREE.Shape([[xIn, v0], [xOut, v0], [xOut, vRoof], [xMid, vRoof], [xMid, vBlock], [xIn, vBlock]]
       .map(([x, v]) => new THREE.Vector2(sx(x), v)));
     // (round 19, latrun-1: the aperture 0.28 m wide reaching 0.46 m up the face from the knife edge, its inner edge
@@ -3467,11 +3489,6 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
       const back = new THREE.ExtrudeGeometry(new THREE.Shape(o), { depth: 0.004, bevelEnabled: false, curveSegments: 1 }).applyMatrix4(frame);
       P.add('turretDark', toRing(back.translate(n.x * 0.002, n.y * 0.002, n.z * 0.002)));
     }
-    // the gun's slot dark inside: a liner on each module's wall, ahead of the mantlet and under the lid
-    const wall = (zys: readonly (readonly [number, number])[]): Geo =>
-      convexSolid([sx(xIn - 0.0015), sx(xIn - 0.0035)].flatMap((x) => zys.map(([z, y]) => [x, y, z] as [number, number, number])));
-    P.add('turretDark', toRing(wall([[nose, ridge], [knee, floor], [slotZ, floor], [slotZ, face(slotZ)]])));
-    P.add('turretDark', toRing(wall([[slotZ, face(slotZ) - 0.08], [slotZ, face(slotZ)], [lidZ, face(lidZ)], [lidZ, face(lidZ) - 0.08]])));
     // its bolts 6 cm under the top edge and the lifting eye on its top
     for (const x of [0.62, 0.765, 0.91]) {
       const b = onFace(sx(x), vRoof - 0.06, 0.008);
@@ -3518,9 +3535,11 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
     P.add('turretDetail', KIT.xform(moldedBox(0.20, 0.35, 0.55, 0.02, 1, 0.01), 0, 0, 0, 0.26, 0, 0), sx(packX + 0.10),
       L.y(2.24), L.z(nose - 1.10 - 0.275));
     for (let k = 0; k < 3; k++) P.add('turretDark', KIT.cylZ(0.035, 0.02, 10), sx(packX + 0.10), L.y(2.16 + k * 0.08), L.z(nose - 1.10 + 0.01));
-    // bolts in two rows along the pack, two a module
-    for (const z of [1.30, 0.93, 0.60, 0.28, -0.05, -0.37, -0.72]) {
-      for (const y of [floor + 0.22, roof - 0.20]) P.add('turretDark', KIT.cylX(0.022, 0.02, 8), sx(packX + 0.005), L.y(y), L.z(z));
+    // bolts in three rows along the pack, three a module (round 20, latrun-5)
+    for (const z of [1.30, 0.98, 0.77, 0.56, 0.32, 0.11, -0.10, -0.33, -0.55, -0.77]) {
+      for (const y of [floor + 0.22, (floor + roof) / 2 + 0.01, roof - 0.20]) {
+        P.add('turretDark', KIT.cylX(0.022, 0.02, 8), sx(packX + 0.005), L.y(y), L.z(z));
+      }
     }
   }
   // the flat plate over the roof's front between the two halves
@@ -3558,9 +3577,10 @@ function m60Magach7Hull(P: CastPort): void {
       g.computeVertexNormals();
       P.add('hullDetail', g);
       if (!first && !last) P.add('hullDark', KIT.xform(KIT.cylX(0.075, 0.045, 12), 0, 0, 0, 0, 0, 0, [1, 1, 1]), side * (x + 0.005), bot, (z0 + z1) / 2);
-      // (round 19: a drain slot 8 x 3 cm in each panel 6 cm over its foot, a quarter along it clear of the cut-out)
+      // (round 20, latrun-3: a handhold slot 0.14 x 0.05 m centred in each panel over its cut-out; a strap over each joint)
       const foot0 = last ? z0 + 0.2575 : z0 + 0.0075, foot1 = first ? z1 - Math.tan(0.35) * (fenderTop[2][1] - bot) : z1 - 0.0075;
-      P.add('hullDark', KIT.box(0.01, 0.03, 0.08), side * (x + 0.042), bot + 0.06, foot0 + (foot1 - foot0) * 0.25);
+      P.add('hullDark', KIT.box(0.01, 0.05, 0.14), side * (x + 0.042), bot + 0.17, (foot0 + foot1) / 2);
+      if (!first) P.add('hullDetail', KIT.box(0.012, top - bot - 0.10, 0.05), side * (x + 0.046), (top + bot) / 2 + 0.03, z1);
       // the bolts along its top and foot
       for (let zz = z0 + 0.10; zz < z1 - 0.05; zz += 0.25) {
         for (const y of [top - 0.05, bot + 0.05]) {
