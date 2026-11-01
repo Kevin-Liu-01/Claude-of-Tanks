@@ -95,6 +95,8 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     }
   } else if (available.size < registered.size) {
     console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
+    // a whole-fleet --skipped run names them too, so nothing it did not measure reads as current
+    for (const id of referenceIds) if (!available.has(id)) skipped[id] = `oracle absent here (${referenceSources[id]})`;
   }
   return ids;
 }

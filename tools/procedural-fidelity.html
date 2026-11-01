@@ -786,7 +786,7 @@ for (const root of [reference.root, procedural.root]) {
 // (withWholeSource).
 const stowage = [
   stowageParts(procedural.root, { isRenderNode }),
-  stowageParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_STOWAGE_BOXES[id]?.boxes ?? null }),
+  stowageParts(reference.root, { isRenderNode, oracle:true, named:FUSED_STOWAGE_BOXES[id]?.nodes ?? null, parts:FUSED_STOWAGE_BOXES[id]?.parts ?? null }),
 ];
 const roofFittings = [
   roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),

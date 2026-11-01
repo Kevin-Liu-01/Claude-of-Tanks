@@ -18,7 +18,8 @@
 // A supplied oracle names its own: the War Thunder exports' antenna* nodes and their roof guns' bones, mounts and guns
 // (bone_mg_aa_*, mg_aa*, bone_mg_h_/bone_mg_v_*, mg_NN, mg_mount_*; never mg_twin or bone_mg_twin, the coaxial and
 // over-gun weapons the build keeps on its gun), the Sketchfab prints' *Pintle and AmmoCan nodes, the supplied sources'
-// numbered weapon2../mount2.. and mgbracket/mgbox (their bare weapon and mount are the main gun's), or the registration's
+// numbered weapon2../mount2.. and mgbracket/mgbox (their bare weapon and mount are the main gun's), the T-90M print's
+// misspelt Anthena whip (267), or the registration's
 // own roofFittingNodes pattern, so a gun-less oracle compares like for like. A node named ammo* (War Thunder's ammo_NN,
 // a print's ammo_5, a source's ammo2 or ammobelt) goes with a roof gun the oracle names when it touches it (AMMO_TOUCH_M),
 // as the build's ammunition rides in its gun's fitting; a box or rack anywhere else, or beside the coaxial mg_twin, stays
@@ -30,7 +31,8 @@
 // Stowage (Main's ruling 2026-10-31, 267): fuel drums, their cradles and stowage racks and baskets leave the body the gate
 // compares, on the build and the source alike, wherever the build tags them (profiles/stowagePart.ts: a mesh of its own
 // whole, a merged bucket's span by its stowageRanges) or the source names them (ORACLE_STOWAGE_NODES) or boxes them
-// (FUSED_STOWAGE_BOXES); the score's ruler stays the whole source (stowageParts).
+// (FUSED_STOWAGE_BOXES: per source, named nodes and boxes within named nodes); the score's ruler stays the whole source
+// (stowageParts).
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
 import { Box3, Matrix4, Vector3 } from 'three';
 
@@ -41,7 +43,7 @@ export const ANTENNA_FITTING_TYPES = Object.freeze(['antennaWhip']);
 /** Seat roles cut from merged buckets (all antennas). */
 export const BODY_EXCLUDED_SEAT_ROLES = Object.freeze(['antenna']);
 /** Oracle node names: whips, masts and aerials, and the roof guns with their mounts (never the coaxial mg_twin). */
-export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan|weapon[2-9]|mount[2-9]|mgbracket|mgbox)/i;
+export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|anthena|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan|weapon[2-9]|mount[2-9]|mgbracket|mgbox)/i;
 
 /** Oracle node names of stowage: fuel drums and fuel storage, stowage baskets and racks (never a gun's ammunition box). */
 export const ORACLE_STOWAGE_NODES = /(?:^|[#/_ -])(?:\w*drums?\b|fuel[ _-]?(?:drums?|storage|barrels?)|extra[ _-]?fuel|\w*baskets?|stowage)/i;
@@ -49,7 +51,7 @@ export const ORACLE_STOWAGE_NODES = /(?:^|[#/_ -])(?:\w*drums?\b|fuel[ _-]?(?:dr
 const roofTypes = new Set(ROOF_FITTING_TYPES);
 const antennaTypes = new Set(ANTENNA_FITTING_TYPES);
 const cutRoles = new Set(BODY_EXCLUDED_SEAT_ROLES);
-const oracleAntenna = /(?:^|[#/-])(?:antenna|aerial)/i;
+const oracleAntenna = /(?:^|[#/-])(?:antenna|anthena|aerial)/i;
 const oracleAmmo = /(?:^|[#/_-])ammo/i;
 /** How close (metres, box to box) an oracle's ammo node stands to a named roof gun to go with it. */
 export const AMMO_TOUCH_M = 0.1;
@@ -166,19 +168,23 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
 
 /**
  * The stowage of one model (Main 2026-10-31): `nodes` (render node -> tag) leave whole, the build's meshes whose own
- * geometry carries the stowage tag and the oracle's nodes ORACLE_STOWAGE_NODES (or `nodePattern`) names; `ranges` (render
- * node -> corner-slot ranges, as bodyGeometryWithout takes them) are cut from merged meshes, the build's stowageRanges and
- * the triangles of a fused oracle in its registered `boxes`. Main gun and roof fittings are never stowage.
+ * geometry carries the stowage tag and the oracle's nodes ORACLE_STOWAGE_NODES (or `nodePattern`) or its registration's
+ * `named` pattern names; `ranges` (render node -> corner-slot ranges, as bodyGeometryWithout takes them) are cut from
+ * merged meshes, the build's stowageRanges and, for each of a fused oracle's registered `parts` ({ within, boxes }), the
+ * triangles of the nodes `within` names (the node or an ancestor) whose three corners lie in its boxes.
  */
-export function stowageParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_STOWAGE_NODES, boxes = null }) {
+export function stowageParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_STOWAGE_NODES, named = null, parts = null }) {
   const nodes = new Map(), ranges = new Map();
-  if (oracle && boxes?.length) root.updateMatrixWorld(true);
+  if (oracle && parts?.length) root.updateMatrixWorld(true);
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
-    const tag = oracle ? oracleRoofFittingTag(o, root, nodePattern) : (o.geometry.userData?.stowage === true ? `stowage:${o.name}` : null);
+    const tag = oracle ? oracleRoofFittingTag(o, root, nodePattern) ?? oracleRoofFittingTag(o, root, named)
+      : (o.geometry.userData?.stowage === true ? `stowage:${o.name}` : null);
     if (tag) { nodes.set(o, tag); return; }
     if (o.isInstancedMesh) return;
-    const cut = oracle ? (boxes?.length ? trianglesInBoxes(o, root, boxes) : []) : [...(o.userData?.stowageRanges ?? [])];
+    const cut = oracle
+      ? (parts ?? []).filter(({ within }) => oracleRoofFittingTag(o, root, within)).flatMap(({ boxes }) => trianglesInBoxes(o, root, boxes))
+      : [...(o.userData?.stowageRanges ?? [])];
     if (cut.length) ranges.set(o, cut);
   });
   return { nodes, ranges };

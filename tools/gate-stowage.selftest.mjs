@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ORACLE_STOWAGE_NODES, bodyGeometryWithout, roofFittingParts, stowageParts } from './body-height-parts.mjs';
+import { ORACLE_ROOF_FITTING_NODES, ORACLE_STOWAGE_NODES, bodyGeometryWithout, isAntennaTag, roofFittingParts, stowageParts } from './body-height-parts.mjs';
 import { FUSED_STOWAGE_BOXES } from './fused-roof-gun-boxes.mjs';
 import { stowagePart } from '../src/vehicles/profiles/stowagePart.ts';
 
@@ -78,18 +78,29 @@ for (const name of ['track_1', 'Track (Left)', 'gun_barrel_44', 'Main barrel', '
   const named = new THREE.Mesh(box(1, 1, 1, 0, 1.5, -3.6)); named.name = 'EXtra fuel storage';
   const fused = new THREE.Mesh(mergeGeometries([box(3, 1.2, 6, 0, 0.9, 0), box(1.8, 0.6, 0.6, 0, 1.5, -3.4)]));
   root.add(named, fused);
-  const parts = stowageParts(root, { isRenderNode, oracle: true, boxes: [[-1, 1.15, -3.75, 1, 1.85, -3.05]] });
+  fused.name = 'hull_mesh';
+  const outside = new THREE.Mesh(box(0.4, 0.4, 0.4, 0, 1.5, -3.4)); outside.name = 'tow_box';
+  root.add(outside);
+  const parts = stowageParts(root, { isRenderNode, oracle: true, named: /^tow_never$/,
+    parts: [{ within: /^hull_mesh$/, boxes: [[-1, 1.15, -3.75, 1, 1.85, -3.05]] }] });
   assert.deepEqual([...parts.nodes.values()], ['node:EXtra fuel storage']);
   assert.equal(parts.ranges.get(fused)?.length, 12, 'the boxes take the fused drum\'s 12 triangles and none of the hull\'s');
-  close(bodyLength(root, parts), 6, 'the source\'s body is its hull');
+  assert.equal(parts.ranges.has(outside), false, 'a box cuts only within the node its part names');
+  close(bodyLength({ traverse: (f) => [named, fused].forEach(f) }, parts), 6, 'the source\'s body is its hull');
+  const byName = stowageParts(root, { isRenderNode, oracle: true, named: /^tow_box$/ });
+  assert.equal(byName.nodes.get(outside), 'node:tow_box', 'a registration names a whole stowage node the generic names miss');
 }
 
-// the registered boxes: finite volumes behind the hull's stern
+// the T-90M print names its whip Anthena: a whip, never stowage
+assert.ok(ORACLE_ROOF_FITTING_NODES.test('Anthena_source') && isAntennaTag('node:Anthena') && !ORACLE_STOWAGE_NODES.test('Anthena'));
+
+// the registered sources: finite boxes with volume, each part within a named node, the triangles its boxes take
 for (const [id, entry] of Object.entries(FUSED_STOWAGE_BOXES)) {
-  assert.ok(Number.isInteger(entry.triangles) && entry.triangles > 0, `${id}: the triangles its boxes take`);
-  for (const b of entry.boxes) {
-    assert.ok(b.length === 6 && b.every(Number.isFinite) && b[0] < b[3] && b[1] < b[4] && b[2] < b[5], `${id}: [x0, y0, z0, x1, y1, z1] with volume`);
-    assert.ok(b[5] < -3.43, `${id}: behind the stern (z1 ${b[5]})`);
+  assert.ok(Number.isInteger(entry.triangles) && entry.triangles >= 0, `${id}: the triangles its boxes take`);
+  assert.ok(entry.parts.length || entry.nodes instanceof RegExp, `${id}: names a node or boxes a part`);
+  for (const { within, boxes } of entry.parts) {
+    assert.ok(within instanceof RegExp && boxes.length, `${id}: a part names its node and boxes`);
+    for (const b of boxes) assert.ok(b.length === 6 && b.every(Number.isFinite) && b[0] < b[3] && b[1] < b[4] && b[2] < b[5], `${id}: [x0, y0, z0, x1, y1, z1] with volume`);
   }
 }
 console.log('gate-stowage.selftest: tagged stowage leaves the build\'s body whole or by span, a longer hull still measures longer, the roof-fitting bodies leave it out, a source names or boxes its own');
