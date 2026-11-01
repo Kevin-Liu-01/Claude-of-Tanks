@@ -15,6 +15,7 @@ import { buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turret
 import { buildMerkavaAddenda, buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds, modulePlateFront, moduleRunFront } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
 import { buildMerkavaBasketLoad } from './merkavaFamilyBasket.ts';
+import { buildMerkavaClosures } from './merkavaFamilyClosures.ts';
 
 function isTankBuilderPort(value: object): value is TankBuilderPort {
   return 'spec' in value && 'hullG' in value && 'turretG' in value && 'gunG' in value && 'mats' in value
@@ -64,6 +65,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   buildMerkavaAddenda(P, mark.addenda, mark.pivot);
   buildMerkavaStuds(P, mark.studs);
   buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
+  buildMerkavaClosures(P, mark.id);
   yield 'merkavaDetails';
 
   const gunReceipt = addMerkavaGun(P, mark.gun);

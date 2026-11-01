@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from '../../tools/tank-assets-store.mjs';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, ZH_TITLE_PHRASES, topicSectionId, topics } from './topics.ts';
 import { richSections } from './chapters/index.ts';
@@ -144,7 +145,7 @@ assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset
 {
   const [grid] = richSections('fleet');
   const tiles = [...grid.html.matchAll(/<li class="dm-fleet__tile" data-id="([^"]+)"[\s\S]*?<\/li>/g)];
-  const assets = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks;
+  const assets = readTankAssets(join(ROOT, 'public/icons')).tanks;
   assert.deepEqual(tiles.map(([, id]) => id).sort(), Object.keys(assets).sort(), 'the fleet grid has one tile per playable tank');
   for (const [tile, id] of tiles) {
     assert.match(tile, new RegExp(`href="/gallery\\?id=${id}[&"]`), `${id}: its tile opens its Gallery dossier`);

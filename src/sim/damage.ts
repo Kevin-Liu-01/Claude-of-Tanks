@@ -235,6 +235,8 @@ export interface HitEvent {
   penRollMm: number;
   damage: number;
   targetHpAfter: number;
+  /** The hull points the target lost to this event, its points before less its points after (settleHullPoints). */
+  hpRemoved: number;
   modulesHit: Array<{ module: ModuleId; newState: ModuleStateName; dmg: number }>;
   crewHit: string[];
   fireStarted: boolean;
@@ -292,6 +294,8 @@ interface LiveShellResolution extends ResolutionContext {
   decided: boolean;
   limitM: number;
   straddlers: Array<ModuleHit | CrewHit>;
+  /** The target's hull points when the shell met it. */
+  hpBefore: number;
 }
 
 interface ArmorAabb {
@@ -770,6 +774,17 @@ function finalizeTarget(combat: CombatState, ammoRacked: boolean): boolean {
 }
 
 /**
+ * The target's hull points after this event and the points it lost to it: its points before less its points after
+ * (owner 2026-10-31, "the amount u took off the enemy"). One rule for every hit: a kill takes everything the hull had
+ * left, an ammo rack's or the crew's included. Every damage-dealt figure and total reads hpRemoved
+ * (game/hullPointsRemoved.ts), never the roll.
+ */
+function settleHullPoints(event: HitEvent, combat: CombatState, hpBefore: number): void {
+  event.targetHpAfter = combat.hp;
+  event.hpRemoved = Math.max(0, hpBefore - combat.hp);
+}
+
+/**
  * Build a HitEvent skeleton (ARCHITECTURE.md §2.6) — payload positions are
  * plain [x,y,z] so events stay JSON-serializable.
  * @param {object} shell ShellEntity
@@ -792,6 +807,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     penRollMm: 0,
     damage: 0,
     targetHpAfter: 0,
+    hpRemoved: 0,
     modulesHit: [],
     crewHit: [],
     fireStarted: false,
@@ -1057,7 +1073,7 @@ function resolveRicochetPlate(
   if (behavior.kindClass === 'CE' || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
   shell.remainingPenMm = resolution.pen;
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
-  event.targetHpAfter = combat.hp;
+  settleHullPoints(event, combat, resolution.hpBefore);
   return TRACE_RETURN;
 }
 
@@ -1238,7 +1254,7 @@ function resolveSeamCompatibilityHit(resolution: LiveShellResolution): boolean {
   event.penRollMm = resolution.pen;
   applySeamInternalDamage(resolution, seamMm);
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
-  event.targetHpAfter = combat.hp;
+  settleHullPoints(event, combat, resolution.hpBefore);
   return true;
 }
 
@@ -1252,7 +1268,7 @@ function resolveUndecidedTrace(resolution: LiveShellResolution): boolean {
   if (behavior.kindClass === 'KE' && shell.remainingPenMm > 0) {
     event.kind = 'screen_pierce';
     event.destroyed = finalizeTarget(combat, event.ammoRacked);
-    event.targetHpAfter = combat.hp;
+    settleHullPoints(event, combat, resolution.hpBefore);
     shell.distM += resolution.overshootM;
     return true;
   }
@@ -1458,6 +1474,7 @@ export function resolveShellHit(
     limitM: postPenetrationLimitM(spec.caliberMm),
     // The injected string has no hit kind and is an identical no-op when deferred intersections flush.
     straddlers: [],
+    hpBefore: Math.max(0, combat.hp),
   };
   if (walkLiveShellTrace(resolution)) return event;
   shell.remainingPenMm = Math.max(0, resolution.pen);
@@ -1478,7 +1495,7 @@ export function resolveShellHit(
   realisticFragments(resolution);
   resolveCarryThrough(resolution);
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
-  event.targetHpAfter = combat.hp;
+  settleHullPoints(event, combat, resolution.hpBefore);
   return event;
 }
 
@@ -1829,6 +1846,7 @@ function heDirectHit(
 ): HitEvent {
   const spec = shell.spec;
   const combat = target.combat;
+  const hpBefore = Math.max(0, combat.hp);
   const event = baseEvent(shell, target.id);
   const ctx: ResolutionContext = {
     combat,
@@ -1843,7 +1861,7 @@ function heDirectHit(
   const { plateHit, eraArmorMm } = findHeBurstPlate(hits, combat, event);
 
   if (!plateHit) {
-    event.targetHpAfter = combat.hp;
+    settleHullPoints(event, combat, hpBefore);
     return event;
   }
 
@@ -1855,7 +1873,7 @@ function heDirectHit(
   }
 
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
-  event.targetHpAfter = combat.hp;
+  settleHullPoints(event, combat, hpBefore);
   return event;
 }
 
@@ -2046,6 +2064,7 @@ function resolveHeSplashTarget(
   const traced = traceHeSplashPlate(burstPoint, tank, radiusM);
   if (!traced) return null;
   const { hits, plateHit, surfaceDistM } = traced;
+  const hpBefore = Math.max(0, tank.combat.hp);
   const event = baseEvent(shell, tank.id);
   const ctx: ResolutionContext = {
     combat: tank.combat,
@@ -2077,7 +2096,7 @@ function resolveHeSplashTarget(
   }
   sweepHeBlast(ctx, event, tank, burstPoint, radiusM, hits, plateHit.plate.moduleLink);
   event.destroyed = finalizeTarget(tank.combat, event.ammoRacked);
-  event.targetHpAfter = tank.combat.hp;
+  settleHullPoints(event, tank.combat, hpBefore);
   return event.damage > 0 || event.modulesHit.length > 0 || event.crewHit.length > 0
     ? event
     : null;

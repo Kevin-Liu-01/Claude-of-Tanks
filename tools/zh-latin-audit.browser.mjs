@@ -14,9 +14,10 @@
 //
 //   node tools/zh-latin-audit.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/zh-audit [--locale=zh-CN] [--case=a,b]
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { englishWords } from './i18n-literal-lint.mjs';
 
 const arg = (name, fallback) => process.argv.find((value) => value.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
@@ -28,7 +29,7 @@ await mkdir(out, { recursive: true });
 
 // Vehicle names are names in every locale (every fleet id's name, display and short names and search aliases, from the
 // generated tank asset manifest; the Node spec registry holds only the boot specs).
-const manifest = JSON.parse(readFileSync(new URL('../public/icons/tank-assets.json', import.meta.url), 'utf8'));
+const manifest = readTankAssets(fileURLToPath(new URL('../public/icons', import.meta.url)));
 const nameWords = new Set();
 for (const spec of Object.values(manifest.tanks ?? {})) {
   for (const name of [spec.name, spec.label?.displayName, spec.label?.shortName, ...(spec.label?.searchAliases ?? [])]) {

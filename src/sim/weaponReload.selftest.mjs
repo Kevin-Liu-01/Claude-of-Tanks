@@ -147,13 +147,13 @@ for (const [name, createHarness] of [['solo', soloHarness], ['authority', author
 // 2026-10-16 on the 226 preview: "machine guns targeting drones is a lil too punishinng", hitsToDown 1.1.
 // On the authority, one lone station per class (the Rh 202 hull is the entry point's): a drone hovering about 33 m off
 // the bow takes the class's capped rounds (7.62 8 inside one burst; 12.7 6 and 30 mm 4, each only after a burst pause),
-// about 102 m out every round is below the cap (46, 39 and 20 rounds); ticks from the first round to the fall pinned;
+// about 102 m out every round is below the cap (46, 38 and 20 rounds); ticks from the first round to the fall pinned;
 // a drone relaunched after a downed one starts clean. Deterministic: the same flight every run.
 {
   const anchors = Object.fromEntries(Object.entries(COUNTER_DRONE_CLASSES).filter(([name]) => name !== 'rh202').map(([name, c]) => [name, c.anchor]));
   await prepareCounterDrone(Object.values(anchors));
   const ticks = (s) => (s === null ? null : Math.round(s / SIM_DT));
-  const TICKS = { rifle: { at30: 42, at100: 617 }, heavy: { at30: 117, at100: 838 }, cannon: { at30: 135, at100: 812 } };
+  const TICKS = { rifle: { at30: 42, at100: 617 }, heavy: { at30: 117, at100: 830 }, cannon: { at30: 135, at100: 812 } };
   for (const [name, id] of Object.entries(anchors)) {
     const c = COUNTER_DRONE_CLASSES[name], near = hoverCounterDrone({ specId: id }), far = hoverCounterDrone({ specId: id, distanceM: 100, seconds: 30 });
     assert.ok(near.rangeM > 25 && near.rangeM < 38 && far.rangeM > 95 && far.rangeM < 110, `${id}: the hovers sit about 33 m and 102 m out (${near.rangeM?.toFixed(1)}, ${far.rangeM?.toFixed(1)} m)`);

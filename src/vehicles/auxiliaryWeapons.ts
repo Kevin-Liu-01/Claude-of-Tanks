@@ -127,8 +127,15 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   ztz99a2_qinglong:type54,vt4a1_baihu:type54,t72b3_zhuque:type54,t72b3m_xuanwu:type54,
 };
 
+// 2026-10-31 (lane t90-family-266; the owner: "make some of our reworked t90s have new or unique machine gun
+// arrangmenet,s like 2 machine guns"): the second, 7.62 mm roof guns (the AM II's gunner's PKT, the AM's twin PKT mount)
+// fire the PK family's 7.62×54R cartridge, not the generic rifle profile's NATO round (game numbers unchanged).
+const vehicleRifleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {t90am:b32Rifle,t90m_proryv:b32Rifle};
+
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {
   const specific=vehicleAmmunition[vehicleId];
   if(specific?.shell.caliberMm===caliberMm)return specific;
+  const ownRifle=vehicleRifleAmmunition[vehicleId];
+  if(ownRifle?.shell.caliberMm===caliberMm)return ownRifle;
   return caliberMm >= 20 ? cannon : caliberMm < 10 ? rifle : heavy;
 }

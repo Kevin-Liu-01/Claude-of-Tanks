@@ -112,8 +112,16 @@ function reactive(t,s){
     assert.equal(t.resetEra(),true);
   }
 }
+// 264 (856d6b11cd; owner 2026-10-28: "show actual machine guns that need to be actual machine guns of current
+// dimensions"): the Burlak X's traced NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), whose
+// body is the complete weapon: rig_turret > station > remote fitting > auxiliaryWeaponPitch > recoil > body. Its forward
+// terminal is that gun's own. Before 264 lands, the traced source gun still stands and is held as before.
+const LIBRARY_ROOF_GUNS=Object.freeze({t90a_burlak:Object.freeze({station:'t90BurlakCommanderNsvtStation',terminalZ:.48100008})});
+const SOURCE_GUN_TERMINAL_Z=Object.freeze({t90a_burlak:.56843});
+function libraryRoofGun(t,id){return LIBRARY_ROOF_GUNS[id]&&t.root.getObjectByName(LIBRARY_ROOF_GUNS[id].station);}
 function roofWeapon(t,id){
-  const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusEquipment(t.root);
+  const library=libraryRoofGun(t,id),census=censusEquipment(t.root);
+  const mg=t.root.getObjectByName('sourceMachineGun_turretDark')??library?.getObjectByName('browningDerivedMachineGunBody');
   if(id==='t90'){
     assert.ok(mg === undefined,'source-empty T90 channel is not a fabricated named weapon');
     const added=t.root.getObjectByName('t90XMountedNsvt');
@@ -131,7 +139,8 @@ function roofWeapon(t,id){
   // 2026-09-30 (4c34b3e8b, owner's remote roof weapons): a converted roof gun pitches inside its remote station
   // (rig_turret > station > auxiliaryWeaponPitch > weapon group); a manned mount still hangs on rig_turret directly.
   const turretRig=t.root.getObjectByName('rig_turret'),station=mg.parent.parent?.parent;
-  const remoteMount=mg.parent.parent?.name==='auxiliaryWeaponPitch'&&station?.userData.remoteControlled&&station.parent===turretRig;
+  const remoteMount=mg.parent.parent?.name==='auxiliaryWeaponPitch'&&station?.userData.remoteControlled
+    &&(station.parent===turretRig||(library&&station.parent===library&&library.parent===turretRig));
   assert.ok(remoteMount||mg.parent.parent===turretRig,`${id}: source weapon mount belongs to the turret`);
   assert.equal(census.mg,1,`${id}: actual complete source weapon earns one census entry`);
   assert.equal(standardWeaponPass({census},id),true,`${id}: true weapon satisfies unchanged standard MG rule`);
@@ -171,6 +180,8 @@ function historicalEmptyT90Mount(t){
 function equipment(t,id){
   const mg=roofWeapon(t,id);
   if(id==='t90')emptyT90Mount(t);
+  // 2026-10-31 (lane t90-family-266; Main: the gate measures against what the build follows): the source builds keep
+  // their references' empty cradles; the earlier marks carry their drums in their own kits (t90CradleDrums.ts).
   if(id==='t90'||id==='t90a_burlak'){
     const details=t.root.getObjectByName('hullDetail');
     for(const x of [-.6,.6]){
@@ -181,7 +192,8 @@ function equipment(t,id){
   if(id==='t90a_burlak'){
     const hit=new THREE.Raycaster(new THREE.Vector3(0,3,-2),new THREE.Vector3(0,-1,0)).intersectObject(t.root.getObjectByName('turret'),false)[0];
     near(hit.point.y,2.26367998123,.000002,'source welded bustle roof, independent of fittings');
-    near(new THREE.Box3().setFromObject(mg).max.z,.56843,.000002,'actual complete forward-facing Object17 gun terminal');
+    const terminalZ=libraryRoofGun(t,id)?LIBRARY_ROOF_GUNS[id].terminalZ:SOURCE_GUN_TERMINAL_Z[id];
+    near(new THREE.Box3().setFromObject(mg).max.z,terminalZ,.000002,'actual complete forward-facing roof gun terminal');
   }
   if(id==='t90ms_tagil'){
     const detail=t.root.getObjectByName('turretDetail');
