@@ -2,6 +2,7 @@
 // section solids, not imported topology. Four empty cradles retain their air.
 import {sectionSolid} from './sectionSolid.ts';
 import {roofSheet} from './measuredPrimitives.ts';
+import {stowagePart} from './stowagePart.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 type HeightStation=readonly[z:number,y:number];
@@ -28,22 +29,23 @@ function cradleWeb(P:TankBuilderPort,x:number,dy:number,dz:number):void{
   const stations=rows.map(z=>({z:z+dz,ring:[[x-.0049,heightAt(WEB_LOWER,z)+dy],
     [x+.0049,heightAt(WEB_LOWER,z)+dy],[x+.0049,Math.max(top(z),heightAt(WEB_LOWER,z)+.0004)+dy],
     [x-.0049,Math.max(top(z),heightAt(WEB_LOWER,z)+.0004)+dy]] as const}));
-  P.addEquipment('hullDetail',sectionSolid(stations));
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(stations)));
 }
 function cradleMount(P:TankBuilderPort,x:number,dy:number,dz:number):void{
   // Actual front root and transverse hinge land on the existing rear tub.
   const roots:readonly(readonly[number,number,number])[]=[[-3.295,1.198,1.190],[-3.252,1.237,1.1582],
     [-3.23245,1.2422,1.153],[-3.18355,1.2275,1.139],[-3.15235,1.2334,1.139],[-3.10935,1.150,1.1494]];
-  P.addEquipment('hullDetail',sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],
-    [x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]}))));
-  P.addEquipment('hullDetail',roofSheet([[-3.31835+dz,x-.05935,x+.05935,1.2129+dy,1.2129+dy],
-    [-3.24415+dz,x-.05935,x+.05935,1.2666+dy,1.2666+dy]],.030));
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],
+    [x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]})))));
+  P.addEquipment('hullDetail',stowagePart(roofSheet([[-3.31835+dz,x-.05935,x+.05935,1.2129+dy,1.2129+dy],
+    [-3.24415+dz,x-.05935,x+.05935,1.2666+dy,1.2666+dy]],.030)));
 }
+/** The four drum cradles (web, bearing flange, root and hinge plate): stowage, every part (stowagePart.ts, 267). */
 export function addT90AWRearCradles(P:TankBuilderPort):void{
   for(const x of [-.79865,-.37350,.36355,.80275]){
     const leftOuter=x<-.7,dy=leftOuter?.0029:0,dz=leftOuter?.0078:0;
     cradleWeb(P,x,dy,dz);
-    P.addEquipment('hullDetail',roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098));
+    P.addEquipment('hullDetail',stowagePart(roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098)));
     cradleMount(P,x,dy,dz);
   }
 }
