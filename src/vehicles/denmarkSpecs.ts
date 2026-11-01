@@ -184,7 +184,7 @@ centurion5_2dk.visual = {
   // the Danish Army's 1980s three-tone (the Oksbøl, Pansermuseet and Stevnsfortet tanks): olive, black and an earth brown
   // in large hard-edged fields; c2 (the c1 sheets: a bright grass green and an orange brown against the Stevnsfortet
   // photograph's dark olive and earth brown): the olive and the brown darker and duller
-  scheme: 'nato', base: '#4a5233', weather: '#535b3b', patches: ['#1c1f18', '#4f3f2c'], marking: 'number', number: '32',
+  scheme: 'nato', base: '#4f5733', weather: '#575f3b', patches: ['#1a1c16', '#5a3d26'], marking: 'number', number: '32',
   camoScale: 0.48,
 };
 
