@@ -338,6 +338,8 @@ const ES_CSS = `
 .cot-es .es-tal .k svg{flex:0 0 auto;color:${COL.amberHi}}
 .cot-es .es-tal.hot{background:linear-gradient(135deg,oklch(from var(--accent-hi) l c h / .13),oklch(from var(--accent-hi) l c h / .025));}
 .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:34px}.cot-es .es-tal.hot .v{color:${COL.gold};}
+/* the damage dealt's figures in its one colour, as the shot card, the float and the log carry it (Main 2026-10-31) */
+.cot-es .es-tal[data-stat=dealt] .v{color:var(--battle-damage-dealt);}
 .cot-es .es-stat-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
   border-bottom:1px solid var(--line-2);}
 .cot-es .es-mini{min-width:0;padding:10px 14px;border-right:1px solid var(--line-2);}
@@ -351,7 +353,7 @@ const ES_CSS = `
 .cot-es .es-best .bk{font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:.11em;color:${COL.amberHi};text-transform:uppercase;flex:0 0 auto;display:flex;align-items:center;gap:7px;}
 .cot-es .es-best .bd{font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-20);
-  color:${COL.gold};flex:0 0 auto;letter-spacing:-.01em;}
+  color:var(--battle-damage-dealt);flex:0 0 auto;letter-spacing:-.01em;}
 .cot-es .es-best .bt{font-size:var(--battle-fs-12);color:${COL.steel};letter-spacing:.02em;flex:1;
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
@@ -440,7 +442,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .obar{display:block;height:2px;background:oklch(from var(--ink-3) l c h / .16);overflow:hidden;}
 .cot-es .es-tr .obar i{display:block;height:100%;background:var(--team-own);}
 .cot-es .es-tr.foe .obar i{background:var(--team-enemy);}.cot-es .es-tr.me .obar i{background:${COL.gold};}
-.cot-es .es-tr.me .ov{color:${COL.gold};}
+.cot-es .es-tr.me .ov{color:var(--battle-damage-dealt);}
 .cot-es .es-tr .st{display:grid;place-items:center;flex:0 0 18px;
   color:${COL.green};filter:drop-shadow(0 0 5px oklch(from var(--ok) l c h / .3));}
 /* Dead rows remain legible; status color carries the state instead of a
@@ -455,7 +457,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-kr .si{flex:0 0 50px;height:20px;}.cot-es .es-kr .nm{flex:1;min-width:0;font-size:var(--battle-fs-13);font-weight:700;color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-kr .dm{flex:0 0 52px;text-align:right;font-family:${FONT_COND};font-weight:700;
-  font-size:var(--battle-fs-13);color:${COL.gold};letter-spacing:-.01em;}
+  font-size:var(--battle-fs-13);color:var(--battle-damage-dealt);letter-spacing:-.01em;}
 .cot-es .es-none{padding:9px 5px;font-size:var(--battle-fs-11);color:${COL.dim};letter-spacing:.02em;}
 /* persistent private/LAN room: results are one round inside a social session */
 .cot-es .es-rematch{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:0;width:1160px;
@@ -1430,6 +1432,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage', short: t('endScreen.tile.short.dealt'),
     });
+    statGrid.lastElementChild?.setAttribute('data-stat','dealt');
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
       value: sum.playerKills ?? sum.kills.length, datasetV: sum.playerKills ?? sum.kills.length, icon: 'skull',
     });

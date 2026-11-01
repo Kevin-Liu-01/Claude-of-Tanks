@@ -2185,36 +2185,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9972,0.4837,-3.392],
-        "max": [0.9972,1.5886,-1.6272],
+        "min": [-0.9972,0.633,-2.6741],
+        "max": [0.9972,1.499,-1.6272],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8576,0.5984,-3.2508],
+        "min": [-0.8576,0.7751,-3.2508],
         "max": [0.8576,1.3939,-2.6508],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5983,0.4837,-1.5721],
-        "max": [1.2466,1.1815,-0.0831],
+        "min": [-1.2466,0.5709,-1.5721],
+        "max": [-0.5983,1.1815,-0.0831],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.6981,0.4837,-0.3037],
+        "min": [-0.6981,0.5709,-0.3037],
         "max": [0.6981,1.0652,1.0199],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.8046,0.1678,-0.7133],
-        "max": [-0.1342,0.6513,-0.2689],
+        "min": [0.1342,0.1678,-0.7133],
+        "max": [0.8046,0.6513,-0.2689],
         "turretLocal": true
       },
       {
@@ -2281,21 +2281,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7167,-0.3885,-0.193],
-        "max": [-0.2573,0.6408,0.4621],
+        "min": [0.2573,-0.3882,-0.193],
+        "max": [0.7167,0.641,0.4621],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.2272,-0.4114,-0.3081],
-        "max": [0.6866,0.6341,0.5034],
+        "min": [-0.6866,-0.4118,-0.3081],
+        "max": [-0.2272,0.6338,0.5034],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "badf6dd6",
-  "metadataHash": "044e4bfa",
+  "metadataHash": "bd6fef2e",
   "presentationAnchor": {
     "xM": 0.0073,
     "zM": -0.077
@@ -2399,24 +2399,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24044,
-      "sha256": "8bd42ccda88056bea8d993842404efbb3ecd80eaf112a13312b17003fac2a9a8"
+      "bytes": 24018,
+      "sha256": "4551f3684d1b36fcfaa374c4f6c2c13f6f5acc6f0335963ae6b2e6467bd3039b"
     },
     "modulesSide": {
       "file": "t90_1992_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24068,
-      "sha256": "200e5f6b4a69f842a8235b84524c1d57e8908aac6aa4af5a2382d91f88a49269"
+      "bytes": 23410,
+      "sha256": "f120f75c027fd64936c04ccf7f100204a946d957227256167daebcbc45e6192a"
     },
     "crewSide": {
       "file": "t90_1992_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20498,
-      "sha256": "692b951bc9df12e6468637fb47b37046009a3d47d014cf3c715f488db4fa886a"
+      "bytes": 19568,
+      "sha256": "f10f258dec357fa62321ce4d375b836baca3f10724d28b0c5a3dc0425822658a"
     },
     "markings": {
       "file": "t90_1992_markings.png",
@@ -2429,8 +2429,8 @@
     "technicalLabels": {
       "file": "t90_1992_technical.json",
       "mime": "application/json",
-      "bytes": 4755,
-      "sha256": "31155ccebc385fa23979b1465e24108a434a00d0f69b20f281c7c9b8dbe90b7f"
+      "bytes": 4756,
+      "sha256": "c4bdf01f3152c64aebf7d8280eed38b26b8b93ac19decb8ffebbace571e28f36"
     }
   }
 }

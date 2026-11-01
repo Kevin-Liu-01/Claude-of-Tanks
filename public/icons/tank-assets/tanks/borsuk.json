@@ -1156,16 +1156,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30046,
-      "sha256": "3a45ad307529db8bb38e144df20bc3b2273de063cfa84446e0c9ce9ee3939f98"
+      "bytes": 29456,
+      "sha256": "9d8e1fdb691fbbfa5c90483f4791a14fcd0936ab9da424e67d078672f8d412ae"
     },
     "crewSide": {
       "file": "borsuk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24810,
-      "sha256": "94034210c163ca6449b9151f3b0e322797ed5fc984655854a7c2c7c795945bc0"
+      "bytes": 24834,
+      "sha256": "80c5a41f0b1a1d6fe324436207abc0f9a83efe7860f411afaf3e3c47569f59bf"
     },
     "angle": {
       "file": "borsuk_angle.webp",
@@ -1226,8 +1226,8 @@
     "technicalLabels": {
       "file": "borsuk_technical.json",
       "mime": "application/json",
-      "bytes": 5360,
-      "sha256": "3f72da3281863d8b387c56ec9e953fc01aa4f140b46c20bc11ae7a076727cf0f"
+      "bytes": 5359,
+      "sha256": "7022a5b9b168d73fd42219a349c219166f5c53f9c494bd6a00c5dbfedb238364"
     }
   }
 }

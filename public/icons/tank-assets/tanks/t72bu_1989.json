@@ -1990,22 +1990,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9153,0.4373,-3.169],
-        "max": [0.9153,1.3992,-1.4702],
+        "min": [-0.9153,0.4373,-2.4537],
+        "max": [0.9153,1.3701,-1.4702],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.7872,0.5319,-3.0331],
+        "min": [-0.7872,0.5608,-3.0331],
         "max": [0.7872,1.2245,-2.4555],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5492,0.4373,-1.4172],
-        "max": [1.1442,1.0448,0.0162],
+        "min": [-1.1442,0.4373,-1.4172],
+        "max": [-0.5492,1.0448,0.0162],
         "turretLocal": false
       },
       {
@@ -2018,8 +2018,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7518,0.1466,-0.7279],
-        "max": [-0.1254,0.5937,-0.2975],
+        "min": [0.1254,0.1466,-0.7279],
+        "max": [0.7518,0.5937,-0.4983],
         "turretLocal": true
       },
       {
@@ -2104,7 +2104,7 @@
     ]
   },
   "geometryHash": "14ccf73c",
-  "metadataHash": "530b2d4e",
+  "metadataHash": "7d43e335",
   "presentationAnchor": {
     "xM": -0.0053,
     "zM": 0.0162
@@ -2209,24 +2209,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22612,
-      "sha256": "fb9b62bb2f2dcbf94c3caac1d6a12106d54153aff40f2dbd030d6cc08f486488"
+      "bytes": 22674,
+      "sha256": "4f69a29c42527538e54e43eb39d17c8d02f31736507a7e6a23292501aabb3947"
     },
     "modulesSide": {
       "file": "t72bu_1989_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20582,
-      "sha256": "0f72b53b863eebaf9568fe08f198d7a11f9b99e25faebf4651a1257f04e20070"
+      "bytes": 20156,
+      "sha256": "009460f066d97b42e272b6d4192185cb362888340ef144892c6dc0f79201c6d2"
     },
     "crewSide": {
       "file": "t72bu_1989_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17794,
-      "sha256": "ce0c763dbaa191280abd5f39696b44cf46c8187d2882f5441fc1d590a563176f"
+      "bytes": 18090,
+      "sha256": "58fadb0e01271a21db469390f20851180964c379a728f9ba24213bed62923ca5"
     },
     "markings": {
       "file": "t72bu_1989_markings.png",
@@ -2239,8 +2239,8 @@
     "technicalLabels": {
       "file": "t72bu_1989_technical.json",
       "mime": "application/json",
-      "bytes": 4819,
-      "sha256": "8dca22ab9496f182fac0c248c83298c08914d66a791c64c891e0aef571bf10cc"
+      "bytes": 4818,
+      "sha256": "79385b208e8ac9dbe5900c9ff0510814f74d2fc14fa9e1172cb63ca7a78ac3f6"
     }
   }
 }

@@ -1833,43 +1833,43 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.4776,0.588,-0.2349],
-        "max": [0.4984,0.8459,0.6628],
+        "min": [-0.4984,0.588,-0.2349],
+        "max": [0.4776,0.8459,0.6628],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9578,0.4605,-3.2148],
-        "max": [0.9786,1.4599,-1.6563],
+        "min": [-0.9786,0.4605,-2.5555],
+        "max": [0.9578,1.4305,-1.6563],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8223,0.5604,-3.0902],
-        "max": [0.8431,1.28,-2.5603],
+        "min": [-0.8431,0.7703,-3.0902],
+        "max": [0.8223,1.28,-2.5603],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5913,0.4605,-1.6044],
-        "max": [1.1916,1.0516,-0.2017],
+        "min": [-1.1916,0.4605,-1.6044],
+        "max": [-0.5913,1.0516,-0.2017],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.6674,0.4283,-0.4095],
-        "max": [0.6882,0.9656,0.8373],
+        "min": [-0.6882,0.4283,-0.4095],
+        "max": [0.6674,0.9656,0.8373],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7227,0.0977,-1.4595],
-        "max": [-0.1061,0.6861,-0.9289],
+        "min": [0.1061,0.0977,-1.1942],
+        "max": [0.4291,0.5684,-0.9289],
         "turretLocal": true
       },
       {
@@ -1953,8 +1953,8 @@
       }
     ]
   },
-  "geometryHash": "77b6a161",
-  "metadataHash": "ca7ecde1",
+  "geometryHash": "00de6773",
+  "metadataHash": "b59e646c",
   "presentationAnchor": {
     "xM": 0.011,
     "zM": -0.1287
@@ -2010,39 +2010,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27700,
-      "sha256": "cc9e81a2e9a3bc30a9dfd73f376f07e33ebaed2958ae45d9addd32a056df2bc7"
+      "bytes": 27586,
+      "sha256": "c73ef0593cc00584dcb1f4a2c16c9687d5f0c643545149fa54f680e3ea50b431"
     },
     "modulesSide": {
       "file": "t72b3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24906,
-      "sha256": "a869ef63b5cf9f113a8495e8bc10d492f466e4736200fbb5855d7691892a0d4f"
+      "bytes": 24610,
+      "sha256": "f89e710bd65d514f126893f9eed6b7215b65091e9965fd1c208a4243da129650"
     },
     "crewSide": {
       "file": "t72b3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21566,
-      "sha256": "8f247811c5562f8605e423f7b4ad8cdc42774b917bb2987202866996eb0cc602"
+      "bytes": 22466,
+      "sha256": "06967aa03529eadb8a64964d973a8c484abe0a2dad5b8e0492895611323cbfa9"
     },
     "angle": {
       "file": "t72b3_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27650,
-      "sha256": "3e22be8953114f506c82810d5d971f102cd41167c308db5e9ecdf15bbc4ca5ae",
+      "bytes": 27640,
+      "sha256": "6ed414a2d00d8cea9cf3628e7b051441a636c78b5eec4974c6dab357a431cbb9",
       "thumbnail": {
         "file": "thumbs/t72b3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11022,
-        "sha256": "3ee920dac70d337d44b369f5afeef8c750749725acce40a4a1a638087ed07817"
+        "bytes": 11026,
+        "sha256": "20fbe6352f8abcedf12f379d2e4803e7aed4557bcfa1e112a4202971131612fb"
       }
     },
     "top": {
@@ -2050,16 +2050,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12360,
-      "sha256": "d160d599bef2ed4e6e7c55ef16269ef3996ea8c8a8897878611f3ab9bc7d8511"
+      "bytes": 12366,
+      "sha256": "1133de610931ebfc7e2bce73e6d83803c81a0292e5405c4f7523d1d15176858e"
     },
     "side": {
       "file": "t72b3_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11582,
-      "sha256": "b9bdf8d831967741e68e2976795d28223463858d7b52a6cf20d94de3351bf6db"
+      "bytes": 11532,
+      "sha256": "a4dfaf548ae539a44d76c769deb8bde22d6cd7d2154b481ea7101cef502b1b02"
     },
     "topSilhouette": {
       "file": "t72b3_top_silhouette.png",
@@ -2074,8 +2074,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4678,
-      "sha256": "8460cbb7c3e525ab460df134dbd250882f2d8ccbe362ebf0831e9de2290863c9"
+      "bytes": 4652,
+      "sha256": "18a38b9db9fb32d48d321ad761aa2840b9563312e517433af35da5e2c749cb9f"
     },
     "markings": {
       "file": "t72b3_markings.png",
@@ -2088,8 +2088,8 @@
     "technicalLabels": {
       "file": "t72b3_technical.json",
       "mime": "application/json",
-      "bytes": 4845,
-      "sha256": "b1d8dfaf0deffcadfed84dc9bf2bbd885d0f03389dc9643a8fa1720b9e246536"
+      "bytes": 4841,
+      "sha256": "dea383eca8cc4f20b2f74b1f7ffbc9016fd09842d7ce62b1cd998b4d863792e5"
     }
   }
 }

@@ -3,6 +3,7 @@
 // and `deaths` the COUNT. A mode:respawn edge clears the state and keeps the count; the ended payload's roster
 // `alive` is authoritative in a reviving mode; a non-reviving battle keeps the event ledger exactly as before.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   recordCombatantDestroyed, recordCombatantRevived, rulesetRevives, mergeEndRosterRow, appendIncomingHit,
 } from './shotInfo.ts';
@@ -122,4 +123,22 @@ console.log('shotInfo.selftest: respawn ledger — a revive clears dead and keep
   assert.notEqual(appendIncomingHit(expired, 'enemy-1', 1, pen, 1), expired,
     'a reset presentation clock cannot revive a prior battle');
 }
-console.log('shotInfo.selftest: consecutive incoming bursts, mixed outcomes, identity, expiry and reset passed');
+// The shot card's lines are one line each by construction (owner 2026-11-01, "china goes to twolines in some text"): the
+// value takes its width first and the label shows whole or not at all beside its glyph; the head, the subtitle and the
+// blast line never shrink or wrap. Its browser half, tools/shot-card-fit.browser.mjs, renders every variant in every
+// locale at every card width down to the 176 px floor.
+{
+  const css = readFileSync(new URL('./shotInfo.ts', import.meta.url), 'utf8');
+  assert.match(css, /\.cot-si-kv\{[^}]*grid-template-columns:minmax\(12px,1fr\) auto;/, 'a row gives its value its width first');
+  assert.match(css, /\.cot-si-kv \.cot-si-k\{min-width:0;height:14px;overflow:hidden;display:flex;flex-wrap:wrap;/,
+    'a row\'s label shows whole on its one line or wraps out of it');
+  assert.match(css, /\.cot-si-kv \.cot-si-k>span\{white-space:nowrap;\}/, 'a row\'s label never breaks inside');
+  assert.match(css, /\.cot-si-kv \.cot-si-k svg\{[^}]*margin-block:1px;/, 'the glyph\'s line is the label\'s 14 px, so a wrapped label hides whole');
+  assert.match(css, /@container si-card \(max-width:209px\)\{[^@]*\.cot-si-kv\.pen b \.fresh\{display:none;\}\}/,
+    'the narrowest card drops the pen row\'s fresh roll');
+  assert.match(css, /\.cot-si-kv b\{min-width:0;[^;]*;[\s\S]{0,160}?letter-spacing:-\.005em;white-space:nowrap;/, 'a row\'s value never wraps');
+  assert.match(css, /\.cot-si-missile-blast\{[^}]*white-space:nowrap;text-overflow:ellipsis;\}/, 'the blast line is one line');
+  assert.match(css, /\.cot-si-hd\{flex:none;/, 'the head never shrinks under its content');
+  assert.match(css, /\.cot-si-sub\{flex:none;/, 'the subtitle never shrinks under its content');
+}
+console.log('shotInfo.selftest: consecutive incoming bursts, mixed outcomes, identity, expiry and reset, one-line card rows passed');

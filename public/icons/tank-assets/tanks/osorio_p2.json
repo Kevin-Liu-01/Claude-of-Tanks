@@ -588,7 +588,7 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-0.95,0.46,-3.3849],
+        "min": [-0.95,0.46,-2.7073],
         "max": [0.95,1.44,-1.7645],
         "turretLocal": false
       },
@@ -609,15 +609,15 @@
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.8015,0.01,-2.38],
+        "min": [-0.8015,0.0386,-2.38],
         "max": [0.8015,0.6102,-1.0912],
         "turretLocal": true
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.687,0.0587,-2.0285],
-        "max": [-0.1145,0.4226,-1.0912],
+        "min": [0.1317,0.0612,-2.0162],
+        "max": [0.6698,0.1402,-1.6308],
         "turretLocal": true
       },
       {
@@ -717,35 +717,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.6297,0.5345,1.3575],
-        "max": [-0.1703,1.2825,2.956],
+        "min": [0.1703,0.9728,1.5769],
+        "max": [0.6297,1.2783,2.9441],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2684,-0.93,-0.3911],
-        "max": [0.7278,0.4221,0.4303],
+        "min": [-0.7278,-0.93,-0.3911],
+        "max": [-0.2684,0.4221,0.4303],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.297,-0.832,-1.0084],
-        "max": [0.7564,-0.052,-0.1657],
+        "min": [-0.6867,-1.13,-0.7084],
+        "max": [-0.297,0.2275,0.1343],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.7278,-1.13,-0.1314],
-        "max": [-0.2684,0.6434,0.2675],
+        "min": [0.2684,-1.13,-0.1319],
+        "max": [0.7278,0.6434,0.2675],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "053ec479",
-  "metadataHash": "366aec84",
+  "metadataHash": "50bfb69e",
   "presentationAnchor": {
     "xM": -0.0005,
     "zM": -0.0166
@@ -803,15 +803,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22514,
-      "sha256": "34d1ceea684a47eba2b6ba03d100d8e6679db08c2a0ca1b809680706ae7dcd83",
+      "bytes": 22516,
+      "sha256": "149770b168cf8a12c5d56e015610c85e34b08008ed5b67528ad520e7dfdd70b1",
       "thumbnail": {
         "file": "thumbs/osorio_p2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9852,
-        "sha256": "434db8dd7bee52da87877b8c0f4c86d7684ae2ab0440005d9922adc284ccbda3"
+        "bytes": 9884,
+        "sha256": "c85dc53bdda955d8c6fa526e11a95f128312226616f81de8ce977c5123c1b585"
       }
     },
     "top": {
@@ -827,8 +827,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8730,
-      "sha256": "ba9d13936ac4aac378a47ba0b1b0509c1706eb5190da3cb4fa6ea87f1e61dfe2"
+      "bytes": 8746,
+      "sha256": "20d2623453f440b50274eea412ae41c9adae097e8d273b4bcf9981623467f56c"
     },
     "topSilhouette": {
       "file": "osorio_p2_top_silhouette.png",
@@ -851,24 +851,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19272,
-      "sha256": "f0d9c5baacd39a827e788a847d45a900538359aaeea500cb0ef9310e3d20429a"
+      "bytes": 19244,
+      "sha256": "8d1d54baa2c6e7ff3618c0e923de8898a64d7b7869c1b44ad305b143a4cf6c0d"
     },
     "modulesSide": {
       "file": "osorio_p2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20620,
-      "sha256": "95d128ed5454dda753e6845a53e6744cd658cd748d0683b1034ee5e1114a17df"
+      "bytes": 20204,
+      "sha256": "55fded0b6b0d96976eff5c56fc3e60f736c9ad4134e0c4efbb5bf3d087aebe04"
     },
     "crewSide": {
       "file": "osorio_p2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17620,
-      "sha256": "99286f3dfdba14877c3c0e23b9209f003c002ddbd79ee0447be28e751c5f5d16"
+      "bytes": 17640,
+      "sha256": "58173765f9b0b87b1df96baecc601b1593d77c6fbf28d3a98cace947f41b3e3d"
     },
     "markings": {
       "file": "osorio_p2_markings.png",
@@ -882,7 +882,7 @@
       "file": "osorio_p2_technical.json",
       "mime": "application/json",
       "bytes": 5436,
-      "sha256": "db445c019e74dc33183b6349a0147a11a35a98913d24b3cbf34083ac9a6fc5a3"
+      "sha256": "06d65a546fd7f4db297d2af9be7bbee67a7b6859e01360eeffeacda368ee96b8"
     }
   }
 }

@@ -677,24 +677,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40794,
-      "sha256": "0d8f1a64a748e0fde1fb17a0f8c8af37f58e59808a00185585844f4567f68273"
+      "bytes": 40838,
+      "sha256": "d2e2516bc1a9d83eb50bd8adda1a1d7294e1ebcadcd728182bf5e7b4ab0b4c69"
     },
     "modulesSide": {
       "file": "merkava4_trophy_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39020,
-      "sha256": "2de9aac08ba4a1bf9991228af4598733b8b269973b4788a8927da6c907664e48"
+      "bytes": 38168,
+      "sha256": "8b40a7faa5800104ddde49af6a20f662d7f830f88be0726c7247ded075933062"
     },
     "crewSide": {
       "file": "merkava4_trophy_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38088,
-      "sha256": "61e8b4916bb9a8e448e03496af2ef042f29a9adb2e43541c7c57d06ffee27c18"
+      "bytes": 38106,
+      "sha256": "c12ffd0d05df0431b69796c2df14ea0f96be9137e05ba77ebfbb9c857df1516f"
     },
     "angle": {
       "file": "merkava4_trophy_angle.webp",
@@ -756,7 +756,7 @@
       "file": "merkava4_trophy_technical.json",
       "mime": "application/json",
       "bytes": 5121,
-      "sha256": "ce273123b2ff562606106905c168e8bb9d46b2b904042e6ac752a68beab4e11f"
+      "sha256": "432338c1200050d66738474e898fdeab2f9f3203da3e6f35bf9c3c73d535edf1"
     }
   }
 }

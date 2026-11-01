@@ -622,24 +622,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29618,
-      "sha256": "2aba26e027b8c022ba484a370c15937177704928e9c157cb3cdcd088116c63ca"
+      "bytes": 29666,
+      "sha256": "99efac06c25ac671c9424f4de9f37c540a2adfd89f7f67cc423a773aac12315e"
     },
     "modulesSide": {
       "file": "sabra_mk2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33658,
-      "sha256": "4d28aa0900dcb4bb0e8a31a19b01226051257261b3f45b8f7291ee8df41f91d4"
+      "bytes": 33152,
+      "sha256": "cfba8cf85c675e25f0d173b04f22e90fcdad13386bef2a338d25bcda64c1c605"
     },
     "crewSide": {
       "file": "sabra_mk2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30796,
-      "sha256": "fd96180bee508a88c80b26cbb2038d7ebf998948e3137e728f2c037648229f11"
+      "bytes": 30676,
+      "sha256": "71a3bc6638230751f3ba4b0f28964d45dcbaf2ce6a5b06b11bee411c6c13e970"
     },
     "angle": {
       "file": "sabra_mk2_angle.webp",
@@ -700,8 +700,8 @@
     "technicalLabels": {
       "file": "sabra_mk2_technical.json",
       "mime": "application/json",
-      "bytes": 5499,
-      "sha256": "527bef6564ffb2bc8de213e8f5cf7f2294e9c1820145507cc1e0e62d9b975780"
+      "bytes": 5497,
+      "sha256": "ab3da8b96ea5128eb8fe2aa6e972543102da0d6c811fde6e096f1138faf29945"
     }
   }
 }

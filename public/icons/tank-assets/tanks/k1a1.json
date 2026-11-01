@@ -586,8 +586,8 @@
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [0.2374,0.1027,-1.3191],
-        "max": [0.9045,0.2453,-1.0201],
+        "min": [0.2375,0.1027,-1.3191],
+        "max": [0.9046,0.2453,-1.0201],
         "turretLocal": true
       },
       {
@@ -671,7 +671,7 @@
     ]
   },
   "geometryHash": "aed325f2",
-  "metadataHash": "d0066b53",
+  "metadataHash": "bd008475",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": 0.023
@@ -727,24 +727,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26474,
-      "sha256": "fd15fdc2ece5992eb3e3fff4a11913dfd3f79e386ca5dd435c0330b51ebaf28e"
+      "bytes": 26522,
+      "sha256": "38c2c1a65beb124e25354bd7acf99ba42204b39e0da8acd4bad5d67c8e68fa11"
     },
     "modulesSide": {
       "file": "k1a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26496,
-      "sha256": "4a1d1a3a8416b60a8895864b5833f7e8ed9867d24cee6f6de4d6c9133cbe2164"
+      "bytes": 26228,
+      "sha256": "8cb6e617eeca7ab1687aa19664dd6e8cc0e615cd85e8536f24ed40756659c859"
     },
     "crewSide": {
       "file": "k1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25902,
-      "sha256": "a697df6d19275154002425c273cb0621345c4b13a4f8a74f053f837d944ffa75"
+      "bytes": 25684,
+      "sha256": "ce14b12c0c11538d21ab8a131ba53d34b1c27a562d9b3ae954219b3173964b62"
     },
     "angle": {
       "file": "k1a1_angle.webp",
@@ -805,8 +805,8 @@
     "technicalLabels": {
       "file": "k1a1_technical.json",
       "mime": "application/json",
-      "bytes": 4605,
-      "sha256": "35f60ddfe8bf5e18005f983f6bca15895a211d9cb49411947f1629a1996eb235"
+      "bytes": 4608,
+      "sha256": "9cdd9f858301373555cd5408697dad8b98f8826e2f5381c36a0b4afb51eff853"
     }
   }
 }

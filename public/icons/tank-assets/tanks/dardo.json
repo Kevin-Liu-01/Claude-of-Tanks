@@ -1297,16 +1297,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32448,
-      "sha256": "e4763b058a481fb88ae904eaa07915e1c273a9a816a9a6c3abd5e210b9995b13"
+      "bytes": 30832,
+      "sha256": "15f2409c1f0a1921af4e17d1dc222741ef82eb5872a2c53b8d421d35d8dc0c73"
     },
     "crewSide": {
       "file": "dardo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28362,
-      "sha256": "35457e40117b21997ffb7a7117dac946f42b7881116c14f1cd07b1527a1c8a23"
+      "bytes": 28072,
+      "sha256": "2c8ede1e1b0a1c2f6f7bf41cd9faf0950f8a0e76d99bf1805e4b6022c987c1b6"
     },
     "angle": {
       "file": "dardo_angle.webp",

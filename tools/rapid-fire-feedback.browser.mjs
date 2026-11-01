@@ -58,7 +58,8 @@ try {
     });
     assert.equal(receipt.preserved,true); assert.equal(receipt.autoPreserved,true);
     if(!touch){assert.equal(receipt.mgCard,'machineGun');assert.equal(receipt.autoCard,'cannon');}
-    assert.equal(receipt.labelCount,1); assert.equal(receipt.total,'-16');
+    // (2026-10-31, shot-card-damage-266: the float prints the card's and the log's true minus, one datum one glyph)
+    assert.equal(receipt.labelCount,1); assert.equal(receipt.total,'\u221216');
     assert.equal(receipt.separateTargets,2);assert.equal(receipt.afterBlocks,2);
     for(const r of receipt.rects)assert.ok(r.left>=0&&r.right<=width&&r.top>=0&&r.bottom<=height,`${name}: number stays onscreen`);
     await page.screenshot({path:`${out}/${name}.png`});

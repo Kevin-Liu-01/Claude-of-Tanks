@@ -3453,43 +3453,43 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.4776,0.588,-0.2349],
-        "max": [0.4984,0.8459,0.6628],
+        "min": [-0.4984,0.588,-0.2349],
+        "max": [0.4776,0.8459,0.6628],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9578,0.4605,-3.2148],
-        "max": [0.9786,1.4599,-1.6563],
+        "min": [-0.9786,0.4605,-2.5555],
+        "max": [0.9578,1.4305,-1.6563],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8223,0.5604,-3.0902],
-        "max": [0.8431,1.28,-2.5603],
+        "min": [-0.8431,0.7703,-3.0902],
+        "max": [0.8223,1.28,-2.5603],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5913,0.4605,-1.6044],
-        "max": [1.1916,1.0516,-0.2017],
+        "min": [-1.1916,0.4605,-1.6044],
+        "max": [-0.5913,1.0516,-0.2017],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.6674,0.4283,-0.4095],
-        "max": [0.6882,0.9656,0.8373],
+        "min": [-0.6882,0.4283,-0.4095],
+        "max": [0.6674,0.9656,0.8373],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7227,0.0977,-1.4595],
-        "max": [-0.1061,0.6861,-0.9289],
+        "min": [0.1061,0.0977,-1.1942],
+        "max": [0.4291,0.5684,-0.9289],
         "turretLocal": true
       },
       {
@@ -3577,8 +3577,8 @@
       }
     ]
   },
-  "geometryHash": "30751167",
-  "metadataHash": "8659704b",
+  "geometryHash": "ada6a399",
+  "metadataHash": "b519ff3a",
   "presentationAnchor": {
     "xM": 0.0108,
     "zM": -0.1259
@@ -3636,15 +3636,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27742,
-      "sha256": "57cb9207d779fff3d7f1711a74dd2786687233122b8dffa21e8d22c818262da9",
+      "bytes": 27736,
+      "sha256": "daffdd7a12aa0ba4b34899bf1faaef35fd5c9063c7c4e940138c124ebdcf3d6f",
       "thumbnail": {
         "file": "thumbs/t72m1_jaguar_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11118,
-        "sha256": "1caf230c085eb699cc356877e16478ebc538047432406a10cfa5476842da8ec5"
+        "bytes": 11120,
+        "sha256": "e2ec4fb64c08f3feb232688d51310fb6026c5550f90ef465cf1d1e8c73d225d3"
       }
     },
     "top": {
@@ -3652,16 +3652,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10558,
-      "sha256": "d6240856ae7e2ad7e05b31fc0a0111d030c3fdc5ef76d63b9134b391eef0e07a"
+      "bytes": 10562,
+      "sha256": "1f43c6e6e25261e1090e88dc711cd373bf3abc7f511d4563a6615e43b14e8f7a"
     },
     "side": {
       "file": "t72m1_jaguar_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11128,
-      "sha256": "c927d99bd8ea23bcad7ead9234c92705d97e18445df7c15cf25db4dc87b53727"
+      "bytes": 11072,
+      "sha256": "834132a55c37327293af8f36c3bd0a9a499629e6de05254c66636b655a78f7b9"
     },
     "topSilhouette": {
       "file": "t72m1_jaguar_top_silhouette.png",
@@ -3676,32 +3676,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4802,
-      "sha256": "305c9c7c8a3eb0fe607abefed2f303af1422240989bb77371d5d35272439f56e"
+      "bytes": 4767,
+      "sha256": "6b4499b84179b6a318986caf0df73d439f1cf408950dc52431595940bf470855"
     },
     "armorSide": {
       "file": "t72m1_jaguar_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27092,
-      "sha256": "d74b8d67ce42022470526eedae289c76663b305c012aa3eecd1d5d0578078177"
+      "bytes": 27124,
+      "sha256": "a5afae3bf64a38a2f2ab35420cb9a27c394c98c82dfb49ff6748b7909f3a013d"
     },
     "modulesSide": {
       "file": "t72m1_jaguar_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24408,
-      "sha256": "c0606fb8f09718bc526dfe0f31605b57f969056c34b37f0d97f4b2d8c1edb3f6"
+      "bytes": 24004,
+      "sha256": "f4df8c960e92e8b7714452cb2a19580d28fc4beecf398ed079f447321e963b19"
     },
     "crewSide": {
       "file": "t72m1_jaguar_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21056,
-      "sha256": "a9e203b810bcb325a0fee8f8ea5dc174511981a22c6d9179933e45c081562594"
+      "bytes": 20976,
+      "sha256": "0bed83e3bebd4a621904ae56159c87b53a2fc5cc52f66c0fcd9c2fa42ad50d2a"
     },
     "markings": {
       "file": "t72m1_jaguar_markings.png",
@@ -3714,8 +3714,8 @@
     "technicalLabels": {
       "file": "t72m1_jaguar_technical.json",
       "mime": "application/json",
-      "bytes": 4960,
-      "sha256": "500b7ac9525918904859a99d2c24bffc3ba16b60a0ce4f181b63efb6c6a6edec"
+      "bytes": 4959,
+      "sha256": "2f8b5d2f99b2668926f2b1f93800626a7f3135232099f7f90d1b6605c118ce29"
     }
   }
 }

@@ -1419,11 +1419,15 @@ function buildT84UCupolaGun(P: TankBuilderPort): THREE.Group {
   // 264: the true-scale NSVT reaches 0.17 m right of its bore at its belt box and 0.38 m behind the trunnion at its grips,
   // which swing down to 0.30 m under the trunnion at full elevation: the cheeks stand 0.20 m out and the cross-bar 0.33 m
   // down, the post shortened to it
-  w.add('turretDetail', box(0.08, pivotY - 0.32 - ROOF_Y - 0.13, 0.08), gx, (ROOF_Y + 0.13 + pivotY - 0.32) / 2, pivotZ);
-  w.add('turretDetail', box(0.425, 0.03, 0.06), gx, pivotY - 0.33, pivotZ);
+  // 266 (accessoryContact): the parts are seated face to face. The post stands on the cupola's ring outboard of the
+  // commander's hatch (it stood half through the lid) and carries the bar on its top; the bar is the cheeks' depth and
+  // they stand on its ends (it ran 1.5 cm up through their feet); the trunnion caps sit on the cheeks' outer faces.
+  const barY = pivotY - 0.33, postX = gx - 0.045, footY = ROOF_Y + 0.13;
+  w.add('turretDetail', box(0.06, barY - 0.015 - footY, 0.06), postX, (footY + barY - 0.015) / 2, pivotZ);
+  w.add('turretDetail', box(0.425, 0.03, 0.10), gx, barY, pivotZ);
   for (const sx of [-1, 1]) {
-    w.add('turretDetail', box(0.025, 0.37, 0.10), gx + sx * 0.20, pivotY - 0.145, pivotZ);
-    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.225, pivotY, pivotZ);
+    w.add('turretDetail', box(0.025, pivotY + 0.04 - (barY + 0.015), 0.10), gx + sx * 0.20, (pivotY + 0.04 + barY + 0.015) / 2, pivotZ);
+    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.2275, pivotY, pivotZ);
   }
   w.stage('pitch');
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the

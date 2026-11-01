@@ -3688,24 +3688,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 51968,
-      "sha256": "10747d7a850abeae1ca5815f65cad1d51aa6c2cdfa04766cd1c1464857d364a4"
+      "bytes": 52024,
+      "sha256": "2a36306cb1a244ca0e502c66b368c08880307104aaeb8967ad868ee65e19f210"
     },
     "modulesSide": {
       "file": "upior_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44614,
-      "sha256": "46e5bd76b990cc5fe9a507f65872d2bcb6c41fbe2032d57b5def982c15917f95"
+      "bytes": 42200,
+      "sha256": "aa11a8317913d90fc89537ca7805250df671b87f1b200782f93580c702f33b0f"
     },
     "crewSide": {
       "file": "upior_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42268,
-      "sha256": "c72d24385a06e09c46edadaf66610ced78ef0ffc79b67ef8c1aa5366229a03bf"
+      "bytes": 42280,
+      "sha256": "07ecfee0e5651f3cc2b55dba52194d162cac40abb027d3c4af74dd06cf414efe"
     },
     "markings": {
       "file": "upior_markings.png",

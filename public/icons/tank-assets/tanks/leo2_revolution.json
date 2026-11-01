@@ -817,24 +817,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29108,
-      "sha256": "8386a67f464ffae3d21323ee86dacc350679bc6ac33707460f3719402076eb98"
+      "bytes": 28580,
+      "sha256": "4b4be9224e678775e67c881a599c3a2e1dded6d5f068dc79fbb8e9457b59279a"
     },
     "modulesSide": {
       "file": "leo2_revolution_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29596,
-      "sha256": "be7da3edbb87a7715124d5ba87bc777d5d61232eaf7f045c7fc8c0895e2ff0df"
+      "bytes": 29404,
+      "sha256": "73f97ce9bfda45149c881849b1c87b4a0dc3c0664a0f86f36568534ccba5a872"
     },
     "crewSide": {
       "file": "leo2_revolution_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28186,
-      "sha256": "7e78561b84df10d2755446cff6d3868a7a76548396e654661e07609ff676bbd3"
+      "bytes": 28320,
+      "sha256": "e96aa51130de0112805fa1c7252ba02a46813e6b050eb0a62c55b7d5935d6047"
     },
     "markings": {
       "file": "leo2_revolution_markings.png",
@@ -847,8 +847,8 @@
     "technicalLabels": {
       "file": "leo2_revolution_technical.json",
       "mime": "application/json",
-      "bytes": 4828,
-      "sha256": "971107aa748ece2adb03793aaf1f39e7e6025b869dbc388dbbe1406a784a9df9"
+      "bytes": 4829,
+      "sha256": "ece60be576cea7cb27f0de2c1b1c8654e338ae9c494babd039835d087f8b5243"
     }
   }
 }

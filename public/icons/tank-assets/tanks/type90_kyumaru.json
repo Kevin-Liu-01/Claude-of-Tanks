@@ -606,24 +606,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18674,
-      "sha256": "7daae8a43f78ff086d37a21319e4c32cc6dc3f1b9962a39ff5290a6475abc42e"
+      "bytes": 18732,
+      "sha256": "4a4bb100e11326bd4f6d3396bb2dd1140e0f407ba704f9b4079955b8d20a0cf1"
     },
     "modulesSide": {
       "file": "type90_kyumaru_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21194,
-      "sha256": "b6d0e2a7862bdfada0ead15174f7fcf12457a672d58ea20205032e7141260e2d"
+      "bytes": 20482,
+      "sha256": "9f5ec77150b0fcf87440cd99e4d39868f26e638845f7a4ce9f179f45b2f9b936"
     },
     "crewSide": {
       "file": "type90_kyumaru_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18452,
-      "sha256": "cdf6868532c7dc850a36ba5d94fc3313ef4e149512cfa3fcc1405447a6811343"
+      "bytes": 18308,
+      "sha256": "ea7570e004606926cefabe70aec92aed6847105b4a8fa3d74d5d29dab8f0cdcc"
     },
     "markings": {
       "file": "type90_kyumaru_markings.png",

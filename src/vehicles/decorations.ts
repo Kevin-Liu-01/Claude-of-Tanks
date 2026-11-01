@@ -6631,15 +6631,25 @@ function* decorationSteps(
       },
       bowPair(_args, parts, name) {
         let ok = false;
+        // 2026-10-31 (the contact receipt on the T-90AM II): on the T-90M X hull the probe at W * 0.28 met the narrow
+        // diagonal cheek between the glacis armour and the fender front (n 0.95 sideways, 0.31 forward), and the 16 cm
+        // hook plate, bolted flush to it, stood through the fender's face. A plate bolts to a face that looks more
+        // forward than sideways; a station whose probes meet only such cheeks steps inboard onto the plate beside them.
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
-          let done = false;
-          for (const yf of [0.3, 0.38, 0.24]) {
-            const y = H * yf;
-            const h = hullP.zface(s * W * 0.28, y, -1, L / 2 + 1.6);
-            if (!h || h.n.z < 0.3) continue;
-            const pitch = Math.atan2(-h.n.y, h.n.z); // bolt flush to the bow plate
-            if (commit(name, cl, 'hull', V(s * W * 0.28, y, h.p.z + 0.005), E(pitch, 0, 0), placedHull)) { done = true; break; }
+          let done = false, cheek = false;
+          for (const xf of [0.28, 0.24, 0.2]) {
+            if (xf !== 0.28 && !cheek) break;
+            cheek = false;
+            for (const yf of [0.3, 0.38, 0.24]) {
+              const y = H * yf;
+              const h = hullP.zface(s * W * xf, y, -1, L / 2 + 1.6);
+              if (!h || h.n.z < 0.3) continue;
+              if (Math.abs(h.n.x) > h.n.z) { cheek = true; continue; }
+              const pitch = Math.atan2(-h.n.y, h.n.z); // bolt flush to the bow plate
+              if (commit(name, cl, 'hull', V(s * W * xf, y, h.p.z + 0.005), E(pitch, 0, 0), placedHull)) { done = true; break; }
+            }
+            if (done) break;
           }
           if (!done) disposePartList(cl);
           ok = ok || done;

@@ -787,24 +787,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24408,
-      "sha256": "9efed479a76efebb4fbe7daa2cee42b633e172c0bdd45fd0d09b7daf07a7dff8"
+      "bytes": 24418,
+      "sha256": "ea05826589bb83c81c86d8d19f91800bcd4664ef4adb148a7d0af89f07834179"
     },
     "modulesSide": {
       "file": "leo2_revolution_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24620,
-      "sha256": "4c8d47a7146da3b228fb9645f3f9735373a7d114485ddd3306dc8dc2256cbdd5"
+      "bytes": 24010,
+      "sha256": "a3490a6964bf21f71afb5fe7362ca6238d11d9abb832ac48bbab357255ff00c0"
     },
     "crewSide": {
       "file": "leo2_revolution_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21354,
-      "sha256": "9cef0b8b61d54b3f465bc7fd03d4a9f7671282103de976088c44999273bf143d"
+      "bytes": 20918,
+      "sha256": "bcb052b6687f6bbfb0d09839c2ba8c0cf3d61b7975fff3341929d5cf99c7fb0e"
     },
     "angle": {
       "file": "leo2_revolution_proto_angle.webp",
@@ -865,8 +865,8 @@
     "technicalLabels": {
       "file": "leo2_revolution_proto_technical.json",
       "mime": "application/json",
-      "bytes": 4994,
-      "sha256": "1af10ec603e9534dea42d705295994c3cc5ab841f71fcff189278df229325cd5"
+      "bytes": 4993,
+      "sha256": "8e4f2f3b48c47adbbf25e3d2328d7c228211c5068248e8270c5f03a5213541eb"
     }
   }
 }

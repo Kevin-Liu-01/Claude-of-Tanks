@@ -406,18 +406,23 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
   // round the race's outer edge, its foot sunk into the race; where the swept deck stands higher at that radius (hull
   // kit or a crowned deck nearer the ring on some bearing), just inside where the sweep starts, still in the race, so
   // the foot need not clear it (a foot raised over it would leave the race's daylight on every other bearing)
-  const raceOut = receipt.rimR - RIM_INSET_M;
+  const raceOut = receipt.rimR - RIM_INSET_M, raceIn = raceOut - raceWidth(receipt.rimR);
   let rOut = raceOut + COLLAR_PROUD_M;
   const sweep = receipt.sweepDy, sweepR0 = receipt.sweepR0;
   if (sweep?.length && sweepR0 !== undefined && rOut >= sweepR0) {
     const b = Math.min(sweep.length - 1, Math.floor((rOut - sweepR0) / TURRET_SWEEP_BIN_M));
     if (sweep[b] > RACE_TOP_M + 0.002) {
       const inner = sweepR0 - 0.005;
-      if (inner - COLLAR_WALL_M < raceOut - raceWidth(receipt.rimR)) return;
+      if (inner - COLLAR_WALL_M < raceIn) return;
       rOut = inner;
     }
   }
-  const rIn = rOut - COLLAR_WALL_M;
+  // 266 (roof-pocket census): a turret whose floor stands well over the ring plane inside the collar (a sealed hollow
+  // between the hull's deck and the turret's floor) may take a thicker wall, userData.turretSeatCollarWallM, grown inward
+  // from the same outer face (nothing visible moves) and kept on the race. At COLLAR_WALL_M the band is thinner than the
+  // census's 2 cm cells, which then read daylight through it into the hollow.
+  const wallM = Math.max(COLLAR_WALL_M, Math.min(Number(turretG.userData.turretSeatCollarWallM) || COLLAR_WALL_M, rOut - raceIn));
+  const rIn = rOut - wallM;
   const raceTopY = receipt.deckY + RACE_TOP_M, footY = raceTopY - COLLAR_FOOT_SINK_M;
   const roofY = raceTopY + COLLAR_HOLLOW_MAX_M + COLLAR_TOP_BITE_M, skirtY = raceTopY + COLLAR_SKIRT_MAX_M;
   hullG.updateWorldMatrix(true, false);

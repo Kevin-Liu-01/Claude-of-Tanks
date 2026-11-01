@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-31T17:43:13.597Z",
+ "generatedAt": "2026-11-01T05:18:34.402Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 43,
+ "passed": 40,
  "total": 166,
  "rows": [
   {
@@ -650,6 +650,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t90a_burlak_proto",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 0,
+    "stations": 21.8,
+    "turretCurves": 34.2,
+    "wholeCurves": 0,
+    "dims": 0,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "charioteer",
    "geoMin": 0.6,
    "gatePassed": false,
@@ -735,22 +751,6 @@
     "dims": 100,
     "floaters": 100
    }
-  },
-  {
-   "id": "t90a_burlak_proto",
-   "geoMin": 11.6,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 46.4,
-    "stations": 11.6,
-    "turretCurves": 42.4,
-    "wholeCurves": 28.4,
-    "dims": 33,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "c1_ariete_proto_serie1",
@@ -1214,6 +1214,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t90m",
+   "geoMin": 60.2,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 95,
+    "stations": 97.9,
+    "turretCurves": 60.2,
+    "wholeCurves": 93.2,
+    "dims": 95.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t64bv",
    "geoMin": 63,
    "requiredMinimum": 90,
@@ -1367,6 +1383,22 @@
     "dims": 99,
     "floaters": 100
    }
+  },
+  {
+   "id": "t90sm",
+   "geoMin": 82,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 92.2,
+    "stations": 93.9,
+    "turretCurves": 89.2,
+    "wholeCurves": 93.6,
+    "dims": 82,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "marder1a3",
@@ -1740,15 +1772,18 @@
   {
    "id": "t90a",
    "geoMin": 90.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
    "gatePassed": true,
    "components": {
-    "hullCurves": 90.6,
-    "wholeCurves": 90.5,
-    "turretCurves": 90.4,
-    "stations": 90.4,
-    "dims": 97.8,
+    "hullCurves": 90.4,
+    "stations": 95.6,
+    "turretCurves": 92.8,
+    "wholeCurves": 92.8,
+    "dims": 96.4,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m26_pershing",
@@ -1872,6 +1907,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "t90a_vladimir",
+   "geoMin": 91.8,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 91.8,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "kf51_panther",
    "geoMin": 91.9,
    "requiredMinimum": 90,
@@ -1883,22 +1931,6 @@
     "turretCurves": 91.9,
     "wholeCurves": 95.8,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t90sm",
-   "geoMin": 92.2,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.2,
-    "stations": 94.7,
-    "turretCurves": 94.4,
-    "wholeCurves": 93,
-    "dims": 98.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1991,22 +2023,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t90m",
-   "geoMin": 93.2,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 94.5,
-    "stations": 98.5,
-    "turretCurves": 95.1,
-    "wholeCurves": 93.2,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "bmp3m_dragun125",
    "geoMin": 93.3,
    "requiredMinimum": 92,
@@ -2015,19 +2031,6 @@
    "components": {
     "wholeCurves": 93.3,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t90a_vladimir",
-   "geoMin": 93.5,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.5,
-    "dims": 95.7,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

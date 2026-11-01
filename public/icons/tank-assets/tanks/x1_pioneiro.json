@@ -558,7 +558,7 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-0.7783,0.41,-2.3927],
+        "min": [-0.7783,0.41,-2.3046],
         "max": [0.7783,1.458,-1.2473],
         "turretLocal": false
       },
@@ -579,15 +579,15 @@
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.6964,0.41,-0.4327],
-        "max": [0.6964,0.891,0.7382],
+        "min": [-0.2526,0.438,-0.0889],
+        "max": [0.6378,0.863,0.6871],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.552,-0.034,-1.3872],
-        "max": [-0.092,0.3163,-0.7665],
+        "min": [0.092,0.112,-1.1508],
+        "max": [0.552,0.3163,-0.7665],
         "turretLocal": true
       },
       {
@@ -675,35 +675,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.5574,0.7113,0.7049],
-        "max": [-0.098,1.4492,1.476],
+        "min": [0.498,0.916,0.8146],
+        "max": [0.9574,1.166,2.3046],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "radioOperator",
-        "min": [0.3647,0.7107,0.6093],
-        "max": [0.8241,1.5086,1.4303],
+        "min": [-0.7241,0.63,0.9221],
+        "max": [-0.2647,1.238,1.7221],
         "turretLocal": false
       },
       {
         "volumeId": "C03",
         "name": "gunner",
-        "min": [0.1705,-0.6981,-0.4326],
-        "max": [0.6299,0.5611,0.3888],
+        "min": [-0.6299,-0.6981,-0.4326],
+        "max": [-0.1705,0.5611,0.3888],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "commander",
-        "min": [0.1935,-0.8669,-0.8003],
-        "max": [0.4432,0.268,-0.0747],
+        "min": [-0.5132,-0.9371,-0.7103],
+        "max": [-0.1435,0.3777,0.1253],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "d874dc9d",
-  "metadataHash": "d1ec25d0",
+  "metadataHash": "88b75ea1",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0128
@@ -809,24 +809,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24178,
-      "sha256": "eeec5d96682a938900990422016440a9c79f0a96083d34cb2465db8a2ca6e59e"
+      "bytes": 24306,
+      "sha256": "5ede45ad01c602a0ba6b8e410d1bffe9a700e85689819381000625d5158e3f32"
     },
     "modulesSide": {
       "file": "x1_pioneiro_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26492,
-      "sha256": "adbe72f49f926b6d07481a11ba30c29dae3ed18b7f8f8b2feaaa438b12e2693a"
+      "bytes": 26156,
+      "sha256": "dd9673cc186b496774544c153d76328dd724e9f347c94e938fa9e0c2dcd82a4c"
     },
     "crewSide": {
       "file": "x1_pioneiro_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23478,
-      "sha256": "275a6100b9fa498558838d290e3322e31266215ef6087e8c5caa0606dde238c7"
+      "bytes": 24278,
+      "sha256": "ed9a6be58ac31978ba160341c2d97180fb6b3bcfae4b1bfb06373183362a80ca"
     },
     "markings": {
       "file": "x1_pioneiro_markings.png",
@@ -839,8 +839,8 @@
     "technicalLabels": {
       "file": "x1_pioneiro_technical.json",
       "mime": "application/json",
-      "bytes": 5320,
-      "sha256": "316def89a569666a6483c67fd72c35b7b61c0994853fc52b69e5a87f22b47515"
+      "bytes": 5322,
+      "sha256": "e1448b15f92488788e0f075e813aa7043f5e067bb7df40e805606d43b5800ed3"
     }
   }
 }

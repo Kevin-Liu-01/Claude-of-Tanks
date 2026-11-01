@@ -325,6 +325,10 @@ function bustleStowage(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
 export function buildLeopard2A4Turret(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
   P.turretG.position.set(T.pivot[0], T.pivot[1], T.pivot[2]);
   P.add('turret', KIT.cylY(1.00, 1.00, 0.03, P.q ? 48 : 24), 0, 0.013, 0);                       // ring guard
+  // 266 (roof-pocket census): behind the trunnion the 2A6 X's floor rises 0.15-0.21 m over the ring (0.146 at z -0.47, the
+  // bustle's 0.214 from -1.02), a sealed hollow inside the seat collar; the collar's wall is 4 cm here (turretSeatRace.ts),
+  // so the census no longer reads daylight through a 1.2 cm band into it (the release-265 2A4s' 3.3-4.3k cm2 of ring pockets)
+  P.turretG.userData.turretSeatCollarWallM = 0.04;
   const wedge = o.front === 'wedge';
   turretShell(P, wedge);
   if (wedge) buildLeopard2A6Front(P);

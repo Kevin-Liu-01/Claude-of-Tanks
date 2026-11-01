@@ -558,24 +558,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31630,
-      "sha256": "d8730fa6bf6b1bca4c1c81cc1c54afb5ff7bfaf0564ec60ee6419a3e891dd7d7"
+      "bytes": 31552,
+      "sha256": "2ed21b6f5f9108b971fdd4feff210eef773e2037281b6bc7bce24901b39babd2"
     },
     "modulesSide": {
       "file": "bmp3m_dragun125_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37026,
-      "sha256": "38039b02e2765f781ec757274bfc4cfb3989ddfdd89862c21962a4cc33441508"
+      "bytes": 36328,
+      "sha256": "88d69952b78a027ee30610e2b40a5d2cfbb2ce00986cf787d102be08b7164e31"
     },
     "crewSide": {
       "file": "bmp3m_dragun125_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31952,
-      "sha256": "f3e46bc8aec0734faef306090ab140df32deedc9a9c9c2e12ae50bc8494b5215"
+      "bytes": 31978,
+      "sha256": "328761abb2302f3019405e45a163998da6e83692f0b2700ff78d23bf0c121623"
     },
     "angle": {
       "file": "bmp3m_dragun125_angle.webp",
@@ -636,8 +636,8 @@
     "technicalLabels": {
       "file": "bmp3m_dragun125_technical.json",
       "mime": "application/json",
-      "bytes": 3429,
-      "sha256": "cfd99fc57b34c007b213552da9f20fc31caa102163a302d00827135a549dedc7"
+      "bytes": 3428,
+      "sha256": "e8781fb6dea2e1a30da561e7e19622f20ab0380618bf8a0579894064e6bef1c6"
     }
   }
 }

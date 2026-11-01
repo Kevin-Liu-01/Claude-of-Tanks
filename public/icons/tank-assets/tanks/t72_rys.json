@@ -2844,14 +2844,14 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1082,0.5735,-3.3113],
+        "min": [-1.1082,0.5735,-2.6904],
         "max": [1.1082,1.5109,-1.6557],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9531,0.6647,-3.1789],
+        "min": [-0.9531,0.8701,-3.1789],
         "max": [0.9531,1.3397,-2.6159],
         "turretLocal": false
       },
@@ -2859,14 +2859,14 @@
         "volumeId": "M06",
         "name": "fuelTank",
         "min": [0.4433,0.5735,-1.5875],
-        "max": [1.1082,1.1318,-0.4626],
+        "max": [1.1082,1.1318,-0.5218],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
         "min": [-0.942,0.5735,-0.5357],
-        "max": [0.942,1.1464,0.7304],
+        "max": [0.942,1.0604,0.7304],
         "turretLocal": false
       },
       {
@@ -2962,7 +2962,7 @@
     ]
   },
   "geometryHash": "9ebb2541",
-  "metadataHash": "266e849a",
+  "metadataHash": "69d32436",
   "presentationAnchor": {
     "xM": -0.0021,
     "zM": -0.0631
@@ -3020,24 +3020,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24962,
-      "sha256": "8e4a338b894512bf750037c3155fd6bcb6293dfc0a5d299320436f85fea150bf"
+      "bytes": 24988,
+      "sha256": "8894972f2211faa055502248fc659f3374df878702f3ad7d9a52dc1612296971"
     },
     "modulesSide": {
       "file": "t72_rys_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23848,
-      "sha256": "7daec5ed355e1411b092a20405bbcb6a192f919093a32281602f3694e4480b1e"
+      "bytes": 23318,
+      "sha256": "16cfd3edebd67efad4bc9ef71dcf47205f19544cd7e1ac7e91091423d2d6efed"
     },
     "crewSide": {
       "file": "t72_rys_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20880,
-      "sha256": "89fa60ed4760a7c3bfcb1f82d32b9a759ed74ffc596a24e92854dc43223ff2ef"
+      "bytes": 20730,
+      "sha256": "690bd645d9f89fc079d541c2038fa8dfa9d1ef8204cf89e13b6b49400707a6ea"
     },
     "angle": {
       "file": "t72_rys_angle.webp",
@@ -3099,7 +3099,7 @@
       "file": "t72_rys_technical.json",
       "mime": "application/json",
       "bytes": 4802,
-      "sha256": "9b6a34c0daef2581b7edfaf4c665105e32de34a99593b362de766d7e47df8a98"
+      "sha256": "1719d9a91b516ba794400cae3a93eb21dd79c65e3f041d254e25c21a88f16225"
     }
   }
 }

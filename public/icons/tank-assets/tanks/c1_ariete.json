@@ -3683,24 +3683,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24300,
-      "sha256": "adf7733c5331f1e14a0235734465899cb1ebe65775ec0d609f17357879694409"
+      "bytes": 24470,
+      "sha256": "f87b4eca50b92062d8bf0b434d9d03162793cfbe05418af572407dacda351f38"
     },
     "modulesSide": {
       "file": "c1_ariete_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28660,
-      "sha256": "84c5cb7453e2cb6317c1f915af69f530449a2003c69a44811c5a0560c46441f5"
+      "bytes": 26616,
+      "sha256": "b049d2263a7599343f3eb05614b98eb81d848d76f7a86ae54413728624ff2555"
     },
     "crewSide": {
       "file": "c1_ariete_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23860,
-      "sha256": "9ef52ae3654aaf47882bd112e96128da30a6ac8f1b10246bd875f0627b94d047"
+      "bytes": 24474,
+      "sha256": "4449ec0500edd5c90b01ccde677ee09a7b024906eb7688e19d519d3032a57fe0"
     },
     "angle": {
       "file": "c1_ariete_angle.webp",
@@ -3762,7 +3762,7 @@
       "file": "c1_ariete_technical.json",
       "mime": "application/json",
       "bytes": 5344,
-      "sha256": "1fc898fb17d2b3210aba46cb43714c40987ffbce23632f86a1d328c9707f69b8"
+      "sha256": "2c3ec387287fcfba7f30ef0d5d009791447ea26217c14ae993b5b2712cb3a089"
     }
   }
 }

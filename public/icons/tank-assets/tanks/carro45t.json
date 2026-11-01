@@ -598,24 +598,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18360,
-      "sha256": "716434b400b9e8bc14264ba6c686933741e177941af0b1c9e428620298d4a8d4"
+      "bytes": 18396,
+      "sha256": "ffb86194168f2b1a84fdbe69938ebeb14465e30f97235cc7208e68aae9b4d9eb"
     },
     "modulesSide": {
       "file": "carro45t_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19208,
-      "sha256": "ab7af9452094f48d29a7c64fafb66ab7026ea4855d7d26b56068f22ab9a3fb4c"
+      "bytes": 18908,
+      "sha256": "9e4df428d340b19fac93059d1be098c1f73dd33cfe870f2321ab60cd4e6d37b8"
     },
     "crewSide": {
       "file": "carro45t_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16660,
-      "sha256": "1815134fdd79500ca3cf611ff81f4ef8b4706647ec41bc307d048caeffe4d2d2"
+      "bytes": 17202,
+      "sha256": "ef60229b5c9e2ed6b9f6411db6353a98f702d499c95d39cc4ea1e66e352955aa"
     },
     "markings": {
       "file": "carro45t_markings.png",
@@ -628,8 +628,8 @@
     "technicalLabels": {
       "file": "carro45t_technical.json",
       "mime": "application/json",
-      "bytes": 4625,
-      "sha256": "6e72b593fc86f3e1a3f7adce22439b4b2deaf60a11a6435e1179f2d11e861498"
+      "bytes": 4627,
+      "sha256": "8a7fdd9706611318dc151235fb5c8592668bb1e326dd297751468cb96ec29040"
     }
   }
 }

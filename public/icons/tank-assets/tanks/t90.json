@@ -5069,24 +5069,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26960,
-      "sha256": "41b335a6ae9348fe287ad34bee99cfbf0614843e48f046b2a46df57280c231a4"
+      "bytes": 26430,
+      "sha256": "7f57f2017517256f140a7624dbe11ea8af931b6f9aadf78f1390be7cc4cf37f6"
     },
     "modulesSide": {
       "file": "t90_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24030,
-      "sha256": "a6c8f12e641864968ee2fd01cb047b4a0bdebb82ca22328b90e86b819d704a36"
+      "bytes": 22970,
+      "sha256": "017b2a096551e6fd75c71740357bf29c520bedb051907c1f3f3ccf0ca7043231"
     },
     "crewSide": {
       "file": "t90_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21470,
-      "sha256": "1f37682c93edd9b0983a716dc5603683c0a6b1f1c68b69ea2880e5140009922c"
+      "bytes": 21590,
+      "sha256": "fc0663ff16772faea43eb3fec136d82bc31dfdb0ab23589873cbb197b5b68da4"
     },
     "angle": {
       "file": "t90_angle.webp",

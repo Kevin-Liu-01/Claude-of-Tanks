@@ -762,24 +762,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33092,
-      "sha256": "fc48d12fb3dbcff37010f3f966720d69f0253aeb83a88fe3b7dde47f5621ef89"
+      "bytes": 33384,
+      "sha256": "8005b191451981d95e7cc79d92d54bf8e32a350d239e68193f4055a9d4100b2c"
     },
     "modulesSide": {
       "file": "mbt70_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33944,
-      "sha256": "ccb1f1d9d09f0d9f92053813e70738a4b05bbf8e83bb4b2e67dae9105e29bf3c"
+      "bytes": 33748,
+      "sha256": "e95227cb09091086e53e3d856c2a1b12581e8f89023248147d8097802fbcd8a4"
     },
     "crewSide": {
       "file": "mbt70_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31380,
-      "sha256": "93415bf50c6c12fd5f7b4d6eb4a170c0a24780468453c6e959e4f630d0c97436"
+      "bytes": 31110,
+      "sha256": "d3218dab393c4a459377787018182321b16af227a2e186a72111eeab4e89e1b8"
     },
     "markings": {
       "file": "mbt70_markings.png",
@@ -793,7 +793,7 @@
       "file": "mbt70_technical.json",
       "mime": "application/json",
       "bytes": 5224,
-      "sha256": "58a9bdf298c880be9f0533d857df005da549b555eee1d0302fb9a870e4ec73d4"
+      "sha256": "7f8fab675ad81841f0b0a1e1fc3f8b93c7c9ed57ce7987a9c410db1401500e92"
     }
   }
 }
