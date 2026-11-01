@@ -258,7 +258,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/misc.generated.ts	79b9522413535a22
 file	anatomy	src/vehicles/combatAnatomyGroups/modern2.generated.ts	f7062b7ed7eaa495
 file	anatomy	src/vehicles/combatAnatomyGroups/modern3Core.generated.ts	8d3f1696f8316b79
 file	anatomy	src/vehicles/combatAnatomyGroups/nationalModernization.generated.ts	9fe168187167dd84
-file	anatomy	src/vehicles/combatAnatomyGroups/patton.generated.ts	2d8cfdd0d4523485
+file	anatomy	src/vehicles/combatAnatomyGroups/patton.generated.ts	71f1e58d188d9d39
 file	anatomy	src/vehicles/combatAnatomyGroups/poland.generated.ts	3fd23cfd135d2649
 file	anatomy	src/vehicles/combatAnatomyGroups/pumaS1SourceX.generated.ts	de2da563f1460871
 file	anatomy	src/vehicles/combatAnatomyGroups/russia.generated.ts	e67182a91c5ab28e
@@ -353,7 +353,7 @@ file	fills	src/vehicles/interiorFillGroups/misc.generated.ts	8c92644987c0af82
 file	fills	src/vehicles/interiorFillGroups/modern2.generated.ts	b68d6b1b83b2df2e
 file	fills	src/vehicles/interiorFillGroups/modern3Core.generated.ts	147d5dad98714f10
 file	fills	src/vehicles/interiorFillGroups/nationalModernization.generated.ts	1d007c2a6f82a75b
-file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	785a0528a30a8c42
+file	fills	src/vehicles/interiorFillGroups/patton.generated.ts	cc8d2fae132ac52c
 file	fills	src/vehicles/interiorFillGroups/poland.generated.ts	0f9cd0486ed181d0
 file	fills	src/vehicles/interiorFillGroups/pumaS1SourceX.generated.ts	4b703231ab749f58
 file	fills	src/vehicles/interiorFillGroups/russia.generated.ts	f25f805ab836411b
@@ -684,8 +684,8 @@ file	icons	public/icons/tank-assets/tanks/m60a2.json	abef6a2dc1f30bae
 file	icons	public/icons/tank-assets/tanks/m60a3.json	d21b9a9c3fa1036a
 file	icons	public/icons/tank-assets/tanks/m6_linebacker.json	921af9218ea33b37
 file	icons	public/icons/tank-assets/tanks/magach3.json	1f311123b326eea4
-file	icons	public/icons/tank-assets/tanks/magach6b.json	3cdcd5344a6f0822
-file	icons	public/icons/tank-assets/tanks/magach7c.json	1052232e0ce2fb3e
+file	icons	public/icons/tank-assets/tanks/magach6b.json	64cd962d1c9230f5
+file	icons	public/icons/tank-assets/tanks/magach7c.json	5c19c9fbd391ea68
 file	icons	public/icons/tank-assets/tanks/marder1a3.json	f6d25878748b8207
 file	icons	public/icons/tank-assets/tanks/marder2.json	2a21c995bfbef391
 file	icons	public/icons/tank-assets/tanks/mbt70.json	606935b87da8557d
@@ -880,7 +880,7 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/misc.generated.ts	a3cafe8c6c1
 file	marking	src/vehicles/vehicleMarkingSeatGroups/modern2.generated.ts	f95c879219b7b477
 file	marking	src/vehicles/vehicleMarkingSeatGroups/modern3Core.generated.ts	8c17edf46fa2dd0b
 file	marking	src/vehicles/vehicleMarkingSeatGroups/nationalModernization.generated.ts	0e26535ca7a958e8
-file	marking	src/vehicles/vehicleMarkingSeatGroups/patton.generated.ts	c31bd2d1bc79b7cb
+file	marking	src/vehicles/vehicleMarkingSeatGroups/patton.generated.ts	fe76cfd311ba9a3b
 file	marking	src/vehicles/vehicleMarkingSeatGroups/poland.generated.ts	0ad50ff31b2f08c4
 file	marking	src/vehicles/vehicleMarkingSeatGroups/pumaS1SourceX.generated.ts	3bf4f05ff903a883
 file	marking	src/vehicles/vehicleMarkingSeatGroups/russia.generated.ts	154f2db76fc832ab
@@ -975,7 +975,7 @@ group	misc	7a65f8321e9b573a
 group	modern2	45089cfe16947121
 group	modern3Core	f2d66a5527c7ca97
 group	nationalModernization	0f8db4ad203d1769
-group	patton	d48ac29469c97bc1
+group	patton	1fd251322c1017bb
 group	poland	7d2cf6d2101b07ff
 group	pumaS1SourceX	b76c9d271e2abf5f
 group	russia	b9af03eb449b455a
@@ -1143,8 +1143,8 @@ key	anatomy	m60a2	25ab8da1cfdce989	1d69d6a5aa0cca61
 key	anatomy	m60a3	ac927a62678f6403	bafa573ba3790805
 key	anatomy	m6_linebacker	8c961bed6189127c	d57a978d816d8d7b
 key	anatomy	magach3	4f044d5e248c75a1	8b5ff9e282684610
-key	anatomy	magach6b	12c39dffc7ba27b7	7ecdc689fc3f8aae
-key	anatomy	magach7c	8f2f528e7940fa6b	90755bd20e2416ec
+key	anatomy	magach7c	abeede9b66eb892e	a0cb9ad808412c8e
+key	anatomy	magach6b	c5c987b9575db296	6b622ce9de8be736
 key	anatomy	marder1a3	20ac9a841fff8606	f3e1f9829ee91d0f
 key	anatomy	marder2	e87444b03b792901	419902933bae2b1b
 key	anatomy	mbt70	b505c2e44ce5a9bc	bcab7809ad40aa10
@@ -1419,8 +1419,8 @@ key	centering	m60a2	08449f387b269497	368957eed1616b9d
 key	centering	m60a3	44dd2bcd30dcc1db	e678774fac80128d
 key	centering	m6_linebacker	57a75d9bd2880ad2	20e23f4cac178aee
 key	centering	magach3	9720b904012ea827	f644c3752d6b3db6
-key	centering	magach6b	f90ad8f52ab3c41f	3c88ac81bcb10306
-key	centering	magach7c	380e7715c315cc64	616c3448430ba6ac
+key	centering	magach7c	42d74dbae462387e	653a8d2ce060f436
+key	centering	magach6b	ce2078d77a45a1bc	caa1eb3cb0a05883
 key	centering	marder1a3	eedc9d22834f815f	678aab2d5915f55e
 key	centering	marder2	023476a7377718dd	173db268ad63618c
 key	centering	mbt70	9850a3e62f92635a	adad99f6850c514a
@@ -1728,8 +1728,8 @@ key	controls	m60a2	8ab59f2eafc09532	f23970d5ece51efe
 key	controls	m60a3	467a5207d3065a8a	c2f7c176e47311e7
 key	controls	m6_linebacker	dfd021e2591a98fa	5ffb101e48602974
 key	controls	magach3	d391f901f7be3fc8	6b31f460a0c82f86
-key	controls	magach6b	53c67502f76ed90c	d73871e3cd33b671
-key	controls	magach7c	424c0604c8df6c98	af405ecbb6542dca
+key	controls	magach7c	783aecc43676fcbe	bf14f0323d075635
+key	controls	magach6b	11f84ac5b9181264	4d6e6ba0355cdf1a
 key	controls	marder1a3	75f79cd1a4e5b09f	def05253f84c3dc1
 key	controls	marder2	8c34f21d721d2ec0	a042f724704db58d
 key	controls	mbt70	92e6bdf1d2190d46	2eb1270004275f7c
@@ -2004,8 +2004,8 @@ key	fills	m60a2	c4800b852d92565a	ebe7a16cce069669
 key	fills	m60a3	180231c66b84a3b6	af48ae463561448a
 key	fills	m6_linebacker	226835c265156cc1	2ceaba8e6686ea76
 key	fills	magach3	ae97f13e8f1756c5	1c465977faeb7d44
-key	fills	magach6b	8d1764c97fab2b1a	5c12462c9c465964
-key	fills	magach7c	a5a2bfb2ea411001	2ce45d68f6d7b881
+key	fills	magach7c	a8f91f08a357f703	2f3a2663d8079663
+key	fills	magach6b	2781005cf2d046b6	e35f63171f50b339
 key	fills	marder1a3	048fc1880c630531	d72870d370827782
 key	fills	marder2	bf06c3fc8f7d39ba	24a5999f25a8cae8
 key	fills	mbt70	e94a6b6628828e2e	57ee6900af557e53
@@ -2281,8 +2281,8 @@ key	gunLines	m60a2	3ef25c11a799d918	9e719c1cc91af0f0
 key	gunLines	m60a3	db30048653f3e335	889f6daa8182a7b0
 key	gunLines	m6_linebacker	124f4e67e766cf1a	d90f43caa015d6ae
 key	gunLines	magach3	70233cee29d80fe4	bd9f30d2ec8a4777
-key	gunLines	magach6b	bd1c8feb53704025	232b218a11c98296
-key	gunLines	magach7c	8d48cdfc48100c9d	07ed8f073f5a90e0
+key	gunLines	magach7c	ae8cab88fefb3a25	1574404dc77a0a46
+key	gunLines	magach6b	8706560ac8d639d7	a00ad236c1471475
 key	gunLines	marder1a3	f82abd9a5efabaf9	afd23d09a7184f10
 key	gunLines	marder2	4d652260922896b9	52daec377005ad75
 key	gunLines	mbt70	c177db7f03b151db	aeb38d6d5bc27f87
@@ -2557,8 +2557,8 @@ key	icons	m60a2	29c152859cc41660	f53512b09dc3fdc9
 key	icons	m60a3	21b4a069f7bce79d	aa23d8e0da2416bf
 key	icons	m6_linebacker	ab9a593ee32e2c1a	bda6ae7c22bcf7fe
 key	icons	magach3	035192fca9a67506	11176044d8b7e306
-key	icons	magach6b	9fd4ce19b128d9ef	4ba447308148c80e
-key	icons	magach7c	aaa7dfadface0402	92c51c92d64fcccb
+key	icons	magach7c	6b9d950b71ada979	d945e51883e64cba
+key	icons	magach6b	848f196129c5c329	6775a90fbdb669cb
 key	icons	marder1a3	79f25136be1b806c	f1969be6c3a62850
 key	icons	marder2	8371d23f3ebac228	43e019957c012ea6
 key	icons	mbt70	f560dd72a20f823a	11b5405d2a8e18b2
@@ -2833,8 +2833,8 @@ key	ledger	m60a2	f05460151942c0cf	69f9d8d4606320c7
 key	ledger	m60a3	73cdcaa1b4568bc5	d164eb63f27e8805
 key	ledger	m6_linebacker	6fa1f3cc8df8ef92	56941e1bb0f33978
 key	ledger	magach3	ccab6d8d7a154a82	261f078e7ef23c1d
-key	ledger	magach6b	0c2538966fd09363	9b13969466f2bdb1
-key	ledger	magach7c	7f220c86ff35bbf6	a75c08bde8c5c9bf
+key	ledger	magach7c	1584e98934f57541	12034fad575e88ee
+key	ledger	magach6b	c9601f275d84fd7b	678293189665b9df
 key	ledger	marder1a3	a5729743b245a3d0	9e35a7d76cabf7f1
 key	ledger	marder2	df5482268cb99b47	5ecfa85759ba15f6
 key	ledger	mbt70	0b601ae9989db4c1	7a3256d3df28f1b1
@@ -3109,8 +3109,8 @@ key	marking	m60a2	3cc10c7142f4a932	9a8d938519addfcd
 key	marking	m60a3	75608141510444f7	fd85c38d1ca4d116
 key	marking	m6_linebacker	fc201711660210ab	3d5264a9eaba6342
 key	marking	magach3	940dfa878b7d5adc	6dc1c3692a86ee13
-key	marking	magach6b	5f436042e3e80a99	934b7a4a4dc4b695
-key	marking	magach7c	e9992e5de4f94903	84a00fb6105420a8
+key	marking	magach7c	ba534339564dfa57	936163a357cde3c0
+key	marking	magach6b	978fcff2f31563a7	934b7a4a4dc4b695
 key	marking	marder1a3	0cd75c2b4ce14e22	4800c4d3f7fee7bf
 key	marking	marder2	c12d05b0aebd9253	c719c659a013b10b
 key	marking	mbt70	9060e66409cd4a68	5e43e1f0052287b9
@@ -3385,8 +3385,8 @@ key	seats	m60a2	19487933b042b9ab	9d08a4e385217efe
 key	seats	m60a3	71627e20ac725309	f741c1bb8d53bfb1
 key	seats	m6_linebacker	3690582d76cb635b	82126c6f32e0515c
 key	seats	magach3	6ea03364b52e967b	3e92627dd236ab9a
-key	seats	magach6b	9a08cdcf28b3fb0f	9f8938f1167b2a38
-key	seats	magach7c	99b25beb8eef5136	85ce7ce7f959eedf
+key	seats	magach7c	bf923a10085c7774	9eea8bfdc8a49a5e
+key	seats	magach6b	2e9ff518e2342129	0ed12fa45d6dbd81
 key	seats	marder1a3	f23b1fd22a353647	87656ecbb15854ce
 key	seats	marder2	28c17cfda4836238	8de2269f359acc87
 key	seats	mbt70	9423b500ba035677	e25f6b00f1c7850c
@@ -3661,8 +3661,8 @@ key	spareTrack	m60a2	6b7f5d533c0e49b7	33dc0ed6a77b4c51
 key	spareTrack	m60a3	6d310217168ad3f1	aa7f8ad0a364447d
 key	spareTrack	m6_linebacker	c3f5227048d04b3d	7307095cbf263277
 key	spareTrack	magach3	1da190bba2bcd4c5	5524980592941c8a
-key	spareTrack	magach6b	c748b93b819cb4d1	1e44cee1acdd9138
-key	spareTrack	magach7c	183115d9961b0d9a	0059bb103b758518
+key	spareTrack	magach7c	0f746a4f92462d40	61eaf7cb6b3a1c21
+key	spareTrack	magach6b	2913187edcdde4eb	95a1c95c1dd1c6cc
 key	spareTrack	marder1a3	d713a5d2a4e9c37c	1de977be8af15763
 key	spareTrack	marder2	806a337cd24d9f48	d998ef27bc035091
 key	spareTrack	mbt70	ff0c22dd2ba3024b	5a4691d9d93bf4de
@@ -4004,8 +4004,8 @@ row	auxiliaryInventory	m60a2	4f46100cc0f26efb
 row	auxiliaryInventory	m60a3	caff573c9000a1f5
 row	auxiliaryInventory	m6_linebacker	979e22214d731485
 row	auxiliaryInventory	magach3	c7337dc800069d80
-row	auxiliaryInventory	magach6b	32c89c7e518723c7
-row	auxiliaryInventory	magach7c	69ee7ce904679e44
+row	auxiliaryInventory	magach6b	9350af145c326276
+row	auxiliaryInventory	magach7c	0339a245db7972fd
 row	auxiliaryInventory	marder1a3	7d2d7e483d1f8655
 row	auxiliaryInventory	marder2	89fccefdc7cfc8fa
 row	auxiliaryInventory	mbt70	125828992df51965
@@ -4250,8 +4250,8 @@ row	auxiliaryRoofGuns	m60a2	08f6f8783d73cc2d
 row	auxiliaryRoofGuns	m60a3	d811bc5e1e8132a4
 row	auxiliaryRoofGuns	m6_linebacker	d7981c899e840af3
 row	auxiliaryRoofGuns	magach3	b6bddc4baecad96f
-row	auxiliaryRoofGuns	magach6b	5ee3049187efbc78
-row	auxiliaryRoofGuns	magach7c	1b5fdd70d5f7a349
+row	auxiliaryRoofGuns	magach6b	6c9e96d824aa8f4b
+row	auxiliaryRoofGuns	magach7c	cfb3b30d7071f75e
 row	auxiliaryRoofGuns	mbt70	ca1698322687fcf9
 row	auxiliaryRoofGuns	merkava1b	a20e7fcb2a436ed7
 row	auxiliaryRoofGuns	merkava2b	abddbfb06a2de744
@@ -4506,8 +4506,8 @@ row	combatAnatomy	m60a2	44b9ee3b292f4328
 row	combatAnatomy	m60a3	513683ae03e36ad9
 row	combatAnatomy	m6_linebacker	840901d2114327d4
 row	combatAnatomy	magach3	a35ed16ae5c98197
-row	combatAnatomy	magach6b	3469a6b647c5b037
-row	combatAnatomy	magach7c	4e6c8e83350f3e6f
+row	combatAnatomy	magach6b	ccf67ab40477381f
+row	combatAnatomy	magach7c	d5601e2cbf474a48
 row	combatAnatomy	marder1a3	f72a9bc7883ac2c4
 row	combatAnatomy	marder2	9dd3b74dc7354d6a
 row	combatAnatomy	mbt70	f3f0173d50571448
@@ -5351,8 +5351,8 @@ row	geometryLedger	m60a2	16b31e3a5840afc5
 row	geometryLedger	m60a3	8fb3680fd8904fcf
 row	geometryLedger	m6_linebacker	ddd2d5506c19e2b7
 row	geometryLedger	magach3	52223c94ab4e2797
-row	geometryLedger	magach6b	6115be387e98b97e
-row	geometryLedger	magach7c	387d8f4adc007b91
+row	geometryLedger	magach6b	4e3d03d66ea30740
+row	geometryLedger	magach7c	a4181bb5d1a7f5d8
 row	geometryLedger	marder1a3	b83fba5b86ae7fd8
 row	geometryLedger	marder2	fc72fc79cc29bc3e
 row	geometryLedger	mbt70	028e63c895c525e3
@@ -5627,8 +5627,8 @@ row	gunJunction	m60a2	4bf259f92ac68331
 row	gunJunction	m60a3	d0e7c824596af402
 row	gunJunction	m6_linebacker	b756eee33929a735
 row	gunJunction	magach3	f1e233404ec315a6
-row	gunJunction	magach6b	7d05cca0923b6857
-row	gunJunction	magach7c	6ee25874c8ea7191
+row	gunJunction	magach6b	d126d33fc48377fd
+row	gunJunction	magach7c	7fafc3ac01a0582e
 row	gunJunction	marder1a3	ca3a871b293757f1
 row	gunJunction	marder2	50316529de86654e
 row	gunJunction	mbt70	ce218c8921d1b0df
@@ -5903,8 +5903,8 @@ row	interiorFills	m60a2	59cdd6c9e8886c90
 row	interiorFills	m60a3	7836c5a4729d4558
 row	interiorFills	m6_linebacker	1ae0eb8d4f6bdc08
 row	interiorFills	magach3	92b02769585edba5
-row	interiorFills	magach6b	c0cbeae7f3b58f5a
-row	interiorFills	magach7c	16eb93cf2e2fae8e
+row	interiorFills	magach6b	5750f62709ae65ed
+row	interiorFills	magach7c	0d5d54545e60481a
 row	interiorFills	marder1a3	8df1616efea40565
 row	interiorFills	marder2	305487bdfac4cf23
 row	interiorFills	mbt70	11ba8b2023bd257a
@@ -6180,7 +6180,7 @@ row	markingSeats	m60a3	ecc53f875ca069a0
 row	markingSeats	m6_linebacker	5ef3650131bbffb6
 row	markingSeats	magach3	dc1664b0d86b6a86
 row	markingSeats	magach6b	f13305cb58a617ea
-row	markingSeats	magach7c	3a0b32477f0261a9
+row	markingSeats	magach7c	b18139c27765a38a
 row	markingSeats	marder1a3	6e1e0ce32e4191ac
 row	markingSeats	marder2	ff073ca9bfa1a0f1
 row	markingSeats	mbt70	5901d520ad593d1a
@@ -6455,8 +6455,8 @@ row	missionAttachmentSeats	m60a2	2ceee5e71b467042
 row	missionAttachmentSeats	m60a3	fc4e2eae01f843cd
 row	missionAttachmentSeats	m6_linebacker	a96056c5400d2fe3
 row	missionAttachmentSeats	magach3	d5167128430bfa24
-row	missionAttachmentSeats	magach6b	277ee3d141f4732f
-row	missionAttachmentSeats	magach7c	ac6a02f6631b537a
+row	missionAttachmentSeats	magach6b	20bf79859aa2228e
+row	missionAttachmentSeats	magach7c	ece3bb46662ded74
 row	missionAttachmentSeats	marder1a3	6e0ac792a72b5e4c
 row	missionAttachmentSeats	marder2	464dcd04d3441a84
 row	missionAttachmentSeats	mbt70	934338ad9ea001e8
@@ -7012,8 +7012,8 @@ row	presentationAnchors	m60a2	58a69094ad454ee1
 row	presentationAnchors	m60a3	b165f59567369302
 row	presentationAnchors	m6_linebacker	edee09c4e647694a
 row	presentationAnchors	magach3	27e9ef1c677caa07
-row	presentationAnchors	magach6b	41dfb39b6c99256c
-row	presentationAnchors	magach7c	9f023920393e27bb
+row	presentationAnchors	magach6b	849b4814be53bdc5
+row	presentationAnchors	magach7c	f411a2c859f74628
 row	presentationAnchors	marder1a3	62ca7d6c8b191954
 row	presentationAnchors	marder2	f607f11efb00ba05
 row	presentationAnchors	mbt70	fa7ae6f120c76d1d
@@ -7288,8 +7288,8 @@ row	presentationProjections	m60a2	99d41ab49b951d02
 row	presentationProjections	m60a3	8b29ff681484d093
 row	presentationProjections	m6_linebacker	b776c6a6a56660a2
 row	presentationProjections	magach3	7fd0f45fce4207d9
-row	presentationProjections	magach6b	47774d61b60ed826
-row	presentationProjections	magach7c	f0378e12e03e8fce
+row	presentationProjections	magach6b	cfc9f0bbb7996884
+row	presentationProjections	magach7c	cbeb3f75378da1c9
 row	presentationProjections	marder1a3	0b90be1e189de2ab
 row	presentationProjections	marder2	757fe63e8168536c
 row	presentationProjections	mbt70	f811d2c6ab89e8e5
@@ -7840,8 +7840,8 @@ row	spareTrackLedger	m60a2	5d1b89b281e0d2d8
 row	spareTrackLedger	m60a3	531ee603e6ce03c1
 row	spareTrackLedger	m6_linebacker	f77cd0ef0fd2468b
 row	spareTrackLedger	magach3	651f8b50aea2cd98
-row	spareTrackLedger	magach6b	954ce12f08efc7a7
-row	spareTrackLedger	magach7c	d1c3926ac171f29b
+row	spareTrackLedger	magach6b	243f6889abf4120e
+row	spareTrackLedger	magach7c	46f6ca8b33203e07
 row	spareTrackLedger	marder1a3	661d5f0e5e0ddae5
 row	spareTrackLedger	marder2	cb1667ff00fd1442
 row	spareTrackLedger	mbt70	a57f50c42b1131bf
@@ -8702,8 +8702,8 @@ row	tankAssets	m60a2	0439a3cbf4e75bbd
 row	tankAssets	m60a3	de7f004bfa25c201
 row	tankAssets	m6_linebacker	b832a862c64268be
 row	tankAssets	magach3	72bbcd79fd1b41f0
-row	tankAssets	magach6b	5a38e8736e1dd251
-row	tankAssets	magach7c	5a3b67a81daab584
+row	tankAssets	magach6b	70582f0dc1421e72
+row	tankAssets	magach7c	7ffd6e5d1cc86577
 row	tankAssets	marder1a3	4f9bd8f38f2d3f52
 row	tankAssets	marder2	28589b1b2c30c1aa
 row	tankAssets	mbt70	d014bfa8ed5a3071
