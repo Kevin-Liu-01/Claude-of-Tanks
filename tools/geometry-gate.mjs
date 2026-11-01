@@ -23,14 +23,16 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // and ledger row untouched, never thrown on or recorded as unavailable. --skipped=<file> writes { id: reason } for every
 // requested registered id the run did not measure (an absent oracle, or a page error that kept its previous row), so the
 // changed-only chain leaves them due. Every record names its oracle: { path, sha256 }, the registry's path as the page
-// fetches it and the sha256 of that file's bytes (the gate step's per-id input). --oracles-only measures nothing and
+// fetches it and the sha256 of that file's bytes (the gate step's per-id input); a composite reference names its graft
+// source the same way, as oracle.graft (the page loads both, so both are the id's inputs, pinned, served and keyed alike).
+// --oracles-only measures nothing and
 // writes that field into each requested (or every) id's existing record where the oracle file is here.
 // Oracle pins (Main 2026-11-01, 267): an oracle whose bytes do not match its pin in tools/oracle-pins.mjs is a different
 // version: the gate refuses it before loading the page, naming the pinned sha256 (under --repin the row is kept, marked
 // repinError, and --skipped names it), so no record is ever measured on an unverified file.
 // Roster (267): the ledger keeps rows only for the fleet's ids (the page's playable roster); a run that writes it drops
 // any other row and that id's record. --prune does only that, measuring nothing. --registry=<file> writes the page's
-// registry ({ referenceSources: id -> path, playable }) and exits.
+// registry ({ referenceSources: id -> path, referenceGrafts: id -> graft path, playable }) and exits.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -70,16 +72,18 @@ const localAssetPath = (assetPath) => {
   const resolved = path.resolve(publicRoot, assetPath.slice(1));
   return resolved.startsWith(`${publicRoot}${path.sep}`) ? resolved : null;
 };
-/** The oracle a record names: the registry's path as the page fetches it and the sha256 of the file's bytes. */
-const oracleOf = (assetPath) => ({ path: assetPath, sha256: crypto.createHash('sha256').update(fs.readFileSync(localAssetPath(assetPath))).digest('hex') });
-let referenceSourceOf = {};
+/** A file the page loads for an id: its path as the page fetches it and the sha256 of its bytes. */
+const fileOf = (assetPath) => ({ path: assetPath, sha256: crypto.createHash('sha256').update(fs.readFileSync(localAssetPath(assetPath))).digest('hex') });
+/** The oracle a record names: the registered file, and a composite's graft source beside it. */
+const oracleOf = (id) => ({ ...fileOf(referenceSourceOf[id]), ...(graftOf[id] ? { graft: fileOf(graftOf[id]) } : {}) });
+let referenceSourceOf = {}, graftOf = {};
+/** The first file the page would load for `id` that is not in this checkout (its oracle, then its graft source). */
+const absentFile = (id, referenceSources) => [referenceSources[id], graftOf[id]].filter(Boolean)
+  .find((file) => { const local = localAssetPath(file); return !local || !fs.existsSync(local); }) ?? (referenceSources[id] ? null : 'no path');
 function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars) {
   const registered = new Set(referenceIds);
   assertNoPhotoOverride(requested??[],registered);
-  const available = new Set(referenceIds.filter((id) => {
-    const localPath = localAssetPath(referenceSources[id]);
-    return localPath && fs.existsSync(localPath);
-  }));
+  const available = new Set(referenceIds.filter((id) => !absentFile(id, referenceSources)));
   const ids = requested
     ? requested.filter((id) => available.has(id))
     : referenceIds.filter((id) => available.has(id));
@@ -92,7 +96,7 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     }
     if (unavailable.length && ABSENT_SKIP) {
       for (const id of unavailable) {
-        skipped[id] = `oracle absent here (${referenceSources[id]})`;
+        skipped[id] = `oracle absent here (${absentFile(id, referenceSources)})`;
         console.log(`[geo] ${id}: ${skipped[id]}`);
       }
     } else if (unavailable.length && REPIN) throw missingOraclesError(unavailable, referenceSources);
@@ -107,7 +111,7 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
   } else if (available.size < registered.size) {
     console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
     // a whole-fleet --skipped run names them too, so nothing it did not measure reads as current
-    for (const id of referenceIds) if (!available.has(id)) skipped[id] = `oracle absent here (${referenceSources[id]})`;
+    for (const id of referenceIds) if (!available.has(id)) skipped[id] = `oracle absent here (${absentFile(id, referenceSources)})`;
   }
   return ids;
 }
@@ -118,7 +122,8 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
 const refusedPublic = [];
 async function withRegistryPage(run, dependencies = {}) {
   // 267: the requested ids' registered oracles (none before discovery, which loads no oracle) and GATE_PAGE_PUBLIC
-  const oracles = Object.entries(referenceSourceOf).filter(([id, file]) => file && (!requested || requested.includes(id))).map(([, file]) => file);
+  const oracles = Object.entries(referenceSourceOf).filter(([id, file]) => file && (!requested || requested.includes(id)))
+    .flatMap(([id, file]) => [file, graftOf[id]].filter(Boolean));
   return await withIsolatedCaptureBrowser({
     root: ROOT,
     logLevel: 'error',
@@ -159,9 +164,10 @@ const ids = await withRegistryPage(async ({ page }) => {
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
   const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
   referenceSourceOf = referenceSources;
+  graftOf = await page.evaluate('window.__REFERENCE_GRAFTS');
   playableIds = await page.evaluate('window.__PLAYABLE_IDS');
   if (REGISTRY_FILE) {
-    fs.writeFileSync(REGISTRY_FILE, `${JSON.stringify({ referenceSources, playable: [...playableIds].sort() }, null, 1)}\n`);
+    fs.writeFileSync(REGISTRY_FILE, `${JSON.stringify({ referenceSources, referenceGrafts: graftOf, playable: [...playableIds].sort() }, null, 1)}\n`);
     return [];
   }
   return PRUNE_ONLY ? [] : selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
@@ -174,7 +180,7 @@ if (ORACLES_ONLY) {
     const file = path.join(OUT, `${id}.json`);
     if (!fs.existsSync(file)) continue;
     const text = fs.readFileSync(file, 'utf8'), record = JSON.parse(text);
-    const next = `${JSON.stringify({ ...record, oracle: oracleOf(referenceSourceOf[id]) }, null, 1)}\n`;
+    const next = `${JSON.stringify({ ...record, oracle: oracleOf(id) }, null, 1)}\n`;
     if (next !== text) { fs.writeFileSync(file, next); named++; }
   }
   console.log(`geometry-gate --oracles-only: ${named} record(s) name their oracle (${ids.length} id(s) with an oracle here)`);
@@ -184,8 +190,8 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
   const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
   for (const id of chunk) {
     try {
-      const oracle = oracleOf(referenceSourceOf[id]);
-      const pinError = oraclePinError(oracle.path, oracle.sha256, ORACLE_PINS);
+      const oracle = oracleOf(id);
+      const pinError = [oracle, oracle.graft].filter(Boolean).map((file) => oraclePinError(file.path, file.sha256, ORACLE_PINS)).find(Boolean);
       if (pinError) throw new Error(pinError);
       let rawSourceComparison=null;
       if(id==='k1a1' || OWNER_KIT_TARGETS[id]){

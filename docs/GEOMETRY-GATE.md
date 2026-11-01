@@ -171,7 +171,11 @@ Every registered oracle is pinned by sha256 in `tools/oracle-pins.mjs`
 whose bytes are not its pin, or a path with no pin, before the page loads; the
 error names the pinned hash (under `--repin` the row is kept, marked
 `repinError`, and `--skipped` names the id), so no record is measured on an
-unverified file. A new version of an oracle is a new pin with its reason. The
+unverified file. A composite reference (one certified source's hull under
+another's turret, `tools/reference-glb-loader.ts` graft) is two files: its
+record names the graft source beside the oracle (`oracle.graft`), and the gate
+pins, serves and keys it per id exactly as the oracle. A new version of an
+oracle is a new pin with its reason. The
 ledger holds rows only for the fleet's ids: a run that writes it drops the row
 and record of any id outside the roster, and `node tools/geometry-gate.mjs
 --prune` does only that (`tools/gate-oracle-pins.selftest.mjs`).

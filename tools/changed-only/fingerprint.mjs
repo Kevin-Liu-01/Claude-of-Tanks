@@ -162,7 +162,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // Per-id input files (266): a table's `inputField` names, in each id's row, a file the step writing the table reads for
   // that id, as { path, sha256 } (path as a page fetches it, under public/). Its row is the file's hash when the file is
   // in this checkout, else the hash the row recorded, so a checkout without the file keys the id as the checkout that
-  // measured it did. It keys only its own id, never the ids whose spec chains name it.
+  // measured it did. It keys only its own id, never the ids whose spec chains name it. A row's `graft` (a composite
+  // reference's second source, the same shape) keys the id beside it.
   const inputTables = {}, absentInputs = {};
   for (const [name, table] of Object.entries(TABLES)) {
     if (!table.inputField) continue;
@@ -171,10 +172,13 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const inputRows = {};
     for (const [id, named] of Object.entries(data.named?.[name] ?? {})) {
       if (typeof named?.path !== 'string') continue;
-      const file = abs(join('public', named.path.replace(/^\/+/, '')));
-      const digest = graph.hashLargeFile(file);
-      if (digest === 'missing') (absentInputs[name] ??= {})[id] = `${table.inputField} absent here (${rel(file)})`;
-      inputRows[id] = h16(`${named.path}:${digest === 'missing' ? (named.sha256 ?? 'unrecorded') : digest}`);
+      const parts = [named, ...(typeof named.graft?.path === 'string' ? [named.graft] : [])].map((input) => {
+        const file = abs(join('public', input.path.replace(/^\/+/, '')));
+        const digest = graph.hashLargeFile(file);
+        if (digest === 'missing') (absentInputs[name] ??= {})[id] ??= `${table.inputField} absent here (${rel(file)})`;
+        return `${input.path}:${digest === 'missing' ? (input.sha256 ?? 'unrecorded') : digest}`;
+      });
+      inputRows[id] = h16(parts.join('\n'));
     }
     data.rows[input] = inputRows;
   }

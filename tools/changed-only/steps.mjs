@@ -279,19 +279,20 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/geometry-gate.mjs': {
     // 267 re-pin (reviewed): the new sites hash the selected ids' oracles against tools/oracle-pins.mjs (a static
     // import, keyed with the tool), remove the records of ids outside the roster (its own outputs, docs/geometry-gate)
-    // and write --registry's file only when asked (the chain never passes it)
-    pin: 'f19648a47bd64da9',
+    // and write --registry's file only when asked (the chain never passes it); a composite's graft source is hashed,
+    // checked for presence and pinned like its oracle (the same per-id row, geometryGate.oracle.graft)
+    pin: 'd0611582b9de6086',
     reads: [],
     // public/: the oracles' presence and bytes for the ids it measures (keyed per id by the geometryGate.oracle rows) and
     // the files its server serves (the step's reads); docs/geometry-gate: its own records, raw-source comparisons and
     // ledger (the step's outputs), never another step's ledger in that directory
     covered: ['public', 'docs/geometry-gate'],
-    note: 'hashes the selected ids\' oracles under public/; reads, merges and prunes its own ledger and records',
+    note: 'hashes the selected ids\' oracles and graft sources under public/; reads, merges and prunes its own ledger and records',
   },
   'tools/reference-glb-loader.ts': {
     pin: 'a01ac8eed52735e6',
     reads: [],
-    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle), and a graft\'s source (cfg.graft.path), whose bytes the page refuses unless they hash to its certificate in source-world-registration.mjs (a keyed tool input)',
+    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle), and a composite\'s graft source (cfg.graft.path), keyed per id beside it (geometryGate.oracle.graft) and refused by the page unless its bytes hash to its certificate',
   },
   'tools/source-world-registration.mjs': {
     pin: '02080ee9df202934',

@@ -411,6 +411,20 @@ put('src/vehicles/anchors.generated.ts', anchors);
   assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
   put('public/models/a1.glb', 'oracle a1 v1');
   put('public/models/a2.glb', 'oracle a2 v1');
+  // a composite's graft source (the row's oracle.graft) keys its id beside the oracle: new graft bytes mark a1 alone;
+  // control: a2, with no graft, keeps its key
+  put('public/models/g1.glb', 'graft g1 v1');
+  const graftRows = () => rowsData({ rows: { ...rowsData().rows, records: { a1: 'g1', a2: 'g2' } },
+    named: { records: { ...named().records, a1: { ...named().records.a1, graft: { path: '/models/g1.glb', sha256: sha('graft g1 v1') } } } },
+    chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } });
+  const grafted = () => state({ steps: gateSteps(), rows: graftRows(), cfg: gateCfg });
+  const graftManifest = bootstrap(grafted());
+  assert.ok(grafted().inKey('gate', 'a1') !== g0.inKey('gate', 'a1') && grafted().inKey('gate', 'a2') === g0.inKey('gate', 'a2'),
+    'the graft keys its own id only');
+  put('public/models/g1.glb', 'graft g1 v2');
+  assert.deepEqual(changed(resolveChanged(grafted(), graftManifest)), { sizes: 'none:', other: 'none:', gate: 'ids:a1' },
+    'different bytes at a1\'s graft source mark a1 alone');
+  put('public/models/g1.glb', 'graft g1 v1');
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
