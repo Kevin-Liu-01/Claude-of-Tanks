@@ -3370,7 +3370,7 @@
    "hostSweep": []
   },
   "type10": {
-   "inputHash": "a256242e112dcf8d",
+   "inputHash": "e0c571c65ea91484",
    "runs": [
     {
      "index": 0,
@@ -3471,7 +3471,7 @@
    "hostSweep": []
   },
   "type10_dozer": {
-   "inputHash": "fc5cee8df69b0eaa",
+   "inputHash": "c3c0693249212c3d",
    "runs": [
     {
      "index": 0,
@@ -3566,102 +3566,13 @@
    "hostSweep": []
   },
   "type10_tk_x": {
-   "inputHash": "71b06e98f1a01a90",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.939,
-      "gap": 0,
-      "air": 0.061,
-      "hidden": 0,
-      "sunkMaxM": 0.001,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.916,
-      "host": "hull<hull@profiles/type10X.ts:53>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.001,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.892,
-      "host": "hull<hull@profiles/type10X.ts:53>"
-     }
-    },
-    {
-     "index": 2,
-     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.001,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.892,
-      "host": "hull<hull@profiles/type10X.ts:53>"
-     }
-    },
-    {
-     "index": 3,
-     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.939,
-      "gap": 0,
-      "air": 0.061,
-      "hidden": 0,
-      "sunkMaxM": 0.001,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.916,
-      "host": "hull<hull@profiles/type10X.ts:53>"
-     }
-    }
-   ],
+   "inputHash": "6dfb7c6666a0513b",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "398670e1da80462c",
+   "inputHash": "3c4405d8c5e928d2",
    "runs": [
     {
      "index": 0,
@@ -3797,7 +3708,7 @@
    "hostSweep": []
   },
   "type90": {
-   "inputHash": "449f9343dc57a672",
+   "inputHash": "732c33fbd3d25c47",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3815,7 +3726,7 @@
    "hostSweep": []
   },
   "type90b": {
-   "inputHash": "dbf970ab9622b859",
+   "inputHash": "fd724234ffee4e31",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

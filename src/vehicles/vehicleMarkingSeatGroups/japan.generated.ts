@@ -163,7 +163,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "pos": [
           1.4816398,
           0.4076981,
-          -1.36906
+          -1.143635
         ],
         "quaternion": [
           0,
@@ -176,7 +176,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0139672
+        "maximumSurfaceErrorM": 0.013355
       },
       {
         "kind": "designation",
@@ -185,7 +185,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "pos": [
           1.4816398,
           0.3188203,
-          -1.0513401
+          -1.5472751
         ],
         "quaternion": [
           0,
@@ -296,7 +296,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.073155
+        "maximumSurfaceErrorM": 0.1529644
       }
     ]
   }
