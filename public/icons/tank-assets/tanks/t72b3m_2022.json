@@ -12310,36 +12310,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.0511,0.4768,-3.3155],
-        "max": [1.0511,1.5295,-1.6603],
+        "min": [-1.0511,0.506,-2.6357],
+        "max": [1.0511,1.5295,-1.7194],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9039,0.5842,-3.1831],
+        "min": [-0.9039,0.7591,-3.1831],
         "max": [0.9039,1.3421,-2.6203],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.6306,0.4768,-1.6051],
-        "max": [1.2823,1.0994,-0.1154],
+        "min": [-1.2823,0.5361,-1.6051],
+        "max": [-0.6306,1.0994,-0.1154],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.7358,0.4428,-0.3361],
+        "min": [-0.7358,0.5322,-0.3361],
         "max": [0.7358,1.0088,0.988],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.8117,0.1285,-1.5451],
-        "max": [-0.1353,0.6954,-0.9709],
+        "min": [0.1353,0.1285,-1.2867],
+        "max": [0.5176,0.5761,-0.9709],
         "turretLocal": true
       },
       {
@@ -12372,16 +12372,24 @@
       {
         "volumeId": "M12",
         "name": "roofGun",
-        "min": [-0.15,-0.067,-0.5801],
-        "max": [0.15,0.067,1.3536],
+        "min": [-0.2249,-0.1168,-0.3316],
+        "max": [0.2249,0.1192,1.2139],
         "parts": [
           {
-            "min": [-0.15,-0.067,-0.5801],
-            "max": [0.15,0.067,1.3536]
+            "min": [-0.2249,-0.1042,-0.099],
+            "max": [0.2249,0.1161,0.2888]
           },
           {
-            "min": [-0.0297,-0.0297,0.1199],
-            "max": [0.0297,0.0297,0.5099]
+            "min": [-0.1589,-0.0952,-0.0158],
+            "max": [0.1589,0.0834,0.2703]
+          },
+          {
+            "min": [-0.1904,-0.0634,-0.3316],
+            "max": [0.1238,0.1192,1.2139]
+          },
+          {
+            "min": [-0.1901,-0.1168,-0.1517],
+            "max": [-0.0297,0.1148,0.1988]
           }
         ],
         "turretLocal": false
@@ -12398,21 +12406,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.8569,-0.5116,-0.472],
-        "max": [-0.4284,0.504,0.2809],
+        "min": [0.3129,-0.4997,-0.2137],
+        "max": [0.7723,0.4896,0.4715],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.4332,-0.4939,-0.4795],
-        "max": [0.8926,0.4917,0.3319],
+        "min": [-0.7629,-0.5038,-0.4829],
+        "max": [-0.3987,0.5772,0.0792],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "a3c2ce4e",
-  "metadataHash": "8bac9460",
+  "geometryHash": "89950f82",
+  "metadataHash": "78f82257",
   "presentationAnchor": {
     "xM": -0.0024,
     "zM": -0.0166
@@ -12438,10 +12446,11 @@
       "trackPadSimplified": 1,
       "armorPaint": 13,
       "hullRubber": 1,
-      "gunmetal": 7,
+      "gunmetal": 6,
       "wood": 1,
       "unclassified": 23,
-      "gearShadow": 1
+      "gearShadow": 1,
+      "machineGun": 4
     }
   },
   "muzzleBore": {
@@ -12468,39 +12477,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21194,
-      "sha256": "385da66ac2874ef0dab496d712034e3c1981b6c37ba0562668dfdd22a876007b"
+      "bytes": 21682,
+      "sha256": "7be8f29f5fe43e8196abbd7b0c54716802414c34e09173f6de851b994cbb143e"
     },
     "modulesSide": {
       "file": "t72b3m_2022_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24854,
-      "sha256": "ee3384edb00f12edfc6d74eb5f90f822e6848fdf292d63a74b808d413acccdd9"
+      "bytes": 24140,
+      "sha256": "c6b573eb54533f3818eae4013f6b27434f6e3068bd9dc6ae4179bbfc73c018fc"
     },
     "armorSide": {
       "file": "t72b3m_2022_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27278,
-      "sha256": "13b9b819df9c20959b21ed52b65ea2d7a84da43a4568d86e735b312cea308186"
+      "bytes": 27222,
+      "sha256": "8d16f003c8cdc610d34617b271dc6397e850b5c63fa8bd0d0eeb45a94c63aa09"
     },
     "angle": {
       "file": "t72b3m_2022_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30396,
-      "sha256": "a034eeece55d25cce20138febe243eeaee6b63c3c2036332d6a599eff9598374",
+      "bytes": 30160,
+      "sha256": "fe1f4c449d0a4d188c8e9ee0d3ce27e29e3c4d3c868f7a951d980bdd872db9b0",
       "thumbnail": {
         "file": "thumbs/t72b3m_2022_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12040,
-        "sha256": "f0986be59cd5eac3cf25db9a51b714e53c349f7489d56fb09fcae46a4277a3fa"
+        "bytes": 11960,
+        "sha256": "46c5dd9344f4d5b751c9220dc8b1830a1841ae98bb0d71fa1a8a358c13c5f635"
       }
     },
     "top": {
@@ -12508,16 +12517,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13868,
-      "sha256": "2ec86d1c7b7301e94e2d97b4a3fc50cb96c50c7e2836e9fee2b0bffbd0336def"
+      "bytes": 13894,
+      "sha256": "74b45f0218ce69396e020233511906de46910d0f2d8290abab7a187e35aceca6"
     },
     "sideSilhouette": {
       "file": "t72b3m_2022_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4693,
-      "sha256": "a1928a18919b2e911c13d0ec363def3d4fb644af1ef326466fe74af77b63fb24"
+      "bytes": 4740,
+      "sha256": "59ebbe672dc6f8c517059f7ed3d42ffb2da9e0b19727cbc73648aaf5d2d97170"
     },
     "topSilhouette": {
       "file": "t72b3m_2022_top_silhouette.png",
@@ -12540,14 +12549,14 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11520,
-      "sha256": "06ad51ea4900353e50a5b21ee929abc266a792b03632dc40678e3ce7d8213ddd"
+      "bytes": 11578,
+      "sha256": "8152ba1d4b004a1ff3eb7153acfc79411ab346548d7b88c132bd96a97fe86f57"
     },
     "technicalLabels": {
       "file": "t72b3m_2022_technical.json",
       "mime": "application/json",
-      "bytes": 4543,
-      "sha256": "71cb96d3146e53e7ae348bace73e4073eb66e01a4662679425b97ac79ae3f0ef"
+      "bytes": 4765,
+      "sha256": "89a71d0b2c24bc7f0e1768d5390fe44a502c3265fd82c7929602250c6d6fd931"
     }
   }
 }

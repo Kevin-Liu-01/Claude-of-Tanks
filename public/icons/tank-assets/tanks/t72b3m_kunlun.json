@@ -7760,24 +7760,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24306,
-      "sha256": "e53edaab53585316a6b0ef78f8954e1280ad616b1e0e61459884034279ba6cbb"
+      "bytes": 24370,
+      "sha256": "7ca62bb395b739ef628befe319310372580c4414ba83e38a99122a94497b2109"
     },
     "modulesSide": {
       "file": "t72b3m_kunlun_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22654,
-      "sha256": "707a81202fefe1ddf81d66d1a645140b97cdb8bbc1ec769ebfccd033d8b9aa6a"
+      "bytes": 22434,
+      "sha256": "8ecb9ff64970edc96448b5222a78174fd61a51ab4bd1056925aa7c9fc29e7451"
     },
     "crewSide": {
       "file": "t72b3m_kunlun_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20128,
-      "sha256": "d7932b5f857cdf117c79391a9eb243bcc78362a04da407675856690eefb8fb04"
+      "bytes": 19978,
+      "sha256": "80e2ee53d68d45e77e72b62c796a34ca65477d4b48c0ed5ce4656f62525dd371"
     },
     "angle": {
       "file": "t72b3m_kunlun_angle.webp",
@@ -7838,8 +7838,8 @@
     "technicalLabels": {
       "file": "t72b3m_kunlun_technical.json",
       "mime": "application/json",
-      "bytes": 5013,
-      "sha256": "d1e4d2dbad33635a851e0bcb9d84e92f3c3e69a4c8ecb52c60424fd92fdd0448"
+      "bytes": 5014,
+      "sha256": "ca4cc640201f1e1e18fa88efef91c30989bde21ee5f907dc2af75781c71c36d5"
     }
   }
 }

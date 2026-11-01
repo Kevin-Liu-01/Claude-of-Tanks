@@ -808,24 +808,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21802,
-      "sha256": "79c5190e08ac7a4440c9914d431eea7143c8060e682777a60c2b82ec5fdecc64"
+      "bytes": 21834,
+      "sha256": "d35e584c95af7da880d73f21500005e6c44626891cfa06af0b104f4750498f2a"
     },
     "modulesSide": {
       "file": "fv4034_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20530,
-      "sha256": "6b795385c812743622c4ad7d6c6b01b938736d1218addd2b56d08e5e255a9bcd"
+      "bytes": 20078,
+      "sha256": "97a3df491a2f23020df05448e070c3964105a0d5fd018f8bc1087446d9148d9c"
     },
     "crewSide": {
       "file": "fv4034_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16800,
-      "sha256": "2bb0539fdeeeaca7aea3f02379ff2ba34768c1efe95c2ff51eab63814e57949e"
+      "bytes": 16436,
+      "sha256": "5be63dcdd28ae6a11723ba26f30f60068a22100455545dff6e77cbf57ec8bcfc"
     },
     "markings": {
       "file": "fv4034_markings.png",

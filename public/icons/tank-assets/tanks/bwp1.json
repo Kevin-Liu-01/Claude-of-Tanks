@@ -559,24 +559,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34632,
-      "sha256": "62fd8c5f474767baa8651769452f2fd033a71dad646ae2e471de12054f68ad67"
+      "bytes": 34634,
+      "sha256": "41fe825ebcbbc276f7da3e569f6488f7ffbbf32859fa89b9b45366adfd2476f8"
     },
     "modulesSide": {
       "file": "bwp1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39832,
-      "sha256": "b930d72a679a2287b215782f5198f5069d84276051b0f3a731cee33d48f6ee53"
+      "bytes": 38146,
+      "sha256": "936fd45bc2b2aec78e5de84a1ae28f65d3b4ef5d091e3a453e6a40b0821b2104"
     },
     "crewSide": {
       "file": "bwp1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36720,
-      "sha256": "a41777b95684bcdcc1c29b5ebfa1f31304b4f3d33632974d8999172947c16636"
+      "bytes": 37076,
+      "sha256": "6fb1b6097741d3f4c87b2cf57705de5527e99ab0d331a7f0eebaaad32a12fd59"
     },
     "markings": {
       "file": "bwp1_markings.png",

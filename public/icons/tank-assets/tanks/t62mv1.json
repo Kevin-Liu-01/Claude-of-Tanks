@@ -10540,22 +10540,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1686,0.3847,-3.4799],
-        "max": [1.1686,1.8593,-1.755],
+        "min": [-1.1686,0.3847,-2.7661],
+        "max": [1.1686,1.5054,-1.755],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.005,0.5512,-3.3419],
-        "max": [1.005,1.6128,-2.7554],
+        "min": [-1.005,0.5512,-3.1659],
+        "max": [1.005,1.6128,-2.7847],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.4674,0.3847,-1.684],
-        "max": [1.1686,1.2552,-0.5125],
+        "min": [-1.1686,0.3847,-1.684],
+        "max": [-0.4674,1.2552,-0.5418],
         "turretLocal": false
       },
       {
@@ -10568,8 +10568,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7326,0.0122,-1.393],
-        "max": [-0.122,0.5762,-0.8544],
+        "min": [0.122,0.0122,-1.1536],
+        "max": [0.4418,0.4871,-0.8544],
         "turretLocal": true
       },
       {
@@ -10654,7 +10654,7 @@
     ]
   },
   "geometryHash": "3fdb64c2",
-  "metadataHash": "7347986c",
+  "metadataHash": "8164862b",
   "presentationAnchor": {
     "xM": -0.0014,
     "zM": 0.031
@@ -10714,24 +10714,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19352,
-      "sha256": "255a1f9ac1f653c680f5913ea46b033cbf5f74f7841b2a3eedd0441692e15c74"
+      "bytes": 19930,
+      "sha256": "5dd605de756b238c744a4f2d85bdc4c1463f84cf0dc3a550caeefcd1180dc487"
     },
     "modulesSide": {
       "file": "t62mv1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23638,
-      "sha256": "bde4072a06cf5eed7b3bb321927f93e118323e4832d27cc116614dcc53e1e769"
+      "bytes": 23636,
+      "sha256": "557b2e627f68162a4ab0d0b3a2e800bd6b7063eeb602fe43b7af06884942e1de"
     },
     "armorSide": {
       "file": "t62mv1_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27378,
-      "sha256": "72fc59e39ecdaeaa6b4bd11f7bfac2bfbcf87c8e195df69523afa6e72aadc894"
+      "bytes": 27408,
+      "sha256": "3446a22ff1753326e745ce8242a3be5b76697442953a77570efb1e7c32d48768"
     },
     "angle": {
       "file": "t62mv1_angle.webp",
@@ -10793,7 +10793,7 @@
       "file": "t62mv1_technical.json",
       "mime": "application/json",
       "bytes": 4827,
-      "sha256": "910828f23c8cd88f8cfbb599eb38668e753b6f3182a6326d3863b0d488097c7e"
+      "sha256": "929e72fa1cd60b164ea69d6e959d90ffc0b7a5ebbb35cf4f426ca97ece6cad7c"
     }
   }
 }

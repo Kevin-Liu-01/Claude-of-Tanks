@@ -25321,36 +25321,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9634,0.3719,-3.4274],
+        "min": [-0.9634,0.4598,-2.7165],
         "max": [0.9634,1.3677,-1.739],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8285,0.4713,-3.2923],
-        "max": [0.8285,1.1882,-2.7183],
+        "min": [-0.8285,0.7103,-3.2923],
+        "max": [0.651,1.1882,-2.7183],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-0.9634,0.3719,-1.6639],
+        "min": [-0.9634,0.4011,-1.6639],
         "max": [0.9634,0.9568,-0.801],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.0282,0.0142,-2.2236],
+        "min": [-1.0282,0.0717,-2.2236],
         "max": [1.0337,0.5607,-1.1021],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.881,0.0599,-1.9177],
-        "max": [-0.1445,0.3899,-1.1021],
+        "min": [-0.881,0.0599,-1.7721],
+        "max": [-0.1445,0.2524,-1.539],
         "turretLocal": true
       },
       {
@@ -25459,7 +25459,7 @@
     ]
   },
   "geometryHash": "210f8c25",
-  "metadataHash": "c927bdb5",
+  "metadataHash": "47300cf2",
   "presentationAnchor": {
     "xM": -0.0025,
     "zM": -0.0126
@@ -25518,24 +25518,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32948,
-      "sha256": "c621d68e5393908571e2dbad0cd1d355c57276c6e865d2b0951fa992d2dccac4"
+      "bytes": 33178,
+      "sha256": "5236de1af663bbe19e4ea8e7ea3b47dede5bebc0c590a51902ccad96f78f3891"
     },
     "modulesSide": {
       "file": "type10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25876,
-      "sha256": "1dae3ee3d4cc43fc3242fbf11b69f0e7a966173a9fd1c50b23a31feae5ec0f4b"
+      "bytes": 24706,
+      "sha256": "efe67a322cff643d66dda29a797d078be06febb93e6fbd2190de4070da67c819"
     },
     "crewSide": {
       "file": "type10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21072,
-      "sha256": "17becc969e98dc7616f2e16de2198f7bdb492b0c5cf4b9041890d03730bad0c5"
+      "bytes": 20744,
+      "sha256": "39d7dc02d2300f5113a1e3cbf05d5ea3baa3084399f6381ea07afb2c0c0f5940"
     },
     "angle": {
       "file": "type10_angle.webp",
@@ -25596,8 +25596,8 @@
     "technicalLabels": {
       "file": "type10_technical.json",
       "mime": "application/json",
-      "bytes": 5940,
-      "sha256": "71bc03a7af95697b2fe028df04aaa8f800b35da8bcafaa4e8e126ba7a3c5f5e3"
+      "bytes": 6149,
+      "sha256": "15e44827bdc0b0436448074ba88b857bc9ccc9ff9470423ad26221b95fb407e1"
     }
   }
 }

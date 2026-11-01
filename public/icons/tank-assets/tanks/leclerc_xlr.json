@@ -4599,24 +4599,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27050,
-      "sha256": "6ce0f82a58a325c67c4a4a73b98b4effa7118bc33de07f6de0ff52879de6bd67"
+      "bytes": 27112,
+      "sha256": "25cf2b8522448fe420e503fb9f0d1a96ba591fabb065ada6f812bab98da1d403"
     },
     "modulesSide": {
       "file": "leclerc_xlr_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25480,
-      "sha256": "738cf2affe7db13aa97797af2bc4211882bdd8b2d61235ef932ae7086b3bb730"
+      "bytes": 26468,
+      "sha256": "9dd6d5011ac778cd106de68a3cd97046d13626ab9cf506ec11963a2149b1e216"
     },
     "crewSide": {
       "file": "leclerc_xlr_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22810,
-      "sha256": "1bc4964fc6c15d354da860786b9e89e4372c51316a6052a2c73c318afe38e7a2"
+      "bytes": 22918,
+      "sha256": "1fb165005207b8845bbc76fa6588654a6f11186315bd7f017eba25ba91e9c89c"
     },
     "angle": {
       "file": "leclerc_xlr_angle.webp",
@@ -4677,8 +4677,8 @@
     "technicalLabels": {
       "file": "leclerc_xlr_technical.json",
       "mime": "application/json",
-      "bytes": 5418,
-      "sha256": "ca5d0caf17505b1037faf1c952c74505ddf5ae1717cb32a0c226d61a05042384"
+      "bytes": 5421,
+      "sha256": "d38b4172d8058c9abb9100371cdca2d066cc742fb7fc1b68517b2f4a9e66485e"
     }
   }
 }

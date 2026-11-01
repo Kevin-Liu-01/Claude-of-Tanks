@@ -543,24 +543,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37316,
-      "sha256": "0b32d656e0a22e97a6e6b6017b0a1e1bdc70f84e82da6aa3afa3e82ee47cad6a"
+      "bytes": 37136,
+      "sha256": "67bec2a66934d053a97edb68d54d9d9549da586b01fd4c99a4e73006af7e17f2"
     },
     "modulesSide": {
       "file": "bmp3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37182,
-      "sha256": "9878dcb334481361f3046158f88038de31d4fa0cb42018dc27269450630f1f77"
+      "bytes": 36498,
+      "sha256": "c8638cb43d04b4db16c4c5a6fc12ac9993bd0013fb18f1e62bef18ac5ee9f818"
     },
     "crewSide": {
       "file": "bmp3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30878,
-      "sha256": "1f9036391c3afba19a8cc5203f1c685e5a3f5656290c87bb18fa517d96cf7c36"
+      "bytes": 30964,
+      "sha256": "ed12b0d7d96c6abea63002fc9fe105a9c2143c28a0f0feb6efa2597680a3077f"
     },
     "markings": {
       "file": "bmp3_markings.png",
@@ -574,7 +574,7 @@
       "file": "bmp3_technical.json",
       "mime": "application/json",
       "bytes": 3851,
-      "sha256": "46ffaeb2a609c2b2676c025995a095c3386b1325edb28ce8a457048b60f6ff23"
+      "sha256": "67fd15217bf308217fd4b2b182f7f0ca66bd0d3e47c13b681003c40a450272b6"
     }
   }
 }

@@ -787,8 +787,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28388,
-      "sha256": "f498d981ff8a4e9fdb38242326731d0341af74a917f5477c81f0dc90e0552f80"
+      "bytes": 28398,
+      "sha256": "80bdfb24452eff35836aa3b34372aa15f50564530992beca7638899eca8f632e"
     },
     "modulesSide": {
       "file": "m1a1_modules_side.webp",

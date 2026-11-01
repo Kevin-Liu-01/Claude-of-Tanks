@@ -595,36 +595,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.0925,0.35,-3.6136],
+        "min": [-0.7932,0.6136,-2.9248],
         "max": [1.0925,1.3167,-1.9364],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9395,0.4453,-3.4795],
+        "min": [-0.522,0.7643,-3.3654],
         "max": [0.9395,1.1413,-2.9092],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-1.0925,0.35,-1.8618],
-        "max": [1.0925,0.9459,-1.0045],
+        "min": [-1.0027,0.5288,-1.714],
+        "max": [0.2544,0.9459,-1.0045],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.84,0.07,-2.05],
+        "min": [-0.84,0.2469,-2.05],
         "max": [0.84,0.7187,-0.9192],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.72,0.1156,-1.7416],
-        "max": [-0.12,0.516,-0.9192],
+        "min": [-0.702,0.2065,-1.5868],
+        "max": [-0.138,0.3679,-1.3383],
         "turretLocal": true
       },
       {
@@ -717,7 +717,7 @@
     ]
   },
   "geometryHash": "c3d717e6",
-  "metadataHash": "8e20c1e1",
+  "metadataHash": "85779991",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": -0.1103
@@ -819,24 +819,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30676,
-      "sha256": "f81ea8835a1a9c2550a8e0a1701c58ef3e1550c378494c8060c7dc90a642ce3b"
+      "bytes": 30656,
+      "sha256": "f83ddc59cb000f20c57ed9578a2e82894c85a1f6fabe6c08a0f87def4b4cba51"
     },
     "modulesSide": {
       "file": "ztz20_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29398,
-      "sha256": "dd3a1470fc92f2fb53513d94202c0883ffd60730ab8e8a45fa25b779dfe39678"
+      "bytes": 28028,
+      "sha256": "4c87c306194e0283ebeac2a4f568c70750df026a09c6a70ddf381dd182f27ebf"
     },
     "crewSide": {
       "file": "ztz20_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25782,
-      "sha256": "9e7f6cb84443b22ef85ca601c00be550a5eee17fff3fe9dc40fab4486fb3b171"
+      "bytes": 26046,
+      "sha256": "2c7ae78c9a899b50c2a34eb2b9043f239cb815f1c6c0a5d2c9e0dc89f29141a1"
     },
     "markings": {
       "file": "ztz20_markings.png",
@@ -850,7 +850,7 @@
       "file": "ztz20_technical.json",
       "mime": "application/json",
       "bytes": 4562,
-      "sha256": "531b55514931d363f55aff1daa53bf9be393c8fb76391b712e00252ef0a53ba9"
+      "sha256": "6925e4e0f1cfc8393f04836c5f427af39dc24fa7fd6613881a0c5b8a81b0a233"
     }
   }
 }

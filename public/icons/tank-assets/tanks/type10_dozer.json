@@ -25561,36 +25561,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9634,0.3719,-3.4274],
+        "min": [-0.9634,0.4598,-2.7165],
         "max": [0.9634,1.3677,-1.739],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8285,0.4713,-3.2923],
-        "max": [0.8285,1.1882,-2.7183],
+        "min": [-0.8285,0.7103,-3.2923],
+        "max": [0.651,1.1882,-2.7183],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-0.9634,0.3719,-1.6639],
+        "min": [-0.9634,0.4011,-1.6639],
         "max": [0.9634,0.9568,-0.801],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.0282,0.0142,-2.2236],
+        "min": [-1.0282,0.0717,-2.2236],
         "max": [1.0337,0.5607,-1.1021],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.881,0.0599,-1.9177],
-        "max": [-0.1445,0.3899,-1.1021],
+        "min": [-0.881,0.0599,-1.7721],
+        "max": [-0.1445,0.2524,-1.539],
         "turretLocal": true
       },
       {
@@ -25727,7 +25727,7 @@
     ]
   },
   "geometryHash": "878425ae",
-  "metadataHash": "853e8572",
+  "metadataHash": "b23a129f",
   "presentationAnchor": {
     "xM": 0.0017,
     "zM": 0.256
@@ -25835,24 +25835,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42636,
-      "sha256": "e774547463a66c8f15663940f874e1b248e36f4e082da015d3e16fd65f4252fa"
+      "bytes": 42744,
+      "sha256": "c765c8fff42204da38906b5e3f70eedd12571fa90516915a4d66db5f2ca13f10"
     },
     "modulesSide": {
       "file": "type10_dozer_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34318,
-      "sha256": "1338d001c26882677ffb2bc4abb86261d75df0aa4ea8addb62b55393e0ae4fcf"
+      "bytes": 34868,
+      "sha256": "090039c622751a787a69be0b77e0588028fda1e69ccde9e1eefe358060587e9d"
     },
     "crewSide": {
       "file": "type10_dozer_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31552,
-      "sha256": "2d3be2fbb300b04d960c690afab70d09d635a2fd74dd3f94c9f6bcc221d347c2"
+      "bytes": 31664,
+      "sha256": "c38d7dd830416ebd64b2369258147446f42b2519e0babf5a2938014e34ca9357"
     },
     "markings": {
       "file": "type10_dozer_markings.png",
@@ -25865,8 +25865,8 @@
     "technicalLabels": {
       "file": "type10_dozer_technical.json",
       "mime": "application/json",
-      "bytes": 5848,
-      "sha256": "8cc06254f3deac5f3fdd259c991a1cbef8ea0870b02e396f8cbf262f471c7682"
+      "bytes": 5843,
+      "sha256": "6397eb6fc25939026f3bb697ddfd5bc0f55bd5b5d49481089299d0b40daf8d8a"
     }
   }
 }

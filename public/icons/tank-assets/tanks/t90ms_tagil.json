@@ -7053,43 +7053,43 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.4779,0.616,-0.1491],
-        "max": [0.4779,0.8954,0.7486],
+        "min": [-0.2688,0.6719,-0.1491],
+        "max": [0.4779,0.8954,0.5392],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9481,0.4447,-3.233],
-        "max": [0.9481,1.5506,-1.5705],
+        "min": [-0.8912,0.6094,-2.7224],
+        "max": [0.8912,1.0871,-1.6061],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8154,0.5595,-3.1],
+        "min": [-0.8154,0.7955,-3.1],
         "max": [0.8154,1.3558,-2.5348],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5689,0.4447,-1.5186],
-        "max": [1.1852,1.1432,-0.1159],
+        "min": [-1.1558,0.6193,-1.5186],
+        "max": [-0.5689,1.1432,-0.5337],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.6637,0.4447,-0.3237],
-        "max": [0.6637,1.0268,0.9232],
+        "min": [-0.3097,0.6484,-0.2643],
+        "max": [0.6047,1.0268,0.5966],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.7603,0.1733,-0.9556],
-        "max": [-0.1283,0.5443,-0.4835],
+        "min": [0.1283,0.1733,-0.9556],
+        "max": [0.7603,0.5443,-0.4835],
         "turretLocal": true
       },
       {
@@ -7158,7 +7158,7 @@
     ]
   },
   "geometryHash": "eb42bc16",
-  "metadataHash": "3b268f47",
+  "metadataHash": "894e2a57",
   "presentationAnchor": {
     "xM": 0.0038,
     "zM": -0.0113
@@ -7214,24 +7214,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28390,
-      "sha256": "da8aa30202a9b4e051c1bb21683443eca969475b4e61f8e7d0f5affad8fe7da2"
+      "bytes": 28442,
+      "sha256": "34797e85217b436442b7243b64de282e028cb90ad5a7218945707fb7c5e019a5"
     },
     "modulesSide": {
       "file": "t90ms_tagil_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24288,
-      "sha256": "6caa117716309c7345e94ac470063b9ff1d82a7e78e8073c4ff4ee2c3de62289"
+      "bytes": 22700,
+      "sha256": "7d0bf1d00e43bd9006578b0ebbfd99e2de77b9d0ee506c94d243df51fd44e12d"
     },
     "crewSide": {
       "file": "t90ms_tagil_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20140,
-      "sha256": "f01bdeeec0884faa5ae0bcb1498ad1708d5de3dd8678ee888e738e80ca6fb4e6"
+      "bytes": 20074,
+      "sha256": "55296c3bf2bd6c8601734af8161934e4f661b84f5a2fc3812e622b6da217c571"
     },
     "angle": {
       "file": "t90ms_tagil_angle.webp",
@@ -7292,8 +7292,8 @@
     "technicalLabels": {
       "file": "t90ms_tagil_technical.json",
       "mime": "application/json",
-      "bytes": 4413,
-      "sha256": "697fd4fde8f9e4f279d3452cf11c7d6ac02c65bb05558e2ff72e009a50dd56ce"
+      "bytes": 4409,
+      "sha256": "fc2061f3137a15162f8a3499be81441dcb36c9a15fa9421337ac1d6f52ec5472"
     }
   }
 }

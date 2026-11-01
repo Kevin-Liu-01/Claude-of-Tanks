@@ -817,8 +817,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52424,
-      "sha256": "908ee4d5b0afa36f4bae584a4d1793d728277cf62c268586de586974b7a8139c"
+      "bytes": 52524,
+      "sha256": "3ea101b99da46026cffc8cb7577bc95d966bcd27a8b6cffd0bcca612f1f6a8f3"
     },
     "modulesSide": {
       "file": "ua_m1a1_modules_side.webp",
@@ -847,8 +847,8 @@
     "technicalLabels": {
       "file": "ua_m1a1_technical.json",
       "mime": "application/json",
-      "bytes": 4889,
-      "sha256": "b188daeb4c7318aa67114b51484989a0112593ce4ed3bc9fdc0827088f81789a"
+      "bytes": 5045,
+      "sha256": "48c96ff8506cdca7b680452c7d1328aa738b633062b3ba5971e8d89e2135e430"
     }
   }
 }

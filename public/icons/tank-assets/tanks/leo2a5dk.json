@@ -828,36 +828,36 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.05,0.5,-3.5857],
+        "min": [-1.05,0.5898,-2.8478],
         "max": [1.05,1.6074,-1.7854],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-0.903,0.615,-3.4416],
+        "min": [-0.903,0.9103,-3.4416],
         "max": [0.903,1.4124,-2.8295],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.5,0.5,-1.7367],
-        "max": [1.2,1.3437,-0.8122],
+        "min": [-1.2,0.7328,-1.7367],
+        "max": [-0.5,1.3437,-0.8122],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-1.15,0.5527,1.6206],
-        "max": [-0.35,1.5547,2.983],
+        "min": [0.35,0.6706,1.6206],
+        "max": [1.15,1.5547,2.983],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.7448,0.1136,-2.1663],
-        "max": [-0.1237,0.4772,-1.2695],
+        "min": [0.1237,0.1416,-2.1663],
+        "max": [0.7448,0.4772,-1.2695],
         "turretLocal": true
       },
       {
@@ -965,35 +965,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [0.3453,0.9096,1.8435],
-        "max": [0.8047,1.4359,3.6359],
+        "min": [-0.8047,0.9096,1.8435],
+        "max": [-0.3453,1.4359,3.6359],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.454,0.1152,0.556],
-        "max": [0.9134,0.6752,1.2106],
+        "min": [-0.7634,-0.7,-0.144],
+        "max": [-0.304,0.6521,0.5906],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.4851,-0.7,-0.8228],
-        "max": [0.8548,0.6877,0.009],
+        "min": [-0.7248,-0.8971,-0.6336],
+        "max": [-0.3351,0.4477,0.209],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.9435,-0.82,0.1762],
-        "max": [-0.4841,0.7345,0.6451],
+        "min": [0.3841,-0.9,0.089],
+        "max": [0.8435,0.7655,0.4594],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "c57ebe98",
-  "metadataHash": "8d83af42",
+  "metadataHash": "29adce0d",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": 0.0793
@@ -1101,24 +1101,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27988,
-      "sha256": "f4acf8e64f2d5b977308ae4bd8899559cb973dde735df68c9e0d0ec9d313a585"
+      "bytes": 28014,
+      "sha256": "e63fb11da37455d5d86fa2f8d55ad0b7826c20f58372c92bd67bb599a3d21fee"
     },
     "modulesSide": {
       "file": "leo2a5dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28098,
-      "sha256": "b9b0831e27e6a0644cd9f7602b4de78ad110f5f2ab8d897c4557230460fd39f8"
+      "bytes": 27448,
+      "sha256": "162612b99886e8bd77ce37f0344b1a3a62e8434d72aad0315fa88f810d182e5c"
     },
     "crewSide": {
       "file": "leo2a5dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25056,
-      "sha256": "519dc33e75c039d38b7a5f3f52dcc9b2cd43b73839df236b4198ab127b3b2b7e"
+      "bytes": 24554,
+      "sha256": "3bf8efc8b4b66e6eb0ed5fa0c296d2bd6879fce31f18914c61573507d565bdeb"
     },
     "markings": {
       "file": "leo2a5dk_markings.png",
@@ -1131,8 +1131,8 @@
     "technicalLabels": {
       "file": "leo2a5dk_technical.json",
       "mime": "application/json",
-      "bytes": 5241,
-      "sha256": "132680dd8a918a53e75fb6ee44c48def8a50a3c0b1593e5146490579ffa34737"
+      "bytes": 5259,
+      "sha256": "0ac45d4b9012c6ac389c4117eb85e0c6f072f567f8f6cd3b39d7e7bec883c475"
     }
   }
 }

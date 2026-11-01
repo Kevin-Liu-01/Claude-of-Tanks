@@ -515,24 +515,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35292,
-      "sha256": "aa87d59392d90d069433e85620cd9b20b44a7019b26b980ee5b988c4dbae7a76"
+      "bytes": 35242,
+      "sha256": "f62f0fe501576c5f4c7cdf5948447531bcf758f5ea2c2755ee83ff3d7dd2e6d6"
     },
     "modulesSide": {
       "file": "ajax_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35684,
-      "sha256": "814ee085e1698e8080e7ca80ea9896f9dbc49d0357b41fda8cc159aea1216745"
+      "bytes": 35010,
+      "sha256": "8501edf32e15fb9ccb265aced1e1e92c36b1e1ac37c245fe31fae0c2365d2e30"
     },
     "crewSide": {
       "file": "ajax_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30226,
-      "sha256": "956f14b2f830d40f458efcd8fa9ecc3554129a537eab69a470de64899f171849"
+      "bytes": 30392,
+      "sha256": "b77b032ed583854afd95da7d59d9f3a0b3f159e24b0bf318b3d7ed58b938b0a1"
     },
     "angle": {
       "file": "ajax_angle.webp",
@@ -594,7 +594,7 @@
       "file": "ajax_technical.json",
       "mime": "application/json",
       "bytes": 3871,
-      "sha256": "ef49a6f9cc1a2543821c610d451d2cd795fcb73a35620cbe319d8d9544104a01"
+      "sha256": "990204385a016dab3d9e934f248758ad326d2f370bebb2475a08093d102b06b0"
     }
   }
 }
