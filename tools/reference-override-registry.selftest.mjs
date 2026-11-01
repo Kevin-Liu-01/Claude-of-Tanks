@@ -63,8 +63,22 @@ for (const entry of Object.values(literal)) {
 }
 const table = Object.assign({}, ...sources.map(([, entries]) => entries));
 
+/** Rows that graft a second source's turret (reference-glb-loader.ts) without a private local graft file certified beside
+ *  their own (SOURCE_WORLD_FRAMES[id].graft). */
+function uncertifiedGrafts(table, frames) {
+  return Object.entries(table).filter(([, entry]) => entry.glb?.graft)
+    .filter(([id, entry]) => !entry.glb.graft.path?.startsWith('/models/community-candidates/') || !frames[id]?.graft)
+    .map(([id, entry]) => `${id}: ${entry.glb.graft.path}`);
+}
+
 assert.deepEqual(duplicateRegistrations(sources), [], 'one registration per id: a later one would replace it silently');
 assert.deepEqual(uncertifiedPaths(table, SOURCE_WORLD_FRAMES), [], 'certified ids register their private local oracle');
+assert.deepEqual(uncertifiedGrafts(table, SOURCE_WORLD_FRAMES), [], 'a grafted turret comes from a certified private local source');
+assert.equal(table.t90a_burlak_proto.glb.path, '/models/community-candidates/t90a_x_source.glb');
+assert.equal(table.t90a_burlak_proto.glb.graft.path, '/models/community-candidates/t90a_burlak_x_source.glb');
+assert.deepEqual(uncertifiedGrafts({ t90m: { glb: { path: '/models/community-candidates/t90m_source.glb',
+  graft: { path: '/models/community-candidates/t90a_burlak_x_source.glb' } } } }, SOURCE_WORLD_FRAMES),
+['t90m: /models/community-candidates/t90a_burlak_x_source.glb'], 'a graft without its certificate is named');
 assert.ok(SOURCE_WORLD_FRAMES.t72b_1987 && table.t72b_1987.glb.path === '/models/community-candidates/t72b_1987_x_source.glb');
 
 // negative controls: the 266 collision, rebuilt

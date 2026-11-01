@@ -58,8 +58,10 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = Object.freeze({
     silhouetteHullLengthM: 8.016, silhouetteHeightM: 2.881 },
   t90m: { hullLengthM: 6.86, overallLengthM: 10.3513, widthM: 3.78, heightM: 2.0309,
     silhouetteHullLengthM: 7.686, silhouetteHeightM: 2.828 },
+  // 267 (Main 2026-11-01: published lengths are silhouettes): the certified print's hull silhouette, drums and baskets
+  // in, on the gate's raster (8.023; 7.953 with its stowage aside). The 7.770 was the retired column-centre measure.
   t90sm: { hullLengthM: 6.86, overallLengthM: 11.1371, widthM: 3.78, heightM: 2.2893,
-    silhouetteHullLengthM: 7.770, silhouetteHeightM: 3.113 },
+    silhouetteHullLengthM: 8.023, silhouetteHeightM: 3.113 },
   t14_armata: { hullLengthM: 8.65425, overallLengthM: 9.9701, widthM: 3.9, heightM: 2.75,
     // Fixed source P95 occupied height includes the remote weapon station;
     // structural roof height remains separate. Never fit this to the candidate.
