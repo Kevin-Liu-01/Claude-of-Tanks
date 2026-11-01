@@ -347,12 +347,14 @@ function buildAMX40(P: FranceBuilderPort): void {
         [s * (o0 - 0.03), 0.81, lo], [s * o0, 0.81, lo], [s * o0, 0.81, hi], [s * (o0 - 0.03), 0.81, hi]));
     }
     // 267 round 4 (Opus, critic7: "one flat slab with hairline seams; the real skirts are separate panels"): 4 cm joints
-    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.040), s * 1.640, 0.97, 1.85 - k * 1.04); // panel joints (2mm proud of the 1.648 face)
+    // (267 round 5b, both critics, critic10: "the 4 cm joints read as dangling poles in front of the skirt"): thin again
+    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.016, 0.60, 0.016), s * 1.642, 0.97, 1.85 - k * 1.04); // panel joints (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
     // 267 round 4c (Sonnet, critic8: "the real flaps are broader, angled outward and clearly separate from the fender"):
     // the flap hangs from under the nose crest as before, its outer end swung 0.30 rad forward.
-    P.add('hullRubber', box(0.56, 0.34, 0.028), s * 1.30, 1.22, 3.395, 0, -s * 0.30, 0); // (267 r5: from the thin fender's edge)
+    // (267 round 5b, both critics, critic10: "the flaps hang too deep"; pic-1: about 0.21 m under the fender)
+    P.add('hullRubber', box(0.56, 0.21, 0.028), s * 1.30, 1.285, 3.395, 0, -s * 0.30, 0); // (267 r5: from the thin fender's edge)
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
@@ -407,17 +409,17 @@ function buildAMX40(P: FranceBuilderPort): void {
   const buildHullFurniture = (): void => {
   // 267 round 5 (Opus, critic9: "no legible driver's hatch on the glacis; the real tank has a large flat disc hatch with
   // a periscope block to the vehicle's left of the gun", pic-1, pic-2): the hatch leaves the fore deck under the turret's
-  // overhang (z 1.30, unseen from every Gallery view) for the upper glacis left of the gun, lying on its rake, its
-  // periscope block ahead of it; the splash V that stood there (in no photo) is gone.
+  // overhang (z 1.30, unseen from every Gallery view) for the bow left of the gun, its periscope block ahead of it; the
+  // splash V that stood there (in no photo) is gone.
+  // (267 round 5b, both critics, critic10: "the hatch is undersized, about half the glacis' depth in pic-1"): 0.60 m
+  // across, which the 0.44 m driver plate cannot hold; pic-1 has it on the bow deck near the front edge, the periscope
+  // block standing at its rear edge, so it lies on the near-flat bow platform (2.50..3.26)
   {
-    const glacisY = (z: number): number => 1.658 - (z - 2.06) * 0.15 / 0.44, rake = Math.atan2(0.15, 0.44);
-    const on = (z: number, lift: number): [number, number] => [glacisY(z) + lift * Math.cos(rake), z + lift * Math.sin(rake)];
-    const [hy, hz] = on(2.24, 0.013), [ry2, rz2] = on(2.24, 0.027), [py, pz] = on(2.43, 0.035), [gy, gz] = on(2.47, 0.04);
-    P.add('hull', cylY(0.25, 0.25, 0.026, 18), 0.50, hy, hz, rake, 0, 0);       // driver hatch
-    P.add('hullDark', torus(0.25, 0.012, 18), 0.50, ry2, rz2, rake, 0, 0);
-    P.add('hullDetail', box(0.18, 0.035, 0.05), 0.50, ry2 + 0.012, rz2 - 0.12, rake, 0, 0); // hinge bar at its rear
-    P.add('hullDetail', box(0.40, 0.07, 0.10), 0.50, py, pz, rake, 0, 0);       // periscope block
-    P.add('hullGlass', box(0.34, 0.035, 0.012), 0.50, gy, gz + 0.045, rake, 0, 0);
+    const deckY = (z: number): number => 1.508 - (z - 2.50) * 0.016 / 0.76, rake = Math.atan2(0.016, 0.76);
+    P.add('hull', cylY(0.30, 0.30, 0.026, 22), 0.50, deckY(2.90) + 0.013, 2.90, rake, 0, 0); // driver hatch
+    P.add('hullDark', torus(0.30, 0.013, 22), 0.50, deckY(2.90) + 0.027, 2.90, rake, 0, 0);
+    P.add('hullDetail', box(0.50, 0.07, 0.10), 0.50, deckY(2.555) + 0.035, 2.555, rake, 0, 0); // periscope block
+    P.add('hullGlass', box(0.44, 0.035, 0.012), 0.50, deckY(2.555) + 0.04, 2.61, rake, 0, 0); // its glass, facing forward
   }
   {
     // 267 (both photo critics, round 3: "headlight boxes missing ... the real vehicle has prominent boxed headlights with
@@ -426,10 +428,13 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const s of [-1, 1]) {
       // (267 round 4c: both critics, critic8, keep the raised housings on the fender tops, as in both photos)
       P.add('hullDetail', box(0.36, 0.20, 0.20), s * 1.30, 1.585, 3.05);       // housing, seated on the bow platform
-      // 267 round 4c (Opus, critic8: "the two front width-marker poles are missing", pic-1): a pole at the platform's outer
-      // corner, its foot in the platform
-      P.add('hullDetail', cylY(0.011, 0.013, 0.52, 8), s * 1.55, 1.75, 3.18);
-      P.add('hullDetail', cylY(0.024, 0.024, 0.03, 10), s * 1.55, 2.02, 3.18);
+      // 267 round 4c (Opus, critic8: "the two front width-marker poles are missing", pic-1): a pole on the bow platform,
+      // its foot in the platform. (267 round 5b, both critics, critic10, and pic-1: the poles stand inboard of the lamp
+      // boxes. They stop at 1.78 m, 2.5 cm under the barrel at level (its underside 1.805 m): the 4c poles stood 23 cm
+      // into a level gun's sweep, and pic-1's 0.55 m poles would too.)
+      P.add('hullDetail', cylY(0.011, 0.013, 0.30, 8), s * 1.04, 1.625, 2.98);
+      P.add('hullDetail', cylY(0.020, 0.020, 0.03, 10), s * 1.04, 1.76, 2.98);
+      P.add('hullDetail', box(0.05, 0.03, 0.05), s * 1.04, 1.505, 2.98);       // its foot clamp
       P.add('hullDark', box(0.37, 0.02, 0.21), s * 1.30, 1.69, 3.05);           // its brow
       const lamp = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 1, r: 0.068, guard: false, rake: 0, seed: s > 0 ? 4 : 3 });
       lamp.position.set(s * 1.25, 1.585, 3.165);
@@ -686,12 +691,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     // the weld bead along the chamfer break and the roof edge, one line each from the rear facet to the cheek
     P.add('turretDetail', box(0.014, 0.014, cheekZ - rearFacetZ), s * (flankOuterX + 0.002), flankChamferY, (cheekZ + rearFacetZ) / 2);
     P.add('turretDark', box(0.010, 0.012, cheekZ - rearFacetZ - 0.10), s * (flankOuterX - 0.004), flankFaceTopY + 0.004, (cheekZ + rearFacetZ) / 2);
-    // tube handrail on four standoffs along the flank face (the Saumur turret's grab rails)
-    const railX = s * (flankOuterX + 0.065), railY = 0.425, railZ0 = -1.18, railZ1 = 1.08;
-    P.add('turretDetail', cylZ(0.017, railZ1 - railZ0, 10), railX, railY, (railZ0 + railZ1) / 2);
-    for (const z of [railZ0 + 0.02, -0.36, 0.38, railZ1 - 0.02]) {
-      P.add('turretDetail', box(0.085, 0.024, 0.024), s * (flankOuterX + 0.025), railY, z);
-    }
+    // (267 round 5b, both critics, critic10: "a long tube handrail along the turret flank that no photo shows": gone)
   }
   };
   buildTurretStowage();
@@ -873,7 +873,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     // floating island to the geometry gate, which leaves equipment out of its silhouette)
     P.add('turretDetail', antennaPart(cylY(0.022, 0.034, 0.21, 10)), 0.98, 0.735, -1.25);  // stepped cone, lower course
     P.add('turretDetail', antennaPart(cylY(0.010, 0.020, 0.10, 8)), 0.98, 0.94, -1.25);    // upper course
-    P.add('turretDetail', antennaPart(cylY(0.006, 0.008, 0.20, 6)), 0.98, 1.09, -1.25);    // rod
+    P.add('turretDetail', antennaPart(cylY(0.010, 0.012, 0.20, 8)), 0.98, 1.09, -1.25);    // rod (267 r5b: thick enough to read)
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.98, 0.762, -1.25);     // whip base pot at the source seat
   }
   };
