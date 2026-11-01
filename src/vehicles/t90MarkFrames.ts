@@ -23,7 +23,8 @@ const STRUCTURAL_DIMS = ['hullLengthM', 'overallLengthM', 'widthM', 'heightM'] a
 // turret: the yaw pivot in the hull frame; gun: the trunnion from the yaw pivot; both in the authoring frame
 const MEASURED_FRAMES: Readonly<Record<string, MeasuredFrame>> = Object.freeze({
   t90a_burlak_proto: { turret: [.01, 1.468, -.0039], gun: [-.00495, .37419, 1.3039], lengthM: 4.74076, radiusM: .09914 },
-  bmpt_t90: { turret: [0, 1.374, .15], gun: [0, .68, .55], lengthM: 3.36600, radiusM: .105 },
+  // 267: the Terminator module's trunnion at the head's crown (profiles/bmptT90Station.ts BMPT_T90_TRUNNION)
+  bmpt_t90: { turret: [0, 1.374, .15], gun: [0, 1.00, .55], lengthM: 3.36600, radiusM: .105 },
 });
 
 export function applyT90MarkSourceFrames(specs: Record<string, FleetTankSpec>): void {
