@@ -97,6 +97,13 @@ export interface ActorWorldCollision extends AuthoritativeWorldCollision {
 export interface MatchActorResume {
   tick: number;
   battleTimeMs: number;
+  /**
+   * When `tick` was due on the old host's timeline, on this actor's clock (`now`). The loop then starts on that timeline,
+   * the ticks the world stood still meanwhile (the new host loading its world, the resume hold) skipped (267): every
+   * client's clock carries the old host's time, and a loop started at `tick` later than that ran behind it by the delay,
+   * the clients' controls aimed that far ahead. Without it the loop starts at `tick` when it starts.
+   */
+  dueAtMs?: number;
 }
 
 export interface MatchActorOptions {
@@ -384,8 +391,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
-  if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs))) {
-    throw new TypeError('resume needs an integer tick >= 0 and a finite battleTimeMs >= 0');
+  if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs)
+      || (resume.dueAtMs !== undefined && !Number.isFinite(resume.dueAtMs)))) {
+    throw new TypeError('resume needs an integer tick >= 0, a finite battleTimeMs >= 0 and a finite dueAtMs if any');
   }
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
@@ -515,6 +523,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
   const driven = new Uint8Array(MAX_ENTITIES + 1);
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
+  // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
+  let resumedFromTick = resume ? resume.tick : 0;
   const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
   let ended = false;
   let stopped = false;
@@ -642,7 +652,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const restoredTick = restoredTicks[entityId]!;
     if (restoredTick < 0) { refuse('notRestored'); return; }
     if (hinted[entityId]) { refuse('repeated'); return; }
-    if (driven[entityId] || loop.tick > resume.tick + RESUME_HINT_WINDOW_TICKS) { refuse('late'); return; }
+    if (driven[entityId] || loop.tick > resumedFromTick + RESUME_HINT_WINDOW_TICKS) { refuse('late'); return; }
     if (!(hint.tick > restoredTick)) { refuse('older'); return; }
     if (hint.tick >= resume.tick) { refuse('future'); return; }
     const x = dequantizePosition(hint.x);
@@ -1048,7 +1058,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   function start(): void {
     if (stopped) return;
     if (authority.phase === 'loading') authority.onMatchReady();
-    loop.start();
+    if (resume?.dueAtMs !== undefined && !loop.running && loop.tick === resume.tick) {
+      resumedFromTick = resume.tick + Math.max(0, Math.floor((now() - resume.dueAtMs) / TICK_MS + 1e-6));
+      loop.start(resumedFromTick);
+    } else {
+      loop.start();
+    }
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {

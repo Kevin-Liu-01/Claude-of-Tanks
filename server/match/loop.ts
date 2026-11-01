@@ -43,7 +43,11 @@ export interface FixedStepLoop {
   readonly tickMs: number;
   readonly tickCost: Histogram;
   readonly stats: { droppedTicks: number; stalls: number; wakeups: number; lateWakeupMaxMs: number };
-  start(): void;
+  /**
+   * Start (or resume) the loop. `atTick`, at or past the current tick, moves the timeline there first, the ticks between
+   * skipped: a migrated host's world stood still while it loaded and held for its seats, on the old host's timeline.
+   */
+  start(atTick?: number): void;
   stop(): void;
   /** Run every tick due at `nowMs` (manual driving for tests). Returns the ticks run (a stall's skipped ticks are not). */
   advance(nowMs?: number): number;
@@ -137,8 +141,12 @@ export function createFixedStepLoop({
     tickMs,
     tickCost,
     stats,
-    start() {
+    start(atTick) {
       if (running) return;
+      if (atTick !== undefined) {
+        if (!Number.isInteger(atTick) || atTick < tick) throw new TypeError('atTick must be an integer at or past the current tick');
+        tick = atTick;
+      }
       running = true;
       originMs = now() - tick * tickMs;
       arm();
