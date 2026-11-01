@@ -721,7 +721,7 @@ installServiceRecord(bus, {
   playerTeam: () => game.player?.team ?? null,
   teamOf: (id) => game.tankById.get(id)?.team ?? null,
   gameMode: () => game.gameMode,
-  watched: () => !!game.ruleset?.watch,
+  watched: () => !!game.ruleset?.watch || !!game.ruleset?.couch,
   clockS: () => game.timeS,
   playerHpFraction: () => {
     const combat = game.player?.combat;

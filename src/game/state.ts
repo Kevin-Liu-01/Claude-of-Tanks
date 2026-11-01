@@ -48,7 +48,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty,
   rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -161,6 +161,7 @@ import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
 } from './soloConsumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { assignCouchSeats, type CouchBattle } from './couchSeats.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
@@ -478,6 +479,8 @@ interface SetupBattleOptions {
   deferOpeningRoutes?: boolean;
   /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's; ignored for a mode that cannot be watched. */
   watch?: boolean;
+  /** Couch mode (sim/matchRuleset.ts COUCH_RULES): phones drive these seats; ignored for a mode couch play leaves out. */
+  couch?: CouchBattle;
 }
 
 interface CameraRig {
@@ -749,7 +752,9 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId),
     options.arrangement === undefined ? readTeamArrangement(game.gameMode) : options.arrangement);
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
+  else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
   game.watch = null;
+  game.couch = null;
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -1213,6 +1218,8 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
+    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot
+    else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }
     else if (!isPlayer) createBattleBot(context, entity, index, spawn);
     else if (game.ruleset.watch) {
       // a watched battle's human seat: its brain is built as any bot's and parked until the battle opens (watchSeat.ts)
@@ -1461,6 +1468,11 @@ export function setupBattle(
     if (role === 'scout') teamHasScout[team] = true;
   }
 
+  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts)
+  if (game.ruleset.couch && opts.couch) {
+    const sides = couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length);
+    game.couch = { sides: opts.couch.sides, seats: assignCouchSeats(game.tanks, allySet, opts.couch.seats, sides) };
+  }
   const spawnContext: BattleSpawnContext = {
     game,
     world,
@@ -3241,6 +3253,8 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     // mode's score by side, as the HUD showed it (a battle scored by kills, or the Horde's waves, reads its kills)
     watch: !!game.ruleset.watch,
     score: game.ruleset.watch ? watchedScore(game) : null,
+    // a couch battle (COUCH_RULES): no record reads it (guests have no profile)
+    couch: !!game.ruleset.couch,
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,

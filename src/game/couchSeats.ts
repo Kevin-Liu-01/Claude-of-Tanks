@@ -8,11 +8,24 @@
  * mode's bots. A seat with no tank left on its side sits out the battle.
  */
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import type { CouchSides } from '../sim/matchRuleset.ts';
 import type { PadHoldAction, PadTapAction } from '../pad/padProtocol.ts';
 
 export interface CouchSeatAssignment<T> {
   seat: number;
   entity: T;
+}
+
+/** How a couch battle is asked for: the lobby's seat numbers in play and how they take sides. */
+export interface CouchBattle {
+  seats: readonly number[];
+  sides: CouchSides;
+}
+
+/** A couch battle's seats on the page (game.couch). */
+export interface CouchSession<T> {
+  sides: CouchSides;
+  seats: CouchSeatAssignment<T>[];
 }
 
 /**
