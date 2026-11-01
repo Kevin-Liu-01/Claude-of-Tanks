@@ -333,15 +333,15 @@ function buildAMX40(P: FranceBuilderPort): void {
     // on to z 3.20 under the raked front panel, a 3 cm rod in the air ahead of the hem; it ends with the 1.671 band
     // (z 2.35) whose foot it rides, keeping the published width.
     segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 2.35);
-    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.016), s * 1.640, 0.97, 1.85 - k * 1.04); // panel seams (2mm proud of the 1.648 face)
+    // 267 round 4 (Opus, critic7: "one flat slab with hairline seams; the real skirts are separate panels"): 4 cm joints
+    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.040), s * 1.640, 0.97, 1.85 - k * 1.04); // panel joints (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
     // 267 round 4 (Opus, critic6: "the headlight box sits on a tall camo-painted face above the black flap; in pic-1 the
     // light box sits directly on the flap"): the flap runs up over the outer nose's crest to the platform under the lamp.
-    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.08, 3.44);
-    P.add('hullRubber', convexSlab(
-      [s * 1.02, 1.475, 3.255], [s * 1.58, 1.475, 3.255], [s * 1.58, 1.215, 3.43], [s * 1.02, 1.215, 3.43],
-      [s * 1.02, 1.489, 3.276], [s * 1.58, 1.489, 3.276], [s * 1.58, 1.229, 3.451], [s * 1.02, 1.229, 3.451]));
+    // 267 round 4b (both critics, critic7: "the flap blocks hang far too deep and hide the track; the real ones are thin
+    // black aprons, about a third of the nose height, under tan fender pods"): a 0.18 m apron under the lamp pod.
+    P.add('hullRubber', box(0.56, 0.18, 0.028), s * 1.30, 1.14, 3.44);
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
@@ -407,13 +407,15 @@ function buildAMX40(P: FranceBuilderPort): void {
     // yellow lenses and tail-light units on each fender corner"): each bow corner carries a boxed lamp housing on the
     // platform, a round lens in its face and the indicator box outboard of it; the guarded twin pods are gone.
     for (const s of [-1, 1]) {
-      P.add('hullDetail', box(0.36, 0.20, 0.20), s * 1.30, 1.585, 3.05);       // housing, seated on the bow platform
-      P.add('hullDark', box(0.37, 0.02, 0.21), s * 1.30, 1.69, 3.05);           // its brow
+      // 267 round 4b (critic7: Sonnet "a tan fender pod with a thin black apron below", Opus "the light box sits directly
+      // on the flap"): the housing is the pod in the nose crest, over the apron, its back buried in the crest
+      P.add('hull', box(0.36, 0.22, 0.24), s * 1.30, 1.34, 3.34);               // pod, y 1.23..1.45, face 3.46
+      P.add('hullDark', box(0.37, 0.02, 0.25), s * 1.30, 1.455, 3.34);          // its brow
       const lamp = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 1, r: 0.068, guard: false, rake: 0, seed: s > 0 ? 4 : 3 });
-      lamp.position.set(s * 1.25, 1.585, 3.165);
+      lamp.position.set(s * 1.25, 1.34, 3.475);
       P.hullG.add(lamp);
-      P.add('hullDark', box(0.10, 0.09, 0.03), s * 1.42, 1.585, 3.155);         // indicator
-      P.add('hullGlass', box(0.08, 0.07, 0.012), s * 1.42, 1.585, 3.172);
+      P.add('hullDark', box(0.10, 0.09, 0.03), s * 1.42, 1.34, 3.465);          // indicator
+      P.add('hullGlass', box(0.08, 0.07, 0.012), s * 1.42, 1.34, 3.482);
     }
     const cable = FITTINGS.towCable({ mats: P.mats, r: 0.019, seed: 7,
       pts: [[1.32, 1.602, 0.75], [1.365, 1.602, -0.25], [1.32, 1.64, -1.45]] });  // cable is half-buried in its deck clips, as in the source print
@@ -707,20 +709,24 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDetail', cupola(cylY(0.51, 0.52, 0.014, 26)), -0.80, 0.657, -0.162); // outer well lip
   P.add('turretDark', cupola(torus(0.43, 0.010, 26)), -0.80, 0.667, -0.162);      // drainage seam
   P.add('turret', cupola(cylY(0.42, 0.45, 0.030, 24)), -0.80, 0.677, -0.162);    // stepped seat
-  P.add('turret', cupola(cylY(0.37, 0.39, 0.120, 24)), -0.80, 0.750, -0.162);    // drum
-  P.add('turret', cupola(cylY(0.34, 0.36, 0.035, 24)), -0.80, 0.8275, -0.162);   // lid
-  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.846, -0.162);
-  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.82, -0.162);            // hatch hinge on the drum's shoulder
-  P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.88, 0.00);             // hatch/periscope peak seated on the lid
-  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.89, 0.052);
-  for (let k = 0; k < 8; k++) {                                                 // vision blocks round the drum
-    const a = (k / 8) * Math.PI * 2 + 0.2;
-    P.add('turretDark', box(0.085, 0.050, 0.030), -0.80 + Math.sin(a) * 0.385, 0.765, -0.162 + Math.cos(a) * 0.385 * cupolaZ, 0, a, 0);
+  // 267 round 4 (both critics, critic7: "the cupola is far too low and small, a short drum with tiny periscopes; the real
+  // one is a tall cupola with large vision blocks in a continuous band, about a third of the turret front's height",
+  // pic-1, pic-4): the drum stands 0.20 m (was 0.12) under the lid with a glazing band of ten large blocks round it.
+  P.add('turret', cupola(cylY(0.37, 0.39, 0.200, 24)), -0.80, 0.790, -0.162);    // drum
+  P.add('turretDark', cupola(cylY(0.385, 0.385, 0.075, 24)), -0.80, 0.815, -0.162); // glazing band
+  P.add('turret', cupola(cylY(0.34, 0.37, 0.040, 24)), -0.80, 0.910, -0.162);    // lid
+  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.931, -0.162);
+  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.90, -0.162);            // hatch hinge on the drum's shoulder
+  P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.965, 0.00);            // hatch/periscope peak seated on the lid
+  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.975, 0.052);
+  for (let k = 0; k < 10; k++) {                                                // vision blocks in the band
+    const a = (k / 10) * Math.PI * 2 + 0.2;
+    P.add('turretGlass', box(0.12, 0.060, 0.025), -0.80 + Math.sin(a) * 0.392, 0.815, -0.162 + Math.cos(a) * 0.392 * cupolaZ, 0, a, 0);
   }
   // 267 round 4 (Opus, critic6: "the cupola and tall periscope sit too close to the centreline; in pic-1 the periscope
   // stands about 0.55 of the half-width out, ahead of the cupola"): the sight and its turntable move to x -0.62 and the
   // roof MG takes the inboard station they left.
-  P.add('turretDark', cylY(0.17, 0.19, 0.075, 14), -0.62, 0.615, 0.24);       // panoramic sight turntable embeds into the crown
+  P.add('turretDark', cylY(0.14, 0.16, 0.075, 14), -0.62, 0.615, 0.36);       // panoramic sight turntable embeds into the crown
   // 266 (critics round 1: "a clump of near-black cuboids in place of the tall sight"): the plinth, faceted head, optic
   // bridges and carrier block are the Saumur sight's column and head: a round column off the turntable, a box head with
   // its window, to the old head's top (1.00).
@@ -738,8 +744,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   // fitting sits in the turret's final frame (the 1.20 section scale below does not reach it): column 0.72..1.20, the
   // squared head to 1.36 and its lid, as the bucket-drawn tower stood after that scale.
   {
-    const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.150, colR2: 0.165, colH: 0.48, head: [0.34, 0.168, 0.34], window: [0.24, 0.084] });
-    sight.position.set(-0.62, 0.72, 0.24);
+    // 267 round 4 (Opus, critic7: "a fat drum with an overhanging lid; the real sight has a box head on a slimmer round
+    // body"; Sonnet: "a separate cylinder beside the cupola, not on its ring"): a 0.23 m body, forward of the ring.
+    const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.115, colR2: 0.13, colH: 0.48, head: [0.32, 0.17, 0.28], window: [0.24, 0.09] });
+    sight.position.set(-0.62, 0.72, 0.36);
     P.turretG.add(sight);
   }
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown
@@ -762,9 +770,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     // real turret they sit on the cheek faces, inside the outline"): each cluster moves forward on its cheek and turns
     // 0.70 rad off the cheek's normal toward the bow; its plate stands square to the tubes on a welded wedge whose back
     // lies on the cheek face, so the cluster stays inside the 1.49 flank line, and the outboard guard hoop is gone.
+    // 267 round 4 (Opus, critic7: "the clusters are mirrored left and right; the vehicle-right cluster sits high on the
+    // turret's front corner, the vehicle-left one lower and further back", pic-1, pic-2): each side has its own station.
     const tubeLen = 0.22, tubePitch = -0.30, plateHalf = 0.135;
     for (const s of [-1, 1]) {
-      const zc = 1.70, xo = flankOuterXAt(s, zc);
+      const zc = s < 0 ? 1.76 : 1.55, rise = s < 0 ? 0.04 : -0.05;             // final-frame row offset; the plate and rail follow in the bucket frame
+      const xo = flankOuterXAt(s, zc);
       const ex = -(flankOuterX - cheekNoseX), ez = cheekNoseZ(s) - cheekZ, el = Math.hypot(ex, ez);
       const nx = s * ez / el, nz = -ex / el;                                     // the cheek's outward normal in plan
       const yaw = Math.atan2(nx, nz) - s * 0.70;
@@ -777,12 +788,14 @@ function buildAMX40(P: FranceBuilderPort): void {
         return [ax, az, ax - nx * d, az - nz * d];                               // the plate edge and its foot buried in the cheek
       };
       const [ix, iz, ifx, ifz] = edge(-1), [ox, oz, ofx, ofz] = edge(1);
+      const yb = 0.29 + rise / 1.2, yt = 0.555 + rise / 1.2;
       P.add('turretDetail', convexSlab(
-        [ix, 0.29, iz], [ox, 0.29, oz], [ofx, 0.29, ofz], [ifx, 0.29, ifz],
-        [ix, 0.555, iz], [ox, 0.555, oz], [ofx, 0.555, ofz], [ifx, 0.555, ifz]));
+        [ix, yb, iz], [ox, yb, oz], [ofx, yb, ofz], [ifx, yb, ifz],
+        [ix, yt, iz], [ox, yt, oz], [ofx, yt, ofz], [ifx, yt, ifz]));
       const dx = Math.sin(yaw) * Math.cos(tubePitch), dy = -Math.sin(tubePitch), dz = Math.cos(yaw) * Math.cos(tubePitch);
       const reach = tubeLen / 2 - 0.01;
-      for (const [row, y] of [[0, 0.405], [1, 0.505], [2, 0.605]]) {
+      for (const [row, y0] of [[0, 0.405], [1, 0.505], [2, 0.605]]) {
+        const y = y0 + rise;
         const bank = FITTINGS.smokeBank({ mats: P.mats, count: 2, r: 0.045, len: tubeLen, splay: yaw, arc: 0.06, pitch: tubePitch,
           spacing: 0.115, base: false, seed: 5 + row + (s > 0 ? 3 : 0) });
         bank.position.set(fx + dx * reach, y + dy * reach, fz + dz * reach);
@@ -792,13 +805,24 @@ function buildAMX40(P: FranceBuilderPort): void {
       // rail from the flank roof behind the plate, forward past the outer tubes, down, in under the cluster and back
       // into the cheek, so the cluster stands inside its rail frame (the round-2 hoop stood outboard on bars)
       const dpx = Math.sin(yaw), dpz = Math.cos(yaw);
-      const rail: Vec3Tuple[] = [
-        [ofx - nx * 0.03, 0.60, ofz - nz * 0.03],                                 // (the foot already sits behind the leaned face)
-        [ox + px * 0.06 + dpx * 0.10, 0.60, oz + pz * 0.06 + dpz * 0.10],
-        [ox + px * 0.06 + dpx * 0.10, 0.265, oz + pz * 0.06 + dpz * 0.10],
-        [ix + dpx * 0.10, 0.265, iz + dpz * 0.10],
-        [ifx - nx * 0.04, 0.265, ifz - nz * 0.04],
+      // (267 round 4, Opus critic7: "the real rails are bent tubes, not boxes": every corner is bent on a 6 cm chamfer)
+      const rTop = 0.60 + rise / 1.2, rFoot = 0.265 + rise / 1.2;
+      const corners: Vec3Tuple[] = [
+        [ofx - nx * 0.03, rTop, ofz - nz * 0.03],                                 // (the foot already sits behind the leaned face)
+        [ox + px * 0.06 + dpx * 0.10, rTop, oz + pz * 0.06 + dpz * 0.10],
+        [ox + px * 0.06 + dpx * 0.10, rFoot, oz + pz * 0.06 + dpz * 0.10],
+        [ix + dpx * 0.10, rFoot, iz + dpz * 0.10],
+        [ifx - nx * 0.04, rFoot, ifz - nz * 0.04],
       ];
+      const rail: Vec3Tuple[] = [corners[0]];
+      for (let i = 1; i < corners.length - 1; i++) {
+        const p = corners[i];
+        for (const q of [corners[i - 1], corners[i + 1]]) {
+          const l = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]), t = Math.min(0.06, l / 3) / l;
+          rail.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]);
+        }
+      }
+      rail.push(corners[corners.length - 1]);
       for (let i = 0; i < rail.length - 1; i++) {
         const [ax, ay, az] = rail[i], [cx, cy, cz] = rail[i + 1];
         const len = Math.hypot(cx - ax, cy - ay, cz - az);
@@ -824,7 +848,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     // 267 round 2 (Opus, critic1: "four antennas; the photos show two"): the paired receiver masts on the right front roof
     // are gone; the aft mast and the fleet whip (decorations.ts) are the two.
     P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), -1.00, 0.66, -1.41); // roof socket bridges the antenna pot to the welded crown
-    P.add('turretDetail', antennaPart(cylY(0.006, 0.006, 0.52, 6)), -1.00, 0.850, -1.38);   // source Object_24 aft mast peak, centered on the print's single side-profile station
+    // 267 round 4 (Sonnet, critic7: "antennas far too tall, about 1.5 turret heights; the photos show stubby, cone-based
+    // aerials of about 0.4 of the turret height"): a cone on the pot and a short rod, 0.32 m in all; the fleet whip is off.
+    P.add('turretDetail', antennaPart(cylY(0.010, 0.032, 0.12, 8)), -1.00, 0.85, -1.41);
+    P.add('turretDetail', antennaPart(cylY(0.006, 0.008, 0.20, 6)), -1.00, 1.01, -1.41);
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), -1.00, 0.762, -1.41);    // whip base pot at the source seat
   }
   };

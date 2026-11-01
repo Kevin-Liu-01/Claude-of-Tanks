@@ -3463,7 +3463,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
     && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
     // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
-    && !(spec.id !== 'amx40_proto' && row.kit === 'antenna')
+    && row.kit !== 'antenna'
     // 267 round 3 (both critics, critic2, S1: "a rigid tow cable across the whole nose"): the bow chain/cable row is off
     && row.kit !== 'chain'
     // 267 round 3 (Sonnet, critic3, S1: "a tow cable strung across the hull front, crossing the muzzle"): the side-top
