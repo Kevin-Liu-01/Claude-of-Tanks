@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
+import { AUTHORING_SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, buildOffsetFor,
+  validateSourceWorldFrame } from './source-world-registration.mjs';
+import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
 
 // An owner-directed enlargement changes the entire frozen source frame,
 // including its ground translation. Moving just the mesh scale would drift
@@ -101,7 +103,36 @@ assert.equal(SOURCE_WORLD_FRAMES.m1a1_abrams_hc,undefined,'old fleet cannot sile
     ['procedural: turret differs from the independent source datum','procedural: gun differs from the independent source datum'],
     'the unraised build fails');
   assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(raise+.02),offset).passed,false,'a further 20 mm fails');
-  assert.deepEqual(Object.keys(SOURCE_WORLD_BUILD_OFFSETS),['t80u'],'one declared build offset');
+  assert.deepEqual(Object.keys(SOURCE_WORLD_BUILD_OFFSETS),['t80u','t90a_burlak_proto'],'two declared build offsets');
+}
+// The Burlak prototype's composite (267): the T-90A X source's hull under the Burlak X source's turret and gun, ring datum
+// seated on ring datum. Both certificates stay as they were; the composite's datums derive from them, at the owner's 1.05.
+{
+  const host=AUTHORING_SOURCE_WORLD_FRAMES.t90a,donor=AUTHORING_SOURCE_WORLD_FRAMES.t90a_burlak;
+  const composite=AUTHORING_SOURCE_WORLD_FRAMES.t90a_burlak_proto,cert=SOURCE_WORLD_FRAMES.t90a_burlak_proto;
+  const translation=host.turret.map((v,i)=>v-donor.turret[i]);
+  assert.equal(composite.sha256,host.sha256,'the hull source is the certificate the page hashes');
+  assert.deepEqual(composite.turret,host.turret,'the turret turns on the host ring');
+  assert.deepEqual(composite.graft,{sha256:donor.sha256,turret:donor.turret,gun:donor.gun,translation},'graft certified as its own source');
+  assert.deepEqual(composite.gun,donor.gun.map((v,i)=>v+translation[i]),'the grafted trunnion moves with its turret');
+  assert.ok(Math.abs(translation[1]+.0766)<1e-3&&Math.abs(translation[2]+.1186)<1e-3,'the Burlak ring drops 76.6 mm and moves 118.6 mm aft');
+  assert.equal(cert.ownerSizeFactor,VEHICLE_SIZE_FACTORS.t90a_burlak_proto,'the reference is installed at the build size');
+  assert.deepEqual(cert.turret,host.turret.map(v=>v*1.05));
+  const identity=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],offset=SOURCE_WORLD_BUILD_OFFSETS.t90a_burlak_proto;
+  assert.deepEqual(buildOffsetFor(offset,'turret'),[0,0,0],'the turret seats on the certified ring');
+  const gun=buildOffsetFor(offset,'gun');
+  // the prototype's trunnion over the ring: 0.1251 m higher and 0.1351 m further forward than the production Burlak's
+  assert.ok(Math.abs(gun[1]/1.05-.1251)<5e-4&&Math.abs(gun[2]/1.05-.1351)<5e-4&&Math.abs(gun[0]/1.05+.0077)<5e-4,'declared gun departure');
+  const frames=(lift)=>({reference:{rootMatrix:identity,hull:[0,0,0],turret:[...cert.turret],gun:[...cert.gun]},
+    procedural:{rootMatrix:identity,hull:[0,0,0],turret:[...cert.turret],gun:cert.gun.map((v,i)=>v+gun[i]+(i===1?lift:0))}});
+  assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(0),offset).passed,true,'the declared prototype passes');
+  assert.deepEqual(validateSourceWorldFrame(cert,cert.sha256,frames(0)).failures,
+    ['procedural: gun differs from the independent source datum'],'undeclared, only its gun fails');
+  assert.equal(validateSourceWorldFrame(cert,cert.sha256,frames(.02),offset).passed,false,'a further 20 mm fails');
+  assert.deepEqual(validateSourceWorldFrame(cert,cert.sha256,frames(0),gun).failures,
+    ['procedural: turret differs from the independent source datum'],'one vector moves both pivots: the ring may not move');
+  assert.deepEqual(buildOffsetFor(SOURCE_WORLD_BUILD_OFFSETS.t80u,'gun'),buildOffsetFor(SOURCE_WORLD_BUILD_OFFSETS.t80u,'turret'));
+  assert.deepEqual(buildOffsetFor(undefined,'gun'),[0,0,0]);
 }
 console.log('source-world-registration: hashes/datums fail closed; exact scorer self100, displaced geometry fails92, legacy preserved');
 

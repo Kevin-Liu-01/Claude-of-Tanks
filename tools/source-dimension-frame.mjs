@@ -3,6 +3,7 @@
 // historical-preservation policy are deliberately not changed.
 import * as THREE from 'three';
 import { SUPPLIED_SOURCE_COMPARISON_IDS } from './supplied-source-reference-overrides.mjs';
+import { buildOffsetFor } from './source-world-registration.mjs';
 
 const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1987','t80u',
   'leclerc_xlr','amx56','chieftain_mk10','t72b3','jpz_e100','type10','type90',
@@ -33,9 +34,9 @@ export function sourceDimensionCamera(sourceBounds,direction) {
 }
 
 /** `buildOffset` is the build's declared departure from the source's turret datums (source-world-registration.mjs
- *  SOURCE_WORLD_BUILD_OFFSETS: the T-80U's ring race); its rise is added to the source's heights, nothing else. */
+ *  SOURCE_WORLD_BUILD_OFFSETS: the T-80U's ring race); its turret's rise is added to the source's heights, nothing else. */
 export function sourceDimensionRows(reference,actual,referenceBounds,actualBounds,buildOffset=[0,0,0]) {
-  const rows=[],lift=buildOffset[1];
+  const rows=[],lift=buildOffsetFor(buildOffset,'turret')[1];
   const add=(name,a,r,method)=>{
     if(![a,r].every(v=>Number.isFinite(v)&&v>0))throw new Error(`Missing positive ${name} source measurement`);
     rows.push({name,actual:a,published:r,pct:Math.abs(a-r)/r*100,method});
