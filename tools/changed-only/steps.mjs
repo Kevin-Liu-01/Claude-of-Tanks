@@ -289,9 +289,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'hashes the selected ids\' oracles under public/; reads, merges and prunes its own ledger and records',
   },
   'tools/reference-glb-loader.ts': {
-    pin: 'f68d2a7ef44b3f2d',
+    pin: 'a01ac8eed52735e6',
     reads: [],
-    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle)',
+    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle), and a graft\'s source (cfg.graft.path), whose bytes the page refuses unless they hash to its certificate in source-world-registration.mjs (a keyed tool input)',
   },
   'tools/source-world-registration.mjs': {
     pin: '02080ee9df202934',
