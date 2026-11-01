@@ -336,7 +336,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.016), s * 1.640, 0.97, 1.85 - k * 1.04); // panel seams (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
-    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.06, 3.395);
+    // 267 round 4 (Opus, critic6: "the headlight box sits on a tall camo-painted face above the black flap; in pic-1 the
+    // light box sits directly on the flap"): the flap runs up over the outer nose's crest to the platform under the lamp.
+    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.08, 3.44);
+    P.add('hullRubber', convexSlab(
+      [s * 1.02, 1.475, 3.255], [s * 1.58, 1.475, 3.255], [s * 1.58, 1.215, 3.43], [s * 1.02, 1.215, 3.43],
+      [s * 1.02, 1.489, 3.276], [s * 1.58, 1.489, 3.276], [s * 1.58, 1.229, 3.451], [s * 1.02, 1.229, 3.451]));
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
@@ -632,6 +637,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     return flankOuterX;
   };
   // the crown's height at its edge (the shell loft's crown ring), less a 5 mm embed, so the flank roof runs on flush
+  // 267 round 4 (Opus, critic6: "the turret front is stacked vertical boxes, not sloped faceted cheeks", pic-2, pic-4):
+  // the cheek's face leans back from its chamfer to its roof edge, by nothing at the flank's straight run to 0.14 m at
+  // the nose, so each front corner is a sloped plate facing up and forward.
+  const cheekLeanAt = (s: number, z: number): number => 0.14 * Math.max(0, Math.min(1, (z - cheekZ) / (cheekNoseZ(s) - cheekZ)));
   const crownEdgeY = (s: number, z: number): number => (
     0.585 + 0.070 * Math.min(1, shellWallXAt(s, z) / 1.35) + 0.025 * Math.max(0, Math.min(1, (0.25 - z) / 2.00)) - 0.005
   );
@@ -642,7 +651,7 @@ function buildAMX40(P: FranceBuilderPort): void {
       const xo = flankOuterXAt(s, z), xi = shellWallXAt(s, z) * 0.93, xc = shellCrownXAt(s, z) - attachmentEmbedM;
       return {
         lower: [[s * xi, flankFloorY, z], [s * (xo - 0.08), flankFloorY, z], [s * xo, flankChamferY, z], [s * xi, flankChamferY, z]],
-        upper: [[s * xi, flankChamferY, z], [s * xo, flankChamferY, z], [s * xo, flankFaceTopY, z], [s * xc, crownEdgeY(s, z), z]],
+        upper: [[s * xi, flankChamferY, z], [s * xo, flankChamferY, z], [s * (xo - cheekLeanAt(s, z)), flankFaceTopY, z], [s * xc, crownEdgeY(s, z), z]],
       };
     };
     for (let i = 0; i < stations.length - 1; i++) {
@@ -667,9 +676,11 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 round 2 (Opus, critic3: "a dark notch at the tank's-left front corner of the turret, between the roof box and the
   // cheek, reads as a cavity; the real cheek is solid"): the left cheek's nose runs on to the mantlet's side as solid
   // armour, 10 mm outboard of the mantlet web (x 0.62) so the gun elevates clear of it.
+  // 267 round 4 (Opus, critic6: "a sloped left-front plate", pic-2): its face rakes back 0.20 m to the roof edge and its
+  // outer top follows the cheek nose's lean
   P.add('turret', convexSlab(
     [0.63, 0.18, 1.86], [1.00, 0.18, 1.86], [1.00, 0.18, 2.12], [0.63, 0.18, 2.20],
-    [0.63, 0.56, 1.86], [1.00, 0.56, 1.86], [1.00, 0.56, 2.12], [0.63, 0.56, 2.20]));
+    [0.63, 0.56, 1.86], [0.88, 0.56, 1.86], [0.88, 0.56, 1.93], [0.63, 0.56, 2.00]));
   // ---- optics band — CAPPED AT 2.40 world (post-warp frame; the print's
   // 2.77 cupola / 3.09 pano tower compress onto this line under the filed
   // knee-2.39 plan). Every top ≤ 0.800 local. -----------------------------
@@ -706,7 +717,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     const a = (k / 8) * Math.PI * 2 + 0.2;
     P.add('turretDark', box(0.085, 0.050, 0.030), -0.80 + Math.sin(a) * 0.385, 0.765, -0.162 + Math.cos(a) * 0.385 * cupolaZ, 0, a, 0);
   }
-  P.add('turretDark', cylY(0.17, 0.19, 0.075, 14), -0.15, 0.615, 0.24);       // panoramic sight turntable embeds into the crown
+  // 267 round 4 (Opus, critic6: "the cupola and tall periscope sit too close to the centreline; in pic-1 the periscope
+  // stands about 0.55 of the half-width out, ahead of the cupola"): the sight and its turntable move to x -0.62 and the
+  // roof MG takes the inboard station they left.
+  P.add('turretDark', cylY(0.17, 0.19, 0.075, 14), -0.62, 0.615, 0.24);       // panoramic sight turntable embeds into the crown
   // 266 (critics round 1: "a clump of near-black cuboids in place of the tall sight"): the plinth, faceted head, optic
   // bridges and carrier block are the Saumur sight's column and head: a round column off the turntable, a box head with
   // its window, to the old head's top (1.00).
@@ -725,7 +739,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // squared head to 1.36 and its lid, as the bucket-drawn tower stood after that scale.
   {
     const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.150, colR2: 0.165, colH: 0.48, head: [0.34, 0.168, 0.34], window: [0.24, 0.084] });
-    sight.position.set(-0.15, 0.72, 0.24);
+    sight.position.set(-0.62, 0.72, 0.24);
     P.turretG.add(sight);
   }
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown
@@ -759,7 +773,7 @@ function buildAMX40(P: FranceBuilderPort): void {
       const h = 0.012 + plateHalf * pn;                                          // the plate's inner edge stands 12 mm off the cheek
       const fx = s * xo + nx * h, fz = zc + nz * h;
       const edge = (k: number): [number, number, number, number] => {
-        const ax = fx + px * plateHalf * k, az = fz + pz * plateHalf * k, d = h + plateHalf * pn * k + 0.02;
+        const ax = fx + px * plateHalf * k, az = fz + pz * plateHalf * k, d = h + plateHalf * pn * k + 0.02 + cheekLeanAt(s, zc);
         return [ax, az, ax - nx * d, az - nz * d];                               // the plate edge and its foot buried in the cheek
       };
       const [ix, iz, ifx, ifz] = edge(-1), [ox, oz, ofx, ofz] = edge(1);
@@ -779,7 +793,7 @@ function buildAMX40(P: FranceBuilderPort): void {
       // into the cheek, so the cluster stands inside its rail frame (the round-2 hoop stood outboard on bars)
       const dpx = Math.sin(yaw), dpz = Math.cos(yaw);
       const rail: Vec3Tuple[] = [
-        [ofx - nx * 0.03, 0.60, ofz - nz * 0.03],
+        [ofx - nx * 0.03, 0.60, ofz - nz * 0.03],                                 // (the foot already sits behind the leaned face)
         [ox + px * 0.06 + dpx * 0.10, 0.60, oz + pz * 0.06 + dpz * 0.10],
         [ox + px * 0.06 + dpx * 0.10, 0.265, oz + pz * 0.06 + dpz * 0.10],
         [ix + dpx * 0.10, 0.265, iz + dpz * 0.10],
@@ -799,9 +813,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the AANF1 is a working station
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right',
       working: true, ridingCradle: true });
-    mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
+    mg.position.set(-0.15, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section (267 r4: inboard)
     P.turretG.add(mg);
-    P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
+    P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.15, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
     // antenna whips CLIPPED LOW over the aft roof, both raked hard aft
     // (type10_tk_x rack-tail precedent; the print's 4.14/5.10 vertical rod
     // masts live in the filed normalize plan — seats documented in the
@@ -904,9 +918,13 @@ function buildAMX40(P: FranceBuilderPort): void {
   // in front of the turret face with a raised round door and a hasp, and the round port beside it is on the mantlet
   // face", pic-1): the box spans x -1.06..-0.52 and stands 8 cm proud of a mantlet step that carries the port on a
   // raised collar; the door is a raised boss under its hinge straps, the hasp across it.
+  // 267 round 4 (Opus, critic6: "a deep, chamfered armoured box", pic-4): its outer front edge is cut back 8 cm.
   P.addGunExtra(slab(
-    [-1.06, -0.115, 0.40], [-0.52, -0.115, 0.40], [-0.52, -0.115, 1.00], [-1.06, -0.115, 1.00],
-    [-1.06, 0.22, 0.40], [-0.52, 0.22, 0.40], [-0.52, 0.22, 0.985], [-1.06, 0.22, 0.985]));
+    [-0.98, -0.115, 0.40], [-0.52, -0.115, 0.40], [-0.52, -0.115, 1.00], [-0.98, -0.115, 1.00],
+    [-0.98, 0.22, 0.40], [-0.52, 0.22, 0.40], [-0.52, 0.22, 0.985], [-0.98, 0.22, 0.985]));
+  P.addGunExtra(slab(                                                           // the box's outer strip, its front corner chamfered
+    [-1.06, -0.115, 0.40], [-0.98, -0.115, 0.40], [-0.98, -0.115, 1.00], [-1.06, -0.115, 0.92],
+    [-1.06, 0.22, 0.40], [-0.98, 0.22, 0.40], [-0.98, 0.22, 0.985], [-1.06, 0.22, 0.905]));
   P.addGunExtra(slab(                                                           // the mantlet step beside the box
     [-0.52, -0.115, 0.40], [-0.28, -0.115, 0.40], [-0.28, -0.115, 0.92], [-0.52, -0.115, 0.92],
     [-0.52, 0.20, 0.40], [-0.28, 0.20, 0.40], [-0.28, 0.20, 0.92], [-0.52, 0.20, 0.92]));

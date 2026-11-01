@@ -30,19 +30,19 @@ function findTriangle(mesh, points) {
 
 // FSP-06 (2026-09-25) had the canvas mantlet boot on the gun-owned canvas skin (gunMountCanvasSkin). 267 (both photo
 // critics: "an olive crate with three vertical ribs; the real one is a brown housing with a notched top"): the boot is
-// the steel gun housing in the turret's paint on gunMount, one tapered casting from the clamp frame to the face frame (267
-// round 2); the canvas is the sock on the tube. The casting's left wall and top move with rig_gun, as do the rotor face
-// and the clamp.
+// the steel gun housing in the turret's paint on gunMount: since 267 round 4 the face plate, the round cradle and the
+// toothed crown beam; the canvas is the sock on the tube. The crown's top and the cradle's left side move with rig_gun,
+// as do the rotor face and the clamp.
 const movingTriangles = [
   {
     mesh: 'gunMount',
-    label: 'marked housing casting top',
-    points: [[-0.21, 0.26, 1.69], [-0.17, 0.215, 2.47], [0.21, 0.26, 1.69]],
+    label: 'marked housing crown top',
+    points: [[-0.25, 0.31, 1.71], [-0.25, 0.31, 2.33], [0.25, 0.31, 2.33]],
   },
   {
     mesh: 'gunMount',
-    label: 'marked housing left wall',
-    points: [[-0.21, 0.26, 1.69], [-0.21, -0.17, 1.69], [-0.17, 0.215, 2.47]],
+    label: 'marked cradle left side',
+    points: [[-0.2415, 0.0647, 2.29], [-0.2415, 0.0647, 1.71], [-0.25, 0, 2.29]],
   },
   {
     mesh: 'gunMount',
@@ -117,10 +117,10 @@ for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
       restoredMarkedSurfacePatches: ['surface-2', 'surface-3', 'surface-4',
         'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'],
       neutralHousingSurfaceAnchors: [
-        [0.127, 0.5147, 2.455],
-        [-0.1964, 0.291, 2.455],
+        [0.127, 0.58, 2.455],
+        [-0.25, 0.27, 2.455],
         [0, 0.5855, 2.29],
-        [0, 0.25, 3.045],
+        [0.2, 0.52, 2.83],
       ],
     }, `${id}: explicit housing ownership receipt`);
 
