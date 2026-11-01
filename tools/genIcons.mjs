@@ -28,6 +28,7 @@ import { uniqueIds } from './id-list.mjs';
 import { compareTankIds, readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { iconsPagePublicOnly } from './icons-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS, undeclaredCatalogReads } from './page-catalog-keys.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -200,6 +201,8 @@ try {
         writeFileSync(outputPath, buffer);
         console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
       }
+      // 267: the step keys only the catalog strings this page draws; any other key it asked for fails the run
+      pageErrors.push(...await undeclaredCatalogReads(page, ICONS_PAGE_CATALOG_KEYS));
     } finally {
       await browser.close();
     }

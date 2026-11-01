@@ -18,7 +18,7 @@ import { createBus } from '../../src/game/stateCore.ts';
 import { createInput } from '../../src/game/input.ts';
 import { TANK_SPECS } from '../../src/vehicles/specs.ts';
 import { CAMO_CATALOG_PATTERN_IDS } from '../../src/vehicles/camoPolicy.ts';
-import { getLocalizedMapName } from '../../src/world/maps/catalog.ts';
+import { getLocalizedMapName } from '../../src/ui/mapNames.ts';
 import { setLocale, t } from '../../src/ui/i18n.ts';
 
 const params = new URLSearchParams(location.search);

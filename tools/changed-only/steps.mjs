@@ -10,6 +10,10 @@
 import { browserIdChunks } from '../browser-id-chunks.mjs';
 import { ICONS_PAGE_PUBLIC } from '../icons-page-public.mjs';
 import { GATE_PAGE_PUBLIC } from '../gate-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS } from '../page-catalog-keys.mjs';
+
+/** The i18n string catalogs (267): a step that declares `catalogKeys` keys those keys' values instead of these files. */
+export const CATALOG_FILES = Object.freeze(['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json']);
 
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([
@@ -538,6 +542,8 @@ export const STEPS = Object.freeze([
     // public/llms.txt re-ran this step and icons on every id). The exported-icon audit (public/icons) runs only under
     // --check/--sync-assets, which record no key.
     reads: ICONS_PAGE_READS,
+    // 267: the catalog strings the page draws (tools/page-catalog-keys.mjs), not the whole catalogs
+    catalogKeys: ICONS_PAGE_CATALOG_KEYS,
   },
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],
@@ -553,6 +559,7 @@ export const STEPS = Object.freeze([
     files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
     // the public directories the page loads (tools/icons-page-public.mjs, as centering)
     reads: ICONS_PAGE_READS,
+    catalogKeys: ICONS_PAGE_CATALOG_KEYS,
   },
   {
     // 267: the geometry gate. Each registered id measured against its comparison oracle (tools/geometry-gate.mjs, the

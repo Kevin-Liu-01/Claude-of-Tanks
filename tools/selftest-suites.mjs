@@ -349,6 +349,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tool-page-load.selftest.mjs',
     // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
     'tools/icons-page-public.selftest.mjs',
+    // 267: the icons page keys only the catalog strings it draws; an undeclared key fails its tools' runs
+    'tools/page-catalog-keys.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',

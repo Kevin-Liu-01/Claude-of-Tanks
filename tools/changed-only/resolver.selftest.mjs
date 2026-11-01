@@ -417,4 +417,26 @@ put('src/vehicles/anchors.generated.ts', anchors);
   assert.equal(tableFileList(root, { ...gateCfg.tables.records, idsOnly: false }, ['a1']).length, 5, 'control: without idsOnly every file is a row file');
 }
 
+// 267: a step that declares the catalog keys its page draws (`catalogKeys`) keys their values, not the string catalogs:
+// another string's edit moves nothing, a declared one moves the step; control: without the declaration the whole
+// catalog stays keyed.
+{
+  put('src/ui/i18nCatalog.en-US.json', '{"hud.blast":"Blast · {n} vehicles","legend.owner":"Hull"}\n');
+  put('src/ui/i18nCatalog.zh-CN.json', '{"hud.blast":"爆炸","legend.owner":"车体"}\n');
+  put('tools/gen-page.mjs', "import en from '../src/ui/i18nCatalog.en-US.json' with { type: 'json' };\nimport zh from '../src/ui/i18nCatalog.zh-CN.json' with { type: 'json' };\nexport default [en, zh];\n");
+  const pageStep = (catalogKeys) => ({ name: 'page', device: 'gpu', tool: 'tools/gen-page.mjs', flags: [], full: [],
+    scoped: (ids) => [`--ids=${ids}`], outputs: [], files: [], ...(catalogKeys ? { catalogKeys } : {}) });
+  const tools = (catalogKeys) => state({ steps: [pageStep(catalogKeys)] }).steps.page.tool;
+  const en = read('src/ui/i18nCatalog.en-US.json');
+  const keyed = tools(['legend.owner']), whole = tools(null);
+  assert.ok(state({ steps: [pageStep(['legend.owner'])] }).steps.page.toolFiles.includes('src/ui/i18nCatalog.en-US.json'), 'the page reaches the catalog');
+  put('src/ui/i18nCatalog.en-US.json', en.replace('vehicles', 'vehicle(s)'));
+  assert.equal(tools(['legend.owner']), keyed, 'another string\'s edit moves nothing for a step that declares its keys');
+  assert.notEqual(tools(null), whole, 'control: without catalogKeys the whole catalog is keyed');
+  put('src/ui/i18nCatalog.en-US.json', en.replace('"Hull"', '"Hull!"'));
+  assert.notEqual(tools(['legend.owner']), keyed, 'a declared key\'s value moves the step');
+  put('src/ui/i18nCatalog.en-US.json', en);
+  assert.equal(tools(['legend.*']), tools(['legend.owner']), 'a prefix pattern names the same key');
+}
+
 console.log('changed-only resolver.selftest: PASS');
