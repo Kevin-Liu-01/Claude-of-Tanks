@@ -17,7 +17,7 @@ import { addT90AGun } from './t90AXGun.ts';
 import { addT90MRwsHousing } from './t90MXRwsHousing.ts';
 import { addT90ASmokeTubes } from './t90AXSmoke.ts';
 import { addT90VRearGuards } from './t90VXRearGuards.ts';
-import { addT90VFrontGuard, addT90VFrontSkirt } from './t90VXFrontGuards.ts';
+import { addT90VFrontGuard } from './t90VXFrontGuards.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { addPintleBarrel, addPintleFeed, addPintleReceiver, createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES,
   MG_TRUE_SCALE_FLOOR } from '../machineGunGeometry.ts';
@@ -314,7 +314,7 @@ function fenders(P: TankBuilderPort,tag: string,half: number,top: number): void 
     const inner=1.08,outer=half;
     // A supported longitudinal mudguard skin, above the actual shoe course.
     P.add('hull',box(outer-inner,.06,5.72),side*(outer+inner)/2,top-.03,-.18);
-    addT90VFrontGuard(P, side, `${tag}-bow`);addT90VFrontSkirt(P,side);
+    addT90VFrontGuard(P, side, `${tag}-bow`);
     P.addEquipment('hullDetail',box(.035,.065,5.88),side*(half-.04),top+.019,-.17);
     for(const z of [-2.80,-1.53,-.28,.99,2.20]) {
       P.addEquipment('hullDetail',box(.69,.023,.038),side*1.42,top+.022,z);

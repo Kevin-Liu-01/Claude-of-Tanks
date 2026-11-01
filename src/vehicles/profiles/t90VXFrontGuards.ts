@@ -34,8 +34,8 @@ const NOSE: readonly Crown[] = [
 ];
 
 // 267 (S1, blind critics: "the bow mudguards read as oversized wedges"): the nose's outer edge turns down as a 7 cm lip
-// below its rolled shoulder (it folded 15-34 cm down at z 3.615-3.80, a hanging beak); the oracle's deep outer side there
-// is the separate front skirt panel under it (addT90VFrontSkirt). The measured crown, shoulders and plan are unchanged.
+// below its rolled shoulder (it folded 15-34 cm down at z 3.615-3.80, a hanging beak). The measured crown, shoulders and
+// plan are unchanged. (267 fix: no front skirt panel hangs under it; the front idler stays exposed, as photographed.)
 const OUTER_LIP_M = .07;
 function crownTop([, inner, outer, heights, , shoulders]: Crown): (readonly [number, number])[] {
   const top = FRACTIONS.map((u, index) => [inner + (outer - inner) * u,
@@ -45,19 +45,6 @@ function crownTop([, inner, outer, heights, , shoulders]: Crown): (readonly [num
     top.splice(4, 0, [inner + (outer - inner) * .15, shoulders[0]]);
   }
   return top;
-}
-
-/** Underside of the V cover/nose skins at (z, |x|) (the top crown less its sheet depth), for parts hung under them. */
-function guardUnderside(z: number, x: number): number {
-  const rows = [...COVER, ...NOSE.filter((row) => row[0] > COVER[COVER.length - 1][0])];
-  let i = 1; while (i < rows.length - 1 && z > rows[i][0]) i++;
-  const at = (row: Crown): number => {
-    const top = crownTop(row); let k = 1; while (k < top.length - 1 && x > top[k][0]) k++;
-    const [x0, y0] = top[k - 1], [x1, y1] = top[k], t = Math.min(1, Math.max(0, (x - x0) / (x1 - x0)));
-    return y0 + (y1 - y0) * t - row[4];
-  };
-  const a = rows[i - 1], b = rows[i], t = Math.min(1, Math.max(0, (z - a[0]) / (b[0] - a[0])));
-  return at(a) + (at(b) - at(a)) * t;
 }
 
 function skin(side: number, rows: readonly Crown[]): ReturnType<typeof sectionSolid> {
@@ -82,22 +69,4 @@ export function addT90VFrontGuard(P: TankBuilderPort, side: number, label: strin
   P.addMudguard(`${label}-bridge`, 'hull', skin(side, bridge));
   P.addMudguard(`${label}-cover`, 'hull', skin(side, COVER));
   P.addMudguard(`${label}-nose`, 'hull', skin(side, NOSE));
-}
-
-/** 267: the oracle's front skirt panel under the V guard, from the side screens' front edge (z 3.14) to the nose: 12 mm
- * sheet 13 mm inboard of the guard's outer edge, its top buried 3 mm in the guard's underside, to the oracle's low edge
- * (it rises at the nose), hemmed in rubber. */
-const V_FRONT_SKIRT: readonly (readonly [number, number])[] = [
-  [3.155,.835],[3.40,.830],[3.55,.860],[3.65,.890],[3.72,.930],[3.765,.975],
-];
-export function addT90VFrontSkirt(P: TankBuilderPort, side: number): void {
-  const mirror = (ring: readonly (readonly [number, number])[]) => side > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
-  const outer = (z: number) => z < 3.55 ? 1.781 : 1.781 - (z - 3.55) * .16;
-  P.addMudguard('t90a-vladimir-x-front-skirt', 'hullFixedPaintedBodywork', sectionSolid(V_FRONT_SKIRT.map(([z, low]): SolidSection => ({
-    z, ring: mirror([[outer(z) - .012, low], [outer(z), low], [outer(z), guardUnderside(z, outer(z) - .012) + .003],
-      [outer(z) - .012, guardUnderside(z, outer(z) - .012) + .003]]),
-  }))));
-  P.addMudguard('t90a-vladimir-x-front-skirt-hem', 'hullRubber', sectionSolid(V_FRONT_SKIRT.map(([z, low]): SolidSection => ({
-    z, ring: mirror([[outer(z) - .016, low - .032], [outer(z) + .003, low - .032], [outer(z) + .003, low + .010], [outer(z) - .016, low + .010]]),
-  }))));
 }
