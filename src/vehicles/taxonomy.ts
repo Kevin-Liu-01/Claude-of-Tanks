@@ -55,7 +55,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'm60a2', 'm60a3',
     'magach6b', 'magach7c',
     'vickers_mk1',
-    'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
+    'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([

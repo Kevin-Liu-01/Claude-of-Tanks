@@ -142,9 +142,9 @@ const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_oli
 const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_challenger1_mk1',
   'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara', 'paint_osorio_p1',
   'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk', 'paint_m41_bw', 'paint_m41_jgsdf'] as const);
-/** Release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover (denmarkSpecs.ts), held from 265 and
- * appended after 266's saved catalog indices. */
-const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk'] as const);
+/** Release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover (denmarkSpecs.ts), held from 265, and the
+ * Centurion Mk 5/2 DK's 1980s three-tone; appended after 266's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
@@ -915,6 +915,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m41_jgsdf: 'paint_m41_jgsdf',
   // release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover
   leo2a7dk: 'paint_leo2a7dk',
+  // the Centurion Mk 5/2 DK's 1980s three-tone (olive, earth brown, black; the Stevnsfortet photograph)
+  centurion5_2dk: 'paint_centurion5_2dk',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

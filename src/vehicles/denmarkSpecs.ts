@@ -6,7 +6,7 @@
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import {
-  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions,
+  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, scaleNonExternalArmor, stripSilhouetteDimensions,
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -163,6 +163,35 @@ leo2a7dk.visual = {
   marking: 'number', number: '11', camoScale: 1.0,
 };
 
+// ------------------------------------------------------------------------------------------------- Centurion DK --
+// Pansermuseet (Centurion Mk V-2 DK data plate): 7.7 m hull, 9.75 m over the gun, 3.4 m over the side plates, 3.39 m, 51 t
+// loaded, the 650 hp Meteor Mk IVB, 34 km/h on roads, four crew, the 105 mm L7A1, 2x6 dischargers. The 1985 fire control
+// (laser rangefinder, gunner's thermal sight) lays faster and truer than the Mk 5/2's optical sights; rounds and mobility
+// at the Mk 5/2's fleet footing (the published 650 hp on 51 t sits at 0.55 of tier III's power-to-weight median, a severe
+// outlier the fleet balance receipt refuses). Built on the Centurion family's Mk 5/2 (release 262; profiles/centurionDk.ts).
+const centurion5_2dk = danishVariant('centurion5_2dk', 'centurion5_2', 'Centurion Mk 5/2 DK', 'cold-war');
+// its dims the Mk 5/2 build's it rides (the data plate's 3.39 m counts the commander's MG; the armour shell scales by them)
+Object.assign(centurion5_2dk.dims, { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.38, heightM: 2.94 });
+// (the clone is taken before the fleet passes run, so the Mk 5/2's tier footing is written here: fleetBalancePass's
+// Centurion package (hull, armour x1.12, cycle and round) and its 880 hp)
+Object.assign(centurion5_2dk, {
+  weightTons: 51.0, hp: 1900, enginePowerHp: 880, topSpeedKmh: 48, reverseSpeedKmh: 15, hullTraverseDegS: 32, turretTraverseDegS: 30,
+});
+scaleNonExternalArmor(centurion5_2dk, 1.12);
+centurion5_2dk.gun = {
+  ...centurion5_2dk.gun,
+  reloadS: 6.6, aimTimeS: 1.75, baseAccuracy: 0.28,
+  shells: centurion5_2dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 570, pen1000Mm: 525, pen2000Mm: 480 } : shell),
+};
+centurion5_2dk.visual = {
+  ...centurion5_2dk.visual,
+  // the Danish Army's 1980s three-tone (the Oksbøl, Pansermuseet and Stevnsfortet tanks): olive, black and an earth brown
+  // in large hard-edged fields; c2 (the c1 sheets: a bright grass green and an orange brown against the Stevnsfortet
+  // photograph's dark olive and earth brown): the olive and the brown darker and duller
+  scheme: 'nato', base: '#4f5733', weather: '#575f3b', patches: ['#1a1c16', '#5a3d26'], marking: 'number', number: '32',
+  camoScale: 0.48,
+};
+
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
 // armyvehicles.dk/cv9035.htm: 45 ordered (2007, DALO, BAE Systems Hägglunds), 6.87 m long, 3.19 m wide, 2.80 m, 31,750 kg,
 // the 755 hp Scania DI-16, 940 l and 500 km, three crew and seven dismounts, the 35/50 Bushmaster III with its ammunition
@@ -224,5 +253,5 @@ cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [14, -8], [15, -7.5], [16, -
   [27, -5.4], [28, -5.9], [30, -8], [134, -8], [136, -2.1], [137, -1.8], [139, -1.7], [141, -0.3], [165, -0.2], [176, -0.3],
   [178, -1.8], [180, -1.8]] as const);
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'cv9035dk'],
-  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, cv9035dk });
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, centurion5_2dk, cv9035dk });
