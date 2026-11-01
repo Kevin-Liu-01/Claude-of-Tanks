@@ -569,7 +569,7 @@
   "src/vehicles/profiles/easternSourceKit.ts": "102ac0f3dc80fb53c96a7214c4911879c3afc479dd7b116c084aaff7d51c4cec",
   "src/vehicles/profiles/epokhaTurret.ts": "d7ba93b0bced5af4ade0c659179de7b48821bc9b6b275b8d6baf5c8c1944ba24",
   "src/vehicles/profiles/eraHitFaces.ts": "721a66f4f2bf0fedba4f27d61d91214ba02ebd5975cbe767e01e91590c0c983a",
-  "src/vehicles/profiles/eraSeating.selftest.mjs": "12d2c92afadcd8bbb90ef453862b475edac1424fab5c412f9093827a271a861a",
+  "src/vehicles/profiles/eraSeating.selftest.mjs": "f4a078d16677d620f2c72f5f5c2d27d7b324b39b5842f217c8695a460276e7c8",
   "src/vehicles/profiles/escortFieldKit.ts": "8198bd26611503a91b01b85aeed96e71e7d40d23027ed3973322d4cf6cacbb0f",
   "src/vehicles/profiles/europeGunOwnership.selftest.mjs": "38c967d94978810e446f2f8e29f0e25568b2ef17d9ac3b9882086c8e76ecec28",
   "src/vehicles/profiles/europeSourceDetail.selftest.mjs": "169434a7e811d90a84420d5a5b868252c76a8f6938947c96e8c907d8eef851da",
