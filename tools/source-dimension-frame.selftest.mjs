@@ -31,6 +31,9 @@ assert.throws(()=>sourceDimensionRows({...dims,widthM:NaN},dims,ref,ref));
   const undeclared=sourceDimensionRows(dims,tallDims,ref,taller);
   assert.ok(undeclared.find(r=>r.name==='heightM').pct>2&&undeclared.find(r=>r.name==='physicalHeightM').pct>1.6,'undeclared, the rise is a height error');
   assert.ok(sourceDimensionRows(dims,dims,ref,ref,[0,lift,0]).find(r=>r.name==='heightM').pct>2,'an unraised build fails a declared raise');
+  // per-pivot offsets (267, the Burlak prototype's gun station): only the turret's rise lifts the source's heights
+  assert.deepEqual(sourceDimensionRows(dims,tallDims,ref,taller,{turret:[0,lift,0]}),declared,'a turret rise reads as the vector form');
+  assert.ok(sourceDimensionRows(dims,dims,ref,ref,{gun:[0,.13,.14]}).every(r=>r.pct===0),'a gun-only departure lifts nothing');
 }
 assert.throws(()=>sourceDimensionCamera(new THREE.Box3(),new THREE.Vector3(1,0,0)));
 const certified={passed:true,mode:'canonical-source-world'};
@@ -40,6 +43,10 @@ for (const id of SUPPLIED_SOURCE_COMPARISON_IDS) {
     `${id}: an invalid source certificate cannot bypass dimensions`);
 }
 assert.equal(usesSourceDimensionFrame('t72b3',certified),true);
+// 267: the Burlak prototype on its composite's ruler, never on a failed composite certificate
+assert.equal(usesSourceDimensionFrame('t90a_burlak_proto',certified),true);
+assert.equal(usesSourceDimensionFrame('t90a_burlak_proto',{...certified,passed:false}),false);
+assert.equal(usesSourceDimensionFrame('t90a',certified),false,'the T-90A X keeps its published dimensions');
 assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',certified),true,
   'direct supplied SEP v2 comparison uses its certified source ruler, not the unrelated published roof height');
 assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',{...certified,passed:false}),false);
