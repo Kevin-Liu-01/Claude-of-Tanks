@@ -343,6 +343,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
     'tools/id-list.selftest.mjs',
     'tools/tool-page-load.selftest.mjs',
+    // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
+    'tools/icons-page-public.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',

@@ -8,6 +8,7 @@
 // resolver runs that step on every id.
 
 import { browserIdChunks } from '../browser-id-chunks.mjs';
+import { ICONS_PAGE_PUBLIC } from '../icons-page-public.mjs';
 
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([
@@ -108,7 +109,7 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'src/vehicles/materialPainterWorker.ts': {
     pin: '02080ee9df202934',
     reads: [],
-    note: 'a page worker: fetches the painter font, public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2, inside the GPU steps\' public/** reads',
+    note: 'a page worker: fetches the painter font its client names (src/vehicles/materialPainterWorkerClient.ts: public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2), inside the GPU steps\' public/fonts/** reads (tools/icons-page-public.mjs)',
   },
   'tools/gen-interior-fills.mjs': {
     pin: '7ad1c72d6da8aede',
@@ -148,12 +149,13 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
     // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
     // 266 re-pin: --sync-assets reads the manifest through tools/tank-assets-store.mjs instead of one JSON file.
-    pin: 'd2a108825f11dc4e',
+    // 266 re-pin: under --update the server serves only the public directories tools/icons-page-public.mjs names.
+    pin: 'fd2a6ec92b5b7c3f',
     reads: [],
     // public/icons is read only by --check (the exported-icon audit) and --sync-assets; the chain runs --update, which
     // renders live builds and writes the anchors file alone.
     modeOnly: ['public/icons'],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; under --update the page loads only the public directories tools/icons-page-public.mjs names (the step\'s declared reads; any other public file is refused and fails the run); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
   },
   'tools/genIcons.mjs': {
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
@@ -162,9 +164,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // its own output in outDir, like the images.
     // 266 re-pin: the manifest is a row file per tank, read and written through tools/tank-assets-store.mjs (declared
     // below); genIcons' own remaining reads are the images and sidecars it has just written.
-    pin: '943e75f896468bd1',
+    // 266 re-pin: the server serves only the public directories tools/icons-page-public.mjs names.
+    pin: 'feb59bcc894b093e',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest (through tools/tank-assets-store.mjs), images and technical-label sidecars',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; the page loads only the public directories tools/icons-page-public.mjs names (the step\'s declared reads; any other public file is refused and fails the run); file reads are its own manifest (through tools/tank-assets-store.mjs), images and technical-label sidecars',
   },
   'tools/tank-assets-store.mjs': {
     // 266: the per-tank asset manifest. It names no repository path: every read and listing is under the icons
@@ -251,6 +254,13 @@ export const DECLARED_DYNAMIC = Object.freeze({
     scheduleOnly: ['tools/browser-id-caps.mjs'],
     note: 'loads tools/browser-launch.mjs (keyed: its launch flags reach the renders) when a chunk launches; the caps only place browser boundaries',
   },
+  // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses
+  // (403) a public file outside its list; every file it serves lies under the steps' declared reads.
+  'tools/icons-page-public.mjs': {
+    pin: 'ad3c9886d1a8cabe',
+    reads: [],
+    note: 'statSync of the path a request names, to find a public file outside ICONS_PAGE_PUBLIC; it reads no file contents',
+  },
   'tools/map-probe-runtime.mjs': {
     pin: 'ae2caa4c871631f4',
     reads: [],
@@ -301,6 +311,13 @@ export const SCHEDULING_ENV = Object.freeze({
   COT_READY_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to report ready',
   COT_NAV_RETRIES: 'presentation-centering: how often a page load that timed out is retried',
   COT_BROWSER_ID_CAP: 'browser-id-chunks (266): lowers the ids per browser, so where a fresh browser starts, never what an id renders',
+  // 266: the browser guard's limits (tools/browser-launch.mjs) decide when a browser is killed (exit 86), never what it
+  // renders; keyed with their values, a raised tree cap re-ran centering and icons on every id
+  COT_BROWSER_HEAP_MB: 'browser-launch: each renderer\'s V8 heap cap',
+  COT_BROWSER_RENDERER_CAP_MB: 'browser-launch: the guard\'s per-renderer memory limit',
+  COT_BROWSER_TREE_CAP_MB: 'browser-launch: the guard\'s whole-browser memory limit',
+  COT_BROWSER_GUARD_INTERVAL_MS: 'browser-launch: how often the guard samples the browser\'s memory',
+  COT_BROWSER_RENDERER_LIMIT: 'browser-launch: how many renderer processes Chrome may start',
 });
 
 /**
@@ -355,6 +372,8 @@ export const BALANCE = Object.freeze({
 });
 
 const ids = (list) => `--ids=${list.join(',')}`;
+/** The public files the icons page loads in the GPU steps: the directories its tools' server serves (266). */
+const ICONS_PAGE_READS = ICONS_PAGE_PUBLIC.map((dir) => `public/${dir}/**`);
 
 /**
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
@@ -468,11 +487,11 @@ export const STEPS = Object.freeze([
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
     files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
-    // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
-    // models excepted: no playable build loads one, AGENTS.md).
-    reads: ['public/**'],
-    // --update renders live builds; the exported-icon audit (public/icons) runs only under --check/--sync-assets.
-    excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],
+    // The page renders through Vite and Chrome: the public directories it loads are inputs, and the tool's server refuses
+    // any other public file (tools/icons-page-public.mjs; 266: all of public/ was keyed, so the vehicle count in
+    // public/llms.txt re-ran this step and icons on every id). The exported-icon audit (public/icons) runs only under
+    // --check/--sync-assets, which record no key.
+    reads: ICONS_PAGE_READS,
   },
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],
@@ -486,9 +505,8 @@ export const STEPS = Object.freeze([
     writes: ['public/icons/**'],
     // The manifest's header, written whole beside the per-tank row files (266, tools/tank-assets-store.mjs).
     files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
-    reads: ['public/**'],
-    // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
-    excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],
+    // the public directories the page loads (tools/icons-page-public.mjs, as centering)
+    reads: ICONS_PAGE_READS,
   },
 ]);
 

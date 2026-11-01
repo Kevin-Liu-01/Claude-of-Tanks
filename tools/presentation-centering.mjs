@@ -21,6 +21,7 @@ import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
 import { readTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
+import { iconsPagePublicOnly } from './icons-page-public.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
@@ -123,6 +124,9 @@ const server = await createServer({
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
   server: toolServerOptions(7600),
+  // 266: --update serves only the public directories the step's key reads; any other public load fails the run before a
+  // row is written. The checks load the exported icons too, and record no key.
+  plugins: update ? [iconsPagePublicOnly((file) => pageErrors.push(`refused ${file}: not an icons-page input (tools/icons-page-public.mjs)`))] : [],
 });
 await server.listen();
 const origin = boundOrigin(server);

@@ -27,6 +27,7 @@ import { DEVELOPMENT_TANK_IDS } from '../src/vehicles/specs.ts';
 import { uniqueIds } from './id-list.mjs';
 import { compareTankIds, readTankAssets, tankAssetsDir, writeTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
+import { iconsPagePublicOnly } from './icons-page-public.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -129,6 +130,8 @@ const server = await createServer({
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
   server: toolServerOptions(7400),
+  // 266: only the public directories this step's key reads; any other public load fails the run
+  plugins: [iconsPagePublicOnly((file) => pageErrors.push(`refused ${file}: not an icons-page input (tools/icons-page-public.mjs)`))],
 });
 await server.listen();
 const url = `${boundOrigin(server)}/tools/icons-page.html`;
