@@ -888,6 +888,11 @@ const SETTLE_STEPS = 24;
  * sketch (267: object695's feed system settled 23 mm deep, and six radios and a transmission under 50 mm).
  */
 export const MODULE_DEPTH_FLOOR_M = 0.05;
+/**
+ * A module sketch with at least this share of its box outside its armour is wrong data: gen-combat-anatomy reports it,
+ * and tools/module-outside-share.selftest.mjs fails on it (267: the M551's transmission sat 96% under its rear plate).
+ */
+export const MODULE_OUTSIDE_SHARE_LIMIT = 0.3;
 const thickEnough = (box) => box.min.every((value, axis) => box.max[axis] - value >= MODULE_DEPTH_FLOOR_M);
 
 /** A shape's surface samples and its core (centre, or a capsule's axis ends and middle). */
@@ -1020,6 +1025,28 @@ function growFreeBox(part, column, blocked, deepest = false) {
     seed: [0, 1, 2].map((axis) => part.min[axis] + (seed[axis] + 0.5) * step[axis]),
     shares,
   };
+}
+
+/**
+ * The share of each placeable sketched module's box outside its armour, as placeModules reports it (`outside`): the
+ * voxels of its grid whose centre lies outside its frame's armour column, weighted by part volume; nothing is placed.
+ * Returns [{ module, frame, outside, sketchedL }] in the spec's module order.
+ */
+export function moduleOutsideShares(spec, { drawn = new Set(), ring = null } = {}) {
+  const armor = spec.armor;
+  const turretLimit = ring && Number.isFinite(ring.rimR) && (armor.collisionShells?.turret || []).length ? { ringR: ring.rimR } : null;
+  const shells = { hull: makeShell(armor, 'hull', false), turret: makeShell(armor, 'turret', false, turretLimit) };
+  return (armor.modules || []).filter((box) => placeable(box, drawn)).map((box) => {
+    const frame = box.turretLocal ? 'turret' : 'hull';
+    let sketched = 0, outside = 0;
+    for (const part of box.parts?.length ? box.parts : [box]) {
+      const size = part.min.reduce((product, value, axis) => product * (part.max[axis] - value), 1);
+      const { shares } = growFreeBox(part, (x, z) => shells[frame].column(x, z, 0), () => 0);
+      sketched += size;
+      outside += shares.outside * size;
+    }
+    return { module: box.module, frame, outside: ROUND3(sketched > 0 ? outside / sketched : 0), sketchedL: ROUND3(sketched * 1000) };
+  });
 }
 
 /**
