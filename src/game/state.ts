@@ -91,6 +91,7 @@ import {
   startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import { applyBotInput } from '../sim/playerInputStage.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import {
   activateSpecialAction,
@@ -2617,11 +2618,10 @@ function stepBotControllers(game: SoloGameState): void {
   }
   const proving = game.ruleset.provingGround;
   for (const entity of game.tanks) {
-    if (entity.modeActive !== false && entity.aiCtl && !entity.combat.destroyed) {
-      entity.aiCtl.update(SIM_DT, game.timeS);
-    } else if (proving && entity._provingMark && entity.modeActive !== false && !entity.combat.destroyed) {
-      driveProvingTarget(entity, proving);
-    }
+    if (entity.modeActive === false) continue;
+    // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
+    if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
+    else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
   }
 }
 

@@ -60,7 +60,6 @@ import {
   resolveHeBurst,
   resolveShellHit,
   selectFirstAvailableShell,
-  selectShell,
   strainModule,
   selectedWeaponModuleState,
   magazineReloadDenialReason,
@@ -114,7 +113,7 @@ import {
   type ConsumableHost, type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { applyPlayerInput } from './playerInputStage.ts';
+import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
 import type { AuthoritativePlayerInput } from './playerInputStage.ts';
 import {
   activateSpecialAction,
@@ -2376,17 +2375,6 @@ export function createAuthoritativeMatch({
     }
   }
 
-  function reconcileBotShell(entity: AuthoritativeEntity): void {
-    const shellSlot = Math.max(0, Math.min(
-      entity.spec.gun.shells.length - 1,
-      entity.input.shellSlot | 0,
-    ));
-    if (shellSlot === entity.combat.shellSlot) return;
-    if (!selectShell(entity.combat, shellSlot, entity.spec)) {
-      entity.input.shellSlot = entity.combat.shellSlot;
-    }
-  }
-
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
   const navigationWrecks: NavigationWreck[] = [];
   let navigationWreckTicks = 0;
@@ -2401,12 +2389,7 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
-        // Countdown holds every gun through applyPlayerInput(null). Unlike
-        // humans, bots have no incoming frame to release that safety hold;
-        // hand aiming back to the shared solo AI before it writes this tick.
-        if (!entity.combat.destroyed) entity.input.aimLocked = false;
-        entity.aiCtl?.update(dt, timeS);
-        reconcileBotShell(entity);
+        applyBotInput(entity, dt, timeS);
       } else {
         applyPlayerInput(entity, inputs.get(entity.id), emit);
       }

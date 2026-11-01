@@ -2,16 +2,18 @@
 // battle with game/state.ts simStep on the page, the online driver's authority with sim/authoritativeMatch.ts step in a
 // room's host. Both are the shared core's step: from the same seed, world, hulls and inputs they must leave the same
 // world, byte for byte, every tick. Here a 1v1 on Verdant, seated by the page's own setupBattle (its ground and map
-// craters, destruction, the mode) and mirrored into the authority: both hulls player-driven, one driving, turning and
-// crashing, both laying their guns and trading shots (hits, damage, modules, the shell's knock, bloom, reload). Every
-// tick the two sides' hulls are compared as Float64 bytes. The page's driver applies each hull's controls through the
-// authority's own input stage (sim/playerInputStage.ts applyPlayerInput, 268: the local seats' stage, the aim intent
-// decoded where the authority decodes it), and the gun's muzzle and bore are posed as the authority poses them (its
-// visual stands in for the drawn barrel). The own hull switches its ammunition, asks for a slot emptied on both sides
+// craters, destruction, the mode) and mirrored into the authority: the own hull player-driven, driving, turning and
+// crashing, both hulls laying their guns and trading shots (hits, damage, modules, the shell's knock, bloom, reload).
+// Every tick the two sides' hulls are compared as Float64 bytes. The page's driver applies the own hull's controls
+// through the authority's own input stage (sim/playerInputStage.ts applyPlayerInput, 268: the local seats' stage, the
+// aim intent decoded where the authority decodes it), and the gun's muzzle and bore are posed as the authority poses
+// them (its visual stands in for the drawn barrel). The hostile is a bot on both drivers (268): one scripted controller
+// sits in each driver's bot slot and each driver stages it through its bot path (applyBotInput); it lays on the own
+// hull, fires, and switches its ammunition without firing, holding the same slot on both sides every tick. The own hull switches its ammunition, asks for a slot emptied on both sides
 // and pulls the trigger on it: the same refusal, once, on the same tick, and no shot. Given a fourth shell (no playable
 // hull carries one yet), its fourth slot fires as the fourth on both (268: the page's fire path capped a request at the
-// third slot, a rule the authority never had). Bots' controllers and the mode controllers still run
-// in each loop on its own; folding the two loops into one core step is the named follow-up (TESTS-OWED, core-two-drivers-265).
+// third slot, a rule the authority never had). The drivers still build their AIs apart (seeds, opening routes, enemy
+// lists), so the script stands in for the AI; one bot construction for both is the named follow-up (TESTS-OWED, 268).
 // Negative controls: one input on one side moved by a billionth at tick 300, and the page's ammunition switch a tick late,
 // are each found at their tick.
 import assert from 'node:assert/strict';
@@ -70,6 +72,8 @@ const EMPTY_SLOT = 2;
 const DENIED_FIRE_TICK = 480;
 const ownShellSlot = (tick, chosen) => (tick < 200 ? 0 : tick < 460 ? chosen : tick < 520 ? EMPTY_SLOT : tick < 600 ? chosen : 0);
 const OWN_SPEC = 'm1a1_abrams_hc';
+/** The hostile bot's ammunition: its second slot over ticks 100-139 and 250-279, between its shots (every 150 from 40). */
+const foeShellSlot = (tick) => ((tick >= 100 && tick < 140) || (tick >= 250 && tick < 280) ? 1 : 0);
 
 /**
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
@@ -92,7 +96,7 @@ async function runBattle(ticks, perturb, chosen) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
-  // the local driver's battle (setupBattle), kept to its player and one hostile, both driven by this receipt's inputs
+  // the local driver's battle (setupBattle), kept to its player and one hostile, driven by this receipt's inputs and script
   const game = createGameState({ rosterSeed: 3 });
   game.mapId = MAP;
   spawnTanks(game, { scene: { remove() {} } });
@@ -103,14 +107,13 @@ async function runBattle(ticks, perturb, chosen) {
   game.tanks = [own, foe];
   game.allTanks = [own, foe];
   game.tankById = new Map([[own.id, own], [foe.id, foe]]);
-  foe.aiCtl = null;
   foe.ai = null;
   foe.state.pos.set(own.state.pos.x + 140 * Math.sin(own.state.yaw), 0, own.state.pos.z + 140 * Math.cos(own.state.yaw));
   // the online driver's authority on the same battlefield, the same hulls where the page put them (the player's equipment as
   // the page's: none stored; the hostile's the bots' default on both)
   const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
     { id: own.id, specId: own.specId, team: 'alpha', equipment: [], spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
-    { id: foe.id, specId: foe.specId, team: 'bravo', spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
+    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
   ] });
   match.onMatchReady();
   const authorityOf = (entity) => match.entityById.get(entity.id);
@@ -137,31 +140,39 @@ async function runBattle(ticks, perturb, chosen) {
   const ammoAtStart = own.combat.ammo.slice();
   const shots = [];
   const collider = createCollider(game, pageWorld);
-  const inputFor = (tick, self, other) => {
-    const aim = encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z });
-    return self.id === own.id
-      ? { throttle: 0.6, steer: tick < 240 ? 0 : 0.25, brake: false, fire: tick % 150 === 90 || tick === DENIED_FIRE_TICK,
-        shellSlot: ownShellSlot(tick, chosen), actionBits: 0, aimLocked: false, ...aim }
-      : { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: 0, actionBits: 0, aimLocked: false, ...aim };
+  // the hostile's controller in each driver's bot slot: one script, read from its own tick count and the own hull it lays on
+  // (byte-identical on both sides while the run holds)
+  const foeSlots = [];
+  const scriptedBot = (side, entity, target) => {
+    let tick = -1;
+    return {
+      update() {
+        tick++;
+        const script = { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: foeShellSlot(tick), actionBits: 0 };
+        const input = perturb?.(tick, side, entity.id, script) ?? script;
+        Object.assign(entity.input, input);
+        entity.input.aimPoint.set(target.state.pos.x, target.state.pos.y + 1.5, target.state.pos.z);
+      },
+      setWaypoints() {}, notifyShellResult() {}, notifyUnderFire() {}, notifyEnemyFired() {}, notifyFriendlyBlocked() {},
+    };
   };
+  foe.aiCtl = scriptedBot('page', foe, own);
+  authorityOf(foe).aiCtl = scriptedBot('authority', authorityOf(foe), authorityOf(own));
+  const inputFor = (tick, self, other) => ({ throttle: 0.6, steer: tick < 240 ? 0 : 0.25, brake: false,
+    fire: tick % 150 === 90 || tick === DENIED_FIRE_TICK, shellSlot: ownShellSlot(tick, chosen), actionBits: 0, aimLocked: false,
+    ...encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z }) });
   let divergence = null;
   for (let tick = 0; tick < ticks && !divergence; tick++) {
     currentTick = tick;
-    const inputs = new Map();
-    for (const entity of game.tanks) {
-      const self = authorityOf(entity), other = authorityOf(entity === own ? foe : own);
-      inputs.set(entity.id, perturb?.(tick, 'authority', entity.id, inputFor(tick, self, other)) ?? inputFor(tick, self, other));
-    }
-    match.step({ dt: 1 / 60, inputs });
+    const ownInput = inputFor(tick, authorityOf(own), authorityOf(foe));
+    match.step({ dt: 1 / 60, inputs: new Map([[own.id, perturb?.(tick, 'authority', own.id, ownInput) ?? ownInput]]) });
     for (const event of match.eventsForViewer(own.id)) if (event.type === 'ammo_selection_denied') denied.authority.push({ tick, id: event.id, slot: event.slot, reason: event.reason, guided: event.guided });
     match.afterEventBroadcast();
-    // the local driver's input stage: the authority's own (the local seats'), per tick
-    for (const entity of game.tanks) {
-      let input = inputFor(tick, entity, entity === own ? foe : own);
-      input = perturb?.(tick, 'page', entity.id, input) ?? input;
-      applyPlayerInput(entity, input, pageEmit);
-    }
+    // the local driver's seat stage, the authority's own (the local seats'), per tick; the bot is staged inside simStep
+    const pageInput = inputFor(tick, own, foe);
+    applyPlayerInput(own, perturb?.(tick, 'page', own.id, pageInput) ?? pageInput, pageEmit);
     simStep(game, bus, pageWorld, null, collider);
+    if (tick === 120 || tick === 200 || tick === 260) foeSlots.push([tick, foe.combat.shellSlot]);
     for (let slot = 0; slot < own.combat.ammo.length; slot++) if (own.combat.ammo[slot] < (shots.at(-1)?.ammo ?? ammoAtStart)[slot]) shots.push({ tick, slot, ammo: own.combat.ammo.slice() });
     for (const entity of game.tanks) {
       const page = hullBytes(entity), authority = hullBytes(authorityOf(entity));
@@ -171,7 +182,7 @@ async function runBattle(ticks, perturb, chosen) {
     }
   }
   const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, denied,
-    shots: shots.map(({ tick, slot }) => [tick, slot]) };
+    shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots };
   authorityWorld.release?.();
   pageWorld.release?.();
   return { divergence, exercised, own: own.state, foe: foe.state };
@@ -184,7 +195,8 @@ assert.equal(same.divergence, null, `the local step and the authority's step par
 assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
 assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
 assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
-const { denied, shots } = same.exercised;
+const { denied, shots, foeSlots } = same.exercised;
+assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
 assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
 assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');
 assert.deepEqual(denied.page.map(({ tick, slot, reason }) => [tick, slot, reason]), [[460, EMPTY_SLOT, 'AMMO_EMPTY']],
@@ -210,7 +222,8 @@ assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringi
 console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls byte-identical on the local step (game/state.ts simStep) and the `
   + `authority's (sim/authoritativeMatch.ts), the page's controls through the authority's input stage (sim/playerInputStage.ts): `
   + `drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at ${(same.exercised.foeHp * 100).toFixed(1)} % hp, `
-  + `own at ${(same.exercised.ownHp * 100).toFixed(1)} %), an ammunition switch and the emptied slot refused once at tick `
+  + `own at ${(same.exercised.ownHp * 100).toFixed(1)} %), the hostile a bot on both drivers switching its ammunition without firing, `
+  + `an ammunition switch and the emptied slot refused once at tick `
   + `${denied.page[0].tick}, its trigger held off on a ready gun at ${DENIED_FIRE_TICK}; given a fourth shell, its slot fired as the fourth at `
   + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field})`);
