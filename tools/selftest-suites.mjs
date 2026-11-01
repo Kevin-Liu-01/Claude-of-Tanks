@@ -821,6 +821,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-page-unique.selftest.mjs',
     'tools/viteGameEntryMeta.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
+    // 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite
+    'tools/media-r5/fleet-coverage.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
     // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
