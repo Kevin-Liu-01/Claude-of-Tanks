@@ -14,7 +14,7 @@ import { classifyLaneReds, laneRedLines, LANE_RED_CLASS } from './lane-reds.mjs'
 const scratch = mkdtempSync(join(tmpdir(), 'lane-reds-selftest-'));
 try {
   const root = join(scratch, 'head'), baseDir = join(scratch, 'base'), storeDir = join(scratch, 'store');
-  const receipts = ['r/planted', 'r/inherited', 'r/changed', 'r/flaky', 'r/new', 'r/git', 'r/timing'];
+  const receipts = ['r/planted', 'r/inherited', 'r/changed', 'r/flaky', 'r/new', 'r/git', 'r/timing', 'r/measured', 'r/stale', 'r/reworded'];
   for (const file of receipts) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), ''); }
   for (const file of receipts.filter((name) => name !== 'r/new')) {
     mkdirSync(dirname(join(baseDir, file)), { recursive: true }); writeFileSync(join(baseDir, file), '');
@@ -23,7 +23,19 @@ try {
   const OUTCOMES = {
     'r/planted': { here: [1, 'Error: planted regression'], base: [0, ''] },
     'r/inherited': { here: [1, 'AssertionError [ERR_ASSERTION]: 11 !== 0'], base: [1, 'AssertionError [ERR_ASSERTION]: 11 !== 0'] },
-    'r/changed': { here: [1, 'AssertionError [ERR_ASSERTION]: 12 !== 0'], base: [1, 'AssertionError [ERR_ASSERTION]: 11 !== 0'] },
+    // another subject in the same assertion: OWN
+    'r/changed': { here: [1, 'AssertionError [ERR_ASSERTION]: t72b3m_2022/b3m-lower-curtain--1-2: every facet corner is native stock'],
+      base: [1, 'AssertionError [ERR_ASSERTION]: t72b3m_2016/b3m-lower-curtain--1-2: every facet corner is native stock'] },
+    // 267, the Japan lane's pairs: the same assertion with other measurements (a timing red at load ~500), and the stale
+    // fleet's detail with another id count and scope word: INHERITED
+    'r/measured': { here: [1, 'AssertionError [ERR_ASSERTION]: alice received 26 of the 54 snapshots published over ticks 183-342 at 20 Hz'],
+      base: [1, 'AssertionError [ERR_ASSERTION]: alice received 27 of the 42 snapshots published over ticks 39-162 at 20 Hz'] },
+    'r/stale': {
+      here: [1, 'AssertionError [ERR_ASSERTION]: generated fleet outputs are stale for their inputs\ncontrols: ids 276 (m1a1,m1a1ha,...) — core; row specRest[m1a1]\ngate: all 277 (m1a1,m1a1ha,...) — declaration pin stale for tools/reference-glb-loader.ts\n11 !== 0'],
+      base: [1, 'AssertionError [ERR_ASSERTION]: generated fleet outputs are stale for their inputs\ncontrols: all 276 (m1a1,m1a1ha,...) — core; row specRest[m1a1]\ngate: all 276 (m1a1,m1a1ha,...) — declaration pin stale for tools/reference-glb-loader.ts\n11 !== 0'] },
+    // the planted control: the same receipt's assertion reworded is another failure: OWN
+    'r/reworded': { here: [1, 'AssertionError [ERR_ASSERTION]: alice missed 28 of the 54 snapshots published over ticks 183-342 at 20 Hz'],
+      base: [1, 'AssertionError [ERR_ASSERTION]: alice received 27 of the 42 snapshots published over ticks 39-162 at 20 Hz'] },
     'r/flaky': { here: [0, ''], base: [1, 'Error: never asked'] },
     'r/new': { here: [1, 'Error: a new receipt fails'], base: [0, ''] },
     'r/git': { here: [1, 'Error: git state'], base: [1, 'Error: git state'] },
@@ -48,16 +60,19 @@ try {
   const classOf = (result) => Object.fromEntries(result.rows.map((row) => [row.file, row.class]));
 
   // (1) the classes
-  const first = await classify(['r/planted', 'r/inherited', 'r/changed', 'r/flaky', 'r/new', 'r/git', 'r/timing'], 'a'.repeat(40));
+  const first = await classify(['r/planted', 'r/inherited', 'r/changed', 'r/flaky', 'r/new', 'r/git', 'r/timing', 'r/measured', 'r/stale', 'r/reworded'],
+    'a'.repeat(40));
   assert.deepEqual(classOf(first), { 'r/planted': 'OWN', 'r/inherited': 'INHERITED', 'r/changed': 'OWN', 'r/flaky': 'FLAKY', 'r/new': 'OWN',
-    'r/git': 'INHERITED', 'r/timing': 'INHERITED' }, 'each red in its class');
-  assert.deepEqual(first.own, ['r/planted', 'r/changed', 'r/new'], 'only OWN counts');
+    'r/git': 'INHERITED', 'r/timing': 'INHERITED', 'r/measured': 'INHERITED', 'r/stale': 'INHERITED', 'r/reworded': 'OWN' }, 'each red in its class');
+  assert.deepEqual(first.own, ['r/planted', 'r/changed', 'r/new', 'r/reworded'], 'only OWN counts');
   assert.equal(first.rows.find((row) => row.file === 'r/changed').verdict, 'changed', 'a differing failure is confirmed by a second pair');
   assert.equal(opened, 1, 'one base worktree for the lane'); assert.equal(removed, 1, 'and it is removed');
   const lines = laneRedLines(first, { commit: 'a'.repeat(40), logDir: '/logs' });
-  assert.match(lines[0], /reds: 3 own, 3 inherited, 1 flaky/);
-  assert.ok(lines.some((line) => /^ {2}OWN r\/changed: its failure differs from the base's: AssertionError .*12 !== 0$/.test(line))
-    && lines.some((line) => /^ {4}base: AssertionError .*11 !== 0$/.test(line)), 'a changed failure prints both messages');
+  assert.match(lines[0], /reds: 4 own, 5 inherited, 1 flaky/);
+  assert.ok(lines.some((line) => /^ {2}OWN r\/changed: its failure differs from the base's: AssertionError .*t72b3m_2022\//.test(line))
+    && lines.some((line) => /^ {4}base: AssertionError .*t72b3m_2016\//.test(line)), 'a changed failure prints both messages');
+  const measured = lines.findIndex((line) => /^ {2}INHERITED r\/measured: the same failure on the base: .*26 of the 54/.test(line));
+  assert.ok(measured > 0 && /^ {4}base: .*27 of the 42/.test(lines[measured + 1]), 'an inherited red measured otherwise prints both texts');
   assert.ok(lines.some((line) => /^ {2}OWN r\/new: passes on the base \(no such receipt on the base\)/.test(line)), 'a new receipt is the lane\'s');
 
   // (2) a second lane on the same base: the kept results, no worktree, nothing run there; a timing receipt runs again
