@@ -45,8 +45,15 @@ export const BODY_EXCLUDED_SEAT_ROLES = Object.freeze(['antenna']);
 /** Oracle node names: whips, masts and aerials, and the roof guns with their mounts (never the coaxial mg_twin). */
 export const ORACLE_ROOF_FITTING_NODES = /(?:^|[#/-])(?:antenna|anthena|aerial|bone_mg_aa|mg_aa|bone_mg_[hv]_|mg_\d|mg_mount|\w*pintle|ammocan|weapon[2-9]|mount[2-9]|mgbracket|mgbox)/i;
 
-/** Oracle node names of stowage: fuel drums and fuel storage, stowage baskets and racks (never a gun's ammunition box). */
-export const ORACLE_STOWAGE_NODES = /(?:^|[#/_ -])(?:\w*drums?\b|fuel[ _-]?(?:drums?|storage|barrels?)|extra[ _-]?fuel|\w*baskets?|stowage)/i;
+/** Oracle node names of stowage by kind (Main 2026-11-01: one class, paired by kind): fuel drums and fuel storage,
+ * stowage baskets and racks; jerry cans; unditching logs (never a gun's ammunition box). */
+export const ORACLE_STOWAGE_NODES = Object.freeze({
+  stowage: /(?:^|[#/_ -])(?:\w*drums?\b|fuel[ _-]?(?:drums?|storage|barrels?)|extra[ _-]?fuel|\w*baskets?|stowage)/i,
+  can: /(?:^|[#/_ -])jerry[ _-]?cans?/i,
+  log: /(?:^|[#/_ -])(?:unditching[ _-]?)?logs?(?![a-z])/i,
+});
+/** The kit fittings (profiles/kit.ts FITTINGS) that are stowage, by kind. */
+export const KIT_STOWAGE_FITTINGS = Object.freeze({ stowageRack: 'stowage', jerryCans: 'can', unditchingLog: 'log' });
 
 const roofTypes = new Set(ROOF_FITTING_TYPES);
 const antennaTypes = new Set(ANTENNA_FITTING_TYPES);
@@ -166,28 +173,63 @@ export function roofFittingParts(root, { isRenderNode, oracle = false, nodePatte
   return { nodes, trimmed, boxed, antennaBoxed };
 }
 
+/** The stowage kind a build part carries: its own geometry's stowagePart tag, or a stowage kit fitting it belongs to. */
+function buildStowageKind(object, root) {
+  const own = object.geometry?.userData?.stowage;
+  if (own) return typeof own === 'string' ? own : 'stowage';
+  for (let p = object; p && p !== root; p = p.parent) {
+    const fitting = p.userData?.fitting;
+    if (typeof fitting === 'string' && KIT_STOWAGE_FITTINGS[fitting]) return KIT_STOWAGE_FITTINGS[fitting];
+  }
+  return null;
+}
+
 /**
- * The stowage of one model (Main 2026-10-31): `nodes` (render node -> tag) leave whole, the build's meshes whose own
- * geometry carries the stowage tag and the oracle's nodes ORACLE_STOWAGE_NODES (or `nodePattern`) or its registration's
- * `named` pattern names; `ranges` (render node -> corner-slot ranges, as bodyGeometryWithout takes them) are cut from
- * merged meshes, the build's stowageRanges and, for each of a fused oracle's registered `parts` ({ within, boxes }), the
- * triangles of the nodes `within` names (the node or an ancestor) whose three corners lie in its boxes.
+ * The stowage of one model (Main 2026-10-31, kinds 2026-11-01): `nodes` (render node -> { kind, tag }) leave whole, the
+ * build's meshes whose own geometry carries the stowage tag or that belong to a stowage kit fitting, and the oracle's nodes
+ * ORACLE_STOWAGE_NODES (or `nodePatterns`) or its registration's `named` ({ kind: RegExp }) names; `ranges` (render node ->
+ * [{ start, count, kind }], corner slots as bodyGeometryWithout takes them) are cut from merged meshes, the build's
+ * stowageRanges and, for each of a fused oracle's registered `parts` ({ kind, within, boxes }), the triangles of the nodes
+ * `within` names (the node or an ancestor) whose three corners lie in its boxes.
  */
-export function stowageParts(root, { isRenderNode, oracle = false, nodePattern = ORACLE_STOWAGE_NODES, named = null, parts = null }) {
+export function stowageParts(root, { isRenderNode, oracle = false, nodePatterns = ORACLE_STOWAGE_NODES, named = null, parts = null }) {
   const nodes = new Map(), ranges = new Map();
   if (oracle && parts?.length) root.updateMatrixWorld(true);
+  const patterns = [...Object.entries(nodePatterns), ...Object.entries(named ?? {})];
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
-    const tag = oracle ? oracleRoofFittingTag(o, root, nodePattern) ?? oracleRoofFittingTag(o, root, named)
-      : (o.geometry.userData?.stowage === true ? `stowage:${o.name}` : null);
-    if (tag) { nodes.set(o, tag); return; }
+    if (oracle) {
+      for (const [kind, pattern] of patterns) {
+        const tag = oracleRoofFittingTag(o, root, pattern);
+        if (tag) { nodes.set(o, { kind, tag }); return; }
+      }
+    } else {
+      const kind = buildStowageKind(o, root);
+      if (kind) { nodes.set(o, { kind, tag: `stowage:${o.name}` }); return; }
+    }
     if (o.isInstancedMesh) return;
     const cut = oracle
-      ? (parts ?? []).filter(({ within }) => oracleRoofFittingTag(o, root, within)).flatMap(({ boxes }) => trianglesInBoxes(o, root, boxes))
-      : [...(o.userData?.stowageRanges ?? [])];
+      ? (parts ?? []).filter(({ within }) => oracleRoofFittingTag(o, root, within))
+        .flatMap(({ kind = 'stowage', boxes }) => trianglesInBoxes(o, root, boxes).map((r) => ({ ...r, kind })))
+      : (o.userData?.stowageRanges ?? []).map((r) => ({ ...r, kind: r.kind ?? 'stowage' }));
     if (cut.length) ranges.set(o, cut);
   });
   return { nodes, ranges };
+}
+
+/** The stowage both models set aside (Main 2026-11-01): a kind leaves only where the build tags it (a part `visible`) and
+ * the source names or boxes it; any other kind stays on both sides. `unpaired` names the kinds one side has alone. */
+export function pairedStowage(built, oracle, visible = () => true) {
+  const kinds = ({ nodes, ranges }, own) => new Set([...[...nodes].filter(([node]) => !own || visible(node)).map(([, v]) => v.kind),
+    ...[...ranges].filter(([node]) => !own || visible(node)).flatMap(([, list]) => list.map((r) => r.kind))]);
+  const have = [kinds(built, true), kinds(oracle, false)];
+  const both = new Set([...have[0]].filter((kind) => have[1].has(kind)));
+  const keep = ({ nodes, ranges }) => ({
+    nodes: new Map([...nodes].filter(([, v]) => both.has(v.kind))),
+    ranges: new Map([...ranges].map(([node, list]) => [node, list.filter((r) => both.has(r.kind))]).filter(([, list]) => list.length)),
+  });
+  return { built: keep(built), oracle: keep(oracle), kinds: [...both].sort(),
+    unpaired: { procedural: [...have[0]].filter((k) => !both.has(k)).sort(), reference: [...have[1]].filter((k) => !both.has(k)).sort() } };
 }
 
 /** The parts an oracle comparison leaves out of both models: every roof fitting the oracle names (by node or by its

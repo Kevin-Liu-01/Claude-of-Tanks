@@ -9199,12 +9199,14 @@ function* buildTankCoreSteps(
   // keeps the vertex spans of its missile-rack stock (weaponAssembly's parts), so the decor keeps its pieces off every
   // launcher (decorations.ts launcherKeepOut). A smoke bank shares the 'launcher' seat role, so the role cannot say it.
   // 267 (Main 2026-10-31): the same for stowage (profiles/stowagePart.ts), which the geometry gate's body leaves out.
-  const partRangesFor = (list: THREE.BufferGeometry[], test: (part: THREE.BufferGeometry) => boolean): Array<{ start: number; count: number }> => {
-    const ranges: Array<{ start: number; count: number }> = [];
+  // A test that answers a string records it as the span's kind (stowagePart's kinds).
+  const partRangesFor = (list: THREE.BufferGeometry[], test: (part: THREE.BufferGeometry) => unknown): Array<{ start: number; count: number; kind?: string }> => {
+    const ranges: Array<{ start: number; count: number; kind?: string }> = [];
     let vertexOffset = 0;
     for (const part of list) {
       const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
-      if (test(part) && count) ranges.push({ start: vertexOffset, count });
+      const found = test(part);
+      if (found && count) ranges.push({ start: vertexOffset, count, ...(typeof found === 'string' ? { kind: found } : {}) });
       vertexOffset += count;
     }
     return ranges;
@@ -9291,7 +9293,7 @@ function* buildTankCoreSteps(
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
     const rackRanges = partRangesFor(list, (part) => part.userData.weaponStock?.module === 'missileRack');
-    const stowageRanges = partRangesFor(list, (part) => part.userData.stowage === true);
+    const stowageRanges = partRangesFor(list, (part) => part.userData.stowage);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',

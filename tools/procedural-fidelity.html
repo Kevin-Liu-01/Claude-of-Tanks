@@ -38,7 +38,7 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, stowageParts, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, stowageParts, pairedStowage, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -780,14 +780,15 @@ for (const root of [reference.root, procedural.root]) {
 // pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
 // oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
-// Stowage (fuel drums, their cradles, stowage racks and baskets) leaves every comparison on this page, on both models,
-// wherever the build tags it (profiles/stowagePart.ts) or the source names it or boxes it (FUSED_STOWAGE_BOXES): body
-// against body (Main's ruling 2026-10-31, 267). Every body built below leaves it out too; the score's ruler keeps it
-// (withWholeSource).
-const stowage = [
-  stowageParts(procedural.root, { isRenderNode }),
+// Stowage (fuel drums, their cradles, stowage racks and baskets; jerry cans; unditching logs) leaves every comparison on
+// this page, on both models, kind by kind wherever the build tags that kind (profiles/stowagePart.ts, the kit's stowage
+// fittings) and the source names it or boxes it (FUSED_STOWAGE_BOXES): body against body (Main's rulings 2026-10-31 and
+// 11-01). A kind one side has alone stays on both sides. Every body built below leaves it out too; the score's ruler keeps
+// it (withWholeSource).
+const stowagePairing = pairedStowage(stowageParts(procedural.root, { isRenderNode }),
   stowageParts(reference.root, { isRenderNode, oracle:true, named:FUSED_STOWAGE_BOXES[id]?.nodes ?? null, parts:FUSED_STOWAGE_BOXES[id]?.parts ?? null }),
-];
+  (node) => baseVisible.get(node) === true);
+const stowage = [stowagePairing.built, stowagePairing.oracle];
 const roofFittings = [
   roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),
   roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
@@ -848,9 +849,11 @@ function withStowageBack(measure, model) {
   }
 }
 const stowageAside = (() => {
-  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
+  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()].map(({ kind, tag }) => `${kind}:${tag}`),
     ...[...ranges].map(([node, cut]) => `${node.name}:${cut.length}`)])].sort());
-  return named[0].length || named[1].length ? { procedural:named[0], reference:named[1] } : null;
+  const { unpaired } = stowagePairing, alone = unpaired.procedural.length || unpaired.reference.length;
+  return named[0].length || named[1].length || alone
+    ? { kinds:stowagePairing.kinds, procedural:named[0], reference:named[1], ...(alone ? { staysIn:unpaired } : {}) } : null;
 })();
 const whipsAside = paired.named.antenna;
 const whipsAsideUndo = [];
@@ -2286,7 +2289,7 @@ if (params.get('geo')) {
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
     ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
-    ...(stowageAside ? { stowageAside:{ rule:'every comparison: the build\'s tagged stowage and the source\'s named or boxed stowage; the score height and plan length with them', ...stowageAside } } : {}),
+    ...(stowageAside ? { stowageAside:{ rule:'every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole', ...stowageAside } } : {}),
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,

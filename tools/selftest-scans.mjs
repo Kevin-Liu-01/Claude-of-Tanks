@@ -122,6 +122,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/vehicles/weaponFinish.selftest.mjs': lists('src/vehicles/profiles/*.ts'),
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
+  'tools/gate-oracle-pins.selftest.mjs': lists('docs/geometry-gate/*.json'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory

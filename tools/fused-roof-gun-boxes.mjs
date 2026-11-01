@@ -53,8 +53,10 @@ export const FUSED_ANTENNA_BOXES = Object.freeze({
 
 // Stowage a source fuses into its meshes (267, Main 2026-10-31: drums, drum cradles and stowage racks or baskets leave the
 // body comparison on both sides): the gate takes it out of the source for every comparison on its page, as the build's
-// tagged stowage leaves (profiles/stowagePart.ts; body-height-parts.mjs stowageParts). An entry's `nodes` names whole
-// stowage nodes the generic names (ORACLE_STOWAGE_NODES) miss; each of its `parts` cuts, within the nodes `within` names
+// tagged stowage leaves (profiles/stowagePart.ts; body-height-parts.mjs stowageParts), kind by kind (Main 2026-11-01:
+// a kind leaves both sides only where the build tags it too). An entry's `nodes` ({ kind: RegExp }) names whole stowage
+// nodes the generic names (ORACLE_STOWAGE_NODES) miss; each of its `parts` (kind 'stowage' unless named) cuts, within the
+// nodes `within` names
 // (three's sanitized names, a node or an ancestor), the triangles whose three corners lie in its boxes, in the page's
 // registered frame (the T-90 family's canonical prints register at unit scale, so it is each GLB's own frame). Boxes
 // enclose welded pieces lying wholly in the stowage (one box per piece, 0.5 mm proud) and cut no hull, fender or turret
@@ -155,6 +157,7 @@ const T90MS_CRADLE = Object.freeze([
     Object.freeze([0.772,  1.1382,  -3.2555,  0.8336,  1.1568,  -3.2115]),
     Object.freeze([0.8272,  1.1821,  -3.2418,  0.8442,  1.1968,  -3.1723]),
   ]);
+const T90A_DRUM_NODE = Object.freeze({ triangles: 0, nodes: Object.freeze({ stowage: /^gear533$/ }), parts: Object.freeze([]) });
 export const FUSED_STOWAGE_BOXES = Object.freeze({
   t90a_vladimir: VLADIMIR_STERN_DRUMS,
   t90: Object.freeze({ triangles: 816, parts: Object.freeze([Object.freeze({ within: /^vehicle#t-90--t-90_7_0$/, boxes: T90_CRADLE })]) }),
@@ -164,8 +167,10 @@ export const FUSED_STOWAGE_BOXES = Object.freeze({
   t90ms_tagil: Object.freeze({ triangles: 816,
     parts: Object.freeze([Object.freeze({ within: /^vehicle#t-90ms--t-90ms_1_0$/, boxes: T90MS_CRADLE })]) }),
   // the T-90A print's gear533 is its drum installation whole: both drums, their cradles, straps and hoses (895 triangles,
-  // z -4.19 to -3.28), the build's tagged drums and cradle hoops' counterpart
-  t90a: Object.freeze({ triangles: 0, nodes: /^gear533$/, parts: Object.freeze([]) }),
+  // z -4.19 to -3.28), the build's tagged drums and cradle hoops' counterpart; the T-90A Burlak prototype's composite
+  // reference takes its hull, gear533 included, from the T-90A X print (the same bytes; the T-90 lane's e0f3c60301)
+  t90a: T90A_DRUM_NODE,
+  t90a_burlak_proto: T90A_DRUM_NODE,
   // the T-90SM print: the empty stern cradle's eight webs in chasis (296 triangles; its exhaust casing's tail box at
   // z -3.98 stays body). Its bustle basket stays in on both sides: the print's basket in misc_a and the build's tagged
   // one could not be matched piece for piece (the T-90 lane drops that tag)
@@ -183,5 +188,5 @@ export const FUSED_STOWAGE_BOXES = Object.freeze({
   ]) }),
   // the T-90M print names its drums ('EXtra fuel storage') and side baskets ('Rear turret basket.001/.002') generically;
   // its bustle basket is 'Hull cage.001' ('Hull cage', full width at the fenders, is its slat cage and stays body)
-  t90m: Object.freeze({ triangles: 0, nodes: /^Hull_cage001/, parts: Object.freeze([]) }),
+  t90m: Object.freeze({ triangles: 0, nodes: Object.freeze({ stowage: /^Hull_cage001/ }), parts: Object.freeze([]) }),
 });
