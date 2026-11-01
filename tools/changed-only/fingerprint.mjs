@@ -164,12 +164,13 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // in this checkout, else the hash the row recorded, so a checkout without the file keys the id as the checkout that
   // measured it did. It keys only its own id, never the ids whose spec chains name it. A `graft` beside it (267: a
   // certified second source the registration seats in the first, t90a_burlak_proto's turret) is the id's input as well.
-  const inputTables = {}, absentInputs = {};
+  // Its measured row (267) is the same row from the recorded sha256s alone: what a run stamps (stampedInKeys).
+  const inputTables = {}, absentInputs = {}, measuredRows = {};
   for (const [name, table] of Object.entries(TABLES)) {
     if (!table.inputField) continue;
     const input = `${name}.${table.inputField}`;
     inputTables[name] = input;
-    const inputRows = {};
+    const inputRows = {}, measured = (measuredRows[input] = {});
     for (const [id, named] of Object.entries(data.named?.[name] ?? {})) {
       if (typeof named?.path !== 'string') continue;
       const keyOf = (input, what) => {
@@ -178,8 +179,11 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
         if (digest === 'missing') (absentInputs[name] ??= {})[id] ??= `${what} absent here (${rel(file)})`;
         return `${input.path}:${digest === 'missing' ? (input.sha256 ?? 'unrecorded') : digest}`;
       };
-      const graft = typeof named.graft?.path === 'string' ? `|${keyOf(named.graft, `${table.inputField} graft`)}` : '';
+      const recordedOf = (input) => `${input.path}:${input.sha256 ?? 'unrecorded'}`;
+      const grafted = typeof named.graft?.path === 'string';
+      const graft = grafted ? `|${keyOf(named.graft, `${table.inputField} graft`)}` : '';
       inputRows[id] = h16(`${keyOf(named, table.inputField)}${graft}`);
+      measured[id] = h16(`${recordedOf(named)}${grafted ? `|${recordedOf(named.graft)}` : ''}`);
     }
     data.rows[input] = inputRows;
   }
@@ -397,18 +401,19 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   };
   const builderKey = (id) => H(`core:${core}`, `roster:${roster}`, ...groupChain(id).map((group) => `group:${group}:${groups[group]}`));
   const rowOf = (table, id) => data.rows[table]?.[id] ?? 'absent';
-  const rowsKey = (step, id) => {
+  // `ownRow` (stampedInKeys): the id's own input rows taken from elsewhere (as a run recorded them)
+  const rowsKey = (step, id, ownRow = null) => {
     const parts = [];
     for (const table of stepStates[step.name].rowTables) for (const member of chainOf(id)) {
       if (member === id && step.outputs.includes(table)) continue;
       if (member !== id && ownInputs.has(table)) continue;
-      parts.push(`${table}:${member}:${rowOf(table, member)}`);
+      parts.push(`${table}:${member}:${ownRow && ownInputs.has(table) ? ownRow(table) : rowOf(table, member)}`);
     }
     return H(...parts);
   };
-  const inKey = (name, id) => {
+  const inKey = (name, id, ownRow = null) => {
     const state = stepStates[name];
-    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id)}`);
+    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id, ownRow)}`);
   };
   const outKey = (name, id) => H(...stepStates[name].step.outputs.map((table) => `${table}:${rowOf(table, id)}`));
   const fileHash = (file) => graph.hashFile(abs(file)).slice(0, 16);
@@ -433,6 +438,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     ownInputs,
     // why an id cannot run here: the per-id file its row names is absent from this checkout (266, `inputField`)
     inputAbsent: (name, id) => stepStates[name].step.outputs.map((table) => absentInputs[table]?.[id]).find(Boolean) ?? null,
+    // the id's own input row as its record says it was measured (267, stampedInKeys)
+    measuredRow: (table, id) => measuredRows[table]?.[id] ?? 'absent',
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
     inKey, outKey, builderKey, rowsKey, fileHash,
     partition: {
@@ -524,6 +531,17 @@ export function refreshComponents(manifest, state) {
   // The world's component lines (what --explain compares a map against); a tree without world rows keeps them.
   if (state.world) manifest.comps = { ...state.world.comps };
   return manifest;
+}
+
+/** The in-keys to record for a run of `name`: `inKeys` as taken `before` it, except that a step which writes the rows
+ *  its own key reads (`inputField`: the gate's oracle, which the record names) takes them as the run recorded them
+ *  (`after`'s sha256s). Stamped as they stood before, every id whose record gained or moved its oracle was due again
+ *  after the run that wrote it (267's bootstrap: 118 ids gated twice). A file changed after the run hashed it still
+ *  differs from the recorded sha256, so its id stays due. */
+export function stampedInKeys(before, after, name, inKeys) {
+  const step = before.steps[name];
+  if (!step?.rowTables?.some((table) => before.ownInputs?.has(table))) return inKeys; // a map step: none
+  return Object.fromEntries(Object.keys(inKeys).map((id) => [id, before.inKey(name, id, (table) => after.measuredRow(table, id))]));
 }
 
 /** Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:

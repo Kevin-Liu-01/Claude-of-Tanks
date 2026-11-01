@@ -1264,7 +1264,10 @@ by hand, and never take one side of it whole as the merge result.
   (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`), with the
   `graft: { path, sha256 }` beside it where a certificate seats a second source in the first (t90a_burlak_proto): the file's bytes
   where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
-  did, and different bytes at the path re-run that id alone. A ledger a step only checks each id against
+  did, and different bytes at the path re-run that id alone. Because the gate writes the row its own key reads, a run
+  stamps that row as it recorded it (`stampedInKeys`: the recorded sha256s), not as it stood before the run. The
+  pre-run stamp left every id whose record gained or moved its oracle due a second time; 267's bootstrap gated 118 ids
+  twice. A ledger a step only checks each id against
   (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
   as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
   order moves no key, one row moves its id alone and the tolerance moves every id (267: the 266 Brazil merge reordered

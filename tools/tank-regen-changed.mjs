@@ -28,7 +28,7 @@
 // assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
 // settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
-// after), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
+// after; a step's own input rows as the run recorded them, stampedInKeys), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
 //
 // Resource rules: every CPU child runs `nice -n 10 node --max-old-space-size=4096` after `headroom can-start --gb N`,
 // with a wall-clock limit that kills only that child; GPU children are not niced and run inside the capture lock.
@@ -36,8 +36,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
-  from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, stampedInKeys,
+  writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
@@ -299,7 +299,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
     log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here, left due: ${Object.entries(skipped).slice(0, 6)
       .map(([id, why]) => `${id} (${why})`).join(', ')}`);
   }
-  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)) });
+  recordStep(manifest, name, scoped, stampedInKeys(state, afterView, name, inKeys), afterView, { skip: new Set(Object.keys(skipped)) });
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;

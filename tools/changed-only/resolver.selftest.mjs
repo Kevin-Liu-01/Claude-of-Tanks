@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
-  from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest,
+  stampedInKeys } from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
@@ -433,6 +433,24 @@ put('src/vehicles/anchors.generated.ts', anchors);
     'a graft absent here keys a2 from its recorded sha256');
   assert.equal(graftAbsent.inputAbsent('gate', 'a2'), 'oracle graft absent here (public/models/g2.glb)');
   renameSync(join(root, 'public/models/g2.away'), join(root, 'public/models/g2.glb'));
+  // a run that writes the rows its own key reads converges in one pass (stampedInKeys): a1's record gains its oracle and
+  // a2's its graft, and the stamp takes them as recorded; a file changed after the measurement still marks its id.
+  // Control: stamped as they stood before the run, both ids are due again (267's bootstrap gated 118 ids twice).
+  const runGate = (named, records) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows, records },
+    named, chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const beforeRun = runGate({ records: { a2: named().records.a2 } }, { a1: 'g0', a2: 'g2' });
+  const afterRun = runGate(grafted(), { a1: 'g1', a2: 'g2+' });
+  const preKeys = Object.fromEntries(['a1', 'a2'].map((id) => [id, beforeRun.inKey('gate', id)]));
+  const stampRun = (keys) => refreshComponents((() => { const m = bootstrap(beforeRun); recordStep(m, 'gate', ['a1', 'a2'], keys, afterRun); return m; })(), afterRun);
+  assert.deepEqual(changed(resolveChanged(afterRun, stampRun(preKeys))).gate, 'ids:a1,a2', 'control: the pre-run stamp leaves both due');
+  const converged = stampRun(stampedInKeys(beforeRun, afterRun, 'gate', preKeys));
+  assert.deepEqual(changed(resolveChanged(afterRun, converged)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'stamped as recorded, the run that wrote its oracle and graft leaves nothing due');
+  put('public/models/a1.glb', 'oracle a1 v2');
+  assert.deepEqual(changed(resolveChanged(runGate(grafted(), { a1: 'g1', a2: 'g2+' }), converged)).gate, 'ids:a1',
+    'a file changed after the run measured it marks its id');
+  put('public/models/a1.glb', 'oracle a1 v1');
+  assert.equal(stampedInKeys(beforeRun, afterRun, 'sizes', preKeys), preKeys, 'a step without own input rows stamps its pre-run keys');
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
