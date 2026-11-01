@@ -316,6 +316,7 @@ function ensureBodyState(state: TankBodyState) {
     dynamicSupport: false,
     autoRighting: false,
     restSupportY: NaN,
+    restOnBody: false,
   });
 }
 
