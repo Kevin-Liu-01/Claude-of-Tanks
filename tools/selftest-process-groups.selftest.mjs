@@ -3,8 +3,11 @@
 // three raw burners and either fails at once or hangs. Whether it fails, or the runner itself is ended by SIGTERM or by
 // an outer alarm (SIGALRM, the ghillie case) while it hangs, no process of its group is alive once the runner returns.
 // Controls: the runner's old kill (the receipt's own process only, in the runner's group) leaves all three burners
-// running after the same failure and the same SIGTERM. Every fixture process stops itself after 60 s, so a proof ended
-// from outside cannot leak them for long. First-party tooling: Kevin B. Liu.
+// running after the same failure and the same SIGTERM. Every fixture process stops itself after 300 s, so a proof ended
+// from outside cannot leak them for long, and none outlives a scenario's waits by age alone (a burner that died of age
+// would hide a group kill that failed). Each wait is an event with a cap that only names a hang (267: at load average
+// ~450 the runner's 15 s, counted from its spawn, ran out before it had started the fixture). First-party tooling: Kevin
+// B. Liu.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
@@ -14,7 +17,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runSelftestFile } from './run-selftests.mjs';
 
-const BURNER = 'const end = Date.now() + 60000; for (;;) if (Date.now() > end) process.exit(0);';
+const BURNER = 'const end = Date.now() + 300000; for (;;) if (Date.now() > end) process.exit(0);';
 const fixture = (ending) => `import { spawn } from 'node:child_process';
 const burn = () => spawn(process.execPath, ['-e', ${JSON.stringify(BURNER)}], { stdio: 'ignore' }).pid;
 const burners = [burn(), burn(), burn()];
@@ -43,12 +46,14 @@ const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { retu
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const failing = join(dir, 'failing.mjs'), hanging = join(dir, 'hanging.mjs'), driver = join(dir, 'runner.mjs');
 writeFileSync(failing, fixture('process.exit(1);'));
-writeFileSync(hanging, fixture('setTimeout(() => process.exit(0), 60000);'));
+writeFileSync(hanging, fixture('setTimeout(() => process.exit(0), 300000);'));
 writeFileSync(driver, DRIVER);
 
+/** A wait's cap: long enough that only a hang reaches it on a loaded machine, short of the fixtures' 300 s. */
+const HANG_MS = 60000;
 /** The fixture's pids from its log, once it has written them. */
 async function fixturePids(logFile) {
-  for (let waited = 0; waited < 15000; waited += 50) {
+  for (const deadline = Date.now() + HANG_MS; Date.now() < deadline;) {
     let text = '';
     try { text = readFileSync(logFile, 'utf8'); } catch { /* not yet */ }
     const line = text.split('\n').find((entry) => entry.startsWith('fixture '));
@@ -69,12 +74,11 @@ const survivors = async (pids, ms = 5000) => {
   while (left.length && Date.now() < deadline) { await sleep(50); left = left.filter(alive); }
   return left;
 };
-/** Resolves when `child` closes; fails after `ms`. */
-function closedWithin(child, ms, what) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${what} did not return within ${ms} ms`)), ms);
-    child.once('close', () => { clearTimeout(timer); resolve(); });
-  });
+/** `promise`, or a failure naming `what` once `ms` have passed. */
+function within(promise, ms, what) {
+  let timer;
+  const hang = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} did not return within ${ms} ms`)), ms); });
+  return Promise.race([promise, hang]).finally(() => clearTimeout(timer));
 }
 
 try {
@@ -99,10 +103,10 @@ try {
     started.push(runner.pid);
     let output = '';
     runner.stdout.on('data', (chunk) => { output += chunk; });
-    const closed = closedWithin(runner, 15000, `the runner after ${signal}`);
+    const closed = new Promise((resolve) => runner.once('close', resolve));
     const pids = await fixturePids(logFile);
     runner.kill(signal);
-    await closed;
+    await within(closed, HANG_MS, `the runner after ${signal}`);
     const left = await survivors(pids, mode === 'legacy' ? 300 : 5000);
     if (mode === 'legacy') {
       assert.equal(left.filter((pid) => pid !== pids[0]).length, 3,

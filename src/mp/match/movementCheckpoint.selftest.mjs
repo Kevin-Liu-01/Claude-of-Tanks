@@ -25,8 +25,8 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 8,
-  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive');
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 9,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on');
 assert.equal(MOVEMENT_CHECKPOINT_VALUES, 63, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact + the held posture and its seated share (pitch, roll, their rates) + the stops\' share and its rate');
 
 const driven = drive(180);
@@ -158,11 +158,30 @@ assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.value
 assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values, flags: ours.flags }), false, 'a version-5 tag on 63 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: ours.flags }), false, 'a version-6 tag on 63 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 7, values: ours.values, flags: ours.flags }), false, 'a version-7 tag on 63 values');
-assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: 8192 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values, flags: 8192 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
+
+// Version 9 (physics, 268): the ends at which a hull rested on a body contact (flag bits 11 and 12) ride both encoders and
+// restore; a version-8 checkpoint (the same values) decodes as resting on none, whatever those bits (a version-8 encoder
+// never sets them)
+assert.equal(ours.flags & 6144, 0, 'a hull driving on open ground rests on no body contact');
+const onBody = drive(60);
+for (const ends of [1, 2, 3]) {
+  onBody._body.bodyRest = ends;
+  const bodyCheckpoint = captureMovementCheckpoint(onBody);
+  assert.equal(bodyCheckpoint.flags >> 11 & 3, ends, 'a hull resting on a body contact flags its ends');
+  assert.equal(captureMovementPredictionState(onBody).flags, bodyCheckpoint.flags, 'both encoders carry the ends');
+  const bodyRestored = createTankState(SPEC, onBody.pos, onBody.yaw);
+  assert.equal(applyMovementCheckpoint(bodyRestored, bodyCheckpoint), true);
+  assert.equal(bodyRestored._body.bodyRest, ends, 'the ends restore');
+  assert.equal(applyMovementCheckpoint(bodyRestored, { ...bodyCheckpoint, version: 8 }), true, 'a version-8 checkpoint still decodes');
+  assert.equal(bodyRestored._body.bodyRest, 0, 'a version-8 checkpoint rests on no body contact');
+  assert.deepEqual(captureMovementCheckpoint(bodyRestored).values, bodyCheckpoint.values, 'a version-8 checkpoint is version 9\'s values');
+}
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
 assert.equal(ours.flags & 1024, 0, 'a hull on the ground carries no roof');
@@ -177,4 +196,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 63-value version-8 layout identical to the authority encoder, versions 7, 6, 5 and 4 still decode, the roof a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 63-value version-9 layout identical to the authority encoder, versions 8, 7, 6, 5 and 4 still decode, the roof and the body contact a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');
