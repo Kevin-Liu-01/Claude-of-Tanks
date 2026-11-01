@@ -3191,6 +3191,8 @@ function integrateHorizontalMotion(
 const _wallPoints = new WeakMap<object, readonly number[]>();
 /** Plan directions in which the hull's outline meets a face (wallContactPoints). */
 const WALL_OUTLINE_DIRECTIONS = 16;
+/** Points this close to a direction's most outward reach are as far out: the one further along the hull's half is taken. */
+const WALL_REACH_TIE_M = 0.01;
 /** The grades of the faces the outline is taken against: the shallowest wall, and a sheer one. */
 const WALL_OUTLINE_GRADES = [CLIFF_GRADE, 6] as const;
 
@@ -3213,16 +3215,26 @@ function wallContactPoints(spec: MovementSpec): readonly number[] {
         const angle = (2 * Math.PI * direction) / WALL_OUTLINE_DIRECTIONS;
         const ux = detMath.sin(angle);
         const uz = detMath.cos(angle);
-        let best = -1;
-        let bestReach = -Infinity;
-        for (let index = 0; index + 2 < hull.length; index += 3) {
-          const reach = hull[index] * ux + hull[index + 2] * uz - hull[index + 1] / grade;
-          if (reach > bestReach) {
-            bestReach = reach;
-            best = index;
+        // (physics, 268) the most outward point in each half of the hull across the direction, the one further along it
+        // on a tie (WALL_REACH_TIE_M): a face nearly parallel to a side meets one of the side's ends first, as a pivot
+        // sweeps it in, never its middle. A T-90AM's left side is a run of points at x -1.90 from z -3.46 to 3.38; the one
+        // most outward point was its front end, and pivoting at a wall's foot it swept the rear end 5.9 cm into the face.
+        for (const half of [1, -1]) {
+          let best = -1;
+          let bestReach = -Infinity;
+          let bestAlong = 0;
+          for (let index = 0; index + 2 < hull.length; index += 3) {
+            const along = half * (hull[index] * uz - hull[index + 2] * ux);
+            if (along < 0) continue;
+            const reach = hull[index] * ux + hull[index + 2] * uz - hull[index + 1] / grade;
+            if (reach > bestReach + WALL_REACH_TIE_M || (reach > bestReach - WALL_REACH_TIE_M && along > bestAlong)) {
+              bestReach = Math.max(reach, bestReach);
+              best = index;
+              bestAlong = along;
+            }
           }
+          if (best >= 0 && !chosen.includes(best)) chosen.push(best);
         }
-        if (best >= 0 && !chosen.includes(best)) chosen.push(best);
       }
     }
     chosen.sort((a, b) => a - b);
