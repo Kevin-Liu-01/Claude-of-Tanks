@@ -27,7 +27,7 @@
   "amx30b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5e3eeea4a7a0dbe0","gun":"669460de6fdf4739"}},
   "amx30b2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"731bd08a9560119a","gun":"194f8c74a7eb4a02"}},
   "amx40": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2ceb23db7251e4c9","gun":"3c0b2c3e0eaf0f2f"}},
-  "amx40_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f8b89233858e46ed","gun":"1ca81127e87ba9df"}},
+  "amx40_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f8b89233858e46ed","gun":"2145668cc8392276"}},
   "amx56": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c5a0e45907824ff0","gun":"a21c3573246a650f"}},
   "ares_apc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"383de3c1e1e970af","gun":"a7614cd19fa7d69b"}},
   "bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4171a2519190d7f5","gun":"a91fee59ed5a3957"}},
