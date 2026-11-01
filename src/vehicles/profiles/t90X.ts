@@ -23,6 +23,7 @@ import { addPintleBarrel, addPintleFeed, addPintleReceiver, createPintleLayout, 
   MG_TRUE_SCALE_FLOOR } from '../machineGunGeometry.ts';
 import { moldedBox, roundBar } from '../accessoryPrimitives.ts';
 import { addT90SMRearBasket } from './t90SMXRearBasket.ts';
+import { stowagePart } from './stowagePart.ts';
 import { addT90ARearGuard } from './t90AXRearGuard.ts';
 import { addT90AXFenderClosures, addT90AXFrontGuard } from './t90AXFenderClosures.ts';
 import { addT90SMEngineDeck, smEngineDeckSupportRoof } from './t90SMXEngineDeck.ts';
@@ -233,24 +234,26 @@ function vMantlet(P:TankBuilderPort):void {
   P.add('gunMount',cylZ(.151,.026,32),0,0,1.707-V.gun[2]);
 }
 
+// 267 (Main 2026-10-31): the drums, their straps, bands, clasps and caps, each drum's cradle arm and its fuel hose are
+// stowage (stowagePart.ts); the arm's bracket on the hull's rear deck (z -3.35) stays body.
 function fuelDrums(P: TankBuilderPort,rearZ: number,y: number,r: number,length: number,spacing: number,
   strapWidth=.025,zScale=1,strapRatio=.39): void {
   for(const side of [-1,1]) {
     const x=side*spacing,z=rearZ+r*zScale;
-    P.addEquipment('hullDetail',cylX(r,length,32).scale(1,1,zScale),x,y,z);
+    P.addEquipment('hullDetail',stowagePart(cylX(r,length,32).scale(1,1,zScale)),x,y,z);
     for(const offset of [-length*strapRatio,length*strapRatio]) {
-      P.addEquipment('hullDark',cylX(r+.007,strapWidth,32).scale(1,1,zScale),x+offset,y,z);
-      P.addEquipment('hullDetail',cylX(r*.96,.029,32).scale(1,1,zScale),x+offset+Math.sign(offset)*.018,y,z);
-      P.addEquipment('hullDetail',box(strapWidth+.012,.034,.062),x+offset,y+r+.015,z+.033);
+      P.addEquipment('hullDark',stowagePart(cylX(r+.007,strapWidth,32).scale(1,1,zScale)),x+offset,y,z);
+      P.addEquipment('hullDetail',stowagePart(cylX(r*.96,.029,32).scale(1,1,zScale)),x+offset+Math.sign(offset)*.018,y,z);
+      P.addEquipment('hullDetail',stowagePart(box(strapWidth+.012,.034,.062)),x+offset,y+r+.015,z+.033);
     }
-    P.addEquipment('hullDetail',cylX(r*.16,length+.014,12),x,y,z);
-    P.addEquipment('hullDetail',box(.11,.09,.60),x,y-.23,z+.22,-.22);
+    P.addEquipment('hullDetail',stowagePart(cylX(r*.16,length+.014,12)),x,y,z);
+    P.addEquipment('hullDetail',stowagePart(box(.11,.09,.60)),x,y-.23,z+.22,-.22);
     P.addEquipment('hullDark',box(.095,.10,.21),x,y-.18,-3.35);
     const hose=new THREE.CatmullRomCurve3([
       new THREE.Vector3(x,y+r*.55,z+.11),new THREE.Vector3(x*.55,y+r*.7,z+.4),
       new THREE.Vector3(x*.5,1.39,-3.19),
     ]);
-    P.addEquipment('hullDark',new THREE.TubeGeometry(hose,12,.018,6,false));
+    P.addEquipment('hullDark',stowagePart(new THREE.TubeGeometry(hose,12,.018,6,false)));
   }
 }
 
@@ -445,9 +448,10 @@ function aLeftFenderCase(P:TankBuilderPort):void {
 function aDrums(P:TankBuilderPort):void {
   fuelDrums(P,-4.1654,1.4645,.3160,.9590,.6143,.06476,1.0660,.311);
   for(const side of [-1,1]) {
-    for(const x of [.4439,.7634])P.addEquipment('hullDetail',cylX(.34436,.020,32).scale(1,1,1.0653),side*x,1.46641,-3.8275);
-    P.addEquipment('hullDetail',box(.07654,.1097,.1078),side*.5956,1.7694,-3.6273);
-    P.addEquipment('hullDetail',box(.09876,.060,.1473),side*.5977,1.738,-3.6456,.50);
+    // the cradle hoops and the drum's cap and clasp are stowage too (stowagePart.ts, 267)
+    for(const x of [.4439,.7634])P.addEquipment('hullDetail',stowagePart(cylX(.34436,.020,32).scale(1,1,1.0653)),side*x,1.46641,-3.8275);
+    P.addEquipment('hullDetail',stowagePart(box(.07654,.1097,.1078)),side*.5956,1.7694,-3.6273);
+    P.addEquipment('hullDetail',stowagePart(box(.09876,.060,.1473)),side*.5977,1.738,-3.6456,.50);
   }
 }
 
@@ -1149,10 +1153,11 @@ function smRearFixtures(P: TankBuilderPort): void {
   P.addEquipment('hullDetail',box(.247,.056,.095),-1.514,1.4193,-3.9362);
   P.addEquipment('hullDetail',box(2.003,.2452,.3221),.0024,1.3874,-3.2963);
   for(const x of [-.5578,.1819])P.addEquipment('hullDetail',box(.698,.2103,.1916),x,1.6052,-3.2837);
+  // the four drum cradles, their root lugs and saddles: the stern rack, stowage (stowagePart.ts, 267)
   for(const x of [-.8059,-.3655,.3736,.8001]) {
     smDrumSupport(P,x);
-    P.addEquipment('hullDetail',box(.0245,.0947,.20),x,1.2164,-3.4521);
-    P.addEquipment('hullDetail',box(.1116,.0907,.1137),x,1.2473,-3.5268);
+    P.addEquipment('hullDetail',stowagePart(box(.0245,.0947,.20)),x,1.2164,-3.4521);
+    P.addEquipment('hullDetail',stowagePart(box(.1116,.0907,.1137)),x,1.2473,-3.5268);
   }
   P.addEquipment('hullDetail',box(.4013,.3689,.2337),.0018,.855,-3.2142);
   for(const side of [-1,1]) {
@@ -1182,7 +1187,7 @@ function smDrumSupport(P:TankBuilderPort,x:number):void {
     const sections=rows.map(([z,low,high]):SolidSection=>({z:z+dz,ring:[
       [x-width/2,low+dy],[x+width/2,low+dy],[x+width/2,high+dy],[x-width/2,high+dy],
     ]}));
-    P.addEquipment('hullDetail',sectionSolid(sections));
+    P.addEquipment('hullDetail',stowagePart(sectionSolid(sections)));
   }
 }
 
@@ -1275,17 +1280,19 @@ function modernBins(P: TankBuilderPort,d: Datum,sm: boolean): void {
   taperedSideBins(P,d,{low:1.431,high:1.600,z0:-1.592,z1:-.293,innerRear:.739,outerRear:1.02,innerFront:1.11,outerFront:1.412});
   mMidFoldedSupports(P);
   mForwardFoldedSupports(P);
+  // the flank baskets (the source's 'Rear turret basket.001/.002') are stowage (stowagePart.ts, 267)
   for(const side of [-1,1]) {
     const shift=.0181;
-    onTurret(P,d,'turretDetail',box(.248,.3866,.940),shift+side*.9675,1.7539,-1.0947,0,side*.345);
-    onTurret(P,d,'turretDetail',box(.261,.0162,.950),shift+side*.9675,1.9553,-1.095,0,side*.345);
-    onTurret(P,d,'turretDetail',box(.252,.3866,.355),shift+side*1.2192,1.7539,-.4554,0,side*.1);
+    onTurret(P,d,'turretDetail',stowagePart(box(.248,.3866,.940)),shift+side*.9675,1.7539,-1.0947,0,side*.345);
+    onTurret(P,d,'turretDetail',stowagePart(box(.261,.0162,.950)),shift+side*.9675,1.9553,-1.095,0,side*.345);
+    onTurret(P,d,'turretDetail',stowagePart(box(.252,.3866,.355)),shift+side*1.2192,1.7539,-.4554,0,side*.1);
   }
   onTurret(P,d,'turretPermanentMarkingSurface',box(.34,.41,.87),-.77,1.756,-2.023);
   mTurretBasket(P);
 }
 
 function mTurretBasket(P:TankBuilderPort):void {
+  // 267: the bustle basket is stowage (stowagePart.ts), rails, posts and feet.
   // The bustle rail is asymmetric: short rounded left corner and a longer
   // swept right return. A centered rectangular fence misstates both sides.
   const path:readonly(readonly[number,number,number])[]=[
@@ -1297,11 +1304,11 @@ function mTurretBasket(P:TankBuilderPort):void {
     const y=(top0+top1)/2-(6-row)*.0555;
     // coordinator 2026-10-15 (the owner's T-90M remake still: the basket read as a solid block at mid range): 12 mm
     // flats, not 3 mm, so the seven rails read as open bars over the bustle at any range
-    onTurret(P,M,'turretDetail',box(.0306,.012,length),
+    onTurret(P,M,'turretDetail',stowagePart(box(.0306,.012,length)),
       (x0+x1)/2,y,(z0+z1)/2,0,Math.atan2(x1-x0,z1-z0));
   }
-  for(const [x,z,top]of path)onTurret(P,M,'turretDetail',box(.016,.333,.0306),x,top-.1665,z);
-  for(const x of [-.60,.60])onTurret(P,M,'turretDetail',box(.046,.029,.253),x,1.581,-2.674);
+  for(const [x,z,top]of path)onTurret(P,M,'turretDetail',stowagePart(box(.016,.333,.0306)),x,top-.1665,z);
+  for(const x of [-.60,.60])onTurret(P,M,'turretDetail',stowagePart(box(.046,.029,.253)),x,1.581,-2.674);
 }
 
 function mForwardFoldedSupports(P:TankBuilderPort):void {
@@ -1796,7 +1803,7 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
   // (contig-phase-audit); each drum's cradle floor runs from under the deck edge to where it meets the drum's belly,
   // and out over the hull's rear ledge (x 1.15), closing the notch the stern corner leaves open between the deck and
   // that ledge (x 1.04-1.11, z -3.24 to -3.40, open to the ground in plan).
-  for(const side of [-1,1])P.addEquipment('hullDetail',box(.98,.025,.355),side*.68,1.278,-3.3975);
+  for(const side of [-1,1])P.addEquipment('hullDetail',stowagePart(box(.98,.025,.355)),side*.68,1.278,-3.3975); // stowage (267)
   bowGear(P,1.174,3.27,false,1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],

@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { stowagePart } from './stowagePart.ts';
 import { sheetGuardSection, sheetUnderside, type SheetGuardStation } from './t90AXFenderClosures.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -133,8 +134,8 @@ function drumArms(P: TankBuilderPort, side: number): void {
     [-3.41,.995,1.131],[-3.30,.8803,.9461],[-3.20,.7124,.7781],
     [-3.10,.5444,.6102],[-3.029,.4903,.530]];
   for (const x of [.27734,.86346]) {
-    P.addEquipment('hullDetail',sideStrip(rows,side,x-.006525,x+.006525));
-    P.addEquipment('hullDetail',box(.057,.056,.074),side*x,.540,-3.036);
+    P.addEquipment('hullDetail',stowagePart(sideStrip(rows,side,x-.006525,x+.006525)));
+    P.addEquipment('hullDetail',stowagePart(box(.057,.056,.074)),side*x,.540,-3.036);
   }
 }
 
@@ -164,20 +165,23 @@ function crossDrumHose(P: TankBuilderPort): void {
   P.addEquipment('hullDark',new THREE.TubeGeometry(curve,48,.018,8,false));
 }
 
+// 267 (Main 2026-10-31): the drums, their bands, clasps, rims, caps and the four support arms with their feet are
+// stowage (stowagePart.ts), the source's 'EXtra fuel storage'. The transom fittings and the cross-drum hose (its own
+// source node, compared as body) stay body.
 export function addT90MRearDrums(P: TankBuilderPort): void {
   const r=.29158,length=.83825,rz=.30460,z=-3.79256,y=1.47892;
   for (const side of [-1,1]) {
     const x=side*.56963+.00198;
-    P.addEquipment('hullDetail',cylX(r,length,40).scale(1,1,rz/r),x,y,z);
+    P.addEquipment('hullDetail',stowagePart(cylX(r,length,40).scale(1,1,rz/r)),x,y,z);
     for (const offset of [-.24,.24]) {
-      P.addEquipment('hullDark',cylX(r+.001,.0486,40).scale(1,1,rz/r),x+offset,y,z);
-      P.addEquipment('hullDetail',box(.0645,.015,.038),x+offset,y+r-.002,z);
+      P.addEquipment('hullDark',stowagePart(cylX(r+.001,.0486,40).scale(1,1,rz/r)),x+offset,y,z);
+      P.addEquipment('hullDetail',stowagePart(box(.0645,.015,.038)),x+offset,y+r-.002,z);
     }
     for (const offset of [-length/2,length/2]) {
-      P.addEquipment('hullDetail',cylX(r*.957,.012,40).scale(1,1,rz/r),x+offset,y,z);
-      P.addEquipment('hullDark',cylX(r*.10,.014,16),x+offset,y,z);
+      P.addEquipment('hullDetail',stowagePart(cylX(r*.957,.012,40).scale(1,1,rz/r)),x+offset,y,z);
+      P.addEquipment('hullDark',stowagePart(cylX(r*.10,.014,16)),x+offset,y,z);
     }
-    P.addEquipment('hullDetail',KIT.cylY(.029,.029,.0216,20),x+.0037,1.7553,-3.7926);
+    P.addEquipment('hullDetail',stowagePart(KIT.cylY(.029,.029,.0216,20)),x+.0037,1.7553,-3.7926);
     drumArms(P,side);
   }
   rearTransom(P);

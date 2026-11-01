@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import {sectionSolid} from './sectionSolid.ts';
 import {roofSheet,beamBetween} from './measuredPrimitives.ts';
+import {stowagePart} from './stowagePart.ts';
 import type {Point3} from './measuredPrimitives.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type Height=readonly[z:number,y:number];
@@ -14,17 +15,18 @@ function height(rows:readonly Height[],z:number):number{
     const[a,y]=rows[i-1],[b,next]=rows[i];return y+(next-y)*(z-a)/(b-a);
   }return rows[rows.length-1][1];
 }
+// A drum cradle (web, bearing flange, root and hinge plate): stowage, every part (stowagePart.ts, 267).
 function cradle(P:TankBuilderPort,x:number,dy:number,dz:number):void{
   const zs=[...new Set([...WEB.map(r=>r[0]),...FLANGE.map(r=>r[0])])].sort((a,b)=>a-b);
   const upper=(z:number)=>z<FLANGE[0][0]?1.2305+(z+3.80275)*3.2:z>FLANGE.at(-1)![0]?1.343:height(FLANGE,z)-.006;
-  P.addEquipment('hullDetail',sectionSolid(zs.map(z=>({z:z+dz,ring:[[x-.0049,height(WEB,z)+dy],
-    [x+.0049,height(WEB,z)+dy],[x+.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy],[x-.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy]]}))));
-  P.addEquipment('hullDetail',roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098));
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(zs.map(z=>({z:z+dz,ring:[[x-.0049,height(WEB,z)+dy],
+    [x+.0049,height(WEB,z)+dy],[x+.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy],[x-.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy]]})))));
+  P.addEquipment('hullDetail',stowagePart(roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098)));
   const roots:readonly(readonly[number,number,number])[]=[[-3.295,1.198,1.190],[-3.252,1.237,1.1582],
     [-3.23245,1.2422,1.153],[-3.18355,1.2275,1.139],[-3.15235,1.2334,1.139],[-3.10935,1.150,1.1494]];
-  P.addEquipment('hullDetail',sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],[x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]}))));
-  P.addEquipment('hullDetail',roofSheet([[-3.32815+dz,x-.05935,x+.05935,1.205+dy,1.205+dy],
-    [-3.21485+dz,x-.05935,x+.05935,1.2734+dy,1.2734+dy]],.027));
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],[x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]})))));
+  P.addEquipment('hullDetail',stowagePart(roofSheet([[-3.32815+dz,x-.05935,x+.05935,1.205+dy,1.205+dy],
+    [-3.21485+dz,x-.05935,x+.05935,1.2734+dy,1.2734+dy]],.027)));
 }
 // Authored centreline stations from cross-section centres, not source vertices.
 const LEFT_LINE:readonly Point3[]=[[-.824,.720,-3.139],[-.88,.72104,-3.15422],[-.96,.73282,-3.20664],

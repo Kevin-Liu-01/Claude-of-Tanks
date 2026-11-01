@@ -3,6 +3,7 @@
 // 200 L drums (585 mm across, 880 mm long) now ride each pair of cradles, as on the service tanks.
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
+import {stowagePart} from './stowagePart.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const DRUM_R=.2925,DRUM_LEN=.88;
@@ -18,22 +19,23 @@ function hullFaceZ(P:TankBuilderPort,x:number,y:number,z:number):number{
   return face;
 }
 
-/** Two transverse drums, each centred on a pair of cradles, resting in the cradle bowl at (y, z). */
+/** Two transverse drums, each centred on a pair of cradles, resting in the cradle bowl at (y, z). Every part (drums, hoops,
+ * rims, straps, bung, the cradle pair's mounting plate and its bolts) is stowage (stowagePart.ts, 267). */
 export function addT90CradleDrums(P:TankBuilderPort,y:number,z:number,pairs:readonly(readonly[number,number])[]):void{
   const {box,cylX,cylY}=KIT;
   for(const [a,b]of pairs){
     const x=(a+b)/2;
-    P.addEquipment('hullDetail',cylX(DRUM_R,DRUM_LEN,32),x,y,z);
+    P.addEquipment('hullDetail',stowagePart(cylX(DRUM_R,DRUM_LEN,32)),x,y,z);
     // rolling hoops and the rolled end rims stand proud of the shell
-    for(const dx of [-.29,.29])P.addEquipment('hullDetail',cylX(DRUM_R+.009,.026,32),x+dx,y,z);
-    for(const dx of [-DRUM_LEN/2+.012,DRUM_LEN/2-.012])P.addEquipment('hullDetail',cylX(DRUM_R+.006,.022,32),x+dx,y,z);
+    for(const dx of [-.29,.29])P.addEquipment('hullDetail',stowagePart(cylX(DRUM_R+.009,.026,32)),x+dx,y,z);
+    for(const dx of [-DRUM_LEN/2+.012,DRUM_LEN/2-.012])P.addEquipment('hullDetail',stowagePart(cylX(DRUM_R+.006,.022,32)),x+dx,y,z);
     // a strap over each cradle holds the drum down; the filler bung sits on the outboard end
-    for(const cx of [a,b])P.addEquipment('hullDark',cylX(DRUM_R+.014,.032,32),cx,y,z);
-    P.addEquipment('hullDark',cylX(.032,.022,12),x+Math.sign(x)*(DRUM_LEN/2+.009),y+.16,z);
+    for(const cx of [a,b])P.addEquipment('hullDark',stowagePart(cylX(DRUM_R+.014,.032,32)),cx,y,z);
+    P.addEquipment('hullDark',stowagePart(cylX(.032,.022,12)),x+Math.sign(x)*(DRUM_LEN/2+.009),y+.16,z);
     // 2026-10-31 (tank-standard-check §B2): the cradle pair's mounting plate, bolted to the hull's rear face and running
     // under the drum's front half, closes the plan gap the two cradle webs and the hull enclosed ahead of the drum
     const low=y-DRUM_R+.004,front=hullFaceZ(P,x,low,z)+.012,back=z+DRUM_R*.45;
-    P.addEquipment('hullDark',box(b-a+.04,.012,front-back),x,low-.006,(front+back)/2);
-    for(const cx of [a+.06,b-.06])P.addEquipment('hullDark',cylY(.012,.012,.012,8),cx,low+.002,front-.04); // bolts
+    P.addEquipment('hullDark',stowagePart(box(b-a+.04,.012,front-back)),x,low-.006,(front+back)/2);
+    for(const cx of [a+.06,b-.06])P.addEquipment('hullDark',stowagePart(cylY(.012,.012,.012,8)),cx,low+.002,front-.04); // bolts
   }
 }
