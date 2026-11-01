@@ -255,11 +255,11 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'loads tools/browser-launch.mjs (keyed: its launch flags reach the renders) when a chunk launches; the caps only place browser boundaries',
   },
   // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses
-  // (403) a public file outside its list; every file it serves lies under the steps' declared reads.
-  'tools/icons-page-public.mjs': {
+  // (403) a public file outside its page's list; every file it serves lies under the step's declared reads.
+  'tools/served-public.mjs': {
     pin: 'ad3c9886d1a8cabe',
     reads: [],
-    note: 'statSync of the path a request names, to find a public file outside ICONS_PAGE_PUBLIC; it reads no file contents',
+    note: 'statSync of the path a request names, to find a public file outside the page\'s list; it reads no file contents',
   },
   'tools/map-probe-runtime.mjs': {
     pin: 'ae2caa4c871631f4',

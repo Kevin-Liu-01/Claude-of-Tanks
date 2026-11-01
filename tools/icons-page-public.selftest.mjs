@@ -1,15 +1,17 @@
-// The icons page's public inputs (2026-11-01, item 266; tools/icons-page-public.mjs).
-// Pins: (1) a server with the guard serves a public file under ICONS_PAGE_PUBLIC and anything outside public/, refuses
-// every other public file (403, reported by its repository path, at its root path, its full path and /@fs/), answers the
-// browser's favicon request empty and leaves a missing path to Vite; control: without the guard the same files are
-// served; (2) genIcons and presentation-centering --update pass the guard to their server, and their changed-only steps
-// key exactly ICONS_PAGE_PUBLIC (tools/changed-only/fleet-partition.selftest.mjs pins the keys).
+// The icons page's public inputs (2026-11-01, item 266; tools/icons-page-public.mjs, tools/served-public.mjs).
+// Pins: (1) a server with the icons guard serves a public file under ICONS_PAGE_PUBLIC and anything outside public/,
+// refuses every other public file (403, reported by its repository path, at its root path, its full path and /@fs/),
+// answers the browser's favicon request empty and leaves a missing path to Vite; a guard given exact files serves those
+// and no sibling; control: without the guard the same files are served; (2) genIcons and presentation-centering --update
+// pass the guard to their server, and their changed-only steps key exactly ICONS_PAGE_PUBLIC
+// (tools/changed-only/fleet-partition.selftest.mjs pins the keys).
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'vite';
 import { ICONS_PAGE_PUBLIC, iconsPagePublicOnly } from './icons-page-public.mjs';
+import { servedPublicOnly } from './served-public.mjs';
 import { boundOrigin, toolServerOptions } from './tool-page-load.mjs';
 import { STEPS } from './changed-only/steps.mjs';
 
@@ -20,6 +22,7 @@ const root = mkdtempSync(join(tmpdir(), 'icons-page-public-'));
 const files = {
   'public/fonts/face.woff2': 'font', 'public/llms.txt': '276 vehicles', 'public/site.webmanifest': '{}',
   'public/textures/a.webp': 'texture', 'public/favicon.ico': 'icon', 'src/module.js': 'export default 1;\n',
+  'public/models/a/oracle.glb': 'oracle', 'public/models/a/other.glb': 'other',
   'index.html': '<!doctype html><title>page</title>',
 };
 for (const [file, text] of Object.entries(files)) {
@@ -50,13 +53,21 @@ try {
     for (const path of ['/llms.txt', '/site.webmanifest', '/textures/a.webp', '/public/llms.txt', `/@fs${root}/public/llms.txt`]) {
       const response = await get(path);
       assert.equal(response.status, 403, `${path}: a public file outside ICONS_PAGE_PUBLIC is refused`);
-      assert.match(response.text, /not an input of the icons page/);
+      assert.match(response.text, /not an input of this page's changed-only key/);
     }
     assert.deepEqual(refused, ['public/llms.txt', 'public/site.webmanifest', 'public/textures/a.webp', 'public/llms.txt', 'public/llms.txt'],
       'each refusal is reported by its repository path');
     assert.deepEqual(await get('/favicon.ico'), { status: 204, text: '' }, 'the browser\'s favicon request is answered empty, unread');
     assert.notEqual((await get('/missing.txt')).status, 403, 'a missing path is left to Vite');
     assert.equal(refused.length, 5, 'favicon and missing paths are not refusals');
+  });
+  // exact files: a page keyed per id (the geometry gate's oracles) is served those files and no sibling
+  const exactRefused = [];
+  await serve([servedPublicOnly({ dirs: ['fonts'], files: ['/models/a/oracle.glb'] }, (file) => exactRefused.push(file))], async (get) => {
+    assert.deepEqual(await get('/models/a/oracle.glb'), { status: 200, text: 'oracle' }, 'a listed file is served');
+    assert.equal((await get('/fonts/face.woff2')).status, 200, 'a listed directory is served');
+    assert.equal((await get('/models/a/other.glb')).status, 403, 'its sibling is refused');
+    assert.deepEqual(exactRefused, ['public/models/a/other.glb']);
   });
   // control: Vite alone serves every public file, so the guard is what refuses them
   await serve([], async (get) => {
