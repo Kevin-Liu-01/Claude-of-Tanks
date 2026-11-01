@@ -47,4 +47,36 @@ export function applyT90MarkSourceFrames(specs: Record<string, FleetTankSpec>): 
     spec.armor.gunBarrel.lengthM = frame.lengthM;
     spec.armor.gunBarrel.radiusM = frame.radiusM;
   }
+  agreeDrawnEra(specs);
+}
+
+/**
+ * 267 (Main's tanks-suite triage, ruled "armour and visuals agree in both directions"; eraSeating.selftest.mjs holds it
+ * fleet-wide): a mark's gameplay ERA is the ERA its build draws. Runs here, after every registration-time copy, so the
+ * donors' own records (the T-90M Proryv, the T-90M X, the T-90A obr. 2004, the BMPT T-90 and the SM 2013 all copy the
+ * T-90AM's plates when they register) keep theirs.
+ * - The T-90AM draws the T-90SM source build: Relikt on the glacis and the turret front only. Its Proryv skirt and
+ *   turret-flank plates (skirt_era_L/R, side_era_L/R) had nothing drawn on them; they go, as the SM 2013's already did.
+ * - The T-90MS obr. 2011 draws its Tagil twin's turret-flank K-5 boxes (side_era_L/R clusters) with no plate under them;
+ *   it takes the twin's two flank plates (the same turret frame since the pass above: the twin's yaw, dimensions and
+ *   fitted plates), rated as its own K-5 turret plates are. The build fits each plate's hit faces to the drawn boxes'
+ *   faces (the ERA visual binding).
+ */
+function agreeDrawnEra(specs: Record<string, FleetTankSpec>): void {
+  const am = specs.t90am;
+  if (am) {
+    const undrawn = (plate: FleetTankSpec['armor']['hullPlates'][number]) =>
+      plate.kind === 'era' && /^(skirt|side)_era_[LR]$/.test(plate.name);
+    am.armor.hullPlates = am.armor.hullPlates.filter((plate) => !undrawn(plate));
+    am.armor.turretPlates = am.armor.turretPlates.filter((plate) => !undrawn(plate));
+  }
+  const ms = specs.t90ms_2011, twin = specs.t90ms_tagil;
+  if (ms && twin && !ms.armor.turretPlates.some((plate) => /^side_era_[LR]$/.test(plate.name))) {
+    const rating = ms.armor.turretPlates.find((plate) => plate.name === 'turret_era_L');
+    for (const name of ['side_era_L', 'side_era_R']) {
+      const flank = twin.armor.turretPlates.find((plate) => plate.name === name);
+      if (!flank || !rating) throw new Error(`t90ms_2011: no ${flank ? 'turret_era_L rating' : `${name} on its twin`} to agree its drawn ERA with`);
+      ms.armor.turretPlates.push({ ...structuredClone(flank), era: structuredClone(rating.era) });
+    }
+  }
 }
