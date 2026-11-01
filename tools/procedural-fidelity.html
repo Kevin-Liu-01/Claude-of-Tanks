@@ -38,7 +38,7 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, stowageParts, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -57,7 +57,7 @@ import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-over
 import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
-import { FUSED_ROOF_GUN_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
+import { FUSED_ANTENNA_BOXES, FUSED_ROOF_GUN_BOXES, FUSED_STOWAGE_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -111,11 +111,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
-  // The recovered Centurion oracles' Turret trees (centurion3.glb, centurion5.glb) carry a 36-vertex basket drum down
-  // to 23 % of the model's height inside the hull (the Type 10 class, below). The tree stays mandatory for yaw and
-  // ownership; only its isolated turret mask is suppressed. Hull, cannon, tracks and every whole view stay mandatory.
-  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
+  // 267: centurion3, centurion5_2 and strv81 are source-world certified on the Strv 81 print (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
@@ -243,7 +240,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // derivatives on the same build: not registered here.
   m41a3: { source:'glb', glb:{ path:'/models/community-candidates/m41_walker_bulldog_lowpoly.glb', turretNode:'^mesh_selection_45$',
     gunNode:'^tube_47$', gunFollowers:'^tube_46$', autoPivot:true, yawOffset:Math.PI, fidelityScaleAnchor:'hullLength' } },
-  strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): strv121 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle strv122_vavtrudner.glb shows a Stridsvagn 122 (fleet id strv122): re-register it there later.
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   // ztz85_iii (265): qualified by photographs (docs/references/photos/ztz85-iii-20261028.json); its fused print is retired
@@ -264,8 +260,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
   k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
   t90a_burlak_proto: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
-  // (the recovered Centurion oracles' basket drum: see centurion3)
-  centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc_s2: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
@@ -786,9 +780,18 @@ for (const root of [reference.root, procedural.root]) {
 // pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
 // oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
+// Stowage (fuel drums, their cradles, stowage racks and baskets) leaves every comparison on this page, on both models,
+// wherever the build tags it (profiles/stowagePart.ts) or the source names it or boxes it (FUSED_STOWAGE_BOXES): body
+// against body (Main's ruling 2026-10-31, 267). Every body built below leaves it out too; the score's ruler keeps it
+// (withWholeSource).
+const stowage = [
+  stowageParts(procedural.root, { isRenderNode }),
+  stowageParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_STOWAGE_BOXES[id]?.boxes ?? null }),
+];
 const roofFittings = [
-  roofFittingParts(procedural.root, { isRenderNode }),
+  roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),
   roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
+    antennaBoxes:FUSED_ANTENNA_BOXES[id]?.boxes ?? null, cut:stowage[1].ranges,
     ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
 ];
 const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
@@ -813,13 +816,46 @@ function withBodyOnly(measure, mode = 'body') {
   }
 }
 const roofFittingsExcluded = (() => {
-  const [built, oracle] = roofFittings.map(({ nodes, trimmed, boxed }) => [...new Set([
+  const [built, oracle] = roofFittings.map(({ nodes, trimmed, boxed, antennaBoxed }) => [...new Set([
     ...[...nodes].filter(([node]) => baseVisible.get(node)).map(([, tag]) => tag),
-    ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => `antennaSpans:${node.name}`),
+    // an oracle's fused whips name their mesh and the triangles its antenna boxes took
+    ...[...trimmed.keys()].filter((node) => baseVisible.get(node)).map((node) => (antennaBoxed.has(node)
+      ? `antennaBoxes:${node.name}:${antennaBoxed.get(node)}` : `antennaSpans:${node.name}`)),
     ...[...boxed.keys()].filter((node) => baseVisible.get(node)).map((node) => `roofGunBoxes:${node.name}`),
   ])].sort());
   return built.length || oracle.length ? { procedural:built, reference:oracle } : null;
 })();
+// Whips leave every comparison on this page wherever the source names them, by node or by the boxes a fused source's
+// whips take (FUSED_ANTENNA_BOXES), the curves and stations as well as the heights, and the build's whips (their antenna
+// tags, tools/whip-rod-census.mjs) leave with them: body against body (267, Main 2026-10-31). The score's height and plan
+// length stay the source's whole ones (withWholeSource): setting whips or stowage aside changes what is compared, never
+// the ruler. Stowage goes first, so a mesh that loses both keeps neither.
+const stowageAsideUndo = [];
+for (const { nodes, ranges } of stowage) {
+  for (const [node, cut] of ranges) {
+    const body = bodyGeometryWithout(node.geometry, cut);
+    stowageAsideUndo.push([node, node.geometry, body]); node.geometry = body;
+  }
+  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+const stowageAside = (() => {
+  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
+    ...[...ranges].map(([node, cut]) => `${node.name}:${cut.length}`)])].sort());
+  return named[0].length || named[1].length ? { procedural:named[0], reference:named[1] } : null;
+})();
+const whipsAside = paired.named.antenna;
+const whipsAsideUndo = [];
+if (whipsAside) {
+  for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
+  for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+function withWholeSource(measure) {
+  const undo = [...stowageAsideUndo, ...whipsAsideUndo];
+  for (const [node, geometry, other] of undo.slice().reverse()) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+  try { return measure(); } finally {
+    for (const [node, geometry, other] of undo) { if (geometry) node.geometry = other; else baseVisible.set(node, false); }
+  }
+}
 // Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
 // named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
 // before the part leaves the track profile (every other mask keeps it); ?comparison=raw-source compares it unexempted.
@@ -1836,8 +1872,9 @@ if (params.get('geo')) {
   });
 
   const refBoxG = visibleBox(reference.root);
-  const height = refBoxG.max.y - refBoxG.min.y;
-  const length = refBoxG.max.z - refBoxG.min.z;
+  const wholeBoxG = withWholeSource(() => visibleBox(reference.root));
+  const height = wholeBoxG.max.y - wholeBoxG.min.y;
+  const length = wholeBoxG.max.z - wholeBoxG.min.z;
   const camsG = { side: cameraFor(TRUE_AXES.side), plan: cameraFor(TRUE_AXES.plan), front: cameraFor(TRUE_AXES.front) };
   const curves = {};
   for (const [view, cam] of Object.entries(camsG)) {
@@ -2221,6 +2258,8 @@ if (params.get('geo')) {
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3),
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
+    ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
+    ...(stowageAside ? { stowageAside:{ rule:'every comparison: the build\'s tagged stowage and the source\'s named or boxed stowage; the score height and plan length with them', ...stowageAside } } : {}),
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,

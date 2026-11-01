@@ -489,7 +489,7 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
     P.addEquipment('hullDetail',box(.125,.025,.23),side*1.80,1.199,3.20);
     P.addEquipment('hullDetail',box(.025,.055,.15),side*1.773,1.220,3.16);
     P.addEquipment('hullDetail',cylY(.028,.1999,12),side*1.8237,1.30635,3.2452);
-    P.addEquipment('hullDark',cylY(.0044,.555,8),side*1.8237,1.6743,3.2452);
+    P.addEquipment('hullDark',antennaPart(cylY(.0044,.555,8)),side*1.8237,1.6743,3.2452);
   }
   P.addEquipment('hullDetail',orientedSlab(
     [-.204,1.388,2.719],[.186,1.388,2.719],[.186,1.277,3.230],[-.204,1.277,3.230],

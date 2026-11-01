@@ -1,3 +1,5 @@
+import { isStarved } from './selftest-verdict.mjs';
+
 // Bounded fresh CPU subprocesses share one runner-owned lease (or, with cpuLease false, none: CPU
 // work under nice, the capture lock for the GPU alone). Real browser regressions are barriers:
 // drain CPU children, release, then run alone.
@@ -51,6 +53,8 @@ export async function runSelftestCpuPool(name, files, options) {
   const collect = row => {
     const { file, index, result, runMs, queueMs } = row;
     onTiming({ file, runMs, queueMs, status: result.status ?? null, error: result.error });
+    // (267) STARVED: neither a failure nor a PASS the cache keeps (tools/selftest-verdict.mjs)
+    if (!result.error && isStarved(result.status)) return;
     if (result.error || result.status !== 0) {
       // Reporting keeps the earliest failure; interruption must remain sticky
       // even when that earlier row was an ordinary test failure.

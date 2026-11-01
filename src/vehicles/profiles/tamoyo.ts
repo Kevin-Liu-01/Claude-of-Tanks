@@ -15,6 +15,7 @@
 // the sprocket aft, the turret ring 0.16 m ahead of the hull's middle). A +Z hull's right is -X: the commander at -X.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -349,7 +350,7 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     P.addEquipment('turret', xform(sph(0.15, P.q ? 16 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), 0.10, roof + 0.05, -1.20);
     for (const s of [-1, 1] as const) {
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.62, roof + 0.04, rear + 0.40);
-      P.addEquipment('turret', cylY(0.012, 0.015, 2.0, 8), s * 0.62, roof + 1.04, rear + 0.40, 0, 0, s * 0.03);
+      P.addEquipment('turret', antennaPart(cylY(0.012, 0.015, 2.0, 8)), s * 0.62, roof + 1.04, rear + 0.40, 0, 0, s * 0.03);
     }
     // the dischargers. The Tamoyo 1: a stepped fan of four large tubes on each front cheek, level and splayed a little
     // further out each, each seated on its own shoe that follows the wedge (Vesp's profile, the TI-2's front photograph;

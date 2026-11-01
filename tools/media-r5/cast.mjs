@@ -1,8 +1,7 @@
 // Media r5 cast: the newest source-backed tanks in the fleet (their spec ids end in _x), plus
 // road helpers for driving shots (map features dumped by lab --features).
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { SHOTS } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 /** The newest main battle tanks first, then the next-generation IFVs that escort them. */
 export const CAST = {
@@ -57,8 +56,8 @@ export const CAST_NAMES = {
 const featureCache = new Map();
 export function features(map) {
   if (!featureCache.has(map)) {
-    const f = join(SHOTS, 'features', `features-${map}.json`);
-    featureCache.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null);
+    const f = surveyPath(map);
+    featureCache.set(map, f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null);
   }
   return featureCache.get(map);
 }

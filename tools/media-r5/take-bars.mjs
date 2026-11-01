@@ -3,7 +3,6 @@
 // one definition. A take passes with an empty list.
 //   import { takeBars } from './take-bars.mjs'; takeBars(shot) -> ['s61-…: the hero stays in frame (0.81)', …]
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { CAST } from './cast.mjs';
 import { DUR, KINDS, LOOP_MS, XFADE_MS, beatCoverage, siteScene } from './site50.mjs';
@@ -12,7 +11,7 @@ import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
 import { frameEdgeFaults, lensReport } from './lens-check.mjs';
 import { STUDIO_MAX_ACTOR_KEYS, STUDIO_MAX_CAMERA_SHOTS } from './setups.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 const HOURS = new Set(['morning', 'day', 'golden', 'sunset', 'night']);
 const ONE_SHOT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage', 'debris', 'shockwave', 'mg_burst']);
@@ -30,7 +29,7 @@ const wireRunMs = (samples, hit) => { let run = 0, worst = 0; for (const q of sa
 const trackAt = (keys, t, f) => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; const a = keys[i], b = keys[i + 1] ?? a; const u = Math.min(1, Math.max(0, (t - a.tMs) / Math.max(1, b.tMs - a.tMs))); return a[f] + (b[f] - a[f]) * u; };
 const features = new Map();
 const featuresOf = (map) => {
-  if (!features.has(map)) { const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`); features.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); }
+  if (!features.has(map)) { const f = surveyPath(map); features.set(map, f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); }
   return features.get(map);
 };
 

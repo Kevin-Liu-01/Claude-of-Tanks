@@ -3,6 +3,7 @@
 // T-72B3M hull under a transplanted T-90SM turret; it is now a T-72B3M with the fittings its 2022-24 deliveries carry.
 // Equipment only: the cast turret's Relikt, the gun, the commander's Kord station and the running gear stay the 2016's.
 import * as THREE from 'three';
+import {antennaPart} from './antennaPart.ts';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -161,7 +162,7 @@ function radioMast(P:TankBuilderPort):void{
   try{
     const foot=hit(meshes,new THREE.Vector3(x,CANOPY_Y-.05,z),new THREE.Vector3(0,-1,0),'the radio mast',P.spec.id);
     P.addEquipment('turretDark',cylY(.05,.06,.08,12),x,foot.y+.04,z);
-    P.addEquipment('turretDetail',cylY(.008,.016,1.30,6),x,foot.y+.73,z);
+    P.addEquipment('turretDetail',antennaPart(cylY(.008,.016,1.30,6)),x,foot.y+.73,z);
   }finally{dispose();}
 }
 
