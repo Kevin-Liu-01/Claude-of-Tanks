@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-01T15:49:59.349Z",
+ "generatedAt": "2026-11-01T18:54:52.402Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -3574,30 +3574,118 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 36,
-   "seeThroughPx": 51,
+   "insideOutPx": 384,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 96314,
+   "tris": 77692,
    "frame": [
     0,
-    1.85,
-    1.45,
-    6
+    1.8,
+    0.9,
+    5.4
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 (owner 2026-11-01): the TK-X and the 10B rebuilt on the true-size Type 10 base (type10X.ts, 9.42 m, height 2.95 -> 2.22 m), so each build sits in the production Type 10's census frame",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 51,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     },
+     "to": [
+      0,
+      1.8,
+      0.9,
+      5.4
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "type10b": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 36,
-   "seeThroughPx": 45,
-   "netSeeThroughPx": 4056,
-   "tris": 117158,
+   "insideOutPx": 339,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 2283,
+   "tris": 88484,
    "frame": [
-    0,
-    1.85,
-    1.45,
-    6
+    0.05,
+    2.05,
+    0.9,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 (owner 2026-11-01): the TK-X and the 10B rebuilt on the true-size Type 10 base (type10X.ts, 9.42 m, height 2.95 -> 2.22 m), so each build sits in the production Type 10's census frame",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 45,
+      "netSeeThroughPx": 4056,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     },
+     "to": [
+      0.05,
+      2.05,
+      0.9,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 1948
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267: the 10B's camouflage net re-hung over the true-size turret and hull (netting 4056 -> 1948 px in the old frame, 2283 in its own, see-through 45 -> 0)",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "seeThroughPx": 45,
+      "netSeeThroughPx": 4056,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     }
+    }
    ]
   },
   "type59": {

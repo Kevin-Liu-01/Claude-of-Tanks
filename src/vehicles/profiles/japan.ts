@@ -10,6 +10,7 @@ import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { sweptTube } from '../accessoryPrimitives.ts';
 import { TKX_MODULE_FOOT, TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_FOOT, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
@@ -384,11 +385,10 @@ function addTkxTrialsInstruments(P: JapaneseBuilderPort): void {
     P.add('turretDark', cylY(0.11, 0.11, 0.03, 16), ...tl(mx, mroof + 1.40 + 0.016, mz));
     P.add('turretDark', box(0.36, 0.02, 0.02), ...tl(mx, mroof + 1.10, mz));
   }
-  // cable runs from the pod to each mast's foot, laid on the roof
+  // cable runs from the pod to each mast's foot, laid on the roof (capped: an open end showed its inside to the sealed census)
   for (const side of [-1, 1]) {
-    const run = new THREE.CatmullRomCurve3([[px - side * 0.0 - 0.20, podRoof + 0.02, pz - 0.36], [side > 0 ? 0.9 : 0.1, 2.21, -1.60],
-      [side * 1.10 - side * 0.09, 2.21, -1.90]].map(([x, y, z]) => new THREE.Vector3(...tl(x, y, z))));
-    P.add('turretDark', new THREE.TubeGeometry(run, 20, 0.014, 6, false), 0, 0, 0);
+    P.add('turretDark', sweptTube([[px - 0.20, podRoof + 0.02, pz - 0.36], [side > 0 ? 0.9 : 0.1, 2.21, -1.60],
+      [side * 1.10 - side * 0.09, 2.21, -1.90]].map(([x, y, z]) => tl(x, y, z)), 0.014, 6, 20), 0, 0, 0);
   }
 }
 

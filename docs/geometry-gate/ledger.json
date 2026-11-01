@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-11-01T05:18:34.402Z",
+ "generatedAt": "2026-11-01T18:35:32.869Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 41,
+ "passed": 42,
  "total": 166,
  "rows": [
   {
@@ -1860,19 +1860,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "type10",
-   "geoMin": 91.4,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 91.4,
-    "dims": 96.9,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "merkava4_barak",
    "geoMin": 91.6,
    "requiredMinimum": 92,
@@ -2031,6 +2018,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "type10",
+   "geoMin": 93.2,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.2,
+    "dims": 96.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "bmp3m_dragun125",
    "geoMin": 93.3,
    "requiredMinimum": 92,
@@ -2149,6 +2149,19 @@
   },
   {
    "id": "t90a_burlak",
+   "geoMin": 94.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.6,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "type90",
    "geoMin": 94.6,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
@@ -2324,19 +2337,6 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 97.1,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "type90",
-   "geoMin": 97.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 97.3,
     "dims": 100,
     "floaters": 100
    },
