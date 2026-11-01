@@ -154,17 +154,13 @@ leo2a7dk.visual = {
   // own lace, the fleck painter's dense dapple at a few centimetres (the Latvia photograph at full size, Commons
   // 3840 px: mid-green panels under a fine dark lace, about a sixth of them brown-tan), the dark tone twice for the
   // lace's share; the cover's cut-leaf texture takes its colours from the first three (ghillieSuit coverPaletteOf), so
-  // the cover and the paint between its panels are one fabric; p4 (the p2 and p3 sheets: a coarse, contrasty flecktarn
-  // of brown and near-black blobs; the photograph's ground greener, its lace dark and fine): the catalog painter's
-  // flecktarn takes the base and three patches at its finest density (catalogCamoPainter: half the ground the first
-  // patch, a fifth the second, under a fifth the third): a mid-green ground, a slightly darker green for its fields, an
-  // olive-tan accent close to them and the dark lace last
-  // p5 (critics dk1, both 6.3: the lace only in the cover's rectangles and there light speckle on dark, the paint round
-  // them large dark blotches; the photograph's mid-green panels under a fine dark lace): the tones close together, so
-  // the cover's cut-leaf texture (its lobes in these tones, its cuts' gaps at 0.62 of the base) is dark lace on mid-green
-  // and the paint between its panels a quiet mid-green of the same fabric
-  scheme: 'fleck', base: '#5a6640', weather: '#556040', patches: ['#525d3a', '#5d5a40', '#4a5535'],
-  marking: 'number', number: '11', camoScale: 1.0,
+  // the cover and the paint between its panels are one fabric (p1-p5: the fleck and flecktarn painters could not draw a
+  // fine lace, and the cover's cut-leaf panels read as clumps on paint; critics dk1 and dk2, both 6.3 and 6.8)
+  // 267 p6: the coat IS the cover, the catalog painter's Barracuda (catalogCamoPainter paintBarracuda): mid-green panels
+  // in brick rows with dark seams, about one in six brown-tan, all under one fine dark lace, on every painted face and
+  // the gun; the green darker (dk2, Opus: lighter and yellower than the photograph's)
+  scheme: 'barracuda', base: '#56613d', weather: '#515c3a', patches: ['#4f5a38', '#6b5a42', '#2a3021'],
+  marking: 'number', number: '11',
 };
 
 // ------------------------------------------------------------------------------------------------- Centurion DK --
@@ -192,8 +188,10 @@ centurion5_2dk.visual = {
   // the Danish Army's 1980s three-tone (the Oksbøl, Pansermuseet and Stevnsfortet tanks): olive, black and an earth brown
   // in large hard-edged fields; c2 (the c1 sheets: a bright grass green and an orange brown against the Stevnsfortet
   // photograph's dark olive and earth brown): the olive and the brown darker and duller
-  // c4 (critics dk1: the olive light and yellow, the brown a rust; the photographs' a darker, duller olive and earth brown)
-  scheme: 'nato', base: '#3f4630', weather: '#474e36', patches: ['#18191a', '#463424'], marking: 'number', number: '32',
+  // c4 (critics dk1: the olive light and yellow, the brown a rust; the photographs' a darker, duller olive and earth brown);
+  // c5 (dk2, both: the brown still red and a third of the coat, the black pure; the photograph olive-dominant): a duller
+  // olive drab, the dark a soft olive-black on the painter's larger share and the earth brown on its smaller
+  scheme: 'nato', base: '#454b34', weather: '#4d533b', patches: ['#3d3226', '#2a2d22'], marking: 'number', number: '32',
   camoScale: 0.48,
 };
 

@@ -6,7 +6,8 @@
 //   cage round the turret bustle (the same photographs, side and rear).
 // - 2A7 DK (44 tanks, Jydske Dragonregiment; the Forsvaret fact sheet): the 2A7's new stowage modules, ribbed boxes
 //   round the bustle and the rear turret sides (the Danish Army's transporter photograph), and the Barracuda mobile
-//   camouflage system ("mobilt sløringssystem"), the suit in ghillieFleetSuits.ts (the Latvian live-fire photograph).
+//   camouflage system ("mobilt sløringssystem"), its coat (denmarkSpecs.ts; catalogCamoPainter paintBarracuda: the
+//   Latvian live-fire photograph).
 // Neither carries the German builds' remote 30 mm station. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT } from './kit.ts';
 import { LEOPARD_X_DATUMS, buildLeopard2A5X, buildLeopard2A7VX } from './leopardX.ts';
@@ -167,9 +168,8 @@ function ribbedModule(P: TankBuilderPort, c: Vec3, size: Vec3, face: -1 | 0 | 1)
 }
 
 export function buildLeopard2A7DK(P: TankBuilderPort): void {
-  // the gun's Barracuda wrap a dull khaki under the cover's greens (r8: stock sand clashed; r12: a pale tan the brightest
-  // thing on the tank; 267 dk1: the gun in the coat read as painted, the photograph's wrap lighter and khaki)
-  P.mats.canvasPale.color.setHex(0x5d5642);
+  // the Barracuda cover is the coat to the muzzle (267: catalogCamoPainter paintBarracuda over every painted face and the
+  // gun; the wrap and the cut-leaf suit of 265 r6-r12 and 267 p1-p5 read as paint with clumps)
   buildLeopard2A7VX(P, { danish: true });
   // the rear module across the bustle and a module down each rear turret side, behind the smoke banks
   // (the rear module runs forward under the bustle's overhang to the turret's rear wall at z -2.49; the side modules sit

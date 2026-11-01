@@ -28,9 +28,9 @@ function addCenturionDkFit(P: TankBuilderPort): void {
   P.addEquipment('turret', box(0.32, 0.16, 0.32), -0.58, 1.11, 0.52);
   P.addEquipment('turretDark', box(0.28, 0.12, 0.02), -0.58, 1.12, 0.685);
   P.add('turretGlass', box(0.22, 0.08, 0.008), -0.58, 1.12, 0.697);
-  // the image intensifier heads: on the cupola's forward face and on the driver's hatch
+  // the commander's image intensifier head on the cupola's forward face (the driver's sits in his periscope's place:
+  // a head on the hatch stopped the gun at 5 degrees over the bow quarters, gun-depression-sweep 2026-11-01)
   P.addEquipment('turretDark', box(0.14, 0.10, 0.16), -0.62, 1.22, -0.18);
-  P.addEquipment('hullDark', box(0.16, 0.09, 0.10), -0.40, 1.795, 2.38);
   P.turretG.userData.centurionDkReceipt = { mark: 'Mk 5/2 DK', laserRangefinderBox: 'right', thermalSightBox: 'right-front' };
 }
 
