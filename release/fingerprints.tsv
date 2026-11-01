@@ -572,6 +572,7 @@ group	type96bX	7efccf10f7a41c91
 group	uk	73ab9c831232bab7
 group	ukraine	3a71faea460198ea
 group	xk2	23f04cd94737e328
+key	anatomy	t84bm_oplot_m	3c4243d53bc9981d	08809479e7dcf93e
 key	anatomy	magach6b	2602e45582764a3b	8118742e8ab5c944
 key	anatomy	magach7c	f3715984c93fc1d4	66c4a0435b5609b1
 key	centering	magach6b	1e7caa2957d9aa5e	3c88ac81bcb10306
@@ -1070,7 +1071,7 @@ key	centering	t80u_yun	181c0c39df6faf49	c361af875ad885fe
 key	centering	t80u_zoria	eef3708e0968480b	5a0f9f89b9027e35
 key	centering	t80uk	4520859e94b6a2cc	6cb1adeb01fc523c
 key	centering	t84	e079314c5a4b42c8	41c9d9523a323730
-key	centering	t84bm_oplot_m	b5bf0f16169ccd73	05a9d59c141be8ba
+key	centering	t84bm_oplot_m	78af51de1cecb0ea	05a9d59c141be8ba
 key	centering	t90	e601ecbc715954bc	f4179edc58173419
 key	centering	t90_1992	167f6d8393012d6f	ba7e87706601c7e1
 key	centering	t90a	bda13b8bc9eb954b	3b6366cd95488b4f
@@ -1156,6 +1157,9 @@ key	collision	urban	7b0036e46965a16e	8e5567ecc3c4fc72
 key	collision	verdant	10dc7a5b92ec2a36	c65ffc079e88cee5
 key	collision	whiteout	04d50e2efd2b6ddf	2407b84bb8f16858
 key	collision	winter	3cb5438799f627e8	7483ece67bf8bffe
+key	gunLines	t84bm_oplot_m	fb9b512d08dcbca8	b8b59bb9db41d159
+key	fills	t84bm_oplot_m	a7eb66c173eea782	c7daa10dec81f189
+key	controls	t84bm_oplot_m	e95aafa3a3f245f6	a78a90596b06d68e
 key	controls	abramsx	c2866e32fcc35ddf	3ddbdc83a1f65b02
 key	controls	aft10	7e6e623d67041a3c	9b94ac042fa84cd9
 key	controls	ajax	f99b2ae8998c565a	9e1d2c396e933cbf
@@ -2186,7 +2190,7 @@ key	icons	t80u_yun	7bec2a6697377397	c0b8d65014161d35
 key	icons	t80u_zoria	726b9c0123bb44cb	78f041a73b6e5b6e
 key	icons	t80uk	b47850dc336c63e7	9e2c69fa8c06d967
 key	icons	t84	adb8d78d3989949e	379570e39729e269
-key	icons	t84bm_oplot_m	074adc3c872b62ec	545e38dacfa4a4ad
+key	icons	t84bm_oplot_m	c4ab9307f38945d6	3ec9ce30f7e13b88
 key	icons	t90	4aa3860571d92d74	6f5255998015b95c
 key	icons	t90_1992	6091749c47ef81c8	376e9507100d95e1
 key	icons	t90a	423a52f0917235fe	4f27057176e04943
@@ -2239,6 +2243,10 @@ key	icons	ztz99_longwei	5b9837a97356dfff	45337fdd880818af
 key	icons	ztz99a	0bc4b253eab7e661	97dec5fdd330fca0
 key	icons	ztz99a2	2407e4c8e8b53058	64faf95d6c4327e1
 key	icons	ztz99a2_qinglong	f406f64c7cc9ae84	dbaba94eea3d8604
+key	spareTrack	t84bm_oplot_m	6ea715af795561c9	f7cc4a8a4b166969
+key	seats	t84bm_oplot_m	18240239ab338868	57ae03ac9799d8f6
+key	marking	t84bm_oplot_m	2d2cb55403a69293	b75b4ac6d96fb4c8
+key	ledger	t84bm_oplot_m	303cd516537029df	4bdc72820d7f9e69
 key	ledger	abramsx	965b2419f681c261	df168c96be2ab0c5
 key	ledger	aft10	0f73485b37adea14	4c3f96cabc89385b
 key	ledger	ajax	0810d61319f570e8	d761840b2f83b981
@@ -4815,7 +4823,7 @@ row	geometryLedger	t80u_yun	82bd09916ff2a4f3
 row	geometryLedger	t80u_zoria	a04b0e319ebd7c3d
 row	geometryLedger	t80uk	1af412153cc28714
 row	geometryLedger	t84	9a0ceabae670a512
-row	geometryLedger	t84bm_oplot_m	f82551db9128e34c
+row	geometryLedger	t84bm_oplot_m	e901649c932772b1
 row	geometryLedger	t90	259a1d98cf68ef55
 row	geometryLedger	t90_1992	22409153e1cd012a
 row	geometryLedger	t90a	27ec4e51aa92095a
@@ -5091,7 +5099,7 @@ row	gunJunction	t80u_yun	76d3bd3b2dee13b2
 row	gunJunction	t80u_zoria	6b21308d40ea61c3
 row	gunJunction	t80uk	c63d60e79ce4c16f
 row	gunJunction	t84	a72602a7d4756075
-row	gunJunction	t84bm_oplot_m	32475d33c6e06753
+row	gunJunction	t84bm_oplot_m	b6ca37bed4769660
 row	gunJunction	t90	50ec38ba7f861f89
 row	gunJunction	t90_1992	e8e3a502c89d71de
 row	gunJunction	t90a	1b5cb69b8be16672
@@ -7028,7 +7036,7 @@ row	spareTrackLedger	t80u_yun	4b5ffe291ad9bc82
 row	spareTrackLedger	t80u_zoria	b5914f075c0fe92a
 row	spareTrackLedger	t80uk	d23eaa59afc8427b
 row	spareTrackLedger	t84	b96f12ef31e4b737
-row	spareTrackLedger	t84bm_oplot_m	4c2f5399968abe7b
+row	spareTrackLedger	t84bm_oplot_m	eb1bef9e7d70869f
 row	spareTrackLedger	t90	398d664bc0fa815c
 row	spareTrackLedger	t90_1992	f0b62a78ef5e8993
 row	spareTrackLedger	t90a	b1b881b059934dad
