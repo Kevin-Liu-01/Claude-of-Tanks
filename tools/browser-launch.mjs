@@ -28,6 +28,12 @@
 //   sampled in this browser's own process group.
 // - Caps: options on the third argument, else COT_BROWSER_HEAP_MB, COT_BROWSER_RENDERER_CAP_MB, COT_BROWSER_TREE_CAP_MB,
 //   COT_BROWSER_GUARD_INTERVAL_MS and COT_BROWSER_RENDERER_LIMIT.
+// - (267) The launch is judged on the launching browser's own CPU, never a fixed wall: under machine load Chrome took past
+//   30 s to print its DevTools endpoint ("Chrome WS endpoint timeout after 30 s", vehicle-ground-occlusion in 266's tier).
+//   The launcher waits without a wall limit, and the caller's `timeout` becomes a budget of that browser's CPU (its
+//   processes found by this launch's token, and their children): a browser that spends it without the endpoint is a
+//   real slowdown, killed by its exact pids, and the launch fails naming it. Only a launch still waiting after
+//   `launchHangMs` of wall (10 min) is called a hang.
 import { execFile, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, writeSync } from 'node:fs';
@@ -47,6 +53,9 @@ const FOOTPRINT_FROM_MB = 1024; // only processes this large are worth a footpri
 
 const MB = 1024 * 1024;
 const live = new Set(); // guards whose browser has not been closed
+const LAUNCH_CPU_BUDGET_MS = 30_000; // the launching browser's CPU when the caller names no timeout
+const LAUNCH_HANG_MS = 10 * 60 * 1000;
+const LAUNCH_POLL_MS = 500;
 let context = {};
 let exitHooked = false;
 
@@ -96,6 +105,49 @@ export function parsePsRows(text) {
     if (match) rows.push({ pid: +match[1], pgid: +match[2], ppid: +match[3], rssKb: +match[4], command: match[5] ?? '' });
   }
   return rows;
+}
+
+/** Seconds of CPU from ps's `time` column ([[dd-]hh:]mm:ss.ss). */
+export function psCpuSeconds(text = '') {
+  const [days, clock] = String(text).trim().includes('-') ? String(text).trim().split('-') : ['0', String(text).trim()];
+  return Number(days) * 86400 + clock.split(':').reduce((sum, part) => sum * 60 + Number(part), 0);
+}
+
+/**
+ * Watch a launch in progress (267): the CPU of the processes carrying this launch's token and of their children. Past
+ * `cpuBudgetMs` of that CPU, or `hangMs` of wall, it kills them by their exact pids and reports why; the launch then
+ * rejects and the caller throws the reason. `stop()` ends the watch.
+ */
+function watchLaunch(token, { cpuBudgetMs, hangMs, pollMs = LAUNCH_POLL_MS }) {
+  const startedAt = Date.now();
+  let reason = null, timer = null, stopped = false;
+  const tick = async () => {
+    if (stopped) return;
+    // every process's pid, parent and CPU (no commands: the whole table runs past a megabyte), then the commands of this
+    // process's children alone, to find the browser carrying the token
+    const rows = (await run('ps', ['-A', '-o', 'pid=,ppid=,time='], 15_000).catch(() => '')).split('\n')
+      .map((line) => line.match(/^\s*(\d+)\s+(\d+)\s+(\S+)/)).filter(Boolean)
+      .map(([, pid, ppid, time]) => ({ pid: +pid, ppid: +ppid, cpuMs: psCpuSeconds(time) * 1000 }));
+    const children = rows.filter((row) => row.ppid === process.pid).map((row) => row.pid);
+    const roots = new Set(children.length ? (await run('ps', ['-ww', '-o', 'pid=,command=', '-p', children.join(',')], 15_000)
+      .catch(() => '')).split('\n').filter((line) => line.includes(`${GUARD_SWITCH}=${token}`)).map((line) => Number.parseInt(line, 10)) : []);
+    const tree = rows.filter((row) => roots.has(row.pid) || roots.has(row.ppid));
+    const cpuMs = tree.reduce((sum, row) => sum + row.cpuMs, 0);
+    const wallMs = Date.now() - startedAt;
+    if (!stopped && (cpuMs > cpuBudgetMs || wallMs > hangMs)) {
+      reason = cpuMs > cpuBudgetMs
+        ? `the browser spent ${(cpuMs / 1000).toFixed(1)} s of CPU (budget ${(cpuBudgetMs / 1000).toFixed(1)} s) without its DevTools endpoint`
+        : `the launch waited ${(wallMs / 60000).toFixed(1)} min of wall with the browser at ${(cpuMs / 1000).toFixed(1)} s of CPU: a hang`;
+      for (const row of tree) { try { process.kill(row.pid, 'SIGKILL'); } catch { /* gone */ } }
+      return;
+    }
+    if (!stopped) timer = setTimeout(tick, pollMs);
+  };
+  timer = setTimeout(tick, pollMs);
+  return {
+    get reason() { return reason; },
+    stop() { stopped = true; clearTimeout(timer); },
+  };
 }
 
 /** Chrome's process type from its command line: renderer, gpu-process, utility, ...; 'browser' for the root. */
@@ -394,10 +446,21 @@ export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
   if (typeof launcher?.[method] !== 'function') throw new TypeError(`launchGuardedBrowser: the launcher has no ${method}()`);
   const config = browserGuardConfig(guard);
   const token = randomBytes(8).toString('hex');
-  const launchOptions = { ...(options ?? {}), args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
-  const target = method === 'launchPersistentContext'
-    ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
-    : await launcher[method](launchOptions);
+  // (267) no wall limit on the launch: the caller's timeout is a budget of the launching browser's CPU (watchLaunch)
+  const cpuBudgetMs = positive(options?.timeout, LAUNCH_CPU_BUDGET_MS);
+  const launchOptions = { ...(options ?? {}), timeout: 0, args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
+  const watch = watchLaunch(token, { cpuBudgetMs, hangMs: positive(guard.launchHangMs, LAUNCH_HANG_MS) });
+  let target;
+  try {
+    target = method === 'launchPersistentContext'
+      ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
+      : await launcher[method](launchOptions);
+  } catch (error) {
+    if (watch.reason) throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''}: ${watch.reason}`, { cause: error });
+    throw error;
+  } finally {
+    watch.stop();
+  }
   let rootPid = null;
   try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
   if (rootPid) {
