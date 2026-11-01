@@ -188,6 +188,7 @@ assert.ok(launchEnv.includes('COT_BROWSER_TREE_CAP_MB') && launchEnv.every((name
 for (const name of ['icons', 'centering']) {
   const step = STEPS.find((entry) => entry.name === name);
   assert.ok(state.steps[name].toolFiles.includes('tools/icons-page-public.mjs'), `${name}: keys the served public list`);
+  assert.ok(!state.steps[name].toolFiles.includes('public'), `${name}: never keys public/ whole (a name such as the guard's /public/ prefix)`);
   assert.ok(step.reads.length && step.reads.every((glob) => /^public\/[^/*]+\/\*\*$/.test(glob)) && !step.reads.includes('public/**'),
     `${name}: reads named public directories (${step.reads.join(', ')}), never public/**`);
 }

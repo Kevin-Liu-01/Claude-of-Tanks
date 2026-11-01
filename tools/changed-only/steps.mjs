@@ -305,6 +305,8 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/served-public.mjs': {
     pin: 'ad3c9886d1a8cabe',
     reads: [],
+    // 267: '/public/' is the URL prefix Vite serves a public file under by its repository path: a name, never a read
+    namesOnly: ['public'],
     note: 'statSync of the path a request names, to find a public file outside the page\'s list; it reads no file contents',
   },
   'tools/map-probe-runtime.mjs': {
