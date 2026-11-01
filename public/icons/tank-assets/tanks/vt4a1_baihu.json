@@ -4720,21 +4720,21 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.4304,0.4989,-4.1063],
-        "max": [1.4304,1.6364,-1.9696],
+        "min": [-1.4304,0.4989,-3.2457],
+        "max": [1.4304,1.6364,-2.2367],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.2301,0.6181,-3.9353],
+        "min": [-1.2301,0.6181,-3.5866],
         "max": [1.2301,1.4371,-3.2089],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5811,0.5183,-1.9487],
+        "min": [0.5811,0.81,-1.41],
         "max": [1.4527,1.2767,-0.9013],
         "turretLocal": false
       },
@@ -4853,8 +4853,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2297,0.5146,0.9003],
-        "max": [0.2297,1.5994,2.3768],
+        "min": [-0.6397,1.0528,1.6159],
+        "max": [-0.1803,1.4284,3.4184],
         "turretLocal": false
       },
       {
@@ -4873,8 +4873,8 @@
       }
     ]
   },
-  "geometryHash": "8b09153b",
-  "metadataHash": "6d6906bb",
+  "geometryHash": "c2d9d368",
+  "metadataHash": "242273fa",
   "presentationAnchor": {
     "xM": -0.0003,
     "zM": -0.4361
@@ -4934,14 +4934,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 27644,
-      "sha256": "c6f6499dff2495a2bff7fb290dae7e4d8f91a184042e2bc00965e27fe5f565ce",
+      "sha256": "5fc635a6917fe4d302d3545702bde97c1df72c7febce69428d001f1c099d1a90",
       "thumbnail": {
         "file": "thumbs/vt4a1_baihu_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11254,
-        "sha256": "0ec2bf420fabc02f9566735b327cea2e4cbad8d579616ef0ad95ed918bcc1de0"
+        "bytes": 11170,
+        "sha256": "32c4bc5da18a0a7c1ea5ef7c676a0e2b1d8218083cc66276ea85d940f0de8b01"
       }
     },
     "top": {
@@ -4981,24 +4981,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22204,
-      "sha256": "2192ea31f1467d38f8ab736f1546ede1c0e04ae5b22cfd04ebada92e280ca11b"
+      "bytes": 22340,
+      "sha256": "3be4fb8f419d53bbefd30fed6b1df480a04690a0f6203eebfd9dc74292b86753"
     },
     "modulesSide": {
       "file": "vt4a1_baihu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21748,
-      "sha256": "48f2ef05d2e7d1e486589be13d4613c5c29003783395fb6e6f8adc7cc35c0414"
+      "bytes": 21466,
+      "sha256": "d183158d8f6f76473d12bbe2d3c8bbbbe541de2be520ecc0a18bdd9ceefc5c1b"
     },
     "crewSide": {
       "file": "vt4a1_baihu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19606,
-      "sha256": "d6383aa61e2c9fa0f1ebbe3cf2022bc56f5dabaa75f9aead88980454263baa46"
+      "bytes": 19504,
+      "sha256": "4afa31d3c8e826ae0b71b9387c8ca03460d494491f45e0a59b9d6d6154d18271"
     },
     "markings": {
       "file": "vt4a1_baihu_markings.png",
@@ -5012,7 +5012,7 @@
       "file": "vt4a1_baihu_technical.json",
       "mime": "application/json",
       "bytes": 5576,
-      "sha256": "9eb580bea3e92befcc73be1b49c9e02f385440f4b606538865e8b71bdd544422"
+      "sha256": "e7036946d61e41d2014e67abec6aaf345212c1f88b0a4d400df065fa47b5958b"
     }
   }
 }

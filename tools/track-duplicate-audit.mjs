@@ -6,6 +6,8 @@
 // track-like course fails. This tool is report-only and never edits geometry.
 
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import puppeteer from 'puppeteer';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, toolServerOptions } from './tool-page-load.mjs';
 
@@ -22,7 +24,8 @@ const ids = idArg
 
 const failures = [];
 const layered = [];
-await withIsolatedCaptureBrowser({
+// A fresh server and browser per chunk of ids (tools/browser-id-chunks.mjs).
+await eachBrowserChunk('tools/track-duplicate-audit.mjs', ids, async (chunk, { launch }) => await withIsolatedCaptureBrowser({
   root: process.cwd(),
   logLevel: 'error',
   // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
@@ -35,7 +38,7 @@ await withIsolatedCaptureBrowser({
   page.setDefaultTimeout(120000);
   const origin = boundOrigin(server);
 
-  for (const id of ids) {
+  for (const id of chunk) {
     await page.goto(
       `${origin}/tools/track-duplicate-audit.html?id=${encodeURIComponent(id)}`,
       { waitUntil: 'domcontentloaded' },
@@ -47,7 +50,7 @@ await withIsolatedCaptureBrowser({
       ? (result.error || result.staticRoadWheelOverlays?.length)
       : !result.pass) failures.push(result);
   }
-});
+}, { launchBrowser: (options) => launch(puppeteer, options) }));
 
 console.log(`[track-duplicate] audited ${ids.length} first-party tanks`);
 console.log(`[track-duplicate] ${ids.length - layered.length}/${ids.length} use one integrated `

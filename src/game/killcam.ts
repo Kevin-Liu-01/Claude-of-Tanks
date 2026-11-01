@@ -1,6 +1,7 @@
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
+import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 import { killcamCameraFloor } from './killcamGround.ts';
 import {
@@ -268,6 +269,8 @@ export interface KillcamHitEvent {
   modulesHit: ModuleHit[];
   crewHit: string[];
   damage?: number;
+  /** The hull points the target lost (sim/damage.ts settleHullPoints): the figure every damage readout shows. */
+  hpRemoved?: number;
   destroyed?: boolean;
   ammoRacked?: boolean;
   flightDistM?: number;
@@ -2548,7 +2551,7 @@ export function createKillCam(deps: KillcamDeps) {
     if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
     appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
     appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
-    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(hullPointsRemoved(event))}`);
     appendPenetrationStat(d, event);
     appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
   }

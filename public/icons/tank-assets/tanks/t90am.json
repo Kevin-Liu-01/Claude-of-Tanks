@@ -4128,43 +4128,43 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.5062,0.6412,-0.169],
-        "max": [0.5062,0.9431,0.8468],
+        "min": [-0.4169,0.6412,-0.169],
+        "max": [0.3276,0.9431,0.8468],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.0044,0.4576,-3.6587],
-        "max": [1.0044,1.6527,-1.7774],
+        "min": [-1.0044,0.7564,-2.8823],
+        "max": [0.4348,1.5929,-2.1059],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8638,0.5849,-3.5082],
+        "min": [-0.8638,0.9113,-3.5082],
         "max": [0.8638,1.4454,-2.8685],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.6027,0.4576,-1.7187],
-        "max": [1.2556,1.2124,-0.1314],
+        "min": [-1.1962,0.8641,-1.7187],
+        "max": [-0.6027,1.2124,-0.1314],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.7031,0.4576,-0.3665],
-        "max": [0.7031,1.0866,1.0444],
+        "min": [-0.7031,0.6972,-0.3665],
+        "max": [0.5834,1.0866,1.0444],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.8326,0.1221,-1.073],
-        "max": [-0.1458,0.5611,-0.5388],
+        "min": [0.1458,0.1221,-1.073],
+        "max": [0.8326,0.5611,-0.5388],
         "turretLocal": true
       },
       {
@@ -4235,30 +4235,30 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7906,-0.5218,-0.0273],
-        "max": [-0.3312,0.516,0.5964],
+        "min": [0.2812,-0.5051,-0.2378],
+        "max": [0.7406,0.6227,0.4527],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.385,-0.493,-0.1932],
-        "max": [0.8444,0.6326,0.5249],
+        "min": [-0.6847,-0.5215,-0.5284],
+        "max": [-0.235,0.5522,0.2642],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "890ce1c1",
-  "metadataHash": "04a11fc7",
+  "geometryHash": "55d39eb1",
+  "metadataHash": "26b8742f",
   "presentationAnchor": {
-    "xM": -0.0004,
-    "zM": -0.3252
+    "xM": -0.0007,
+    "zM": -0.331
   },
-  "presentationHash": "6ea010b1",
+  "presentationHash": "12f45ea7",
   "presentationProjection": {
     "centerYM": 2.0715,
-    "topHalfM": 8.2573,
-    "sideHalfM": 4.1286
+    "topHalfM": 8.2635,
+    "sideHalfM": 4.1317
   },
   "appearance": {
     "version": 1,
@@ -4279,7 +4279,7 @@
       "fittingPaint": 4,
       "hullRubber": 1,
       "canvas": 4,
-      "unclassified": 21,
+      "unclassified": 15,
       "gearShadow": 1
     }
   },
@@ -4307,15 +4307,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31128,
-      "sha256": "351e3a7e962d8cc97412dab5e161eebde5936ace31a92243c1c9f120f5af095b",
+      "bytes": 31162,
+      "sha256": "bf18acca35d6080c291a2d6c8de25fb1f22b3a71f537e5704f5fcbdf0e89a910",
       "thumbnail": {
         "file": "thumbs/t90am_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11692,
-        "sha256": "65dff11475f3a4a38fa3cc79dc46748b58a05e4b7dd5e53537a105ca42972569"
+        "bytes": 11674,
+        "sha256": "9ca5abaf17e5d036aca4d225b58d094499f3a964f6dad899e29b5ab98fc6088e"
       }
     },
     "top": {
@@ -4323,56 +4323,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14874,
-      "sha256": "753574750c25ca0510360649c95c59eab46e41bc182c3d8e4a49bd11e3a1e4e5"
+      "bytes": 14872,
+      "sha256": "d5ab0ce0a305e4971ce1c743c04791c108443c7ef6f30a435cfc7cdb11994294"
     },
     "side": {
       "file": "t90am_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11830,
-      "sha256": "eb392a5640154ac51f72a7f6f4f57871eee4e4bb4428efb4c724ae2f4a1215f5"
+      "bytes": 11630,
+      "sha256": "b46e2444accd1760536c59a79aa2b227fdfd9a36853a7b19ca43bdc14e1dbd1a"
     },
     "topSilhouette": {
       "file": "t90am_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1269,
-      "sha256": "183da860ef3f645dbeaa8b8d7abcdfeb1077f6241f30a498be3b0d9ddeb850de"
+      "bytes": 1304,
+      "sha256": "d33f46e1b90a5f8a5d4cfdc5a17eb8d1f4b9a9fadd590b7f9717beabbab279b1"
     },
     "sideSilhouette": {
       "file": "t90am_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4796,
-      "sha256": "ea9ab173afa21b54a3023fc989ba6f82200b9fb2a06e70655ce61036863f63b7"
+      "bytes": 4735,
+      "sha256": "155ca632ab0b02d8aeed4f7960c9a2eff8110676b69c6ef16c96d951c0af8da1"
     },
     "armorSide": {
       "file": "t90am_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28586,
-      "sha256": "4c6e19e6cb3e6e9f7bb96a4b255fb95f6a27fb5c759e715d5f7c9a794344772b"
+      "bytes": 27982,
+      "sha256": "6417e629db5ffcf0e7c19206390e82ea33790a052876fa9fbb9f57f7e7c7e36d"
     },
     "modulesSide": {
       "file": "t90am_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26840,
-      "sha256": "e30eee0546e2130967552cbc9f459f950ea8d86273761f8247574e4460b4d335"
+      "bytes": 25334,
+      "sha256": "84d3b86702e299f8f825af5e4f7207e4caf5da4b7c6c3e5d1e889ee722d04a76"
     },
     "crewSide": {
       "file": "t90am_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24310,
-      "sha256": "ec35848090389f6e966513100761dcf84a1f8793675c19e2b9172a65fdb3ff36"
+      "bytes": 23688,
+      "sha256": "51a45d07911683138a8ff599a98fb56efad65abe2334befd7b820d31cc1da723"
     },
     "markings": {
       "file": "t90am_markings.png",
@@ -4385,8 +4385,8 @@
     "technicalLabels": {
       "file": "t90am_technical.json",
       "mime": "application/json",
-      "bytes": 4830,
-      "sha256": "fdd1e2ee4a9591dadb4d0b13e0286f43d6482e9bef7d93987a04bb63fec0a274"
+      "bytes": 4827,
+      "sha256": "0a477ed0accf49b660e341c617f080194b61b5dd6ca97e295577348fc86456f1"
     }
   }
 }

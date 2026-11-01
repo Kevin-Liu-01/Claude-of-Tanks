@@ -7,13 +7,18 @@
 //   - the fleet core, and the builder groups on the spec chains of the map's donors (the wreck plan's rows and the ids
 //     its config names): a builder group loaded for any other id means the map bakes a donor its key does not hold;
 //   - per-id tables, index maps, the world outputs (--check reads the committed shards and plan), declared reads,
-//     node_modules and .qa-dev scratch.
+//     node_modules and .qa-dev scratch;
+//   - the balance pass and what the tables import (a decoder), as tools/changed-only/trace-check.mjs accepts them
+//     (266): every map's fleet key holds every id's registered spec rows (SPEC_COMBAT, SPEC_REST), where the passes
+//     land, and each donor's key the rows its tables decode.
 // Every other map's config module is loaded too (the registry imports all of them) and is reported apart: configs are
 // data (src/world/maps/index.ts), and the nightly whole-world --check is the tripwire for a config with side effects.
 // Writes nothing in the tree. First-party tooling: Kevin B. Liu.
 //
-//   node tools/changed-only/world-trace.mjs [--root=<tree>] [--steps=collision,trenches,wreckPlan] [--maps=a,b] [--jobs=3]
-//        [--json=out.json]
+//   node tools/changed-only/world-trace.mjs [--root=<tree>] [--steps=collision,trenches,wreckPlan] [--maps=a,b]
+//        [--jobs=3] [--json=out.json] [--plant=<repository path>]
+// --plant (a control): every traced process also reads that file, through a preload outside the tree; a file the
+// map's key does not hold must come back as the run's one uncovered read.
 import { execFile } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,6 +32,12 @@ const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(
 const root = resolve(value('root') ?? process.cwd());
 const jobs = Math.max(1, Number(value('jobs') ?? 3) | 0);
 const trace = join(import.meta.dirname, 'trace-reads.mjs');
+// the --plant control's preload, outside the tree
+const plant = value('plant');
+const plantModule = plant ? join(mkdtempSync(join(tmpdir(), 'cot-world-trace-plant-')), 'plant.mjs') : null;
+if (plantModule) writeFileSync(plantModule, `import { readFileSync } from 'node:fs';\n`
+  + `readFileSync(${JSON.stringify(resolve(root, plant))});\n`);
+const nodeOptions = `--max-old-space-size=4096 --import=${trace}${plantModule ? ` --import=${plantModule}` : ''}`;
 const state = computeState({ root });
 if (!state.world) throw new Error(`no world rows in ${root}`);
 const world = state.world;
@@ -50,6 +61,7 @@ async function runOne({ name, map }) {
   const donors = world.donorsOf(name, map);
   const groups = [...new Set(donors.flatMap((id) => state.groupChain(id)))];
   const keyed = new Set([...s.toolFiles, ...(s.mapFiles[map] ?? []), ...state.partition.core,
+    ...state.partition.balance, ...state.partition.tableImports,
     ...groups.flatMap((group) => state.partition.groups[group] ?? []), ...tableFiles, step.tool,
     ...expandGlobs(root, Object.values(DECLARED_DYNAMIC).flatMap((declaration) => declaration.reads ?? [])),
     'package-lock.json', 'node_modules/.package-lock.json']);
@@ -70,7 +82,7 @@ async function runOne({ name, map }) {
   const started = Date.now();
   const result = await new Promise((done) => execFile('nice', ['-n', '10', process.execPath, ...runArgs], {
     cwd: root, maxBuffer: 64 * 1024 * 1024, timeout: 3_600_000,
-    env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=4096 --import=${trace}`, COT_TRACE_READS_OUT: join(out, 'trace') },
+    env: { ...process.env, NODE_OPTIONS: nodeOptions, COT_TRACE_READS_OUT: join(out, 'trace') },
   }, (error, stdout, stderr) => done({ error, stdout, stderr })));
   let files = [];
   try { files = readdirSync(join(out, 'trace')).filter((entry) => entry.endsWith('.json')); } catch {}

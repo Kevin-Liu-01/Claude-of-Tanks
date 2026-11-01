@@ -441,7 +441,10 @@ export default defineConfig({
             // the anatomy's cut) and the cell facets it is cut from (sim/convexCellFacets.ts, shared with the armour skin) are
             // leaves the trace, the anatomy and the Gallery load at boot on the same three pages; on their own they were two
             // more boot requests on each.
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-31 (shot-card-damage-266): the hit's hull points reader (game/hullPointsRemoved.ts: the profile's tally at
+            // boot, the lazy HUD, killcam, hit format and service record) is a leaf the same three pages load; on its own it
+            // was one more game, cn and Gallery boot request.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one

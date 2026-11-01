@@ -1,5 +1,6 @@
 import { isRapidFireHit, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
-interface DamageNumberHit extends WeaponHitIdentity {
+import { hullPointsRemoved, type HullPointsHit } from '../game/hullPointsRemoved.ts';
+interface DamageNumberHit extends WeaponHitIdentity, HullPointsHit {
   targetId?: string | null;
   attackerId?: string | null;
   damage: number;
@@ -23,11 +24,12 @@ export function canAccumulateDamage(burst: DamageNumberBurst, hit: DamageNumberH
 export function accumulateDamage(
   previous: DamageNumberBurst | undefined, hit: DamageNumberHit, now: number,
 ): DamageNumberBurst | null {
-  if (!Number.isFinite(hit.damage) || hit.damage <= 0) return null;
+  const removed = hullPointsRemoved(hit);
+  if (removed <= 0) return null;
   const burst = previous && canAccumulateDamage(previous, hit, now)
     ? previous : { latest: hit, damage: 0, critical: false, at: now };
   burst.latest = hit;
-  burst.damage += hit.damage;
+  burst.damage += removed;
   burst.critical ||= !!(hit.modulesHit?.length || hit.crewHit?.length);
   burst.at = now;
   return burst;

@@ -1938,6 +1938,18 @@ export function createLighting(
       forceAllCascades(); // sun moved — every cascade must re-render
     },
 
+    /**
+     * (local-fps-266, Main's ruling on the 266 ranking) A battle's lit set, fixed once under cover after its sky is set
+     * (setSun, at the map's activation, is the only writer of either intensity): the hemisphere and the anti-sun fill
+     * leave it when they hold 0 for the battle, the fill under the physical rig always, the hemisphere under an open sky.
+     * three walks every visible light's uniforms on every program switch, zero or not. `false` (the Garage) takes both
+     * back, the set its boot linked.
+     */
+    setBattleLitSet(battle: boolean): void {
+      hemi.visible = !battle || hemi.intensity > 0;
+      fill.visible = !battle || fill.intensity > 0;
+    },
+
     /** Round 69: the light effects this rig resolved (groundBounce is the one it owns). */
     get lightFx() { return lightFx.flags; },
 

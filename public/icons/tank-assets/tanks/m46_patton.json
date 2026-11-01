@@ -333,14 +333,14 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.1306,0.5098,-4.1996],
-        "max": [1.1306,1.6607,-2.7513],
+        "min": [-1.1008,0.5098,-3.638],
+        "max": [1.1306,1.6016,-2.7513],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-0.9723,0.6309,-4.0837],
+        "min": [-0.9723,0.7493,-4.0837],
         "max": [0.9723,1.4595,-3.5913],
         "turretLocal": false
       },
@@ -355,7 +355,7 @@
         "volumeId": "M06",
         "name": "ammoRack",
         "min": [-0.961,0.5098,-1.7661],
-        "max": [0.961,1.2724,-0.6714],
+        "max": [0.961,1.0084,-1.1744],
         "turretLocal": false
       },
       {
@@ -488,8 +488,8 @@
       }
     ]
   },
-  "geometryHash": "405f02aa",
-  "metadataHash": "23c03c93",
+  "geometryHash": "14fec016",
+  "metadataHash": "60131da6",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": -1.1779
@@ -548,15 +548,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26222,
-      "sha256": "1d2f1c2a9e14cafee315ba149a476d06000d347b9d517fbfc51a64621024f4ac",
+      "bytes": 26120,
+      "sha256": "61dffad1f835aa07906b317c71085f942eb7f7cc8e148bef6de33bd3559c4841",
       "thumbnail": {
         "file": "thumbs/m46_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10604,
-        "sha256": "e5ac526a465221fb80bad72758784415cedb8ed2e95894704f4f79604d2b41bf"
+        "bytes": 10608,
+        "sha256": "257d0ed922c556ef449751a313f545a46412bf4ba0a1ed8bc2ba8e81776c2edc"
       }
     },
     "top": {
@@ -564,16 +564,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10894,
-      "sha256": "82ab3b88ac2bbd1079c460a0c2cae74408b5ef3cc9877308cba98cc1a0f2295c"
+      "bytes": 10912,
+      "sha256": "c945c946b941d62e8e92745651188a1905c638db1da03631dd2208e955eff258"
     },
     "side": {
       "file": "m46_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11792,
-      "sha256": "7211b3f6570e5bc23bc70c41d03ab7fed876b587ae05597304da8f05f3b9b102"
+      "bytes": 11764,
+      "sha256": "1bd3b8deeabfdf33fe203b6f862fdef5777a5b6f5a5d3d654589798e5ac79f4f"
     },
     "topSilhouette": {
       "file": "m46_patton_top_silhouette.png",
@@ -588,32 +588,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4874,
-      "sha256": "3c6cf207a553cb90e9b782b7db8fd4dd388f27885742cc4f2419f1630cfd4e46"
+      "bytes": 4870,
+      "sha256": "6d800d3b166063ba35c9c408fe523d75d0777ad0c4c2ac6ebd3033e42693df0e"
     },
     "armorSide": {
       "file": "m46_patton_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26582,
-      "sha256": "4443f7dc351b9cf68fd6a7132ff28fd54c6638286c903e4c0878e98fed243e21"
+      "bytes": 26584,
+      "sha256": "de1d7994cf53b0de5acd03eae743b2379c82a1de3485e65ed4b7d696dd206152"
     },
     "modulesSide": {
       "file": "m46_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28604,
-      "sha256": "e697626f26cd10cd2d666f1ff9f69f9b55a17fce49f379ccef06185f9bd3e59a"
+      "bytes": 27750,
+      "sha256": "7ad1b3fa5978e915f0a885297fe7ac7f7e9f0c92222c3781c7af86d8ec61db3a"
     },
     "crewSide": {
       "file": "m46_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25774,
-      "sha256": "a84be9c7a08f6f568d561b662c76ef2648ecba1dc0a7f75a104f96fc6facb77d"
+      "bytes": 25784,
+      "sha256": "3ac182360afce2ede7b86c49c4e3ab4d8b7f632d98158e37e3e7416fc11f0995"
     },
     "markings": {
       "file": "m46_patton_markings.png",
@@ -626,8 +626,8 @@
     "technicalLabels": {
       "file": "m46_patton_technical.json",
       "mime": "application/json",
-      "bytes": 4372,
-      "sha256": "6009ea71a366e68a14cef2e072ae108832cefbbfff52e62c0dc593330625fa4a"
+      "bytes": 4373,
+      "sha256": "0ccd55506d0761ae1f3048ea233abf77f03af18b83b8bf1f6803de8afb76a20d"
     }
   }
 }

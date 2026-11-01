@@ -4,6 +4,7 @@
 // overlap for the whole vehicle, hull, upper assembly, gun overhang and track
 // profile. This is a QA oracle only; no source vertices enter game code.
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -49,6 +50,15 @@ let server = null;
 let browser = null;
 let page = null;
 let acquisitionFailed = false;
+// Every resource's close failure, the browsers closed between chunks included: any one fails the run after cleanup.
+const cleanupErrors = [];
+const closeBrowser = async (owner) => {
+  try { await owner.close(); }
+  catch (error) {
+    cleanupErrors.push(error);
+    console.error('[fidelity cleanup browser]', String(error));
+  }
+};
 
 try {
   if(!requestedPartition || requestedPartition.comparisons.length) {
@@ -63,31 +73,39 @@ try {
     server: toolServerOptions(6700, { span: 220 }),
   });
   await server.listen();
-  browser = await launchGuardedBrowser(puppeteer, {
-    headless:'new',
-    args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage'],
-  });
-  page = await browser.newPage();
-  await page.setViewport({ width:1500, height:800, deviceScaleFactor:1 });
-  page.setDefaultTimeout(90000);
-  page.on('pageerror', (error) => browserErrors.push(String(error)));
-  page.on('console', (message) => {
-    const text = message.text();
-    if (message.type() === 'error' && !text.includes('favicon')) browserErrors.push(text);
-    if (text.includes('glb swap failed')) browserErrors.push(text);
-  });
-
   const origin = boundOrigin(server);
   const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
-  // the first load compiles the page cold: 180 s and one retry of a timeout (tools/tool-page-load.mjs)
-  await loadReadyPage(page, `${urlFor(requestedPartition?.comparisons[0] || 'm1a1_abrams_hc')}&registry=1`,
-    { label: 'procedural-fidelity', ready: 'Array.isArray(window.__REFERENCE_IDS)', budget: pageLoadBudget({ readyTimeoutMs: 90000 }) });
+  const launchOptions = {
+    headless:'new',
+    args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage'],
+  };
+  // `page` becomes a page of `owner` with the run's viewport, timeout and error capture, on the registry load of `firstId`
+  const openPage = async (owner, firstId) => {
+    page = await owner.newPage();
+    await page.setViewport({ width:1500, height:800, deviceScaleFactor:1 });
+    page.setDefaultTimeout(90000);
+    page.on('pageerror', (error) => browserErrors.push(String(error)));
+    page.on('console', (message) => {
+      const text = message.text();
+      if (message.type() === 'error' && !text.includes('favicon')) browserErrors.push(text);
+      if (text.includes('glb swap failed')) browserErrors.push(text);
+    });
+    // the first load compiles the page cold: 180 s and one retry of a timeout (tools/tool-page-load.mjs)
+    await loadReadyPage(page, `${urlFor(firstId)}&registry=1`,
+      { label: 'procedural-fidelity', ready: 'Array.isArray(window.__REFERENCE_IDS)', budget: pageLoadBudget({ readyTimeoutMs: 90000 }) });
+  };
+  // the registry from a short-lived browser, so the scoring below can chunk the ids
+  browser = await launchGuardedBrowser(puppeteer, launchOptions);
+  await openPage(browser, requestedPartition?.comparisons[0] || 'm1a1_abrams_hc');
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
   // Use the same registration boundary as geometry-gate: an unregistered
   // first-party vehicle has no comparison target, while a registered target
   // whose file is missing must still enter the loop and fail visibly.
   const registered = new Set(discovered);
   const oracleBlindIds = new Set(await page.evaluate('window.__ORACLE_BLIND_IDS') ?? []);
+  const registryBrowser = browser;
+  browser = null;
+  await closeBrowser(registryBrowser);
   const candidates = requestedPartition?.comparisons || discovered;
   const ids = candidates.filter(id => registered.has(id));
   for (const id of candidates.filter(id => !registered.has(id))) {
@@ -97,80 +115,99 @@ try {
     console.log(`[fidelity N/A] ${id}: no registered comparison target`);
   }
 
-  for (let index=0; index<ids.length; index++) {
-    const id = ids[index];
-    const errorStart = browserErrors.length;
-    let rawSourceComparison=null;
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs); the ranking, shots and boards below see every row.
+  let position = 0;
+  await eachBrowserChunk('tools/procedural-fidelity.mjs', ids, async (chunk, { launch }) => {
+    const chunkBrowser = await launch(puppeteer, launchOptions);
     try {
-      if(id==='k1a1' || OWNER_KIT_TARGETS[id] || oracleBlindIds.has(id)){
-        await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
-        await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
-        const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
-        rawSourceComparison=await page.evaluate('window.__FIDELITY_REPORT');
-        if(!rawSourceComparison)throw new Error('raw source comparison unavailable');
-        fs.mkdirSync(REPORT_DIR,{recursive:true});
-        fs.writeFileSync(path.join(REPORT_DIR,`${id}.raw-source-fidelity.json`),`${JSON.stringify(rawSourceComparison,null,2)}\n`);
+      await openPage(chunkBrowser, chunk[0]);
+      for (const id of chunk) {
+        const index = position++;
+        const errorStart = browserErrors.length;
+        let rawSourceComparison=null;
+        try {
+          if(id==='k1a1' || OWNER_KIT_TARGETS[id] || oracleBlindIds.has(id)){
+            await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
+            const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
+            rawSourceComparison=await page.evaluate('window.__FIDELITY_REPORT');
+            if(!rawSourceComparison)throw new Error('raw source comparison unavailable');
+            fs.mkdirSync(REPORT_DIR,{recursive:true});
+            fs.writeFileSync(path.join(REPORT_DIR,`${id}.raw-source-fidelity.json`),`${JSON.stringify(rawSourceComparison,null,2)}\n`);
+          }
+          await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
+          // (262) after a raw-source pass the second page's modules wait behind the first page's teardown: 5 s timed out
+          // twice on the Oplot-M (whose raw-source board is heavy), so the source path gets 60 s like the page loads
+          await page.waitForFunction(
+            'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
+            { timeout:60000, polling:30 },
+          );
+          const sourcePath = await page.evaluate('window.__FIDELITY_SOURCE_PATH');
+          if (sourcePath?.startsWith('/')) {
+            const sourceFile = path.join(ROOT, 'public', sourcePath.replace(/^\/+/, ''));
+            if (!fs.existsSync(sourceFile)) throw new Error(`${id} reference file is unavailable: ${sourcePath}`);
+          }
+          await page.waitForFunction(
+            'window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',
+            { timeout:90000, polling:60 },
+          );
+          const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
+          if (runtimeError) throw new Error(runtimeError);
+          const row = await page.evaluate('window.__FIDELITY_REPORT');
+          if(rawSourceComparison)row.rawSourceComparison=rawSourceComparison;
+          const errors = browserErrors.slice(errorStart);
+          if (errors.length) { row.errors = errors; row.gatePassed = false; }
+          rows.push(row);
+          if (MASK_OUT) {
+            const directory = path.resolve(ROOT, MASK_OUT, id);
+            fs.mkdirSync(directory, {recursive:true});
+            const masks = await page.evaluate(() => [...document.querySelectorAll('#grid figure')].map(figure => ({
+              name: figure.querySelector('figcaption span')?.textContent,
+              image: figure.querySelector('canvas')?.toDataURL('image/png'),
+            })));
+            for (const mask of masks) if (mask.name && mask.image) fs.writeFileSync(
+              path.join(directory, `${mask.name.replace(/[^a-z0-9]+/gi,'-')}.png`),
+              Buffer.from(mask.image.split(',')[1], 'base64'));
+          }
+          console.log(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id.padEnd(22)} ` +
+            `${row.score.toFixed(1)}  H${metric(row.scores.hull)} T${metric(row.scores.turret)} ` +
+            `G${metric(row.scores.gun)} R${metric(row.scores.tracks)}`);
+        } catch (error) {
+          const message = String(error);
+          const unavailable = /reference (?:GLB did not load|file is unavailable)|no local GLB reference/.test(message);
+          const row = {
+            id, name:id, score:unavailable ? null : 0,
+            scores:{ overall:null,hull:null,turret:null,gun:null,tracks:null },
+            error:message, unavailable,
+            ...(rawSourceComparison?{rawSourceComparison}:{}),
+          };
+          rows.push(row);
+          console.error(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id}: ${error.message}`);
+        }
       }
-      await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
-      // (262) after a raw-source pass the second page's modules wait behind the first page's teardown: 5 s timed out
-      // twice on the Oplot-M (whose raw-source board is heavy), so the source path gets 60 s like the page loads
-      await page.waitForFunction(
-        'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
-        { timeout:60000, polling:30 },
-      );
-      const sourcePath = await page.evaluate('window.__FIDELITY_SOURCE_PATH');
-      if (sourcePath?.startsWith('/')) {
-        const sourceFile = path.join(ROOT, 'public', sourcePath.replace(/^\/+/, ''));
-        if (!fs.existsSync(sourceFile)) throw new Error(`${id} reference file is unavailable: ${sourcePath}`);
-      }
-      await page.waitForFunction(
-        'window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',
-        { timeout:90000, polling:60 },
-      );
-      const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
-      if (runtimeError) throw new Error(runtimeError);
-      const row = await page.evaluate('window.__FIDELITY_REPORT');
-      if(rawSourceComparison)row.rawSourceComparison=rawSourceComparison;
-      const errors = browserErrors.slice(errorStart);
-      if (errors.length) { row.errors = errors; row.gatePassed = false; }
-      rows.push(row);
-      if (MASK_OUT) {
-        const directory = path.resolve(ROOT, MASK_OUT, id);
-        fs.mkdirSync(directory, {recursive:true});
-        const masks = await page.evaluate(() => [...document.querySelectorAll('#grid figure')].map(figure => ({
-          name: figure.querySelector('figcaption span')?.textContent,
-          image: figure.querySelector('canvas')?.toDataURL('image/png'),
-        })));
-        for (const mask of masks) if (mask.name && mask.image) fs.writeFileSync(
-          path.join(directory, `${mask.name.replace(/[^a-z0-9]+/gi,'-')}.png`),
-          Buffer.from(mask.image.split(',')[1], 'base64'));
-      }
-      console.log(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id.padEnd(22)} ` +
-        `${row.score.toFixed(1)}  H${metric(row.scores.hull)} T${metric(row.scores.turret)} ` +
-        `G${metric(row.scores.gun)} R${metric(row.scores.tracks)}`);
-    } catch (error) {
-      const message = String(error);
-      const unavailable = /reference (?:GLB did not load|file is unavailable)|no local GLB reference/.test(message);
-      const row = {
-        id, name:id, score:unavailable ? null : 0,
-        scores:{ overall:null,hull:null,turret:null,gun:null,tracks:null },
-        error:message, unavailable,
-        ...(rawSourceComparison?{rawSourceComparison}:{}),
-      };
-      rows.push(row);
-      console.error(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id}: ${error.message}`);
+    } finally {
+      await closeBrowser(chunkBrowser);
     }
-  }
+  });
 
   rows.sort((a,b) => (a.score ?? Infinity) - (b.score ?? Infinity) || a.id.localeCompare(b.id));
   if (shotCount) {
     const shotDir = path.join(ROOT,'shots','procedural-fidelity');
     fs.mkdirSync(shotDir,{recursive:true});
-    for (const row of rows.filter((candidate) => Number.isFinite(candidate.score)).slice(0,shotCount)) {
-      await page.goto(urlFor(row.id), { waitUntil:'domcontentloaded', timeout:90000 });
-      await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:90000, polling:60 });
-      await page.screenshot({ path:path.join(shotDir,`${row.id}.png`), fullPage:true });
-    }
+    const shotIds = rows.filter((candidate) => Number.isFinite(candidate.score)).slice(0,shotCount).map((row) => row.id);
+    await eachBrowserChunk('tools/procedural-fidelity.mjs', shotIds, async (chunk, { launch }) => {
+      const chunkBrowser = await launch(puppeteer, launchOptions);
+      try {
+        await openPage(chunkBrowser, chunk[0]);
+        for (const id of chunk) {
+          await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
+          await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:90000, polling:60 });
+          await page.screenshot({ path:path.join(shotDir,`${id}.png`), fullPage:true });
+        }
+      } finally {
+        await closeBrowser(chunkBrowser);
+      }
+    });
   }
   if (BOARD || NEUTRAL_BOARD) {
     // BUILD-STANDARD evidence boards: shaded pair + articulation strip +
@@ -178,14 +215,22 @@ try {
     // so the page never downscales the strips).
     const boardDir = path.join(ROOT,'shots','procedural-fidelity','boards');
     fs.mkdirSync(boardDir,{recursive:true});
-    await page.setViewport({ width:2520, height:1200, deviceScaleFactor:1 });
-    for (const row of rows) {
-      if (row.error || row.comparisonApplicable===false) continue;
-      await page.goto(`${urlFor(row.id)}&board=1${NEUTRAL_BOARD ? '&neutralBoard=1' : ''}`, { waitUntil:'domcontentloaded', timeout:120000 });
-      await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:120000, polling:60 });
-      await page.screenshot({ path:path.join(boardDir,`${row.id}${NEUTRAL_BOARD ? '-neutral' : ''}.png`), fullPage:true });
-      console.log(`[board] ${row.id}`);
-    }
+    const boardIds = rows.filter((row) => !row.error && row.comparisonApplicable!==false).map((row) => row.id);
+    await eachBrowserChunk('tools/procedural-fidelity.mjs', boardIds, async (chunk, { launch }) => {
+      const chunkBrowser = await launch(puppeteer, launchOptions);
+      try {
+        await openPage(chunkBrowser, chunk[0]);
+        await page.setViewport({ width:2520, height:1200, deviceScaleFactor:1 });
+        for (const id of chunk) {
+          await page.goto(`${urlFor(id)}&board=1${NEUTRAL_BOARD ? '&neutralBoard=1' : ''}`, { waitUntil:'domcontentloaded', timeout:120000 });
+          await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:120000, polling:60 });
+          await page.screenshot({ path:path.join(boardDir,`${id}${NEUTRAL_BOARD ? '-neutral' : ''}.png`), fullPage:true });
+          console.log(`[board] ${id}`);
+        }
+      } finally {
+        await closeBrowser(chunkBrowser);
+      }
+    });
   }
   }
 } catch (error) {
@@ -195,7 +240,6 @@ try {
   }));
   throw error;
 } finally {
-  const cleanupErrors = [];
   for (const [resource, close] of [
     ['browser', async () => { if (browser) await browser.close(); }],
     ['server', async () => { if (server) await server.close(); }],
