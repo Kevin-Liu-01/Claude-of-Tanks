@@ -154,9 +154,12 @@ leo2a7dk.visual = {
   // own lace, the fleck painter's dense dapple at a few centimetres (the Latvia photograph at full size, Commons
   // 3840 px: mid-green panels under a fine dark lace, about a sixth of them brown-tan), the dark tone twice for the
   // lace's share; the cover's cut-leaf texture takes its colours from the first three (ghillieSuit coverPaletteOf), so
-  // the cover and the paint between its panels are one fabric
-  scheme: 'fleck', base: '#515c3d', weather: '#4c5639', patches: ['#2a301f', '#625640', '#384129', '#2a301f'],
-  marking: 'number', number: '11', camoScale: 1.0,
+  // the cover and the paint between its panels are one fabric; p3 (the p2 sheets: a coarse, contrasty flecktarn of
+  // brown and near-black blobs; the photograph's lace finer, its ground greener): the dapples at half the size, a softer
+  // dark seven times over and the tan once, so the lace carries about two fifths of the ground (camoprev q5)
+  scheme: 'fleck', base: '#58643f', weather: '#535e3c',
+  patches: ['#323b27', '#5e5640', '#3b452c', '#323b27', '#323b27', '#323b27', '#3b452c', '#323b27', '#323b27', '#323b27', '#3b452c'],
+  marking: 'number', number: '11', camoScale: 2.2,
 };
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
