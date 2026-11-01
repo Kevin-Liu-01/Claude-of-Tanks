@@ -3549,7 +3549,9 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
     const openings = (side > 0
       ? [apertureOutline(0.31, 0.59, 0.16, 0.46, false, seg), apertureOutline(0.71, 0.83, 0.18, 0.86, true, seg)]
       : [apertureOutline(0.33, 0.47, 0.23, 0.372, true, seg)]).map((o) => o.map((p) => new THREE.Vector2(sx(p.x), p.y)));
-    plate.holes = openings.map((o) => new THREE.Path(o));
+    // (267: the right's plate runs clockwise once mirrored, and three re-winds the holes only of an anticlockwise outline:
+    // its port wound against it, or the port's walls face into the plate and show their insides)
+    plate.holes = openings.map((o) => new THREE.Path(side > 0 ? o : [...o].reverse()));
     P.add('turret', toRing(new THREE.ExtrudeGeometry(plate, { depth: t, bevelEnabled: false, curveSegments: 1 }).applyMatrix4(frame)));
     for (const o of openings) {
       const back = new THREE.ExtrudeGeometry(new THREE.Shape(o), { depth: 0.004, bevelEnabled: false, curveSegments: 1 }).applyMatrix4(frame);
