@@ -7235,16 +7235,16 @@
   },
   {
    "path": "media/site50-r14/home/modes/drone-640.webp",
-   "bytes": 12872,
-   "sha256": "b5ce9fa3c0e68532bd4295e3a6e7318df880030ef68999ddb7c713b0a46137a0",
-   "source": "shots/media-r5/home-r2/deliver/modes/drone.png",
+   "bytes": 34732,
+   "sha256": "68c4c5252325b9d22947dcb0d90ce4d76d406c19f3f12a4754d0bd4762afbfac",
+   "source": "shots/media-r5/site50/drone-251c-out/drone-ve/stills/verdant-landscape-2160p-still-4650ms-e2ms.png",
    "home": "modes/drone"
   },
   {
    "path": "media/site50-r14/home/modes/drone.webp",
-   "bytes": 54924,
-   "sha256": "f15f3db88ece963d81d51af50eb639c70c482955c3091879bad3ac9311cc9c0f",
-   "source": "shots/media-r5/home-r2/deliver/modes/drone.png",
+   "bytes": 130068,
+   "sha256": "bb6e9439ec844200b6d5c3a1fa387929f66a2b763f94a7d55087bd1d63b850a5",
+   "source": "shots/media-r5/site50/drone-251c-out/drone-ve/stills/verdant-landscape-2160p-still-4650ms-e2ms.png",
    "home": "modes/drone"
   },
   {
