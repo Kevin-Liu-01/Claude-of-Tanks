@@ -128,10 +128,32 @@
    "hostSweep": []
   },
   "amx40_proto": {
-   "inputHash": "e68d77fb276ee939",
+   "inputHash": "163a11df4373fabd",
    "runs": [
     {
      "index": 0,
+     "site": "fitting:spareTrackLinks@buildHullFurniture@france.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.923,
+      "gap": 0.077,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.922,
+      "host": "hull<buildHullBody@france.ts:222>"
+     }
+    },
+    {
+     "index": 1,
      "site": "adhoc:amx40-rear-links@<anon>@france.ts",
      "source": "adhoc",
      "frame": "hull",
@@ -149,7 +171,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.59,
-      "host": "hull<buildSkirts@france.ts:307>"
+      "host": "hull<buildSkirts@france.ts:329>"
      }
     }
    ],
@@ -1111,89 +1133,20 @@
    "hostSweep": []
   },
   "leclerc_s1": {
-   "inputHash": "f9d0abac58e97b6b",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:leclerc-flank-links@<anon>@profiles/misc.ts",
-     "source": "adhoc",
-     "frame": "turret",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.671,
-      "gap": 0.311,
-      "air": 0.018,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 1,
-      "host": "orphan:turret"
-     }
-    }
-   ],
+   "inputHash": "5ce699b378c87159",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leclerc_s2": {
-   "inputHash": "283e618eb6075109",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:leclerc-flank-links@<anon>@profiles/misc.ts",
-     "source": "adhoc",
-     "frame": "turret",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.671,
-      "gap": 0.311,
-      "air": 0.018,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 1,
-      "host": "orphan:turret"
-     }
-    }
-   ],
+   "inputHash": "cf7f36932636ed20",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leclerc_sxxi": {
-   "inputHash": "d8a3b805a4115ccb",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:leclerc-flank-links@<anon>@profiles/misc.ts",
-     "source": "adhoc",
-     "frame": "turret",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.671,
-      "gap": 0.311,
-      "air": 0.018,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 1,
-      "host": "orphan:turret"
-     }
-    }
-   ],
+   "inputHash": "4c3a978a9f3c3330",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
