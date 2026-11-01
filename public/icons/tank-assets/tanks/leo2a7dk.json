@@ -1153,17 +1153,17 @@
       }
     ]
   },
-  "geometryHash": "ba5bf6ec",
+  "geometryHash": "de44b220",
   "metadataHash": "7f3bbbbd",
   "presentationAnchor": {
-    "xM": 0.0002,
-    "zM": -0.0952
+    "xM": 0,
+    "zM": -0.0864
   },
-  "presentationHash": "819c3128",
+  "presentationHash": "fe177ca0",
   "presentationProjection": {
     "centerYM": 2.7884,
-    "topHalfM": 7.5751,
-    "sideHalfM": 3.7875
+    "topHalfM": 7.5657,
+    "sideHalfM": 3.7828
   },
   "appearance": {
     "version": 1,
@@ -1215,15 +1215,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28690,
-      "sha256": "4a342f4184cce9734007814f19e5b268f4735fd26e672c05f451bfe77e1c6abc",
+      "bytes": 28822,
+      "sha256": "bc3be615a7849e9e4b5291d69bd11a4022ba34b416de0ace5b253c06bde8e4c5",
       "thumbnail": {
         "file": "thumbs/leo2a7dk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11196,
-        "sha256": "46cfd3233a256e1cf35c911989391e482ce6fc9815674627fcff16969a2e501b"
+        "bytes": 11210,
+        "sha256": "1196cc65e37b9d205a3b21424c99f3b0642e86b8bfc76314da6cd8129a4f4b83"
       }
     },
     "top": {
@@ -1231,56 +1231,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12688,
-      "sha256": "89463b9098407e9294ea87203cb84e7c3e4e39c2d130b1a431915f3a8e9d7be2"
+      "bytes": 12602,
+      "sha256": "7b91a3f06df8545d4068531828954a14aacbca40c403c8f3c8f1395dd0f3a009"
     },
     "side": {
       "file": "leo2a7dk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12328,
-      "sha256": "29c3448b5d89e70e6a3e9b558d30b930149b3f5ad52f737c59831591872be216"
+      "bytes": 11016,
+      "sha256": "348d5ee35e0b3fa1839f655b910915882e53df1828a67d8a685145658dcc27e3"
     },
     "topSilhouette": {
       "file": "leo2a7dk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1415,
-      "sha256": "dedf9fc96229d86116bdb1bdbcdc825bae035f2480b060629b86a075cc46361d"
+      "bytes": 1363,
+      "sha256": "ed5c671968b60e0c16a8b87b7b0cb3ccc557d8eba2e3606867d4d1ec2ee9bcb7"
     },
     "sideSilhouette": {
       "file": "leo2a7dk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4729,
-      "sha256": "b5760e28d258293042233dd50c7e1489fb49b66c54a73a17844badd67e51f17b"
+      "bytes": 4903,
+      "sha256": "bc85419e0ed37b05a58cd26ae50688dae39f2a5fc047acb6ef642887c590b7bf"
     },
     "armorSide": {
       "file": "leo2a7dk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26462,
-      "sha256": "06b3822dd6e89bc484191f93d8e0ad3f81255a12d0b641ffd4c94e865f3b21f2"
+      "bytes": 26614,
+      "sha256": "190732f2a8d551f8b913eb45fcb43159d70cdc7ad8db3186fa5fe52b020fe454"
     },
     "modulesSide": {
       "file": "leo2a7dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27962,
-      "sha256": "474f11d6ba0515c8b522b33169b72ba43a1af2440f23bf32f76bdb160ea52a8a"
+      "bytes": 26424,
+      "sha256": "adf2476e3aea56f16ab86ecd090850daf45966fdb48bcbaba7f29ce185a9178e"
     },
     "crewSide": {
       "file": "leo2a7dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25860,
-      "sha256": "60c681274cbda333ac290b25d7a449f733f65ddb00fb45b5fcc4679bee3beb41"
+      "bytes": 25824,
+      "sha256": "da0a48995c3b847b7ebdecef037bee47dac983f065587a4e7c109227a1e481d7"
     },
     "markings": {
       "file": "leo2a7dk_markings.png",
@@ -1293,8 +1293,8 @@
     "technicalLabels": {
       "file": "leo2a7dk_technical.json",
       "mime": "application/json",
-      "bytes": 5005,
-      "sha256": "b0adb54cf168f69990324af52f5828853c2cf9ecfe3816463af744954f1a9cda"
+      "bytes": 5006,
+      "sha256": "7f5fe7434ea40facbdb07945fc65b46246e3e5ca2d774559c058caca13d69c7a"
     }
   }
 }
