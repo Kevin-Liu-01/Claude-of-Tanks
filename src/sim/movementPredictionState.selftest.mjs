@@ -20,17 +20,6 @@ function entity(specId = 'm1a1_abrams_hc') {
     input: { ...drive, aimPoint: new Vector3() } };
 }
 
-function sample(source, tick, ackInputSeq = tick) {
-  const state = source.state;
-  return { tick, ackInputSeq, predictionState: capturePredictionAuthorityState(source), entity: {
-    x: state.pos.x, y: state.pos.y, z: state.pos.z, yaw: state.yaw,
-    pitch: state.visualPitch, roll: state.visualRoll,
-    turretYaw: state.turretYaw, gunPitch: state.gunPitch,
-    vx: Math.sin(state.yaw) * state.speed, vz: Math.cos(state.yaw) * state.speed,
-    vy: state.verticalSpeed, flags: state.grounded ? 0 : SNAPSHOT_FLAGS.AIRBORNE,
-  } };
-}
-
 function hull(state) {
   return [state.visualPitch + state._susp.p * 2.2,
     state.visualRoll + state._susp.r * 1.9 + state._swayEst * 2.4];

@@ -598,7 +598,9 @@ one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free 
   used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
   before Oxlint was added skips it with a notice until `npm ci`.
 - `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
-  no formatter. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
+  no formatter. It adds `no-undef` on JavaScript (`.js`, `.mjs`, `.cjs`), which has no compiler here: an
+  unimported name fails the lint, not the first tier that runs it. A page global read inside `page.evaluate` is
+  declared in the `globals` of its override. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
   with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
   simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
   hash-pinned sources are ignored.
