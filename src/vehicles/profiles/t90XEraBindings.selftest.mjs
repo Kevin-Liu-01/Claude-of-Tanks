@@ -45,7 +45,7 @@ function currentAFenderVertices(){
     appendVertices({geometry},identity,points);
     geometry.dispose();if(geometry!==original)original.dispose();
   }});
-  assert.equal(points.length,432,'only the four independently attachment-tested 144-triangle skins');
+  assert.equal(points.length,432,'only the four independently attachment-tested 144-triangle skins (long returns and front skirt panels)');
   return points;
 }
 

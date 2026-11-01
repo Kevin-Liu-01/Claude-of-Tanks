@@ -7,6 +7,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { t90SourcePressedFaceLayers } from '../nationWheelConstructions.ts';
 import { markEraHitFaces, markEraFurniture as eraFurniture } from './eraHitFaces.ts';
 import { addT90MFenders, addT90MInnerSidePlates, addT90MRearDrums } from './t90MXHullEnds.ts';
@@ -16,7 +17,7 @@ import { addT90AGun } from './t90AXGun.ts';
 import { addT90MRwsHousing } from './t90MXRwsHousing.ts';
 import { addT90ASmokeTubes } from './t90AXSmoke.ts';
 import { addT90VRearGuards } from './t90VXRearGuards.ts';
-import { addT90VFrontGuard } from './t90VXFrontGuards.ts';
+import { addT90VFrontGuard, addT90VFrontSkirt } from './t90VXFrontGuards.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { addPintleBarrel, addPintleFeed, addPintleReceiver, createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES,
   MG_TRUE_SCALE_FLOOR } from '../machineGunGeometry.ts';
@@ -313,7 +314,7 @@ function fenders(P: TankBuilderPort,tag: string,half: number,top: number): void 
     const inner=1.08,outer=half;
     // A supported longitudinal mudguard skin, above the actual shoe course.
     P.add('hull',box(outer-inner,.06,5.72),side*(outer+inner)/2,top-.03,-.18);
-    addT90VFrontGuard(P, side, `${tag}-bow`);
+    addT90VFrontGuard(P, side, `${tag}-bow`);addT90VFrontSkirt(P,side);
     P.addEquipment('hullDetail',box(.035,.065,5.88),side*(half-.04),top+.019,-.17);
     for(const z of [-2.80,-1.53,-.28,.99,2.20]) {
       P.addEquipment('hullDetail',box(.69,.023,.038),side*1.42,top+.022,z);
@@ -335,19 +336,26 @@ function aFenders(P: TankBuilderPort): void {
 function classicSkirts(P: TankBuilderPort,tag: string,roof: number,rear: number,front: number): void {
   for(const side of [-1,1]) {
     if(tag==='kontakt5-source-a')aHangingSkirts(P,side);
-    else for(let i=0;i<6;i++) {
-      const z0=rear+i*(front-rear)/6,z1=rear+(i+1)*(front-rear)/6-.014;
-      const top=roof-Math.max(0,z0-1.5)*.105,low=.733;
-      P.add('hull',box(.032,top-low,z1-z0),side*1.812,(top+low)/2,(z0+z1)/2);
-      P.addEquipment('hullDetail',box(.026,.042,.14),side*1.834,top-.043,(z0+z1)/2);
+    else {
+      const hem:HemSpan[]=[];
+      for(let i=0;i<6;i++) {
+        const z0=rear+i*(front-rear)/6,z1=rear+(i+1)*(front-rear)/6-.014;
+        const top=roof-Math.max(0,z0-1.5)*.105,low=.733;
+        P.add('hull',box(.032,top-low,z1-z0),side*1.812,(top+low)/2,(z0+z1)/2);
+        P.addEquipment('hullDetail',box(.026,.042,.14),side*1.834,top-.043,(z0+z1)/2);
+        hem.push([z0,z1,()=>1.812,low,.016]);
+      }
+      rubberHem(P,side,hem);
     }
     // Three distinct forward Kontakt-5 heavy side modules, not full-length ERA.
     for(let i=0;i<3;i++) {
       const z=.98+i*.735,high=roof+.11-Math.max(0,z-1.4)*.12;
       if(tag==='kontakt5-source-a') { aSideArmor(P,side,i);continue; }
       bindEra(P,'skirt',side,()=>{
-        P.addExternalArmor('hull',eraHitFaces(box(.055,.49,.687),side),side*1.8525,high-.245,z);
+        // (267, S3) a K-5 box with its lid's edges chamfered, not a plain slab: same footprint, plate and outer face
+        P.addExternalArmor('hull',eraHitFaces(sideContainer(side,1.825,1.880,high-.49,high,z-.3435,z+.3435,.012),side));
         for(const dz of [-.26,.26])P.addEquipment('hullDetail',eraFurniture(box(.022,.07,.040)),side*1.879,high-.10,z+dz);
+        for(const dz of [-.27,0,.27])P.addEquipment('hullDetail',eraFurniture(cylX(.010,.010,8)),side*1.880,high-.455,z+dz);
       });
     }
     if(tag==='kontakt5-source-a'&&side<0)aLeftFenderCase(P);
@@ -364,6 +372,39 @@ function classicSkirts(P: TankBuilderPort,tag: string,roof: number,rear: number,
   P.hullG.userData.sourceSkirtDesign=tag;
 }
 
+/** [rear, front, the skirt sheet's centre x along it, its low edge, its thickness] */
+type HemSpan=readonly [number,number,(z:number)=>number,number,number];
+/** 267 (S3, blind critics: "the side skirts read as plain slabs with flat hems"): the rubber-fabric hem along the foot of
+ * a hanging skirt, cut in 0.36-0.40 m flaps with 10 mm slots between and chamfered lower corners, so the hem reads as a
+ * row of separate rubber flaps, not a flat edge; 46 mm deep, 12 mm up over the sheet's foot on both faces. One merged
+ * solid per side. Its lowest point stays 34 mm under the sheet, outboard of the track and over the road wheels. */
+function rubberHem(P:TankBuilderPort,side:number,spans:readonly HemSpan[]):void {
+  const parts:THREE.BufferGeometry[]=[];
+  for(const [rear,front,centre,low,thick]of spans) {
+    const n=Math.max(1,Math.round((front-rear)/.38)),pitch=(front-rear)/n;
+    for(let k=0;k<n;k++) {
+      const a=rear+k*pitch+.005,b=rear+(k+1)*pitch-.005,cw=Math.min(.06,(b-a)*.18);
+      const at=(z:number,lift:number):SolidSection=>{
+        const x=centre(z),h=thick/2+.004,r:readonly(readonly[number,number])[]=[[x-h,low-.034+lift],[x+h,low-.034+lift],[x+h,low+.012],[x-h,low+.012]];
+        return {z,ring:side>0?r:r.map(([px,py])=>[-px,py] as const).reverse()};
+      };
+      parts.push(sectionSolid([at(a,.020),at(a+cw,0),at(b-cw,0),at(b,.020)]));
+    }
+  }
+  const merged=mergeGeometries(parts);
+  for(const part of parts)part.dispose();
+  P.addMudguard('t90-x-rubber-hem','hullRubber',merged);
+}
+
+/** 267: a side ERA container from x0 to x1 (|x|; the outer face at x1), its outer face's four edges chamfered by c. */
+function sideContainer(side:number,x0:number,x1:number,y0:number,y1:number,z0:number,z1:number,c:number):THREE.BufferGeometry {
+  const at=(z:number,i:number):SolidSection=>{
+    const r:readonly(readonly[number,number])[]=[[x0,y0+i],[x1-c-i,y0+i],[x1-i,y0+c+i],[x1-i,y1-c-i],[x1-c-i,y1-i],[x0,y1-i]];
+    return {z,ring:side>0?r:r.map(([x,y])=>[-x,y] as const).reverse()};
+  };
+  return sectionSolid([at(z0,c*.7),at(z0+c,0),at(z1-c,0),at(z1,c*.7)]);
+}
+
 function aHangingSkirts(P:TankBuilderPort,side:number):void {
   const spans:readonly(readonly[number,number])[]=[[-3.277,-1.351],[-1.403,.123],[.064,1.665],[1.608,3.184]];
   for(const [rear,front]of spans) {
@@ -374,6 +415,14 @@ function aHangingSkirts(P:TankBuilderPort,side:number):void {
     });
     P.add('hull',sectionSolid(sections));
   }
+  // (267, S3) the rubber hem under each span, and a clamp strap over each joint between spans
+  const centre=(rear:number,front:number)=>(z:number)=>{
+    const t=(z-rear)/(front-rear),rows=[[0,1.804],[.22,1.776],[.50,1.787],[.80,1.804],[1,1.804]] as const;
+    let i=1;while(i<rows.length-1&&t>rows[i][0])i++;
+    const [t0,a]=rows[i-1],[t1,b]=rows[i];return a+(b-a)*(t-t0)/(t1-t0);
+  };
+  rubberHem(P,side,spans.map(([rear,front]):HemSpan=>[rear+.22*(front-rear),front,centre(rear,front),.72953,.012]));
+  for(const z of [-1.377,.0935,1.6365])P.addEquipment('hullDetail',box(.010,.39,.050),side*1.8125,.94,z);
   for(const [rear,front,high]of [[-3.272,-1.517,1.4617],[-1.511,.309,1.4622],[.316,1.689,1.4617],[1.693,2.808,1.4354]] as const) {
     const sections=[rear,front].map((z):SolidSection=>{
       const top=rear>1.69&&z===front?1.278:high;
@@ -407,6 +456,18 @@ function aSideArmor(P: TankBuilderPort,side:number,index:number): void {
   bindEra(P,'skirt',side,()=> {
     P.addExternalArmor('hull',eraHitFaces(sectionSolid([{z:z-.346,ring:cross},{z:z+.346,ring:cross}]),side));
     for(const dz of [-.26,.26])P.addEquipment('hullDetail',eraFurniture(box(.012,.036,.040)),side*1.880,top-.08,z+dz);
+    // (267, S3: "plain slabs") the K-5 lid's raised 6 mm rim round its face and the six bolts through it, on the
+    // leaning face (x 1.8465 at its foot, 1.890 at its top)
+    const face=(y:number)=>1.8465+(y-low)*(1.89-1.8465)/(top-low);
+    const strip=(h0:number,h1:number,z0:number,z1:number)=>{
+      const r:readonly(readonly[number,number])[]=[[face(h0)-.002,h0],[face(h0)+.006,h0],[face(h1)+.006,h1],[face(h1)-.002,h1]];
+      const c=side>0?r:r.map(([x,y])=>[-x,y] as const).reverse();
+      P.addEquipment('hullDetail',eraFurniture(sectionSolid([{z:z0,ring:c},{z:z1,ring:c}])));
+    };
+    strip(top-.035,top-.010,z-.336,z+.336);strip(low+.010,low+.035,z-.336,z+.336);
+    for(const e of [-1,1])strip(low+.035,top-.035,z+e*.336-(e>0?.025:0),z+e*.336+(e<0?.025:0));
+    for(const y of [top-.0225,low+.0225])for(const dz of [-.22,0,.22])
+      P.addEquipment('hullDetail',eraFurniture(cylX(.009,.010,8)),side*(face(y)+.007),y,z+dz);
   });
   // the backing runs from a plumb inner face on the hull side (the slanted copy stood 13 mm off it) into the tile
   const backing=([[1.808,low],[1.8398,low],[1.8833,top],[1.808,top]] as const).map(([x,y])=>[side*x,y] as const);
@@ -431,12 +492,30 @@ function eraHitFaces(g:THREE.BufferGeometry,side=0):THREE.BufferGeometry {
   return g;
 }
 
+/** 267 (S3, "the glacis armour reads flat"): a K-5 container in its plate's frame (width x thickness x length, centred),
+ * its lid's four edges chamfered (35 % of its thickness, at most 16 mm) so the 8 mm seams between neighbours open into
+ * grooves and each reads as a separate box; the same plate, footprint and lid plane. */
+function eraContainer(width:number,thickness:number,length:number):THREE.BufferGeometry {
+  const c=Math.min(.016,thickness*.35),w=width/2,t=thickness/2,l=length/2;
+  const at=(z:number,i:number):SolidSection=>({z,ring:[[-w+i,-t],[w-i,-t],[w-i,t-c-i],[w-c-i,t-i],[-w+c+i,t-i],[-w+i,t-c-i]]});
+  return sectionSolid([at(-l,c*.7),at(-l+c,0),at(l-c,0),at(l,c*.7)]);
+}
+
 function inclinedHullPlate(P:TankBuilderPort,x:number,width:number,rear:number,front:number,high:number,low:number,thickness:number,reactive=false):void {
   const angle=Math.atan2(high-low,front-rear),length=Math.hypot(front-rear,high-low);
   const fill=()=> {
-    const cover=box(width,thickness,length);
+    const cover=reactive?eraContainer(width,thickness,length):box(width,thickness,length);
     P.addExternalArmor('hull',reactive?eraHitFaces(cover):cover,x,(high+low)/2,(front+rear)/2,angle);
-    for(const side of [-1,1])P.addEquipment('hullDetail',eraFurniture(box(.027,.016,.036)),x+side*width*.30,(high+low)/2+.018,(front+rear)/2,angle);
+    if(!reactive) {
+      for(const side of [-1,1])P.addEquipment('hullDetail',eraFurniture(box(.027,.016,.036)),x+side*width*.30,(high+low)/2+.018,(front+rear)/2,angle);
+      return;
+    }
+    // (267) the K-5 container's four lid bolts, seated in its lid inside the chamfers
+    const c=Math.cos(angle),sn=Math.sin(angle);
+    for(const lx of [-1,1])for(const lz of [-1,1]) {
+      const ly=thickness/2,dz=lz*(length/2-.035);
+      P.addEquipment('hullDetail',eraFurniture(cylY(.011,.010,8)),x+lx*(width/2-.035),(high+low)/2+ly*c-dz*sn,(front+rear)/2+ly*sn+dz*c,angle);
+    }
   };
   if(reactive)bindEra(P,'glacis',x,fill);
   else fill();
@@ -474,13 +553,17 @@ function mGlacis(P:TankBuilderPort):void {
     [1.949,2.168,1.359,1.280,.044],[2.182,2.687,1.305,1.124,.067],
     [2.704,3.456,1.172, .902,.118],
   ];
+  // 267 (S3, "the glacis armour reads flat"): each Relikt container is a box with 12 mm chamfers round its lid, so the
+  // 8 mm seams between the 21 containers open into V grooves and every course reads as a row of separate boxes stepping
+  // down the glacis; the same footprint, plate and hit faces (the lid and its chamfers).
   for(const [rear,front,high,low,depth]of courses)for(let i=0;i<7;i++) {
-    const x0=-1.0157+i*2.0354/7+.004,x1=x0+2.0354/7-.008;
+    const x0=-1.0157+i*2.0354/7+.004,x1=x0+2.0354/7-.008,c=.012;
+    const lid=(z:number,inset:number):SolidSection=>{
+      const y=high+(low-high)*(z-rear)/(front-rear)-inset,b=high+(low-high)*(z-rear)/(front-rear)-depth;
+      return {z,ring:[[x0+inset,b],[x1-inset,b],[x1-inset,y-c],[x1-c-inset,y],[x0+c+inset,y],[x0+inset,y-c]]};
+    };
     bindEra(P,'glacis',(x0+x1)/2,()=> {
-      P.addExternalArmor('hull',eraHitFaces(sectionSolid([
-        {z:rear,ring:[[x0,high-depth],[x1,high-depth],[x1,high],[x0,high]]},
-        {z:front,ring:[[x0,low-depth],[x1,low-depth],[x1,low],[x0,low]]},
-      ])));
+      P.addExternalArmor('hull',eraHitFaces(sectionSolid([lid(rear,c*.7),lid(rear+c,0),lid(front-c,0),lid(front,c*.7)])));
       for(const x of [x0+.046,x1-.046])P.addEquipment('hullDetail',eraFurniture(cylY(.012,.014,6)),x,high-.035,rear+.09);
     });
   }
@@ -488,6 +571,33 @@ function mGlacis(P:TankBuilderPort):void {
   // horizontal block bridging a black gap between the front shoulders.
   inclinedHullPlate(P,.0065,1.621,2.758,3.282,.379,.649,.047);
   for(const side of [-1,1])inclinedHullPlate(P,.0065+side*.778,.574,2.760,3.205,.388,.542,.040);
+  mLowerFrontBacking(P);
+}
+
+// 267 (Main's T-90M roof-pocket list: 688 + 508 cm2 on the t90m, 836 x 2 on the Proryv and the BMPT): the lower-front
+// applique plates stood 3-8 cm under the rising belly with open air between, a see-through slot from the sides. The
+// welded backing fills that air, plate to belly (6 mm into the plates' tops, 8 mm into the keel and its side bevel).
+function mLowerFrontBacking(P:TankBuilderPort):void {
+  const lerp=(rows:readonly(readonly[number,number])[],z:number)=>{
+    let i=1;while(i<rows.length-1&&z>rows[i][0])i++;
+    const [z0,a]=rows[i-1],[z1,b]=rows[i];return a+(b-a)*(z-z0)/(z1-z0);
+  };
+  const keel=(z:number)=>lerp([[2.52,.348],[3.04,.556],[3.43,.756]],z);
+  const bevel=(z:number)=>lerp([[2.52,.11],[3.04,.0746],[3.43,.0068]],z);
+  const plateTop=(rear:number,front:number,high:number,low:number,t:number,z:number)=>{
+    const angle=Math.atan2(low-high,front-rear);return high+(z-rear)*Math.tan(angle)+t/2/Math.cos(angle);
+  };
+  const centre=(z:number)=>plateTop(2.758,3.282,.379,.649,.047,z),wing=(z:number)=>plateTop(2.760,3.205,.388,.542,.040,z);
+  P.addEquipment('hullDetail',sectionSolid([2.768,2.90,3.04,3.17,3.272].map((z):SolidSection=>({z,ring:[
+    [-.795,centre(z)-.006],[.808,centre(z)-.006],[.808,keel(z)+.008],[-.795,keel(z)+.008]]}))));
+  for(const side of [-1,1]) {
+    const x0=.0065+side*.79,x1=.0065+side*1.062;
+    P.addEquipment('hullDetail',sectionSolid([2.768,2.90,3.04,3.197].map((z):SolidSection=>{
+      const r:readonly(readonly[number,number])[]=[[Math.abs(x0),wing(z)-.006],[Math.abs(x1),wing(z)-.006],
+        [Math.abs(x1),keel(z)+bevel(z)*(Math.abs(x1)-1.013)/.075+.008],[1.013,keel(z)+.008],[Math.abs(x0),keel(z)+.008]];
+      return {z,ring:side>0?r:r.map(([x,y])=>[-x,y] as const).reverse()};
+    })));
+  }
 }
 
 // 2026-10-19 (owner float sweep): the Vladimir's lower nose plates and the T-90A's upper glacis tiles stood 15-17 mm
@@ -502,17 +612,33 @@ function vGlacis(P:TankBuilderPort):void {
   // Source Vladimir has shallow, staggered fittings on a continuous glacis,
   // not eight thick rectangular blocks standing above the hull plane.
   for(const side of [-1,1]) {
-    inclinedHullPlate(P,side*.580,.735,1.965,2.133,1.428,1.373,.014,true);
-    inclinedHullPlate(P,side*.197,.3366,2.636,2.862,1.202,1.127,.012,true);
-    inclinedHullPlate(P,side*.707,.3366,2.636,2.862,1.202,1.127,.012,true);
-    inclinedHullPlate(P,side*.365,.3366,2.943,3.169,1.102,1.028,.012,true);
+    // (267, S3) the K-5 fittings are 30 mm containers (they were 12-14 mm sheets that read as paint on the glacis), on
+    // the same centre planes, footprints and plates
+    inclinedHullPlate(P,side*.580,.735,1.965,2.133,1.428,1.373,.030,true);
+    inclinedHullPlate(P,side*.197,.3366,2.636,2.862,1.202,1.127,.030,true);
+    inclinedHullPlate(P,side*.707,.3366,2.636,2.862,1.202,1.127,.030,true);
+    inclinedHullPlate(P,side*.365,.3366,2.943,3.169,1.102,1.028,.030,true);
     inclinedHullPlate(P,side*.882,.508,2.906,3.431,.491,.839,.029);
     plateBacker(P,side*.882,.508,2.906,3.431,.491,.839,.029);
   }
   inclinedHullPlate(P,0,1.7336,2.873,3.308,.399,.811,.026);
   plateBacker(P,0,1.7336,2.873,3.308,.399,.811,.026);
+  vLowerNoseBacking(P);
   P.snapGroup('t90-glacis-strip',()=>P.addEquipment('hullDetail',box(1.682,.014,.036),0,1.132,2.917),{reachM:.03});
   for(let i=0;i<9;i++)P.snapGroup('t90-glacis-bolt',()=>P.addEquipment('hullDetail',cylZ(.013,.017,6),-.778+i*.1945,.828,3.324),{reachM:.08});
+}
+
+// 267: the Vladimir's lower nose plate stands 3-13 cm under the belly it covers (its rear edge lowest), and the open
+// air between them was a see-through slot from the sides (a 504 cm2 roof pocket, 1152 on the obr. 2006). The welded
+// backing fills it, plate to belly, inside the hull's narrowing nose (6 mm into the plate, 8 mm into the keel).
+function vLowerNoseBacking(P:TankBuilderPort):void {
+  const keel=(z:number)=>z<3.08?.414+(z-2.56)*(.643-.414)/.52:.643+(z-3.08)*(.934-.643)/.24;
+  const half=(z:number)=>z<3.08?1.123:1.123+(z-3.08)*(.73-1.123)/.24;
+  const angle=Math.atan2(.811-.399,3.308-2.873),plate=(z:number)=>.399+(z-2.873)*Math.tan(angle)+.013/Math.cos(angle);
+  P.addEquipment('hullDetail',sectionSolid([2.879,2.98,3.08,3.18,3.29].map((z):SolidSection=>{
+    const w=Math.min(.85,half(z)-.085);
+    return {z,ring:[[-w,plate(z)-.006],[w,plate(z)-.006],[w,keel(z)+.008],[-w,keel(z)+.008]]};
+  })));
 }
 
 type EraModule = { w:number; depth:number; low:number; high:number; nose:number; backLow?:number; noseLow?:number };
@@ -661,7 +787,26 @@ function mFrontFixtures(P: TankBuilderPort): void {
     eraWedge(P,M,side<0?-.499:.446,1.500,0,
       {w:side<0?.141:.250,depth:.384,low:1.641,high:1.872,nose:1.724,backLow:1.80});
     onTurret(P,M,'turretDetail',box(.13,.14,.290),side<0?-.499:.446,1.594,1.572);
+    mForkUnderside(P,side);
   }
+}
+
+// 267 (Main's T-90M turret-base pockets, 452 + 420 cm2): the cheek forks' chins rise 11 cm toward their front faces
+// (z 1.18 to 1.426) and left an open wedge of air under each, between the cradle and the lower cheek cassette, seen
+// from the front. The cast lower face closes it: a wedge from the chin down to a level 1.447 underside (under the 1.443
+// chin behind it), clear outboard of the cradle cover's edge, and a 22 mm lip across the fork's front below the cover.
+function mForkUnderside(P:TankBuilderPort,side:number):void {
+  const chin=(z:number)=>z<1.18?1.443:1.443+(z-1.18)*(1.555-1.443)/(1.426-1.18);
+  const [a,b]=side>0?[.320,.585]:[-.548,-.4165];
+  onTurret(P,M,'turretDetail',sectionSolid([1.19,1.30,1.424].map((z):SolidSection=>({z,
+    ring:[[a,1.447],[b,1.447],[b,chin(z)+.006],[a,chin(z)+.006]]}))),0,0,0);
+  const cover=side>0?[.276,.322]:[-.4165,-.292];
+  onTurret(P,M,'turretDetail',box(cover[1]-cover[0],.028,.022),(cover[0]+cover[1])/2,1.461,1.413);
+  // inside the cover's open U (its 7 mm side walls at x -.415 to -.408 and .305 to .312) the lip runs up to the chin and
+  // in to 165 mm off the bore, clear of the cradle's front disc (r .15) and, at full elevation, 12 mm ahead of the
+  // mantlet's lower nose
+  const [u0,u1]=side>0?[.165,.304]:[-.4075,-.165];
+  onTurret(P,M,'turretDetail',box(u1-u0,chin(1.424)+.006-1.447,.022),(u0+u1)/2,(chin(1.424)+.006+1.447)/2,1.413);
 }
 
 function classicSensors(P: TankBuilderPort,d: Datum,_mirror: number): void {
@@ -881,13 +1026,49 @@ function mSideCurtains(P:TankBuilderPort):void {
       bindEra(P,'skirt',side,()=>{
         mCurtain(P,side,[[z,.52291,topRear],[z+.3289,.42440,(topRear+topFront)/2],[z+.6578,.52291,topFront]]);
         for(const dz of [.08,.578])P.addEquipment('hullDetail',eraFurniture(box(.022,.045,.041)),side*1.859,topRear-.112,z+dz);
+        mReliktCassette(P,side,z,z+.6578,()=>topRear,.76);
       });
       P.addEquipment('hullDetail',box(.1152,.027,.5895),side*1.8075,topRear-.12,z+.329);
     }
-    bindEra(P,'skirt',side,()=>mCurtain(P,side,[[2.20882,.52291,1.26351],[3.16029,.75055,1.18364]]));
+    bindEra(P,'skirt',side,()=>{
+      mCurtain(P,side,[[2.20882,.52291,1.26351],[3.16029,.75055,1.18364]]);
+      mReliktCassette(P,side,2.20882,3.16029,z=>1.26351+(z-2.20882)*(1.18364-1.26351)/(3.16029-2.20882),.76,2.80);
+    });
     mCurtain(P,side,[[-3.03672,.75055,1.14445],[-1.18271,.52291,1.14445]]);
     P.addEquipment('hullDetail',box(.160,.012,1.854),side*1.7898,1.138,-2.1097);
+    // (267) the skirt's rear mounting block under the fender's last 19 cm, from the rear screen's top edge to the fender,
+    // between the inner plate and the cassette line (an open slot there was a 144 cm2 roof pocket)
+    P.addEquipment('hullDetail',box(.0835,.164,.200),side*(1.7535+.0835/2-(side<0?.00197:0)),1.2245,-1.246);
   }
+}
+
+// 267 (S3, blind critics: "the side skirts read as plain slabs with flat hems"): each Relikt skirt cassette is a box, not
+// a 12 mm sheet. Its body fills the 85 mm between the inner side plate and the outer cover from the hanger rail to the
+// fender (the see-through slots under the fender there were Main's T-90M roof pockets, 320-376 cm2 each), and the cover
+// carries the two container lids the photographs show, an upper and a lower box 9 mm proud with 4 mm chamfers (inside
+// the Proryv's slat screen, whose bars stand 10 mm off the cover) over the scalloped hem. All of it goes with the
+// cassette: hardware of its ERA cluster, no added hit face.
+function mReliktCassette(P:TankBuilderPort,side:number,rear:number,front:number,top:(z:number)=>number,split:number,lowerFront=front):void {
+  const shift=side<0?.00394:0,cover=1.84887-shift,inner=1.8369-shift;
+  const fender=(z:number)=>(z<.5?1.327+(z+1.3369)*(1.312-1.327)/1.8369:z<1.3?1.312-(z-.5)*.0125:1.302-(z-1.3)*.0325)-.022;
+  const ring=(points:readonly(readonly[number,number])[])=>side>0?points:points.map(([x,y])=>[-x,y] as const).reverse();
+  const along=[rear+.004,(rear+front)/2,front-.004];
+  P.addEquipment('hullDetail',eraFurniture(sectionSolid(along.map((z):SolidSection=>({z,
+    ring:ring([[1.7535,1.2165],[inner+.0005,1.2165],[inner+.0005,fender(z)+.002],[1.7535,fender(z)+.002]])})))));
+  P.addEquipment('hullDetail',eraFurniture(reliktLid(side,cover,rear+.022,front-.022,()=>split+.225,z=>top(z)-.03)));
+  P.addEquipment('hullDetail',eraFurniture(reliktLid(side,cover,rear+.022,lowerFront-.022,()=>split,()=>split+.21)));
+}
+
+/** 267: a skirt container's lid on an outer face at |x| = face: 9 mm proud (1 mm into the face), its edges chamfered 4 mm,
+ * from y0(z) to y1(z) between z0 and z1. */
+function reliktLid(side:number,face:number,z0:number,z1:number,y0:(z:number)=>number,y1:(z:number)=>number):THREE.BufferGeometry {
+  const d=.010,c=.004,x=face-.001;
+  const at=(z:number,inset:number):SolidSection=>{
+    const r:readonly(readonly[number,number])[]=[[x,y0(z)+inset],[x+d-c-inset,y0(z)+inset],[x+d-inset,y0(z)+c+inset],
+      [x+d-inset,y1(z)-c-inset],[x+d-c-inset,y1(z)-inset],[x,y1(z)-inset]];
+    return {z,ring:side>0?r:r.map(([px,py])=>[-px,py] as const).reverse()};
+  };
+  return sectionSolid([at(z0,c),at(z0+c,0),at(z1-c,0),at(z1,c)]);
 }
 
 function mRearCage(P:TankBuilderPort):void {
@@ -1015,6 +1196,9 @@ function smFendersAndSkirts(P: TankBuilderPort): void {
       };
       P.addExternalArmor('hull',sectionSolid([{z:z0,ring:cross(.52)},{z:(z0+z1)/2,ring:cross(.4411)},{z:z1,ring:cross(.52)}]));
       for(const dz of [.08,.61])P.addEquipment('hullDetail',box(.095,.059,.063),side*1.739,top-.108,z0+dz);
+      // (267, S3: "plain slabs") the screen's two Relikt container lids over its scalloped hem, as on the T-90M's
+      P.addEquipment('hullDetail',reliktLid(side,outer,z0+.022,z1-.022,()=>.985,()=>top-.03));
+      P.addEquipment('hullDetail',reliktLid(side,outer,z0+.022,z1-.022,()=>.76,()=>.97));
     }
   }
   smFrontGuards(P);smRearCage(P);smRearFixtures(P);
@@ -1023,6 +1207,10 @@ function smFendersAndSkirts(P: TankBuilderPort): void {
 function smFrontGuards(P:TankBuilderPort):void {
   // Curved sheet roof and separate inner return: the narrowing rounded nose
   // cannot be represented by a full-width low rectangular flap.
+  // 267 (S1, blind critics: "the bow mudguards read as oversized wedges"): the roof's outer edge turns down in a 30 mm
+  // pressed lip under its measured edge line; the inner return is a 10 cm lip back of the nose (it hung 30-60 cm, a wall
+  // that closed the guard into a block from ahead); and from the hinge at z 3.83 the steep nose is a separate toe flap, tucked 1.5 mm
+  // under the roof's front edge. Measured crown, shoulder, edge and plan unchanged.
   const rows:readonly(readonly[number,number,number,number,number,number,number])[]=[
     [3.220,.980,1.796,1.620,1.348,1.257,.750],
     [3.500,.9714,1.8064,1.668,1.325,1.238,.9037],
@@ -1033,15 +1221,31 @@ function smFrontGuards(P:TankBuilderPort):void {
     [3.950,1.1639,1.2407,1.201,.9454,.928,.9134],
     [3.962,1.186,1.197,1.191,.925,.922,.920],
   ];
+  const at=(z:number)=>{let i=1;while(i<rows.length-1&&z>rows[i][0])i++;
+    const a=rows[i-1],b=rows[i],t=(z-a[0])/(b[0]-a[0]);return a.map((v,k)=>v+(b[k]-v)*t) as unknown as typeof rows[number];};
+  const main=[...rows.slice(0,4),[3.832,...at(3.832).slice(1)] as unknown as typeof rows[number]];
+  const toe=[[3.826,...at(3.826).slice(1)] as unknown as typeof rows[number],...rows.slice(5)];
   for(const side of [-1,1]) {
     const section=(z:number,points:readonly(readonly[number,number])[]):SolidSection=>({z,
       ring:side>0?points:points.map(([x,y])=>[-x+.01371,y] as const).reverse()});
-    const roof=rows.map(([z,inner,outer,shoulder,top,edge])=>section(z,
-      [[inner,top-.014],[shoulder,top-.014],[outer,edge-.014],[outer,edge],[shoulder,top],[inner,top]]));
-    const returns=rows.map(([z,inner,, ,top,,low])=>section(z,
-      [[inner,low],[inner+.012,low],[inner+.012,top-.002],[inner,top-.002]]));
-    P.addMudguard('t90sm-x-rounded-bow','hull',sectionSolid(roof));
-    P.addMudguard('t90sm-x-inner-return','hull',sectionSolid(returns));
+    const roof=(list:readonly(typeof rows[number])[])=>list.map(([z,inner,outer,shoulder,top,edge])=>section(z,
+      [[inner,top-.014],[shoulder,top-.014],[outer-.012,edge-.014],[outer-.012,edge-.030],[outer,edge-.030],[outer,edge],[shoulder,top],[inner,top]]));
+    const toeRoof=(list:readonly(typeof rows[number])[],drop:number)=>list.map(([z,inner,outer,shoulder,top,edge])=>section(z,
+      [[inner,top-.014-drop],[shoulder,top-.014-drop],[outer,edge-.014-drop],[outer,edge-drop],[shoulder,top-drop],[inner,top-drop]]));
+    // the return stays full depth over the nose (z 3.75 on), where it closes the narrowing toe and the bow fittings
+    // (the decor's bow shackles) read its diagonal face
+    const returns=(list:readonly(typeof rows[number])[],drop:number)=>list.map(([z,inner,, ,top,,low])=>{
+      const foot=z<3.74?Math.max(low,top-.10):low;
+      return section(z,[[inner,foot],[inner+.012,foot],[inner+.012,top-.002-drop],[inner,top-.002-drop]]);
+    });
+    P.addMudguard('t90sm-x-rounded-bow','hull',sectionSolid(roof(main)));
+    P.addMudguard('t90sm-x-inner-return','hull',sectionSolid(returns(main,0)));
+    P.addMudguard('t90sm-x-toe-flap','hull',sectionSolid([...toeRoof(toe.slice(0,1),.0155),...toeRoof(toe.slice(1),0)]));
+    P.addMudguard('t90sm-x-toe-return','hull',sectionSolid([...returns(toe.slice(0,1),.0155),...returns(toe.slice(1),0)]));
+    // the hinge along the joint, half proud of the roof's front edge
+    const hx=(x:number)=>side>0?x:-x+.01371,hy=at(3.832)[4]-.003;
+    P.addEquipment('hullDetail',cylX(.008,.52,10),hx(1.38),hy,3.833);
+    for(const x of [1.17,1.38,1.59])P.addEquipment('hullDetail',cylX(.015,.11,12),hx(x),hy,3.833);
   }
 }
 
