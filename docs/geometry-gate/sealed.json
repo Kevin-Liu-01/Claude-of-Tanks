@@ -5113,6 +5113,36 @@
     1.2,
     5.9
    ]
+  },
+  "leo2a7dk": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 363,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 117445,
+   "frame": [
+    0,
+    2.8,
+    1.5,
+    6.6
+   ]
+  },
+  "centurion5_2dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 320,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 99184,
+   "frame": [
+    0,
+    1.6,
+    1,
+    5.5
+   ]
   }
  }
 }

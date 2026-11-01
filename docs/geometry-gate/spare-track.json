@@ -676,6 +676,37 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "centurion5_2dk": {
+   "inputHash": "d88f058ca3f7a05b",
+   "runs": [
+    {
+     "index": 0,
+     "site": "fitting:spareTrackLinks@links@profiles/centurionFamily.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0.003,
+      "sunkMaxM": 0.03,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.618,
+      "host": "hull<buildHullBody@profiles/centurionFamily.ts:139>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "centurion5_avre": {
    "inputHash": "2ca3906e62e2e6e8",
    "runs": [],
@@ -1599,6 +1630,12 @@
      }
     }
    ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "leo2a7dk": {
+   "inputHash": "59163c850821cab4",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

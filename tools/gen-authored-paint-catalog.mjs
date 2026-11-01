@@ -16,7 +16,7 @@ const PAINT_ID_PREFIX = 'paint_';
 const SCHEME_WORD = {
   solid: 'Plain', nato: 'Tri-Tone', stripes: 'Stripes', digital: 'Digital', 'russian-digital': 'Digital',
   splinter: 'Splinter', desert: 'Desert', ambush: 'Ambush', fleck: 'Fleck', woodland: 'Woodland', blotch: 'Blotch',
-  amoeba: 'Amoeba', chip6: 'Chip', caunter: 'Caunter', hexfield: 'Hex',
+  amoeba: 'Amoeba', chip6: 'Chip', caunter: 'Caunter', hexfield: 'Hex', barracuda: 'Barracuda',
 };
 // a plain (solid) coat has no pattern knobs — scale / patch / cell settings are noise there, so two solids with the
 // same colours are the same paint (the "same pattern, different seed" case the owner asked to combine)
@@ -90,7 +90,7 @@ const NATION_WORD = {
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',
   desert: 'Desert', ambush: 'Ambush', fleck: 'Flecktarn', woodland: 'Woodland', blotch: 'Blotch', amoeba: 'Amoeba', chip6: 'Chip',
-  caunter: 'Caunter', hexfield: 'Hex', merdc: 'Disruptive',
+  caunter: 'Caunter', hexfield: 'Hex', merdc: 'Disruptive', barracuda: 'Barracuda',
 };
 const ENV_WORD = { woodland: 'Woodland', desert: 'Desert', winter: 'Winter', urban: 'Urban' };
 // the tone word of a plain coat, from its base colour
@@ -136,7 +136,7 @@ const NATION_ZH = {
 const PATTERN_ZH = {
   Plain: '单色', 'Two-Tone': '双色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
   Woodland: '林地', Blotch: '斑块', Amoeba: '变形虫', Chip: '碎块', Caunter: '考恩特', Hex: '六角', Livery: '涂装',
-  Disruptive: '分裂',
+  Disruptive: '分裂', Barracuda: '梭鱼',
 };
 const ENV_ZH = { Woodland: '林地', Desert: '沙漠', Winter: '冬季', Urban: '城市' };
 const TONE_ZH = {

@@ -6,7 +6,7 @@
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import {
-  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions,
+  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, scaleNonExternalArmor, stripSilhouetteDimensions,
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -118,8 +118,84 @@ leo2a5dk.gunPitchByYawDeg = Object.freeze([[0, -9], [24, -9], [25, -8.4], [28, -
   [145, -2.5], [146, -2.1], [149, -1.4], [155, -0.6], [156, -0.3], [163, 0.6], [176, 0.6], [177, 6.6], [178, 7.1],
   [180, 7.1]] as const);
 
-// The Leopard 2A7 DK is held from release 265 (the coordinator, 2026-10-30): its Barracuda cover is rebuilt as a reusable
-// fit on wip/denmark-2a7dk-265 and lands with its own critics.
+// The Leopard 2A7 DK: the 2A5 DKs rebuilt in 2019-22 (Forsvaret's fact sheet: 44 tanks for Jydske Dragonregiment in
+// Holstebro; about 68 t, up to 60 km/h, 1,500 hp, four crew; the 120 mm L55A1; new thermal sights, an auxiliary
+// generator, air conditioning for turret and hull, new CBRN protection, a driver's camera system, new stowage modules,
+// the mobile camouflage system and new protection against anti-tank rounds and IEDs; MLC 77). Rounds at the 2A7V's
+// fleet footing (the L55A1's programmable HE and its newer sabot).
+const leo2a7dk = danishVariant('leo2a7dk', 'leo2a7v', 'Leopard 2A7 DK', 'modern');
+Object.assign(leo2a7dk.dims, { hullLengthM: 7.72, overallLengthM: 11.00, widthM: 3.80, heightM: 3.05 });
+Object.assign(leo2a7dk, { weightTons: 68.0, topSpeedKmh: 60 });
+// its measured gun stops (tools/gun-depression-sweep.mjs --no-suit at 26 mm; the Barracuda cover is cut to them): the
+// full 9 degrees forward and to the sides, then the rear deck's louvres and the stern stowage over the rear quarters
+leo2a7dk.gunPitchByYawDeg = Object.freeze([[0, -9], [31, -9], [32, -8.5], [33, -8.4], [35, -8.4], [36, -8.6], [37, -9],
+  [46, -9], [48, -8.6], [52, -8.3], [62, -8.2], [68, -8.5], [71, -9], [100, -9], [110, -6.1], [121, -3.5], [129, -2],
+  [138, -0.7], [141, -0.5], [142, 0.4], [143, 2.1], [144, 3], [145, 3.5], [146, 3.9], [152, 4.5], [154, 4.5], [158, 4.3],
+  [159, 5.8], [160, 6.6], [161, 6.8], [169, 7.3], [174, 7.3], [180, 6.7]] as const);
+leo2a7dk.visual = {
+  ...leo2a7dk.visual,
+  // the Barracuda cover's dull grey-green mottle (the Latvia photograph; r2 critics: no terracotta; r3: the grey-green
+  // read pale sage; r4: the brown base showed between the cover's panels): small grey-green patches in the cover's own
+  // tones, so the painted faces under it read as the same cover; r6 (critics: crisp painted blotches, not one fabric; the
+  // photograph's cover a mid-olive with a fine mottle): a finer, low-contrast olive mottle (its greens kept 15 clear of
+  // the 1A5 DK's, the CV9035 DK's and the M41 DK-1's coats, so it stays its own paint)
+  // r7 (critics: the r6 olive read bright lime): a duller olive; r8 (critics, both models: the cover's fabric read as
+  // patches pasted over painted tan blobs; the photograph's is one darker grey-green mottle, tan only on the gun's wrap):
+  // the paint in the cover's own darker grey-greens, no tan, its wash darker still so it stays its own paint
+  // r9 (r8 critics, both: grey and flat; the photograph's cover a deeper, saturated olive in dark blocks): a greener olive
+  // with near-black green blocks
+  // r10 (r9 critics: a flat saturated yellow-green; the photograph's a matte, warmer sage-olive with darker patches): the
+  // greens warmed toward khaki
+  // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
+  // low-contrast grey-green mottle): no near-black, the tones close together
+  // r12 (r11 Opus: green on green; the photograph's khaki-tan areas in the green): a muted tan for the light patch
+  // 267 (r12 critics, both: the cover's pale speckled panels over a woodland of rounded blotches, two textures; one
+  // continuous Barracuda texture over hull, skirts, turret and gun, nothing painted under it): the coat is the cover's
+  // own lace, the fleck painter's dense dapple at a few centimetres (the Latvia photograph at full size, Commons
+  // 3840 px: mid-green panels under a fine dark lace, about a sixth of them brown-tan), the dark tone twice for the
+  // lace's share; the cover's cut-leaf texture takes its colours from the first three (ghillieSuit coverPaletteOf), so
+  // the cover and the paint between its panels are one fabric (p1-p5: the fleck and flecktarn painters could not draw a
+  // fine lace, and the cover's cut-leaf panels read as clumps on paint; critics dk1 and dk2, both 6.3 and 6.8)
+  // 267 p6: the coat IS the cover, the catalog painter's Barracuda (catalogCamoPainter paintBarracuda): mid-green panels
+  // in brick rows with dark seams, about one in six brown-tan, all under one fine dark lace, on every painted face and
+  // the gun; the green darker (dk2, Opus: lighter and yellower than the photograph's); p8 (dk3, Opus 7.6, Sonnet 7.0: the
+  // lace coarse, near-black, pixel-edged, a third of the ground on a saturated green; the photograph's fine dark lace on a
+  // muted grey-green): a grey-green ground, the lace a dark green, the tan muted
+  scheme: 'barracuda', base: '#545d44', weather: '#4f5841', patches: ['#4e573f', '#655440', '#363d2c'],
+  marking: 'number', number: '11',
+};
+
+// ------------------------------------------------------------------------------------------------- Centurion DK --
+// Pansermuseet (Centurion Mk V-2 DK data plate): 7.7 m hull, 9.75 m over the gun, 3.4 m over the side plates, 3.39 m, 51 t
+// loaded, the 650 hp Meteor Mk IVB, 34 km/h on roads, four crew, the 105 mm L7A1, 2x6 dischargers. The 1985 fire control
+// (laser rangefinder, gunner's thermal sight) lays faster and truer than the Mk 5/2's optical sights; rounds and mobility
+// at the Mk 5/2's fleet footing (the published 650 hp on 51 t sits at 0.55 of tier III's power-to-weight median, a severe
+// outlier the fleet balance receipt refuses). Built on the Centurion family's Mk 5/2 (release 262; profiles/centurionDk.ts).
+const centurion5_2dk = danishVariant('centurion5_2dk', 'centurion5_2', 'Centurion Mk 5/2 DK', 'cold-war');
+// its dims the Mk 5/2 build's it rides (the data plate's 3.39 m counts the commander's MG; the armour shell scales by them)
+Object.assign(centurion5_2dk.dims, { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.38, heightM: 2.94 });
+// (the clone is taken before the fleet passes run, so the Mk 5/2's tier footing is written here: fleetBalancePass's
+// Centurion package (hull, armour x1.12, cycle and round) and its 880 hp)
+Object.assign(centurion5_2dk, {
+  weightTons: 51.0, hp: 1900, enginePowerHp: 880, topSpeedKmh: 48, reverseSpeedKmh: 15, hullTraverseDegS: 32, turretTraverseDegS: 30,
+});
+scaleNonExternalArmor(centurion5_2dk, 1.12);
+centurion5_2dk.gun = {
+  ...centurion5_2dk.gun,
+  reloadS: 6.6, aimTimeS: 1.75, baseAccuracy: 0.28,
+  shells: centurion5_2dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 570, pen1000Mm: 525, pen2000Mm: 480 } : shell),
+};
+centurion5_2dk.visual = {
+  ...centurion5_2dk.visual,
+  // the Danish Army's 1980s three-tone (the Oksbøl, Pansermuseet and Stevnsfortet tanks): olive, black and an earth brown
+  // in large hard-edged fields; c2 (the c1 sheets: a bright grass green and an orange brown against the Stevnsfortet
+  // photograph's dark olive and earth brown): the olive and the brown darker and duller
+  // c4 (critics dk1: the olive light and yellow, the brown a rust; the photographs' a darker, duller olive and earth brown);
+  // c5 (dk2, both: the brown still red and a third of the coat, the black pure; the photograph olive-dominant): a duller
+  // olive drab, the dark a soft olive-black on the painter's larger share and the earth brown on its smaller
+  scheme: 'nato', base: '#454b34', weather: '#4d533b', patches: ['#3d3226', '#2a2d22'], marking: 'number', number: '32',
+  camoScale: 0.48,
+};
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
 // armyvehicles.dk/cv9035.htm: 45 ordered (2007, DALO, BAE Systems Hägglunds), 6.87 m long, 3.19 m wide, 2.80 m, 31,750 kg,
@@ -182,5 +258,5 @@ cv9035dk.gunPitchByYawDeg = Object.freeze([[0, -8], [14, -8], [15, -7.5], [16, -
   [27, -5.4], [28, -5.9], [30, -8], [134, -8], [136, -2.1], [137, -1.8], [139, -1.7], [141, -0.3], [165, -0.2], [176, -0.3],
   [178, -1.8], [180, -1.8]] as const);
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk'],
-  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, cv9035dk });
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, centurion5_2dk, cv9035dk });

@@ -183,6 +183,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   vickers_mk1: { doctrine: 'flanker', viewM: 410, still: 0.241, moving: 0.181 },
   centurion3: { doctrine: 'flexible', viewM: 385, still: 0.189, moving: 0.129 },
   centurion5_2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
+  // 267: the Danish Mk 5/2's 1985 thermal sight sees further
+  centurion5_2dk: { doctrine: 'flexible', viewM: 425, still: 0.186, moving: 0.126 },
   // the Sho't Kal: the Mk 5/2's flexible gun tank with the diesel's quicker pace and the IDF's taller whips
   shot_kal: { doctrine: 'flexible', viewM: 410, still: 0.190, moving: 0.130 },
   // the Mk 13: the Mk 5/2's flexible gun tank; its searchlight drum makes it the easier one to spot
@@ -249,8 +251,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leo2a6m: { doctrine: 'flexible', viewM: 435, still: 0.176, moving: 0.116 },
   leo2a5m: { doctrine: 'flexible', viewM: 425, still: 0.178, moving: 0.118 },
   leo2a5: { doctrine: 'flexible', viewM: 420, still: 0.181, moving: 0.121 },
-  // 265: the Danish Leopard 2A5 DK keeps its donor's role (its Elop sight)
+  // 265: the Danish Leopard 2s keep their donors' roles (the 2A5 DK's Elop sight, the 2A7 DK's new thermals)
   leo2a5dk: { doctrine: 'flexible', viewM: 425, still: 0.181, moving: 0.121 },
+  leo2a7dk: { doctrine: 'flexible', viewM: 440, still: 0.174, moving: 0.114 },
   k2_black_panther: { doctrine: 'flanker', viewM: 430, still: 0.225, moving: 0.165 },
   kf51_panther: { doctrine: 'flexible', viewM: 440, still: 0.181, moving: 0.121 },
   t90a: { doctrine: 'assault', viewM: 400, still: 0.183, moving: 0.123 },

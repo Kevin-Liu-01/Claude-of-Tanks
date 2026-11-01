@@ -65,6 +65,7 @@ const CURVES = {
   m41_jgsdf: [],
   m41dk1: [],
   t49: [], // the M551's turret and gun-launcher on the M41's hull (the owner 2026-10-30)
+  leo2a7dk: [], // its measured curve over the rear deck (the 2A7V publishes none)
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],

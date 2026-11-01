@@ -2048,7 +2048,7 @@ const wheelToneOf = (v: MaterialVisual): Rgb => {
   let mr = 0, mg = 0, mb = 0;
   for (const p of pats) { mr += p[0]; mg += p[1]; mb += p[2]; }
   const mean = scale3([mr, mg, mb], 1 / pats.length);
-  const k = (v.scheme === 'digital' || v.scheme === 'fleck') ? 0.6 : 0.3;
+  const k = (v.scheme === 'digital' || v.scheme === 'fleck' || v.scheme === 'barracuda') ? 0.6 : 0.3;
   return mix(base, mean, k);
 };
 /**

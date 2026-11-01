@@ -45,6 +45,8 @@ let stations = 0;
     'leo2a5:leo2a5_xRoofMachineGun': 29.2,
     // 265: the Danish 2A5 rides the 2A5's turret and roof mount, so it inherits that mount's reach
     'leo2a5dk:leo2a5dkRoofMachineGun': 29.2,
+    // 267: the Danish 2A7 rides the 2A7V's turret and roof mount, so it inherits that mount's reach
+    'leo2a7dk:leo2a7dkRoofMachineGun': 21.3,
     'challenger3_proto:fitting_browningDerived_m2': 31.0, 'challenger3:fitting_browningDerived_m2': 31.0,
     'm551_sheridan:m551LoaderMg': 36.1,
     // 266: the T49 carries the M551's turret and its loader's mount on the M41 hull, so it inherits that mount's reach

@@ -193,6 +193,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m41_bw: { displayName: 'M41 (Bundeswehr)', shortName: 'M41 BW', searchAliases: ['M41 Germany', 'Bundeswehr M41', 'M41A1 BW', 'Walker Bulldog Germany'] },
   m41_jgsdf: { displayName: 'M41 (JGSDF)', shortName: 'M41 JGSDF', searchAliases: ['M41 Japan', 'JGSDF M41', 'Walker Bulldog Japan'] },
   m41dk1: { displayName: 'M41 DK-1', searchAliases: ['M41DK1', 'M41 DK1', 'Walker Bulldog DK', 'Danish M41', 'M41 Walker Bulldog'] },
+  leo2a7dk: { displayName: 'Leopard 2A7 DK', searchAliases: ['Leopard 2A7DK', 'Danish Leopard 2A7', 'Leopard 2 A7 DK', 'Leopard 2A7 Denmark'] },
   t49: { displayName: 'T49', searchAliases: ['T49', 'T49 light tank', 'M41 Sheridan turret', 'Walker Bulldog 152'] },
   leo1a5dk1: { displayName: 'Leopard 1A5 DK-1', searchAliases: ['Leopard 1A5DK1', 'Leopard 1A5 DK1', 'Bøllebank', 'Bollebank', 'UN Leopard', 'Danish Leopard Bosnia'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
@@ -357,6 +358,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5_2: { displayName: 'Centurion Mk 5/2' },
+  centurion5_2dk: { displayName: 'Centurion Mk 5/2 DK', searchAliases: ['Centurion DK', 'Danish Centurion', 'Centurion Mk V/2 DK', 'Centurion Mk 5/2 Denmark'] },
   // release 266: the M48s drawn on the M48A5's castings
   m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
   magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },
