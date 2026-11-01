@@ -1,32 +1,23 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { KIT } from './kit.ts';
 
-// The bow guard keeps its measured crown and plan (z, top, outer: the toe narrows only beyond the forward track bend).
-// 267 (S1, blind critics: "the bow mudguards read as oversized wedges jutting forward over the tracks"; the 28 cm outer
-// return wall under the 73 cm shelf read as one solid wedge): the guard is the oracle's two parts. A 14 mm pressed sheet
-// on the measured crown rolls over a 10 cm shoulder into a 2.5 cm lip (the oracle guard's chamfered shoulder, 1.69 to
-// 1.826 m across and 10-12 cm down); from the hinge at z 3.59 the toe is a separate flap down the steep nose. The guard
-// reaches no further forward or wider than the former one (x 1.827, z 3.782).
-// 267 fix (the blind A/B against 266, both critics on the 2004, the Vladimir and the Burlak: a "blunt bow mudguard block
-// over the front idler", "the bow mudguard drops low and covers the front idler as a rounded lump in side view"; 266 won
-// with "the idler visible under a smaller, sharper bow mudguard"): the oracle's front skirt panel that hung under the
-// roll to 0.82 m is gone. The photographed T-90As show the front idler exposed under the guard's hood.
-export const T90A_GUARD: readonly SheetGuardStation[] = [
-  [3.180,1.278,1.097,1.827,.100,.125,.014],[3.300,1.265,1.097,1.827,.100,.125,.014],
-  [3.400,1.247,1.097,1.827,.100,.125,.014],[3.500,1.216,1.097,1.826,.100,.125,.014],
-  [3.590,1.161,1.097,1.825,.098,.122,.014],
+// One set of authored stations owns both the original curved roof and its
+// fitted outer return. The toe narrows only beyond the forward track bend.
+// 267 fix 2 (the blind A/B, both critics, round 2: the 266 A guard won on the T-90A, the obr. 2004 and the Burlak, "a
+// fuller rounded hood with a visible front flange", against the 267 sheet's "thin curved sliver"; in round 1 the critics
+// had not called it an oversized wedge): the A hull's bow guard and its fitted outer return are the 266 build's exactly.
+// The pressed-sheet helpers below stay for the T-90M bow guard (t90MXHullEnds.ts).
+const T90A_FRONT_GUARD_ROWS: readonly (readonly [number, number, number])[] = [
+  [3.180,1.278,1.827],[3.300,1.265,1.827],[3.400,1.247,1.827],
+  [3.500,1.216,1.826],[3.590,1.161,1.825],[3.685,1.071,1.825],[3.782,.857,1.698],
 ];
-export const T90A_TOE: readonly SheetGuardStation[] = [
-  [3.585,1.1495,1.100,1.822,.094,.118,.013],[3.685,1.071,1.110,1.825,.090,.118,.016],
-  [3.782,.857,1.140,1.698,.036,.046,.030],
-];
+const BOW_RETURN_DEPTH_M = [.28,.27,.25,.21,.16,.10,.026] as const;
 const mirror = (side: number, ring: SolidSection['ring']): SolidSection['ring'] =>
   side > 0 ? ring : ring.map(([x,y]) => [-x,y] as const).reverse();
 
 /** One station of a pressed sheet mudguard (267, S1: "the bow mudguards read as oversized wedges"): a sheet `thick` thick
  * whose top runs out from `inner` and rolls over a `roll` radius at `outer` into a short turned-down lip, `drop` below the
- * top. Shared by the T-90 X bow guards (A, M, SM) so the four hulls' guards read as one family of thin pressed sheet. */
+ * top. The T-90M X bow guard's (t90MXHullEnds.ts). */
 export type SheetGuardStation = readonly [z: number, top: number, inner: number, outer: number, roll: number, drop: number,
   thick: number];
 export function sheetGuardSection(side: number, [z, top, inner, outer, roll, drop, thick]: SheetGuardStation): SolidSection {
@@ -54,16 +45,16 @@ export function sheetUnderside(guard: readonly SheetGuardStation[], toe: readonl
 }
 
 export function addT90AXFrontGuard(P: TankBuilderPort, side: number): void {
-  P.addMudguard('t90a-x-bow','hull',sectionSolid(T90A_GUARD.map((row) => sheetGuardSection(side,row))));
-  P.addMudguard('t90a-x-toe-flap','hull',sectionSolid(T90A_TOE.map((row) => sheetGuardSection(side,row))));
-  // the hinge: a pin through three knuckles along the joint, half proud of the sheet's front edge
-  P.addEquipment('hullDetail',KIT.cylX(.008,.62,10),side*1.43,1.158,3.592);
-  for (const x of [1.20,1.43,1.66]) P.addEquipment('hullDetail',KIT.cylX(.015,.12,12),side*x,1.158,3.592);
+  const sections = T90A_FRONT_GUARD_ROWS.map(([z,top,outer]): SolidSection => ({
+    z, ring: mirror(side, [[1.097,top-.014],[outer,top-.014],[outer,top],[1.097,top]]),
+  }));
+  P.addMudguard('t90a-x-bow','hull',sectionSolid(sections));
 }
 
-/** Closed bent sheet bridging the original upper shelf and skirt root. The outer return is outside the complete moving
- * shoe, not a filled wheel bay: its 15 mm shelf overlaps the existing shelf by 8.5 mm and its 18 mm vertical lip overlaps
- * the skirt root by 5 mm; its front end laps the bow guard's roll. Lower wheels and the front idler stay exposed.
+/** Closed bent sheet bridging the original upper shelf and skirt root.
+ * The outer return is outside the complete moving shoe, not a filled wheel
+ * bay. Its 15 mm shelf overlaps the existing shelf by 8.5 mm; the 18 mm
+ * vertical lip overlaps the skirt root by 5 mm. Lower wheels stay exposed.
  */
 export function addT90AXFenderClosures(P: TankBuilderPort): void {
   const profile: readonly (readonly [number, number])[] = [
@@ -74,5 +65,12 @@ export function addT90AXFenderClosures(P: TankBuilderPort): void {
     const ring = mirror(side, profile);
     P.addMudguard('t90a-x-upper-skirt-return','hullFixedPaintedBodywork',
       sectionSolid([{z:-3.19,ring},{z:3.19,ring}]));
+    const bow = T90A_FRONT_GUARD_ROWS.map(([z,top,outer], i): SolidSection => ({
+      z, ring: mirror(side, [[outer-.018,top-BOW_RETURN_DEPTH_M[i]],
+        [outer,top-BOW_RETURN_DEPTH_M[i]],[outer,top-.006],[outer-.018,top-.006]]),
+    }));
+    // Eight millimetres of finite roof overlap, not coplanar cover faces.
+    // The aft end laps the long skirt return; the toe tapers with the roof.
+    P.addMudguard('t90a-x-bow-side-return','hullFixedPaintedBodywork',sectionSolid(bow));
   }
 }
