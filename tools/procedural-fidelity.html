@@ -38,7 +38,7 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, stowageParts, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -57,7 +57,7 @@ import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-over
 import { SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
-import { FUSED_ANTENNA_BOXES, FUSED_ROOF_GUN_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
+import { FUSED_ANTENNA_BOXES, FUSED_ROOF_GUN_BOXES, FUSED_STOWAGE_BOXES } from '/tools/fused-roof-gun-boxes.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -780,10 +780,18 @@ for (const root of [reference.root, procedural.root]) {
 // pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
 // oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
+// Stowage (fuel drums, their cradles, stowage racks and baskets) leaves every comparison on this page, on both models,
+// wherever the build tags it (profiles/stowagePart.ts) or the source names it or boxes it (FUSED_STOWAGE_BOXES): body
+// against body (Main's ruling 2026-10-31, 267). Every body built below leaves it out too; the score's ruler keeps it
+// (withWholeSource).
+const stowage = [
+  stowageParts(procedural.root, { isRenderNode }),
+  stowageParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_STOWAGE_BOXES[id]?.boxes ?? null }),
+];
 const roofFittings = [
-  roofFittingParts(procedural.root, { isRenderNode }),
+  roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),
   roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
-    antennaBoxes:FUSED_ANTENNA_BOXES[id]?.boxes ?? null,
+    antennaBoxes:FUSED_ANTENNA_BOXES[id]?.boxes ?? null, cut:stowage[1].ranges,
     ...(source?.glb?.roofFittingNodes ? { nodePattern:new RegExp(source.glb.roofFittingNodes) } : {}) }),
 ];
 const roofFittingNodes = new Set(roofFittings.flatMap(({ nodes }) => [...nodes.keys()]));
@@ -819,18 +827,33 @@ const roofFittingsExcluded = (() => {
 })();
 // Whips leave every comparison on this page wherever the source names them, by node or by the boxes a fused source's
 // whips take (FUSED_ANTENNA_BOXES), the curves and stations as well as the heights, and the build's whips (their antenna
-// tags, tools/whip-rod-census.mjs) leave with them: body against body (267, Main 2026-10-31). The score's height stays the
-// source's whole height (withWhipsBack): setting the whips aside changes what is compared, never the ruler.
+// tags, tools/whip-rod-census.mjs) leave with them: body against body (267, Main 2026-10-31). The score's height and plan
+// length stay the source's whole ones (withWholeSource): setting whips or stowage aside changes what is compared, never
+// the ruler. Stowage goes first, so a mesh that loses both keeps neither.
+const stowageAsideUndo = [];
+for (const { nodes, ranges } of stowage) {
+  for (const [node, cut] of ranges) {
+    const body = bodyGeometryWithout(node.geometry, cut);
+    stowageAsideUndo.push([node, node.geometry, body]); node.geometry = body;
+  }
+  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+}
+const stowageAside = (() => {
+  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
+    ...[...ranges].map(([node, cut]) => `${node.name}:${cut.length}`)])].sort());
+  return named[0].length || named[1].length ? { procedural:named[0], reference:named[1] } : null;
+})();
 const whipsAside = paired.named.antenna;
 const whipsAsideUndo = [];
 if (whipsAside) {
   for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
   for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
 }
-function withWhipsBack(measure) {
-  for (const [node, geometry, other] of whipsAsideUndo) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+function withWholeSource(measure) {
+  const undo = [...stowageAsideUndo, ...whipsAsideUndo];
+  for (const [node, geometry, other] of undo.slice().reverse()) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
   try { return measure(); } finally {
-    for (const [node, geometry, other] of whipsAsideUndo) { if (geometry) node.geometry = other; else baseVisible.set(node, false); }
+    for (const [node, geometry, other] of undo) { if (geometry) node.geometry = other; else baseVisible.set(node, false); }
   }
 }
 // Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
@@ -1849,9 +1872,9 @@ if (params.get('geo')) {
   });
 
   const refBoxG = visibleBox(reference.root);
-  const wholeBoxG = withWhipsBack(() => visibleBox(reference.root));
+  const wholeBoxG = withWholeSource(() => visibleBox(reference.root));
   const height = wholeBoxG.max.y - wholeBoxG.min.y;
-  const length = refBoxG.max.z - refBoxG.min.z;
+  const length = wholeBoxG.max.z - wholeBoxG.min.z;
   const camsG = { side: cameraFor(TRUE_AXES.side), plan: cameraFor(TRUE_AXES.plan), front: cameraFor(TRUE_AXES.front) };
   const curves = {};
   for (const [view, cam] of Object.entries(camsG)) {
@@ -2236,6 +2259,7 @@ if (params.get('geo')) {
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
     ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
+    ...(stowageAside ? { stowageAside:{ rule:'every comparison: the build\'s tagged stowage and the source\'s named or boxed stowage; the score height and plan length with them', ...stowageAside } } : {}),
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,

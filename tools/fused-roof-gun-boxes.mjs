@@ -50,3 +50,19 @@ const T90MS_REAR_WHIP = Object.freeze({ triangles: 60, tallest: false, boxes: Ob
 export const FUSED_ANTENNA_BOXES = Object.freeze({
   centurion3: CENTURION_WHIPS, centurion5_2: CENTURION_WHIPS, strv81: CENTURION_WHIPS, t90ms_tagil: T90MS_REAR_WHIP,
 });
+
+// Stowage a source fuses into a mesh (267, Main 2026-10-31: drums, drum cradles and stowage racks or baskets leave the
+// body comparison on both sides): the gate takes the triangles in these boxes out of the source for every comparison
+// on its page, as the build's tagged stowage leaves (profiles/stowagePart.ts; body-height-parts.mjs stowageParts). The
+// T-90A Vladimir print (desirefx.me_009, the page's registered frame: the canonical GLB at unit scale) carries the two
+// fuel drums across its stern (0.66 m across, 0.92 m long, z -4.16 to -3.48), their cradle arms and bolts, the drum caps
+// and the hose runs over them: every triangle behind the drums' front face (z -3.477) above the cradle floor (y 1.14),
+// and above the fenders (y 1.24) out to the hose ends. The hull (it ends at z -3.43), its rear-plate fittings, the
+// fenders and the hose loops below the cradle stay body. 6,227 triangles.
+const VLADIMIR_STERN_DRUMS = Object.freeze({ triangles: 6227, boxes: Object.freeze([
+  Object.freeze([-0.975, 1.14, -4.25, 0.975, 1.98, -3.477]),
+  Object.freeze([-1.36, 1.24, -4.25, 1.36, 1.98, -3.477]),
+]) });
+export const FUSED_STOWAGE_BOXES = Object.freeze({
+  t90a_vladimir: VLADIMIR_STERN_DRUMS,
+});

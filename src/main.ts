@@ -110,9 +110,9 @@ import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
   MAP_IDS,
-  getLocalizedMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
+import { getLocalizedMapName } from './ui/mapNames.ts';
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';

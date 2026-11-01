@@ -45,7 +45,8 @@ import {
   presentationProjectionFor,
 } from '../vehicles/presentationAnchors.generated.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
+import { isMapId } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from './mapNames.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.

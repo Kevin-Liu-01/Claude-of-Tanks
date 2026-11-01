@@ -11,7 +11,7 @@ import {createEndScreen} from '../../src/ui/endScreen.ts';
 import {createEndOverlayRuntime} from '../../src/ui/endOverlayRuntime.ts';
 import {setLocale} from '../../src/ui/i18n.ts';
 import {zhTypeFloorStyle} from '../../src/ui/zhTypeFloor.ts';
-import {getLocalizedMapName} from '../../src/world/maps/catalog.ts';
+import {getLocalizedMapName} from '../../src/ui/mapNames.ts';
 import {zoneLabel} from '../../src/ui/hitEventFormat.ts';
 await setLocale(new URLSearchParams(location.search).get('locale')||'en-US');
 // A zh-CN capture carries the label floor its /cn/ document ships (src/presentation/localizedHtml.ts).

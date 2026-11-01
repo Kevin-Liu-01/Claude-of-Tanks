@@ -61,8 +61,14 @@ async function fixturePids(logFile) {
   }
   throw new Error(`${logFile}: the fixture never reported its pids`);
 }
-/** The pids still alive after the processes have had `ms` to go. */
-const survivors = async (pids, ms = 300) => { await sleep(ms); return pids.filter(alive); };
+/** The pids still alive once the processes have had up to `ms` to go: polled, since a loaded machine reaps a killed
+ *  group late (267: one test:lane run found a pid 300 ms after SIGALRM that was gone on every rerun). */
+const survivors = async (pids, ms = 5000) => {
+  const deadline = Date.now() + ms;
+  let left = pids.filter(alive);
+  while (left.length && Date.now() < deadline) { await sleep(50); left = left.filter(alive); }
+  return left;
+};
 /** Resolves when `child` closes; fails after `ms`. */
 function closedWithin(child, ms, what) {
   return new Promise((resolve, reject) => {
@@ -83,7 +89,7 @@ try {
     const logFile = join(dir, 'failing-legacy.log');
     await runSelftestFile(failing, { logFile, signals: new EventEmitter(), killGroup: noGroup });
     const [, ...burners] = await fixturePids(logFile);
-    assert.equal((await survivors(burners)).length, 3, 'control: without the group kill, the failed receipt\'s burners run on');
+    assert.equal((await survivors(burners, 300)).length, 3, 'control: without the group kill, the failed receipt\'s burners run on');
   }
 
   // The runner itself is ended while the receipt hangs.
@@ -97,7 +103,7 @@ try {
     const pids = await fixturePids(logFile);
     runner.kill(signal);
     await closed;
-    const left = await survivors(pids);
+    const left = await survivors(pids, mode === 'legacy' ? 300 : 5000);
     if (mode === 'legacy') {
       assert.equal(left.filter((pid) => pid !== pids[0]).length, 3,
         `control: the old kill leaves the hung receipt's three burners after the runner's ${signal}`);

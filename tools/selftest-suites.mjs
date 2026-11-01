@@ -335,6 +335,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/fused-roof-gun-boxes.selftest.mjs',
     // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
     'tools/whip-rods.selftest.mjs',
+    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
+    'tools/gate-stowage.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
@@ -345,6 +347,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
     'tools/id-list.selftest.mjs',
     'tools/tool-page-load.selftest.mjs',
+    // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
+    'tools/icons-page-public.selftest.mjs',
+    // 267: the icons page keys only the catalog strings it draws; an undeclared key fails its tools' runs
+    'tools/page-catalog-keys.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
