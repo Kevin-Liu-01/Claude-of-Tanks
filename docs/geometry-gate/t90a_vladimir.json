@@ -861,6 +861,18 @@
   ],
   "reference": []
  },
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [],
+   "reference": [
+    "stowage"
+   ]
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -933,5 +945,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t90a_vladimir_x_source.glb",
+  "sha256": "c3c41ccc322f5746727022964dc03760fab196183532d0e416884d97ffa8858c"
+ }
 }

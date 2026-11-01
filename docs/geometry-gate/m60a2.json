@@ -1155,5 +1155,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/m60a2_x_source.glb",
+  "sha256": "d2d5e89f9ff357b110e9955ea64a13cd8aaafed0b31adbf45acafdabdaf96c86"
+ }
 }

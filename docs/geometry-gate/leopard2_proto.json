@@ -871,7 +871,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -944,5 +943,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/leopard2_proto.glb",
+  "sha256": "749d03ae92863ddda0a388501f54c19f7d460a149ab81e230f3e1602e5148fb5"
+ }
 }

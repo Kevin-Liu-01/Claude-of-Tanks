@@ -1070,5 +1070,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t72bu_x_source.glb",
+  "sha256": "d62a92b41e65c9c0085f73d6f402980f6c057bc3c6169b8dfcd7bc41ec019ec3"
+ }
 }

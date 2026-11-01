@@ -940,5 +940,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/type-10_main_battle_tank_repaired.glb",
+  "sha256": "c3753b826975fc6eb9968be4343e0cb5a761f166c4d39ff6254374ae3475f485"
+ }
 }

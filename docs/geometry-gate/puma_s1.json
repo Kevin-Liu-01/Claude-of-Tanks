@@ -1062,5 +1062,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/spz_puma_s1_x_source.glb",
+  "sha256": "340e00fa8053680d2adbeabc10293264d07f743c9e5680462da8e081635cf4c0"
+ }
 }

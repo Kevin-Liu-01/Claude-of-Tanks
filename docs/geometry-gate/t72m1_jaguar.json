@@ -11,7 +11,7 @@
  "gatePassed": false,
  "rawGeoMin": 0,
  "rawComponents": {
-  "wholeCurves": 85.49761050102784,
+  "wholeCurves": 85.49314195831272,
   "dims": 0,
   "floaters": 100
  },
@@ -871,7 +871,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 143975,
+     "area": 143983,
      "minX": 175,
      "minY": 232,
      "maxX": 944,
@@ -885,7 +885,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 141910,
+     "area": 141918,
      "minX": 215,
      "minY": 232,
      "maxX": 984,
@@ -899,7 +899,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 141342,
+     "area": 141350,
      "minX": 215,
      "minY": 232,
      "maxX": 983,
@@ -913,7 +913,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 140775,
+     "area": 140783,
      "minX": 177,
      "minY": 232,
      "maxX": 944,
@@ -927,7 +927,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 144288,
+     "area": 144296,
      "minX": 185,
      "minY": 232,
      "maxX": 944,
@@ -935,5 +935,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t72m1_jaguar_manako.glb",
+  "sha256": "66448fcb66ee210a2efef015a2ad391714d61e7b847f41e4dc97474ad9c52358"
+ }
 }
