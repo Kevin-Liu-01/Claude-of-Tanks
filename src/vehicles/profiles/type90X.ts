@@ -190,9 +190,10 @@ function armorRow(z:number,left:number,right:number,low:number,top:number):Solid
     [-left,leftRoof-PIVOT[1]],[-left,low+.036-PIVOT[1]]]};
 }
 
-// Round 5 (the photo critic: "the roof slopes down about 0.17 m over the front fifth of the turret ... the photos show a
-// flat roof running all the way to vertical front faces"; type90_turret_left_m2.jpg, type90_with_type92_roller_side.jpg):
-// the source's falling front roof stands level, and the cheek blocks rise to it either side of the recessed mantlet.
+// Round 5 (the photo critic: "the roof slopes down about 0.17 m over the front fifth of the turret"; round 6's A/B critic:
+// "the real chamfer looks shorter and shallower, about 10 % drop over about 18 % of the length"; type90_turret_left_m2.jpg,
+// type90_with_type92_roller_side.jpg): the roof holds level to z 1.24 and falls 80 mm to the cheek blocks' fronts, which
+// rise to it either side of the recessed mantlet (the source's roof fell 0.25 m over the front 1.4 m).
 function turretArmor(P:TankBuilderPort):void {
   P.add('turret',sectionSolid([
     armorRow(-2.007733,1.229805,1.114095,1.82880,2.459472),
@@ -202,12 +203,12 @@ function turretArmor(P:TankBuilderPort):void {
     armorRow(.557,1.313827,1.219205,1.681682,2.459472),
     armorRow(.699,1.313827,1.219205,1.681682,2.459472),
     armorRow(1.241,1.292065,1.193370,1.681682,2.455),
-    armorRow(1.649,1.198815,1.082671,1.681682,2.45),
+    armorRow(1.649,1.198815,1.082671,1.681682,2.42),
   ]));
   for(const side of [-1,1]) {
     const a=side<0?1.198815:1.082671,b=side<0?.767568:.692089;
-    const rows=[[1.646,a,1.681682,2.45],[2.053,b,1.71295,2.44],
-      [2.100,side<0?.663935:.602328,1.72152,2.437],[2.112711,.515,1.733,2.435]];
+    const rows=[[1.646,a,1.681682,2.42],[2.053,b,1.71295,2.39],
+      [2.100,side<0?.663935:.602328,1.72152,2.385],[2.112711,.515,1.733,2.383]];
     P.add('turret',sectionSolid(rows.map(([z,out,low,top])=>{
       const ring:[number,number][]=[[.4729,low],[out,low],[out,top-.022],[.4729,top]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
@@ -242,8 +243,9 @@ function basket(P:TankBuilderPort):void {
 
 function optic(P:TankBuilderPort):void {
   // Right front hood: closed 10mm top over a true frontal recess.
-  // (round 5: the box stands its full height on the level roof, 124 mm over the source's sunk seat)
-  const SIGHT_RISE=.124;
+  // (round 5: the box stands its full height on the level roof on a 45 mm plinth, 169 mm over the source's sunk seat)
+  const SIGHT_RISE=.169;
+  turret(P,'turretDetail',box(.60,.045,.38),.656886,2.4571+.0225,1.011185);
   turret(P,'turretDetail',box(.578108,.31533,.36187),.656886,2.491089+SIGHT_RISE,1.011185);
   const lid=sectionSolid([[1.145,2.650038+SIGHT_RISE,.289054],[1.312,2.679472+SIGHT_RISE,.289054],
     [1.467293,2.706543+SIGHT_RISE,.210]].map(([z,roof,half])=>({z,
@@ -253,10 +255,11 @@ function optic(P:TankBuilderPort):void {
   // the two windows under the visor, either side of a mullion (JGSDF photographs, 267)
   for(const dx of [-.122,.122])turret(P,'turretGlass',box(.214,.170,.006),.656886+dx,2.526+SIGHT_RISE,1.19512);
   turret(P,'turretDetail',box(.034,.19,.012),.656886,2.526+SIGHT_RISE,1.1935);
-  // the armoured flaps that close over the windows, hinged side by side along the box's front top edge and swung up and
-  // back into a raised visor with a seam between them (the turret roof's signature in the Type 90's photographs)
+  // the armoured flaps that close over the windows, hinged side by side along the box's top and swung up into a canopy
+  // leaning forward over the windows, a seam between them (the turret roof's signature in the Type 90's photographs;
+  // round 6: "raised as one canopy tilted forward about 30-45 degrees")
   for(const side of [-1,1]) {
-    const flap=box(.275,.15,.02);flap.translate(0,.075,0);flap.rotateX(-.38);
+    const flap=box(.275,.15,.02);flap.translate(0,.075,0);flap.rotateX(.55);
     turret(P,'turretDetail',flap,.656886+side*.1425,2.649+SIGHT_RISE,1.13);
   }
   turret(P,'turretDark',cylX(.016,.56,10),.656886,2.652+SIGHT_RISE,1.13);      // the flaps' hinge
@@ -288,7 +291,7 @@ function optic(P:TankBuilderPort):void {
 // at the back. Round 3 (the photo critic: "the pedestal is short and squat and hidden behind the can"): the receiver
 // stands level with the raised flaps' tops, the post shows from every side. Round 4: the chute a flat band, the can
 // upright, the paint darker than the issue drab.
-const M2_POST={x:.20,z:.88,roofY:2.458,boreY:2.974} as const;
+const M2_POST={x:.20,z:.88,roofY:2.458,boreY:3.0} as const;
 
 /** A flat band swept along a curve in the xy plane: `width` across z, `thick` in the plane, square-cut ends (the M2's
  *  belt chute; an extrudePath sweep's Frenet frames twist a planar band into a fan). */
@@ -319,14 +322,14 @@ function roofWeapon(P:TankBuilderPort):void {
   const gun={cls:'m2',x,boreY,pivotZ,crew:true,ammo:false,feed:'right',drab:true} as const;
   const gunBox=libraryStationGunBounds(gun);
   const cradleTop=boreY-.0515,cradleBottom=cradleTop-.07,trunnionY=cradleBottom+.035;
-  const flangeTop=roofY+.016,collarBottom=roofY+.17,collarTop=collarBottom+.08;
+  const flangeTop=roofY+.016,collarBottom=roofY+.15,collarTop=collarBottom+.08;
   const swivelTop=collarTop+.031,yokeTop=swivelTop+.025;                               // each 1 mm over the last
   turret(P,'turretDetail',cylinder(.075,.02,20),x,roofY+.006,z);                        // the base flange
-  turret(P,'turretDetail',box(.05,collarBottom-flangeTop,.05),x,(flangeTop+collarBottom)/2,z);       // the square post
+  turret(P,'turretDetail',box(.07,collarBottom-flangeTop,.07),x,(flangeTop+collarBottom)/2,z);       // the stout square post
   turret(P,'turretDetail',box(.10,.08,.10),x,collarBottom+.04,z);                       // the clamp collar
   turret(P,'turretDark',box(.03,.034,.05),x-.066,collarBottom+.04,z+.02);               // its clamp lever
   const w=sourceMachineGun(P,PIVOT,{name:'type90XRoofM2',caliberMm:12.7,
-    yaw:[x,collarTop,z],pivot:[x,trunnionY,pivotZ],muzzle:[x,boreY,gunBox.max.z]},{drabShade:.55});
+    yaw:[x,collarTop,z],pivot:[x,trunnionY,pivotZ],muzzle:[x,boreY,gunBox.max.z]},{drabShade:.72});
   // pitch: the gun (Owner 2026-10-28: the fleet's M2 in its crew form at true length, libraryRoofMg.ts), the cradle's U
   // under its receiver (floor and side plates) with the trunnion caps outboard of the yoke, the deep tray under the
   // receiver front and barrel root, the can on its bracket off the cradle's side plate and the chute from its lid
@@ -336,12 +339,12 @@ function roofWeapon(P:TankBuilderPort):void {
     w.add('turretAmmo',box(.012,.048,.22),x+side*.066,cradleBottom+.021+.024,pivotZ);    // its side plates
     w.add('turretDark',cylX(.018,.012,12),x+side*.104,trunnionY,pivotZ);                 // trunnion caps, outboard of the yoke
   }
-  w.add('turretAmmo',box(.10,.075,.32),x,cradleTop-.001-.0375,pivotZ+.121+.16);          // the deep tray, ahead of the U
+  w.add('turretAmmo',box(.11,.10,.42),x,cradleTop-.001-.05,pivotZ+.121+.21);             // the deep tray, ahead of the U
   // twin spade grips behind the receiver's back plate
   for(const dx of [-.032,.032])w.add('turretDark',KIT.cylY(.011,.011,.085,8),x+dx,boreY-.012,gunBox.min.z-.014);
   // the compact 100-round can hung low and outboard on the gun's right, its bracket off the cradle's side plate, and the
   // broad chute rising from its lid, arching outboard and over into the receiver's side
-  const canX=x-.20,canW=.10,canTop=boreY-.075,canH=.15;
+  const canX=x-.20,canW=.09,canTop=boreY-.085,canH=.17;
   w.add('turretAmmo',box(.077,.016,.12),x-.0725-.0385,cradleBottom+.028,pivotZ);          // the bracket, under the lid
   w.add('turretAmmo',box(canW,canH,.25),canX,canTop-canH/2,pivotZ);                       // the can, upright
   w.add('turretDark',box(canW+.004,.012,.22),canX,canTop+.007,pivotZ);                    // its lid (1 mm off: never coplanar)

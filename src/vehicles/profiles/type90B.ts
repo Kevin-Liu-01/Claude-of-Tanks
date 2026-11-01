@@ -47,14 +47,14 @@ function addRollerMounts(P: TankBuilderPort): void {
     for (const x of [0.26, 0.50, 0.74]) {
       const sx = side * x, s = 0.12;
       const [ay, az] = onPlate(s, t + 0.03);
-      P.addEquipment('hullDetail', box(0.20, 0.20, 0.06), sx, ay, az, TILT, 0, 0);
+      P.addEquipment('hullDetail', box(0.22, 0.20, 0.06), sx, ay, az, TILT, 0, 0);
       const [ny, nz] = onPlate(s, t + 0.0605);
       P.addEquipment('hullDark', box(0.078, 0.18, 0.001), sx, ny, nz, TILT, 0, 0);
       for (const o of [-1, 1]) {
         const [cy, cz] = onPlate(s, t + 0.061 + 0.065);
-        P.addEquipment('hullDetail', box(0.05, 0.20, 0.13), sx + o * 0.065, cy, cz, TILT, 0, 0);
+        P.addEquipment('hullDetail', box(0.07, 0.20, 0.13), sx + o * 0.072, cy, cz, TILT, 0, 0);
         const [oy, oz] = onPlate(s, t + 0.061 + 0.09);
-        P.addEquipment('hullDark', cylX(0.046, 0.016, 14), sx + o * 0.099, oy, oz);
+        P.addEquipment('hullDark', cylX(0.046, 0.016, 14), sx + o * 0.116, oy, oz);
       }
       const [qy, qz] = onPlate(s, t + 0.061 + 0.09);
       P.addEquipment('hullDark', cylX(0.03, 0.18, 12), sx, qy, qz);
@@ -70,6 +70,8 @@ function addRollerMounts(P: TankBuilderPort): void {
     // (round 5: "small stirrups that look like the hull's tie-downs"; the photographs' anchors are heavy blocks)
     P.addEquipment('hullDetail', box(0.36, 0.06, 0.30), x, y + 0.025, z, glacisRake, 0, 0);
     for (const o of [-1, 1]) P.addEquipment('hullDetail', box(0.05, 0.26, 0.26), x + o * 0.13, y + 0.18, z, glacisRake, 0, 0);
+    // (round 6: "thin goalposts": the eye block between the cheeks makes it one heavy anchor)
+    P.addEquipment('hullDetail', box(0.16, 0.16, 0.20), x, y + 0.135, z, glacisRake, 0, 0);
     P.addEquipment('hullDark', cylX(0.04, 0.32, 12), x, y + 0.22, z + 0.01);
     for (const o of [-1, 1]) P.addEquipment('hullDetail', cylX(0.062, 0.018, 14), x + o * 0.164, y + 0.22, z + 0.01);
   }
