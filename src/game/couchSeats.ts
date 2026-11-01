@@ -16,10 +16,12 @@ export interface CouchSeatAssignment<T> {
   entity: T;
 }
 
-/** How a couch battle is asked for: the lobby's seat numbers in play and how they take sides. */
+/** How a couch battle is asked for: the lobby's seat numbers in play, how they take sides, and each seat's name over its
+ *  tank (seat order; the lobby's words, "Seat 2"), so each player finds their tank on the shared screen. */
 export interface CouchBattle {
   seats: readonly number[];
   sides: CouchSides;
+  names?: readonly string[];
 }
 
 /** A couch battle's seats on the page (game.couch). */

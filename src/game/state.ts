@@ -465,6 +465,9 @@ interface SoloWorld {
   ): boolean;
 }
 
+/** The tanks a couch battle named after their seats (setupBattle gives them their own names back next battle). */
+const couchNamed = new Set<SoloEntity>();
+
 interface SetupBattleOptions {
   random?: boolean;
   gameMode?: GameModeId | string | null;
@@ -1468,10 +1471,20 @@ export function setupBattle(
     if (role === 'scout') teamHasScout[team] = true;
   }
 
-  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts)
+  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts); each seat's
+  // tank wears its seat's name, and a tank that wore one last battle goes back to its own
+  for (const entity of couchNamed) (entity as { displayName?: string | null }).displayName = null;
+  couchNamed.clear();
   if (game.ruleset.couch && opts.couch) {
     const sides = couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length);
     game.couch = { sides: opts.couch.sides, seats: assignCouchSeats(game.tanks, allySet, opts.couch.seats, sides) };
+    const ordered = [...opts.couch.seats].sort((a, b) => a - b);
+    for (const { seat, entity } of game.couch.seats) {
+      const name = opts.couch.names?.[ordered.indexOf(seat)];
+      if (!name) continue;
+      (entity as { displayName?: string | null }).displayName = name;
+      couchNamed.add(entity);
+    }
   }
   const spawnContext: BattleSpawnContext = {
     game,

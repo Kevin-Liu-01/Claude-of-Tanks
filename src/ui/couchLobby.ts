@@ -121,7 +121,7 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     const inPlay = runtime.seatsInPlay();
     if (!inPlay.length) return;
     modal?.close();
-    request.start({ seats: inPlay, sides });
+    request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
   });
 
   let shownCode = '';

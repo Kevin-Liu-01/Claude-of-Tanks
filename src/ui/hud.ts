@@ -666,6 +666,9 @@ export interface HudRuntime {
    * driving or playing. The score, rosters, pips, plates, minimap and kill feed keep that frame whichever tank is ridden.
    */
   setWatchSide(team: string | null): void;
+  /** Couch mode (docs/COUCH-MODE.md): the shared screen is every seat's, so no tank is the HUD's own (each seat's plate,
+   *  its seat's name, shows over it). */
+  setCouchView(on: boolean): void;
   shotInfo: ShotInfoRuntime;
   /** (UI-LOCKDOWN A) the sight's words and figures, DOM over its canvas: receipts read the last repaint's runs. */
   sightText: Pick<CanvasText, 'placed'>;
@@ -8308,8 +8311,11 @@ export function initHud(bus: EventBus): HudRuntime {
   let playerRef: HudTank | null = null;
   // watch mode (watch-mode-243): flying the drone, no tank is the HUD's own; riding along, the ridden one is
   let watchDrone: HudWatchDrone | null = null;
-  /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying. */
-  const isSelf = (tank: HudTank): boolean => !!tank.isPlayer || (!watchDrone && tank === playerRef);
+  // couch mode: the shared screen is every seat's (setCouchView)
+  let couchView = false;
+  /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying, nor on a
+   *  couch battle's shared screen. */
+  const isSelf = (tank: HudTank): boolean => !couchView && (!!tank.isPlayer || (!watchDrone && tank === playerRef));
   // Watch mode's spectator frame (setWatchSide): the side the HUD reads as its own, and the ridden tank it highlights
   let watchSide: string | null = null;
   let lastOwnSide: string | null = null;
@@ -9228,6 +9234,8 @@ export function initHud(bus: EventBus): HudRuntime {
     getMinimapCaptureReceipt: () => mmCaptureReceipt ? { ...mmCaptureReceipt } : null,
 
     setWatchSide(team: string | null) { watchSide = team; },
+
+    setCouchView(on: boolean) { if (couchView !== on) { couchView = on; mmDirty = true; } },
 
     setWatchDrone(pose: HudWatchDrone | null) {
       if (!pose) { if (watchDrone) { watchDrone = null; mmDirty = true; } return; }
