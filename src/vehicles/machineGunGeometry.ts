@@ -104,7 +104,11 @@ export interface PintleOptions {
    * right-hand feed its housing was built around.
    */
   feed?: 'left' | 'right';
-  /** Extra pintle column height (m, round 4): a station whose gun must stand clear of the roof furniture around it. */
+  /**
+   * Extra pintle column height (m, round 4): a station whose gun must stand clear of the roof furniture around it. A
+   * negative riser (267 round 5) shortens the column, to no less than 0.06 of the scale: a gun carried on its station's
+   * own body (a remote station's housing) sits close on it instead of on a bare post.
+   */
   riser?: number;
   /** The mount's reflex (collimator) sight on an arm beside the receiver, on the side away from the feed (NSVT). */
   reflexSight?: boolean;
@@ -212,7 +216,7 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
   // Weapons and ammunition stay neutral gunmetal. Tone controls only the support/shield finish; letting the host
   // camouflage colour receiver caps and ammo cans produced miniature green/tan guns.
   const [rw, rh, rd] = cls.rec.map((v) => v * s);
-  const riser = Math.max(0, opts.riser || 0);
+  const riser = Math.max(-0.10 * s, opts.riser || 0);
   const colTop = 0.014 + 0.16 * s + riser;
   const mount = opts.mount === 'external-cradle' ? 'external-cradle' : 'pintle';
   const recY = mount === 'external-cradle' ? rh / 2 : colTop + 0.080 * s + rh / 2;

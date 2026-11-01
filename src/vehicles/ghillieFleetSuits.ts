@@ -663,14 +663,26 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // drapes hang to the hem floor over the raised (0.70) skirt foot.
     turret: {
       top: [laid({ x0: -1.68, x1: 1.58, z0: -2.35, z1: 1.99, nx: 41, nz: 54, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),
+      // (267 round 5b, Opus critic10: "black arched blots on the turret-side bins": the flank drapes hung over the racks;
+      // they now hang ahead of them)
+      side: flanks(-0.08, 0.95, 0.76, 0.42, 1.65, 17),
     },
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        // 267 round 5 (Sonnet, critic7: "the deck net is a flat rectangular mat with hard straight edges and the gun passes
+        // through it; a real net hangs in lumps"): a ragged outline short of the deck's corners, sticks pushed under it
+        // into humps, a looser billow, and the garnish kept to its outer band clear of the gun's sweep
+        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.9, seed: 37,
+          // (267 round 5b, both critics, critic10: "a straight-cut front edge, stopping dead at the mudguards": the front edge
+          // runs in deep tongues and stands off the mudguards)
+          outline: [[-1.62, -0.10], [1.60, -0.10], [1.70, 0.70], [1.56, 1.65], [1.50, 2.40], [1.28, 2.95], [0.85, 3.20],
+            [0.35, 2.88], [-0.20, 3.18], [-0.75, 2.86], [-1.25, 3.08], [-1.48, 2.55], [-1.70, 2.00], [-1.56, 1.10], [-1.70, 0.40]],
+          tents: [[-1.15, 0.55, 0.10], [1.10, 1.05, 0.09], [-0.95, 2.35, 0.08], [1.20, 2.50, 0.09], [-1.35, 1.55, 0.07]],
+          reliefScale: 1.6, garnishEdgeBandM: 0.85 }),
       ],
-      side: skirts(-3.30, 2.42, 1.40, 0.50, 1.83, 41),
+      // 267 (Sonnet, round 3: "the net patches on the skirt are flat rectangles with hard edges, pasted mats"): the skirt
+      // drapes are gone; the armoured skirt course stays bare under the deck nets.
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each

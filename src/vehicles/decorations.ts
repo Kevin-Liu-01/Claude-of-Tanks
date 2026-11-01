@@ -3457,8 +3457,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
   // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
   // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  // 267 (both photo critics, round 3, S1: "a stack of tan boxes perched on the extreme rear corner of the deck"): of the
+  // rear-deck loads only the camouflage net stays (the corner jerrycans, rations, bin, tarp and spare wheel are off).
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
     && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
+    // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
+    && row.kit !== 'antenna'
+    // 267 round 3 (both critics, critic2, S1: "a rigid tow cable across the whole nose"): the bow chain/cable row is off
+    && row.kit !== 'chain'
+    // 267 round 3 (Sonnet, critic3, S1: "a tow cable strung across the hull front, crossing the muzzle"): the side-top
+    // cable finds no seat on the skirt that now runs up to the deck edge and fell back across the nose; it is off too
+    && !(spec.id !== 'amx40_proto' && row.kit === 'cable')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
