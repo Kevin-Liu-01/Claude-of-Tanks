@@ -161,24 +161,27 @@ assert.equal(applyMovementCheckpoint(untouched, { version: 7, values: ours.value
 assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values, flags: ours.flags }), false);
 assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values.slice(1), flags: ours.flags }), false);
 assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: 4096 }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: 8192 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values, flags: 8192 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
-// Version 9 (physics, 268): the body contact a hull rested on (flag bit 11) rides both encoders and restores; a
-// version-8 checkpoint (the same values) decodes as resting on none, whatever its bit 11 (a version-8 encoder never sets it)
-assert.equal(ours.flags & 2048, 0, 'a hull driving on open ground rests on no body contact');
+// Version 9 (physics, 268): the ends at which a hull rested on a body contact (flag bits 11 and 12) ride both encoders and
+// restore; a version-8 checkpoint (the same values) decodes as resting on none, whatever those bits (a version-8 encoder
+// never sets them)
+assert.equal(ours.flags & 6144, 0, 'a hull driving on open ground rests on no body contact');
 const onBody = drive(60);
-onBody._body.restOnBody = true;
-const bodyCheckpoint = captureMovementCheckpoint(onBody);
-assert.equal(bodyCheckpoint.flags & 2048, 2048, 'a hull resting on a body contact flags it');
-assert.equal(captureMovementPredictionState(onBody).flags, bodyCheckpoint.flags, 'both encoders carry the bit');
-const bodyRestored = createTankState(SPEC, onBody.pos, onBody.yaw);
-assert.equal(applyMovementCheckpoint(bodyRestored, bodyCheckpoint), true);
-assert.equal(bodyRestored._body.restOnBody, true, 'the bit restores');
-assert.equal(applyMovementCheckpoint(bodyRestored, { ...bodyCheckpoint, version: 8 }), true, 'a version-8 checkpoint still decodes');
-assert.equal(bodyRestored._body.restOnBody, false, 'a version-8 checkpoint rests on no body contact');
-assert.deepEqual(captureMovementCheckpoint(bodyRestored).values, bodyCheckpoint.values, 'a version-8 checkpoint is version 9\'s values');
+for (const ends of [1, 2, 3]) {
+  onBody._body.bodyRest = ends;
+  const bodyCheckpoint = captureMovementCheckpoint(onBody);
+  assert.equal(bodyCheckpoint.flags >> 11 & 3, ends, 'a hull resting on a body contact flags its ends');
+  assert.equal(captureMovementPredictionState(onBody).flags, bodyCheckpoint.flags, 'both encoders carry the ends');
+  const bodyRestored = createTankState(SPEC, onBody.pos, onBody.yaw);
+  assert.equal(applyMovementCheckpoint(bodyRestored, bodyCheckpoint), true);
+  assert.equal(bodyRestored._body.bodyRest, ends, 'the ends restore');
+  assert.equal(applyMovementCheckpoint(bodyRestored, { ...bodyCheckpoint, version: 8 }), true, 'a version-8 checkpoint still decodes');
+  assert.equal(bodyRestored._body.bodyRest, 0, 'a version-8 checkpoint rests on no body contact');
+  assert.deepEqual(captureMovementCheckpoint(bodyRestored).values, bodyCheckpoint.values, 'a version-8 checkpoint is version 9\'s values');
+}
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
 assert.equal(ours.flags & 1024, 0, 'a hull on the ground carries no roof');

@@ -194,8 +194,9 @@ interface RigidBodyState {
   /** Set by the tank contact pass (tankBodyContacts.ts) while the hull rests on another hull's roof: the root height
    * the ride stands at, its ground for the next step (NaN otherwise). */
   restSupportY: number;
-  /** Whether the last support solve stood the hull on a body contact (appendBodyContact): its admission band, BODY_REST_BAND_M. */
-  restOnBody: boolean;
+  /** The ends at which the last support solve stood the hull on a body contact (appendBodyContact; 1 its front half, 2 its
+   * rear): those keep resting on one within BODY_REST_BAND_M (keepBodyRest). */
+  bodyRest: number;
 }
 
 export interface MovementContactGeometry {
@@ -280,8 +281,10 @@ export interface SupportSamples {
   /** The highest body contact (an end guard, or a box corner on a structure) the fit records, -Infinity for none: one
    * the hull rests on above its tracks (round 8; see appendBodyContact). */
   bodyTop: number;
-  /** How far under the tracks' support a body contact still joins the fit: BODY_REST_BAND_M while the hull rested on one. */
+  /** How far under the tracks' support a body contact may still join the fit: BODY_REST_BAND_M while the hull rested on one. */
   bodyBand: number;
+  /** The ends with a body contact over the tracks' support this step (1 front half, 2 rear; keepBodyRest). */
+  bodyEnds: number;
   /** Track-contact stations the springs carry (_bedD/_bedX/_bedZ: the outer pair and the wheel-run fan lines). */
   bedCount: number;
   /** The highest track-end (idler and sprocket wrap) deficit: hull-fixed, never carried by a spring. */
@@ -864,8 +867,17 @@ const STRIKE_FRICTION = 0.7;
 const REST_STEP_RAD = 0.003;
 /** Body contacts the fit can record beside the outer lines (24 end guards and 4 box corners). */
 const FIT_BODY_MAX = 28;
-/** A body contact the hull rested on last step stays one while it is within the ride's droop of the tracks' support. */
-const BODY_REST_BAND_M = RIDE_DROOP_M;
+/**
+ * A hull that rested on a body contact last step keeps resting on one while one is within this of the tracks' support
+ * (keepBodyRest): under the clearance its end guards and box corners keep over the track line (END_GUARD_MIN_Y_M), so on
+ * ground its tracks carry it lets go.
+ */
+const BODY_REST_BAND_M = 0.1;
+/** This step's body contacts under the tracks' support within the band (hull-local x, z and deficit; keepBodyRest). */
+const _bandX = new Float64Array(FIT_BODY_MAX);
+const _bandZ = new Float64Array(FIT_BODY_MAX);
+const _bandD = new Float64Array(FIT_BODY_MAX);
+let _bandCount = 0;
 /** The body contacts this step (hull-local z and deficit): those at the far end from a strike are what it turns about
  * when a turn about the centre of mass would sink one (constrainLoadedRide, round 8). */
 const _bodyZ = new Float64Array(FIT_BODY_MAX);
@@ -1606,6 +1618,7 @@ const _supportSamples: SupportSamples = {
   fitCount: 0,
   bodyTop: -Infinity,
   bodyBand: 0,
+  bodyEnds: 0,
   bedCount: 0,
   wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
@@ -1911,7 +1924,17 @@ function bodyContactSupport(
     _guardHit.worldX = worldX;
     _guardHit.worldZ = worldZ;
   }
-  if (deficit > samples.outerMax - samples.bodyBand) appendBodyContact(samples, localX, localZ, deficit);
+  if (deficit > samples.outerMax) {
+    appendBodyContact(samples, localX, localZ, deficit);
+    samples.bodyEnds |= localZ >= samples.centerZ ? 1 : 2;
+  } else if (samples.bodyBand > 0 && _bandCount < FIT_BODY_MAX) {
+    // under the tracks' support, within the band of a hull that rested on a body contact at that end: one only if none at
+    // that end is over it (keepBodyRest)
+    _bandX[_bandCount] = localX;
+    _bandZ[_bandCount] = localZ;
+    _bandD[_bandCount] = deficit;
+    _bandCount++;
+  }
   if (_bodyCount < FIT_BODY_MAX) {
     _bodyZ[_bodyCount] = localZ;
     _bodyD[_bodyCount] = deficit;
@@ -1935,6 +1958,30 @@ function appendBodyContact(samples: SupportSamples, localX: number, localZ: numb
   _fitH[record] = deficit + localX * samples.sinRoll * samples.cosPitch + samples.bottomLift + localZ * samples.sinPitch;
   _fitD[record] = deficit;
   if (deficit > samples.bodyTop) samples.bodyTop = deficit;
+}
+
+/**
+ * Hysteresis on a hull's rest on a body contact (physics, 268): a body contact joins the fit over the tracks' support
+ * (appendBodyContact), and at an end of the hull (its front or rear half) that rested on one last step and has none over
+ * the tracks this step, those within BODY_REST_BAND_M under it still do. A T-90AM leaning on a roof's eave by its nose,
+ * 0.01-0.15 m either side of its front track station, read the nose every other step: without it the samples were the
+ * street's, the ground one plane, and the target pitch flipped 48 to -2.6 degrees step by step until the hull slapped flat
+ * at 18 rad/s; one resting on a 40-degree shed flipped its plane 1.6 mrad. Only at an end with none over the tracks: a hull
+ * landing tail-first on one guard took the next one in the band as well, tipped about it as about an edge and slid off a
+ * 45-degree roof it holds on. Returns the ends the hull now rests on a body contact at.
+ */
+function keepBodyRest(samples: SupportSamples, rested: number): number {
+  let ends = samples.bodyEnds;
+  const keep = rested & ~ends;
+  if (!keep || !(samples.bodyBand > 0)) return ends;
+  const floor = samples.outerMax - samples.bodyBand;
+  for (let index = 0; index < _bandCount; index++) {
+    const end = _bandZ[index] >= samples.centerZ ? 1 : 2;
+    if (!(keep & end) || !(_bandD[index] > floor)) continue;
+    appendBodyContact(samples, _bandX[index], _bandZ[index], _bandD[index]);
+    ends |= end;
+  }
+  return ends;
 }
 
 /**
@@ -2118,7 +2165,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
       solverLift: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
-      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN, restOnBody: false,
+      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN, bodyRest: 0,
     },
     _rollover: { elapsedS: 0, expired: false },
     _groundType: 'medium',
@@ -2174,7 +2221,7 @@ export function resetTankVerticalState(
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
   state._body.restSupportY = NaN;
-  state._body.restOnBody = false;
+  state._body.bodyRest = 0;
   if (grounded !== false && !state.overturned) state._body.tumbling = false;
 }
 
@@ -4061,7 +4108,9 @@ function resetSupportSamples(
   samples.sideCount = 0;
   samples.outerMax = -Infinity;
   samples.bodyTop = -Infinity;
-  samples.bodyBand = state._body.restOnBody ? BODY_REST_BAND_M : 0;
+  samples.bodyBand = state._body.bodyRest ? BODY_REST_BAND_M : 0;
+  samples.bodyEnds = 0;
+  _bandCount = 0;
   samples.outerX = 0;
   samples.outerZ = 0;
   samples.settleDeficitSum = 0;
@@ -4811,7 +4860,7 @@ function writeSupportCache(
   const bellySupportY = samples.bellyMax - bellyYield;
   if (bellySupportY > supportY) supportY = bellySupportY;
   if (bellySupportY > seatY) seatY = bellySupportY;
-  state._body.restOnBody = samples.bodyTop > -Infinity;
+  state._body.bodyRest = keepBodyRest(samples, state._body.bodyRest);
   updateTerrainFitAndPerch(
     entity,
     samples,

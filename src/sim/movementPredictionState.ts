@@ -41,10 +41,10 @@ const VERSION_7_COUNT = VERSION_6_COUNT + ROCK.length * 2;
 // `_susp.cv`), stored with the dive but neither the dive the travel holds nor what joins the rock off a whole-track seat
 const STOP_V8 = ['c', 'cv'] as const;
 const VALUE_COUNT = VERSION_7_COUNT + STOP_V8.length;
-// version 9 (physics, 268): whether the last support solve stood the hull on a body contact (`_body.restOnBody`, flag bit
-// 11; the values are version 8's), which widens its body contacts' admission to the fit; a version-8 checkpoint rests on none
+// version 9 (physics, 268): the ends at which the last support solve stood the hull on a body contact (`_body.bodyRest`,
+// flag bits 11 and 12; the values are version 8's), which keep resting on one within a band; a version-8 checkpoint rests on none
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 4095;
+const MAX_FLAGS = 8191;
 
 interface MovementPredictionState {
   version: 9;
@@ -102,7 +102,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
-    Number(state._body.restOnBody) << 11;
+    (state._body.bodyRest & 3) << 11;
   return { version: 9, values, flags };
 }
 
@@ -146,7 +146,7 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
-  state._body.restOnBody = record.version === 9 && !!(flags & 2048);
+  state._body.bodyRest = record.version === 9 ? (flags >> 11) & 3 : 0;
   if (count >= VERSION_5_COUNT) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
     offset = restore(state._susp, DIVE_V5, values, offset);

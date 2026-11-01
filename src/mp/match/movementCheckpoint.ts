@@ -33,11 +33,11 @@
  * under it (`_susp.c`, `_susp.cv`, 63 values): it is part of the dive's stored value but no part of the dive the travel
  * holds, nor of what joins the rock off a whole-track seat, so a replay needs it to split the two as the authority does.
  * An older checkpoint still decodes, the stops holding nothing.
- * Version 9 (physics, 268) adds whether the last support solve stood the hull on a body contact (`_body.restOnBody`,
- * flag bit 11; the values are version 8's): a hull that rested on one keeps admitting its body contacts within the ride's
- * droop of the tracks' support (movement.ts BODY_REST_BAND_M), so a replay on a roof's eave or a parapet fits the plane the
- * authority fitted only with it. A version-8 checkpoint still decodes, resting on no body contact; a build that decodes
- * only version 8 never meets a version-9 host, whose prediction digest refuses it at join (src/mp/wire/matchBuild.ts).
+ * Version 9 (physics, 268) adds the ends at which the last support solve stood the hull on a body contact (`_body.bodyRest`,
+ * flag bits 11 and 12, its front and rear; the values are version 8's): an end that rested on one keeps resting on one
+ * within a band under the tracks' support (movement.ts keepBodyRest), so a replay on a roof's eave or a parapet fits the
+ * plane the authority fitted only with it. A version-8 checkpoint still decodes, resting on no body contact; a build that
+ * decodes only version 8 never meets a version-9 host, whose prediction digest refuses it at join (src/mp/wire/matchBuild.ts).
  * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 9 uses 63, so a version
  * adding more than one value widens that limit first.
  */
@@ -66,7 +66,7 @@ const VERSION_7_VALUES = VERSION_6_VALUES + ROCK.length * 2;
 const STOP_V8 = ['c', 'cv'] as const;
 export const MOVEMENT_CHECKPOINT_VALUES = VERSION_7_VALUES + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 4095;
+const MAX_FLAGS = 8191;
 
 export interface MovementCheckpoint {
   version: number;
@@ -121,7 +121,7 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
-    Number(state._body.restOnBody) << 11;
+    (state._body.bodyRest & 3) << 11;
   return { version: MOVEMENT_CHECKPOINT_VERSION, values, flags };
 }
 
@@ -166,7 +166,7 @@ export function applyMovementCheckpoint(
   // the roof the hull rests on: no contact pass runs in the replay, so it holds until the next checkpoint clears it
   state._body.restSupportY = flags & 1024 ? values[offset + 5]! : NaN;
   // version 9: the body contact the hull rested on (an older checkpoint rests on none)
-  state._body.restOnBody = checkpoint.version >= 9 && !!(flags & 2048);
+  state._body.bodyRest = checkpoint.version >= 9 ? (flags >> 11) & 3 : 0;
   if (count >= VERSION_5_VALUES) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
     offset = restore(state._susp, DIVE_V5, values, offset);
