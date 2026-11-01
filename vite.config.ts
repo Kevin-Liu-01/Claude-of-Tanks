@@ -505,7 +505,10 @@ export default defineConfig({
             // armour (leopard2a3B4Armor.ts), with the plate tables both read (leopard2A4FamilyArmor.ts, leopard2CheekFrontDatums.ts):
             // the boot fleet reads them beside leopard2HullDatums; leo2a4-family-265 split them into two more game, cn and Gallery
             // boot requests.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-31 (integrator 266): the Leopard 2 wedge fit (leopardXWedges.ts, leo2-front-265 D), a table the boot
+            // specs (sourceXFleetSpecs, germany.ts) and the lazy builders (leopardX, leopardA6X) read; alone it was one more
+            // game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more
