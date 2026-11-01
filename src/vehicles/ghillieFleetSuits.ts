@@ -109,7 +109,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // CV90 (the modernised Strf 9040; round 267 refit to the rebuilt hull and turret, world metres as assembled): the
   // turret roof, rear bin and the wedge cheeks' tops under one net, notched round the gun channel between the cheeks and
   // opened round the gunner's sight head, the commander's cupola and sight, the gunner's hatch, the Lyran launcher, the
-  // whip bases and lift eyes, and the RWS (the builder); flank drapes on the turret sides cut round the smoke banks on
+  // whip bases and lift eyes, the drone dock's cradle and parked airframe on the left front (its authored seat,
+  // tools/gen-mission-attachment-seats.mjs) and the RWS (the builder); flank drapes on the turret sides cut round the smoke banks on
   // the rear corners; a drape over the rear bin. The troop roof behind the turret's sweep netted round its two roof
   // hatches (the builder), the front deck and glacis ahead of the sweep netted round the driver's hatch and vision blocks
   // and opened over the engine grille, the modular side armour hung with three drapes a side above the track run.
@@ -122,7 +123,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         x0: -1.00, x1: 1.00, z0: -1.19, z1: 1.26, nx: 26, nz: 32, y: 0.70,
         outline: [[-1.00, -1.19], [1.00, -1.19], [1.00, 0.36], [0.52, 1.26], [0.30, 1.26], [0.30, 0.46],
           [-0.30, 0.46], [-0.30, 1.26], [-0.52, 1.26], [-1.00, 0.36]],
-        holes: [rect(-0.66, -0.28, 0.06, 0.48), rect(0.05, 0.75, -0.62, 0.36), rect(-0.66, -0.14, -0.67, -0.09),
+        holes: [rect(-0.66, -0.28, 0.06, 0.48), rect(0.05, 0.75, -0.62, 0.36), rect(0.22, 1.00, 0.28, 1.08), rect(-0.66, -0.14, -0.67, -0.09),
           rect(0.40, 0.70, -0.89, -0.46), rect(0.62, 0.80, -0.91, -0.74), rect(-0.80, -0.62, -0.91, -0.74),
           ...pair(0.56, 0.70, -0.79, -0.65)],
         garnishRiseM: 0.12, seed: 11,

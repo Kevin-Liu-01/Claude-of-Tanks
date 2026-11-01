@@ -21,6 +21,11 @@ const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json')
 // hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
 const AUTHORED_DOCKS=[
  {id:'bmpt_t90',chosen:{frame:'turret',x:.07,y:1.3280000162124634,z:.09,payloadOffset:[-.24,-.24],braced:true},riseM:.32},
+ // 2026-11-01 (267, the CV90 rebuild): the Strf 9040's roof station at the right rear sweeps about 1 m, which leaves the
+ // left front of the roof as the only patch clear of it; the feet stand on the roof plate ahead of the commander's sight
+ // and the pad cantilevers 0.24 m forward over the left cheek, outside the gun mask's ±90 degree sweep. The native grid
+ // and its cantilever pass do not reach this foot/offset pair, so the seat is offered first (standard rise; every check runs).
+ {id:'cv90',chosen:{frame:'turret',x:.6,y:.747,z:.46,payloadOffset:[0,.24]}},
 ];
 const hintsPath=value('--hints',''),fileHints=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
 const hintRows=[...AUTHORED_DOCKS.filter(dock=>!fileHints.some(row=>row.id===dock.id)),...fileHints];

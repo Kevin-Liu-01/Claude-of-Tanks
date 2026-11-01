@@ -350,10 +350,11 @@ function buildCv90Turret(P: CvBuilderPort): void {
   ]));
   for (const side of [-1, 1]) {
     // wedge cheek armour flanking the gun channel: the arrowhead front of the Strf 9040's add-on package (its tips stay
-    // inside a 1.49 m radius of the ring axis, so the traversing turret never sweeps the side armour's top edge)
+    // inside a 1.49 m radius of the ring axis, so the traversing turret never sweeps the side armour's top edge; their
+    // rear tops run 30 mm under the roof plate, so the roof stays one flat plate for the dock's feet)
     P.addExternalArmor('turret', convexSlab(
       [side * 0.33, -0.06, 0.50], [side * 0.94, -0.06, 0.40], [side * 0.56, -0.06, 1.38], [side * 0.33, -0.06, 1.40],
-      [side * 0.33, 0.785, 0.50], [side * 0.86, 0.785, 0.40], [side * 0.53, 0.32, 1.38], [side * 0.33, 0.35, 1.40],
+      [side * 0.33, 0.75, 0.50], [side * 0.86, 0.75, 0.40], [side * 0.53, 0.32, 1.38], [side * 0.33, 0.35, 1.40],
     ));
     // bolted add-on panels on the lower band, following the band's outward lean
     for (const [z0, z1] of [[-0.90, -0.31], [-0.29, 0.30]] as const) P.addExternalArmor('turret', orientedSlab(
@@ -361,10 +362,12 @@ function buildCv90Turret(P: CvBuilderPort): void {
       [side * 1.036, 0.38, z0], [side * 1.03, 0.38, z1], [side * 1.12, 0.38, z1], [side * 1.126, 0.38, z0],
     ));
     // smoke dischargers on the rear of the upper side panels, firing forward, out and up: the bank is rolled 66 deg
-    // about the turret's long axis so its bracket lies flush on the 24 deg inward-raked panel (5 mm into it)
+    // about the turret's long axis so its bracket lies flush on the 24 deg inward-raked panel (5 mm into it). The roll
+    // turns the bank's splay into elevation, so the splay leans the tubes toward the roof (-side): every tube rises
+    // (tools/vehicle-controls-inventory.mjs rejects a downward or rearward smoke socket)
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 4, r: 0.038, len: 0.22, spacing: 0.085,
-      splay: side * 0.15, pitch: -0.35, seed: 920 + side,
+      splay: -side * 0.15, pitch: -0.35, seed: 920 + side,
     }), side * 1.051, 0.593, -0.64, [0, 0, -side * 1.152]);
     KIT.liftEye(P, 'turretDetail', side * 0.70, 0.78, -0.80);
   }
@@ -384,9 +387,11 @@ function buildCv90Turret(P: CvBuilderPort): void {
     const a = -Math.PI / 2 + (i - 2.5) * 0.42;
     KIT.periscope(P, 'turretDetail', 0.44 + Math.sin(a) * 0.34, 0.835, -0.30 + Math.cos(a) * 0.34, a);
   }
-  P.add('turret', cylY(0.10, 0.12, 0.14, 14), 0.44, 0.84, 0.22);
-  P.addEquipment('turret', box(0.26, 0.22, 0.28), 0.44, 1.01, 0.22);
-  P.addModuleVisual('optics', 'turretGlass', box(0.18, 0.10, 0.014), 0.44, 1.02, 0.366);
+  // (the sight stands 0.47 m behind the roof's front edge: the drone dock's cradle runs forward from just ahead of it,
+  // its landing pad over the left cheek; tools/gen-mission-attachment-seats.mjs AUTHORED_DOCKS)
+  P.add('turret', cylY(0.10, 0.12, 0.14, 14), 0.44, 0.84, 0.15);
+  P.addEquipment('turret', box(0.26, 0.22, 0.28), 0.44, 1.01, 0.15);
+  P.addModuleVisual('optics', 'turretGlass', box(0.18, 0.10, 0.014), 0.44, 1.02, 0.296);
   // Gunner's hatch.
   P.addHatch('turret', box(0.52, 0.04, 0.58), -0.44, 0.79, -0.42);
   // Lyran illumination launcher: twin tubes on a block at the left rear of the roof.
