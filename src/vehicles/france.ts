@@ -234,10 +234,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     [-1.00, 1.048, 3.37], [1.00, 1.048, 3.37], [1.00, 1.048, 3.43], [-1.00, 1.048, 3.43],
     [-1.00, 1.225, 3.24], [1.00, 1.225, 3.24], [1.00, 1.225, 3.30], [-1.00, 1.225, 3.30]));
   for (const s of [-1, 1]) {
-    P.add('hull', slab(                                                         // outer bow noses over the track lanes: front faces 3.41, crest
-      [s * 1.61, 1.20, 3.42], [s * 1.00, 1.20, 3.42], [s * 1.00, 1.30, 3.22], [s * 1.61, 1.30, 3.22],
-      [s * 1.61, 1.225, 3.42], [s * 1.00, 1.225, 3.42], [s * 1.00, 1.49, 3.24], [s * 1.61, 1.49, 3.24])); //   edge falling 1.49 -> 1.225 like the center line (r2: the r1 1.30
-    P.add('hull', box(0.03, 0.17, 0.22), s * 1.595, 1.215, 3.295);              //   front edge read 1.387 at z 3.34 vs the ref 1.245)
+    // 267 round 5 (Opus, critic9: "the front fender ends are too deep: each lamp cluster sits on a tall camouflage-faced
+    // block as deep as the flap; on the real tank it sits on a thin fender with the black flap directly beneath", pic-1):
+    // the outer bow nose over each track lane is a thin fender plate to 3.42, the flap hanging from its front edge.
+    P.add('hull', slab(
+      [s * 1.61, 1.39, 3.42], [s * 1.00, 1.39, 3.42], [s * 1.00, 1.40, 3.22], [s * 1.61, 1.40, 3.22],
+      [s * 1.61, 1.47, 3.42], [s * 1.00, 1.47, 3.42], [s * 1.00, 1.49, 3.24], [s * 1.61, 1.49, 3.24]));
     // bow-lane sponson filler: closes the 1.33..1.44 side slit between the
     // skirt top and the glacis underside over z 2.04..2.50 (§B2 — the far
     // side read through it). Bottom 1.27 = 2.5cm over the shoe-stack
@@ -248,15 +250,17 @@ function buildAMX40(P: FranceBuilderPort): void {
   // with bolt rows and two large towing eyes", pic-1): the reverse plate and the knee narrow to +-0.48 at their foot and
   // two raked side facets run from the knee's top corners down to it, so the lower nose reads as the photo's V against
   // the tub face behind. The knee keeps its datums (bounds +-0.90, 0.61..1.048, 3.12..3.43).
+  // 267 round 5 (Opus, critic9: "the lower nose plate is too deep for the upper front plate: about 1.1-1.25 to 1, against
+  // about 1.6 in the photo", pic-1): the knee's foot rises 0.61 -> 0.72, the reverse plate taking the difference.
   P.add('hull', convexSlab(                                                     // lower bow reverse plate, shallow first course
-    [-0.42, 0.44, 2.70], [0.42, 0.44, 2.70], [0.48, 0.61, 3.12], [-0.48, 0.61, 3.12],
-    [-0.42, 0.46, 2.72], [0.42, 0.46, 2.72], [0.48, 0.63, 3.12], [-0.48, 0.63, 3.12]));
+    [-0.42, 0.44, 2.70], [0.42, 0.44, 2.70], [0.48, 0.72, 3.12], [-0.48, 0.72, 3.12],
+    [-0.42, 0.46, 2.72], [0.42, 0.46, 2.72], [0.48, 0.74, 3.12], [-0.48, 0.74, 3.12]));
   // Both offset courses reverse their normal order at the jaw. Their eight
   // retained datums bound a finite convex knee; connecting the original rings
   // directly folds the thin sheet through itself.
   P.add('hull', convexSlab(                                                     // steep source knee into the jaw lip
-    [-0.48, 0.61, 3.12], [0.48, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
-    [-0.48, 0.63, 3.12], [0.48, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
+    [-0.48, 0.72, 3.12], [0.48, 0.72, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
+    [-0.48, 0.74, 3.12], [0.48, 0.74, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
   // 266 (owner: "the amx 40 proto has a big hole behind its lower glacis"): the bow is solid behind the two sheets. 267
   // round 2: the fill behind them carries the V's side facets (its underside on the sheets, its back on the tub face),
   // and a second fill closes it up into the platform, chamfer and beak with walls inside the shoe lanes.
@@ -267,14 +271,14 @@ function buildAMX40(P: FranceBuilderPort): void {
   // envelope reads, and drop the measured hull roof off the engine deck's plateau)
   for (const s of [-1, 1]) {
     P.add('hull', convexSlab(                                                   // behind the sheets: the V's side facets
-      [s * 0.42, 0.45, 2.70], [0, 0.45, 2.70], [0, 0.62, 3.12], [s * 0.48, 0.62, 3.12],
+      [s * 0.42, 0.45, 2.70], [0, 0.45, 2.70], [0, 0.73, 3.12], [s * 0.48, 0.73, 3.12],
       [s * 0.90, 1.40, 2.70], [0, 1.40, 2.70], [0, 1.046, 3.42], [s * 0.90, 1.046, 3.42]));
   }
   P.add('hull', convexSlab(                                                     // over the facets, up into the platform, chamfer and beak
     [-0.90, 1.40, 2.70], [-0.90, 1.30, 3.24], [-0.90, 1.20, 3.31], [-0.90, 1.046, 3.42],
     [0.90, 1.40, 2.70], [0.90, 1.30, 3.24], [0.90, 1.20, 3.31], [0.90, 1.046, 3.42]));
   for (const x of [-0.32, -0.24, -0.16, 0.16, 0.24, 0.32]) {
-    P.add('hullDetail', cylZ(0.022, 0.03, 8), x, 0.678, 3.172, 0.603, 0, 0);  // bolt row across the knee's foot
+    P.add('hullDetail', cylZ(0.022, 0.03, 8), x, 0.777, 3.180, 0.757, 0, 0);  // bolt row across the knee's foot
   }
   // 267 round 3 (Opus, critic5: "the lower front hull is a flat rectangle", the knee in shadow against a lit tub face; Sonnet:
   // "the lower nose corners lack the ribbed grilles", pic-1): the V's corners show dark ribbed guard fronts on the tub face,
@@ -333,13 +337,22 @@ function buildAMX40(P: FranceBuilderPort): void {
     // on to z 3.20 under the raked front panel, a 3 cm rod in the air ahead of the hem; it ends with the 1.671 band
     // (z 2.35) whose foot it rides, keeping the published width.
     segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 2.35);
+    // 267 round 5 (Opus, critic9: "separate ribbed panels with an outward-flared lower lip", pic-2): a lip along each
+    // panel's hem, flared out to no more than the 1.68 width anchor
+    for (const [lo, hi, outer] of skirtBands) {
+      if (lo >= 2.35) continue;
+      const o0 = outer - 0.004, o1 = Math.min(1.678, outer + 0.026);
+      P.add('hullDetail', convexSlab(
+        [s * (o0 - 0.03), 0.755, lo], [s * o1, 0.755, lo], [s * o1, 0.755, hi], [s * (o0 - 0.03), 0.755, hi],
+        [s * (o0 - 0.03), 0.81, lo], [s * o0, 0.81, lo], [s * o0, 0.81, hi], [s * (o0 - 0.03), 0.81, hi]));
+    }
     // 267 round 4 (Opus, critic7: "one flat slab with hairline seams; the real skirts are separate panels"): 4 cm joints
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.040), s * 1.640, 0.97, 1.85 - k * 1.04); // panel joints (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
     // 267 round 4c (Sonnet, critic8: "the real flaps are broader, angled outward and clearly separate from the fender"):
     // the flap hangs from under the nose crest as before, its outer end swung 0.30 rad forward.
-    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.06, 3.395, 0, -s * 0.30, 0);
+    P.add('hullRubber', box(0.56, 0.34, 0.028), s * 1.30, 1.22, 3.395, 0, -s * 0.30, 0); // (267 r5: from the thin fender's edge)
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
@@ -392,13 +405,19 @@ function buildAMX40(P: FranceBuilderPort): void {
   buildSuspension();
   // ---- hull furniture ----
   const buildHullFurniture = (): void => {
-  P.add('hull', cylY(0.26, 0.26, 0.026, 16), -0.52, 1.652, 1.30);               // driver hatch (front-LEFT) on the fore deck
-  P.add('hullDark', torus(0.26, 0.012, 16), -0.52, 1.663, 1.30);
-  periscope(P, 'hullDetail', -0.70, 1.66, 1.56, -0.25);
-  periscope(P, 'hullDetail', -0.52, 1.66, 1.60);
-  periscope(P, 'hullDetail', -0.34, 1.66, 1.56, 0.25);
-  for (const s of [-1, 1]) {                                                    // splash V on the upper glacis (flush, follows the rake; tops ≤1.58)
-    P.add('hullDetail', box(0.62, 0.045, 0.05), s * 0.33, 1.545, 2.26, 0.33, s * 0.42, 0);
+  // 267 round 5 (Opus, critic9: "no legible driver's hatch on the glacis; the real tank has a large flat disc hatch with
+  // a periscope block to the vehicle's left of the gun", pic-1, pic-2): the hatch leaves the fore deck under the turret's
+  // overhang (z 1.30, unseen from every Gallery view) for the upper glacis left of the gun, lying on its rake, its
+  // periscope block ahead of it; the splash V that stood there (in no photo) is gone.
+  {
+    const glacisY = (z: number): number => 1.658 - (z - 2.06) * 0.15 / 0.44, rake = Math.atan2(0.15, 0.44);
+    const on = (z: number, lift: number): [number, number] => [glacisY(z) + lift * Math.cos(rake), z + lift * Math.sin(rake)];
+    const [hy, hz] = on(2.24, 0.013), [ry2, rz2] = on(2.24, 0.027), [py, pz] = on(2.43, 0.035), [gy, gz] = on(2.47, 0.04);
+    P.add('hull', cylY(0.25, 0.25, 0.026, 18), 0.50, hy, hz, rake, 0, 0);       // driver hatch
+    P.add('hullDark', torus(0.25, 0.012, 18), 0.50, ry2, rz2, rake, 0, 0);
+    P.add('hullDetail', box(0.18, 0.035, 0.05), 0.50, ry2 + 0.012, rz2 - 0.12, rake, 0, 0); // hinge bar at its rear
+    P.add('hullDetail', box(0.40, 0.07, 0.10), 0.50, py, pz, rake, 0, 0);       // periscope block
+    P.add('hullGlass', box(0.34, 0.035, 0.012), 0.50, gy, gz + 0.045, rake, 0, 0);
   }
   {
     // 267 (both photo critics, round 3: "headlight boxes missing ... the real vehicle has prominent boxed headlights with
@@ -706,19 +725,22 @@ function buildAMX40(P: FranceBuilderPort): void {
   // was 0.62), 0.12 m tall with eight vision blocks round it, on the same broad annulus.
   const cupolaZ = 0.82;
   const cupola = (g: BufferGeometry): BufferGeometry => xformWithScale(g, 0, 0, 0, 0, 0, 0, [1, 1, cupolaZ]);
-  P.add('turret', cupola(cylY(0.50, 0.52, 0.060, 26)), -0.80, 0.620, -0.162);   // annulus collar bridging the crown
-  P.add('turretDetail', cupola(cylY(0.51, 0.52, 0.014, 26)), -0.80, 0.657, -0.162); // outer well lip
-  P.add('turretDark', cupola(torus(0.43, 0.010, 26)), -0.80, 0.667, -0.162);      // drainage seam
-  P.add('turret', cupola(cylY(0.42, 0.45, 0.030, 24)), -0.80, 0.677, -0.162);    // stepped seat
-  P.add('turret', cupola(cylY(0.37, 0.39, 0.120, 24)), -0.80, 0.750, -0.162);    // drum
-  P.add('turret', cupola(cylY(0.34, 0.36, 0.035, 24)), -0.80, 0.8275, -0.162);   // lid
-  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.846, -0.162);
-  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.82, -0.162);            // hatch hinge on the drum's shoulder
+  // 267 round 5 (Main: "the critics disagree on the cupola; measure it off the photos and build to that"): against the
+  // turret face in pic-1 the drum is about 0.84-0.9 m across and stands about as high as drawn (0.27 m with lid and
+  // seat), so the plan widens 0.74 -> 0.84 m and the height stays.
+  P.add('turret', cupola(cylY(0.54, 0.56, 0.060, 26)), -0.80, 0.620, -0.162);   // annulus collar bridging the crown
+  P.add('turretDetail', cupola(cylY(0.55, 0.56, 0.014, 26)), -0.80, 0.657, -0.162); // outer well lip
+  P.add('turretDark', cupola(torus(0.48, 0.010, 26)), -0.80, 0.667, -0.162);      // drainage seam
+  P.add('turret', cupola(cylY(0.47, 0.50, 0.030, 24)), -0.80, 0.677, -0.162);    // stepped seat
+  P.add('turret', cupola(cylY(0.42, 0.44, 0.120, 24)), -0.80, 0.750, -0.162);    // drum
+  P.add('turret', cupola(cylY(0.39, 0.41, 0.035, 24)), -0.80, 0.8275, -0.162);   // lid
+  P.add('turretDark', cupola(torus(0.39, 0.010, 24)), -0.80, 0.846, -0.162);
+  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.38, 0.82, -0.162);            // hatch hinge on the drum's shoulder
   P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.88, 0.00);             // hatch/periscope peak seated on the lid
   P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.89, 0.052);
   for (let k = 0; k < 8; k++) {                                                 // vision blocks round the drum
     const a = (k / 8) * Math.PI * 2 + 0.2;
-    P.add('turretDark', box(0.085, 0.050, 0.030), -0.80 + Math.sin(a) * 0.385, 0.765, -0.162 + Math.cos(a) * 0.385 * cupolaZ, 0, a, 0);
+    P.add('turretDark', box(0.10, 0.055, 0.030), -0.80 + Math.sin(a) * 0.435, 0.765, -0.162 + Math.cos(a) * 0.435 * cupolaZ, 0, a, 0);
   }
   P.add('turretDark', cylY(0.155, 0.175, 0.075, 14), -0.62, 0.615, 0.36);     // panoramic sight turntable embeds into the crown
   // 266 (critics round 1: "a clump of near-black cuboids in place of the tall sight"): the plinth, faceted head, optic
