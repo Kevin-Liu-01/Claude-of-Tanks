@@ -475,25 +475,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // without them a gate run writes a FALSE 0 row (leo2a4 incident,
   // repaired). Configs are the retired registrations verbatim.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
-  // kf51_evo (graduated 2026-08-03): retired source-model registration —
-  // measurement-only.
-  kf51_evo: {
-    source:'glb',
-    glb:{ path:'/models/tanks/kf51_grip420.glb',
-      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
-      autoPivot:true, pivot:[0.52, 1.7, 0],
-      yawOffset:-Math.PI/2 },
-  },
-  // Additive owner rebuild of the same woodland source.  Keep the stable
-  // kf51_evo graduate intact while giving kf51_u its own source-comparison lane;
-  // processed local oracles normalize the FBX nodes to Turret/Gun.
-  kf51_u: {
-    source:'glb',
-    glb:{ path:'/models/tanks/kf51_grip420.glb',
-      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
-      autoPivot:true, pivot:[0.52, 1.7, 0],
-      yawOffset:-Math.PI/2 },
-  },
+  // 267 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): kf51_evo is rebuilt as the Eurosatory KF51 EVO (profiles/kf51Evo.ts) and kf51_u is the KF51-U (fidelity first-party-unregistered, N/A; the blind photo critic is their visual bar). Their oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther, scored on its own source).
   // chieftain3 (graduated 2026-08-04, the 18th — UK's first): retired
   // userdrops5 registration — measurement-only (Z-up print).
   chieftain3: {
