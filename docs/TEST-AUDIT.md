@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1496 | 161.6 |
+| KEEP | 1497 | 162.0 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 652 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2149 | 1280.7 | 228.1 |
-| After: the default tier | 1496 | 161.6 | 36.7 |
+| Before: every receipt (npm test without the tiers) | 2150 | 1281.1 | 228.1 |
+| After: the default tier | 1497 | 162.0 | 36.7 |
 
-Default tier: 12.6 % of the whole registry's CPU; 17.6 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.8 min pool, 18.6 min browser receipts.
+Default tier: 12.6 % of the whole registry's CPU; 17.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 17.9 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -798,7 +798,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1496)
+## KEEP (1497)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -882,6 +882,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/tankIdAliases.selftest.mjs` | 21 | KEEP | the versioned tank id alias layer (id boundary) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/late-fx-matrix.browser.selftest.mjs` | 21 | KEEP | GPU regression, 21 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/track-texture-source.browser.selftest.mjs` | 21 | KEEP | GPU regression, 21 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/armorAlongShot.selftest.mjs` | 21 | KEEP | simulation rule, 21 s: 267 (Main's ruling, a fleet balance move): a round whose face's plate cannot meet it reads the plate across it | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleSides.selftest.mjs` | 20 | KEEP | game flow, 20 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/zombieBotTier.selftest.mjs` | 20 | KEEP | game flow, 20 s: the zombies' tier-down wiring in both bot builders (the authority per seat, the solo battle per setting) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/impactParity.selftest.mjs` | 20 | KEEP | solo step and network authority price impacts alike (must-keep: driver parity) | default tier (npm test, the release gate; lane mode by its closure) |
