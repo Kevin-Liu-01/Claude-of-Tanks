@@ -9,8 +9,8 @@ import { worldModel } from './world-model.mjs';
 import { lensReport } from './lens-check.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
-const featuresOf = (map) => { const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`); return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null; };
+import { surveyPath } from './paths.mjs';
+const featuresOf = (map) => { const f = surveyPath(map); return f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null; };
 import { STUDIO_MAX_ACTOR_KEYS, STUDIO_MAX_CAMERA_SHOTS } from './setups.mjs';
 
 // Owner 2026-10-02: fifty new shots of tanks, battles and battlefields for the site, each one continuous take that

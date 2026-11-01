@@ -9,6 +9,7 @@
 // machine guns"): a second, working roof gun, the frontline crews' anti-drone fit: a 7.62 mm PK-pattern gun on a crew
 // pintle at the gunner's hatch (turret left), beside the commander's Kord station.
 import * as THREE from 'three';
+import {antennaPart} from './antennaPart.ts';
 import {FITTINGS,KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -111,7 +112,7 @@ function secondMast(P:TankBuilderPort,stock:THREE.Mesh[]):void{
   P.addEquipment('turretDetail',box(.09,base-low+.09,.12),x,(low+base+.09)/2,z);
   P.addEquipment('turretDetail',cylY(.06,.06,.22,14),x,base+.20,z);
   P.addEquipment('turretDetail',cylY(.02,.02,.16,12),x,base+.39,z);
-  P.addEquipment('turretDark',cylY(.012,.016,1.10,10),x,base+1.02,z);
+  P.addEquipment('turretDark',antennaPart(cylY(.012,.016,1.10,10)),x,base+1.02,z);
 }
 
 // Gunner's pintle: the 7.62 mm PK-pattern gun frontline T-90M crews mounted at the gunner's hatch from 2023 against

@@ -5,8 +5,8 @@
 // receipt that imports the locale runtime: with the URL import inline, about 380 receipts could never be reused.
 //
 // 1. The URL import lives in the document's importer alone; the registry and Node's importer hold none.
-// 2. The runner's own planner keys the locale runtime and the map catalog (the chain the audit traced), whose graphs
-//    hold Node's importer and never the document's.
+// 2. The runner's own planner keys the locale runtime and the localized map name (the chain the audit traced, through the
+//    map catalog until 267 moved it to src/ui/mapNames.ts), whose graphs hold Node's importer and never the document's.
 // 3. No module anywhere in the repository imports the document's importer, so no Node graph can reach it; Node's
 //    importer has one importer, the registry, by the one specifier the plugin's alias matches.
 // (The alias, the build's boot-chunk check and the URL import's runtime: tools/i18n-page-catalogs.selftest.mjs.)
@@ -35,7 +35,7 @@ for (const file of [REGISTRY, NODE_IMPORTER, 'src/ui/i18n.ts']) {
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-i18n-chunk-import-'));
 try {
   const cache = createSelftestCache({ root: ROOT, cacheDir, env: {}, argv: [] });
-  for (const entry of ['src/ui/i18n.ts', 'src/world/maps/catalog.ts']) {
+  for (const entry of ['src/ui/i18n.ts', 'src/ui/mapNames.ts']) {
     const graph = [...cache.closureOf(resolve(ROOT, entry))].map((file) => relative(ROOT, file));
     assert.ok(graph.includes(REGISTRY) && graph.includes(NODE_IMPORTER), `${entry} reaches the registry and Node's importer`);
     assert.ok(!graph.includes(DOCUMENT_IMPORTER), `${entry} never reaches the document's importer`);

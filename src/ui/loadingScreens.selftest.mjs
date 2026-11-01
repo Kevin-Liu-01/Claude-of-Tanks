@@ -13,7 +13,7 @@ import {
 } from './featuredShots.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
-import { getLocalizedMapName } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from './mapNames.ts';
 
 function webpDimensions(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');

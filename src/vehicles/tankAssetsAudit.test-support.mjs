@@ -4,6 +4,7 @@
 // factory's default build; fleetPassDefault.selftest runs it. Its fixed-casemate pose probe restores what it moves.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { readTankAssets } from '../../tools/tank-assets-store.mjs';
 import {
   ALL_TANK_IDS,

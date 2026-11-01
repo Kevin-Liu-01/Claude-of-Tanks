@@ -1071,6 +1071,7 @@
  },
  "roofFittingsExcluded": {
   "procedural": [
+   "antennaSpans:turretDark",
    "auxiliaryWeapon:browningDerivedMachineGunBody",
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",

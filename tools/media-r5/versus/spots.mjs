@@ -2,15 +2,15 @@
 // Spot finder for the versus stills: flat, dry, clear patches big enough for two tanks 15-25 m apart and a lens 25 m
 // off, with buildings (or a wood) 50-170 m beyond them to frame the fight, ranked; the lens looks across the patch at
 // that backdrop. Survey: the newest features dump of the map ($MEDIA_R5_FEATURES when set, else the combat round's
-// shots/media-r5/combat224/review, else shots/media-r5/features).
+// shots/media-r5/combat224/review, else shots/media-r5/features), when survey reads are on (paths.mjs surveyDirectory).
 //   node tools/media-r5/versus/spots.mjs <map> [count=6]     (run from the repository root)
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SHOTS } from '../paths.mjs';
+import { SHOTS, surveyDirectory } from '../paths.mjs';
 import { worldModel } from '../world-model.mjs';
 
 export function featuresFile(map) {
-  const dirs = [...(process.env.MEDIA_R5_FEATURES ? [process.env.MEDIA_R5_FEATURES] : []), join(SHOTS, 'combat224/review'), join(SHOTS, 'features')];
+  const dirs = !surveyDirectory() ? [] : [...(process.env.MEDIA_R5_FEATURES ? [process.env.MEDIA_R5_FEATURES] : []), join(SHOTS, 'combat224/review'), join(SHOTS, 'features')];
   for (const dir of dirs) {
     const f = join(dir, `features-${map}.json`);
     if (existsSync(f)) return f;
