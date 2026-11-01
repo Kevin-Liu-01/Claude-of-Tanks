@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { validatedPreservationOracle, verifyPreservationBytes } from './preservation-oracle.ts';
 import type { PreservationSource } from './preservation-oracle.ts';
-import {SOURCE_WORLD_FRAMES,verifySourceWorldBytes} from './source-world-registration.mjs';
-import type {SourceWorldCertificate} from './source-world-registration.mjs';
+import {SOURCE_WORLD_FRAMES,SOURCE_WORLD_PART_DEPARTURES,verifySourceWorldBytes} from './source-world-registration.mjs';
+import type {SourceWorldCertificate,SourceWorldPartDeparture} from './source-world-registration.mjs';
 
 type SemanticOwner = 'turret' | 'gun' | 'unclassified';
 
@@ -309,6 +309,32 @@ async function graftTurret(
   scene.updateMatrixWorld(true);
 }
 
+// A certified id's declared part departures (source-world-registration.mjs SOURCE_WORLD_PART_DEPARTURES): each named
+// source node moves rigidly, in the source frame, so its top stands at the ruled height. One node per row, or it fails.
+function applyPartDepartures(
+  scene: THREE.Object3D,
+  departures: readonly SourceWorldPartDeparture[] | undefined,
+  label: string,
+): { node: string; sourceTop: number; top: number; ruling: string }[] {
+  const applied: { node: string; sourceTop: number; top: number; ruling: string }[] = [];
+  for (const row of departures ?? []) {
+    const nodes: THREE.Object3D[] = [];
+    scene.traverse((node) => { if (node.name === row.node) nodes.push(node); });
+    if (nodes.length !== 1 || !Number.isFinite(row.top))
+      throw new Error(`${label}: declared departure ${row.node} matches ${nodes.length} source nodes`);
+    const node = nodes[0];
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(node);
+    if (box.isEmpty()) throw new Error(`${label}: declared departure ${row.node} has no geometry`);
+    const world = new THREE.Matrix4().makeTranslation(0, row.top - box.max.y, 0).multiply(node.matrixWorld);
+    const local = node.parent ? node.parent.matrixWorld.clone().invert().multiply(world) : world;
+    local.decompose(node.position, node.quaternion, node.scale);
+    node.updateMatrixWorld(true);
+    applied.push({ node: row.node, sourceTop: Number(box.max.y.toFixed(4)), top: row.top, ruling: row.ruling });
+  }
+  return applied;
+}
+
 /**
  * Tool-only source-oracle loader.
  *
@@ -534,6 +560,9 @@ export async function loadReferenceGlb(
     gltf.scene.updateMatrixWorld(true);
     await graftTurret(gltf.scene, cfg.graft, sourceWorld, loader, specId);
   }
+  const partDepartures = SOURCE_WORLD_PART_DEPARTURES[specId];
+  if (partDepartures && !sourceWorld) throw new Error(`${specId}: declared part departures need a certified source`);
+  const declaredDepartures = applyPartDepartures(gltf.scene, partDepartures, specId);
   const rig = createReferenceRig(specId, Number(cfg.yawOffset || 0));
   // Off-origin print class (§5.248 ukraine finds: t80u_kursk diorama at
   // -1124u, t64bv_donbass at +4.2 m). An off-center model breaks every
@@ -582,6 +611,7 @@ export async function loadReferenceGlb(
   // replacing it or changing any geometry.
   rig.root.userData.__glbSwapped = true;
   rig.root.userData.__comparisonOracle = true;
+  if (declaredDepartures.length) rig.root.userData.declaredDepartures = declaredDepartures;
   rig.root.updateMatrixWorld(true);
   return { root: rig.root, specId };
 }

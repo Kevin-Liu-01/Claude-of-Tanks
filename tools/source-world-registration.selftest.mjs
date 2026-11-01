@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { AUTHORING_SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, buildOffsetFor,
-  validateSourceWorldFrame } from './source-world-registration.mjs';
+import { AUTHORING_SOURCE_WORLD_FRAMES, SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, SOURCE_WORLD_PART_DEPARTURES,
+  buildOffsetFor, validateSourceWorldFrame } from './source-world-registration.mjs';
 import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
 
 // An owner-directed enlargement changes the entire frozen source frame,
@@ -133,6 +133,22 @@ assert.equal(SOURCE_WORLD_FRAMES.m1a1_abrams_hc,undefined,'old fleet cannot sile
     ['procedural: turret differs from the independent source datum'],'one vector moves both pivots: the ring may not move');
   assert.deepEqual(buildOffsetFor(SOURCE_WORLD_BUILD_OFFSETS.t80u,'gun'),buildOffsetFor(SOURCE_WORLD_BUILD_OFFSETS.t80u,'turret'));
   assert.deepEqual(buildOffsetFor(undefined,'gun'),[0,0,0]);
+}
+// Declared part departures (267): every row is a certified id's, names one source node, a finite ruled top and the
+// ruling; the T-90A X deck cover and the Burlak prototype's composite (its hull is the same source) share theirs.
+{
+  for (const [id, rows] of Object.entries(SOURCE_WORLD_PART_DEPARTURES)) {
+    assert.ok(SOURCE_WORLD_FRAMES[id], `${id}: a part departure needs a certified source`);
+    for (const row of rows) {
+      assert.ok(typeof row.node === 'string' && row.node && Number.isFinite(row.top) && /owner/.test(row.ruling),
+        `${id}: ${JSON.stringify(row)} names a node, a top and the owner's ruling`);
+    }
+  }
+  assert.deepEqual(Object.keys(SOURCE_WORLD_PART_DEPARTURES), ['t90a', 't90a_burlak_proto']);
+  assert.equal(SOURCE_WORLD_PART_DEPARTURES.t90a[0].node, 'gear222');
+  assert.equal(SOURCE_WORLD_PART_DEPARTURES.t90a[0].top, 1.530, 'the release-240 cover top');
+  assert.equal(SOURCE_WORLD_PART_DEPARTURES.t90a_burlak_proto[0], SOURCE_WORLD_PART_DEPARTURES.t90a[0], 'one row, shared');
+  assert.equal(SOURCE_WORLD_FRAMES.t90a_burlak_proto.sha256, SOURCE_WORLD_FRAMES.t90a.sha256, 'the composite hull is the T-90A X file');
 }
 console.log('source-world-registration: hashes/datums fail closed; exact scorer self100, displaced geometry fails92, legacy preserved');
 

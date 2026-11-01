@@ -101,7 +101,8 @@ console.log('reference-gun-pivot: explicit trunnion fixes articulation without c
       buffers:[{uri:`data:application/octet-stream;base64,${bytes.toString('base64')}`,byteLength:bytes.length}],
       bufferViews:[{buffer:0,byteOffset:0,byteLength:points.byteLength},{buffer:0,byteOffset:points.byteLength,byteLength:index.byteLength}],accessors}));
   };
-  const host=fixture([['Hull',1],['OracleTurret',1],['OracleGun',1]],[[tri(0,1,0)],[tri(0,2,0)],[tri(0,2,1)]]);
+  // the host carries the prototype's declared deck cover (SOURCE_WORLD_PART_DEPARTURES), as the T-90A X file does
+  const host=fixture([['Hull',1],['OracleTurret',1],['OracleGun',1],['gear222',1]],[[tri(0,1,0)],[tri(0,2,0)],[tri(0,2,1)],[tri(0,1.52,-1.7)]]);
   // GTurret: one island over the plane and one under it (the hidden ring floor); GGun; GHull stays in its source
   const donor=fixture([['GTurret',2],['GGun',1],['GHull',1]],[[tri(0,2.2,0)],[tri(0,1.1,0)],[tri(0,2.3,1)],[tri(0,1,0)]]);
   const hostPath='/models/community-candidates/synthetic-graft-host.glb',donorPath='/models/community-candidates/synthetic-graft-donor.glb';
@@ -117,7 +118,7 @@ console.log('reference-gun-pivot: explicit trunnion fixes articulation without c
         :typeof url==='string'&&url.startsWith('/models/')?Promise.resolve(new Response(null,{status:404})):oldFetch(url,...args);
     const composite=(await loadReferenceGlb({source:'glb',glb:cfg},'t90a_burlak_proto',null)).root;
     const names=[];composite.traverse(o=>{if(o.isMesh)names.push(o.name);});
-    assert.deepEqual(names.sort(),['GGun','GTurret','Hull'],'the host turret and gun leave; the graft hull stays behind');
+    assert.deepEqual(names.sort(),['GGun','GTurret','Hull','gear222'],'the host turret and gun leave; the graft hull stays behind');
     const turret=composite.getObjectByName('GTurret'),gunMesh=composite.getObjectByName('GGun');
     assert.equal(turret.parent.name,'rig_turret');assert.equal(gunMesh.parent.name,'rig_gun');
     assert.equal(turret.geometry.getAttribute('position').count,3,'the island under the plane stays behind');
@@ -141,4 +142,36 @@ console.log('reference-gun-pivot: explicit trunnion fixes articulation without c
     await assert.rejects(loadReferenceGlb({source:'glb',glb:{...cfg,graft:{...cfg.graft,nodes:'^(?:GTurret|Hull)$'}}},'t90a_burlak_proto',null),/shares a name/);
   } finally {cert.sha256=saved.sha256;seat.sha256=saved.graft;seat.translation=saved.translation;globalThis.fetch=oldFetch;}
   console.log('reference-gun-pivot: a certified graft replaces the host turret and gun on its ring; changed or uncertified grafts fail');
+}
+
+// A declared part departure (267, the T-90A X deck cover): the named source node moves rigidly so its top is the ruled
+// height, in the source frame; the record lists it; a missing node fails. The fixture stands under t90a's
+// certificate (its hash replaced in this process only).
+{
+  const tri=(x,y,z,s=.2)=>[x,y,z, x+s,y,z, x,y+s,z];
+  const nodesGltf=(names,tris)=>{
+    const points=new Float32Array(tris.flat());
+    return Buffer.from(JSON.stringify({asset:{version:'2.0'},scene:0,scenes:[{nodes:names.map((_,i)=>i)}],
+      nodes:names.map((name,i)=>({name,mesh:i})),meshes:names.map((_,i)=>({primitives:[{attributes:{POSITION:i}}]})),
+      buffers:[{uri:`data:application/octet-stream;base64,${Buffer.from(points.buffer).toString('base64')}`,byteLength:points.byteLength}],
+      bufferViews:[{buffer:0,byteOffset:0,byteLength:points.byteLength}],
+      accessors:tris.map((t,i)=>({bufferView:0,byteOffset:i*36,componentType:5126,count:3,type:'VEC3',
+        min:[0,1,2].map(k=>Math.min(t[k],t[k+3],t[k+6])),max:[0,1,2].map(k=>Math.max(t[k],t[k+3],t[k+6]))}))}));
+  };
+  const cert=SOURCE_WORLD_FRAMES.t90a,saved=cert.sha256,oldFetch=globalThis.fetch,file='/models/community-candidates/synthetic-departure.glb';
+  const top=mesh=>new THREE.Box3().setFromObject(mesh).max.y;
+  try {
+    const serve=bytes=>{cert.sha256=createHash('sha256').update(bytes).digest('hex');
+      globalThis.fetch=(url,...args)=>url===file?Promise.resolve(new Response(bytes)):oldFetch(url,...args);};
+    serve(nodesGltf(['OracleHull','gear222'],[tri(0,1,0),tri(0,1.52,-1.7)]));
+    const loaded=(await loadReferenceGlb({source:'glb',glb:{path:file,fixedMount:true}},'t90a',null)).root;
+    const cover=loaded.getObjectByName('gear222');
+    assert.ok(Math.abs(top(cover)-1.530)<1e-6,'the cover stands at the ruled top');
+    assert.ok(Math.abs(top(loaded.getObjectByName('OracleHull'))-1.2)<1e-6,'nothing else moves');
+    assert.deepEqual(loaded.userData.declaredDepartures.map(({node,top})=>[node,top]),[['gear222',1.530]],'the record lists the row');
+    assert.ok(Math.abs(loaded.userData.declaredDepartures[0].sourceTop-1.72)<1e-4,'with the source top it replaced');
+    serve(nodesGltf(['OracleHull'],[tri(0,1,0)]));
+    await assert.rejects(loadReferenceGlb({source:'glb',glb:{path:file,fixedMount:true}},'t90a',null),/declared departure gear222/);
+  } finally {cert.sha256=saved;globalThis.fetch=oldFetch;}
+  console.log('reference-gun-pivot: a declared part departure stands its source node at the ruled top and is recorded; a missing node fails');
 }

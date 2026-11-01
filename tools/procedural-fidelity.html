@@ -330,7 +330,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t80: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
-  t80uk: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
+  // t80uk (267, Main 2026-11-01): it builds on its certified source-X twin t80u (fleetRenewalSpecs.ts FLEET_RENEWAL_DONORS;
+  // profiles/t80ukRenewal.ts lays its command kit on buildT80UX), so it is a declared derivative of that twin, as the
+  // T-90 marks are of theirs; the javanilga print (/models/tanks/t80u_javanilga.glb, whole curves 4.4) retires as its gate
+  // oracle. Its own command kit, which the twin lacks, is judged by the blind critic instead (Main's condition).
   // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
   // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
   // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered
@@ -2225,6 +2228,8 @@ if (params.get('geo')) {
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,
+    // the build's parts the owner ruled away from the source (source-world-registration.mjs SOURCE_WORLD_PART_DEPARTURES)
+    ...(reference.root.userData.declaredDepartures ? { declaredDepartures:reference.root.userData.declaredDepartures } : {}),
   };
   setPart(reference.root, 'whole');
   setPart(procedural.root, 'whole');
