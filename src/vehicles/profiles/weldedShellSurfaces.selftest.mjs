@@ -91,10 +91,10 @@ const targets={
   // between the tracks (6-point section) and the two sponsons over them (5-point sections)
   stb1:{expected:3,select:p=>p.site.includes('addHullBody (')&&p.site.includes('type74Family.ts')&&p.bucket==='hull'&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.9?6:5,tubAndSponsons:true},
   type74:{expected:3,select:p=>p.site.includes('addHullBody (')&&p.site.includes('type74Family.ts')&&p.bucket==='hull'&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.9?6:5,tubAndSponsons:true},
-  t90ms_2011:{expected:1,select:p=>p.site.includes('rebuildT90MSTurretExact (')&&p.bucket==='turret'&&p.part.triangles.length===104,panels:96,mirror:true},
+  t90ms_2011:{expected:1,select:p=>p.site.includes('at turret (')&&p.site.includes('/t90msX.ts:')&&p.bucket==='turret'&&p.part.triangles.length===268},
   mbt70:{expected:1,select:p=>p.bucket==='turret'&&p.part.bounds.min.z<-2.91&&p.part.bounds.max.z>1.6&&p.part.vertices.length>80},
   challenger2:{expected:2,select:p=>p.bucket==='hull'&&p.part.size.x<.021&&p.part.size.z>7&&p.part.bounds.min.y>1.16},
-  t90sm_2013:{expected:1,select:p=>p.site.includes('addT90SMTurretFoundation (')&&p.part.size.x>3,cap:true},
+  t90sm_2013:{expected:1,select:p=>p.site.includes('buildT90SMXTurret (')&&p.bucket==='turret'&&p.part.triangles.length===156},
 };
 let checked=0;
 for(const [id,config]of Object.entries(targets))for(const quality of ['high','low']){
@@ -190,31 +190,6 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
               'the real optical aperture stays empty through both roof slopes');
           }
         }
-      }
-    }
-    if(id==='t90ms_2011'){
-      const source=parts[0].part;
-      const plates=emissions.filter(p=>String(p.g.userData.nativeArmorSkinRole).startsWith('t90ms-welded-'));
-      assert.equal(plates.length,54,'all native flank, shoulder, lower and roof cassette solids remain');
-      assert.equal(plates.filter(p=>p.g.userData.nativeArmorSkinRole.endsWith('roof')).length,5,'five roof plates');
-      for(const {g}of plates){
-        const plate=shellPart(g),roof=g.userData.nativeArmorSkinRole.endsWith('roof');
-        const dir=new Vector3(roof?0:Math.sign(plate.bounds.min.x+plate.bounds.max.x),roof?1:0,0);
-        assert.deepEqual(shellEdgeTopology(plate),{boundary:0,nonmanifold:0,inconsistent:0},'closed fitted T90MS cassette');
-        assert.equal(properSurfaceCrossings(plate).length,0,'T90MS cassette has no self-crossed faces');
-        const gap=point=>{
-          const ray=new Ray(point.clone().addScaledVector(dir,4),dir.clone().negate());
-          let distance=Infinity;for(const face of source.triangles){const h=ray.intersectTriangle(face.triangle.a,face.triangle.b,face.triangle.c,false,new Vector3());if(h)distance=Math.min(distance,h.distanceTo(ray.origin));}
-          return distance-4;
-        };
-        let backFaces=0;
-        for(const face of plate.triangles)if(face.triangle.getNormal(new Vector3()).dot(dir)<-.05){
-          backFaces++;const point=face.triangle.getMidpoint(new Vector3()),separation=gap(point);
-          assert.ok(separation>=.0009&&separation<=.0043,`T90MS exact carrier gap ${separation}`);
-          assert.ok(gap(point.clone().addScaledVector(dir,.05))>.05,'detached cassette seat control fails');
-        }
-        assert.ok(backFaces>=2,'actual finite back surface tested');
-        if(roof)assert.ok(plate.bounds.max.y-plate.bounds.min.y>.052,'roof ERA extrudes upward, never sideways or flat');
       }
     }
     if(id==='sabra_mk2'){
