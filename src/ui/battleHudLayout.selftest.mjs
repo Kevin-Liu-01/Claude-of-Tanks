@@ -825,4 +825,11 @@ for(const [x,expected] of [[19,0],[18.9,1]]){
   if(expected)assert.equal(result.failures[0],'a overlaps b');
 }
 assert.equal(measurementFixture({}).measure('idle').failures[0],'no visible UI checked');
+// (266's tablet-mouse gate) a pass settles a resize's queued bands before it measures: queued ahead of responsiveLayout's
+// frame, it measured the old bands' CSS and the open log stood 16 px into the map until the next pass
+{
+  const pass=layout.slice(layout.indexOf('  function relayout() {'));
+  const settle=pass.indexOf('settleResponsiveLayout(window);'),measure=pass.indexOf('layoutViewportSize(window)');
+  assert.ok(settle>0&&settle<measure&&settle<pass.indexOf('getClientRects()'),'relayout settles the viewport bands before it measures');
+}
 console.log('battleHudLayout.selftest: bounded lanes, responsive ownership and localized headers passed');

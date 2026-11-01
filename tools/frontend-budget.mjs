@@ -236,8 +236,12 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   (the suit-roof rule, the Proryv bow plate, the new ids' loads), camoPolicy +804 (the Danish, Challenger 1, Brazilian
   //   and M41 coats), specs +603, tankFactoryCore +570 (local-fps-266's opaque program order and lit set), main +429,
   //   i18n +413, presentation anchors +358, materials +271 (the armour paint's damage-only read), roles/taxonomy/teams +300.
-  game: { brotliBytes: 1162591, requests: 128, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1207014, requests: 129, entryBrotliBytes: 249894 },
+  // 2026-11-01 (integrator 266, re-pin at integ/266 30eab409ee's build; requests unchanged): game +194 B brotli, cn +194 B
+  //   over the 0df7b32811 pins: the shot card's one-line rows (item/shot-card-fit-266, +93 B, inside the slack alone) and
+  //   Brazil's flag-icons br.svg in flags.ts's FLAG_URL (+101 B: the Brazilian flag chips were broken images); Gallery
+  //   +49 B stays inside its slack.
+  game: { brotliBytes: 1162785, requests: 128, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1207208, requests: 129, entryBrotliBytes: 249894 },
   gallery: { brotliBytes: 732944, requests: 75 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
