@@ -43,6 +43,10 @@ for (const id of SUPPLIED_SOURCE_COMPARISON_IDS) {
     `${id}: an invalid source certificate cannot bypass dimensions`);
 }
 assert.equal(usesSourceDimensionFrame('t72b3',certified),true);
+// 267: the Burlak prototype on its composite's ruler, never on a failed composite certificate
+assert.equal(usesSourceDimensionFrame('t90a_burlak_proto',certified),true);
+assert.equal(usesSourceDimensionFrame('t90a_burlak_proto',{...certified,passed:false}),false);
+assert.equal(usesSourceDimensionFrame('t90a',certified),false,'the T-90A X keeps its published dimensions');
 assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',certified),true,
   'direct supplied SEP v2 comparison uses its certified source ruler, not the unrelated published roof height');
 assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',{...certified,passed:false}),false);

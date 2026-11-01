@@ -11,6 +11,9 @@ const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1
   'c1_ariete','challenger1_mk3','chieftain5','strv122', 'ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'm48a5_patton',
   // Merkava family 262 (owner 2026-10-27: the supplied Mk 1B-4B models are the target): measured on their source's ruler
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
+  // 267 (Main 2026-11-01): the Burlak prototype is measured on the composite it follows (the T-90A X source's hull under
+  // the Burlak X source's turret, source-world-registration.mjs); its gun's declared departure lifts no height
+  't90a_burlak_proto',
   ...SUPPLIED_SOURCE_COMPARISON_IDS]);
 
 export function usesSourceDimensionFrame(id,registration) {
