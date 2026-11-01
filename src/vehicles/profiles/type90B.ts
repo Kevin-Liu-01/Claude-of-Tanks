@@ -67,10 +67,11 @@ function addRollerMounts(P: TankBuilderPort): void {
   const glacisRake = Math.atan2(1.4677 - 1.2751, 3.408 - 2.324);
   for (const side of [-1, 1]) {
     const x = side * 0.66, z = 3.24, y = 1.4677 - (z - 2.324) * Math.tan(glacisRake);
-    P.addEquipment('hullDetail', box(0.30, 0.05, 0.24), x, y + 0.02, z, glacisRake, 0, 0);
-    for (const o of [-1, 1]) P.addEquipment('hullDetail', box(0.04, 0.18, 0.20), x + o * 0.11, y + 0.135, z, glacisRake, 0, 0);
-    P.addEquipment('hullDark', cylX(0.034, 0.26, 12), x, y + 0.17, z + 0.01);
-    for (const o of [-1, 1]) P.addEquipment('hullDetail', cylX(0.05, 0.016, 14), x + o * 0.139, y + 0.17, z + 0.01);
+    // (round 5: "small stirrups that look like the hull's tie-downs"; the photographs' anchors are heavy blocks)
+    P.addEquipment('hullDetail', box(0.36, 0.06, 0.30), x, y + 0.025, z, glacisRake, 0, 0);
+    for (const o of [-1, 1]) P.addEquipment('hullDetail', box(0.05, 0.26, 0.26), x + o * 0.13, y + 0.18, z, glacisRake, 0, 0);
+    P.addEquipment('hullDark', cylX(0.04, 0.32, 12), x, y + 0.22, z + 0.01);
+    for (const o of [-1, 1]) P.addEquipment('hullDetail', cylX(0.062, 0.018, 14), x + o * 0.164, y + 0.22, z + 0.01);
   }
 }
 

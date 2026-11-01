@@ -190,6 +190,9 @@ function armorRow(z:number,left:number,right:number,low:number,top:number):Solid
     [-left,leftRoof-PIVOT[1]],[-left,low+.036-PIVOT[1]]]};
 }
 
+// Round 5 (the photo critic: "the roof slopes down about 0.17 m over the front fifth of the turret ... the photos show a
+// flat roof running all the way to vertical front faces"; type90_turret_left_m2.jpg, type90_with_type92_roller_side.jpg):
+// the source's falling front roof stands level, and the cheek blocks rise to it either side of the recessed mantlet.
 function turretArmor(P:TankBuilderPort):void {
   P.add('turret',sectionSolid([
     armorRow(-2.007733,1.229805,1.114095,1.82880,2.459472),
@@ -197,14 +200,14 @@ function turretArmor(P:TankBuilderPort):void {
     armorRow(-.927,1.296256,1.191278,1.734308,2.459472),
     armorRow(.157,1.313827,1.219205,1.681682,2.459472),
     armorRow(.557,1.313827,1.219205,1.681682,2.459472),
-    armorRow(.699,1.313827,1.219205,1.681682,2.436957),
-    armorRow(1.241,1.292065,1.193370,1.681682,2.350904),
-    armorRow(1.649,1.198815,1.082671,1.681682,2.286126),
+    armorRow(.699,1.313827,1.219205,1.681682,2.459472),
+    armorRow(1.241,1.292065,1.193370,1.681682,2.455),
+    armorRow(1.649,1.198815,1.082671,1.681682,2.45),
   ]));
   for(const side of [-1,1]) {
     const a=side<0?1.198815:1.082671,b=side<0?.767568:.692089;
-    const rows=[[1.646,a,1.681682,2.2866],[2.053,b,1.71295,2.222014],
-      [2.100,side<0?.663935:.602328,1.72152,2.214555],[2.112711,.515,1.733,2.21254]];
+    const rows=[[1.646,a,1.681682,2.45],[2.053,b,1.71295,2.44],
+      [2.100,side<0?.663935:.602328,1.72152,2.437],[2.112711,.515,1.733,2.435]];
     P.add('turret',sectionSolid(rows.map(([z,out,low,top])=>{
       const ring:[number,number][]=[[.4729,low],[out,low],[out,top-.022],[.4729,top]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
@@ -239,22 +242,24 @@ function basket(P:TankBuilderPort):void {
 
 function optic(P:TankBuilderPort):void {
   // Right front hood: closed 10mm top over a true frontal recess.
-  turret(P,'turretDetail',box(.578108,.31533,.36187),.656886,2.491089,1.011185);
-  const lid=sectionSolid([[1.145,2.650038,.289054],[1.312,2.679472,.289054],
-    [1.467293,2.706543,.210]].map(([z,roof,half])=>({z,
+  // (round 5: the box stands its full height on the level roof, 124 mm over the source's sunk seat)
+  const SIGHT_RISE=.124;
+  turret(P,'turretDetail',box(.578108,.31533,.36187),.656886,2.491089+SIGHT_RISE,1.011185);
+  const lid=sectionSolid([[1.145,2.650038+SIGHT_RISE,.289054],[1.312,2.679472+SIGHT_RISE,.289054],
+    [1.467293,2.706543+SIGHT_RISE,.210]].map(([z,roof,half])=>({z,
     ring:[[-half,roof-.010646],[half,roof-.010646],[half,roof],[-half,roof]] as [number,number][],
   })));
   turret(P,'turretDetail',lid,.656886,0,0);
   // the two windows under the visor, either side of a mullion (JGSDF photographs, 267)
-  for(const dx of [-.122,.122])turret(P,'turretGlass',box(.214,.170,.006),.656886+dx,2.526,1.19512);
-  turret(P,'turretDetail',box(.034,.19,.012),.656886,2.526,1.1935);
+  for(const dx of [-.122,.122])turret(P,'turretGlass',box(.214,.170,.006),.656886+dx,2.526+SIGHT_RISE,1.19512);
+  turret(P,'turretDetail',box(.034,.19,.012),.656886,2.526+SIGHT_RISE,1.1935);
   // the armoured flaps that close over the windows, hinged side by side along the box's front top edge and swung up and
   // back into a raised visor with a seam between them (the turret roof's signature in the Type 90's photographs)
   for(const side of [-1,1]) {
     const flap=box(.275,.15,.02);flap.translate(0,.075,0);flap.rotateX(-.38);
-    turret(P,'turretDetail',flap,.656886+side*.1425,2.649,1.13);
+    turret(P,'turretDetail',flap,.656886+side*.1425,2.649+SIGHT_RISE,1.13);
   }
-  turret(P,'turretDark',cylX(.016,.56,10),.656886,2.652,1.13);                 // the flaps' hinge
+  turret(P,'turretDark',cylX(.016,.56,10),.656886,2.652+SIGHT_RISE,1.13);      // the flaps' hinge
   const cupola=cylinder(.38362,.115719,40);cupola.scale(1,1,.3599445/.38362);
   turret(P,'turretHatch',cupola,-.641153,2.517331,.123371);
   turret(P,'turretDetail',KIT.cylY(.1682,.2775,.157596,12),-.641153,2.653989,.115596);
@@ -283,7 +288,28 @@ function optic(P:TankBuilderPort):void {
 // at the back. Round 3 (the photo critic: "the pedestal is short and squat and hidden behind the can"): the receiver
 // stands level with the raised flaps' tops, the post shows from every side. Round 4: the chute a flat band, the can
 // upright, the paint darker than the issue drab.
-const M2_POST={x:.20,z:.88,roofY:2.408,boreY:2.924} as const;
+const M2_POST={x:.20,z:.88,roofY:2.458,boreY:2.974} as const;
+
+/** A flat band swept along a curve in the xy plane: `width` across z, `thick` in the plane, square-cut ends (the M2's
+ *  belt chute; an extrudePath sweep's Frenet frames twist a planar band into a fan). */
+function flatBand(curve:THREE.Curve<THREE.Vector3>,segments:number,width:number,thick:number):THREE.BufferGeometry {
+  const pos:number[]=[],corners:[number,number][]=[[1,1],[-1,1],[-1,-1],[1,-1]];
+  const ring=(i:number):THREE.Vector3[]=>{
+    const p=curve.getPoint(i/segments),t=curve.getTangent(i/segments),n=new THREE.Vector3(-t.y,t.x,0).normalize();
+    return corners.map(([a,b])=>p.clone().addScaledVector(n,a*thick/2).add(new THREE.Vector3(0,0,b*width/2)));
+  };
+  const quad=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,d:THREE.Vector3)=>{for(const v of [a,b,c,a,c,d])pos.push(v.x,v.y,v.z);};
+  let prev=ring(0);quad(prev[3],prev[2],prev[1],prev[0]);
+  for(let i=1;i<=segments;i++) {
+    const next=ring(i);
+    for(let k=0;k<4;k++)quad(prev[k],prev[(k+1)%4],next[(k+1)%4],next[k]);
+    prev=next;
+  }
+  quad(prev[0],prev[1],prev[2],prev[3]);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(pos.length/3*2),2));   // (the merge wants every part's uv)
+  g.computeVertexNormals();return g;
+}
 
 function roofWeapon(P:TankBuilderPort):void {
   // Stacked face to face (the accessory receipt: a piece touches the rest without crossing it, never coplanar): the
@@ -323,14 +349,12 @@ function roofWeapon(P:TankBuilderPort):void {
   const chute=new THREE.CatmullRomCurve3([[canX,canTop+.014],[canX-.03,canTop+.07],[canX-.035,boreY+.06],
     [canX+.03,boreY+.11],[gunBox.min.x-.06,boreY+.06],[gunBox.min.x-.001,boreY+.03]]
     .map(([cx,cy])=>new THREE.Vector3(cx,cy,0)));
-  const band=new THREE.Shape([[-.009,-.0425],[.009,-.0425],[.009,.0425],[-.009,.0425]].map(([u,v])=>new THREE.Vector2(u,v)));
-  const feed=new THREE.ExtrudeGeometry(band,{steps:28,bevelEnabled:false,extrudePath:chute});
-  w.add('turretAmmo',feed,0,0,pivotZ-.03);
+  w.add('turretAmmo',flatBand(chute,28,.085,.018),0,0,pivotZ-.03);
   w.stage('yaw');
   // yaw: the swivel on the collar, the yoke plate and its two uprights up to the trunnions, outboard of the cradle
-  w.add('turretDetail',box(.08,.03,.08),x,collarTop+.016,z);                            // the swivel block
-  w.add('turretDetail',box(.21,.024,.09),x,swivelTop+.013,pivotZ);                      // the yoke plate
-  for(const side of [-1,1])w.add('turretDetail',box(.022,trunnionY+.03-yokeTop-.001,.07),x+side*.085,(yokeTop+.001+trunnionY+.03)/2,pivotZ);
+  w.add('turretAmmo',box(.08,.03,.08),x,collarTop+.016,z);                              // the swivel block
+  w.add('turretAmmo',box(.21,.024,.09),x,swivelTop+.013,pivotZ);                        // the yoke plate
+  for(const side of [-1,1])w.add('turretAmmo',box(.022,trunnionY+.03-yokeTop-.001,.07),x+side*.085,(yokeTop+.001+trunnionY+.03)/2,pivotZ);
   w.finish();
 }
 

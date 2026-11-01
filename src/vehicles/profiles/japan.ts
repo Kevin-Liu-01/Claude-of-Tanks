@@ -390,7 +390,11 @@ function addType10BActiveProtection(P: JapaneseBuilderPort): void {
       const x = side * (aft ? 1.477 : 1.16), yaw = side * (aft ? Math.PI * 0.62 : Math.PI * 0.25);
       const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       const w = aft ? 0.36 : 0.40, h = aft ? 0.30 : 0.32, cy = y + 0.04 + h / 2 + (aft ? 0 : 0.10);
-      if (!aft) P.add('turretDetail', cylY(0.035, 0.035, 0.14, 10), ...tl(x, y + 0.07, z));
+      // round 5 ("a blank upright plank ... no visible bracket"): the front heads stand on a bracket block and its foot plate
+      if (!aft) {
+        P.add('turretDetail', box(0.20, 0.02, 0.16), ...tl(x, y + 0.01, z), 0, yaw, 0);
+        P.add('turretDetail', box(0.12, 0.118, 0.10), ...tl(x - fx * 0.02, y + 0.021 + 0.059, z - fz * 0.02), 0, yaw, 0);
+      }
       P.add('turretDetail', box(w, h, 0.07), ...tl(x, cy, z), 0, yaw, 0);
       P.add('turretDetail', box(w + 0.03, 0.022, 0.10), ...tl(x + fx * 0.016, cy + h / 2 + 0.012, z + fz * 0.016), 0, yaw, 0);
       const nu = aft ? 5 : 6, nv = 4;
@@ -401,16 +405,16 @@ function addType10BActiveProtection(P: JapaneseBuilderPort): void {
     }
     // the launcher unit: pedestal, turntable, the four-tube box raised 30 degrees outboard with its capped muzzles
     const lx = side * 1.20, ly = 2.07, lz = -0.55;
-    P.add('turretDetail', box(0.24, 0.06, 0.34), ...tl(lx, ly + 0.01, lz));
-    P.add('turretDetail', cylY(0.075, 0.085, 0.10, 18), ...tl(lx, ly + 0.091, lz));
-    P.add('turretDetail', cylY(0.14, 0.14, 0.04, 24), ...tl(lx, ly + 0.162, lz));
-    const pitch = -Math.PI / 6, out = side * Math.PI / 2;
-    const launcher = box(0.24, 0.20, 0.34); launcher.rotateX(pitch).rotateY(out);
-    P.add('turretDetail', launcher, ...tl(lx, ly + 0.355, lz));       // its lowest edge 1 mm over the turntable
-    for (const [du, dv] of [[-0.055, -0.048], [0.055, -0.048], [-0.055, 0.048], [0.055, 0.048]] as const) {
-      const cap = cylZ(0.042, 0.012, 14);
+    // (round 5: "each stands like a tall chimney": the unit sits low on the shelf, its box raised 20 degrees)
+    P.add('turretDetail', box(0.24, 0.04, 0.34), ...tl(lx, ly + 0.0, lz));
+    P.add('turretDetail', cylY(0.14, 0.14, 0.04, 24), ...tl(lx, ly + 0.041, lz));
+    const pitch = -Math.PI / 9, out = side * Math.PI / 2;
+    const launcher = box(0.24, 0.16, 0.34); launcher.rotateX(pitch).rotateY(out);
+    P.add('turretDetail', launcher, ...tl(lx, ly + 0.196, lz));       // its lowest edge 1 mm over the turntable
+    for (const [du, dv] of [[-0.055, -0.038], [0.055, -0.038], [-0.055, 0.038], [0.055, 0.038]] as const) {
+      const cap = cylZ(0.034, 0.012, 14);
       cap.translate(du, dv, 0.171).rotateX(pitch).rotateY(out);
-      P.add('turretDark', cap, ...tl(lx, ly + 0.355, lz));
+      P.add('turretDark', cap, ...tl(lx, ly + 0.196, lz));
     }
   }
 }
@@ -423,7 +427,8 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) {
       const t = 0.13, x0 = 1.5745;                       // round 3: proud of the skirt ('10-15 cm of stand-off')
-      seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 1.035, 2.80 - i * 0.70, t, 0.32, 0.64, null,
+      // (round 5: "one thin belt about a third of the skirt's height": the cassettes cover the skirt's depth)
+      seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 0.985, 2.80 - i * 0.70, t, 0.42, 0.64, null,
         { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }
     for (const z of [-1.62, -1.26, -0.96, -0.62, 0.45, 0.78, 1.10]) {

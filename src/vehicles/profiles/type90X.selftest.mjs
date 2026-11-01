@@ -49,10 +49,11 @@ function physicalOpenings(tank,quality) {
   assert.ok(!hit(lattice,v(.17,2.26,-2.70),v(0,0,1),.25),`${quality}: actual rear basket slot`);
   assert.ok(hit(lattice,v(.310584,2.26,-2.70),v(0,0,1),.25),`${quality}: positive source-spaced rack post`);
   // 267: the sight's two windows either side of the mullion (the photographs), each a complete pane at the face
-  for(const x of [.534,.778])near(hit(tank.root,v(x,2.53,1.46),v(0,0,-1))?.point.z,1.19812,.001,
+  for(const x of [.534,.778])near(hit(tank.root,v(x,2.654,1.46),v(0,0,-1))?.point.z,1.19812,.001,
     `${quality}: complete assembled sight pane at x ${x}, not false deep empty hood`);
-  assert.ok(!hit(tank.root,v(.656,2.53,1.46),v(0,0,-1),.24),`${quality}: real under-hood front air`);
-  near(hit(tank.root,v(.656,3,1.40),v(0,-1,0))?.point.y,2.694989,.001,
+  assert.ok(!hit(tank.root,v(.656,2.654,1.46),v(0,0,-1),.24),   // 267: the sight box stands 124 mm higher
+  `${quality}: real under-hood front air`);
+  near(hit(tank.root,v(.656,3,1.40),v(0,-1,0))?.point.y,2.694989+.124,.001,
     `${quality}: measured thin rising hood above that air`);
 }
 

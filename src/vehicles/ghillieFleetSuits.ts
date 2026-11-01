@@ -400,12 +400,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
     turret: {
       top: [laid({
-        x0: -1.68, x1: 1.70, z0: -3.41, z1: 1.97, nx: 42, nz: 67, y: 0.76,
+        // (267 round 5: "strips stick out into the air beyond the tank": the roof net ends inside the cassettes' faces)
+        x0: -1.55, x1: 1.57, z0: -3.41, z1: 1.97, nx: 39, nz: 67, y: 0.76,
         holes: [rect(-0.80, -0.30, -0.35, 0.15), rect(-0.70, -0.20, 0.30, 0.85), rect(-1.20, -0.80, -0.90, -0.45), rect(0.70, 1.10, -2.30, -1.85),
           rect(-0.75, -0.05, -1.95, -1.40), rect(0.05, 0.75, -1.95, -1.40), rect(-0.95, -0.35, -1.00, -0.40), rect(0.25, 0.85, -1.00, -0.40),
           // 267 (the Japan line's 10B on the Type 10 base): the remote station's turntable, the launcher units and the
           // front radar heads stand clear of the net
-          rect(-0.56, -0.08, 0.04, 0.54), ...pair(1.00, 1.42, -1.00, -0.50), ...pair(0.92, 1.42, 0.22, 0.78)],
+          rect(-0.96, -0.06, -0.39, 0.54), ...pair(1.00, 1.42, -1.00, -0.50), ...pair(0.92, 1.42, 0.22, 0.78)],
         garnishRiseM: 0.16, seed: 11,
       })],
       // 267 (round 3 photo critic: "a wavy net sheet stands upright above the turret's rear roof edge", "cut the net back
