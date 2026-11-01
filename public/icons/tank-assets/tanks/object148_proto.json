@@ -1213,24 +1213,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34434,
-      "sha256": "3bb022cc3bb5bde72b848d7f2c0aa47e3d764b960f0d74f6d69f13927db12653"
+      "bytes": 34416,
+      "sha256": "178b29d49eea42872c27f515500681292aeb8cb6520be7ff06c10f04127a29e6"
     },
     "modulesSide": {
       "file": "object148_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34484,
-      "sha256": "ac1dcec61a5308d51a7ad7b9675b6627ed6cb284939a801c7a6107b8fee2960e"
+      "bytes": 33534,
+      "sha256": "fdcf4830d7020f5163eb11ef6b40b125330dcb087979e6886f46e6fe3a806b17"
     },
     "crewSide": {
       "file": "object148_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28162,
-      "sha256": "2324197b2789f211f97c3f05cdd99dd0023108253afb9474ed553181237177e8"
+      "bytes": 27824,
+      "sha256": "796d569b8d486dd7251abd958f8c546d62bcdb7d5e31e774466e290315bbb996"
     },
     "markings": {
       "file": "object148_proto_markings.png",

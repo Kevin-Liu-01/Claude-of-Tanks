@@ -543,24 +543,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18996,
-      "sha256": "f0660b187c9586b1fd53143cafaff4a1c51be01451cb208223d6dbdd7bc0d9d6"
+      "bytes": 19012,
+      "sha256": "b17b52df8b8ec52165fb9baf0903b4b4e3bf6b8019883b53805a23a9ace4859f"
     },
     "modulesSide": {
       "file": "chieftain5_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20508,
-      "sha256": "dfea430268586ff43333a0fac8746df5df81cf0ee32f4fed750328f3b92b6c70"
+      "bytes": 18732,
+      "sha256": "d58e67a45b180d067faf555b997a0eb536acbb912c69344980971b0b51a0772f"
     },
     "crewSide": {
       "file": "chieftain5_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16450,
-      "sha256": "4fdcb2548e9fe00533bffb4cf5359b63f9db870e27fc1b4c86045b514ba28484"
+      "bytes": 17068,
+      "sha256": "573416484496e9460d0dd9ef99e5d02d10250beafd2a57f79c29432edfd44b5f"
     },
     "angle": {
       "file": "chieftain5_angle.webp",
@@ -622,7 +622,7 @@
       "file": "chieftain5_technical.json",
       "mime": "application/json",
       "bytes": 4424,
-      "sha256": "e9c0911cbc006f0103c26cfd8cf0432cc5bbe78c1b04847113a06bc2ca32dcf7"
+      "sha256": "38776a933b59496aeaf8bcd777bd46feb6c8fb21fbdc71f78a281a8cb88ae395"
     }
   }
 }

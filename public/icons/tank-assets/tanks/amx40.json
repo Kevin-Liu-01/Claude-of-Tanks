@@ -632,8 +632,8 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-0.9117,0.4213,-3.1721],
-        "max": [0.9117,1.5364,-1.6535],
+        "min": [-0.9117,0.4507,-2.5468],
+        "max": [0.8519,1.5364,-1.7429],
         "turretLocal": false
       },
       {
@@ -646,22 +646,22 @@
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [-0.9117,0.4213,-1.586],
-        "max": [0.9117,1.0973,-0.8099],
+        "min": [-0.4932,0.6564,-1.586],
+        "max": [0.8818,1.0973,-0.8099],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.8157,0.4213,-0.5737],
-        "max": [0.8157,0.9217,0.9786],
+        "min": [-0.4598,0.5979,-0.514],
+        "max": [0.4894,0.9217,0.9786],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.7651,0.0377,-1.7917],
-        "max": [-0.0994,0.4483,-1.1217],
+        "min": [0.0994,0.1844,-1.7917],
+        "max": [0.7651,0.4483,-1.1217],
         "turretLocal": true
       },
       {
@@ -789,7 +789,7 @@
     ]
   },
   "geometryHash": "3eeac37c",
-  "metadataHash": "9221fec1",
+  "metadataHash": "5674068d",
   "presentationAnchor": {
     "xM": 0.0015,
     "zM": -0.0029
@@ -846,24 +846,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22346,
-      "sha256": "84948b9e49f1a09abe7160ff4287ab6c09f4279393ebebeeba0518efaf10cd64"
+      "bytes": 22384,
+      "sha256": "536c91adb1a63c933aa6722812bd91c2e50f825455c3ecca9ef9f01183d7ff4e"
     },
     "modulesSide": {
       "file": "amx40_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23192,
-      "sha256": "f13133b8d7cad9b161000a0a5888ddb0fa0e001c34185092a3ad548e2e63c9d9"
+      "bytes": 22086,
+      "sha256": "43c595e16a167c46bc9aa56899703ba7fdfc26770a2bc21a7e812b3f5c524d50"
     },
     "crewSide": {
       "file": "amx40_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19452,
-      "sha256": "de589c88f132e4f316250f506d17636a9b81b22e628a8fffe886362ec74ae623"
+      "bytes": 19164,
+      "sha256": "d80325e79de5ff0b95b9a85ec5038a74c134f0eef62d4bdb04cc55a1090c0092"
     },
     "angle": {
       "file": "amx40_angle.webp",
@@ -924,8 +924,8 @@
     "technicalLabels": {
       "file": "amx40_technical.json",
       "mime": "application/json",
-      "bytes": 6264,
-      "sha256": "84d3d9bbd4377a6715b38a8c0d10103ad1dbeeb51f5ffe6fc3fdf393967f6895"
+      "bytes": 6270,
+      "sha256": "2525712a488fe46cac90493101c4ca7e8c6377e32a190aa1fb810596df011e8e"
     }
   }
 }

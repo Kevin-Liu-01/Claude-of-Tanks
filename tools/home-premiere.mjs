@@ -39,6 +39,8 @@ const text = (key) => {
   return EN[key];
 };
 const t = (key, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''} data-i18n="${key}">${esc(text(key))}</${tag}>`;
+/** Vetted catalog markup (a headline's .t-hollow word), which each locale places in its own word order. */
+const html = (key) => `<span data-i18n-html="${key}">${text(key)}</span>`;
 const tank = (id) => {
   const a = ASSETS[id];
   if (!a) throw new Error(`home-premiere: ${id} has no row in public/icons/tank-assets/`);
@@ -166,7 +168,7 @@ function heroBlock() {
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
     // duplicate it in hero"); the headline says what the game is, and its h1 names the game for assistive tech and search
-    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${t('home.hero.title')}</h1>`
+    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${html('home.hero.title')}</h1>`
     + `${t('home.hero.lede', 'p', 'hero__lede')}`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`

@@ -333,8 +333,8 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.1306,0.537,-4.1156],
-        "max": [1.1306,1.6434,-2.59],
+        "min": [-1.1306,0.537,-3.5174],
+        "max": [1.1306,1.5836,-2.59],
         "turretLocal": false
       },
       {
@@ -348,7 +348,7 @@
         "volumeId": "M05",
         "name": "fuelTank",
         "min": [0.4522,0.537,-2.5272],
-        "max": [1.1306,1.1902,-1.491],
+        "max": [1.1306,1.1902,-1.5502],
         "turretLocal": false
       },
       {
@@ -362,7 +362,7 @@
         "volumeId": "M07",
         "name": "radio",
         "min": [-0.9045,0.8436,-2.276],
-        "max": [-0.2826,1.4501,-1.334],
+        "max": [-0.2826,1.4501,-1.4223],
         "turretLocal": false
       },
       {
@@ -454,15 +454,15 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.256,0.8492,0.1533],
-        "max": [0.2034,1.2655,1.8702],
+        "min": [0.5646,1.0062,0.3568],
+        "max": [1.024,1.3118,1.8368],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "assistantDriver",
-        "min": [0.7037,0.7154,-0.0511],
-        "max": [1.1631,1.3933,1.6535],
+        "min": [-1.2131,0.7707,0.1419],
+        "max": [-0.7537,1.3007,1.6974],
         "turretLocal": false
       },
       {
@@ -488,8 +488,8 @@
       }
     ]
   },
-  "geometryHash": "552d845e",
-  "metadataHash": "f3eb1be4",
+  "geometryHash": "9f2ce042",
+  "metadataHash": "c2fa9fd6",
   "presentationAnchor": {
     "xM": 0,
     "zM": -1.0226
@@ -548,15 +548,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25626,
-      "sha256": "9abe659a3e92d30e86d093c36f2f3afe4bcff123cd657bb82e8a4cdd59aed534",
+      "bytes": 25688,
+      "sha256": "bdb4fc3b4719b4480a045e619b8b84396c02b4850e5008d39688611c2945b8ec",
       "thumbnail": {
         "file": "thumbs/m47_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10676,
-        "sha256": "ac934acc9239ed0f464d07c8d960cf3f4eccfc31a1050577f13ce6edfab56cf4"
+        "bytes": 10652,
+        "sha256": "05ea67f43d6a4c448257779bc6ece33bdc168a0c1d2fba3e224d95904429deb2"
       }
     },
     "top": {
@@ -564,16 +564,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10134,
-      "sha256": "cc9f419a5afb01261e19950b884a9dedd4da1bba1d990a19f674173c45be593c"
+      "bytes": 10178,
+      "sha256": "c12b2fb6c6bd12f865507421124bf1ce484dbb1d3d7c72eae4aaf4335dc46c2a"
     },
     "side": {
       "file": "m47_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11764,
-      "sha256": "3bfeb176991074275c4b6def11835f90a619796d83d0b8377007b67d8ea73f36"
+      "bytes": 11810,
+      "sha256": "56b4ef8fe41336305c6ec18425baa330d41c91f0a5649e7a985ba6f13d496733"
     },
     "topSilhouette": {
       "file": "m47_patton_top_silhouette.png",
@@ -588,32 +588,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4578,
-      "sha256": "03c3b0585868965bc0a8b8c37dfb1716e11ada14e8aec75f2e5c9ffb9935ea61"
+      "bytes": 4569,
+      "sha256": "6c7d5f81e56b7cc0a4f15f559254c44153dd7f17623f87989d67dbed210c2225"
     },
     "armorSide": {
       "file": "m47_patton_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26928,
-      "sha256": "71661b6450f0bb86639738363e0fafc0f44cd96a139c2fdfcbb0ef2f9656a627"
+      "bytes": 27008,
+      "sha256": "f810f97dafa77b149beea1e34259c50d6ff65a3f3e070640d5b21bf4d4ad4ca5"
     },
     "modulesSide": {
       "file": "m47_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28142,
-      "sha256": "952ff76a5e08c8e71254edffb75efcff83f9604bbbc656662c2db9c65c6f18e0"
+      "bytes": 27686,
+      "sha256": "e6881d412738ffda7c911b383c4f26ad03fe3e01c3b2dc1810219923101f312f"
     },
     "crewSide": {
       "file": "m47_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25368,
-      "sha256": "3bd240a79bce0836af2d3e299b0f84f10902f086f5efa3b93bdf31148baeeb24"
+      "bytes": 25820,
+      "sha256": "1226b126019b69cddef8ec2a874deebd94ee012d7d1f4c5ad9a786dcc188ad2d"
     },
     "markings": {
       "file": "m47_patton_markings.png",
@@ -626,8 +626,8 @@
     "technicalLabels": {
       "file": "m47_patton_technical.json",
       "mime": "application/json",
-      "bytes": 4707,
-      "sha256": "0537944ca6d2152dc03d10fc0549717d4a7a1fd06533353ed45e2ce3afe9832f"
+      "bytes": 4577,
+      "sha256": "c0876bf1d6ad028063b284c67d2684101521564df1b7b9b514204da64de18a1c"
     }
   }
 }

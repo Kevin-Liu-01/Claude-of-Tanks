@@ -785,24 +785,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29286,
-      "sha256": "f5dbae7b5c97846a12f4d6da93e7e8e15c2d6f8f95d8e13ec7574c6fea2b2af4"
+      "bytes": 29662,
+      "sha256": "08b711e1e22a87b87734d8ea1c29afd653e10f7295983ada123bb4504ffe2e19"
     },
     "modulesSide": {
       "file": "hayate_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35100,
-      "sha256": "9b2f104f0aa88851f4a7b600a1351908e53c299c6fb1c37dcd17026df4204e49"
+      "bytes": 33158,
+      "sha256": "7f773750fcd32492ae9039e31bf4f2aed7fa67a1d3cbb299def61f0291a832f4"
     },
     "crewSide": {
       "file": "hayate_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31232,
-      "sha256": "36ef53162d6b5fcc544c1c90b2663115fbcd89d623f72131188807f633fbf37f"
+      "bytes": 31392,
+      "sha256": "599e11f62f30ccf798311c081e8552315e214b893a3699dbc4f2f32182758b88"
     },
     "markings": {
       "file": "hayate_ifv_markings.png",
@@ -815,8 +815,8 @@
     "technicalLabels": {
       "file": "hayate_ifv_technical.json",
       "mime": "application/json",
-      "bytes": 5642,
-      "sha256": "0429f80f92cd24d1e0ac29afd636d7fd5d8ce70b16dd2bf75417f0eb19783ebd"
+      "bytes": 5644,
+      "sha256": "cadc826ca0b6ee06ae2f4112038f186390e3a592eef70214d5d26fb46b131786"
     }
   }
 }

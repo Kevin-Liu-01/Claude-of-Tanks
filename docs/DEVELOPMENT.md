@@ -28,7 +28,9 @@ Before publishing:
    every push, however small the change (owner 2026-09-23, after a push that turned `balanceMatchups` red on shared
    main for a night; since 266 balance is the manual `balance` suite, which `npm run test:recommend` names for the owner).
    `node tools/gate.mjs --baseline=<starting-base>` runs all of it in one
-   versioned command (below).
+   versioned command (below). The integrator runs the default tier and its smokes with
+   `COT_CAPTURE_PRIORITY=release`, so their browser receipts take the capture lock ahead of lane holds
+   (tools/capture-lock.mjs, 266); a lane never sets it.
    Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.

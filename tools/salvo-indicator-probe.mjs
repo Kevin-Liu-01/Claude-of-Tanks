@@ -14,6 +14,7 @@
 // Hold the probe mutex and run under nice -n 19 (header of tools/map-probe-runtime.mjs). Exit 1 when a case failed.
 import path from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import {
   isMainModule, openGamePage, parseProbeArgs, probeHelp, runProbeCli, withMapProbeSession, writeProbeReceipt,
 } from './map-probe-runtime.mjs';
@@ -101,16 +102,17 @@ async function stageCase(page, { id, label }, out) {
 
 async function runSalvoIndicatorProbe(options) {
   mkdirSync(options.out, { recursive: true });
-  const cases = [];
-  let ok = true, pageErrors = [];
-  await withMapProbeSession({
+  const cases = [], pageErrors = [];
+  let ok = true;
+  // a fresh server and browser per chunk of cases (tools/browser-id-chunks.mjs)
+  await eachBrowserChunk('tools/salvo-indicator-probe.mjs', options.cases, (chunk, { track }) => withMapProbeSession({
     root: options.root, cacheDir: options.cacheDir,
     launch: { ...SALVO_PROBE_VIEWPORT, executablePath: options.executablePath },
   }, async ({ browser, port }) => {
+    track(browser);
     const { page, errors } = await openGamePage(browser, { port, viewport: SALVO_PROBE_VIEWPORT, query: 'nogate&nosplash', readyTimeoutMs: 120000 });
-    pageErrors = errors;
     try {
-      for (const c of options.cases) {
+      for (const c of chunk) {
         try {
           const shots = await stageCase(page, c, options.out);
           cases.push({ ...c, shots });
@@ -123,9 +125,10 @@ async function runSalvoIndicatorProbe(options) {
         }
       }
     } finally {
+      pageErrors.push(...errors);
       await page.close().catch(() => {});
     }
-  });
+  }));
   const receipt = writeProbeReceipt(options, {
     ok, viewport: SALVO_PROBE_VIEWPORT, reticle: SALVO_PROBE_RETICLE, phases: SALVO_PROBE_PHASES,
     executablePath: options.executablePath ?? 'puppeteer', cases, pageErrors,

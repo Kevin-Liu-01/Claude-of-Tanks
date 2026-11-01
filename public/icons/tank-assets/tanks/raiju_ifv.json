@@ -833,24 +833,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42748,
-      "sha256": "28a9025fd5400fbaa6b96788b371afcbb6b82f3a0e9da05372e02d7df52ab741"
+      "bytes": 42738,
+      "sha256": "5e9eb3c5e367afed52be7288cc0a5d407f4b9409db50e73996a2e0f9b8611cae"
     },
     "modulesSide": {
       "file": "raiju_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41100,
-      "sha256": "177243c614d383cfca7aecfd228007aa0b715dbc34c2de3f653ff367f081399e"
+      "bytes": 39878,
+      "sha256": "f0002d4301b71e7cf18e4fb69f63a9d25b13740e7c8fe363f61a13accebce017"
     },
     "crewSide": {
       "file": "raiju_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36176,
-      "sha256": "e4e1c4aa15f4aa615ca3537e7d5d1c9e89e8486f6120725e02ac3d9ad43c07b7"
+      "bytes": 36186,
+      "sha256": "2597e0d4e84d161ed821fe8ccbd4a9d23e472193036ba407e85892443b79e499"
     },
     "angle": {
       "file": "raiju_ifv_angle.webp",

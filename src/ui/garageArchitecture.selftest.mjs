@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import os from 'node:os';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
+import { createStarvationMeter, threadCpuMs } from '../../tools/starvation-meter.mjs';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
   GARAGE_FACILITY_AXIS_YAW_RAD,
@@ -71,12 +71,35 @@ assert.match(stageSource, /podSideMat\.color\.copy\(platformEdge\)/,
 assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S]{0,240}alphaToCoverage: true/,
   'Verdant boot must seed the exact detailed-tree alpha shader before outdoor reveal');
 
+// (267, the load1 class) The timing budgets were only reported with the load above the CPU count. A build is synchronous
+// CPU work, so it is judged on the CPU the thread spent in it; a cold transaction (module load, asset preparation, build)
+// is judged net of the time the machine withheld from the thread (tools/starvation-meter.mjs). The negative control
+// plants in two kit builds: PLANT_MS blocked without CPU (not charged) and PLANT_MS spent (charged, then taken back out
+// so that Garage is still judged).
+const PLANT_MS = 150;
+const builds = [];
+const loadMeasuredKit = async () => {
+  const kit = await import('./garageEnvironmentKit.ts');
+  return {
+    ...kit,
+    buildGarageEnvironment(...args) {
+      const plant = builds.length === 1 ? 'blocked' : builds.length === 2 ? 'busy' : null;
+      const cpuFrom = threadCpuMs(), wallFrom = performance.now();
+      if (plant === 'blocked') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PLANT_MS);
+      if (plant === 'busy') while (threadCpuMs() - cpuFrom < PLANT_MS) { /* the build's own stall: CPU */ }
+      try { return kit.buildGarageEnvironment(...args); } finally {
+        builds.push({ plant, cpuMs: threadCpuMs() - cpuFrom, wallMs: performance.now() - wallFrom });
+      }
+    },
+  };
+};
+const meter = createStarvationMeter();
+meter.start();
 const scene = new THREE.Group();
-const controller = createGarageArchitectureController({}, scene);
+const controller = createGarageArchitectureController({}, scene, () => {}, loadMeasuredKit);
 const signatures = new Set();
 const shelterKinds = new Map();
-let maxBuildMs = 0;
-let maxColdTransactionMs = 0;
+const transactions = [];
 for (const variant of GARAGE_VARIANTS) {
   if (variant.id !== 'verdant_motor_pool') {
     const terraces = getGarageFacilityTerraces(variant);
@@ -103,10 +126,11 @@ for (const variant of GARAGE_VARIANTS) {
     }
   }
   const startedAt = performance.now();
+  const buildsBefore = builds.length;
   controller.setVariant(variant);
   const stats = await controller.whenReady();
-  maxColdTransactionMs = Math.max(maxColdTransactionMs, performance.now() - startedAt);
-  maxBuildMs = Math.max(maxBuildMs, stats.lastBuildMs);
+  const endedAt = performance.now();
+  transactions.push({ id: variant.id, startedAt, endedAt, wallMs: endedAt - startedAt, plant: builds[buildsBefore]?.plant ?? null });
   assert.equal(stats.key, variant.architecture);
   assert.equal(stats.mapId, variant.mapId);
   if (variant.id === 'verdant_motor_pool') {
@@ -305,16 +329,37 @@ assert.equal(shelterKinds.size, GARAGE_VARIANTS.length - 1, 'the nine outdoor Ga
 assert.equal(controller.stats().cached, 2);
 assert.ok(controller.stats().residentTextureSets <= 9,
   'PBR residency must remain bounded after visiting every environment');
-// Wall-clock budgets are only evidence on a machine that is not oversubscribed: with the one-minute load above the CPU
-// count (landing chains beside lanes and other sessions' suites, 2026-09-25) the numbers are reported, not asserted.
-const loadPerCpu = os.loadavg()[0] / Math.max(1, os.cpus().length);
-if (loadPerCpu > 1) {
-  console.log(`garageArchitecture.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs — timing budgets reported only: build ${maxBuildMs.toFixed(1)} ms (budget 100), cold transaction ${maxColdTransactionMs.toFixed(1)} ms (budget 750)`);
+// read once the meter has stopped: the interval holding a transaction's last stall closes at the sample after it
+meter.stop();
+for (const entry of transactions) entry.starvedMs = meter.starvedIn(entry.startedAt, entry.endedAt);
+// a build's cost is its CPU (the busy plant's PLANT_MS taken back out); a transaction's is its wall time net of starvation
+const buildCost = (build) => build.cpuMs - (build.plant === 'busy' ? PLANT_MS : 0);
+const maxBuildMs = Math.max(...builds.map(buildCost));
+const maxColdTransactionMs = Math.max(...transactions.map((entry) => entry.wallMs - entry.starvedMs - (entry.plant === 'busy' ? PLANT_MS : 0)));
+const blocked = builds.find((build) => build.plant === 'blocked'), busy = builds.find((build) => build.plant === 'busy');
+const blockedTransaction = transactions.find((entry) => entry.plant === 'blocked');
+console.log(`garageArchitecture.selftest: build ${maxBuildMs.toFixed(1)} ms of CPU at most (budget 100; wall up to ${Math.max(...builds.map((build) => build.wallMs)).toFixed(1)}), cold transaction ${maxColdTransactionMs.toFixed(1)} ms net of ${Math.max(...transactions.map((entry) => entry.starvedMs)).toFixed(0)} ms starved at most (budget 750); plants: blocked ${blocked.cpuMs.toFixed(1)} ms CPU of ${blocked.wallMs.toFixed(0)} wall, busy ${busy.cpuMs.toFixed(1)} ms CPU`);
+// (the block shows in the build's wall time and not its CPU: compared with another Garage's busy build it failed at load 300,
+// where contention doubled every build's CPU)
+assert.ok(blocked.wallMs - blocked.cpuMs >= PLANT_MS - 5 && blockedTransaction.starvedMs >= PLANT_MS - 20,
+  'the negative control: a build blocked without CPU is not charged, and its transaction is net of the block');
+assert.ok(busy.cpuMs >= PLANT_MS, 'the negative control: a build that spends the CPU is charged');
+// (267) The CPU clock takes preemption out, not the slower core or the memory contention a loaded machine also gives: at
+// load 160-166 the first build read 95-101 ms of CPU. Main's measured factor came first: a calibration kernel read before
+// and after a build differed 8-20 % at p90 (up to 45 %) at load 130-170, the thread moving between this M5 Max's Super
+// and Performance cores, over its 10 % bar, and the quiet Super-core baseline cannot be read while the lanes run. So the
+// share of the unplanted transactions' time this thread was starved is the proxy, measured, not guessed from load1:
+// past STARVED_SHARE_REPORTED the budgets are reported with it, not asserted. The controls above hold at any share.
+const STARVED_SHARE_REPORTED = 0.25;
+const unplanted = transactions.filter((entry) => entry.plant === null);
+const starvedShare = unplanted.reduce((sum, entry) => sum + entry.starvedMs, 0) / unplanted.reduce((sum, entry) => sum + entry.wallMs, 0);
+if (starvedShare > STARVED_SHARE_REPORTED) {
+  console.log(`garageArchitecture.selftest: the thread was starved ${(starvedShare * 100).toFixed(0)} % of its transactions (over ${STARVED_SHARE_REPORTED * 100} %): the budgets are reported, not asserted (build ${maxBuildMs.toFixed(1)} of 100 ms, cold transaction ${maxColdTransactionMs.toFixed(1)} of 750 ms)`);
 } else {
   assert.ok(maxBuildMs < 100,
-    `headless environment geometry construction exceeded budget (${maxBuildMs.toFixed(1)} ms)`);
+    `headless environment geometry construction exceeded budget (${maxBuildMs.toFixed(1)} ms of CPU; starved ${(starvedShare * 100).toFixed(0)} %)`);
   assert.ok(maxColdTransactionMs < 750,
-    `cold asynchronous Garage module transaction exceeded budget (${maxColdTransactionMs.toFixed(1)} ms)`);
+    `cold asynchronous Garage module transaction exceeded budget (${maxColdTransactionMs.toFixed(1)} ms net of starvation; starved ${(starvedShare * 100).toFixed(0)} %)`);
 }
 controller.dispose();
 assert.equal(scene.children.length, 0);

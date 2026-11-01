@@ -910,16 +910,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32160,
-      "sha256": "ccc7c50aa60c0151c4776ca5b0e8df1ee838a8e67757f50fe668b9b85025d833"
+      "bytes": 31356,
+      "sha256": "2178c41455bb6079d0c0b378192f061b5cfd0dd43781e19bfef6b69e62eb45f7"
     },
     "crewSide": {
       "file": "cv90105_tml_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29412,
-      "sha256": "8b4a31bff36c96646079049ccd3ee242aca8cfeedac2c358edc83add20e134bd"
+      "bytes": 29522,
+      "sha256": "8db4d538e685cef8c3e4d9afcb69e0c6e3fcd70cdb5936d272e7b0c868b0f5af"
     },
     "angle": {
       "file": "cv90105_tml_angle.webp",
@@ -981,7 +981,7 @@
       "file": "cv90105_tml_technical.json",
       "mime": "application/json",
       "bytes": 3894,
-      "sha256": "2b1d92a3c43e17d5c4fec45b523ca4832262ce1b245ab4c35ba83f1619df49d2"
+      "sha256": "1d13a911936df8ff64732bf6932c93a08719e79aba98aae02c20d64986b6efed"
     }
   }
 }

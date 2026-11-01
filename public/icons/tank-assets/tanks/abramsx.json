@@ -660,8 +660,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24486,
-      "sha256": "9d6fd045250ca0f3656991dc52e06b8f0560280740ac67bb0135990fdc1dc880"
+      "bytes": 24518,
+      "sha256": "cd200f6f255eb51c8f8ab68a81ac885788088fa4d6544e5a0dd3273c5c294381"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",

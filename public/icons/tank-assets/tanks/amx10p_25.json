@@ -2696,16 +2696,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34376,
-      "sha256": "97d417dfb92ca78222c7f7ffa2b33b5411dd45de13bb0e26ca1977f24b2ab3f9"
+      "bytes": 34858,
+      "sha256": "4ea5e3a102f1a57ba8187b9c610500f841927fc3662f29900a55ace7525e9c28"
     },
     "crewSide": {
       "file": "amx10p_25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31542,
-      "sha256": "397aedfd9ae0845cf111a8ba4ad21e2f2d08d5c4c0bfea2877084b907a633f13"
+      "bytes": 31524,
+      "sha256": "09aa2679303f3a0a5e55abadf232f788143b249b2c14b31d3b36ad769ed3afa8"
     },
     "angle": {
       "file": "amx10p_25_angle.webp",

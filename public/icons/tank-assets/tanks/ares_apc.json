@@ -871,16 +871,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35016,
-      "sha256": "bc72e1a01c252802cbe47475341f965b3963d59d011cb21016256631cae59919"
+      "bytes": 34294,
+      "sha256": "f5c294a0a0cf637175617df8f67720969608e0b18d4df6f2e584ec5d495aae1b"
     },
     "crewSide": {
       "file": "ares_apc_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30808,
-      "sha256": "9faa78dcb8c004e6d36fdb957f4166d42f50d5b1aa6e0eab0f2a73dcae29e45a"
+      "bytes": 31012,
+      "sha256": "69696ce893f2aa62fbeeb0778f4b71f2fe716275735ac7298a43a1c87ea1d815"
     },
     "angle": {
       "file": "ares_apc_angle.webp",

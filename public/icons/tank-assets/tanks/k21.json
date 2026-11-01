@@ -567,24 +567,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42900,
-      "sha256": "5afe4c372dc9e493ee1b68b6f35d79d12da262924f620e3d56b89a503d3a335f"
+      "bytes": 42970,
+      "sha256": "c1dab6f7e3b51f8e22d322c834ea7a31ca1633b7b96e492b78cc16552d15dd1a"
     },
     "modulesSide": {
       "file": "k21_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42926,
-      "sha256": "dba34213ca8fb6759c5940263b3eb7fb639313201c2de4b05b259fa582c4c084"
+      "bytes": 43134,
+      "sha256": "5d8a6b0bff2c76a871fd12f011dbc61be5da317452f2e0daa73b1e3e5a7b306e"
     },
     "crewSide": {
       "file": "k21_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38606,
-      "sha256": "c92a28e60f86d1802e3e2396df6ff7feda3387825fc7fb1f2cbef7460ed63191"
+      "bytes": 38756,
+      "sha256": "79bbd35a23a598cdcd37385f42582f52e574f10c67adfdc9150941930e64ba28"
     },
     "angle": {
       "file": "k21_angle.webp",
@@ -646,7 +646,7 @@
       "file": "k21_technical.json",
       "mime": "application/json",
       "bytes": 5200,
-      "sha256": "b2015b668b3b7ae2552e45c81768dd9f877e15bcb62a7a8a4e6bcaefa8872584"
+      "sha256": "7462741dbe49babf45b68e6fdab2f9dce7fc201d9b67c088d5f7d28287265367"
     }
   }
 }

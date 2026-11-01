@@ -901,24 +901,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23888,
-      "sha256": "270f140b555675b36979c20dbdd099eabcaa0afe3c6e6d3f9f4fcb1cc9928672"
+      "bytes": 23930,
+      "sha256": "15296fca432fd0c7e215a8bbc16c229859bd40891e990049eb8d6c8449a3d256"
     },
     "modulesSide": {
       "file": "merkava3d_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23816,
-      "sha256": "870c437a3949d0305d918f596dddc195bf43c34b04cdca3db8a71c113aac9981"
+      "bytes": 23622,
+      "sha256": "4499daab88d8769c5ae79d0daf033a651e4144e44b554248ac44ad0ce79aec38"
     },
     "crewSide": {
       "file": "merkava3d_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22672,
-      "sha256": "eda062ca9a96310c0d8d1a82e409ab97551b001a2f131c78d4c2872c2e3c3a97"
+      "bytes": 22484,
+      "sha256": "0a8dcc15fa57fbcf10b9d95a4ad79d96e88ef250b0ca82b18cf9034eff12bded"
     },
     "angle": {
       "file": "merkava3d_angle.webp",
@@ -980,7 +980,7 @@
       "file": "merkava3d_technical.json",
       "mime": "application/json",
       "bytes": 4247,
-      "sha256": "cb01d5107ed4ee890ba19a3a9e7d031a14e728103cf2adf7b0e21f501f5009c0"
+      "sha256": "d26bedaf368ac5c16727115d501b9b1eba257bbb1b582f93bb336ab19d527f95"
     }
   }
 }

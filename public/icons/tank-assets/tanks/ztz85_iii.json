@@ -1041,7 +1041,7 @@
     ]
   },
   "geometryHash": "36fae8e3",
-  "metadataHash": "a9c2c038",
+  "metadataHash": "e645f6bd",
   "presentationAnchor": {
     "xM": 0.0002,
     "zM": -0.163
@@ -1146,8 +1146,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19046,
-      "sha256": "3d495365d9c5739d010d7e69aa4733d4d312b6ed32e32cdc1f67b6236e6b66a4"
+      "bytes": 19060,
+      "sha256": "0173899b5657e63c8a6e217c0d0c89e2b9b680d5b0ef764ef1e7dc618b796a46"
     },
     "modulesSide": {
       "file": "ztz85_iii_modules_side.webp",
@@ -1176,8 +1176,8 @@
     "technicalLabels": {
       "file": "ztz85_iii_technical.json",
       "mime": "application/json",
-      "bytes": 5448,
-      "sha256": "2e58196b64fbeeb46789ebaecc1c641e7a3cae883fe51885ddc7c0a9ebaa267f"
+      "bytes": 5460,
+      "sha256": "2feb5915784f6be8f908a3b3a3e131e7b1f52f786e321a681f61b52029bb123f"
     }
   }
 }

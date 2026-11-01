@@ -681,24 +681,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35886,
-      "sha256": "9e6504d010ab5897cdb50c2b4114e28b42427edfb0c818f99be564dc87a60736"
+      "bytes": 35878,
+      "sha256": "14f539b60632e97d626c32fdbadf77cf878d48b0d97698c5e77f8c0a2d7b200d"
     },
     "modulesSide": {
       "file": "warrior_tes_h_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36036,
-      "sha256": "967c84fa15b34bd9ed30e0fcdf2bf039015480657c5a99770792ad1e36499c47"
+      "bytes": 35106,
+      "sha256": "c945a47f2477b253b95fd2977a73c29946d655a2a1ea629dcc5480ad7b3845f9"
     },
     "crewSide": {
       "file": "warrior_tes_h_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33588,
-      "sha256": "81fb4869a5c03c30dc6c6810aa82313bb94caab7389660ddeddedb02be342be2"
+      "bytes": 33470,
+      "sha256": "b72ff07c84d96b859d63cbf77ff15661584a8a4a2542d879a2d9044fc445bb70"
     },
     "angle": {
       "file": "warrior_tes_h_angle.webp",
@@ -760,7 +760,7 @@
       "file": "warrior_tes_h_technical.json",
       "mime": "application/json",
       "bytes": 5508,
-      "sha256": "dfbcaf2db3587357c81fd149607c07e9528ed90272913e1cea6bbfc980233cef"
+      "sha256": "e903a48ca6d0c1dd16488dfc42f4fbc2c3836d09fb2b6dfc5ae952ead3ba72f6"
     }
   }
 }

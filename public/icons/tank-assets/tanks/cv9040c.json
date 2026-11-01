@@ -1240,7 +1240,7 @@
       }
     ]
   },
-  "geometryHash": "75125363",
+  "geometryHash": "68ab2078",
   "metadataHash": "7d29912c",
   "presentationAnchor": {
     "xM": 0.0006,
@@ -1298,39 +1298,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46550,
-      "sha256": "8416a4ecd040976bb7c3293fea385c3931b18399ebdf9af20d61011ff99eb249"
+      "bytes": 45280,
+      "sha256": "fedc2511124c41e9cfcd540b51da8be437dcdf705abf0dcad7abc9bf27994cab"
     },
     "modulesSide": {
       "file": "cv9040c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47790,
-      "sha256": "58059f31dbea048aa3bc8d78bb68eda53650b390ee30804ff2fe49c7e9c5186c"
+      "bytes": 45918,
+      "sha256": "994d7e21b51bd42f0f7e3504d10b518de0f71b42d92bc6cdd29ec19d5dcdc44f"
     },
     "crewSide": {
       "file": "cv9040c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42052,
-      "sha256": "1bbbd06e3fc146993cc58571db92a1d9bee8d999045e5bef903d4bfa432f5d7a"
+      "bytes": 40732,
+      "sha256": "2a4fe20b82cefb7cb118da6314655d4d4e9568df5e951d4eae3682ef0b4d1555"
     },
     "angle": {
       "file": "cv9040c_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31522,
-      "sha256": "51ebd55d3a89fd51f02247337a7d27d9676511b1fcb1c8b9ff74200b307327a4",
+      "bytes": 30382,
+      "sha256": "59dfbb6d03b20996cb1a7830103e4e721ec52d007dd48be58ae83717af4b16ad",
       "thumbnail": {
         "file": "thumbs/cv9040c_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11974,
-        "sha256": "5bfcf930f3ac9544cf09a428484b256dfd56bc54bb5dabbefc27b21dc38f5238"
+        "bytes": 11354,
+        "sha256": "6750f058d1b6d78fb8dbdb8b62955d2dd5124edfed087029651eb59d4e93bfb1"
       }
     },
     "top": {
@@ -1338,16 +1338,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30000,
-      "sha256": "fd37d1ff1dbd00ed0c0f56df75da2e57caa3c5ea7780c4a6fff6e37a8e2ec677"
+      "bytes": 29820,
+      "sha256": "54bc7f1b9f32e5b53ddfdb38baf50546efc7aed4ad38b636288e8fd6d35c25b3"
     },
     "side": {
       "file": "cv9040c_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17010,
-      "sha256": "cf8bba949aa87b8312289d3c477b5afac0802d5857ba6eae08cdb3c5b618bd44"
+      "bytes": 18140,
+      "sha256": "4519a1b027b3f5a23d99e5900b98b29c12d5966c7e57cee0f1ab38af7f4b3e3f"
     },
     "topSilhouette": {
       "file": "cv9040c_top_silhouette.png",
@@ -1355,15 +1355,15 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 1778,
-      "sha256": "d45fcd2fd89f1c66e8d5e7883ed5cc858f0784628160eed0087e0cbb93591e58"
+      "sha256": "b60f399bd5e8e60748530ed192e47765a8cc98f5cc687e83bd075ed0ff3ae073"
     },
     "sideSilhouette": {
       "file": "cv9040c_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5843,
-      "sha256": "3994608ccf4ca137e69536c4b6334f4f170431996993be0f2e2480c7b6c8eb9b"
+      "bytes": 5616,
+      "sha256": "c1a80cf4b2ffaed507c851baca748157611ac7eb2121565d19e3317a901aecce"
     },
     "markings": {
       "file": "cv9040c_markings.png",
@@ -1376,8 +1376,8 @@
     "technicalLabels": {
       "file": "cv9040c_technical.json",
       "mime": "application/json",
-      "bytes": 4999,
-      "sha256": "d3637f6bb2eeb98751b1560a8d9cce771228fa4083c9143ae4ca83905f9b5461"
+      "bytes": 4903,
+      "sha256": "d7f1ae245bf8e7434415b7e514248113a97f7d5517598b0e3819d6c2f7cdf454"
     }
   }
 }

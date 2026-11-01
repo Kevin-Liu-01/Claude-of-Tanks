@@ -14260,36 +14260,36 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.0511,0.4768,-3.3155],
-        "max": [1.0511,1.5295,-1.6603],
+        "min": [-1.0511,0.506,-2.6357],
+        "max": [1.0511,1.5295,-1.7194],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9039,0.5842,-3.1831],
+        "min": [-0.9039,0.7591,-3.1831],
         "max": [0.9039,1.3421,-2.6203],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.6306,0.4768,-1.6051],
-        "max": [1.2823,1.0994,-0.1154],
+        "min": [-1.2823,0.5361,-1.6051],
+        "max": [-0.6306,1.0994,-0.1154],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.7358,0.4428,-0.3361],
+        "min": [-0.7358,0.5322,-0.3361],
         "max": [0.7358,1.0088,0.988],
         "turretLocal": false
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.8117,0.1285,-1.5451],
-        "max": [-0.1353,0.6954,-0.9709],
+        "min": [0.1353,0.1285,-1.2867],
+        "max": [0.5176,0.5761,-0.9709],
         "turretLocal": true
       },
       {
@@ -14369,8 +14369,8 @@
       }
     ]
   },
-  "geometryHash": "d4208214",
-  "metadataHash": "8e7e2b4a",
+  "geometryHash": "b4859d45",
+  "metadataHash": "620d338d",
   "presentationAnchor": {
     "xM": 0.0009,
     "zM": -0.0012
@@ -14396,7 +14396,7 @@
       "trackPadSimplified": 1,
       "armorPaint": 11,
       "hullRubber": 1,
-      "gunmetal": 8,
+      "gunmetal": 7,
       "wood": 1,
       "unclassified": 19,
       "gearShadow": 1,
@@ -14427,39 +14427,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25772,
-      "sha256": "9207829d11757a1f55b187717ff8f46e803eed250844d614fd989d6974eca718"
+      "bytes": 25664,
+      "sha256": "7175835e70fd7ae38dc8f4ba258d1aeaed25ce705d504ed204963e0c4b1f3a4e"
     },
     "modulesSide": {
       "file": "t72b3m_2016_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23422,
-      "sha256": "c2ecb5b571fb8bbc14388666a65fa5e5761a00d278576ad96288f6577ff27d5b"
+      "bytes": 22842,
+      "sha256": "3ef3ab41b0f1bf0c9a40da24d967bdcd6b462b670a1a15f50c659281f1116f8c"
     },
     "crewSide": {
       "file": "t72b3m_2016_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19996,
-      "sha256": "7f56697765ec0c86ee436b3bc0a1e7b855f28c869cc3d16a8356b6f6217d9c19"
+      "bytes": 20340,
+      "sha256": "004f3b52d314570d333d5ee9d4f65de5e1e20068e6af216098ec8b774e6d9882"
     },
     "angle": {
       "file": "t72b3m_2016_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26290,
-      "sha256": "7700d90fa1b3430c4c8c8c8dcab59e6fc134059bd962382b3e805366f712f9df",
+      "bytes": 25646,
+      "sha256": "8691e8765b6dcf24697eff16539c4e8894e9cada58a39a2a161121fe569a5483",
       "thumbnail": {
         "file": "thumbs/t72b3m_2016_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10580,
-        "sha256": "50cc3a88e29d4360f4ad3a4e979ebfb606cd90f88ceea5a5de8b9623715b46cc"
+        "bytes": 10394,
+        "sha256": "b6819d2f5e89d5dfa5cad96d235bcc6005c6a9334a41f2b080826c7f2adabdeb"
       }
     },
     "top": {
@@ -14467,16 +14467,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13016,
-      "sha256": "91290bf499c0dfe80477f4b18e1f01c9adef0987a883379ade46193a0f129b38"
+      "bytes": 12984,
+      "sha256": "5e3e72a0464d9864796f6d9898d5a62976126116f9ae930d1e97685772891864"
     },
     "side": {
       "file": "t72b3m_2016_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10352,
-      "sha256": "a496bcae9a11a3b279554e5286913a3274654a3c843aea9c67273dc7d1acbd01"
+      "bytes": 10342,
+      "sha256": "3c5333ab70ae96c725f1aeacfba19765986d75251de1f938fffff979db99406d"
     },
     "topSilhouette": {
       "file": "t72b3m_2016_top_silhouette.png",
@@ -14491,8 +14491,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4238,
-      "sha256": "1f2843c63a54dfe26b53bab37db183f328ca1fe121a8cb7018b152dd1bbeca3c"
+      "bytes": 4292,
+      "sha256": "86752b1ec72c08c7f160081ea8110c0d438cde6f568ab41265c89a9f3a67b1ae"
     },
     "markings": {
       "file": "t72b3m_2016_markings.png",
@@ -14505,8 +14505,8 @@
     "technicalLabels": {
       "file": "t72b3m_2016_technical.json",
       "mime": "application/json",
-      "bytes": 4539,
-      "sha256": "c22a0867a9cf065f6172730752b4334b0622baf8ff4f7d0254f71d849166dc60"
+      "bytes": 4762,
+      "sha256": "2a032ea7b6577c20b6a47783ca894d92745c84d16151663227430eadfd0f3d4a"
     }
   }
 }

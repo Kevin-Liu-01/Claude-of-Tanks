@@ -669,24 +669,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22632,
-      "sha256": "98d6003bf2463dd393dfab7e626ed59ca7a74010e3a7ab8f3f9260dc8b703e9a"
+      "bytes": 22742,
+      "sha256": "b18b16b6d3489c69143e815cf41fc9f195d1f7476b3a049addc0a860f1bd5271"
     },
     "modulesSide": {
       "file": "k2b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22542,
-      "sha256": "82456c907ae490ebd9b45a8bb5881aefe78642f70a9292f37af89680d59e566f"
+      "bytes": 22860,
+      "sha256": "f89482610aa3f25ab4c767086fa0f7d8f1e63a40a9e109c92ef81f83ea3e8584"
     },
     "crewSide": {
       "file": "k2b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19158,
-      "sha256": "f35eca6c054a7d7e6410456380907bb49d3047b29f77e42731ac2447325eceee"
+      "bytes": 19048,
+      "sha256": "ca8b5dbd17e7e8d5c14c50e62753606c4761c60590bfffa7c5c59004c2739665"
     },
     "markings": {
       "file": "k2b_markings.png",
@@ -700,7 +700,7 @@
       "file": "k2b_technical.json",
       "mime": "application/json",
       "bytes": 5075,
-      "sha256": "3e9166d8d8be8d4c8c30c5622b9801b111c4ad8f1368845c5a4be9b769df10f5"
+      "sha256": "815d031923f8484da79db11e153e38aff14cd2c72a931fc0915c26a5c7b6231a"
     }
   }
 }

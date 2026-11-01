@@ -27390,7 +27390,7 @@
       }
     ]
   },
-  "geometryHash": "3b25c7b3",
+  "geometryHash": "24afd141",
   "metadataHash": "d1e6cc53",
   "presentationAnchor": {
     "xM": -0.0034,
@@ -27449,24 +27449,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29956,
-      "sha256": "0e0e064da5f8cf1d7bfc13d387b403a4592efeb2be10d4c17cdba2574195616d"
+      "bytes": 30050,
+      "sha256": "af132be62abee80f97ed75cb5d6560fb308cfd48a8abec3a4567c8197738c8cf"
     },
     "modulesSide": {
       "file": "t72b3_zubr_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24912,
-      "sha256": "b45302e350efe50cc88b610bd7e318d7ebda1fb70f84703b5e64702310185b4c"
+      "bytes": 24732,
+      "sha256": "fba9bdf63a881696e4192f4db06b870b5b1ecd069a674b1dc01df7f3cef6dece"
     },
     "crewSide": {
       "file": "t72b3_zubr_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21340,
-      "sha256": "8f53e0cf35f69b4ffc42158e129b3d923f871c0a3368a23b270aa3b5f4c34cd4"
+      "bytes": 21420,
+      "sha256": "ba8778f687d52f813f43d07ef632703176146ff3b0cc6d1d13d3d09d2dbe1e24"
     },
     "angle": {
       "file": "t72b3_zubr_angle.webp",
@@ -27489,16 +27489,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16036,
-      "sha256": "ce3acca0b7275dc9e6924dcb9ac579a868084dc3e85a7d53ec85664af5df135e"
+      "bytes": 16038,
+      "sha256": "6b6a1d8636e75a14e9bf492ac9b1c8c59bdcc02d70fd49e0b1ab1862a1ee4778"
     },
     "side": {
       "file": "t72b3_zubr_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9538,
-      "sha256": "b7001ce8d8d2041de8ac93e526fe4f788d058a942e204463523fe256f471be0e"
+      "bytes": 9548,
+      "sha256": "7efb48923d437d90f9cc1d30cee9316750989f06ca08a483536b77b7640898c6"
     },
     "topSilhouette": {
       "file": "t72b3_zubr_top_silhouette.png",
@@ -27513,8 +27513,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4070,
-      "sha256": "7bcd7ea623b6f41f5ecaba107da80f5c189e352ecca557057a291a8a2c43dedd"
+      "bytes": 4076,
+      "sha256": "651580152304abea4c5c6038f8c8c2f81c1ea45713aec6e154929c2ef410610b"
     },
     "markings": {
       "file": "t72b3_zubr_markings.png",
@@ -27527,8 +27527,8 @@
     "technicalLabels": {
       "file": "t72b3_zubr_technical.json",
       "mime": "application/json",
-      "bytes": 4817,
-      "sha256": "4eeaf4d1b3df4aae89815ef82e72e3e6e2c04d6178c0311095d5d32e037ba5b4"
+      "bytes": 4816,
+      "sha256": "4a1641e21c24c31247f63a2511d3fa93df4bb1efc8045e8a9309acfd6fdb46a1"
     }
   }
 }

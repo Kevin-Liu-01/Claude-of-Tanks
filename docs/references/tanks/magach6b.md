@@ -8,6 +8,10 @@ measured hull and turret ([m60a1.md](m60a1.md)); spec `src/vehicles/m60VariantSp
 its package (fleetBalancePass). Israel's special line at I. Implementation: first build; blind critics and the
 release check pending.
 
+Stage A (Main, 2026-10-31): no 3D model exists for this mark, so it passes stage A through the Latrun photo packet
+(`docs/references/photos/magach-latrun-20261031.json`, `tools/photo-reference-policy.mjs`), proved by
+`src/vehicles/profiles/pattonCastProportions.selftest.mjs`. Its round-18 blind photo critic scored 7/10.
+
 Exact vehicle: the IDF's **Magach 6B**, an M60A1 rebuilt in the early 1980s with Blazer explosive reactive armour, the
 low Urdan commander's cupola, the 105 mm M68 in its thermal sleeve and the .50 over the gun, as the Yad la-Shiryon
 (Latrun) museum tank.

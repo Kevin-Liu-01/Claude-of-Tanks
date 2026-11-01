@@ -1224,14 +1224,14 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1082,0.5735,-3.3113],
+        "min": [-1.1082,0.5735,-2.6904],
         "max": [1.1082,1.5109,-1.6557],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.9531,0.6647,-3.1789],
+        "min": [-0.9531,0.8701,-3.1789],
         "max": [0.9531,1.3397,-2.6159],
         "turretLocal": false
       },
@@ -1239,14 +1239,14 @@
         "volumeId": "M06",
         "name": "fuelTank",
         "min": [0.4433,0.5735,-1.5875],
-        "max": [1.1082,1.1318,-0.4626],
+        "max": [1.1082,1.1318,-0.5218],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
         "min": [-0.942,0.5735,-0.5357],
-        "max": [0.942,1.1464,0.7304],
+        "max": [0.942,1.0604,0.7304],
         "turretLocal": false
       },
       {
@@ -1338,7 +1338,7 @@
     ]
   },
   "geometryHash": "610d514f",
-  "metadataHash": "b2af4691",
+  "metadataHash": "71f63e77",
   "presentationAnchor": {
     "xM": -0.0018,
     "zM": -0.0813
@@ -1395,23 +1395,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 23486,
-      "sha256": "c39da7f13873d48acd9bc467fdace8800b85344172e8e1f5a2564b145c84b840"
+      "sha256": "96e39029b497da711b44b5dac246429e55122a69aee7a9167dff898b03c43509"
     },
     "modulesSide": {
       "file": "t80u_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23022,
-      "sha256": "974ef84a3a1a950f5e4595e468e317899215bda5963047664df16705a259c209"
+      "bytes": 22538,
+      "sha256": "958f5062aac5e70d60c46f3fecc24ba810191da5639c5eacae7e3b4a0784783f"
     },
     "crewSide": {
       "file": "t80u_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20592,
-      "sha256": "528800ae166d3e896b5fb05287daffbde84548c41ee18707221d01306c172b3c"
+      "bytes": 20458,
+      "sha256": "763e8da50431502120bebf0518a3265765bd6eddd47e542a2063cdd6d6f5028e"
     },
     "angle": {
       "file": "t80u_angle.webp",
@@ -1472,8 +1472,8 @@
     "technicalLabels": {
       "file": "t80u_technical.json",
       "mime": "application/json",
-      "bytes": 4698,
-      "sha256": "b15a1625f3c151137f2927b403d0d0859f1d73f7f7131a60f3fb105f5218e51c"
+      "bytes": 4696,
+      "sha256": "0d76723486ab5caa87cfb8ec48c28ef78ec7c7fd78c189617bbbec0af28ed688"
     }
   }
 }

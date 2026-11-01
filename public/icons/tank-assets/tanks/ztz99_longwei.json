@@ -1705,7 +1705,7 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1,0.45,-3.4399],
+        "min": [-1.1,0.48,-2.6923],
         "max": [1.1,1.74,-1.6158],
         "turretLocal": false
       },
@@ -1838,8 +1838,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2297,0.4868,0.9626],
-        "max": [0.2297,1.4249,2.5611],
+        "min": [-0.2297,0.5238,1.7126],
+        "max": [0.2297,1.1318,3.3024],
         "turretLocal": false
       },
       {
@@ -1858,8 +1858,8 @@
       }
     ]
   },
-  "geometryHash": "c938c181",
-  "metadataHash": "d6fb6876",
+  "geometryHash": "03883ab1",
+  "metadataHash": "c84b9878",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": -0.0648
@@ -1918,15 +1918,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26322,
-      "sha256": "7c6665fe00a8229710a17c90b2138e0a7120e6e067beeda269ca260c5cf0fb7d",
+      "bytes": 26320,
+      "sha256": "b0997afc1be98afe217836527a67b6ef991ceaf9858fa8ea40228fcb3a138257",
       "thumbnail": {
         "file": "thumbs/ztz99_longwei_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10946,
-        "sha256": "73a59fa439990d376d3cb8dba3bbc55bfc7b87cc6c5195a0f7d8f0759b122e7f"
+        "sha256": "2570084d0f4fd0fa8a4e861739af8767469d7a6dcaf322fccbd2a04fcf04fc6d"
       }
     },
     "top": {
@@ -1966,24 +1966,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21234,
-      "sha256": "8a2a3aac5a30e73c63d085a5162fb53d54f6d9f439b5968355b96b064d2a6ffa"
+      "bytes": 21336,
+      "sha256": "7de0da3c6fc79c1d3da6665c1001913c5e95e60f58d71a8a8d2907177917ca7c"
     },
     "modulesSide": {
       "file": "ztz99_longwei_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19516,
-      "sha256": "222fc2905b15f79ed2fd3be4468ba7e89aceb480fbab3bb03554db165db2bd3d"
+      "bytes": 19258,
+      "sha256": "96a24193d9b1e05b794f0f2d8a090ae3a8e7f502c9728c81e08bd3b2494ce84a"
     },
     "crewSide": {
       "file": "ztz99_longwei_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15768,
-      "sha256": "8129c6d3b9f35f6c7da679cc1644da97d7eddec51932eeb826ce16d49d5fb9cb"
+      "bytes": 15810,
+      "sha256": "b8b313976e9eeab8f775230465ee6395f26c56988e253dbdb2de8636c62ffd32"
     },
     "markings": {
       "file": "ztz99_longwei_markings.png",
@@ -1997,7 +1997,7 @@
       "file": "ztz99_longwei_technical.json",
       "mime": "application/json",
       "bytes": 5656,
-      "sha256": "1db7c6d5e5375ef9a416fbd26a21756eeca7dc10c08ba95517e9850a48425aef"
+      "sha256": "6679e26267822b9aa0a06da9af99f974e8810afa501c4ed40432ff5fef783f5c"
     }
   }
 }

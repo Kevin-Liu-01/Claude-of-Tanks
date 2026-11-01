@@ -63,8 +63,8 @@
         "hitboxId": "H01",
         "name": "upper_glacis",
         "physicalMm": 45,
-        "keMm": 120,
-        "ceMm": 150,
+        "keMm": 94,
+        "ceMm": 117,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -78,8 +78,8 @@
         "hitboxId": "H02",
         "name": "lower_front",
         "physicalMm": 600,
-        "keMm": 620,
-        "ceMm": 750,
+        "keMm": 484,
+        "ceMm": 585,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -93,8 +93,8 @@
         "hitboxId": "H03",
         "name": "hull_side_upper_R",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -108,8 +108,8 @@
         "hitboxId": "H04",
         "name": "hull_side_upper_L",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -123,8 +123,8 @@
         "hitboxId": "H05",
         "name": "hull_side_lower_R",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -138,8 +138,8 @@
         "hitboxId": "H06",
         "name": "hull_side_lower_L",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -243,8 +243,8 @@
         "hitboxId": "H13",
         "name": "hull_rear",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -258,8 +258,8 @@
         "hitboxId": "H14",
         "name": "hull_roof",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -993,8 +993,8 @@
         "hitboxId": "H63",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -1008,8 +1008,8 @@
         "hitboxId": "H64",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -1023,8 +1023,8 @@
         "hitboxId": "H65",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -1038,8 +1038,8 @@
         "hitboxId": "H66",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -1053,8 +1053,8 @@
         "hitboxId": "H67",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
-        "keMm": 40,
-        "ceMm": 40,
+        "keMm": 31,
+        "ceMm": 31,
         "kind": "main",
         "turretLocal": false,
         "verts": [
@@ -1068,8 +1068,8 @@
         "hitboxId": "T01",
         "name": "turret_cheek_R",
         "physicalMm": 700,
-        "keMm": 700,
-        "ceMm": 1000,
+        "keMm": 546,
+        "ceMm": 780,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1083,8 +1083,8 @@
         "hitboxId": "T02",
         "name": "turret_cheek_L",
         "physicalMm": 700,
-        "keMm": 700,
-        "ceMm": 1000,
+        "keMm": 546,
+        "ceMm": 780,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1098,8 +1098,8 @@
         "hitboxId": "T03",
         "name": "mantlet",
         "physicalMm": 350,
-        "keMm": 924,
-        "ceMm": 1100,
+        "keMm": 804,
+        "ceMm": 956,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1113,8 +1113,8 @@
         "hitboxId": "T04",
         "name": "turret_side_R",
         "physicalMm": 320,
-        "keMm": 350,
-        "ceMm": 500,
+        "keMm": 273,
+        "ceMm": 390,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1128,8 +1128,8 @@
         "hitboxId": "T05",
         "name": "turret_side_L",
         "physicalMm": 320,
-        "keMm": 350,
-        "ceMm": 500,
+        "keMm": 273,
+        "ceMm": 390,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1143,8 +1143,8 @@
         "hitboxId": "T06",
         "name": "turret_rear",
         "physicalMm": 80,
-        "keMm": 80,
-        "ceMm": 80,
+        "keMm": 62,
+        "ceMm": 62,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1158,8 +1158,8 @@
         "hitboxId": "T07",
         "name": "turret_roof",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -1173,8 +1173,8 @@
         "hitboxId": "T08",
         "name": "turret_sight_recess",
         "physicalMm": 250,
-        "keMm": 300,
-        "ceMm": 350,
+        "keMm": 234,
+        "ceMm": 273,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2118,8 +2118,8 @@
         "hitboxId": "T71",
         "name": "turret_hatch_01_front",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2133,8 +2133,8 @@
         "hitboxId": "T72",
         "name": "turret_hatch_01_rear",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2148,8 +2148,8 @@
         "hitboxId": "T73",
         "name": "turret_hatch_01_right",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2163,8 +2163,8 @@
         "hitboxId": "T74",
         "name": "turret_hatch_01_left",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2178,8 +2178,8 @@
         "hitboxId": "T75",
         "name": "turret_hatch_01_top",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2193,8 +2193,8 @@
         "hitboxId": "T76",
         "name": "turret_hatch_02_front",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2208,8 +2208,8 @@
         "hitboxId": "T77",
         "name": "turret_hatch_02_rear",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2223,8 +2223,8 @@
         "hitboxId": "T78",
         "name": "turret_hatch_02_right",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2238,8 +2238,8 @@
         "hitboxId": "T79",
         "name": "turret_hatch_02_left",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2253,8 +2253,8 @@
         "hitboxId": "T80",
         "name": "turret_hatch_02_top",
         "physicalMm": 45,
-        "keMm": 45,
-        "ceMm": 45,
+        "keMm": 35,
+        "ceMm": 35,
         "kind": "main",
         "turretLocal": true,
         "verts": [
@@ -2283,21 +2283,21 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.0952,0.5603,-3.6966],
+        "min": [-0.9768,0.5898,-3.2236],
         "max": [1.0952,1.739,-2.0414],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-1.0404,0.601,-3.6966],
+        "min": [-0.8918,0.6602,-3.6966],
         "max": [1.0404,1.3123,-3.1793],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.4928,0.5603,-1.9897],
+        "min": [0.4928,0.7081,-1.9897],
         "max": [1.0952,1.2106,-0.8517],
         "turretLocal": false
       },
@@ -2408,15 +2408,15 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.8047,0.877,1.4331],
+        "min": [-0.8047,0.877,1.46],
         "max": [-0.3453,1.3833,3.2255],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.8547,0.0728,0.2778],
-        "max": [-0.3953,0.7256,1.0607],
+        "min": [-0.8547,-0.65,-0.017],
+        "max": [-0.3953,0.7021,0.5779],
         "turretLocal": true
       },
       {
@@ -2435,8 +2435,8 @@
       }
     ]
   },
-  "geometryHash": "746c8dba",
-  "metadataHash": "24b8a8b5",
+  "geometryHash": "c63c18e8",
+  "metadataHash": "398ef3ab",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.216
@@ -2495,15 +2495,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27610,
-      "sha256": "b7c641d1b569f3deba078dc905a3a194d10b08b18d35cb9a6c01734ee95cc624",
+      "bytes": 27590,
+      "sha256": "67097a3e22385ceeccb8e73f9515759edeba95bcac4c163fc9ece3800f8aabb3",
       "thumbnail": {
         "file": "thumbs/leo2a4_v_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11054,
-        "sha256": "3a5dde61e10a3e92839e74e1af208f310590ddde7647706711d344e7045ab327"
+        "bytes": 11082,
+        "sha256": "d96e6e16c349a4dfe0fe05493ef2fec3c66c5bc4b0ed39e6e55645e0bfc6add9"
       }
     },
     "top": {
@@ -2511,16 +2511,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13196,
-      "sha256": "c7e6e990a1b47a1bcf3bf8a364425d1fc3e74e0c239b4e5231a7cfde8abc7a67"
+      "bytes": 13192,
+      "sha256": "a596f839ef03c4e3842c02d6eba0272231985b7ff3b990be1d0b4f19e3a30b4f"
     },
     "side": {
       "file": "leo2a4_v_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12168,
-      "sha256": "85b5e423348c07b5ca39e33fa295f86a298c8a2bec541538abff22fd20537812"
+      "bytes": 12132,
+      "sha256": "634e99d416ab963e4f9d4b4c553085d47a464a0676671331e7ad5c6710952ece"
     },
     "topSilhouette": {
       "file": "leo2a4_v_top_silhouette.png",
@@ -2535,32 +2535,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5064,
-      "sha256": "da3f6c238df1c874d809703c7ec247928389cf1e2fa5e199f645f6831b9a5a50"
+      "bytes": 5075,
+      "sha256": "2bfd739be784c2364d9005262508a042bac732aa55e206e461226ad868ee9bf5"
     },
     "armorSide": {
       "file": "leo2a4_v_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27438,
-      "sha256": "028a9aed50d0a637500db17d19db65f661ebb72449ed763859a8e1b01654da88"
+      "bytes": 27552,
+      "sha256": "9404b0c21f08d53087c001e317634fa667d3e9ab99daf3cf1c4a7708593dc2e7"
     },
     "modulesSide": {
       "file": "leo2a4_v_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27364,
-      "sha256": "3e9b198e76dd53ea2ed13205f27aecd216ad5ba129101c204d821e577c9f37d8"
+      "bytes": 27216,
+      "sha256": "40f709f7cc81812d59785bdff14925cd4dcede55a30631f784108ae1c88acec8"
     },
     "crewSide": {
       "file": "leo2a4_v_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25666,
-      "sha256": "93f7717ee7b6aefa35caadbe2b1b2eeac49385fcff3b8abd006f2fea0fe04a6f"
+      "bytes": 25336,
+      "sha256": "bde6b753ef78302f6ccbc18323eedf29f958e4ac61fba9bf6c18c7d9bf0c8c56"
     },
     "markings": {
       "file": "leo2a4_v_markings.png",
@@ -2573,8 +2573,8 @@
     "technicalLabels": {
       "file": "leo2a4_v_technical.json",
       "mime": "application/json",
-      "bytes": 4889,
-      "sha256": "c5e46b221af66a8db0b8a85f60a42b955c8db96a6101b708509ea9cee6532ea9"
+      "bytes": 4888,
+      "sha256": "92ab89bf1422dfdbaa551e5fc43ba81feb1c1b1905b10112e4ffddad96af924f"
     }
   }
 }

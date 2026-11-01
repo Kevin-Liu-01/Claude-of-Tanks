@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { battleKeepsRecords } from '../sim/matchRuleset.ts';
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
@@ -246,7 +247,8 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
     const event = recordOf(payload) ?? {};
     if (tally && event.attackerId === tally.playerId
         && event.targetId && event.targetId !== tally.playerId) {
-      tally.damage += Number.isFinite(event.damage) ? Math.max(0, Number(event.damage)) : 0;
+      tally.damage += hullPointsRemoved({ hpRemoved: typeof event.hpRemoved === 'number' ? event.hpRemoved : undefined,
+        damage: typeof event.damage === 'number' ? event.damage : undefined });
     }
   });
   bus.on('tank:destroyed', (payload) => {
