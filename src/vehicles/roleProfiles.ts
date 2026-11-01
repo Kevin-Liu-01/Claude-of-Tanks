@@ -274,6 +274,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   jpz_e100: { doctrine: 'siege', viewM: 365, still: 0.085, moving: 0.035 },
   type10: { doctrine: 'flanker', viewM: 425, still: 0.232, moving: 0.172 },
   type90: { doctrine: 'flanker', viewM: 405, still: 0.230, moving: 0.170 },
+  type90b: { doctrine: 'flanker', viewM: 405, still: 0.230, moving: 0.170 },
   amx40: { doctrine: 'flanker', viewM: 405, still: 0.236, moving: 0.176 },
   // 266: the Osório prototypes, the AMX-40's flankers (1,040 hp on 43.7 t); the P.1's LRS-5 sights without a thermal see less far
   osorio_p1: { doctrine: 'flanker', viewM: 395, still: 0.238, moving: 0.178 },

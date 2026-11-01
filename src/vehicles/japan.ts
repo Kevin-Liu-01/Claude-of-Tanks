@@ -4,13 +4,12 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import './profiles/miscSpecs.ts';
-import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
   FleetTankSpec,
 } from './specContracts.ts';
-import { reactivePlate, type ShellSpec, type Vec3Tuple } from './specHelpers.ts';
+import { reactivePlate, type ShellSpec } from './specHelpers.ts';
 import {
   bindFleetRegistries,
   cloneFleetVariant,
@@ -217,21 +216,3 @@ for (const box of JAPAN_SPECS.stb1.armor.crew) {
 }
 
 registerFleetSpecs(registries, JAPAN_IDS, JAPAN_SPECS);
-
-// Keep the donor armor row byte-stable for Type 90 cloning, then apply the
-// live Type 10 pair seats post-clone. The builder compensates the tube run to
-// preserve its certified muzzle station and overall length.
-const TYPE10_PAIR_RIG: Readonly<{
-  turretPivot: Vec3Tuple;
-  gunPivot: Vec3Tuple;
-}> = Object.freeze({
-  turretPivot: [0, 1.8027777777777776, 0.2713333333333332],
-  gunPivot: TYPE10_GUN_SEAT.turretLocalPivot,
-});
-
-for (const id of ['type10_tk_x', 'type10b'] as const) {
-  const armor = registries.tankSpecs[id]?.armor;
-  if (!armor) throw new Error(`type10_tk_x pair rig re-auth: ${id} spec missing`);
-  armor.turretPivot = [...TYPE10_PAIR_RIG.turretPivot];
-  armor.gunPivot = [...TYPE10_PAIR_RIG.gunPivot];
-}

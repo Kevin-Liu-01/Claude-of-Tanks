@@ -10,7 +10,6 @@ import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {libraryStationGun} from './libraryRoofMg.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import {type90RoadWheelCore} from '../nationWheelConstructions.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -255,20 +254,53 @@ function optic(P:TankBuilderPort):void {
   }
 }
 
+// The roof M2 on its pintle (the Type 90's own mount; JGSDF Type 90 photographs, docs/references/photos/type90b-20261031.json):
+// a stepped boss on the roof, the pintle post with its lock block, the swivel head over it, and the cradle that carries
+// the gun with its ammunition can and tray on the gun's right, the curved feed chute from the can over into the
+// receiver, and the spade grips and sight at the back. The post stands at the source's station (x 0.084, z 0.420) and
+// the bore at its measured 2.8638 (the receiver's underside 5 mm into the post's top).
+const M2_POST={x:.084077,z:.420359,roofY:2.459472,headY:2.80,boreY:2.8638} as const;
+
+/** The crew M2's muzzle z at true class length, read off the fleet's construction of it (libraryRoofMg.ts). */
+function m2MuzzleZ(pivotZ:number):number {
+  const bounds=new THREE.Box3(),part=new THREE.Box3();
+  libraryStationGun({add(_slot,g,x,y,z){
+    g.computeBoundingBox();part.copy(g.boundingBox!).translate(new THREE.Vector3(x,y,z));bounds.union(part);g.dispose();
+  }},{cls:'m2',x:M2_POST.x,boreY:M2_POST.boreY,pivotZ,crew:true,feed:'right'});
+  return bounds.max.z;
+}
+
 function roofWeapon(P:TankBuilderPort):void {
-  const w=sourceMachineGun(P,PIVOT);
-  w.add('turretDetail',box(.084133,.021078,.104978),.084077,2.470010,.420359);
-  w.add('turretDetail',cylinder(.03157,.127,16),.084077,2.5436,.420359);
-  w.add('turretDetail',box(.084133,.211,.104978),.084077,2.71185,.420359);
-  w.add('turretDetail',box(.168155,.210221,.210255),.084133,2.669693,.704187);
-  w.add('turretDetail',box(.063154,.073564,.126212),.084077,2.727552,.535954);
-  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
-  // M2 is the fleet's M2 in its crew form at true length (libraryRoofMg.ts libraryStationGun: spade grips, sight and its
-  // ammunition box on its left), in place of the drawn receiver, rod, box, chute, grips and sights. Its receiver's
-  // underside (51.5 mm under the bore) sits 5 mm into the post's top (2.8173), so the bore runs 48 mm under the drawn one
-  libraryStationGun(w,{cls:'m2',x:.084077,boreY:2.8638,pivotZ:.358595,crew:true,feed:'left'});
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
-  stationFromDrawnGun(w.finish(),{name:'type90XRoofM2',caliberMm:12.7});
+  const {x,z,roofY,headY,boreY}=M2_POST;
+  // the fixed post: a flanged boss seated 4 mm into the roof, the column and its traverse lock block
+  turret(P,'turretDetail',cylinder(.115,.012,24),x,roofY+.002,z);
+  turret(P,'turretDetail',KIT.cylY(.072,.088,.05,20),x,roofY+.029,z);
+  turret(P,'turretDark',cylinder(.042,headY-.035-(roofY+.054),16),x,(headY-.035+roofY+.054)/2,z);
+  turret(P,'turretDetail',box(.096,.085,.11),x,roofY+.165,z+.03);
+  turret(P,'turretDark',cylX(.014,.13,10),x,roofY+.165,z+.074);
+  turret(P,'turretDark',box(.03,.05,.03),x-.062,roofY+.165,z+.03);
+  const pivotZ=z+.02,muzzleZ=m2MuzzleZ(pivotZ);
+  const w=sourceMachineGun(P,PIVOT,{name:'type90XRoofM2',caliberMm:12.7,
+    yaw:[x,headY-.035,z],pivot:[x,headY,pivotZ],muzzle:[x,boreY,muzzleZ]});
+  // pitch: the gun, the cradle housing under its receiver, the trunnion through the cradle's cheeks
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the M2
+  // is the fleet's M2 in its crew form at true length (libraryRoofMg.ts libraryStationGun: spade grips, sight and its
+  // ammunition can, here on its right as on the Type 90's mount)
+  libraryStationGun(w,{cls:'m2',x,boreY,pivotZ,crew:true,feed:'right'});
+  w.add('turretDetail',box(.13,.07,.50),x-.012,headY-.012,z+.05);                 // cradle housing
+  w.add('turretDark',box(.134,.012,.46),x-.012,headY+.026,z+.05);                  // its top seam under the receiver
+  for(const side of [-1,1])w.add('turretDetail',box(.014,.075,.17),x+side*.072,headY+.008,pivotZ);
+  w.add('turretDark',cylX(.018,.17,12),x,headY,pivotZ);                           // trunnion pin
+  w.add('turretDetail',box(.06,.035,.08),x,headY+.03,z+.31);                      // front rest under the barrel
+  // the curved feed chute: a C of plate from the can's mouth up and over into the receiver's right side
+  const chute=new THREE.TorusGeometry(.085,.02,6,16,Math.PI);
+  chute.scale(1,1,3.4);chute.rotateY(Math.PI/2);chute.rotateZ(-Math.PI/2);
+  w.add('turretDetail',chute,x-.10,boreY-.035,z+.02);
+  w.stage('yaw');
+  // yaw: the swivel head on the post's top
+  w.add('turretDetail',cylinder(.05,.064,16),x,headY-.035,z);
+  w.add('turretDetail',box(.11,.022,.12),x,headY-.006,pivotZ);
+  w.finish();
 }
 
 function smokeBank(P:TankBuilderPort,side:number):void {
@@ -324,7 +356,12 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=TYPE90_X_DATUMS.muzzleZ-GUN[2];
 }
 
-function buildType90X(P:TankBuilderPort):void {
+interface Type90XBuildOptions {
+  /** False where a variant seats its own roof station (the Type 90 (B)'s remote M2, type90B.ts). */
+  readonly roofM2?:boolean;
+}
+
+export function buildType90X(P:TankBuilderPort,{roofM2=true}:Type90XBuildOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
   hull(P);
@@ -352,9 +389,9 @@ function buildType90X(P:TankBuilderPort):void {
     }),botY,.389),
     topY:1.242,botY,paintedEnds:true,coveredTop:true,arms:true,
   });
-  turretArmor(P);basket(P);optic(P);roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
+  turretArmor(P);basket(P);optic(P);if(roofM2)roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
   P.topY=3.153229-PIVOT[1];
   P.hullG.userData.xRebuild={candidate:'type90',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE90_X_PROFILES={type90:{build:buildType90X}} as const;
+export const TYPE90_X_PROFILES={type90:{build:(P:TankBuilderPort)=>buildType90X(P)}} as const;

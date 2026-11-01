@@ -26,6 +26,7 @@ import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
 import { applyCenturionGunPitch } from './centurionGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
 import { applyT90MarkSourceFrames } from './t90MarkFrames.ts';
+import { applyType10FamilyFrames } from './type10FamilyFrames.ts';
 
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
@@ -58,6 +59,7 @@ import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts'
 import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
+import './type90bSpecs.ts';
 import './christian2Specs.ts';
 import './m48VariantSpecs.ts';
 import './shotKalSpecs.ts';
@@ -111,5 +113,6 @@ applyTurretScaleGunPitch(TANK_SPECS);
 applyCenturionGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyT90MarkSourceFrames(TANK_SPECS);
+applyType10FamilyFrames(TANK_SPECS);
 applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();

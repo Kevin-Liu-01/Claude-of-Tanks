@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "type10_tk_x": {
+      "name": "Type 10 (TK-X)",
+      "authority": "Release 267 (owner 2026-10-31, \"make that part of a japan new model line where we update the type 10b and type 10 tk-x a lot too\"; Main 2026-10-31: one base, true size): the TRDI TK-X prototype (unveiled 2008, prototypes 99-0237 to 99-0240) on the modern Type 10 (profiles/type10X.ts) in its prototype forms, which TRDI's trial photographs and the change list of the prototype-to-production programme (Japanese Wikipedia, after Maru 2012) show: plain side blocks with seams and no stowage doors, four separate round smoke ports a side, the open basket fence, the muzzle mirror on the gun's upper left, and a trials rack behind the commander's sight. The production Type 10 print it was registered against until 267 is not the prototype and is deregistered (tools/procedural-fidelity.html).",
+      "sources": [
+        "https://www.hyperdouraku.com/military/type10mbt/",
+        "https://commons.wikimedia.org/wiki/File:Type_10_tank_.50_cal.jpg",
+        "https://commons.wikimedia.org/wiki/File:Early_Type_10_from_front.jpg",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type_10_Tank_(99-0238,_Prototype_No.2)_front_view_at_Camp_Tsuchiura_September_28,_2025.jpg",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type_10_Tank_(99-0238,_Prototype_No.2)_left_front_view_at_Camp_Tsuchiura_September_28,_2025_01.jpg",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type_10_Tank_(99-0239,_Prototype_No.3)_left_rear_top_view_at_Camp_Fuji_October_5,_2025.jpg",
+        "https://commons.wikimedia.org/wiki/File:Japanese_Type10_Tank_Side_View.jpg",
+        "https://commons.wikimedia.org/wiki/File:Type_10_Prototype_(Rear_View).jpg",
+        "https://www.mod.go.jp/atla/research/gaibuhyouka/pdf/TK-X_21.pdf",
+        "https://ja.wikipedia.org/wiki/10%E5%BC%8F%E6%88%A6%E8%BB%8A",
+        "https://en.wikipedia.org/wiki/Type_10_(tank)"
+      ],
+      "widthM": 3.389,
+      "overallLengthM": 9.42,
+      "tallestM": 4.122,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the modern Type 10 it draws: 9.42 m gun forward (the prototype placard and Gunji Kenkyu's table: 9.42 m), 3.389 m over the skirts (the modern Type 10's source width; the published 3.24 m conflict is recorded in docs/references/tanks/type10_x.md), 4.122 m to the whips' tips (the roof at 2.21 m, published 2.30 m).",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/type10Marks.selftest.mjs"
+    }
+  }
+}

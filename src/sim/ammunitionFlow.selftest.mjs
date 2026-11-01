@@ -211,6 +211,8 @@ const laterChannelCounts = {
   t72b3m_hetman_ii: 3, t72b3_zubr_ii: 3,
   // (the Type 10 Kaitaku, 1cb19b32da/8295c63e03) the Type 10's own three rounds
   type10_dozer: 3,
+  // 267: the Type 90 (B), the Type 90's three rounds
+  type90b: 3,
   // (release 262 CN) the new T-55A's D-10T2S rounds
   t55a: 3,
   // 262: the ZTZ-20's and the ZTZ-20 Prototype's three 105 mm rounds

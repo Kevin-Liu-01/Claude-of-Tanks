@@ -626,7 +626,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/jagdpanzerE100X.selftest.mjs',
     'src/vehicles/profiles/type10X.selftest.mjs',
     'src/vehicles/profiles/type10XRoofPanels.selftest.mjs',
+    // release 267: the TK-X and the Type 10B on the modern Type 10 (their photo packets' fixture), and the Type 90 (B)
+    'src/vehicles/profiles/type10Marks.selftest.mjs',
     'src/vehicles/profiles/type90X.selftest.mjs',
+    'src/vehicles/profiles/type90B.selftest.mjs',
     'src/vehicles/profiles/arieteX.selftest.mjs',
     'src/vehicles/profiles/arieteXSupplied.selftest.mjs',
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
@@ -752,9 +755,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
-    'src/vehicles/profiles/type10GunSeat.selftest.mjs',
-    'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',
-    'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
