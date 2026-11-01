@@ -556,6 +556,21 @@
       },
       {
         "hitboxId": "T16",
+        "name": "tkx_trial_module_L",
+        "physicalMm": 90,
+        "keMm": 220,
+        "ceMm": 750,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.1972,0.1117,2.2835],
+          [-0.1972,0.2917,2.2835],
+          [-0.5172,0.2917,2.2835],
+          [-0.5172,0.1117,2.2835]
+        ]
+      },
+      {
+        "hitboxId": "T17",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 45,
@@ -570,7 +585,7 @@
         ]
       },
       {
-        "hitboxId": "T17",
+        "hitboxId": "T18",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 45,
@@ -585,7 +600,7 @@
         ]
       },
       {
-        "hitboxId": "T18",
+        "hitboxId": "T19",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 45,
@@ -600,7 +615,7 @@
         ]
       },
       {
-        "hitboxId": "T19",
+        "hitboxId": "T20",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 45,
@@ -615,7 +630,7 @@
         ]
       },
       {
-        "hitboxId": "T20",
+        "hitboxId": "T21",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 45,
@@ -630,7 +645,7 @@
         ]
       },
       {
-        "hitboxId": "T21",
+        "hitboxId": "T22",
         "name": "turret_hatch_02_front",
         "physicalMm": 40,
         "keMm": 45,
@@ -645,7 +660,7 @@
         ]
       },
       {
-        "hitboxId": "T22",
+        "hitboxId": "T23",
         "name": "turret_hatch_02_rear",
         "physicalMm": 40,
         "keMm": 45,
@@ -660,7 +675,7 @@
         ]
       },
       {
-        "hitboxId": "T23",
+        "hitboxId": "T24",
         "name": "turret_hatch_02_right",
         "physicalMm": 40,
         "keMm": 45,
@@ -675,7 +690,7 @@
         ]
       },
       {
-        "hitboxId": "T24",
+        "hitboxId": "T25",
         "name": "turret_hatch_02_left",
         "physicalMm": 40,
         "keMm": 45,
@@ -690,7 +705,7 @@
         ]
       },
       {
-        "hitboxId": "T25",
+        "hitboxId": "T26",
         "name": "turret_hatch_02_top",
         "physicalMm": 40,
         "keMm": 45,
@@ -883,8 +898,8 @@
       }
     ]
   },
-  "geometryHash": "ffc055a8",
-  "metadataHash": "5825bf3d",
+  "geometryHash": "412d4a74",
+  "metadataHash": "ac3524e6",
   "presentationAnchor": {
     "xM": -0.0002,
     "zM": -0.0057
@@ -943,15 +958,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27904,
-      "sha256": "414564af4e4518db186f296845b8659438a3a1c6a848e66019528242a3a1b432",
+      "bytes": 27888,
+      "sha256": "10193237f6d84c060c02041609bbd36786d2f78ebf7af61809ef3970ff9bae98",
       "thumbnail": {
         "file": "thumbs/type10_tk_x_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11750,
-        "sha256": "28ae703c61ce8c99666bfe34d7a2b1ab3effa27b50fcfdc37a4a62b449299d97"
+        "bytes": 11742,
+        "sha256": "41d8b3b7c3a5a2048422241f9a1582d4c9dece803ae3deee1abda781ce5e2337"
       }
     },
     "top": {
@@ -991,8 +1006,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25392,
-      "sha256": "9789bb9d2c2b9efaaaa459db3d79f0b88b4ac96587b0cddbbfb2fb33de6a8ba3"
+      "bytes": 25360,
+      "sha256": "f0510cf593ed258a11b01c90af012c8139937dd2ba8f31d38bea579f36e19b1d"
     },
     "modulesSide": {
       "file": "type10_tk_x_modules_side.webp",
@@ -1022,7 +1037,7 @@
       "file": "type10_tk_x_technical.json",
       "mime": "application/json",
       "bytes": 5437,
-      "sha256": "9cee27a55ae7d2bb341a5c418f5496c1050fbc312e47f38dba9be667f31178f0"
+      "sha256": "f13766115b469328cdf6d63d727b98f5f7093fa99fb27eb7c2f531d2059cc790"
     }
   }
 }
