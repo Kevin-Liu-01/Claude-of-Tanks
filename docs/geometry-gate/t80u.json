@@ -1,6 +1,6 @@
 {
  "id": "t80u",
- "geoMin": 87.3,
+ "geoMin": 92.5,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -104,23 +104,23 @@
    ]
   },
   "actual": {
-   "heightM": 2.3329198526591064,
+   "heightM": 2.3027527855988597,
    "hullLengthM": 6.546253552073613,
    "overallLengthM": 9.522737502017991,
    "widthM": 3.5999366691894834
   }
  },
  "qualityBar": "exemplar",
- "gatePassed": false,
- "rawGeoMin": 87.34830293071482,
+ "gatePassed": true,
+ "rawGeoMin": 92.46654370007755,
  "rawComponents": {
   "wholeCurves": 92.46654370007755,
-  "dims": 87.34830293071482,
+  "dims": 95.30158730158728,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 92.5,
-  "dims": 87.3,
+  "dims": 95.3,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.3329198526591064,
+   "actual": 2.3027527855988597,
    "published": 2.2873072734382007,
-   "pct": 1.9941605463590566,
+   "pct": 0.675270539294083,
    "method": "paired identical masks in source-only fixed frame (the source raised 0.065 m, the build's declared offset)"
   },
   {
@@ -975,7 +975,7 @@
   "len": 6.652
  },
  "proceduralBodyExtent": {
-  "h": 2.333,
+  "h": 2.303,
   "len": 6.868,
   "roofFittingsTop": 2.745
  },
@@ -985,7 +985,8 @@
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
-   "pintleMG:browningDerivedMachineGunMount"
+   "pintleMG:browningDerivedMachineGunMount",
+   "weaponStationMount:t80uCommanderNsvtRiser"
   ],
   "reference": [
    "roofGunBoxes:mesh_324"

@@ -987,7 +987,8 @@
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
-   "pintleMG:browningDerivedMachineGunMount"
+   "pintleMG:browningDerivedMachineGunMount",
+   "weaponStationMount:t72buCommanderNsvtRiser"
   ],
   "reference": [
    "roofGunBoxes:mesh_324"

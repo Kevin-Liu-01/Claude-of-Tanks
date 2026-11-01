@@ -1,6 +1,6 @@
 {
  "id": "t90sm",
- "geoMin": 82,
+ "geoMin": 89.2,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -15,13 +15,13 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 81.98416820732311,
+ "rawGeoMin": 89.1863643380244,
  "rawComponents": {
   "hullCurves": 92.18713430502825,
   "stations": 93.90994125348001,
   "turretCurves": 89.1863643380244,
   "wholeCurves": 93.60880587047397,
-  "dims": 81.98416820732311,
+  "dims": 100,
   "floaters": 100
  },
  "components": {
@@ -29,7 +29,7 @@
   "stations": 93.9,
   "turretCurves": 89.2,
   "wholeCurves": 93.6,
-  "dims": 82,
+  "dims": 100,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -1042,8 +1042,8 @@
   {
    "name": "hullLengthM",
    "actual": 8.022678766286374,
-   "published": 7.77,
-   "pct": 3.2519789740846115
+   "published": 8.023,
+   "pct": 0.004003910178559161
   },
   {
    "name": "overallLengthM",
