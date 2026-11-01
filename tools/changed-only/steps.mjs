@@ -265,16 +265,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
   // sha256 (TABLES geometryGate `inputField`), so the step keys that file per id, and its server serves only the selected
   // ids' registered oracles beside GATE_PAGE_PUBLIC.
   'tools/geometry-gate.mjs': {
-    // 267 re-pin (reviewed): the new sites hash the selected ids' oracles against tools/oracle-pins.mjs (a static import,
-    // keyed with the tool), remove the records of ids outside the roster (its own outputs, docs/geometry-gate) and write
-    // --registry's file only when asked (the chain never passes it)
+    // 267 re-pin (reviewed): the new sites hash the selected ids' oracles against tools/oracle-pins.mjs (a static
+    // import, keyed with the tool), remove the records of ids outside the roster (its own outputs, docs/geometry-gate)
+    // and write --registry's file only when asked (the chain never passes it)
     pin: 'f19648a47bd64da9',
     reads: [],
     // public/: the oracles' presence and bytes for the ids it measures (keyed per id by the geometryGate.oracle rows) and
     // the files its server serves (the step's reads); docs/geometry-gate: its own records, raw-source comparisons and
     // ledger (the step's outputs), never another step's ledger in that directory
     covered: ['public', 'docs/geometry-gate'],
-    note: 'stats and hashes the selected ids\' oracles under public/ and reads, merges and prunes its own ledger and records',
+    note: 'hashes the selected ids\' oracles under public/; reads, merges and prunes its own ledger and records',
   },
   'tools/reference-glb-loader.ts': {
     pin: 'f68d2a7ef44b3f2d',
