@@ -242,7 +242,7 @@ Anatomy update deliberately refreshes **all** playable armor/module/crew cards
 and generated marking-seat receipts. Targeted assets then regenerate the nine
 views plus the angle thumbnail for changed IDs only. Preserve unrelated hero,
 top, side, silhouette and marking files. Selective generation requires an
-existing complete `public/icons/tank-assets.json`; `--allow-partial` is for
+existing complete manifest (`public/icons/tank-assets/`, a row file per tank); `--allow-partial` is for
 scratch output, not a loophole for an incomplete production manifest.
 
 [tank-release-plan.mjs](../../tools/tank-release-plan.mjs) is the current

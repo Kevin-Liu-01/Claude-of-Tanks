@@ -11,6 +11,7 @@
 // stairs and plinths stay structural.
 import * as THREE from 'three';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../../../engine/nightEmissionMaterial.ts';
+import { paneStackLayers } from '../../paneStack.ts';
 
 export type Vec3 = readonly [number, number, number];
 export type Rgb = readonly [number, number, number];
@@ -644,8 +645,32 @@ export class PartSink {
     }
   }
 
+  /**
+   * (local-fps-266) The farther faces of the building's pane stacks (a pane behind its frame, the dark behind a pane) into
+   * geometries of their own, userData.paneStackLayer: props.ts draws each layer a few depth steps behind (paneStack.ts).
+   */
+  private splitPaneStacks(): void {
+    const bucketOf = (key: string) => key.slice(0, key.indexOf('|'));
+    const groups = [...this.groups].filter(([, g]) => g.pos.length);
+    const paneKeys = groups.filter(([key]) => bucketOf(key) === 'glass' || bucketOf(key) === 'curtain');
+    if (!paneKeys.length) return;
+    const darkKeys = groups.filter(([key]) => bucketOf(key) === 'dark');
+    const others = groups.filter(([key]) => !['glass', 'curtain', 'dark'].includes(bucketOf(key))).map(([, g]) => g.pos);
+    const layers = paneStackLayers(paneKeys.map(([, g]) => g.pos), darkKeys.map(([, g]) => g.pos), others);
+    const split = ([key, g]: [string, Accumulator], of: number[]) => {
+      if (!of.some((layer) => layer > 0)) return;
+      const parts = new Map<number, Accumulator>();
+      of.forEach((layer, t) => copyTriangle(g, t, parts.get(layer) ?? parts.set(layer, emptyLike(g)).get(layer)!));
+      this.groups.set(key, parts.get(0) ?? emptyLike(g));
+      for (const [layer, part] of parts) if (layer > 0) this.groups.set(`${key}|L${layer}`, part);
+    };
+    paneKeys.forEach((entry, i) => split(entry, layers.panes[i]));
+    darkKeys.forEach((entry, i) => split(entry, layers.darks[i]));
+  }
+
   /** Finish: one geometry per (bucket, role), handed to the props bucket set. */
   finish(): RegionalParts {
+    this.splitPaneStacks();
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
@@ -666,6 +691,8 @@ export class PartSink {
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
       if (rest.includes('m')) geometry.userData.phoneOnly = true;
+      const layer = rest.find((r) => /^L\d$/.test(r));
+      if (layer) geometry.userData.paneStackLayer = Number(layer.slice(1));
       if (piece) geometry.userData.damagePiece = piece;
       if (tag) geometry.userData.partTag = tag;
       geometry.userData.uvJitter = 'none';
@@ -674,6 +701,21 @@ export class PartSink {
     }
     this.groups.clear();
     return parts;
+  }
+}
+
+/** An accumulator's per-vertex lists and their widths (a triangle is three vertices of each). */
+const ACCUMULATOR_WIDTHS = [['pos', 3], ['nor', 3], ['uv', 2], ['col', 3], ['mask', 1], ['shade', 1], ['tint', 3]] as const;
+
+function emptyLike(g: Accumulator): Accumulator {
+  return { pos: [], nor: [], uv: [], col: g.col ? [] : null, mask: g.mask ? [] : null, shade: g.shade ? [] : null, tint: g.tint ? [] : null };
+}
+
+function copyTriangle(from: Accumulator, t: number, to: Accumulator): void {
+  for (const [name, width] of ACCUMULATOR_WIDTHS) {
+    const src = from[name], dst = to[name];
+    if (!src || !dst) continue;
+    for (let i = t * 3 * width; i < (t + 1) * 3 * width; i++) dst.push(src[i]);
   }
 }
 

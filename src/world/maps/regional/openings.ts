@@ -116,8 +116,11 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   if (craft && pane === 'glass') {
     // (the facade craft's round 6; wave 241: "windows that are flat dark-blue panes") old glass never lies true in its
     // frame: each pane leans its own degree or two (the facade stream), so the sky and the street it reflects differ from
-    // window to window; it stays between the reveal's back and the glazing bars' faces
-    const fr = facadeRng(), lean = (fr() - 0.5) * 0.024, turn = (fr() - 0.5) * 0.016, o = back + 0.02;
+    // window to window; it stays between the reveal's back and the glazing bars' faces (local-fps-266: back + 0.004 to
+    // 4 mm short of the bars, back + 0.017 under the common frame; the lean and turn scaled into that range in their old
+    // proportion, where +-2 cm about back + 0.02 carried the glass through its bars and before its frame's corners)
+    const lo = 0.004, hi = Math.min(0.017, style.frameOut * 0.7 - 0.004), reach = Math.max(0, hi - lo) / 2;
+    const fr = facadeRng(), lean = (fr() - 0.5) * 2 * reach * 0.6, turn = (fr() - 0.5) * 2 * reach * 0.4, o = back + (lo + hi) / 2;
     const P = (du: number, dy: number) => facePoint(face, u + du * w / 2, y + h / 2 + dy * h / 2, o + dy * lean + du * turn);
     sink.quad(pane, P(-1, -1), P(1, -1), P(1, 1), P(-1, 1), { ...dec, uv: UV_WORLD });
   } else facePanel(sink, pane, face, u, y + h / 2, r > 0 ? back + 0.012 : 0.018, w, h, { ...dec, window: face.out });

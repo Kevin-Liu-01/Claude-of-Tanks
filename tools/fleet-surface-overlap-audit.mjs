@@ -5,9 +5,11 @@
 // Examples:
 //   node tools/fleet-surface-overlap-audit.mjs --ids=type10b --report-only
 //   node tools/fleet-surface-overlap-audit.mjs --check --out=/tmp/surface-overlaps.json
-import { launchGuardedBrowser } from './browser-launch.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -20,10 +22,10 @@ const option = (name, fallback = '') => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-surface-overlap-audit --ids');
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))
-  : 4;
+  : WORKER_PAGES;
 const outputPath = resolve(option('out', '.qa-device/fleet-surface-overlap-audit.json'));
 const check = args.includes('--check') && !args.includes('--report-only');
 const root = process.cwd();
@@ -39,46 +41,52 @@ const server = await createServer({
 });
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
-const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const tankAssets = readTankAssets(resolve(root, 'public/icons'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
 const rows = [];
-let nextIndex = 0;
 
 try {
-  await Promise.all(Array.from({ length: Math.min(workerCount, ids.length) }, async () => {
-    let page = await browser.newPage();
-    page.setDefaultTimeout(120000);
-    while (nextIndex < ids.length) {
-      const id = ids[nextIndex++];
-      const url = `http://127.0.0.1:${port}/tools/fleet-surface-overlap-audit.html?id=${encodeURIComponent(id)}`;
-      let row = null;
-      let lastError = null;
-      for (let attempt = 0; attempt < 2 && !row; attempt += 1) {
-        try {
-          await page.goto(url, { waitUntil: 'domcontentloaded' });
-          await page.waitForFunction('window.__SURFACE_OVERLAP_AUDIT_READY === true', { polling: 25 });
-          row = await page.evaluate(() => window.__SURFACE_OVERLAP_AUDIT);
-        } catch (error) {
-          lastError = error;
-          await page.close().catch(() => {});
-          page = await browser.newPage();
-          page.setDefaultTimeout(120000);
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs); the worker pages work through each chunk.
+  await eachBrowserChunk('tools/fleet-surface-overlap-audit.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    let nextIndex = 0;
+    try {
+      await Promise.all(Array.from({ length: Math.min(workerCount, chunk.length) }, async () => {
+        let page = await browser.newPage();
+        page.setDefaultTimeout(120000);
+        while (nextIndex < chunk.length) {
+          const id = chunk[nextIndex++];
+          const url = `http://127.0.0.1:${port}/tools/fleet-surface-overlap-audit.html?id=${encodeURIComponent(id)}`;
+          let row = null;
+          let lastError = null;
+          for (let attempt = 0; attempt < 2 && !row; attempt += 1) {
+            try {
+              await page.goto(url, { waitUntil: 'domcontentloaded' });
+              await page.waitForFunction('window.__SURFACE_OVERLAP_AUDIT_READY === true', { polling: 25 });
+              row = await page.evaluate(() => window.__SURFACE_OVERLAP_AUDIT);
+            } catch (error) {
+              lastError = error;
+              await page.close().catch(() => {});
+              page = await browser.newPage();
+              page.setDefaultTimeout(120000);
+            }
+          }
+          rows.push(row || { id, error: `audit page failed twice: ${lastError?.message || String(lastError)}` });
+          process.stdout.write(`\r[fleet-surface-overlap] ${rows.length}/${ids.length} ${id}          `);
         }
-      }
-      rows.push(row || { id, error: `audit page failed twice: ${lastError?.message || String(lastError)}` });
-      process.stdout.write(`\r[fleet-surface-overlap] ${rows.length}/${ids.length} ${id}          `);
+        await page.close();
+      }));
+    } finally {
+      await browser.close();
     }
-    await page.close();
-  }));
+  });
 } finally {
   process.stdout.write('\n');
-  await browser.close();
   await server.close();
   rmSync(cacheDir, { recursive: true, force: true });
 }
@@ -96,7 +104,7 @@ const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   method: 'same-facing cross-surface triangle intersection on quantized world-space planes; markings, shadow-only and polygon-offset materials excluded',
-  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets.json',
+  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets/',
   rosterCount: ids.length,
   summary: {
     buildFailures: failures.length,

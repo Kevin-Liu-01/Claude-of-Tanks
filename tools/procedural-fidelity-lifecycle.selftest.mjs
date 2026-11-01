@@ -9,11 +9,11 @@ import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from '.
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 11, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 12, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
   'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
-  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions', 'launchGuardedBrowser', 'OWNER_KIT_TARGETS',
+  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions', 'launchGuardedBrowser', 'eachBrowserChunk', 'OWNER_KIT_TARGETS',
   source.replace(/^import .+;\n/gm, ''));
 
 // The server binds BOUND_PORT, not the port it asked for (a busy port moved on, R4c 2026-10-16): every URL must use it.
@@ -113,6 +113,9 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
       boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions,
       // the guarded launch is tools/browser-launch.selftest.mjs's to prove; this fixture's browser is fake
       (launcher, options) => launcher.launch(options),
+      // (266) the fixture's ids are one chunk, launched the same way (tools/browser-launch-census.selftest.mjs proves the helper)
+      async (tool, list, chunkRun) => (list.length ? [await chunkRun([...list], { index: 0, count: 1,
+        launch: (launcher, options) => launcher.launch(options), track: (opened) => opened })] : []),
       // (262) no fixture id carries an owner kit (tools/owner-kit-targets.selftest.mjs proves the registry)
       {});
   }
@@ -121,6 +124,8 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
 }
 
 const allCleanup = ['browser:close', 'server:close', 'cache:close'];
+// (266) a run that scores reads the registry in a short-lived browser, then scores each chunk of ids in a fresh one
+const runCleanup = ['browser:close', ...allCleanup];
 for (const [stage, expectedCleanup] of [
   ['cache:create', []],
   ['server:create', ['cache:close']],
@@ -140,10 +145,11 @@ for (const [stage, expectedCleanup] of [
 for (const failures of [...allCleanup.map(stage => [stage]), allCleanup]) {
   const result = await scenario(null, failures);
   assert.ok(result.failure instanceof AggregateError, 'cleanup failure prevents a successful run');
-  assert.deepEqual(result.failure.errors, failures.map(stage => result.cleanup.get(stage)));
-  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), allCleanup);
+  const failed = result.events.filter(event => failures.includes(event));
+  assert.deepEqual(result.failure.errors, failed.map(stage => result.cleanup.get(stage)), 'every failed close, each browser\'s included');
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), runCleanup);
   assert.equal(result.writes.length, 0, 'cleanup failure cannot publish a passing report');
-  assert.equal(result.logs.filter(([label]) => label.startsWith('[fidelity cleanup ')).length, failures.length);
+  assert.equal(result.logs.filter(([label]) => label.startsWith('[fidelity cleanup ')).length, failed.length);
 }
 
 const combined = await scenario('page:goto', allCleanup);
@@ -155,7 +161,7 @@ assert.equal(combined.logs.filter(([label]) => label.startsWith('[fidelity clean
 for (const gatePassed of [true, false]) {
   const result = await scenario(null, [], gatePassed);
   assert.equal(result.failure, undefined);
-  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), allCleanup);
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), runCleanup);
   assert.deepEqual(result.writes.map(({ target }) => target), [
     '/fixture/.qa-dev/reports/procedural-fidelity.json', '/fixture/.qa-dev/reports/procedural-fidelity.md',
   ]);
@@ -185,7 +191,7 @@ for (const ids of [['ztz100_prototype', 'object695'], ['fixture_x', 'ztz100_prot
     assert.equal(row.designSha256, readConceptDesign(row.id).designSha256);
   }
   assert.equal(result.events.includes('browser:launch'), comparisons > 0);
-  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), comparisons ? allCleanup : []);
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), comparisons ? runCleanup : []);
 }
 for (const ids of [['unknown_tank'], ['fixture_x', 'fixture_x']]) {
   const result = await scenario(null, [], true, ids);
@@ -218,14 +224,14 @@ for (const ids of [['fixture_x'], ['fixture_x','unregistered_tank']]) {
   assert.equal(report.summary.unavailable, 1);
   assert.equal(report.summary.notApplicable, ids.includes('unregistered_tank') ? 1 : 0);
   assert.equal(result.process.exitCode, 1, 'registration still requires the actual reference file');
-  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), allCleanup);
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), runCleanup);
 }
 
 // R4c (2026-10-16): a timed-out first load is retried once on the bound origin; a second timeout fails the run
 {
   const retried = await scenario(null, [], true, ['fixture_x'], true, 1);
   assert.equal(retried.failure, undefined, 'one timed-out first load is retried');
-  assert.equal(retried.gotos.filter(url => url.endsWith('&registry=1')).length, 2);
+  assert.equal(retried.gotos.filter(url => url.endsWith('&registry=1')).length, 3, 'the retried registry load, then the chunk\'s first load');
   assert.equal(retried.writes.length, 2, 'the retried run publishes its report');
   const twice = await scenario(null, [], true, ['fixture_x'], true, 2);
   assert.match(twice.failure?.message ?? '', /Navigation timeout/, 'two timed-out first loads fail');

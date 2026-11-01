@@ -1808,6 +1808,7 @@
     "tools/steep-plane.selftest.mjs": 14000,
     "tools/studio-example-scenarios.selftest.mjs": 16000,
     "tools/studio-snow-contact.selftest.mjs": 33000,
+    "tools/tank-assets-layout.selftest.mjs": 9000,
     "tools/tank-id-codemod.selftest.mjs": 8000,
     "tools/tank-id-move-files.selftest.mjs": 1000,
     "tools/tank-id-rekey-assets.selftest.mjs": 19000,

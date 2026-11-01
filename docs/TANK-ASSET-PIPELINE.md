@@ -6,7 +6,8 @@ second hand-authored source of truth.
 
 ## Required outputs
 
-`public/icons/tank-assets.json` records all registered ids and these nine files:
+The manifest, `public/icons/tank-assets/` (an `index.json` header and one `tanks/<id>.json` row per tank, written and
+read through `tools/tank-assets-store.mjs`), records all registered ids and these nine files:
 
 | Output | Purpose |
 | --- | --- |

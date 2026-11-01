@@ -5,9 +5,11 @@
 // Usage:
 //   node tools/fleet-battle-views.mjs --out=/tmp/fleet-before
 //   node tools/fleet-battle-views.mjs --ids=m1a1_abrams_hc,t90am --distances=40,60,90
-import { launchGuardedBrowser } from './browser-launch.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -45,10 +47,10 @@ if (!['high', 'low'].includes(renderOptions.geometryQuality)
     || !(renderOptions.width >= 64 && renderOptions.width <= 4096 && renderOptions.height >= 64 && renderOptions.height <= 4096)) {
   throw new Error('Invalid render options');
 }
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
-  ? Math.max(1, Math.min(6, requestedWorkers)) : 4;
-const sourceManifest = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+  ? Math.max(1, Math.min(6, requestedWorkers)) : WORKER_PAGES;
+const sourceManifest = readTankAssets(resolve(root, 'public/icons'));
 const ids = selectedIds.length ? selectedIds : Object.keys(sourceManifest.tanks || {});
 const cacheDir = resolve('/tmp', `cot-fleet-battle-views-vite-${process.pid}`);
 
@@ -68,26 +70,23 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.httpServer.address().port;
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
 const jobs = ids.flatMap((id) => distances.map((distance) => ({ id, distance })));
 const assets = Object.fromEntries(ids.map((id) => [id, { assets: {} }]));
-let nextJob = 0;
 let completed = 0;
 mkdirSync(resolve(outDir, 'views'), { recursive: true });
 
-try {
-  await Promise.all(Array.from({ length: Math.min(workerCount, jobs.length) }, async () => {
+/** One browser chunk's jobs, shared by its worker pages. */
+async function renderChunk(browser, chunkJobs) {
+  let nextJob = 0;
+  await Promise.all(Array.from({ length: Math.min(workerCount, chunkJobs.length) }, async () => {
     const page = await browser.newPage();
     page.setDefaultTimeout(120000);
     await page.goto(`http://127.0.0.1:${port}/tools/fleet-battle-views.html`, {
       waitUntil: 'domcontentloaded',
     });
     await page.waitForFunction('window.__BATTLE_VIEW_READY === true');
-    while (nextJob < jobs.length) {
-      const { id, distance } = jobs[nextJob++];
+    while (nextJob < chunkJobs.length) {
+      const { id, distance } = chunkJobs[nextJob++];
       const rendered = await page.evaluate(
         (tankId, distanceM, options) => window.__RENDER_BATTLE_VIEW(tankId, distanceM, options),
         id,
@@ -111,9 +110,23 @@ try {
     }
     await page.close();
   }));
+}
+
+try {
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs); the manifest below covers every id.
+  await eachBrowserChunk('tools/fleet-battle-views.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      await renderChunk(browser, jobs.filter((job) => chunk.includes(job.id)));
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
   process.stdout.write('\n');
-  await browser.close();
   await server.close();
   rmSync(cacheDir, { recursive: true, force: true });
 }

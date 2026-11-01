@@ -112,15 +112,15 @@ const SKIP_EXACT = new Set([
   'src/audio/vehicleAudioProfiles.ts', 'src/vehicles/smokeFan.ts', 'src/vehicles/suspensionPatterns.ts',
   'src/vehicles/trackPatterns.ts', 'src/vehicles/wheelPatterns.ts', 'src/fx/projectileTracers.ts',
 ]);
-const GENERATED = /\.generated\.|tank-assets\.json$|fleet-geometry-ledger\.json$/;
-// Re-keyed by their own tools even in --initial: the asset manifest (tools/tank-id-rekey-assets.mjs, by display
-// name) and the geometry ledger (its digests hash the root name tank_<id>: tank:geometry:update).
-const REGENERATE_ONLY = /tank-assets\.json$|fleet-geometry-ledger\.json$/;
+const GENERATED = /\.generated\.|(?:^|\/)tank-assets\/|fleet-geometry-ledger\.json$/;
+// Re-keyed by their own tools even in --initial: the asset manifest's rows (tools/tank-id-rekey-assets.mjs, by
+// display name) and the geometry ledger (its digests hash the root name tank_<id>: tank:geometry:update).
+const REGENERATE_ONLY = /(?:^|\/)tank-assets\/|fleet-geometry-ledger\.json$/;
 const GENERATED_MAX_BYTES = 8 * 1024 * 1024;
 const BINARY_EXT = ['svg', 'png', 'webp', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'mov', 'glb', 'gltf', 'bin', 'wav', 'mp3',
   'ogg', 'opus', 'ktx2', 'woff', 'woff2', 'ttf', 'pdf', 'zip'];
 const PATHSPEC = ['--', '.', ...SKIP_PREFIX.map((p) => `:(exclude)${p}`), ':(exclude,glob)**/*.generated.*',
-  ':(exclude)public/icons/tank-assets.json', ...BINARY_EXT.map((ext) => `:(exclude,glob)**/*.${ext}`)];
+  ':(exclude)public/icons/tank-assets', ...BINARY_EXT.map((ext) => `:(exclude,glob)**/*.${ext}`)];
 const BINARY_RE = new RegExp(`\\.(?:${BINARY_EXT.join('|')})$`, 'i');
 const skipped = (rel) => SKIP_PREFIX.some((p) => rel.startsWith(p)) || SKIP_EXACT.has(rel);
 const generated = (rel) => GENERATED.test(rel);

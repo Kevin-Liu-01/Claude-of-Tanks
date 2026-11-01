@@ -4,9 +4,11 @@
 //   node tools/fleet-geometry-audit.mjs
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
 //   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
-import { launchGuardedBrowser } from './browser-launch.mjs';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -21,10 +23,10 @@ const option = (name, fallback = '') => {
 const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-geometry-audit --ids');
 const modes = option('modes', 'gallery,garage,battle-player,battle-bot-near,battle-bot-far,battle-mobile-player-far')
   .split(',').map((mode) => mode.trim()).filter(Boolean);
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))
-  : 4;
+  : WORKER_PAGES;
 const outputPath = resolve(option('out', '.qa-device/fleet-geometry-audit.json'));
 const root = process.cwd();
 const cacheDir = resolve('/tmp', `cot-fleet-geometry-vite-${process.pid}`);
@@ -40,59 +42,66 @@ const server = await createServer({
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.ts');
-const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
+const tankAssets = readTankAssets(resolve(root, 'public/icons'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
 
-const browser = await launchGuardedBrowser(puppeteer, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
 const rows = [];
 const failures = [];
-const jobs = modes.flatMap((mode) => ids.map((id) => ({ id, mode })));
-let nextJobIndex = 0;
+const jobCount = modes.length * ids.length;
 let completedJobs = 0;
 
 try {
-  await Promise.all(Array.from({ length: Math.min(workerCount, jobs.length) }, async () => {
-    let page = await browser.newPage();
-    page.setDefaultTimeout(120000);
-    while (nextJobIndex < jobs.length) {
-      const { id, mode } = jobs[nextJobIndex++];
-      const url = `http://127.0.0.1:${port}/tools/fleet-geometry-audit.html?id=${encodeURIComponent(id)}&mode=${encodeURIComponent(mode)}`;
-      let row = null;
-      let lastError = null;
-      for (let attempt = 0; attempt < 2 && !row; attempt += 1) {
-        try {
-          await page.goto(url, { waitUntil: 'domcontentloaded' });
-          await page.waitForFunction('window.__GEOMETRY_AUDIT_READY === true', { polling: 25 });
-          row = await page.evaluate(() => window.__GEOMETRY_AUDIT);
-        } catch (error) {
-          lastError = error;
-          await page.close().catch(() => {});
-          page = await browser.newPage();
-          page.setDefaultTimeout(120000);
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs); the worker pages work through each chunk's jobs.
+  await eachBrowserChunk('tools/fleet-geometry-audit.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, {
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    const jobs = modes.flatMap((mode) => chunk.map((id) => ({ id, mode })));
+    let nextJobIndex = 0;
+    try {
+      await Promise.all(Array.from({ length: Math.min(workerCount, jobs.length) }, async () => {
+        let page = await browser.newPage();
+        page.setDefaultTimeout(120000);
+        while (nextJobIndex < jobs.length) {
+          const { id, mode } = jobs[nextJobIndex++];
+          const url = `http://127.0.0.1:${port}/tools/fleet-geometry-audit.html?id=${encodeURIComponent(id)}&mode=${encodeURIComponent(mode)}`;
+          let row = null;
+          let lastError = null;
+          for (let attempt = 0; attempt < 2 && !row; attempt += 1) {
+            try {
+              await page.goto(url, { waitUntil: 'domcontentloaded' });
+              await page.waitForFunction('window.__GEOMETRY_AUDIT_READY === true', { polling: 25 });
+              row = await page.evaluate(() => window.__GEOMETRY_AUDIT);
+            } catch (error) {
+              lastError = error;
+              await page.close().catch(() => {});
+              page = await browser.newPage();
+              page.setDefaultTimeout(120000);
+            }
+          }
+          if (!row) {
+            row = {
+              id,
+              mode,
+              error: `audit page failed twice: ${lastError?.message || String(lastError)}`,
+            };
+          }
+          rows.push(row);
+          if (row.error) failures.push({ id, mode, error: row.error });
+          completedJobs += 1;
+          process.stdout.write(`\r[fleet-geometry] ${mode} ${completedJobs}/${jobCount} ${id}          `);
         }
-      }
-      if (!row) {
-        row = {
-          id,
-          mode,
-          error: `audit page failed twice: ${lastError?.message || String(lastError)}`,
-        };
-      }
-      rows.push(row);
-      if (row.error) failures.push({ id, mode, error: row.error });
-      completedJobs += 1;
-      process.stdout.write(`\r[fleet-geometry] ${mode} ${completedJobs}/${jobs.length} ${id}          `);
+        await page.close();
+      }));
+    } finally {
+      await browser.close();
     }
-    await page.close();
-  }));
+  });
 } finally {
   process.stdout.write('\n');
-  await browser.close();
   await server.close();
   rmSync(cacheDir, { recursive: true, force: true });
 }
@@ -129,7 +138,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   sourceRevision: process.env.GIT_COMMIT || null,
   method: 'visible geometry traversal; indexed topology and InstancedMesh/BatchedMesh multiplicity included',
-  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets.json',
+  rosterSource: selectedIds.length ? 'explicit --ids' : 'public/icons/tank-assets/',
   rosterCount: ids.length,
   playableRosterCount: ALL_TANK_IDS.length,
   modes,

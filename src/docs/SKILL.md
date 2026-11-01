@@ -91,7 +91,7 @@ This directory is public application code, not the repository's engineering
 them from a page module. The prerendered blocks are generated — a hand edit is
 overwritten, and a stale `topicPrerender.zh-CN.json` ships stale Chinese.
 Retired chapters (vehicles, worlds, interface, performance) answer 308 to their
-successors in `vercel.json`. Do not name `public/icons/tank-assets.json` from
-`src/` (`tools/tool-only-public-files.selftest.mjs`); a catalog change renames
+successors in `vercel.json`. Do not name the tank asset manifest (`public/icons/tank-assets/`)
+from `src/` (`tools/tool-only-public-files.selftest.mjs`); a catalog change renames
 the hashed chunks a page imports, so compressed bundle rows move by a few bytes
 with identical raw size.

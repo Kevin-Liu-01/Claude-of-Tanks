@@ -2,7 +2,7 @@
 // home-premiere.mjs — writes the landing's blocks into site/home.html: the hero reel and the features, from the curated
 // set in public/media/home-r2/manifest.json (owner 2026-10-25: "use the videos and pics to show off game features, have
 // big hero pics always animate and show multiple"), and the fleet records the 404 page searches (src/presentation/
-// fleetWall.json, from the fleet takes, public/icons/tank-assets.json and the Garage's facet tables). Each block sits
+// fleetWall.json, from the fleet takes, public/icons/tank-assets/ and the Garage's facet tables). Each block sits
 // between <!--home:NAME--> and <!--/home:NAME-->. Run `node tools/public-shell.mjs --write` after it (the shell inlines the
 // glyphs the blocks reference). Copyright © 2026 Kevin B. Liu.
 //
@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readTankAssets } from './tank-assets-store.mjs';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
 import { heroLqip } from './hero-lqip.mjs';
 import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
@@ -25,7 +26,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = (path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
 const EN = json('src/ui/i18nCatalog.en-US.json');
 const ZH = json('src/ui/i18nCatalog.zh-CN.json');
-const ASSETS = json('public/icons/tank-assets.json').tanks;
+const ASSETS = readTankAssets(join(ROOT, 'public/icons')).tanks;
 const HERO = json('public/icons/hero/hero-cards.json');
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
@@ -38,9 +39,11 @@ const text = (key) => {
   return EN[key];
 };
 const t = (key, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''} data-i18n="${key}">${esc(text(key))}</${tag}>`;
+/** Vetted catalog markup (a headline's .t-hollow word), which each locale places in its own word order. */
+const html = (key) => `<span data-i18n-html="${key}">${text(key)}</span>`;
 const tank = (id) => {
   const a = ASSETS[id];
-  if (!a) throw new Error(`home-premiere: ${id} is not in public/icons/tank-assets.json`);
+  if (!a) throw new Error(`home-premiere: ${id} has no row in public/icons/tank-assets/`);
   return a;
 };
 const galleryHref = (id, layer = '') => `/gallery?id=${id}${layer ? `&amp;layer=${layer}` : ''}${STAMP ? `&amp;${STAMP}` : ''}`;
@@ -165,7 +168,7 @@ function heroBlock() {
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
     // duplicate it in hero"); the headline says what the game is, and its h1 names the game for assistive tech and search
-    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${t('home.hero.title')}</h1>`
+    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${html('home.hero.title')}</h1>`
     + `${t('home.hero.lede', 'p', 'hero__lede')}`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
@@ -314,7 +317,7 @@ function bentoPicture(rungs, lead) {
   return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
     + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
 }
-/** One still: its picture (its alt stays empty: the caption names it) and its two lines on their own scrim (home.css
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines in the stage's halo (home.css
  *  .bento__words), the whole tile the way in. */
 const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
   + `<figcaption class="bento__cap"><a href="${href}"><span class="bento__words">${name}<span class="bento__where">${where.join('')}</span></span></a></figcaption></figure>`;

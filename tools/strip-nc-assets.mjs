@@ -13,7 +13,7 @@
 // 3. Prints the docs/ATTRIBUTION.md sections that must be dropped for a
 //    public build (the PERSONAL-USE / NC QUARANTINE block).
 // Step 1b deletes the tool-only public files (tools/tool-only-public-files.mjs):
-// the 33.5 MB tank asset manifest and the marking sheets stay in public/ for
+// the tank asset manifest (a row file per tank) and the marking sheets stay in public/ for
 // the tools that write and read them, but no page requests them.
 //
 // Usage: node tools/strip-nc-assets.mjs   (see package.json "build")
@@ -24,7 +24,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync, realpathSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { toolOnlyPublicFiles } from './tool-only-public-files.mjs';
+import { toolOnlyPublicDirs, toolOnlyPublicFiles } from './tool-only-public-files.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -135,6 +135,8 @@ async function main() {
   // 1b. tool-only public files never ship (FE-P15)
   const toolOnly = toolOnlyPublicFiles(DIST);
   for (const { path: file } of toolOnly) await rm(path.join(DIST, file), { force: true });
+  // a tool-only directory (the per-tank manifest, 266) goes whole, so no empty folder ships
+  for (const dir of toolOnlyPublicDirs(DIST)) await rm(path.join(DIST, dir), { recursive: true, force: true });
   const toolOnlyBytes = toolOnly.reduce((sum, entry) => sum + entry.bytes, 0);
   console.log(`[strip-nc] removed ${toolOnly.length} tool-only public files (${(toolOnlyBytes / 1048576).toFixed(1)} MB)`);
 
