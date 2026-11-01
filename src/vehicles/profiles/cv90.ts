@@ -360,11 +360,12 @@ function buildCv90Turret(P: CvBuilderPort): void {
       [side * 0.96, -0.05, z0], [side * 0.965, -0.05, z1], [side * 1.055, -0.05, z1], [side * 1.05, -0.05, z0],
       [side * 1.036, 0.38, z0], [side * 1.03, 0.38, z1], [side * 1.12, 0.38, z1], [side * 1.126, 0.38, z0],
     ));
-    // smoke dischargers on the rear corners of the upper panels, firing forward and out
+    // smoke dischargers on the rear of the upper side panels, firing forward, out and up: the bank is rolled 66 deg
+    // about the turret's long axis so its bracket lies flush on the 24 deg inward-raked panel (5 mm into it)
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 4, r: 0.038, len: 0.22, spacing: 0.085,
-      splay: side * 0.45, pitch: -0.35, seed: 920 + side,
-    }), side * 1.00, 0.52, -0.70, [0, side * 1.20, 0]);
+      splay: side * 0.15, pitch: -0.35, seed: 920 + side,
+    }), side * 1.051, 0.593, -0.64, [0, 0, -side * 1.152]);
     KIT.liftEye(P, 'turretDetail', side * 0.70, 0.78, -0.80);
   }
   buildCv90Gun(P);

@@ -17,7 +17,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleTipDot } from './kit.ts';
-import { applyAdvancedIfvScale, type AdvancedIfvScalePort } from './advancedIfvScale.ts';
+import { ADVANCED_IFV_SCALE, applyAdvancedIfvScale, type AdvancedIfvScalePort } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -278,7 +278,7 @@ function addSideArmour(P: PumaS1BuilderPort): void {
 /** Slat quarters over the idlers: a welded bar cage on each rear corner, wrapping the hull's rear face outboard of the
  *  ramp (the S1's rear protection), its posts on the cassette rail and the sponson's rear face. */
 function addSlatQuarters(P: PumaS1BuilderPort): void {
-  const zf = CASSETTE_REAR_Z - 0.01, zr = -3.78, xo = ARMOUR_X - 0.02, xi = 1.08, yb = 0.82, yt = 1.82;
+  const zf = CASSETTE_REAR_Z - 0.01, zr = -3.78, xo = ARMOUR_X - 0.02, xi = 1.08, yb = 0.82, yt = 1.80;
   for (const side of [-1, 1]) {
     const s = side;
     // frame: posts and rails (square tube), flat bars between
@@ -299,6 +299,12 @@ function addSlatQuarters(P: PumaS1BuilderPort): void {
       P.add('hullDetail', box(0.05, 0.04, Math.abs(zr - rampZ(y)) + 0.03), s * 1.30, y, (zr + rampZ(y)) / 2);
     }
     for (const z of [-2.95, -3.45]) P.add('hullDetail', box(xo - HULL_SIDE_X + 0.02, 0.04, 0.05), s * (xo + HULL_SIDE_X) / 2, 1.75, z);
+    // the cage's top cover: a chamfered plate over the side bay and the rear bay, seated on the top rails and into the
+    // hull side and rear face (the plan reads closed over the quarters)
+    P.addEquipment('hull', chamferedPlate(xo + 0.02 - (HULL_SIDE_X - 0.02), 0.02, zf - zr + 0.03, 0.006),
+      s * (xo + 0.02 + HULL_SIDE_X - 0.02) / 2, yt + 0.02, (zf + zr) / 2);
+    P.addEquipment('hull', chamferedPlate(HULL_SIDE_X - 0.02 - (xi - 0.02), 0.02, rampZ(yt + 0.02) + 0.012 - (zr - 0.015), 0.006),
+      s * (HULL_SIDE_X - 0.02 + xi - 0.02) / 2, yt + 0.02, (rampZ(yt + 0.02) + 0.012 + zr - 0.015) / 2);
   }
 }
 
@@ -615,8 +621,21 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   addProtection(P);
   addTurretStowage(P);
   addGun(P);
-  // the decor keeps its loads off the protection set's launcher heads and the PERI hoop
-  reserveDecorVolume(P.turretG, [-0.58, T_ROOF, -1.30], [0.90, T_ROOF + 0.32, -0.94]);
+  // The decor (decorations.ts) seats its loads after the 90 % bake, in the groups' final frames: it keeps them off the
+  // protection set's launcher heads and the PERI hoop, and out of the slat quarters (whose rear wraps lie inside the
+  // lattice's side bands).
+  const k = ADVANCED_IFV_SCALE;
+  const reserve = (group: THREE.Object3D, min: Vec3, max: Vec3): void =>
+    reserveDecorVolume(group, [min[0] * k, min[1] * k, min[2] * k], [max[0] * k, max[1] * k, max[2] * k]);
+  reserve(P.turretG, [-0.58, T_ROOF, -1.30], [0.90, T_ROOF + 0.32, -0.94]);
+  reserve(P.turretG, [-0.10, T_ROOF, -0.30], [0.62, T_ROOF + 0.78, 0.18]);
+  // (and off both flanks' rear quarters, where the smoke stacks fire, and the right flank behind the MELLS cells)
+  reserve(P.turretG, [-1.34, 0, -1.62], [T_RIGHT, T_ROOF + 0.10, -0.18]);
+  reserve(P.turretG, [T_LEFT, 0, -1.62], [1.40, T_ROOF + 0.10, -0.86]);
+  for (const side of [-1, 1]) {
+    const [x0, x1] = side > 0 ? [1.04, 1.95] : [-1.95, -1.04];
+    reserve(P.hullG, [x0, 0.78, -3.84], [x1, 1.86, -2.58]);
+  }
   P.decal('turret', 'crossgrey', null, 0.27, [T_LEFT + 0.05, 0.44, -0.80], Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || 'S1-481', 0.21, [0.30, 1.24, 3.711], 0);
   if (P.geometryReceipt) {

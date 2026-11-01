@@ -46,6 +46,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
 import { buildLeo1A2A1 } from './leopard1A2A1.ts';
 import { buildKF51Evo } from './kf51Evo.ts';
+import { buildKF51XHull } from './kf51X.ts';
 import { recessClosedTurret, recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
 import { addLeo2PrototypeMantlet, convexCrownedStock, leopardThermalSkin } from './leopardStructuralRepairs.ts';
 import { buildLeopardRevolutionPrototypeTurret } from './leopardRevolutionPrototypeTurret.ts';
@@ -57,6 +58,7 @@ import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { markEraHitFaces } from './eraHitFaces.ts';
 import { buildLeo1HullSteps } from './leopard1Hull.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -9237,69 +9239,6 @@ function buildLeo2RevolutionPrototype(...args: Parameters<typeof buildLeo2Revolu
 }
 withBuildSteps(buildLeo2RevolutionPrototype, buildLeo2RevolutionPrototypeSteps);
 
-function addKF51ClosedShoulderMudguards(P: TankBuilderPort): void {
-  // The KF51-U's closed front shoulder (kf51_evo's 267 rebuild carries its own front mudguards, profiles/kf51Evo.ts).
-  // 266 (roof-pocket census): the U's shoulder is solid down to the side plate and the web under it (1.33); its 6-8 cm
-  // slab stood 2-9 cm over them with daylight between (0.19 m2 a pair)
-  const profile = 'kf51_u';
-  const shoulder = { innerX: 1.50, outerX: 1.88, rearZ: 2.52, frontZ: 3.38,
-    rearBottomY: 1.33, rearTopY: 1.50, frontBottomY: 1.33, frontTopY: 1.43 };
-  const web = { innerX: 1.78, outerX: 1.91, rearZ: 2.60, frontZ: 3.82,
-    rearBottomY: 1.10, rearTopY: 1.41, frontBottomY: 0.76, frontTopY: 1.08 };
-  const trackOuterHalfWidthM = 1.5555;
-  const labels: string[] = [];
-  for (const side of [-1, 1] as const) {
-    const sideName = side < 0 ? 'left' : 'right';
-    const order = (ring: FourPointRing): FourPointRing => orderedMirroredFourPointRing(side, ring);
-    const shoulderLabel = `${profile}-front-mudguard-${sideName}-closed-shoulder`;
-    labels.push(shoulderLabel);
-    MUDGUARDS.add(P, {
-      label: shoulderLabel,
-      bucket: 'hull',
-      material: 'painted-steel',
-      geometry: orientedSlab(
-        ...order([[shoulder.innerX, shoulder.rearBottomY, shoulder.rearZ],
-          [shoulder.outerX, shoulder.rearBottomY, shoulder.rearZ],
-          [shoulder.outerX, shoulder.frontBottomY, shoulder.frontZ],
-          [shoulder.innerX, shoulder.frontBottomY, shoulder.frontZ]]),
-        ...order([[shoulder.innerX, shoulder.rearTopY, shoulder.rearZ],
-          [shoulder.outerX, shoulder.rearTopY, shoulder.rearZ],
-          [shoulder.outerX, shoulder.frontTopY, shoulder.frontZ],
-          [shoulder.innerX, shoulder.frontTopY, shoulder.frontZ]])),
-      x: 0, y: 0, z: 0, support: false,
-    });
-    const webLabel = `${profile}-front-mudguard-${sideName}-closed-web`;
-    labels.push(webLabel);
-    MUDGUARDS.add(P, {
-      label: webLabel,
-      bucket: 'hull',
-      material: 'painted-steel',
-      geometry: orientedSlab(
-        ...order([[web.innerX, web.rearBottomY, web.rearZ],
-          [web.outerX, web.rearBottomY, web.rearZ],
-          [web.outerX, web.frontBottomY, web.frontZ],
-          [web.innerX, web.frontBottomY, web.frontZ]]),
-        ...order([[web.innerX, web.rearTopY, web.rearZ],
-          [web.outerX, web.rearTopY, web.rearZ],
-          [web.outerX, web.frontTopY, web.frontZ],
-          [web.innerX, web.frontTopY, web.frontZ]])),
-      x: 0, y: 0, z: 0, support: false,
-    });
-  }
-  P.hullG.userData.kf51ShoulderMudguardReceipt = Object.freeze({
-    profile,
-    architecture: 'closed-sloped-shoulder-and-deep-terminal-web',
-    labels: Object.freeze(labels),
-    sides: 2,
-    partsPerSide: 2,
-    closedSideVolume: true,
-    terminalWebInnerHalfWidthM: web.innerX,
-    terminalWebOuterHalfWidthM: web.outerX,
-    trackOuterHalfWidthM,
-    trackClearanceM: web.innerX - trackOuterHalfWidthM,
-    shoulderMergedIntoGlacis: true,
-  });
-}
 
 
 // ---------------------------------------------------------------------------
@@ -9312,326 +9251,130 @@ function addKF51ClosedShoulderMudguards(P: TankBuilderPort): void {
 // source-specific build separate so old mask compensations cannot leak back
 // into the live tank.
 // ---------------------------------------------------------------------------
-function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
-  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
-  addVehicleGhillieSuit(P);
-  const { box, cylX, cylY, cylZ, polyMultiLoft, buildGun,
-    liftEye, jerryCan } = KIT;
-  const slab = orientedSlab;
-  const uniformScale = 1.05;
-  // 2026-10-27 (owner: "i dont like the kf 51 u track shape and wheeel placement. frdom the side its silhouette should
-  // look more like the leopard 2a6s annd such"): the KF51-U rides a Leopard 2A4 hull, so it draws the Leopard 2 running
-  // gear (the 2A6 X stations) at its own track width, and the skirt hem rises to the Leopard line over the wheel tops.
-  // The small high end wheels, the 0.12 m forward shift and the hem at the wheel hubs read as a wedge under a tall skirt.
-  const gear = LEOPARD_2_RUNNING_GEAR;
-  const skirtHemY = gear.skirtHemY;
-  const turretPivotZM = 0.65;
-  const turretRoofEdgeHeightsM = [
-    0.48, 0.48, 0.58, 0.63, 0.60,
-    0.56, 0.56, 0.60, 0.63, 0.58,
-  ] as const;
-  const turretRoofCenterHeightM = 0.66;
-  const multispectralSightLiftM = 0.18;
-
-  // §5.299 kf51_u FLEET INTEGRATION (owner order: "make it a lot more inline
-  // with our visual aesthetic and tracks and hull and turret"). The
-  // kf51-source-facets shader grade is RETIRED: it reproduced the FBX's
-  // BAKED shading (walls crushed to 19-52% luma, roofs boosted 122%) — in
-  // the live fleet lighting the hull sides read near-black with the deck
-  // crease floating as a pale ribbon over them (§5.266-crown class read;
-  // the retirement receipt is the before/after pair in
-  // shots/kf51b-integration/). The build now renders on the fleet camo /
-  // CSM / ambient stack exactly like every other leopard; the woodland
-  // palette lives in the typed spec visual row (kf51Specs.ts).
-
-  // ---- HULL — §5.345 LEOPARD-DESCENT REBASE (owner order: "completely
-  // update our kf51_evo b to look actually descended from our leopard family,
-  // keeping its general turret shaping but changing everything else in
-  // terms of hull decorations equipment and cagfes"). The real KF51 rides
-  // a Leopard 2 hull — the bespoke demonstrator tub/deck polyMultiLofts,
-  // fender lips and lamp blade are RETIRED; the hull now builds on the
-  // FAMILY RIG (leoHullV3: one-plane glacis class, leopard deck line +
-  // sponson/fender run, family driver station, fan wells, leopard rear
-  // plate + grilles) at the kf51_u frame: deck 1.615 crease / 1.64 mid /
-  // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
-  // complete rotating rig moves forward to z 0.65; nose 3.84,
-  // tail lip -3.82. The authored assembly is enlarged uniformly by 5% after
-  // construction, while the skirt armor intentionally grows farther outboard.
-  // Running gear: the Leopard 2 stations (above), a 0.105 fine pitch and §5.262
-  // gear-contrast tones via the opt-in course passthrough. §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685 band
-  // inner face), sponson floor 1.19, with the outboard floor lifted over
-  // the complete return course instead of intersecting the raised wraps.
-  const buildKF51OwnerExactAssemblyStage1 = function* (): TankProfileBuild {
-    yield* leoHullV3Steps(P, {
-      bodyHW: 1.56, sponsonY: 1.19, trackW: 0.587, xc: 1.262,
-      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle's
-      // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.78, 3.2 m) to -2.58, and meets the
-      // power-pack plateau at -2.63; it rose from -0.58, and the bustle sat 10 cm in it at rest (authored metres, before
-      // the 5% enlargement)
-      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.58, 1.772], [-2.63, 1.82],
-        [-3.66, 1.82]],
-      glacis: [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]],
-      glacisLaneCut: { x: 0.93, z0: 2.90 },
-      sponsonLaneLift: { z0: -3.66, z1: 2.95, x0: 0.94, y: 1.50 },
-      rearWallHW: 0.96,
-      beltY: 0.60, bellyY: 0.48,
-      // the belly rises behind the last wheel to the rear plate's 0.95 bottom, as the 2A6's does over the sprocket bay
-      // (a flat tub to the tail stood as a box behind the Leopard sprocket)
-      tubZrear: -2.92, tubRearY: 0.92, tubWedgeEnd: -3.66,
-      headlightY: 1.345, headlightZ: 3.30, headlightX: 0.78,
-      driverZ: 1.16,
-      rear: { wallZ: -3.68, lipZ: -3.82, yTop: 1.78, yBot: 0.95 },
-      // fender ends AT the deck crease; the fore run follows the glacis from
-      // there (a 2.30 handoff left a 0.10 step at the junction — b2 receipt)
-      fender: { x0: 1.60, x1: 1.755, y0: 1.53, y1: 1.60, z0: -3.05, z1: 1.55 },
-      fenderFore: { z0: 1.55, z1: 3.30, drop: 0.03 },
-      // frontSkirt/rearSkirt OMITTED (§SRCFIX-0808 opt-out): the two-band
-      // modular course builds bespoke below at the leopard skirt grammar.
-      wheelR: gear.wheelR, wheelY: gear.wheelY,
-      span: [gear.wheelZs[6], gear.wheelZs[0]], wheelZs: gear.wheelZs,
-      sprocket: gear.sprocket, idler: gear.idler,
-      topY: gear.topY, botY: gear.botY, dishR: 0.78,
-      rollers: gear.rollerZs.map((z) => ({ z, y: gear.rollerY, r: gear.rollerR })),
-      linkPitchM: 0.105, frontArcSteps: 14, rearArcSteps: 14,
-      tautFrontSpan: true, tautRearSpan: true, smoothRearTopTangent: true,
-      dedupeLoopPoints: true,
-      padHex: 0x2c2d25, chainHex: 0x24251f,
-      gearFloor: true,
-      // (radiatorWellLength, release 240: the wells end at -2.63, on the power-pack plateau behind the lowered deck)
-      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.37,
-      splashArms: false, jackDark: true,
-    });
-
-    // fleet per-tank weathered rubber (a4/revolution receipt)
-    P.mats.rubber.color.setHex(0x33352b);
-  };
-  yield* buildKF51OwnerExactAssemblyStage1();
-  yield 'buildKF51OwnerExactAssemblyStage1';
-  // (The belly between the tub and the nose fill, open 0.84 m in the owner's 2026-10-19 markup, is closed by leoHullV3's
-  // lower front plate.)
-  // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
-  // wheel/course refinements and §5.262 tones live there; no second course
-  // exists.)
-  // ---- KF51B modular skirt jacket. This is a modernized Leopard-family
-  // external armor course rather than a thin cosmetic two-band skirt:
-  // seven broad carrier-backed modules per side, two inset protection faces
-  // per module, deeply readable joints and an armored leading shoulder. The
-  // outboard grille survives as KF51B visual identity, but now occupies the
-  // narrow service band ABOVE the modules instead of obscuring the wheels.
-  const skirtReceipt = {
-    revision: 'kf51b-proportions-armor-r1',
-    panelsPerSide: 7,
-    protectionRows: 2,
-    carrierInnerFaceX: 1.715,
-    armorOuterFaceX: 1.904,
-    grilleOuterFaceX: 1.929,
-    armorBottomY: skirtHemY,
-    armorTopY: 1.45,
-    grilleY: [1.38, 1.54],
-    continuousUpperCarrier: true,
-    grilleReseatedAboveArmor: true,
-  };
-  const buildKF51OwnerExactHullStage1 = (): void => {
-    for (const s of [-1, 1] as const) {
-      const z0 = -3.02, z1 = 2.62, n = 7, L = (z1 - z0) / n;
-      // A real continuous upper carrier bridges the sponson/fender to the new
-      // outboard modules. Besides closing the structural load path, its upper
-      // flange prevents the grille and panel joints from enclosing false open
-      // cells in the top-down collision/contiguity silhouette.
-      P.add('hull', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
-      // Stop before the high idler crown; the armored leading shoulder and
-      // existing mudguard take over there without entering the animated shoe
-      // sweep.
-      P.add('hull', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
-      P.add('hull', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
-      // Recessed load-spreading carrier stays clear of the animated outer shoe
-      // face, while overlapping both the fender underside and every module.
-      P.add('hullDark', box(0.10, 1.53 - skirtHemY, z1 - z0 - 0.02), s * 1.765, (1.53 + skirtHemY) / 2, (z0 + z1) / 2);
-      P.visualEraCluster('kf51b-hull-skirt-era', 'hull', () => {
-      for (let k = 0; k < n; k++) {
-        const zc = z0 + L * (k + 0.5);
-        const topY = k === n - 1 ? 1.35 : 1.45;
-        const bottomY = skirtHemY;
-        const panelHeight = topY - bottomY;
-        // Thick AMAP/ERA-style backing module. The front station follows the
-        // falling fore-fender instead of projecting through the glacis wing.
-        P.add('hull', box(0.12, panelHeight, L - 0.030), s * 1.82,
-          bottomY + panelHeight * 0.5, zc);
-        const rowGap = 0.045;
-        const rowHeight = (panelHeight - rowGap * 3) * 0.5;
-        for (let row = 0; row < 2; row++) {
-          const rowY = bottomY + rowGap + rowHeight * 0.5
-            + row * (rowHeight + rowGap);
-          // A shallow lid gives each protection cell a layered edge without a
-          // noisy brick-wall silhouette or a second live track course.
-          P.add('hull', box(0.048, rowHeight, L - 0.105), s * 1.88, rowY, zc);
-        }
-      }
-      });
-      const waistY = (skirtHemY + 1.45) / 2;
-      for (let k = 1; k < n; k++) {
-        P.add('hullDark', box(0.026, 1.38 - skirtHemY, 0.022), s * 1.907, waistY, z0 + L * k);
-      }
-      // Recessed waist shadow preserves the KF51B two-course rhythm while the
-      // protection boxes themselves remain a single mechanically thick jacket.
-      P.add('hullDark', box(0.026, 0.026, z1 - z0 - 0.05), s * 1.907, waistY, (z0 + z1) / 2);
-      for (const zh of [-2.62, -1.55, -0.48, 0.59]) {
-        P.add('hullDetail', box(0.18, 0.12, 0.060), s * 1.79, 1.505, zh);
-      }
-      for (const zh of [1.66, 2.50]) {
-        P.add('hullDetail', box(0.18, 0.12, 0.060), s * 1.79, 1.435, zh);
-      }
-      P.visualEraCluster('kf51b-hull-skirt-era', 'hull', () => {
-        // Chamfered armored leading shoulder follows the idler ramp and closes
-        // the protection course into the forward mudguard (its hem rises as the 2A6's front blocks do).
-        P.add('hull', slab(
-          [s * 1.76, skirtHemY, 2.64], [s * 1.90, skirtHemY, 2.64], [s * 1.88, 1.00, 3.32], [s * 1.74, 1.00, 3.32],
-          [s * 1.76, 1.35, 2.64], [s * 1.90, 1.35, 2.64], [s * 1.87, 1.17, 3.32], [s * 1.74, 1.17, 3.32]));
-      });
-      // Thin outboard grille retained as a Panther signature, now attached to
-      // the top service band and clear of the wheels/protection faces.
-      leoSlatRun(P, 'hull', s, {
-        x: 1.92, seat: 1.84, y0: 1.38, y1: 1.54,
-        z0: -2.90, z1: 2.38, sections: 5, rows: 4, railTh: 0.018,
-      });
-    }
-    P.hullG.userData.kf51bSkirtArmorReceipt = Object.freeze(skirtReceipt);
-    addKF51ClosedShoulderMudguards(P);
-    // ---- German fender/deck grammar (leo1a5/a6m census set at this frame;
-    // deck kit tops <= 1.71 — the low KF51 turret's sweep plane)
-    for (const s of [-1, 1] as const) {
-      // aft deck bins behind the bustle sweep (lid seam + twin latches)
-      P.add('hullDetail', box(0.30, 0.14, 0.60), s * 1.28, 1.895, -3.30);
-      P.add('hullDetail', box(0.32, 0.022, 0.62), s * 1.28, 1.976, -3.30);
-      P.add('hullDark', box(0.26, 0.012, 0.020), s * 1.28, 1.990, -3.36);
-      P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.14);
-      P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.46);
-      // width-indicator rods on the front mudguards
-      // 2026-10-19 (owner float sweep): the rods stood 60 mm clear of the mudguard; each seats on its edge.
-      P.snapGroup(`kf51u-width-rod-${s}`, () => {
-        P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
-        P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
-      }, { reachM: 0.08 });
-      // bow tow eyes seated flush on the raked beak underside
-      P.add('hullDetail', box(0.09, 0.10, 0.12), s * 0.62, 0.99, 3.72, 0.86, 0, 0);
-      P.add('hullDark', KIT.cylZ(0.028, 0.05, 8), s * 0.62, 1.06, 3.78);
-      // rear mudflaps behind the sprocket wrap (far edge -3.74; flap plane
-      // -3.79 clear) hung from the deck-band rear with a real hinge arm
-      P.addMudguard('kf51u-rear-flap', 'hullRubber', box(0.44, 0.42, 0.028), s * 1.26, 0.72, -3.79);
-      P.add('hullDetail', box(0.44, 0.035, 0.05), s * 1.26, 0.945, -3.785);
-      // Owner 2026-10-19 ("the flaps often hang off many tanks"): the single post stopped 0.46 m under the deck
-      // overhang (1.685) and 35 mm forward of the clamp bar. Two posts rise from inside the clamp bar 20 mm into
-      // the overhang, 0.33 m behind the sprocket course.
-      for (const dx of [-0.15, 0.15]) P.add('hullDetail', box(0.04, 0.775, 0.04), s * 1.26 + dx, 1.3175, -3.775);
-      // front mudguard wing + shortened flap (§B4: idler shoe orbit tops
-      // 0.75 at z 3.79-3.81 — flap bottom 0.80 clears; wing rides above) +
-      // connector strap back to the fore-fender end (floater law; strap
-      // underside 1.17 clears the wrap crest 1.07 at z 3.55)
-      P.add('hull', box(0.70, 0.16, 0.04), s * 1.40, 1.13, 3.80);
-      P.add('hullDetail', box(0.66, 0.018, 0.024), s * 1.40, 1.045, 3.796);
-      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.32, 0.90, 3.80);
-      P.add('hull', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
-      // mudguard well sheet over the idler (§B2: the open corridor between
-      // the strap and the 1.556 wrap outer read as enclosed top-down cells;
-      // the real fender sheet covers the well — underside 1.17 clears the
-      // 1.14 wrap crest)
-      P.add('hull', box(0.175, 0.030, 0.50), s * 1.6675, 1.185, 3.55);
-      // rear outboard service faces (the leopard rear-plate read carried to
-      // the sponson tails the inter-track wall cannot reach): dark panel +
-      // rib ladder + guarded tail-lamp pod on each deck-band rear face
-      P.add('hullDark', box(0.42, 0.30, 0.030), s * 1.22, 1.46, -3.668);
-      P.add('hullDetail', box(0.38, 0.026, 0.040), s * 1.22, 1.38, -3.672);
-      P.add('hullDetail', box(0.38, 0.026, 0.040), s * 1.22, 1.46, -3.672);
-      P.add('hullDetail', box(0.38, 0.026, 0.040), s * 1.22, 1.54, -3.672);
-      P.add('hullDark', box(0.14, 0.12, 0.05), s * 1.42, 1.70, -3.675);
-      P.add('hullGlass', box(0.05, 0.04, 0.014), s * 1.42, 1.71, -3.705);
-      P.add('hullDetail', box(0.16, 0.022, 0.07), s * 1.42, 1.775, -3.68);
-      // stern shackle bows on the inter-track rear wall
-      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.58, 1.02, -3.708);        // 2026-10-19 (owner float sweep): stood 50 mm off the wall
-    }
-    // ---- 267: the real KF51-U (Eurosatory 2024). The KF51 hull's front armour package over the Leopard 2 bow: a flat
-    // crew roof (the three crew ride in the hull ahead of the uncrewed turret), the long upper glacis falling to an
-    // armoured nose plate with its LED light bars, the blocks over the track lanes stopping short of the idler wraps.
-    // It covers the rig's Leopard bow lamps and the old crease well. Authored metres (before the 5% enlargement).
-    const leoGlacis: readonly Vec2Tuple[] = [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]];
-    const crewRoofY = 1.625, crewRoofFrontZ = 2.62, noseTopZ = 3.82, noseTopY = 1.27;
-    const kf51uTopAt = (z: number): number => (z <= crewRoofFrontZ ? crewRoofY
-      : crewRoofY + (noseTopY - crewRoofY) * Math.min(1, (z - crewRoofFrontZ) / (noseTopZ - crewRoofFrontZ)));
-    const frontTilt = Math.atan2(crewRoofY - noseTopY, noseTopZ - crewRoofFrontZ);
-    P.add('hull', sectionSolid([1.48, 1.55, 2.20, crewRoofFrontZ, 3.08, 3.60, 3.84, 3.92].map((z) => {
-      const top = z > noseTopZ ? 1.24 : kf51uTopAt(z);
-      const bottom = z > 3.84 ? 1.04 : deckYAt(leoGlacis, Math.max(z, 1.55)) - 0.03;
-      return { z, ring: [[-0.95, bottom], [0.95, bottom], [0.95, top - 0.03], [0.92, top], [-0.92, top], [-0.95, top - 0.03]] };
-    })));
-    for (const s of [-1, 1] as const) {
-      P.add('hull', sectionSolid([1.48, 2.20, crewRoofFrontZ, 2.90, 3.08, 3.30].map((z) => {
-        const top = kf51uTopAt(z), bottom = Math.max(deckYAt(leoGlacis, Math.max(z, 1.55)) - 0.03, 1.30);
-        const ring: Array<[number, number]> = [[0.92, bottom], [1.50, bottom], [1.50, top - 0.03], [1.47, top], [0.92, top]];
-        return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
-      })));
-      // the LED light bars in the nose plate's upper corners, in dark bezels
-      P.add('hullDark', box(0.40, 0.05, 0.016), s * 0.66, 1.205, 3.925);
-      P.add('hullGlass', markVehicleNightLens(box(0.36, 0.024, 0.012), 'headlight'), s * 0.66, 1.205, 3.931);
-    }
-    // the three hull crew stations on the crew roof: hatch coamings, lids and twin vision blocks ahead on the glacis
-    for (const x of [-0.62, 0, 0.62]) {
-      P.add('hullDetail', cylY(0.25, 0.26, 0.022, P.q ? 22 : 12), x, crewRoofY + 0.004, 2.36);
-      P.addHatch('hullHatch', cylY(0.21, 0.21, 0.02, P.q ? 20 : 12), x, crewRoofY + 0.022, 2.36);
-      P.add('hullDark', box(0.18, 0.012, 0.03), x, crewRoofY + 0.036, 2.29);
-      for (const dx of [-0.12, 0.12]) {
-        const z = 2.92, y = kf51uTopAt(z);
-        P.add('hullDetail', box(0.16, 0.05, 0.10), x + dx, y + 0.012, z, frontTilt, 0, 0);
-        P.add('hullGlass', box(0.12, 0.022, 0.012), x + dx, y + 0.02, z + 0.051, frontTilt, 0, 0);
-      }
-    }
-    // the void under the bow's glacis sheet, between the rig's lower front closure (top 1.184 at z 1.47, 1.049 at z 2.37)
-    // and the sheet's underside (1.455 falling to 1.163 at the nose fill), seen from the track tunnel as a 0.9 m2 roof
-    // pocket: closed between the tracks, 6 mm into both
-    P.add('hull', orientedSlab(
-      [-0.915, 1.17, 1.47], [0.915, 1.17, 1.47], [0.915, 1.04, 2.37], [-0.915, 1.04, 2.37],
-      [-0.915, 1.461, 1.47], [0.915, 1.461, 1.47], [0.915, 1.335, 2.37], [-0.915, 1.335, 2.37]));
-    // and on to the nose fill (top 1.055, front 3.44) under the sheet's falling underside
-    P.add('hull', orientedSlab(
-      [-0.915, 1.04, 2.37], [0.915, 1.04, 2.37], [0.915, 1.04, 3.08], [-0.915, 1.04, 3.08],
-      [-0.915, 1.335, 2.37], [0.915, 1.335, 2.37], [0.915, 1.241, 3.08], [-0.915, 1.241, 3.08]));
-    P.add('hull', orientedSlab(
-      [-0.915, 1.04, 3.08], [0.915, 1.04, 3.08], [0.915, 1.04, 3.42], [-0.915, 1.04, 3.42],
-      [-0.915, 1.221, 3.08], [0.915, 1.221, 3.08], [0.915, 1.169, 3.42], [-0.915, 1.169, 3.42]));
-    // and ahead of the nose fill, over the beak's inner face (0.744 at z 3.44 rising to 1.08 at 3.72)
-    P.add('hull', orientedSlab(
-      [-0.915, 0.734, 3.43], [0.915, 0.734, 3.43], [0.915, 1.07, 3.72], [-0.915, 1.07, 3.72],
-      [-0.915, 1.168, 3.43], [0.915, 1.168, 3.43], [0.915, 1.111, 3.72], [-0.915, 1.111, 3.72]));
-    P.hullG.userData.kf51uCrewStationsReceipt = Object.freeze({
-      profile: 'kf51u-hull-crew-r1', crewInHull: 3, hatchZ: 2.36, crewRoofY, crewRoofFrontZ,
-      frontArmour: 'kf51-front-package-over-leopard-bow', ledLightBars: 2,
-    });
-    KIT.shovelTool(P, -1.45, 1.8325, -3.45, 0.60);                              // pioneer kit, aft shelf (§5.311 §B5 seat kept)
-    // axe pair slid aft 6 cm (§B5 completion receipt: the new rear bustle
-    // cage panel grew the turret casting envelope to z -3.042 — the helve's
-    // -3.01 end grazed it 3.2 cm and the hullWood bucket read ABUTTING;
-    // every wood part now ends <= -3.07, the a4m stern-shelf class)
-    P.add('hullWood', box(0.03, 0.022, 0.58), 1.22, 1.832, -3.36);              // axe helve
-    P.add('hullDark', box(0.05, 0.028, 0.14), 1.22, 1.834, -3.14);              // axe head
-    P.add('hullDark', box(0.028, 0.024, 0.72), -0.95, 1.832, -3.32);            // crowbar
-    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.30, -3.674);            // convoy plate on the tail lip (2026-10-19 owner float sweep: hung 148 mm behind it)
-    jerryCan(P, 'hullCloth', 0.42, 1.90, -3.42, 0.14);                          // stern jerry can pair
-    jerryCan(P, 'hullCloth', 0.68, 1.90, -3.42, 0.14);
-
-    // ---- TURRET -------------------------------------------------------------
-    // One connected faceted wedge.  The source roof is only ~0.68 m above the
-    // shoulder belt; the former profile's stacked crown is intentionally gone.
-    P.turretG.position.set(0, 1.72, turretPivotZM);
-    P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
-  };
-  buildKF51OwnerExactHullStage1();
-  yield 'buildKF51OwnerExactHullStage1';
-  // 267: the uncrewed turret sits behind the hull crew roof: its wedge front pulled back from 1.95 to 1.50
-  const turretPlan: Vec2Tuple[] = [
-    [-0.40, 1.50], [0.40, 1.50], [1.46, 1.10], [1.55, 0.18],
-    [1.40, -2.43], [0.96, -2.96], [-0.96, -2.96], [-1.40, -2.43],
-    [-1.55, 0.18], [-1.46, 1.10],
+/**
+ * 267 round 3 (research/kf51_u photos 2, 10): the KF51's segmented skirt, read on the shared skirt (kf51X.ts
+ * pantherSkirts, which the KF51 Panther keeps plain). Five angled panels a side, each a vertical lower face up to a crease
+ * and an upper face raked in to the skirt's top edge, standing 5 cm proud of it with 4 cm breaks between them (a dark
+ * seam in each), and a chunky fender box over each track's front, its top falling to a raked nose behind the lamps. All
+ * of it rides in the skirt's own ERA zone (`${eraPrefix}L/R`), so it leaves with the skirt.
+ */
+function addKF51uSkirtPanels(P: TankBuilderPort, eraPrefix: string): void {
+  const { box } = KIT;
+  // the shared skirt's top edge (kf51X.ts pantherSkirts: z, edge y)
+  const edge: readonly Vec2Tuple[] = [[-3.85, 1.661], [-3.50, 1.812], [-2.80, 1.758], [-2.30, 1.698], [-1.995, 1.678],
+    [-1.00, 1.606], [-0.543, 1.577], [1.68, 1.577], [2.38, 1.454], [3.005, 1.348]];
+  // z0, z1, hem, crease, outer face, inner face, the top's inner x
+  const panels: readonly (readonly [number, number, number, number, number, number, number])[] = [
+    [-3.32, -2.36, 1.31, 1.56, 1.79, 1.68, 1.70],
+    [-2.32, -1.18, 0.96, 1.30, 1.83, 1.70, 1.72],
+    [-1.14, 0.00, 0.95, 1.30, 1.83, 1.70, 1.72],
+    [0.04, 1.18, 0.95, 1.30, 1.83, 1.70, 1.72],
+    [1.22, 2.30, 0.95, 1.28, 1.83, 1.70, 1.72],
   ];
-  const rightTurretWall = turretPlan.slice(1, 6);
+  for (const side of [-1, 1] as const) {
+    const ring = (ys: readonly [number, number][]): [number, number][] =>
+      side < 0 ? ys.map(([x, y]) => [-x, y] as [number, number]).reverse() : ys.map(([x, y]) => [x, y] as [number, number]);
+    P.destructibleCluster(`${eraPrefix}${side < 0 ? 'L' : 'R'}`, () => {
+      for (const [z0, z1, hem, crease, outer, inner, topX] of panels) {
+        P.add('hull', markEraHitFaces(sectionSolid([z0, z1].map((z) => {
+          const top = deckYAt(edge, z) - 0.02;
+          return { z, ring: ring([[inner, hem], [outer - 0.03, hem], [outer, hem + 0.04], [outer, crease], [topX, top],
+            [inner, top]]) };
+        })), [side, 0, 0], 0.01));
+      }
+      for (let k = 1; k < panels.length; k++) {
+        const z = (panels[k - 1][1] + panels[k][0]) / 2, hem = Math.max(panels[k - 1][2], panels[k][2]);
+        P.add('hullDark', box(0.010, 0.17, 0.034), side * 1.785, hem + 0.10, z);
+      }
+      // the fender box over the track's front: on the deck's corner and the front guard, overhanging the skirt
+      const fender: [number, number, number][] = [
+        [1.02, 1.43, 2.34], [1.84, 1.43, 2.34], [1.84, 1.62, 2.34], [1.78, 1.66, 2.34], [1.10, 1.66, 2.34], [1.02, 1.60, 2.34],
+        [1.02, 1.25, 3.62], [1.84, 1.25, 3.62], [1.84, 1.32, 3.62], [1.02, 1.32, 3.62],
+        [1.10, 1.52, 3.40], [1.78, 1.52, 3.40], [1.84, 1.48, 3.40], [1.02, 1.46, 3.40],
+      ];
+      const stock = new THREE.BufferGeometry();
+      stock.setAttribute('position', new THREE.Float32BufferAttribute(fender.flatMap(([x, y, z]) => [side * x, y, z]), 3));
+      P.add('hull', markEraHitFaces(convexCrownedStock(stock), [side, 0, 0], 0.01));
+      P.add('hullDark', box(0.010, 0.10, 0.36), side * 1.845, 1.40, 2.80);
+    });
+  }
+}
+
+function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
+  // 267 (owner 2026-11-01, second pass): the real Rheinmetall KF51-U of Eurosatory 2024. The KF51 Panther HULL
+  // (profiles/kf51X.ts buildKF51XHull, the construction the KF51 Panther draws: its measured slab-sided shell, the Leopard 2
+  // running gear, the big flat angled skirt panels, the chamfered bow with its LED lamps) at the Panther's own size, the
+  // three crew in it ahead of the turret, and the Concept Uncrewed Turret: long and slab-sided, no hatches, its faceted
+  // nose two cheek prongs either side of the recessed gun, a chine round it over a lower face that tapers forward to a
+  // point, big sensor boxes on the front roof corners, the weapon station in the collar of a flat-faced armoured tower at
+  // the rear centre with the panoramic sight's window and the launcher stack, ROSY launcher pairs and MUSS heads on the
+  // rear corners, smoke dischargers on the lower faces and the autoloader's magazine doors in its back. The hull's skirt
+  // reads as the KF51's angled panels with fender boxes over the track fronts (addKF51uSkirtPanels). The rotating mass keeps the U's installed 1.05x
+  // frame (kf51Specs.ts KF51B_SPEC; the owner's 2026-09-23 gun seat, kf51bTurretCenter.selftest.mjs). It wears the owner's
+  // field suit (ghillieFleetSuits.ts kf51_u), refitted to this hull and turret.
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts kf51_u, refitted 267 to this hull and turret),
+  // laid on the assembled build
+  addVehicleGhillieSuit(P);
+  const { box, cylX, cylY, cylZ, polyMultiLoft, buildGun, liftEye } = KIT;
+  const turretScale = 1.05;
+  const gear = LEOPARD_2_RUNNING_GEAR;
+  const turretPivotZM = 0.65;
+  const multispectralSightLiftM = 0.18;
+  // (267 round 3: the sight is the right-hand one of the two sensor boxes on the front roof corners)
+  const multispectralSightX = 1.00, multispectralSightY = 0.70, multispectralSightZ = 1.00;
+  const kf51SkirtHemY = 0.9502;                 // the KF51 skirt's outer hem (kf51X.ts pantherSkirts)
+  const buildKF51OwnerExactAssemblyStage1 = (): void => {
+    buildKF51XHull(P, 'kf51b_skirt_era_');
+    addKF51uSkirtPanels(P, 'kf51b_skirt_era_');
+    // the three crew stations on the hull's glacis ahead of the turret: hatch coamings, lids, twin vision blocks
+    const kf51Deck: readonly Vec2Tuple[] = [[1.47, 1.603], [2.447, 1.420], [3.005, 1.366], [3.745, 1.234]];
+    const tiltAt = (z: number): number => Math.atan2(deckYAt(kf51Deck, z - 0.05) - deckYAt(kf51Deck, z + 0.05), 0.10);
+    for (const x of [-0.62, 0, 0.62]) {
+      const hz = 2.50, hy = deckYAt(kf51Deck, hz), ht = tiltAt(hz);
+      P.add('hullDetail', cylY(0.25, 0.26, 0.022, P.q ? 22 : 12), x, hy + 0.006, hz, ht, 0, 0);
+      P.addHatch('hullHatch', cylY(0.21, 0.21, 0.02, P.q ? 20 : 12), x, hy + 0.024, hz, ht, 0, 0);
+      P.add('hullDark', box(0.18, 0.012, 0.03), x, hy + 0.038, hz - 0.07, ht, 0, 0);
+      for (const dx of [-0.12, 0.12]) {
+        const z = 2.86, y = deckYAt(kf51Deck, z), t = tiltAt(z);
+        P.add('hullDetail', box(0.16, 0.05, 0.10), x + dx, y + 0.012, z, t, 0, 0);
+        P.add('hullGlass', box(0.12, 0.022, 0.012), x + dx, y + 0.02, z + 0.051, t, 0, 0);
+      }
+    }
+    P.hullG.userData.kf51uCrewStationsReceipt = Object.freeze({
+      profile: 'kf51u-hull-crew-r2', crewInHull: 3, hatchZ: 2.50, visionBlockZ: 2.86, hull: 'kf51X.ts buildKF51XHull',
+    });
+    P.hullG.userData.kf51bSkirtArmorReceipt = Object.freeze({
+      revision: 'kf51u-kf51-hull-skirt-r2', construction: 'kf51X.ts pantherSkirts (shared with the KF51 Panther)',
+      armorBottomY: kf51SkirtHemY, eraZones: Object.freeze(['kf51b_skirt_era_L', 'kf51b_skirt_era_R']),
+    });
+    // the rotating mass: the installed pivot (kf51Specs.ts) and the 1.05x turret frame
+    P.turretG.position.set(0, 1.806, 0.6825);
+    P.turretG.scale.setScalar(turretScale);
+  };
+  buildKF51OwnerExactAssemblyStage1();
+  yield 'buildKF51OwnerExactAssemblyStage1';
+  // 267 round 3 (the CUT's faceted nose, research/kf51_u photos 1, 2, 4, 9, 10): slab walls standing parallel back from
+  // the cheeks, whose outer facets converge forward to two prongs either side of the gun's recess; a chine runs round the
+  // turret at the belt, the lower face below it sloping in to a floor that rises forward until it meets the chine at each
+  // prong's point (photo 2); the cheek fronts and the roof's edge rake back above it. One convex stock in the Panther-B
+  // bounds (x +-1.55, back -2.96, crown 0.66: leopardStructuralRepairs), the gun's recess cut in it.
+  const turretPlan: Vec2Tuple[] = [
+    [-0.58, 1.88], [0.58, 1.88], [1.40, 1.12], [1.55, 0.50], [1.55, -0.60], [1.44, -2.40], [0.96, -2.96],
+    [-0.96, -2.96], [-1.44, -2.40], [-1.55, -0.60], [-1.55, 0.50], [-1.40, 1.12],
+  ];
+  const turretChineY = 0.20;
+  // each right-side plan station (on the chine) with its floor edge, shoulder and roof edge (x, y, z)
+  const turretStations: readonly (readonly [Vec2Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple])[] = [
+    [[0.58, 1.88], [0.58, 0.12, 1.80], [0.56, 0.42, 1.76], [0.52, 0.50, 1.60]],
+    [[1.40, 1.12], [1.16, -0.12, 1.02], [1.36, 0.50, 1.06], [1.24, 0.58, 0.98]],
+    [[1.55, 0.50], [1.30, -0.15, 0.48], [1.51, 0.52, 0.48], [1.38, 0.62, 0.45]],
+    [[1.55, -0.60], [1.30, -0.15, -0.60], [1.51, 0.52, -0.60], [1.38, 0.62, -0.60]],
+    [[1.44, -2.40], [1.22, 0.07, -2.32], [1.41, 0.52, -2.38], [1.30, 0.61, -2.30]],
+    [[0.96, -2.96], [0.88, 0.07, -2.92], [0.95, 0.52, -2.96], [0.88, 0.60, -2.88]],
+  ];
+  const turretRoofEdgeHeightsM = turretStations.map(([, , , roof]) => roof[1]);
+  const turretRoofCenterHeightM = 0.66;
+  const rightTurretWall = turretPlan.slice(1, 7);
   const turretWallHalfWidthAt = (z: number): number => {
     for (let i = 0; i < rightTurretWall.length - 1; i++) {
       const [x0, z0] = rightTurretWall[i];
@@ -9645,25 +9388,33 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       ? rightTurretWall[0][0]
       : rightTurretWall[rightTurretWall.length - 1][0];
   };
-  // The panel belt sits midway up the loft wall. At that height the wall is
-  // about 94-96% of the plan ring; use the same taper station-by-station so
-  // the aft panels do not remain stranded at the widest cheek datum.
-  const turretPanelWallXAt = (z: number): number => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
+  // the wall's outer face (|x|) at height y and station z, read off the built stock (filled in with it)
+  let turretShellXAt: (z: number, y: number) => number = turretWallHalfWidthAt;
+  let turretProbe: THREE.Mesh | null = null;
+  const turretPanelWallXAt = (z: number): number => turretShellXAt(z, 0.33);
+  const turretWallYawAt = (z: number): number => (z > 0.50 ? -Math.atan2(0.15, 0.62)
+    : z > -0.60 ? 0 : Math.atan2(0.11, 1.80));
   const buildKF51OwnerExactMarkingsStage1 = (): void => {
-    const structuralShell = recessKF51BTurret(convexCrownedStock(polyMultiLoft(turretPlan, [
-      { height: -0.01, inset: 0.93 },
-      { height: 0.24, inset: 1.00 },
-      {
-        // The previous 0.27 m forward pair fed a 0.58 m center fan. That
-        // authored a deep triangular valley across the entire fore-roof—the
-        // exact concave patch selected in the gallery markup. Every fan edge
-        // now rises monotonically to a crown above its highest perimeter
-        // station, preserving the Panther wedge without a sunken roof.
-        height: turretRoofEdgeHeightsM,
-        inset: [0.78, 0.78, 0.82, 0.84, 0.88, 0.92, 0.92, 0.88, 0.84, 0.82],
-        centerHeight: turretRoofCenterHeightM,
-      },
-    ])));
+    const cloud: number[] = [];
+    for (const s of [-1, 1] as const) {
+      for (const [[px, pz], floor, shoulder, roof] of turretStations) {
+        for (const [x, y, z] of [floor, [px, turretChineY, pz], shoulder, roof]) cloud.push(s * x, y, z);
+      }
+    }
+    for (const z of [0.55, -2.20]) cloud.push(0, turretRoofCenterHeightM, z);
+    const stock = new THREE.BufferGeometry();
+    stock.setAttribute('position', new THREE.Float32BufferAttribute(cloud, 3));
+    const structuralShell = recessKF51BTurret(convexCrownedStock(stock));
+    {
+      const probe = new THREE.Mesh(structuralShell, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+      const ray = new THREE.Raycaster();
+      turretProbe = probe;
+      turretShellXAt = (z, y) => {
+        ray.set(new THREE.Vector3(3, y, z), new THREE.Vector3(-1, 0, 0));
+        const hit = ray.intersectObject(probe, false)[0];
+        return hit ? hit.point.x : turretWallHalfWidthAt(z);
+      };
+    }
     structuralShell.userData.primaryStockRole = 'kf51u-recessed-shell';
     P.add('turret', structuralShell);
     P.turretG.userData.kf51bGunRecess = { ...KF51B_GUN_RECESS, closedCheeks: true };
@@ -9674,22 +9425,25 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       centerAboveHighestEdgeM: turretRoofCenterHeightM - Math.max(...turretRoofEdgeHeightsM),
       concaveFanRemoved: true,
     });
-
+    // the gun throat's floor under the moving housing, ending where the cheeks' bottoms rise (the air columns end at
+    // y 0, kf51bTurretCenter.selftest)
+    P.add('turret', orientedSlab(
+      [-0.425, -0.12, 1.20], [0.425, -0.12, 1.20], [0.425, -0.15, 0.88], [-0.425, -0.15, 0.88],
+      [-0.425, -0.07, 1.20], [0.425, -0.07, 1.20], [0.425, -0.07, 0.88], [-0.425, -0.07, 0.88]));
     for (const s of [-1, 1] as const) {
       P.decal('turret', 'crossgrey', null, 0.31,
-        [s * 1.34, 0.36, 0.04], s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, s * 0.08);
+        [s * (turretShellXAt(-1.25, 0.30) + 0.004), 0.30, -1.25], s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0);
     }
 
-    // Large recessed multispectral sight on the owner's left-front cheek.
-    // Keep the pitched housing rooted in the wedge, but expose its upper body:
-    // the former 0.34 m center buried nearly the complete marked front face
-    // beneath the rising fore-roof. Lift the housing and both apertures as one
-    // rigid assembly so the glass never separates from its armored surround.
-    P.add('turretDark', box(0.44, 0.34, 0.18),
-      -0.74, 0.34 + multispectralSightLiftM, 1.27, -0.20, 0, 0);
-    for (const dx of [-0.09, 0.09]) {
-      P.add('turretGlass', box(0.10, 0.10, 0.018),
-        -0.74 + dx, 0.39 + multispectralSightLiftM, 1.366, -0.20, 0, 0);
+    // The big sensor boxes standing proud on the front roof corners (photos 1, 4, 9): a raised window frame with one
+    // large and two small apertures, facing forward, seated on the cheek roof behind its raked front edge. The right one
+    // is the multispectral sight, its housing and apertures one rigid assembly lifted over the cheek datum.
+    for (const s of [-1, 1] as const) {
+      const x = s * multispectralSightX, y = multispectralSightY, z = multispectralSightZ;
+      P.add('turret', box(0.36, 0.34, 0.26), x, y, z);
+      P.add('turretDark', box(0.30, 0.26, 0.02), x, y + 0.01, z + 0.135);
+      P.add('turretGlass', cylZ(0.085, 0.02, P.q ? 22 : 14), x + s * 0.055, y + 0.015, z + 0.145);
+      for (const dy of [0.075, -0.055]) P.add('turretGlass', cylZ(0.035, 0.02, 12), x - s * 0.085, y + dy, z + 0.145);
     }
 
     // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The retired 390 mm
@@ -9750,7 +9504,7 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
   const kf51bMrsHeightM = 0.10;
   const kf51bMrsCenterYM = kf51bMrsSupportRadiusM
     + kf51bMrsHeightM / 2 - kf51bMrsSupportEmbedM;
-  const buildKF51OwnerExactTurretStage1 = (): void => {
+  const buildKF51OwnerExactGunStage2 = (): void => {
     P.add('gun', box(0.15, kf51bMrsHeightM, 0.31), 0, kf51bMrsCenterYM, 4.60, 0, -0.08, 0);
     P.add('gunDark', box(0.105, 0.036, 0.20), 0, kf51bMrsCenterYM + 0.053, 4.60, 0, -0.08, 0);
     P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
@@ -9789,194 +9543,170 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       barrelLengthLocalM: 5.30,
       authoritativePivotAndMuzzleAligned: true,
     });
-
-    // 267: the Concept Uncrewed Turret's roof (Eurosatory 2024): no crew hatches or periscopes. Behind the gun throat
-    // the armoured sensor tower carries the panoramic sight's large window and a stack of four Iron Fist launchers on
-    // its right; Iron Fist twin launchers turn on the roof's flanks, ROSY obscurant tubes run along the lower side
-    // edges, MUSS twin-lens heads watch the rear quarters, and the autoloader's two magazines open in the bustle's back.
-    const towerFace = -Math.atan2(0.06, 0.44);
-    P.add('turret', convexSlab(
-      [-0.42, 0.60, 0.82], [0.42, 0.60, 0.82], [0.42, 0.60, 0.10], [-0.42, 0.60, 0.10],
-      [-0.38, 1.04, 0.76], [0.38, 1.04, 0.76], [0.38, 1.04, 0.14], [-0.38, 1.04, 0.14]));
-    P.add('turretDark', box(0.40, 0.32, 0.03), -0.06, 0.84, 0.802, towerFace, 0, 0);
-    P.add('turretGlass', cylZ(0.11, 0.02, P.q ? 24 : 14), -0.02, 0.84, 0.815, towerFace, 0, 0);
-    for (const y of [0.76, 0.93]) P.add('turretGlass', cylZ(0.035, 0.02, 12), -0.19, y, 0.812, towerFace, 0, 0);
-    P.add('turretDetail', box(0.06, 0.44, 0.22), -0.445, 0.83, 0.62);                      // launcher rack on the tower's right
+  };
+  buildKF51OwnerExactGunStage2();
+  yield 'buildKF51OwnerExactGunStage2';
+  // The weapon station's tower at the rear centre (photos 4, 6, 10): a flat-faced armoured box with chamfered top edges,
+  // the panoramic sight's raised window frame in its front, the launcher stack on its right flank, the electronics box
+  // at its left foot; the station stands in a square collar on its top that hides its slew ring.
+  const towerTopY = 1.02, towerZ = -1.92, stationY = 0.91;    // the station's foot 11 cm into the collar
+  const buildKF51OwnerExactTurretStage1 = (): void => {
+    const cloud: number[] = [];
+    for (const [y, hx, z0, z1] of [[0.56, 0.46, -1.46, -2.38], [0.94, 0.45, -1.48, -2.36], [towerTopY, 0.39, -1.55, -2.29]]) {
+      for (const [x, z] of [[-hx, z0], [hx, z0], [hx, z1], [-hx, z1]]) cloud.push(x, y, z);
+    }
+    const towerStock = new THREE.BufferGeometry();
+    towerStock.setAttribute('position', new THREE.Float32BufferAttribute(cloud, 3));
+    P.add('turret', convexCrownedStock(towerStock));
+    // the collar: a square frame round the slew ring, open over the station's foot
+    for (const dz of [-0.3425, 0.3425]) P.add('turret', box(0.78, 0.15, 0.055), 0, towerTopY + 0.065, towerZ + dz);
+    for (const s of [-1, 1] as const) P.add('turret', box(0.075, 0.15, 0.63), s * 0.3525, towerTopY + 0.065, towerZ);
+    // the panoramic sight's window: a raised frame, one large and two small apertures
+    P.add('turret', box(0.42, 0.32, 0.05), 0.04, 0.80, -1.452);
+    P.add('turretDark', box(0.36, 0.26, 0.012), 0.04, 0.80, -1.424);
+    P.add('turretGlass', cylZ(0.105, 0.02, P.q ? 24 : 14), 0.10, 0.80, -1.418);
+    for (const [y, r] of [[0.87, 0.045], [0.74, 0.030]] as const) P.add('turretGlass', cylZ(r, 0.02, 12), -0.08, y, -1.418);
+    // the launcher stack on the right flank: four canisters on a bracket, raked forward and out
+    P.add('turretDetail', box(0.05, 0.44, 0.26), -0.47, 0.80, -1.66);
     for (let k = 0; k < 4; k++) {
-      const y = 0.68 + k * 0.10;
-      P.add('turretDetail', cylZ(0.048, 0.22, 12), -0.52, y, 0.66, -0.10, -0.45, 0);
-      P.add('turretDark', cylZ(0.040, 0.012, 12), -0.57, y + 0.01, 0.76, -0.10, -0.45, 0);
+      const y = 0.65 + k * 0.10;
+      P.add('turretDetail', cylZ(0.045, 0.24, 12), -0.535, y, -1.62, -0.10, -0.40, 0);
+      P.add('turretDark', cylZ(0.037, 0.012, 12), -0.58, y + 0.012, -1.51, -0.10, -0.40, 0);
     }
-    P.add('turret', box(0.16, 0.20, 0.30), 0.50, 0.71, 0.58);                             // bolted electronics box, left
-    P.add('turretDark', box(0.12, 0.13, 0.012), 0.50, 0.72, 0.735);
+    // the electronics box at the tower's left foot, its perforated cover forward
+    P.add('turret', box(0.20, 0.22, 0.30), 0.56, 0.75, -1.62);
+    P.add('turretDark', box(0.16, 0.16, 0.012), 0.56, 0.76, -1.466);
+    // the cheeks' side sensors (photos 7, 10): the MUSS twin-lens hood and a camera on each outer cheek facet
+    const cheekYaw = Math.atan2(0.76, 0.82);
+    const facetPoint = (t: number, y: number): THREE.Vector3 => {
+      const ray = new THREE.Raycaster();
+      const px = 0.58 + 0.82 * t, pz = 1.88 - 0.76 * t;
+      ray.set(new THREE.Vector3(px + Math.sin(cheekYaw), y, pz + Math.cos(cheekYaw)),
+        new THREE.Vector3(-Math.sin(cheekYaw), 0, -Math.cos(cheekYaw)));
+      return ray.intersectObject(turretProbe!, false)[0]?.point ?? new THREE.Vector3(px, y, pz);
+    };
     for (const s of [-1, 1] as const) {
-      // Iron Fist twin launcher on its turntable, canted out, up and forward
-      P.add('turretDark', cylY(0.12, 0.13, 0.07, 14), s * 1.06, 0.62, -1.38);
-      P.add('turretDetail', box(0.22, 0.10, 0.16), s * 1.06, 0.70, -1.38);
-      for (const dy of [-0.06, 0.06]) {
-        P.add('turretDetail', cylZ(0.055, 0.40, 12), s * 1.10, 0.78 + dy, -1.30, -0.22, s * 0.85, 0);
+      const yaw = s * cheekYaw, nx = Math.sin(cheekYaw), nz = Math.cos(cheekYaw);
+      const hood = facetPoint(0.72, 0.36), cam = facetPoint(0.46, 0.32);
+      P.add('turret', box(0.24, 0.10, 0.10), s * (hood.x + nx * 0.03), hood.y, hood.z + nz * 0.03, 0, yaw, 0);
+      for (const du of [-0.05, 0.05]) {
+        P.add('turretGlass', cylZ(0.030, 0.02, 12),
+          s * (hood.x + nx * 0.08 + nz * du), hood.y, hood.z + nz * 0.08 - nx * du, 0, yaw, 0);
       }
-      // ROSY: four obscurant tubes along the lower side edge, in a dark recess
-      const rosyX = turretWallHalfWidthAt(-0.63) * 0.965;
-      P.add('turretDark', box(0.05, 0.11, 0.98), s * (rosyX - 0.02), 0.13, -0.63);
-      for (const z of [-0.27, -0.51, -0.75, -0.99]) {
-        P.add('turretDetail', markSmokeTube(cylZ(0.038, 0.14, 10)), s * (rosyX + 0.03), 0.14, z, -0.35, s * 1.15, 0);
+      P.add('turretDark', box(0.08, 0.15, 0.04), s * (cam.x + nx * 0.01), cam.y, cam.z + nz * 0.01, 0, yaw, 0);
+      P.add('turretGlass', cylZ(0.028, 0.02, 12), s * (cam.x + nx * 0.035), cam.y - 0.025, cam.z + nz * 0.035, 0, yaw, 0);
+    }
+    for (const s of [-1, 1] as const) {
+      // the ROSY launcher pair on its turntable at the rear corner, firing out, back and up
+      P.add('turretDark', cylY(0.11, 0.12, 0.06, 14), s * 1.02, 0.61, -2.50);
+      P.add('turretDetail', box(0.20, 0.09, 0.15), s * 1.02, 0.68, -2.50);
+      for (const dy of [-0.05, 0.05]) {
+        P.add('turretDetail', cylZ(0.048, 0.34, 12), s * 1.08, 0.75 + dy, -2.56, -0.25, s * 2.2, 0);
       }
-      // MUSS twin-lens heads on the rear quarters
-      P.add('turret', box(0.22, 0.11, 0.14), s * 0.98, 0.585, -2.70, 0, s * 0.6, 0);
-      for (const du of [-0.045, 0.045]) {
-        P.add('turretGlass', cylZ(0.024, 0.02, 12), s * (0.98 + 0.08 * Math.sin(0.6) + du * Math.cos(0.6)), 0.59,
-          -2.70 - 0.07 * Math.cos(0.6) + du * Math.sin(0.6), 0, Math.PI + s * 0.6, 0);
+      // the smoke dischargers on the lower face under the chine (photos 2, 10), in a dark strip laid on it
+      const lowerFaceTilt = Math.atan2(0.25, 0.35);
+      P.add('turretDark', box(0.03, 0.16, 0.96), s * (turretShellXAt(-0.58, 0.03) - 0.008), 0.03, -0.58,
+        0, 0, -s * lowerFaceTilt);
+      for (const z of [-0.22, -0.46, -0.70, -0.94]) {
+        P.add('turretDetail', markSmokeTube(cylZ(0.038, 0.14, 10)), s * (turretShellXAt(z, 0.04) + 0.03), 0.045, z,
+          -0.35, s * 1.15, 0);
+      }
+      // the MUSS heads on the rear corners: twin windows, back and out
+      for (const [x, y, z, yaw] of [[1.06, 0.60, -2.76, Math.PI - 0.55]] as const) {
+        P.add('turret', box(0.22, 0.12, 0.15), s * x, y, z, 0, s * yaw, 0);
+        for (const du of [-0.05, 0.05]) {
+          const a = s * yaw;
+          P.add('turretGlass', cylZ(0.026, 0.02, 12),
+            s * x + Math.sin(a) * 0.075 + Math.cos(a) * du, y + 0.005, z + Math.cos(a) * 0.075 - Math.sin(a) * du, 0, a, 0);
+        }
       }
     }
-    for (const [z, w] of [[0.95, 1.30], [-0.64, 1.72], [-1.96, 1.66]]) {
-      P.add('turretDark', box(w, 0.014, 0.028), 0, 0.587, z);
+    // the autoloader's two magazine doors in the turret's back, hinges up, handles below
+    for (const x of [-0.44, 0.44]) {
+      P.add('turretDark', box(0.62, 0.32, 0.012), x, 0.36, -2.952);
+      P.add('turret', box(0.56, 0.26, 0.02), x, 0.36, -2.960);
+      P.add('turretDetail', box(0.56, 0.03, 0.03), x, 0.51, -2.962);
+      P.add('turretDetail', box(0.20, 0.025, 0.03), x, 0.26, -2.972);
     }
-
-    // Flush modular flank armor and backed sensor cells break the large plain
-    // side sheets without turning the Panther into an ERA brick.  Each armor
-    // face overlaps the connected turret wall; the thin dark joints are
-    // recessed visually and cannot read as floating panels.
+    // flush modular flank armour on the slab walls: seven panels a side, backed, with buried carrier feet
     for (const s of [-1, 1] as const) {
       const sidePanels = [
-        [0.82, 0.34, 0.22], [0.42, 0.42, 0.24], [-0.04, 0.46, 0.25],
-        [-0.54, 0.47, 0.25], [-1.05, 0.47, 0.24], [-1.56, 0.45, 0.23],
+        [0.82, 0.34, 0.20], [0.42, 0.42, 0.22], [-0.04, 0.46, 0.24],
+        [-0.54, 0.47, 0.24], [-1.05, 0.47, 0.24], [-1.56, 0.45, 0.23],
         [-2.03, 0.39, 0.21],
       ];
       for (const [z, d, h] of sidePanels) {
         const wallX = turretPanelWallXAt(z);
-        const backingX = wallX + 0.002;
-        const armorX = wallX + 0.018;
-        P.add('turretDark', box(0.050, h + 0.035, d + 0.032), s * backingX, 0.35, z,
-          0, s * 0.11, 0);
-        P.add('turret', box(0.046, h, d), s * armorX, 0.36, z,
-          0, s * 0.11, 0);
-        P.add('turretDetail', box(0.050, 0.018, d * 0.70), s * (armorX + 0.025), 0.43, z,
-          0, s * 0.11, 0);
-        // Two buried carrier feet give every module a visible load path into
-        // the tapered shell instead of relying on a near-coplanar backing face.
+        const yaw = s * turretWallYawAt(z);
+        P.add('turretDark', box(0.050, h + 0.035, d + 0.032), s * (wallX + 0.002), 0.32, z, 0, yaw, 0);
+        P.add('turret', box(0.046, h, d), s * (wallX + 0.018), 0.33, z, 0, yaw, 0);
+        P.add('turretDetail', box(0.050, 0.018, d * 0.70), s * (wallX + 0.043), 0.40, z, 0, yaw, 0);
         for (const dz of [-d * 0.32, d * 0.32]) {
-          P.add('turretDark', box(0.080, h * 0.32, 0.045),
-            s * (wallX - 0.015), 0.35, z + dz, 0, s * 0.11, 0);
+          P.add('turretDark', box(0.080, h * 0.32, 0.045), s * (wallX - 0.015), 0.32, z + dz, 0, yaw, 0);
         }
       }
-      P.add('turret', box(0.20, 0.15, 0.24), s * 1.22, 0.56, 0.78, -0.05, s * 0.13, 0);
-      P.add('turretDark', box(0.024, 0.09, 0.15), s * 1.33, 0.57, 0.80, -0.05, s * 0.13, 0);
-      P.add('turretGlass', box(0.016, 0.055, 0.085), s * 1.347, 0.58, 0.81, -0.05, s * 0.13, 0);
+      liftEye(P, 'turretDetail', s * 1.20, 0.60, -0.30, s * 2.2);
     }
-
   };
   buildKF51OwnerExactTurretStage1();
   yield 'buildKF51OwnerExactTurretStage1';
 
-  // Full remote weapon tower. The old hand-built split shield stood on a
-  // thin post and exposed no coherent feed/sensor mechanism. This shares
-  // the 2A6M's powered open-yoke architecture and scale, while the Panther
-  // variant adds a faceted armored brow, twin apertures and canted cheeks.
+  // The remote weapon station on the pedestal tower: the 2A6M's powered open-yoke architecture, Panther package.
   const kf51bRoofRws = addLeopardOpenYokeAuxRws(P, {
-    x: 0.30, y: 0.55, z: -2.16,
-    variant: 'kf51b-panther', ammoSide: 1, sensorSide: -1, yaw: -0.025,
+    x: 0, y: stationY, z: towerZ,
+    variant: 'kf51b-panther', ammoSide: 1, sensorSide: -1, yaw: 0,
     weaponRole: 'roof-primary',
   });
   const buildKF51OwnerExactTurretStage2 = (): void => {
     P.turretG.userData.openYokeRwsReceipt = kf51bRoofRws;
-
-    // Low roof seams and lifting hardware visible in the owner top/rear views.
-    P.add('turretDetail', box(1.52, 0.025, 0.035), 0, 0.615, -1.72);
-    // the autoloader's two magazine doors in the bustle's back, their hinges up and handles below
-    for (const x of [-0.44, 0.44]) {
-      P.add('turretDark', box(0.62, 0.34, 0.012), x, 0.27, -2.962);
-      P.add('turret', box(0.56, 0.28, 0.018), x, 0.27, -2.970);
-      P.add('turretDetail', box(0.56, 0.03, 0.03), x, 0.43, -2.975);
-      P.add('turretDetail', box(0.20, 0.025, 0.03), x, 0.17, -2.984);
-    }
+    // whips on base pots at the rear roof
     for (const s of [-1, 1] as const) {
-      liftEye(P, 'turretDetail', s * 0.94, 0.59, -1.74, s * 2.2);
-      P.add('turretDetail', box(0.035, 0.12, 0.035), s * 1.03, 0.62, -2.05);
-    }
-
-    // §5.299 integration — the demonstrator carries twin rod whips at the
-    // bustle corners (every KF51 photo class); base pots + thin near-vertical
-    // rods, tips ~3.1 world = inside the SEOSS/RWS height band (no new
-    // heightM column class; §B5: turretG-owned, yaws with the mass).
-    for (const s of [-1, 1] as const) {
-      P.add('turretDetail', cylY(0.030, 0.038, 0.06, 8), s * 1.02, 0.565, -2.42);
+      P.add('turretDetail', cylY(0.030, 0.038, 0.06, 8), s * 0.70, 0.615, -2.62);
       const whip = FITTINGS.antennaWhip({
         mats: P.mats, h: s < 0 ? 0.84 : 0.78, r: 0.011,
         rake: s * 0.035, seed: 910 + (s > 0 ? 1 : 0),
       });
-      whip.position.set(s * 1.02, 0.60, -2.42);
+      whip.position.set(s * 0.70, 0.645, -2.62);
       P.turretG.add(whip);
     }
-
-  };
-  buildKF51OwnerExactTurretStage2();
-  yield 'buildKF51OwnerExactTurretStage2';
-  const buildKF51OwnerExactTurretStage3 = (): void => {
-
     P.hullG.userData.kf51bTrackSeatReceipt = {
       runningGear: 'leopard-2a6-x',
       roadWheelRadiusM: gear.wheelR,
       roadWheelSpanM: [gear.wheelZs[6], gear.wheelZs[0]],
       idlerZ: gear.idler.z,
-      skirtHemY,
-      trackArcSteps: 14,
-      deduplicatedLoop: true,
-      smoothRearTopTangent: true,
-      spareTrackSeatY: 1.495,
+      skirtHemY: kf51SkirtHemY,
+      sharedHull: 'kf51X.ts buildKF51XHull',
     };
     P.turretG.userData.kf51bAttachmentSeatReceipt = {
       roofRws: kf51bRoofRws,
+      roofRwsOnPedestalTower: true,
       uncrewedTurret: true,
       hullCrewStations: 3,
-      roofSeamY: 0.587,
       multispectralSight: Object.freeze({
-        centerLocal: Object.freeze([-0.74, 0.34 + multispectralSightLiftM, 1.27]),
-        apertureCenterY: 0.39 + multispectralSightLiftM,
+        centerLocal: Object.freeze([-multispectralSightX, multispectralSightY, multispectralSightZ]),
+        apertureCenterY: multispectralSightY + 0.015,
         liftM: multispectralSightLiftM,
         rigidApertureLift: true,
       }),
       sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
         .map((z) => ({ z, wallX: turretPanelWallXAt(z) })),
     };
-
-    // The hull and turret are sibling articulation owners, so enlarge both and
-    // scale the turret pivot itself. Contact and hit metadata live outside that
-    // render hierarchy and must be converted to the same installed frame.
-    P.hullG.scale.multiplyScalar(uniformScale);
-    P.turretG.scale.multiplyScalar(uniformScale);
-    P.turretG.position.multiplyScalar(uniformScale);
-    if (P.gear?.contactGeom) {
-      for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
-        P.gear.contactGeom[key] *= uniformScale;
-      }
-      if (P.gear.contactGeom.endRise) {
-        for (const key of ['dzM', 'frontM', 'rearM'] as const) {
-          P.gear.contactGeom.endRise[key] *= uniformScale;
-        }
-      }
-    }
-    for (const lane of P.gear?.trackHitbox || []) {
-      lane.x0 *= uniformScale;
-      lane.x1 *= uniformScale;
-      lane.poly = lane.poly.map(([z, y]) => [z * uniformScale, y * uniformScale]);
-    }
   };
-  buildKF51OwnerExactTurretStage3();
-  yield 'buildKF51OwnerExactTurretStage3';
+  buildKF51OwnerExactTurretStage2();
+  yield 'buildKF51OwnerExactTurretStage2';
   const proportionReceipt = Object.freeze({
-    revision: 'kf51b-turret-forward-convex-r1',
-    uniformScale,
+    revision: 'kf51u-kf51-hull-cut-r3',
+    hullScale: 1,
+    turretScale,
     turretPivotLocalZ: turretPivotZM,
-    turretPivotInstalledZ: turretPivotZM * uniformScale,
-    installedRoadWheelRadiusM: gear.wheelR * uniformScale,
+    turretPivotInstalledZ: turretPivotZM * turretScale,
+    installedRoadWheelRadiusM: gear.wheelR,
     turretPivotScaled: true,
-    trackContactMetadataScaled: true,
-    trackHitGeometryScaled: true,
   });
   const buildKF51OwnerExactReceiptStage1 = (): void => {
     P.hullG.userData.kf51bProportionReceipt = proportionReceipt;
     P.turretG.userData.kf51bProportionReceipt = proportionReceipt;
+    (turretProbe?.material as THREE.Material | undefined)?.dispose();
 
     P.topY = 1.29;
   };

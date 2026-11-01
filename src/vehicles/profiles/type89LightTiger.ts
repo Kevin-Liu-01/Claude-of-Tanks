@@ -448,7 +448,7 @@ function addTurretSensors(P: LightTigerBuilderPort): void {
   P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.10, 0.012), gx - 0.06, gy + 0.21, gz + 0.222);
   P.addModuleVisual('optics', 'turretGlass', box(0.08, 0.10, 0.012), gx + 0.08, gy + 0.21, gz + 0.222);
   // Commander's panoramic sight (vehicle left): a Type 10-style stacked head on a short stalk, ahead of the hatch.
-  const cx = 0.38, cz = 0.32, cy = T_ROOF;
+  const cx = 0.32, cz = 0.66, cy = T_ROOF;
   P.addEquipment('turret', cylY(0.15, 0.17, 0.08, P.q ? 20 : 10), cx, cy + 0.04, cz);
   P.addEquipment('turret', cylY(0.09, 0.10, 0.24, P.q ? 16 : 8), cx, cy + 0.20, cz);
   P.addEquipment('turret', box(0.36, 0.20, 0.36), cx, cy + 0.42, cz);
@@ -467,7 +467,7 @@ function addTurretSensors(P: LightTigerBuilderPort): void {
 
 function addTurretWeaponsAndKit(P: LightTigerBuilderPort): void {
   // Commander's hatch (vehicle left, behind the panoramic sight) with the pintle M2 on its ring.
-  const hx = 0.46, hz = -0.62;
+  const hx = 0.50, hz = -0.80;
   const hatch = hatchParts(0.29, !!P.q, -1);
   for (const g of hatch.lid) P.addHatch('turret', g, hx, T_ROOF - 0.005, hz);
   for (const g of hatch.dark) P.addEquipment('turretDark', g, hx, T_ROOF - 0.005, hz);
