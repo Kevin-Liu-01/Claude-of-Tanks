@@ -114,8 +114,8 @@ import {
   type ConsumableHost, type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { decodeAimIntent } from './aimIntent.ts';
-import type { AimIntentInput } from './aimIntent.ts';
+import { applyPlayerInput } from './playerInputStage.ts';
+import type { AuthoritativePlayerInput } from './playerInputStage.ts';
 import {
   activateSpecialAction,
   bindSpecialActionState,
@@ -178,17 +178,7 @@ export interface AuthoritativePlayerRecord {
   difficulty?: AiDifficulty;
 }
 
-export interface AuthoritativePlayerInput extends AimIntentInput {
-  throttle: number;
-  steer: number;
-  brake: boolean;
-  fire: boolean;
-  fireIntentSeq?: number | null;
-  aimLocked?: boolean;
-  shellSlot: number;
-  actionBits: number;
-  auxiliaryBits?: number;
-}
+export type { AuthoritativePlayerInput };
 
 interface AuthoritativeInput {
   auxiliaryBits?: number;
@@ -1264,54 +1254,6 @@ export function createAuthoritativeMatch({
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   const nextModeRouteS = { alpha: 0, bravo: 0 };
-
-  function applyNetworkInput(
-    entity: AuthoritativeEntity,
-    input: AuthoritativePlayerInput | null | undefined,
-  ): void {
-    if (!input || entity.modeActive === false || entity.combat.destroyed) {
-      entity.input.throttle = 0;
-      entity.input.steer = 0;
-      entity.input.brake = true;
-      entity.input.fire = false;
-      // No driver must also stop sight-driven hull traverse/hydraulic lay.
-      entity.input.aimLocked = true;
-      entity.input.actionBits = 0;
-      return;
-    }
-    entity.input.throttle = input.throttle;
-    entity.input.steer = input.steer;
-    entity.input.brake = input.brake;
-    entity.input.fire = input.fire;
-    entity.input.fireIntentSeq = Number.isSafeInteger(input.fireIntentSeq) ? input.fireIntentSeq : null;
-    entity.input.aimLocked = !!input.aimLocked;
-    entity.input.actionBits = input.actionBits | 0;
-    const shellSlot = Math.max(0, Math.min(
-      entity.spec.gun.shells.length - 1,
-      input.shellSlot | 0,
-    ));
-    if (shellSlot !== entity.combat.shellSlot) {
-      if (selectShell(entity.combat, shellSlot, entity.spec)) {
-        entity._deniedShellSlot = undefined;
-      } else {
-        // A stale/depleted ammo request must not fire a different, ready
-        // weapon merely because its fallback no longer starts a reload.
-        entity.input.fire = false;
-        if (entity._deniedShellSlot !== shellSlot) {
-          emit('ammo_selection_denied', {
-            id: entity.id,
-            slot: shellSlot,
-            reason: 'AMMO_EMPTY',
-            guided: entity.spec.gun.shells[shellSlot]?.guided === true,
-          });
-          entity._deniedShellSlot = shellSlot;
-        }
-      }
-    }
-    entity.input.shellSlot = entity.combat.shellSlot;
-    decodeAimIntent(input, entity.aerial?.active ? entity.aerial : entity.state.pos, _aim);
-    entity.input.aimPoint.copy(_aim);
-  }
 
   function obstacleCandidates(
     centerX: number,
@@ -2399,7 +2341,7 @@ export function createAuthoritativeMatch({
   function stepCountdown(dt: number): boolean {
     if (phase !== 'countdown') return false;
     countdownRemainingS = Math.max(0, countdownRemainingS - dt);
-    for (const entity of entities) applyNetworkInput(entity, null);
+    for (const entity of entities) applyPlayerInput(entity, null, emit);
     if (countdownRemainingS === 0) {
       phase = 'playing';
       emit('match_started', { countdownMs: 0 });
@@ -2459,14 +2401,14 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
-        // Countdown holds every gun through applyNetworkInput(null). Unlike
+        // Countdown holds every gun through applyPlayerInput(null). Unlike
         // humans, bots have no incoming frame to release that safety hold;
         // hand aiming back to the shared solo AI before it writes this tick.
         if (!entity.combat.destroyed) entity.input.aimLocked = false;
         entity.aiCtl?.update(dt, timeS);
         reconcileBotShell(entity);
       } else {
-        applyNetworkInput(entity, inputs.get(entity.id));
+        applyPlayerInput(entity, inputs.get(entity.id), emit);
       }
       useConsumables(entity);
       tickEntityConsumables(entity);
@@ -2582,7 +2524,7 @@ export function createAuthoritativeMatch({
   }
   function advanceEachTankMovement(dt: number): void {
     for (const entity of entities) {
-      // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
+      // wrecks keep moving (2026-09-19): applyPlayerInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
       if (isGunship(entity)) continue;
       movingEntity = entity;
