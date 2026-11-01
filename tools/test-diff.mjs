@@ -206,16 +206,17 @@ export function balanceInputs(root, { node = process.execPath } = {}) {
   return JSON.parse(child.stdout);
 }
 
-/** `base`'s src/ (and package.json) in a temporary directory beside a link to this tree's node_modules. */
-export function withBaseSources(root, ref, run) {
+/** `base`'s `paths` (src/ and package.json) in a temporary directory beside a link to this tree's node_modules, for `run`
+ *  and whatever it awaits. */
+export async function withBaseSources(root, ref, run, paths = ['src', 'package.json']) {
   const dir = mkdtempSync(join(tmpdir(), 'cot-test-base-'));
   try {
-    const archive = spawnSync('git', ['archive', '--format=tar', ref, 'src', 'package.json'], { cwd: root, maxBuffer: 1 << 30 });
+    const archive = spawnSync('git', ['archive', '--format=tar', ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
     if (archive.status !== 0) throw new Error(`git archive ${ref}: ${archive.stderr}`);
     const untar = spawnSync('tar', ['-x', '-C', dir], { input: archive.stdout, maxBuffer: 1 << 30 });
     if (untar.status !== 0) throw new Error(`tar: ${untar.stderr}`);
     if (existsSync(join(root, 'node_modules'))) symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
-    return run(dir);
+    return await run(dir);
   } finally {
     rmSync(dir, { recursive: true, force: true }); // this function's own temporary copy
   }
@@ -245,6 +246,95 @@ export function hitResolutionMoves(root, partition, changed) {
   const closure = new Set(authorityModules(root, HIT_RESOLUTION_ENTRIES).map((file) => relative(root, file).split(sep).join('/')));
   const grouped = new Set(Object.values(partition.groups).flat());
   return changed.filter((path) => closure.has(path) && !partition.fileIds[path]?.length && !grouped.has(path));
+}
+
+/**
+ * The changed paths whose effect on a tank a builder observable can judge: a fleet group's file or a per-id table file
+ * (the partition names their ids) that the authority's own import graph does not hold and that moves no hit
+ * resolution. The fleet core (every id) and anything the authority imports stay plain reads.
+ */
+export function builderPaths(root, partition, changed, hits = []) {
+  const authority = new Set(authorityModules(root).map((file) => relative(root, file).split(sep).join('/')));
+  const grouped = new Set(Object.values(partition.groups).flat());
+  return changed.filter((path) => !partition.core.has(path) && (grouped.has(path) || partition.fileIds[path]?.length > 0)
+    && !authority.has(path) && !hits.includes(path));
+}
+
+// Each finalized spec field as the eager tool facade registers it, which every authority suite's receipts load
+// (src/vehicles/fleetParity.test-support.mjs: armor plates, modules, crew boxes, hit shells, gun, mobility, visual).
+const SPEC_FIELDS = "await import('./src/vehicles/tankFactory.ts');"
+  + "const { fleetDigest } = await import('./src/vehicles/fleetParity.test-support.mjs');"
+  + 'process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(fleetDigest().specs).map(([id, spec]) => [id, spec.fields]))));';
+
+async function runJson(args, cwd) {
+  let out = '', err = '';
+  const run = runTracked(process.execPath, ['--max-old-space-size=4096', ...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+  run.child.stdout.on('data', (chunk) => { out += chunk; });
+  run.child.stderr.on('data', (chunk) => { err += chunk; });
+  const status = await run;
+  if (status !== 0) throw new Error(`${args.find((arg) => arg.endsWith('.mjs')) ?? 'the spec digest'} in ${cwd} exited ${status}: ${err.trim().split('\n').slice(-2).join(' ')}`);
+  return JSON.parse(out);
+}
+
+/**
+ * What a tree's builders emit for `ids`, as receipts can see it: each finalized spec field's digest (SPEC_FIELDS) and the
+ * HIGH and LOW geometry digests from the tree's own fleet-geometry-ledger worker (`jobs` shards; texture pixels and
+ * interior fills stay outside, as in the ledger). Resolves { id: { spec: { field: digest } | null, high, low } }.
+ */
+export async function builderObservables(root, ids, { jobs = 4 } = {}) {
+  const specs = await runJson(['--input-type=module', '-e', SPEC_FIELDS], root);
+  const present = ids.filter((id) => specs[id]); // the ledger worker refuses an id its tree lacks (a new or removed tank)
+  const shards = Math.max(1, Math.min(jobs, present.length));
+  const rows = present.length ? Object.assign({}, ...await Promise.all(Array.from({ length: shards }, (_, shard) => runJson(
+    ['tools/fleet-geometry-ledger.mjs', '--worker', `--shard=${shard}/${shards}`, `--ids=${present.join(',')}`], root)))) : {};
+  return Object.fromEntries(ids.map((id) => [id, { spec: specs[id] ?? null, high: rows[id]?.high?.digest ?? null, low: rows[id]?.low?.digest ?? null }]));
+}
+
+/** The ids whose builder observables differ, with what moved: the spec fields by name and `geometry` (HIGH or LOW). */
+export function builderMoves(before, after) {
+  const rows = [];
+  for (const [id, now] of Object.entries(after)) {
+    const was = before[id];
+    if (!was?.spec || !now.spec) { if (was?.spec || now.spec) rows.push({ id, classes: [was?.spec ? 'removed' : 'new'] }); continue; }
+    const fields = [...new Set([...Object.keys(was.spec), ...Object.keys(now.spec)])].filter((field) => was.spec[field] !== now.spec[field]);
+    const classes = [...fields.sort(), ...(was.high !== now.high || was.low !== now.low ? ['geometry'] : [])];
+    if (classes.length) rows.push({ id, classes });
+  }
+  return rows.sort((a, b) => a.id.localeCompare(b.id, 'en'));
+}
+
+/**
+ * `readOf` without the reads that decide no result: a module that loads a path only to schedule the work declares it
+ * `scheduleOnly` (tools/changed-only/steps.mjs DECLARED_DYNAMIC, as changed-only drops the edge from its keys), so a
+ * reader that reaches the path only through such edges does not read it. Any other route (an import of its own, a
+ * directory it reads, other than the broad ones createReadIndex already discounts) keeps the read.
+ */
+export function withoutScheduleReads(cache, root, declared, readOf, broadDirs = []) {
+  const broad = new Set(broadDirs.map((dir) => resolve(root, dir)));
+  const cut = new Map(); // a declaring file -> the paths it loads only to schedule
+  for (const [file, declaration] of Object.entries(declared)) if (declaration.scheduleOnly?.length) cut.set(resolve(root, file), new Set(declaration.scheduleOnly.map((path) => resolve(root, path))));
+  const targets = new Set([...cut.values()].flatMap((paths) => [...paths]));
+  const reach = new Map();
+  const reachOf = (file) => {
+    if (reach.has(file)) return reach.get(file);
+    const seen = new Set([file]), stack = [file];
+    while (stack.length) {
+      const current = stack.pop();
+      for (const dependency of cache.dependenciesOf(current)) {
+        if (seen.has(dependency) || cut.get(current)?.has(dependency)) continue;
+        seen.add(dependency); stack.push(dependency);
+      }
+    }
+    reach.set(file, seen);
+    return seen;
+  };
+  return (file, path) => {
+    const read = readOf(file, path), absolute = resolve(root, path);
+    if (read !== 'named' || !targets.has(absolute)) return read;
+    const closure = cache.closureOf(resolve(root, file));
+    for (let dir = dirname(absolute); dir.startsWith(root + sep); dir = dirname(dir)) if (closure.has(dir) && !broad.has(dir)) return read;
+    return reachOf(resolve(root, file)).has(absolute) ? read : null;
+  };
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];

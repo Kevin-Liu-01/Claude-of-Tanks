@@ -12,12 +12,13 @@ import { selftestCommand, selftestReadOf, SELFTEST_DECLARED_INPUTS, SELFTEST_FIX
 import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
 import { laneControl, selectLane } from './test-lane.mjs';
 import { recommend, reportLines, tierList } from './test-recommend.mjs';
-import { balanceChanges, changedMaps, changedTankIds, createReadIndex, HIT_RESOLUTION_ENTRIES, hitResolutionMoves, laneReadOf } from './test-diff.mjs';
+import { balanceChanges, builderMoves, builderPaths, changedMaps, changedTankIds, createReadIndex, HIT_RESOLUTION_ENTRIES, hitResolutionMoves,
+  laneReadOf, withoutScheduleReads } from './test-diff.mjs';
 import { ENTRY_HTML, readsOnPurpose } from './test-recommend.mjs';
 import { SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { idScopedSelection } from './test-heavy.mjs';
 import { auditCounts, auditRows, documentText, simulateWall, summary } from './test-audit.mjs';
-import { WORLD_STEPS } from './changed-only/steps.mjs';
+import { DECLARED_DYNAMIC, WORLD_STEPS } from './changed-only/steps.mjs';
 
 const registered = Object.values(SELFTEST_SUITES).flat();
 
@@ -297,6 +298,50 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.deepEqual(hitResolutionMoves(REPO_ROOT, partition, paths), paths.slice(0, 5));
   assert.deepEqual(hitResolutionMoves(REPO_ROOT, { groups: {}, fileIds: {} }, paths), paths.slice(0, 7), 'control: unpartitioned, the table and the group file move it');
   assert.deepEqual(HIT_RESOLUTION_ENTRIES.filter((file) => !existsSync(join(REPO_ROOT, file))), [], 'every entry exists');
+}
+
+// ---- reads that decide no result (267's whip-rod tags: 15 builders, every HIGH and LOW digest equal, and balance,
+// pacing, bots and sims named by closure reads; 266's worker pages: fleet named whole for a scheduleOnly cap table)
+{
+  // what the builders emit: a spec field or a HIGH/LOW digest moved names the tank; equal emits nothing
+  const emit = (armor, high = 'h', extra = {}) => ({ spec: { armor, gun: 'g', visual: 'v', ...extra }, high, low: 'l' });
+  assert.deepEqual(builderMoves({ a: emit('1'), b: emit('1'), c: emit('1'), d: emit('1') }, { a: emit('1'), b: emit('2'), c: emit('1', 'h2'), e: emit('1') }),
+    [{ id: 'b', classes: ['armor'] }, { id: 'c', classes: ['geometry'] }, { id: 'e', classes: ['new'] }]);
+  assert.deepEqual(builderMoves({ a: emit('1') }, { a: emit('1', 'h', { markings: 'm' }) }), [{ id: 'a', classes: ['markings'] }], 'a new field moves it');
+
+  // a builder path: a group or table file outside the authority's graph, never the core, an authority module or a hit move
+  const partition = { core: new Set(['src/vehicles/tankFactoryCore.ts']),
+    groups: { abrams: ['src/vehicles/profiles/abrams.ts', 'src/vehicles/specs.ts'] }, fileIds: { 'src/vehicles/vehicleMarkingSeats.generated.ts': ['m1a1'] } };
+  assert.deepEqual(builderPaths(REPO_ROOT, partition, ['src/vehicles/profiles/abrams.ts', 'src/vehicles/vehicleMarkingSeats.generated.ts',
+    'src/vehicles/specs.ts', 'src/vehicles/tankFactoryCore.ts', 'src/sim/armor.ts', 'docs/DEVELOPMENT.md'], ['src/sim/armor.ts']),
+  ['src/vehicles/profiles/abrams.ts', 'src/vehicles/vehicleMarkingSeats.generated.ts'], 'specs.ts is the authority\'s own module');
+
+  // judged: with nothing moved, a hits suite drops its builder reads (and only those); with a tank moved, balance names
+  // it and runs whole; no comparison (null), the reads stand
+  const builder = 'src/vehicles/profiles/abrams.ts';
+  const readers = new Map([['balance', new Map([['src/vehicles/balanceMatchups.selftest.mjs', [builder]]])],
+    ['pacing', new Map([['server/battlePacing.selftest.mjs', [builder]], ['src/sim/deployment.selftest.mjs', [builder, 'src/sim/deployment.ts']]])],
+    ['fleet', new Map([['src/vehicles/fleetLazy.selftest.mjs', [builder]]])]]);
+  const warranted = (rows) => rows.filter((row) => row.warranted).map((row) => row.suite);
+  assert.deepEqual(warranted(recommend({ readers, balance: [], wallMs: {} })), ['balance', 'pacing', 'fleet'], 'control: not compared, every read stands');
+  const inert = recommend({ readers, balance: [], builders: { paths: [builder], moved: [] }, wallMs: {} });
+  assert.deepEqual(warranted(inert), ['pacing', 'fleet'], 'balance drops; pacing keeps its other read; fleet is no hits suite');
+  assert.equal(inert.find((row) => row.suite === 'pacing').line, 'pacing: 1 of its 13 checks read the change (src/sim/deployment.ts)');
+  const moved = recommend({ readers, balance: [], builders: { paths: [builder], moved: [{ id: 'm1a1', classes: ['armor', 'geometry'] }] }, wallMs: {} });
+  assert.deepEqual([moved.find((row) => row.suite === 'balance').line, moved.find((row) => row.suite === 'balance').run],
+    ['balance: 1 tank is built differently (armor, geometry: m1a1); 1 of its 4 checks read the change (src/vehicles/profiles/abrams.ts)', 'npm run test:heavy -- balance']);
+  assert.deepEqual(warranted(moved), ['balance', 'pacing', 'fleet'], 'a moved tank keeps the reads');
+
+  // scheduleOnly (changed-only's DECLARED_DYNAMIC): tank-assets-check reaches the cap table only through
+  // browser-id-chunks.mjs, which loads it to place browsers; fleet-geometry-audit imports it itself (WORKER_PAGES)
+  const cache = createSelftestCache({ root: REPO_ROOT });
+  const named = () => 'named';
+  const cut = withoutScheduleReads(cache, REPO_ROOT, DECLARED_DYNAMIC, named, SELFTEST_BROAD_DIRS);
+  assert.equal(cut('tools/tank-assets-check.mjs', 'tools/browser-id-caps.mjs'), null);
+  assert.equal(cut('tools/fleet-geometry-audit.mjs', 'tools/browser-id-caps.mjs'), 'named', 'an import of its own stays a read');
+  assert.equal(cut('tools/tank-assets-check.mjs', 'tools/browser-id-chunks.mjs'), 'named', 'the declaring module itself stays a read');
+  assert.equal(withoutScheduleReads(cache, REPO_ROOT, {}, named, SELFTEST_BROAD_DIRS)('tools/tank-assets-check.mjs', 'tools/browser-id-caps.mjs'), 'named',
+    'control: undeclared, the read stands');
 }
 
 // ---- entry pages: a root *.html counts as a heavy-suite trigger only for a receipt naming that page

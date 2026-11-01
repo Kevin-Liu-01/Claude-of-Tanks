@@ -536,7 +536,15 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   authority's hit resolution (`HIT_RESOLUTION_ENTRIES` in `tools/test-diff.mjs`: ballistics, armour, damage, walked as
   det-math-lint walks the authority), less the per-id tables and group files the fleet partition names by id, is a
   fleet-wide balance move that warrants every `hits` suite (balance, pacing, bots, sims) whole. 267's bevel head moved
-  `sim/armor.ts` and added `sim/armorPlanes.ts` while its balance line said no tank's armour changed. When closure reads
+  `sim/armor.ts` and added `sim/armorPlanes.ts` while its balance line said no tank's armour changed. Two kinds of read
+  decide no result and are dropped. A path a reader reaches only through a module that declares it `scheduleOnly`
+  (`DECLARED_DYNAMIC`, as changed-only drops it from its keys) is one: the cap table placed only browsers yet named the
+  whole fleet suite. The other is a `hits` suite's reads of builder paths (a group or per-id table file outside the
+  authority's import graph) when what the builders emit did not move. When such reads alone warrant a `hits` suite,
+  the recommender compares, for the tanks those paths name, every finalized spec field as the tool facade registers it
+  and the HIGH and LOW geometry digests (each tree's own ledger worker), base against head (`builderObservables`; 187
+  tanks in under three minutes). Equal, the reads drop: 267's whip-rod tags (15 builders) named balance, pacing, bots
+  and sims and now names none. A tank that moved keeps them and is named on the balance line. When closure reads
   alone warrant a suite and reach at most a quarter of it, the command names just those receipts (`--only=`) with their
   own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
   whose own source names it, and never as a world-step trigger (the locale route table names the pages; the Node
