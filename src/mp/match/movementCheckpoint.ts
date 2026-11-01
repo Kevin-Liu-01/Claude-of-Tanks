@@ -37,7 +37,8 @@
  * flag bits 11 and 12, its front and rear; the values are version 8's): an end that rested on one keeps resting on one
  * within a band under the tracks' support (movement.ts keepBodyRest), so a replay on a roof's eave or a parapet fits the
  * plane the authority fitted only with it. A version-8 checkpoint still decodes, resting on no body contact; a build that
- * decodes only version 8 never meets a version-9 host, whose prediction digest refuses it at join (src/mp/wire/matchBuild.ts).
+ * decodes only version 8 never meets a version-9 host, whose prediction digest refuses it at join
+ * (src/mp/wire/matchBuild.ts).
  * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 9 uses 63, so a version
  * adding more than one value widens that limit first.
  */
