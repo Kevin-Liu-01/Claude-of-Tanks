@@ -1,12 +1,16 @@
+// kf51FrontFinish.selftest.mjs — the KF51 EVO's 267 build (profiles/kf51Evo.ts) as the real Panther KF51 EVO: the rig
+// on the measured combat frame, the vertical gun-slot face between the arrowhead cheeks (the face kf51Specs.ts lays the
+// mantlet on and kf51EvoGunFace.selftest.mjs reads), the Rh-130 (the turret's planned retrofit; the game keeps the
+// 130 mm) in the EVO's gun-owned six-sided shroud, clear of that face over the whole elevation range, the right-cheek gunner's sight and the SEOSS behind it, the one roof weapon station, the KF51
+// forged road-wheel faces on one suspension-bound gear course, and the two-row StrikeShield flank inside the 1.809 m
+// authored width guard.
+// Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 
-const tank = createTank('kf51_evo', null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-});
+const tank = createTank('kf51_evo', null, { proceduralOnly: true, geometryReceipt: true });
 await Promise.resolve();
 
 try {
@@ -14,336 +18,123 @@ try {
   const hullRig = tank.root.getObjectByName('rig_hull');
   const turretRig = tank.root.getObjectByName('rig_turret');
   const gunRig = tank.root.getObjectByName('rig_gun');
-  const turret = tank.root.getObjectByName('turret');
-  const turretDetail = tank.root.getObjectByName('turretDetail');
-  const skirtArmor = hullRig?.userData.kf51SkirtArmorReceipt;
-  const eraFinish = tank.root.userData.eraFinishReceipt;
-  assert.ok(hullRig && turretRig && gunRig && turret && turretDetail,
-    'KF51 retains canonical hull, turret, gun, and detail geometry');
+  assert.ok(hullRig && turretRig && gunRig, 'KF51 EVO keeps its hull, turret and gun rigs');
+  const turretShell = turretRig.children.find((node) => node.isMesh && node.name === 'turret');
+  assert.ok(turretShell, 'KF51 EVO turret has one merged structural shell');
 
-  assert.deepEqual(turretRig.userData.kf51TurretSeatReceipt, {
-    profile: 'kf51-panther-turret-seat-r2',
-    forwardShiftM: 0.18,
-    visualPivotLocal: [0, 1.71, 0.63],
-    completeRigMoved: true,
-  }, 'KF51 complete rotating assembly publishes its forward seating datum');
-  assert.equal(turretRig.position.z, 0.63,
-    'KF51 turret rig moves 180 mm forward as one hierarchy');
-  // The combat-rig row (gun-barrel-align 230, combatGunRigs.generated.ts) measures the moved rig itself: 0.63, not the
-  // 0.70 the pre-230 spec carried.
-  assert.equal(TANK_SPECS.kf51_evo.armor.turretPivot[2], 0.63,
-    'KF51 authoritative turret frame follows the visible forward move');
-
-  const lowerCollar = turretRig.userData.kf51LowerCollarReceipt;
-  assert.deepEqual(lowerCollar?.upperEdgeAbs, [
-    [1.29, 0.04, 1.10],
-    [1.50, 0.16, 1.10],
-  ], 'KF51 lower collar shares the exact lower-cheek terminal edge');
-  assert.equal(lowerCollar?.upperEdgeSlopeYPerX, (0.16 - 0.04) / (1.50 - 1.29),
-    'KF51 lower collar preserves the cheek edge angle');
-  assert.equal(lowerCollar?.normalThicknessM, 0.08,
-    'KF51 lower collar keeps a real armor section beneath the shared seam');
-  assert.equal(lowerCollar?.constantCrossSection, true,
-    'KF51 lower collar carries the aligned angle through the complete side run');
-  assert.equal(lowerCollar?.cheekSeamAligned, true,
-    'KF51 lower collar publishes its smooth cheek transition contract');
-
-  assert.deepEqual(turretRig.userData.kf51SideReturnReceipt, {
-    profile: 'kf51-panther-side-return-r1',
-    cheekBaseArmorReturns: 0,
-    midWallArmorReturns: 2,
-    selectedOuterFacesRemoved: [-1.5025, 1.5025],
-  }, 'KF51 removes only the selected mirrored cheek-base side strips');
-  const turretPosition = turret.geometry.getAttribute('position');
-  let selectedStripFaceCount = 0;
-  for (let index = 0; index < turretPosition.count; index += 3) {
-    let onSelectedOuterPlane = true;
-    let inSelectedHeightBand = true;
-    let minimumZ = Infinity;
-    let maximumZ = -Infinity;
-    for (let offset = 0; offset < 3; offset++) {
-      const vertex = index + offset;
-      const x = turretPosition.getX(vertex);
-      const y = turretPosition.getY(vertex);
-      const z = turretPosition.getZ(vertex);
-      onSelectedOuterPlane &&= Math.abs(Math.abs(x) - 1.5025) < 1e-6;
-      inSelectedHeightBand &&= y >= 0.16 - 1e-6 && y <= 0.187 + 1e-6;
-      minimumZ = Math.min(minimumZ, z);
-      maximumZ = Math.max(maximumZ, z);
-    }
-    const spansSelectedLength = maximumZ - minimumZ > 2.9;
-    if (onSelectedOuterPlane && inSelectedHeightBand && spansSelectedLength) selectedStripFaceCount++;
-  }
-  assert.equal(selectedStripFaceCount, 0,
-    'KF51 merged turret geometry contains no remnant of either selected side strip');
-
-  const chevron = turretRig.userData.kf51FrontChevronReceipt;
-  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r4',
-    'KF51 publishes the rebuilt closed-chevron front architecture');
-  assert.equal(chevron.cheekVolumes, 2, 'KF51 front has one closed cheek volume per side');
-  assert.equal(chevron.roofBridgeVolumes, 2,
-    'KF51 front cheeks close smoothly into the turret roof');
-  assert.equal(chevron.surfacePanelCount, 6,
-    'KF51 front keeps six broad chevron panels instead of a noisy shelf stack');
-  assert.equal(chevron.multispectralLightCassettes, 2,
-    'KF51 front carries two recessed multispectral light cassettes');
-  assert.equal(chevron.closedRearFaces, true, 'KF51 chevron volumes remain watertight at the turret');
-  assert.equal(chevron.upperLowerHeightMatched, true,
-    'KF51 upper cheek and lower return publish an equal-height contract');
-  assert.equal(chevron.verticalRearPlane, true,
-    'KF51 cheek modules publish the requested vertical-backed side profile');
-  assert.equal(chevron.rearPlaneZ, 1.10,
-    'KF51 cheek roots align to the turret-front wall instead of overextending');
-  assert.equal(chevron.coreFrontPlaneZ, chevron.rearPlaneZ,
-    'KF51 ring fill terminates behind the cheek roots');
-  assert.equal(chevron.foreRoofStepAlignedToRearPlane, true,
-    'KF51 fore roof step no longer protrudes through the upper cheek');
-  assert.equal(chevron.roofCourseFrontPlaneZ, chevron.rearPlaneZ,
-    'KF51 crown course terminates on the turret-front datum');
-  assert.equal(chevron.lowerCollarFrontPlaneZ, chevron.rearPlaneZ,
-    'KF51 lower side collars terminate on the turret-front datum');
-  assert.equal(chevron.upperRootRoofEdgeY, 0.79,
-    'KF51 upper cheek roots reach the complete roof-step face');
-  assert.equal(chevron.lowerRootFloorY, 0.01,
-    'KF51 lower cheek roots extend below the rounded ring-fill edge');
-  assert.equal(chevron.upperCoreFaceCovered, true,
-    'KF51 upper cheek closes the roof-step front face');
-  assert.equal(chevron.lowerCoreFaceCovered, true,
-    'KF51 lower cheek closes the ring-fill front face');
-  assert.equal(chevron.terminalSideSlopeAligned, true,
-    'KF51 cheek terminals transition onto the sloped turret sides');
-  assert.deepEqual(chevron.terminalUpperRoot, [1.31, 0.72, 1.10],
-    'KF51 terminal upper root meets the narrow roof-side corner');
-  assert.deepEqual(chevron.terminalRidge, [1.47, 0.44, 1.98],
-    'KF51 terminal ridge preserves the armored shoulder projection');
-  assert.deepEqual(chevron.terminalLowerRoot, [1.50, 0.16, 1.10],
-    'KF51 terminal lower root meets the wide lower-side corner');
-  for (const side of chevron.sides) {
-    for (const station of side.stations) {
-      assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) < 1e-9,
-        `KF51 ${side.side} cheek station ${station.x} has equal upper and lower height`);
-      assert.ok(Math.abs(station.upperRearZ - station.lowerRearZ) < 1e-9,
-        `KF51 ${side.side} cheek station ${station.x} has a vertical rear edge`);
-      assert.equal(station.upperRearZ, chevron.rearPlaneZ,
-        `KF51 ${side.side} cheek station ${station.x} meets the shared rear plane`);
-      assert.ok(station.ridgeZ > station.upperRearZ,
-        `KF51 ${side.side} cheek station ${station.x} projects as |>`);
-    }
-  }
-  assert.ok(chevron.maximumRidgeProjectionM <= 2.48,
-    'KF51 chevron ridge remains retracted onto the turret-front envelope');
-
-  const turretPositions = turret.geometry.getAttribute('position');
-  let roofCourseFrontZ = -Infinity;
-  let collarFrontZ = -Infinity;
-  for (let index = 0; index < turretPositions.count; index++) {
-    const x = Math.abs(turretPositions.getX(index));
-    const y = turretPositions.getY(index);
-    const z = turretPositions.getZ(index);
-    if (x <= 0.951 && Math.abs(y - 0.815) < 1e-6) roofCourseFrontZ = Math.max(roofCourseFrontZ, z);
-    if (x >= 1.439 && x <= 1.461 && y >= 0.074 && y <= 0.191) collarFrontZ = Math.max(collarFrontZ, z);
-  }
-  assert.ok(Math.abs(roofCourseFrontZ - chevron.rearPlaneZ) < 1e-6,
-    'KF51 generated roof course has no tongue ahead of the front plane');
-  assert.ok(Math.abs(collarFrontZ - chevron.rearPlaneZ) < 1e-6,
-    'KF51 generated side collar has no tongue ahead of the front plane');
-  const innerStations = chevron.sides[0].stations.filter((station) => station.x <= 0.98);
-  assert.ok(innerStations.every((station) => Math.abs(station.upperRootY - 0.79) < 1e-9),
-    'KF51 upper cheek spans the full inboard roof-edge height');
-  assert.ok(innerStations.every((station) => Math.abs(station.lowerRootY - 0.01) < 1e-9),
-    'KF51 lower cheek spans the full inboard ring-fill depth');
-  const terminal = chevron.sides[0].stations.at(-1);
-  assert.deepEqual(
-    [terminal.upperRootX, terminal.upperRootY, terminal.ridgeX, terminal.lowerRootX, terminal.lowerRootY],
-    [1.31, 0.72, 1.47, 1.50, 0.16],
-    'KF51 generated cheek endpoint shares the compound slope of the core turret side',
-  );
-
-  const firstTurretHit = (origin, direction) => new THREE.Raycaster(
-    new THREE.Vector3(...origin),
-    new THREE.Vector3(...direction),
-    0,
-    10,
-  ).intersectObject(turretRig, true).find((hit) => hit.object.name === 'turret');
-  const lowerCheekHit = firstTurretHit([0.8, 1.9, 5], [0, 0, -1]);
-  assert.ok(lowerCheekHit && lowerCheekHit.point.z > 2.05 && lowerCheekHit.point.z < 2.5,
-    'KF51 extended lower cheek intercepts the complete ring-fill face before the core');
-  const upperCheekHit = firstTurretHit(
-    [1.1, 5, turretRig.position.z + 1.30],
-    [0, -1, 0],
-  );
-  assert.ok(upperCheekHit && upperCheekHit.point.y < 2.45,
-    'KF51 raised upper cheek hides the retired roof shelf beneath its slope');
-
-  const housing = gunRig.userData.kf51AngularGunHousingReceipt;
-  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r3',
-    'KF51 publishes the enlarged angular moving-gun housing');
-  assert.equal(housing.mainHousing, 'closed-tapered-six-plane-wedge',
-    'KF51 gun housing is a faceted closed wedge rather than a round roll');
-  assert.ok(housing.rearWidthM >= 0.78 && housing.rearHeightM >= 0.59,
-    'KF51 angular housing has the requested visual mass at the turret throat');
-  assert.equal(housing.forwardClampSides, 6, 'KF51 forward clamp remains visibly faceted');
-  assert.equal(housing.roundVisibleTrunnionRetired, true,
-    'KF51 no longer exposes the undersized circular trunnion');
-  assert.deepEqual(housing.visualGunPivotLocal, [0, 0.38, 0.90],
-    'KF51 visible gun is centered lower in the turret opening');
-  assert.equal(housing.centeredLowerByM, 0.08,
-    'KF51 publishes the complete gun-rig lowering distance');
+  // the rig on the measured combat frame (combatGunRigs.generated.ts), visible and authoritative pivots together
+  const receipt = turretRig.userData.kf51EvoTurretReceipt;
+  assert.equal(receipt?.profile, 'kf51-evo-faceted-turret-r1', 'KF51 EVO publishes its faceted turret receipt');
+  assert.deepEqual(turretRig.position.toArray(), [0, 1.71, 0.63], 'KF51 EVO turret rig sits at hull (0, 1.71, 0.63)');
+  assert.deepEqual(TANK_SPECS.kf51_evo.armor.turretPivot, [0, 1.71, 0.63], 'the combat turret frame is the visible rig');
+  const armor = TANK_SPECS.kf51_evo.armor;
   const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
-  const authoritativeGunWorld = new THREE.Vector3(
-    TANK_SPECS.kf51_evo.armor.turretPivot[0] + TANK_SPECS.kf51_evo.armor.gunPivot[0],
-    TANK_SPECS.kf51_evo.armor.turretPivot[1] + TANK_SPECS.kf51_evo.armor.gunPivot[1],
-    TANK_SPECS.kf51_evo.armor.turretPivot[2] + TANK_SPECS.kf51_evo.armor.gunPivot[2],
-  );
-  assert.ok(gunWorld.distanceTo(authoritativeGunWorld) < 1e-9,
-    'KF51 visible and authoritative gun pivots coincide in the neutral pose');
+  const authoritative = new THREE.Vector3(...armor.turretPivot).add(new THREE.Vector3(...armor.gunPivot));
+  assert.ok(gunWorld.distanceTo(authoritative) < 1e-9, 'KF51 EVO visible and authoritative gun pivots coincide');
 
-  const roofStations = [];
+  // the gun slot: a level round between the cheeks meets the structural turret on its vertical face at z 1.10
+  const shellHit = (x, y, direction = [0, 0, -1]) => {
+    const origin = turretRig.localToWorld(new THREE.Vector3(x, y, 6));
+    const dir = new THREE.Vector3(...direction).transformDirection(turretRig.matrixWorld);
+    const hit = new THREE.Raycaster(origin, dir, 0, 12).intersectObject(turretShell, false)[0];
+    return hit ? turretRig.worldToLocal(hit.point.clone()) : null;
+  };
+  for (const x of [-0.40, -0.2, 0, 0.2, 0.40]) {
+    for (const y of [0.05, 0.25, 0.45, 0.65, 0.75]) {
+      const hit = shellHit(x, y);
+      assert.ok(hit && Math.abs(hit.z - receipt.slotFaceZ) < 0.005,
+        `KF51 EVO gun slot at (${x}, ${y}) is the vertical face at z ${receipt.slotFaceZ} (got ${hit?.z.toFixed(3)})`);
+    }
+  }
+  // the cheeks either side: arrowhead wedges reaching well forward of the slot face up to their ridge
+  for (const x of [-1.1, -0.8, -0.55, 0.55, 0.8, 1.1]) {
+    for (const y of [0.05, 0.25, receipt.cheekRidgeInner[1]]) {
+      const hit = shellHit(x, y);
+      assert.ok(hit && hit.z > receipt.slotFaceZ + 0.15, `KF51 EVO cheek at (${x}, ${y}) stands forward of the slot face`);
+    }
+  }
+  assert.ok(receipt.cheekRidgeInner[1] <= 0.45 && receipt.cheekRidgeInner[2] > 2.3,
+    'KF51 EVO cheek ridge holds the gun-face receipt datum (apex <= 0.45, tip past z 2.3)');
+
+  // the EVO shroud: gun-owned, six-sided, and clear of the slot face at full elevation and full depression
+  const gun = gunRig.userData.kf51EvoGunReceipt;
+  assert.equal(gun?.profile, 'kf51-evo-rh130-shroud-r1', 'KF51 EVO publishes its Rh-130 shroud receipt');
+  assert.equal(TANK_SPECS.kf51_evo.gun.caliberMm, 130, 'KF51 EVO keeps the game\'s 130 mm');
+  assert.equal(gun.shroud.sides, 6, 'KF51 EVO shroud is the six-sided EVO sleeve');
+  assert.equal(gun.barrelLengthM, 5.475, 'KF51 EVO tube keeps the measured 5.475 m from its pivot');
+  assert.ok(gun.muzzleSectionRadiusM > gun.sleeveRadiusM, 'KF51 EVO Rh-130 steps out to its muzzle section');
+  const tube = gunRig.getObjectByName('rig_recoil')?.children.find((node) => node.isMesh && node.name === 'gun');
+  assert.ok(tube, 'KF51 EVO tube is drawn on the recoiling rig');
+  tube.geometry.computeBoundingBox();
+  const tubeBox = tube.geometry.boundingBox;
+  assert.ok(tubeBox.max.z >= gun.barrelLengthM - 1e-3 && tubeBox.max.z < gun.barrelLengthM + 0.01,
+    `KF51 EVO tube ends at its ${gun.barrelLengthM} m muzzle (${tubeBox.max.z.toFixed(3)})`);
+  const shroud = gunRig.children.find((node) => node.isMesh && node.name === 'gunMount');
+  assert.ok(shroud, 'KF51 EVO shroud is drawn in the gun mount (it elevates with the gun)');
+  const position = shroud.geometry.getAttribute('position');
+  const pivot = gunRig.position;
+  for (const degrees of [-TANK_SPECS.kf51_evo.gunDepressionDeg, 0, TANK_SPECS.kf51_evo.gunElevationDeg]) {
+    const pitch = degrees * Math.PI / 180;
+    let minZ = Infinity;
+    for (let index = 0; index < position.count; index++) {
+      const y = position.getY(index), z = position.getZ(index);
+      minZ = Math.min(minZ, pivot.z + z * Math.cos(pitch) - y * Math.sin(pitch));
+    }
+    assert.ok(minZ > receipt.slotFaceZ + 0.01,
+      `KF51 EVO shroud stays ahead of the slot face at ${degrees} degrees (rear at ${minZ.toFixed(3)})`);
+  }
+  for (let index = 0; index < position.count; index++) {
+    assert.ok(Math.abs(position.getX(index)) < receipt.slotHalfWidthM - 0.1,
+      'KF51 EVO shroud clears the cheeks\' inner walls by 10 cm');
+  }
+
+  // the right cheek's gunner sight and the SEOSS behind it (+x is the vehicle's left)
+  const roofProbe = (x, z) => {
+    const origin = turretRig.localToWorld(new THREE.Vector3(x, 4, z));
+    const down = new THREE.Vector3(0, -1, 0).transformDirection(turretRig.matrixWorld);
+    const hit = new THREE.Raycaster(origin, down, 0, 6).intersectObject(turretShell, false)[0];
+    return hit ? turretRig.worldToLocal(hit.point.clone()).y : null;
+  };
+  assert.ok(roofProbe(-0.86, 1.25) > receipt.roofY + 0.10, 'KF51 EVO gunner\'s sight box stands on the right cheek');
+  assert.ok(roofProbe(-0.58, 0.42) > receipt.roofY + 0.40, 'KF51 EVO SEOSS head stands behind it, the tallest sight');
+  assert.ok(Math.abs(roofProbe(0.42, -1.72) - receipt.roofY) < 1e-6, 'KF51 EVO roof is flat under the weapon station');
+
+  // one remote weapon station, its Panther package
+  const stations = [];
   turretRig.traverse((node) => {
-    if (node.userData?.fittingRoot && node.userData.fitting === 'openYokeRws') roofStations.push(node);
+    if (node.userData?.fittingRoot && node.userData.fitting === 'openYokeRws') stations.push(node);
   });
-  assert.equal(roofStations.length, 1, 'KF51 carries one full open-yoke turret-roof station');
-  assert.equal(roofStations[0].userData.stationVariant, 'kf51-panther',
-    'KF51 rear station uses its Panther-specific equipment package');
-  assert.equal(roofStations[0].userData.lightCount, 5,
-    'KF51 rear station carries its five-aperture work-light suite');
+  assert.equal(stations.length, 1, 'KF51 EVO carries one roof weapon station');
+  assert.equal(stations[0].userData.stationVariant, 'kf51-panther', 'KF51 EVO station keeps its Panther package');
+  assert.equal(stations[0].userData.weaponRole, 'roof-primary', 'KF51 EVO station is the roof gun');
 
-  const wheelFinish = hullRig.userData.kf51RoadWheelFinishReceipt;
-  assert.deepEqual(wheelFinish, {
-    profile: 'kf51-forged-radial-eight-r1',
-    stationCountPerSide: 7,
-    structuralRibsPerWheel: 8,
-    serviceBoltsPerWheel: 10,
-    dynamicLayerCount: 6,
-    suspensionBound: true,
-    duplicateWheelCourse: false,
-  }, 'KF51 road wheels publish one suspension-bound forged-face package');
-  const dynamicWheelLayers = [];
-  hullRig.traverse((node) => {
-    if (node.userData?.dynamicWheelFace) dynamicWheelLayers.push(node);
-  });
-  assert.equal(dynamicWheelLayers.length, wheelFinish.dynamicLayerCount,
-    'KF51 wheel face rings, ribs, hubs, and bolts all use canonical gear instances');
-  assert.equal(hullRig.userData.runningGearUnitCount, 1,
-    'KF51 wheel refinement does not add a duplicate running-gear course');
+  // the KF51 forged road-wheel faces, one gear course
+  const wheelLayers = [];
+  hullRig.traverse((node) => { if (node.userData?.dynamicWheelFace) wheelLayers.push(node); });
+  assert.equal(hullRig.userData.kf51EvoRunningGearReceipt?.forgedFaceLayers, wheelLayers.length,
+    'KF51 EVO forged wheel faces are all suspension-bound gear layers');
+  assert.equal(wheelLayers.length, 6, 'KF51 EVO draws its six forged-face layers');
+  assert.equal(hullRig.userData.runningGearUnitCount, 1, 'KF51 EVO has one running-gear course');
 
-  assert.equal(skirtArmor?.profile, 'kf51-panther-skirt-era-cage-r1',
-    'KF51 publishes the modern carrier-backed flank package');
-  assert.equal(skirtArmor?.panelsPerSide, 7,
-    'KF51 skirt armor follows the KF51B seven-station cadence');
-  assert.equal(skirtArmor?.protectionRows, 2,
-    'KF51 skirt modules have two readable protection rows');
-  assert.equal(skirtArmor?.continuousUpperCarrier, true,
-    'KF51 skirt jacket has a continuous load path into the sponson');
-  assert.ok(skirtArmor?.armorOuterFaceX > skirtArmor?.carrierInnerFaceX + 0.14,
-    'KF51 skirt modules have real layered depth over their recessed carrier');
-  assert.equal(skirtArmor?.cageLongitudinalRailsPerSide, 3,
-    'KF51 stand-off cage carries three continuous longitudinal rails per side');
-  assert.equal(skirtArmor?.cageUprightsPerSide, 9,
-    'KF51 stand-off cage is supported at every section boundary');
-  assert.equal(skirtArmor?.cageDiagonalBracesPerSide, 8,
-    'KF51 cage uses one structural diagonal per section');
-  assert.ok(skirtArmor?.cageOuterFaceX <= skirtArmor?.authoredWidthGuardM,
-    'KF51 cage stays inside the certified authored-width guard');
-  assert.equal(skirtArmor?.equipmentOwned, true,
-    'KF51 awareness pods, lamps, stowage and cage remain outside the armor hit volume');
-  assert.equal(skirtArmor?.duplicateTrackCourse, false,
-    'KF51 flank protection does not add another track course');
-  assert.ok(eraFinish?.visualSectors.includes(skirtArmor.visualEraSector),
-    'KF51 modular skirt course is registered as static visual external armor');
-  assert.equal(eraFinish?.semanticBucket, 'externalArmor',
-    'KF51 skirt ERA remains distinct from the base hull envelope');
-  assert.equal(eraFinish?.perFrameWork, false,
-    'KF51 skirt ERA and cages add no per-frame update work');
+  // the StrikeShield flank: six two-row modules a side, registered as external armor, inside the width guard
+  const flank = hullRig.userData.kf51EvoFlankReceipt;
+  assert.equal(flank?.modulesPerSide, 6, 'KF51 EVO flank carries six StrikeShield modules a side');
+  assert.equal(flank.protectionRows, 2, 'KF51 EVO flank modules have two protection rows');
+  const eraFinish = tank.root.userData.eraFinishReceipt;
+  assert.ok(eraFinish?.visualSectors.includes(flank.visualEraSector), 'KF51 EVO flank is visual external armor');
+  assert.equal(eraFinish?.semanticBucket, 'externalArmor', 'KF51 EVO flank ERA stays distinct from the hull envelope');
   const hullBounds = new THREE.Box3().setFromObject(hullRig);
-  assert.ok(Math.abs(hullBounds.min.x + 1.809) < 1e-6
-      && Math.abs(hullBounds.max.x - 1.809) < 1e-6,
-  'KF51 armor and cage package preserves the certified authored-width envelope');
+  assert.ok(hullBounds.max.x <= 1.809 + 1e-6 && hullBounds.min.x >= -1.809 - 1e-6,
+    `KF51 EVO hull stays inside the 1.809 m authored width guard (${hullBounds.min.x.toFixed(4)}..${hullBounds.max.x.toFixed(4)})`);
 
-  // The upper-glacis surface must now be the merged camouflaged hull mesh,
-  // rather than an unnamed, solid-tone comparison shell sitting above it.
-  const topHullHit = (x, z) => new THREE.Raycaster(
-    new THREE.Vector3(x, 4, z),
-    new THREE.Vector3(0, -1, 0),
-    0,
-    10,
-  ).intersectObject(hullRig, true)
-    .find((hit) => hit.object.isMesh && hit.point.y < 1.7);
-  for (const [x, z, label] of [
-    [0, 3.0, 'main upper glacis'],
-    [0, 2.4, 'former full-width front moat'],
-    [1.6, 0, 'former wide turret-side moat'],
-  ]) {
-    assert.equal(topHullHit(x, z)?.object.name, 'hull',
-      `KF51 ${label} exposes the palette-aware camouflaged armor mesh`);
-  }
-
-  // These exact side rays used to hit the two long turretDetail rails at
-  // x=1.5025/1.4425. The remaining deep return lives in the camo turret
-  // bucket; the selected ±1.5025 cheek-base strips are now absent entirely.
-  for (const z of [0.95, -0.565]) {
-    const detailHits = new THREE.Raycaster(
-      new THREE.Vector3(3, 1.8835, z),
-      new THREE.Vector3(-1, 0, 0),
-      0,
-      10,
-    ).intersectObject(turretDetail, false);
-    assert.equal(detailHits.length, 0,
-      `KF51 turret-side armor return at z=${z} is no longer grey detail geometry`);
-  }
-
-  assert.deepEqual(hullRig.userData.kf51Finish, {
-    // Five seam slabs a side on release 240's lowered deck line (moatDeck; seven on the old 1.73-1.79 staircase).
-    kf51HullTurretSeatBridge: 10,
-    kf51GlacisShoulderBridge: 4,
-    kf51DeckPaletteHardware: 3,
-    kf51TurretLowerCollar: 2,
-    kf51TrackShoulderL: 2,
-    kf51TrackShoulderR: 2,
-    kf51TurretMidwallBaseArmor: 1,
-    kf51LowerGlacisCamo: 1,
-  }, 'KF51 structural finish receipt records every palette-aware shell');
-
-  const frontArmorHit = (x, y) => new THREE.Raycaster(
-    new THREE.Vector3(x, y, 4),
-    new THREE.Vector3(0, 0, -1),
-    0,
-    10,
-  ).intersectObject(hullRig, true).find((hit) => hit.object.name === 'hull');
-  const lowerGlacis = frontArmorHit(0, 0.75);
-  assert.ok(lowerGlacis?.point.z > 3.4 && lowerGlacis.object.material?.map,
-    'KF51 lower glacis is colored by the merged camouflage armor');
-  // The shoulder is deliberately outboard of the animated tread envelope;
-  // probe its visible mudguard seam rather than the former inboard overlap.
-  for (const x of [-1.66, 1.66]) {
-    const shoulder = frontArmorHit(x, 1.0);
-    assert.ok(shoulder?.point.z > 3.64 && shoulder.object.material?.map,
-      `KF51 ${x < 0 ? 'left' : 'right'} track shoulder seats outboard of the tread and joins the front mudguard in camo`);
-  }
-
-  const sideArmorHit = (y, z) => new THREE.Raycaster(
-    new THREE.Vector3(4, y, z),
-    new THREE.Vector3(-1, 0, 0),
-    0,
-    10,
-  ).intersectObject(tank.root, true)
-    .find((hit) => hit.object.name === 'turret');
-  assert.ok(sideArmorHit(1.84, 0)?.object.material?.map,
-    'KF51 lower turret collar closes the former black hull gap in camouflage');
-  assert.ok(sideArmorHit(1.96, 0)?.object.material?.map,
-    'KF51 cheek base is palette-aware armor instead of a shadow rail');
-
-  const mudguards = [];
-  tank.root.traverse((object) => {
-    if (object.isMesh && object.material?.name === 'cot:kf51-mudguard') mudguards.push(object);
-  });
-  assert.equal(mudguards.length, 4, 'KF51 keeps four palette-painted corner mudguards');
-  for (const mudguard of mudguards) {
-    assert.ok(mudguard.material.color.getHex() > 0x202020,
-      'KF51 mudguards are no longer pure-black cards');
-  }
+  // the upper glacis and the flank are the camouflaged hull shell
+  const hullHit = (origin, direction) => new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, 10)
+    .intersectObject(hullRig, true).find((hit) => hit.object.isMesh);
+  assert.equal(hullHit([0, 4, 2.9], [0, -1, 0])?.object.name, 'hull', 'KF51 EVO upper glacis is the camouflaged hull');
+  const flankHit = hullHit([4, 1.05, -0.5], [-1, 0, 0]);
+  assert.ok(flankHit?.point.x > 1.79 && flankHit.object.material?.map, 'KF51 EVO flank modules are camouflaged armor at x 1.80');
 } finally {
   tank.dispose();
 }
 
-console.log('kf51FrontFinish.selftest: chevrons, gun housing, roof station, forged wheels, and camo finish pass');
+console.log('kf51FrontFinish.selftest: KF51 EVO rig, gun slot and cheeks, Rh-130 and shroud clearance, sights, roof station, forged wheels and StrikeShield flank pass');

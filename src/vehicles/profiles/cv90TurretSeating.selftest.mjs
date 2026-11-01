@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { collectTriangles } from '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
 
@@ -71,27 +72,38 @@ for (const side of [-1, 1]) for (const zc of [-1.05, -0.38, 0.24]) for (const dz
 }
 tank.dispose?.();
 
-// CV90 (tier IX; the owner's "IX cv90 ... sticking out above the turret and its not coming from the turret"): the gun
-// cradle's root casting stood 18 mm (world) ahead of the shell's front face between the cheeks, a slot open to the sky
-// with the recoiling base showing through it. At every pitch, straight down just ahead of the shell face (world z 0.63,
-// between the cheeks' inner faces at x +-0.297) the casting must fill y 1.99..1.93 (the old slot, under the roof edge),
-// and its top must run level with the cradle's top panel (world y 2.034; it rose to 2.085 at the old rear face).
+// CV90 (the owner's "IX cv90 ... sticking out above the turret and its not coming from the turret", 2026-10-17; round 267
+// rebuilt the turret as the Strf 9040's wedge cheeks either side of an open gun channel, with a raked rocking mask
+// running into the turret front). In the channel (turret-local x +-0.15 of 0.9-scaled authoring metres), straight down
+// from the sky at stations along the mask's rear, there must be no air between the first surface met and the turret's
+// front stock below it (local y 0.18, inside the raked lower front), at rest and at full elevation: the mask always
+// meets the turret front, never a slot open to the sky with the barrel's root showing through it.
 const cv90 = createTank('cv90', null, { proceduralOnly: true });
 const gunRig = cv90.root.getObjectByName('rig_gun');
-for (const pitchDeg of [0, 37, -8]) {
+const turretRig = cv90.root.getObjectByName('rig_turret');
+const S = 0.9;
+for (const pitchDeg of [0, 37]) {
   gunRig.rotation.x = -pitchDeg * Math.PI / 180;
   cv90.root.updateMatrixWorld(true);
   tris = collectTriangles(cv90.root).tris;
-  for (const x of [-0.2, 0.2]) {
-    const air = airBetween([x, 6, 0.63], 1, -1, 1.99, 1.93);
-    assert.ok(air < 0.001, `cv90 root ${x} at ${pitchDeg} deg: ${(air * 1000).toFixed(1)} mm of air between the gun root and the shell face`);
+  for (const x of [-0.15, 0.15]) for (const zLocal of [0.95, 1.00, 1.05, 1.10]) {
+    const top = turretRig.localToWorld(new THREE.Vector3(x * S, 3, zLocal * S));
+    const floor = turretRig.localToWorld(new THREE.Vector3(x * S, 0.18 * S, zLocal * S));
+    const air = airBetween([top.x, 6, top.z], 1, -1, null, floor.y);
+    assert.ok(air < 0.001, `cv90 channel ${x}/${zLocal} at ${pitchDeg} deg: ${(air * 1000).toFixed(1)} mm of air between the gun mask and the turret front`);
     probes++;
   }
 }
 gunRig.rotation.x = 0;
 cv90.root.updateMatrixWorld(true);
 tris = collectTriangles(cv90.root).tris;
-const rootTop = 6 - crossings([0.2, 6, 0.66], 1, -1).find((h) => h.enters).distance;
-assert.ok(rootTop <= 2.036, `cv90 root top ${rootTop.toFixed(3)} m must run level with the cradle's top panel (2.034 m), not perched above it`);
+// the mask's raked back is buried in the turret front at rest: just behind the mask's rear face the first surface met
+// from the sky is the turret, not the mask standing proud of it
+for (const x of [-0.15, 0.15]) {
+  const p = turretRig.localToWorld(new THREE.Vector3(x * S, 3, 0.80 * S));
+  const roofLocal = turretRig.worldToLocal(new THREE.Vector3(p.x, 6 - crossings([p.x, 6, p.z], 1, -1).find((h) => h.enters).distance, p.z)).y / S;
+  assert.ok(roofLocal <= 0.70, `cv90 mask rear at ${x}: the first surface at local z 0.80 is ${roofLocal.toFixed(3)} m high, the mask stands proud of the turret front`);
+  probes++;
+}
 cv90.dispose?.();
-console.log(`cv90TurretSeating.selftest: CV90 Mk 4 sight head on its neck, side plates on the shell, CV90 gun root in the shell face (${probes} probes) PASS`);
+console.log(`cv90TurretSeating.selftest: CV90 Mk 4 sight head on its neck, side plates on the shell, CV90 gun mask meeting the turret front (${probes} probes) PASS`);

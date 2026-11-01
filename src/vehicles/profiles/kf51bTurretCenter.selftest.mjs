@@ -230,11 +230,16 @@ try {
     'KF51B open-yoke station replaces the retired split-shield roof gun');
   assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [0.30, 0.55, -2.16]);
   assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
-  assert.equal(spareLinks?.position.y, trackSeat?.spareTrackSeatY,
-    'KF51B spare links are bedded into the upper glacis');
-
-  assert.equal(attachmentSeat?.roofPeriscopeY, 0.615,
-    'KF51B forward roof optics are lowered into the roof skin');
+  // 267 (the real Eurosatory 2024 KF51-U): the three crew ride in the hull under the KF51 front armour's flat crew roof,
+  // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
+  const crew = hull?.userData.kf51uCrewStationsReceipt;
+  assert.equal(crew?.crewInHull, 3, 'KF51-U seats its three crew in the hull');
+  assert.equal(spareLinks, undefined, 'KF51-U glacis is the clean KF51 front armour');
+  const turretHatches = [];
+  turret.traverse((node) => { if (node.isMesh && node.name === 'turretHatch') turretHatches.push(node); });
+  assert.equal(turretHatches.length, 0, 'KF51-U turret is uncrewed: no turret hatches');
+  assert.equal(attachmentSeat?.uncrewedTurret, true, 'KF51-U publishes its uncrewed turret');
+  assert.equal(attachmentSeat?.hullCrewStations, 3, 'KF51-U publishes its three hull crew stations');
   assert.deepEqual(attachmentSeat?.multispectralSight?.centerLocal, [-0.74, 0.52, 1.27],
     'KF51B multispectral sight housing rises above the fore-roof skin');
   closeTo(attachmentSeat?.multispectralSight?.apertureCenterY, 0.57);

@@ -23,6 +23,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 // KF51 Panther: Rheinmetall's 130 mm Future Gun System demonstrator on a
 // Leopard 2 hull — the harder-hitting, slightly softer sibling of the 2A7 at
 // the top of the German MBT ladder.
+// 267: the KF51 EVO's build is profiles/kf51Evo.ts (the EVO turret with the Rh-130, its planned 130 mm retrofit).
 const KF51_SPEC = {
     id: 'kf51_evo', name: 'KF51 EVO', nation: 'Germany', era: 'modern', role: 'mbt',
     variantOf: 'kf51_evo',      // self-marker (m1a1 rule): stays on the nation tab
@@ -42,10 +43,9 @@ const KF51_SPEC = {
         shell('130mm HE-ABM', 'HE', 130, 50, 50, 660, 1000),
       ],
     },
-    // hullLengthM matches the raw asset's gun-excluded span (7.70) so the
-    // loader normalizes at s=1.0; heightM covers the sensor head (raw 3.58
-    // after the offline antenna compress — under the 1.30x clamp headroom)
-    dims: { hullLengthM: 7.70, overallLengthM: 10.73, widthM: 3.60, heightM: 3.00 },
+    // 267 (profiles/kf51Evo.ts): the build's hull runs -3.868 (the rear tow eyes) to 3.845 (the front mudguard lips),
+    // its Rh-130 muzzle to 7.005, the skirts to +-1.808; heightM covers the SEOSS head (the whips rise past it)
+    dims: { hullLengthM: 7.70, overallLengthM: 10.87, widthM: 3.60, heightM: 3.00 },
     armor: communityArmor({
       // The procedural turret rig moves forward 180 mm as one assembly. The
       // authoritative pivot follows it so armor, modules, shot origins, and
@@ -66,7 +66,9 @@ const KF51_SPEC = {
 
 // 266 (FAIRNESS-265 §8): the KF51 EVO's mantlet is the turret's gun face, a main plate on the gun slot's vertical front
 // (measured on the build: x +-0.430 between the cheeks' inner walls, y 0.01-0.79, z 1.088 at its foot to 1.100 at its
-// head), which gunFacePlate and the gun-face split read the faces in front of the gun as. The communityArmor template's
+// head), which gunFacePlate and the gun-face split read the faces in front of the gun as. 267's rebuild
+// (profiles/kf51Evo.ts) keeps that face: vertical at z 1.100 between the cheeks' walls at x +-0.430, y -0.035-0.815,
+// the cheeks' swept ridge at 0.40 by the slot; the plate's numbers stand. The communityArmor template's
 // mantlet was a spaced plate riding the gun, behind the bridged 74-degree face the round met first
 // (gen-combat-anatomy.mjs TURRET_LATERAL_CUTS cuts that face away); `drawn` keeps the envelope calibration from moving
 // this one onto the cheeks' noses, and a variant on its own build (the source-X KF51 Panther) takes the template back.
@@ -79,6 +81,8 @@ if (KF51_MANTLET >= 0) {
 // The procedural KF51 now carries a reactive two-row flank jacket. Keep its
 // combat zones in the boot-light spec registry so the visible cassettes are
 // hittable, consumable and depleted by the same ERA path as the KF51B set.
+// 267: the jacket is six two-row StrikeShield modules a side (profiles/kf51Evo.ts), x 1.705-1.80, y 0.88-1.59,
+// z -3.12-2.98 (it was x 1.78-1.80, y 0.88-1.47, z -2.72-2.44); the zones are fitted to the cassettes at regeneration.
 KF51_SPEC.armor.hullPlates.push(
   reactivePlate('kf51_skirt_era_R', 'right'),
   reactivePlate('kf51_skirt_era_L', 'left'),
@@ -90,6 +94,9 @@ KF51_SPEC.armor.hullPlates.push(
 const KF51B_SPEC = {
   ...KF51_SPEC,
   id: 'kf51_u', name: 'KF51-U', variantOf: 'kf51_u',
+  // 267: its own dims (the spread carried the EVO's): hull and width as before; overall from the installed muzzle
+  // (7.4865) to the stern (-4.011), as built
+  dims: { hullLengthM: 7.70, overallLengthM: 11.50, widthM: 3.60, heightM: 3.00 },
   // §5.299 fleet-integration truth-up (kf51_u row ONLY — kf51_evo's shared armor
   // object is untouched, this is a fresh communityArmor instance). The
   // rebuilt Panther is installed at 1.05x, so these are the final rendered
