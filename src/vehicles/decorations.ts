@@ -3248,7 +3248,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
