@@ -6,6 +6,7 @@
 // view and the Aalborg museum's 1A5 DK turret; the hull carries the Danish dozer channels and slope-fitted fender bins in
 // place of the German glacis grousers and side tools. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { buildLeo1HullSteps, type Leo1HullDatums } from './leopard1Hull.ts';
@@ -260,7 +261,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     // whip antennas on the rear roof corners
     for (const s of [-1, 1] as const) {
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.82, roof + 0.04, -1.40);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.0, 8), s * 0.82, roof + 1.04, -1.40, 0, 0, s * 0.025);
+      P.addEquipment('turret', antennaPart(cylY(0.014, 0.016, 2.0, 8)), s * 0.82, roof + 1.04, -1.40, 0, 0, s * 0.025);
     }
   };
   buildLeo1DkTurretFittings();

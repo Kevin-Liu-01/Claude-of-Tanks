@@ -171,7 +171,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 - Any playable tank addition or geometry/profile change regenerates with
   `npm run tank:regen:changed` (`-- --ids=<your ids>` while main has no
   `release/fingerprints.tsv`: without it a plain run refuses): every fleet generator (controls, fills, seats,
-  spare-track, anatomy, marking, ledger, gun lines, centering, icons) runs only
+  spare-track, anatomy, marking, ledger, gun lines, centering, icons, the geometry gate) runs only
   on the ids whose inputs or outputs moved, in dependency order, then the world
   steps (wreck plan, collision and trench shards) only on the maps whose config,
   world core or wreck donors moved, until the final resolve is empty

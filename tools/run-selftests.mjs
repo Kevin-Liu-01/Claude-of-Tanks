@@ -7,6 +7,7 @@ import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles, manualSuiteFiles, manualSuiteOf, parseSuiteNames } from './selftest-tiers.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
+import { isStarved } from './selftest-verdict.mjs';
 import { createSelftestCache, REPO_ROOT, SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { createHash } from 'node:crypto';
@@ -100,7 +101,8 @@ export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/changed-only/chain.selftest.mjs', 'tools/changed-only/resolver.selftest.mjs', 'tools/changed-only/world.selftest.mjs',
 ].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
   'tools/selftest-inputs.mjs', 'tools/id-list.mjs', 'tools/browser-id-chunks.mjs', 'tools/browser-id-caps.mjs',
-  'tools/browser-launch.mjs'])])));
+  'tools/browser-launch.mjs', 'tools/icons-page-public.mjs', 'tools/served-public.mjs', 'tools/gate-page-public.mjs',
+  'tools/page-catalog-keys.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
@@ -410,6 +412,8 @@ export async function runSelftestSuite(suiteName, suite, {
           status: result?.status ?? null, error: result?.error });
       }
       if (result.error) throw result.error;
+      // (267) STARVED: the machine withheld what the receipt judges; not a failure, never cached as a PASS
+      if (isStarved(result.status)) { log('[selftests] STARVED ' + file); continue; }
       if (result.status !== 0) {
         logError('[selftests] FAIL ' + file);
         failure ??= result.status ?? 1;
@@ -560,7 +564,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       cache.persist();
     } else {
       let completed = 0, executionMs = 0, queueMs = 0, skipped = 0;
-      const failures = [], rows = [];
+      const failures = [], starved = [], rows = [];
       const suiteStarted = performance.now();
       const concurrency = selftestWorkerCount();
       const startedAt = new Date().toISOString();
@@ -593,8 +597,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
           if (row.skipped) { skipped++; return; }
           // an ordinary verdict (not a spawn error or an interruption) is a scheduling observation
           if (!row.error && Number.isInteger(row.status) && row.status >= 0 && row.status < 128) runtimes.record(row.file, row.runMs);
-          const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
+          const state = row.error ? 'FAIL' : row.status === 0 ? 'PASS' : isStarved(row.status) ? 'STARVED' : 'FAIL';
           if (state === 'FAIL') failures.push(row.file);
+          if (state === 'STARVED') starved.push(row.file);
           console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO${command.logs && state === 'FAIL' ? ` (log: ${logOf(row.file)})` : ''}`);
         },
       });
@@ -602,6 +607,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       runtimes.persist();
       if (runDirectory.created) rmSync(runDirectory.dir, { recursive: true, force: true });
       if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
+      if (starved.length) console.log(`[selftests] ${suiteName}: ${starved.length} STARVED (the machine withheld the time they judge; `
+        + `run them again on a quieter machine)\n  ${starved.join('\n  ')}`);
       if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
       console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
       const reportPath = command.report ?? resolve('node_modules/.cache/cot-selftests/latest-run.json');
@@ -609,7 +616,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       writeFileSync(reportPath, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(),
         status: process.exitCode, admission: command.order, ...(command.only.length ? { only: command.only } : {}),
         ...(command.shard ? { shard: command.shard } : {}), ...(command.logs ? { logs: command.logs } : {}),
-        selected: suite.length, completed, executed: completed - skipped,
+        selected: suite.length, completed, executed: completed - skipped, starved,
         options: { cpuLease, memoryGb: memoryGate?.gb ?? 0, memoryAsks: memoryGate?.asks ?? 0, childNice: SELFTEST_CHILD_NICE },
         reused: skipped, elapsedMs: performance.now() - suiteStarted, executionMs, queueMs, rows }, null, 2) + '\n');
       console.log(`[selftests] report: ${reportPath}`);

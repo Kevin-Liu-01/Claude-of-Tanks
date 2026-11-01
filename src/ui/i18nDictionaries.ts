@@ -182,6 +182,8 @@ function formatMessage(source: string, vars: Vars, locale: string, hash?: string
  * and fill its placeholders (ICU plural/select/number/date included; formatMessage).
  */
 export function catalogText(locale: CatalogLocale, key: string, vars?: Vars): string {
+  // 267: a tool page that keys only the strings it draws records each key it asks for (tools/page-catalog-keys.mjs)
+  (globalThis as { __COT_CATALOG_READS?: Set<string> }).__COT_CATALOG_READS?.add(key);
   const source = loaded[locale]?.[key] ?? loaded['en-US']?.[key] ?? key;
   return vars && source.includes('{') ? formatMessage(source, vars, locale) : source;
 }

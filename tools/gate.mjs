@@ -35,6 +35,7 @@ import { constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { isStarved } from './selftest-verdict.mjs';
 
 export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
 const VERDICTS_BLOCKING = Object.freeze({ regression: true, changed: true, flaky: false, unstable: false, inherited: false });
@@ -208,7 +209,8 @@ export function renderGateMarkdown(summary) {
   }
   const receipts = summary.receipts;
   if (receipts) {
-    lines.push('', `## Receipts`, '', `${receipts.selected ?? '?'} selected, ${receipts.executed ?? '?'} executed, ${receipts.reused ?? '?'} reused, ${receipts.failed.length} red.`);
+    lines.push('', `## Receipts`, '', `${receipts.selected ?? '?'} selected, ${receipts.executed ?? '?'} executed, ${receipts.reused ?? '?'} reused, ${receipts.failed.length} red, ${receipts.starved?.length ?? 0} starved.`);
+    if (receipts.starved?.length) lines.push('', 'STARVED (the machine withheld what they judge; run them again on a quieter machine):', '', ...receipts.starved.map((file) => `- \`${file}\``));
     for (const failed of receipts.failed) lines.push('', `- \`${failed.file}\` (log: \`${failed.log}\`)`, '', fence(failed.message));
   }
   const baseline = summary.baseline;
@@ -281,17 +283,19 @@ async function runStep(plan, { root, out, echo }) {
   return { ...row, status, ms };
 }
 
-function receiptSummary(out, root) {
+export function receiptSummary(out, root) {
   let report;
   try { report = JSON.parse(readFileSync(join(out, 'receipts.json'), 'utf8')); } catch { return null; }
-  const failed = report.rows.filter((row) => !row.skipped && (row.error || row.status !== 0)).map((row) => {
+  // (267) a STARVED receipt (tools/selftest-verdict.mjs) is counted apart: the machine withheld what it judges
+  const starved = report.rows.filter((row) => !row.skipped && !row.error && isStarved(row.status)).map((row) => row.file);
+  const failed = report.rows.filter((row) => !row.skipped && (row.error || row.status !== 0) && !starved.includes(row.file)).map((row) => {
     const log = join(out, 'receipts', `${row.file}.log`);
     let text = '';
     try { text = readFileSync(log, 'utf8'); } catch { /* spawn error: no log */ }
     return { file: row.file, status: row.status, message: row.error ?? (failureSignature(text, [root]) || `exit status ${row.status}`), log };
   });
   return { report: join(out, 'receipts.json'), status: report.status, selected: report.selected, executed: report.executed,
-    reused: report.reused, failed };
+    reused: report.reused, failed, starved };
 }
 
 async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockFactory }) {

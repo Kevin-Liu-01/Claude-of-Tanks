@@ -64,6 +64,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // 2026-10-11 (217's closure; 211's TTS before it): a geometry change could pass this check and then
     // fail the closure's ledger and mission-seat checks. Both receipts now gate here, scoped to the ids.
     cpu('fleet-geometry-ledger','--check',selected),
+    // 267 (Main 2026-10-31): every whip, mast and aerial the ids draw carries the antenna role, so the geometry gate's body
+    // and its whips-aside comparisons leave it out (found by its geometry: a thin rod whose tip stands clear)
+    cpu('whip-rod-census',selected,'--gate'),
     cpu('gen-mission-attachment-seats','--check',selected),
     gpu('presentation-centering','--check',selected),
     gpu('module-visual-align-probe',selected,'--gate'),

@@ -15,7 +15,7 @@ import { blockedFraction } from './camera-clearance.mjs';
 import { BURST_R, EDGE_MARGIN, absoluteShots, stillMoments } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { choreograph } from './turret-choreo.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 import { worldModel } from './world-model.mjs';
 import { hullOf, waterBlocks } from './route-check.mjs';
 import { fxBodies, fxItems } from './fx-cover.mjs';
@@ -1247,13 +1247,13 @@ function seatArmor(scene, model) {
   });
 }
 
-// The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
-// MEDIA_R5_FEATURES points at another dump (a fresh one under review).
+// The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map
+// (paths.mjs surveyPath: MEDIA_R5_FEATURES points at another dump, a fresh one under review, or is off).
 const models = new Map();
 const modelOf = (map) => {
   if (!models.has(map)) {
-    const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-    models.set(map, existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
+    const f = surveyPath(map);
+    models.set(map, f && existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
   }
   return models.get(map);
 };
