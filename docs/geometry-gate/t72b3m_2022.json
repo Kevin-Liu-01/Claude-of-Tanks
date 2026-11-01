@@ -1152,5 +1152,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/t-72b3m_obr._2022.glb",
+  "sha256": "6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350"
+ }
 }

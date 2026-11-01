@@ -908,6 +908,8 @@
     "src/vehicles/profiles/dragunHullFittings.selftest.mjs": 13000,
     "src/vehicles/profiles/easternSourceContact.selftest.mjs": 30000,
     "src/vehicles/profiles/eraSeating.selftest.mjs": 20000,
+    "src/vehicles/profiles/eraSeatingFleet.selftest.mjs": 1442000,
+    "src/vehicles/profiles/eraSeatingPins.selftest.mjs": 77000,
     "src/vehicles/profiles/europeGunOwnership.selftest.mjs": 12000,
     "src/vehicles/profiles/europeSourceDetail.selftest.mjs": 42000,
     "src/vehicles/profiles/europeSourceRunningGear.selftest.mjs": 17000,
