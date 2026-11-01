@@ -1141,6 +1141,8 @@ export interface MatchRuleset {
   readonly provingGround?: ProvingGroundRules;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
   readonly watch?: WatchRules;
+  /** A couch battle (COUCH_RULES): phones drive seats of the roster, shown under one shared camera. */
+  readonly couch?: CouchRules;
 }
 
 /**
@@ -1202,8 +1204,63 @@ export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
  * A finished battle the records read (the profile tally, the service record, the campaign ladder): its mode keeps
  * records and it was played, not watched (`battle:ended` carries `watch`).
  */
-export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown } | null | undefined): boolean {
-  return event?.watch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
+export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown; readonly couch?: unknown } | null | undefined): boolean {
+  return event?.watch !== true && event?.couch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
+}
+
+/**
+ * Couch mode (docs/COUCH-MODE.md; owner 2026-11-01: "people connecting via qr code from their phones to a host of a
+ * computer ... sort of like a console split screen, up to 8 people that you can share on a big screen"). A couch battle
+ * is a local battle on the host's page: up to `maxSeats` phones each drive one tank of the mode's own roster (a seat),
+ * and the rest of the roster are its bots, as ever. Phase 1 shows every seat under one shared camera. Together puts
+ * every seat on Alpha against the mode's opponents; Teams alternates the seats between Alpha and Bravo, bots filling
+ * both sides. Guests have no profile, so a couch battle keeps no record.
+ */
+export interface CouchRules {
+  /** The modes a couch battle plays. */
+  readonly modes: readonly GameModeId[];
+  /** The modes whose opponents are the mode's own (no Bravo seat): their seats are always together. */
+  readonly togetherOnly: readonly GameModeId[];
+  readonly maxSeats: number;
+  /** The shared camera frames every living seat's hull with this margin, looking down at this pitch, from no nearer and
+   *  no farther than these distances; past the farthest it frames the largest group of seats. */
+  readonly frameMarginM: number;
+  readonly cameraPitchDeg: number;
+  readonly cameraMinDistanceM: number;
+  readonly cameraMaxDistanceM: number;
+}
+export const COUCH_RULES: CouchRules = Object.freeze({
+  modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'endless_horde'] as const),
+  togetherOnly: Object.freeze(['endless_horde'] as const),
+  maxSeats: 8,
+  frameMarginM: 30,
+  cameraPitchDeg: -52,
+  cameraMinDistanceM: 70,
+  cameraMaxDistanceM: 320,
+});
+
+/** How a couch battle seats its phones: all on Alpha, or alternating between the sides. */
+export type CouchSides = 'together' | 'teams';
+
+/** A mode a couch battle can play. */
+export function isCouchMode(mode: GameModeId | string | null | undefined): boolean {
+  return (COUCH_RULES.modes as readonly string[]).includes(String(mode));
+}
+
+/** The ruleset a couch battle plays: its mode's own, with the couch rules and no record (another mode: unchanged). */
+export function couchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  if (!isCouchMode(ruleset.mode)) return ruleset;
+  return Object.freeze({ ...ruleset, records: false, couch: COUCH_RULES });
+}
+
+/**
+ * Which side each couch seat plays, seat 1 first: true is seat 1's side (Alpha), false the other (Bravo). Together, or a
+ * mode with no Bravo seat, puts every seat on Alpha; Teams alternates, Alpha first. At most `maxSeats` seats.
+ */
+export function couchSeatSides(mode: GameModeId | string | null | undefined, sides: CouchSides, seats: number): boolean[] {
+  const count = Math.max(0, Math.min(COUCH_RULES.maxSeats, Math.floor(seats) || 0));
+  const together = sides === 'together' || (COUCH_RULES.togetherOnly as readonly string[]).includes(String(mode));
+  return Array.from({ length: count }, (_, index) => together || index % 2 === 0);
 }
 
 /** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
