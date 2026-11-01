@@ -203,6 +203,8 @@ export interface ActorClientStats {
   rewindTicks: number;
   inputMargin: number | null;
   bufferTicks: number;
+  /** Frames refused past the input ring's horizon, braking ticks, and the longest braking run a control ended (267). */
+  input: { refused: number; dry: number; longestDry: number };
   interest: InterestStats;
 }
 
@@ -607,7 +609,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       case MESSAGE_TYPE.SNAPSHOT_ACK: acknowledge(client, message.tick, nowMs); return;
       case MESSAGE_TYPE.PING:
         acknowledge(client, message.snapshotAckTick, nowMs);
-        sendMessage(client, { type: MESSAGE_TYPE.PONG, clientTimeMs: message.clientTimeMs, serverTimeMs: serverTimeMs(loop.tick), serverTick: loop.tick });
+        // the timeline's time now (267): a server reading its sockets before its loop has caught up a stall still answers the wall's time
+        sendMessage(client, { type: MESSAGE_TYPE.PONG, clientTimeMs: message.clientTimeMs, serverTimeMs: Math.round(loop.timeMs), serverTick: loop.tick });
         return;
       case MESSAGE_TYPE.CHAT: receiveChat(client, message.text, nowMs); return;
       case MESSAGE_TYPE.LEAVE: detach(client, CLOSE_REASON.CLIENT_LEAVE); return;
@@ -673,7 +676,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function receiveInput(client: ActorClient, frame: InputMessage, nowMs: number): void {
     if (!client.entity) { sendError(client, CLOSE_REASON.NOT_SEATED, 'spectators send no input'); return; }
-    const admitted = client.input.admit(frame, loop.tick);
+    // leads are taken over the tick due now (267): read before the loop has caught up a stall, the last tick run is behind it
+    const admitted = client.input.admit(frame, loop.dueTick);
     if (admitted.farAhead) {
       totals.rejectedInputs++;
       sendError(client, CLOSE_REASON.INPUT_TOO_FAR_AHEAD, `tick ${frame.clientTick} vs ${loop.tick}`);
@@ -1130,6 +1134,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       keyframes: client.publisher.stats.keyframes, droppedSnapshots: client.droppedSnapshots, events: client.events,
       rttMs: client.latency.owdMs * 2, rewindTicks: client.latency.rewindTicks(TICK_MS),
       inputMargin: client.input.marginTicks, bufferTicks: client.input.bufferTicks,
+      input: { refused: client.input.stats.farAhead, dry: client.input.stats.dry, longestDry: client.input.stats.longestDry },
       interest: {
         published: [...client.interest.published], held: client.interest.held, population: [...client.interest.population],
         deferred: client.interest.deferredRows,

@@ -1640,6 +1640,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
