@@ -8,9 +8,9 @@ import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { balanceTokens, computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, WORLD_STEPS, gpuChunks } from './steps.mjs';
+  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, gpuChunks } from './steps.mjs';
 import { browserIdCap } from '../browser-id-chunks.mjs';
-import { declaredNotInput } from './globs.mjs';
+import { declaredNotInput, tableFileList } from './globs.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -190,6 +190,26 @@ for (const name of ['icons', 'centering']) {
   assert.ok(state.steps[name].toolFiles.includes('tools/icons-page-public.mjs'), `${name}: keys the served public list`);
   assert.ok(step.reads.length && step.reads.every((glob) => /^public\/[^/*]+\/\*\*$/.test(glob)) && !step.reads.includes('public/**'),
     `${name}: reads named public directories (${step.reads.join(', ')}), never public/**`);
+}
+// 267: the gate step keys each id's oracle from its own record (geometryGate.oracle), the public files its page loads
+// beside them, and never public/ or docs/geometry-gate whole (its declaration covers both: the oracles per id, its own
+// outputs); the records table holds only <id>.json, not the other steps' ledgers in that directory.
+{
+  const gate = state.steps.gate;
+  assert.ok(gate.decomposed && gate.rowTables.includes('geometryGate.oracle') && !gate.rowTables.includes('specCombat'),
+    `gate: keys its records' oracles and the spec rest only (${gate.rowTables.join(', ')}; ${gate.reasons.join('; ')})`);
+  assert.ok(!gate.toolFiles.includes('public') && !gate.toolFiles.includes('docs/geometry-gate'),
+    'gate: neither public/ nor docs/geometry-gate is keyed whole');
+  assert.ok(['tools/gate-page-public.mjs', 'tools/served-public.mjs', 'tools/procedural-fidelity.html'].every((file) => gate.toolFiles.includes(file)),
+    'gate: keys its page, its served-public list and the guard');
+  assert.ok(gate.step.reads.every((glob) => glob !== 'public/**' && !glob.startsWith('public/models')), `gate: reads ${gate.step.reads.join(', ')}`);
+  const recordFiles = tableFileList(root, TABLES.geometryGate, state.ids);
+  assert.ok(recordFiles.length && recordFiles.every((file) => state.ids.includes(file.slice('docs/geometry-gate/'.length, -'.json'.length))),
+    'gate: its records table holds only <id>.json');
+  assert.ok(Object.keys(state.fileIds).includes(recordFiles[0]), 'control: the record files are read as table rows');
+  for (const other of ['ledger.json', 'spare-track.json', 'gun-junction.json', 'moving-clearance-air.json', 'sim-floors.json']) {
+    assert.ok(!recordFiles.includes(`docs/geometry-gate/${other}`), `gate: docs/geometry-gate/${other} is not a record`);
+  }
 }
 assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
 assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),

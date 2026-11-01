@@ -12,7 +12,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { splitCombat } from './combat-fields.mjs';
-import { expandGlobs } from './globs.mjs';
+import { tableFileList } from './globs.mjs';
 
 const root = resolve(process.argv[2] ?? join(import.meta.dirname, '../..'));
 // The repository's step table, or a fixture's (tools/changed-only/table.mjs).
@@ -35,11 +35,13 @@ const roster = {
   idSchema: aliases.TANK_ID_SCHEMA,
 };
 
-const rows = {}, fileIds = {}, errors = [];
+// named: each `inputField` table's id -> the file its row names (steps.mjs TABLES), keyed by tools/changed-only/fingerprint.mjs
+const rows = {}, fileIds = {}, named = {}, errors = [];
+const rosterIds = [...new Set([...roster.saved, ...roster.all])];
 for (const [name, table] of Object.entries(TABLES)) {
   rows[name] = {};
   {
-    for (const file of expandGlobs(root, table.files)) {
+    for (const file of tableFileList(root, table, rosterIds)) {
       let data;
       try {
         if (table.kind === 'module') data = (await load(file))[table.exportName];
@@ -56,6 +58,7 @@ for (const [name, table] of Object.entries(TABLES)) {
       for (const id of ids) {
         if (Object.hasOwn(rows[name], id)) errors.push(`${name}: ${id} appears in more than one file`);
         rows[name][id] = h16(JSON.stringify(data[id]) ?? 'undefined');
+        if (table.inputField && data[id]?.[table.inputField]) (named[name] ??= {})[id] = data[id][table.inputField];
       }
     }
   }
@@ -151,4 +154,4 @@ if (WORLD_TABLES && MAP_REGISTRY_FILE && existsSync(join(root, MAP_REGISTRY_FILE
   }
 }
 
-process.stdout.write(JSON.stringify({ roster, rows, fileIds, chains, errors, world, root: relative(root, root) }));
+process.stdout.write(JSON.stringify({ roster, rows, fileIds, named, chains, errors, world, root: relative(root, root) }));

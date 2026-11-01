@@ -9,6 +9,7 @@
 
 import { browserIdChunks } from '../browser-id-chunks.mjs';
 import { ICONS_PAGE_PUBLIC } from '../icons-page-public.mjs';
+import { GATE_PAGE_PUBLIC } from '../gate-page-public.mjs';
 
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([
@@ -33,6 +34,10 @@ export const GROUP_LOADERS_FILE = 'src/vehicles/fleetFactory.ts';
  * Per-id tables. `module` tables are read by importing the file(s) and taking `exportName`; `json` tables by parsing
  * the file and following `path`; `jsonRow` tables hold one id's row per file, the file named <id>.json (266: the tank
  * asset manifest, tools/tank-assets-store.mjs). A row is the stable JSON of one id's entry ("absent" when it has none).
+ * `idsOnly` (267): only the files named for a roster id are rows; the directory's other files belong to other tools.
+ * `inputField` (267): the field of an id's row naming a file the step writing the table reads for that id, as
+ * { path, sha256 } (path as a page fetches it, under public/): keyed per id by tools/changed-only/fingerprint.mjs, from
+ * the file when it is in this checkout, else from the recorded sha256.
  */
 export const TABLES = Object.freeze({
   auxiliaryInventory: { kind: 'module', files: ['src/vehicles/auxiliaryInventory.generated.ts'], exportName: 'AUXILIARY_INVENTORY' },
@@ -52,6 +57,8 @@ export const TABLES = Object.freeze({
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'jsonRow', files: ['public/icons/tank-assets/tanks/*.json'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
+  // 267: the geometry gate's records, one per measured id beside the other steps' ledgers; each names its oracle
+  geometryGate: { kind: 'jsonRow', files: ['docs/geometry-gate/*.json'], idsOnly: true, inputField: 'oracle' },
   // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
   combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
 });
@@ -254,6 +261,33 @@ export const DECLARED_DYNAMIC = Object.freeze({
     scheduleOnly: ['tools/browser-id-caps.mjs'],
     note: 'loads tools/browser-launch.mjs (keyed: its launch flags reach the renders) when a chunk launches; the caps only place browser boundaries',
   },
+  // 267: the gate step (tools/geometry-gate.mjs). Its oracles are per-id inputs: each record names its oracle's path and
+  // sha256 (TABLES geometryGate `inputField`), so the step keys that file per id, and its server serves only the selected
+  // ids' registered oracles beside GATE_PAGE_PUBLIC.
+  'tools/geometry-gate.mjs': {
+    pin: 'a9a10ec324b64a6e',
+    reads: [],
+    // public/: the oracles' presence and bytes for the ids it measures (keyed per id by the geometryGate.oracle rows) and
+    // the files its server serves (the step's reads); docs/geometry-gate: its own records, raw-source comparisons and
+    // ledger (the step's outputs), never another step's ledger in that directory
+    covered: ['public', 'docs/geometry-gate'],
+    note: 'stats and hashes the selected ids\' oracles under public/ and reads and merges its own ledger and records',
+  },
+  'tools/reference-glb-loader.ts': {
+    pin: 'f68d2a7ef44b3f2d',
+    reads: [],
+    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle)',
+  },
+  'tools/source-world-registration.mjs': {
+    pin: '02080ee9df202934',
+    reads: [],
+    note: 'a page module: hashLocalOracle fetches the id\'s own oracle to check its certified sha256, keyed per id by its record',
+  },
+  'tools/isolated-capture-browser.mjs': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    note: 'starts the Vite server and guarded browser the gate measures in and removes its own temporary Vite cache: process state and a scratch directory, never a file the step keys',
+  },
   // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses
   // (403) a public file outside its page's list; every file it serves lies under the step's declared reads.
   'tools/served-public.mjs': {
@@ -374,6 +408,9 @@ export const BALANCE = Object.freeze({
 const ids = (list) => `--ids=${list.join(',')}`;
 /** The public files the icons page loads in the GPU steps: the directories its tools' server serves (266). */
 const ICONS_PAGE_READS = ICONS_PAGE_PUBLIC.map((dir) => `public/${dir}/**`);
+/** The public files the gate's page loads beside its ids' oracles (267, tools/gate-page-public.mjs). */
+const GATE_PAGE_READS = [...GATE_PAGE_PUBLIC.dirs.map((dir) => `public/${dir}/**`),
+  ...GATE_PAGE_PUBLIC.files.map((file) => `public${file}`)];
 
 /**
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
@@ -507,6 +544,24 @@ export const STEPS = Object.freeze([
     files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
     // the public directories the page loads (tools/icons-page-public.mjs, as centering)
     reads: ICONS_PAGE_READS,
+  },
+  {
+    // 267: the geometry gate. Each registered id measured against its comparison oracle (tools/geometry-gate.mjs, the
+    // page tools/procedural-fidelity.html), so a gate-tool change re-measures every id once and an id whose build and
+    // oracle are unchanged keeps its record. The page reads the specs' dims and variantOf (the spec rest row), never a
+    // combat field.
+    name: 'gate', device: 'gpu', tool: 'tools/geometry-gate.mjs', entries: ['tools/procedural-fidelity.html'],
+    // --absent=skip: an id whose oracle is not in this checkout keeps its record and is reported, never thrown on
+    flags: ['--repin', '--absent=skip'], full: [], scoped: (list) => [ids(list)],
+    check: null, checkScoped: null,
+    outputs: ['geometryGate'],
+    // the ledger is written whole beside the records; k1a1 and the owner-kit ids keep a raw-source comparison each
+    files: ['docs/geometry-gate/ledger.json'], writes: ['docs/geometry-gate/*.raw-source.json'],
+    gb: 6, timeoutS: 1200, perIdS: 25, chunkS: 1100,
+    // the public files the page loads beside the oracles (each oracle is keyed per id by its record)
+    reads: GATE_PAGE_READS,
+    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs): they stay due
+    skipped: '--skipped',
   },
 ]);
 

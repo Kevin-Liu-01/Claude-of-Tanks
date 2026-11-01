@@ -35,6 +35,8 @@ import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from '.
 import { mergeLedgerRow, missingOraclesError, unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
+import { servedPublicOnly } from './served-public.mjs';
+import { GATE_PAGE_PUBLIC } from './gate-page-public.mjs';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -99,12 +101,21 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
 
 // One Vite server and browser, its page on the registry: the discovery below, then one per chunk of ids
 // (tools/browser-id-chunks.mjs).
+/** Public files a page of this run loaded outside the gate step's key (267): any one fails the run. */
+const refusedPublic = [];
 async function withRegistryPage(run, dependencies = {}) {
+  // 267: the requested ids' registered oracles (none before discovery, which loads no oracle) and GATE_PAGE_PUBLIC
+  const oracles = Object.entries(referenceSourceOf).filter(([id, file]) => file && (!requested || requested.includes(id))).map(([, file]) => file);
   return await withIsolatedCaptureBrowser({
     root: ROOT,
     logLevel: 'error',
     // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
     server: toolServerOptions(7400),
+    // 267: only the public files the gate step keys (tools/served-public.mjs); any other is refused and fails the run
+    plugins: [servedPublicOnly({ dirs: GATE_PAGE_PUBLIC.dirs, files: [...GATE_PAGE_PUBLIC.files, ...oracles] }, (file) => {
+      refusedPublic.push(file);
+      console.error(`[geo] refused ${file}: not an input of the gate step's key (tools/gate-page-public.mjs)`);
+    })],
   }, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -227,3 +238,7 @@ if (notRepinned.length) console.log(`[geo] not re-pinned (page errors above); th
 if (SKIPPED_FILE) fs.writeFileSync(SKIPPED_FILE, `${JSON.stringify(skipped, null, 1)}\n`);
 if (Object.keys(skipped).length) console.log(`[geo] skipped: ${Object.keys(skipped).join(', ')}`);
 if (CHECK && runPassed < rows.length) process.exitCode = 1;
+if (refusedPublic.length) {
+  console.error(`[geo] FAIL: the page loaded ${refusedPublic.length} public file(s) outside the gate step's key: ${[...new Set(refusedPublic)].join(', ')}`);
+  process.exitCode = 1;
+}

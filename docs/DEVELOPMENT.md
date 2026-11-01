@@ -1168,8 +1168,8 @@ fails if a page enters a step key (a step that really reads one is listed in its
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
-spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
-most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
+spare-track keep-out), then the geometry ledger, the manual reference, centering, icons and the geometry gate (capture
+lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
 by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
@@ -1238,8 +1238,19 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
+- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`) names it in the
+  report its step's `skipped` flag asks for. The chain records the other ids, leaves that one due without retrying it
+  or failing, and names it in the final resolve; `tank:changed --explain` says the file is absent here. A checkout
+  holding the oracle clears it.
+- The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
+  `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
+  (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran
+  centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
-  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. A route in the
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
+  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`): the file's bytes
+  where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
+  did, and different bytes at the path re-run that id alone. A route in the
   app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
   `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
   the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in

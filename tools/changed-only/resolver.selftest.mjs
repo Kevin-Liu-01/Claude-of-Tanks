@@ -360,4 +360,61 @@ put('src/vehicles/anchorsCodec.ts', "import { readFileSync } from 'node:fs';\nex
 assert.match(state().globalReasons.join(), /anchorsCodec\.ts can read files/, 'control: a decoder that reads files fails closed');
 put('src/vehicles/anchors.generated.ts', anchors);
 
+// 267: a per-id input file named by the step's own output row (`inputField`: the geometry gate's oracles). It keys only its
+// id; different bytes at the path move only that id; a checkout without the file keys the id from the recorded sha256, so
+// it neither moves nor flip-flops, and names the absence; an id the tool skipped stays due; `idsOnly` reads only <id>.json.
+{
+  const { createHash } = await import('node:crypto');
+  const { tableFileList } = await import('./globs.mjs');
+  const { renameSync } = await import('node:fs');
+  put('tools/gen-gate.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
+  put('public/models/a1.glb', 'oracle a1 v1');
+  put('public/models/a2.glb', 'oracle a2 v1');
+  const sha = (text) => createHash('sha256').update(text).digest('hex');
+  const gateCfg = { ...config, tables: { ...config.tables, records: { kind: 'jsonRow', files: ['docs/gate/*.json'], idsOnly: true, inputField: 'oracle' } } };
+  const gateSteps = () => [...baseSteps(), { name: 'gate', device: 'gpu', tool: 'tools/gen-gate.mjs', flags: [], full: [],
+    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [] }];
+  const named = (a1 = sha('oracle a1 v1')) => ({ records: { a1: { path: '/models/a1.glb', sha256: a1 }, a2: { path: '/models/a2.glb', sha256: sha('oracle a2 v1') } } });
+  // b1's spec chain names a1: a1's oracle still keys only a1
+  const gateRows = (a1) => rowsData({ rows: { ...rowsData().rows, records: { a1: 'g1', a2: 'g2' } }, named: named(a1),
+    chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } });
+  const gate = (a1) => state({ steps: gateSteps(), rows: gateRows(a1), cfg: gateCfg });
+  const g0 = gate();
+  assert.deepEqual([g0.globalReasons, g0.steps.gate.rowTables.includes('records.oracle'), g0.inputAbsent('gate', 'a1')], [[], true, null],
+    'the gate keys its records\' oracles, present here');
+  const gm = bootstrap(g0);
+  assert.deepEqual(changed(resolveChanged(gate(), gm)), { sizes: 'none:', other: 'none:', gate: 'none:' }, 'unchanged oracles mark nothing');
+  put('public/models/a1.glb', 'oracle a1 v2');
+  result = resolveChanged(gate(), gm);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a1' }, 'different bytes at a1\'s oracle mark a1 alone (not b1, whose chain names a1)');
+  assert.ok(result.gate.reasons.a1.includes('row records.oracle[a1]'), result.gate.reasons.a1.join());
+  put('public/models/a1.glb', 'oracle a1 v1');
+  renameSync(join(root, 'public/models/a1.glb'), join(root, 'public/models/a1.away'));
+  const absent = gate();
+  assert.deepEqual(changed(resolveChanged(absent, gm)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'an oracle absent here keys a1 from its recorded sha256: no move, no flip-flop between checkouts');
+  assert.equal(absent.inputAbsent('gate', 'a1'), 'oracle absent here (public/models/a1.glb)');
+  result = resolveChanged(gate(sha('oracle a1 v3')), gm);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a1' }, 'a record measured elsewhere against new bytes marks a1');
+  assert.ok(result.gate.reasons.a1.some((why) => /oracle absent here \(public\/models\/a1\.glb\): run it where the file is present/.test(why)),
+    'the reasons say the id can only be cleared where its oracle is');
+  renameSync(join(root, 'public/models/a1.away'), join(root, 'public/models/a1.glb'));
+  // a tool-reported skip is not recorded: the id stays due, the others are recorded
+  put('public/models/a1.glb', 'oracle a1 v2');
+  const moved = gate();
+  const skipManifest = bootstrap(g0);
+  put('public/models/a2.glb', 'oracle a2 v2');
+  const both = gate();
+  const inKeys = Object.fromEntries(['a1', 'a2'].map((id) => [id, both.inKey('gate', id)]));
+  recordStep(skipManifest, 'gate', ['a1', 'a2'], inKeys, both, { skip: new Set(['a1']) });
+  assert.deepEqual(changed(resolveChanged(both, skipManifest)).gate, 'ids:a1', 'the skipped id stays due; the measured one is recorded');
+  assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
+  put('public/models/a1.glb', 'oracle a1 v1');
+  put('public/models/a2.glb', 'oracle a2 v1');
+  // idsOnly: the records directory's other tools' ledgers are not rows
+  for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
+  assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
+  assert.equal(tableFileList(root, { ...gateCfg.tables.records, idsOnly: false }, ['a1']).length, 5, 'control: without idsOnly every file is a row file');
+}
+
 console.log('changed-only resolver.selftest: PASS');
