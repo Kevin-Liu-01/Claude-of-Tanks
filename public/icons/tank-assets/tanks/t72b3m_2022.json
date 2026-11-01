@@ -12419,7 +12419,7 @@
       }
     ]
   },
-  "geometryHash": "8cda4325",
+  "geometryHash": "044577f2",
   "metadataHash": "78f82257",
   "presentationAnchor": {
     "xM": -0.0024,
@@ -12477,39 +12477,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21684,
-      "sha256": "13140e7031c62a2ee90bb98f3fbdd86d11d35a92c5d7aeee7154cce90b855e2e"
+      "bytes": 21682,
+      "sha256": "7be8f29f5fe43e8196abbd7b0c54716802414c34e09173f6de851b994cbb143e"
     },
     "modulesSide": {
       "file": "t72b3m_2022_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24108,
-      "sha256": "3e0ee69eedd01b945db03cac90c71b092609adf7781564b6ad4ff13e5c97bc9b"
+      "bytes": 24140,
+      "sha256": "c6b573eb54533f3818eae4013f6b27434f6e3068bd9dc6ae4179bbfc73c018fc"
     },
     "armorSide": {
       "file": "t72b3m_2022_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27220,
-      "sha256": "ffaafb14c99e159b81d09982018c0add9daa80be81c02447790447caf7eea03a"
+      "bytes": 27222,
+      "sha256": "8d16f003c8cdc610d34617b271dc6397e850b5c63fa8bd0d0eeb45a94c63aa09"
     },
     "angle": {
       "file": "t72b3m_2022_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30114,
-      "sha256": "b82059b4368c2c872dd77d74f264c2fa96aef56b5af4b3f7544d1cdddbec6347",
+      "bytes": 30178,
+      "sha256": "4285f2a5ba726fb25fc43edf4f09a34e5e9ff42be15bd03b4e5475bc1693a423",
       "thumbnail": {
         "file": "thumbs/t72b3m_2022_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11970,
-        "sha256": "47601d343fa0bd57a0c10f33a323cf6700a9aa3918edf419e0585def1636bc24"
+        "bytes": 11960,
+        "sha256": "f8ee7f07232676a1d224fa0ded8e2b5e81d4203f1115946cc61510ba8f94e187"
       }
     },
     "top": {
@@ -12517,8 +12517,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13888,
-      "sha256": "4843f88df49babcecdf72ca263acbd8b7face8e77239a7c5a1b44899a94fc553"
+      "bytes": 13870,
+      "sha256": "17c6187bfd8c8fb611f143f3523562e129c28b809d8e1ff7fccff32c9d09687e"
     },
     "sideSilhouette": {
       "file": "t72b3m_2022_side_silhouette.png",
@@ -12526,7 +12526,7 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 4740,
-      "sha256": "8ad99195d94e3243e005d7214ec1666016d411ee5a371a6b216d0c22ea3b0b39"
+      "sha256": "59ebbe672dc6f8c517059f7ed3d42ffb2da9e0b19727cbc73648aaf5d2d97170"
     },
     "topSilhouette": {
       "file": "t72b3m_2022_top_silhouette.png",
@@ -12549,8 +12549,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11580,
-      "sha256": "dd5b4b42f881f005dc257ec26e1188d5d030058105347efda23557df4f7792fc"
+      "bytes": 11578,
+      "sha256": "8152ba1d4b004a1ff3eb7153acfc79411ab346548d7b88c132bd96a97fe86f57"
     },
     "technicalLabels": {
       "file": "t72b3m_2022_technical.json",

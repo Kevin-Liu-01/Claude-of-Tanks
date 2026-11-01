@@ -5562,17 +5562,17 @@
       }
     ]
   },
-  "geometryHash": "80d33a1a",
+  "geometryHash": "0ca0135c",
   "metadataHash": "ddf3b220",
   "presentationAnchor": {
     "xM": 0.0003,
-    "zM": -0.1268
+    "zM": -0.1259
   },
-  "presentationHash": "5a5ec7fc",
+  "presentationHash": "c6f9e368",
   "presentationProjection": {
     "centerYM": 2.3562,
-    "topHalfM": 6.9225,
-    "sideHalfM": 3.4613
+    "topHalfM": 6.9216,
+    "sideHalfM": 3.4608
   },
   "appearance": {
     "version": 1,
@@ -5621,15 +5621,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29178,
-      "sha256": "8ffd96df8e7f79170ea4a6dfb0a6eb1657ca2f4425f44676b6a0e1bcf524e8be",
+      "bytes": 28956,
+      "sha256": "2c51a16c0941b20d90b8d4d4872c9c0dc10600dd3be972bcb9dc8004c73ef85a",
       "thumbnail": {
         "file": "thumbs/t90a_burlak_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11434,
-        "sha256": "87d29a7d213b8b521e185acad0383b30b8da838e9a7c9128a33f3868d95a4b9b"
+        "bytes": 11366,
+        "sha256": "7e9a49e83c0331c9009103f1781623711dd246a1c3da5d39ea5c30eb8243ae68"
       }
     },
     "top": {
@@ -5637,56 +5637,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15342,
-      "sha256": "92ea5de683821ecbf7697bb0f784896dbc28b771f18b1b8be4fa210749b6dd03"
+      "bytes": 15066,
+      "sha256": "957cf84402b359c6623b58c579d3e72305102e65bf2fc75862d93d23069c62b2"
     },
     "side": {
       "file": "t90a_burlak_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10790,
-      "sha256": "720d0246e3226e97694f40122f22ecbfdd91618d300f3387fba2597ab30c19db"
+      "bytes": 12082,
+      "sha256": "41ef1b80e41b0059fcb618dc74b3ab2609fe680bec96b1935a1d7db74ae1b4a9"
     },
     "topSilhouette": {
       "file": "t90a_burlak_proto_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1331,
-      "sha256": "23aadcfadac51cecaf5a68114dadc7d0d82624f68b2cfe16194bd51698cd693c"
+      "bytes": 1314,
+      "sha256": "fd9f92e0eb4f829ff28a0e71877b310a236d1d81ce2c07332c75a8d460ecdac6"
     },
     "sideSilhouette": {
       "file": "t90a_burlak_proto_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4392,
-      "sha256": "dc7f384c86d15078d1a44daf73db4cdf37c39f0f8f06317661ae87ac46725560"
+      "bytes": 4420,
+      "sha256": "df4993b8c0c27833b8a8966a5af05d69a03dcfe5b578c6cbf7c66f0d5bee3ee9"
     },
     "armorSide": {
       "file": "t90a_burlak_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28536,
-      "sha256": "52628e4ad7d8e4384b549646210ce4e478092253257adc1db0eaafd831309a7b"
+      "bytes": 27766,
+      "sha256": "1d4e4fc74d87647123875c2e005ff0933865909c0e3b9f4d41ec6f5b72a4cd2d"
     },
     "modulesSide": {
       "file": "t90a_burlak_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25614,
-      "sha256": "698303891b718ee7eb5607fab4fcfdb4e088a65b2da4a683c13e8ba1dcf7b27b"
+      "bytes": 25742,
+      "sha256": "9002b6bef9e47feabb7d57228dd5b6353d32fbfaff2c2e9033ab594d13046cfa"
     },
     "crewSide": {
       "file": "t90a_burlak_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23784,
-      "sha256": "f976e711b449e5947a6f2a21f18f315c515c8c56eeb685d18fc00be53578b3d0"
+      "bytes": 23670,
+      "sha256": "0ec546b1024d950f1858e816b3284b351844f3ddeb2ff43ea7e682c0492eddc8"
     },
     "markings": {
       "file": "t90a_burlak_proto_markings.png",
@@ -5699,8 +5699,8 @@
     "technicalLabels": {
       "file": "t90a_burlak_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5244,
-      "sha256": "544a0146d904db7f5b1dc745ac4835487cffc06941d88a438ad88a25866c346a"
+      "bytes": 5246,
+      "sha256": "bb8a2d9c3bb4fe8604204210826671caa6edddeb925f10c6a5fc6e2286913a88"
     }
   }
 }

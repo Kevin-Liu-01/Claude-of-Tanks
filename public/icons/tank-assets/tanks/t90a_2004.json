@@ -6460,7 +6460,7 @@
         "volumeId": "C01",
         "name": "driver",
         "min": [-0.2297,0.8209,1.8416],
-        "max": [0.2297,1.2964,2.8988],
+        "max": [0.2297,1.1264,3.5488],
         "turretLocal": false
       },
       {
@@ -6479,17 +6479,17 @@
       }
     ]
   },
-  "geometryHash": "36b70441",
-  "metadataHash": "94bc6620",
+  "geometryHash": "3b40c801",
+  "metadataHash": "7767098f",
   "presentationAnchor": {
     "xM": 0.0001,
-    "zM": -0.1235
+    "zM": -0.1226
   },
-  "presentationHash": "8308a264",
+  "presentationHash": "ef6793a8",
   "presentationProjection": {
     "centerYM": 1.7078,
-    "topHalfM": 6.8348,
-    "sideHalfM": 3.4174
+    "topHalfM": 6.8339,
+    "sideHalfM": 3.4169
   },
   "appearance": {
     "version": 1,
@@ -6536,15 +6536,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27034,
-      "sha256": "648c82bb3bdc61f46e00782beb7e510d9b881d2add84c02f41a9d8cc7fe7a4e4",
+      "bytes": 26860,
+      "sha256": "82c8728dc39e454b38cec15ed414bd3ba76b8e9e1bd93b17db212aba38f803fe",
       "thumbnail": {
         "file": "thumbs/t90a_2004_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10618,
-        "sha256": "95921635373d080b944cb26c9adc851a8e0378173d216d56204535a8028fd141"
+        "bytes": 10568,
+        "sha256": "fe2066ddaaeb7d4ffaeda8ca0a97dc7187e646e5308e3b0d070739f06ebf4e9b"
       }
     },
     "top": {
@@ -6552,56 +6552,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13122,
-      "sha256": "51a375e7e1f2c46920d85651d78ae7cfa1381479adb965940b04dcbe566b0fc6"
+      "bytes": 12834,
+      "sha256": "cdc800e50c1c933ceb732a5d67063c91789ce0ddd15ae1fd6729ad79cfe7ce36"
     },
     "side": {
       "file": "t90a_2004_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9538,
-      "sha256": "b0c51e8abab18fba2703a79ee7fcb3b291a24f110c049acd3d575ab8bf8ed457"
+      "bytes": 10502,
+      "sha256": "59acde3c168f8878eac268bac50ad2c0f6f4c0c13c8cdfff6f9f9c1b5517d886"
     },
     "topSilhouette": {
       "file": "t90a_2004_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1249,
-      "sha256": "5783fc9ecff03408df2539358558f2e821687f1be3ab51ff7602441daa40f7cd"
+      "bytes": 1232,
+      "sha256": "3f1efa332a021e8757efa6cd31c6107f1f413638c359d65da1a1390e2dbfc41c"
     },
     "sideSilhouette": {
       "file": "t90a_2004_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4048,
-      "sha256": "2866da9351ea0ea4dd8ac1ed7436765f339e82b99ac32b5bc17b2e604e49b4e2"
+      "bytes": 4070,
+      "sha256": "9f051a4c6c3fad0b804d48dc2a5151d742d542c88b689ff7cde16a5349220d57"
     },
     "armorSide": {
       "file": "t90a_2004_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24956,
-      "sha256": "1c21567973e8f22c430c143f1822fe46b669fc22b9e3c5cd5a6a2c2f6388993d"
+      "bytes": 24742,
+      "sha256": "ff4cb2082c36a149adccea4012ba8ef3ddd9c33f6c88f543a9d9d0fa3f071037"
     },
     "modulesSide": {
       "file": "t90a_2004_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23918,
-      "sha256": "1846865b667ed5b3ca65ec6b1f293588861de4fc4748b376191955f3e9123a97"
+      "bytes": 23650,
+      "sha256": "8651fc18165e17e6f9d531a791a66a7d8844f9e36b2536c61e1da4ac8fc93c45"
     },
     "crewSide": {
       "file": "t90a_2004_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20342,
-      "sha256": "07d7cff4b6e42b7db6cd585b517a97f1ead698ef87b4e46783229b0199309bba"
+      "bytes": 20234,
+      "sha256": "16883e5ecca4f867d3da52c605ea48c429170f05bea052c06c51510d5c4434b5"
     },
     "markings": {
       "file": "t90a_2004_markings.png",
@@ -6614,8 +6614,8 @@
     "technicalLabels": {
       "file": "t90a_2004_technical.json",
       "mime": "application/json",
-      "bytes": 4753,
-      "sha256": "7b3f2ccd573d63ffc082ee02e2fde177647ea8fc522c90f4792421481498339f"
+      "bytes": 4756,
+      "sha256": "01ada67dc7ced10432ce7b9ab745c232a635970f13f2da4a0aab5ab582df6a31"
     }
   }
 }

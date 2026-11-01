@@ -6167,17 +6167,17 @@
       }
     ]
   },
-  "geometryHash": "903721fd",
+  "geometryHash": "0e7da333",
   "metadataHash": "9714bb65",
   "presentationAnchor": {
     "xM": 0,
-    "zM": -0.1206
+    "zM": -0.1211
   },
-  "presentationHash": "3789f575",
+  "presentationHash": "a40ff629",
   "presentationProjection": {
     "centerYM": 1.9986,
-    "topHalfM": 7.5401,
-    "sideHalfM": 3.77
+    "topHalfM": 7.5406,
+    "sideHalfM": 3.7703
   },
   "appearance": {
     "version": 1,
@@ -6192,7 +6192,7 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 26,
+      "armorPaint": 25,
       "hullRubber": 1,
       "gunmetal": 9,
       "opticGlass": 2,
@@ -6227,15 +6227,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27578,
-      "sha256": "1746023e4b0d5fd7d8c89e9f8c4d8002c1fa9da29d1a0a94545f3072c5f065e7",
+      "bytes": 27546,
+      "sha256": "ecf3813a01cf890c03e1c4fc948ec241402017b16b76405796576507541b8cea",
       "thumbnail": {
         "file": "thumbs/t90a_2006_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10760,
-        "sha256": "94b2bc0a9f20db5abde9e46d3e115606926eeec2549e49f4d2833e3a45a52d09"
+        "bytes": 10732,
+        "sha256": "94e3c1009b0e5ac0256c3c57369edda193db7df90272c9d0ac2764b32ac1ce00"
       }
     },
     "top": {
@@ -6243,56 +6243,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13204,
-      "sha256": "0e7f348552d733870b81750f92318d10ec49e93f2796571542613b5aaf2d6658"
+      "bytes": 13268,
+      "sha256": "f052f75fd5761c1ad9b83615b0542f696e7db1db74b870c17329e139094b9c42"
     },
     "side": {
       "file": "t90a_2006_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9612,
-      "sha256": "a22dc32ca9a429ed560d39dda7a3648a650c482c7682dbccaca91587a8b58356"
+      "bytes": 9670,
+      "sha256": "95b63517a0d2af11928a36a8e53a16de3b6e1993775360b839d47ce278da7ce1"
     },
     "topSilhouette": {
       "file": "t90a_2006_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1332,
-      "sha256": "51024926333386985e5f2bf794949a2f8146fb410b3b9f7edf547c6d94e4e0f2"
+      "bytes": 1348,
+      "sha256": "a96ab7183526ee77b5e4a8c759e9a825cf84dd43495b8660808ac49149776c51"
     },
     "sideSilhouette": {
       "file": "t90a_2006_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4032,
-      "sha256": "f6a4ef2ff5c30dc396531cfbb3eeb4b45fb07196147c84ba82026342aa355a05"
+      "bytes": 4084,
+      "sha256": "b90729c870259815f64b06629a34b01a7a00d1a3888a350e56b7ff02aa30e511"
     },
     "armorSide": {
       "file": "t90a_2006_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24208,
-      "sha256": "1724e0834b3ba7dfed305e15f663388d45d39ce77689821546ffa13fa638d537"
+      "bytes": 24224,
+      "sha256": "93ce911aebbe94004f1637b83ee8ecbf3f87133c9719bba57a931510a61edd7c"
     },
     "modulesSide": {
       "file": "t90a_2006_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23508,
-      "sha256": "9d95b72a152c328708d4376f375508c7303056ae767dcccf347bed42468e831d"
+      "bytes": 23550,
+      "sha256": "042852699a925d0c9e2519687ebadcf133b793c1044eb6c1af0d6f93fcd340de"
     },
     "crewSide": {
       "file": "t90a_2006_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21218,
-      "sha256": "6e0ac8354ec7b21d190250fee8e71310ffb32089b3609d75c009d247a3d873c9"
+      "bytes": 21430,
+      "sha256": "f7812b0d237d03e8b1ecd3c56dd3c7d58b50c915fc22cc7ee7c3062b36d381ec"
     },
     "markings": {
       "file": "t90a_2006_markings.png",
@@ -6306,7 +6306,7 @@
       "file": "t90a_2006_technical.json",
       "mime": "application/json",
       "bytes": 4413,
-      "sha256": "d2202c4f89e16d35370089add61c14442701a48b4e99e3ed9f68ae446406cfc9"
+      "sha256": "66a22cefbacb98bcf193d3485d6463906b3e07f9ef1524bf55d125c4685aa3cc"
     }
   }
 }
