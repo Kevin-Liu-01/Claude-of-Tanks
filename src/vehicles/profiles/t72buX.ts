@@ -11,6 +11,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import { libraryRoofMg } from './libraryRoofMg.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import {T72BU_X_SOURCE_DATUMS} from '../t72buXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -250,15 +251,23 @@ function machineGun(P:TankBuilderPort):void{
   // the heavy MG's full 10.3 degrees of depression passed 21.7 mm over the searchlight (top 2.520) at yaw 86, so the pintle
   // stands NSVT_RISE higher on a turned riser (bore 2.6967, 7 mm over the source's): 25 mm or more from the searchlight,
   // its arm and the cupola at every yaw and every pitch from -10.3 to +43 degrees.
-  libraryRoofMg(P,{station:'t72buCommanderNsvtStation',cls:'nsvt',seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
-  nsvtRiser(P);
+  const {station}=libraryRoofMg(P,{station:'t72buCommanderNsvtStation',cls:'nsvt',seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
+  nsvtRiser(P,station);
 }
 const NSVT_PINTLE=[-.58057,2.2445,.217] as const,NSVT_RISE=.155;
 /** 267: the NSVT's riser on the cupola race (top 2.2445, radius .320; the pintle .250 from the cupola's axis): a turned
  * column with a bolted foot flange 8 mm into the race, a fillet into the shaft, and a chamfered collar whose top is the
  * pintle's seat (the gun's own flange stands 5 mm into it), with three gusset webs from the shaft to the flange and four
- * bolt heads. Body (turret buckets): it stays put while the gun's yaw stage turns on it. */
-function nsvtRiser(P:TankBuilderPort):void{
+ * bolt heads. It is the gun's mount, not the turret's body (Main's gate ruling, 267: the gate's body heights leave roof
+ * weapons and their mounts out, tools/body-height-parts.mjs): the factory merges its stock (captureAuxiliaryStock) into
+ * NSVT_RISER, a static group under the station tagged as a weapon-station mount (no weapon of its own, so the controls
+ * inventory's drawn-weapon census passes it by), beside the gun's yawing fitting; it stays put while the gun turns on it. */
+const NSVT_RISER='t72buCommanderNsvtRiser';
+function nsvtRiser(P:TankBuilderPort,station:THREE.Group):void{
+  const mount=new THREE.Group();mount.name=NSVT_RISER;
+  Object.assign(mount.userData,{fitting:'weaponStationMount',hasWeapon:false,supportAssembly:station.name});
+  station.add(mount);
+  const finish=captureAuxiliaryStock(P,NSVT_RISER,'yaw');
   const [x,y0,z]=NSVT_PINTLE,top=y0+NSVT_RISE,flangeTop=y0+.012;
   const profile=[[0,y0-.008],[.066,y0-.008],[.066,flangeTop-.006],[.060,flangeTop],[.050,flangeTop],[.044,flangeTop+.012],
     [.040,top-.021],[.052,top-.017],[.052,top-.004],[.048,top],[0,top]] as const;
@@ -269,6 +278,7 @@ function nsvtRiser(P:TankBuilderPort):void{
       new THREE.Vector3(Math.sin(a),0,Math.cos(a)),new THREE.Vector3(0,1,0),new THREE.Vector3(-Math.cos(a),0,Math.sin(a)))),x,0,z);
   }
   for(let k=0;k<4;k++){const a=k*Math.PI/2;equipment(P,'turretDark',cylY(.008,.007,6),x+.057*Math.sin(a),flangeTop+.0015,z+.057*Math.cos(a));}
+  finish();
 }
 function mainGun(P:TankBuilderPort):void{
   const muzzle=T72BU_X_DATUMS.muzzleZ,floor=T72BU_X_DATUMS.boreFloorZ;
