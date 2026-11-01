@@ -32,9 +32,10 @@ for (const quality of ['high', 'low']) {
       assert.ok(Math.abs(kb.min[k] - bb.min[k]) < 0.002 && Math.abs(kb.max[k] - bb.max[k]) < 0.002,
         `${quality}: type90b keeps the Type 90's ${k} extent`);
     }
-    // the roller plate's face: a ray up the nose's centreline from ahead and below meets the plate, not the hull plate
+    // the roller plate's face: a ray up the nose's centreline (between the seats) from ahead and below meets the plate,
+    // not the hull plate
     const out = new THREE.Vector3(0, TYPE90B_ROLLER_PLATE.out[0], TYPE90B_ROLLER_PLATE.out[1]);
-    const mid = new THREE.Vector3(0.40, (TYPE90B_ROLLER_PLATE.foot[0] + TYPE90B_ROLLER_PLATE.top[0]) / 2,
+    const mid = new THREE.Vector3(0, (TYPE90B_ROLLER_PLATE.foot[0] + TYPE90B_ROLLER_PLATE.top[0]) / 2,
       (TYPE90B_ROLLER_PLATE.foot[1] + TYPE90B_ROLLER_PLATE.top[1]) / 2);
     const hit = (root) => new THREE.Raycaster(mid.clone().addScaledVector(out, 1), out.clone().negate(), 0, 2)
       .intersectObject(root, true)[0];

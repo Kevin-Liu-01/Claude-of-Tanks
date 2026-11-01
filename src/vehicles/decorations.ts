@@ -3034,12 +3034,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  // 267 (the Japan line): the TK-X on its trials, as TRDI's photographs show the prototypes: a clean roof and deck (its own
-  // trials rack and the base's whips are drawn by its build), only the tow cable and the bow shackles
-  type10_tk_x: () => [
-    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  ],
   // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
   // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
   t64bm1m: () => [
@@ -3246,6 +3240,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
+  // (267, the Japan line's photo critics) the TK-X on its trials as TRDI's photographs show the prototypes, a clean roof,
+  // deck and basket with its own trials rack; and the Type 10B under its field net, whose roof loads drew the net into a
+  // hoop over the turret's rear (the decor raises field nets): both carry their own kit
+  if (spec.id === 'type10_tk_x' || spec.id === 'type10b') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3360,6 +3358,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
+  // 267 (the Japan line's photo critics): no JGSDF Type 90 photograph shows spare links on a turret side plate (the
+  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear
+  if (spec.id === 'type90' || spec.id === 'type90b') {
+    for (let i = base.length - 1; i >= 0; i--) if (base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') base.splice(i, 1);
+  }
   if (spec.id === 'raiju_ifv') {
     for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }

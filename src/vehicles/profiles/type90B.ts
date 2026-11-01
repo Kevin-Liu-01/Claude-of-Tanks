@@ -41,14 +41,14 @@ function addRollerMounts(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     for (const x of [0.26, 0.50, 0.74]) {
       const sx = side * x, s = 0.115;
-      const [ay, az] = onPlate(s, t + 0.016);
-      P.addEquipment('hullDetail', box(0.18, 0.13, 0.032), sx, ay, az, TILT, 0, 0);
+      const [ay, az] = onPlate(s, t + 0.0225);
+      P.addEquipment('hullDetail', box(0.22, 0.16, 0.045), sx, ay, az, TILT, 0, 0);
       for (const o of [-1, 1]) {
-        const [cy, cz] = onPlate(s, t + 0.032 + 0.06);
-        P.addEquipment('hullDetail', box(0.036, 0.13, 0.12), sx + o * 0.055, cy, cz, TILT, 0, 0);
+        const [cy, cz] = onPlate(s, t + 0.045 + 0.075);
+        P.addEquipment('hullDetail', box(0.055, 0.16, 0.15), sx + o * 0.072, cy, cz, TILT, 0, 0);
       }
-      const [qy, qz] = onPlate(s, t + 0.032 + 0.085);
-      P.addEquipment('hullDark', cylX(0.026, 0.16, 12), sx, qy, qz);
+      const [qy, qz] = onPlate(s, t + 0.045 + 0.105);
+      P.addEquipment('hullDark', cylX(0.032, 0.22, 12), sx, qy, qz);
     }
   }
   // the lift chains' hitch lugs on the glacis (its top falls 1.4677 -> 1.2751 from z 2.324 to 3.408), inboard of the

@@ -323,14 +323,15 @@ function addTkxTrialsFit(P: JapaneseBuilderPort): void {
   P.add('turretDark', box(0.30, 0.15, 0.34), ...tl(x0, roof + 0.186, z0));         // recorder case on the shelf
   P.add('turretDetail', box(0.31, 0.012, 0.35), ...tl(x0, roof + 0.266, z0));
   P.add('turretDark', box(0.12, 0.08, 0.10), ...tl(x0 + 0.06, roof + 0.34, z0 - 0.10)); // junction box on the top rails
-  P.add('turretDark', cylY(0.012, 0.012, 0.42, 8), ...tl(x0 - 0.12, roof + 0.50, z0 + 0.16));
-  P.add('turretDetail', cylY(0.035, 0.035, 0.02, 12), ...tl(x0 - 0.12, roof + 0.715, z0 + 0.16));
+  // the telemetry mast: one thick pole over the rack's rear corner (the photographs), its antenna head on top
+  P.add('turretDetail', cylY(0.042, 0.048, 0.86, 14), ...tl(x0 - 0.12, roof + 0.73, z0 - 0.16));
+  P.add('turretDark', cylY(0.06, 0.06, 0.05, 14), ...tl(x0 - 0.12, roof + 1.185, z0 - 0.16));
 }
 
 function buildType10TkX(P: JapaneseBuilderPort & TankBuilderPort): void {
   // the TK-X prototype: the base's prototype forms (plain side blocks, four round smoke ports, the open basket fence,
   // the muzzle mirror on the left) and its trials fit
-  buildType10X(P, { mark: 'prototype' });
+  buildType10X(P, { mark: 'prototype', basketStowage: false });
   addTkxTrialsFit(P);
 }
 
@@ -381,10 +382,12 @@ function addType10BRemoteStation(P: JapaneseBuilderPort & TankBuilderPort): void
 function addType10BActiveProtection(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   for (const side of [-1, 1]) {
-    for (const [z, y, aft] of [[0.70, 2.07, false], [-1.55, 2.15, true]] as const) {
-      const x = side * 1.16, yaw = side * (aft ? Math.PI * 0.75 : Math.PI * 0.25);
+    // the front heads stand on the front blocks' shelves; the rear heads hang flat on the bustle's flanks below the roof
+    // line (on posts over the roof they drew the field net into a sail)
+    for (const [z, y, aft] of [[0.70, 2.03, false], [-1.92, 1.62, true]] as const) {
+      const x = side * (aft ? 1.477 : 1.16), yaw = side * (aft ? Math.PI * 0.62 : Math.PI * 0.25);
       const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-      P.add('turretDetail', cylY(0.03, 0.03, 0.12, 10), ...tl(x, y + 0.04, z));
+      if (!aft) P.add('turretDetail', cylY(0.03, 0.03, 0.12, 10), ...tl(x, y + 0.04, z));
       P.add('turretDetail', box(0.28, 0.23, 0.06), ...tl(x, y + 0.20, z), 0, yaw, 0);
       P.add('turretDetail', box(0.30, 0.02, 0.09), ...tl(x + fx * 0.015, y + 0.325, z + fz * 0.015), 0, yaw, 0);
       for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
@@ -413,12 +416,12 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   const wall = TYPE10_X_SIDE_WALL;
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) {
-      const t = 0.05, x0 = 1.5745;
+      const t = 0.09, x0 = 1.5745;
       seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 1.035, 2.80 - i * 0.70, t, 0.32, 0.64, null,
         { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }
     for (const z of [-1.62, -1.26, -0.96, -0.62, 0.45, 0.78, 1.10]) {
-      const t = 0.07;
+      const t = 0.12;
       seatedArmorCassette(P, 'turret', ...tl(side * (wall.x + t / 2), (wall.low + wall.high) / 2, z), t,
         wall.high - wall.low - 0.03, 0.31, null, { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }
