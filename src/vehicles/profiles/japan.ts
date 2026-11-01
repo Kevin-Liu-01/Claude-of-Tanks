@@ -324,8 +324,9 @@ function addTkxTrialsFit(P: JapaneseBuilderPort): void {
   P.add('turretDetail', box(0.31, 0.012, 0.35), ...tl(x0, roof + 0.266, z0));
   P.add('turretDark', box(0.12, 0.08, 0.10), ...tl(x0 + 0.06, roof + 0.34, z0 - 0.10)); // junction box on the top rails
   // the telemetry mast: one thick pole over the rack's rear corner (the photographs), its antenna head on top
-  P.add('turretDetail', cylY(0.042, 0.048, 0.86, 14), ...tl(x0 - 0.12, roof + 0.73, z0 - 0.16));
-  P.add('turretDark', cylY(0.06, 0.06, 0.05, 14), ...tl(x0 - 0.12, roof + 1.185, z0 - 0.16));
+  // (round 4, the photo critic: "about 0.6-1.0x turret height" in tkx_rear_left.jpg: half the 0.86 m it stood)
+  P.add('turretDetail', cylY(0.042, 0.048, 0.48, 14), ...tl(x0 - 0.12, roof + 0.54, z0 - 0.16));
+  P.add('turretDark', cylY(0.06, 0.06, 0.05, 14), ...tl(x0 - 0.12, roof + 0.806, z0 - 0.16));
 }
 
 function buildType10TkX(P: JapaneseBuilderPort & TankBuilderPort): void {

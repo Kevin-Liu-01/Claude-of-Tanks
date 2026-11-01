@@ -60,14 +60,17 @@ function addRollerMounts(P: TankBuilderPort): void {
       P.addEquipment('hullDark', cylX(0.03, 0.18, 12), sx, qy, qz);
     }
   }
-  // the lift chains' hitch lugs on the glacis (its top falls 1.4677 -> 1.2751 from z 2.324 to 3.408), inboard of the
-  // headlight guards
+  // the lift chains' anchor brackets on the glacis (its top falls 1.4677 -> 1.2751 from z 2.324 to 3.408), inboard of the
+  // headlights. Round 4 (the photo critic: "chunky bracket assemblies, about 2.5 times that size: a block base, side
+  // plates and a pin eye, standing proud of the glacis"; type90_with_type92_roller_front.jpg): a base block, two cheeks
+  // and the pin through them with its bosses
   const glacisRake = Math.atan2(1.4677 - 1.2751, 3.408 - 2.324);
   for (const side of [-1, 1]) {
-    const x = side * 0.70, z = 3.28, y = 1.4677 - (z - 2.324) * Math.tan(glacisRake);
-    P.addEquipment('hullDetail', box(0.19, 0.03, 0.16), x, y + 0.010, z, glacisRake, 0, 0);
-    for (const o of [-1, 1]) P.addEquipment('hullDetail', box(0.03, 0.12, 0.13), x + o * 0.05, y + 0.08, z, glacisRake, 0, 0);
-    P.addEquipment('hullDark', cylX(0.024, 0.15, 12), x, y + 0.10, z + 0.01);
+    const x = side * 0.66, z = 3.24, y = 1.4677 - (z - 2.324) * Math.tan(glacisRake);
+    P.addEquipment('hullDetail', box(0.30, 0.05, 0.24), x, y + 0.02, z, glacisRake, 0, 0);
+    for (const o of [-1, 1]) P.addEquipment('hullDetail', box(0.04, 0.18, 0.20), x + o * 0.11, y + 0.135, z, glacisRake, 0, 0);
+    P.addEquipment('hullDark', cylX(0.034, 0.26, 12), x, y + 0.17, z + 0.01);
+    for (const o of [-1, 1]) P.addEquipment('hullDetail', cylX(0.05, 0.016, 14), x + o * 0.139, y + 0.17, z + 0.01);
   }
 }
 
