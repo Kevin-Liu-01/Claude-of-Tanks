@@ -31,10 +31,9 @@ const starvedVerdict = (what, output) => {
   process.exit(SELFTEST_STARVED_EXIT);
 };
 
-const ringOf = (file, name) => Number(readFileSync(file, 'utf8').match(new RegExp(`^const ${name} = (\\d+);$`, 'm'))?.[1]);
-const serverRing = ringOf(new URL('../server/match/inputBuffer.ts', import.meta.url), 'RING');
-assert.ok(Number.isInteger(serverRing), 'the server\'s input ring size is read');
-assert.equal(ringOf(script, 'INPUT_RING_TICKS'), serverRing, 'mp-soak sets aside controls past the server\'s own input ring');
+// (267) the soak judges leads against the server's own input-ring horizon, imported, never a copy
+assert.match(readFileSync(script, 'utf8'), /^import \{ MAX_LEAD_TICKS \} from '\.\.\/server\/match\/inputBuffer\.ts';$/m,
+  'mp-soak reads the server\'s input-ring horizon');
 
 const main = await soak(['--plant-stall', '--plant-late-input', '--plant-late-ack']);
 assert.doesNotMatch(main.output, /\[mp-soak\] FAILED/, 'no soak gate failed');

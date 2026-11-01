@@ -560,7 +560,9 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   an armour, ballistics and damage sample on real builds, the vehicle-core build paths, the cheap generated-output guards
   (the collision shard census and codec, the gun-junction, sealed, spare-track and watertight ledgers, the rounds census),
   and the i18n, attribution, hygiene and changed-only/cache guards.
-- **Lane mode**: `npm run test:lane [-- --base=<ref>]` (default `origin/main`; `--dry-run` prints the selection) runs
+- **Lane mode**: `npm run test:lane [-- --base=<ref>]` (default `origin/main`; a local branch behind its origin
+  branch, such as the shared checkout's `main`, is taken as `origin/<branch>`, and one with commits origin lacks is
+  kept with a warning; `--dry-run` prints the selection) runs
   the default-tier receipts whose closure (the result cache's own, `selftestReadOf`, a broad-fallback match excluded)
   holds a changed path, plus the `tanks` pins that name a changed tank id or read a changed file outside the shared
   fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
@@ -575,11 +577,14 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   criss-cross history (a lane that merged integ, then main after integ had merged main) it is the newest of
   `git merge-base --all` that origin/main does not contain (`tools/test-base.selftest.mjs`).
   Speed (266 follow-up): each receipt's reads are computed once per diff from the cache's closure and listings
-  (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt) and the changed tables' rows come from one git
-  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. A JSON table (steps.mjs
-  TABLES kind 'json') is compared row by row instead of diffed: the M60 lane's icon regen rewrote the 55 MB
-  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s), and
-  each batched diff of the other tables stops at 2 minutes (its files then mark every id they hold). test:lane and
+  (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt); integ/265's 3,035-path diff selects in about
+  78 s of CPU, where it ran past ten minutes. Every changed table is compared row by row, never diffed. A JSON table
+  (steps.mjs TABLES kind 'json') is parsed on both sides: the M60 lane's icon regen rewrote the 55 MB
+  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s). A
+  module table (kind 'module') is imported on both sides by one child (`tools/test-module-rows-child.mjs`, its relative
+  imports bound to the tree): auxiliaryInventory, auxiliaryRoofGuns and the combat anatomy groups are one-line literals,
+  so a two-id diff's hunks named all 276 ids (267, magach-quality: now magach6b and magach7c). A file either reader
+  cannot read marks every id it holds. test:lane and
   test:recommend stop their children and exit on SIGTERM, SIGINT, SIGHUP or SIGALRM, or when their parent dies
   (`tools/test-commands-exit.selftest.mjs`, with an untracked control that orphans). Their signal listeners are attached
   only while a tracked child runs: a listener holds a signal until the event loop runs, and the selection is one
@@ -598,7 +603,9 @@ one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free 
   used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
   before Oxlint was added skips it with a notice until `npm ci`.
 - `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
-  no formatter. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
+  no formatter. It adds `no-undef` on JavaScript (`.js`, `.mjs`, `.cjs`), which has no compiler here: an
+  unimported name fails the lint, not the first tier that runs it. A page global read inside `page.evaluate` is
+  declared in the `globals` of its override. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
   with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
   simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
   hash-pinned sources are ignored.

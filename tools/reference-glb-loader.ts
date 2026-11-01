@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { validatedPreservationOracle, verifyPreservationBytes } from './preservation-oracle.ts';
 import type { PreservationSource } from './preservation-oracle.ts';
-import {SOURCE_WORLD_FRAMES,verifySourceWorldBytes} from './source-world-registration.mjs';
+import {SOURCE_WORLD_FRAMES,SOURCE_WORLD_PART_DEPARTURES,verifySourceWorldBytes} from './source-world-registration.mjs';
+import type {SourceWorldCertificate,SourceWorldPartDeparture} from './source-world-registration.mjs';
 
 type SemanticOwner = 'turret' | 'gun' | 'unclassified';
 
@@ -17,8 +18,22 @@ interface ComponentSubsetRule {
   readonly excludeRemainderFromHull?: boolean;
 }
 
+/** A second certified source whose turret and gun replace the first's (SOURCE_WORLD_FRAMES[id].graft certifies it and
+ * holds the translation that seats its ring datum on the first source's). */
+interface ReferenceGraftConfig {
+  readonly path: string;
+  /** The first source's own nodes that leave: the turret and gun the graft replaces. */
+  readonly replaces: string;
+  /** The graft source's meshes that come over: its turret and gun owners. Their names must not occur in the first. */
+  readonly nodes: string;
+  /** Islands of those meshes that start below this plane (graft source metres) stay behind: a mixed owner's hull
+   * fittings and turret parts hidden under the ring. */
+  readonly worldMinY?: number;
+}
+
 interface ReferenceGlbConfig {
   readonly path: string;
+  readonly graft?: ReferenceGraftConfig;
   readonly fixedMount?: boolean;
   readonly turretNode?: string;
   readonly gunNode?: string;
@@ -235,6 +250,89 @@ function extractConnectedSubset(
     remainders.push(split.remainder);
   }
   return { subsets, remainders };
+}
+
+async function fetchSourceBytes(url: string, label: string): Promise<ArrayBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${label}: reference source unavailable: ${url}`);
+  return response.arrayBuffer();
+}
+
+/** `mesh` keeping only its islands that start at or above `worldMinY` (its own world frame): the mesh itself when every
+ * island does, null when none does. */
+function islandsFrom(mesh: THREE.Mesh, worldMinY: number, label: string): THREE.Mesh | null {
+  const index = mesh.geometry.index;
+  const positions = mesh.geometry.attributes.position;
+  if (!index || !positions) throw new Error(`${label}: graft mesh ${mesh.name} has no indexed positions`);
+  const components = componentIndex(index.array, positions.count);
+  updateComponentBounds(components, positions, mesh.matrixWorld);
+  const { selected, remaining } = splitComponentIndices(components, { node: mesh.name, worldMinY });
+  if (!selected.length) return null;
+  if (remaining.length) mesh.geometry = compactSubsetGeometry(mesh.geometry, selected, positions.count);
+  return mesh;
+}
+
+// One source's hull under another's turret and gun (a build that seats one source's turret on another's hull). The
+// first source's own turret and gun leave; the graft's selected meshes move rigidly onto its ring datum and join the
+// first source's scene, where the config's turretNode/gunNode route them. Both files are hash-verified.
+async function graftTurret(
+  scene: THREE.Object3D,
+  graft: ReferenceGraftConfig,
+  certificate: SourceWorldCertificate | undefined,
+  loader: GLTFLoader,
+  label: string,
+): Promise<void> {
+  const seat = certificate?.graft;
+  if (!seat || !graft.path.startsWith('/models/community-candidates/'))
+    throw new Error(`${label}: a grafted turret needs a certified private local graft source`);
+  const bytes = await fetchSourceBytes(graft.path, label);
+  await verifySourceWorldBytes(bytes, seat);
+  const donor = (await loader.parseAsync(bytes, '')).scene;
+  donor.updateMatrixWorld(true);
+  for (const node of matchingNodes(scene, graft.replaces)) node.parent?.remove(node);
+  const hostNames = new Set<string>();
+  scene.traverse((node) => { if (node.name) hostNames.add(node.name); });
+  const meshes = new Set<THREE.Mesh>();
+  for (const node of matchingNodes(donor, graft.nodes)) {
+    node.traverse((child) => { if (child instanceof THREE.Mesh) meshes.add(child); });
+  }
+  if (!meshes.size) throw new Error(`${label}: the graft selects no meshes`);
+  const seatMatrix = new THREE.Matrix4().makeTranslation(...seat.translation);
+  for (const mesh of meshes) {
+    if (hostNames.has(mesh.name)) throw new Error(`${label}: graft mesh ${mesh.name} shares a name in the first source`);
+    const kept = graft.worldMinY == null ? mesh : islandsFrom(mesh, graft.worldMinY, label);
+    if (!kept) continue;
+    kept.removeFromParent();
+    seatMatrix.clone().multiply(kept.matrixWorld).decompose(kept.position, kept.quaternion, kept.scale);
+    scene.add(kept);
+  }
+  scene.updateMatrixWorld(true);
+}
+
+// A certified id's declared part departures (source-world-registration.mjs SOURCE_WORLD_PART_DEPARTURES): each named
+// source node moves rigidly, in the source frame, so its top stands at the ruled height. One node per row, or it fails.
+function applyPartDepartures(
+  scene: THREE.Object3D,
+  departures: readonly SourceWorldPartDeparture[] | undefined,
+  label: string,
+): { node: string; sourceTop: number; top: number; ruling: string }[] {
+  const applied: { node: string; sourceTop: number; top: number; ruling: string }[] = [];
+  for (const row of departures ?? []) {
+    const nodes: THREE.Object3D[] = [];
+    scene.traverse((node) => { if (node.name === row.node) nodes.push(node); });
+    if (nodes.length !== 1 || !Number.isFinite(row.top))
+      throw new Error(`${label}: declared departure ${row.node} matches ${nodes.length} source nodes`);
+    const node = nodes[0];
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(node);
+    if (box.isEmpty()) throw new Error(`${label}: declared departure ${row.node} has no geometry`);
+    const world = new THREE.Matrix4().makeTranslation(0, row.top - box.max.y, 0).multiply(node.matrixWorld);
+    const local = node.parent ? node.parent.matrixWorld.clone().invert().multiply(world) : world;
+    local.decompose(node.position, node.quaternion, node.scale);
+    node.updateMatrixWorld(true);
+    applied.push({ node: row.node, sourceTop: Number(box.max.y.toFixed(4)), top: row.top, ruling: row.ruling });
+  }
+  return applied;
 }
 
 /**
@@ -458,6 +556,13 @@ export async function loadReferenceGlb(
     if(sourceWorld)await verifySourceWorldBytes(bytes,sourceWorld);
     return loader.parseAsync(bytes, '');
   })() : await loader.loadAsync(cfg.path);
+  if (cfg.graft) {
+    gltf.scene.updateMatrixWorld(true);
+    await graftTurret(gltf.scene, cfg.graft, sourceWorld, loader, specId);
+  }
+  const partDepartures = SOURCE_WORLD_PART_DEPARTURES[specId];
+  if (partDepartures && !sourceWorld) throw new Error(`${specId}: declared part departures need a certified source`);
+  const declaredDepartures = applyPartDepartures(gltf.scene, partDepartures, specId);
   const rig = createReferenceRig(specId, Number(cfg.yawOffset || 0));
   // Off-origin print class (§5.248 ukraine finds: t80u_kursk diorama at
   // -1124u, t64bv_donbass at +4.2 m). An off-center model breaks every
@@ -506,6 +611,7 @@ export async function loadReferenceGlb(
   // replacing it or changing any geometry.
   rig.root.userData.__glbSwapped = true;
   rig.root.userData.__comparisonOracle = true;
+  if (declaredDepartures.length) rig.root.userData.declaredDepartures = declaredDepartures;
   rig.root.updateMatrixWorld(true);
   return { root: rig.root, specId };
 }

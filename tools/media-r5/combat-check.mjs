@@ -20,7 +20,7 @@ import { ROADSIDE_SHRINE, absoluteShots, lensReport } from './lens-check.mjs';
 import { hullOf, routeProblems } from './route-check.mjs';
 import { CRUSH_MIN_MPS, insideRecord, sightBlockers, worldModel } from './world-model.mjs';
 import { fxBodies, fxCoverAt, fxItems } from './fx-cover.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 // fxCover / fxCoverMs / burstCap (owner 2026-10-14: "make sure tanks are still visible and its not just a ton of
 // explosions"; the coordinator: a nearer burst may cover a small share of a tank, beyond a flash of 0.2 s at most, and
@@ -272,8 +272,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const worlds = new Map();
   const worldOf = (map) => {
     if (!worlds.has(map)) {
-      const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-      const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+      const f = surveyPath(map);
+      const features = f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
       worlds.set(map, { features, model: features ? worldModel(features) : null });
     }
     return worlds.get(map);
