@@ -9,6 +9,7 @@ import {
   isPinchZoomed,
   layoutViewportSize,
   pinchFactor,
+  settleResponsiveLayout,
   viewportHeightBand,
   viewportWidthBand,
 } from './responsiveLayout.ts';
@@ -490,5 +491,38 @@ assert.match(GALLERY_CSS, /\.gallery-shell\{height:calc\(var\(--cot-viewport-hei
   'the gallery workspace must fit the measured viewport below navigation');
 assert.match(PUBLIC_NAV_CSS, /html,body\{min-height:var\(--cot-viewport-height,100dvh\)\}/,
   'public pages must cover the measured mobile viewport');
+
+// A reader's frame queued before a resize runs ahead of the resize's measure: settleResponsiveLayout() applies that
+// measure first (battleHudLayout.ts relayout: its pass measured the old bands' CSS, the open log 16 px into the map at
+// 1180x820 from 820x1180, 266's tablet-mouse gate).
+{
+  let queuedFrame = null, cancelled = 0;
+  const listeners = new Map();
+  const win = {
+    innerWidth: 820, innerHeight: 1180,
+    matchMedia() { return { matches: false, addEventListener() {}, removeEventListener() {} }; },
+    addEventListener(type, callback) { listeners.set(type, callback); },
+    removeEventListener(type, callback) { if (listeners.get(type) === callback) listeners.delete(type); },
+    requestAnimationFrame(callback) { queuedFrame = callback; return 7; },
+    cancelAnimationFrame(id) { if (id === 7) { queuedFrame = null; cancelled++; } },
+    dispatchEvent() { return true; },
+  };
+  const doc = { body: { dataset: {} }, documentElement: { clientWidth: 820, style: { setProperty() {} } } };
+  win.document = doc;
+  const handle = installResponsiveLayout(win, doc);
+  assert.equal(doc.body.dataset.cotOrientation, 'portrait');
+  settleResponsiveLayout(win);
+  assert.equal(cancelled, 0, 'nothing queued: settling does nothing');
+  win.innerWidth = 1180; win.innerHeight = 820; doc.documentElement.clientWidth = 1180;
+  listeners.get('resize')();
+  assert.ok(queuedFrame, 'a resize queues its measure for the next frame');
+  settleResponsiveLayout(win);
+  assert.equal(queuedFrame, null, 'settling takes the queued frame');
+  assert.equal(cancelled, 1);
+  assert.equal(doc.body.dataset.cotOrientation, 'landscape', 'and applies its measure now');
+  assert.equal(doc.body.dataset.cotWidth, 'laptop');
+  settleResponsiveLayout({});
+  handle.destroy();
+}
 
 console.log(`responsive viewport contract: PASS (${matrix.length} representative viewports; a pinch never relayouts)`);
