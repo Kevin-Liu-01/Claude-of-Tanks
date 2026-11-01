@@ -8,7 +8,9 @@
 // authority's own input stage (sim/playerInputStage.ts applyPlayerInput, 268: the local seats' stage, the aim intent
 // decoded where the authority decodes it), and the gun's muzzle and bore are posed as the authority poses them (its
 // visual stands in for the drawn barrel). The own hull switches its ammunition, asks for a slot emptied on both sides
-// and pulls the trigger on it: the same refusal, once, on the same tick, and no shot. Bots' controllers and the mode controllers still run
+// and pulls the trigger on it: the same refusal, once, on the same tick, and no shot. Given a fourth shell (no playable
+// hull carries one yet), its fourth slot fires as the fourth on both (268: the page's fire path capped a request at the
+// third slot, a rule the authority never had). Bots' controllers and the mode controllers still run
 // in each loop on its own; folding the two loops into one core step is the named follow-up (TESTS-OWED, core-two-drivers-265).
 // Negative controls: one input on one side moved by a billionth at tick 300, and the page's ammunition switch a tick late,
 // are each found at their tick.
@@ -21,6 +23,7 @@ import * as detMath from './detMath.ts';
 import { createBus, createCollider, createGameState, mulberry32, setupBattle, simStep } from '../game/state.ts';
 import { spawnTanks } from '../game/rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
+import { getSpec } from '../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 
 const MAP = 'verdant';
@@ -60,18 +63,31 @@ function hullBytes(entity) {
 }
 
 /**
- * The own hull's ammunition: its second slot from tick 200 (the first slot's load runs to 450), the emptied third from 460
- * with the trigger pulled at 480 on a ready gun, the second again from 520 (fired at 540), the first from 600.
+ * The own hull's ammunition: its `chosen` slot from tick 200 (the first slot's load runs to 450), the emptied third from
+ * 460 with the trigger pulled at 480 on a ready gun, the chosen again from 520 (fired at 540), the first from 600.
  */
 const EMPTY_SLOT = 2;
 const DENIED_FIRE_TICK = 480;
-const ownShellSlot = (tick) => (tick < 200 ? 0 : tick < 460 ? 1 : tick < 520 ? EMPTY_SLOT : tick < 600 ? 1 : 0);
+const ownShellSlot = (tick, chosen) => (tick < 200 ? 0 : tick < 460 ? chosen : tick < 520 ? EMPTY_SLOT : tick < 600 ? chosen : 0);
+const OWN_SPEC = 'm1a1_abrams_hc';
 
 /**
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
-async function run(ticks, perturb = null) {
+async function run(ticks, perturb = null, { fourthShell = false } = {}) {
+  // a fourth shell (the second's, stocked as it is) on the own hull's spec, which both sides read, before either seats it
+  const ownShells = getSpec(OWN_SPEC).gun.shells;
+  if (fourthShell) ownShells.push({ ...ownShells[1], name: `${ownShells[1].name} (fourth slot)` });
+  const chosen = fourthShell ? 3 : 1;
+  try {
+    return await runBattle(ticks, perturb, chosen);
+  } finally {
+    if (fourthShell) ownShells.pop();
+  }
+}
+
+async function runBattle(ticks, perturb, chosen) {
   const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
@@ -82,7 +98,7 @@ async function run(ticks, perturb = null) {
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = 1;
-  setupBattle(game, 'm1a1_abrams_hc', pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
+  setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
   const own = game.tanks.find((entity) => entity.isPlayer), foe = game.tanks.find((entity) => entity.team === 'enemy');
   game.tanks = [own, foe];
   game.allTanks = [own, foe];
@@ -125,7 +141,7 @@ async function run(ticks, perturb = null) {
     const aim = encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z });
     return self.id === own.id
       ? { throttle: 0.6, steer: tick < 240 ? 0 : 0.25, brake: false, fire: tick % 150 === 90 || tick === DENIED_FIRE_TICK,
-        shellSlot: ownShellSlot(tick), actionBits: 0, aimLocked: false, ...aim }
+        shellSlot: ownShellSlot(tick, chosen), actionBits: 0, aimLocked: false, ...aim }
       : { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: 0, actionBits: 0, aimLocked: false, ...aim };
   };
   let divergence = null;
@@ -180,6 +196,11 @@ const nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDE
   ? { ...input, throttle: input.throttle + 1e-9 } : null));
 assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
 assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
+// ---- a fourth slot fires as the fourth on both sides ------------------------------------------------------------------
+const four = await run(TICKS, null, { fourthShell: true });
+assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
+assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
+
 const SWITCH = 200;
 const late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
   ? { ...input, shellSlot: 0 } : null));
@@ -190,5 +211,6 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `authority's (sim/authoritativeMatch.ts), the page's controls through the authority's input stage (sim/playerInputStage.ts): `
   + `drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at ${(same.exercised.foeHp * 100).toFixed(1)} % hp, `
   + `own at ${(same.exercised.ownHp * 100).toFixed(1)} %), an ammunition switch and the emptied slot refused once at tick `
-  + `${denied.page[0].tick}, its trigger held off on a ready gun at ${DENIED_FIRE_TICK}; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
+  + `${denied.page[0].tick}, its trigger held off on a ready gun at ${DENIED_FIRE_TICK}; given a fourth shell, its slot fired as the fourth at `
+  + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field})`);

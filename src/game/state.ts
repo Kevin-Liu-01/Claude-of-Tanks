@@ -2038,10 +2038,12 @@ function readyShellForFire(
   const combat = entity.combat;
   if (entity.aerial?.kind === 'drone' && entity.aerial.active) return null;
   if (!entity.input.fire || combat.destroyed) return null;
+  // (268) bounded by the rack alone, the authority's rule (sim/playerInputStage.ts): a cap at the third slot here fired a
+  // fourth slot's request as the third on this driver only
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
     0,
-    Math.min(Math.min(2, maximumSlot), entity.input.shellSlot | 0),
+    Math.min(maximumSlot, entity.input.shellSlot | 0),
   );
   if (requestedSlot !== combat.shellSlot) {
     if (!selectShell(combat, requestedSlot, entity.spec)) return null;
